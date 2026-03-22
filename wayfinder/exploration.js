@@ -1763,47 +1763,44 @@ function traverseWormhole() {
 // ==========================================
 
 function triggerRandomEvent() {
-    // We add a global multiplier so we can scale this with ship upgrades later!
-    // Right now, it defaults to a factor of 0.1 (10%). 
-    // Later, an upgrade could set this to 1.0, 5.0, etc.
     let salvageMultiplier = 0.1; 
-    
-    // Example hook for future upgrades: 
-    // if (playerPerks.has('DEEP_SPACE_SCAVENGER')) salvageMultiplier = 1.0;
 
     const events = [
         {
             text: "You spot a drifting fuel canister.",
             effect: () => {
-                // Base was 10-30. Now it's 1-3.
                 const baseAmount = 10 + Math.floor(Math.random() * 20);
                 const amount = Math.max(1, Math.floor(baseAmount * salvageMultiplier));
-                
                 playerFuel = Math.min(MAX_FUEL, playerFuel + amount);
                 logMessage(`<span style="color:#00E0E0">Lucky Find:</span> Refueled ${amount} units from salvage.`);
+                
+                // 💸 FLOATING TEXT ON THE MAP!
+                if (typeof spawnFloatingText === 'function') spawnFloatingText(playerX, playerY, `+${amount} FUEL`, "#00E0E0");
             }
         },
         {
             text: "You intercept a fragmented credit transfer.",
             effect: () => {
-                // Base was 25-100. Now it's 2-10.
                 const baseAmount = 25 + Math.floor(Math.random() * 75);
                 const amount = Math.max(2, Math.floor(baseAmount * salvageMultiplier));
-                
                 if (typeof playerCredits !== 'undefined') playerCredits += amount;
                 logMessage(`<span style="color:var(--gold-text)">Lucky Find:</span> Decrypted ${formatNumber(amount)} credits.`);
+                
+                // 💸 FLOATING TEXT ON THE MAP!
+                if (typeof spawnFloatingText === 'function') spawnFloatingText(playerX, playerY, `+${amount} CREDITS`, "var(--gold-text)");
             }
         },
         {
             text: "You scan an ancient navigation buoy.",
             effect: () => {
-                // Base was 15. Now it's 1-2.
                 const baseAmount = 15;
                 const amount = Math.max(1, Math.floor(baseAmount * salvageMultiplier));
-                
                 if (typeof playerXP !== 'undefined') playerXP += amount;
                 logMessage(`<span style="color:#00FF00">Lucky Find:</span> Downloaded nav data. +${amount} XP.`);
                 if (typeof checkLevelUp === 'function') checkLevelUp();
+                
+                // 💸 FLOATING TEXT ON THE MAP!
+                if (typeof spawnFloatingText === 'function') spawnFloatingText(playerX, playerY, `+${amount} XP`, "#00FF00");
             }
         }
     ];
@@ -1812,7 +1809,6 @@ function triggerRandomEvent() {
     logMessage(event.text);
     event.effect();
     
-    // Optional: Render UI stats to show the trickle immediately
     if (typeof renderUIStats === 'function') renderUIStats();
 }
 
