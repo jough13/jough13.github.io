@@ -3032,9 +3032,10 @@ function processGameTick(timeAmount, isMovement = false) {
             }
         }
         
-        // 25% chance to shake the screen and flash red!
-        if (Math.random() < 0.25 && typeof triggerDamageEffect === 'function') {
-            triggerDamageEffect();
+        // 25% chance to shake the screen, flash red, and THROW SPARKS!
+        if (Math.random() < 0.25) {
+            if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+            if (typeof spawnParticles === 'function') spawnParticles(playerX, playerY, 'explosion');
         }
     }
 
@@ -3202,8 +3203,8 @@ function processGameTick(timeAmount, isMovement = false) {
         // --- DYNAMIC DISTRESS CALL SYSTEM ---
         // ==========================================
         
-        // 1. Roll to spawn a new event (5% chance per step, max 2 active at a time)
-        if (Math.random() < 0.05 && activeDistressCalls.length < 2) {
+        // 1. Roll to spawn a new event (0.05% chance per step, max 2 active at a time)
+        if (Math.random() < 0.0005 && activeDistressCalls.length < 2) {
             // Spawn it 8 to 15 tiles away from the player
             const dist = 8 + Math.floor(Math.random() * 7);
             const angle = Math.random() * Math.PI * 2;
@@ -3214,7 +3215,7 @@ function processGameTick(timeAmount, isMovement = false) {
             activeDistressCalls.push({
                 x: eventX,
                 y: eventY,
-                turnsRemaining: 30, // Player has 30 movement steps to reach it
+                turnsRemaining: 60, // Player has 60 movement steps to reach it
                 type: Math.random() > 0.5 ? 'AMBUSH' : 'RESCUE' 
             });
             
@@ -3804,6 +3805,13 @@ function checkLevelUp() {
     if (typeof soundManager !== 'undefined') {
         soundManager.playTone(600, 'sine', 0.1); 
         setTimeout(() => soundManager.playTone(800, 'sine', 0.2), 100);
+    }
+    
+    // 🎆 MASSIVE GOLDEN PARTICLE BURST!
+    if (typeof spawnParticles === 'function') {
+        spawnParticles(playerX, playerY, 'gain');
+        setTimeout(() => spawnParticles(playerX, playerY, 'gain'), 100);
+        setTimeout(() => spawnParticles(playerX, playerY, 'gain'), 200);
     }
 
     // --- Safe Modal Hiding ---
@@ -4513,6 +4521,9 @@ function handleCombatInput(key) {
             let tileChar = '.';
             if (typeof getTileChar === 'function') tileChar = getTileChar(currentTile);
             else if (currentTile && currentTile.char) tileChar = currentTile.char;
+            
+            // 📡 FIRE THE BLUE RADAR RING!
+            if (typeof triggerSensorPulse === 'function') triggerSensorPulse();
             
             if (tileChar === STAR_CHAR_VAL) {
                 const starData = generateStarData(playerX, playerY);
