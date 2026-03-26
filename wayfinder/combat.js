@@ -274,12 +274,7 @@ function handleCombatAction(action) {
             combatLog += `[Ammo: ${playerShip.ammo[weaponId]}/${weaponStats.maxAmmo}] `;
         }
 
-        let damageDealt = weaponStats.damage;
-
-        // Perk: Weapon Overclock OR Crew Bonus
-        if (playerPerks.has('WEAPON_OVERCLOCK') || (typeof hasCrewPerk === 'function' && hasCrewPerk('COMBAT_DAMAGE'))) {
-            damageDealt = Math.floor(damageDealt * 1.15); 
-        }
+        let damageDealt = PLAYER_ATTACK_DAMAGE;
 
         // --- FACTION PERK: ECLIPSE MERCENARY ---
         if (window.hasEclipseMerc) {
