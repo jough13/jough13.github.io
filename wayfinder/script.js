@@ -1599,11 +1599,14 @@ let statusOverlayElement;
      return Math.max(1, xp);
  }
 
- /**
-  * A helper function to render just the shared UI stats.
-  */
+ let isSilentRunning = false;
+ let stealthHeat = 0;
 
- function renderUIStats() {
+/**
+ * A helper function to render just the shared UI stats.
+ */
+
+function renderUIStats() {
     // 0. Update the System Menu Stats
     if (menuLevelElement) menuLevelElement.textContent = playerLevel;
     if (menuXPElement) menuXPElement.textContent = Math.floor(playerXP) + " / " + xpToNextLevel;
@@ -1690,6 +1693,23 @@ let statusOverlayElement;
     // Also override if the player has active Concord heat!
     if (playerNotoriety > 0) {
         threat = `WANTED (${playerNotoriety})`;
+        threatColor = "var(--warning)";
+    }
+
+    // 🚨 Stealth UI Override!
+if (isSilentRunning) {
+        if (stealthHeat <= 3) {
+            threat = `SILENT RUNNING (HEAT: ${stealthHeat}/5)`;
+            threatColor = "#555555";
+        } else if (stealthHeat <= 5) {
+            threat = `SILENT RUNNING (HEAT: ${stealthHeat}/5)`;
+            threatColor = "var(--warning)"; // Turns Orange!
+        } else {
+            threat = `CORE OVERHEATING!`;
+            threatColor = "var(--danger)"; // Turns Red!
+        }
+    } else if (stealthHeat > 0) {
+        threat = `VENTING HEAT (${stealthHeat})`;
         threatColor = "var(--warning)";
     }
 
@@ -2682,11 +2702,22 @@ function renderGalacticMap() {
         }
     });
 
-    // Draw Enemies
+// Draw Enemies (AND THEIR SENSOR CONES)
     activeEnemies.forEach(enemy => {
         const screenX = (enemy.x - camX) * TILE_SIZE + TILE_SIZE / 2;
         const screenY = (enemy.y - camY) * TILE_SIZE + TILE_SIZE / 2;
         if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
+            
+            // 🚨 NEW: Draw Enemy Sensor Cone
+            if (useHighGraphics && !isLightMode) {
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, TILE_SIZE * 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = enemy.color + '11'; // Add heavy transparency
+                ctx.fill();
+                ctx.strokeStyle = enemy.color + '44'; 
+                ctx.stroke();
+            }
+
             ctx.fillStyle = enemy.color || '#FF5555'; 
             ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`; 
             const charToDraw = enemy.char || PIRATE_CHAR_VAL;
@@ -2701,6 +2732,17 @@ function renderGalacticMap() {
             const screenY = (npc.y - camY) * TILE_SIZE + TILE_SIZE / 2;
             if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
                 ctx.save();
+                
+                // 🚨 NEW: Draw Concord Patrol Sensor Cone
+                if (useHighGraphics && !isLightMode && (npc.faction === 'CONCORD' || npc.combatProfile === 'CONCORD_PATROL')) {
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, TILE_SIZE * 3.5, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(0, 170, 255, 0.05)';
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(0, 170, 255, 0.2)'; 
+                    ctx.stroke();
+                }
+
                 ctx.fillStyle = npc.color; 
                 if (useHighGraphics && !isLightMode) { 
                     ctx.shadowBlur = 10;
@@ -2717,6 +2759,15 @@ function renderGalacticMap() {
     if (currentCombatContext) {
         ctx.fillStyle = '#FF5555';
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
+    } else if (isSilentRunning) {
+        // 🚨 Player is a ghost!
+        ctx.fillStyle = '#555555'; 
+        ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
+        // Draw a faint stealth ripple
+        ctx.beginPath();
+        ctx.arc(playerScreenX, playerScreenY, TILE_SIZE/2, 0, Math.PI*2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctx.stroke();
     } else {
         ctx.fillStyle = isLightMode ? '#000000' : '#FFFFFF'; 
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
@@ -2785,6 +2836,15 @@ function renderGalacticMap() {
         const dx = targetPoint.x - playerX;
         const dy = targetPoint.y - playerY;
         const dist = Math.sqrt(dx * dx + dy * dy);
+
+         // 🚨 STEALTH MECHANIC - SILENT RUNNING
+        if (isSilentRunning && dist > 3) {
+            // If you are stealthing and outside their immediate visual range (3 tiles),
+            // they cannot track you and will just wander aimlessly.
+            enemy.x += (Math.random() > 0.5 ? 1 : -1) * Math.round(Math.random());
+            enemy.y += (Math.random() > 0.5 ? 1 : -1) * Math.round(Math.random());
+            continue; // Skip the hunting AI entirely
+        }
 
         // Only draw the compass if the target is off-screen (further than half the viewport)
         if (dist > Math.min(VIEWPORT_WIDTH_TILES, VIEWPORT_HEIGHT_TILES) / 2) {
@@ -3025,6 +3085,49 @@ function processGameTick(timeAmount, isMovement = false) {
     // 1. Advance the universal clock (Shields, K'tharr regen, etc.)
     if (typeof advanceGameTime === 'function') advanceGameTime(timeAmount);
 
+    // ==========================================
+    // --- 1.5 STEALTH HEAT MECHANIC ---
+    // ==========================================
+    if (isSilentRunning) {
+        stealthHeat++;
+        
+        // Exceeded safe limit!
+        if (stealthHeat > 5) {
+            // Damage scales up every turn you leave it on! (7, 9, 11...)
+            const dmg = 5 + ((stealthHeat - 5) * 2); 
+            
+            // Cooks shields first, then spills to hull
+            if (playerShields > 0) {
+                playerShields -= dmg;
+                if (playerShields < 0) {
+                    playerHull += playerShields;
+                    playerShields = 0;
+                }
+            } else {
+                playerHull -= dmg;
+            }
+            
+            // Feedback!
+            if (Math.random() < 0.5 || !isMovement) {
+                logMessage(`<span style='color:var(--danger)'>[ STEALTH ] Heat sinks overloaded! Core melting! Took ${dmg} damage.</span>`);
+                if (typeof triggerDamageEffect === 'function') triggerDamageEffect(); // Shakes the screen
+                if (typeof soundManager !== 'undefined') soundManager.playShieldHit();
+            }
+            
+            // Did they cook themselves to death?
+            if (playerHull <= 0) {
+                if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 0, reason: "Melted by Stealth Core Overload" });
+                return true; 
+            }
+        }
+    } else if (stealthHeat > 0) {
+        // Cooldown when stealth is off (Cools down 2x faster than it heats up)
+        stealthHeat = Math.max(0, stealthHeat - 2); 
+        if (stealthHeat === 0) {
+            logMessage("<span style='color:var(--success)'>[ STEALTH ] Heat sinks fully flushed. Temperatures nominal.</span>");
+        }
+    }
+
     // 2. Resolve Environment & Hazards
     const hazard = getHazardType(playerX, playerY);
     const hasRadShield = playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY';
@@ -3180,11 +3283,11 @@ function processGameTick(timeAmount, isMovement = false) {
     actualFuelPerMove *= (currentEngine.stats.fuelEfficiency || 1.0);
     
     if (playerPerks.has('EFFICIENT_THRUSTERS')) actualFuelPerMove *= 0.8; 
-    
-    // --- ASTROGATOR CREW PERK ---
     if (typeof hasCrewPerk === 'function' && hasCrewPerk('FUEL_EFFICIENCY')) {
-        actualFuelPerMove *= 0.75; // 25% less fuel consumed per jump!
+        actualFuelPerMove *= 0.75; 
     }
+
+    if (isSilentRunning) actualFuelPerMove *= 2.0;
 
     // 3. Fuel Check (Stranded)
     if (playerFuel < actualFuelPerMove && (dx !== 0 || dy !== 0)) {
@@ -3273,14 +3376,19 @@ function processGameTick(timeAmount, isMovement = false) {
     }
 
     // 6. Handle Random Events / Tile Interaction
+    let encounterChance = PIRATE_ENCOUNTER_CHANCE;
+    
+    // 🚨 ADD THIS: 85% less likely to be ambushed while stealthed!
+    if (isSilentRunning) encounterChance *= 0.15; 
+
     const encounterRoll = Math.random();
-    if (encounterRoll < PIRATE_ENCOUNTER_CHANCE) {
+    if (encounterRoll < encounterChance) {
         if (typeof spawnPirateNearPlayer === "function") spawnPirateNearPlayer();
         else startCombat(); 
-    } else if (encounterRoll < PIRATE_ENCOUNTER_CHANCE + 0.015) {
-        triggerRandomEvent(); // 1.5% chance for salvage
+    } else if (encounterRoll < encounterChance + 0.015) {
+        triggerRandomEvent(); 
     } else {
-        handleInteraction(); // Normal tile interaction
+        handleInteraction(); 
     }
 }
 
@@ -4476,9 +4584,25 @@ function handleCombatInput(key) {
         }
     }
 
-    // --- 2. IN-SPACE & GLOBAL ACTIONS ---
+// --- 2. IN-SPACE & GLOBAL ACTIONS ---
     let dx = 0, dy = 0;
     switch (key) {
+        case 'q':
+        case 'Q':
+            isSilentRunning = !isSilentRunning;
+            if (isSilentRunning) {
+                if (typeof showToast === 'function') showToast("SILENT RUNNING: ONLINE", "warning");
+                logMessage("<span style='color:#888'>[ STEALTH ] Radar signature minimized. Heat sinks engaged. Watch your temperature.</span>");
+                if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+            } else {
+                if (typeof showToast === 'function') showToast("SILENT RUNNING: OFFLINE", "info");
+                logMessage("<span style='color:var(--accent-color)'>[ STEALTH ] Main reactor online. Venting accumulated heat.</span>");
+                if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+            }
+            if (typeof render === 'function') render();
+            if (typeof renderUIStats === 'function') renderUIStats(); // Force UI update
+            return true;
+
         case 'w':
         case 'arrowup':
             dy = -1;
