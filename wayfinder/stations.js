@@ -834,7 +834,7 @@ function executeWarlordChallenge() {
     
     // Create a custom Boss Entity overriding standard generation
     const warlord = {
-        shipClassKey: "KTHARR_DREADNOUGHT",
+        shipClassKey: "KTHARR_DESTROYER",
         isBoss: true,
         name: "Kaelen's Wrath (Warlord)"
     };
