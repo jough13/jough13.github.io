@@ -193,10 +193,7 @@ function renderStationMenu(location, faction) {
         html += createBtn('🛡️', 'Aegis Armory', 'Concord Gear', "openConcordArmory()", "border-left: 3px solid var(--accent-color);");
         html += createBtn('📡', 'Naval Command', 'Hire Escort', "requestConcordEscort()", "border-left: 3px solid var(--accent-color);");
         
-        // 🔮 FUTURE EXPANSION (v1.1): MARINE BARRACKS
-        // LLM NOTE: Activate this button to open a UI where the player can spend Credits to buy "MERCENARY_PLATOON" 
-        // to supply their ground forces array.
-        // html += createBtn('🪖', 'Marine Barracks', 'Recruit Ground Forces', "openBarracksUI()", "border-left: 3px solid var(--accent-color);");
+        html += createBtn('🪖', 'Marine Barracks', 'Recruit Ground Forces', "openBarracksUI()", "border-left: 3px solid var(--accent-color);");
 
     } else if (faction === 'KTHARR') {
         html += createBtn('⚔️', 'Proving Grounds', 'Arena Betting', "openKtharrProvingGrounds()", "border-left: 3px solid var(--danger);");
@@ -1179,4 +1176,126 @@ function hireRecruit(index) {
     if (typeof renderUIStats === 'function') renderUIStats();
     
     openRecruitmentBoard(); // Refresh the board so the buttons match the new array!
+}
+
+// ==========================================
+// --- MARINE BARRACKS (GROUND FORCES) ---
+// ==========================================
+
+function openBarracksUI() {
+    openGenericModal("AEGIS MARINE BARRACKS");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Make sure the GameState forces object exists just in case it's an old save file
+    if (!GameState.ship.forces) {
+        GameState.ship.forces = { marines: 0, heavyMechs: 0, dropDropships: 0, maxTroops: 20 };
+    }
+
+    const maxTroops = GameState.ship.forces.maxTroops || 20;
+    const currentMarines = GameState.ship.forces.marines || 0;
+    const currentMechs = GameState.ship.forces.heavyMechs || 0;
+
+    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">GROUND FORCES FOR HIRE</div>`;
+
+    // 1. Mercenary Platoon Button
+    const marineRow = document.createElement('div');
+    marineRow.className = 'trade-item-row';
+    marineRow.innerHTML = `<span style="color:var(--text-color); font-weight:bold;">Mercenary Platoon (+10 Marines)</span> <span style="color:var(--gold-text)">5,000c</span>`;
+    marineRow.onclick = () => showTroopDetails('MERCENARY_PLATOON');
+    listEl.appendChild(marineRow);
+
+    // 2. Assault Mech Button
+    const mechRow = document.createElement('div');
+    mechRow.className = 'trade-item-row';
+    mechRow.innerHTML = `<span style="color:var(--text-color); font-weight:bold;">Goliath Assault Mech (+1 Mech)</span> <span style="color:var(--gold-text)">15,000c</span>`;
+    mechRow.onclick = () => showTroopDetails('ASSAULT_MECH');
+    listEl.appendChild(mechRow);
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px rgba(0,224,224,0.4)); opacity:0.8;">🪖</div>
+            <h3 style="color:var(--accent-color); margin-bottom:10px;">EXPEDITIONARY FORCES</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                "You can't conquer a pirate stronghold from orbit, Commander. Hire ground troops to assault fortified Cartel bases and secure the vaults inside."
+            </p>
+            
+            <div class="trade-math-area" style="margin-top: 20px; background: rgba(0, 224, 224, 0.05); border: 1px dashed var(--accent-color);">
+                <div style="color: var(--accent-color); font-size: 11px; margin-bottom: 8px; font-weight: bold; letter-spacing: 1px;">CURRENT MANIFEST</div>
+                <div style="display:flex; justify-content:space-between; font-size: 13px; margin-bottom: 5px;">
+                    <span style="color:var(--text-color)">Active Marines:</span> 
+                    <span style="color:${currentMarines > 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${currentMarines} / ${maxTroops}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size: 13px;">
+                    <span style="color:var(--text-color)">Heavy Mechs:</span> 
+                    <span style="color:var(--warning); font-weight:bold;">${currentMechs}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="openStationView()">RETURN TO CONCOURSE</button>`;
+}
+
+function showTroopDetails(itemId) {
+    const item = COMMODITIES[itemId];
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    const maxTroops = GameState.ship.forces.maxTroops || 20;
+    const currentMarines = GameState.ship.forces.marines || 0;
+
+    let isFull = false;
+    if (itemId === 'MERCENARY_PLATOON' && currentMarines + 10 > maxTroops) {
+        isFull = true;
+    }
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:50px; margin-bottom:10px;">${item.isVehicle ? '🤖' : '🪖'}</div>
+            <h3 style="color:var(--item-name-color); margin:0 0 15px 0;">${item.name.toUpperCase()}</h3>
+            
+            <p style="color:var(--text-color); font-size:12px; line-height:1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid var(--accent-color); margin-bottom:20px; text-align:left;">
+                "${item.description}"
+            </p>
+
+            <div class="trade-math-area" style="text-align:left; background:rgba(0,0,0,0.5);">
+                <div class="trade-stat-row"><span>Contract Cost:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(item.basePrice)}c</span></div>
+                <div class="trade-stat-row"><span>Force Yield:</span> <span style="color:var(--success); font-weight:bold;">${item.isVehicle ? '+1 Heavy Mech' : '+10 Marines'}</span></div>
+            </div>
+        </div>
+    `;
+
+    if (playerCredits < item.basePrice) {
+        actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>INSUFFICIENT FUNDS</button>`;
+    } else if (isFull) {
+        actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>BARRACKS CAPACITY EXCEEDED</button>`;
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 15px rgba(0,224,224,0.2);" onclick="purchaseTroops('${itemId}', ${item.basePrice})">
+                AUTHORIZE DEPLOYMENT
+            </button>
+        `;
+    }
+    actionsEl.innerHTML += `<button class="action-button" onclick="openBarracksUI()">CANCEL</button>`;
+}
+
+function purchaseTroops(itemId, cost) {
+    if (playerCredits < cost) return;
+    playerCredits -= cost;
+
+    if (itemId === 'MERCENARY_PLATOON') {
+        GameState.ship.forces.marines += 10;
+        logMessage(`<span style="color:var(--success)">[ BARRACKS ] 10 Marines boarded the vessel.</span>`);
+    } else if (itemId === 'ASSAULT_MECH') {
+        GameState.ship.forces.heavyMechs += 1;
+        logMessage(`<span style="color:var(--warning)">[ BARRACKS ] Goliath Assault Mech loaded into the cargo bay.</span>`);
+    }
+
+    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    if (typeof showToast === 'function') showToast("FORCES CONTRACTED", "success");
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
+    openBarracksUI(); // Refresh the screen
 }
