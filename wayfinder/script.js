@@ -2755,15 +2755,13 @@ function renderGalacticMap() {
         });
     }
 
-    // Draw Player
+// Draw Player (GHOST MODE)
     if (currentCombatContext) {
         ctx.fillStyle = '#FF5555';
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
     } else if (isSilentRunning) {
-        // 🚨 Player is a ghost!
         ctx.fillStyle = '#555555'; 
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
-        // Draw a faint stealth ripple
         ctx.beginPath();
         ctx.arc(playerScreenX, playerScreenY, TILE_SIZE/2, 0, Math.PI*2);
         ctx.strokeStyle = 'rgba(255,255,255,0.1)';
@@ -2771,6 +2769,24 @@ function renderGalacticMap() {
     } else {
         ctx.fillStyle = isLightMode ? '#000000' : '#FFFFFF'; 
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
+    }
+
+    // 🚨 Draw Active Escort Wingman!
+    if (window.concordEscortJumps && window.concordEscortJumps > 0) {
+        // Use Date.now() to make the ship continuously orbit the player smoothly!
+        const time = Date.now() / 600; 
+        const escortX = playerScreenX + Math.cos(time) * (TILE_SIZE * 1.2);
+        const escortY = playerScreenY + Math.sin(time) * (TILE_SIZE * 1.2);
+        
+        ctx.save();
+        ctx.fillStyle = '#00AAFF'; // Concord Blue
+        ctx.font = `bold ${TILE_SIZE * 0.8}px 'Orbitron', monospace`;
+        if (useHighGraphics && !isLightMode) {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00AAFF';
+        }
+        ctx.fillText('V', escortX, escortY); // 'V' represents a military gunship
+        ctx.restore();
     }
 
     // Draw Floating Text
@@ -2836,15 +2852,6 @@ function renderGalacticMap() {
         const dx = targetPoint.x - playerX;
         const dy = targetPoint.y - playerY;
         const dist = Math.sqrt(dx * dx + dy * dy);
-
-         // 🚨 STEALTH MECHANIC - SILENT RUNNING
-        if (isSilentRunning && dist > 3) {
-            // If you are stealthing and outside their immediate visual range (3 tiles),
-            // they cannot track you and will just wander aimlessly.
-            enemy.x += (Math.random() > 0.5 ? 1 : -1) * Math.round(Math.random());
-            enemy.y += (Math.random() > 0.5 ? 1 : -1) * Math.round(Math.random());
-            continue; // Skip the hunting AI entirely
-        }
 
         // Only draw the compass if the target is off-screen (further than half the viewport)
         if (dist > Math.min(VIEWPORT_WIDTH_TILES, VIEWPORT_HEIGHT_TILES) / 2) {
