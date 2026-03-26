@@ -505,6 +505,26 @@ function handleCombatAction(action) {
         }
     }
 
+    // --- 1.5 ACTIVE ESCORT COVERING FIRE ---
+    // If you have an escort, and the enemy isn't dead yet, and you didn't just flee or talk...
+    if (window.concordEscortJumps && window.concordEscortJumps > 0 && currentCombatContext.pirateHull > 0 && action !== 'run' && action !== 'hail') {
+        const escortDmg = 12 + Math.floor(Math.random() * 15); // Deals 12-26 damage automatically!
+        
+        if (currentCombatContext.pirateShields > 0) {
+            currentCombatContext.pirateShields -= escortDmg;
+            combatLog += ` <span style="color:var(--accent-color)">[ AEGIS WING ] Gunship blasts shields for ${escortDmg}!</span>`;
+            if (currentCombatContext.pirateShields < 0) {
+                currentCombatContext.pirateHull += currentCombatContext.pirateShields;
+                currentCombatContext.pirateShields = 0;
+            }
+        } else {
+            currentCombatContext.pirateHull -= escortDmg;
+            combatLog += ` <span style="color:var(--accent-color)">[ AEGIS WING ] Gunship rakes hull for ${escortDmg}!</span>`;
+        }
+        // Extra sound effect for the wingman!
+        if (typeof soundManager !== 'undefined') setTimeout(() => soundManager.playLaser(), 300);
+    }
+
     // --- 2. VICTORY CHECK ---
     if (currentCombatContext.pirateHull <= 0) {
         logMessage(combatLog); 
@@ -659,6 +679,14 @@ function renderCombatView() {
     
     // --- THEME CHECK ---
     const isLightMode = document.body.classList.contains('light-mode');
+
+    // Create the UI badge if they have an escort
+    const hasEscort = window.concordEscortJumps && window.concordEscortJumps > 0;
+    const escortBadgeHtml = hasEscort ? `
+        <div style="background: rgba(0, 170, 255, 0.1); border: 1px solid var(--accent-color); padding: 4px 8px; border-radius: 4px; font-size: 10px; color: var(--accent-color); font-weight: bold; margin-bottom: 10px; letter-spacing: 1px;">
+            🛡️ AEGIS ESCORT ACTIVE
+        </div>
+    ` : '';
     
     // Ability State
     const abilityReady = playerAbilityCooldown <= 0;
@@ -705,6 +733,8 @@ function renderCombatView() {
                 </h3>
                 <div style="font-size: 11px; color: var(--item-desc-color); margin-bottom: 15px; text-transform: uppercase;">${shipClass.name}</div>
                 
+                ${escortBadgeHtml}
+
                 <div style="width: 100%;">
                     <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; color: var(--text-color);"><span>Shields</span><span>${Math.floor(playerShields)}</span></div>
                     <div style="height: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); margin-bottom: 10px; border-radius: 3px; overflow: hidden;">
@@ -841,9 +871,9 @@ function updateEnemies() {
         // Calculate the absolute distance between the player and the enemy
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        // STEALTH MECHANIC: NEBULA SLIPPING
+        // STEALTH MECHANIC 1: NEBULA SLIPPING
         // If the player is sitting in a nebula (~), sensors are scrambled!
-        const playerTile = chunkManager.getTile(playerX, playerY);
+        const playerTile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
         if (playerTile && getTileChar(playerTile) === '~') {
             // 80% chance the enemy completely loses tracking this turn
             if (Math.random() < 0.80) {
@@ -854,6 +884,15 @@ function updateEnemies() {
             }
         }
 
+        // 🚨 STEALTH MECHANIC 2: SILENT RUNNING (The new mechanic!)
+        if (typeof isSilentRunning !== 'undefined' && isSilentRunning && dist > 3) {
+            // If you are stealthing and outside their immediate visual range (3 tiles),
+            // they cannot track you and will just wander aimlessly.
+            enemy.x += (Math.random() > 0.5 ? 1 : -1) * Math.round(Math.random());
+            enemy.y += (Math.random() > 0.5 ? 1 : -1) * Math.round(Math.random());
+            continue; // Skip the hunting AI entirely
+        }
+
         if (dist > 100) { 
             // If the pirate is more than 100 tiles away, they've lost our trail.
             activeEnemies.splice(i, 1); // Delete from memory
@@ -861,9 +900,6 @@ function updateEnemies() {
         }
 
         // 0. RANDOM "HESITATION" MECHANIC (Allows Outrunning)
-        // 30% chance the pirate's engines stall or they stop to scan, 
-        // effectively making them slower than the player (0.7 speed vs 1.0 speed).
-        // This allows you to open the distance if you just keep running.
         if (Math.random() < 0.30) {
             continue; // Skip this enemy's turn
         }
@@ -887,18 +923,16 @@ function updateEnemies() {
             const targetX = enemy.x + move.x;
             const targetY = enemy.y + move.y;
 
-            const targetTile = chunkManager.getTile(targetX, targetY);
-            const tileChar = getTileChar(targetTile);
+            const targetTile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(targetX, targetY) : null;
+            const tileChar = targetTile ? getTileChar(targetTile) : '.';
 
             // Is this the player?
             const isPlayer = (targetX === playerX && targetY === playerY);
             
             // Is it a valid space to fly through?
-            // (Enemies can fly through Empty Space or Nebulas)
-
             const isNavigable = (tileChar !== PLANET_CHAR_VAL && 
-                     tileChar !== STARBASE_CHAR_VAL && 
-                     tileChar !== OUTPOST_CHAR_VAL);
+                                 tileChar !== STARBASE_CHAR_VAL && 
+                                 tileChar !== OUTPOST_CHAR_VAL);
 
             // 3. EXECUTE MOVE
             if (isPlayer || isNavigable) {
@@ -910,11 +944,10 @@ function updateEnemies() {
         }
 
         // 4. CHECK COMBAT TRIGGER
-        // If the enemy successfully moved onto the player's tile, trigger combat!
         if (enemy.x === playerX && enemy.y === playerY) {
             logMessage(`<span style='color:#FF5555'>ALERT: Pirate vessel engaging!</span>`);
             activeEnemies.splice(i, 1);
-            startCombat();
+            if (typeof startCombat === 'function') startCombat();
             break; // Prevent overlapping encounters on the same tick
         }
     }
@@ -934,7 +967,7 @@ function commitPiracy(npcIndex) {
         y: playerY,
         id: Date.now(),
         name: targetNPC.name, 
-        shipClassKey: targetNPC.combatProfile, // <--- CRITICAL FIX: Tells the combat engine what ship they have
+        shipClassKey: targetNPC.combatProfile,
         hull: enemyProfile.baseHull,
         shields: enemyProfile.baseShields
     };
