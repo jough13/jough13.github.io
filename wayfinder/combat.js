@@ -1100,29 +1100,36 @@ let raidContext = null;
 function startOutpostRaid(location) {
     if (typeof closeGenericModal === 'function') closeGenericModal(); 
     
-    // 🔮 FUTURE EXPANSION: TROOP DEPLOYMENT (v1.1)
-    // LLM NOTE: In the future, instead of using the ship's Hull, require the player to select how many 
-    // Marines and Mechs to deploy. 
-    // Example logic:
-    // const deployedMarines = Math.min(GameState.ship.forces.marines, GameState.ship.forces.dropDropships * 20 || 10);
-    // if (deployedMarines === 0) { showToast("NO TROOPS TO DEPLOY", "error"); return; }
-    // playerHp = deployedMarines * 10; (Each marine has 10 HP)
-    // If playerHp takes damage, divide damage by 10 and permanently delete that many marines from GameState.
+    // Make sure the object exists
+    if (!GameState.ship.forces) GameState.ship.forces = { marines: 0, heavyMechs: 0, dropDropships: 0, maxTroops: 20 };
 
-    // Currently (v1.0): You use your actual ship's health pool!
+    const deployedMarines = GameState.ship.forces.marines || 0;
+    
+    // Stop the player if they have no troops!
+    if (deployedMarines <= 0) { 
+        if (typeof showToast === 'function') showToast("NO TROOPS TO DEPLOY", "error"); 
+        logMessage("<span style='color:var(--danger)'>Assault failed. You need to hire Marines at a Concord Barracks first!</span>");
+        return; 
+    }
+
+    // 10 HP per Marine
+    const totalMarineHp = deployedMarines * 10;
+
     raidContext = {
         locationObj: location,
-        playerHp: typeof playerHull !== 'undefined' ? playerHull : 100, 
-        playerMaxHp: typeof MAX_PLAYER_HULL !== 'undefined' ? MAX_PLAYER_HULL : 100,
+        playerHp: totalMarineHp, 
+        playerMaxHp: totalMarineHp,
         enemyHp: 150, // Bases are tough!
         enemyMaxHp: 150,
         enemyName: "Cartel Garrison",
-        log: ["DROP RAMPS DEPLOYED. You touch down just outside the perimeter. Heavy turret fire incoming!"]
+        mechsDeployed: GameState.ship.forces.heavyMechs || 0,
+        log: ["DROP RAMPS DEPLOYED. Marines touching down just outside the perimeter. Heavy turret fire incoming!"]
     };
     
     openGenericModal(`GROUND ASSAULT: ${location.name.toUpperCase()}`);
     renderRaidUI();
 }
+
 
 function renderRaidUI() {
     if (!raidContext) return;
@@ -1131,14 +1138,14 @@ function renderRaidUI() {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    // 1. Render Combat Log (Left Pane) - Forced Dark Tactical Terminal!
+    // 1. Render Combat Log (Left Pane) - Now Theme Adaptive!
     listEl.style.padding = "0"; 
     listEl.innerHTML = `
-        <div style="background: #050510; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
-            <div style="background: var(--danger); color: #000; font-family: var(--title-font); font-size: 12px; font-weight: 900; text-align: center; padding: 10px; letter-spacing: 2px;">
+        <div style="background: var(--panel-bg); height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="background: var(--danger); color: #FFF; font-family: var(--title-font); font-size: 12px; font-weight: 900; text-align: center; padding: 10px; letter-spacing: 2px;">
                 TACTICAL FEED
             </div>
-            <div id="raidLogContainer" style="padding: 15px; font-family: var(--main-font); font-size: 12px; color: var(--accent-color); display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1;">
+            <div id="raidLogContainer" style="padding: 15px; font-family: var(--main-font); font-size: 13px; color: var(--text-color); display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1;">
                 ${raidContext.log.map(msg => `<div>> ${msg}</div>`).join('')}
             </div>
         </div>
@@ -1215,20 +1222,16 @@ function executeRaidAction(action) {
     let actionLog = "";
 
     // --- TACTICAL CHOICES ---
-    // 🔮 FUTURE EXPANSION (v1.1):
-    // If GameState.ship.forces.heavyMechs > 0, multiply playerDmg by 1.5.
-    // If player takes enemyDmg, permanently subtract (enemyDmg / 10) from GameState.ship.forces.marines.
-    
     if (action === 'assault') {
         playerDmg = Math.floor(Math.random() * 20) + 15; // 15-35 dmg to enemy
         enemyDmg = Math.floor(Math.random() * 15) + 10;  // 10-25 dmg to player
-        actionLog = `<span style="color:var(--danger)">You charge the main gates!</span> Dealt ${playerDmg} damage.`;
+        actionLog = `<span style="color:var(--danger)">Marines charge the main gates!</span> Dealt ${playerDmg} damage.`;
         if (typeof soundManager !== 'undefined') soundManager.playLaser();
     } 
     else if (action === 'flank') {
         playerDmg = Math.floor(Math.random() * 10) + 8; // 8-18 dmg to enemy
         enemyDmg = Math.floor(Math.random() * 5);       // 0-5 dmg to player
-        actionLog = `<span style="color:var(--accent-color)">You take the high ground.</span> Sniped guards for ${playerDmg} damage.`;
+        actionLog = `<span style="color:var(--accent-color)">Sniper teams take the high ground.</span> Hit guards for ${playerDmg} damage.`;
         if (typeof soundManager !== 'undefined') soundManager.playLaser();
     } 
     else if (action === 'strike') {
@@ -1238,14 +1241,22 @@ function executeRaidAction(action) {
         actionLog = `<span style="color:var(--warning)">ORBITAL STRIKE!</span> Your ship rains fire from above! ${playerDmg} structural damage!`;
         if (typeof soundManager !== 'undefined') soundManager.playExplosion();
         if (typeof triggerDamageEffect === 'function') triggerDamageEffect(); // Shake screen!
-        if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED'); // Update Fuel Bar!
+        if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED'); 
     } 
     else if (action === 'flee') {
         closeGenericModal();
+        logMessage("<span style='color:var(--danger)'>Marines evacuated under heavy fire!</span>");
+        
+        // Sync surviving marines back to the ship (Divide remaining HP by 10 and round up)
+        GameState.ship.forces.marines = Math.ceil(ctx.playerHp / 10);
         raidContext = null;
-        logMessage("<span style='color:var(--danger)'>You evacuate under heavy fire! Ship took 20 damage during takeoff!</span>");
-        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 20, reason: "Shot while fleeing a raid" });
         return;
+    }
+
+    // --- APPLY MECH MULTIPLIER ---
+    if (ctx.mechsDeployed > 0) {
+        playerDmg = Math.floor(playerDmg * 1.5); // 50% more damage!
+        actionLog += ` <span style="color:var(--warning)">(Mech Fire Support: +50% Dmg)</span>`;
     }
 
     // Apply Damage to Enemy
@@ -1256,20 +1267,10 @@ function executeRaidAction(action) {
     if (ctx.enemyHp > 0) {
         if (enemyDmg > 0) {
             actionLog += ` The garrison returns fire! <span style="color:var(--danger)">Took ${enemyDmg} damage!</span>`;
-            
-            // This ensures your HUD flashes red and your global hull goes down properly.
-            if (typeof GameBus !== 'undefined') {
-                GameBus.emit('HULL_DAMAGED', { amount: enemyDmg, reason: "Ground Assault Firefight" });
-            } else {
-                playerHull -= enemyDmg; // Fallback
-            }
-            
+            ctx.playerHp -= enemyDmg; // Damage the Marines, NOT the ship!
         } else {
             actionLog += ` The garrison is suppressed and misses their shots!`;
         }
-        
-        // Sync the visual UI bar with your actual ship health!
-        ctx.playerHp = typeof playerHull !== 'undefined' ? playerHull : 0; 
     } else {
         actionLog += ` <span style="color:var(--success); font-weight:bold;">Defenses broken! Vault exposed!</span>`;
     }
@@ -1280,7 +1281,13 @@ function executeRaidAction(action) {
     // Check Win/Loss conditions
     if (ctx.playerHp <= 0) {
         closeGenericModal();
-        // The GameBus 'HULL_DAMAGED' event above will automatically trigger Game Over!
+        GameState.ship.forces.marines = 0; // All marines died!
+        
+        logMessage("<span style='color:var(--danger); font-weight:bold;'>ASSAULT FAILED.</span> Entire landing party was wiped out by the cartel garrison.");
+        if (typeof showToast === 'function') showToast("MARINES WIPED OUT", "error");
+        if (typeof soundManager !== 'undefined') soundManager.playError();
+        
+        raidContext = null;
         return;
     } 
     else if (ctx.enemyHp <= 0) {
@@ -1291,6 +1298,9 @@ function executeRaidAction(action) {
         playerCredits += credits;
         playerXP += xp;
         
+        // Save surviving marines!
+        GameState.ship.forces.marines = Math.ceil(ctx.playerHp / 10);
+        
         // Permanently destroy the pirate base on the map!
         ctx.locationObj.cleared = true; 
         updateWorldState(playerX, playerY, { cleared: true });
@@ -1300,13 +1310,11 @@ function executeRaidAction(action) {
             playerCargo['PROHIBITED_STIMS'] = (playerCargo['PROHIBITED_STIMS'] || 0) + Math.floor(Math.random() * 3) + 2;
             playerCargo['STOLEN_CONCORD_MEDALS'] = (playerCargo['STOLEN_CONCORD_MEDALS'] || 0) + Math.floor(Math.random() * 5) + 1;
             
-            // --- PROCEDURAL VAULT LOOT ---
             const rareLoot = typeof generateProceduralModule === 'function' ? generateProceduralModule("MILITARY_SHIELD_MOD") : null;
             if (rareLoot) {
                 playerCargo[rareLoot.id] = rareLoot;
                 logMessage(`<span style="color:#FF33FF; font-weight:bold;">[ VAULT BREACHED ]</span> You recovered a prototype module: <span style="color:var(--gold-text)">${rareLoot.name}</span>!`);
             }
-            
             if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         }
         
@@ -1319,8 +1327,6 @@ function executeRaidAction(action) {
         
         if (typeof checkLevelUp === 'function') checkLevelUp();
         if (typeof renderUIStats === 'function') renderUIStats();
-        
-        // Force the map to redraw so the player can see the base is dead
         if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
         if (typeof render === 'function') render();
         return;
