@@ -226,16 +226,19 @@ function handleVictory() {
     // 7. Finalize and Clean Up
     logMessage(msg);
     showToast("TARGET DESTROYED", "success");
-    checkLevelUp();
+    
+    const leveledUp = checkLevelUp(); // Capture the boolean!
 
     // 8. Exit Combat State
     currentCombatContext = null;
-    changeGameState(GAME_STATES.GALACTIC_MAP);
+    
+    // ONLY return to the map if the level up screen didn't hijack the view!
+    if (!leveledUp) {
+        changeGameState(GAME_STATES.GALACTIC_MAP);
+        handleInteraction();
+    }
 
-    // 9. Trigger standard tile interaction (e.g. entering the empty space)
-    handleInteraction();
-
-    // Stumble Protection: Prevent accidental movement for 500ms after transition
+    // Stumble Protection
     lastInputTime = Date.now() + 500;
 }
 
@@ -299,6 +302,11 @@ function handleCombatAction(action) {
 
         // Hit Chance Calculation
         let hitChance = weaponStats.hitChance;
+
+        if (currentCombatContext.playerGuaranteedHit) {
+            hitChance = 2.0; // 200% accuracy for this shot only!
+            currentCombatContext.playerGuaranteedHit = false; // Consume the buff
+        }
         
         if (currentCombatContext.nextMove && currentCombatContext.nextMove.type === 'EVADE') {
             hitChance -= 0.25;
@@ -382,8 +390,7 @@ function handleCombatAction(action) {
             }
 
             if (playerStats.guaranteedHit) {
-                COMPONENTS_DATABASE[playerShip.components.weapon].stats.hitChance = 2.0; 
-                setTimeout(() => { if(typeof applyPlayerShipStats === 'function') applyPlayerShipStats(); }, 500); 
+                currentCombatContext.playerGuaranteedHit = true; 
             }
             
             if (resultLog) combatLog += resultLog + " ";
