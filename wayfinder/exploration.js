@@ -220,6 +220,17 @@ function renderPlanetView() {
             </button>`;
     }
 
+    // --- SPECIAL WORLD INTERACTIONS ---
+    let specialActionHtml = '';
+    if (planet.biome.name === "Machine World") {
+        const canHack = !planet.hackedThisVisit;
+        specialActionHtml = `
+            <button class="action-button" onclick="hackMachineWorld()" style="border-color: #00E0E0; color: #00E0E0; box-shadow: 0 0 15px rgba(0,224,224,0.3);" ${!canHack ? 'disabled' : ''}>
+                ${canHack ? '💻 INTERFACE WITH CORE NETWORK' : 'CORE LOCKED OUT'}
+            </button>
+        `;
+    }
+
     // Clean HTML Structure
     let html = `
         <div class="planet-view-content">
@@ -229,6 +240,7 @@ function renderPlanetView() {
                 <button class="action-button" onclick="performGeoSurvey()" ${surveyButtonState}>${surveyLabel}</button>
                 <button class="action-button" onclick="startSurfaceExpedition()" style="border-color:#9933FF; color:#DDA0DD; box-shadow: 0 0 10px rgba(153,51,255,0.2);" ${exploreButtonState}>🏔️ ${exploreLabel}</button>
                 ${colonyButtonHtml}
+                ${specialActionHtml}
                 <button class="action-button full-width-btn" onclick="returnToOrbit()">&lt;&lt; Return to Orbit</button>
             </div>
         </div>
@@ -2991,4 +3003,62 @@ function processDerelictChoice(choice) {
     
     // Re-render the stage with the new text
     renderDerelictStage();
+}
+
+// ==========================================
+// --- SPECIAL PLANETARY INTERACTIONS ---
+// ==========================================
+
+function hackMachineWorld() {
+    const planet = currentSystemData.planets[selectedPlanetIndex];
+    if (planet.hackedThisVisit) return;
+
+    // Generate a massive cache of high-tier loot!
+    const creditsFound = 2500 + Math.floor(Math.random() * 5000);
+    const techFound = 10 + Math.floor(Math.random() * 15);
+    
+    playerCredits += creditsFound;
+    playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + techFound;
+    
+    // 30% chance to find an Unshackled AI!
+    let aiMsg = "";
+    if (Math.random() < 0.30) {
+        playerCargo['UNSHACKLED_AI'] = (playerCargo['UNSHACKLED_AI'] || 0) + 1;
+        aiMsg = `<br><br><span style="color:#9933FF; font-weight:bold;">[ CRITICAL DISCOVERY ] You isolated and extracted an Unshackled AI Core from the mainframe!</span>`;
+    }
+
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+    
+    // Flag the planet as hacked so they can't spam it
+    planet.hackedThisVisit = true;
+    
+    // Save state persistently
+    const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${selectedPlanetIndex}`;
+    if (!worldStateDeltas[sysKey]) worldStateDeltas[sysKey] = {};
+    worldStateDeltas[sysKey].hacked = true;
+
+    // Juice
+    if (typeof soundManager !== 'undefined') soundManager.playGain();
+    if (typeof showToast === 'function') showToast("DATABANKS BREACHED", "success");
+    
+    // Output
+    openGenericModal("MACHINE WORLD: CORE INTERFACE");
+    document.getElementById('genericModalList').innerHTML = ''; // Hide side panel
+    document.getElementById('genericDetailContent').innerHTML = `
+        <div style="text-align:center; padding: 40px 20px;">
+            <div style="font-size:60px; margin-bottom:15px; color:var(--accent-color); filter: drop-shadow(0 0 15px var(--accent-color));">💾</div>
+            <h3 style="color:var(--accent-color); margin-bottom:20px;">MAINFRAME ACCESSED</h3>
+            <p style="color:var(--text-color); font-size:14px; line-height:1.6; text-align:left; background:rgba(0,0,0,0.5); padding:15px; border-left: 3px solid var(--accent-color);">
+                You slice into the planetary defense grid. The sheer volume of data threatens to fry your ship's computer, but you manage to siphon off automated production funds and raw schematics before the ICE programs lock you out.
+                <br><br>
+                <span style="color:var(--gold-text)">+${formatNumber(creditsFound)} Credits Siphoned</span><br>
+                <span style="color:var(--success)">+${techFound}x Tech Parts Downloaded</span>
+                ${aiMsg}
+            </p>
+        </div>
+    `;
+    document.getElementById('genericModalActions').innerHTML = `<button class="action-button full-width-btn" onclick="closeGenericModal(); renderPlanetView();">DISCONNECT</button>`;
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
+    if (typeof autoSaveGame === 'function') autoSaveGame();
 }
