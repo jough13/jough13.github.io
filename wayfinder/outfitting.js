@@ -658,6 +658,11 @@ function applyPlayerShipStats() {
 
     PLAYER_ATTACK_DAMAGE = weapon.stats.damage || 0;
     PLAYER_HIT_CHANCE = weapon.stats.hitChance || 0;
+    
+    if (typeof playerPerks !== 'undefined' && playerPerks.has('WEAPON_OVERCLOCK')) {
+        PLAYER_ATTACK_DAMAGE = Math.floor(PLAYER_ATTACK_DAMAGE * 1.15);
+    }
+    
     MAX_SHIELDS = shield.stats.maxShields || 0;
     MAX_FUEL = engine.stats.maxFuel || 0;
 
