@@ -1927,7 +1927,21 @@ if (typeof window._codexPatched === 'undefined') {
 
      for (let i = 0; i < numPlanets; i++) {
          const planetSeed = systemSeed + i * 101; // Unique seed for each planet
-         const biomeKey = biomeKeys[Math.floor(seededRandom(planetSeed) * biomeKeys.length)];
+
+         // --- Weighted Procedural Biome Selection ---
+        let totalWeight = 0;
+        for (const k in PLANET_BIOMES) totalWeight += (PLANET_BIOMES[k].weight || 10);
+        
+        let randomVal = seededRandom(planetSeed) * totalWeight;
+        let biomeKey = "BARREN_ROCK"; // Fallback
+        
+        for (const k in PLANET_BIOMES) {
+            randomVal -= (PLANET_BIOMES[k].weight || 10);
+            if (randomVal <= 0) { 
+                biomeKey = k; 
+                break; 
+            }
+        }
 
         // --- PERSISTENCE CHECK ---
          const sysKey = `${starX},${starY}_p${i}`;
