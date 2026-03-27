@@ -1149,10 +1149,13 @@
               />
               <MainNav activeView={activeView} onNavClick={handleNavClick} />
               <main ref={mainContentRef} className="min-h-[400px]">{renderActiveView()}</main>
-              <footer className="text-center p-6 mt-4 border-t border-slate-200 dark:border-slate-700">
-                  <p className="text-xs text-slate-500 dark:text-slate-400"><strong>Disclaimer:</strong> This tool is for informational and educational purposes only. The data and calculations have not been validated and may contain errors. Use of this tool is at your own risk.</p>
-                  <div className="mt-4 flex justify-center md:hidden"><a href="https://www.buymeacoffee.com/jough" target="_blank" rel="noopener noreferrer"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} /></a></div>
-              </footer>
+        <footer class="print:hidden mt-auto py-6 px-4 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-800">
+            <p class="max-w-3xl mx-auto">
+                <strong>Disclaimer:</strong> Health Physics Toolbox is a personal project and is provided "as is" without warranty of any kind. 
+                While every effort is made to ensure accuracy, the developer is not responsible for any errors, omissions, or the results obtained from the use of this information. 
+                Always verify critical calculations against official regulatory limits and approved organizational procedures.
+            </p>
+        </footer>
               <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
             
               {showCalcPopout && (
