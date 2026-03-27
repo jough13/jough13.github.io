@@ -2640,7 +2640,7 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
  * Includes a print-ready Bill of Lading generator with automatic ERG Guide attachment.
  */
 
-const ShippingPaper = ({ items, classification, label, doseRates, emergencyContact, comments }) => {
+const ShippingPaper = ({ items, classification, label, doseRates, emergencyContact, comments, psn }) => {
     
     // --- ERG 2024 REFERENCE DATA ---
     const ERG_DATA = {
@@ -2648,30 +2648,30 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
             guide: '161',
             title: 'RADIOACTIVE MATERIALS (Low Level Radiation)',
             hazards: {
-                health: [
+                health:[
                     "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
                     "Very low levels of contained radioactive materials and low radiation levels outside packages result in low risks to people. Damaged packages may release measurable amounts of radioactive material, but risks are expected to be low.",
                     "Some radioactive materials cannot be detected by commonly available instruments."
                 ],
-                fire: [
+                fire:[
                     "Some of these materials may burn, but most do not ignite readily.",
                     "Radioactivity does not change flammability or other properties of materials."
                 ]
             },
             response: {
                 isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
-                fire: [
+                fire:[
                     "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
                     "Do not move damaged packages; move undamaged packages out of fire zone.",
                     "Small Fire: Dry chemical, CO2, water spray or regular foam.",
                     "Large Fire: Water spray, fog (flooding amounts)."
                 ],
-                spill: [
+                spill:[
                     "Do not touch damaged packages or spilled material.",
                     "Cover liquid spill with sand, earth or other non-combustible absorbent material.",
                     "Cover powder spill with plastic sheet or tarp to minimize spreading."
                 ],
-                firstAid: [
+                firstAid:[
                     "Medical problems take priority over radiological concerns.",
                     "Use first aid treatment according to the nature of the injury.",
                     "Do not delay care and transport of a seriously injured person.",
@@ -2683,30 +2683,30 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
             guide: '162',
             title: 'RADIOACTIVE MATERIALS (Low to Moderate Level Radiation)',
             hazards: {
-                health: [
+                health:[
                     "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
                     "Undamaged packages are safe. Contents of damaged packages may cause higher external radiation exposure, or both external and internal radiation exposure if released.",
                     "Low radiation hazard when material is inside container. If material is released from package or bulk container, hazard will vary from low to moderate."
                 ],
-                fire: [
+                fire:[
                     "Some of these materials may burn, but most do not ignite readily.",
                     "Uranium and Thorium metal cuttings may ignite spontaneously if exposed to air."
                 ]
             },
             response: {
                 isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
-                fire: [
+                fire:[
                     "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
                     "If it can be done safely, move undamaged containers away from the area around the fire.",
                     "Small Fire: Dry chemical, CO2, water spray or regular foam.",
                     "Large Fire: Water spray, fog (flooding amounts). Dike runoff."
                 ],
-                spill: [
+                spill:[
                     "Do not touch damaged packages or spilled material.",
                     "Cover liquid spill with sand, earth or other non-combustible absorbent material. Dike to collect large liquid spills.",
                     "Cover powder spill with plastic sheet or tarp to minimize spreading."
                 ],
-                firstAid: [
+                firstAid:[
                     "Medical problems take priority over radiological concerns.",
                     "In case of contact with substance, wipe from skin immediately; flush skin or eyes with running water for at least 20 minutes.",
                     "Injured persons contaminated by contact with released material are not a serious hazard to health care personnel."
@@ -2717,29 +2717,29 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
             guide: '163',
             title: 'RADIOACTIVE MATERIALS (Low to High Level Radiation)',
             hazards: {
-                health: [
+                health:[
                     "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
                     "Damaged packages may cause life-threatening external and/or internal radiation exposure.",
                     "Type B packages are designed and evaluated to withstand severe conditions including high impact and fire. Releases are not expected."
                 ],
-                fire: [
+                fire:[
                     "Some of these materials may burn, but most do not ignite readily.",
                     "Radioactivity does not change flammability or other properties of materials."
                 ]
             },
             response: {
                 isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
-                fire: [
+                fire:[
                     "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
                     "If it can be done safely, move undamaged containers away from the area around the fire. Do not move damaged packages.",
                     "Small Fire: Dry chemical, CO2, water spray or regular foam. Large Fire: Water spray, fog (flooding amounts). Dike runoff."
                 ],
-                spill: [
+                spill:[
                     "Do not touch damaged packages or spilled material.",
                     "Cover liquid spill with sand, earth or other non-combustible absorbent material. Dike to collect large liquid spills.",
                     "Cover powder spill with plastic sheet or tarp to minimize spreading."
                 ],
-                firstAid: [
+                firstAid:[
                     "Medical problems take priority over radiological concerns.",
                     "In case of contact with substance, wipe from skin immediately; flush skin or eyes with running water for at least 20 minutes."
                 ]
@@ -2749,29 +2749,29 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
             guide: '164',
             title: 'RADIOACTIVE MATERIALS (Special Form / Low to High Level External Radiation)',
             hazards: {
-                health: [
+                health:[
                     "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
                     "Damaged packages may cause life-threatening external radiation exposure.",
                     "Radioactive material is encapsulated in proper containers and will not be released under normal or severe accident conditions.",
                     "Low radiation hazard when material is inside container."
                 ],
-                fire: [
+                fire:[
                     "Some of these materials may burn, but most do not ignite readily.",
                     "Radioactivity does not change flammability or other properties of materials."
                 ]
             },
             response: {
                 isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
-                fire: [
+                fire:[
                     "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
                     "If it can be done safely, move undamaged containers away from the area around the fire. Do not move damaged packages.",
                     "Small Fire: Dry chemical, CO2, water spray or regular foam. Large Fire: Water spray, fog (flooding amounts)."
                 ],
-                spill: [
+                spill:[
                     "Do not touch damaged packages or spilled material.",
                     "Packages are not expected to leak due to the robust design of the capsule."
                 ],
-                firstAid: [
+                firstAid:[
                     "Medical problems take priority over radiological concerns.",
                     "Use first aid treatment according to the nature of the injury.",
                     "Injured persons are not a contamination hazard to health care personnel."
@@ -2782,29 +2782,29 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
             guide: '165',
             title: 'RADIOACTIVE MATERIALS (Fissile / Low to High Level Radiation)',
             hazards: {
-                health: [
+                health:[
                     "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
                     "Damaged packages may cause life-threatening external and/or internal radiation exposure.",
                     "Type B packages are designed to withstand severe conditions. Releases are not expected.",
                     "Water and fire may compromise criticality safety. This could result in a localized criticality (energy release or pulse)."
                 ],
-                fire: [
+                fire:[
                     "Some of these materials may burn, but most do not ignite readily."
                 ]
             },
             response: {
                 isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
-                fire: [
+                fire:[
                     "DO NOT USE WATER OR FOAM ON DAMAGED PACKAGES. Use dry chemical or CO2.",
                     "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
                     "If it can be done safely, move undamaged containers away from the area around the fire. Do not move damaged packages."
                 ],
-                spill: [
+                spill:[
                     "Do not touch damaged packages or spilled material.",
                     "DO NOT USE WATER OR FOAM ON SPILLED MATERIAL.",
                     "Cover liquid spill with sand, earth or other non-combustible absorbent material. Dike to collect large liquid spills."
                 ],
-                firstAid: [
+                firstAid:[
                     "Medical problems take priority over radiological concerns.",
                     "In case of contact with substance, wipe from skin immediately; flush skin or eyes with running water for at least 20 minutes."
                 ]
@@ -2825,28 +2825,6 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
         return ERG_DATA['163']; // Default to 163 for Type B / HRCQ
     };
 
-    const getPSN = () => {
-        if (!classification) return "";
-        if (classification.classification === 'EXEMPT') return "Not Regulated as Class 7 Hazardous Material";
-        
-        let psn = "";
-        const isInstrument = items.some(i => i.category === 'instrument');
-
-        if (classification.classification === 'EXCEPTED') {
-            psn = isInstrument 
-                ? "UN2911, Radioactive material, excepted package - instruments or articles, 7"
-                : "UN2910, Radioactive material, excepted package - limited quantity of material, 7";
-        } else if (classification.classification === 'TYPE_A') {
-            psn = "UN2915, Radioactive material, Type A package, non-special form, 7";
-        } else if (classification.classification === 'TYPE_B' || classification.classification === 'HRCQ') {
-            psn = "UN2916, Radioactive material, Type B(U) package, non-fissile or fissile-excepted, 7";
-        }
-
-        if (classification.hasFissile) psn += " (Contains Fissile Material)";
-        
-        return psn;
-    };
-
     const isRegulated = classification?.classification !== 'EXEMPT';
     const ergData = getERGGuide();
 
@@ -2856,7 +2834,6 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
             <style type="text/css" media="print">
                 {`
                     @page { margin: 0.5in; }
-                    /* Strip shadows, margins, and borders from global containers */
                     html, body, #root, #__next, main { 
                         background: white !important; 
                         color: black !important; 
@@ -2866,12 +2843,10 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
                         margin: 0 !important;
                         padding: 0 !important;
                     }
-                    /* Guarantee no shadows print anywhere */
                     * {
                         box-shadow: none !important;
                     }
                     .erg-page { page-break-before: always; }
-                    /* Force background colors to print for the ERG guide */
                     * {
                         -webkit-print-color-adjust: exact !important;
                         print-color-adjust: exact !important;
@@ -2908,7 +2883,7 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
                             <th className="border border-black p-2 text-left">Proper Shipping Name / Hazard Class / UN No.</th>
                             <th className="border border-black p-2 text-left w-32">Radionuclides</th>
                             <th className="border border-black p-2 text-left w-24">Form</th>
-                            <th className="border border-black p-2 text-right w-24">Activity</th>
+                            <th className="border border-black p-2 text-right w-28">Total Activity</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2916,7 +2891,7 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
                             <td className="border border-black p-2 text-center font-bold text-lg">{isRegulated ? 'X' : ''}</td>
                             <td className="border border-black p-2 font-bold">
                                 {classification?.isRQ && <span className="mr-1 text-red-600">RQ,</span>}
-                                {getPSN()}
+                                {psn}
                             </td>
                             <td className="border border-black p-2">{items.map(i => i.symbol).join(', ')}</td>
                             <td className="border border-black p-2 capitalize">{items[0]?.form === 'A1' ? 'Special' : 'Normal'}, {items[0]?.state}</td>
@@ -2931,7 +2906,7 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
                 <div className="border border-black p-4 mb-6 grid grid-cols-2 gap-4 text-xs">
                     <div>
                         <p><span className="font-bold">Package Classification:</span> {classification?.classification.replace('_', ' ')}</p>
-                        <p><span className="font-bold">Required Label(s):</span> {label?.labelCategory === 'Excepted Marking (No Label)' ? 'UN Marking Only' : label?.labelCategory || 'N/A'}</p>
+                        <p><span className="font-bold">Required Label(s):</span> {label?.labelCategory === 'Excepted Marking (No Label)' ? 'UN Marking Only' : label?.labelCategory || 'N/A (See dose rates)'}</p>
                         {label?.TI > 0 && <p><span className="font-bold">Transport Index (TI):</span> {label.TI.toFixed(1)}</p>}
                         {ergData && <p className="mt-2 font-bold italic text-red-600">See Attached ERG Guide {ergData.guide}</p>}
                     </div>
@@ -3050,7 +3025,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
 
-    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] :['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
+    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ?['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
 
     // Updated to current 49 CFR 173.443 limits (4 Bq/cm2 and 0.4 Bq/cm2)
     const CONTAM_LIMITS = {
@@ -3060,50 +3035,71 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     const FISSILE_ISOTOPES =['U-233', 'U-235', 'Pu-239', 'Pu-241'];
 
+    const PSN_OPTIONS =[
+        "UN2910, Radioactive material, excepted package - limited quantity of material, 7",
+        "UN2911, Radioactive material, excepted package - instruments or articles, 7",
+        "UN2908, Radioactive material, excepted package - empty packaging, 7",
+        "UN2909, Radioactive material, excepted package - articles manufactured from natural uranium or depleted uranium or natural thorium, 7",
+        "UN2912, Radioactive material, low specific activity (LSA-I), non-fissile or fissile-excepted, 7",
+        "UN3321, Radioactive material, low specific activity (LSA-II), non-fissile or fissile-excepted, 7",
+        "UN3322, Radioactive material, low specific activity (LSA-III), non-fissile or fissile-excepted, 7",
+        "UN2913, Radioactive material, surface contaminated objects (SCO-I or SCO-II), non-fissile or fissile-excepted, 7",
+        "UN2915, Radioactive material, Type A package, non-special form, 7",
+        "UN3332, Radioactive material, Type A package, special form, 7",
+        "UN2916, Radioactive material, Type B(U) package, non-fissile or fissile-excepted, 7",
+        "UN2917, Radioactive material, Type B(M) package, non-fissile or fissile-excepted, 7",
+        "UN3328, Radioactive material, Type B(U) package, fissile, 7",
+        "UN3329, Radioactive material, Type B(M) package, fissile, 7",
+        "UN3323, Radioactive material, Type C package, non-fissile or fissile-excepted, 7",
+        "Not Regulated as Class 7 Hazardous Material"
+    ];
+
     // --- 2. STATE ---
     const [packageItems, setPackageItems] = React.useState([]);
 
     // Add New Item State
     const [newItemSymbol, setNewItemSymbol] = React.useState('');
     const [newItemForm, setNewItemForm] = React.useState('A2');
-    const[newItemState, setNewItemState] = React.useState('solid');
-    const [newItemCategory, setNewItemCategory] = React.useState('instrument');
+    const [newItemState, setNewItemState] = React.useState('solid');
+    const[newItemCategory, setNewItemCategory] = React.useState('instrument');
     const [newItemActivity, setNewItemActivity] = React.useState('1');
-    const[newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
+    const [newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
     const [newItemMass, setNewItemMass] = React.useState(''); // Mass for LSA hinting
 
     // Package Level Inputs
     const [fissileMass, setFissileMass] = React.useState(''); // Fissile exception check
     const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
-    const[doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
-    const[surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
-    const[surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
+    const [doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
+    const [surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
+    const [surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
 
     // Exclusive Use Vehicle Inputs
     const [vehSurfaceDose, setVehSurfaceDose] = React.useState('');
     const [veh2mDose, setVeh2mDose] = React.useState('');
     const[cabDose, setCabDose] = React.useState('');
-    const [vehDoseUnit, setVehDoseUnit] = React.useState('mrem/hr');
+    const[vehDoseUnit, setVehDoseUnit] = React.useState('mrem/hr');
 
     // BOL specific inputs
-    const[emergencyContact, setEmergencyContact] = React.useState('');
+    const[suggestedPSN, setSuggestedPSN] = React.useState('');
+    const[manualPSN, setManualPSN] = React.useState('');
+    const [emergencyContact, setEmergencyContact] = React.useState('');
     const [bolComments, setBolComments] = React.useState('');
 
-    const [checkContam, setCheckContam] = React.useState(false);
+    const[checkContam, setCheckContam] = React.useState(false);
     const[contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
     const[removableContam, setRemovableContam] = React.useState('');
 
-    const[labelResult, setLabelResult] = React.useState(null);
+    const [labelResult, setLabelResult] = React.useState(null);
     const [contamResult, setContamResult] = React.useState(null);
     const [classificationResult, setClassificationResult] = React.useState(null);
     const[error, setError] = React.useState('');
 
     // --- Print Modal State ---
     const[isPrintModalOpen, setIsPrintModalOpen] = React.useState(false);
-    const [dontShowPrintWarning, setDontShowPrintWarning] = React.useState(false);
+    const[dontShowPrintWarning, setDontShowPrintWarning] = React.useState(false);
 
     // --- 3. HELPERS ---
-    const transportNuclides = React.useMemo(() => radionuclides.filter(n => n.shipping && n.shipping.A1 !== undefined && n.shipping.A2 !== undefined).sort((a, b) => a.name.localeCompare(b.name)),[radionuclides]);
+    const transportNuclides = React.useMemo(() => radionuclides.filter(n => n.shipping && n.shipping.A1 !== undefined && n.shipping.A2 !== undefined).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
 
     const selectedNuclideData = React.useMemo(() => 
         transportNuclides.find(n => n.symbol === newItemSymbol), 
@@ -3119,7 +3115,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         if (!activityUnits.includes(newItemUnit)) {
             setNewItemUnit(activityUnits[activityUnits.length - 1]);
         }
-    },[activityUnits, newItemUnit]);
+    }, [activityUnits, newItemUnit]);
 
     const toMremHr = (val, unit) => {
         if (unit === 'mrem/hr') return val;
@@ -3211,9 +3207,13 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         setPackageItems(prev => prev.filter(i => i.id !== id));
     };
 
-    // Calculate Package Totals
+    // Calculate Package Totals and Auto-suggest PSN
     React.useEffect(() => {
-        if (packageItems.length === 0) { setClassificationResult(null); return; }
+        if (packageItems.length === 0) { 
+            setClassificationResult(null); 
+            setSuggestedPSN('');
+            return; 
+        }
 
         let totalTBq = 0;
         let sumFracTypeA = 0;
@@ -3265,7 +3265,24 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
 
         setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, isRQ, hasFissile });
-    }, [packageItems]);
+
+        // Auto-Suggest PSN
+        if (classification === 'EXEMPT') {
+            setSuggestedPSN(PSN_OPTIONS[15]);
+        } else {
+            const isInstrument = packageItems.some(i => i.category === 'instrument');
+            const isSpecialForm = packageItems.every(i => i.form === 'A1');
+            
+            if (classification === 'EXCEPTED') {
+                setSuggestedPSN(isInstrument ? PSN_OPTIONS[1] : PSN_OPTIONS[0]);
+            } else if (classification === 'TYPE_A') {
+                setSuggestedPSN(isSpecialForm ? PSN_OPTIONS[9] : PSN_OPTIONS[8]);
+            } else if (classification === 'TYPE_B' || classification === 'HRCQ') {
+                setSuggestedPSN(hasFissile ? PSN_OPTIONS[12] : PSN_OPTIONS[10]);
+            }
+        }
+
+    },[packageItems]);
 
     React.useEffect(() => {
         if (!doseRateAt1m && !surfaceDoseRate) { setLabelResult(null); }
@@ -3326,7 +3343,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemCategory('instrument'); setNewItemMass('');
         setDoseRateAt1m(''); setSurfaceDoseRate(''); setCheckContam(false); setRemovableContam(''); setError('');
         setFissileMass(''); setVehSurfaceDose(''); setVeh2mDose(''); setCabDose('');
-        setEmergencyContact(''); setBolComments('');
+        setEmergencyContact(''); setBolComments(''); setManualPSN(''); setSuggestedPSN('');
     };
 
     const handleSave = () => {
@@ -3361,7 +3378,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
         setIsPrintModalOpen(false);
         // Small delay ensures the modal animation finishes removing it from the DOM
-        // so it doesn't accidentally get captured by the print spooler.
         setTimeout(() => {
             window.print();
         }, 150);
@@ -3567,7 +3583,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     </div>
                 )}
 
-                {/* --- 3. MEASUREMENTS --- */}
+                {/* --- 3. MEASUREMENTS & LABEL --- */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
                         <h3 className="font-bold text-sm text-slate-500 uppercase">2. Label Estimation</h3>
@@ -3579,14 +3595,19 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                             <label className="block text-[10px] font-bold mb-1">Max Surface Dose Rate</label>
                             <div className="flex"><input type="number" inputMode="decimal" min="0" value={surfaceDoseRate} onChange={e => setSurfaceDoseRate(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" /><select value={surfaceDoseRateUnit} onChange={e => setSurfaceDoseRateUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select></div>
                         </div>
-                        {labelResult && (
-                            <div className="p-2 bg-slate-100 dark:bg-slate-900 rounded text-center">
+                        
+                        {labelResult ? (
+                            <div className="p-2 bg-slate-100 dark:bg-slate-900 rounded text-center mt-2 animate-fade-in">
                                 <p className="text-xs text-slate-500">Required Label</p>
                                 <p className="text-lg font-bold text-sky-600 dark:text-sky-400">{labelResult.labelCategory}</p>
                                 {labelResult.labelCategory !== "Excepted Marking (No Label)" && (
                                     <p className="text-[10px] text-slate-400">TI: {labelResult.TI.toFixed(1)}</p>
                                 )}
                             </div>
+                        ) : (
+                            <p className="text-xs text-slate-500 italic mt-2">
+                                Note: Enter both 1m and surface dose rates to generate a label recommendation.
+                            </p>
                         )}
                     </div>
 
@@ -3653,15 +3674,36 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
                 {/* --- 4. SHIPPING DOCUMENT DETAILS --- */}
                 <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3 mt-4">
-                    <h3 className="font-bold text-sm text-slate-500 uppercase">4. BOL Details (Optional)</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <h3 className="font-bold text-sm text-slate-500 uppercase">4. Shipping Description & BOL Details</h3>
+                    
+                    <div className="space-y-4">
                         <div>
-                            <label className="block text-[10px] font-bold mb-1">24-Hour Emergency Contact</label>
-                            <input type="text" value={emergencyContact} onChange={e => setEmergencyContact(e.target.value)} placeholder="e.g. Chemtrec 1-800-424-9300" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border dark:border-slate-600" />
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="block text-[10px] font-bold">Proper Shipping Name (PSN)</label>
+                                {manualPSN && (
+                                    <button onClick={() => setManualPSN('')} className="text-[10px] text-sky-600 dark:text-sky-400 hover:underline font-semibold">
+                                        Reset to Auto-Suggested
+                                    </button>
+                                )}
+                            </div>
+                            <select 
+                                value={manualPSN || suggestedPSN} 
+                                onChange={e => setManualPSN(e.target.value)} 
+                                className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-xs border border-slate-300 dark:border-slate-600"
+                            >
+                                {PSN_OPTIONS.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
+                            </select>
                         </div>
-                        <div className="md:col-span-2">
-                            <label className="block text-[10px] font-bold mb-1">Additional Comments / Handling Instructions</label>
-                            <textarea value={bolComments} onChange={e => setBolComments(e.target.value)} rows="2" placeholder="e.g. Keep away from heat, DO NOT DROP..." className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border dark:border-slate-600 resize-y"></textarea>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-[10px] font-bold mb-1">24-Hour Emergency Contact (Optional)</label>
+                                <input type="text" value={emergencyContact} onChange={e => setEmergencyContact(e.target.value)} placeholder="e.g. Chemtrec 1-800-424-9300" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-[10px] font-bold mb-1">Additional Comments / Handling Instructions</label>
+                                <textarea value={bolComments} onChange={e => setBolComments(e.target.value)} rows="2" placeholder="e.g. Keep away from heat, DO NOT DROP..." className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600 resize-y"></textarea>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3670,10 +3712,10 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
                     <button 
                         onClick={handlePrintClick} 
-                        className="text-sm px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded font-semibold text-slate-800 dark:text-white transition-colors disabled:opacity-50"
+                        className="text-sm px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded font-semibold text-slate-800 dark:text-white transition-colors disabled:opacity-50 flex items-center gap-2"
                         disabled={!classificationResult}
                     >
-                        🖨️ Print BOL
+                        <Icon path={ICONS.clipboard} className="w-4 h-4" /> Print BOL
                     </button>
                     <button 
                         onClick={handleSave} 
@@ -3694,6 +3736,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     doseRates={{ surface: surfaceDoseRate, at1m: doseRateAt1m, unit: doseRateUnit }}
                     emergencyContact={emergencyContact}
                     comments={bolComments}
+                    psn={manualPSN || suggestedPSN}
                 />
             )}
 
@@ -3705,6 +3748,11 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 title="Important Form Warning"
             >
                 <div className="space-y-4">
+                    {!labelResult && (
+                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 rounded text-amber-800 dark:text-amber-200 text-sm">
+                            <strong>Notice:</strong> You haven't entered dose rates. The printed form will show "N/A" for required labels.
+                        </div>
+                    )}
                     <p className="text-amber-700 dark:text-amber-400 font-medium">
                         <strong>Disclaimer:</strong> This generated Bill of Lading is intended for general transportation purposes and documentation only.
                     </p>
