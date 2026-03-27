@@ -2637,10 +2637,156 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
 /**
  * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B, RQ)
  * based on the nuclide, activity, form, and mass, according to DOT/IAEA A1/A2 and RQ values.
- * Includes a print-ready Bill of Lading generator.
+ * Includes a print-ready Bill of Lading generator with automatic ERG Guide attachment.
  */
 
 const ShippingPaper = ({ items, classification, label, doseRates, emergencyContact, comments }) => {
+    
+    // --- ERG 2024 REFERENCE DATA ---
+    const ERG_DATA = {
+        '161': {
+            guide: '161',
+            title: 'RADIOACTIVE MATERIALS (Low Level Radiation)',
+            hazards: {
+                health: [
+                    "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
+                    "Very low levels of contained radioactive materials and low radiation levels outside packages result in low risks to people. Damaged packages may release measurable amounts of radioactive material, but risks are expected to be low.",
+                    "Some radioactive materials cannot be detected by commonly available instruments."
+                ],
+                fire: [
+                    "Some of these materials may burn, but most do not ignite readily.",
+                    "Radioactivity does not change flammability or other properties of materials."
+                ]
+            },
+            response: {
+                isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
+                fire: [
+                    "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
+                    "Do not move damaged packages; move undamaged packages out of fire zone.",
+                    "Small Fire: Dry chemical, CO2, water spray or regular foam.",
+                    "Large Fire: Water spray, fog (flooding amounts)."
+                ],
+                spill: [
+                    "Do not touch damaged packages or spilled material.",
+                    "Cover liquid spill with sand, earth or other non-combustible absorbent material.",
+                    "Cover powder spill with plastic sheet or tarp to minimize spreading."
+                ],
+                firstAid: [
+                    "Medical problems take priority over radiological concerns.",
+                    "Use first aid treatment according to the nature of the injury.",
+                    "Do not delay care and transport of a seriously injured person.",
+                    "Injured persons contaminated by contact with released material are not a serious hazard to health care personnel or facilities."
+                ]
+            }
+        },
+        '162': {
+            guide: '162',
+            title: 'RADIOACTIVE MATERIALS (Low to Moderate Level Radiation)',
+            hazards: {
+                health: [
+                    "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
+                    "Undamaged packages are safe. Contents of damaged packages may cause higher external radiation exposure, or both external and internal radiation exposure if released.",
+                    "Low radiation hazard when material is inside container. If material is released from package or bulk container, hazard will vary from low to moderate."
+                ],
+                fire: [
+                    "Some of these materials may burn, but most do not ignite readily.",
+                    "Uranium and Thorium metal cuttings may ignite spontaneously if exposed to air."
+                ]
+            },
+            response: {
+                isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
+                fire: [
+                    "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
+                    "If it can be done safely, move undamaged containers away from the area around the fire.",
+                    "Small Fire: Dry chemical, CO2, water spray or regular foam.",
+                    "Large Fire: Water spray, fog (flooding amounts). Dike runoff."
+                ],
+                spill: [
+                    "Do not touch damaged packages or spilled material.",
+                    "Cover liquid spill with sand, earth or other non-combustible absorbent material. Dike to collect large liquid spills.",
+                    "Cover powder spill with plastic sheet or tarp to minimize spreading."
+                ],
+                firstAid: [
+                    "Medical problems take priority over radiological concerns.",
+                    "In case of contact with substance, wipe from skin immediately; flush skin or eyes with running water for at least 20 minutes.",
+                    "Injured persons contaminated by contact with released material are not a serious hazard to health care personnel."
+                ]
+            }
+        },
+        '163': {
+            guide: '163',
+            title: 'RADIOACTIVE MATERIALS (Low to High Level Radiation)',
+            hazards: {
+                health: [
+                    "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
+                    "Damaged packages may cause life-threatening external and/or internal radiation exposure.",
+                    "Type B packages are designed and evaluated to withstand severe conditions including high impact and fire. Releases are not expected."
+                ],
+                fire: [
+                    "Some of these materials may burn, but most do not ignite readily.",
+                    "Radioactivity does not change flammability or other properties of materials."
+                ]
+            },
+            response: {
+                isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
+                fire: [
+                    "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
+                    "If it can be done safely, move undamaged containers away from the area around the fire. Do not move damaged packages.",
+                    "Small Fire: Dry chemical, CO2, water spray or regular foam. Large Fire: Water spray, fog (flooding amounts). Dike runoff."
+                ],
+                spill: [
+                    "Do not touch damaged packages or spilled material.",
+                    "Cover liquid spill with sand, earth or other non-combustible absorbent material. Dike to collect large liquid spills.",
+                    "Cover powder spill with plastic sheet or tarp to minimize spreading."
+                ],
+                firstAid: [
+                    "Medical problems take priority over radiological concerns.",
+                    "In case of contact with substance, wipe from skin immediately; flush skin or eyes with running water for at least 20 minutes."
+                ]
+            }
+        },
+        '165': {
+            guide: '165',
+            title: 'RADIOACTIVE MATERIALS (Fissile / Low to High Level Radiation)',
+            hazards: {
+                health: [
+                    "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
+                    "Damaged packages may cause life-threatening external and/or internal radiation exposure.",
+                    "Type B packages are designed to withstand severe conditions. Releases are not expected.",
+                    "Water and fire may compromise criticality safety. This could result in a localized criticality (energy release or pulse)."
+                ],
+                fire: [
+                    "Some of these materials may burn, but most do not ignite readily."
+                ]
+            },
+            response: {
+                isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
+                fire: [
+                    "DO NOT USE WATER OR FOAM ON DAMAGED PACKAGES. Use dry chemical or CO2.",
+                    "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
+                    "If it can be done safely, move undamaged containers away from the area around the fire. Do not move damaged packages."
+                ],
+                spill: [
+                    "Do not touch damaged packages or spilled material.",
+                    "DO NOT USE WATER OR FOAM ON SPILLED MATERIAL.",
+                    "Cover liquid spill with sand, earth or other non-combustible absorbent material. Dike to collect large liquid spills."
+                ],
+                firstAid: [
+                    "Medical problems take priority over radiological concerns.",
+                    "In case of contact with substance, wipe from skin immediately; flush skin or eyes with running water for at least 20 minutes."
+                ]
+            }
+        }
+    };
+
+    const getERGGuide = () => {
+        if (!classification || classification.classification === 'EXEMPT') return null;
+        if (classification.hasFissile) return ERG_DATA['165'];
+        if (classification.classification === 'EXCEPTED') return ERG_DATA['161'];
+        if (classification.classification === 'TYPE_A') return ERG_DATA['162'];
+        return ERG_DATA['163']; // Default to 163 for Type B / HRCQ
+    };
+
     const getPSN = () => {
         if (!classification) return "";
         if (classification.classification === 'EXEMPT') return "Not Regulated as Class 7 Hazardous Material";
@@ -2664,21 +2810,24 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
     };
 
     const isRegulated = classification?.classification !== 'EXEMPT';
+    const ergData = getERGGuide();
 
     return (
         <div className="hidden print:block bol-print-container p-8 bg-white text-black font-sans text-sm w-full max-w-4xl mx-auto">
             {/* CSS to hide app shell and collapse empty layout boxes during print */}
             <style type="text/css" media="print">
                 {`
-                    html, body {
+                    html, body, #root, #__next {
                         height: auto !important;
-                        min-height: auto !important;
+                        min-height: 0 !important;
+                        overflow: visible !important;
+                        background: white !important;
                     }
                     body * {
-                        visibility: hidden;
+                        display: none !important;
                     }
                     .bol-print-container, .bol-print-container * {
-                        visibility: visible;
+                        display: revert !important;
                     }
                     .bol-print-container {
                         position: absolute;
@@ -2688,9 +2837,13 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
                         margin: 0;
                         padding: 20px;
                     }
+                    .erg-page {
+                        page-break-before: always;
+                    }
                 `}
             </style>
 
+            {/* --- PAGE 1: BILL OF LADING --- */}
             <div className="text-center mb-6 border-b-2 border-black pb-4">
                 <h1 className="text-2xl font-bold uppercase tracking-wider">Bill of Lading</h1>
                 <h2 className="text-lg font-semibold uppercase">Shipper's Declaration for Dangerous Goods</h2>
@@ -2744,6 +2897,7 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
                         <p><span className="font-bold">Package Classification:</span> {classification?.classification.replace('_', ' ')}</p>
                         <p><span className="font-bold">Required Label(s):</span> {label?.labelCategory === 'Excepted Marking (No Label)' ? 'UN Marking Only' : label?.labelCategory || 'N/A'}</p>
                         {label?.TI > 0 && <p><span className="font-bold">Transport Index (TI):</span> {label.TI.toFixed(1)}</p>}
+                        {ergData && <p className="mt-2 font-bold italic text-red-600">See Attached ERG Guide {ergData.guide}</p>}
                     </div>
                     <div>
                         <p><span className="font-bold">Max Surface Dose Rate:</span> {doseRates?.surface || '___'} {doseRates?.unit}</p>
@@ -2756,7 +2910,7 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
             {/* EMERGENCY CONTACT & COMMENTS */}
             <div className="mb-4">
                 <p className="text-xs font-bold mb-1">24-HOUR EMERGENCY CONTACT:</p>
-                <p className="text-sm font-mono border-b border-black inline-block min-w-[350px]">
+                <p className="text-sm font-mono border-b border-black inline-block min-w-[350px] pb-1">
                     {emergencyContact || '____________________________________________________'}
                 </p>
             </div>
@@ -2790,6 +2944,66 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
                     <p className="text-xs mt-1">Date</p>
                 </div>
             </div>
+
+            {/* --- PAGE 2: EMERGENCY RESPONSE GUIDE ATTACHMENT --- */}
+            {ergData && (
+                <div className="erg-page pt-8">
+                    <div className="border-4 border-orange-500 p-8">
+                        <div className="text-center mb-8 border-b-2 border-orange-200 pb-4">
+                            <h2 className="text-4xl font-black uppercase mb-2 text-orange-600 tracking-wider">GUIDE {ergData.guide}</h2>
+                            <h3 className="text-xl font-bold uppercase text-slate-800">{ergData.title}</h3>
+                            <p className="text-xs mt-2 text-slate-500 font-bold uppercase">Excerpted from DOT ERG 2024</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 gap-8">
+                            {/* POTENTIAL HAZARDS */}
+                            <div>
+                                <h4 className="font-bold text-xl border-b-2 border-black mb-4 uppercase bg-slate-100 p-2">Potential Hazards</h4>
+                                <div className="mb-6">
+                                    <p className="font-bold uppercase text-sm mb-2 text-orange-700">Health</p>
+                                    <ul className="list-disc pl-6 text-sm space-y-2">
+                                        {ergData.hazards.health.map((txt, i) => <li key={i}>{txt}</li>)}
+                                    </ul>
+                                </div>
+                                <div>
+                                    <p className="font-bold uppercase text-sm mb-2 text-orange-700">Fire or Explosion</p>
+                                    <ul className="list-disc pl-6 text-sm space-y-2">
+                                        {ergData.hazards.fire.map((txt, i) => <li key={i}>{txt}</li>)}
+                                    </ul>
+                                </div>
+                            </div>
+
+                            {/* EMERGENCY RESPONSE */}
+                            <div>
+                                <h4 className="font-bold text-xl border-b-2 border-black mb-4 uppercase bg-slate-100 p-2">Emergency Response</h4>
+                                <div className="mb-6 bg-rose-50 border border-rose-200 p-3 rounded">
+                                    <p className="text-sm font-bold text-rose-800 uppercase mb-1">Public Safety & Isolation</p>
+                                    <p className="text-sm">{ergData.response.isolation}</p>
+                                </div>
+                                
+                                <div className="mb-6">
+                                    <p className="font-bold uppercase text-sm mb-2 text-orange-700">Fire</p>
+                                    <ul className="list-disc pl-6 text-sm space-y-2">
+                                        {ergData.response.fire.map((txt, i) => <li key={i} className={txt.includes('DO NOT') ? 'font-bold text-red-600' : ''}>{txt}</li>)}
+                                    </ul>
+                                </div>
+                                <div className="mb-6">
+                                    <p className="font-bold uppercase text-sm mb-2 text-orange-700">Spill or Leak</p>
+                                    <ul className="list-disc pl-6 text-sm space-y-2">
+                                        {ergData.response.spill.map((txt, i) => <li key={i} className={txt.includes('DO NOT') ? 'font-bold text-red-600' : ''}>{txt}</li>)}
+                                    </ul>
+                                </div>
+                                <div>
+                                    <p className="font-bold uppercase text-sm mb-2 text-orange-700">First Aid</p>
+                                    <ul className="list-disc pl-6 text-sm space-y-2">
+                                        {ergData.response.firstAid.map((txt, i) => <li key={i}>{txt}</li>)}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
