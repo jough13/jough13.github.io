@@ -8169,8 +8169,49 @@ const ENRICHED_RADIONUCLIDE_DATA = RADIONUCLIDE_DATA.map(nuclide => {
     };
 });
 
-// IMPORTANT: If you are exporting this data to use in other files, 
-// make sure you export ENRICHED_RADIONUCLIDE_DATA instead of the original array!
-// e.g., export default ENRICHED_RADIONUCLIDE_DATA;
-// (If you are using globals via <script> tags in index.html, you will pass 
-// ENRICHED_RADIONUCLIDE_DATA to your calculators instead).
+// NEW RQ LOOKUP TABLE ---
+// Values sourced from 49 CFR 172.101 Appendix A, Table 2
+const REPORTABLE_QUANTITIES = {
+  'Am-241': { RQ_TBq: 0.00037, RQ_Ci: 0.01 },
+  'C-14':   { RQ_TBq: 0.37, RQ_Ci: 10 },
+  'Co-57':  { RQ_TBq: 3.7, RQ_Ci: 100 },
+  'Co-60':  { RQ_TBq: 0.37, RQ_Ci: 10 },
+  'Cs-137': { RQ_TBq: 0.037, RQ_Ci: 1 },
+  'F-18':   { RQ_TBq: 37, RQ_Ci: 1000 },
+  'H-3':    { RQ_TBq: 3.7, RQ_Ci: 100 },
+  'I-123':  { RQ_TBq: 0.37, RQ_Ci: 10 },
+  'I-125':  { RQ_TBq: 0.00037, RQ_Ci: 0.01 },
+  'I-131':  { RQ_TBq: 0.00037, RQ_Ci: 0.01 },
+  'Ir-192': { RQ_TBq: 0.37, RQ_Ci: 10 },
+  'Mo-99':  { RQ_TBq: 3.7, RQ_Ci: 100 },
+  'P-32':   { RQ_TBq: 0.0037, RQ_Ci: 0.1 },
+  'Pu-238': { RQ_TBq: 0.00037, RQ_Ci: 0.01 },
+  'Pu-239': { RQ_TBq: 0.00037, RQ_Ci: 0.01 },
+  'Ra-226': { RQ_TBq: 0.0037, RQ_Ci: 0.1 },
+  'Sr-90':  { RQ_TBq: 0.0037, RQ_Ci: 0.1 },
+  'Tc-99m': { RQ_TBq: 3.7, RQ_Ci: 100 },
+  'U-234':  { RQ_TBq: 0.0037, RQ_Ci: 0.1 },
+  'U-235':  { RQ_TBq: 0.0037, RQ_Ci: 0.1 },
+  'U-238':  { RQ_TBq: 0.0037, RQ_Ci: 0.1 },
+  'Y-90':   { RQ_TBq: 0.37, RQ_Ci: 10 }
+};
+
+// --- UPDATED ENRICHMENT MAPPER ---
+const ENRICHED_RADIONUCLIDE_DATA = RADIONUCLIDE_DATA.map(nuclide => {
+    // Try to match the exact symbol, fallback to parent if it's an equilibrium/daughter state
+    const exemptLimits = CFR_173_436_LIMITS[nuclide.symbol] || CFR_173_436_LIMITS[nuclide.parent] || {};
+    const rqLimits = REPORTABLE_QUANTITIES[nuclide.symbol] || REPORTABLE_QUANTITIES[nuclide.parent] || {};
+    
+    return {
+        ...nuclide,
+        shipping: {
+            ...(nuclide.shipping || {}),
+            exemptConsignmentBq: exemptLimits.exemptConsignmentBq,
+            exemptConsignmentCi: exemptLimits.exemptConsignmentCi,
+            RQ_TBq: rqLimits.RQ_TBq,
+            RQ_Ci: rqLimits.RQ_Ci
+        }
+    };
+});
+
+// export default ENRICHED_RADIONUCLIDE_DATA;
