@@ -2640,7 +2640,7 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
  * Includes a print-ready Bill of Lading generator with automatic ERG Guide attachment.
  */
 
-const ShippingPaper = ({ items, classification, label, doseRates, emergencyContact, comments, psn }) => {
+const ShippingPaper = ({ items, classification, label, doseRates, emergencyContact, comments, psn, shipper, consignee, dimensions }) => {
     
     // --- ERG 2024 REFERENCE DATA ---
     const ERG_DATA = {
@@ -2864,13 +2864,13 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
             <div className="grid grid-cols-2 gap-6 mb-6">
                 <div className="border border-black p-3 min-h-[100px]">
                     <p className="font-bold text-xs uppercase mb-1">Shipper:</p>
-                    <p className="text-slate-500 italic text-xs">[Company Name]</p>
-                    <p className="text-slate-500 italic text-xs">[Address]</p>
+                    <p className="text-sm font-bold">{shipper?.name || '[Shipper Name]'}</p>
+                    <p className="text-sm whitespace-pre-wrap">{shipper?.address || '[Shipper Address]'}</p>
                 </div>
                 <div className="border border-black p-3 min-h-[100px]">
                     <p className="font-bold text-xs uppercase mb-1">Consignee:</p>
-                    <p className="text-slate-500 italic text-xs">[Recipient Name]</p>
-                    <p className="text-slate-500 italic text-xs">[Address]</p>
+                    <p className="text-sm font-bold">{consignee?.name || '[Consignee Name]'}</p>
+                    <p className="text-sm whitespace-pre-wrap">{consignee?.address || '[Consignee Address]'}</p>
                 </div>
             </div>
 
@@ -2913,7 +2913,7 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
                     <div>
                         <p><span className="font-bold">Max Surface Dose Rate:</span> {doseRates?.surface || '___'} {doseRates?.unit}</p>
                         <p><span className="font-bold">Max 1m Dose Rate:</span> {doseRates?.at1m || '___'} {doseRates?.unit}</p>
-                        <p><span className="font-bold">Dimensions/Weight:</span> ___________________</p>
+                        <p><span className="font-bold">Dimensions/Weight:</span> {dimensions || '___________________'}</p>
                     </div>
                 </div>
             )}
@@ -3062,28 +3062,33 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [newItemForm, setNewItemForm] = React.useState('A2');
     const [newItemState, setNewItemState] = React.useState('solid');
     const[newItemCategory, setNewItemCategory] = React.useState('instrument');
-    const [newItemActivity, setNewItemActivity] = React.useState('1');
+    const[newItemActivity, setNewItemActivity] = React.useState('1');
     const [newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
-    const [newItemMass, setNewItemMass] = React.useState(''); // Mass for LSA hinting
+    const[newItemMass, setNewItemMass] = React.useState(''); // Mass for LSA hinting
 
     // Package Level Inputs
-    const [fissileMass, setFissileMass] = React.useState(''); // Fissile exception check
+    const[fissileMass, setFissileMass] = React.useState(''); // Fissile exception check
     const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
-    const [doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
-    const [surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
-    const [surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
+    const[doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
+    const[surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
+    const[surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
 
     // Exclusive Use Vehicle Inputs
     const [vehSurfaceDose, setVehSurfaceDose] = React.useState('');
     const [veh2mDose, setVeh2mDose] = React.useState('');
     const[cabDose, setCabDose] = React.useState('');
-    const[vehDoseUnit, setVehDoseUnit] = React.useState('mrem/hr');
+    const [vehDoseUnit, setVehDoseUnit] = React.useState('mrem/hr');
 
     // BOL specific inputs
-    const[suggestedPSN, setSuggestedPSN] = React.useState('');
-    const[manualPSN, setManualPSN] = React.useState('');
-    const [emergencyContact, setEmergencyContact] = React.useState('');
+    const [suggestedPSN, setSuggestedPSN] = React.useState('');
+    const [manualPSN, setManualPSN] = React.useState('');
+    const[emergencyContact, setEmergencyContact] = React.useState('');
     const [bolComments, setBolComments] = React.useState('');
+    const [shipperName, setShipperName] = React.useState('');
+    const[shipperAddress, setShipperAddress] = React.useState('');
+    const [consigneeName, setConsigneeName] = React.useState('');
+    const [consigneeAddress, setConsigneeAddress] = React.useState('');
+    const [packageDimensions, setPackageDimensions] = React.useState('');
 
     const[checkContam, setCheckContam] = React.useState(false);
     const[contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
@@ -3091,7 +3096,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     const [labelResult, setLabelResult] = React.useState(null);
     const [contamResult, setContamResult] = React.useState(null);
-    const [classificationResult, setClassificationResult] = React.useState(null);
+    const[classificationResult, setClassificationResult] = React.useState(null);
     const[error, setError] = React.useState('');
 
     // --- Print Modal State ---
@@ -3099,7 +3104,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const[dontShowPrintWarning, setDontShowPrintWarning] = React.useState(false);
 
     // --- 3. HELPERS ---
-    const transportNuclides = React.useMemo(() => radionuclides.filter(n => n.shipping && n.shipping.A1 !== undefined && n.shipping.A2 !== undefined).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
+    const transportNuclides = React.useMemo(() => radionuclides.filter(n => n.shipping && n.shipping.A1 !== undefined && n.shipping.A2 !== undefined).sort((a, b) => a.name.localeCompare(b.name)),[radionuclides]);
 
     const selectedNuclideData = React.useMemo(() => 
         transportNuclides.find(n => n.symbol === newItemSymbol), 
@@ -3115,7 +3120,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         if (!activityUnits.includes(newItemUnit)) {
             setNewItemUnit(activityUnits[activityUnits.length - 1]);
         }
-    }, [activityUnits, newItemUnit]);
+    },[activityUnits, newItemUnit]);
 
     const toMremHr = (val, unit) => {
         if (unit === 'mrem/hr') return val;
@@ -3344,6 +3349,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         setDoseRateAt1m(''); setSurfaceDoseRate(''); setCheckContam(false); setRemovableContam(''); setError('');
         setFissileMass(''); setVehSurfaceDose(''); setVeh2mDose(''); setCabDose('');
         setEmergencyContact(''); setBolComments(''); setManualPSN(''); setSuggestedPSN('');
+        setShipperName(''); setShipperAddress(''); setConsigneeName(''); setConsigneeAddress(''); setPackageDimensions('');
     };
 
     const handleSave = () => {
@@ -3695,7 +3701,27 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                             </select>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* --- NEW: Editable Shipper, Consignee, Dimensions --- */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+                            <div>
+                                <label className="block text-[10px] font-bold mb-1">Shipper Name</label>
+                                <input type="text" value={shipperName} onChange={e => setShipperName(e.target.value)} placeholder="Company Name" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600 mb-2" />
+                                <label className="block text-[10px] font-bold mb-1">Shipper Address</label>
+                                <textarea value={shipperAddress} onChange={e => setShipperAddress(e.target.value)} rows="3" placeholder="123 Example St&#10;City, State 12345" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600 resize-y"></textarea>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold mb-1">Consignee Name</label>
+                                <input type="text" value={consigneeName} onChange={e => setConsigneeName(e.target.value)} placeholder="Recipient Name" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600 mb-2" />
+                                <label className="block text-[10px] font-bold mb-1">Consignee Address</label>
+                                <textarea value={consigneeAddress} onChange={e => setConsigneeAddress(e.target.value)} rows="3" placeholder="456 Delivery Ave&#10;City, State 67890" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600 resize-y"></textarea>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+                            <div>
+                                <label className="block text-[10px] font-bold mb-1">Package Dimensions / Weight</label>
+                                <input type="text" value={packageDimensions} onChange={e => setPackageDimensions(e.target.value)} placeholder="e.g. 12x12x12 in, 15 lbs" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600" />
+                            </div>
                             <div>
                                 <label className="block text-[10px] font-bold mb-1">24-Hour Emergency Contact (Optional)</label>
                                 <input type="text" value={emergencyContact} onChange={e => setEmergencyContact(e.target.value)} placeholder="e.g. Chemtrec 1-800-424-9300" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600" />
@@ -3737,6 +3763,9 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     emergencyContact={emergencyContact}
                     comments={bolComments}
                     psn={manualPSN || suggestedPSN}
+                    shipper={{ name: shipperName, address: shipperAddress }}
+                    consignee={{ name: consigneeName, address: consigneeAddress }}
+                    dimensions={packageDimensions}
                 />
             )}
 
@@ -3755,6 +3784,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     )}
                     <p className="text-amber-700 dark:text-amber-400 font-medium">
                         <strong>Disclaimer:</strong> This generated Bill of Lading is intended for general transportation purposes and documentation only.
+                        For best results, choose <strong>"Save as PDF"</strong> in your print dialog.
                     </p>
                     <p className="text-slate-600 dark:text-slate-300">
                         It does <strong>NOT</strong> satisfy the requirements for radioactive or hazardous waste shipments, which require specific federal tracking forms:
