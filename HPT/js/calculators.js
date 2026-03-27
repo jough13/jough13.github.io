@@ -2814,10 +2814,12 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
 
     return (
         <div className="hidden print:block p-8 bg-white text-black font-sans text-sm w-full max-w-4xl mx-auto">
+            
             {/* Minimal CSS purely for page breaks and margins */}
             <style type="text/css" media="print">
                 {`
                     @page { margin: 0.5in; }
+                    body { background: white !important; color: black !important; }
                     .erg-page { page-break-before: always; }
                 `}
             </style>
