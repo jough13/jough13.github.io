@@ -8151,25 +8151,7 @@ const CFR_173_436_LIMITS = {
   'Zr-97': { exemptConsignmentBq: 1e5, exemptConsignmentCi: 2.7e-6 }
 };
 
-// This maps over existing data and injects the CFR limits
-const ENRICHED_RADIONUCLIDE_DATA = RADIONUCLIDE_DATA.map(nuclide => {
-    const limits = CFR_173_436_LIMITS[nuclide.symbol] || CFR_173_436_LIMITS[nuclide.parent];
-    
-    // If no limits exist in 49 CFR 173.436, return the nuclide unmodified
-    if (!limits) return nuclide;
-
-    return {
-        ...nuclide,
-        shipping: {
-            // Add the fallback to prevent spreading undefined
-            ...(nuclide.shipping || {}),
-            exemptConsignmentBq: limits.exemptConsignmentBq,
-            exemptConsignmentCi: limits.exemptConsignmentCi
-        }
-    };
-});
-
-// NEW RQ LOOKUP TABLE ---
+// RQ LOOKUP TABLE ---
 // Values sourced from 49 CFR 172.101 Appendix A, Table 2
 const REPORTABLE_QUANTITIES = {
   'Am-241': { RQ_TBq: 0.00037, RQ_Ci: 0.01 },
