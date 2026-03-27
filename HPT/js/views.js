@@ -1273,7 +1273,7 @@ const SettingsPanel = () => {
                     </div>
 
                     {/* --- About Section --- */}
-                    <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 space-y-2 text-center text-xs text-slate-500 dark:text-slate-400">
+                    <div className="print:hidden mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 space-y-2 text-center text-xs text-slate-500 dark:text-slate-400">
                         <p><strong>Health Physics Toolbox</strong> Version {VERSION}</p>
                         <p>Last Updated: {LAST_UPDATED}</p>
                         <p>Created by Jough Donakowski, CHP</p>
