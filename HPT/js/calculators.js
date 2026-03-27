@@ -2851,18 +2851,24 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
     const ergData = getERGGuide();
 
     return (
-        <div className="hidden print:block p-8 bg-white text-black font-sans text-sm w-full max-w-4xl mx-auto">
+        <div className="hidden print:block p-0 bg-white text-black font-sans text-sm w-full mx-auto">
             {/* Minimal CSS purely for page breaks and stripping global app shadows */}
             <style type="text/css" media="print">
                 {`
                     @page { margin: 0.5in; }
-                    /* Strip shadows and borders from global containers */
+                    /* Strip shadows, margins, and borders from global containers */
                     html, body, #root, #__next, main { 
                         background: white !important; 
                         color: black !important; 
                         box-shadow: none !important;
                         border-radius: 0 !important;
                         border: none !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+                    /* Guarantee no shadows print anywhere */
+                    * {
+                        box-shadow: none !important;
                     }
                     .erg-page { page-break-before: always; }
                     /* Force background colors to print for the ERG guide */
