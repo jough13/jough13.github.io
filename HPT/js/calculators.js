@@ -2667,9 +2667,29 @@ const ShippingPaper = ({ items, classification, label, doseRates }) => {
     const isRegulated = classification?.classification !== 'EXEMPT';
 
     return (
-        <div className="hidden print:block p-8 bg-white text-black font-sans text-sm w-full max-w-4xl mx-auto">
+        <div className="hidden print:block bol-print-container p-8 bg-white text-black font-sans text-sm w-full max-w-4xl mx-auto">
+            {/* Injecting CSS to completely hide the rest of the app shell during printing */}
+            <style type="text/css" media="print">
+                {`
+                    body * {
+                        visibility: hidden;
+                    }
+                    .bol-print-container, .bol-print-container * {
+                        visibility: visible;
+                    }
+                    .bol-print-container {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        margin: 0;
+                        padding: 20px;
+                        width: 100%;
+                    }
+                `}
+            </style>
+
             <div className="text-center mb-6 border-b-2 border-black pb-4">
-                <h1 className="text-2xl font-bold uppercase tracking-wider">Straight Bill of Lading</h1>
+                <h1 className="text-2xl font-bold uppercase tracking-wider">Bill of Lading</h1>
                 <h2 className="text-lg font-semibold uppercase">Shipper's Declaration for Dangerous Goods</h2>
                 <p className="text-xs mt-1">Date: {new Date().toLocaleDateString()}</p>
             </div>
