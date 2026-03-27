@@ -2852,12 +2852,24 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
 
     return (
         <div className="hidden print:block p-8 bg-white text-black font-sans text-sm w-full max-w-4xl mx-auto">
-            {/* Minimal CSS purely for page breaks and margins */}
+            {/* Minimal CSS purely for page breaks and stripping global app shadows */}
             <style type="text/css" media="print">
                 {`
                     @page { margin: 0.5in; }
-                    body { background: white !important; color: black !important; }
+                    /* Strip shadows and borders from global containers */
+                    html, body, #root, #__next, main { 
+                        background: white !important; 
+                        color: black !important; 
+                        box-shadow: none !important;
+                        border-radius: 0 !important;
+                        border: none !important;
+                    }
                     .erg-page { page-break-before: always; }
+                    /* Force background colors to print for the ERG guide */
+                    * {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
                 `}
             </style>
 
@@ -2897,7 +2909,7 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
                         <tr>
                             <td className="border border-black p-2 text-center font-bold text-lg">{isRegulated ? 'X' : ''}</td>
                             <td className="border border-black p-2 font-bold">
-                                {classification?.isRQ && <span className="mr-1">RQ,</span>}
+                                {classification?.isRQ && <span className="mr-1 text-red-600">RQ,</span>}
                                 {getPSN()}
                             </td>
                             <td className="border border-black p-2">{items.map(i => i.symbol).join(', ')}</td>
@@ -2915,7 +2927,7 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
                         <p><span className="font-bold">Package Classification:</span> {classification?.classification.replace('_', ' ')}</p>
                         <p><span className="font-bold">Required Label(s):</span> {label?.labelCategory === 'Excepted Marking (No Label)' ? 'UN Marking Only' : label?.labelCategory || 'N/A'}</p>
                         {label?.TI > 0 && <p><span className="font-bold">Transport Index (TI):</span> {label.TI.toFixed(1)}</p>}
-                        {ergData && <p className="mt-2 font-bold italic">See Attached ERG Guide {ergData.guide}</p>}
+                        {ergData && <p className="mt-2 font-bold italic text-red-600">See Attached ERG Guide {ergData.guide}</p>}
                     </div>
                     <div>
                         <p><span className="font-bold">Max Surface Dose Rate:</span> {doseRates?.surface || '___'} {doseRates?.unit}</p>
@@ -2966,25 +2978,25 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
             {/* --- PAGE 2: EMERGENCY RESPONSE GUIDE ATTACHMENT --- */}
             {ergData && (
                 <div className="erg-page pt-8">
-                    <div className="border-4 border-black p-8">
-                        <div className="text-center mb-8 border-b-2 border-black pb-4">
-                            <h2 className="text-4xl font-black uppercase mb-2 tracking-wider">GUIDE {ergData.guide}</h2>
-                            <h3 className="text-xl font-bold uppercase">{ergData.title}</h3>
-                            <p className="text-xs mt-2 font-bold uppercase">Excerpted from DOT ERG 2024</p>
+                    <div className="border-4 border-orange-500 p-8">
+                        <div className="text-center mb-8 border-b-2 border-orange-200 pb-4">
+                            <h2 className="text-4xl font-black uppercase mb-2 tracking-wider text-orange-600">GUIDE {ergData.guide}</h2>
+                            <h3 className="text-xl font-bold uppercase text-slate-800">{ergData.title}</h3>
+                            <p className="text-xs mt-2 font-bold uppercase text-slate-500">Excerpted from DOT ERG 2024</p>
                         </div>
                         
                         <div className="grid grid-cols-1 gap-8">
                             {/* POTENTIAL HAZARDS */}
                             <div>
-                                <h4 className="font-bold text-xl border-b-2 border-black mb-4 uppercase p-2">Potential Hazards</h4>
+                                <h4 className="font-bold text-xl border-b-2 border-black mb-4 uppercase bg-slate-100 p-2">Potential Hazards</h4>
                                 <div className="mb-6">
-                                    <p className="font-bold uppercase text-sm mb-2">Health</p>
+                                    <p className="font-bold uppercase text-sm mb-2 text-orange-700">Health</p>
                                     <ul className="list-disc pl-6 text-sm space-y-2">
                                         {ergData.hazards.health.map((txt, i) => <li key={i}>{txt}</li>)}
                                     </ul>
                                 </div>
                                 <div>
-                                    <p className="font-bold uppercase text-sm mb-2">Fire or Explosion</p>
+                                    <p className="font-bold uppercase text-sm mb-2 text-orange-700">Fire or Explosion</p>
                                     <ul className="list-disc pl-6 text-sm space-y-2">
                                         {ergData.hazards.fire.map((txt, i) => <li key={i}>{txt}</li>)}
                                     </ul>
@@ -2993,26 +3005,26 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
 
                             {/* EMERGENCY RESPONSE */}
                             <div>
-                                <h4 className="font-bold text-xl border-b-2 border-black mb-4 uppercase p-2">Emergency Response</h4>
-                                <div className="mb-6 border-2 border-black p-3">
-                                    <p className="text-sm font-bold uppercase mb-1">Public Safety & Isolation</p>
+                                <h4 className="font-bold text-xl border-b-2 border-black mb-4 uppercase bg-slate-100 p-2">Emergency Response</h4>
+                                <div className="mb-6 bg-rose-50 border border-rose-200 p-3">
+                                    <p className="text-sm font-bold uppercase mb-1 text-rose-800">Public Safety & Isolation</p>
                                     <p className="text-sm">{ergData.response.isolation}</p>
                                 </div>
                                 
                                 <div className="mb-6">
-                                    <p className="font-bold uppercase text-sm mb-2">Fire</p>
+                                    <p className="font-bold uppercase text-sm mb-2 text-orange-700">Fire</p>
                                     <ul className="list-disc pl-6 text-sm space-y-2">
-                                        {ergData.response.fire.map((txt, i) => <li key={i} className={txt.includes('DO NOT') ? 'font-bold uppercase' : ''}>{txt}</li>)}
+                                        {ergData.response.fire.map((txt, i) => <li key={i} className={txt.includes('DO NOT') ? 'font-bold uppercase text-red-600' : ''}>{txt}</li>)}
                                     </ul>
                                 </div>
                                 <div className="mb-6">
-                                    <p className="font-bold uppercase text-sm mb-2">Spill or Leak</p>
+                                    <p className="font-bold uppercase text-sm mb-2 text-orange-700">Spill or Leak</p>
                                     <ul className="list-disc pl-6 text-sm space-y-2">
-                                        {ergData.response.spill.map((txt, i) => <li key={i} className={txt.includes('DO NOT') ? 'font-bold uppercase' : ''}>{txt}</li>)}
+                                        {ergData.response.spill.map((txt, i) => <li key={i} className={txt.includes('DO NOT') ? 'font-bold uppercase text-red-600' : ''}>{txt}</li>)}
                                     </ul>
                                 </div>
                                 <div>
-                                    <p className="font-bold uppercase text-sm mb-2">First Aid</p>
+                                    <p className="font-bold uppercase text-sm mb-2 text-orange-700">First Aid</p>
                                     <ul className="list-disc pl-6 text-sm space-y-2">
                                         {ergData.response.firstAid.map((txt, i) => <li key={i}>{txt}</li>)}
                                     </ul>
