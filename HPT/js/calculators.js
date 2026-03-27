@@ -2786,7 +2786,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let classification = '';
         let methodology = '';
 
-        // FIX 2: Evaluate Exempt first, then Material and Instrument Excepted logic
+        // Evaluate Exempt first, then Material and Instrument Excepted logic
         if (sumFracExempt <= 1.0) {
             classification = 'EXEMPT';
             methodology = 'Not Regulated as Class 7 (Below Exempt Consignment Limits per 49 CFR 173.436)';
@@ -2989,6 +2989,13 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                                         {exemptBq > 0 ? (exemptBq * multSmall).toExponential(2) : '0'} {unitSmall}
                                                     </span>
                                                 </div>
+
+                                                {/* --- TRITIUM CONTEXT NOTE --- */}
+                                                {newItemSymbol === 'H-3' && (
+                                                    <div className="mt-2 p-1.5 bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300 rounded border border-sky-200 dark:border-sky-700 text-[10px] leading-tight">
+                                                        <strong>* Tritium Exception:</strong> H-3 has unique excepted package multiplier criteria under 49 CFR 173.425. Instead of standard Class 7 limits, it uses <strong>2×10⁻² A₂</strong> for materials and <strong>2×10⁻¹ A₂</strong> for instruments.
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     );
