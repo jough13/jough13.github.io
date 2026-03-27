@@ -2640,8 +2640,7 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
  * Includes a print-ready Bill of Lading generator.
  */
 
-const ShippingPaper = ({ items, classification, label, doseRates }) => {
-    // Generate an approximate Proper Shipping Name (PSN) based on the classification
+const ShippingPaper = ({ items, classification, label, doseRates, emergencyContact, comments }) => {
     const getPSN = () => {
         if (!classification) return "";
         if (classification.classification === 'EXEMPT') return "Not Regulated as Class 7 Hazardous Material";
@@ -2668,9 +2667,13 @@ const ShippingPaper = ({ items, classification, label, doseRates }) => {
 
     return (
         <div className="hidden print:block bol-print-container p-8 bg-white text-black font-sans text-sm w-full max-w-4xl mx-auto">
-            {/* Injecting CSS to completely hide the rest of the app shell during printing */}
+            {/* CSS to hide app shell and collapse empty layout boxes during print */}
             <style type="text/css" media="print">
                 {`
+                    html, body {
+                        height: auto !important;
+                        min-height: auto !important;
+                    }
                     body * {
                         visibility: hidden;
                     }
@@ -2681,9 +2684,9 @@ const ShippingPaper = ({ items, classification, label, doseRates }) => {
                         position: absolute;
                         left: 0;
                         top: 0;
+                        width: 100%;
                         margin: 0;
                         padding: 20px;
-                        width: 100%;
                     }
                 `}
             </style>
@@ -2750,9 +2753,23 @@ const ShippingPaper = ({ items, classification, label, doseRates }) => {
                 </div>
             )}
 
-            {/* EMERGENCY CONTACT & CERTIFICATION */}
+            {/* EMERGENCY CONTACT & COMMENTS */}
+            <div className="mb-4">
+                <p className="text-xs font-bold mb-1">24-HOUR EMERGENCY CONTACT:</p>
+                <p className="text-sm font-mono border-b border-black inline-block min-w-[350px]">
+                    {emergencyContact || '____________________________________________________'}
+                </p>
+            </div>
+
+            {comments && (
+                <div className="mb-6 p-3 border border-black bg-slate-50">
+                    <p className="text-xs font-bold uppercase mb-1">Handling Information / Comments:</p>
+                    <p className="text-xs whitespace-pre-wrap font-mono">{comments}</p>
+                </div>
+            )}
+
+            {/* CERTIFICATION */}
             <div className="mb-6">
-                <p className="text-xs font-bold mb-2">24-HOUR EMERGENCY CONTACT: ___________________________________</p>
                 <div className="border-t-2 border-b-2 border-black py-4 my-4">
                     <p className="text-xs text-justify font-bold uppercase">
                         This is to certify that the above-named materials are properly classified, described, packaged, 
@@ -2817,6 +2834,10 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [veh2mDose, setVeh2mDose] = React.useState('');
     const [cabDose, setCabDose] = React.useState('');
     const [vehDoseUnit, setVehDoseUnit] = React.useState('mrem/hr');
+
+    // BOL specific inputs
+    const [emergencyContact, setEmergencyContact] = React.useState('');
+    const [bolComments, setBolComments] = React.useState('');
 
     const [checkContam, setCheckContam] = React.useState(false);
     const [contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
@@ -2896,7 +2917,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const itemLimitExc = newItemCategory === 'instrument' ? limitTBq * instItemMult : Infinity;
         const pkgLimitExc = limitTBq * (newItemCategory === 'instrument' ? instPkgMult : matPkgMult);
 
-        // LSA Qualifier Hint Logic
         const massGrams = safeParseFloat(newItemMass);
         let lsaHint = null;
         
@@ -2994,7 +3014,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     }, [packageItems]);
 
     React.useEffect(() => {
-        // Label Logic
         if (!doseRateAt1m && !surfaceDoseRate) { setLabelResult(null); }
         else {
             const rate1m = safeParseFloat(doseRateAt1m);
@@ -3029,7 +3048,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             setLabelResult({ TI, labelCategory });
         }
 
-        // Contam Logic
         if (!checkContam) { setContamResult(null); }
         else {
             const remVal = safeParseFloat(removableContam);
@@ -3054,6 +3072,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemCategory('instrument'); setNewItemMass('');
         setDoseRateAt1m(''); setSurfaceDoseRate(''); setCheckContam(false); setRemovableContam(''); setError('');
         setFissileMass(''); setVehSurfaceDose(''); setVeh2mDose(''); setCabDose('');
+        setEmergencyContact(''); setBolComments('');
     };
 
     const handleSave = () => {
@@ -3081,9 +3100,9 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     };
 
     return (
-        <div className="p-4 animate-fade-in">
+        <div className="p-4 animate-fade-in relative">
             {/* MAIN APP UI (Hidden during print) */}
-            <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg print:hidden">
+            <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg print:hidden relative z-10">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shipping Calculator</h2>
                     <ClearButton onClick={handleClear} />
@@ -3097,7 +3116,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     
                     <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg space-y-3 border border-slate-200 dark:border-slate-700">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {/* Nuclide Selection */}
                             <div>
                                 <label className="block text-xs font-medium mb-1">Radionuclide</label>
                                 <div className="h-[38px]">
@@ -3111,7 +3129,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     )}
                                 </div>
                                 
-                                {/* A1/A2/RQ INFO DISPLAY */}
                                 {selectedNuclideData && (() => {
                                     const isSi = settings.unitSystem === 'si';
                                     const unitBig = isSi ? 'TBq' : 'Ci';
@@ -3174,7 +3191,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                 })()}
                             </div>
                             
-                            {/* Inputs */}
                             <div className="space-y-3">
                                 <div>
                                     <label className="block text-xs font-medium mb-1">Activity</label>
@@ -3212,7 +3228,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                         {error && <p className="text-red-500 text-xs text-center">{error}</p>}
                     </div>
 
-                    {/* Items List */}
                     {packageItems.length > 0 && (
                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden animate-fade-in">
                             <table className="w-full text-sm text-left">
@@ -3257,7 +3272,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                         </p>
                         <p className="text-xs mt-2 opacity-80">{classificationResult.methodology}</p>
                         
-                        {/* FISSILE INTERCEPT */}
                         {classificationResult.hasFissile && (
                             <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded text-left">
                                 <h4 className="text-sm font-bold text-amber-800 dark:text-amber-400 flex items-center gap-2">⚠️ Fissile Material Detected</h4>
@@ -3279,10 +3293,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
                 {/* --- 3. MEASUREMENTS --- */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* LABEL ESTIMATION */}
                     <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
                         <h3 className="font-bold text-sm text-slate-500 uppercase">2. Label Estimation</h3>
-                        
                         <div>
                             <label className="block text-[10px] font-bold mb-1">Max Dose Rate @ 1m (TI)</label>
                             <div className="flex"><input type="number" inputMode="decimal" min="0" value={doseRateAt1m} onChange={e => setDoseRateAt1m(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" /><select value={doseRateUnit} onChange={e => setDoseRateUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select></div>
@@ -3302,7 +3314,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                         )}
                     </div>
 
-                    {/* CONTAMINATION */}
                     <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
                         <label className="flex items-center gap-2 font-bold text-sm text-slate-500 uppercase cursor-pointer">
                             <input type="checkbox" checked={checkContam} onChange={e => setCheckContam(e.target.checked)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
@@ -3331,7 +3342,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                         })()}
                     </div>
 
-                    {/* EXCLUSIVE USE VEHICLE LIMITS INTERCEPT */}
                     {labelResult?.labelCategory === "Yellow-III (Exclusive Use)" && (
                         <div className="p-4 border border-rose-200 dark:border-rose-800/50 bg-rose-50/50 dark:bg-rose-900/10 rounded-lg space-y-3 md:col-span-2 animate-fade-in">
                             <h3 className="font-bold text-sm text-rose-700 dark:text-rose-400 uppercase">Exclusive Use Vehicle Limits</h3>
@@ -3365,6 +3375,21 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     )}
                 </div>
 
+                {/* --- 4. SHIPPING DOCUMENT DETAILS --- */}
+                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3 mt-4">
+                    <h3 className="font-bold text-sm text-slate-500 uppercase">4. BOL Details (Optional)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-[10px] font-bold mb-1">24-Hour Emergency Contact</label>
+                            <input type="text" value={emergencyContact} onChange={e => setEmergencyContact(e.target.value)} placeholder="e.g. Chemtrec 1-800-424-9300" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border dark:border-slate-600" />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-[10px] font-bold mb-1">Additional Comments / Handling Instructions</label>
+                            <textarea value={bolComments} onChange={e => setBolComments(e.target.value)} rows="2" placeholder="e.g. Keep away from heat, DO NOT DROP..." className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border dark:border-slate-600 resize-y"></textarea>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Footer Buttons */}
                 <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
                     <button 
@@ -3384,13 +3409,15 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 </div>
             </div>
 
-            {/* PRINT ONLY UI (Hidden on screen) */}
+            {/* PRINT ONLY UI */}
             {classificationResult && (
                 <ShippingPaper 
                     items={packageItems}
                     classification={classificationResult}
                     label={labelResult}
                     doseRates={{ surface: surfaceDoseRate, at1m: doseRateAt1m, unit: doseRateUnit }}
+                    emergencyContact={emergencyContact}
+                    comments={bolComments}
                 />
             )}
         </div>
