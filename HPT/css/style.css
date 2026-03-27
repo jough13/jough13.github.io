@@ -29,9 +29,7 @@
 /* Biased sample drawing tool icon */
 .leaflet-draw-biased-marker-icon {
 	background-color: #facc15;
-	/* amber-400 */
 	border: 2px solid #ca8a04;
-	/* amber-600 */
 	border-radius: 50%;
 	box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
 }
@@ -88,7 +86,6 @@ body {
 		opacity: 0;
 		transform: translateY(20px);
 	}
-
 	to {
 		opacity: 1;
 		transform: translateY(0);
@@ -119,4 +116,21 @@ body {
 	stroke-width: 1;
 	fill: #facc15;
 	fill-opacity: 1;
+}
+
+/* --- PRINT STYLES FOR CLEAN BILL OF LADING --- */
+@media print {
+    body, html {
+        background-color: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    #root, main {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    /* Bruteforce remove all shadows and unnecessary borders on structural wrappers */
+    * {
+        box-shadow: none !important;
+    }
 }
