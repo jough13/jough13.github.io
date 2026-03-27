@@ -87,26 +87,26 @@ const NuclideContextDisplay = ({ nuclide }) => {
 const ContextualNote = ({ children, type = 'info' }) => {
 const styles = {
 info: {
-   container: 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700',
-   iconColor: 'text-slate-500 dark:text-slate-400',
+    container: 'bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700',
+    iconColor: 'text-slate-500 dark:text-slate-400',
 },
 warning: {
-   container: 'bg-amber-50 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700',
-   iconColor: 'text-amber-600 dark:text-amber-400',
+    container: 'bg-amber-50 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700',
+    iconColor: 'text-amber-600 dark:text-amber-400',
 }
 };
 const selectedStyle = styles[type] || styles.info;
 
 return (
 <div className={`mt-4 p-3 border-l-4 rounded-r-lg text-xs ${selectedStyle.container}`}>
-   <div className="flex">
-       <div className="flex-shrink-0">
-           <Icon path={ICONS.help} className={`w-4 h-4 mr-2 ${selectedStyle.iconColor}`} />
-       </div>
-       <div className="flex-grow text-slate-600 dark:text-slate-300">
-           {children}
-       </div>
-   </div>
+    <div className="flex">
+        <div className="flex-shrink-0">
+            <Icon path={ICONS.help} className={`w-4 h-4 mr-2 ${selectedStyle.iconColor}`} />
+        </div>
+        <div className="flex-grow text-slate-600 dark:text-slate-300">
+            {children}
+        </div>
+    </div>
 </div>
 );
 };
@@ -227,17 +227,17 @@ onMouseLeave: handleMouseLeave,
 };
 
 const renderInputField = (label, value, setter, isEnabled, unitValue, unitSetter, unitOptions) => (
- <div>
-     <label className={`block text-sm font-medium ${isEnabled ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>{label}</label>
-     <div className="flex gap-2 mt-1">
-         <input type="number" value={value} onChange={e => setter(e.target.value)} disabled={!isEnabled} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed" />
-         {unitOptions && (
-             <select value={unitValue} onChange={e => unitSetter(e.target.value)} disabled={!isEnabled} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed">
-                 {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
-             </select>
-         )}
-     </div>
- </div>
+    <div>
+        <label className={`block text-sm font-medium ${isEnabled ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}>{label}</label>
+        <div className="flex gap-2 mt-1">
+            <input type="number" value={value} onChange={e => setter(e.target.value)} disabled={!isEnabled} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed" />
+            {unitOptions && (
+                <select value={unitValue} onChange={e => unitSetter(e.target.value)} disabled={!isEnabled} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:cursor-not-allowed">
+                    {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+            )}
+        </div>
+    </div>
 );
 
 /**
@@ -316,39 +316,39 @@ return ReactDOM.createPortal(
 // Backdrop
 
 <div
-   className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4 animate-fade-in"
-   onClick={onClose} // Close modal if backdrop is clicked
+    className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4 animate-fade-in"
+    onClick={onClose} // Close modal if backdrop is clicked
 >
-   {/* Modal Panel */}
+    {/* Modal Panel */}
 
-   <div
-       className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl flex flex-col"
-       onClick={e => e.stopPropagation()} // Prevent click inside from closing modal
-   >
-       <div className="p-6">
-           <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title}</h3>
-           <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-               {children}
-           </div>
-       </div>
+    <div
+        className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl flex flex-col"
+        onClick={e => e.stopPropagation()} // Prevent click inside from closing modal
+    >
+        <div className="p-6">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">{title}</h3>
+            <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                {children}
+            </div>
+        </div>
 
-       {/* Action Buttons */}
+        {/* Action Buttons */}
 
-       <div className="bg-slate-50 dark:bg-slate-900/50 px-6 py-3 flex justify-end items-center gap-3 rounded-b-2xl">
-           <button
-               onClick={onClose}
-               className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
-           >
-               Cancel
-           </button>
-           <button
-               onClick={onConfirm}
-               className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
-           >
-               Confirm
-           </button>
-       </div>
-   </div>
+        <div className="bg-slate-50 dark:bg-slate-900/50 px-6 py-3 flex justify-end items-center gap-3 rounded-b-2xl">
+            <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 rounded-md border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
+            >
+                Cancel
+            </button>
+            <button
+                onClick={onConfirm}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+            >
+                Confirm
+            </button>
+        </div>
+    </div>
 </div>,
 document.getElementById('modal-root') // This tells React where to render the modal
 );
@@ -417,12 +417,12 @@ const Header = ({ onHelpClick, theme, toggleTheme, onNavClick }) => (
         <img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style={{ height: '36px', width: 'auto' }} />
     </a>
     <div className="flex flex-col">
-      <Tooltip text="Settings" widthClass="w-auto">
+        <Tooltip text="Settings" widthClass="w-auto">
 
-          <button onClick={() => onNavClick(VIEWS.SETTINGS)} className="p-1 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open settings panel">
-              <Icon path={ICONS.settings} className="w-5 h-5" />
-          </button>
-      </Tooltip>
+            <button onClick={() => onNavClick(VIEWS.SETTINGS)} className="p-1 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open settings panel">
+                <Icon path={ICONS.settings} className="w-5 h-5" />
+            </button>
+        </Tooltip>
         <Tooltip text="Open User Manual" widthClass="w-auto">
             <button onClick={onHelpClick} className="p-1 text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors" aria-label="Open User Manual">
                 <Icon path={ICONS.help} className="w-5 h-5" />
@@ -448,27 +448,27 @@ const Header = ({ onHelpClick, theme, toggleTheme, onNavClick }) => (
  */
 
 const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDown, onClear, suggestions, activeSuggestionIndex, suggestionsRef, handleNuclideSelection, onNavClick, isFocused, onFocus, onBlur }) => (
-<div className="relative p-4 flex items-center gap-2">
+<div className="print:hidden relative p-4 flex items-center gap-2">
 <div className="relative flex-grow">
-   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-       <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" />
-   </div>
-   <input
-       ref={inputRef}
-       type="text"
-       value={nuclideName}
-       onChange={handleNuclideNameChange}
-       onKeyDown={handleKeyDown}
-       onFocus={onFocus}
-       onBlur={onBlur}
-       placeholder="Search by name or symbol (e.g., U-238)"
-       className="w-full p-3 pl-10 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
-   />
-   {nuclideName && (
-       <button onClick={onClear} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500 focus:outline-none">
-           <Icon path={ICONS.clear} className="w-5 h-5" />
-       </button>
-   )}
+    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <Icon path={ICONS.search} className="w-5 h-5 text-slate-400" />
+    </div>
+    <input
+        ref={inputRef}
+        type="text"
+        value={nuclideName}
+        onChange={handleNuclideNameChange}
+        onKeyDown={handleKeyDown}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        placeholder="Search by name or symbol (e.g., U-238)"
+        className="w-full p-3 pl-10 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+    />
+    {nuclideName && (
+        <button onClick={onClear} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-sky-500 focus:outline-none">
+            <Icon path={ICONS.clear} className="w-5 h-5" />
+        </button>
+    )}
 </div>
 
 <button
@@ -481,35 +481,35 @@ const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDo
 </button>
 
 {isFocused && suggestions.length > 0 && (
-   <ul ref={suggestionsRef} className="absolute z-20 top-full left-4 right-4 mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-lg max-h-72 overflow-y-auto">
-       {suggestions.map((s, i) => {
-           const styles = CATEGORY_STYLES[s.category] || CATEGORY_STYLES['default'];
-           return (
-               <li
-                   key={s.symbol}
-                   className={`p-3 pl-4 cursor-pointer text-slate-700 dark:text-slate-200 border-l-2 ${styles.border} ${styles.hoverBg} ${i === activeSuggestionIndex ? 'bg-sky-100 dark:bg-sky-900/50' : ''}`}
-                   onClick={() => handleNuclideSelection(s)}
-               >
-                   {s.name} ({s.symbol}) <span className="text-xs text-slate-500 dark:text-slate-400">{s.commonality}</span>
-               </li>
-           );
-       })}
-       {suggestions.length > 4 && (
-           <div className="sticky bottom-0 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm p-2 border-t border-slate-200 dark:border-slate-700">
-               <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
-                   {Object.entries(CATEGORY_STYLES).filter(([key]) => key !== 'default').map(([category, styles]) => {
-                       const bgColor = styles.border.replace('border-l-', 'bg-');
-                       return (
-                           <div key={category} className="flex items-center gap-1.5">
-                               <div className={`w-2.5 h-2.5 rounded-full ${bgColor}`}></div>
-                               <span className="text-xs text-slate-500 dark:text-slate-400">{category.replace('/', '/ ')}</span>
-                           </div>
-                       );
-                   })}
-               </div>
-           </div>
-       )}
-   </ul>
+    <ul ref={suggestionsRef} className="absolute z-20 top-full left-4 right-4 mt-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+        {suggestions.map((s, i) => {
+            const styles = CATEGORY_STYLES[s.category] || CATEGORY_STYLES['default'];
+            return (
+                <li
+                    key={s.symbol}
+                    className={`p-3 pl-4 cursor-pointer text-slate-700 dark:text-slate-200 border-l-2 ${styles.border} ${styles.hoverBg} ${i === activeSuggestionIndex ? 'bg-sky-100 dark:bg-sky-900/50' : ''}`}
+                    onClick={() => handleNuclideSelection(s)}
+                >
+                    {s.name} ({s.symbol}) <span className="text-xs text-slate-500 dark:text-slate-400">{s.commonality}</span>
+                </li>
+            );
+        })}
+        {suggestions.length > 4 && (
+            <div className="sticky bottom-0 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-sm p-2 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
+                    {Object.entries(CATEGORY_STYLES).filter(([key]) => key !== 'default').map(([category, styles]) => {
+                        const bgColor = styles.border.replace('border-l-', 'bg-');
+                        return (
+                            <div key={category} className="flex items-center gap-1.5">
+                                <div className={`w-2.5 h-2.5 rounded-full ${bgColor}`}></div>
+                                <span className="text-xs text-slate-500 dark:text-slate-400">{category.replace('/', '/ ')}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        )}
+    </ul>
 )}
 </div>
 );
@@ -549,7 +549,7 @@ return () => {
 }, []);
 
 return (
-<div className="fixed bottom-4 right-4 z-50">
+<div className="print:hidden fixed bottom-4 right-4 z-50">
     {isVisible && (
         <button
             onClick={scrollToTop}
@@ -604,48 +604,48 @@ const navItems = [
 
 const NavButton = ({ item }) => (
 <button
-   onClick={() => onNavClick(item.id)}
-   className="flex-shrink-0 w-full"
+    onClick={() => onNavClick(item.id)}
+    className="flex-shrink-0 w-full"
 >
-   <span
+    <span
         className={`mx-auto flex items-center justify-center gap-2 px-2 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
-           activeView === item.id
-               ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow'
-               : 'text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-sky-800 hover:text-sky-600 dark:hover:text-sky-400 hover:shadow-md hover:-translate-y-1'
-       }`}
-   >
-       <Icon path={item.icon} className="w-4 h-4" />
-       <span className="truncate">{item.label}</span>
-   </span>
+            activeView === item.id
+                ? 'bg-white dark:bg-slate-900 text-sky-600 dark:text-sky-400 shadow'
+                : 'text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-sky-800 hover:text-sky-600 dark:hover:text-sky-400 hover:shadow-md hover:-translate-y-1'
+        }`}
+    >
+        <Icon path={item.icon} className="w-4 h-4" />
+        <span className="truncate">{item.label}</span>
+    </span>
 </button>
 );
 
 return (
 <div className="print:hidden px-4 pb-2">
-   <div className="md:hidden">
-       <div className="grid grid-cols-2 gap-4">
-           {navItems.map(item => (
-               <button
-                   key={item.id}
-                   onClick={() => onNavClick(item.id)}
-                   // --- MODIFIED LINE: Removed the col-span-2 conditional ---
-                   className={`flex flex-col items-center justify-center p-4 rounded-lg text-center transition-all duration-150 ease-in-out ${
-                       activeView === item.id
-                           ? 'bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400'
-                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 active:scale-95'
-                   }`}
-               >
-                   <Icon path={item.icon} className="w-8 h-8 mb-2" />
-                   <span className="text-sm font-semibold">{item.label}</span>
-               </button>
-           ))}
-       </div>
-   </div>
-   <div className="hidden md:grid grid-cols-4 lg:grid-cols-6 gap-2">
+    <div className="md:hidden">
+        <div className="grid grid-cols-2 gap-4">
+            {navItems.map(item => (
+                <button
+                    key={item.id}
+                    onClick={() => onNavClick(item.id)}
+                    // --- MODIFIED LINE: Removed the col-span-2 conditional ---
+                    className={`flex flex-col items-center justify-center p-4 rounded-lg text-center transition-all duration-150 ease-in-out ${
+                        activeView === item.id
+                            ? 'bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 active:scale-95'
+                    }`}
+                >
+                    <Icon path={item.icon} className="w-8 h-8 mb-2" />
+                    <span className="text-sm font-semibold">{item.label}</span>
+                </button>
+            ))}
+        </div>
+    </div>
+    <div className="hidden md:grid grid-cols-4 lg:grid-cols-6 gap-2">
 
 {navItems.map(item => <NavButton key={item.id} item={item} />)}
 
-   </div>
+    </div>
 </div>
 );
 };
@@ -657,9 +657,9 @@ return (
 //==============================================================================
 
 const CalculationHistoryPanel = () => {
- // Removed onNavClick prop since we are making this read-only
- const [history, setHistory] = React.useState([]);
- const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
+    // Removed onNavClick prop since we are making this read-only
+    const [history, setHistory] = React.useState([]);
+    const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
 
 React.useEffect(() => {
 const savedHistory = localStorage.getItem('rad_tool_calculation_history');
@@ -680,84 +680,84 @@ if (savedHistory) {
 }
 }, []);
 
- const handleClearHistory = () => {
-     localStorage.removeItem('rad_tool_calculation_history');
-     setHistory([]);
-     setIsClearModalOpen(false);
- };
+    const handleClearHistory = () => {
+        localStorage.removeItem('rad_tool_calculation_history');
+        setHistory([]);
+        setIsClearModalOpen(false);
+    };
 
- // Helper to format the timestamp
- const formatTime = (timestamp) => {
-     if (!timestamp) return '';
-     return new Date(timestamp).toLocaleString('en-US', {
-         month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
-     });
- };
+    // Helper to format the timestamp
+    const formatTime = (timestamp) => {
+        if (!timestamp) return '';
+        return new Date(timestamp).toLocaleString('en-US', {
+            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+        });
+    };
 
- if (history.length === 0) {
-       return (
-           <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl text-center border-2 border-dashed border-slate-300 dark:border-slate-700">
-               <p className="text-slate-500 dark:text-slate-400 font-semibold">No Saved Calculations</p>
-               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                   Look for the <span className="inline-block align-middle"><svg className="w-3 h-3 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></span> icon in calculator results to pin them here.
-               </p>
-           </div>
-       );
-   }
+    if (history.length === 0) {
+        return (
+            <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl text-center border-2 border-dashed border-slate-300 dark:border-slate-700">
+                <p className="text-slate-500 dark:text-slate-400 font-semibold">No Saved Calculations</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                    Look for the <span className="inline-block align-middle"><svg className="w-3 h-3 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></span> icon in calculator results to pin them here.
+                </p>
+            </div>
+        );
+    }
 
- return (
-     <>
-         <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
-             <div className="flex justify-between items-center mb-4">
-                 <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Saved Calculations</h4>
+    return (
+        <>
+            <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
+                <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Saved Calculations</h4>
 
-                 <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">
-                     Clear Calculations
-                 </button>
-             </div>
-             <div className="space-y-3">
-                 {history.map(item => (
-                     <div
-                         key={item.id}
-                         className="w-full text-left p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 relative"
-                     >
-                         {/* Timestamp Badge */}
-                         <span className="absolute top-3 right-3 text-[10px] text-slate-400 font-mono bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
-                             {formatTime(item.id)}
-                         </span>
+                    <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">
+                        Clear Calculations
+                    </button>
+                </div>
+                <div className="space-y-3">
+                    {history.map(item => (
+                        <div
+                            key={item.id}
+                            className="w-full text-left p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 relative"
+                        >
+                            {/* Timestamp Badge */}
+                            <span className="absolute top-3 right-3 text-[10px] text-slate-400 font-mono bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                                {formatTime(item.id)}
+                            </span>
 
-                         <div className="flex items-start gap-4 pr-16">
-                             {item.icon && <Icon path={item.icon} className="w-8 h-8 text-slate-400 dark:text-slate-500 mt-1 flex-shrink-0" />}
-                             <div className="flex-grow">
-                                 <p className="font-bold text-sky-600 dark:text-sky-400">{item.type}</p>
-                                 <p className="text-sm text-slate-600 dark:text-slate-300">
-                                     <span className="font-semibold">Inputs:</span> {item.inputs}
-                                 </p>
-                                 <p className="text-sm text-slate-800 dark:text-slate-100">
-                                     <span className="font-semibold">Result:</span> {item.result}
-                                 </p>
-                             </div>
-                         </div>
-                     </div>
-                 ))}
-             </div>
-         </div>
+                            <div className="flex items-start gap-4 pr-16">
+                                {item.icon && <Icon path={item.icon} className="w-8 h-8 text-slate-400 dark:text-slate-500 mt-1 flex-shrink-0" />}
+                                <div className="flex-grow">
+                                    <p className="font-bold text-sky-600 dark:text-sky-400">{item.type}</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                                        <span className="font-semibold">Inputs:</span> {item.inputs}
+                                    </p>
+                                    <p className="text-sm text-slate-800 dark:text-slate-100">
+                                        <span className="font-semibold">Result:</span> {item.result}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
 
-         <ConfirmationModal
-             isOpen={isClearModalOpen}
-             onClose={() => setIsClearModalOpen(false)}
-             onConfirm={handleClearHistory}
-             title="Clear Calculation History"
-         >
-             <p>Are you sure you want to clear your recently saved calculations?</p>
-         </ConfirmationModal>
-     </>
- );
+            <ConfirmationModal
+                isOpen={isClearModalOpen}
+                onClose={() => setIsClearModalOpen(false)}
+                onConfirm={handleClearHistory}
+                title="Clear Calculation History"
+            >
+                <p>Are you sure you want to clear your recently saved calculations?</p>
+            </ConfirmationModal>
+        </>
+    );
 };
 
 /**
-* @description Displays information about a single radionuclide.
-*/
+ * @description Displays information about a single radionuclide.
+ */
 
 const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite, onSendToCalculator, onAddToCompare, showBackButton, onBackClick }) => {
 
@@ -1414,110 +1414,110 @@ return (
 * @description A React component that renders a line chart for simple decay (Parent/Daughter) using Chart.js.
 */
 const DecayChart = ({ chartData, useLogScale, theme }) => {
- const chartRef = React.useRef(null);
- const chartInstance = React.useRef(null);
+    const chartRef = React.useRef(null);
+    const chartInstance = React.useRef(null);
 
- React.useEffect(() => {
-     if (chartInstance.current) {
-         chartInstance.current.destroy();
-     }
+    React.useEffect(() => {
+        if (chartInstance.current) {
+            chartInstance.current.destroy();
+        }
 
-     if (chartRef.current && chartData) {
-         const isDarkMode = theme === 'dark';
-         const textColor = isDarkMode ? '#94a3b8' : '#475569';
-         const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
-         const legendColor = isDarkMode ? '#cbd5e1' : '#334155';
+        if (chartRef.current && chartData) {
+            const isDarkMode = theme === 'dark';
+            const textColor = isDarkMode ? '#94a3b8' : '#475569';
+            const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
+            const legendColor = isDarkMode ? '#cbd5e1' : '#334155';
 
-         const ctx = chartRef.current.getContext('2d');
+            const ctx = chartRef.current.getContext('2d');
 
-         // LOG SCALE SAFETY LOGIC ---
-         let safeMin = undefined;
-         if (useLogScale) {
-             // Combine parent and daughter data to find the range
-             const allValues = [...chartData.parentData];
-             if (chartData.daughterData) {
-                 allValues.push(...chartData.daughterData);
-             }
-             
-             const maxVal = Math.max(...allValues);
-             
-             if (maxVal > 0) {
-                 // Set floor to 5 orders of magnitude below peak
-                 safeMin = maxVal * 1e-5;
-             } else {
-                 safeMin = 1e-5;
-             }
-         }
+            // LOG SCALE SAFETY LOGIC ---
+            let safeMin = undefined;
+            if (useLogScale) {
+                // Combine parent and daughter data to find the range
+                const allValues = [...chartData.parentData];
+                if (chartData.daughterData) {
+                    allValues.push(...chartData.daughterData);
+                }
+                
+                const maxVal = Math.max(...allValues);
+                
+                if (maxVal > 0) {
+                    // Set floor to 5 orders of magnitude below peak
+                    safeMin = maxVal * 1e-5;
+                } else {
+                    safeMin = 1e-5;
+                }
+            }
 
-         chartInstance.current = new Chart(ctx, {
-             type: 'line',
-             data: {
-                 labels: chartData.labels,
-                 datasets: [
-                     {
-                         label: chartData.parentName,
-                         data: chartData.parentData,
-                         borderColor: '#0284c7', // Sky-600
-                         backgroundColor: 'rgba(2, 132, 199, 0.1)',
-                         fill: true,
-                         tension: 0, // Straight lines for log scale accuracy
-                         pointRadius: 0,
-                         pointHoverRadius: 6
-                     },
-                     ...(chartData.daughterData ? [{
-                         label: chartData.daughterName,
-                         data: chartData.daughterData,
-                         borderColor: '#e11d48', // Rose-600
-                         backgroundColor: 'rgba(225, 29, 72, 0.1)',
-                         fill: true,
-                         tension: 0,
-                         pointRadius: 0,
-                         pointHoverRadius: 6
-                     }] : [])
-                 ]
-             },
-             options: {
-                 responsive: true,
-                 maintainAspectRatio: false,
-                 interaction: { mode: 'index', intersect: false },
-                 scales: {
-                     x: {
-                         title: { display: true, text: `Time (${chartData.timeUnit})`, color: textColor },
-                         ticks: { color: textColor },
-                         grid: { color: gridColor }
-                     },
-                     y: {
-                         type: useLogScale ? 'logarithmic' : 'linear',
-                         title: { display: true, text: 'Activity', color: textColor, padding: { bottom: 10 }  },
-                         min: safeMin,
-                         beginAtZero: !useLogScale,
-                         ticks: { 
-                             color: textColor,
-                             callback: function(value) {
-                                  if (value !== 0 && (Math.abs(value) < 1e-3 || Math.abs(value) >= 1e4)) {
-                                      return value.toExponential(1);
-                                  }
-                                  return value.toLocaleString();
-                             }
-                         },
-                         grid: { color: gridColor }
-                     }
-                 },
-                 plugins: {
-                     legend: { labels: { color: legendColor } }
-                 }
-             }
-         });
-     }
+            chartInstance.current = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [
+                        {
+                            label: chartData.parentName,
+                            data: chartData.parentData,
+                            borderColor: '#0284c7', // Sky-600
+                            backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                            fill: true,
+                            tension: 0, // Straight lines for log scale accuracy
+                            pointRadius: 0,
+                            pointHoverRadius: 6
+                        },
+                        ...(chartData.daughterData ? [{
+                            label: chartData.daughterName,
+                            data: chartData.daughterData,
+                            borderColor: '#e11d48', // Rose-600
+                            backgroundColor: 'rgba(225, 29, 72, 0.1)',
+                            fill: true,
+                            tension: 0,
+                            pointRadius: 0,
+                            pointHoverRadius: 6
+                        }] : [])
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: {
+                            title: { display: true, text: `Time (${chartData.timeUnit})`, color: textColor },
+                            ticks: { color: textColor },
+                            grid: { color: gridColor }
+                        },
+                        y: {
+                            type: useLogScale ? 'logarithmic' : 'linear',
+                            title: { display: true, text: 'Activity', color: textColor, padding: { bottom: 10 }  },
+                            min: safeMin,
+                            beginAtZero: !useLogScale,
+                            ticks: { 
+                                color: textColor,
+                                callback: function(value) {
+                                    if (value !== 0 && (Math.abs(value) < 1e-3 || Math.abs(value) >= 1e4)) {
+                                        return value.toExponential(1);
+                                    }
+                                    return value.toLocaleString();
+                                }
+                            },
+                            grid: { color: gridColor }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: legendColor } }
+                    }
+                }
+            });
+        }
 
-     return () => {
-         if (chartInstance.current) {
-             chartInstance.current.destroy();
-         }
-     };
- }, [chartData, useLogScale, theme]);
+        return () => {
+            if (chartInstance.current) {
+                chartInstance.current.destroy();
+            }
+        };
+    }, [chartData, useLogScale, theme]);
 
- const handleExport = () => {
+    const handleExport = () => {
     if (chartInstance.current) {
         const canvas = chartInstance.current.canvas;
         // Save original background, force white for the export
@@ -1535,20 +1535,20 @@ const DecayChart = ({ chartData, useLogScale, theme }) => {
     }
     };
 
- return (
-     <div className="mt-4">
-         <div className="h-64 w-full">
-             <canvas ref={chartRef}></canvas>
-         </div>
-         <div className="text-center mt-3">
-             <button
-                 onClick={handleExport}
-                 className="flex items-center justify-center gap-2 mx-auto px-4 py-2 text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors"
-             >
-                 <Icon path={ICONS.download} className="w-3 h-3" />
-                 Save Chart Image
-             </button>
-         </div>
-     </div>
- );
+    return (
+        <div className="mt-4">
+            <div className="h-64 w-full">
+                <canvas ref={chartRef}></canvas>
+            </div>
+            <div className="text-center mt-3">
+                <button
+                    onClick={handleExport}
+                    className="flex items-center justify-center gap-2 mx-auto px-4 py-2 text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors"
+                >
+                    <Icon path={ICONS.download} className="w-3 h-3" />
+                    Save Chart Image
+                </button>
+            </div>
+        </div>
+    );
 };
