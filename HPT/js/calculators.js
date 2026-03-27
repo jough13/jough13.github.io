@@ -2640,7 +2640,7 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
  * Includes a print-ready Bill of Lading generator with automatic ERG Guide attachment.
  */
 
-const ShippingPaper = ({ items, classification, label, doseRates, emergencyContact, comments, psn, shipper, consignee, dimensions }) => {
+const ShippingPaper = ({ items, classification, label, doseRates, emergencyContact, comments, shipper, consignee, dimensions }) => {
     
     // --- ERG 2024 REFERENCE DATA ---
     const ERG_DATA = {
@@ -2881,22 +2881,29 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
                         <tr>
                             <th className="border border-black p-2 text-left w-12 text-center">HM</th>
                             <th className="border border-black p-2 text-left">Proper Shipping Name / Hazard Class / UN No.</th>
-                            <th className="border border-black p-2 text-left w-32">Radionuclides</th>
+                            <th className="border border-black p-2 text-left w-32">Radionuclide</th>
                             <th className="border border-black p-2 text-left w-24">Form</th>
-                            <th className="border border-black p-2 text-right w-28">Total Activity</th>
+                            <th className="border border-black p-2 text-right w-28">Activity</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td className="border border-black p-2 text-center font-bold text-lg">{isRegulated ? 'X' : ''}</td>
-                            <td className="border border-black p-2 font-bold">
-                                {classification?.isRQ && <span className="mr-1 text-red-600">RQ,</span>}
-                                {psn}
-                            </td>
-                            <td className="border border-black p-2">{items.map(i => i.symbol).join(', ')}</td>
-                            <td className="border border-black p-2 capitalize">{items[0]?.form === 'A1' ? 'Special' : 'Normal'}, {items[0]?.state}</td>
-                            <td className="border border-black p-2 text-right">{classification?.totalTBq ? classification.totalTBq.toExponential(2) : '0'} TBq</td>
-                        </tr>
+                        {items.length > 0 ? items.map((item, idx) => {
+                            const isItemRegulated = item.fracExempt >= 1.0;
+                            return (
+                                <tr key={item.id || idx}>
+                                    <td className="border border-black p-2 text-center font-bold text-lg">{isItemRegulated ? 'X' : ''}</td>
+                                    <td className="border border-black p-2 font-bold">
+                                        {item.fracRQ >= 1.0 && <span className="mr-1 text-red-600">RQ,</span>}
+                                        {item.psn}
+                                    </td>
+                                    <td className="border border-black p-2">{item.symbol}</td>
+                                    <td className="border border-black p-2 capitalize">{item.form === 'A1' ? 'Special' : 'Normal'}, {item.state}</td>
+                                    <td className="border border-black p-2 text-right">{item.actTBq.toExponential(2)} TBq</td>
+                                </tr>
+                            );
+                        }) : (
+                            <tr><td colSpan="5" className="border border-black p-2 text-center italic text-slate-500">No items added</td></tr>
+                        )}
                     </tbody>
                 </table>
             </div>
@@ -3025,7 +3032,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
 
-    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ?['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
+    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] :['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
 
     // Updated to current 49 CFR 173.443 limits (4 Bq/cm2 and 0.4 Bq/cm2)
     const CONTAM_LIMITS = {
@@ -3060,51 +3067,55 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     // Add New Item State
     const [newItemSymbol, setNewItemSymbol] = React.useState('');
     const [newItemForm, setNewItemForm] = React.useState('A2');
-    const [newItemState, setNewItemState] = React.useState('solid');
-    const[newItemCategory, setNewItemCategory] = React.useState('instrument');
-    const[newItemActivity, setNewItemActivity] = React.useState('1');
-    const [newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
-    const[newItemMass, setNewItemMass] = React.useState(''); // Mass for LSA hinting
+    const[newItemState, setNewItemState] = React.useState('solid');
+    const [newItemCategory, setNewItemCategory] = React.useState('instrument');
+    const [newItemActivity, setNewItemActivity] = React.useState('1');
+    const[newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
+    const [newItemMass, setNewItemMass] = React.useState(''); // Mass for LSA hinting
+    const [itemManualPSN, setItemManualPSN] = React.useState('');
 
     // Package Level Inputs
-    const[fissileMass, setFissileMass] = React.useState(''); // Fissile exception check
+    const [fissileMass, setFissileMass] = React.useState(''); // Fissile exception check
     const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
-    const[doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
-    const[surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
+    const [doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
+    const [surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
     const[surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
 
     // Exclusive Use Vehicle Inputs
     const [vehSurfaceDose, setVehSurfaceDose] = React.useState('');
-    const [veh2mDose, setVeh2mDose] = React.useState('');
+    const[veh2mDose, setVeh2mDose] = React.useState('');
     const[cabDose, setCabDose] = React.useState('');
     const [vehDoseUnit, setVehDoseUnit] = React.useState('mrem/hr');
 
     // BOL specific inputs
-    const [suggestedPSN, setSuggestedPSN] = React.useState('');
-    const [manualPSN, setManualPSN] = React.useState('');
-    const[emergencyContact, setEmergencyContact] = React.useState('');
+    const [emergencyContact, setEmergencyContact] = React.useState('');
     const [bolComments, setBolComments] = React.useState('');
-    const [shipperName, setShipperName] = React.useState('');
-    const[shipperAddress, setShipperAddress] = React.useState('');
+    const[shipperName, setShipperName] = React.useState('');
+    const [shipperAddress, setShipperAddress] = React.useState('');
     const [consigneeName, setConsigneeName] = React.useState('');
     const [consigneeAddress, setConsigneeAddress] = React.useState('');
-    const [packageDimensions, setPackageDimensions] = React.useState('');
+    const[packageDimensions, setPackageDimensions] = React.useState('');
 
-    const[checkContam, setCheckContam] = React.useState(false);
-    const[contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
-    const[removableContam, setRemovableContam] = React.useState('');
+    const [checkContam, setCheckContam] = React.useState(false);
+    const [contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
+    const [removableContam, setRemovableContam] = React.useState('');
 
     const [labelResult, setLabelResult] = React.useState(null);
     const [contamResult, setContamResult] = React.useState(null);
     const[classificationResult, setClassificationResult] = React.useState(null);
-    const[error, setError] = React.useState('');
+    const [error, setError] = React.useState('');
 
     // --- Print Modal State ---
-    const[isPrintModalOpen, setIsPrintModalOpen] = React.useState(false);
-    const[dontShowPrintWarning, setDontShowPrintWarning] = React.useState(false);
+    const [isPrintModalOpen, setIsPrintModalOpen] = React.useState(false);
+    const [dontShowPrintWarning, setDontShowPrintWarning] = React.useState(false);
 
     // --- 3. HELPERS ---
-    const transportNuclides = React.useMemo(() => radionuclides.filter(n => n.shipping && n.shipping.A1 !== undefined && n.shipping.A2 !== undefined).sort((a, b) => a.name.localeCompare(b.name)),[radionuclides]);
+    const activityFactorsTBq = React.useMemo(() => ({ 
+        'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12, 
+        'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8, 'uCi': 3.7e-8 
+    }),[]);
+
+    const transportNuclides = React.useMemo(() => radionuclides.filter(n => n.shipping && n.shipping.A1 !== undefined && n.shipping.A2 !== undefined).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
 
     const selectedNuclideData = React.useMemo(() => 
         transportNuclides.find(n => n.symbol === newItemSymbol), 
@@ -3130,11 +3141,54 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         return 0;
     };
 
+    // Calculate auto-suggested PSN for the current item
+    const currentSuggestedPSN = React.useMemo(() => {
+        if (!selectedNuclideData || !newItemSymbol) return PSN_OPTIONS[15]; // Default to Not Regulated
+        
+        const val = safeParseFloat(newItemActivity);
+        if (isNaN(val) || val <= 0) return PSN_OPTIONS[15];
+
+        const actTBq = val * activityFactorsTBq[newItemUnit];
+        const exemptLimitBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
+        const actBq = actTBq * 1e12;
+        
+        if (exemptLimitBq > 0 && actBq <= exemptLimitBq) {
+            return PSN_OPTIONS[15]; // Not Regulated
+        }
+
+        let rawLimit = selectedNuclideData.shipping[newItemForm];
+        let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
+        
+        let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
+        if (newItemSymbol === 'H-3') { 
+            matPkgMult = 2e-2; instItemMult = 2e-2; instPkgMult = 2e-1; 
+        } else if (newItemState === 'liquid') { 
+            matPkgMult = 1e-4; instItemMult = 1e-3; instPkgMult = 1e-1; 
+        } else if (newItemState === 'gas') {
+            matPkgMult = newItemForm === 'A1' ? 1e-3 : 1e-4; 
+            instItemMult = 1e-3; instPkgMult = 1e-2;
+        } else { // Solid
+            matPkgMult = 1e-3; instItemMult = 1e-2; instPkgMult = 1; 
+        }
+
+        const isInstrument = newItemCategory === 'instrument';
+        const isSpecialForm = newItemForm === 'A1';
+        const hasFissile = FISSILE_ISOTOPES.includes(newItemSymbol);
+
+        const pkgLimitExc = limitTBq * (isInstrument ? instPkgMult : matPkgMult);
+        const itemLimitExc = isInstrument ? limitTBq * instItemMult : Infinity;
+
+        if (actTBq <= pkgLimitExc && actTBq <= itemLimitExc) {
+            return isInstrument ? PSN_OPTIONS[1] : PSN_OPTIONS[0];
+        } else if (actTBq <= limitTBq) {
+            return isSpecialForm ? PSN_OPTIONS[9] : PSN_OPTIONS[8];
+        } else {
+            return hasFissile ? PSN_OPTIONS[12] : PSN_OPTIONS[10];
+        }
+    },[selectedNuclideData, newItemSymbol, newItemActivity, newItemUnit, newItemForm, newItemState, newItemCategory, activityFactorsTBq]);
+
+
     // --- 4. LOGIC ---
-    const activityFactorsTBq = { 
-        'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12, 
-        'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8, 'uCi': 3.7e-8 
-    };
 
     const handleAddItem = () => {
         if (!newItemSymbol) { setError('Select a nuclide.'); return; }
@@ -3199,12 +3253,16 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             fracExempt: exemptLimitBq > 0 ? actBq / exemptLimitBq : Infinity,
             fracRQ: rqLimitTBq === Infinity ? 0 : actTBq / rqLimitTBq,
             mass: massGrams,
-            lsaHint: lsaHint
+            lsaHint: lsaHint,
+            psn: itemManualPSN || currentSuggestedPSN
         };
 
-        setPackageItems(prev => [...prev, item]);
+        setPackageItems(prev =>[...prev, item]);
+        
+        // Reset Inputs after add
         setNewItemActivity('');
         setNewItemMass('');
+        setItemManualPSN('');
         setError('');
     };
 
@@ -3212,11 +3270,10 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         setPackageItems(prev => prev.filter(i => i.id !== id));
     };
 
-    // Calculate Package Totals and Auto-suggest PSN
+    // Calculate Package Totals
     React.useEffect(() => {
         if (packageItems.length === 0) { 
             setClassificationResult(null); 
-            setSuggestedPSN('');
             return; 
         }
 
@@ -3271,23 +3328,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, isRQ, hasFissile });
 
-        // Auto-Suggest PSN
-        if (classification === 'EXEMPT') {
-            setSuggestedPSN(PSN_OPTIONS[15]);
-        } else {
-            const isInstrument = packageItems.some(i => i.category === 'instrument');
-            const isSpecialForm = packageItems.every(i => i.form === 'A1');
-            
-            if (classification === 'EXCEPTED') {
-                setSuggestedPSN(isInstrument ? PSN_OPTIONS[1] : PSN_OPTIONS[0]);
-            } else if (classification === 'TYPE_A') {
-                setSuggestedPSN(isSpecialForm ? PSN_OPTIONS[9] : PSN_OPTIONS[8]);
-            } else if (classification === 'TYPE_B' || classification === 'HRCQ') {
-                setSuggestedPSN(hasFissile ? PSN_OPTIONS[12] : PSN_OPTIONS[10]);
-            }
-        }
-
-    },[packageItems]);
+    }, [packageItems]);
 
     React.useEffect(() => {
         if (!doseRateAt1m && !surfaceDoseRate) { setLabelResult(null); }
@@ -3348,7 +3389,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemCategory('instrument'); setNewItemMass('');
         setDoseRateAt1m(''); setSurfaceDoseRate(''); setCheckContam(false); setRemovableContam(''); setError('');
         setFissileMass(''); setVehSurfaceDose(''); setVeh2mDose(''); setCabDose('');
-        setEmergencyContact(''); setBolComments(''); setManualPSN(''); setSuggestedPSN('');
+        setEmergencyContact(''); setBolComments(''); setItemManualPSN('');
         setShipperName(''); setShipperAddress(''); setConsigneeName(''); setConsigneeAddress(''); setPackageDimensions('');
     };
 
@@ -3521,27 +3562,51 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* --- PER ITEM PSN OVERRIDE --- */}
+                            <div className="md:col-span-2 pt-2 mt-2 border-t border-slate-200 dark:border-slate-700">
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400">Proper Shipping Name (PSN) for this Item</label>
+                                    {itemManualPSN && (
+                                        <button onClick={() => setItemManualPSN('')} className="text-[10px] text-sky-600 dark:text-sky-400 hover:underline font-semibold">
+                                            Reset to Auto-Suggested
+                                        </button>
+                                    )}
+                                </div>
+                                <select 
+                                    value={itemManualPSN || currentSuggestedPSN} 
+                                    onChange={e => setItemManualPSN(e.target.value)} 
+                                    className="w-full p-2 rounded bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-600 focus:ring-sky-500"
+                                >
+                                    {PSN_OPTIONS.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
+                                </select>
+                            </div>
                         </div>
                         <button onClick={handleAddItem} className="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded shadow-sm text-sm">+ Add Item to Package</button>
                         {error && <p className="text-red-500 text-xs text-center">{error}</p>}
                     </div>
 
                     {packageItems.length > 0 && (
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden animate-fade-in">
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-x-auto animate-fade-in shadow-sm">
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-slate-100 dark:bg-slate-800 text-xs text-slate-500 uppercase">
-                                    <tr><th className="p-2">Nuclide</th><th className="p-2">Activity</th><th className="p-2">Type A Frac</th><th className="p-2"></th></tr>
+                                    <tr>
+                                        <th className="p-2">Nuclide</th>
+                                        <th className="p-2">Activity</th>
+                                        <th className="p-2">PSN</th>
+                                        <th className="p-2"></th>
+                                    </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                     {packageItems.map(item => (
                                         <tr key={item.id}>
-                                            <td className="p-2 font-bold">
+                                            <td className="p-2 font-bold whitespace-nowrap">
                                                 {item.symbol} 
                                                 <span className="text-[10px] font-normal text-slate-500 block">{item.form}, {item.state} | {item.category === 'instrument' ? 'Inst/Art' : 'Material'}</span>
                                                 {item.lsaHint && <span className="inline-block mt-0.5 px-1 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 rounded text-[9px] font-bold border border-emerald-200 dark:border-emerald-800">May Qualify: {item.lsaHint}</span>}
                                             </td>
-                                            <td className="p-2 font-mono">{item.activityDisplay}</td>
-                                            <td className="p-2 font-mono">{item.fracTypeA.toFixed(3)}</td>
+                                            <td className="p-2 font-mono whitespace-nowrap">{item.activityDisplay}</td>
+                                            <td className="p-2 text-xs truncate max-w-[200px]" title={item.psn}>{item.psn}</td>
                                             <td className="p-2 text-right"><button onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:text-red-700"><Icon path={ICONS.trash || "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"} className="w-4 h-4"/></button></td>
                                         </tr>
                                     ))}
@@ -3680,54 +3745,35 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
                 {/* --- 4. SHIPPING DOCUMENT DETAILS --- */}
                 <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3 mt-4">
-                    <h3 className="font-bold text-sm text-slate-500 uppercase">4. Shipping Description & BOL Details</h3>
+                    <h3 className="font-bold text-sm text-slate-500 uppercase">4. Bill of Lading Details</h3>
                     
                     <div className="space-y-4">
-                        <div>
-                            <div className="flex justify-between items-center mb-1">
-                                <label className="block text-[10px] font-bold">Proper Shipping Name (PSN)</label>
-                                {manualPSN && (
-                                    <button onClick={() => setManualPSN('')} className="text-[10px] text-sky-600 dark:text-sky-400 hover:underline font-semibold">
-                                        Reset to Auto-Suggested
-                                    </button>
-                                )}
-                            </div>
-                            <select 
-                                value={manualPSN || suggestedPSN} 
-                                onChange={e => setManualPSN(e.target.value)} 
-                                className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-xs border border-slate-300 dark:border-slate-600"
-                            >
-                                {PSN_OPTIONS.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
-                            </select>
-                        </div>
-
-                        {/* --- NEW: Editable Shipper, Consignee, Dimensions --- */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-200 dark:border-slate-700 pt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-[10px] font-bold mb-1">Shipper Name</label>
+                                <label className="block text-[10px] font-bold mb-1 text-slate-500 uppercase">Shipper Name</label>
                                 <input type="text" value={shipperName} onChange={e => setShipperName(e.target.value)} placeholder="Company Name" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600 mb-2" />
-                                <label className="block text-[10px] font-bold mb-1">Shipper Address</label>
+                                <label className="block text-[10px] font-bold mb-1 text-slate-500 uppercase">Shipper Address</label>
                                 <textarea value={shipperAddress} onChange={e => setShipperAddress(e.target.value)} rows="3" placeholder="123 Example St&#10;City, State 12345" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600 resize-y"></textarea>
                             </div>
                             <div>
-                                <label className="block text-[10px] font-bold mb-1">Consignee Name</label>
+                                <label className="block text-[10px] font-bold mb-1 text-slate-500 uppercase">Consignee Name</label>
                                 <input type="text" value={consigneeName} onChange={e => setConsigneeName(e.target.value)} placeholder="Recipient Name" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600 mb-2" />
-                                <label className="block text-[10px] font-bold mb-1">Consignee Address</label>
+                                <label className="block text-[10px] font-bold mb-1 text-slate-500 uppercase">Consignee Address</label>
                                 <textarea value={consigneeAddress} onChange={e => setConsigneeAddress(e.target.value)} rows="3" placeholder="456 Delivery Ave&#10;City, State 67890" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600 resize-y"></textarea>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-200 dark:border-slate-700 pt-4">
                             <div>
-                                <label className="block text-[10px] font-bold mb-1">Package Dimensions / Weight</label>
+                                <label className="block text-[10px] font-bold mb-1 text-slate-500 uppercase">Package Dimensions / Weight</label>
                                 <input type="text" value={packageDimensions} onChange={e => setPackageDimensions(e.target.value)} placeholder="e.g. 12x12x12 in, 15 lbs" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600" />
                             </div>
                             <div>
-                                <label className="block text-[10px] font-bold mb-1">24-Hour Emergency Contact (Optional)</label>
+                                <label className="block text-[10px] font-bold mb-1 text-slate-500 uppercase">24-Hour Emergency Contact (Optional)</label>
                                 <input type="text" value={emergencyContact} onChange={e => setEmergencyContact(e.target.value)} placeholder="e.g. Chemtrec 1-800-424-9300" className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600" />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="block text-[10px] font-bold mb-1">Additional Comments / Handling Instructions</label>
+                                <label className="block text-[10px] font-bold mb-1 text-slate-500 uppercase">Additional Comments / Handling Instructions</label>
                                 <textarea value={bolComments} onChange={e => setBolComments(e.target.value)} rows="2" placeholder="e.g. Keep away from heat, DO NOT DROP..." className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm border border-slate-300 dark:border-slate-600 resize-y"></textarea>
                             </div>
                         </div>
@@ -3762,7 +3808,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     doseRates={{ surface: surfaceDoseRate, at1m: doseRateAt1m, unit: doseRateUnit }}
                     emergencyContact={emergencyContact}
                     comments={bolComments}
-                    psn={manualPSN || suggestedPSN}
                     shipper={{ name: shipperName, address: shipperAddress }}
                     consignee={{ name: consigneeName, address: consigneeAddress }}
                     dimensions={packageDimensions}
