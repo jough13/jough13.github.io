@@ -104,6 +104,7 @@ let cachedAccentColor = '#00E0E0';
 
 // --- ACTIVE ENEMIES ---
 let activeEnemies = []; 
+let activeComets = []; 
 
 // --- RESCUE TRACKING ---
 let isAwaitingRescue = false;
@@ -2463,6 +2464,8 @@ function renderGalacticMap() {
     ctx.clearRect(0, 0, logicalWidth, logicalHeight);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+
+    ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`;
     
     // --- 5A. DRAW FACTION BACKGROUNDS (LAYER 0) ---
     if (sensorPulseActive) {
@@ -2755,7 +2758,33 @@ function renderGalacticMap() {
         }
     });
 
-// Draw Enemies (AND THEIR SENSOR CONES)
+    // --- DRAW COMETS ---
+    activeComets.forEach(comet => {
+        const screenX = (comet.x - camX) * TILE_SIZE + TILE_SIZE / 2;
+        const screenY = (comet.y - camY) * TILE_SIZE + TILE_SIZE / 2;
+        
+        if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
+            ctx.save();
+            if (useHighGraphics && !isLightMode) { 
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#00FFFF';
+            }
+            // Adapts core color to Dark Teal in Light Mode
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, TILE_SIZE * 0.4, 0, Math.PI * 2);
+            ctx.fillStyle = isLightMode ? '#007777' : '#FFFFFF'; 
+            ctx.fill();
+            
+            // Adapts halo color to Dark Teal in Light Mode
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, TILE_SIZE * 0.6, 0, Math.PI * 2);
+            ctx.fillStyle = isLightMode ? 'rgba(0, 119, 119, 0.4)' : 'rgba(0, 255, 255, 0.4)';
+            ctx.fill();
+            ctx.restore();
+        }
+    });
+
+    // Draw Enemies (AND THEIR SENSOR CONES)
     activeEnemies.forEach(enemy => {
         const screenX = (enemy.x - camX) * TILE_SIZE + TILE_SIZE / 2;
         const screenY = (enemy.y - camY) * TILE_SIZE + TILE_SIZE / 2;
@@ -2848,14 +2877,15 @@ function renderGalacticMap() {
         const screenX = (ft.x - camX) * TILE_SIZE;
         const screenY = (ft.y - camY) * TILE_SIZE + ft.offsetY;
         
+        ctx.save(); // 🚨 Lock the canvas state so font sizes don't leak!
+        
         ctx.fillStyle = ft.color;
         ctx.globalAlpha = ft.life;
         ctx.font = `bold 14px 'Orbitron', monospace`;
         if (useHighGraphics && !isLightMode) { ctx.shadowBlur = 5; ctx.shadowColor = ft.color; }
         ctx.fillText(ft.text, screenX, screenY);
         
-        ctx.globalAlpha = 1.0;
-        ctx.shadowBlur = 0;
+        ctx.restore(); // 🚨 Revert the canvas back to normal sizes!
         
         if (currentGameState === GAME_STATES.GALACTIC_MAP) {
             ft.offsetY -= 0.5; // Float up
@@ -3296,6 +3326,67 @@ function processGameTick(timeAmount, isMovement = false) {
     // 5. Move AI Entities
     if (typeof updateEnemies === "function") updateEnemies();
     if (typeof updateAmbientNPCs === "function") updateAmbientNPCs();
+
+     // ==========================================
+    // --- 5.5 COSMIC EVENTS: COMET CHASING ---
+    // ==========================================
+    if (isMovement) {
+        // 1. Spawn Chance (1% chance per step if no comet exists)
+        if (activeComets.length === 0 && Math.random() < 0.01) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = Math.floor(VIEWPORT_WIDTH_TILES); // Spawn on the edge of the screen
+            const cx = Math.floor(playerX + Math.cos(angle) * dist);
+            const cy = Math.floor(playerY + Math.sin(angle) * dist);
+            
+            // Aim it roughly towards the player's side of the screen
+            const vx = Math.sign(playerX - cx + (Math.random() * 10 - 5)) || 1;
+            const vy = Math.sign(playerY - cy + (Math.random() * 10 - 5)) || 1;
+
+            activeComets.push({ x: cx, y: cy, vx: vx, vy: vy });
+            logMessage("<span style='color:var(--accent-color); font-weight:bold;'>[ SENSORS ] High-velocity icy body detected entering local space. Intercept for rare isotopes!</span>");
+            if (typeof soundManager !== 'undefined') soundManager.playScan();
+        }
+
+        // 2. Move & Resolve Comets
+        for (let i = activeComets.length - 1; i >= 0; i--) {
+            let comet = activeComets[i];
+            comet.x += comet.vx;
+            comet.y += comet.vy;
+
+            // Generate a beautiful icy particle tail as it flies!
+            if (typeof spawnParticles === 'function') {
+                spawnParticles(comet.x, comet.y, 'thruster', { x: -comet.vx, y: -comet.vy });
+            }
+
+            // 3. Did the player catch it?!
+            if (comet.x === playerX && comet.y === playerY) {
+                const ice = 5 + Math.floor(Math.random() * 10);
+                const rare = Math.floor(Math.random() * 3); // 0 to 2 Void Crystals
+                
+                playerCargo['HYDROGEN_3'] = (playerCargo['HYDROGEN_3'] || 0) + ice;
+                if (rare > 0) playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + rare;
+
+                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                
+                let lootMsg = `<span style='color:var(--accent-color); font-weight:bold;'>[ COMET INTERCEPTED ]</span> Harvested ${ice}x Hydrogen-3`;
+                if (rare > 0) lootMsg += ` and ${rare}x Void Crystals!`;
+                
+                logMessage(lootMsg);
+                if (typeof showToast === 'function') showToast("COMET HARVESTED", "success");
+                if (typeof soundManager !== 'undefined') soundManager.playGain();
+                
+                // Despawn the comet
+                activeComets.splice(i, 1);
+                continue;
+            }
+
+            // 4. Despawn if it flies too far away
+            const cDist = Math.abs(comet.x - playerX) + Math.abs(comet.y - playerY);
+            if (cDist > VIEWPORT_WIDTH_TILES * 1.5) {
+                activeComets.splice(i, 1);
+            }
+        }
+    }
 
     // 6. Spawn New Traffic (5% chance per tick)
     if (Math.random() < 0.05 && typeof spawnAmbientNPCs === "function") {
