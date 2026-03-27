@@ -2784,7 +2784,7 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
         if (classification.hasFissile) return ERG_DATA['165'];
         if (classification.classification === 'EXCEPTED') return ERG_DATA['161'];
         if (classification.classification === 'TYPE_A') return ERG_DATA['162'];
-        return ERG_DATA['163']; // Default to 163 for Type B / HRCQ
+        return ERG_DATA['163']; 
     };
 
     const getPSN = () => {
@@ -2813,33 +2813,12 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
     const ergData = getERGGuide();
 
     return (
-        <div className="hidden print:block bol-print-container p-8 bg-white text-black font-sans text-sm w-full max-w-4xl mx-auto">
-            {/* CSS to hide app shell and collapse empty layout boxes during print */}
+        <div className="hidden print:block p-8 bg-white text-black font-sans text-sm w-full max-w-4xl mx-auto">
+            {/* Minimal CSS purely for page breaks and margins */}
             <style type="text/css" media="print">
                 {`
-                    html, body, #root, #__next {
-                        height: auto !important;
-                        min-height: 0 !important;
-                        overflow: visible !important;
-                        background: white !important;
-                    }
-                    body * {
-                        display: none !important;
-                    }
-                    .bol-print-container, .bol-print-container * {
-                        display: revert !important;
-                    }
-                    .bol-print-container {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                        margin: 0;
-                        padding: 20px;
-                    }
-                    .erg-page {
-                        page-break-before: always;
-                    }
+                    @page { margin: 0.5in; }
+                    .erg-page { page-break-before: always; }
                 `}
             </style>
 
