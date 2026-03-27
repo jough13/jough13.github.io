@@ -3050,7 +3050,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
 
-    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
+    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] :['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
 
     // Updated to current 49 CFR 173.443 limits (4 Bq/cm2 and 0.4 Bq/cm2)
     const CONTAM_LIMITS = {
@@ -3058,7 +3058,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         alpha: { dpm_100cm2: 2400, bq_cm2: 0.4, label: 'Other Alpha' }
     };
 
-    const FISSILE_ISOTOPES = ['U-233', 'U-235', 'Pu-239', 'Pu-241'];
+    const FISSILE_ISOTOPES =['U-233', 'U-235', 'Pu-239', 'Pu-241'];
 
     // --- 2. STATE ---
     const [packageItems, setPackageItems] = React.useState([]);
@@ -3066,40 +3066,44 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     // Add New Item State
     const [newItemSymbol, setNewItemSymbol] = React.useState('');
     const [newItemForm, setNewItemForm] = React.useState('A2');
-    const [newItemState, setNewItemState] = React.useState('solid');
+    const[newItemState, setNewItemState] = React.useState('solid');
     const [newItemCategory, setNewItemCategory] = React.useState('instrument');
     const [newItemActivity, setNewItemActivity] = React.useState('1');
-    const [newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
+    const[newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
     const [newItemMass, setNewItemMass] = React.useState(''); // Mass for LSA hinting
 
     // Package Level Inputs
     const [fissileMass, setFissileMass] = React.useState(''); // Fissile exception check
     const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
-    const [doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
-    const [surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
-    const [surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
+    const[doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
+    const[surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
+    const[surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
 
     // Exclusive Use Vehicle Inputs
     const [vehSurfaceDose, setVehSurfaceDose] = React.useState('');
     const [veh2mDose, setVeh2mDose] = React.useState('');
-    const [cabDose, setCabDose] = React.useState('');
+    const[cabDose, setCabDose] = React.useState('');
     const [vehDoseUnit, setVehDoseUnit] = React.useState('mrem/hr');
 
     // BOL specific inputs
-    const [emergencyContact, setEmergencyContact] = React.useState('');
+    const[emergencyContact, setEmergencyContact] = React.useState('');
     const [bolComments, setBolComments] = React.useState('');
 
     const [checkContam, setCheckContam] = React.useState(false);
-    const [contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
-    const [removableContam, setRemovableContam] = React.useState('');
+    const[contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
+    const[removableContam, setRemovableContam] = React.useState('');
 
-    const [labelResult, setLabelResult] = React.useState(null);
+    const[labelResult, setLabelResult] = React.useState(null);
     const [contamResult, setContamResult] = React.useState(null);
     const [classificationResult, setClassificationResult] = React.useState(null);
-    const [error, setError] = React.useState('');
+    const[error, setError] = React.useState('');
+
+    // --- Print Modal State ---
+    const[isPrintModalOpen, setIsPrintModalOpen] = React.useState(false);
+    const [dontShowPrintWarning, setDontShowPrintWarning] = React.useState(false);
 
     // --- 3. HELPERS ---
-    const transportNuclides = React.useMemo(() => radionuclides.filter(n => n.shipping && n.shipping.A1 !== undefined && n.shipping.A2 !== undefined).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
+    const transportNuclides = React.useMemo(() => radionuclides.filter(n => n.shipping && n.shipping.A1 !== undefined && n.shipping.A2 !== undefined).sort((a, b) => a.name.localeCompare(b.name)),[radionuclides]);
 
     const selectedNuclideData = React.useMemo(() => 
         transportNuclides.find(n => n.symbol === newItemSymbol), 
@@ -3109,13 +3113,13 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         if (preselectedNuclide && transportNuclides.some(n => n.symbol === preselectedNuclide)) {
             setNewItemSymbol(preselectedNuclide);
         }
-    }, [preselectedNuclide, transportNuclides]);
+    },[preselectedNuclide, transportNuclides]);
 
     React.useEffect(() => {
         if (!activityUnits.includes(newItemUnit)) {
             setNewItemUnit(activityUnits[activityUnits.length - 1]);
         }
-    }, [activityUnits, newItemUnit]);
+    },[activityUnits, newItemUnit]);
 
     const toMremHr = (val, unit) => {
         if (unit === 'mrem/hr') return val;
@@ -3316,7 +3320,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 });
             }
         }
-    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType, settings.unitSystem, classificationResult]);
+    },[doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType, settings.unitSystem, classificationResult]);
 
     const handleClear = () => {
         setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemCategory('instrument'); setNewItemMass('');
@@ -3341,6 +3345,28 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         addToast("Saved to history!");
     };
 
+    // --- Print Modal Handlers ---
+    const handlePrintClick = () => {
+        const hideWarning = localStorage.getItem('hideBolPrintWarning') === 'true';
+        if (hideWarning) {
+            window.print();
+        } else {
+            setIsPrintModalOpen(true);
+        }
+    };
+
+    const confirmPrint = () => {
+        if (dontShowPrintWarning) {
+            localStorage.setItem('hideBolPrintWarning', 'true');
+        }
+        setIsPrintModalOpen(false);
+        // Small delay ensures the modal animation finishes removing it from the DOM
+        // so it doesn't accidentally get captured by the print spooler.
+        setTimeout(() => {
+            window.print();
+        }, 150);
+    };
+
     const resultStyles = {
         EXEMPT: { container: 'bg-slate-100 dark:bg-slate-700/50', title: 'text-slate-600 dark:text-slate-300', display: 'Exempt (Not Class 7)' },
         EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
@@ -3350,7 +3376,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     };
 
     return (
-        <div className="p-4 animate-fade-in relative">
+        <div className="p-4 animate-fade-in relative print:p-0 print:m-0">
             {/* MAIN APP UI (Hidden during print) */}
             <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg print:hidden relative z-10">
                 <div className="flex justify-between items-center mb-4">
@@ -3643,7 +3669,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 {/* Footer Buttons */}
                 <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
                     <button 
-                        onClick={() => window.print()} 
+                        onClick={handlePrintClick} 
                         className="text-sm px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded font-semibold text-slate-800 dark:text-white transition-colors disabled:opacity-50"
                         disabled={!classificationResult}
                     >
@@ -3670,6 +3696,58 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     comments={bolComments}
                 />
             )}
+
+            {/* WARNING MODAL BEFORE PRINTING */}
+            <ConfirmationModal
+                isOpen={isPrintModalOpen}
+                onClose={() => setIsPrintModalOpen(false)}
+                onConfirm={confirmPrint}
+                title="Important Form Warning"
+            >
+                <div className="space-y-4">
+                    <p className="text-amber-700 dark:text-amber-400 font-medium">
+                        <strong>Disclaimer:</strong> This generated Bill of Lading is intended for general transportation purposes and documentation only.
+                    </p>
+                    <p className="text-slate-600 dark:text-slate-300">
+                        It does <strong>NOT</strong> satisfy the requirements for radioactive or hazardous waste shipments, which require specific federal tracking forms:
+                    </p>
+                    <ul className="list-disc pl-5 space-y-2 text-sky-600 dark:text-sky-400">
+                        <li>
+                            <a 
+                                href="https://www.nrc.gov/reading-rm/doc-collections/forms/nrc541info.html" 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="hover:underline flex items-center gap-1"
+                            >
+                                NRC Form 541 (LLRW Manifest)
+                                <Icon path={ICONS.popOut || "M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"} className="w-3 h-3" />
+                            </a>
+                        </li>
+                        <li>
+                            <a 
+                                href="https://www.epa.gov/hwgenerators/uniform-hazardous-waste-manifest-instructions-sample-form-and-continuation-sheet" 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="hover:underline flex items-center gap-1"
+                            >
+                                EPA Uniform Hazardous Waste Manifest
+                                <Icon path={ICONS.popOut || "M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"} className="w-3 h-3" />
+                            </a>
+                        </li>
+                    </ul>
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <label className="flex items-center gap-2 text-sm cursor-pointer text-slate-600 dark:text-slate-300">
+                            <input 
+                                type="checkbox" 
+                                checked={dontShowPrintWarning} 
+                                onChange={(e) => setDontShowPrintWarning(e.target.checked)} 
+                                className="form-checkbox h-4 w-4 rounded text-sky-600" 
+                            />
+                            Don't show this warning again
+                        </label>
+                    </div>
+                </div>
+            </ConfirmationModal>
         </div>
     );
 };
