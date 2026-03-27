@@ -7654,10 +7654,10 @@ if (typeof window.startCombat === 'function' && !window._originalStartCombatForP
 }
 
 // ==========================================
-// --- SHIPBOARD SYNTHESIS (CRAFTING) ---
+// --- SHIPBOARD SYNTHESIS (DEEP CRAFTING) ---
 // ==========================================
 
-// 1. Safely store bonuses in a variable we KNOW gets saved to localStorage!
+// Safely store bonuses in a variable we KNOW gets saved to localStorage!
 function getCraftingBonuses() {
     if (!worldStateDeltas['CRAFTING_BONUSES']) {
         worldStateDeltas['CRAFTING_BONUSES'] = { hull: 0, shields: 0, fuel: 0, damage: 0 };
@@ -7665,15 +7665,11 @@ function getCraftingBonuses() {
     return worldStateDeltas['CRAFTING_BONUSES'];
 }
 
-// 2. Intercept applyPlayerShipStats to apply our permanent bonuses automatically
+// Intercept applyPlayerShipStats to apply our permanent bonuses automatically
 if (typeof window.applyPlayerShipStats === 'function' && !window._craftingApplyStatsHook) {
     window._craftingApplyStatsHook = window.applyPlayerShipStats;
-    
     window.applyPlayerShipStats = function() {
-        // Run the original stat calculations (and previous Crew hooks)
         window._craftingApplyStatsHook();
-        
-        // Apply permanent crafted bonuses!
         const bonuses = getCraftingBonuses();
         if (typeof MAX_PLAYER_HULL !== 'undefined') MAX_PLAYER_HULL += bonuses.hull;
         if (typeof MAX_SHIELDS !== 'undefined') MAX_SHIELDS += bonuses.shields;
@@ -7682,152 +7678,217 @@ if (typeof window.applyPlayerShipStats === 'function' && !window._craftingApplyS
     };
 }
 
-function openCraftingMenu() {
+const CRAFTING_RECIPES = {
+    CONSUMABLES: [
+        { id: "TELEMETRY_PROBE", name: "Telemetry Probe", icon: "🛰️", desc: "A single-use sensor probe for mapping deep space anomalies.", yield: 1, type: "item", req: { TECH_PARTS: 2, MINERALS: 3 } },
+        { id: "PRECURSOR_CIPHER", name: "Precursor Cipher", icon: "🔑", desc: "A quantum decryption key. Crucial for cracking Encrypted Engrams in the field.", yield: 1, type: "item", req: { TECH_PARTS: 4, RARE_METALS: 2, VOID_CRYSTALS: 1 } },
+        { id: "MEDICAL_SUPPLIES", name: "Medical Supplies", icon: "⚕️", desc: "Synthesize trauma kits and stims. Highly valued during colony outbreaks.", yield: 1, type: "item", req: { GENETIC_SAMPLES: 2, FOOD_SUPPLIES: 1 } },
+        { id: "FUEL_CELLS", name: "Emergency Fuel Cells", icon: "🔋", desc: "Refine raw minerals into low-grade hydrogen fuel.", yield: 10, type: "item", req: { MINERALS: 5 } },
+        { id: "NANO_REPAIR_KIT", name: "Nano-Repair Kit", icon: "🔧", desc: "A portable canister of smart-matter. Use from cargo hold to repair 25 Hull.", yield: 1, type: "item", req: { MINERALS: 4, TECH_PARTS: 2 } }
+    ],
+    REFINERY: [
+        { id: "REFINED_ALLOY", name: "Refined Alloy", icon: "⚙️", desc: "Smelt common minerals into high-grade industrial alloy.", yield: 1, type: "item", req: { MINERALS: 10 } },
+        { id: "QUANTUM_LENS", name: "Quantum Lens", icon: "👁️", desc: "Focus void energy through tech parts to create a stable quantum lens.", yield: 1, type: "item", req: { VOID_CRYSTALS: 3, TECH_PARTS: 5 } }
+    ],
+    PROTOTYPES: [
+        { id: "WEAPON_VOID_CASTER", name: "Void Caster", icon: "🔫", desc: "Experimental weapon firing void energy. Automatically equips upon fabrication.", yield: 1, type: "component", slot: "weapon", req: { QUANTUM_LENS: 2, REFINED_ALLOY: 5, RARE_METALS: 5 } },
+        { id: "SHIELD_AETHER_WARD", name: "Aether Ward", icon: "🛡️", desc: "Prototype shield utilizing phase-shifted tech. Automatically equips upon fabrication.", yield: 1, type: "component", slot: "shield", req: { PHASE_SHIFTED_ALLOY: 1, REFINED_ALLOY: 8, TECH_PARTS: 10 } },
+        { id: "ENGINE_SLIPSTREAM", name: "Slipstream Drive", icon: "🚀", desc: "Ultimate sublight engine, reverse-engineered from precursor tech. Automatically equips.", yield: 1, type: "component", slot: "engine", req: { VOID_ENGINE_CORE: 1, REFINED_ALLOY: 10 } }
+    ],
+    UPGRADES: [
+        { id: "HEAL", name: "Field Repairs", icon: "🩹", desc: "Instantly patches 25 Hull integrity.", type: "stat", yield: 25, req: { MINERALS: 10 } },
+        { id: "MAX_HULL", name: "Reinforced Plating", icon: "🧱", desc: "+5 Max Hull (Permanent)", type: "stat", yield: 5, req: { REFINED_ALLOY: 3, RARE_METALS: 2 } },
+        { id: "MAX_SHIELD", name: "Capacitor Overclock", icon: "⚡", desc: "+5 Max Shields (Permanent)", type: "stat", yield: 5, req: { QUANTUM_LENS: 1, TECH_PARTS: 5 } },
+        { id: "MAX_FUEL", name: "Fuel Compression", icon: "🛢️", desc: "+10 Max Fuel (Permanent)", type: "stat", yield: 10, req: { TECH_PARTS: 5, VOID_CRYSTALS: 2 } },
+        { id: "DAMAGE", name: "Weapon Calibration", icon: "🎯", desc: "+2 Base Damage (Permanent)", type: "stat", yield: 2, req: { GENETIC_SAMPLES: 2, QUANTUM_LENS: 2 } }
+    ]
+};
+
+let activeCraftingTab = 'CONSUMABLES';
+
+function openCraftingMenu(tab = 'CONSUMABLES') {
+    activeCraftingTab = tab;
     openGenericModal("ENGINEERING WORKBENCH");
+    
     const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    const recipes = [
-        { id: 'HEAL', name: "Field Repairs", desc: "Instantly patches 25 Hull integrity using raw minerals.", cost: { MINERALS: 10 }, effect: "Restore 25 Hull" },
-        { id: 'MAX_HULL', name: "Reinforced Plating", desc: "Weld extra armor to the chassis.", cost: { MINERALS: 15, RARE_METALS: 2 }, effect: "+5 Max Hull (Permanent)" },
-        { id: 'MAX_SHIELD', name: "Capacitor Overclock", desc: "Rewire the power grid for stronger baseline shields.", cost: { TECH_PARTS: 5, RARE_METALS: 1 }, effect: "+5 Max Shields (Permanent)" },
-        { id: 'MAX_FUEL', name: "Fuel Compression", desc: "Enhance containment fields to hold more plasma.", cost: { TECH_PARTS: 5, VOID_CRYSTALS: 2 }, effect: "+10 Max Fuel (Permanent)" },
-        { id: 'DAMAGE', name: "Weapon Calibration", desc: "Use alien telemetry to permanently tune weapon convergence.", cost: { ALIEN_SPECIMEN: 2, VOID_CRYSTALS: 5 }, effect: "+2 Base Damage (Permanent)" }
-    ];
+    // 1. Render Tabs
+    let tabsHTML = `
+        <div style="display:flex; border-bottom: 1px solid var(--border-color); margin-bottom: 10px; position: sticky; top: 0; background: var(--bg-color); z-index: 5;">
+            ${['CONSUMABLES', 'REFINERY', 'PROTOTYPES', 'UPGRADES'].map(t => `
+                <div onclick="openCraftingMenu('${t}')" style="flex:1; text-align:center; padding:12px 5px; cursor:pointer; font-size:10px; font-weight:bold; letter-spacing:1px; transition: all 0.2s; ${activeCraftingTab === t ? 'border-bottom:2px solid var(--accent-color); color:var(--accent-color); background: rgba(0,224,224,0.05);' : 'color:var(--item-desc-color);'}">${t}</div>
+            `).join('')}
+        </div>
+    `;
 
-    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">AVAILABLE SCHEMATICS</div>`;
-
+    // 2. Render List for Active Tab
+    let listHTML = tabsHTML;
+    const recipes = CRAFTING_RECIPES[activeCraftingTab];
+    
     recipes.forEach((rec, idx) => {
-        const row = document.createElement('div');
-        row.className = 'trade-item-row';
-        row.style.cursor = 'pointer';
-        row.innerHTML = `
-            <div style="display:flex; flex-direction:column; gap: 4px;">
-                <span style="color:var(--text-color); font-weight:bold; font-size:12px;">${rec.name}</span>
-                <span style="color:var(--success); font-size:10px;">${rec.effect}</span>
+        let canCraft = true;
+        for (const req in rec.req) {
+            if ((playerCargo[req] || 0) < rec.req[req]) canCraft = false;
+        }
+        
+        listHTML += `
+            <div class="trade-item-row" style="cursor:pointer; opacity:${canCraft ? '1' : '0.4'}; border-left:3px solid ${canCraft ? 'var(--accent-color)' : 'transparent'}; transition: background 0.2s;" onclick="showCraftingDetails('${activeCraftingTab}', ${idx}, ${canCraft})">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:18px; filter: drop-shadow(0 0 5px ${canCraft ? 'var(--accent-color)' : 'transparent'});">${rec.icon}</span>
+                    <div style="display:flex; flex-direction:column; gap: 4px;">
+                        <span style="color:${canCraft ? 'var(--item-name-color)' : 'var(--item-desc-color)'}; font-weight:bold; font-size:12px;">${rec.name.toUpperCase()}</span>
+                        ${rec.type === 'stat' ? `<span style="color:var(--success); font-size:9px;">PERMANENT UPGRADE</span>` : ''}
+                        ${rec.type === 'component' ? `<span style="color:#9933FF; font-size:9px;">PROTOTYPE GEAR</span>` : ''}
+                    </div>
+                </div>
             </div>
         `;
-        row.onclick = () => showCraftingDetails(recipes, idx);
-        listEl.appendChild(row);
     });
 
+    listEl.innerHTML = listHTML;
+
+    // 3. Default Detail View
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 40px 20px;">
-            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px var(--accent-color)); opacity:0.7;">🛠️</div>
-            <h3 style="color:var(--accent-color); margin-bottom:10px;">SHIPBOARD SYNTHESIS</h3>
-            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
-                Utilize the raw materials in your cargo hold to fabricate emergency supplies or permanently reinforce your vessel's subsystems.
+            <div style="font-size:60px; margin-bottom:15px; opacity:0.3; filter: drop-shadow(0 0 15px var(--accent-color));">⚗️</div>
+            <h3 style="color:var(--text-color); margin-bottom:10px; letter-spacing:2px;">FABRICATOR IDLE</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.6;">
+                Select a schematic from the manifest to review required materials and initiate molecular synthesis.
             </p>
         </div>
     `;
     actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="closeGenericModal()">CLOSE WORKBENCH</button>`;
 }
 
-function showCraftingDetails(recipes, idx) {
+function showCraftingDetails(tab, idx, canCraft) {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
-    const rec = recipes[idx];
+    const rec = CRAFTING_RECIPES[tab][idx];
 
     let reqHtml = '';
-    let canAfford = true;
-
-    for (const [itemId, qty] of Object.entries(rec.cost)) {
-        const itemName = typeof COMMODITIES !== 'undefined' && COMMODITIES[itemId] ? COMMODITIES[itemId].name : itemId;
-        const have = playerCargo[itemId] || 0;
-        const color = have >= qty ? 'var(--success)' : 'var(--danger)';
-        if (have < qty) canAfford = false;
-
-        reqHtml += `<div class="trade-stat-row">
-            <span>${itemName}:</span> 
-            <span style="color:${color}; font-weight:bold;">${have} / ${qty}</span>
-        </div>`;
+    for (const req in rec.req) {
+        const need = rec.req[req];
+        const have = playerCargo[req] || 0;
+        const hasEnough = have >= need;
+        const itemDef = typeof COMMODITIES !== 'undefined' && COMMODITIES[req] ? COMMODITIES[req] : { name: req };
+        
+        reqHtml += `
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px; border-bottom:1px dashed #333; padding-bottom:4px;">
+                <span style="color:var(--text-color);">${itemDef.name}</span>
+                <span style="color:${hasEnough ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${have} / ${need}</span>
+            </div>
+        `;
     }
 
-    detailEl.innerHTML = `
-        <div style="text-align:center; padding: 20px;">
-            <div style="font-size:10px; color:var(--accent-color); letter-spacing:2px; margin-bottom:5px;">SYNTHESIS SCHEMATIC</div>
-            <h3 style="color:var(--item-name-color); margin:0 0 15px 0; letter-spacing: 1px;">${rec.name.toUpperCase()}</h3>
-            
-            <p style="color:var(--text-color); font-size:12px; line-height:1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid var(--accent-color); margin-bottom:20px; text-align:left;">
-                "${rec.desc}"
-            </p>
+    let yieldText = "";
+    if (rec.type === 'item') yieldText = `<span style="color:var(--gold-text);">Yields: ${rec.yield}x ${rec.name}</span>`;
+    else if (rec.type === 'stat') yieldText = `<span style="color:var(--success);">Effect: ${rec.desc.split('(')[0]}</span>`;
+    else if (rec.type === 'component') yieldText = `<span style="color:#9933FF;">Effect: Installs to ${rec.slot.toUpperCase()} Slot</span>`;
 
-            <div class="trade-math-area" style="text-align:left;">
-                <div style="font-size:10px; color:var(--accent-color); letter-spacing:1px; margin-bottom:8px; border-bottom:1px solid #333; padding-bottom:4px;">REQUIRED MATERIALS</div>
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 15px;">
+            <div style="font-size:50px; margin-bottom:10px; filter: drop-shadow(0 0 10px var(--accent-color));">${rec.icon}</div>
+            <h3 style="color:var(--accent-color); margin:0; letter-spacing:1px;">${rec.name.toUpperCase()}</h3>
+            <p style="font-size:12px; color:var(--item-desc-color); margin:15px 0; line-height:1.5;">${rec.desc}</p>
+            
+            <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border-color); padding:15px; border-radius:4px; text-align:left;">
+                <div style="color:var(--text-color); font-size:11px; margin-bottom:12px; font-weight:bold; letter-spacing:1px; border-bottom:1px solid var(--accent-color); padding-bottom:5px;">REQUIRED MATERIALS:</div>
                 ${reqHtml}
+                <div style="margin-top:15px; text-align:right; font-size:12px; font-weight:bold;">
+                    ${yieldText}
+                </div>
             </div>
         </div>
     `;
 
-    if (canAfford) {
-        actionsEl.innerHTML = `
-            <button class="action-button" style="border-color:var(--success); color:var(--success); box-shadow: 0 0 10px rgba(0,255,0,0.2);" onclick="executeCrafting('${rec.id}', ${idx})">
-                INITIATE SYNTHESIS
-            </button>
-            <button class="action-button" onclick="openCraftingMenu()">CANCEL</button>
-        `;
+    if (canCraft) {
+        // Prevent healing if hull is already full
+        if (rec.id === "HEAL" && playerHull >= MAX_PLAYER_HULL) {
+            actionsEl.innerHTML = `
+                <button class="action-button danger-btn" disabled>HULL ALREADY AT MAXIMUM</button>
+                <button class="action-button" onclick="openCraftingMenu('${tab}')">BACK</button>
+            `;
+        } 
+        // Prevent equipping a prototype if it is already equipped!
+        else if (rec.type === 'component' && playerShip.components[rec.slot] === rec.id) {
+            actionsEl.innerHTML = `
+                <button class="action-button danger-btn" disabled>PROTOTYPE ALREADY INSTALLED</button>
+                <button class="action-button" onclick="openCraftingMenu('${tab}')">BACK</button>
+            `;
+        }
+        else {
+            actionsEl.innerHTML = `
+                <button class="action-button" style="border-color:var(--success); color:var(--success); box-shadow: 0 0 15px rgba(0,255,0,0.2);" onclick="executeCrafting('${tab}', ${idx})">
+                    INITIATE SYNTHESIS
+                </button>
+                <button class="action-button" onclick="openCraftingMenu('${tab}')">CANCEL</button>
+            `;
+        }
     } else {
         actionsEl.innerHTML = `
-            <button class="action-button" disabled>INSUFFICIENT MATERIALS</button>
-            <button class="action-button" onclick="openCraftingMenu()">BACK</button>
+            <button class="action-button danger-btn" disabled>INSUFFICIENT MATERIALS</button>
+            <button class="action-button" onclick="openCraftingMenu('${tab}')">BACK</button>
         `;
     }
 }
 
-function executeCrafting(recipeId, idx) {
-    // Quick rebuild of the recipe list to grab costs
-    const recipes = [
-        { id: 'HEAL', cost: { MINERALS: 10 } },
-        { id: 'MAX_HULL', cost: { MINERALS: 15, RARE_METALS: 2 } },
-        { id: 'MAX_SHIELD', cost: { TECH_PARTS: 5, RARE_METALS: 1 } },
-        { id: 'MAX_FUEL', cost: { TECH_PARTS: 5, VOID_CRYSTALS: 2 } },
-        { id: 'DAMAGE', cost: { ALIEN_SPECIMEN: 2, VOID_CRYSTALS: 5 } }
-    ];
+function executeCrafting(tab, idx) {
+    const rec = CRAFTING_RECIPES[tab][idx];
     
-    const rec = recipes[idx];
-    if (!rec || rec.id !== recipeId) return;
-
-    // 1. Deduct Materials
-    for (const [itemId, qty] of Object.entries(rec.cost)) {
-        playerCargo[itemId] -= qty;
-        if (playerCargo[itemId] <= 0) delete playerCargo[itemId];
+    // 1. Deduct ingredients
+    for (const req in rec.req) {
+        playerCargo[req] -= rec.req[req];
+        if (playerCargo[req] <= 0) delete playerCargo[req];
     }
+    
+    // 2. Grant the product based on type
+    if (rec.type === "item") {
+        playerCargo[rec.id] = (playerCargo[rec.id] || 0) + rec.yield;
+        logMessage(`<span style="color:var(--success)">[ SYNTHESIS ] Successfully fabricated ${rec.yield}x ${rec.name}.</span>`);
+        if (typeof showToast === 'function') showToast("SYNTHESIS COMPLETE", "success");
+    } 
+    else if (rec.type === "stat") {
+        if (rec.id === 'HEAL') {
+            playerHull = Math.min(MAX_PLAYER_HULL, playerHull + rec.yield);
+            logMessage(`<span style="color:var(--success)">[ SYNTHESIS ] Nano-sealant deployed. Hull restored by ${rec.yield}.</span>`);
+        } else {
+            const bonuses = getCraftingBonuses();
+            if (rec.id === 'MAX_HULL') bonuses.hull += rec.yield;
+            else if (rec.id === 'MAX_SHIELD') bonuses.shields += rec.yield;
+            else if (rec.id === 'MAX_FUEL') bonuses.fuel += rec.yield;
+            else if (rec.id === 'DAMAGE') bonuses.damage += rec.yield;
+            
+            if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats();
+            logMessage(`<span style="color:var(--success)">[ SYNTHESIS ] Permanent upgrade applied: ${rec.name}.</span>`);
+        }
+        if (typeof showToast === 'function') showToast("UPGRADE APPLIED", "success");
+    }
+    else if (rec.type === "component") {
+        // Swap the ship component instantly
+        const oldCompId = playerShip.components[rec.slot];
+        playerShip.components[rec.slot] = rec.id;
+        
+        // Handle Ammo Swapping
+        const newCompData = typeof COMPONENTS_DATABASE !== 'undefined' ? COMPONENTS_DATABASE[rec.id] : null;
+        if (newCompData && newCompData.stats && newCompData.stats.maxAmmo) {
+            playerShip.ammo[rec.id] = newCompData.stats.maxAmmo;
+        }
+        if (oldCompId !== rec.id && playerShip.ammo[oldCompId]) delete playerShip.ammo[oldCompId]; 
+        
+        if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats();
+        logMessage(`<span style="color:#9933FF; font-weight:bold;">[ PROTOTYPE INSTALLED ]</span> The ${rec.name} has been hardwired into your vessel!`);
+        if (typeof showToast === 'function') showToast("PROTOTYPE INSTALLED", "success");
+    }
+
+    // 3. Update global UI and dependencies
     if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-
-    // 2. Apply Effect to Base Bonuses
-    const bonuses = getCraftingBonuses();
-
-    if (recipeId === 'MAX_HULL') bonuses.hull += 5;
-    else if (recipeId === 'MAX_SHIELD') bonuses.shields += 5;
-    else if (recipeId === 'MAX_FUEL') bonuses.fuel += 10;
-    else if (recipeId === 'DAMAGE') bonuses.damage += 2;
-
-    // 3. Force engine to recalculate MAX stats!
-    if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats();
-
-    // 4. NOW apply the current vitals heal, so the new MAX cap isn't violated
-    if (recipeId === 'HEAL') {
-        playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 25);
-        logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Field repairs complete. Hull integrity restored (+25).</span>");
-    } else if (recipeId === 'MAX_HULL') {
-        playerHull += 5;
-        logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Plating welded. Max Hull permanently increased!</span>");
-    } else if (recipeId === 'MAX_SHIELD') {
-        playerShields += 5;
-        logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Capacitors upgraded. Max Shields permanently increased!</span>");
-    } else if (recipeId === 'MAX_FUEL') {
-        playerFuel += 10;
-        logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Containment expanded. Max Fuel permanently increased!</span>");
-    } else if (recipeId === 'DAMAGE') {
-        logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Calibration successful. Base Weapon Damage permanently increased!</span>");
-    }
-
-    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
-    if (typeof showToast === 'function') showToast("SYNTHESIS COMPLETE", "success");
     if (typeof renderUIStats === 'function') renderUIStats();
+    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate(); 
     
-    openCraftingMenu(); // Refresh UI
+    // 4. Refresh the UI
+    openCraftingMenu(tab);
 }
 
 // ==========================================
