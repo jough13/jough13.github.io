@@ -249,6 +249,36 @@ function updateAmbientNPCs() {
                 if (npc.x === playerX && npc.y === playerY) break;
             }
         }
+
+        // B.75 HAULER STATE: Colony Trade Route
+        else if (npc.state === 'TRADE_ROUTE') {
+            // Move strictly toward the target coordinates (Starbase Alpha)
+            if (npc.x < npc.targetX) npc.x++;
+            else if (npc.x > npc.targetX) npc.x--;
+            
+            if (npc.y < npc.targetY) npc.y++;
+            else if (npc.y > npc.targetY) npc.y--;
+
+            // Have we arrived at Starbase Alpha?
+            if (npc.x === npc.targetX && npc.y === npc.targetY) {
+                const payout = 5000 + Math.floor(Math.random() * 5000);
+                playerCredits += payout;
+                logMessage(`<span style='color:var(--gold-text); font-weight:bold;'>[ TRADE ROUTE ] ${npc.name} safely arrived at Starbase Alpha! Earned ${formatNumber(payout)}c.</span>`);
+                if (typeof soundManager !== 'undefined') soundManager.playBuy();
+                if (typeof renderUIStats === 'function') renderUIStats();
+                activeNPCs.splice(i, 1); // Despawn the ship safely
+                continue;
+            }
+
+            // Did a Pirate Intercept the Hauler?!
+            const pirate = activeEnemies.find(e => e.x === npc.x && e.y === npc.y);
+            if (pirate) {
+                logMessage(`<span style='color:var(--danger); font-weight:bold;'>[ TRADE ROUTE ] ${npc.name} was destroyed by pirates at [${npc.x}, ${-npc.y}]! Cargo lost.</span>`);
+                if (typeof soundManager !== 'undefined') soundManager.playExplosion();
+                activeNPCs.splice(i, 1); // Kill the hauler
+                continue;
+            }
+        }
         
         // C. CRUISING STATE: Standard Spaceflight
         else if (npc.state === 'CRUISING') {
@@ -324,7 +354,7 @@ function updateAmbientNPCs() {
         const dist = Math.abs(npc.x - playerX) + Math.abs(npc.y - playerY);
         
         // Despawn if they drift too far off-screen (Keeps memory clean!)
-        if (dist > VIEWPORT_WIDTH_TILES) {
+                if (dist > VIEWPORT_WIDTH_TILES && !npc.isColonyHauler) { // 🚨 ADDED: && !npc.isColonyHauler
             activeNPCs.splice(i, 1);
             continue;
         }
@@ -2544,6 +2574,29 @@ function renderGalacticMap() {
 
             // Standard Tile Colors
             switch (tileChar) {
+
+                case BLACK_HOLE_CHAR_VAL:
+                    ctx.save();
+                    // 1. Draw Event Horizon (The dark center)
+                    ctx.beginPath();
+                    ctx.arc(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE * 0.4, 0, Math.PI*2);
+                    ctx.fillStyle = '#000';
+                    ctx.fill();
+                    
+                    // 2. Draw Accretion Disk (The glowing purple ring)
+                    const rot = Date.now() / 500; // Constantly rotating
+                    if (useHighGraphics && !isLightMode) {
+                        ctx.shadowBlur = 30;
+                        ctx.shadowColor = '#9933FF';
+                    }
+                    ctx.beginPath();
+                    ctx.ellipse(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, TILE_SIZE, TILE_SIZE * 0.3, rot, 0, Math.PI*2);
+                    ctx.strokeStyle = '#9933FF';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.restore();
+                    continue; // Skip the standard text render below so it doesn't draw the "B" on top!
+
                 case STAR_CHAR_VAL: 
                     const phase = worldX + (worldY * 3); 
                     ctx.globalAlpha = 0.85 + (Math.sin((Date.now() / 2000) + phase) * 0.15);
@@ -2563,7 +2616,7 @@ function renderGalacticMap() {
                     
                     ctx.fillStyle = starColor; 
                     
-                    // 🚨 FIX: Bypassing the browser ghost-box bug by completely isolating the shadow rendering
+                    // 🚨 Bypassing the browser ghost-box bug by completely isolating the shadow rendering
                     if (useHighGraphics && !isLightMode) {
                         ctx.save(); // Lock the canvas state
                         ctx.shadowBlur = (visualStarData.class === "O" || visualStarData.class === "B") ? 15 : 5;
@@ -3163,6 +3216,53 @@ function processGameTick(timeAmount, isMovement = false) {
         }
     }
 
+    // 2.5 GRAVITY WELLS (BLACK HOLES)
+    if (isMovement) {
+        let pulledByBlackHole = false;
+        // Scan a 7x7 grid around the player for a Black Hole
+        for (let dy = -3; dy <= 3; dy++) {
+            for (let dx = -3; dx <= 3; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                
+                const tile = chunkManager.getTile(playerX + dx, playerY + dy);
+                if (getTileChar(tile) === BLACK_HOLE_CHAR_VAL) {
+                    
+                    // If the player has the Void Diver perk or a Precursor Nav Core, they slingshot!
+                    const hasNavCore = playerCargo['PRECURSOR_NAV_CORE'] > 0;
+                    const hasVoidDiver = typeof playerPerks !== 'undefined' && playerPerks.has('VOID_DIVER');
+                    
+                    if (hasNavCore || hasVoidDiver) {
+                        if (Math.random() < 0.3) {
+                            logMessage("<span style='color:var(--accent-color); font-weight:bold;'>[ SLINGSHOT ] You rode the gravity well, launching forward with 0 fuel cost!</span>");
+                            playerFuel += 1.0; // Refund the movement cost
+                        }
+                    } else {
+                        // Otherwise, pull them 1 tile closer!
+                        playerX += Math.sign(dx);
+                        playerY += Math.sign(dy);
+                        playerFuel -= 1.0; // Costs extra fuel fighting the gravity
+                        
+                        logMessage("<span style='color:var(--danger); font-weight:bold;'>[ EVENT HORIZON ] Massive gravity well detected! Ship is being pulled in!</span>");
+                        if (typeof triggerHaptic === 'function') triggerHaptic([50, 100]);
+                        if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+                    }
+                    pulledByBlackHole = true;
+                    break;
+                }
+            }
+            if (pulledByBlackHole) break;
+        }
+
+        // Did they get sucked directly onto the center of the black hole?!
+        const currentTile = chunkManager.getTile(playerX, playerY);
+        if (getTileChar(currentTile) === BLACK_HOLE_CHAR_VAL) {
+            playerHull = 0;
+            logMessage("<span style='color:var(--danger)'>[ SPAGHETTIFICATION ] Crushed by the singularity.</span>");
+            if (typeof triggerGameOver === 'function') triggerGameOver("Crushed by a Black Hole");
+            return true;
+        }
+    }
+
     // 3. Mercenary / Crew Passive Checks
     if (isMovement && typeof processMercenaryDrawbacks === 'function') {
         processMercenaryDrawbacks();
@@ -3242,6 +3342,37 @@ function processGameTick(timeAmount, isMovement = false) {
                             const res = biomeDef.resources[Math.floor(Math.random() * biomeDef.resources.length)];
                             const amount = Math.floor(Math.random() * 3) + 1 + Math.floor(colony.population / 100);
                             colony.storage[res] = (colony.storage[res] || 0) + amount;
+                        }
+                    }
+
+                    // Phase 3: Operational -> Generates Biome Resources
+                    if (colony.phase === 'OPERATIONAL') {
+                        const biomeDef = typeof PLANET_BIOMES !== 'undefined' ? PLANET_BIOMES[colony.biome] : null;
+                        if (biomeDef && biomeDef.resources.length > 0) {
+                            const res = biomeDef.resources[Math.floor(Math.random() * biomeDef.resources.length)];
+                            const amount = Math.floor(Math.random() * 3) + 1 + Math.floor(colony.population / 100);
+                            colony.storage[res] = (colony.storage[res] || 0) + amount;
+                        }
+
+                        // 🚨 NEW: Spawn Trade Route Hauler (5% chance per tick)
+                        if (Math.random() < 0.05) {
+                            // Ensure this colony doesn't already have an active hauler flying
+                            const existingHauler = activeNPCs.find(n => n.isColonyHauler && n.colonyId === colony.id);
+                            if (!existingHauler) {
+                                activeNPCs.push({
+                                    x: colony.x, y: colony.y,
+                                    id: "HAULER_" + Date.now(),
+                                    name: colony.name + " Transport",
+                                    char: "H",
+                                    color: "var(--success)",
+                                    state: "TRADE_ROUTE",
+                                    isColonyHauler: true,
+                                    colonyId: colony.id,
+                                    // Target is Starbase Alpha (MAP_WIDTH - 7, MAP_HEIGHT - 5)
+                                    targetX: 33, targetY: 17 
+                                });
+                                logMessage(`<span style='color:var(--success)'>[ COLONY ] ${colony.name} has launched a heavy transport bound for Starbase Alpha.</span>`);
+                            }
                         }
                     }
 
@@ -3587,6 +3718,7 @@ function handleInteraction() {
         }
 
         switch (tileChar) {
+
             case STAR_CHAR_VAL:
                 const starData = generateStarData(playerX, playerY);
                 const starId = `${playerX}_${playerY}`; 
