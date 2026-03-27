@@ -1129,34 +1129,34 @@
             };
             
             return (
-            <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200">
-            <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800">
-              <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} onNavClick={handleNavClick} />
-              <SearchBar
-                  nuclideName={nuclideName}
-                  inputRef={inputRef}
-                  handleNuclideNameChange={handleNuclideNameChange}
-                  handleKeyDown={handleKeyDown}
-                  onClear={handleClearSearch}
-                  suggestions={suggestions}
-                  activeSuggestionIndex={activeSuggestionIndex}
-                  suggestionsRef={suggestionsRef}
-                  handleNuclideSelection={handleNuclideSelection}
-                  onNavClick={handleNavClick}
-                  isFocused={isSearchFocused}
-                  onFocus={handleSearchFocus}
-                  onBlur={handleSearchBlur}
-              />
-              <MainNav activeView={activeView} onNavClick={handleNavClick} />
-              <main ref={mainContentRef} className="min-h-[400px]">{renderActiveView()}</main>
-        <footer class="print:hidden mt-auto py-6 px-4 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-800">
-            <p class="max-w-3xl mx-auto">
-                <strong>Disclaimer:</strong> Health Physics Toolbox is a personal project and is provided "as is" without warranty of any kind. 
-                While every effort is made to ensure accuracy, the developer is not responsible for any errors, omissions, or the results obtained from the use of this information. 
-                Always verify critical calculations against official regulatory limits and approved organizational procedures.
-            </p>
-        </footer>
-              <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
+                <div className="min-h-screen p-0 sm:p-2 md:p-4 text-slate-800 dark:text-slate-200 print:p-0 print:bg-white">
+                <div className="max-w-7xl mx-auto bg-white dark:bg-slate-900/70 rounded-none sm:rounded-2xl shadow-2xl backdrop-blur-lg border-slate-200 dark:border-slate-800 print:max-w-none print:shadow-none print:border-none print:backdrop-blur-none print:bg-transparent print:rounded-none print:m-0">
+                <Header onHelpClick={() => setIsManualOpen(true)} theme={theme} toggleTheme={toggleTheme} onNavClick={handleNavClick} />
+                <SearchBar
+                    nuclideName={nuclideName}
+                    inputRef={inputRef}
+                    handleNuclideNameChange={handleNuclideNameChange}
+                    handleKeyDown={handleKeyDown}
+                    onClear={handleClearSearch}
+                    suggestions={suggestions}
+                    activeSuggestionIndex={activeSuggestionIndex}
+                    suggestionsRef={suggestionsRef}
+                    handleNuclideSelection={handleNuclideSelection}
+                    onNavClick={handleNavClick}
+                    isFocused={isSearchFocused}
+                    onFocus={handleSearchFocus}
+                    onBlur={handleSearchBlur}
+                />
+                <MainNav activeView={activeView} onNavClick={handleNavClick} />
+                <main ref={mainContentRef} className="min-h-[400px] print:m-0 print:p-0">{renderActiveView()}</main>
+                <footer className="print:hidden mt-auto py-6 px-4 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-slate-200 dark:border-slate-800">
+                    <p className="max-w-3xl mx-auto">
+                        <strong>Disclaimer:</strong> Health Physics Toolbox is a personal project and is provided "as is" without warranty of any kind. 
+                        While every effort is made to ensure accuracy, the developer is not responsible for any errors, omissions, or the results obtained from the use of this information. 
+                        Always verify critical calculations against official regulatory limits and approved organizational procedures.
+                    </p>
+                </footer>
+                <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
             
               {showCalcPopout && (
                   <PopoutWindow
