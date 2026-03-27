@@ -1,4 +1,4 @@
- //==============================================================================
+            //==============================================================================
             // --- REACT COMPONENTS & ICONS
             //==============================================================================
             
@@ -394,7 +394,7 @@
             
             const Header = ({ onHelpClick, theme, toggleTheme, onNavClick }) => (
             
-            <header className="flex items-center p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
+            <header className="print:hidden flex items-center p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
             
             <div className="flex-1 flex justify-start">
                 <Tooltip text="Toggle Theme" widthClass="w-auto">
