@@ -2637,7 +2637,125 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
 /**
  * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B, RQ)
  * based on the nuclide, activity, form, and mass, according to DOT/IAEA A1/A2 and RQ values.
+ * Includes a print-ready Bill of Lading generator.
  */
+
+const ShippingPaper = ({ items, classification, label, doseRates }) => {
+    // Generate an approximate Proper Shipping Name (PSN) based on the classification
+    const getPSN = () => {
+        if (!classification) return "";
+        if (classification.classification === 'EXEMPT') return "Not Regulated as Class 7 Hazardous Material";
+        
+        let psn = "";
+        const isInstrument = items.some(i => i.category === 'instrument');
+
+        if (classification.classification === 'EXCEPTED') {
+            psn = isInstrument 
+                ? "UN2911, Radioactive material, excepted package - instruments or articles, 7"
+                : "UN2910, Radioactive material, excepted package - limited quantity of material, 7";
+        } else if (classification.classification === 'TYPE_A') {
+            psn = "UN2915, Radioactive material, Type A package, non-special form, 7";
+        } else if (classification.classification === 'TYPE_B' || classification.classification === 'HRCQ') {
+            psn = "UN2916, Radioactive material, Type B(U) package, non-fissile or fissile-excepted, 7";
+        }
+
+        if (classification.hasFissile) psn += " (Contains Fissile Material)";
+        
+        return psn;
+    };
+
+    const isRegulated = classification?.classification !== 'EXEMPT';
+
+    return (
+        <div className="hidden print:block p-8 bg-white text-black font-sans text-sm w-full max-w-4xl mx-auto">
+            <div className="text-center mb-6 border-b-2 border-black pb-4">
+                <h1 className="text-2xl font-bold uppercase tracking-wider">Straight Bill of Lading</h1>
+                <h2 className="text-lg font-semibold uppercase">Shipper's Declaration for Dangerous Goods</h2>
+                <p className="text-xs mt-1">Date: {new Date().toLocaleDateString()}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 mb-6">
+                <div className="border border-black p-3 min-h-[100px]">
+                    <p className="font-bold text-xs uppercase mb-1">Shipper:</p>
+                    <p className="text-slate-400 italic text-xs">[Company Name]</p>
+                    <p className="text-slate-400 italic text-xs">[Address]</p>
+                </div>
+                <div className="border border-black p-3 min-h-[100px]">
+                    <p className="font-bold text-xs uppercase mb-1">Consignee:</p>
+                    <p className="text-slate-400 italic text-xs">[Recipient Name]</p>
+                    <p className="text-slate-400 italic text-xs">[Address]</p>
+                </div>
+            </div>
+
+            {/* HAZMAT TABLE */}
+            <div className="mb-6">
+                <table className="w-full border-collapse border border-black text-xs">
+                    <thead>
+                        <tr className="bg-slate-100">
+                            <th className="border border-black p-2 text-left w-12 text-center">HM</th>
+                            <th className="border border-black p-2 text-left">Proper Shipping Name / Hazard Class / UN No.</th>
+                            <th className="border border-black p-2 text-left w-32">Radionuclides</th>
+                            <th className="border border-black p-2 text-left w-24">Form</th>
+                            <th className="border border-black p-2 text-right w-24">Activity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td className="border border-black p-2 text-center font-bold text-lg">{isRegulated ? 'X' : ''}</td>
+                            <td className="border border-black p-2 font-bold">
+                                {classification?.isRQ && <span className="mr-1">RQ,</span>}
+                                {getPSN()}
+                            </td>
+                            <td className="border border-black p-2">{items.map(i => i.symbol).join(', ')}</td>
+                            <td className="border border-black p-2 capitalize">{items[0]?.form === 'A1' ? 'Special' : 'Normal'}, {items[0]?.state}</td>
+                            <td className="border border-black p-2 text-right">{classification?.totalTBq ? classification.totalTBq.toExponential(2) : '0'} TBq</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {/* PACKAGE DETAILS */}
+            {isRegulated && (
+                <div className="border border-black p-4 mb-6 grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                        <p><span className="font-bold">Package Classification:</span> {classification?.classification.replace('_', ' ')}</p>
+                        <p><span className="font-bold">Required Label(s):</span> {label?.labelCategory === 'Excepted Marking (No Label)' ? 'UN Marking Only' : label?.labelCategory || 'N/A'}</p>
+                        {label?.TI > 0 && <p><span className="font-bold">Transport Index (TI):</span> {label.TI.toFixed(1)}</p>}
+                    </div>
+                    <div>
+                        <p><span className="font-bold">Max Surface Dose Rate:</span> {doseRates?.surface || '___'} {doseRates?.unit}</p>
+                        <p><span className="font-bold">Max 1m Dose Rate:</span> {doseRates?.at1m || '___'} {doseRates?.unit}</p>
+                        <p><span className="font-bold">Dimensions/Weight:</span> ___________________</p>
+                    </div>
+                </div>
+            )}
+
+            {/* EMERGENCY CONTACT & CERTIFICATION */}
+            <div className="mb-6">
+                <p className="text-xs font-bold mb-2">24-HOUR EMERGENCY CONTACT: ___________________________________</p>
+                <div className="border-t-2 border-b-2 border-black py-4 my-4">
+                    <p className="text-xs text-justify font-bold uppercase">
+                        This is to certify that the above-named materials are properly classified, described, packaged, 
+                        marked and labeled, and are in proper condition for transportation according to the applicable 
+                        regulations of the Department of Transportation.
+                    </p>
+                </div>
+            </div>
+
+            {/* SIGNATURES */}
+            <div className="grid grid-cols-2 gap-8 mt-12">
+                <div>
+                    <div className="border-b border-black h-8"></div>
+                    <p className="text-xs mt-1">Shipper Signature</p>
+                </div>
+                <div>
+                    <div className="border-b border-black h-8"></div>
+                    <p className="text-xs mt-1">Date</p>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     // --- 1. CONTEXT & CONSTANTS ---
@@ -2944,7 +3062,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     return (
         <div className="p-4 animate-fade-in">
-            <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+            {/* MAIN APP UI (Hidden during print) */}
+            <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg print:hidden">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shipping Calculator</h2>
                     <ClearButton onClick={handleClear} />
@@ -3226,10 +3345,34 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     )}
                 </div>
 
-                <div className="text-right mt-4">
-                    <button onClick={handleSave} className="text-sm text-sky-600 hover:underline font-semibold" disabled={!classificationResult}>Save Full Record</button>
+                {/* Footer Buttons */}
+                <div className="flex justify-end gap-4 mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <button 
+                        onClick={() => window.print()} 
+                        className="text-sm px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded font-semibold text-slate-800 dark:text-white transition-colors disabled:opacity-50"
+                        disabled={!classificationResult}
+                    >
+                        🖨️ Print BOL
+                    </button>
+                    <button 
+                        onClick={handleSave} 
+                        className="text-sm px-4 py-2 bg-sky-600 hover:bg-sky-700 rounded text-white font-semibold transition-colors disabled:opacity-50" 
+                        disabled={!classificationResult}
+                    >
+                        Save Full Record
+                    </button>
                 </div>
             </div>
+
+            {/* PRINT ONLY UI (Hidden on screen) */}
+            {classificationResult && (
+                <ShippingPaper 
+                    items={packageItems}
+                    classification={classificationResult}
+                    label={labelResult}
+                    doseRates={{ surface: surfaceDoseRate, at1m: doseRateAt1m, unit: doseRateUnit }}
+                />
+            )}
         </div>
     );
 };
