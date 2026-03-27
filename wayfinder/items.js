@@ -68,6 +68,16 @@ const COMMODITIES = {
             return true;
         }
     },
+    REFINED_ALLOY: {
+        name: "Refined Alloy",
+        basePrice: 350,
+        description: "High-grade industrial alloy smelted from bulk minerals. Essential for advanced engineering and prototypes."
+    },
+    QUANTUM_LENS: {
+        name: "Quantum Lens",
+        basePrice: 800,
+        description: "A perfectly stabilized void crystal matrix. Used in extreme-precision targeting and shield technology."
+    },
     MINERALS: {
         name: "Minerals",
         basePrice: 25,
