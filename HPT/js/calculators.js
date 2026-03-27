@@ -2636,7 +2636,7 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
 
 /**
  * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B, RQ)
- * based on the nuclide, activity, and form, according to DOT/IAEA A1/A2 and RQ values.
+ * based on the nuclide, activity, form, and mass, according to DOT/IAEA A1/A2 and RQ values.
  */
 
 const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
@@ -2653,6 +2653,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         alpha: { dpm_100cm2: 2400, bq_cm2: 0.4, label: 'Other Alpha' }
     };
 
+    const FISSILE_ISOTOPES = ['U-233', 'U-235', 'Pu-239', 'Pu-241'];
+
     // --- 2. STATE ---
     const [packageItems, setPackageItems] = React.useState([]);
 
@@ -2660,15 +2662,23 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [newItemSymbol, setNewItemSymbol] = React.useState('');
     const [newItemForm, setNewItemForm] = React.useState('A2');
     const [newItemState, setNewItemState] = React.useState('solid');
-    const [newItemCategory, setNewItemCategory] = React.useState('instrument'); // Defaulted to instrument
+    const [newItemCategory, setNewItemCategory] = React.useState('instrument');
     const [newItemActivity, setNewItemActivity] = React.useState('1');
     const [newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
+    const [newItemMass, setNewItemMass] = React.useState(''); // Mass for LSA hinting
 
     // Package Level Inputs
+    const [fissileMass, setFissileMass] = React.useState(''); // Fissile exception check
     const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
     const [doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
     const [surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
     const [surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
+
+    // Exclusive Use Vehicle Inputs
+    const [vehSurfaceDose, setVehSurfaceDose] = React.useState('');
+    const [veh2mDose, setVeh2mDose] = React.useState('');
+    const [cabDose, setCabDose] = React.useState('');
+    const [vehDoseUnit, setVehDoseUnit] = React.useState('mrem/hr');
 
     const [checkContam, setCheckContam] = React.useState(false);
     const [contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
@@ -2698,6 +2708,14 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
     }, [activityUnits, newItemUnit]);
 
+    const toMremHr = (val, unit) => {
+        if (unit === 'mrem/hr') return val;
+        if (unit === 'rem/hr') return val * 1000;
+        if (unit === 'mSv/hr') return val * 100;
+        if (unit === 'µSv/hr') return val * 0.1;
+        return 0;
+    };
+
     // --- 4. LOGIC ---
     const activityFactorsTBq = { 
         'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12, 
@@ -2716,7 +2734,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let rawLimit = nuclideData.shipping[newItemForm];
         let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
 
-        // IMPR 1: Split Item vs Package Multipliers
         let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
 
         if (newItemSymbol === 'H-3') { 
@@ -2735,12 +2752,24 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         
         const exemptLimitBq = nuclideData.shipping.exemptConsignmentBq || 0;
         
-        // Handle RQ parsing (assumes DB uses RQ_TBq or RQ)
         const rawRQ = nuclideData.shipping.RQ_TBq || nuclideData.shipping.RQ;
         const rqLimitTBq = rawRQ ? parseFloat(rawRQ) : Infinity;
 
         const itemLimitExc = newItemCategory === 'instrument' ? limitTBq * instItemMult : Infinity;
         const pkgLimitExc = limitTBq * (newItemCategory === 'instrument' ? instPkgMult : matPkgMult);
+
+        // LSA Qualifier Hint Logic
+        const massGrams = safeParseFloat(newItemMass);
+        let lsaHint = null;
+        
+        const a2Raw = nuclideData.shipping.A2;
+        const a2Val = (typeof a2Raw === 'string' && a2Raw.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(a2Raw);
+
+        if (!isNaN(massGrams) && massGrams > 0 && a2Val !== Infinity) {
+            const specActivity = actTBq / massGrams; // TBq/g
+            if (specActivity <= 1e-4 * a2Val) lsaHint = 'LSA-II';
+            else if (specActivity <= 2e-3 * a2Val) lsaHint = 'LSA-III';
+        }
 
         const item = {
             id: Date.now(),
@@ -2755,11 +2784,14 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             fracExcItem: (limitTBq === Infinity || itemLimitExc === 0) ? 0 : actTBq / itemLimitExc,
             fracExcPkg: (limitTBq === Infinity || pkgLimitExc === 0) ? 0 : actTBq / pkgLimitExc,
             fracExempt: exemptLimitBq > 0 ? actBq / exemptLimitBq : Infinity,
-            fracRQ: rqLimitTBq === Infinity ? 0 : actTBq / rqLimitTBq
+            fracRQ: rqLimitTBq === Infinity ? 0 : actTBq / rqLimitTBq,
+            mass: massGrams,
+            lsaHint: lsaHint
         };
 
         setPackageItems(prev => [...prev, item]);
         setNewItemActivity('');
+        setNewItemMass('');
         setError('');
     };
 
@@ -2778,6 +2810,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let sumFracExempt = 0;
         let sumFracRQ = 0;
         let anyItemFailsExc = false;
+        let hasFissile = false;
 
         packageItems.forEach(item => {
             totalTBq += item.actTBq;
@@ -2787,9 +2820,12 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             sumFracExempt += item.fracExempt;
             sumFracRQ += item.fracRQ;
 
-            // Catch if any individual instrument exceeds the item limit
             if (item.category === 'instrument' && item.fracExcItem > 1.0) {
                 anyItemFailsExc = true;
+            }
+            
+            if (FISSILE_ISOTOPES.includes(item.symbol)) {
+                hasFissile = true;
             }
         });
 
@@ -2797,7 +2833,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let methodology = '';
         const isRQ = sumFracRQ >= 1.0;
 
-        // Evaluate Exempt first, then Exception logic
         if (sumFracExempt <= 1.0) {
             classification = 'EXEMPT';
             methodology = 'Not Regulated as Class 7 (Below Exempt Consignment Limits per 49 CFR 173.436)';
@@ -2817,16 +2852,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             }
         }
 
-        setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, isRQ });
+        setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, isRQ, hasFissile });
     }, [packageItems]);
-
-    const toMremHr = (val, unit) => {
-        if (unit === 'mrem/hr') return val;
-        if (unit === 'rem/hr') return val * 1000;
-        if (unit === 'mSv/hr') return val * 100;
-        if (unit === 'µSv/hr') return val * 0.1;
-        return 0;
-    };
 
     React.useEffect(() => {
         // Label Logic
@@ -2847,7 +2874,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             let labelCategory = "Unknown";
             const surfMrem = !isNaN(rateSurface) ? toMremHr(rateSurface, surfaceDoseRateUnit) : 0;
 
-            // IMPR 2: Intercept Excepted packages with dose rate issues
             if (classificationResult?.classification === 'EXCEPTED') {
                 if (surfMrem > 0.5) {
                     labelCategory = "INVALID EXCEPTED (Surface > 0.5 mrem/h. Ship Type A / White-I)";
@@ -2887,8 +2913,9 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType, settings.unitSystem, classificationResult]);
 
     const handleClear = () => {
-        setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemCategory('instrument');
+        setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemCategory('instrument'); setNewItemMass('');
         setDoseRateAt1m(''); setSurfaceDoseRate(''); setCheckContam(false); setRemovableContam(''); setError('');
+        setFissileMass(''); setVehSurfaceDose(''); setVeh2mDose(''); setCabDose('');
     };
 
     const handleSave = () => {
@@ -2907,7 +2934,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         addToast("Saved to history!");
     };
 
-    // --- STATE & STYLE CONSTANTS ---
     const resultStyles = {
         EXEMPT: { container: 'bg-slate-100 dark:bg-slate-700/50', title: 'text-slate-600 dark:text-slate-300', display: 'Exempt (Not Class 7)' },
         EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
@@ -2924,7 +2950,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     <ClearButton onClick={handleClear} />
                 </div>
 
-                <ContextualNote type="info">Determines package classification (Excepted, Type A, Type B, RQ) based on A1/A2 and RQ fractions. Note: This module does not evaluate LSA or SCO limits.</ContextualNote>
+                <ContextualNote type="info">Determines package classification (Excepted, Type A, Type B, RQ) based on A1/A2 and RQ fractions. Includes checks for Fissile Exceptions and LSA triggers.</ContextualNote>
 
                 {/* --- 1. PACKAGE CONTENTS BUILDER --- */}
                 <div className="space-y-4 mb-6 border-b border-slate-200 dark:border-slate-700 pb-6">
@@ -2962,7 +2988,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     let rawLimit = selectedNuclideData.shipping[newItemForm];
                                     let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
                                     
-                                    // Base multipliers for display
                                     let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
                                     if (newItemSymbol === 'H-3') { 
                                         matPkgMult = 2e-2; instItemMult = 2e-2; instPkgMult = 2e-1; 
@@ -2978,7 +3003,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     const formatLimit = (val) => val === Infinity ? 'Unlimited' : val.toExponential(2);
                                     const exemptBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
                                     
-                                    // RQ Display
                                     const rawRQ = selectedNuclideData.shipping.RQ_TBq || selectedNuclideData.shipping.RQ;
                                     const rqLimitTBq = rawRQ ? parseFloat(rawRQ) : Infinity;
 
@@ -2987,30 +3011,22 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                             <div className="flex justify-between font-bold text-blue-700 dark:text-blue-300 mb-1 border-b border-blue-200 dark:border-blue-800/50 pb-1">
                                                 <span>Regulatory Limits</span>
                                             </div>
-                                            
                                             <div className="space-y-1.5 mt-1">
-                                                {/* A1 / A2 / RQ Limits */}
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <div className="flex justify-between"><span className="text-slate-500">A₁ (Special):</span><span className="font-mono font-bold">{formatLimit(a1Val * multBig)} {unitBig}</span></div>
                                                     <div className="flex justify-between"><span className="text-slate-500">A₂ (Normal):</span><span className="font-mono font-bold">{formatLimit(a2Val * multBig)} {unitBig}</span></div>
                                                 </div>
-                                                
-                                                {/* Excepted Limits (Dynamic based on selected Form/State/Category) */}
                                                 <div className="grid grid-cols-2 gap-2 bg-white/50 dark:bg-slate-800/50 p-1 rounded">
                                                     <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight mb-0.5">{newItemCategory === 'instrument' ? 'Exc. Inst Item' : 'Exc. Mat Pkg'}</span><span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formatLimit(limitTBq * (newItemCategory === 'instrument' ? instItemMult : matPkgMult) * multBig)} {unitBig}</span></div>
                                                     <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight mb-0.5">{newItemCategory === 'instrument' ? 'Exc. Inst Pkg' : ' '}</span><span className="font-mono font-bold text-sky-600 dark:text-sky-400">{newItemCategory === 'instrument' ? formatLimit(limitTBq * instPkgMult * multBig) + ` ${unitBig}` : '-'}</span></div>
                                                 </div>
-
-                                                {/* Exempt Consignment / RQ Limit */}
                                                 <div className="grid grid-cols-2 gap-2 items-center pt-1 border-t border-blue-200 dark:border-blue-800/50">
                                                     <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight">Exempt Consign:</span><span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{exemptBq > 0 ? (exemptBq * multSmall).toExponential(2) : '0'} {unitSmall}</span></div>
                                                     <div className="flex flex-col text-right"><span className="text-slate-500 text-[9px] uppercase leading-tight">RQ Limit:</span><span className="font-mono font-bold text-rose-600 dark:text-rose-400">{formatLimit(rqLimitTBq * multBig)} {unitBig}</span></div>
                                                 </div>
-
-                                                {/* --- TRITIUM CONTEXT NOTE --- */}
                                                 {newItemSymbol === 'H-3' && (
                                                     <div className="mt-2 p-1.5 bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300 rounded border border-sky-200 dark:border-sky-700 text-[10px] leading-tight">
-                                                        <strong>* Tritium Exception:</strong> H-3 has unique excepted package multiplier criteria under 49 CFR 173.425. Instead of standard Class 7 limits, it uses <strong>2×10⁻² A₂</strong> for materials and <strong>2×10⁻¹ A₂</strong> for instruments.
+                                                        <strong>* Tritium Exception:</strong> H-3 has unique excepted package multiplier criteria under 49 CFR 173.425.
                                                     </div>
                                                 )}
                                             </div>
@@ -3029,6 +3045,12 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     </div>
                                 </div>
                                 <div>
+                                    <label className="block text-xs font-medium mb-1 flex justify-between">
+                                        Mass (g) <span className="text-[9px] text-slate-400 font-normal italic">Optional (LSA Check)</span>
+                                    </label>
+                                    <input type="number" inputMode="decimal" min="0" value={newItemMass} onChange={e => setNewItemMass(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border dark:border-slate-600 text-sm" placeholder="e.g. 150" />
+                                </div>
+                                <div>
                                     <label className="block text-xs font-medium mb-1">Form & State</label>
                                     <div className="flex gap-2 mb-2">
                                         <label className={`flex-1 text-center p-1 text-[10px] font-bold rounded cursor-pointer border ${newItemForm === 'A1' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'}`}><input type="radio" className="hidden" name="itemForm" checked={newItemForm === 'A1'} onChange={() => setNewItemForm('A1')} />Special (A1)</label>
@@ -3038,18 +3060,11 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                         <option value="solid">Solid</option><option value="liquid">Liquid</option><option value="gas">Gas</option>
                                     </select>
                                 </div>
-                                {/* EXPLICIT CATEGORY */}
                                 <div>
                                     <label className="block text-xs font-medium mb-1">Category</label>
                                     <div className="flex gap-2 mb-2">
-                                        <label className={`flex-1 text-center p-1 text-[10px] font-bold rounded cursor-pointer border ${newItemCategory === 'material' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'}`}>
-                                            <input type="radio" className="hidden" name="itemCategory" checked={newItemCategory === 'material'} onChange={() => setNewItemCategory('material')} />
-                                            Bulk Material
-                                        </label>
-                                        <label className={`flex-1 text-center p-1 text-[10px] font-bold rounded cursor-pointer border ${newItemCategory === 'instrument' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'}`}>
-                                            <input type="radio" className="hidden" name="itemCategory" checked={newItemCategory === 'instrument'} onChange={() => setNewItemCategory('instrument')} />
-                                            Instrument/Article
-                                        </label>
+                                        <label className={`flex-1 text-center p-1 text-[10px] font-bold rounded cursor-pointer border ${newItemCategory === 'material' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'}`}><input type="radio" className="hidden" name="itemCategory" checked={newItemCategory === 'material'} onChange={() => setNewItemCategory('material')} />Bulk Material</label>
+                                        <label className={`flex-1 text-center p-1 text-[10px] font-bold rounded cursor-pointer border ${newItemCategory === 'instrument' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'}`}><input type="radio" className="hidden" name="itemCategory" checked={newItemCategory === 'instrument'} onChange={() => setNewItemCategory('instrument')} />Instrument/Article</label>
                                     </div>
                                 </div>
                             </div>
@@ -3068,7 +3083,11 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                     {packageItems.map(item => (
                                         <tr key={item.id}>
-                                            <td className="p-2 font-bold">{item.symbol} <span className="text-[10px] font-normal text-slate-500 block">{item.form}, {item.state} | {item.category === 'instrument' ? 'Inst/Art' : 'Material'}</span></td>
+                                            <td className="p-2 font-bold">
+                                                {item.symbol} 
+                                                <span className="text-[10px] font-normal text-slate-500 block">{item.form}, {item.state} | {item.category === 'instrument' ? 'Inst/Art' : 'Material'}</span>
+                                                {item.lsaHint && <span className="inline-block mt-0.5 px-1 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 rounded text-[9px] font-bold border border-emerald-200 dark:border-emerald-800">May Qualify: {item.lsaHint}</span>}
+                                            </td>
                                             <td className="p-2 font-mono">{item.activityDisplay}</td>
                                             <td className="p-2 font-mono">{item.fracTypeA.toFixed(3)}</td>
                                             <td className="p-2 text-right"><button onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:text-red-700"><Icon path={ICONS.trash || "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"} className="w-4 h-4"/></button></td>
@@ -3098,6 +3117,24 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                             )}
                         </p>
                         <p className="text-xs mt-2 opacity-80">{classificationResult.methodology}</p>
+                        
+                        {/* FISSILE INTERCEPT */}
+                        {classificationResult.hasFissile && (
+                            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded text-left">
+                                <h4 className="text-sm font-bold text-amber-800 dark:text-amber-400 flex items-center gap-2">⚠️ Fissile Material Detected</h4>
+                                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1 mb-2">Package contains fissile isotopes. Provide total fissile mass to verify 49 CFR 173.453 exceptions.</p>
+                                <div className="flex items-center gap-3">
+                                    <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Total Fissile Mass (g):</label>
+                                    <input type="number" inputMode="decimal" min="0" value={fissileMass} onChange={e => setFissileMass(e.target.value)} className="w-24 p-1 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm" />
+                                </div>
+                                {fissileMass && safeParseFloat(fissileMass) <= 15 && (
+                                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-2">✅ Fissile Excepted (≤ 15g)</p>
+                                )}
+                                {fissileMass && safeParseFloat(fissileMass) > 15 && (
+                                    <p className="text-xs text-red-600 dark:text-red-400 font-bold mt-2">❌ Exceeds 15g Exception - Requires CSI & Fissile Labels</p>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -3154,6 +3191,39 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                             );
                         })()}
                     </div>
+
+                    {/* EXCLUSIVE USE VEHICLE LIMITS INTERCEPT */}
+                    {labelResult?.labelCategory === "Yellow-III (Exclusive Use)" && (
+                        <div className="p-4 border border-rose-200 dark:border-rose-800/50 bg-rose-50/50 dark:bg-rose-900/10 rounded-lg space-y-3 md:col-span-2 animate-fade-in">
+                            <h3 className="font-bold text-sm text-rose-700 dark:text-rose-400 uppercase">Exclusive Use Vehicle Limits</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-[10px] font-bold mb-1">Closed Veh Surface</label>
+                                    <div className="flex">
+                                        <input type="number" inputMode="decimal" min="0" value={vehSurfaceDose} onChange={e => setVehSurfaceDose(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-white dark:bg-slate-800 text-sm border dark:border-slate-600" />
+                                        <select value={vehDoseUnit} onChange={e => setVehDoseUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select>
+                                    </div>
+                                    {vehSurfaceDose && (toMremHr(safeParseFloat(vehSurfaceDose), vehDoseUnit) <= 200 ? <p className="text-[10px] text-emerald-600 mt-1">✅ ≤ 200 mrem/h</p> : <p className="text-[10px] text-red-600 mt-1">{'❌ > 200 mrem/h'}</p>)}
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold mb-1">2-Meters from Vehicle</label>
+                                    <div className="flex">
+                                        <input type="number" inputMode="decimal" min="0" value={veh2mDose} onChange={e => setVeh2mDose(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-white dark:bg-slate-800 text-sm border dark:border-slate-600" />
+                                        <select value={vehDoseUnit} onChange={e => setVehDoseUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select>
+                                    </div>
+                                    {veh2mDose && (toMremHr(safeParseFloat(veh2mDose), vehDoseUnit) <= 10 ? <p className="text-[10px] text-emerald-600 mt-1">✅ ≤ 10 mrem/h</p> : <p className="text-[10px] text-red-600 mt-1">{'❌ > 10 mrem/h'}</p>)}
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold mb-1">Driver's Cab</label>
+                                    <div className="flex">
+                                        <input type="number" inputMode="decimal" min="0" value={cabDose} onChange={e => setCabDose(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-white dark:bg-slate-800 text-sm border dark:border-slate-600" />
+                                        <select value={vehDoseUnit} onChange={e => setVehDoseUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select>
+                                    </div>
+                                    {cabDose && (toMremHr(safeParseFloat(cabDose), vehDoseUnit) <= 2 ? <p className="text-[10px] text-emerald-600 mt-1">✅ ≤ 2 mrem/h</p> : <p className="text-[10px] text-red-600 mt-1">{'❌ > 2 mrem/h'}</p>)}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="text-right mt-4">
