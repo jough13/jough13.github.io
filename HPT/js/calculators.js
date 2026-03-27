@@ -2660,6 +2660,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [newItemSymbol, setNewItemSymbol] = React.useState('');
     const [newItemForm, setNewItemForm] = React.useState('A2');
     const [newItemState, setNewItemState] = React.useState('solid');
+    const [newItemCategory, setNewItemCategory] = React.useState('material'); // 'material' or 'instrument'
     const [newItemActivity, setNewItemActivity] = React.useState('1');
     const [newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
 
@@ -2735,22 +2736,23 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         const actTBq = val * activityFactorsTBq[newItemUnit];
         const actBq = val * (activityFactorsTBq[newItemUnit] * 1e12);
-
         const exemptLimitBq = nuclideData.shipping.exemptConsignmentBq || 0;
+        
+        // Use single active multiplier based on user's category choice
+        const activeMultiplier = newItemCategory === 'instrument' ? instMultiplier : matMultiplier;
 
         const item = {
             id: Date.now(),
             symbol: newItemSymbol,
             form: newItemForm,
             state: newItemState,
+            category: newItemCategory, // Added explicitly
             activityDisplay: `${val} ${newItemUnit}`,
             actTBq: actTBq,
             typeALimit: limitTBq,
-            exceptedMatLimit: limitTBq === Infinity ? Infinity : limitTBq * matMultiplier,
-            exceptedInstLimit: limitTBq === Infinity ? Infinity : limitTBq * instMultiplier,
+            exceptedLimit: limitTBq === Infinity ? Infinity : limitTBq * activeMultiplier,
             fracTypeA: limitTBq === Infinity ? 0 : actTBq / limitTBq,
-            fracExcMat: (limitTBq === Infinity || limitTBq * matMultiplier === 0) ? 0 : actTBq / (limitTBq * matMultiplier),
-            fracExcInst: (limitTBq === Infinity || limitTBq * instMultiplier === 0) ? 0 : actTBq / (limitTBq * instMultiplier),
+            fracExcepted: (limitTBq === Infinity || limitTBq * activeMultiplier === 0) ? 0 : actTBq / (limitTBq * activeMultiplier),
             fracExempt: exemptLimitBq > 0 ? actBq / exemptLimitBq : Infinity,
         };
 
@@ -2769,16 +2771,14 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         let totalTBq = 0;
         let sumFracTypeA = 0;
-        let sumFracExcMat = 0;
-        let sumFracExcInst = 0;
+        let sumFracExcepted = 0;
         let sumFracHRCQ = 0;
         let sumFracExempt = 0;
 
         packageItems.forEach(item => {
             totalTBq += item.actTBq;
             sumFracTypeA += item.fracTypeA;
-            sumFracExcMat += item.fracExcMat;
-            sumFracExcInst += item.fracExcInst; // Track Instrument fraction
+            sumFracExcepted += item.fracExcepted;
             sumFracHRCQ += (item.actTBq / (3000 * item.typeALimit)); 
             sumFracExempt += item.fracExempt;
         });
@@ -2786,16 +2786,13 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let classification = '';
         let methodology = '';
 
-        // Evaluate Exempt first, then Material and Instrument Excepted logic
+        // Evaluate Exempt first, then unified Excepted fraction logic
         if (sumFracExempt <= 1.0) {
             classification = 'EXEMPT';
             methodology = 'Not Regulated as Class 7 (Below Exempt Consignment Limits per 49 CFR 173.436)';
-        } else if (sumFracExcMat <= 1.0) {
+        } else if (sumFracExcepted <= 1.0) {
             classification = 'EXCEPTED';
-            methodology = 'Sum of Fractions ≤ 1.0 (Excepted Material Limits)';
-        } else if (sumFracExcInst <= 1.0) {
-            classification = 'EXCEPTED';
-            methodology = 'Sum of Fractions ≤ 1.0 (Only valid if packaging as an Instrument/Article. Otherwise, TYPE A)';
+            methodology = 'Sum of Fractions ≤ 1.0 (Excepted Package Limits)';
         } else if (sumFracTypeA <= 1.0) {
             classification = 'TYPE_A';
             methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)';
@@ -2809,7 +2806,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             }
         }
 
-        setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, sumFracExcMat });
+        setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, sumFracExcepted });
     }, [packageItems]);
 
     const toMremHr = (val, unit) => {
@@ -2870,7 +2867,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType, settings.unitSystem]);
 
     const handleClear = () => {
-        setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1');
+        setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemCategory('material');
         setDoseRateAt1m(''); setSurfaceDoseRate(''); setCheckContam(false); setRemovableContam(''); setError('');
     };
 
@@ -3021,6 +3018,20 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                         <option value="solid">Solid</option><option value="liquid">Liquid</option><option value="gas">Gas</option>
                                     </select>
                                 </div>
+                                {/* --- NEW EXPLICIT CATEGORY --- */}
+                                <div>
+                                    <label className="block text-xs font-medium mb-1">Category</label>
+                                    <div className="flex gap-2 mb-2">
+                                        <label className={`flex-1 text-center p-1 text-[10px] font-bold rounded cursor-pointer border ${newItemCategory === 'material' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'}`}>
+                                            <input type="radio" className="hidden" name="itemCategory" checked={newItemCategory === 'material'} onChange={() => setNewItemCategory('material')} />
+                                            Bulk Material
+                                        </label>
+                                        <label className={`flex-1 text-center p-1 text-[10px] font-bold rounded cursor-pointer border ${newItemCategory === 'instrument' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'}`}>
+                                            <input type="radio" className="hidden" name="itemCategory" checked={newItemCategory === 'instrument'} onChange={() => setNewItemCategory('instrument')} />
+                                            Instrument/Article
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <button onClick={handleAddItem} className="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded shadow-sm text-sm">+ Add Item to Package</button>
@@ -3037,7 +3048,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                     {packageItems.map(item => (
                                         <tr key={item.id}>
-                                            <td className="p-2 font-bold">{item.symbol} <span className="text-[10px] font-normal text-slate-500 block">{item.form}, {item.state}</span></td>
+                                            <td className="p-2 font-bold">{item.symbol} <span className="text-[10px] font-normal text-slate-500 block">{item.form}, {item.state} | {item.category === 'instrument' ? 'Inst/Art' : 'Material'}</span></td>
                                             <td className="p-2 font-mono">{item.activityDisplay}</td>
                                             <td className="p-2 font-mono">{item.fracTypeA.toFixed(3)}</td>
                                             <td className="p-2 text-right"><button onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:text-red-700"><Icon path={ICONS.trash || "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"} className="w-4 h-4"/></button></td>
