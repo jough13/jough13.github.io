@@ -2635,8 +2635,8 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
 };
 
 /**
- * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B)
- * based on the nuclide, activity, and form, according to DOT/IAEA A1/A2 values.
+ * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B, RQ)
+ * based on the nuclide, activity, and form, according to DOT/IAEA A1/A2 and RQ values.
  */
 
 const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
@@ -2660,7 +2660,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [newItemSymbol, setNewItemSymbol] = React.useState('');
     const [newItemForm, setNewItemForm] = React.useState('A2');
     const [newItemState, setNewItemState] = React.useState('solid');
-    const [newItemCategory, setNewItemCategory] = React.useState('material'); // 'material' or 'instrument'
+    const [newItemCategory, setNewItemCategory] = React.useState('instrument'); // Defaulted to instrument
     const [newItemActivity, setNewItemActivity] = React.useState('1');
     const [newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
 
@@ -2674,7 +2674,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
     const [removableContam, setRemovableContam] = React.useState('');
 
-    const [result, setResult] = React.useState(null);
     const [labelResult, setLabelResult] = React.useState(null);
     const [contamResult, setContamResult] = React.useState(null);
     const [classificationResult, setClassificationResult] = React.useState(null);
@@ -2683,7 +2682,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     // --- 3. HELPERS ---
     const transportNuclides = React.useMemo(() => radionuclides.filter(n => n.shipping && n.shipping.A1 !== undefined && n.shipping.A2 !== undefined).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
 
-    // Helper to get data for the currently selected "New Item" to display the A1/A2 info
     const selectedNuclideData = React.useMemo(() => 
         transportNuclides.find(n => n.symbol === newItemSymbol), 
     [newItemSymbol, transportNuclides]);
@@ -2702,58 +2700,62 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     // --- 4. LOGIC ---
     const activityFactorsTBq = { 
-            'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12, 
-            'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8, 'uCi': 3.7e-8 
-        };
+        'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12, 
+        'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8, 'uCi': 3.7e-8 
+    };
 
-        const handleAddItem = () => {
-            if (!newItemSymbol) { setError('Select a nuclide.'); return; }
+    const handleAddItem = () => {
+        if (!newItemSymbol) { setError('Select a nuclide.'); return; }
 
-            // SAFE PARSE
-            const val = safeParseFloat(newItemActivity);
-            if (isNaN(val) || val <= 0) { setError('Invalid activity.'); return; }
+        const val = safeParseFloat(newItemActivity);
+        if (isNaN(val) || val <= 0) { setError('Invalid activity.'); return; }
 
-            const nuclideData = transportNuclides.find(n => n.symbol === newItemSymbol);
-            if(!nuclideData) return;
+        const nuclideData = transportNuclides.find(n => n.symbol === newItemSymbol);
+        if(!nuclideData) return;
 
-            let rawLimit = nuclideData.shipping[newItemForm];
-            let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
+        let rawLimit = nuclideData.shipping[newItemForm];
+        let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
 
-            let matMultiplier = 0; let instMultiplier = 0;
-            if (newItemSymbol === 'H-3') { 
-                matMultiplier = 2e-2; instMultiplier = 2e-1; 
-            } else if (newItemState === 'liquid') { 
-                matMultiplier = 1e-4; instMultiplier = 1e-3; 
-            } else if (newItemState === 'gas') {
-                if (newItemForm === 'A1') { // Special Form Gas
-                    matMultiplier = 1e-3; instMultiplier = 1e-3;
-                } else { // Normal Form Gas
-                    matMultiplier = 1e-4; instMultiplier = 1e-3;
-                }
-            } else { // Solid
-                matMultiplier = 1e-3; instMultiplier = 1e-2; 
-            }
+        // IMPR 1: Split Item vs Package Multipliers
+        let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
+
+        if (newItemSymbol === 'H-3') { 
+            matPkgMult = 2e-2; instItemMult = 2e-2; instPkgMult = 2e-1; 
+        } else if (newItemState === 'liquid') { 
+            matPkgMult = 1e-4; instItemMult = 1e-3; instPkgMult = 1e-1; 
+        } else if (newItemState === 'gas') {
+            matPkgMult = newItemForm === 'A1' ? 1e-3 : 1e-4; 
+            instItemMult = 1e-3; instPkgMult = 1e-2;
+        } else { // Solid
+            matPkgMult = 1e-3; instItemMult = 1e-2; instPkgMult = 1; 
+        }
 
         const actTBq = val * activityFactorsTBq[newItemUnit];
         const actBq = val * (activityFactorsTBq[newItemUnit] * 1e12);
+        
         const exemptLimitBq = nuclideData.shipping.exemptConsignmentBq || 0;
         
-        // Use single active multiplier based on user's category choice
-        const activeMultiplier = newItemCategory === 'instrument' ? instMultiplier : matMultiplier;
+        // Handle RQ parsing (assumes DB uses RQ_TBq or RQ)
+        const rawRQ = nuclideData.shipping.RQ_TBq || nuclideData.shipping.RQ;
+        const rqLimitTBq = rawRQ ? parseFloat(rawRQ) : Infinity;
+
+        const itemLimitExc = newItemCategory === 'instrument' ? limitTBq * instItemMult : Infinity;
+        const pkgLimitExc = limitTBq * (newItemCategory === 'instrument' ? instPkgMult : matPkgMult);
 
         const item = {
             id: Date.now(),
             symbol: newItemSymbol,
             form: newItemForm,
             state: newItemState,
-            category: newItemCategory, // Added explicitly
+            category: newItemCategory, 
             activityDisplay: `${val} ${newItemUnit}`,
             actTBq: actTBq,
             typeALimit: limitTBq,
-            exceptedLimit: limitTBq === Infinity ? Infinity : limitTBq * activeMultiplier,
             fracTypeA: limitTBq === Infinity ? 0 : actTBq / limitTBq,
-            fracExcepted: (limitTBq === Infinity || limitTBq * activeMultiplier === 0) ? 0 : actTBq / (limitTBq * activeMultiplier),
+            fracExcItem: (limitTBq === Infinity || itemLimitExc === 0) ? 0 : actTBq / itemLimitExc,
+            fracExcPkg: (limitTBq === Infinity || pkgLimitExc === 0) ? 0 : actTBq / pkgLimitExc,
             fracExempt: exemptLimitBq > 0 ? actBq / exemptLimitBq : Infinity,
+            fracRQ: rqLimitTBq === Infinity ? 0 : actTBq / rqLimitTBq
         };
 
         setPackageItems(prev => [...prev, item]);
@@ -2771,28 +2773,37 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         let totalTBq = 0;
         let sumFracTypeA = 0;
-        let sumFracExcepted = 0;
+        let sumFracExcPkg = 0;
         let sumFracHRCQ = 0;
         let sumFracExempt = 0;
+        let sumFracRQ = 0;
+        let anyItemFailsExc = false;
 
         packageItems.forEach(item => {
             totalTBq += item.actTBq;
             sumFracTypeA += item.fracTypeA;
-            sumFracExcepted += item.fracExcepted;
+            sumFracExcPkg += item.fracExcPkg;
             sumFracHRCQ += (item.actTBq / (3000 * item.typeALimit)); 
             sumFracExempt += item.fracExempt;
+            sumFracRQ += item.fracRQ;
+
+            // Catch if any individual instrument exceeds the item limit
+            if (item.category === 'instrument' && item.fracExcItem > 1.0) {
+                anyItemFailsExc = true;
+            }
         });
 
         let classification = '';
         let methodology = '';
+        const isRQ = sumFracRQ >= 1.0;
 
-        // Evaluate Exempt first, then unified Excepted fraction logic
+        // Evaluate Exempt first, then Exception logic
         if (sumFracExempt <= 1.0) {
             classification = 'EXEMPT';
             methodology = 'Not Regulated as Class 7 (Below Exempt Consignment Limits per 49 CFR 173.436)';
-        } else if (sumFracExcepted <= 1.0) {
+        } else if (sumFracExcPkg <= 1.0 && !anyItemFailsExc) {
             classification = 'EXCEPTED';
-            methodology = 'Sum of Fractions ≤ 1.0 (Excepted Package Limits)';
+            methodology = 'Sum of Fractions ≤ 1.0 (Excepted Limits) AND all individual items meet Item Limits.';
         } else if (sumFracTypeA <= 1.0) {
             classification = 'TYPE_A';
             methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)';
@@ -2806,7 +2817,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             }
         }
 
-        setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, sumFracExcepted });
+        setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, isRQ });
     }, [packageItems]);
 
     const toMremHr = (val, unit) => {
@@ -2836,11 +2847,20 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             let labelCategory = "Unknown";
             const surfMrem = !isNaN(rateSurface) ? toMremHr(rateSurface, surfaceDoseRateUnit) : 0;
 
-            if (surfMrem <= 0.5 && TI === 0) labelCategory = "White-I";
-            else if (surfMrem <= 50 && TI <= 1) labelCategory = "Yellow-II";
-            else if (surfMrem <= 200 && TI <= 10) labelCategory = "Yellow-III";
-            else if (surfMrem > 200 || TI > 10) labelCategory = "Yellow-III (Exclusive Use)";
-            else labelCategory = "Check Limits";
+            // IMPR 2: Intercept Excepted packages with dose rate issues
+            if (classificationResult?.classification === 'EXCEPTED') {
+                if (surfMrem > 0.5) {
+                    labelCategory = "INVALID EXCEPTED (Surface > 0.5 mrem/h. Ship Type A / White-I)";
+                } else {
+                    labelCategory = "Excepted Marking (No Label)";
+                }
+            } else {
+                if (surfMrem <= 0.5 && TI === 0) labelCategory = "White-I";
+                else if (surfMrem <= 50 && TI <= 1) labelCategory = "Yellow-II";
+                else if (surfMrem <= 200 && TI <= 10) labelCategory = "Yellow-III";
+                else if (surfMrem > 200 || TI > 10) labelCategory = "Yellow-III (Exclusive Use)";
+                else labelCategory = "Check Limits";
+            }
 
             setLabelResult({ TI, labelCategory });
         }
@@ -2864,23 +2884,24 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 });
             }
         }
-    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType, settings.unitSystem]);
+    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType, settings.unitSystem, classificationResult]);
 
     const handleClear = () => {
-        setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemCategory('material');
+        setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemCategory('instrument');
         setDoseRateAt1m(''); setSurfaceDoseRate(''); setCheckContam(false); setRemovableContam(''); setError('');
     };
 
     const handleSave = () => {
         if (!classificationResult) return;
+        const rqTag = classificationResult.isRQ ? ' (RQ)' : '';
         const labelInfo = labelResult ? ` | ${labelResult.labelCategory} (TI: ${labelResult.TI})` : '';
         const contamInfo = contamResult ? ` | Contam: ${contamResult.status}` : '';
         addHistory({
             id: Date.now(),
             type: 'Transportation',
-            icon: ICONS.transport || ICONS.truck, // Fallback icon
+            icon: ICONS.transport || ICONS.truck,
             inputs: `${packageItems.length} Items (Total ${classificationResult.totalTBq.toExponential(2)} TBq)`,
-            result: `${classificationResult.classification.replace('_', ' ')}${labelInfo}${contamInfo}`,
+            result: `${classificationResult.classification.replace('_', ' ')}${rqTag}${labelInfo}${contamInfo}`,
             view: VIEWS.TRANSPORTATION
         });
         addToast("Saved to history!");
@@ -2903,7 +2924,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     <ClearButton onClick={handleClear} />
                 </div>
 
-                <ContextualNote type="info">Determines package classification (Excepted, Type A, Type B) based on A1/A2 fractions. Note: This module does not evaluate LSA or SCO limits.</ContextualNote>
+                <ContextualNote type="info">Determines package classification (Excepted, Type A, Type B, RQ) based on A1/A2 and RQ fractions. Note: This module does not evaluate LSA or SCO limits.</ContextualNote>
 
                 {/* --- 1. PACKAGE CONTENTS BUILDER --- */}
                 <div className="space-y-4 mb-6 border-b border-slate-200 dark:border-slate-700 pb-6">
@@ -2925,16 +2946,14 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     )}
                                 </div>
                                 
-                                {/* A1/A2 INFO DISPLAY */}
+                                {/* A1/A2/RQ INFO DISPLAY */}
                                 {selectedNuclideData && (() => {
-                                    // 1. Determine active units and multipliers based on user settings
                                     const isSi = settings.unitSystem === 'si';
                                     const unitBig = isSi ? 'TBq' : 'Ci';
-                                    const multBig = isSi ? 1 : 27.027; // 1 TBq = 27.027 Ci
+                                    const multBig = isSi ? 1 : 27.027;
                                     const unitSmall = isSi ? 'Bq' : 'µCi';
-                                    const multSmall = isSi ? 1 : (1 / 37000); // 1 µCi = 37,000 Bq
+                                    const multSmall = isSi ? 1 : (1 / 37000);
 
-                                    // 2. Parse raw limits
                                     const a1Raw = selectedNuclideData.shipping.A1;
                                     const a2Raw = selectedNuclideData.shipping.A2;
                                     const a1Val = (typeof a1Raw === 'string' && a1Raw.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(a1Raw);
@@ -2943,22 +2962,25 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     let rawLimit = selectedNuclideData.shipping[newItemForm];
                                     let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
                                     
-                                    // 3. Determine multipliers based on Form & State
-                                    let matMultiplier = 0; let instMultiplier = 0;
+                                    // Base multipliers for display
+                                    let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
                                     if (newItemSymbol === 'H-3') { 
-                                        matMultiplier = 2e-2; instMultiplier = 2e-1; 
+                                        matPkgMult = 2e-2; instItemMult = 2e-2; instPkgMult = 2e-1; 
                                     } else if (newItemState === 'liquid') { 
-                                        matMultiplier = 1e-4; instMultiplier = 1e-3; 
+                                        matPkgMult = 1e-4; instItemMult = 1e-3; instPkgMult = 1e-1; 
                                     } else if (newItemState === 'gas') {
-                                        matMultiplier = newItemForm === 'A1' ? 1e-3 : 1e-4; 
-                                        instMultiplier = 1e-3;
+                                        matPkgMult = newItemForm === 'A1' ? 1e-3 : 1e-4; 
+                                        instItemMult = 1e-3; instPkgMult = 1e-2;
                                     } else { // Solid
-                                        matMultiplier = 1e-3; instMultiplier = 1e-2; 
+                                        matPkgMult = 1e-3; instItemMult = 1e-2; instPkgMult = 1; 
                                     }
 
-                                    // 4. Formatting helper
                                     const formatLimit = (val) => val === Infinity ? 'Unlimited' : val.toExponential(2);
                                     const exemptBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
+                                    
+                                    // RQ Display
+                                    const rawRQ = selectedNuclideData.shipping.RQ_TBq || selectedNuclideData.shipping.RQ;
+                                    const rqLimitTBq = rawRQ ? parseFloat(rawRQ) : Infinity;
 
                                     return (
                                         <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800 text-[10px] sm:text-xs">
@@ -2967,24 +2989,22 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                             </div>
                                             
                                             <div className="space-y-1.5 mt-1">
-                                                {/* A1 / A2 Limits */}
+                                                {/* A1 / A2 / RQ Limits */}
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <div className="flex justify-between"><span className="text-slate-500">A₁ (Special):</span><span className="font-mono font-bold">{formatLimit(a1Val * multBig)} {unitBig}</span></div>
                                                     <div className="flex justify-between"><span className="text-slate-500">A₂ (Normal):</span><span className="font-mono font-bold">{formatLimit(a2Val * multBig)} {unitBig}</span></div>
                                                 </div>
                                                 
-                                                {/* Excepted Limits (Dynamic based on selected Form/State) */}
+                                                {/* Excepted Limits (Dynamic based on selected Form/State/Category) */}
                                                 <div className="grid grid-cols-2 gap-2 bg-white/50 dark:bg-slate-800/50 p-1 rounded">
-                                                    <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight mb-0.5">Exc. Material</span><span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formatLimit(limitTBq * matMultiplier * multBig)} {unitBig}</span></div>
-                                                    <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight mb-0.5">Exc. Instrument</span><span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formatLimit(limitTBq * instMultiplier * multBig)} {unitBig}</span></div>
+                                                    <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight mb-0.5">{newItemCategory === 'instrument' ? 'Exc. Inst Item' : 'Exc. Mat Pkg'}</span><span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formatLimit(limitTBq * (newItemCategory === 'instrument' ? instItemMult : matPkgMult) * multBig)} {unitBig}</span></div>
+                                                    <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight mb-0.5">{newItemCategory === 'instrument' ? 'Exc. Inst Pkg' : ' '}</span><span className="font-mono font-bold text-sky-600 dark:text-sky-400">{newItemCategory === 'instrument' ? formatLimit(limitTBq * instPkgMult * multBig) + ` ${unitBig}` : '-'}</span></div>
                                                 </div>
 
-                                                {/* Exempt Consignment Limit */}
-                                                <div className="flex justify-between items-center pt-1 border-t border-blue-200 dark:border-blue-800/50">
-                                                    <span className="text-slate-500">Exempt Consignment:</span>
-                                                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                                        {exemptBq > 0 ? (exemptBq * multSmall).toExponential(2) : '0'} {unitSmall}
-                                                    </span>
+                                                {/* Exempt Consignment / RQ Limit */}
+                                                <div className="grid grid-cols-2 gap-2 items-center pt-1 border-t border-blue-200 dark:border-blue-800/50">
+                                                    <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight">Exempt Consign:</span><span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{exemptBq > 0 ? (exemptBq * multSmall).toExponential(2) : '0'} {unitSmall}</span></div>
+                                                    <div className="flex flex-col text-right"><span className="text-slate-500 text-[9px] uppercase leading-tight">RQ Limit:</span><span className="font-mono font-bold text-rose-600 dark:text-rose-400">{formatLimit(rqLimitTBq * multBig)} {unitBig}</span></div>
                                                 </div>
 
                                                 {/* --- TRITIUM CONTEXT NOTE --- */}
@@ -3018,7 +3038,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                         <option value="solid">Solid</option><option value="liquid">Liquid</option><option value="gas">Gas</option>
                                     </select>
                                 </div>
-                                {/* --- NEW EXPLICIT CATEGORY --- */}
+                                {/* EXPLICIT CATEGORY */}
                                 <div>
                                     <label className="block text-xs font-medium mb-1">Category</label>
                                     <div className="flex gap-2 mb-2">
@@ -3071,7 +3091,12 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 {classificationResult && (
                     <div className={`p-4 rounded-lg text-center mb-6 animate-fade-in ${resultStyles[classificationResult.classification].container}`}>
                         <p className="text-xs uppercase font-bold opacity-70 mb-1">Package Classification</p>
-                        <p className={`text-2xl font-extrabold ${resultStyles[classificationResult.classification].title}`}>{resultStyles[classificationResult.classification].display}</p>
+                        <p className={`text-2xl font-extrabold flex items-center justify-center gap-2 ${resultStyles[classificationResult.classification].title}`}>
+                            {resultStyles[classificationResult.classification].display}
+                            {classificationResult.isRQ && (
+                                <span className="text-rose-600 dark:text-rose-400 border-2 border-rose-600 px-1.5 py-0.5 rounded text-sm font-black">RQ</span>
+                            )}
+                        </p>
                         <p className="text-xs mt-2 opacity-80">{classificationResult.methodology}</p>
                     </div>
                 )}
@@ -3094,7 +3119,9 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                             <div className="p-2 bg-slate-100 dark:bg-slate-900 rounded text-center">
                                 <p className="text-xs text-slate-500">Required Label</p>
                                 <p className="text-lg font-bold text-sky-600 dark:text-sky-400">{labelResult.labelCategory}</p>
-                                <p className="text-[10px] text-slate-400">TI: {labelResult.TI.toFixed(1)}</p>
+                                {labelResult.labelCategory !== "Excepted Marking (No Label)" && (
+                                    <p className="text-[10px] text-slate-400">TI: {labelResult.TI.toFixed(1)}</p>
+                                )}
                             </div>
                         )}
                     </div>
