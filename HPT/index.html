@@ -187,16 +187,17 @@
             });
         </script>
     </head>
-    <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 antialiased min-h-screen flex flex-col print:bg-white">
-
-    <div id="toast-root"></div>
-    <div id="modal-root"></div>
-
-    <div id="root" class="flex-grow flex flex-col max-w-7xl mx-auto w-full bg-white dark:bg-slate-800 shadow-xl print:shadow-none rounded-b-2xl print:rounded-none overflow-hidden transition-colors duration-300"></div>
+    <body class="bg-slate-100 dark:bg-slate-900 transition-colors duration-300 print:bg-white">
+        <div id="loader">
+            <div class="spinner"></div>
+            <p class="loading-text">Health Physics Toolbox loading...</p>
+        </div>
+        <!--The root element where the React application will be mounted.-->
+        <div id="root" class="print:shadow-none rounded-b-2xl print:rounded-none"></div>
         <div id="back-to-top-root"></div>
         <div id="modal-root"></div>
         <div id="toast-root"></div>
-        <!-- 1. External Libraries -->
+        <!-- 1. External Libraries (Keep these) -->
         <script src="js/radionuclide-data.js"></script> 
         <!-- 2. Constants & Data -->
         <script type="text/babel" src="js/constants.js"></script>
