@@ -270,6 +270,22 @@ const PIRATE_SHIP_CLASSES = {
 // ==========================================
 
 const COMPONENTS_DATABASE = {
+    // --- PROTOTYPE GEAR (CRAFTING ONLY) ---
+   "WEAPON_VOID_CASTER": {
+       name: "Void Caster Prototype", slot: "weapon", cost: 0, manufacturer: "UNKNOWN",
+       description: "An experimental weapon firing weaponized void energy. Incredible damage output and critical strike capability.", 
+       stats: { damage: 35, hitChance: 0.85, critChance: 0.25 }
+   },
+   "SHIELD_AETHER_WARD": {
+       name: "Aether Ward Emitter", slot: "shield", cost: 0, manufacturer: "UNKNOWN",
+       description: "A prototype shield utilizing phase-shifted tech to rapidly disperse kinetic and thermal impacts.", 
+       stats: { maxShields: 200, rechargeRate: 5 }
+   },
+   "ENGINE_SLIPSTREAM": {
+       name: "Slipstream Drive", slot: "engine", cost: 0, manufacturer: "UNKNOWN",
+       description: "Reverse-engineered from precursor tech. Provides immense fuel reserves and peak sublight efficiency.", 
+       stats: { maxFuel: 500, fuelEfficiency: 0.4 } 
+   },
    // --- CONCORD MILITARY GEAR (AEGIS ARMORY) ---
    "WEAPON_CONCORD_PLASMA": {
        name: "Aegis Plasma Cannon", slot: "weapon", cost: 8500, manufacturer: "CONCORD", reqFaction: "CONCORD", minRep: 20,
