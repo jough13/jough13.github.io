@@ -311,7 +311,7 @@ function handleCombatAction(action) {
         if (Math.random() < hitChance) {
             if (typeof soundManager !== 'undefined') soundManager.playLaser();
             
-            // 🚨 NEW CRITICAL HIT MECHANIC
+            // CRITICAL HIT MECHANIC
             const critRoll = weaponStats.critChance || 0.05; // Default 5% if not defined
             if (Math.random() < critRoll) {
                 damageDealt *= 2;
@@ -414,7 +414,7 @@ function handleCombatAction(action) {
             return;
         } 
         
-        // 2. 🚨 NEW: The Bribe Mechanic!
+        // 2. The Bribe Mechanic!
         // If your rep isn't high enough, but you have cash, try to buy them off!
         const bribeCost = (currentCombatContext.difficultyMultiplier || 1) * 500;
         
@@ -601,7 +601,7 @@ function handleCombatAction(action) {
 
             let isHit = Math.random() < hitChance;
 
-            // NEW 75% Evade Dodge Mechanic
+            // 75% Evade Dodge Mechanic
             if (playerIsEvading) {
                 if (Math.random() < 0.75) {
                     isHit = false;
@@ -615,27 +615,29 @@ function handleCombatAction(action) {
                 if (typeof soundManager !== 'undefined') soundManager.playExplosion();
                 if (typeof triggerHaptic === "function") triggerHaptic([100, 50]);
 
-                if (!playerIsEvading) enemyLog += "Hit! ";
-
-                if (playerShields > 0) {
-                    playerShields -= pD;
-                    enemyLog += `Shields took ${Math.floor(pD)}.`;
-                    if (playerShields < 0) {
-                        const spill = Math.abs(playerShields);
-                        playerHull -= spill;
-                        playerShields = 0;
-                        enemyLog += ` Breach! Hull took ${Math.floor(spill)}.`;
-                        
-                        // GameBus Integration for screen shake/flashes!
-                        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: Math.floor(spill), reason: "Combat Fire" });
-                        else if (typeof triggerDamageEffect === "function") triggerDamageEffect();
-                    }
+                // 🚨 NEW: DRONE INTERCEPTION SACRIFICE
+                if (currentCombatContext.playerDrones && currentCombatContext.playerDrones > 0) {
+                    currentCombatContext.playerDrones--;
+                    enemyLog += `<span style="color:var(--warning)">[ INTERCEPTED ] Your Combat Drone threw itself into the line of fire and was destroyed! (0 Damage taken)</span> `;
                 } else {
-                    playerHull -= pD;
-                    enemyLog += `Hull took ${Math.floor(pD)} damage!`;
-                    
-                    if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: Math.floor(pD), reason: "Combat Fire" });
-                    else if (typeof triggerDamageEffect === "function") triggerDamageEffect();
+                    // Standard Player Damage Logic
+                    if (!playerIsEvading) enemyLog += "Hit! ";
+
+                    if (playerShields > 0) {
+                        playerShields -= pD;
+                        enemyLog += `Shields took ${Math.floor(pD)}.`;
+                        if (playerShields < 0) {
+                            const spill = Math.abs(playerShields);
+                            playerHull -= spill;
+                            playerShields = 0;
+                            enemyLog += ` Breach! Hull took ${Math.floor(spill)}.`;
+                            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: Math.floor(spill), reason: "Combat Fire" });
+                        }
+                    } else {
+                        playerHull -= pD;
+                        enemyLog += `Hull took ${Math.floor(pD)} damage!`;
+                        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: Math.floor(pD), reason: "Combat Fire" });
+                    }
                 }
             } else {
                 if (!playerIsEvading) enemyLog += "Enemy fire missed!";
@@ -1499,4 +1501,20 @@ function refusePirateToll() {
     logMessage("<span style='color:var(--danger); font-weight:bold;'>[ COMBAT ] 'Big mistake, spacer!' Weapons hot!</span>");
     startCombat(pendingExtortionEnemy);
     pendingExtortionEnemy = null;
+}
+
+function deployCombatDrone() {
+    if (currentGameState !== GAME_STATES.COMBAT || !currentCombatContext) {
+        if (typeof showToast === 'function') showToast("MUST BE IN COMBAT", "error");
+        return false; // Don't consume the item!
+    }
+
+    // Add the drone to the combat context
+    currentCombatContext.playerDrones = (currentCombatContext.playerDrones || 0) + 1;
+    
+    logMessage(`<span style="color:var(--success); font-weight:bold;">[ DRONE DEPLOYED ] Combat Swarm Drone launched! It engages the enemy!</span>`);
+    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+    if (typeof renderCombatView === 'function') renderCombatView();
+    
+    return true; // Consume the item!
 }
