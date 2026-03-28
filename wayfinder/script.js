@@ -7785,7 +7785,9 @@ const CRAFTING_RECIPES = {
         { id: "PRECURSOR_CIPHER", name: "Precursor Cipher", icon: "🔑", desc: "A quantum decryption key. Crucial for cracking Encrypted Engrams in the field.", yield: 1, type: "item", req: { TECH_PARTS: 4, RARE_METALS: 2, VOID_CRYSTALS: 1 } },
         { id: "MEDICAL_SUPPLIES", name: "Medical Supplies", icon: "⚕️", desc: "Synthesize trauma kits and stims. Highly valued during colony outbreaks.", yield: 1, type: "item", req: { GENETIC_SAMPLES: 2, FOOD_SUPPLIES: 1 } },
         { id: "FUEL_CELLS", name: "Emergency Fuel Cells", icon: "🔋", desc: "Refine raw minerals into low-grade hydrogen fuel.", yield: 10, type: "item", req: { MINERALS: 5 } },
-        { id: "NANO_REPAIR_KIT", name: "Nano-Repair Kit", icon: "🔧", desc: "A portable canister of smart-matter. Use from cargo hold to repair 25 Hull.", yield: 1, type: "item", req: { MINERALS: 4, TECH_PARTS: 2 } }
+        { id: "NANO_REPAIR_KIT", name: "Nano-Repair Kit", icon: "🔧", desc: "A portable canister of smart-matter. Use from cargo hold to repair 25 Hull.", yield: 1, type: "item", req: { MINERALS: 4, TECH_PARTS: 2 } },
+        { id: "MINING_DRONE_MK2", name: "Auto-Miner Drone", icon: "🛸", desc: "Autonomous drone that finds and mines asteroids for you.", yield: 1, type: "item", req: { TECH_PARTS: 3, MINERALS: 10 } },
+        { id: "COMBAT_DRONE_MK1", name: "Combat Drone", icon: "🚁", desc: "Deploys in combat to deal damage and absorb enemy fire.", yield: 1, type: "item", req: { TECH_PARTS: 5, REFINED_ALLOY: 2 } }
     ],
     REFINERY: [
         { id: "REFINED_ALLOY", name: "Refined Alloy", icon: "⚙️", desc: "Smelt common minerals into high-grade industrial alloy.", yield: 1, type: "item", req: { MINERALS: 10 } },
