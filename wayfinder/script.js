@@ -2642,8 +2642,9 @@ function renderGalacticMap() {
                     ctx.font = `bold ${TILE_SIZE * 1.3 * sizeMod}px 'Orbitron', monospace`;
                     ctx.fillText(tileChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
                     ctx.restore(); 
-                    continue; // 🚨 FIX: Skip standard render so we don't draw it twice!
+                    continue; // Skip standard render so we don't draw it twice!
                 case OUTPOST_CHAR_VAL: ctx.fillStyle = isLightMode ? '#228822' : '#AADD99'; break;
+                case 'h': ctx.fillStyle = isLightMode ? '#0088AA' : '#00FFFF'; break;
                 case ASTEROID_CHAR_VAL: 
                     ctx.fillStyle = (tileData && tileData.mined) ? '#555555' : (isLightMode ? '#CC6600' : '#FFAA66'); 
                     break;
@@ -3398,8 +3399,16 @@ function processGameTick(timeAmount, isMovement = false) {
         const enemyAtLoc = activeEnemies.find(e => e.x === playerX && e.y === playerY);
         if (enemyAtLoc) {
             triggerHaptic(200);
-            startCombat(enemyAtLoc);
             removeEnemyAt(playerX, playerY);
+            
+            // 🚨 Route to Extortion or Combat
+            if (enemyAtLoc.isLegendary || enemyAtLoc.isProbe || (enemyAtLoc.shipClassKey && (enemyAtLoc.shipClassKey.includes('CONCORD') || enemyAtLoc.shipClassKey.includes('KTHARR')))) {
+                startCombat(enemyAtLoc);
+            } else {
+                // If it's a standard pirate, they try to extort you first!
+                if (typeof initiatePirateExtortion === 'function') initiatePirateExtortion(enemyAtLoc);
+                else startCombat(enemyAtLoc);
+            }
             return true; // Return true to indicate the tick ended in combat!
         }
     }
@@ -3445,7 +3454,7 @@ function processGameTick(timeAmount, isMovement = false) {
                             colony.storage[res] = (colony.storage[res] || 0) + amount;
                         }
 
-                        // 🚨 NEW: Spawn Trade Route Hauler (5% chance per tick)
+                        // 🚨 Spawn Trade Route Hauler (5% chance per tick)
                         if (Math.random() < 0.05) {
                             // Ensure this colony doesn't already have an active hauler flying
                             const existingHauler = activeNPCs.find(n => n.isColonyHauler && n.colonyId === colony.id);
@@ -3476,6 +3485,58 @@ function processGameTick(timeAmount, isMovement = false) {
                 }
             }
         });
+    }
+
+    // --- 8.5 PLAYER OUTPOST AUTOMATION ---
+    if (currentGameDate - (window.lastTollTick || 0) >= 1.0) {
+        window.lastTollTick = currentGameDate;
+        for (const key in worldStateDeltas) {
+            const tile = worldStateDeltas[key];
+            if (tile.isPlayerOwned && tile.isTinyOutpost) {
+                const tier = tile.outpostTier || 1;
+                
+                // 1. Toll Collection (Scales with Tier)
+                const baseToll = Math.floor(Math.random() * 25) + 15;
+                tile.treasury = (tile.treasury || 0) + (baseToll * tier); 
+                
+                // 2. Automated Defense Turrets (Tier 3 Only)
+                if (tier === 3 && typeof activeEnemies !== 'undefined') {
+                    // Coordinates of the station are stored in the key (e.g., "12,-45")
+                    const coords = key.split('_')[0].split(',');
+                    const sx = parseInt(coords[0], 10);
+                    const sy = parseInt(coords[1], 10);
+                    
+                    if (!isNaN(sx) && !isNaN(sy)) {
+                        // Look for enemies within 5 tiles of the station
+                        for (let i = activeEnemies.length - 1; i >= 0; i--) {
+                            const enemy = activeEnemies[i];
+                            const dist = Math.max(Math.abs(enemy.x - sx), Math.abs(enemy.y - sy));
+                            
+                            if (dist <= 5 && !enemy.isProbe) {
+                                // Blast them!
+                                const dmg = 25;
+                                if (enemy.shields && enemy.shields > 0) enemy.shields -= dmg;
+                                else enemy.hp -= dmg; // Fallback to raw HP if shields are down
+                                
+                                // Visual flare on the map!
+                                if (typeof spawnParticles === 'function') spawnParticles(enemy.x, enemy.y, 'explosion');
+                                
+                                // Did the station kill them?
+                                if ((enemy.hp && enemy.hp <= 0) || (enemy.hull && enemy.hull <= 0)) {
+                                    logMessage(`<span style='color:var(--success); font-weight:bold;'>[ STATION DEFENSE ]</span> ${tile.name} automated turrets destroyed a hostile ${enemy.name}!`);
+                                    activeEnemies.splice(i, 1);
+                                } else {
+                                    // 20% chance to notify the player the station is firing
+                                    if (Math.random() < 0.20) {
+                                        logMessage(`<span style='color:var(--warning)'>[ STATION DEFENSE ]</span> ${tile.name} is firing on hostiles in Sector [${sx}, ${-sy}]!`);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // --- 9. DYNAMIC ECONOMY SHIFTS ---
@@ -3677,6 +3738,21 @@ function handleInteraction() {
             if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
 
             openColonyManagement();
+            return; 
+        }
+
+        // 🚨 NEW: 1.5 PLAYER TINY OUTPOST INTERCEPT
+        if (location.isPlayerOwned && location.isTinyOutpost) {
+            if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+            if (typeof showToast === 'function') showToast(`DOCKED: ${location.name.toUpperCase()}`, "success");
+            
+            playerShields = MAX_SHIELDS; // Still gives you the safety of recharging shields
+            
+            availableActions.push({ label: `Manage Waystation`, key: 'e', onclick: () => openPlayerOutpost(location) });
+            if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
+
+            openPlayerOutpost(location);
+            autoSaveGame();
             return; 
         }
 
@@ -7693,7 +7769,8 @@ const CRAFTING_RECIPES = {
     PROTOTYPES: [
         { id: "WEAPON_VOID_CASTER", name: "Void Caster", icon: "🔫", desc: "Experimental weapon firing void energy. Automatically equips upon fabrication.", yield: 1, type: "component", slot: "weapon", req: { QUANTUM_LENS: 2, REFINED_ALLOY: 5, RARE_METALS: 5 } },
         { id: "SHIELD_AETHER_WARD", name: "Aether Ward", icon: "🛡️", desc: "Prototype shield utilizing phase-shifted tech. Automatically equips upon fabrication.", yield: 1, type: "component", slot: "shield", req: { PHASE_SHIFTED_ALLOY: 1, REFINED_ALLOY: 8, TECH_PARTS: 10 } },
-        { id: "ENGINE_SLIPSTREAM", name: "Slipstream Drive", icon: "🚀", desc: "Ultimate sublight engine, reverse-engineered from precursor tech. Automatically equips.", yield: 1, type: "component", slot: "engine", req: { VOID_ENGINE_CORE: 1, REFINED_ALLOY: 10 } }
+        { id: "ENGINE_SLIPSTREAM", name: "Slipstream Drive", icon: "🚀", desc: "Ultimate sublight engine, reverse-engineered from precursor tech. Automatically equips.", yield: 1, type: "component", slot: "engine", req: { VOID_ENGINE_CORE: 1, REFINED_ALLOY: 10 } },
+        { id: "STATION_CORE", name: "Station Core", icon: "🏗️", desc: "A massive self-assembling framework. Deploy in empty space to build a permanent outpost.", yield: 1, type: "item", req: { REFINED_ALLOY: 15, TECH_PARTS: 10, ATMOS_PROCESSOR: 1 } }
     ],
     UPGRADES: [
         { id: "HEAL", name: "Field Repairs", icon: "🩹", desc: "Instantly patches 25 Hull integrity.", type: "stat", yield: 25, req: { MINERALS: 10 } },
@@ -8382,4 +8459,167 @@ function triggerColonyEvent(colony) {
     });
     
     if (typeof soundManager !== 'undefined') soundManager.playWarning();
+}
+
+// ==========================================
+// --- PLAYER OUTPOST MANAGEMENT UI ---
+// ==========================================
+
+function openPlayerOutpost(location) {
+    openGenericModal(`OUTPOST: ${location.name.toUpperCase()}`);
+    
+    const detailEl = document.getElementById('genericDetailContent');
+    const listEl = document.getElementById('genericModalList');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Default to Tier 1 if not set
+    const tier = location.outpostTier || 1;
+    let tierName = "CLASS-1 WAYSTATION";
+    if (tier === 2) tierName = "CLASS-2 TRADE HUB";
+    if (tier === 3) tierName = "CLASS-3 FORTRESS";
+
+    let featuresHtml = `
+        <span style="color:var(--success);">[ ONLINE ] Automated Toll Collection</span><br>
+        <span style="color:var(--success);">[ ONLINE ] Shield Emitter Grid</span><br>
+    `;
+    if (tier >= 2) featuresHtml += `<span style="color:var(--success);">[ ONLINE ] Trading Marketplace</span><br>`;
+    else featuresHtml += `<span style="color:#666;">[ OFFLINE ] Trading Marketplace (Requires Tier 2)</span><br>`;
+    
+    if (tier >= 3) featuresHtml += `<span style="color:var(--danger); font-weight:bold;">[ ONLINE ] Automated Defense Turrets</span><br>`;
+    else featuresHtml += `<span style="color:#666;">[ OFFLINE ] Defense Turrets (Requires Tier 3)</span><br>`;
+
+    listEl.innerHTML = `
+        <div style="padding:15px;">
+            <h4 style="color:var(--accent-color); margin-top:0; letter-spacing:1px;">FACILITIES</h4>
+            <p style="font-size:12px; color:var(--item-desc-color); line-height:1.5;">This is a ${tierName}. Upgrade your outpost to expand its operational capabilities and increase passive income.</p>
+            <div style="margin-top:15px; font-size:11px; line-height: 1.8; background:rgba(0,0,0,0.3); border: 1px solid #333; padding: 15px; border-radius: 4px;">
+                ${featuresHtml}
+            </div>
+        </div>
+    `;
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:50px; margin-bottom:10px; color:var(--accent-color); filter: drop-shadow(0 0 10px rgba(0,224,224,0.3));">🛰️</div>
+            <h3 style="color:var(--accent-color); margin:0 0 5px 0;">${location.name.toUpperCase()}</h3>
+            
+            <div style="display:inline-block; border:1px solid var(--accent-color); padding:4px 8px; border-radius:2px; font-size:10px; color:var(--accent-color); letter-spacing:2px; margin-bottom: 20px;">
+                ${tierName}
+            </div>
+
+            <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); padding: 15px; border-radius: 4px; text-align: left;">
+                <div style="color:var(--gold-text); font-size:10px; font-weight:bold; letter-spacing:1px; border-bottom: 1px dashed #333; padding-bottom: 5px; margin-bottom: 10px;">FINANCIAL LEDGER</div>
+                
+                <div style="display:flex; justify-content:space-between; color:var(--text-color); font-size:14px; margin-bottom:10px;">
+                    <span>Collected Tolls:</span> 
+                    <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(location.treasury || 0)}c</span>
+                </div>
+                <p style="font-size:11px; color:var(--item-desc-color); margin:0; font-style:italic;">Automated beacons charge a small fee to independent haulers passing through this sector.</p>
+            </div>
+        </div>
+    `;
+
+    // --- ACTIONS MENU ---
+    let btnHtml = ``;
+
+    if (location.treasury > 0) {
+        btnHtml += `<button class="action-button" onclick="collectOutpostTolls(${location.x}, ${location.y})" style="border-color:var(--gold-text); color:var(--gold-text); box-shadow: 0 0 15px rgba(255,215,0,0.2);">COLLECT TOLLS (${formatNumber(location.treasury)}c)</button>`;
+    }
+
+    if (tier >= 2) {
+        btnHtml += `<button class="action-button" onclick="openTradeModal('buy')" style="border-color:var(--accent-color); color:var(--accent-color);">ACCESS MARKETPLACE</button>`;
+    }
+
+    // Upgrade Logic
+    if (tier === 1) {
+        const hasAlloy = (playerCargo['REFINED_ALLOY'] || 0) >= 10;
+        const hasTech = (playerCargo['TECH_PARTS'] || 0) >= 15;
+        const canUpgrade = hasAlloy && hasTech;
+        
+        btnHtml += `<button class="action-button" ${!canUpgrade ? 'disabled' : ''} style="${canUpgrade ? 'border-color:var(--success); color:var(--success);' : ''}" onclick="executeOutpostUpgrade(${location.x}, ${location.y}, 2)">
+            UPGRADE TO TIER 2 (10 Refined Alloy, 15 Tech Parts)
+        </button>`;
+    } else if (tier === 2) {
+        const hasLens = (playerCargo['QUANTUM_LENS'] || 0) >= 2;
+        const hasAlloy = (playerCargo['REFINED_ALLOY'] || 0) >= 20;
+        const canUpgrade = hasLens && hasAlloy;
+        
+        btnHtml += `<button class="action-button" ${!canUpgrade ? 'disabled' : ''} style="${canUpgrade ? 'border-color:var(--danger); color:var(--danger); box-shadow: 0 0 10px rgba(255,0,0,0.3);' : ''}" onclick="executeOutpostUpgrade(${location.x}, ${location.y}, 3)">
+            UPGRADE DEFENSES (2 Quantum Lens, 20 Refined Alloy)
+        </button>`;
+    } else {
+        btnHtml += `<button class="action-button" disabled style="opacity:0.5;">STATION AT MAXIMUM CAPACITY</button>`;
+    }
+
+    btnHtml += `<button class="action-button" onclick="closeGenericModal(); handleInteraction();" style="margin-top:10px;">UNDOCK</button>`;
+    actionsEl.innerHTML = btnHtml;
+}
+
+function executeOutpostUpgrade(x, y, newTier) {
+    const tile = chunkManager.getTile(x, y);
+    if (!tile || !tile.isPlayerOwned) return;
+
+    if (newTier === 2) {
+        // Consume items
+        playerCargo['REFINED_ALLOY'] -= 10; if (playerCargo['REFINED_ALLOY'] <= 0) delete playerCargo['REFINED_ALLOY'];
+        playerCargo['TECH_PARTS'] -= 15; if (playerCargo['TECH_PARTS'] <= 0) delete playerCargo['TECH_PARTS'];
+        
+        // Upgrade the station! Turn the 'h' into an 'H' and generate a marketplace!
+        updateWorldState(x, y, {
+            outpostTier: 2,
+            char: 'H', 
+            sells: [
+                { id: "FUEL_CELLS", priceMod: 1.0, stock: 50 }, 
+                { id: "MEDICAL_SUPPLIES", priceMod: 1.1, stock: 10 }
+            ],
+            buys: [
+                { id: "MINERALS", priceMod: 0.8, stock: 100 }, 
+                { id: "RARE_METALS", priceMod: 1.1, stock: 20 },
+                { id: "TECH_PARTS", priceMod: 0.9, stock: 50 }
+            ]
+        });
+        
+        logMessage(`<span style="color:var(--success)">[ UPGRADE COMPLETE ] Station expanded to a Class-2 Trade Hub! Marketplace online.</span>`);
+    } 
+    else if (newTier === 3) {
+        // Consume items
+        playerCargo['QUANTUM_LENS'] -= 2; if (playerCargo['QUANTUM_LENS'] <= 0) delete playerCargo['QUANTUM_LENS'];
+        playerCargo['REFINED_ALLOY'] -= 20; if (playerCargo['REFINED_ALLOY'] <= 0) delete playerCargo['REFINED_ALLOY'];
+        
+        updateWorldState(x, y, { outpostTier: 3 });
+        logMessage(`<span style="color:var(--danger); font-weight:bold;">[ UPGRADE COMPLETE ] Fortress systems online. Automated defense turrets will now fire on hostiles in this sector!</span>`);
+    }
+
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+    if (typeof showToast === 'function') showToast("STATION UPGRADED", "success");
+    
+    // Refresh UI instantly
+    if (typeof renderUIStats === 'function') renderUIStats();
+    if (typeof render === 'function') render(); // Force map to update the 'H'
+    
+    openPlayerOutpost(tile);
+    autoSaveGame();
+}
+
+function collectOutpostTolls(x, y) {
+    const tile = chunkManager.getTile(x, y);
+    if (!tile || !tile.treasury || tile.treasury <= 0) return;
+
+    const collected = tile.treasury;
+    playerCredits += collected;
+    
+    // Reset the station's bank and save the map tile!
+    tile.treasury = 0;
+    updateWorldState(x, y, { treasury: 0 });
+
+    logMessage(`<span style="color:var(--success)">[ OUTPOST ] Transferred ${formatNumber(collected)}c in collected tolls to your ship's ledger.</span>`);
+    if (typeof showToast === 'function') showToast(`COLLECTED ${formatNumber(collected)}c`, "success");
+    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
+    
+    // Refresh UI instantly
+    openPlayerOutpost(tile);
+    autoSaveGame();
 }
