@@ -127,6 +127,25 @@ const COMMODITIES = {
     // ==========================================
     // --- INDUSTRIAL & TECH EQUIPMENT ---
     // ==========================================
+    
+    MINING_DRONE_MK2: {
+        name: "Automated Mining Drone",
+        basePrice: 1200,
+        description: "An autonomous AI drone. Deploy from your cargo hold while in deep space. It will automatically seek out the nearest asteroid, mine it, and return the materials to your ship.",
+        onUse: () => {
+            if (typeof deployMiningDrone === 'function') return deployMiningDrone();
+            return false;
+        }
+    },
+    COMBAT_DRONE_MK1: {
+        name: "Combat Swarm Drone",
+        basePrice: 2000,
+        description: "Deploy from your cargo hold DURING combat. It will swarm the enemy, dealing passive damage every turn, and will sacrifice itself to absorb a direct hit meant for your ship.",
+        onUse: () => {
+            if (typeof deployCombatDrone === 'function') return deployCombatDrone();
+            return false;
+        }
+    },
     MINING_DRONE: {
         name: "Survey Drone",
         basePrice: 150,
