@@ -312,6 +312,13 @@ const COMMODITIES = {
     // --- ILLEGAL / CONTRABAND (ECLIPSE NETWORK) ---
     // ==========================================
 
+    HOT_CARGO: {
+        name: "Tracked Contraband",
+        basePrice: 0,
+        illegal: true,
+        weight: 10, // Heavy!
+        description: "Highly classified, actively tracked Concord data-cores. Emits a strong sub-space signal that draws patrols. Deliver to the designated Black Market quickly!"
+    },
     PROHIBITED_STIMS: {
         name: "Combat Stims",
         basePrice: 400,
