@@ -2654,6 +2654,20 @@ function renderGalacticMap() {
                     break;
                 case ANOMALY_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC00CC' : '#FF33FF'; break;
                 case WORMHOLE_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC8800' : '#FFB800'; break;
+                
+                // Render the Stargate!
+                case 'Ω': 
+                    ctx.save();
+                    const gatePulse = (Math.sin(Date.now() / 400) + 1) / 2;
+                    if (useHighGraphics && !isLightMode) {
+                        ctx.shadowBlur = 15 + (gatePulse * 15);
+                        ctx.shadowColor = '#FFD700'; // Glowing Gold!
+                    }
+                    ctx.fillStyle = '#FFD700';
+                    ctx.font = `bold ${TILE_SIZE * 1.3}px 'Orbitron', monospace`;
+                    ctx.fillText(tileChar, x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
+                    ctx.restore();
+                    continue; // Skip standard text render
                 case NEXUS_CHAR_VAL: ctx.fillStyle = isLightMode ? '#008888' : '#40E0D0'; break;
                 case PIRATE_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC0000' : '#FF5555'; break;
                 case EMPTY_SPACE_CHAR_VAL:
@@ -3753,6 +3767,17 @@ function handleInteraction() {
 
             openPlayerOutpost(location);
             autoSaveGame();
+            return; 
+        }
+
+        // STARGATE INTERCEPT
+        if (tileChar === 'Ω') {
+            if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+            
+            availableActions.push({ label: `Access Stargate Network`, key: 'e', onclick: traverseWormhole });
+            if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
+            
+            logMessage(`<span style='color:var(--gold-text)'>You approach ${location.name || 'a Stargate'}. The transit ring is humming with stabilized void energy.</span>`);
             return; 
         }
 
@@ -7770,7 +7795,7 @@ const CRAFTING_RECIPES = {
         { id: "WEAPON_VOID_CASTER", name: "Void Caster", icon: "🔫", desc: "Experimental weapon firing void energy. Automatically equips upon fabrication.", yield: 1, type: "component", slot: "weapon", req: { QUANTUM_LENS: 2, REFINED_ALLOY: 5, RARE_METALS: 5 } },
         { id: "SHIELD_AETHER_WARD", name: "Aether Ward", icon: "🛡️", desc: "Prototype shield utilizing phase-shifted tech. Automatically equips upon fabrication.", yield: 1, type: "component", slot: "shield", req: { PHASE_SHIFTED_ALLOY: 1, REFINED_ALLOY: 8, TECH_PARTS: 10 } },
         { id: "ENGINE_SLIPSTREAM", name: "Slipstream Drive", icon: "🚀", desc: "Ultimate sublight engine, reverse-engineered from precursor tech. Automatically equips.", yield: 1, type: "component", slot: "engine", req: { VOID_ENGINE_CORE: 1, REFINED_ALLOY: 10 } },
-        { id: "STATION_CORE", name: "Station Core", icon: "🏗️", desc: "A massive self-assembling framework. Deploy in empty space to build a permanent outpost.", yield: 1, type: "item", req: { REFINED_ALLOY: 15, TECH_PARTS: 10, ATMOS_PROCESSOR: 1 } }
+        { id: "WORMHOLE_STABILIZER", name: "Stargate Ring", icon: "🌌", desc: "Deploy in empty space to build a permanent, 0-risk fast travel point.", yield: 1, type: "item", req: { QUANTUM_LENS: 2, PHASE_SHIFTED_ALLOY: 1, TECH_PARTS: 20 } }
     ],
     UPGRADES: [
         { id: "HEAL", name: "Field Repairs", icon: "🩹", desc: "Instantly patches 25 Hull integrity.", type: "stat", yield: 25, req: { MINERALS: 10 } },
@@ -8138,7 +8163,7 @@ function abortVault() {
 
 function traverseWormhole() {
     const tile = chunkManager.getTile(playerX, playerY);
-    if (getTileChar(tile) !== WORMHOLE_CHAR_VAL) {
+    if (getTileChar(tile) !== WORMHOLE_CHAR_VAL && getTileChar(tile) !== 'Ω') {
         logMessage("No stable wormhole detected at these coordinates.");
         return;
     }
@@ -8163,7 +8188,8 @@ function traverseWormhole() {
                 knownWormholes.push({
                     x: x, 
                     y: y, 
-                    name: worldStateDeltas[key].customName || `Anomaly [${x}, ${y}]`
+                    name: worldStateDeltas[key].customName || `Anomaly [${x}, ${y}]`,
+                    isStargate: worldStateDeltas[key].isStargate 
                 });
             }
         }
@@ -8225,8 +8251,8 @@ function showWormholeDetails(targetWh, distance) {
     const fuelCost = Math.floor(15 + (distance * 0.05)); 
     const canAfford = playerFuel >= fuelCost;
     
-    // Damage Risk: Scales with distance, maxes out at 75%
-    const damageRisk = Math.min(75, Math.floor(5 + (distance * 0.02))); 
+    // Stargates have 0% risk!
+    const damageRisk = targetWh.isStargate ? 0 : Math.min(75, Math.floor(5 + (distance * 0.02))); 
 
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 20px;">
