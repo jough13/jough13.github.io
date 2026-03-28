@@ -652,6 +652,15 @@ function renderShadowBrokerList() {
         fenceAllRow.onclick = () => showFenceAllDetails(totalBlackMarketValue);
         listEl.prepend(fenceAllRow);
     }
+
+    // The Smuggling Contract Button (Always visible at the top)
+    const smuggleRow = document.createElement('div');
+    smuggleRow.className = 'trade-item-row';
+    smuggleRow.style.background = 'rgba(255, 0, 0, 0.1)';
+    smuggleRow.style.borderBottom = '2px solid var(--danger)';
+    smuggleRow.innerHTML = `<span style="color:var(--danger); font-weight:bold;">REQUEST SMUGGLING RUN</span> <span style="color:var(--warning); font-size:10px;">HIGH RISK</span>`;
+    smuggleRow.onclick = () => showSmugglingContractDetails();
+    listEl.prepend(smuggleRow);
 }
 
 function showShadowBrokerItemDetails(itemId) {
