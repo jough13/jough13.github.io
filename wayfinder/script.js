@@ -102,9 +102,10 @@ let selectedCargoIndex = -1;
 
 let cachedAccentColor = '#00E0E0';
 
-// --- ACTIVE ENEMIES ---
 let activeEnemies = []; 
 let activeComets = []; 
+
+let activePlayerDrones = []; 
 
 // --- RESCUE TRACKING ---
 let isAwaitingRescue = false;
@@ -918,11 +919,10 @@ function animateParticles() {
         return;
     }
 
-    // --- PAUSE LOOP IF NOT ON MAP ---
-    // If the player is in a menu or on a planet, pause the animation entirely!
+    // --- THE FIX: KILL LOOP IF NOT ON MAP ---
     if (currentGameState !== GAME_STATES.GALACTIC_MAP) {
-        particleAnimationId = requestAnimationFrame(animateParticles);
-        return; // Skip all math and rendering for this frame!
+        particleAnimationId = null; 
+        return; 
     }
 
     // Update Particles (Movement & Decay)
@@ -1321,8 +1321,24 @@ Object.defineProperty(window, 'playerShip', {
     set: (val) => { GameState.ship = val; }
 });
 Object.defineProperty(window, 'playerCargo', {
-    get: () => GameState.ship.cargo,
-    set: (val) => { GameState.ship.cargo = val; }
+    get: () => {
+        return new Proxy(GameState.ship.cargo, {
+            set: function(target, property, value) {
+                target[property] = value;
+                if (typeof GameBus !== 'undefined') GameBus.emit('CARGO_MODIFIED');
+                return true;
+            },
+            deleteProperty: function(target, property) {
+                delete target[property];
+                if (typeof GameBus !== 'undefined') GameBus.emit('CARGO_MODIFIED');
+                return true;
+            }
+        });
+    },
+    set: (val) => { 
+        GameState.ship.cargo = val; 
+        if (typeof GameBus !== 'undefined') GameBus.emit('CARGO_MODIFIED');
+    }
 });
 
 let xpToNextLevel; // Calculated dynamically, so we leave it loose for now
@@ -1397,15 +1413,16 @@ function performGarbageCollection() {
  * @param {object} changes - Object containing flags to set (e.g. { minedThisVisit: true })
  */
 
-function updateWorldState(x, y, changes) {
+function updateWorldState(x, y, changes, exactKey = null) {
     // 1. Update the in-memory tile so the UI reacts immediately
     const tile = chunkManager.getTile(x, y);
-    if (tile) {
+    // Only assign to the main tile if we aren't targeting a sub-entity like a planet
+    if (tile && !exactKey) {
         Object.assign(tile, changes);
     }
 
     // 2. Save to the persistent delta object
-    const key = `${x},${y}`;
+    const key = exactKey ? exactKey : `${x},${y}`;
     if (!worldStateDeltas[key]) {
         worldStateDeltas[key] = {};
     }
@@ -2799,6 +2816,49 @@ function renderGalacticMap() {
         }
     });
 
+    // --- DRAW ACTIVE WARZONES ---
+    if (typeof activeSkirmishes !== 'undefined') {
+        activeSkirmishes.forEach(sk => {
+            const screenX = (sk.x - camX) * TILE_SIZE + TILE_SIZE / 2;
+            const screenY = (sk.y - camY) * TILE_SIZE + TILE_SIZE / 2;
+            
+            if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
+                ctx.save();
+                const pulse = Math.abs(Math.sin(Date.now() / 200)); // Flashes rapidly
+                ctx.fillStyle = `rgba(255, 100, 0, ${0.6 + pulse * 0.4})`;
+                ctx.font = `bold ${TILE_SIZE * 1.2}px 'Orbitron', monospace`;
+                if (useHighGraphics && !isLightMode) { 
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#FF4400';
+                }
+                ctx.fillText("⚔️", screenX, screenY);
+                ctx.restore();
+            }
+        });
+    }
+
+    // --- DRAW PLAYER DRONES ---
+    activePlayerDrones.forEach(drone => {
+        const screenX = (drone.x - camX) * TILE_SIZE + TILE_SIZE / 2;
+        const screenY = (drone.y - camY) * TILE_SIZE + TILE_SIZE / 2;
+        
+        if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
+            ctx.save();
+            ctx.fillStyle = '#00FF00'; // Friendly bright green!
+            ctx.font = `bold ${TILE_SIZE * 0.7}px 'Orbitron', monospace`;
+            if (useHighGraphics && !isLightMode) { 
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#00FF00';
+            }
+            
+            let icon = 'd'; // Standard drone icon
+            if (drone.state === 'MINING') icon = '⛏'; // Swaps to pickaxe when working!
+            
+            ctx.fillText(icon, screenX, screenY);
+            ctx.restore();
+        }
+    });
+
     // Draw Enemies (AND THEIR SENSOR CONES)
     activeEnemies.forEach(enemy => {
         const screenX = (enemy.x - camX) * TILE_SIZE + TILE_SIZE / 2;
@@ -3183,146 +3243,162 @@ function getCombinedLocationData(x, y) {
  }
 
 // ==========================================
-// --- MASTER GAME TICK ENGINE ---
+// --- MASTER GAME TICK ENGINE (DECOUPLED) ---
 // ==========================================
 
 function processGameTick(timeAmount, isMovement = false) {
-    // 1. Advance the universal clock (Shields, K'tharr regen, etc.)
+    // 1. Advance the universal clock (Shields, Regen, etc.)
     if (typeof advanceGameTime === 'function') advanceGameTime(timeAmount);
 
-    // ==========================================
-    // --- 1.5 STEALTH HEAT MECHANIC ---
-    // ==========================================
+    // 2. Broadcast the Tick Event to all modular systems
+    // The 'interrupt' flag solves the "Time Stop Combat Bug"!
+    let tickState = { timeAmount, isMovement, interrupt: false };
+    
+    if (typeof GameBus !== 'undefined') {
+        GameBus.emit('TICK_PROCESSED', tickState);
+    }
+
+    // 3. Returns true ONLY if combat/death interrupted the movement step
+    return tickState.interrupt; 
+}
+
+// ==========================================
+// --- TICK LISTENERS (MODULAR SYSTEMS) ---
+// ==========================================
+
+// --- SYSTEM 1: HAZARDS, STEALTH & COMBAT ---
+GameBus.on('TICK_PROCESSED', (tick) => {
+    if (tick.interrupt) return;
+    const { isMovement } = tick;
+
+    // 1. STEALTH HEAT MECHANIC
     if (isSilentRunning) {
         stealthHeat++;
-        
-        // Exceeded safe limit!
         if (stealthHeat > 5) {
-            // Damage scales up every turn you leave it on! (7, 9, 11...)
             const dmg = 5 + ((stealthHeat - 5) * 2); 
-            
-            // Cooks shields first, then spills to hull
             if (playerShields > 0) {
                 playerShields -= dmg;
-                if (playerShields < 0) {
-                    playerHull += playerShields;
-                    playerShields = 0;
-                }
-            } else {
-                playerHull -= dmg;
-            }
+                if (playerShields < 0) { playerHull += playerShields; playerShields = 0; }
+            } else { playerHull -= dmg; }
             
-            // Feedback!
             if (Math.random() < 0.5 || !isMovement) {
                 logMessage(`<span style='color:var(--danger)'>[ STEALTH ] Heat sinks overloaded! Core melting! Took ${dmg} damage.</span>`);
-                if (typeof triggerDamageEffect === 'function') triggerDamageEffect(); // Shakes the screen
+                if (typeof triggerDamageEffect === 'function') triggerDamageEffect(); 
                 if (typeof soundManager !== 'undefined') soundManager.playShieldHit();
             }
-            
-            // Did they cook themselves to death?
             if (playerHull <= 0) {
                 if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 0, reason: "Melted by Stealth Core Overload" });
-                return true; 
+                tick.interrupt = true; return; 
             }
         }
     } else if (stealthHeat > 0) {
-        // Cooldown when stealth is off (Cools down 2x faster than it heats up)
         stealthHeat = Math.max(0, stealthHeat - 2); 
-        if (stealthHeat === 0) {
-            logMessage("<span style='color:var(--success)'>[ STEALTH ] Heat sinks fully flushed. Temperatures nominal.</span>");
-        }
+        if (stealthHeat === 0) logMessage("<span style='color:var(--success)'>[ STEALTH ] Heat sinks fully flushed. Temperatures nominal.</span>");
     }
 
-    // 2. Resolve Environment & Hazards
+    // 2. RADIATION HAZARDS
     const hazard = getHazardType(playerX, playerY);
     const hasRadShield = playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY';
-
     if (hazard === 'RADIATION_BELT' && !hasRadShield) {
         if (playerShields > 0) {
-            // Strips 5 shields per step
             playerShields = Math.max(0, playerShields - 5.0);
-            
-            // 40% chance to warn the player
-            if (isMovement && Math.random() < 0.40) {
-                logMessage("<span style='color:var(--warning)'>Dosimeters detect Ionized Radiation Belt. Shields degrading rapidly!</span>");
-            }
+            if (isMovement && Math.random() < 0.40) logMessage("<span style='color:var(--warning)'>Dosimeters detect Ionized Radiation Belt. Shields degrading rapidly!</span>");
         } else {
-            // Burns 3 Fuel per step if shields are down!
             playerFuel = Math.max(0, playerFuel - 3.0); 
-            if (isMovement && Math.random() < 0.40) {
-                logMessage("<span style='color:var(--danger)'>Radiation interfering with plasma injectors. Excess fuel consumed!</span>");
-            }
+            if (isMovement && Math.random() < 0.40) logMessage("<span style='color:var(--danger)'>Radiation interfering with plasma injectors. Excess fuel consumed!</span>");
         }
-        
-        // 25% chance to shake the screen, flash red, and THROW SPARKS!
         if (Math.random() < 0.25) {
             if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
             if (typeof spawnParticles === 'function') spawnParticles(playerX, playerY, 'explosion');
         }
     }
 
-    // 2.5 GRAVITY WELLS (BLACK HOLES)
+    // 3. GRAVITY WELLS (BLACK HOLES)
     if (isMovement) {
         let pulledByBlackHole = false;
-        // Scan a 7x7 grid around the player for a Black Hole
         for (let dy = -3; dy <= 3; dy++) {
             for (let dx = -3; dx <= 3; dx++) {
                 if (dx === 0 && dy === 0) continue;
-                
                 const tile = chunkManager.getTile(playerX + dx, playerY + dy);
                 if (getTileChar(tile) === BLACK_HOLE_CHAR_VAL) {
-                    
-                    // If the player has the Void Diver perk or a Precursor Nav Core, they slingshot!
                     const hasNavCore = playerCargo['PRECURSOR_NAV_CORE'] > 0;
                     const hasVoidDiver = typeof playerPerks !== 'undefined' && playerPerks.has('VOID_DIVER');
-                    
                     if (hasNavCore || hasVoidDiver) {
                         if (Math.random() < 0.3) {
                             logMessage("<span style='color:var(--accent-color); font-weight:bold;'>[ SLINGSHOT ] You rode the gravity well, launching forward with 0 fuel cost!</span>");
-                            playerFuel += 1.0; // Refund the movement cost
+                            playerFuel += 1.0; 
                         }
                     } else {
-                        // Otherwise, pull them 1 tile closer!
-                        playerX += Math.sign(dx);
-                        playerY += Math.sign(dy);
-                        playerFuel -= 1.0; // Costs extra fuel fighting the gravity
-                        
+                        playerX += Math.sign(dx); playerY += Math.sign(dy); playerFuel -= 1.0; 
                         logMessage("<span style='color:var(--danger); font-weight:bold;'>[ EVENT HORIZON ] Massive gravity well detected! Ship is being pulled in!</span>");
                         if (typeof triggerHaptic === 'function') triggerHaptic([50, 100]);
                         if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
                     }
-                    pulledByBlackHole = true;
-                    break;
+                    pulledByBlackHole = true; break;
                 }
             }
             if (pulledByBlackHole) break;
         }
-
-        // Did they get sucked directly onto the center of the black hole?!
         const currentTile = chunkManager.getTile(playerX, playerY);
         if (getTileChar(currentTile) === BLACK_HOLE_CHAR_VAL) {
             playerHull = 0;
             logMessage("<span style='color:var(--danger)'>[ SPAGHETTIFICATION ] Crushed by the singularity.</span>");
             if (typeof triggerGameOver === 'function') triggerGameOver("Crushed by a Black Hole");
-            return true;
+            tick.interrupt = true; return;
         }
     }
 
-    // 3. Mercenary / Crew Passive Checks
-    if (isMovement && typeof processMercenaryDrawbacks === 'function') {
-        processMercenaryDrawbacks();
+    // 4. HOT CARGO PURSUITS
+    if (playerCargo['HOT_CARGO'] > 0 && isMovement) {
+        if (!isSilentRunning && Math.random() < 0.08) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 5 + Math.floor(Math.random() * 3);
+            const eX = Math.floor(playerX + Math.cos(angle) * dist);
+            const eY = Math.floor(playerY + Math.sin(angle) * dist);
+            if (typeof activeEnemies !== 'undefined') {
+                activeEnemies.push({
+                    x: eX, y: eY, id: "HUNTER_" + Date.now(), type: "CONCORD_HUNTER",
+                    name: "Aegis Pursuit Craft", char: "V", color: "#00AAFF",
+                    shipClassKey: "CONCORD_ENFORCER", difficultyMultiplier: 1.5
+                });
+                logMessage("<span style='color:var(--danger); font-weight:bold;'>[ WARNING ] Slip-space rupture detected! Concord Pursuit Craft has locked onto your contraband signal!</span>");
+                if (typeof triggerDamageEffect === 'function') triggerDamageEffect(); 
+                if (typeof soundManager !== 'undefined') soundManager.playWarning();
+            }
+        } else if (isSilentRunning && Math.random() < 0.10) {
+            logMessage("<span style='color:#555'>[ STEALTH ] Sensors detect Aegis interceptors searching the nearby sector, but your signature is masked.</span>");
+        }
     }
 
-    // --- 3.5 NOTORIETY DECAY (Laying Low) ---
-    if (playerNotoriety > 0) {
-        // Initialize the tracker if it doesn't exist
-        if (!lastNotorietyDecayTime) lastNotorietyDecayTime = currentGameDate;
-        
-        // Every 15 stardates, your heat drops by 1
-        if (currentGameDate - lastNotorietyDecayTime >= 15.0) {
-            updatePlayerNotoriety(-1); 
-            lastNotorietyDecayTime = currentGameDate;
-            
+    // 5. IMMEDIATE COMBAT COLLISIONS
+    if (typeof activeEnemies !== 'undefined') {
+        const enemyAtLoc = activeEnemies.find(e => e.x === playerX && e.y === playerY);
+        if (enemyAtLoc) {
+            if (typeof triggerHaptic === 'function') triggerHaptic(200);
+            if (typeof removeEnemyAt === 'function') removeEnemyAt(playerX, playerY);
+            if (enemyAtLoc.isLegendary || enemyAtLoc.isProbe || (enemyAtLoc.shipClassKey && (enemyAtLoc.shipClassKey.includes('CONCORD') || enemyAtLoc.shipClassKey.includes('KTHARR')))) {
+                if (typeof startCombat === 'function') startCombat(enemyAtLoc);
+            } else {
+                if (typeof initiatePirateExtortion === 'function') initiatePirateExtortion(enemyAtLoc);
+                else if (typeof startCombat === 'function') startCombat(enemyAtLoc);
+            }
+            tick.interrupt = true; return; // Flags that the tick hit combat
+        }
+    }
+});
+
+// --- SYSTEM 2: WORLD EVENTS, TRAFFIC, & MEMORY ---
+GameBus.on('TICK_PROCESSED', (tick) => {
+    if (tick.interrupt) return;
+    const { isMovement } = tick;
+
+    if (isMovement && typeof processMercenaryDrawbacks === 'function') processMercenaryDrawbacks();
+
+    if (typeof playerNotoriety !== 'undefined' && playerNotoriety > 0) {
+        if (!window.lastNotorietyDecayTime) window.lastNotorietyDecayTime = currentGameDate;
+        if (currentGameDate - window.lastNotorietyDecayTime >= 15.0) {
+            if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(-1); 
+            window.lastNotorietyDecayTime = currentGameDate;
             if (playerNotoriety === 0) {
                 logMessage("<span style='color:var(--success)'>Concord warrants have expired. Your record is clean.</span>");
                 if (typeof showToast === 'function') showToast("WARRANTS EXPIRED", "success");
@@ -3332,28 +3408,24 @@ function processGameTick(timeAmount, isMovement = false) {
         }
     }
 
-    // 4. Update Memory & Sectors
-    updateSectorState();
-    const pCX = Math.floor(playerX / chunkManager.CHUNK_SIZE);
-    const pCY = Math.floor(playerY / chunkManager.CHUNK_SIZE);
-    chunkManager.pruneChunks(pCX, pCY);
+    if (typeof updateSectorState === 'function') updateSectorState();
+    if (typeof chunkManager !== 'undefined') {
+        const pCX = Math.floor(playerX / chunkManager.CHUNK_SIZE);
+        const pCY = Math.floor(playerY / chunkManager.CHUNK_SIZE);
+        chunkManager.pruneChunks(pCX, pCY);
+    }
 
-    // 5. Move AI Entities
     if (typeof updateEnemies === "function") updateEnemies();
     if (typeof updateAmbientNPCs === "function") updateAmbientNPCs();
+    if (typeof updatePlayerDrones === "function") updatePlayerDrones();
 
-     // ==========================================
-    // --- 5.5 COSMIC EVENTS: COMET CHASING ---
-    // ==========================================
-    if (isMovement) {
-        // 1. Spawn Chance (1% chance per step if no comet exists)
+    // COMET CHASING
+    if (isMovement && typeof activeComets !== 'undefined') {
         if (activeComets.length === 0 && Math.random() < 0.01) {
             const angle = Math.random() * Math.PI * 2;
-            const dist = Math.floor(VIEWPORT_WIDTH_TILES); // Spawn on the edge of the screen
+            const dist = Math.floor(VIEWPORT_WIDTH_TILES); 
             const cx = Math.floor(playerX + Math.cos(angle) * dist);
             const cy = Math.floor(playerY + Math.sin(angle) * dist);
-            
-            // Aim it roughly towards the player's side of the screen
             const vx = Math.sign(playerX - cx + (Math.random() * 10 - 5)) || 1;
             const vy = Math.sign(playerY - cy + (Math.random() * 10 - 5)) || 1;
 
@@ -3362,104 +3434,81 @@ function processGameTick(timeAmount, isMovement = false) {
             if (typeof soundManager !== 'undefined') soundManager.playScan();
         }
 
-        // 2. Move & Resolve Comets
         for (let i = activeComets.length - 1; i >= 0; i--) {
             let comet = activeComets[i];
-            comet.x += comet.vx;
-            comet.y += comet.vy;
+            comet.x += comet.vx; comet.y += comet.vy;
+            if (typeof spawnParticles === 'function') spawnParticles(comet.x, comet.y, 'thruster', { x: -comet.vx, y: -comet.vy });
 
-            // Generate a beautiful icy particle tail as it flies!
-            if (typeof spawnParticles === 'function') {
-                spawnParticles(comet.x, comet.y, 'thruster', { x: -comet.vx, y: -comet.vy });
-            }
-
-            // 3. Did the player catch it?!
             if (comet.x === playerX && comet.y === playerY) {
                 const ice = 5 + Math.floor(Math.random() * 10);
-                const rare = Math.floor(Math.random() * 3); // 0 to 2 Void Crystals
-                
+                const rare = Math.floor(Math.random() * 3); 
                 playerCargo['HYDROGEN_3'] = (playerCargo['HYDROGEN_3'] || 0) + ice;
                 if (rare > 0) playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + rare;
-
                 if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
                 
                 let lootMsg = `<span style='color:var(--accent-color); font-weight:bold;'>[ COMET INTERCEPTED ]</span> Harvested ${ice}x Hydrogen-3`;
                 if (rare > 0) lootMsg += ` and ${rare}x Void Crystals!`;
-                
                 logMessage(lootMsg);
                 if (typeof showToast === 'function') showToast("COMET HARVESTED", "success");
                 if (typeof soundManager !== 'undefined') soundManager.playGain();
                 
-                // Despawn the comet
-                activeComets.splice(i, 1);
-                continue;
+                activeComets.splice(i, 1); continue;
             }
-
-            // 4. Despawn if it flies too far away
             const cDist = Math.abs(comet.x - playerX) + Math.abs(comet.y - playerY);
-            if (cDist > VIEWPORT_WIDTH_TILES * 1.5) {
-                activeComets.splice(i, 1);
-            }
+            if (typeof VIEWPORT_WIDTH_TILES !== 'undefined' && cDist > VIEWPORT_WIDTH_TILES * 1.5) activeComets.splice(i, 1);
         }
     }
 
-    // 6. Spawn New Traffic (5% chance per tick)
-    if (Math.random() < 0.05 && typeof spawnAmbientNPCs === "function") {
-        spawnAmbientNPCs();
+    if (Math.random() < 0.05 && typeof spawnAmbientNPCs === "function") spawnAmbientNPCs();
+
+    // ACTIVE SECTOR WARZONES
+    if (typeof activeSkirmishes === 'undefined') window.activeSkirmishes = [];
+    if (isMovement && Math.random() < 0.015 && activeSkirmishes.length < 1) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 4 + Math.floor(Math.random() * 4); 
+        const sx = Math.floor(playerX + Math.cos(angle) * dist);
+        const sy = Math.floor(playerY + Math.sin(angle) * dist);
+        const factionB = Math.random() > 0.5 ? 'KTHARR' : 'ECLIPSE';
+        
+        activeSkirmishes.push({ x: sx, y: sy, timer: 15, factionA: 'CONCORD', factionB: factionB });
+        logMessage(`<span style='color:var(--warning); font-weight:bold'>[ SENSOR ALERT ]</span> Fleet skirmish detected between Concord and ${factionB} forces at [${sx}, ${-sy}]!`);
+        if (typeof soundManager !== 'undefined') soundManager.playWarning();
     }
 
-    // 7. Check for Immediate Combat Collisions
-    if (typeof activeEnemies !== 'undefined') {
-        const enemyAtLoc = activeEnemies.find(e => e.x === playerX && e.y === playerY);
-        if (enemyAtLoc) {
-            triggerHaptic(200);
-            removeEnemyAt(playerX, playerY);
+    if (typeof activeSkirmishes !== 'undefined') {
+        for (let i = activeSkirmishes.length - 1; i >= 0; i--) {
+            let sk = activeSkirmishes[i];
+            sk.timer--;
+            if (typeof spawnParticles === 'function' && Math.random() < 0.6) spawnParticles(sk.x, sk.y, 'explosion');
             
-            // 🚨 Route to Extortion or Combat
-            if (enemyAtLoc.isLegendary || enemyAtLoc.isProbe || (enemyAtLoc.shipClassKey && (enemyAtLoc.shipClassKey.includes('CONCORD') || enemyAtLoc.shipClassKey.includes('KTHARR')))) {
-                startCombat(enemyAtLoc);
-            } else {
-                // If it's a standard pirate, they try to extort you first!
-                if (typeof initiatePirateExtortion === 'function') initiatePirateExtortion(enemyAtLoc);
-                else startCombat(enemyAtLoc);
+            if (sk.timer <= 0) {
+                logMessage(`<span style="color:#888">[ SENSORS ] The skirmish at [${sk.x}, ${-sk.y}] has concluded. Wreckage detected.</span>`);
+                if (typeof updateWorldState === 'function') updateWorldState(sk.x, sk.y, { char: 'D', type: 'derelict', studied: false });
+                activeSkirmishes.splice(i, 1);
             }
-            return true; // Return true to indicate the tick ended in combat!
         }
     }
+});
 
-    // --- 8. COLONY PRODUCTION ENGINE (The Tycoon Update) ---
+// --- SYSTEM 3: ECONOMY, COLONIES, & OUTPOSTS ---
+GameBus.on('TICK_PROCESSED', (tick) => {
+    if (tick.interrupt) return;
+
+    // COLONIES (Fixed Double-Dipping Resource Generation)
     if (typeof playerColonies !== 'undefined') {
         Object.values(playerColonies).forEach(colony => {
             if (colony.established) {
-                // Initialize storage arrays if they don't exist yet
                 if (typeof colony.treasury === 'undefined') colony.treasury = 0;
                 if (typeof colony.storage === 'undefined') colony.storage = {};
                 if (typeof colony.lastTick === 'undefined') colony.lastTick = currentGameDate;
 
-                // Produce passive income every 1.0 Stardates
                 if (currentGameDate - colony.lastTick >= 1.0) {
                     colony.lastTick = currentGameDate;
-
-                    // Phase 2: Populated -> Generates Taxes
                     if (colony.phase === 'POPULATED' || colony.phase === 'OPERATIONAL') {
-                        const taxRate = 0.5; // Credits per citizen
+                        const taxRate = 0.5; 
                         const moraleMult = colony.morale / 100;
-                        const taxes = Math.floor(colony.population * taxRate * moraleMult);
-                        colony.treasury += taxes;
+                        colony.treasury += Math.floor(colony.population * taxRate * moraleMult);
                     }
-
-                    // Phase 3: Operational -> Generates Biome Resources
-                    if (colony.phase === 'OPERATIONAL') {
-                        const biomeDef = typeof PLANET_BIOMES !== 'undefined' ? PLANET_BIOMES[colony.biome] : null;
-                        if (biomeDef && biomeDef.resources.length > 0) {
-                            // Pick a random resource native to the biome
-                            const res = biomeDef.resources[Math.floor(Math.random() * biomeDef.resources.length)];
-                            const amount = Math.floor(Math.random() * 3) + 1 + Math.floor(colony.population / 100);
-                            colony.storage[res] = (colony.storage[res] || 0) + amount;
-                        }
-                    }
-
-                    // Phase 3: Operational -> Generates Biome Resources
                     if (colony.phase === 'OPERATIONAL') {
                         const biomeDef = typeof PLANET_BIOMES !== 'undefined' ? PLANET_BIOMES[colony.biome] : null;
                         if (biomeDef && biomeDef.resources.length > 0) {
@@ -3467,33 +3516,19 @@ function processGameTick(timeAmount, isMovement = false) {
                             const amount = Math.floor(Math.random() * 3) + 1 + Math.floor(colony.population / 100);
                             colony.storage[res] = (colony.storage[res] || 0) + amount;
                         }
-
-                        // 🚨 Spawn Trade Route Hauler (5% chance per tick)
                         if (Math.random() < 0.05) {
-                            // Ensure this colony doesn't already have an active hauler flying
-                            const existingHauler = activeNPCs.find(n => n.isColonyHauler && n.colonyId === colony.id);
-                            if (!existingHauler) {
+                            const existingHauler = typeof activeNPCs !== 'undefined' ? activeNPCs.find(n => n.isColonyHauler && n.colonyId === colony.id) : null;
+                            if (!existingHauler && typeof activeNPCs !== 'undefined') {
                                 activeNPCs.push({
-                                    x: colony.x, y: colony.y,
-                                    id: "HAULER_" + Date.now(),
-                                    name: colony.name + " Transport",
-                                    char: "H",
-                                    color: "var(--success)",
-                                    state: "TRADE_ROUTE",
-                                    isColonyHauler: true,
-                                    colonyId: colony.id,
-                                    // Target is Starbase Alpha (MAP_WIDTH - 7, MAP_HEIGHT - 5)
-                                    targetX: 33, targetY: 17 
+                                    x: colony.x, y: colony.y, id: "HAULER_" + Date.now(), name: colony.name + " Transport",
+                                    char: "H", color: "var(--success)", state: "TRADE_ROUTE", isColonyHauler: true,
+                                    colonyId: colony.id, targetX: 33, targetY: 17 
                                 });
                                 logMessage(`<span style='color:var(--success)'>[ COLONY ] ${colony.name} has launched a heavy transport bound for Starbase Alpha.</span>`);
                             }
                         }
                     }
-
-                    // --- RARE COLONY EVENTS ---
-                    // 0.2% chance per 1.0 stardate to trigger an event if they have population
                     if ((colony.phase === 'POPULATED' || colony.phase === 'OPERATIONAL') && Math.random() < 0.002) {
-                        // Pass the whole 'colony' object, not just 'colony.id'!
                         if (typeof triggerColonyEvent === 'function') triggerColonyEvent(colony);
                     }
                 }
@@ -3501,49 +3536,32 @@ function processGameTick(timeAmount, isMovement = false) {
         });
     }
 
-    // --- 8.5 PLAYER OUTPOST AUTOMATION ---
-    if (currentGameDate - (window.lastTollTick || 0) >= 1.0) {
+    // OUTPOST AUTOMATION
+    if (typeof worldStateDeltas !== 'undefined' && currentGameDate - (window.lastTollTick || 0) >= 1.0) {
         window.lastTollTick = currentGameDate;
         for (const key in worldStateDeltas) {
             const tile = worldStateDeltas[key];
             if (tile.isPlayerOwned && tile.isTinyOutpost) {
                 const tier = tile.outpostTier || 1;
-                
-                // 1. Toll Collection (Scales with Tier)
                 const baseToll = Math.floor(Math.random() * 25) + 15;
                 tile.treasury = (tile.treasury || 0) + (baseToll * tier); 
                 
-                // 2. Automated Defense Turrets (Tier 3 Only)
                 if (tier === 3 && typeof activeEnemies !== 'undefined') {
-                    // Coordinates of the station are stored in the key (e.g., "12,-45")
                     const coords = key.split('_')[0].split(',');
-                    const sx = parseInt(coords[0], 10);
-                    const sy = parseInt(coords[1], 10);
-                    
+                    const sx = parseInt(coords[0], 10), sy = parseInt(coords[1], 10);
                     if (!isNaN(sx) && !isNaN(sy)) {
-                        // Look for enemies within 5 tiles of the station
                         for (let i = activeEnemies.length - 1; i >= 0; i--) {
                             const enemy = activeEnemies[i];
                             const dist = Math.max(Math.abs(enemy.x - sx), Math.abs(enemy.y - sy));
-                            
                             if (dist <= 5 && !enemy.isProbe) {
-                                // Blast them!
                                 const dmg = 25;
-                                if (enemy.shields && enemy.shields > 0) enemy.shields -= dmg;
-                                else enemy.hp -= dmg; // Fallback to raw HP if shields are down
-                                
-                                // Visual flare on the map!
+                                if (enemy.shields && enemy.shields > 0) enemy.shields -= dmg; else enemy.hp -= dmg; 
                                 if (typeof spawnParticles === 'function') spawnParticles(enemy.x, enemy.y, 'explosion');
-                                
-                                // Did the station kill them?
                                 if ((enemy.hp && enemy.hp <= 0) || (enemy.hull && enemy.hull <= 0)) {
                                     logMessage(`<span style='color:var(--success); font-weight:bold;'>[ STATION DEFENSE ]</span> ${tile.name} automated turrets destroyed a hostile ${enemy.name}!`);
                                     activeEnemies.splice(i, 1);
-                                } else {
-                                    // 20% chance to notify the player the station is firing
-                                    if (Math.random() < 0.20) {
-                                        logMessage(`<span style='color:var(--warning)'>[ STATION DEFENSE ]</span> ${tile.name} is firing on hostiles in Sector [${sx}, ${-sy}]!`);
-                                    }
+                                } else if (Math.random() < 0.20) {
+                                    logMessage(`<span style='color:var(--warning)'>[ STATION DEFENSE ]</span> ${tile.name} is firing on hostiles in Sector [${sx}, ${-sy}]!`);
                                 }
                             }
                         }
@@ -3553,22 +3571,11 @@ function processGameTick(timeAmount, isMovement = false) {
         }
     }
 
-    // --- 9. DYNAMIC ECONOMY SHIFTS ---
-    // If there is no active trend, or the current one has expired, generate a new one!
-    if (!activeMarketTrend || currentGameDate > activeMarketTrend.expiry) {
+    // ECONOMY SHIFTS
+    if (typeof activeMarketTrend === 'undefined' || !activeMarketTrend || currentGameDate > activeMarketTrend.expiry) {
         if (typeof generateMarketTrend === 'function') generateMarketTrend();
     }
-
-    // 🚨 The Universal Tick Broadcast
-    // Instead of hardcoding everything here, any script file (trade.js, colonies.js, etc.) 
-    // can just listen for 'TICK_PROCESSED' and run its own background math!
-    if (typeof GameBus !== 'undefined') {
-        GameBus.emit('TICK_PROCESSED', { timeAmount: timeAmount, isMovement: isMovement });
-    }
-
-    return false; // Tick finished peacefully
-}
-
+});
 
  function movePlayer(dx, dy) {
     // 1. UI & State Blocks
@@ -3668,6 +3675,18 @@ function processGameTick(timeAmount, isMovement = false) {
             else if (ev.turnsRemaining <= 0) {
                 logMessage("<span style='color:#666'>A nearby distress signal faded to static...</span>");
                 activeDistressCalls.splice(i, 1);
+            }
+        }
+
+        // 3. 🚨 CHECK FOR ACTIVE SKIRMISHES 
+        if (typeof activeSkirmishes !== 'undefined') {
+            const skirmishIdx = activeSkirmishes.findIndex(s => s.x === playerX && s.y === playerY);
+            if (skirmishIdx > -1) {
+                const sk = activeSkirmishes[skirmishIdx];
+                if (typeof openSkirmishUI === 'function') {
+                    openSkirmishUI(sk, skirmishIdx);
+                    return; // Stop the movement tick! We are in combat!
+                }
             }
         }
 
@@ -8650,4 +8669,124 @@ function collectOutpostTolls(x, y) {
     // Refresh UI instantly
     openPlayerOutpost(tile);
     autoSaveGame();
+}
+
+// ==========================================
+// --- AUTOMATED MINING DRONES ---
+// ==========================================
+
+function deployMiningDrone() {
+    if (currentGameState !== GAME_STATES.GALACTIC_MAP) {
+        if (typeof showToast === 'function') showToast("MUST BE IN DEEP SPACE", "error");
+        return false; 
+    }
+
+    // 1. Scan for the nearest asteroid (up to 15 tiles away)
+    let targetAsteroid = null;
+    let shortestDist = Infinity;
+
+    for (let dy = -15; dy <= 15; dy++) {
+        for (let dx = -15; dx <= 15; dx++) {
+            const tile = chunkManager.getTile(playerX + dx, playerY + dy);
+            if (getTileChar(tile) === ASTEROID_CHAR_VAL && !tile.minedThisVisit && !tile.mined) {
+                const dist = Math.abs(dx) + Math.abs(dy);
+                if (dist < shortestDist) {
+                    shortestDist = dist;
+                    targetAsteroid = { x: playerX + dx, y: playerY + dy, tile: tile };
+                }
+            }
+        }
+    }
+
+    if (!targetAsteroid) {
+        logMessage("<span style='color:var(--warning)'>[ DRONE ERROR ] No viable, un-mined asteroids detected in sensor range.</span>");
+        if (typeof showToast === 'function') showToast("NO ASTEROIDS IN RANGE", "error");
+        return false; // Don't consume the item!
+    }
+
+    // 2. Launch the drone!
+    activePlayerDrones.push({
+        x: playerX,
+        y: playerY,
+        targetX: targetAsteroid.x,
+        targetY: targetAsteroid.y,
+        state: 'OUTBOUND',
+        payload: 0,
+        targetTile: targetAsteroid.tile,
+        waitTimer: 0
+    });
+
+    logMessage(`<span style="color:var(--success); font-weight:bold;">[ DRONE LAUNCHED ] Auto-Miner deployed. Intercepting asteroid at [${targetAsteroid.x}, ${-targetAsteroid.y}].</span>`);
+    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+    
+    // Close cargo hold to watch it fly!
+    closeGenericModal();
+    return true; // Consume the item!
+}
+
+function updatePlayerDrones() {
+    for (let i = activePlayerDrones.length - 1; i >= 0; i--) {
+        const drone = activePlayerDrones[i];
+
+        // Failsafe: Did the player warp across the galaxy?
+        const distToPlayer = Math.abs(drone.x - playerX) + Math.abs(drone.y - playerY);
+        if (distToPlayer > 100) {
+            logMessage("<span style='color:var(--danger)'>[ DRONE LOST ] Telemetry severed. Mining drone ran out of fuel trying to catch your ship.</span>");
+            activePlayerDrones.splice(i, 1);
+            continue;
+        }
+
+        // STATE: Flying to Asteroid
+        if (drone.state === 'OUTBOUND') {
+            if (drone.x < drone.targetX) drone.x++; else if (drone.x > drone.targetX) drone.x--;
+            if (drone.y < drone.targetY) drone.y++; else if (drone.y > drone.targetY) drone.y--;
+
+            if (typeof spawnParticles === 'function') spawnParticles(drone.x, drone.y, 'thruster');
+
+            if (drone.x === drone.targetX && drone.y === drone.targetY) {
+                drone.state = 'MINING';
+                drone.waitTimer = 3; // Takes 3 turns to mine
+            }
+        } 
+        // STATE: Mining the rock
+        else if (drone.state === 'MINING') {
+            drone.waitTimer--;
+            if (typeof spawnParticles === 'function') spawnParticles(drone.x, drone.y, 'mining');
+
+            if (drone.waitTimer <= 0) {
+                // Extract Loot
+                drone.payload = 15 + Math.floor(Math.random() * 15); // 15 to 30 minerals!
+                
+                // Deplete the asteroid on the map!
+                drone.targetTile.minedThisVisit = true;
+                updateWorldState(drone.x, drone.y, { minedThisVisit: true, lastInteraction: currentGameDate });
+                
+                drone.state = 'INBOUND';
+            }
+        } 
+        // STATE: Returning to Player
+        else if (drone.state === 'INBOUND') {
+            if (drone.x < playerX) drone.x++; else if (drone.x > playerX) drone.x--;
+            if (drone.y < playerY) drone.y++; else if (drone.y > playerY) drone.y--;
+
+            if (typeof spawnParticles === 'function') spawnParticles(drone.x, drone.y, 'thruster');
+
+            if (drone.x === playerX && drone.y === playerY) {
+                // Drone has returned!
+                const spaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+                const actualYield = Math.min(drone.payload, spaceLeft);
+
+                if (actualYield > 0) {
+                    playerCargo['MINERALS'] = (playerCargo['MINERALS'] || 0) + actualYield;
+                    logMessage(`<span style="color:var(--success); font-weight:bold;">[ DRONE RECOVERED ] Auto-Miner returned with ${actualYield}x Minerals!</span>`);
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    if (typeof soundManager !== 'undefined') soundManager.playGain();
+                } else {
+                    logMessage("<span style='color:var(--danger)'>[ DRONE RECOVERED ] Cargo hold full! Drone jettisoned its payload before docking.</span>");
+                }
+                
+                activePlayerDrones.splice(i, 1); // Despawn
+            }
+        }
+    }
 }
