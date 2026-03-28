@@ -505,8 +505,26 @@ function handleCombatAction(action) {
         }
     }
 
+    // --- 1.25 COMBAT DRONE SWARM ATTACK ---
+    // If you deployed drones, and the enemy is still alive, let them swarm!
+    if (currentCombatContext.playerDrones && currentCombatContext.playerDrones > 0 && currentCombatContext.pirateHull > 0 && action !== 'run' && action !== 'hail') {
+        const droneDmg = currentCombatContext.playerDrones * 10; // 10 free damage per drone!
+        
+        if (currentCombatContext.pirateShields > 0) {
+            currentCombatContext.pirateShields -= droneDmg;
+            if (currentCombatContext.pirateShields < 0) {
+                currentCombatContext.pirateHull += currentCombatContext.pirateShields;
+                currentCombatContext.pirateShields = 0;
+            }
+        } else {
+            currentCombatContext.pirateHull -= droneDmg;
+        }
+        combatLog += ` <span style="color:var(--success)">[ SWARM ] Drones deal ${droneDmg} damage!</span>`;
+        if (typeof soundManager !== 'undefined') setTimeout(() => soundManager.playLaser(), 150);
+    }
+
     // --- 1.5 ACTIVE ESCORT COVERING FIRE ---
-    // If you have an escort, and the enemy isn't dead yet, and you didn't just flee or talk...
+    // If you have an escort, let them lay down covering fire!
     if (window.concordEscortJumps && window.concordEscortJumps > 0 && currentCombatContext.pirateHull > 0 && action !== 'run' && action !== 'hail') {
         const escortDmg = 12 + Math.floor(Math.random() * 15); // Deals 12-26 damage automatically!
         
