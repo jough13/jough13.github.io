@@ -1536,3 +1536,119 @@ function deployCombatDrone() {
     
     return true; // Consume the item!
 }
+
+// ==========================================
+// --- SECTOR SKIRMISH RESOLUTION ---
+// ==========================================
+
+function openSkirmishUI(skirmish, index) {
+    openGenericModal("ACTIVE WARZONE");
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    document.getElementById('genericModalList').innerHTML = ''; // Hide list pane
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; animation: shake-effect 0.5s infinite;">💥</div>
+            <h3 style="color:var(--warning); margin-bottom:10px;">FLEET ENGAGEMENT DETECTED</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                You have dropped out of warp directly into a brutal firefight! Plasma fire and missiles are tearing through the void between a Concord patrol wing and a ${skirmish.factionB === 'ECLIPSE' ? 'Cartel smuggling fleet' : "K'tharr warband"}. 
+            </p>
+            <div style="margin-top: 20px; background: rgba(0,0,0,0.5); border: 1px solid var(--danger); padding: 15px; border-radius: 4px; text-align: left;">
+                <span style="color:var(--danger); font-size:10px; font-weight:bold; letter-spacing:1px; border-bottom:1px solid #333; padding-bottom:5px; display:block; margin-bottom:10px;">TACTICAL OPTIONS:</span>
+                <ul style="color:var(--text-color); font-size:12px; line-height:1.6; padding-left:15px; margin:0;">
+                    <li><strong style="color:var(--accent-color);">Assist Concord:</strong> Earns Credits and Concord Rep.</li>
+                    <li><strong style="color:${skirmish.factionB === 'ECLIPSE' ? '#9933FF' : 'var(--danger)'};">Assist ${skirmish.factionB}:</strong> Earns huge Credits, but causes massive Concord Notoriety.</li>
+                    <li><strong style="color:var(--gold-text);">Scavenge Crossfire:</strong> High risk of taking stray hits, but guarantees free loot from destroyed ships.</li>
+                </ul>
+            </div>
+        </div>
+    `;
+
+    // Ensure rep values exist
+    const concordRep = playerFactionStanding['CONCORD'] || 0;
+    
+    // Build Actions
+    let btnHtml = ``;
+
+    // 1. Assist Concord (Requires you aren't currently being hunted by them)
+    if (playerNotoriety === 0 && concordRep >= -20) {
+        btnHtml += `<button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="resolveSkirmish(${index}, 'CONCORD')">ASSIST CONCORD FORCES</button>`;
+    } else {
+        btnHtml += `<button class="action-button danger-btn" disabled>ASSIST CONCORD (WANTED BY AUTHORITIES)</button>`;
+    }
+
+    // 2. Assist Enemy
+    const facBColor = skirmish.factionB === 'ECLIPSE' ? '#DDA0DD' : '#FF5555';
+    btnHtml += `<button class="action-button" style="border-color:${facBColor}; color:${facBColor};" onclick="resolveSkirmish(${index}, '${skirmish.factionB}')">ASSIST ${skirmish.factionB} FORCES</button>`;
+
+    // 3. Scavenge
+    btnHtml += `<button class="action-button" style="border-color:var(--gold-text); color:var(--gold-text);" onclick="resolveSkirmish(${index}, 'SCAVENGE')">DIVE FOR SCRAP (Risk Hull)</button>`;
+    
+    // 4. Flee
+    btnHtml += `<button class="action-button" onclick="closeGenericModal(); activeSkirmishes.splice(${index}, 1); render();">EVASIVE MANEUVERS (Leave)</button>`;
+
+    actionsEl.innerHTML = btnHtml;
+    
+    if (typeof soundManager !== 'undefined') {
+        soundManager.playWarning();
+        setTimeout(() => soundManager.playExplosion(), 400);
+    }
+}
+
+function resolveSkirmish(index, choice) {
+    const sk = activeSkirmishes[index];
+    if (!sk) return;
+
+    let logMsg = "";
+    
+    if (choice === 'CONCORD') {
+        const reward = 1500 + Math.floor(Math.random() * 1000);
+        playerCredits += reward;
+        playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) + 10;
+        playerFactionStanding[sk.factionB] = (playerFactionStanding[sk.factionB] || 0) - 15;
+        
+        logMsg = `<span style="color:var(--accent-color); font-weight:bold;">[ WARZONE ]</span> You locked onto the ${sk.factionB} ships and turned the tide! Aegis Command wired ${formatNumber(reward)}c to your account. (+10 Concord Rep)`;
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    } 
+    else if (choice === sk.factionB) {
+        const reward = 3000 + Math.floor(Math.random() * 2000);
+        playerCredits += reward;
+        playerFactionStanding[sk.factionB] = (playerFactionStanding[sk.factionB] || 0) + 15;
+        updatePlayerNotoriety(15); // Massive crime!
+        
+        logMsg = `<span style="color:var(--danger); font-weight:bold;">[ WARZONE ]</span> You opened fire on the Concord patrol! The ${sk.factionB} forces paid you ${formatNumber(reward)}c for the assist. (+15 Notoriety!)`;
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    }
+    else if (choice === 'SCAVENGE') {
+        // High Evasion helps you dodge stray laser fire!
+        const dodgeChance = 0.4 + (typeof PLAYER_EVASION !== 'undefined' ? PLAYER_EVASION : 0);
+        
+        if (Math.random() < dodgeChance) {
+            // Success! Grab loot
+            const scrap = 5 + Math.floor(Math.random() * 10);
+            playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + scrap;
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+            
+            logMsg = `<span style="color:var(--gold-text); font-weight:bold;">[ WARZONE ]</span> You masterfully wove through the laser fire and tractored in ${scrap}x Tech Parts from the debris!`;
+            if (typeof soundManager !== 'undefined') soundManager.playGain();
+        } else {
+            // Failure! Take massive crossfire damage!
+            const dmg = 25 + Math.floor(Math.random() * 20);
+            playerHull -= dmg;
+            logMsg = `<span style="color:var(--danger); font-weight:bold;">[ WARZONE ]</span> You got caught in the crossfire! Stray missiles caused ${dmg} hull damage!`;
+            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Warzone Crossfire" });
+        }
+    }
+
+    // Erase the skirmish from the map
+    activeSkirmishes.splice(index, 1);
+    
+    closeGenericModal();
+    logMessage(logMsg);
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
+    if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+    if (typeof render === 'function') render();
+    autoSaveGame();
+}
