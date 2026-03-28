@@ -945,9 +945,16 @@ function updateEnemies() {
 
         // 4. CHECK COMBAT TRIGGER
         if (enemy.x === playerX && enemy.y === playerY) {
-            logMessage(`<span style='color:#FF5555'>ALERT: Pirate vessel engaging!</span>`);
             activeEnemies.splice(i, 1);
-            if (typeof startCombat === 'function') startCombat();
+            
+            // Route to Extortion or Combat
+            if (enemy.isLegendary || enemy.isProbe || (enemy.shipClassKey && (enemy.shipClassKey.includes('CONCORD') || enemy.shipClassKey.includes('KTHARR')))) {
+                logMessage(`<span style='color:#FF5555'>ALERT: Hostile vessel engaging!</span>`);
+                if (typeof startCombat === 'function') startCombat(enemy);
+            } else {
+                if (typeof initiatePirateExtortion === 'function') initiatePirateExtortion(enemy);
+                else startCombat(enemy);
+            }
             break; // Prevent overlapping encounters on the same tick
         }
     }
@@ -1324,15 +1331,46 @@ function executeRaidAction(action) {
         return;
     } 
     else if (ctx.enemyHp <= 0) {
-        // --- VICTORY RESOLUTION ---
+        // --- POST-RAID DECISION (Pauses the game to ask what to do) ---
+        
+        // Save surviving marines!
+        GameState.ship.forces.marines = Math.ceil(ctx.playerHp / 10);
+        
+        const detailEl = document.getElementById('genericDetailContent');
+        const actionsEl = document.getElementById('genericModalActions');
+
+        detailEl.innerHTML = `
+            <div style="text-align:center; padding: 30px 20px;">
+                <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px var(--success));">🏳️</div>
+                <h3 style="color:var(--success); margin-bottom:10px;">OUTPOST SECURED</h3>
+                <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                    The cartel garrison has been wiped out. You now control the central command terminal. 
+                    <br><br>What are your orders, Commander?
+                </p>
+            </div>
+        `;
+
+        actionsEl.innerHTML = `
+            <button class="action-button danger-btn" onclick="finalizeRaid('RAZE')">RAZE & PILLAGE (Loot & Destroy)</button>
+            <button class="action-button" style="border-color:#9933FF; color:#DDA0DD; box-shadow: 0 0 15px rgba(153,51,255,0.3);" onclick="finalizeRaid('CLAIM')">CLAIM OUTPOST (Establish Shadow Port)</button>
+        `;
+        return; // Wait for player input!
+    }
+
+    // Re-render UI for the next turn
+    renderRaidUI();
+}
+
+function finalizeRaid(choice) {
+    const ctx = raidContext;
+    if (!ctx) return;
+
+    if (choice === 'RAZE') {
         const credits = (800 + Math.floor(Math.random() * 1000)) * (typeof hasCrewPerk === 'function' && hasCrewPerk('SCAVENGER_PROTOCOL') ? 2 : 1);
         const xp = 250;
         
         playerCredits += credits;
         playerXP += xp;
-        
-        // Save surviving marines!
-        GameState.ship.forces.marines = Math.ceil(ctx.playerHp / 10);
         
         // Permanently destroy the pirate base on the map!
         ctx.locationObj.cleared = true; 
@@ -1351,20 +1389,114 @@ function executeRaidAction(action) {
             if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         }
         
-        closeGenericModal();
-        raidContext = null;
-
         logMessage(`<span style="color:var(--success); font-weight:bold;">OUTPOST SECURED!</span> You cracked the cartel vault.<br>Looted <span style="color:var(--gold-text)">${typeof formatNumber === 'function' ? formatNumber(credits) : credits}c</span> and seized local contraband! (+${xp} XP)`);
         if (typeof showToast === 'function') showToast("BASE DESTROYED", "success");
         if (typeof soundManager !== 'undefined') soundManager.playGain();
-        
-        if (typeof checkLevelUp === 'function') checkLevelUp();
-        if (typeof renderUIStats === 'function') renderUIStats();
-        if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
-        if (typeof render === 'function') render();
-        return;
+    } 
+    else if (choice === 'CLAIM') {
+        // Turn the tile into a player-owned Black Market!
+        const stationName = prompt("Enter a name for your new Shadow Port:", "The Den");
+        const finalName = stationName ? stationName : "Cartel Hideout";
+
+        updateWorldState(playerX, playerY, {
+            char: 'H', 
+            type: 'location', 
+            name: finalName, 
+            faction: 'ECLIPSE', // Stays Cartel aligned, but you own it!
+            isMajorHub: false, 
+            isPlayerOwned: true, 
+            isTinyOutpost: true, // Uses our outpost logic
+            outpostTier: 2, // Starts as a Hub!
+            isBlackMarket: true, // Access to the Shadow Broker
+            treasury: 0, 
+            scanFlavor: "A seized pirate fortress turned player-owned shadow port."
+        });
+
+        // Massive Notoriety hit for claiming a pirate base!
+        if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(15);
+
+        logMessage(`<span style="color:#9933FF; font-weight:bold;">[ OUTPOST CLAIMED ]</span> The facility is yours. The Shadow Network now recognizes you as the local Baron. Concord Notoriety significantly increased!`);
+        if (typeof showToast === 'function') showToast("SHADOW PORT ESTABLISHED", "warning");
+        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
     }
 
-    // Re-render UI for the next turn
-    renderRaidUI();
+    closeGenericModal();
+    raidContext = null;
+
+    if (typeof checkLevelUp === 'function') checkLevelUp();
+    if (typeof renderUIStats === 'function') renderUIStats();
+    if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+    if (typeof render === 'function') render();
+    autoSaveGame();
+}
+
+// ==========================================
+// --- VOID VULTURES: EXTORTION & TRUCE ---
+// ==========================================
+
+let pendingExtortionEnemy = null;
+
+function initiatePirateExtortion(enemy) {
+    // 1. Check for Eclipse Truce (High Reputation)
+    if (typeof playerFactionStanding !== 'undefined' && (playerFactionStanding['ECLIPSE'] || 0) >= 50) {
+         logMessage("<span style='color:#9933FF; font-weight:bold;'>[ CARTEL TRUCE ]</span> The raiders scan your transponder and disengage. <span style='color:var(--text-color)'>'Fly safe, boss.'</span>");
+         if (typeof showToast === 'function') showToast("TRUCE: COMBAT BYPASSED", "success");
+         currentCombatContext = null;
+         changeGameState(GAME_STATES.GALACTIC_MAP);
+         return; 
+    }
+
+    pendingExtortionEnemy = enemy;
+    
+    // They demand 15% of your total credits, or at least 100c
+    const demand = Math.max(100, Math.floor(playerCredits * 0.15));
+    
+    openGenericModal("PIRATE INTERCEPT");
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    document.getElementById('genericModalList').innerHTML = ''; // Hide list
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px var(--danger));">☠️</div>
+            <h3 style="color:var(--danger); margin-bottom:10px;">VOID VULTURES</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                "Cut your engines and drop your shields! This is a toll sector. Pay the tithe, and you get to keep breathing. Try to run, and we'll turn your ship into slag."
+            </p>
+            <div style="margin-top: 20px; background: rgba(255, 0, 0, 0.1); border: 1px solid var(--danger); padding: 15px; border-radius: 4px;">
+                <div style="color: var(--danger); font-size: 11px; margin-bottom: 5px; font-weight: bold; letter-spacing: 1px;">CREDIT DEMAND</div>
+                <div style="font-size: 24px; color: var(--gold-text); font-weight: bold;">${formatNumber(demand)}c</div>
+            </div>
+        </div>
+    `;
+
+    const canAfford = playerCredits >= demand;
+
+    actionsEl.innerHTML = `
+        <button class="action-button" style="border-color:var(--warning); color:var(--warning); box-shadow: 0 0 15px rgba(255,170,0,0.2);" ${!canAfford ? 'disabled' : ''} onclick="payPirateToll(${demand})">
+            ${canAfford ? `PAY TOLL (${formatNumber(demand)}c)` : 'INSUFFICIENT FUNDS'}
+        </button>
+        <button class="action-button danger-btn" onclick="refusePirateToll()">REFUSE AND FIGHT</button>
+    `;
+}
+
+function payPirateToll(amount) {
+    if (playerCredits >= amount) {
+        playerCredits -= amount;
+        logMessage(`<span style="color:var(--warning)">[ EXTORTION ] You transferred ${formatNumber(amount)}c. The pirates power down their weapons and let you pass.</span>`);
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+        
+        pendingExtortionEnemy = null;
+        closeGenericModal();
+        changeGameState(GAME_STATES.GALACTIC_MAP);
+        renderUIStats();
+        autoSaveGame();
+    }
+}
+
+function refusePirateToll() {
+    closeGenericModal();
+    logMessage("<span style='color:var(--danger); font-weight:bold;'>[ COMBAT ] 'Big mistake, spacer!' Weapons hot!</span>");
+    startCombat(pendingExtortionEnemy);
+    pendingExtortionEnemy = null;
 }
