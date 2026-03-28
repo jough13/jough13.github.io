@@ -163,6 +163,37 @@ const COMMODITIES = {
         illegal: false,
         description: "Cheap, unlicensed robotic joints. They whine loudly when actuated and occasionally develop a terrifying degree of independent thought."
     },
+    WORMHOLE_STABILIZER: {
+        name: "Wormhole Stabilizer",
+        basePrice: 75000,
+        description: "A massive ring of phase-shifted alloy. Deploy in Empty Space (.) to create a permanent, stable Stargate.",
+        onUse: () => {
+            const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+            if (tile && getTileChar(tile) !== '.') {
+                if (typeof showToast === 'function') showToast("MUST DEPLOY IN EMPTY SPACE", "error");
+                return false; 
+            }
+            
+            const gateName = prompt("Designate Stargate:", "Alpha Gate");
+            if (!gateName) return false; 
+
+            // Permanently change the map tile into a Stargate!
+            updateWorldState(playerX, playerY, {
+                char: 'Ω', 
+                type: 'location', 
+                name: gateName, 
+                isDiscoveredWormhole: true, // Injects it into the fast-travel network
+                customName: gateName,
+                isStargate: true, // Tells the engine it's safe!
+                scanFlavor: "A player-constructed subspace transit ring."
+            });
+
+            logMessage(`<span style="color:var(--gold-text); font-weight:bold;">[ STARGATE ONLINE ] ${gateName} is now locked into the subspace network!</span>`);
+            if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+            if (typeof render === 'function') render();
+            return true; // Consume the item!
+        }
+    },
     STATION_CORE: {
         name: "Station Core",
         basePrice: 50000,
