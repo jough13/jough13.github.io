@@ -163,6 +163,34 @@ const COMMODITIES = {
         illegal: false,
         description: "Cheap, unlicensed robotic joints. They whine loudly when actuated and occasionally develop a terrifying degree of independent thought."
     },
+    STATION_CORE: {
+        name: "Station Core",
+        basePrice: 50000,
+        description: "A massive self-assembling framework. Use from the Cargo Manifest while in Empty Space (.) to construct a permanent, player-owned waystation.",
+        onUse: () => {
+            const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+            if (tile && getTileChar(tile) !== '.') {
+                if (typeof showToast === 'function') showToast("MUST DEPLOY IN EMPTY SPACE", "error");
+                return false; // Don't consume the item
+            }
+            
+            const stationName = prompt("Enter a name for your new Waystation:", "Outpost " + Math.floor(Math.random()*1000));
+            if (!stationName) return false; // Canceled
+
+            // Spawns 'h' and flags it as a Tiny Outpost!
+            updateWorldState(playerX, playerY, {
+                char: 'h', type: 'location', name: stationName, faction: 'INDEPENDENT',
+                isMajorHub: false, isPlayerOwned: true, isTinyOutpost: true, 
+                treasury: 0, storage: {}, 
+                scanFlavor: "A tiny, newly established player-owned waystation. It lacks the facilities of a major hub."
+            });
+
+            logMessage(`<span style="color:var(--success)">[ OUTPOST CONSTRUCTED ] ${stationName} is now operational!</span>`);
+            if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+            if (typeof render === 'function') render();
+            return true; // Consume the item!
+        }
+    },
     PREFAB_COLONY_CORE: {
         name: "Prefab Colony Core",
         basePrice: 25000,
