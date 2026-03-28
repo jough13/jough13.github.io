@@ -663,6 +663,82 @@ function renderShadowBrokerList() {
     listEl.prepend(smuggleRow);
 }
 
+function showSmugglingContractDetails() {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Find all Black Markets to use as a destination
+    const blackMarkets = Object.keys(LOCATIONS_DATA).filter(k => LOCATIONS_DATA[k].isBlackMarket);
+    const destName = blackMarkets[Math.floor(Math.random() * blackMarkets.length)];
+    const payout = 15000 + Math.floor(Math.random() * 10000); // Massive payout!
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 15px;">
+            <div style="font-size:50px; margin-bottom:10px; filter: hue-rotate(300deg);">📦</div>
+            <h3 style="color:var(--danger); margin:0;">HOT CARGO RUN</h3>
+            <p style="font-size:12px; color:var(--item-desc-color); margin:15px 0; line-height: 1.5;">
+                "I have a crate of highly classified Concord data-cores. The problem? They have active tracking beacons inside. The moment you leave the station, Aegis Pursuit Craft will warp in and hunt you."
+            </p>
+            
+            <div style="background:rgba(0,0,0,0.3); border:1px solid var(--danger); padding:10px; border-radius:4px; text-align:left;">
+                <div style="color:var(--danger); font-size:11px; margin-bottom:8px; font-weight:bold; letter-spacing:1px; border-bottom:1px solid #333; padding-bottom:5px;">CONTRACT PARAMETERS:</div>
+                <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between;">
+                    <span style="color:var(--item-desc-color)">Drop-off Location:</span> 
+                    <span style="color:var(--accent-color); font-weight:bold;">${destName}</span>
+                </div>
+                <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between;">
+                    <span style="color:var(--item-desc-color)">Cargo Requirement:</span> 
+                    <span style="color:var(--text-color);">10 Units (Heavy)</span>
+                </div>
+                <div style="font-size:14px; margin-top:10px; display:flex; justify-content:space-between; border-top: 1px dashed #555; padding-top: 10px;">
+                    <span style="color:#DDA0DD; font-weight:bold;">COMPLETION PAYOUT:</span> 
+                    <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(payout)}c</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Make sure they have 10 cargo space!
+    const spaceLeft = (typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY : 50) - currentCargoLoad;
+    if (spaceLeft < 10) {
+        actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>INSUFFICIENT CARGO SPACE (Needs 10)</button>`;
+    } else if (playerActiveMission) {
+        actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>LIMIT 1 ACTIVE CONTRACT</button>`;
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button" style="border-color:var(--danger); color:var(--danger); box-shadow: 0 0 15px rgba(255,0,0,0.3);" onclick="acceptSmugglingRun('${destName}', ${payout})">ACCEPT HOT CARGO</button>
+        `;
+    }
+}
+
+function acceptSmugglingRun(destName, payout) {
+    // Give the player the cursed item
+    playerCargo['HOT_CARGO'] = (playerCargo['HOT_CARGO'] || 0) + 1;
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+    // Hook it into the existing mission system!
+    playerActiveMission = {
+        id: "SMUGGLE_" + Date.now(),
+        type: "DELIVERY",
+        title: "Smuggle Hot Cargo",
+        giver: "Shadow Broker",
+        isComplete: false,
+        description: `Evade Concord patrols and deliver the Tracked Contraband to the Shadow Broker at ${destName}. Use Silent Running (Q) to break target locks.`,
+        rewards: { credits: payout, xp: 500, notoriety: 10 },
+        objectives: [{ type: "DELIVERY", destinationName: destName, itemID: "HOT_CARGO", count: 1 }],
+        progress: { delivery_0: { delivered: 0, required: 1, complete: false, destinationName: destName } }
+    };
+
+    logMessage(`<span style="color:var(--danger); font-weight:bold;">[ CONTRACT ACCEPTED ]</span> The tracker is active. Concord intercepts will arrive momentarily. Fly fast and stay quiet.`);
+    if (typeof showToast === 'function') showToast("HOT CARGO LOADED", "warning");
+    if (typeof soundManager !== 'undefined') soundManager.playWarning();
+    
+    closeGenericModal();
+    if (typeof renderMissionTracker === 'function') renderMissionTracker();
+    if (typeof renderUIStats === 'function') renderUIStats();
+    autoSaveGame();
+}
+
 function showShadowBrokerItemDetails(itemId) {
     const item = COMMODITIES[itemId];
     const qty = playerCargo[itemId];
