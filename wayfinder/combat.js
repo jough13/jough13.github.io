@@ -1,40 +1,35 @@
 function startCombat(specificEnemyEntity = null) {
-     let pirateShip;
-     let aiType = "AGGRESSIVE"; // Default behavior
+    let pirateShip;
+    let aiType = "AGGRESSIVE"; // Default behavior
 
-     // 1. Determine Enemy Ship & AI Profile
-     if (specificEnemyEntity && specificEnemyEntity.shipClassKey) {
-         pirateShip = PIRATE_SHIP_CLASSES[specificEnemyEntity.shipClassKey];
-         
-         // Simple AI mapping based on ship name keywords
-         if (specificEnemyEntity.shipClassKey.includes("INTERCEPTOR") || specificEnemyEntity.shipClassKey.includes("SCOUT")) {
-             aiType = "TACTICAL";
-         } else if (specificEnemyEntity.shipClassKey.includes("GUNSHIP") || specificEnemyEntity.shipClassKey.includes("DREADNOUGHT")) {
-             aiType = "AGGRESSIVE";
-         } else {
-             aiType = "BALANCED";
-         }
-     } else {
-         // Fallback generation
-         const pirateShipOutcomes = Object.values(PIRATE_SHIP_CLASSES).filter(s => !s.id.includes('KTHARR') && !s.id.includes('CONCORD'));
-         pirateShip = getWeightedRandomOutcome(pirateShipOutcomes);
-     }
+    // 1. Determine Enemy Ship & AI Profile
+    if (specificEnemyEntity && specificEnemyEntity.shipClassKey && typeof PIRATE_SHIP_CLASSES !== 'undefined' && PIRATE_SHIP_CLASSES[specificEnemyEntity.shipClassKey]) {
+        pirateShip = PIRATE_SHIP_CLASSES[specificEnemyEntity.shipClassKey];
+        
+        // Simple AI mapping based on ship name keywords
+        if (specificEnemyEntity.shipClassKey.includes("INTERCEPTOR") || specificEnemyEntity.shipClassKey.includes("SCOUT")) {
+            aiType = "TACTICAL";
+        } else if (specificEnemyEntity.shipClassKey.includes("GUNSHIP") || specificEnemyEntity.shipClassKey.includes("DREADNOUGHT")) {
+            aiType = "AGGRESSIVE";
+        } else {
+            aiType = "BALANCED";
+        }
+    } else {
+        // FALLBACK: If specific entity lacks a valid class, generate a random standard pirate!
+        const pirateShipOutcomes = Object.values(PIRATE_SHIP_CLASSES).filter(s => !s.id.includes('KTHARR') && !s.id.includes('CONCORD'));
+        pirateShip = getWeightedRandomOutcome(pirateShipOutcomes);
+    }
 
-     // --- ECLIPSE CARTEL TRUCE PERK ---
-     // If the player has 50+ Rep with Eclipse, generic pirates won't attack!
-     if (typeof playerFactionStanding !== 'undefined' && (playerFactionStanding['ECLIPSE'] || 0) >= 50) {
-         // Check if it's a generic pirate (not Concord, not K'tharr)
-         if (!pirateShip.id.includes('KTHARR') && !pirateShip.id.includes('CONCORD')) {
-             logMessage("<span style='color:#9933FF; font-weight:bold;'>[ CARTEL TRUCE ]</span> The raiders scan your transponder and disengage. <span style='color:var(--text-color)'>'Fly safe, boss.'</span>");
-             if (typeof showToast === 'function') showToast("CARTEL TRUCE: COMBAT BYPASSED", "success");
-             
-             // Abort combat instantly
-             currentCombatContext = null;
-             if (typeof removeEnemyAt === 'function') removeEnemyAt(playerX, playerY);
-             changeGameState(GAME_STATES.GALACTIC_MAP);
-             return; 
-         }
-     }
+    // --- ECLIPSE CARTEL TRUCE PERK ---
+    // If the player has 50+ Rep with Eclipse, generic pirates won't attack!
+    if (typeof playerFactionStanding !== 'undefined' && (playerFactionStanding['ECLIPSE'] || 0) >= 50) {
+        if (!pirateShip.id.includes('KTHARR') && !pirateShip.id.includes('CONCORD')) {
+            logMessage("<span style='color:var(--success); font-weight:bold;'>[ TRUCE ] The Cartel recognizes your transponder. They hold their fire and let you pass.</span>");
+            if (typeof removeEnemyAt === 'function') removeEnemyAt(playerX, playerY);
+            if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+            return; // CRITICAL: Actually cancel the combat initialization!
+        }
+    }
 
      playerAbilityCooldown = 0;
      playerIsChargingAttack = false;
@@ -92,6 +87,10 @@ function startCombat(specificEnemyEntity = null) {
          bountyReward: specificEnemyEntity ? specificEnemyEntity.reward : 0,
          bossId: specificEnemyEntity ? specificEnemyEntity.bossId : null,
          
+         // --- SKIRMISH DATA ---
+         isSkirmishTarget: specificEnemyEntity ? specificEnemyEntity.isSkirmishTarget : false,
+         supportedFaction: specificEnemyEntity ? specificEnemyEntity.supportedFaction : null,
+         
          subsystems: {
              engines: { name: "Ion Drives", hp: 30, status: 'ONLINE' },
              weapons: { name: "Beam Emitters", hp: 30, status: 'ONLINE' },
@@ -147,8 +146,30 @@ function generateEnemyIntent() {
 function handleVictory() {
     // 1. Calculate Base Rewards based on difficulty scaling
     const mult = currentCombatContext.difficultyMultiplier || 1.0;
-    const baseCredits = 100 + Math.floor(Math.random() * 200);
-    const baseXP = 50 + Math.floor(Math.random() * 50);
+    let baseCredits = 100 + Math.floor(Math.random() * 200);
+    let baseXP = 50 + Math.floor(Math.random() * 50);
+
+    // --- 🚨 NEW: SKIRMISH BONUS REWARDS ---
+    let skirmishMsg = "";
+    if (currentCombatContext.isSkirmishTarget) {
+        // Massive hazard pay payout!
+        const bonusCredits = 2500 + Math.floor(Math.random() * 2000);
+        baseCredits += bonusCredits;
+        baseXP += 150;
+        
+        // Did they fight for a specific side?
+        if (currentCombatContext.supportedFaction) {
+            if (typeof playerFactionStanding === 'undefined') window.playerFactionStanding = {};
+            playerFactionStanding[currentCombatContext.supportedFaction] = (playerFactionStanding[currentCombatContext.supportedFaction] || 0) + 15;
+            
+            const formattedBounty = typeof formatNumber === 'function' ? formatNumber(bonusCredits) : bonusCredits;
+            skirmishMsg = `\n<span style="color:var(--success); font-weight:bold;">[ WARZONE CONTRACT FULFILLED ]</span> The ${currentCombatContext.supportedFaction} commander wired you ${formattedBounty}c for the assist! (+15 Rep)`;
+        } else {
+            // They went rogue and just attacked whoever!
+            const formattedBounty = typeof formatNumber === 'function' ? formatNumber(bonusCredits) : bonusCredits;
+            skirmishMsg = `\n<span style="color:var(--success); font-weight:bold;">[ WARZONE BOUNTY ]</span> You claimed a massive ${formattedBounty}c hazard pay bonus from the wreckage!`;
+        }
+    }
 
     const credits = Math.floor(baseCredits * mult);
     const xp = Math.floor(baseXP * mult);
@@ -156,15 +177,16 @@ function handleVictory() {
     // 2. Apply Rewards & Notoriety
     playerCredits += credits;
     playerXP += xp;
-    updatePlayerNotoriety(5);
+    if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(5);
 
     // 3. Trigger Visual & Audio FX
-    spawnParticles(playerX, playerY, 'explosion');
-    soundManager.playExplosion();
-    setTimeout(() => spawnParticles(playerX, playerY, 'gain'), 400);
+    if (typeof spawnParticles === 'function') spawnParticles(playerX, playerY, 'explosion');
+    if (typeof soundManager !== 'undefined') soundManager.playExplosion();
+    if (typeof spawnParticles === 'function') setTimeout(() => spawnParticles(playerX, playerY, 'gain'), 400);
 
     // 4. Build the Combat Log Message
     let msg = `Victory! Enemy destroyed.\nSalvaged: ${credits}c\nExperience: +${xp}`;
+    if (skirmishMsg) msg += skirmishMsg; // Attach the shiny bonus text!
 
     // --- 5. TRACTOR BEAM LOOT RECOVERY ---
     // The player only gets physical cargo if they have the equipment to tractor it in!
@@ -1538,117 +1560,450 @@ function deployCombatDrone() {
 }
 
 // ==========================================
-// --- SECTOR SKIRMISH RESOLUTION ---
+// --- EXPANSIVE WARZONE ENGINE ---
 // ==========================================
 
 function openSkirmishUI(skirmish, index) {
-    openGenericModal("ACTIVE WARZONE");
+    // 1. Setup the Generic Modal (Setting the Fleet Battle Header)
+    if (typeof openGenericModal === 'function') {
+        openGenericModal("ACTIVE WARZONE", 'assets/skirmish.jpeg');
+    }
+    
+    const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
-    document.getElementById('genericModalList').innerHTML = ''; // Hide list pane
 
+    // --- State Machine Initialization ---
+    const sk = activeSkirmishes[index];
+    if (!sk) return;
+
+    if (!sk.phase) {
+        sk.phase = 'INITIAL';
+        sk.turnsIn = 0; // Track how long we've been here
+        sk.chaosLevel = 1; // Increases risk and reward over time
+        sk.advantage = 0; // Positive for player, negative for enemies
+        sk.investedRisk = 0; // Tracks potential damage built up from risky play
+        sk.salvagePoints = 0; // Non-credits loot potential
+        sk.supportedSide = null; // Who the player is actively helping
+    }
+
+    const facBColor = sk.factionB === 'ECLIPSE' ? '#9933FF' : 'var(--danger)';
+    const facBName = sk.factionB === 'ECLIPSE' ? 'Cartel Smugglers' : "K'tharr Warband";
+
+    // Dynamic Variables for rendering
+    let leftHtml = "";
+    let bodyImage = "";
+    let mainTitle = `FLEET ENGAGEMENT`;
+    let mainDesc = "";
+    let actionBtnHtml = "";
+    let dangerLevelMsg = "";
+
+    // BUILD PORTRAIT / LEFT PANEL BASED ON PHASE/SIDE
+    // Phase 1 (INITIAL) = Dynamic Sensors. Phase 2 (COMBAT/ENEMY) = Faction Portraits.
+
+    if (sk.phase === 'INITIAL') {
+        // Initial Phase: Show current faction strengths and Chaos Meter
+        leftHtml = `
+            <div style="padding:15px; border-bottom:1px solid var(--border-color, #ccc);">
+                <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">TACTICAL SENSORS</div>
+                <h4 style="color:var(--concord-color, #00AAFF); margin:0; text-transform:uppercase;">CONCORD PATROL</h4>
+                <div style="font-size:12px; color:var(--text-color); margin-top:5px;">
+                    • Cruisers: ${Math.floor(Math.random() * 2) + 1}<br>
+                    • Status: Requesting Backup
+                </div>
+            </div>
+            <div style="padding:15px;">
+                <h4 style="color:${facBColor}; margin:0; text-transform:uppercase;">${facBName}</h4>
+                <div style="font-size:12px; color:var(--text-color); margin-top:5px;">
+                    • Gunships: ${Math.floor(Math.random() * 3) + 1}<br>
+                    • Attack Profile: Flanking
+                </div>
+            </div>
+        `;
+    } else if (sk.supportedSide === 'CONCORD') {
+        // INJECT Concord Admiral portrait
+        leftHtml = `
+            <div style="text-align:center; padding-top:20px;">
+                <img src="assets/concord_admiral.jpeg" style="width: 100%; height: auto; border-bottom: 3px solid var(--accent-color, #00AAFF); max-width: 150px;" alt="Concord Admiral">
+                <div style="font-size:10px; color:#888; letter-spacing:2px; margin-top:10px;">COMMAND LINK</div>
+                <h4 style="color:var(--concord-color, #00AAFF); margin:5px 0; text-transform:uppercase;">ADMIRAL</h4>
+                <div style="font-size:12px; color:var(--text-color); margin-top:5px; background:rgba(0,0,0,0.3); padding:5px;">
+                    Advantage: <span style="color:var(--success); font-weight:bold;">${sk.advantage}</span><br>
+                    Hull: Defensive Line
+                </div>
+            </div>
+        `;
+    } else if (sk.supportedSide === sk.factionB) {
+        if (sk.factionB === 'ECLIPSE') {
+            // INJECT Eclipse High Operative portrait
+            leftHtml = `
+                <div style="text-align:center; padding-top:20px;">
+                    <img src="assets/eclipse_high_operative.png" style="width: 100%; height: auto; border-bottom: 3px solid #9933FF; max-width: 150px;" alt="Eclipse High Operative">
+                    <div style="font-size:10px; color:#888; letter-spacing:2px; margin-top:10px;">TACTICAL LINK</div>
+                    <h4 style="color:#9933FF; margin:5px 0; text-transform:uppercase;">HIGH OPERATIVE</h4>
+                </div>
+            `;
+        } else {
+            // INJECT K'Tharr Warlord portrait (Asset updated!)
+            leftHtml = `
+                <div style="text-align:center; padding-top:20px;">
+                    <img src="assets/ktharr_warlord.png" style="width: 100%; height: auto; border-bottom: 3px solid var(--danger, #FF5555); max-width: 150px;" alt="K'Tharr Warlord">
+                    <div style="font-size:10px; color:#888; letter-spacing:2px; margin-top:10px;">BATTLE LINK</div>
+                    <h4 style="color:var(--danger, #FF5555); margin:5px 0; text-transform:uppercase;">WARLORD</h4>
+                </div>
+            `;
+        }
+    } else {
+        // Scavenge State
+        leftHtml = `
+            <div style="padding:15px; border-bottom:1px solid var(--border-color, #ccc);">
+                <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">ENVIRONMENT SENSORS</div>
+                <h4 style="color:var(--gold-text); margin:0; text-transform:uppercase;">WRECKAGE ZONE</h4>
+                <div style="font-size:12px; color:var(--text-color); margin-top:5px;">
+                    • Debris Density: ${sk.salvagePoints > 10 ? `<span style="color:var(--gold-text)">CRITICAL</span>` : `Significant`}<br>
+                    • Chaos Level: ${sk.chaosLevel}
+                </div>
+            </div>
+            <div style="padding:15px;">
+                <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">RISK ANALYSIS</div>
+                <h4 style="color:var(--danger, #FF5555); margin:0; text-transform:uppercase;">STRAY FIRE</h4>
+                <div style="font-size:12px; color:var(--text-color); margin-top:5px;">
+                    • Probability: ${sk.investedRisk * 10}%<br>
+                    • Shield Status: Interference
+                </div>
+            </div>
+        `;
+    }
+
+    // --- PHASE/STATE ROUTING ---
+
+    if (sk.phase === 'INITIAL') {
+        mainTitle = "WARP INTERRUPTION";
+        mainDesc = `You drop out of warp directly into a brutal firefight! Plasma fire and missiles tear through the void between a Concord patrol wing and a ${facBName}. Your tactical computer demands immediate orders. What is our approach, Captain?`;
+        
+        if (typeof playerNotoriety !== 'undefined' && playerNotoriety === 0 && (typeof playerFactionStanding !== 'undefined' && playerFactionStanding['CONCORD'] >= -20)) {
+            actionBtnHtml += `<button class="action-button full-width-btn" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="handleSkirmishAction(${index}, 'APPROACH_CONCORD')">ASSIST CONCORD FORCES</button>`;
+        } else {
+            actionBtnHtml += `<button class="action-button full-width-btn danger-btn" disabled>ASSIST CONCORD (WANTED BY AUTHORITIES)</button>`;
+        }
+        actionBtnHtml += `<button class="action-button full-width-btn" style="border-color:${facBColor}; color:${facBColor}; margin-top:10px;" onclick="handleSkirmishAction(${index}, 'APPROACH_ENEMY')">ASSIST ${skirmish.factionB} FORCES</button>`;
+        actionBtnHtml += `<button class="action-button full-width-btn" style="border-color:var(--gold-text); color:var(--gold-text); margin-top:10px;" onclick="handleSkirmishAction(${index}, 'APPROACH_SCAVENGE')">SCAVENGE THE DEBRIS</button>`;
+        actionBtnHtml += `<button class="action-button full-width-btn" style="margin-top:10px;" onclick="closeAndCleanSkirmish(${index})">EVASIVE MANEUVERS (Flee)</button>`;
+
+    } else if (sk.phase === 'COMBAT_TACTICS') {
+        // --- EXPANSIVE Turn N COMBAT PHASE ---
+        mainTitle = "TACTICAL ENGAGEMENT";
+        sk.turnsIn++;
+        
+        // Image Scene: Update based on enemy
+        const sceneImage = sk.factionB === 'ECLIPSE' ? 'assets/skirmish_1.jpeg' : 'assets/skirmish_3.png';
+        bodyImage = `<img src="${sceneImage}" style="width: 100%; height: auto; border: 1px solid rgba(128,128,128,0.3); margin-bottom:15px; border-radius:4px;" alt="Tactical Scene">`;
+        
+        if (sk.supportedSide === 'CONCORD') {
+            mainDesc = `Admiral on comms: <i>"Captain, we've stabilized the core formation. They've shifted their gunships to flank us. We need you to coordinate a combined tactical strike on their lead cruiser while we focus their support craft!"</i><br><br>Chaos Level is increasing. Advantage: ${sk.advantage}`;
+            
+            // Turn N Actions (Support Concord)
+            actionBtnHtml += `<button class="action-button full-width-btn" onclick="handleSkirmishAction(${index}, 'CONCORD_TACTICAL_STRIKE')">COORDINATE TACTICAL STRIKE (Credits +, Rep +, Chaos ++)</button>`;
+            if (sk.advantage > 0 && Math.random() < 0.6) {
+                // Occasional high reward option
+                actionBtnHtml += `<button class="action-button full-width-btn" style="border-color:var(--danger); color:var(--danger); margin-top:10px;" onclick="handleSkirmishAction(${index}, 'CONCORD_HACK_TARGETING')">HACK TARGETING ARRAY (MASSIVE Advantage, Risk Hull)</button>`;
+            }
+            if (sk.turnsIn >= 2) {
+                actionBtnHtml += `<button class="action-button full-width-btn" style="border-color:var(--success); color:var(--success); margin-top:10px;" onclick="handleSkirmishAction(${index}, 'CONCORD_TRIGGER_BATTLE')">FINAL ASSAULT (Trigger Pew-Pew with advantage)</button>`;
+            }
+            actionBtnHtml += `<button class="action-button full-width-btn" style="margin-top:10px;" onclick="handleSkirmishAction(${index}, 'TACTICS_RETREAT')">RETREAT AND DISENGAGE</button>`;
+
+        } else if (sk.supportedSide === sk.factionB) {
+            mainDesc = `Commander on comms: <i>"Aegis curs are retreating! They're trying to drop their debris to jam our sensors! Hack their navigation matrix so they can't call reinforcements, or assist us in cutting them down!"</i><br><br>The Void Crystals on that wreck are exposed. Chaos Level: ${sk.chaosLevel}`;
+            
+            // Turn N Actions (Support Enemy)
+            if (sk.factionB === 'ECLIPSE') {
+                actionBtnHtml += `<button class="action-button full-width-btn" style="border-color:#9933FF; color:#9933FF;" onclick="handleSkirmishAction(${index}, 'ECLIPSE_HACK_NAV')">HACK NAVIGATION MATRIX (MASSIVE Credits +, Notoriety +, Chaos ++)</button>`;
+            } else {
+                actionBtnHtml += `<button class="action-button full-width-btn" style="border-color:var(--danger); color:var(--danger);" onclick="handleSkirmishAction(${index}, 'KTHARR_RAMMING_VECTOR')">COORDINATE RAMMING VECTOR (Chaos +++, Advantage ++, Risk Hull)</button>`;
+            }
+            actionBtnHtml += `<button class="action-button full-width-btn" style="border-color:var(--warning); color:var(--warning); margin-top:10px;" onclick="handleSkirmishAction(${index}, 'ENEMY_FULL_ASSAULT')">TRIGGER FULL ASSAULT (Trigger Pew-Pew)</button>`;
+            actionBtnHtml += `<button class="action-button full-width-btn" style="margin-top:10px;" onclick="handleSkirmishAction(${index}, 'TACTICS_RETREAT')">BREAK FORMATION & DISENGAGE</button>`;
+        }
+        
+    } else if (sk.phase === 'SCAVENGE_TACTICS') {
+        // --- Turn N SCAVENGING PHASE ---
+        mainTitle = "DEBRIS FIELD SALVAGE";
+        sk.turnsIn++;
+        
+        // Dynamic Scene: Wreckage
+        bodyImage = `<img src="assets/skirmish_2.png" style="width: 100%; height: auto; border: 1px solid rgba(128,128,128,0.3); margin-bottom:15px; border-radius:4px;" alt="Scavenge Scene">`;
+
+        mainDesc = `You cut your engines and drift into the wreckage. The surrounding combat is incredibly intense. Our sensors detect a rare VOID CRYSTAL cache on that spinning cruiser, but its reactor stability is dropping fast. Invested Risk: ${sk.investedRisk}`;
+        
+        // Turn N Actions (Scavenger)
+        if (typeof playerPerks !== 'undefined' && playerPerks.has('VOID_DIVER')) {
+            // VOID DIVER PERK OPTION
+            actionBtnHtml += `<button class="action-button full-width-btn" style="border-color:var(--success); color:var(--success);" onclick="handleSkirmishAction(${index}, 'SCAVENGE_VOID_CACH')">SQUEEZE PAST (No Risk, Guaranteed VOID CRYSTALS!)</button>`;
+        } else if (sk.chaosLevel > 2 && sk.investedRisk > 5) {
+            // CRITICAL OPTION (Risky play builds up to this)
+            actionBtnHtml += `<button class="action-button full-width-btn danger-btn" onclick="handleSkirmishAction(${index}, 'SCAVENGE_PULL_CRITICAL')">PRY OPEN MAIN VAULT (HUGE Tech Loot, Critical Hull Risk)</button>`;
+        }
+        
+        actionBtnHtml += `<button class="action-button full-width-btn" style="border-color:var(--gold-text); color:var(--gold-text); margin-top:10px;" onclick="handleSkirmishAction(${index}, 'SCAVENGE_TRACTOR_LOOSE')">TRACTOR LOOSE SCRAP (Safe, Credits +, Chaos ++)</button>`;
+        actionBtnHtml += `<button class="action-button full-width-btn" style="border-color:var(--warning); color:var(--warning); margin-top:10px;" onclick="handleSkirmishAction(${index}, 'SCAVENGE_SCAN_DATA')">SCAN FOR DATA CACHES (Encrypted Data, Notoriety +, Chaos ++)</button>`;
+        actionBtnHtml += `<button class="action-button full-width-btn" style="margin-top:10px;" onclick="handleSkirmishAction(${index}, 'SCAVENGE_RETREAT')">DISENGAGE AND FLEE WITH SALVAGE</button>`;
+    }
+
+    // --- RENDER PANELS ---
+
+    // Left Panel (Portrait or tactical data)
+    listEl.innerHTML = leftHtml;
+
+    // Right Body (Images and Text)
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 20px;">
-            <div style="font-size:60px; margin-bottom:15px; animation: shake-effect 0.5s infinite;">💥</div>
-            <h3 style="color:var(--warning); margin-bottom:10px;">FLEET ENGAGEMENT DETECTED</h3>
-            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
-                You have dropped out of warp directly into a brutal firefight! Plasma fire and missiles are tearing through the void between a Concord patrol wing and a ${skirmish.factionB === 'ECLIPSE' ? 'Cartel smuggling fleet' : "K'tharr warband"}. 
+            <div style="font-size:50px; margin-bottom:15px; ${sk.phase === 'INITIAL' ? 'animation: shake-effect 0.5s infinite;' : ''}">💥</div>
+            <h3 style="color:var(--warning); margin-bottom:20px;">${mainTitle}</h3>
+            
+            ${bodyImage}
+
+            <p style="color:var(--text-color); font-size:14px; line-height:1.6; text-align:left; background:rgba(128,128,128,0.15); padding:15px; border-left: 3px solid var(--warning); border-radius: 4px;">
+                ${mainDesc}
             </p>
-            <div style="margin-top: 20px; background: rgba(0,0,0,0.5); border: 1px solid var(--danger); padding: 15px; border-radius: 4px; text-align: left;">
-                <span style="color:var(--danger); font-size:10px; font-weight:bold; letter-spacing:1px; border-bottom:1px solid #333; padding-bottom:5px; display:block; margin-bottom:10px;">TACTICAL OPTIONS:</span>
-                <ul style="color:var(--text-color); font-size:12px; line-height:1.6; padding-left:15px; margin:0;">
-                    <li><strong style="color:var(--accent-color);">Assist Concord:</strong> Earns Credits and Concord Rep.</li>
-                    <li><strong style="color:${skirmish.factionB === 'ECLIPSE' ? '#9933FF' : 'var(--danger)'};">Assist ${skirmish.factionB}:</strong> Earns huge Credits, but causes massive Concord Notoriety.</li>
-                    <li><strong style="color:var(--gold-text);">Scavenge Crossfire:</strong> High risk of taking stray hits, but guarantees free loot from destroyed ships.</li>
-                </ul>
-            </div>
         </div>
     `;
 
-    // Ensure rep values exist
-    const concordRep = playerFactionStanding['CONCORD'] || 0;
-    
-    // Build Actions
-    let btnHtml = ``;
-
-    // 1. Assist Concord (Requires you aren't currently being hunted by them)
-    if (playerNotoriety === 0 && concordRep >= -20) {
-        btnHtml += `<button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="resolveSkirmish(${index}, 'CONCORD')">ASSIST CONCORD FORCES</button>`;
-    } else {
-        btnHtml += `<button class="action-button danger-btn" disabled>ASSIST CONCORD (WANTED BY AUTHORITIES)</button>`;
-    }
-
-    // 2. Assist Enemy
-    const facBColor = skirmish.factionB === 'ECLIPSE' ? '#DDA0DD' : '#FF5555';
-    btnHtml += `<button class="action-button" style="border-color:${facBColor}; color:${facBColor};" onclick="resolveSkirmish(${index}, '${skirmish.factionB}')">ASSIST ${skirmish.factionB} FORCES</button>`;
-
-    // 3. Scavenge
-    btnHtml += `<button class="action-button" style="border-color:var(--gold-text); color:var(--gold-text);" onclick="resolveSkirmish(${index}, 'SCAVENGE')">DIVE FOR SCRAP (Risk Hull)</button>`;
-    
-    // 4. Flee
-    btnHtml += `<button class="action-button" onclick="closeGenericModal(); activeSkirmishes.splice(${index}, 1); render();">EVASIVE MANEUVERS (Leave)</button>`;
-
-    actionsEl.innerHTML = btnHtml;
-    
-    if (typeof soundManager !== 'undefined') {
-        soundManager.playWarning();
-        setTimeout(() => soundManager.playExplosion(), 400);
-    }
+    // Actions
+    actionsEl.innerHTML = actionBtnHtml;
 }
 
-function resolveSkirmish(index, choice) {
-    const sk = activeSkirmishes[index];
+// ==========================================
+// --- ITERATIVE RESOLUTION ENGINE ---
+// ==========================================
+
+function handleSkirmishAction(index, action) {
+    let sk = activeSkirmishes[index];
     if (!sk) return;
 
     let logMsg = "";
     
-    if (choice === 'CONCORD') {
-        const reward = 1500 + Math.floor(Math.random() * 1000);
-        playerCredits += reward;
-        playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) + 10;
-        playerFactionStanding[sk.factionB] = (playerFactionStanding[sk.factionB] || 0) - 15;
-        
-        logMsg = `<span style="color:var(--accent-color); font-weight:bold;">[ WARZONE ]</span> You locked onto the ${sk.factionB} ships and turned the tide! Aegis Command wired ${formatNumber(reward)}c to your account. (+10 Concord Rep)`;
-        if (typeof soundManager !== 'undefined') soundManager.playBuy();
-    } 
-    else if (choice === sk.factionB) {
-        const reward = 3000 + Math.floor(Math.random() * 2000);
-        playerCredits += reward;
-        playerFactionStanding[sk.factionB] = (playerFactionStanding[sk.factionB] || 0) + 15;
-        updatePlayerNotoriety(15); // Massive crime!
-        
-        logMsg = `<span style="color:var(--danger); font-weight:bold;">[ WARZONE ]</span> You opened fire on the Concord patrol! The ${sk.factionB} forces paid you ${formatNumber(reward)}c for the assist. (+15 Notoriety!)`;
-        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    // Safety check for faction standing
+    if (typeof playerFactionStanding === 'undefined') window.playerFactionStanding = {};
+
+    // ESCALATE CHAOS FOR EVERY TURN PASSING (Chaos increases payout mult)
+    if (sk.phase !== 'INITIAL') sk.chaosLevel++;
+    
+    // --- 1. INITIAL PHASE APPROACH CHOICES ---
+    if (action === 'APPROACH_CONCORD') {
+        logMessage(`<span style="color:var(--accent-color); font-weight:bold;">[ WARZONE ]</span> Comms established with Admiral. State intent.`);
+        sk.supportedSide = 'CONCORD';
+        sk.phase = 'COMBAT_TACTICS';
+        openSkirmishUI(sk, index);
+        return;
     }
-    else if (choice === 'SCAVENGE') {
-        // High Evasion helps you dodge stray laser fire!
-        const dodgeChance = 0.4 + (typeof PLAYER_EVASION !== 'undefined' ? PLAYER_EVASION : 0);
-        
-        if (Math.random() < dodgeChance) {
-            // Success! Grab loot
-            const scrap = 5 + Math.floor(Math.random() * 10);
-            playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + scrap;
-            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-            
-            logMsg = `<span style="color:var(--gold-text); font-weight:bold;">[ WARZONE ]</span> You masterfully wove through the laser fire and tractored in ${scrap}x Tech Parts from the debris!`;
+    if (action === 'APPROACH_ENEMY') {
+        logMessage(`<span style="color:${sk.factionB === 'ECLIPSE' ? '#9933FF' : 'var(--danger)'}; font-weight:bold;">[ WARZONE ]</span> Weapons locked. Transmitting coordinates to the ${sk.factionB} forces.`);
+        sk.supportedSide = sk.factionB;
+        sk.phase = 'COMBAT_TACTICS';
+        openSkirmishUI(sk, index);
+        return;
+    }
+    if (action === 'APPROACH_SCAVENGE') {
+        logMessage(`<span style="color:var(--gold-text); font-weight:bold;">[ WARZONE ]</span> Silent running enabled. Drifting into the wreckage field.`);
+        sk.phase = 'SCAVENGE_TACTICS';
+        openSkirmishUI(sk, index);
+        return;
+    }
+
+    // --- 2. COMBATANT LOOP RESOLUTIONS ---
+
+    // A. Concord Paths
+    if (action === 'CONCORD_TACTICAL_STRIKE') {
+        const reward = (1500 + Math.floor(Math.random() * 500)) * (1 + (sk.chaosLevel / 10)); // chaotic mult
+        playerCredits += reward;
+        playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) + 5;
+        sk.advantage += 2; // build up advantage
+        sk.chaosLevel++; // expedited chaos
+        logMsg = `<span style="color:var(--accent-color); font-weight:bold;">[ WARZONE ]</span> Crucial flank intercepted! Concord Command wired ${formatNumber(reward)}c. (+5 Rep)`;
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+        openSkirmishUI(sk, index);
+    }
+    else if (action === 'CONCORD_HACK_TARGETING') {
+        // High Risk/Reward hack option
+        if (Math.random() < 0.8) { // 80% success
+            sk.advantage += 10; // MASSIVE Advantage
+            sk.chaosLevel += 3;
+            logMsg = `<span style="color:var(--success); font-weight:bold;">[ WARZONE ]</span> Cyber-warfare successful! Targeted arrays breached. (+10 Advantage)`;
+        } else { // 20% failure
+            sk.advantage -= 5;
+            const dmg = 35 + Math.floor(Math.random() * 20);
+            playerHull -= dmg;
+            logMsg = `<span style="color:var(--danger); font-weight:bold;">[ WARZONE ]</span> Hack failed! We drew direct Concord counter-battery fire! Took ${dmg} hull damage!`;
+            if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+            if (playerHull <= 0) {
+                closeModalAndAutoSaveGame();
+                if (typeof triggerGameOver === 'function') triggerGameOver("Obliterated by an Aegis Cruiser counter-battery");
+                return;
+            }
+        }
+        openSkirmishUI(sk, index);
+    }
+    else if (action === 'CONCORD_TRIGGER_BATTLE') {
+        // Risk translates to notoriety when directly aiding law enforcement via warfare
+        if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(sk.investedRisk * 2); 
+        launchSkirmishCombat(index, sk.factionB, `<span style="color:var(--success); font-weight:bold;">[ WARZONE ]</span> Final Assault initiated! Engaging opposing forces with massive tactical advantage! (+${sk.advantage} Advantage)`, sk.advantage);
+        return; 
+    }
+
+    // B. Enemy/Eclipse/K'Tharr Paths
+    else if (action === 'ECLIPSE_HACK_NAV') {
+        const reward = (2000 + Math.floor(Math.random() * 1000)) * (1 + (sk.chaosLevel / 10)); // chaotic mult
+        playerCredits += reward;
+        if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(10); // Small notoriety per hack
+        sk.chaosLevel += 2; // expedited chaos
+        sk.salvagePoints += 10; // hacking builds salvage loot potential!
+        logMsg = `<span style="color:#9933FF; font-weight:bold;">[ WARZONE ]</span> Commsmatrix breached! High Operative sent you ${formatNumber(reward)}c for the isolation assist! (+10 Notoriety)`;
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+        openSkirmishUI(sk, index);
+    }
+    else if (action === 'KTHARR_RAMMING_VECTOR') {
+        sk.advantage += 8; // Massive Advantage!
+        sk.chaosLevel += 5; // expedite chaos
+        const dmg = 15 + Math.floor(Math.random() * 10);
+        playerHull -= dmg; // ALWAYS take damage coordinating a ram!
+        logMsg = `<span style="color:var(--danger); font-weight:bold;">[ WARZONE ]</span> Coordinated ramming complete! Hull integrity compromised! (+8 Advantage, -${dmg} Hull)`;
+        if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+        if (playerHull <= 0) {
+            closeModalAndAutoSaveGame();
+            if (typeof triggerGameOver === 'function') triggerGameOver("Killed coordinating a K'tharr Ramming Vector");
+            return;
+        }
+        openSkirmishUI(sk, index);
+    }
+    else if (action === 'ENEMY_FULL_ASSAULT') {
+        if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(15 + sk.investedRisk * 3); // Massive criminal notoriety
+        launchSkirmishCombat(index, "CONCORD", `<span style="color:var(--danger); font-weight:bold;">[ WARZONE ]</span> You fired a full broadside into the Concord Admiral! Launching standard space combat! (+15 Advantage)`, sk.advantage);
+        return; 
+    }
+
+    // --- 3. SCAVENGER LOOP RESOLUTIONS ---
+
+    else if (action === 'SCAVENGE_PULL_CRITICAL') {
+        // Failure chance is based on accumulated risk
+        const successChance = 0.60 - (sk.investedRisk / 100);
+        if (Math.random() < successChance) { 
+            const reward = (3500 + Math.floor(Math.random() * 2000)) * (1 + (sk.chaosLevel / 10)); // chaotic mult
+            playerCredits += reward;
+            playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + 1;
+            sk.salvagePoints += 20; // Massive salvage buildup!
+            logMsg = `<span style="color:var(--success); font-weight:bold;">[ SCAVENGE ]</span> Vault bypassed successfully! Salvaged a VOID CRYSTAL and picked up heavy salvage!`;
             if (typeof soundManager !== 'undefined') soundManager.playGain();
         } else {
-            // Failure! Take massive crossfire damage!
-            const dmg = 25 + Math.floor(Math.random() * 20);
-            playerHull -= dmg;
-            logMsg = `<span style="color:var(--danger); font-weight:bold;">[ WARZONE ]</span> You got caught in the crossfire! Stray missiles caused ${dmg} hull damage!`;
-            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Warzone Crossfire" });
+            // Built-up risk converts to immediate critical damage!
+            const finalDmg = (35 + sk.investedRisk) * 2; 
+            playerHull -= finalDmg;
+            logMsg = `<span style="color:var(--danger); font-weight:bold;">[ SCAVENGE ]</span> Eruption! Built-up stray fire built up risk and reactor ignited simultaneously! Took ${finalDmg} hull damage!`;
+            if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+            if (playerHull <= 0) {
+                closeModalAndAutoSaveGame();
+                if (typeof triggerGameOver === 'function') triggerGameOver("Obliterated in a Warzone Scavenging Critical Failure");
+                return;
+            }
+        }
+        openSkirmishUI(sk, index);
+    }
+    else if (action === 'SCAVENGE_VOID_CACH') {
+        // VOID DIVER PERK OPTION
+        playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + 3; // Huge loot!
+        logMsg = `<span style="color:var(--success); font-weight:bold;">[ SCAVENGE ]</span> Perceptions shifted. Squeezed past space and reactor core simultaneously. Sliced out 3x VOID CRYSTALS! Disengaging.`;
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+        closeAndCleanSkirmish(index, logMsg); // Perk path allows clean exit
+    }
+    else if (action === 'SCAVENGE_TRACTOR_LOOSE') {
+        const scrap = (2 + Math.floor(Math.random() * 5)) * sk.chaosLevel; // chaos mult!
+        playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + Math.floor(scrap);
+        sk.salvagePoints += 5; // building salvage
+        sk.investedRisk += 2; // building risk
+        logMsg = `<span style="color:var(--gold-text); font-weight:bold;">[ SCAVENGE ]</span> Tractored ${Math.floor(scrap)}x Tech Parts. (+5 Salvage, +2 Risk)`;
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+        openSkirmishUI(sk, index);
+    }
+    else if (action === 'SCAVENGE_SCAN_DATA') {
+        const data = (1 + Math.floor(Math.random() * 2)) * sk.chaosLevel; // chaos mult!
+        playerCargo['ENCRYPTED_DATA'] = (playerCargo['ENCRYPTED_DATA'] || 0) + Math.floor(data);
+        if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(5); // Notoriety per data scan
+        sk.salvagePoints += 8; // building salvage
+        sk.investedRisk += 4; // building risk
+        logMsg = `<span style="color:var(--success); font-weight:bold;">[ SCAVENGE ]</span> Download successful! Salvaged ${Math.floor(data)}x Encrypted Data Caches. (+8 Salvage, +4 Risk, +5 Notoriety)`;
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+        openSkirmishUI(sk, index);
+    }
+
+    // --- 4. DISENGAGE RESOLUTIONS (Loot Finalization) ---
+
+    else if (action === 'TACTICS_RETREAT') {
+        // Built up Rep payout
+        playerFactionStanding[sk.supportedSide] = (playerFactionStanding[sk.supportedSide] || 0) + (sk.turnsIn * 2); 
+        logMsg = `<span style="color:var(--warning); font-weight:bold;">[ WARZONE ]</span> Breaking formation! Battle concludes behind us. (+${sk.turnsIn * 2} Rep with supported side)`;
+        closeAndCleanSkirmish(index, logMsg);
+    }
+    else if (action === 'SCAVENGE_RETREAT') {
+        // SCAVENGE LOOT FINALIZATION (salvage points converts to Tech Parts and Credits)
+        const bonusCredits = (1500 * sk.salvagePoints) * (1 + (sk.chaosLevel / 10)); // chaos mult!
+        playerCredits += Math.floor(bonusCredits);
+        const finalTechParts = Math.floor(sk.salvagePoints * 1.5);
+        playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + finalTechParts;
+        
+        logMsg = `<span style="color:var(--gold-text); font-weight:bold;">[ SCAVENGE ]</span> Evasive maneuvers successful! Slipped away with ${finalTechParts}x Tech Parts and collected ${formatNumber(Math.floor(bonusCredits))}c salvage payout!`;
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+        closeAndCleanSkirmish(index, logMsg);
+    }
+}
+
+// ==========================================
+// --- WARZONE HELPER FUNCTIONS ---
+// ==========================================
+
+// Helper to transition smoothly from the text event into direct space combat
+function launchSkirmishCombat(index, targetFaction, logMsg, bonusAdvantage = 0) {
+    const sk = activeSkirmishes[index];
+    if (!sk) return; 
+
+    // Safety check for faction standing
+    if (typeof playerFactionStanding === 'undefined') window.playerFactionStanding = {};
+
+    let specificEnemyId = null;
+    if (typeof PIRATE_SHIP_CLASSES !== 'undefined') {
+        const shipOptions = Object.values(PIRATE_SHIP_CLASSES).filter(s => s.id && s.id.includes(targetFaction));
+        if (shipOptions.length > 0) {
+            specificEnemyId = shipOptions[Math.floor(Math.random() * shipOptions.length)].id;
         }
     }
 
-    // Erase the skirmish from the map
+    // Package data for the combat engine
+    const specificEnemy = {
+        x: sk.x, y: sk.y,
+        shipClassKey: specificEnemyId || "PIRATE_INTERCEPTOR", // Default fallback
+        customCombatBackground: 'assets/skirmish.jpeg', // 🚨 INJECT Warzone Background! 🚨
+        isSkirmishTarget: true, // Flag for victory screen bonus check
+        supportedFaction: sk.supportedSide,
+        combatBonusAdvantage: bonusAdvantage // pass the built-up advantage!
+    };
+
     activeSkirmishes.splice(index, 1);
     
-    closeGenericModal();
-    logMessage(logMsg);
+    // CLOSE MODAL AND TRIGGER PEW-PEW
+    if (typeof closeGenericModal === 'function') closeGenericModal();
+    if (logMsg) logMessage(logMsg);
+    if (typeof startCombat === 'function') startCombat(specificEnemy);
+}
+
+// Helper to clean up the map and UI when a skirmish ends without combat (loot resolution or escape)
+function closeAndCleanSkirmish(index, logMsg) {
+    activeSkirmishes.splice(index, 1);
+    
+    // CLOSE MODAL AND UPDATE GALACTIC MAP
+    if (typeof closeGenericModal === 'function') closeGenericModal();
+    if (logMsg) logMessage(logMsg);
     
     if (typeof renderUIStats === 'function') renderUIStats();
     if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
     if (typeof render === 'function') render();
-    autoSaveGame();
+    if (typeof autoSaveGame === 'function') autoSaveGame();
 }
