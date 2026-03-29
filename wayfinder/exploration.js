@@ -2031,6 +2031,28 @@ function openColonyManagement(colId) {
         </div>
     `;
 
+    // --- 3.5. POLICY MANAGEMENT ---
+    if (!colony.policy) colony.policy = 'BALANCED'; // Default
+    
+    // Create the global function to handle the change
+    window.changeColonyPolicy = function(selectEl) {
+        playerColonies[activeColonyId].policy = selectEl.value;
+        if (typeof showToast === 'function') showToast("POLICY UPDATED", "info");
+        autoSaveGame();
+    };
+
+    let policyHtml = `
+        <div style="margin-top: 15px; border: 1px solid var(--border-color); border-radius: 4px; background: rgba(0,0,0,0.4); padding: 15px; text-align: left;">
+            <div style="color:var(--accent-color); font-size:10px; font-weight:bold; letter-spacing:1px; margin-bottom: 5px;">DIRECTOR POLICY</div>
+            <select onchange="changeColonyPolicy(this)" style="width:100%; background:#111; color:#FFF; border:1px solid var(--border-color); padding:8px; font-family:var(--main-font); cursor:pointer;">
+                <option value="BALANCED" ${colony.policy === 'BALANCED' ? 'selected' : ''}>Balanced (Standard Taxes & Mining)</option>
+                <option value="WEALTH" ${colony.policy === 'WEALTH' ? 'selected' : ''}>Wealth Extraction (+50% Taxes, -Morale)</option>
+                <option value="INDUSTRY" ${colony.policy === 'INDUSTRY' ? 'selected' : ''}>Industrial Mining (Double Ore, No Taxes)</option>
+                <option value="MILITIA" ${colony.policy === 'MILITIA' ? 'selected' : ''}>Militia Training (Generates Marines)</option>
+            </select>
+        </div>
+    `;
+
     // --- 4. ACTIONS PANE: Delivery Buttons ---
     let btnHtml = ``;
 
@@ -2074,6 +2096,23 @@ function withdrawColonyVault() {
         for (const item in colony.storage) {
             const qty = colony.storage[item];
             if (qty > 0) {
+                // Special handling for Marines
+                if (item === 'MARINES') {
+                    const maxTroops = GameState.ship.forces.maxTroops || 20;
+                    const currentMarines = GameState.ship.forces.marines || 0;
+                    const spaceLeft = maxTroops - currentMarines;
+                    const actualTake = Math.min(qty, spaceLeft);
+                    
+                    if (actualTake > 0) {
+                        GameState.ship.forces.marines += actualTake;
+                        colony.storage[item] -= actualTake;
+                        if (colony.storage[item] <= 0) delete colony.storage[item];
+                        withdrawnItems.push(`${actualTake}x Marines`);
+                    }
+                    continue; // Skip standard cargo logic
+                }
+
+                // Standard Cargo Logic
                 const spaceLeft = typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY - currentCargoLoad : 999;
                 const actualTake = Math.min(qty, spaceLeft);
                 
