@@ -169,6 +169,7 @@ function resolveUniversalEncounter(encounterId, choiceIndex) {
         if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
         if (typeof render === 'function') render();
     }
+}
 
 
 // ==========================================
