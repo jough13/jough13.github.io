@@ -496,13 +496,12 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
 
         const profitXP = Math.max(1, Math.floor((price * qtyToTrade) * (XP_PER_PROFIT_UNIT * 0.8)));
         playerXP += profitXP;
-        checkLevelUp();
+        const leveledUp = checkLevelUp(); // <--- CAPTURE BOOLEAN
 
         if (typeof soundManager !== 'undefined') soundManager.playUIClick();
         if (typeof showToast === 'function') showToast(`Sold ${qtyToTrade}x ${item.name}`, "success");
     }
 
-    // Only update the world state if this is a physical station (not a passing NPC)
     if (!window.activeTradeNPC && location && (location.sells || location.buys)) {
         updateWorldState(playerX, playerY, {
             sells: location.sells,
@@ -513,8 +512,11 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
 
     const savedItemId = window.activeTradeItemId; 
     
-    if (isBuy) openTradeModal('buy');
-    else openTradeModal('sell');
+    // <--- ONLY RE-OPEN TRADE MODAL IF WE DIDN'T LEVEL UP --->
+    if (!leveledUp) {
+        if (isBuy) openTradeModal('buy');
+        else openTradeModal('sell');
+    }
     
     renderUIStats();
 
