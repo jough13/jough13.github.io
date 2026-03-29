@@ -149,6 +149,14 @@ function handleVictory() {
     let baseCredits = 100 + Math.floor(Math.random() * 200);
     let baseXP = 50 + Math.floor(Math.random() * 50);
 
+    // --- 🪖 NEW: BOARDING MULTIPLIER ---
+    let boardingMsg = "";
+    if (currentCombatContext.wasBoarded) {
+        baseCredits *= 3; // Triple base credits!
+        baseXP *= 2;      // Double base XP!
+        boardingMsg = `\n<span style="color:var(--gold-text); font-weight:bold;">[ INTACT SALVAGE ]</span> Marine detachment secured the enemy cargo hold intact! Massive salvage bonus applied.`;
+    }
+
     // --- 🚨 NEW: SKIRMISH BONUS REWARDS ---
     let skirmishMsg = "";
     if (currentCombatContext.isSkirmishTarget) {
@@ -186,7 +194,8 @@ function handleVictory() {
 
     // 4. Build the Combat Log Message
     let msg = `Victory! Enemy destroyed.\nSalvaged: ${credits}c\nExperience: +${xp}`;
-    if (skirmishMsg) msg += skirmishMsg; // Attach the shiny bonus text!
+    if (boardingMsg) msg += boardingMsg; // Attach the boarding bonus text!
+    if (skirmishMsg) msg += skirmishMsg; // Attach the shiny skirmish bonus text!
 
     // --- 5. TRACTOR BEAM LOOT RECOVERY ---
     // The player only gets physical cargo if they have the equipment to tractor it in!
@@ -366,7 +375,23 @@ function handleCombatAction(action) {
         } else {
             combatLog += "Attack missed!";
         }
-
+        } else if (action === 'board') {
+        // --- 🪖 TACTICAL BOARDING ACTION ---
+        const casualties = Math.floor(Math.random() * 3) + 1; // Lose 1 to 3 Marines
+        
+        GameState.ship.forces.marines = Math.max(0, GameState.ship.forces.marines - casualties);
+        
+        combatLog += `<span style='color:var(--danger); font-weight:bold;'>[ BOARDING PARTY DEPLOYED ]</span> Your marines breach the enemy hull! Heavy close-quarters fighting ensues. Sector secured. (-${casualties} Marines)`;
+        
+        if (typeof soundManager !== 'undefined') soundManager.playExplosion();
+        if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+        
+        // Instantly destroy the enemy ship and flag the loot multiplier!
+        currentCombatContext.pirateHull = 0;
+        currentCombatContext.wasBoarded = true; 
+        
+        // Skip the enemy turn
+        enemyCanAct = false;
     } else if (action === 'ability') {
         if (playerAbilityCooldown > 0) {
             logMessage("Ability is on cooldown!");
@@ -844,6 +869,12 @@ function renderCombatView() {
             <button class="action-button" onclick="handleCombatAction('charge')" style="padding: 16px; color: var(--item-name-color);">
                 CHARGE WEAPON
             </button>
+            
+            ${(GameState.ship.forces.marines > 0 && currentCombatContext.pirateShields <= 0) ? `
+                <button class="action-button danger-btn" style="grid-column: 1 / -1; padding: 18px; font-size: 16px; letter-spacing: 2px; box-shadow: 0 0 15px rgba(255,0,0,0.4);" onclick="handleCombatAction('board')">
+                    🪖 INITIATE BOARDING ACTION (Risk Marines for 3x Salvage)
+                </button>
+            ` : ''}
             
             <button class="action-button" style="grid-column: 1 / -1; padding: 18px; font-size: 16px; letter-spacing: 2px; ${abilityStyle}" onclick="handleCombatAction('ability')" ${!abilityReady ? 'disabled' : ''}>
                 ★ ${ability.name.toUpperCase()} ★
