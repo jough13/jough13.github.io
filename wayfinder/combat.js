@@ -1,3 +1,5 @@
+let playerTargeting = 'HULL'; // Can be 'HULL', 'WEAPONS', or 'ENGINES'
+
 function startCombat(specificEnemyEntity = null) {
     let pirateShip;
     let aiType = "AGGRESSIVE"; // Default behavior
@@ -330,6 +332,76 @@ function handleCombatAction(action) {
         let hitChance = weaponStats.hitChance;
 
         if (currentCombatContext.playerGuaranteedHit) {
+            hitChance = 2.0; 
+            currentCombatContext.playerGuaranteedHit = false; 
+        }
+        
+        if (currentCombatContext.nextMove && currentCombatContext.nextMove.type === 'EVADE') {
+            hitChance -= 0.25;
+            combatLog += "(Enemy Evading) ";
+        }
+        
+        // 🎯 SUBSYSTEM PENALTY
+        if (playerTargeting !== 'HULL') {
+            hitChance -= 0.15; // Harder to hit a specific part
+            combatLog += `[Aiming at ${playerTargeting}] `;
+        }
+
+        if (Math.random() < hitChance) {
+            if (typeof soundManager !== 'undefined') soundManager.playLaser();
+            
+            const critRoll = weaponStats.critChance || 0.05; 
+            if (Math.random() < critRoll) {
+                damageDealt *= 2;
+                combatLog += "<span style='color:var(--gold-text); font-weight:bold;'>[ CRITICAL HIT ]</span> ";
+                if (typeof triggerDamageEffect === 'function') triggerDamageEffect(); 
+            }
+            
+            // 🎯 SUBSYSTEM DAMAGE ROUTING
+            if (playerTargeting === 'WEAPONS' && currentCombatContext.pirateShields <= 0) {
+                currentCombatContext.subsystems.weapons.hp -= damageDealt;
+                combatLog += `Enemy Weapons took ${Math.floor(damageDealt)} damage!`;
+                if (currentCombatContext.subsystems.weapons.hp <= 0 && currentCombatContext.subsystems.weapons.status === 'ONLINE') {
+                    currentCombatContext.subsystems.weapons.status = 'OFFLINE';
+                    combatLog += " <span style='color:var(--success); font-weight:bold;'>ENEMY WEAPONS OFFLINE! Damage halved.</span>";
+                }
+            } else if (playerTargeting === 'ENGINES' && currentCombatContext.pirateShields <= 0) {
+                currentCombatContext.subsystems.engines.hp -= damageDealt;
+                combatLog += `Enemy Engines took ${Math.floor(damageDealt)} damage!`;
+                if (currentCombatContext.subsystems.engines.hp <= 0 && currentCombatContext.subsystems.engines.status === 'ONLINE') {
+                    currentCombatContext.subsystems.engines.status = 'OFFLINE';
+                    combatLog += " <span style='color:var(--success); font-weight:bold;'>ENEMY ENGINES OFFLINE! Evasion disabled.</span>";
+                }
+            } else {
+                // Shield vs Hull Logic (Standard)
+                if (currentCombatContext.pirateShields > 0) {
+                    if (playerTargeting !== 'HULL') combatLog += "(Shields absorbed subsystem impact!) ";
+                    let shieldDmg = damageDealt + (weaponStats.vsShieldBonus || 0);
+                    currentCombatContext.pirateShields -= shieldDmg;
+                    combatLog += `Shields hit for ${Math.floor(shieldDmg)}!`;
+    
+                    if (currentCombatContext.pirateShields < 0) {
+                        const spillover = Math.abs(currentCombatContext.pirateShields);
+                        const hullDmg = Math.floor(spillover * (typeof HULL_DAMAGE_BONUS_MULTIPLIER !== 'undefined' ? HULL_DAMAGE_BONUS_MULTIPLIER : 1.0));
+                        currentCombatContext.pirateHull -= hullDmg;
+                        currentCombatContext.pirateShields = 0;
+                        combatLog += ` Shields down! Hull takes ${hullDmg} damage!`;
+                    }
+                } else {
+                    let hullDmg = Math.floor(damageDealt * (typeof HULL_DAMAGE_BONUS_MULTIPLIER !== 'undefined' ? HULL_DAMAGE_BONUS_MULTIPLIER : 1.0));
+                    currentCombatContext.pirateHull -= hullDmg;
+                    combatLog += `Direct hull hit for ${hullDmg}!`;
+                }
+            }
+            if (typeof triggerHaptic === "function") triggerHaptic(50);
+        } else {
+            combatLog += "Attack missed!";
+        }
+
+        // Hit Chance Calculation
+        let hitChance = weaponStats.hitChance;
+
+        if (currentCombatContext.playerGuaranteedHit) {
             hitChance = 2.0; // 200% accuracy for this shot only!
             currentCombatContext.playerGuaranteedHit = false; // Consume the buff
         }
@@ -392,6 +464,7 @@ function handleCombatAction(action) {
         
         // Skip the enemy turn
         enemyCanAct = false;
+    
     } else if (action === 'ability') {
         if (playerAbilityCooldown > 0) {
             logMessage("Ability is on cooldown!");
@@ -650,6 +723,11 @@ function handleCombatAction(action) {
             let baseDmg = minDmg + Math.random() * (maxDmg - minDmg);
             let pD = Math.floor(baseDmg * mult);
 
+            // WEAPON SUBSYSTEM DEBUFF
+            if (currentCombatContext.subsystems.weapons.status === 'OFFLINE') {
+                pD = Math.floor(pD * 0.5); // Damage cut in half!
+            }
+
             if (currentCombatContext.charged) {
                 pD *= 2.5; 
                 currentCombatContext.charged = false;
@@ -662,6 +740,13 @@ function handleCombatAction(action) {
             // --- RESOLVE EVASION ---
             let hitChance = typeof PIRATE_HIT_CHANCE !== 'undefined' ? PIRATE_HIT_CHANCE : 0.85;
             hitChance -= (typeof PLAYER_EVASION !== 'undefined' ? PLAYER_EVASION : 0);
+
+             // 🎯 ENGINE SUBSYSTEM DEBUFF
+            if (currentCombatContext.subsystems.engines.status === 'OFFLINE' && currentCombatContext.nextMove.type === 'EVADE') {
+                currentCombatContext.nextMove.type = 'ATTACK'; // Force them to stop evading
+                enemyLog += "(Engines dead. Evasion failed!) ";
+            }
+
             if (typeof activeSynergy !== 'undefined' && activeSynergy && activeSynergy.id === 'ECLIPSE') hitChance -= 0.15;
 
             let isHit = Math.random() < hitChance;
@@ -744,6 +829,13 @@ function renderCombatView() {
     const shipClass = SHIP_CLASSES[playerShip.shipClass];
     const ability = shipClass.ability;
     
+    // Ensure targeting variable exists globally
+    if (typeof window.playerTargeting === 'undefined') window.playerTargeting = 'HULL';
+    window.setTargeting = function(mode) { 
+        window.playerTargeting = mode; 
+        renderCombatView(); 
+    };
+    
     // --- THEME CHECK ---
     const isLightMode = document.body.classList.contains('light-mode');
 
@@ -774,17 +866,33 @@ function renderCombatView() {
     const pirateShieldPercent = Math.max(0, (currentCombatContext.pirateShields / currentCombatContext.pirateMaxShields) * 100);
     const pirateHullPercent = Math.max(0, (currentCombatContext.pirateHull / currentCombatContext.pirateMaxHull) * 100);
 
-    // Dynamic Skirmish Backgrounds
+    // 🚨 DYNAMIC SKIRMISH BACKGROUND
     let wrapperStyle = "width: 100%; display: flex; flex-direction: column; gap: 20px; padding: 10px 20px; box-sizing: border-box;";
-    
-    // If this is a fleet battle, inject the background image!
     if (currentCombatContext.isSkirmishTarget) {
-        // We add a heavy inset shadow and background color so the UI cards remain readable against the image
         wrapperStyle += ` background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8)), url('assets/skirmish.jpeg'); background-size: cover; background-position: center; border-radius: 8px; border: 1px solid #444;`;
     }
 
-    // --- BUILD HTML WITH STRICT COLUMN WRAPPER ---
-    // 🚨 UPDATED: Replace the hardcoded style attribute with ${wrapperStyle}
+    // 🚨 ENEMY SUBSYSTEM STATUS DISPLAY
+    const wepStatus = currentCombatContext.subsystems.weapons.status;
+    const engStatus = currentCombatContext.subsystems.engines.status;
+    const wepColor = wepStatus === 'ONLINE' ? 'var(--success)' : 'var(--danger)';
+    const engColor = engStatus === 'ONLINE' ? 'var(--success)' : 'var(--danger)';
+
+    const subsystemsHtml = `
+        <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 10px; border-top: 1px dashed #444; padding-top: 8px;">
+            <span style="color:var(--item-desc-color);">WEAPONS: <span style="color:${wepColor}; font-weight:bold;">${wepStatus}</span></span>
+            <span style="color:var(--item-desc-color);">ENGINES: <span style="color:${engColor}; font-weight:bold;">${engStatus}</span></span>
+        </div>
+    `;
+
+    // 🚨 TACTICAL BOARDING BUTTON
+    const boardingBtnHtml = (GameState.ship.forces && GameState.ship.forces.marines > 0 && currentCombatContext.pirateShields <= 0) ? `
+        <button class="action-button danger-btn" style="grid-column: 1 / -1; padding: 18px; font-size: 16px; letter-spacing: 2px; box-shadow: 0 0 15px rgba(255,0,0,0.4);" onclick="handleCombatAction('board')">
+            🪖 INITIATE BOARDING ACTION (Risk Marines for 3x Salvage)
+        </button>
+    ` : '';
+
+    // --- BUILD HTML ---
     let html = `
     <div style="${wrapperStyle}">
         
@@ -794,11 +902,11 @@ function renderCombatView() {
         
         <div style="display: flex; justify-content: center; align-items: stretch; gap: 20px; flex-wrap: wrap;">
             
+            <!-- PLAYER PANEL -->
             <div style="flex: 1; min-width: 220px; max-width: 300px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; text-align: center; display: flex; flex-direction: column; align-items: center;">
                 
                 <div style="width: 120px; height: 120px; background: rgba(0, 224, 224, 0.05); border: 1px dashed var(--accent-color); border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
                     ${shipClass.image 
-                        // FIX: Added scaleX(-1) to mirror the player ship, and fixed the drop-shadow CSS!
                         ? `<img src="${shipClass.image}" style="max-width: 90%; max-height: 90%; object-fit: contain; transform: scaleX(-1); filter: drop-shadow(0 0 10px rgba(0,224,224,0.3));">` 
                         : `<span style="font-size: 40px; opacity: 0.6; filter: hue-rotate(180deg);">🚀</span>`
                     }
@@ -825,17 +933,18 @@ function renderCombatView() {
                 </div>
             </div>
 
+            <!-- ENEMY INTENT PANEL -->
             <div style="width: 150px; background: ${intentBg}; border: 1px solid var(--danger); border-radius: 8px; padding: 15px; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(255,0,0,0.1);">
                 <div style="font-size: 11px; color: var(--danger); letter-spacing: 2px; margin-bottom: 15px; font-weight: bold; font-family: var(--title-font);">ENEMY INTENT</div>
                 <div style="font-size: 36px; margin-bottom: 15px;">${intent.icon}</div>
                 <div style="font-weight: bold; color: var(--text-color); font-size: 14px; letter-spacing: 1px;">${intent.label.toUpperCase()}</div>
             </div>
 
+            <!-- ENEMY PANEL -->
             <div style="flex: 1; min-width: 220px; max-width: 300px; background: var(--bg-color); border: 1px solid var(--danger); border-radius: 8px; padding: 15px; text-align: center; display: flex; flex-direction: column; align-items: center; box-shadow: inset 0 0 10px rgba(255,0,0,0.1);">
                 
                 <div style="width: 120px; height: 120px; background: rgba(255, 0, 0, 0.05); border: 1px dashed var(--danger); border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
                     ${currentCombatContext.ship.image 
-                        // FIX: Removed scaleX so the enemy faces left naturally. Added the pirate_ship.png fallback!
                         ? `<img src="${currentCombatContext.ship.image}" style="max-width: 90%; max-height: 90%; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,0,0,0.3));">` 
                         : `<img src="assets/pirate_ship.png" style="max-width: 90%; max-height: 90%; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,0,0,0.3));">`
                     }
@@ -857,24 +966,52 @@ function renderCombatView() {
                     <div style="height: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 3px; overflow: hidden;">
                         <div style="height: 100%; background: #FFAA00; width: ${pirateHullPercent}%; transition: width 0.3s;"></div>
                     </div>
+
+                    <!-- Inject Subsystem Diagnostics Here -->
+                    ${subsystemsHtml}
                 </div>
             </div>
 
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; max-width: 800px; margin: 0 auto; width: 100%;">
+            
+            <!-- 🚨 TACTICAL TARGETING COMPUTER UI -->
+            <div style="grid-column: 1 / -1; display: flex; justify-content: center; gap: 10px; width: 100%; margin-bottom: 5px; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); align-items: center; flex-wrap: wrap;">
+                <div style="color: var(--item-desc-color); font-size: 11px; font-weight: bold; letter-spacing: 1px; margin-right: 10px;">TARGETING COMPUTER:</div>
+                
+                <button onclick="setTargeting('HULL')" style="flex: 1; min-width: 120px; padding: 10px; font-family: var(--title-font); font-weight: bold; font-size: 12px; cursor: pointer; transition: 0.2s; border-radius: 4px;
+                    background: ${window.playerTargeting === 'HULL' ? 'var(--danger)' : '#222'}; 
+                    color: ${window.playerTargeting === 'HULL' ? '#000' : 'var(--text-color)'}; 
+                    border: 1px solid var(--danger); box-shadow: ${window.playerTargeting === 'HULL' ? '0 0 10px rgba(255,0,0,0.4)' : 'none'};">
+                    HULL (Standard)
+                </button>
+                
+                <button onclick="setTargeting('WEAPONS')" style="flex: 1; min-width: 120px; padding: 10px; font-family: var(--title-font); font-weight: bold; font-size: 12px; cursor: pointer; transition: 0.2s; border-radius: 4px;
+                    background: ${window.playerTargeting === 'WEAPONS' ? 'var(--warning)' : '#222'}; 
+                    color: ${window.playerTargeting === 'WEAPONS' ? '#000' : 'var(--text-color)'}; 
+                    border: 1px solid var(--warning); box-shadow: ${window.playerTargeting === 'WEAPONS' ? '0 0 10px rgba(255,170,0,0.4)' : 'none'};">
+                    WEAPONS (-15% Hit)
+                </button>
+                
+                <button onclick="setTargeting('ENGINES')" style="flex: 1; min-width: 120px; padding: 10px; font-family: var(--title-font); font-weight: bold; font-size: 12px; cursor: pointer; transition: 0.2s; border-radius: 4px;
+                    background: ${window.playerTargeting === 'ENGINES' ? 'var(--accent-color)' : '#222'}; 
+                    color: ${window.playerTargeting === 'ENGINES' ? '#000' : 'var(--text-color)'}; 
+                    border: 1px solid var(--accent-color); box-shadow: ${window.playerTargeting === 'ENGINES' ? '0 0 10px rgba(0,224,224,0.4)' : 'none'};">
+                    ENGINES (-15% Hit)
+                </button>
+            </div>
+
+            <!-- BOARDING BUTTON INJECTED -->
+            ${boardingBtnHtml}
+
+            <!-- STANDARD ACTIONS -->
             <button class="action-button" onclick="handleCombatAction('fight')" style="padding: 16px; border-color: var(--danger); color: var(--danger); font-weight: bold;">
                 FIRE (${weapon.name})
             </button>
             <button class="action-button" onclick="handleCombatAction('charge')" style="padding: 16px; color: var(--item-name-color);">
                 CHARGE WEAPON
             </button>
-            
-            ${(GameState.ship.forces.marines > 0 && currentCombatContext.pirateShields <= 0) ? `
-                <button class="action-button danger-btn" style="grid-column: 1 / -1; padding: 18px; font-size: 16px; letter-spacing: 2px; box-shadow: 0 0 15px rgba(255,0,0,0.4);" onclick="handleCombatAction('board')">
-                    🪖 INITIATE BOARDING ACTION (Risk Marines for 3x Salvage)
-                </button>
-            ` : ''}
             
             <button class="action-button" style="grid-column: 1 / -1; padding: 18px; font-size: 16px; letter-spacing: 2px; ${abilityStyle}" onclick="handleCombatAction('ability')" ${!abilityReady ? 'disabled' : ''}>
                 ★ ${ability.name.toUpperCase()} ★
