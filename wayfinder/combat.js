@@ -749,9 +749,19 @@ function renderCombatView() {
     const pirateShieldPercent = Math.max(0, (currentCombatContext.pirateShields / currentCombatContext.pirateMaxShields) * 100);
     const pirateHullPercent = Math.max(0, (currentCombatContext.pirateHull / currentCombatContext.pirateMaxHull) * 100);
 
+    // Dynamic Skirmish Backgrounds
+    let wrapperStyle = "width: 100%; display: flex; flex-direction: column; gap: 20px; padding: 10px 20px; box-sizing: border-box;";
+    
+    // If this is a fleet battle, inject the background image!
+    if (currentCombatContext.isSkirmishTarget) {
+        // We add a heavy inset shadow and background color so the UI cards remain readable against the image
+        wrapperStyle += ` background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8)), url('assets/skirmish.jpeg'); background-size: cover; background-position: center; border-radius: 8px; border: 1px solid #444;`;
+    }
+
     // --- BUILD HTML WITH STRICT COLUMN WRAPPER ---
+    // 🚨 UPDATED: Replace the hardcoded style attribute with ${wrapperStyle}
     let html = `
-    <div style="width: 100%; display: flex; flex-direction: column; gap: 20px; padding: 10px 20px; box-sizing: border-box;">
+    <div style="${wrapperStyle}">
         
         <div style="text-align: center;">
             <h2 style="margin: 0; color: var(--danger); animation: blink 1s infinite; font-size: 28px; font-family: var(--title-font); letter-spacing: 3px;">! HOSTILE ENGAGEMENT !</h2>
