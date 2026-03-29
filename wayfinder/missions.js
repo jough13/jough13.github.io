@@ -354,6 +354,7 @@ function acceptMission() {
      if (playerCargo[objective.itemID] >= objective.count) {
          // We have enough!
          playerCargo[objective.itemID] -= objective.count;
+         if (playerCargo[objective.itemID] <= 0) delete playerCargo[objective.itemID]; 
          updateCurrentCargoLoad();
          objectiveProgress.complete = true;
          logMessage(`Turned in ${objective.count} ${COMMODITIES[objective.itemID].name} to ${playerActiveMission.giver}.`);
