@@ -88,6 +88,8 @@ let visitedSectors;
 let playerActiveBounty = null;
 let currentStationBounties = []; // Temporarily holds the bounties available at the current station
 
+let playerFactionStanding = {};
+
 let currentStationRecruits = [];
 
 let miningInterval = null;
@@ -2092,9 +2094,10 @@ if (typeof window._codexPatched === 'undefined') {
     // Clear Caches
     systemCache = {}; 
     playerCargo = {};
+    playerFactionStanding = {};
     Object.keys(COMMODITIES).forEach(id => playerCargo[id] = 0);
 
-    // --- CRITICAL: Reset World State Deltas & Chunk Cache ---
+    // --- Reset World State Deltas & Chunk Cache ---
     worldStateDeltas = {}; 
     chunkManager.loadedChunks = {}; 
     chunkManager.lastChunkKey = null;
@@ -3522,51 +3525,6 @@ GameBus.on('TICK_PROCESSED', (tick) => {
 // --- SYSTEM 3: ECONOMY, COLONIES, & OUTPOSTS ---
 GameBus.on('TICK_PROCESSED', (tick) => {
     if (tick.interrupt) return;
-
-    if (typeof playerColonies !== 'undefined') {
-        Object.values(playerColonies).forEach(colony => {
-            if (colony.established) {
-                if (typeof colony.treasury === 'undefined') colony.treasury = 0;
-                if (typeof colony.storage === 'undefined') colony.storage = {};
-                if (typeof colony.lastTick === 'undefined') colony.lastTick = currentGameDate;
-
-                if (currentGameDate - colony.lastTick >= 1.0) {
-                    colony.lastTick = currentGameDate;
-                    if (colony.phase === 'POPULATED' || colony.phase === 'OPERATIONAL') {
-                        const taxRate = 0.5; 
-                        const moraleMult = colony.morale / 100;
-                        colony.treasury += Math.floor(colony.population * taxRate * moraleMult);
-                    }
-                    if (colony.phase === 'OPERATIONAL') {
-                        const biomeDef = typeof PLANET_BIOMES !== 'undefined' ? PLANET_BIOMES[colony.biome] : null;
-                        if (biomeDef && biomeDef.resources.length > 0) {
-                            const res = biomeDef.resources[Math.floor(Math.random() * biomeDef.resources.length)];
-                            const amount = Math.floor(Math.random() * 3) + 1 + Math.floor(colony.population / 100);
-                            colony.storage[res] = (colony.storage[res] || 0) + amount;
-                        }
-                        
-                        // COLONY HAULERS (Reduced from 5% to 0.5%)
-                        if (Math.random() < 0.005) {
-                            const existingHauler = typeof activeNPCs !== 'undefined' ? activeNPCs.find(n => n.isColonyHauler && n.colonyId === colony.id) : null;
-                            if (!existingHauler && typeof activeNPCs !== 'undefined') {
-                                activeNPCs.push({
-                                    x: colony.x, y: colony.y, id: "HAULER_" + Date.now(), name: colony.name + " Transport",
-                                    char: "H", color: "var(--success)", state: "TRADE_ROUTE", isColonyHauler: true,
-                                    colonyId: colony.id, targetX: 33, targetY: 17 
-                                });
-                                logMessage(`<span style='color:var(--success)'>[ COLONY ] ${colony.name} has launched a heavy transport bound for Starbase Alpha.</span>`);
-                            }
-                        }
-                    }
-                    
-                    // RARE COLONY EVENTS (Reduced from 0.2% to 0.02%)
-                    if ((colony.phase === 'POPULATED' || colony.phase === 'OPERATIONAL') && Math.random() < 0.0002) {
-                        if (typeof triggerColonyEvent === 'function') triggerColonyEvent(colony);
-                    }
-                }
-            }
-        });
-    }
 
     // --- OUTPOST AUTOMATION ---
     if (typeof worldStateDeltas !== 'undefined' && currentGameDate - (window.lastTollTick || 0) >= 10.0) {
@@ -5814,11 +5772,12 @@ function performSave(saveType) {
         campaignId: currentCampaignId, 
         saveType: safeSaveType,
         
-        // 🚨 NEW: Save the entire GameState object instantly!
+        // Save the entire GameState object instantly!
         coreState: GameState, 
         
         // Metadata / Collections
         playerName, playerPfp, playerCrew,
+        playerFactionStanding,
         playerPerks: Array.from(playerPerks),
         concordEscortJumps: window.concordEscortJumps || 0, 
         playerHasColonyCharter: typeof playerHasColonyCharter !== 'undefined' ? playerHasColonyCharter : false,
@@ -6023,6 +5982,7 @@ function loadGameData(jsonString) {
         playerName = savedState.playerName || "Captain";
         playerPfp = savedState.playerPfp || "assets/pfp_01.png";
         playerCrew = savedState.playerCrew || [];
+        playerFactionStanding = savedState.playerFactionStanding || {};
         playerPerks = new Set(savedState.playerPerks || []);
         window.concordEscortJumps = savedState.concordEscortJumps || 0;
 
@@ -8407,147 +8367,6 @@ function executeWormholeJump(targetX, targetY, fuelCost, damageRisk) {
     
     // Always auto-save after a massive jump!
     if (typeof autoSaveGame === 'function') autoSaveGame();
-}
-
-// ==========================================
-// --- COLONY CRISES & BOOMS ---
-// ==========================================
-
-const COLONY_EVENTS = [
-    {
-        id: "PIRATE_RAID",
-        title: "COLONY UNDER ATTACK",
-        icon: "☠️",
-        color: "var(--danger)",
-        getText: (colony) => `Emergency hail from ${colony.name}! An Eclipse Cartel raiding party has breached the outer perimeter. The militia is holding them back, but they need immediate support!`,
-        choices: [
-            {
-                label: "WIRE RANSOM FUNDS (5,000c)",
-                condition: () => playerCredits >= 5000,
-                execute: (colony) => {
-                    playerCredits -= 5000;
-                    logMessage(`<span style='color:var(--warning)'>[ COLONY ] You wired 5,000c to the raiders. They took the credits and left ${colony.name} alone.</span>`);
-                    closeGenericModal();
-                }
-            },
-            {
-                label: "IGNORE THE HAIL (Lose Hab Module)",
-                condition: () => true,
-                execute: (colony) => {
-                    // Correctly targets the suppliesDelivered object
-                    if (colony.suppliesDelivered.habModules > 0) colony.suppliesDelivered.habModules--;
-                    logMessage(`<span style='color:var(--danger)'>[ COLONY ] The raiders bombarded ${colony.name}, destroying a Habitation Module before Concord authorities arrived.</span>`);
-                    closeGenericModal();
-                }
-            }
-        ]
-    },
-    {
-        id: "RESOURCE_BOOM",
-        title: "DEEP VEIN DISCOVERED",
-        icon: "💎",
-        color: "var(--gold-text)",
-        getText: (colony) => `Great news from ${colony.name}, Commander! Our automated excavators just broke through into a massive, previously undetected vein of rare materials!`,
-        choices: [
-            {
-                label: "ACKNOWLEDGE (Yield Increased)",
-                condition: () => true,
-                execute: (colony) => {
-                    if (!colony.inventory) colony.inventory = {};
-                    colony.inventory['RARE_METALS'] = (colony.inventory['RARE_METALS'] || 0) + 15;
-                    colony.inventory['VOID_CRYSTALS'] = (colony.inventory['VOID_CRYSTALS'] || 0) + 2;
-                    logMessage(`<span style='color:var(--success)'>[ COLONY ] ${colony.name} successfully extracted the deep vein materials! They are waiting in the colony storage.</span>`);
-                    if (typeof soundManager !== 'undefined') soundManager.playGain();
-                    closeGenericModal();
-                }
-            }
-        ]
-    },
-    {
-        id: "MEDICAL_EMERGENCY",
-        title: "OUTBREAK DETECTED",
-        icon: "☣️",
-        color: "var(--success)", 
-        getText: (colony) => `Priority alert from ${colony.name}! A dormant, indigenous pathogen has infected the water supply. We desperately need Medical Supplies!`,
-        choices: [
-            {
-                label: "TRANSFER 5 MEDICAL SUPPLIES",
-                condition: () => (playerCargo['MEDICAL_SUPPLIES'] || 0) >= 5,
-                execute: (colony) => {
-                    playerCargo['MEDICAL_SUPPLIES'] -= 5;
-                    if (playerCargo['MEDICAL_SUPPLIES'] <= 0) delete playerCargo['MEDICAL_SUPPLIES'];
-                    playerXP += 200;
-                    logMessage(`<span style='color:var(--success)'>[ COLONY ] You remotely deployed Medical Supplies to ${colony.name}. The outbreak is contained! (+200 XP)</span>`);
-                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                    if (typeof checkLevelUp === 'function') checkLevelUp();
-                    closeGenericModal();
-                }
-            },
-            {
-                label: "INITIATE QUARANTINE (Production Halted)",
-                condition: () => true,
-                execute: (colony) => {
-                    colony.quarantined = true; 
-                    logMessage(`<span style='color:var(--warning)'>[ COLONY ] You ordered ${colony.name} into strict quarantine. The population will survive, but production will suffer for a time.</span>`);
-                    closeGenericModal();
-                }
-            }
-        ]
-    }
-];
-
-function triggerColonyEvent(colony) {
-    const event = COLONY_EVENTS[Math.floor(Math.random() * COLONY_EVENTS.length)];
-    
-    openGenericModal("INCOMING TRANSMISSION");
-    const listEl = document.getElementById('genericModalList');
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
-
-    listEl.innerHTML = ''; 
-
-    detailEl.innerHTML = `
-        <div style="text-align:center; padding: 30px 20px;">
-            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px ${event.color});">${event.icon}</div>
-            <h3 style="color:${event.color}; margin-bottom:15px; letter-spacing: 2px;">${event.title}</h3>
-            
-            <div style="text-align:left; background:rgba(0,0,0,0.5); padding:20px; border-left:3px solid ${event.color}; margin-bottom:15px; border-radius:4px;">
-                <p style="color:var(--text-color); font-size:14px; line-height:1.6; margin:0;">
-                    ${event.getText(colony)}
-                </p>
-            </div>
-        </div>
-    `;
-
-    actionsEl.innerHTML = '';
-    
-    event.choices.forEach(choice => {
-        if (choice.condition()) {
-            const btn = document.createElement('button');
-            btn.className = 'action-button';
-            btn.style.width = '100%';
-            btn.style.marginBottom = '10px';
-            btn.innerHTML = choice.label;
-            
-            if (choice.label.includes("Lose") || choice.label.includes("Halted") || choice.label.includes("IGNORE")) {
-                btn.style.borderColor = "var(--danger)";
-                btn.style.color = "var(--danger)";
-            } else if (choice.label.includes("TRANSFER") || choice.label.includes("ACKNOWLEDGE")) {
-                btn.style.borderColor = "var(--success)";
-                btn.style.color = "var(--success)";
-            }
-
-            btn.onclick = () => {
-                choice.execute(colony);
-                if (typeof renderUIStats === 'function') renderUIStats();
-                if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
-                if (typeof render === 'function') render();
-            };
-            actionsEl.appendChild(btn);
-        }
-    });
-    
-    if (typeof soundManager !== 'undefined') soundManager.playWarning();
 }
 
 // ==========================================
