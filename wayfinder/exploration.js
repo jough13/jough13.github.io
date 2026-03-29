@@ -2415,11 +2415,17 @@ function resolveExpedition(choice) {
         playerCredits += creds;
         resultHtml = `<span style="color:var(--success)">HACK SUCCESSFUL.</span><br>Cipher consumed. The cartel pod opens smoothly, revealing <span style="color:var(--gold-text)">${creds}c</span>!`;
         
-        // --- NEW: PROCEDURAL SMUGGLER LOOT ---
+        // --- PROCEDURAL SMUGGLER LOOT ---
         const rareHold = typeof generateProceduralModule === 'function' ? generateProceduralModule("SMUGGLERS_HOLD") : null;
         if (rareHold) {
-            playerCargo[rareHold.id] = rareHold;
-            resultHtml += `<br><span style="color:#9933FF; font-weight:bold;">You also found a modified ship part: ${rareHold.name}!</span>`;
+            // 1. Inject it into the global database so the outfitter can see it
+            COMPONENTS_DATABASE[rareHold.id] = rareHold;
+            
+            // 2. Automatically equip it (since cargo can't hold components)
+            playerShip.components.utility = rareHold.id;
+            applyPlayerShipStats();
+            
+            resultHtml += `<br><span style="color:#9933FF; font-weight:bold;">You discovered and installed a modified ship part: ${rareHold.name}!</span>`;
         }
         
         if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
