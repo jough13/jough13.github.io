@@ -1320,23 +1320,34 @@ Object.defineProperty(window, 'playerShip', {
     get: () => GameState.ship,
     set: (val) => { GameState.ship = val; }
 });
-Object.defineProperty(window, 'playerCargo', {
-    get: () => {
-        return new Proxy(GameState.ship.cargo, {
-            set: function(target, property, value) {
-                target[property] = value;
-                if (typeof GameBus !== 'undefined') GameBus.emit('CARGO_MODIFIED');
-                return true;
-            },
-            deleteProperty: function(target, property) {
-                delete target[property];
-                if (typeof GameBus !== 'undefined') GameBus.emit('CARGO_MODIFIED');
-                return true;
-            }
-        });
+
+// 1. Define the handler logic once to keep the code clean
+const cargoProxyHandler = {
+    set: function(target, property, value) {
+        target[property] = value;
+        if (typeof GameBus !== 'undefined') GameBus.emit('CARGO_MODIFIED');
+        return true;
     },
+    deleteProperty: function(target, property) {
+        delete target[property];
+        if (typeof GameBus !== 'undefined') GameBus.emit('CARGO_MODIFIED');
+        return true;
+    }
+};
+
+// 2. Create the initial cached Proxy
+let _cachedCargoProxy = new Proxy(GameState.ship.cargo, cargoProxyHandler);
+
+// 3. Define the property using the cached Proxy
+Object.defineProperty(window, 'playerCargo', {
+    get: () => _cachedCargoProxy,
     set: (val) => { 
+        // If the game overwrites the whole inventory (e.g. loading a save file)
         GameState.ship.cargo = val; 
+        
+        // Rebuild the Proxy so it wraps the newly loaded inventory object
+        _cachedCargoProxy = new Proxy(GameState.ship.cargo, cargoProxyHandler);
+        
         if (typeof GameBus !== 'undefined') GameBus.emit('CARGO_MODIFIED');
     }
 });
@@ -3271,15 +3282,21 @@ GameBus.on('TICK_PROCESSED', (tick) => {
     if (tick.interrupt) return;
     const { isMovement } = tick;
 
-    // 1. STEALTH HEAT MECHANIC
+    // 1. STEALTH HEAT MECHANIC (Left intact - this is a player-driven action consequence)
     if (isSilentRunning) {
         stealthHeat++;
         if (stealthHeat > 5) {
             const dmg = 5 + ((stealthHeat - 5) * 2); 
             if (playerShields > 0) {
-                playerShields -= dmg;
-                if (playerShields < 0) { playerHull += playerShields; playerShields = 0; }
-            } else { playerHull -= dmg; }
+        playerShields -= dmg;
+            if (playerShields < 0) { 
+                const spill = Math.abs(playerShields);
+                playerShields = 0; 
+                GameBus.emit('HULL_DAMAGED', { amount: spill, reason: "Melted by Stealth Core Overload" });
+            }
+        } else { 
+            GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Melted by Stealth Core Overload" }); 
+        }
             
             if (Math.random() < 0.5 || !isMovement) {
                 logMessage(`<span style='color:var(--danger)'>[ STEALTH ] Heat sinks overloaded! Core melting! Took ${dmg} damage.</span>`);
@@ -3296,7 +3313,7 @@ GameBus.on('TICK_PROCESSED', (tick) => {
         if (stealthHeat === 0) logMessage("<span style='color:var(--success)'>[ STEALTH ] Heat sinks fully flushed. Temperatures nominal.</span>");
     }
 
-    // 2. RADIATION HAZARDS
+    // 2. RADIATION HAZARDS (Left intact - environmental hazard)
     const hazard = getHazardType(playerX, playerY);
     const hasRadShield = playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY';
     if (hazard === 'RADIATION_BELT' && !hasRadShield) {
@@ -3313,7 +3330,7 @@ GameBus.on('TICK_PROCESSED', (tick) => {
         }
     }
 
-    // 3. GRAVITY WELLS (BLACK HOLES)
+    // 3. GRAVITY WELLS (BLACK HOLES) (Left intact - environmental hazard)
     if (isMovement) {
         let pulledByBlackHole = false;
         for (let dy = -3; dy <= 3; dy++) {
@@ -3348,9 +3365,9 @@ GameBus.on('TICK_PROCESSED', (tick) => {
         }
     }
 
-    // 4. HOT CARGO PURSUITS
+    // 4. HOT CARGO PURSUITS (Reduced from 8% to 0.8%, Stealth tracking from 10% to 1%)
     if (playerCargo['HOT_CARGO'] > 0 && isMovement) {
-        if (!isSilentRunning && Math.random() < 0.08) {
+        if (!isSilentRunning && Math.random() < 0.008) {
             const angle = Math.random() * Math.PI * 2;
             const dist = 5 + Math.floor(Math.random() * 3);
             const eX = Math.floor(playerX + Math.cos(angle) * dist);
@@ -3365,7 +3382,7 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                 if (typeof triggerDamageEffect === 'function') triggerDamageEffect(); 
                 if (typeof soundManager !== 'undefined') soundManager.playWarning();
             }
-        } else if (isSilentRunning && Math.random() < 0.10) {
+        } else if (isSilentRunning && Math.random() < 0.01) {
             logMessage("<span style='color:#555'>[ STEALTH ] Sensors detect Aegis interceptors searching the nearby sector, but your signature is masked.</span>");
         }
     }
@@ -3382,7 +3399,7 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                 if (typeof initiatePirateExtortion === 'function') initiatePirateExtortion(enemyAtLoc);
                 else if (typeof startCombat === 'function') startCombat(enemyAtLoc);
             }
-            tick.interrupt = true; return; // Flags that the tick hit combat
+            tick.interrupt = true; return; 
         }
     }
 });
@@ -3419,9 +3436,9 @@ GameBus.on('TICK_PROCESSED', (tick) => {
     if (typeof updateAmbientNPCs === "function") updateAmbientNPCs();
     if (typeof updatePlayerDrones === "function") updatePlayerDrones();
 
-    // COMET CHASING
+    // COMET CHASING (Reduced from 1% to 0.1%)
     if (isMovement && typeof activeComets !== 'undefined') {
-        if (activeComets.length === 0 && Math.random() < 0.01) {
+        if (activeComets.length === 0 && Math.random() < 0.001) {
             const angle = Math.random() * Math.PI * 2;
             const dist = Math.floor(VIEWPORT_WIDTH_TILES); 
             const cx = Math.floor(playerX + Math.cos(angle) * dist);
@@ -3459,11 +3476,12 @@ GameBus.on('TICK_PROCESSED', (tick) => {
         }
     }
 
-    if (Math.random() < 0.05 && typeof spawnAmbientNPCs === "function") spawnAmbientNPCs();
+    // AMBIENT TRAFFIC (Reduced from 5% to 0.5%)
+    if (Math.random() < 0.005 && typeof spawnAmbientNPCs === "function") spawnAmbientNPCs();
 
-    // ACTIVE SECTOR WARZONES
+    // ACTIVE SECTOR WARZONES (Reduced from 1.5% to 0.15%)
     if (typeof activeSkirmishes === 'undefined') window.activeSkirmishes = [];
-    if (isMovement && Math.random() < 0.015 && activeSkirmishes.length < 1) {
+    if (isMovement && Math.random() < 0.0015 && activeSkirmishes.length < 1) {
         const angle = Math.random() * Math.PI * 2;
         const dist = 4 + Math.floor(Math.random() * 4); 
         const sx = Math.floor(playerX + Math.cos(angle) * dist);
@@ -3494,7 +3512,6 @@ GameBus.on('TICK_PROCESSED', (tick) => {
 GameBus.on('TICK_PROCESSED', (tick) => {
     if (tick.interrupt) return;
 
-    // COLONIES (Fixed Double-Dipping Resource Generation)
     if (typeof playerColonies !== 'undefined') {
         Object.values(playerColonies).forEach(colony => {
             if (colony.established) {
@@ -3516,7 +3533,9 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                             const amount = Math.floor(Math.random() * 3) + 1 + Math.floor(colony.population / 100);
                             colony.storage[res] = (colony.storage[res] || 0) + amount;
                         }
-                        if (Math.random() < 0.05) {
+                        
+                        // COLONY HAULERS (Reduced from 5% to 0.5%)
+                        if (Math.random() < 0.005) {
                             const existingHauler = typeof activeNPCs !== 'undefined' ? activeNPCs.find(n => n.isColonyHauler && n.colonyId === colony.id) : null;
                             if (!existingHauler && typeof activeNPCs !== 'undefined') {
                                 activeNPCs.push({
@@ -3528,7 +3547,9 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                             }
                         }
                     }
-                    if ((colony.phase === 'POPULATED' || colony.phase === 'OPERATIONAL') && Math.random() < 0.002) {
+                    
+                    // RARE COLONY EVENTS (Reduced from 0.2% to 0.02%)
+                    if ((colony.phase === 'POPULATED' || colony.phase === 'OPERATIONAL') && Math.random() < 0.0002) {
                         if (typeof triggerColonyEvent === 'function') triggerColonyEvent(colony);
                     }
                 }
@@ -3536,9 +3557,10 @@ GameBus.on('TICK_PROCESSED', (tick) => {
         });
     }
 
-    // OUTPOST AUTOMATION
-    if (typeof worldStateDeltas !== 'undefined' && currentGameDate - (window.lastTollTick || 0) >= 1.0) {
+    // --- OUTPOST AUTOMATION ---
+    if (typeof worldStateDeltas !== 'undefined' && currentGameDate - (window.lastTollTick || 0) >= 10.0) {
         window.lastTollTick = currentGameDate;
+        
         for (const key in worldStateDeltas) {
             const tile = worldStateDeltas[key];
             if (tile.isPlayerOwned && tile.isTinyOutpost) {
@@ -3571,7 +3593,7 @@ GameBus.on('TICK_PROCESSED', (tick) => {
         }
     }
 
-    // ECONOMY SHIFTS
+    // ECONOMY SHIFTS (Deterministically occurs when trend expires)
     if (typeof activeMarketTrend === 'undefined' || !activeMarketTrend || currentGameDate > activeMarketTrend.expiry) {
         if (typeof generateMarketTrend === 'function') generateMarketTrend();
     }
