@@ -2329,6 +2329,8 @@ function startSurfaceExpedition() {
         desc: "You discover a deep subterranean fault line lined with resonating, high-purity void crystals. The cavern ceiling looks incredibly unstable.",
         actions: [
             { label: "DEPLOY DRONE (Requires Drone)", fn: () => resolveExpedition('CAVE_CAREFUL'), reqItem: 'MINING_DRONE' },
+            // 🚨 ADD THIS NEW BUTTON:
+            { label: "SEND GOLIATH MECH (100% Safe)", fn: () => resolveExpedition('CAVE_MECH'), reqItem: 'MechCheck' },
             { label: "BLAST & GRAB (Risk Collapse)", fn: () => resolveExpedition('CAVE_SMASH') },
             { label: "LEAVE IT BE", fn: () => resolveExpedition('LEAVE') }
         ]
@@ -2342,6 +2344,8 @@ function startSurfaceExpedition() {
             color: "var(--danger)",
             desc: "A pack of massive, heavily-armored apex predators has surrounded your landing zone. They are testing the perimeter of your ship's repulsor shields and preparing to charge.",
             actions: [
+
+                { label: "DEPLOY MARINE SQUAD (Safe)", fn: () => resolveExpedition('FAUNA_MARINES'), reqItem: 'MarineCheck' },
                 { label: "FIRE SHIP CANNONS", fn: () => resolveExpedition('FAUNA_SHOOT') },
                 { label: "RELEASE TOXIC VENT", fn: () => resolveExpedition('FAUNA_GAS') }
             ]
@@ -2381,7 +2385,19 @@ function startSurfaceExpedition() {
     `;
 
     actionsEl.innerHTML = encounter.actions.map(act => {
-        const hasReq = act.reqItem ? ((playerCargo[act.reqItem] || 0) > 0) : true;
+        let hasReq = true;
+        
+        // Check standard items
+        if (act.reqItem && act.reqItem !== 'MechCheck' && act.reqItem !== 'MarineCheck') {
+            hasReq = ((playerCargo[act.reqItem] || 0) > 0);
+        }
+        // 🚨 Check Ground Forces
+        else if (act.reqItem === 'MechCheck') {
+            hasReq = GameState.ship.forces.heavyMechs > 0;
+        } else if (act.reqItem === 'MarineCheck') {
+            hasReq = GameState.ship.forces.marines > 0;
+        }
+
         const disabledState = hasReq ? '' : 'disabled';
         return `<button class="action-button" style="border-color:${encounter.color}; color:${encounter.color};" onclick="(${act.fn})()" ${disabledState}>${act.label}</button>`;
     }).join('');
@@ -2513,6 +2529,19 @@ function resolveExpedition(choice) {
 
         resultHtml = `<span style="color:var(--success)">PEACEFUL FIRST CONTACT.</span><br>You approach with open hands and offer the medical supplies. In reverence, the tribe gifts you their sacred glowing stones.<br>Gained <span style="color:var(--gold-text)">${rareMetals}x Rare Metals</span>!`;
         if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    }
+    // --- GROUND FORCES RESOLUTIONS ---
+    else if (choice === 'CAVE_MECH') {
+        const crystals = 4; // Massive yield
+        playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + crystals;
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+        resultHtml = `<span style="color:var(--success)">MECH DEPLOYED.</span><br>The Goliath Assault Mech effortlessly braces the collapsing ceiling with its hydraulic arms while mining the nodes.<br>Gained <span style="color:#FF33FF">${crystals}x Void Crystals</span>. (0 Damage taken)`;
+        if (typeof soundManager !== 'undefined') soundManager.playMining();
+    }
+    else if (choice === 'FAUNA_MARINES') {
+        resultHtml = `<span style="color:var(--success)">SQUAD DEPLOYED.</span><br>Your Marines form a firing line and unleash a coordinated volley of concentrated plasma fire. The apex predators are instantly vaporized. The perimeter is secure. (0 Damage taken)`;
+        if (typeof soundManager !== 'undefined') soundManager.playLaser();
     }
 
     // Check Death!
