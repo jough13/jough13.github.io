@@ -1824,9 +1824,16 @@ function changeGameState(newState) {
          document.getElementById('combatView').style.display = 'flex';
      }
 
+     // Hide the Mobile D-Pad when not actively flying
+     const dPad = document.getElementById('mobileControls');
+     if (dPad) {
+         // Only show if we are on the map AND the screen is small enough to need it
+         dPad.style.display = (newState === GAME_STATES.GALACTIC_MAP && window.innerWidth <= 768) ? 'flex' : 'none';
+     }
+
      currentGameState = newState;
      
-     // 3. NEW: Update Border Visibility
+     // 3. Update Border Visibility
      if (typeof updateSideBorderVisibility === "function") {
         updateSideBorderVisibility();
      }
@@ -3003,6 +3010,10 @@ function renderGalacticMap() {
         targetPoint = { x: playerActiveBounty.x, y: playerActiveBounty.y };
         targetColor = "var(--danger)";
         targetLabel = "KILL";
+    } else if (typeof mystery_first_nexus_location !== 'undefined' && mystery_first_nexus_location && playerCargo['WAYFINDER_CORE'] > 0) {
+        targetPoint = { x: mystery_first_nexus_location.x, y: mystery_first_nexus_location.y, name: "The First Nexus" };
+        targetColor = "#40E0D0";
+        targetLabel = "NEXUS";
     } else if (playerActiveMission && playerActiveMission.type === "DELIVERY" && !playerActiveMission.isComplete) {
         const destName = playerActiveMission.objectives[0].destinationName;
         if (LOCATIONS_DATA[destName]) {
@@ -3642,7 +3653,7 @@ GameBus.on('TICK_PROCESSED', (tick) => {
 
     // 5. Execute Movement Logic
     if (dx !== 0 || dy !== 0) {
-        currentStationRecruits = []; 
+        currentStationRecruits = null; 
         currentStationBounties = []; // Wipe old bounties
         
         playerFuel = Math.max(0, playerFuel - actualFuelPerMove);
@@ -7541,7 +7552,16 @@ if (typeof COMMODITIES !== 'undefined') {
     // NEW Data
     COMMODITIES['DATA_QUASAR'] = { name: "Quasar Spectrography", basePrice: 12000, illegal: false, description: "Incredibly rare relativistic jet measurements." };
     COMMODITIES['DATA_SUPERNOVA'] = { name: "Supernova Isotope Data", basePrice: 6000, illegal: false, description: "Measurements of heavy element nucleosynthesis." };
-    COMMODITIES['TELEMETRY_PROBE'] = { name: "Autonomous Telemetry Probe", basePrice: 1500, illegal: false, description: "Deploy in deep space to passively gather valuable astrometric data over time." };
+    COMMODITIES['TELEMETRY_PROBE'] = { 
+        name: "Autonomous Telemetry Probe", 
+        basePrice: 1500, 
+        illegal: false, 
+        description: "Deploy in deep space to passively gather valuable astrometric data over time.",
+        onUse: () => {
+            if (typeof deployProbe === 'function') { deployProbe(); return true; }
+            return false;
+        }
+    };
 }
 
 function handleAnomaly() { 
