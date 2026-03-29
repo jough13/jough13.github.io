@@ -297,16 +297,21 @@ function renderPlanetView() {
         currentCargoLoad += amount; // Safety fallback
     }
 
-    // 5. Deplete the planet & grant XP
+// 5. Deplete the planet & grant XP
     location.miningDepleted = true;
     playerXP += 35;
-    if (typeof checkLevelUp === 'function') checkLevelUp();
+    const leveledUp = typeof checkLevelUp === 'function' ? checkLevelUp() : false;
 
     // 6. Update all UI elements
     logMessage(`Deployed Orbital Extractor. <span style="color:var(--gold-text)">+${amount} ${COMMODITIES[itemId].name}</span> secured.`, true);
     showToast(`Mined ${amount} ${COMMODITIES[itemId].name}`, "success");
     
     if (typeof renderUIStats === 'function') renderUIStats();
+    
+    // Only refresh the planet view if we aren't picking a perk!
+    if (!leveledUp && typeof openPlanetView === 'function') {
+        openPlanetView(location);
+    }
     
     // Refresh the planet view so the button instantly turns gray
     if (typeof openPlanetView === 'function') openPlanetView(location);
