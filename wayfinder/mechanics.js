@@ -92,6 +92,7 @@ function triggerRandomEncounter() {
 function resolveUniversalEncounter(encounterId, choiceIndex) {
     const encounter = ENCOUNTER_DATABASE[encounterId];
     const choice = encounter.choices[choiceIndex];
+    let leveledUp = false;
 
     if (choice.actionType) {
         if (choice.actionType === "CUSTOMS_SCAN") {
@@ -134,7 +135,7 @@ function resolveUniversalEncounter(encounterId, choiceIndex) {
     if (choice.rewards) {
         if (choice.rewards.xp) {
             playerXP += choice.rewards.xp;
-            if (typeof checkLevelUp === 'function') checkLevelUp();
+            if (typeof checkLevelUp === 'function') leveledUp = checkLevelUp();
         }
         if (choice.rewards.credits) playerCredits += choice.rewards.credits;
         if (choice.rewards.rep) {
@@ -163,9 +164,11 @@ function resolveUniversalEncounter(encounterId, choiceIndex) {
     currentEncounterContext = null;
     closeGenericModal();
     if (typeof renderUIStats === 'function') renderUIStats();
-    if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
-    if (typeof render === 'function') render();
-}
+    
+    if (!leveledUp) {
+        if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+        if (typeof render === 'function') render();
+    }
 
 
 // ==========================================
