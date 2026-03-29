@@ -1465,10 +1465,15 @@ function finalizeRaid(choice) {
     closeGenericModal();
     raidContext = null;
 
-    if (typeof checkLevelUp === 'function') checkLevelUp();
+    let leveledUp = false;
+    if (typeof checkLevelUp === 'function') leveledUp = checkLevelUp();
+    
     if (typeof renderUIStats === 'function') renderUIStats();
-    if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
-    if (typeof render === 'function') render();
+    
+    if (!leveledUp) {
+        if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+        if (typeof render === 'function') render();
+    }
     autoSaveGame();
 }
 
