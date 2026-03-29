@@ -313,8 +313,6 @@ function renderPlanetView() {
         openPlanetView(location);
     }
     
-    // Refresh the planet view so the button instantly turns gray
-    if (typeof openPlanetView === 'function') openPlanetView(location);
     if (typeof saveGame === 'function') saveGame(); // Lock in the loot!
 }
 
