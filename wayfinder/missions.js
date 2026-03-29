@@ -466,13 +466,19 @@ function grantMissionRewards() {
      }
      rewardMsg += standingMsg;
 
-     playerActiveMission = null;
+    playerActiveMission = null;
      currentMissionContext = null;
      logMessage(rewardMsg);
-     checkLevelUp();
-     handleInteraction();
+     
+     const leveledUp = checkLevelUp();
+     
+     // Only trigger the station interaction menu if we didn't level up
+     if (!leveledUp) {
+         handleInteraction();
+     }
+     
      renderMissionTracker(); 
-     renderUIStats(); 
+     renderUIStats();
 }
 
 function renderMissionTracker() {
