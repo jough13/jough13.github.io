@@ -19,7 +19,7 @@ function openRecruitmentBoard() {
     const actionsEl = document.getElementById('genericModalActions');
 
     // Generate new recruits if the station pool is empty
-    if (typeof currentStationRecruits === 'undefined' || currentStationRecruits.length === 0) {
+        if (typeof currentStationRecruits === 'undefined' || currentStationRecruits === null) {
         currentStationRecruits = generateStationRecruits();
     }
 
