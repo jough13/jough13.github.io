@@ -1293,29 +1293,23 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
     const newWindow = React.useRef(null);
     
     React.useEffect(() => {
+        // 1. Open the bare window
         newWindow.current = window.open('', title, `width=${width},height=${height},resizable=yes`);
+        
+        // 2. Set the base background colors
         newWindow.current.document.body.className = "bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200";
+        
+        // 3. Create the "landing pad" for the React Portal
         const popoutRoot = newWindow.current.document.createElement('div');
         newWindow.current.document.body.appendChild(popoutRoot);
         
-        const reactScript = newWindow.current.document.createElement('script');
-        reactScript.src = "https://unpkg.com/react@18/umd/react.development.js";
-        reactScript.crossOrigin = true;
-        newWindow.current.document.head.appendChild(reactScript);
-        
-        const reactDomScript = newWindow.current.document.createElement('script');
-        reactDomScript.src = "https://unpkg.com/react-dom@18/umd/react-dom.development.js";
-        reactDomScript.crossOrigin = true;
-        newWindow.current.document.head.appendChild(reactDomScript);
-        
-        const babelScript = newWindow.current.document.createElement('script');
-        babelScript.src = "https://unpkg.com/@babel/standalone/babel.min.js";
-        newWindow.current.document.head.appendChild(babelScript);
-        
+        // 4. COPY OVER STYLES (But NO React/Babel scripts!)
+        // This grabs any custom CSS (like style.css) from the main window
         document.head.querySelectorAll('link[rel="stylesheet"], style').forEach(node => {
             newWindow.current.document.head.appendChild(node.cloneNode(true));
         });
         
+        // 5. Re-inject Tailwind (Since we use the CDN, the new window needs it to parse the classes)
         const tailwindScript = newWindow.current.document.createElement('script');
         tailwindScript.src = "https://cdn.tailwindcss.com";
         newWindow.current.document.head.appendChild(tailwindScript);
@@ -1323,10 +1317,14 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
         const tailwindConfigScript = newWindow.current.document.createElement('script');
         tailwindConfigScript.innerHTML = `tailwind.config = { darkMode: 'class' }`;
         newWindow.current.document.head.appendChild(tailwindConfigScript);
+        
+        // 6. Sync dark mode state to the new window's HTML tag
         newWindow.current.document.documentElement.className = document.documentElement.className;
         
+        // 7. Save the container so the Portal can render
         setContainer(popoutRoot);
         
+        // Handle window closure
         const handleUnload = () => {
             onClose();
         };
@@ -1339,9 +1337,11 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
             }
             setContainer(null);
         };
-    }, []);
+    }, []); // Empty dependency array: only runs once on mount
     
     if (!container) return null;
+    
+    // Send the components through the wormhole!
     return ReactDOM.createPortal(children, container);
 };
 
@@ -1386,6 +1386,7 @@ const ComparisonView = ({
         },
         {
             label: 'Primary Decay Mode',
+            key: 'emissionType',
             type: 'categorical',
             render: (n) => <span className="font-medium text-slate-700 dark:text-slate-300">{n.emissionType?.[0] || 'N/A'}</span> 
         },
@@ -1475,11 +1476,13 @@ const ComparisonView = ({
         },
         {
             label: 'Parent',
+            key: 'parent',
             type: 'categorical',
             render: (n) => <ClickableNuclide text={n.parent} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />
         },
         {
             label: 'Daughter',
+            key: 'daughter',
             type: 'categorical',
             render: (n) => <ClickableNuclide text={n.daughter} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />
         }
