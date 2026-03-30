@@ -330,7 +330,7 @@ const SHIELDING_MATERIALS = {
       density: 11.34
    },
    'Water': {
-      Z: 8,
+      Z: 7.4,
       density: 1.00
    }, // Using Oxygen for approximation
    'Concrete': {
