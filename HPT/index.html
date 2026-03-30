@@ -30,21 +30,11 @@
             
             // 2. The "Curious Cat" Deterrent: Disable F12 / Inspect Shortcuts
             document.onkeydown = function(e) {
-                if(e.keyCode == 123) { // F12
-                return false;
-                }
-                if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) { // Ctrl+Shift+I
-                return false;
-                }
-                if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) { // Ctrl+Shift+C
-                return false;
-                }
-                if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) { // Ctrl+Shift+J
-                return false;
-                }
-                if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) { // Ctrl+U (View Source)
-                return false;
-                }
+                if(e.key === 'F12') return false;
+                if(e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) return false;
+                if(e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c')) return false;
+                if(e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j')) return false;
+                if(e.ctrlKey && (e.key === 'U' || e.key === 'u')) return false;
             }
             
             // 3. The "Legal Wall": Console Warning
@@ -192,6 +182,12 @@
             <div class="spinner"></div>
             <p class="loading-text">Health Physics Toolbox loading...</p>
         </div>
+        <noscript>
+            <div style="position: fixed; inset: 0; background: #fff; z-index: 10000; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px;">
+                <h2>JavaScript is Required</h2>
+                <p>The Health Physics Toolbox requires JavaScript to perform calculations and render the interface. Please enable JavaScript to continue.</p>
+            </div>
+        </noscript>
         <!--The root element where the React application will be mounted.-->
         <div id="root" class="print:shadow-none rounded-b-2xl print:rounded-none print:p-0 print:m-0"></div>
         <div id="back-to-top-root"></div>
