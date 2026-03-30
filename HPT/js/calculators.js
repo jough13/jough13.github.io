@@ -3141,7 +3141,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const massGrams = safeParseFloat(newItemMass);
         const specActivityBq_g = massGrams > 0 ? actBq / massGrams : Infinity;
         
-        const exemptLimitBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
         // Fallback to 0 if not yet added to your database
         const exemptConcLimitBq_g = selectedNuclideData.shipping.exemptConcLimitBq_g || 0; 
 
