@@ -701,6 +701,13 @@
             //  Pass 'response' as the second argument so handleNavClick knows to set the tab
             handleNavClick(VIEWS.OPERATIONAL_HP, 'response');
             };
+
+            React.useEffect(() => {
+                const loader = document.getElementById('loader');
+                if (loader) {
+                    setTimeout(() => { loader.classList.add('hidden'); }, 150); 
+                }
+            }, []);
             
             React.useEffect(() => {
             const handleHashChange = () => {
@@ -1206,18 +1213,6 @@
             <BackToTopButton />
             );
             
-            // After the app is rendered, find the loader and fade it out.
-            
-            const loader = document.getElementById('loader');
-            if (loader) {
-            
-            // A small timeout ensures the app has painted before the loader disappears.
-            
-            setTimeout(() => {
-            
-            loader.classList.add('hidden');
-            }, 100); // 100ms delay
-            }
         </script>
         <script>
             // 1. Setup a global variable to catch the install prompt
