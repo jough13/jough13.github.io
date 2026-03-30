@@ -1162,20 +1162,19 @@
                 <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
             
               {showCalcPopout && (
-                    <PopoutWindow
-                        title="Scientific Calculator"
-                        onClose={() => setShowCalcPopout(false)}
-                        height={850}
-                    >
-                        {/* Removed ${theme} and let Tailwind handle the dark mode natively */}
-                        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 flex justify-center">
-                            <div className="w-full max-w-md bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
-                                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scientific Calculator</h2>
-                                <ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} />
-                            </div>
+                <PopoutWindow
+                    title="Scientific Calculator"
+                    onClose={() => setShowCalcPopout(false)}
+                    height={850}
+                >
+                    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
+                        <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+                            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scientific Calculator</h2>
+                            <ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} />
                         </div>
-                    </PopoutWindow>
-                )}
+                    </div>
+                </PopoutWindow>
+            )}
             
             {showScratchpadPopout && (
                 <PopoutWindow
@@ -1185,7 +1184,7 @@
                     height={660}
                 >
                     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 flex flex-col">
-                        <div className="w-full max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col flex-grow">
+                        <div className="max-w-4xl mx-auto w-full bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col flex-grow">
                             <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scratchpad</h2>
                             <div className="flex-grow flex flex-col">
                                 <Scratchpad notes={scratchpadNotes} setNotes={setScratchpadNotes} />
