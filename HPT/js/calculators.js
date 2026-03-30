@@ -55,7 +55,7 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
             const A0_Bq = A0 * factor0;
             const Af_Bq = Af * factorF;
 
-            if (Af_Bq >= A0_Bq) {
+            if (Af_Bq > A0_Bq) {
                 setError("Final activity must be less than initial activity.");
                 setResult(null); 
                 return;
@@ -3137,10 +3137,20 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         if (isNaN(val) || val <= 0) return PSN_OPTIONS[15];
 
         const actTBq = val * activityFactorsTBq[newItemUnit];
-        const exemptLimitBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
         const actBq = actTBq * 1e12;
+        const massGrams = safeParseFloat(newItemMass);
+        const specActivityBq_g = massGrams > 0 ? actBq / massGrams : Infinity;
         
-        if (exemptLimitBq > 0 && actBq <= exemptLimitBq) {
+        const exemptLimitBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
+        // Fallback to 0 if not yet added to your database
+        const exemptConcLimitBq_g = selectedNuclideData.shipping.exemptConcLimitBq_g || 0; 
+
+        // DOT rules: It exceeds limits ONLY if the limit is 0 (unknown) or strictly greater
+        const exceedsConsignment = exemptLimitBq === 0 || actBq > exemptLimitBq;
+        const exceedsConcentration = exemptConcLimitBq_g === 0 || specActivityBq_g > exemptConcLimitBq_g;
+        
+        // If it doesn't exceed BOTH, it is completely exempt from Class 7
+        if (!(exceedsConsignment && exceedsConcentration)) {
             return PSN_OPTIONS[15]; // Not Regulated
         }
 
@@ -3173,8 +3183,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         } else {
             return hasFissile ? PSN_OPTIONS[12] : PSN_OPTIONS[10];
         }
-    },[selectedNuclideData, newItemSymbol, newItemActivity, newItemUnit, newItemForm, newItemState, newItemCategory, activityFactorsTBq]);
-
+    },[selectedNuclideData, newItemSymbol, newItemActivity, newItemUnit, newItemForm, newItemState, newItemCategory, newItemMass, activityFactorsTBq]);
 
     // --- 4. LOGIC ---
 
@@ -3220,11 +3229,28 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const a2Raw = nuclideData.shipping.A2;
         const a2Val = (typeof a2Raw === 'string' && a2Raw.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(a2Raw);
 
+        // Calculate Specific Activity in Bq/g for the Exemption Check
+        const specActivityBq_g = massGrams > 0 ? actBq / massGrams : Infinity;
+
         if (!isNaN(massGrams) && massGrams > 0 && a2Val !== Infinity) {
-            const specActivity = actTBq / massGrams; // TBq/g
-            if (specActivity <= 1e-4 * a2Val) lsaHint = 'LSA-II';
-            else if (specActivity <= 2e-3 * a2Val) lsaHint = 'LSA-III';
+            const specActivityTBq_g = actTBq / massGrams; // TBq/g
+            if (specActivityTBq_g <= 1e-4 * a2Val) lsaHint = 'LSA-II';
+            else if (specActivityTBq_g <= 2e-3 * a2Val) lsaHint = 'LSA-III';
         }
+
+        // --- DOT EXEMPTION LOGIC ---
+        const exemptLimitBq = nuclideData.shipping.exemptConsignmentBq || 0;
+        const exemptConcLimitBq_g = nuclideData.shipping.exemptConcLimitBq_g || 0;
+        
+        const exceedsConsignment = exemptLimitBq === 0 || actBq > exemptLimitBq;
+        const exceedsConcentration = exemptConcLimitBq_g === 0 || specActivityBq_g > exemptConcLimitBq_g;
+        
+        // Under DOT rules, it is ONLY regulated if it exceeds BOTH limits.
+        const isRegulated = exceedsConsignment && exceedsConcentration;
+        
+        // Hack the fraction so the downstream package logic knows if it failed the exemption test
+        // If it is regulated, we force a 2.0 (causing the package sum to fail). If exempt, it adds 0.0.
+        const calculatedFracExempt = isRegulated ? 2.0 : 0.0;
 
         const item = {
             id: Date.now(),
@@ -3238,7 +3264,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             fracTypeA: limitTBq === Infinity ? 0 : actTBq / limitTBq,
             fracExcItem: (limitTBq === Infinity || itemLimitExc === 0) ? 0 : actTBq / itemLimitExc,
             fracExcPkg: (limitTBq === Infinity || pkgLimitExc === 0) ? 0 : actTBq / pkgLimitExc,
-            fracExempt: exemptLimitBq > 0 ? actBq / exemptLimitBq : Infinity,
+            fracExempt: calculatedFracExempt,
             fracRQ: rqLimitTBq === Infinity ? 0 : actTBq / rqLimitTBq,
             mass: massGrams,
             lsaHint: lsaHint,
