@@ -1296,6 +1296,9 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
         // 1. Open the bare window
         newWindow.current = window.open('', title, `width=${width},height=${height},resizable=yes`);
         
+        // Set the actual window title bar text!
+        newWindow.current.document.title = title;
+        
         // 2. Set the base background colors
         newWindow.current.document.body.className = "bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200";
         
@@ -1303,9 +1306,8 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
         const popoutRoot = newWindow.current.document.createElement('div');
         newWindow.current.document.body.appendChild(popoutRoot);
         
-        // 4. COPY OVER STYLES (But NO React/Babel scripts!)
-        // This grabs any custom CSS (like style.css) from the main window
-        document.head.querySelectorAll('link[rel="stylesheet"], style').forEach(node => {
+        // COPY OVER THEME COLORS! (Added meta[name="theme-color"] to the selector)
+        document.head.querySelectorAll('link[rel="stylesheet"], style, meta[name="theme-color"]').forEach(node => {
             newWindow.current.document.head.appendChild(node.cloneNode(true));
         });
         
@@ -1337,7 +1339,7 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
             }
             setContainer(null);
         };
-    }, []); // Empty dependency array: only runs once on mount
+    }, [title, width, height, onClose]); // ---> FIX 3: Added dependencies here <---
     
     if (!container) return null;
     
