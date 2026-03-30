@@ -3214,9 +3214,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         const actTBq = val * activityFactorsTBq[newItemUnit];
         const actBq = val * (activityFactorsTBq[newItemUnit] * 1e12);
-        
-        const exemptLimitBq = nuclideData.shipping.exemptConsignmentBq || 0;
-        
+     
         const rawRQ = nuclideData.shipping.RQ_TBq || nuclideData.shipping.RQ;
         const rqLimitTBq = rawRQ ? parseFloat(rawRQ) : Infinity;
 
