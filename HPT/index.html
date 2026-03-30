@@ -1162,42 +1162,43 @@
                 <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
             
               {showCalcPopout && (
-                  <PopoutWindow
-                      title="Scientific Calculator"
-                      onClose={() => setShowCalcPopout(false)}
-                      height={850}
-                  >
-                      <div className={`${theme} bg-slate-100 dark:bg-slate-900 h-full p-4`}>
-                          <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                              <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scientific Calculator</h2>
-                              <ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} />
-                          </div>
-                      </div>
-                  </PopoutWindow>
-              )}
+                    <PopoutWindow
+                        title="Scientific Calculator"
+                        onClose={() => setShowCalcPopout(false)}
+                        height={850}
+                    >
+                        {/* Removed ${theme} and let Tailwind handle the dark mode natively */}
+                        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 flex justify-center">
+                            <div className="w-full max-w-md bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+                                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scientific Calculator</h2>
+                                <ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} />
+                            </div>
+                        </div>
+                    </PopoutWindow>
+                )}
             
             {showScratchpadPopout && (
-            <PopoutWindow
-            title="Scratchpad"
-            onClose={() => setShowScratchpadPopout(false)}
-            width={800}
-            height={660}
-            >
-            <div className={`${theme} bg-slate-100 dark:bg-slate-900 h-full p-4`}>
-            <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col h-full">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scratchpad</h2>
-            <div className="flex-grow flex flex-col">
-            {/* Pass the centralized state down to the pop-out component */}
-            <Scratchpad notes={scratchpadNotes} setNotes={setScratchpadNotes} />
-            </div>
-            </div>
-            </div>
-            </PopoutWindow>
+                <PopoutWindow
+                    title="Scratchpad"
+                    onClose={() => setShowScratchpadPopout(false)}
+                    width={800}
+                    height={660}
+                >
+                    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 flex flex-col">
+                        <div className="w-full max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col flex-grow">
+                            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Scratchpad</h2>
+                            <div className="flex-grow flex flex-col">
+                                <Scratchpad notes={scratchpadNotes} setNotes={setScratchpadNotes} />
+                            </div>
+                        </div>
+                    </div>
+                </PopoutWindow>
             )}
+
             </div>
             </div>
             );
-            };          
+            };
                         
             // Final step: Render the main App component into the DOM.
             
