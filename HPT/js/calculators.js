@@ -1,15 +1,3 @@
-const SHIELD_PROPS = {
-    'Plastic': { Z: 6, density: 1.18, type: 'Low-Z', mapTo: 'Water' },
-    'Lucite/Acrylic': { Z: 6, density: 1.19, type: 'Low-Z', mapTo: 'Water' },
-    'Aluminum': { Z: 13, density: 2.70, type: 'Low-Z', mapTo: 'Aluminum' },
-    'Concrete': { Z: 11, density: 2.35, type: 'Low-Z', mapTo: 'Concrete' }, // Avg Z
-    'Steel': { Z: 26, density: 7.85, type: 'High-Z', mapTo: 'Steel' },
-    'Tungsten': { Z: 74, density: 19.3, type: 'High-Z', mapTo: 'Lead' }, // Map to Lead as approx
-    'Lead': { Z: 82, density: 11.34, type: 'High-Z', mapTo: 'Lead' },
-    'Water': { Z: 7.4, density: 1.00, type: 'Low-Z', mapTo: 'Water' },
-    'None': { Z: 0, density: 0, type: 'None', mapTo: 'None' }
-};
-
 /**
  * @description Calculates time required for a source to decay to a specific limit.
  * Visualizes the decay curve and the intersection point.
