@@ -1359,6 +1359,7 @@ const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, re
         </div>
     );
 };
+
 // --- Internal Helper: Result Badge ---
 const Badge = ({ label, pass, limit }) => (
     <div className={`flex justify-between items-center px-2 py-1 rounded text-[10px] font-bold ${pass ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'} mt-1`}>
@@ -6515,6 +6516,180 @@ const RadonIngrowthCalculator = ({ result, setResult, error, setError, amount, s
                     <p className="font-bold text-xs uppercase text-slate-500 mb-1">Rn-222 Ingrowth</p>
                     <p className="text-3xl font-black text-sky-600 dark:text-sky-400">{result.rn222_activity.value} <span className="text-xl font-bold opacity-75">{result.rn222_activity.unit}</span></p>
                     <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">({result.percentEquilibrium}% of secular equilibrium)</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+/**
+ * @description Kusnetz Method Calculator for Radon Progeny Working Levels (WL)
+ * Interpolates standard Kusnetz factors for delay times between 40 and 90 minutes.
+ */
+
+const KusnetzCalculator = ({
+    flowRate, setFlowRate,
+    sampleTime, setSampleTime,
+    delayTime, setDelayTime,
+    grossCounts, setGrossCounts,
+    countDuration, setCountDuration,
+    backgroundCpm, setBackgroundCpm,
+    efficiency, setEfficiency,
+    result, setResult,
+    error, setError
+}) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+
+    // Standard empirical Kusnetz Factors (Delay Time in Minutes -> Factor)
+    const KUSNETZ_FACTORS = {
+        40: 150, 45: 137, 50: 125, 55: 114, 60: 105,
+        65: 96, 70: 88, 75: 82, 80: 76, 85: 71, 90: 67
+    };
+
+    // Helper: Linear interpolation for delay times between standard 5-minute marks
+    const getKusnetzFactor = (t) => {
+        if (t < 40 || t > 90) return null;
+        if (KUSNETZ_FACTORS[t]) return KUSNETZ_FACTORS[t];
+
+        const times = Object.keys(KUSNETZ_FACTORS).map(Number).sort((a,b) => a-b);
+        for (let i = 0; i < times.length - 1; i++) {
+            if (t > times[i] && t < times[i+1]) {
+                const t1 = times[i]; const t2 = times[i+1];
+                const f1 = KUSNETZ_FACTORS[t1]; const f2 = KUSNETZ_FACTORS[t2];
+                return f1 + ((t - t1) / (t2 - t1)) * (f2 - f1);
+            }
+        }
+        return null;
+    };
+
+    React.useEffect(() => {
+        try {
+            setError('');
+            const flow = safeParseFloat(flowRate);
+            const t_samp = safeParseFloat(sampleTime);
+            const t_delay = safeParseFloat(delayTime);
+            const counts = safeParseFloat(grossCounts);
+            const t_count = safeParseFloat(countDuration);
+            const bkg = safeParseFloat(backgroundCpm);
+            const eff_pct = safeParseFloat(efficiency);
+
+            // Wait for all fields to be populated
+            if ([flow, t_samp, t_delay, counts, t_count, bkg, eff_pct].some(isNaN)) {
+                setResult(null); return;
+            }
+
+            if (flow <= 0 || t_samp <= 0 || t_count <= 0 || eff_pct <= 0) {
+                throw new Error("Flow rate, times, and efficiency must be greater than 0.");
+            }
+
+            if (t_delay < 40 || t_delay > 90) {
+                throw new Error("The standard Kusnetz method requires a delay time between 40 and 90 minutes.");
+            }
+
+            const Kf = getKusnetzFactor(t_delay);
+            if (!Kf) throw new Error("Failed to calculate Kusnetz factor.");
+
+            // 1. Math: Volume (L)
+            const volume_L = flow * t_samp;
+
+            // 2. Math: Activity (DPM)
+            const grossCpm = counts / t_count;
+            const netCpm = Math.max(0, grossCpm - bkg);
+            const dpm = netCpm / (eff_pct / 100);
+
+            // 3. Math: Working Level (WL)
+            const wl = dpm / (volume_L * Kf);
+
+            setResult({
+                wl: wl.toPrecision(3),
+                volume: volume_L.toFixed(1),
+                netCpm: netCpm.toFixed(1),
+                dpm: dpm.toFixed(0),
+                factor: Kf.toFixed(1)
+            });
+
+        } catch (e) {
+            setError(e.message);
+            setResult(null);
+        }
+    }, [flowRate, sampleTime, delayTime, grossCounts, countDuration, backgroundCpm, efficiency, setResult, setError]);
+
+    const handleSave = () => {
+        if (result) {
+            addHistory({
+                id: Date.now(),
+                type: 'Kusnetz (WL)',
+                icon: ICONS.radon,
+                inputs: `${flowRate} L/m (${sampleTime}m), ${delayTime}m delay`,
+                result: `${result.wl} WL`,
+                view: VIEWS.RADON
+            });
+            addToast("Saved to history!");
+        }
+    };
+
+    return (
+        <div className="space-y-4 animate-fade-in">
+            <ContextualNote type="info">Calculates Radon Working Levels (WL) from an air sample using the modified Kusnetz method. A delay time of 40 to 90 minutes is required to allow short-lived progeny to decay.</ContextualNote>
+            
+            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 bg-white dark:bg-slate-800/50 shadow-sm">
+                
+                {/* Sampling Data */}
+                <h3 className="font-bold text-sm text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 pb-1">1. Air Sampling</h3>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Flow Rate (L/min)</label>
+                        <input type="number" inputMode="decimal" value={flowRate} onChange={e => setFlowRate(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Sample Time (min)</label>
+                        <input type="number" inputMode="decimal" value={sampleTime} onChange={e => setSampleTime(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    </div>
+                </div>
+
+                {/* Delay Timing */}
+                <h3 className="font-bold text-sm text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 pb-1 mt-4">2. Decay Phase</h3>
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Delay Time (min)</label>
+                    <input type="number" inputMode="decimal" value={delayTime} onChange={e => setDelayTime(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="Must be 40 to 90" />
+                </div>
+
+                {/* Counting Data */}
+                <h3 className="font-bold text-sm text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 pb-1 mt-4">3. Alpha Counting</h3>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Gross Counts</label>
+                        <input type="number" inputMode="decimal" value={grossCounts} onChange={e => setGrossCounts(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Count Time (min)</label>
+                        <input type="number" inputMode="decimal" value={countDuration} onChange={e => setCountDuration(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Bkg (cpm)</label>
+                        <input type="number" inputMode="decimal" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Efficiency (%)</label>
+                        <input type="number" inputMode="decimal" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    </div>
+                </div>
+            </div>
+
+            {error && <p className="text-red-500 text-sm text-center font-bold">{error}</p>}
+
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-inner border border-slate-200 dark:border-slate-600 relative">
+                    <div className="absolute top-2 right-2"><button onClick={handleSave} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5" /></button></div>
+                    <p className="font-bold text-xs uppercase text-slate-500 dark:text-slate-400 mb-1">Radon Progeny Concentration</p>
+                    <p className="text-4xl font-black text-sky-600 dark:text-sky-400 mb-2">{result.wl} <span className="text-xl font-bold opacity-75">WL</span></p>
+                    
+                    <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-200 dark:border-slate-600 text-xs text-slate-500 dark:text-slate-400">
+                        <div><span className="block font-bold">Volume</span>{result.volume} L</div>
+                        <div className="border-l border-slate-300 dark:border-slate-600"><span className="block font-bold">Activity</span>{result.dpm} dpm</div>
+                        <div className="border-l border-slate-300 dark:border-slate-600"><span className="block font-bold">Kusnetz K<sub>f</sub></span>{result.factor}</div>
+                    </div>
                 </div>
             )}
         </div>
