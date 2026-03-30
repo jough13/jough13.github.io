@@ -472,7 +472,7 @@ const SearchBar = ({ nuclideName, inputRef, handleNuclideNameChange, handleKeyDo
 </div>
 
 <button
-    onClick={() => onNavClick('home')}
+    onClick={() => onNavClick(VIEWS.HOME)}
     className="hidden md:flex items-center gap-2 p-3 md:px-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 hover:text-sky-500 dark:text-slate-400 dark:hover:text-sky-400 transition-colors border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
     aria-label="Home"
 >
@@ -1334,6 +1334,17 @@ if (chartRef.current && chartData) {
     chartInstance.current = new Chart(ctx, {
         type: 'line',
         data: chartData,
+        plugins: [{
+            id: 'customCanvasBackgroundColor',
+            beforeDraw: (chart, args, options) => {
+                const {ctx} = chart;
+                ctx.save();
+                ctx.globalCompositeOperation = 'destination-over';
+                ctx.fillStyle = '#ffffff'; // Force white background in the actual pixel data
+                ctx.fillRect(0, 0, chart.width, chart.height);
+                ctx.restore();
+            }
+        }],
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -1385,12 +1396,13 @@ return () => {
 }, [chartData, useLogScale, theme]);
 
 const handleExport = () => {
-if (chartInstance.current) {
-    const link = document.createElement('a');
-    link.href = chartInstance.current.toBase64Image();
-    link.download = 'decay-chart.png';
-    link.click();
-}
+    if (chartInstance.current) {
+        const link = document.createElement('a');
+        link.href = chartInstance.current.toBase64Image();
+        const filename = `Decay_Chart.png`; // Or use dynamic name
+        link.download = filename;
+        link.click();
+    }
 };
 
 return (
@@ -1453,6 +1465,17 @@ const DecayChart = ({ chartData, useLogScale, theme }) => {
                 type: 'line',
                 data: {
                     labels: chartData.labels,
+                    plugins: [{
+                        id: 'customCanvasBackgroundColor',
+                        beforeDraw: (chart, args, options) => {
+                            const {ctx} = chart;
+                            ctx.save();
+                            ctx.globalCompositeOperation = 'destination-over';
+                            ctx.fillStyle = '#ffffff'; // Force white background in the actual pixel data
+                            ctx.fillRect(0, 0, chart.width, chart.height);
+                            ctx.restore();
+                        }
+                    }],
                     datasets: [
                         {
                             label: chartData.parentName,
@@ -1519,21 +1542,13 @@ const DecayChart = ({ chartData, useLogScale, theme }) => {
 
     const handleExport = () => {
     if (chartInstance.current) {
-        const canvas = chartInstance.current.canvas;
-        // Save original background, force white for the export
-        const originalBg = canvas.style.backgroundColor;
-        canvas.style.backgroundColor = '#ffffff'; 
-        
         const link = document.createElement('a');
         link.href = chartInstance.current.toBase64Image();
-        const filename = `Decay_${chartData.parentName || 'Chart'}.png`;
+        const filename = `Decay_Chart.png`; // Or use dynamic name
         link.download = filename;
         link.click();
-        
-        // Restore original background
-        canvas.style.backgroundColor = originalBg;
     }
-    };
+};
 
     return (
         <div className="mt-4">
