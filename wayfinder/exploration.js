@@ -1023,6 +1023,14 @@ function scanLocation() {
         
     } else {
         const tileChar = getTileChar(tileObject);
+        
+        // --- DYNAMIC SIGNAL INTERCEPT ---
+        // 15% chance to hit a dynamic signal instead of an empty radar sweep
+        if (tileChar === EMPTY_SPACE_CHAR_VAL && Math.random() < 0.15) {
+            triggerSignalIntercept();
+            return; // Halt the standard "Deep Space" scan screen
+        }
+        
         switch (tileChar) {
             case STAR_CHAR_VAL:
                 targetName = "STELLAR BODY";
@@ -1828,4 +1836,149 @@ function triggerRandomEvent() {
     event.effect();
     
     if (typeof renderUIStats === 'function') renderUIStats();
+}
+
+// ==========================================
+// --- DYNAMIC SIGNAL INTERCEPTS ---
+// ==========================================
+
+function triggerSignalIntercept() {
+    const events = [
+        {
+            title: "MERCHANT CONVOY",
+            icon: "🛸",
+            color: "var(--success)",
+            desc: "Your scanner picks up a heavily escorted merchant convoy passing through the sector. They are broadcasting an open channel for localized trading.",
+            actionLabel: "HAIL CONVOY & TRADE",
+            actionFn: "interceptTradeConvoy()"
+        },
+        {
+            title: "ANOMALOUS EMISSION",
+            icon: "📡",
+            color: "#9933FF",
+            desc: "A bizarre, repeating mathematical sequence is echoing from a nearby cluster of dead asteroids. It doesn't match any known encryption.",
+            actionLabel: "INVESTIGATE SIGNAL",
+            actionFn: "investigateStrangeSignal()"
+        }
+    ];
+    
+    const encounter = events[Math.floor(Math.random() * events.length)];
+    
+    openGenericModal("SIGNAL INTERCEPTED");
+    const detailEl = document.getElementById('genericDetailContent');
+    const listEl = document.getElementById('genericModalList');
+    const actionsEl = document.getElementById('genericModalActions');
+    
+    listEl.innerHTML = '';
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 40px 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px ${encounter.color});">${encounter.icon}</div>
+            <h3 style="color:${encounter.color}; margin-bottom:15px; letter-spacing: 1px;">${encounter.title}</h3>
+            <p style="color:var(--text-color); font-size:14px; line-height:1.6; background: rgba(0,0,0,0.3); border-left: 2px solid ${encounter.color}; padding: 15px;">${encounter.desc}</p>
+        </div>
+    `;
+    
+    actionsEl.innerHTML = `
+        <button class="action-button" style="border-color:${encounter.color}; color:${encounter.color}; box-shadow: 0 0 10px ${encounter.color}44;" onclick="${encounter.actionFn}">${encounter.actionLabel}</button>
+        <button class="action-button" onclick="closeGenericModal()">IGNORE SIGNAL</button>
+    `;
+}
+
+function interceptTradeConvoy() {
+    closeGenericModal();
+    
+    // Set up a temporary NPC that Perfectly matches trade.js expectations!
+    window.activeTradeNPC = {
+        name: "Nomad Convoy",
+        faction: "INDEPENDENT",
+        type: "location", // Tricks the trade engine into working
+        sells: [
+            { id: "REFINED_ALLOYS", priceMod: 0.8, stock: 15 + Math.floor(Math.random() * 20) }, // Cheaper alloys!
+            { id: "TECH_PARTS", priceMod: 1.1, stock: 10 + Math.floor(Math.random() * 10) },
+            { id: "RARE_METALS", priceMod: 0.9, stock: 2 + Math.floor(Math.random() * 5) }
+        ],
+        buys: [
+            { id: "FOOD_SUPPLIES", priceMod: 1.5, stock: 50 }, // They pay top dollar for food!
+            { id: "MEDICAL_SUPPLIES", priceMod: 1.3, stock: 25 },
+            { id: "MINERALS", priceMod: 1.1, stock: 100 }
+        ]
+    };
+    
+    logMessage("<span style='color:var(--success)'>[ COMM-LINK ]</span> \"Welcome aboard, traveler. Make it quick, we're on a tight schedule.\"");
+    
+    // Open trade menu (this uses the global we just set)
+    if (typeof openTradeModal === 'function') openTradeModal('BUY');
+}
+
+function investigateStrangeSignal() {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 40px 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px #9933FF);">🛰️</div>
+            <h3 style="color:#9933FF; margin-bottom:15px; letter-spacing: 1px;">DERELICT PROBE</h3>
+            <p style="color:var(--text-color); font-size:14px; line-height:1.6; background: rgba(0,0,0,0.3); padding: 15px; border-left: 2px solid #9933FF; text-align: left;">
+                You track the signal to an ancient, heavily modified Concord probe drifting in the void. It's completely inert, but its data core is still pulsing with the strange repeating sequence.
+            </p>
+        </div>
+    `;
+    
+    actionsEl.innerHTML = `
+        <button class="action-button" style="border-color:var(--success); color:var(--success);" onclick="resolveStrangeSignal('DOWNLOAD')">DOWNLOAD DATA (Safe)</button>
+        <button class="action-button danger-btn" onclick="resolveStrangeSignal('SALVAGE')">CRACK CORE FOR PARTS (Risky)</button>
+    `;
+}
+
+function resolveStrangeSignal(choice) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    
+    let resultHtml = "";
+    
+    if (choice === 'DOWNLOAD') {
+        const xp = 100 + Math.floor(Math.random() * 50);
+        if (typeof playerXP !== 'undefined') playerXP += xp;
+        playerCargo['ENCRYPTED_DATA'] = (playerCargo['ENCRYPTED_DATA'] || 0) + 1;
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        
+        resultHtml = `<span style="color:var(--success); font-weight:bold;">DATA ACQUIRED.</span><br>You downloaded the sequence. Added <span style="color:var(--accent-color)">1x Encrypted Data</span> to cargo. (+${xp} XP)`;
+        if (typeof soundManager !== 'undefined') soundManager.playScan();
+    } else if (choice === 'SALVAGE') {
+        if (Math.random() < 0.6) {
+            const tech = 5 + Math.floor(Math.random() * 5);
+            playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + tech;
+            playerCargo['AI_CORE'] = (playerCargo['AI_CORE'] || 0) + 1; // Extremely rare!
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+            
+            resultHtml = `<span style="color:var(--gold-text); font-weight:bold;">CRITICAL SALVAGE!</span><br>You crack the casing and find an intact <span style="color:var(--warning)">AI Core</span> along with ${tech}x Tech Parts!`;
+            if (typeof soundManager !== 'undefined') soundManager.playGain();
+        } else {
+            const dmg = 25;
+            playerHull -= dmg;
+            resultHtml = `<span style="color:var(--danger); font-weight:bold;">SECURITY TRIGGERED.</span><br>The probe's anti-tamper protocol engages! It detonates, showering your hull in shrapnel. Took <span style="color:var(--danger)">${dmg} damage</span>.`;
+            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Probe Self-Destruct" });
+            if (typeof soundManager !== 'undefined') soundManager.playExplosion();
+            if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+        }
+    }
+    
+    if (playerHull <= 0) {
+        closeGenericModal();
+        if (typeof triggerGameOver === 'function') triggerGameOver("Killed by an exploding deep-space probe.");
+        return;
+    }
+    
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 40px 20px;">
+            <h3 style="color:var(--text-color); margin-bottom:20px;">SIGNAL RESOLVED</h3>
+            <p style="font-size:14px; line-height:1.6;">${resultHtml}</p>
+        </div>
+    `;
+    
+    actionsEl.innerHTML = `<button class="action-button" onclick="closeGenericModal(); handleInteraction();">RETURN TO NORMAL FLIGHT</button>`;
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
+    if (typeof checkLevelUp === 'function') checkLevelUp();
+    if (typeof autoSaveGame === 'function') autoSaveGame();
 }
