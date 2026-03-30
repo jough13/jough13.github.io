@@ -150,7 +150,9 @@ const SignTest_Calculator = ({ dcgl, setDcgl, dataInput, setDataInput, alpha, se
             
             {result && (
                 <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.conclusion === 'PASS' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                    <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>UNIT {result.conclusion}ES</p>
+                    <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        UNIT {result.conclusion === 'PASS' ? 'PASSES' : 'FAILS'}
+                    </p>
                     <p className={`mt-2 text-sm ${result.conclusion === 'PASS' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>{result.reason}</p>
                     <div className="mt-4 px-4">
                         <div className="flex justify-between text-xs font-bold mb-1 opacity-70"><span>0</span><span>Limit</span></div>
@@ -337,7 +339,9 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
             
             {result && (
                 <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.conclusion === 'PASS' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                    <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>UNIT {result.conclusion}ES</p>
+                    <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                        UNIT {result.conclusion === 'PASS' ? 'PASSES' : 'FAILS'}
+                    </p>
                     <p className={`mt-2 text-sm ${result.conclusion === 'PASS' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>{result.reason}</p>
                     <div className="grid grid-cols-2 gap-4 mt-4 text-sm border-t border-slate-300 dark:border-slate-600 pt-2">
                         <p>Rank Sum: <span className="font-bold">{result.W_rs}</span></p><p>Critical: <span className="font-bold">{result.C_w}</span></p>
@@ -1063,53 +1067,56 @@ const MARSSIM_Statistical_Tests = () => {
             event.target.value = null;
             };
             
-            // Export Function
+            // Export Function for DrawingTool Map Points
             const handleExport = () => {
-                if (!filteredList || filteredList.length === 0) return;
-            
-                // IMPROVEMENT: Added raw numeric columns for analysis
-                const headers = [
-                    'Name', 'Symbol', 'Category', 
-                    'Half-Life (Text)', 'Half-Life (Seconds)', 
-                    'Decay Constant (s^-1)', 
-                    'Specific Activity (Bq/g)', 
-                    'Gamma Constant (R-m2/hr-Ci)', 
-                    'D-Value (TBq)',
-                    'Emissions'
-                ];
-                
+                if (!plottedPoints || plottedPoints.length === 0) {
+                    addToast("No points to export.");
+                    return;
+                }
+
+                const headers = ['Point ID', 'Type', 'Latitude', 'Longitude', 'X_Dist_From_Origin_m', 'Y_Dist_From_Origin_m'];
                 const csvRows = [headers.join(',')];
-            
-                filteredList.forEach(n => {
-                    // sanitize text to prevent CSV breakages
-                    const name = `"${n.name}"`;
-                    const emissions = `"${(n.emissionType || []).join('; ')}"`;
-                    
-                    // Parse raw values
-                    const hlSeconds = parseHalfLifeToSeconds(n.halfLife);
-                    const sa = parseSpecificActivity(n.specificActivity);
-                    const lambda = hlSeconds === Infinity ? 0 : Math.log(2) / hlSeconds;
-            
+
+                const origin = surveyUnitLayer ? { lat: surveyUnitLayer.getBounds().getSouthWest().lat, lng: surveyUnitLayer.getBounds().getSouthWest().lng } : null;
+
+                // Sort points exactly as they appear in the UI table
+                const sortedPoints = [...plottedPoints].sort((a, b) => {
+                    const aIsBiased = a.type === 'Biased';
+                    const bIsBiased = b.type === 'Biased';
+                    if (aIsBiased && !bIsBiased) return -1;
+                    if (!aIsBiased && bIsBiased) return 1;
+                    const aNum = parseInt(a.id.split('-')[1] || 0);
+                    const bNum = parseInt(b.id.split('-')[1] || 0);
+                    return aNum - bNum;
+                });
+
+                sortedPoints.forEach(point => {
+                    let xDist = 'N/A', yDist = 'N/A';
+                    if (origin) {
+                        yDist = calculateDistance(origin, { lat: point.lat, lng: origin.lng }).toFixed(3);
+                        xDist = calculateDistance(origin, { lat: origin.lat, lng: point.lng }).toFixed(3);
+                    }
                     const row = [
-                        name,
-                        n.symbol,
-                        n.category,
-                        `"${n.halfLife}"`, // Quote text to handle spaces
-                        hlSeconds === Infinity ? 'Infinity' : hlSeconds,
-                        lambda,
-                        sa || 'N/A',
-                        n.gammaConstant ? safeParseFloat(n.gammaConstant) : 'N/A',
-                        n.dValue || 'N/A',
-                        emissions
+                        point.id,
+                        point.type,
+                        point.lat.toFixed(7),
+                        point.lng.toFixed(7),
+                        xDist,
+                        yDist
                     ];
                     csvRows.push(row.join(','));
                 });
-            
+
+                // Append the origin as a reference row at the bottom
+                if (origin) {
+                    csvRows.push(`Origin,Reference,${origin.lat.toFixed(7)},${origin.lng.toFixed(7)},0.000,0.000`);
+                }
+
                 const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = 'nuclide_database_export.csv';
+                link.download = `survey_points_${surveyUnitName.replace(/\s+/g, '_')}.csv`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
