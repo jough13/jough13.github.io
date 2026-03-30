@@ -400,11 +400,16 @@ function handleCombatAction(action) {
         
         } else if (action === 'board') {
         // --- 🪖 TACTICAL BOARDING ACTION ---
-        const casualties = Math.floor(Math.random() * 3) + 1; // Lose 1 to 3 Marines
+        // 50% chance to consume 1 full Platoon from cargo
+        let casualties = 0;
+        if (Math.random() < 0.5) {
+            casualties = 1;
+            playerCargo['MERCENARY_PLATOON'] = Math.max(0, (playerCargo['MERCENARY_PLATOON'] || 0) - 1);
+            if (playerCargo['MERCENARY_PLATOON'] <= 0) delete playerCargo['MERCENARY_PLATOON'];
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        }
         
-        GameState.ship.forces.marines = Math.max(0, GameState.ship.forces.marines - casualties);
-        
-        combatLog += `<span style='color:var(--danger); font-weight:bold;'>[ BOARDING PARTY DEPLOYED ]</span> Your marines breach the enemy hull! Heavy close-quarters fighting ensues. Sector secured. (-${casualties} Marines)`;
+        combatLog += `<span style='color:var(--danger); font-weight:bold;'>[ BOARDING PARTY DEPLOYED ]</span> Your mercenaries breach the enemy hull! Heavy close-quarters fighting ensues. Sector secured. ${casualties > 0 ? '(-1 Platoon Lost)' : '(No Casualties)'}`;
         
         if (typeof soundManager !== 'undefined') soundManager.playExplosion();
         if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
@@ -836,8 +841,8 @@ function renderCombatView() {
         </div>
     `;
 
-    // 🚨 TACTICAL BOARDING BUTTON
-    const boardingBtnHtml = (GameState.ship.forces && GameState.ship.forces.marines > 0 && currentCombatContext.pirateShields <= 0) ? `
+    // TACTICAL BOARDING BUTTON
+    const boardingBtnHtml = ((playerCargo['MERCENARY_PLATOON'] || 0) > 0 && currentCombatContext.pirateShields <= 0) ? `
         <button class="action-button danger-btn" style="grid-column: 1 / -1; padding: 18px; font-size: 16px; letter-spacing: 2px; box-shadow: 0 0 15px rgba(255,0,0,0.4);" onclick="handleCombatAction('board')">
             🪖 INITIATE BOARDING ACTION (Risk Marines for 3x Salvage)
         </button>
@@ -1311,36 +1316,33 @@ let raidContext = null;
 function startOutpostRaid(location) {
     if (typeof closeGenericModal === 'function') closeGenericModal(); 
     
-    // Make sure the object exists
-    if (!GameState.ship.forces) GameState.ship.forces = { marines: 0, heavyMechs: 0, dropDropships: 0, maxTroops: 20 };
-
-    const deployedMarines = GameState.ship.forces.marines || 0;
+    const deployedPlatoons = playerCargo['MERCENARY_PLATOON'] || 0;
+    const deployedMechs = playerCargo['ASSAULT_MECH'] || 0;
     
     // Stop the player if they have no troops!
-    if (deployedMarines <= 0) { 
+    if (deployedPlatoons <= 0) { 
         if (typeof showToast === 'function') showToast("NO TROOPS TO DEPLOY", "error"); 
-        logMessage("<span style='color:var(--danger)'>Assault failed. You need to hire Marines at a Concord Barracks first!</span>");
+        logMessage("<span style='color:var(--danger)'>Assault failed. You need Mercenary Platoons in your cargo hold to initiate a raid!</span>");
         return; 
     }
 
-    // 10 HP per Marine
-    const totalMarineHp = deployedMarines * 10;
+    // 100 HP per Platoon
+    const totalMarineHp = deployedPlatoons * 100;
 
-    raidContext = {
+raidContext = {
         locationObj: location,
         playerHp: totalMarineHp, 
         playerMaxHp: totalMarineHp,
         enemyHp: 150, // Bases are tough!
         enemyMaxHp: 150,
         enemyName: "Cartel Garrison",
-        mechsDeployed: GameState.ship.forces.heavyMechs || 0,
-        log: ["DROP RAMPS DEPLOYED. Marines touching down just outside the perimeter. Heavy turret fire incoming!"]
+        mechsDeployed: deployedMechs,
+        log: ["DROP RAMPS DEPLOYED. Mercenaries touching down just outside the perimeter. Heavy turret fire incoming!"]
     };
-    
-    openGenericModal(`GROUND ASSAULT: ${location.name.toUpperCase()}`);
+
+    openGenericModal("PLANETARY ASSAULT");
     renderRaidUI();
 }
-
 
 function renderRaidUI() {
     if (!raidContext) return;
@@ -1458,8 +1460,9 @@ function executeRaidAction(action) {
         closeGenericModal();
         logMessage("<span style='color:var(--danger)'>Marines evacuated under heavy fire!</span>");
         
-        // Sync surviving marines back to the ship (Divide remaining HP by 10 and round up)
-        GameState.ship.forces.marines = Math.ceil(ctx.playerHp / 10);
+        // Sync surviving platoons back to the ship (Divide remaining HP by 100 and round up)
+        playerCargo['MERCENARY_PLATOON'] = Math.ceil(ctx.playerHp / 100);
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         raidContext = null;
         return;
     }
@@ -1489,10 +1492,10 @@ function executeRaidAction(action) {
     ctx.log.push(actionLog);
     if (ctx.log.length > 7) ctx.log.shift();
 
-    // Check Win/Loss conditions
     if (ctx.playerHp <= 0) {
         closeGenericModal();
-        GameState.ship.forces.marines = 0; // All marines died!
+        delete playerCargo['MERCENARY_PLATOON']; // All marines died!
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         
         logMessage("<span style='color:var(--danger); font-weight:bold;'>ASSAULT FAILED.</span> Entire landing party was wiped out by the cartel garrison.");
         if (typeof showToast === 'function') showToast("MARINES WIPED OUT", "error");
@@ -1504,8 +1507,9 @@ function executeRaidAction(action) {
     else if (ctx.enemyHp <= 0) {
         // --- POST-RAID DECISION (Pauses the game to ask what to do) ---
         
-        // Save surviving marines!
-        GameState.ship.forces.marines = Math.ceil(ctx.playerHp / 10);
+        // Save surviving platoons!
+        playerCargo['MERCENARY_PLATOON'] = Math.ceil(ctx.playerHp / 100);
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         
         const detailEl = document.getElementById('genericDetailContent');
         const actionsEl = document.getElementById('genericModalActions');
