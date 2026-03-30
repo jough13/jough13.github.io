@@ -596,7 +596,7 @@ const RADIONUCLIDE_DATA = [{
          beta: [],
          gamma: []
       },
-      halfLife: '20100000000000000000 years',
+      halfLife: '2.01 x 10^19 years',
       decayConstant: '3.45 x 10⁻²⁰ year⁻¹',
       specificActivity: '0.0031 Bq/g',
       parent: 'Primordial',
@@ -6198,7 +6198,7 @@ const RADIONUCLIDE_DATA = [{
          alpha: []
       },
       avgBetaEnergy: '0.289 MeV',
-      halfLife: '2200000000000000000000000 years',
+      halfLife: '2.2 x 10^24 years',
       decayConstant: '3.15 x 10⁻²⁵ year⁻¹',
       specificActivity: '1.25 x 10^-7 Bq/g',
       parent: 'Primordial',
@@ -6224,7 +6224,7 @@ const RADIONUCLIDE_DATA = [{
          alpha: []
       },
       avgBetaEnergy: '0.843 MeV',
-      halfLife: '2500000000000000000000 years',
+      halfLife: '2.5 x 10^21 years',
       decayConstant: '2.77 x 10⁻²² year⁻¹',
       specificActivity: '1.6 x 10^-5 Bq/g',
       parent: 'Primordial',
@@ -8293,16 +8293,17 @@ const REPORTABLE_QUANTITIES = {
     'Zr-95':  { RQ_TBq: 0.37, RQ_Ci: 10 }
 };
 
-// --- UPDATED ENRICHMENT MAPPER ---
+// --- THE ULTIMATE ENRICHMENT MAPPER ---
 const ENRICHED_RADIONUCLIDE_DATA = RADIONUCLIDE_DATA.map(nuclide => {
-    const exemptLimits = CFR_173_436_LIMITS[nuclide.symbol] || CFR_173_436_LIMITS[nuclide.parent] || {};
-    const rqLimits = REPORTABLE_QUANTITIES[nuclide.symbol] || REPORTABLE_QUANTITIES[nuclide.parent] || {};
+    // Removed the broken nuclide.parent fallback
+    const exemptLimits = CFR_173_436_LIMITS[nuclide.symbol] || {};
+    const rqLimits = REPORTABLE_QUANTITIES[nuclide.symbol] || {};
     
-    // If no limits exist in either table, return the nuclide unmodified
-    if (Object.keys(exemptLimits).length === 0 && Object.keys(rqLimits).length === 0) return nuclide;
-
     return {
         ...nuclide,
+        // Integrate the 10 CFR 30.71 Schedule B limits
+        nrcExemptLimit: typeof getNrcExemptQuantity === 'function' ? getNrcExemptQuantity(nuclide) : null,
+        
         shipping: {
             // Add the fallback to prevent spreading undefined
             ...(nuclide.shipping || {}),
@@ -8313,5 +8314,3 @@ const ENRICHED_RADIONUCLIDE_DATA = RADIONUCLIDE_DATA.map(nuclide => {
         }
     };
 });
-
-// export default ENRICHED_RADIONUCLIDE_DATA;
