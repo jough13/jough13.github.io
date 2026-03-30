@@ -88,8 +88,6 @@ let visitedSectors;
 let playerActiveBounty = null;
 let currentStationBounties = []; // Temporarily holds the bounties available at the current station
 
-let playerFactionStanding = {};
-
 let currentStationRecruits = [];
 
 let miningInterval = null;
@@ -639,21 +637,6 @@ function initiateShipToShipTrade(index) {
         closeGenericModal();
     }
 }
-
-// ==========================================
-// --- EVENT BUS SYSTEM (Decoupling) ---
-// ==========================================
-
-const GameBus = {
-    events: {},
-    on(event, listener) {
-        if (!this.events[event]) this.events[event] = [];
-        this.events[event].push(listener);
-    },
-    emit(event, data) {
-        if (this.events[event]) this.events[event].forEach(l => l(data));
-    }
-};
 
 // Universal Helper Function to fetch any piece of data safely
 function getDef(category, id) {
