@@ -3050,27 +3050,27 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     ];
 
     // --- 2. STATE ---
-    const [packageItems, setPackageItems] = React.useState([]);
+    const[packageItems, setPackageItems] = React.useState([]);
 
     // Add New Item State
     const [newItemSymbol, setNewItemSymbol] = React.useState('');
     const [newItemForm, setNewItemForm] = React.useState('A2');
     const[newItemState, setNewItemState] = React.useState('solid');
-    const [newItemCategory, setNewItemCategory] = React.useState('instrument');
+    const[newItemCategory, setNewItemCategory] = React.useState('instrument');
     const [newItemActivity, setNewItemActivity] = React.useState('1');
     const[newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
     const [newItemMass, setNewItemMass] = React.useState(''); // Mass for LSA hinting
     const [itemManualPSN, setItemManualPSN] = React.useState('');
 
     // Package Level Inputs
-    const [fissileMass, setFissileMass] = React.useState(''); // Fissile exception check
-    const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
-    const [doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
-    const [surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
+    const[fissileMass, setFissileMass] = React.useState(''); // Fissile exception check
+    const[doseRateAt1m, setDoseRateAt1m] = React.useState('');
+    const[doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
+    const[surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
     const[surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
 
     // Exclusive Use Vehicle Inputs
-    const [vehSurfaceDose, setVehSurfaceDose] = React.useState('');
+    const[vehSurfaceDose, setVehSurfaceDose] = React.useState('');
     const[veh2mDose, setVeh2mDose] = React.useState('');
     const[cabDose, setCabDose] = React.useState('');
     const [vehDoseUnit, setVehDoseUnit] = React.useState('mrem/hr');
@@ -3079,23 +3079,23 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [emergencyContact, setEmergencyContact] = React.useState('');
     const [bolComments, setBolComments] = React.useState('');
     const[shipperName, setShipperName] = React.useState('');
-    const [shipperAddress, setShipperAddress] = React.useState('');
+    const[shipperAddress, setShipperAddress] = React.useState('');
     const [consigneeName, setConsigneeName] = React.useState('');
     const [consigneeAddress, setConsigneeAddress] = React.useState('');
     const[packageDimensions, setPackageDimensions] = React.useState('');
 
-    const [checkContam, setCheckContam] = React.useState(false);
-    const [contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
-    const [removableContam, setRemovableContam] = React.useState('');
+    const[checkContam, setCheckContam] = React.useState(false);
+    const[contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
+    const[removableContam, setRemovableContam] = React.useState('');
 
     const [labelResult, setLabelResult] = React.useState(null);
     const [contamResult, setContamResult] = React.useState(null);
     const[classificationResult, setClassificationResult] = React.useState(null);
-    const [error, setError] = React.useState('');
+    const[error, setError] = React.useState('');
 
     // --- Print Modal State ---
-    const [isPrintModalOpen, setIsPrintModalOpen] = React.useState(false);
-    const [dontShowPrintWarning, setDontShowPrintWarning] = React.useState(false);
+    const[isPrintModalOpen, setIsPrintModalOpen] = React.useState(false);
+    const[dontShowPrintWarning, setDontShowPrintWarning] = React.useState(false);
 
     // --- 3. HELPERS ---
     const activityFactorsTBq = React.useMemo(() => ({ 
@@ -3106,8 +3106,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const transportNuclides = React.useMemo(() => radionuclides.filter(n => n.shipping && n.shipping.A1 !== undefined && n.shipping.A2 !== undefined).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
 
     const selectedNuclideData = React.useMemo(() => 
-        transportNuclides.find(n => n.symbol === newItemSymbol), 
-    [newItemSymbol, transportNuclides]);
+        transportNuclides.find(n => n.symbol === newItemSymbol),[newItemSymbol, transportNuclides]);
 
     React.useEffect(() => {
         if (preselectedNuclide && transportNuclides.some(n => n.symbol === preselectedNuclide)) {
@@ -3129,12 +3128,14 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         return 0;
     };
 
-    // Calculate auto-suggested PSN for the current item
-    const currentSuggestedPSN = React.useMemo(() => {
-        if (!selectedNuclideData || !newItemSymbol) return PSN_OPTIONS[15]; // Default to Not Regulated
+    // Calculate live math, auto-suggested PSN, and LSA hints for the current item
+    const liveItemDetails = React.useMemo(() => {
+        const defaultResult = { suggestedPSN: PSN_OPTIONS[15], lsaHint: null, actTBq: 0, actBq: 0, specActivityBq_g: Infinity };
+        
+        if (!selectedNuclideData || !newItemSymbol) return defaultResult;
         
         const val = safeParseFloat(newItemActivity);
-        if (isNaN(val) || val <= 0) return PSN_OPTIONS[15];
+        if (isNaN(val) || val <= 0) return defaultResult;
 
         const actTBq = val * activityFactorsTBq[newItemUnit];
         const actBq = actTBq * 1e12;
@@ -3144,12 +3145,12 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const exemptLimitBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
         const exemptConcLimitBq_g = selectedNuclideData.shipping.exemptConcLimitBq_g || 0; 
 
-        // DOT rules: It exceeds limits ONLY if the limit is 0 (unknown) or strictly greater
+        // DOT rules: Exceeds limits ONLY if the limit is 0 (unknown) or strictly greater
         const exceedsConsignment = exemptLimitBq === 0 || actBq > exemptLimitBq;
         const exceedsConcentration = exemptConcLimitBq_g === 0 || specActivityBq_g > exemptConcLimitBq_g;
         
         if (!(exceedsConsignment && exceedsConcentration)) {
-            return PSN_OPTIONS[15]; // Not Regulated
+            return { ...defaultResult, suggestedPSN: PSN_OPTIONS[15], actTBq, actBq, specActivityBq_g }; // Not Regulated
         }
 
         let rawLimit = selectedNuclideData.shipping[newItemForm];
@@ -3174,40 +3175,41 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const pkgLimitExc = limitTBq * (isInstrument ? instPkgMult : matPkgMult);
         const itemLimitExc = isInstrument ? limitTBq * instItemMult : Infinity;
 
-        // --- Calculate LSA Status for the Suggester ---
+        // --- Calculate LSA Status & Hint ---
         const a2Raw = selectedNuclideData.shipping.A2;
         const a2Val = (typeof a2Raw === 'string' && a2Raw.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(a2Raw);
         
-        let isLSA2 = false;
-        let isLSA3 = false;
+        let lsaHint = null;
+        let suggestedPSN = '';
         
         // Only evaluate LSA if it's bulk material (not instruments) and has a valid mass
         if (massGrams > 0 && a2Val !== Infinity && !isInstrument) {
             const specActivityTBq_g = actTBq / massGrams;
-            if (specActivityTBq_g <= 1e-4 * a2Val) {
-                isLSA2 = true;
+            const lsa2LimitMultiplier = newItemState === 'liquid' ? 1e-5 : 1e-4;
+
+            if (specActivityTBq_g <= lsa2LimitMultiplier * a2Val) {
+                lsaHint = 'LSA-II';
             } else if (specActivityTBq_g <= 2e-3 * a2Val && newItemState === 'solid') {
-                isLSA3 = true;
+                lsaHint = 'LSA-III';
             }
         }
 
         // --- Routing Logic ---
-        // 1. Check Excepted Package limits first
         if (actTBq <= pkgLimitExc && actTBq <= itemLimitExc) {
-            return isInstrument ? PSN_OPTIONS[1] : PSN_OPTIONS[0];
+            suggestedPSN = isInstrument ? PSN_OPTIONS[1] : PSN_OPTIONS[0];
         } 
-        // 2. If it fails Excepted, check LSA limits before defaulting to Type A
-        else if (isLSA2) {
-            return PSN_OPTIONS[5]; // UN3321, LSA-II
-        } else if (isLSA3) {
-            return PSN_OPTIONS[6]; // UN3322, LSA-III
+        else if (lsaHint === 'LSA-II') {
+            suggestedPSN = PSN_OPTIONS[5]; // UN3321
+        } else if (lsaHint === 'LSA-III') {
+            suggestedPSN = PSN_OPTIONS[6]; // UN3322
         } 
-        // 3. Normal Type A / Type B routing
         else if (actTBq <= limitTBq) {
-            return isSpecialForm ? PSN_OPTIONS[9] : PSN_OPTIONS[8];
+            suggestedPSN = isSpecialForm ? PSN_OPTIONS[9] : PSN_OPTIONS[8];
         } else {
-            return hasFissile ? PSN_OPTIONS[12] : PSN_OPTIONS[10];
+            suggestedPSN = hasFissile ? PSN_OPTIONS[12] : PSN_OPTIONS[10];
         }
+
+        return { suggestedPSN, lsaHint, actTBq, actBq, specActivityBq_g };
     },[selectedNuclideData, newItemSymbol, newItemActivity, newItemUnit, newItemForm, newItemState, newItemCategory, newItemMass, activityFactorsTBq]);
 
     // --- 4. LOGIC ---
@@ -3220,6 +3222,9 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         const nuclideData = transportNuclides.find(n => n.symbol === newItemSymbol);
         if(!nuclideData) return;
+
+        // Extract pre-calculated logic
+        const { actTBq, actBq, specActivityBq_g, lsaHint, suggestedPSN } = liveItemDetails;
 
         let rawLimit = nuclideData.shipping[newItemForm];
         let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
@@ -3237,29 +3242,11 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             matPkgMult = 1e-3; instItemMult = 1e-2; instPkgMult = 1; 
         }
 
-        const actTBq = val * activityFactorsTBq[newItemUnit];
-        const actBq = val * (activityFactorsTBq[newItemUnit] * 1e12);
-     
         const rawRQ = nuclideData.shipping.RQ_TBq || nuclideData.shipping.RQ;
         const rqLimitTBq = rawRQ ? parseFloat(rawRQ) : Infinity;
 
         const itemLimitExc = newItemCategory === 'instrument' ? limitTBq * instItemMult : Infinity;
         const pkgLimitExc = limitTBq * (newItemCategory === 'instrument' ? instPkgMult : matPkgMult);
-
-        const massGrams = safeParseFloat(newItemMass);
-        let lsaHint = null;
-        
-        const a2Raw = nuclideData.shipping.A2;
-        const a2Val = (typeof a2Raw === 'string' && a2Raw.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(a2Raw);
-
-        // Calculate Specific Activity in Bq/g for the Exemption Check
-        const specActivityBq_g = massGrams > 0 ? actBq / massGrams : Infinity;
-
-        if (!isNaN(massGrams) && massGrams > 0 && a2Val !== Infinity) {
-            const specActivityTBq_g = actTBq / massGrams; // TBq/g
-            if (specActivityTBq_g <= 1e-4 * a2Val) lsaHint = 'LSA-II';
-            else if (specActivityTBq_g <= 2e-3 * a2Val) lsaHint = 'LSA-III';
-        }
 
         // --- DOT EXEMPTION LOGIC ---
         const exemptLimitBq = nuclideData.shipping.exemptConsignmentBq || 0;
@@ -3274,6 +3261,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         // Hack the fraction so the downstream package logic knows if it failed the exemption test
         // If it is regulated, we force a 2.0 (causing the package sum to fail). If exempt, it adds 0.0.
         const calculatedFracExempt = isRegulated ? 2.0 : 0.0;
+
+        const massGrams = safeParseFloat(newItemMass);
 
         const item = {
             id: Date.now(),
@@ -3291,7 +3280,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             fracRQ: rqLimitTBq === Infinity ? 0 : actTBq / rqLimitTBq,
             mass: massGrams,
             lsaHint: lsaHint,
-            psn: itemManualPSN || currentSuggestedPSN
+            psn: itemManualPSN || suggestedPSN
         };
 
         setPackageItems(prev =>[...prev, item]);
@@ -3603,7 +3592,14 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                             {/* --- PER ITEM PSN OVERRIDE --- */}
                             <div className="md:col-span-2 pt-2 mt-2 border-t border-slate-200 dark:border-slate-700">
                                 <div className="flex justify-between items-center mb-1">
-                                    <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400">Proper Shipping Name (PSN) for this Item</label>
+                                    <div className="flex items-center gap-2">
+                                        <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400">Proper Shipping Name (PSN) for this Item</label>
+                                        {liveItemDetails.lsaHint && !itemManualPSN && (
+                                            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 rounded text-[9px] font-bold border border-emerald-200 dark:border-emerald-800 animate-fade-in">
+                                                May Qualify: {liveItemDetails.lsaHint}
+                                            </span>
+                                        )}
+                                    </div>
                                     {itemManualPSN && (
                                         <button onClick={() => setItemManualPSN('')} className="text-[10px] text-sky-600 dark:text-sky-400 hover:underline font-semibold">
                                             Reset to Auto-Suggested
@@ -3611,7 +3607,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     )}
                                 </div>
                                 <select 
-                                    value={itemManualPSN || currentSuggestedPSN} 
+                                    value={itemManualPSN || liveItemDetails.suggestedPSN} 
                                     onChange={e => setItemManualPSN(e.target.value)} 
                                     className="w-full p-2 rounded bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-600 focus:ring-sky-500"
                                 >
