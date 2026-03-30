@@ -18,6 +18,7 @@ const generateQuickInfoText = (nuclide) => {
    const emissions = `Emissions: ${(nuclide.emissionType || []).join(', ')}`;
    return `${halfLife} | ${emissions}`;
 };
+
 /**
  * Formats a number for compact display on mobile screens.
  * Rounds to 3 significant figures and handles special cases.
@@ -28,7 +29,7 @@ const generateQuickInfoText = (nuclide) => {
 const formatForMobile = (num) => {
    if (num === null || num === undefined || isNaN(num) || num === Infinity) return 'N/A';
    if (num === 0) return '0';
-   return num.toPrecision(3);
+   return Number(num).toPrecision(3);
 };
 
 /**
@@ -59,6 +60,7 @@ const formatDoseValue = (value_mrem, type, settings) => {
  * @param {number} dValueInTbq - The D-value for the nuclide in TBq.
  * @returns {object|null} An object with the category and description, or null if not applicable.
  */
+
 const calculateAnsiCategory = (activityInTbq, dValueInTbq) => {
    if (!dValueInTbq || dValueInTbq <= 0) return null;
 
@@ -99,6 +101,7 @@ const calculateAnsiCategory = (activityInTbq, dValueInTbq) => {
  * @param {object} settings - The global settings object from SettingsContext.
  * @returns {{value: string, unit: string}} An object with the formatted value and unit.
  */
+
 const formatWithUnitSystem = (value, type, settings) => {
    const {
       unitSystem
@@ -625,21 +628,18 @@ const runBatemanWithBranching = (chain, A1_0, t_seconds) => {
             const parentNuclide = nuclideMap.get(parent.name);
             for (const term of parentNuclide.solution) {
                const C = parent.br * parentNuclide.lambda * term.coeff;
+               
+               // 1. Create a local copy of the lambda
+               let effectiveLambda = term.lambda;
 
-               // Handle the case where decay constants are identical (or very close)
-
-               if (Math.abs(nuclide.lambda - term.lambda) < 1e-20) {
-
-                  // This case leads to a t*e^(-lambda*t) term, which complicates the solution structure.
-                  // For simplicity and to avoid a full rewrite, we'll approximate by introducing a tiny difference.
-                  // This is a common numerical stability trick.
-
-                  term.lambda *= (1 + 1e-10);
+               if (Math.abs(nuclide.lambda - effectiveLambda) < 1e-20) {
+                  effectiveLambda *= (1 + 1e-10); // Mutate the local copy only!
                }
 
-               const coeff = C / (nuclide.lambda - term.lambda);
-               // Add the two new terms to the solution map, consolidating as we go
-               solutionMap.set(term.lambda, (solutionMap.get(term.lambda) || 0) + coeff);
+               const coeff = C / (nuclide.lambda - effectiveLambda);
+               
+               // 2. Use the effectiveLambda for the Map keys
+               solutionMap.set(effectiveLambda, (solutionMap.get(effectiveLambda) || 0) + coeff);
                solutionMap.set(nuclide.lambda, (solutionMap.get(nuclide.lambda) || 0) - coeff);
             }
          }
@@ -738,6 +738,7 @@ const calculatePolygonArea = (latLngs) => {
  * @param {string|number} input - The raw input.
  * @returns {number} The parsed number, or NaN if invalid.
  */
+
 const safeParseFloat = (input) => {
    if (typeof input === 'number') return input;
    if (!input || typeof input !== 'string') return NaN;
