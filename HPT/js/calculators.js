@@ -3141,14 +3141,13 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const massGrams = safeParseFloat(newItemMass);
         const specActivityBq_g = massGrams > 0 ? actBq / massGrams : Infinity;
         
-        // Fallback to 0 if not yet added to your database
+        const exemptLimitBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
         const exemptConcLimitBq_g = selectedNuclideData.shipping.exemptConcLimitBq_g || 0; 
 
         // DOT rules: It exceeds limits ONLY if the limit is 0 (unknown) or strictly greater
         const exceedsConsignment = exemptLimitBq === 0 || actBq > exemptLimitBq;
         const exceedsConcentration = exemptConcLimitBq_g === 0 || specActivityBq_g > exemptConcLimitBq_g;
         
-        // If it doesn't exceed BOTH, it is completely exempt from Class 7
         if (!(exceedsConsignment && exceedsConcentration)) {
             return PSN_OPTIONS[15]; // Not Regulated
         }
@@ -3175,9 +3174,36 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const pkgLimitExc = limitTBq * (isInstrument ? instPkgMult : matPkgMult);
         const itemLimitExc = isInstrument ? limitTBq * instItemMult : Infinity;
 
+        // --- Calculate LSA Status for the Suggester ---
+        const a2Raw = selectedNuclideData.shipping.A2;
+        const a2Val = (typeof a2Raw === 'string' && a2Raw.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(a2Raw);
+        
+        let isLSA2 = false;
+        let isLSA3 = false;
+        
+        // Only evaluate LSA if it's bulk material (not instruments) and has a valid mass
+        if (massGrams > 0 && a2Val !== Infinity && !isInstrument) {
+            const specActivityTBq_g = actTBq / massGrams;
+            if (specActivityTBq_g <= 1e-4 * a2Val) {
+                isLSA2 = true;
+            } else if (specActivityTBq_g <= 2e-3 * a2Val && newItemState === 'solid') {
+                isLSA3 = true;
+            }
+        }
+
+        // --- Routing Logic ---
+        // 1. Check Excepted Package limits first
         if (actTBq <= pkgLimitExc && actTBq <= itemLimitExc) {
             return isInstrument ? PSN_OPTIONS[1] : PSN_OPTIONS[0];
-        } else if (actTBq <= limitTBq) {
+        } 
+        // 2. If it fails Excepted, check LSA limits before defaulting to Type A
+        else if (isLSA2) {
+            return PSN_OPTIONS[5]; // UN3321, LSA-II
+        } else if (isLSA3) {
+            return PSN_OPTIONS[6]; // UN3322, LSA-III
+        } 
+        // 3. Normal Type A / Type B routing
+        else if (actTBq <= limitTBq) {
             return isSpecialForm ? PSN_OPTIONS[9] : PSN_OPTIONS[8];
         } else {
             return hasFissile ? PSN_OPTIONS[12] : PSN_OPTIONS[10];
