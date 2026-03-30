@@ -397,56 +397,7 @@ function handleCombatAction(action) {
         } else {
             combatLog += "Attack missed!";
         }
-
-        // Hit Chance Calculation
-        let hitChance = weaponStats.hitChance;
-
-        if (currentCombatContext.playerGuaranteedHit) {
-            hitChance = 2.0; // 200% accuracy for this shot only!
-            currentCombatContext.playerGuaranteedHit = false; // Consume the buff
-        }
         
-        if (currentCombatContext.nextMove && currentCombatContext.nextMove.type === 'EVADE') {
-            hitChance -= 0.25;
-            combatLog += "(Enemy Evading) ";
-        }
-
-        if (Math.random() < hitChance) {
-            if (typeof soundManager !== 'undefined') soundManager.playLaser();
-            
-            // CRITICAL HIT MECHANIC
-            const critRoll = weaponStats.critChance || 0.05; // Default 5% if not defined
-            if (Math.random() < critRoll) {
-                damageDealt *= 2;
-                combatLog += "<span style='color:var(--gold-text); font-weight:bold;'>[ CRITICAL HIT ]</span> ";
-                if (typeof triggerDamageEffect === 'function') triggerDamageEffect(); // Shake screen!
-            }
-            
-            // Shield vs Hull Logic
-            if (currentCombatContext.pirateShields > 0) {
-                let shieldDmg = damageDealt + (weaponStats.vsShieldBonus || 0);
-                
-                currentCombatContext.pirateShields -= shieldDmg;
-                combatLog += `Shields hit for ${Math.floor(shieldDmg)}!`;
-
-                if (currentCombatContext.pirateShields < 0) {
-                    const spillover = Math.abs(currentCombatContext.pirateShields);
-                    const hullDmg = Math.floor(spillover * (typeof HULL_DAMAGE_BONUS_MULTIPLIER !== 'undefined' ? HULL_DAMAGE_BONUS_MULTIPLIER : 1.0));
-                    
-                    currentCombatContext.pirateHull -= hullDmg;
-                    currentCombatContext.pirateShields = 0;
-                    combatLog += ` Shields down! Hull takes ${hullDmg} damage!`;
-                }
-            } else {
-                let hullDmg = Math.floor(damageDealt * (typeof HULL_DAMAGE_BONUS_MULTIPLIER !== 'undefined' ? HULL_DAMAGE_BONUS_MULTIPLIER : 1.0));
-                currentCombatContext.pirateHull -= hullDmg;
-                combatLog += `Direct hull hit for ${hullDmg}!`;
-            }
-
-            if (typeof triggerHaptic === "function") triggerHaptic(50);
-        } else {
-            combatLog += "Attack missed!";
-        }
         } else if (action === 'board') {
         // --- 🪖 TACTICAL BOARDING ACTION ---
         const casualties = Math.floor(Math.random() * 3) + 1; // Lose 1 to 3 Marines
