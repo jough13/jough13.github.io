@@ -1293,25 +1293,34 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
     const newWindow = React.useRef(null);
     
     React.useEffect(() => {
-        // 1. Open the bare window
-        newWindow.current = window.open('', title, `width=${width},height=${height},resizable=yes`);
+        // 1. Strip spaces for the strict HTML internal window name routing
+        const safeWindowName = title.replace(/\s+/g, '');
         
-        // Set the actual window title bar text!
+        // 2. Open the bare window using the safe name
+        newWindow.current = window.open('', safeWindowName, `width=${width},height=${height},resizable=yes`);
+        
+        if (!newWindow.current) {
+            alert("Pop-up blocked! Please allow pop-ups for this site.");
+            onClose(); 
+            return;
+        }
+        
+        // 3. Set the human-readable window title bar text!
         newWindow.current.document.title = title;
         
-        // 2. Set the base background colors
+        // 4. Set the base background colors
         newWindow.current.document.body.className = "bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200";
         
-        // 3. Create the "landing pad" for the React Portal
+        // 5. Create the "landing pad" for the React Portal
         const popoutRoot = newWindow.current.document.createElement('div');
         newWindow.current.document.body.appendChild(popoutRoot);
         
-        // COPY OVER THEME COLORS! (Added meta[name="theme-color"] to the selector)
+        // 6. COPY OVER THEME COLORS! (This fixes the dark header issue!)
         document.head.querySelectorAll('link[rel="stylesheet"], style, meta[name="theme-color"]').forEach(node => {
             newWindow.current.document.head.appendChild(node.cloneNode(true));
         });
         
-        // 5. Re-inject Tailwind (Since we use the CDN, the new window needs it to parse the classes)
+        // 7. Re-inject Tailwind
         const tailwindScript = newWindow.current.document.createElement('script');
         tailwindScript.src = "https://cdn.tailwindcss.com";
         newWindow.current.document.head.appendChild(tailwindScript);
@@ -1320,10 +1329,10 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
         tailwindConfigScript.innerHTML = `tailwind.config = { darkMode: 'class' }`;
         newWindow.current.document.head.appendChild(tailwindConfigScript);
         
-        // 6. Sync dark mode state to the new window's HTML tag
+        // 8. Sync dark mode state to the new window's HTML tag
         newWindow.current.document.documentElement.className = document.documentElement.className;
         
-        // 7. Save the container so the Portal can render
+        // 9. Save the container so the Portal can render
         setContainer(popoutRoot);
         
         // Handle window closure
@@ -1333,17 +1342,16 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
         newWindow.current.addEventListener('beforeunload', handleUnload);
         
         return () => {
-            newWindow.current.removeEventListener('beforeunload', handleUnload);
             if (newWindow.current) {
+                newWindow.current.removeEventListener('beforeunload', handleUnload);
                 newWindow.current.close();
             }
             setContainer(null);
         };
-    }, [title, width, height, onClose]); // ---> FIX 3: Added dependencies here <---
+    }, [title, width, height, onClose]); 
     
     if (!container) return null;
     
-    // Send the components through the wormhole!
     return ReactDOM.createPortal(children, container);
 };
 
