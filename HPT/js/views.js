@@ -1293,46 +1293,51 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
     const newWindow = React.useRef(null);
     
     React.useEffect(() => {
-        // 1. Strip spaces for the strict HTML internal window name routing
-        const safeWindowName = title.replace(/\s+/g, '');
+        // 1. Grab the current theme from the main app before opening
+        const isDark = document.documentElement.classList.contains('dark');
+        const themeColor = isDark ? '#0f172a' : '#f8fafc'; // slate-900 or slate-50
         
-        // 2. Open the bare window using the safe name
-        newWindow.current = window.open('', safeWindowName, `width=${width},height=${height},resizable=yes`);
+        // 2. Use '_blank' to completely bypass strict window naming rules
+        newWindow.current = window.open('', '_blank', `width=${width},height=${height},resizable=yes`);
         
+        // Safety check for aggressive pop-up blockers
         if (!newWindow.current) {
-            alert("Pop-up blocked! Please allow pop-ups for this site.");
+            alert(`Pop-up blocked! Please click the "Pop-up blocked" icon in your address bar and select "Always allow" to open the ${title}.`);
             onClose(); 
             return;
         }
+
+        // 3. Write a complete, fresh HTML document to the new window.
+        // This forces the browser/OS to parse the theme-color natively on load!
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html class="${isDark ? 'dark' : ''}">
+            <head>
+                <title>${title}</title>
+                <meta name="theme-color" content="${themeColor}">
+                <script src="https://cdn.tailwindcss.com"></script>
+                <script>tailwind.config = { darkMode: 'class' }</script>
+            </head>
+            <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 m-0 p-0 overflow-x-hidden">
+                <div id="popout-root"></div>
+            </body>
+            </html>
+        `;
+
+        newWindow.current.document.open();
+        newWindow.current.document.write(htmlContent);
+        newWindow.current.document.close();
         
-        // 3. Set the human-readable window title bar text!
-        newWindow.current.document.title = title;
-        
-        // 4. Set the base background colors
-        newWindow.current.document.body.className = "bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200";
-        
-        // 5. Create the "landing pad" for the React Portal
-        const popoutRoot = newWindow.current.document.createElement('div');
-        newWindow.current.document.body.appendChild(popoutRoot);
-        
-        // 6. COPY OVER THEME COLORS! (This fixes the dark header issue!)
-        document.head.querySelectorAll('link[rel="stylesheet"], style, meta[name="theme-color"]').forEach(node => {
-            newWindow.current.document.head.appendChild(node.cloneNode(true));
+        // 4. Copy over custom local styles (like your style.css)
+        document.head.querySelectorAll('link[rel="stylesheet"], style').forEach(node => {
+            // Don't copy meta tags here, we hardcoded the theme color perfectly above
+            if (node.tagName !== 'META') {
+                newWindow.current.document.head.appendChild(node.cloneNode(true));
+            }
         });
         
-        // 7. Re-inject Tailwind
-        const tailwindScript = newWindow.current.document.createElement('script');
-        tailwindScript.src = "https://cdn.tailwindcss.com";
-        newWindow.current.document.head.appendChild(tailwindScript);
-        
-        const tailwindConfigScript = newWindow.current.document.createElement('script');
-        tailwindConfigScript.innerHTML = `tailwind.config = { darkMode: 'class' }`;
-        newWindow.current.document.head.appendChild(tailwindConfigScript);
-        
-        // 8. Sync dark mode state to the new window's HTML tag
-        newWindow.current.document.documentElement.className = document.documentElement.className;
-        
-        // 9. Save the container so the Portal can render
+        // 5. Target the div we explicitly created in the HTML string
+        const popoutRoot = newWindow.current.document.getElementById('popout-root');
         setContainer(popoutRoot);
         
         // Handle window closure
@@ -1348,7 +1353,18 @@ const PopoutWindow = ({ children, title, onClose, width = 450, height = 750 }) =
             }
             setContainer(null);
         };
-    }, [title, width, height, onClose]); 
+    }, []); // Empty dependency array ensures this strict build sequence only happens ONCE
+    
+    // Dynamic Theme Syncing (Allows dark mode toggling while popout is open)
+    React.useEffect(() => {
+        if (!newWindow.current || !newWindow.current.document) return;
+        const isDark = document.documentElement.classList.contains('dark');
+        const themeColor = isDark ? '#0f172a' : '#f8fafc';
+        
+        newWindow.current.document.documentElement.className = isDark ? 'dark' : '';
+        const metaTheme = newWindow.current.document.querySelector('meta[name="theme-color"]');
+        if (metaTheme) metaTheme.content = themeColor;
+    }); // Runs on every render to keep synced with parent
     
     if (!container) return null;
     
