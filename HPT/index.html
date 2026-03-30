@@ -643,6 +643,30 @@
             
             const [showCalcPopout, setShowCalcPopout] = React.useState(false);
             const [showScratchpadPopout, setShowScratchpadPopout] = React.useState(false);
+
+            const [calcPopoutWindow, setCalcPopoutWindow] = React.useState(null);
+            const [scratchpadPopoutWindow, setScratchpadPopoutWindow] = React.useState(null);
+
+            const handleOpenCalcPopout = () => {
+                const win = window.open('', '', 'width=450,height=850,resizable=yes');
+                if (win) {
+                    setCalcPopoutWindow(win);
+                    setShowCalcPopout(true);
+                } else {
+                    alert("Pop-up blocked! Please allow pop-ups for this site.");
+                }
+            };
+
+            const handleOpenScratchpadPopout = () => {
+                const win = window.open('', '', 'width=800,height=660,resizable=yes');
+                if (win) {
+                    setScratchpadPopoutWindow(win);
+                    setShowScratchpadPopout(true);
+                } else {
+                    alert("Pop-up blocked! Please allow pop-ups for this site.");
+                }
+            };
+
             const [detailedNuclide, setDetailedNuclide] = React.useState(null);
             const [errorMessage, setErrorMessage] = React.useState('');
             const [preselectedNuclide, setPreselectedNuclide] = React.useState(null);
@@ -1110,7 +1134,7 @@
             <div className="flex justify-between items-center mb-4">
              <h2 className="text-xl font-bold text-slate-800 dark:text-white">Scratchpad</h2>
              <Tooltip text="Open in New Window" widthClass="w-auto">
-                 <button onClick={() => setShowScratchpadPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
+                 <button onClick={handleOpenScratchpadPopout} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
                      <Icon path={ICONS.popOut} className="w-5 h-5" />
                  </button>
              </Tooltip>
@@ -1121,7 +1145,9 @@
             </div>
             );
             
-            case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in"><div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scientific Calculator</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowCalcPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} /></div></div> );
+            case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in"><div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scientific Calculator</h2><Tooltip text="Open in New Window" widthClass="w-auto">
+                <button onClick={handleOpenCalcPopout} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button>
+                </Tooltip></div><ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} /></div></div> );
             
             case VIEWS.REFERENCES: return <ReferencesPage onNavClick={handleNavClick} previousView={previousView} />;
             
@@ -1161,11 +1187,11 @@
                 </footer>
                 <ManualModal isOpen={isManualOpen} onClose={() => setIsManualOpen(false)} />
             
-              {showCalcPopout && (
+              {showCalcPopout && calcPopoutWindow && (
                 <PopoutWindow
                     title="Scientific Calculator"
-                    onClose={() => setShowCalcPopout(false)}
-                    height={850}
+                    onClose={() => { setShowCalcPopout(false); setCalcPopoutWindow(null); }}
+                    externalWindow={calcPopoutWindow}
                 >
                     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
                         <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
@@ -1176,12 +1202,11 @@
                 </PopoutWindow>
             )}
             
-            {showScratchpadPopout && (
+            {showScratchpadPopout && scratchpadPopoutWindow && (
                 <PopoutWindow
                     title="Scratchpad"
-                    onClose={() => setShowScratchpadPopout(false)}
-                    width={800}
-                    height={660}
+                    onClose={() => { setShowScratchpadPopout(false); setScratchpadPopoutWindow(null); }}
+                    externalWindow={scratchpadPopoutWindow}
                 >
                     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 flex flex-col">
                         <div className="max-w-4xl mx-auto w-full bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 flex flex-col flex-grow">
@@ -1198,7 +1223,7 @@
             </div>
             );
             };
-                        
+
             // Final step: Render the main App component into the DOM.
             
             ReactDOM.createRoot(document.getElementById('root')).render(
