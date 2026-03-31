@@ -35,10 +35,46 @@
             <div class="dashboard-grid">
                 <div class="card">
                     <h3>Equipment Calibration</h3>
+                    <form id="equipment-form">
+                        <label for="eq-type">Type</label>
+                        <select id="eq-type" required>
+                            <option value="">Select Type...</option>
+                            <option value="survey meter">Survey Meter</option>
+                            <option value="alarming ratemeter">Alarming Ratemeter</option>
+                            <option value="pocket dosimeter">Pocket Dosimeter</option>
+                        </select>
+
+                        <label for="eq-serial">Serial Number</label>
+                        <input type="text" id="eq-serial" placeholder="e.g. SN-12345" required>
+
+                        <label for="eq-cal-date">Calibration Due Date</label>
+                        <input type="date" id="eq-cal-date" required>
+
+                        <button type="submit">Add Equipment</button>
+                    </form>
                     <ul id="equipment-list">Loading...</ul>
                 </div>
                 <div class="card">
                     <h3>Source Vault Logs</h3>
+                    <form id="sources-form">
+                        <label for="src-serial">Serial Number</label>
+                        <input type="text" id="src-serial" placeholder="e.g. SRC-987" required>
+
+                        <label for="src-isotope">Isotope</label>
+                        <select id="src-isotope" required>
+                            <option value="">Select Isotope...</option>
+                            <option value="Ir-192">Ir-192</option>
+                            <option value="Co-60">Co-60</option>
+                        </select>
+
+                        <label for="src-activity">Initial Activity (Curies)</label>
+                        <input type="number" step="0.01" id="src-activity" placeholder="e.g. 100.5" required>
+
+                        <label for="src-date">Activity Date</label>
+                        <input type="date" id="src-date" required>
+
+                        <button type="submit">Log Source</button>
+                    </form>
                     <ul id="sources-list">Loading...</ul>
                 </div>
             </div>
@@ -50,6 +86,26 @@
             <p>Pre-job planning, restrict area boundaries calculation, required sign-off fields for CHP and NAVSEA DET RASO compliance checks.</p>
             <div class="card">
                 <h3>Work Plans</h3>
+                <form id="work-plans-form">
+                    <label for="wp-job">Job Number</label>
+                    <input type="text" id="wp-job" placeholder="e.g. J-2024-001" required>
+
+                    <label for="wp-location">Location</label>
+                    <input type="text" id="wp-location" placeholder="e.g. Pier 4" required>
+
+                    <label for="wp-date">Planned Date</label>
+                    <input type="date" id="wp-date" required>
+
+                    <label for="wp-boundary">Calculated Boundary (mR/hr)</label>
+                    <input type="number" step="0.1" id="wp-boundary" placeholder="e.g. 2.0" required>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="wp-collimator">
+                        <label for="wp-collimator">Collimator Used</label>
+                    </div>
+
+                    <button type="submit">Create Work Plan</button>
+                </form>
                 <ul id="work-plans-list">Loading...</ul>
             </div>
         </section>
@@ -60,6 +116,21 @@
             <p>Active-work dashboard for tracking continuous monitoring requirements, personnel dosimetry readings, and boundary verification surveys.</p>
             <div class="card">
                 <h3>Dosimetry Logs</h3>
+                <form id="dosimetry-form">
+                    <label for="dl-name">Personnel Name</label>
+                    <input type="text" id="dl-name" required>
+
+                    <label for="dl-serial">Dosimeter Serial</label>
+                    <input type="text" id="dl-serial" required>
+
+                    <label for="dl-initial">Initial Reading (mR)</label>
+                    <input type="number" step="0.1" id="dl-initial" required>
+
+                    <label for="dl-final">Final Reading (mR)</label>
+                    <input type="number" step="0.1" id="dl-final" required>
+
+                    <button type="submit">Log Dosimetry</button>
+                </form>
                 <ul id="dosimetry-list">Loading...</ul>
             </div>
         </section>
@@ -70,6 +141,27 @@
             <p>Post-job checklist for verifying secure source storage and generating required paperwork (daily utilization logs, audit forms, etc.).</p>
             <div class="card">
                 <h3>Post Job Reports</h3>
+                <form id="reports-form">
+                    <label for="pj-completed-by">Completed By (Name)</label>
+                    <input type="text" id="pj-completed-by" required>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="pj-source-secured">
+                        <label for="pj-source-secured">Source Secured</label>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="pj-vault-verified">
+                        <label for="pj-vault-verified">Vault Verified</label>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="pj-daily-log">
+                        <label for="pj-daily-log">Daily Log Generated</label>
+                    </div>
+
+                    <button type="submit">Submit Report</button>
+                </form>
                 <ul id="reports-list">Loading...</ul>
             </div>
         </section>
