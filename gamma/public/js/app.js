@@ -10,7 +10,7 @@ const firebaseConfig = {
     messagingSenderId: "124869239575",
     appId: "1:124869239575:web:c90d4e0b688abab448cd52",
     measurementId: "G-XRJWGPV6E5"
-  };
+};
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -178,9 +178,26 @@ async function fetchData(collectionName, listId) {
             const item = doc.data();
             const li = document.createElement('li');
 
-            // Format basic string based on first few keys of object, excluding the ID
-            const values = Object.values(item).slice(0, 3).join(' - ');
-            li.textContent = `ID ${doc.id}: ${values}`;
+            let displayText = '';
+
+            if (collectionName === 'equipment') {
+                displayText = `${item.type?.toUpperCase() || 'UNKNOWN TYPE'} - Serial: ${item.serial_number} (Cal Due: ${item.calibration_due_date})`;
+            } else if (collectionName === 'sources') {
+                displayText = `${item.isotope} (Serial: ${item.serial_number}) - Activity: ${item.initial_activity_curies} Ci on ${item.activity_date}`;
+            } else if (collectionName === 'work_plans') {
+                displayText = `Job ${item.job_number} - Location: ${item.location} on ${item.planned_date}`;
+            } else if (collectionName === 'dosimetry_logs') {
+                displayText = `${item.personnel_name} (Dosimeter: ${item.dosimeter_serial}) - ${item.initial_reading}mR to ${item.final_reading}mR`;
+            } else if (collectionName === 'post_job_reports') {
+                const date = new Date(item.completion_time).toLocaleDateString();
+                displayText = `Report by ${item.completed_by} on ${date} (Source Secured: ${item.source_secured ? 'Yes' : 'No'})`;
+            } else {
+                // Fallback
+                const values = Object.values(item).slice(0, 3).join(' - ');
+                displayText = `ID ${doc.id}: ${values}`;
+            }
+
+            li.textContent = displayText;
             ul.appendChild(li);
         });
     } catch (err) {
