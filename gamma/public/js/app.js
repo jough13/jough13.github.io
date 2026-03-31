@@ -2,15 +2,15 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
-// TODO: Replace this with your own Firebase project configuration
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
-};
+    apiKey: "AIzaSyCxSXC52M4M176X_U_s5z6tDZsJbyXCdkM",
+    authDomain: "radiography-tracker.firebaseapp.com",
+    projectId: "radiography-tracker",
+    storageBucket: "radiography-tracker.firebasestorage.app",
+    messagingSenderId: "124869239575",
+    appId: "1:124869239575:web:c90d4e0b688abab448cd52",
+    measurementId: "G-XRJWGPV6E5"
+  };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
