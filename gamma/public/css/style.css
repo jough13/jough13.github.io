@@ -86,6 +86,54 @@ main {
     padding-bottom: 5px;
 }
 
+/* Form Styles */
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px dashed #ccc;
+}
+
+form label {
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+form input, form select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+form button {
+    background-color: #005A9C;
+    color: white;
+    border: none;
+    padding: 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+form button:hover {
+    background-color: #003F6C;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.checkbox-group input {
+    width: auto;
+}
+
 footer {
     text-align: center;
     padding: 10px;
