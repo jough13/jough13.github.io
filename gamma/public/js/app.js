@@ -16,13 +16,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Show default module
-    showSection('dashboard');
-    loadAllData();
-    setupEventListeners();
-});
-
 function setupEventListeners() {
     // 1. Equipment Form
     const equipmentForm = document.getElementById('equipment-form');
@@ -151,6 +144,11 @@ window.showSection = function(sectionId) {
         if(dashboard) dashboard.style.display = 'block';
     }
 }
+
+// Initialize UI and data (module scripts are naturally deferred)
+window.showSection('dashboard');
+loadAllData();
+setupEventListeners();
 
 // Fetch placeholder data from Firestore
 async function loadAllData() {
