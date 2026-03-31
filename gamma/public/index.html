@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamma Radiography Tracker</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>Shipyard Gamma Radiography Tracker</h1>
+        <p>Compliance and Workflow Tool (10 CFR Part 34 & US Navy Standards)</p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#" onclick="showSection('equipment')">Equipment & Source Management</a></li>
+            <li><a href="#" onclick="showSection('planning')">Work Planning & Approvals</a></li>
+            <li><a href="#" onclick="showSection('execution')">Execution & Monitoring</a></li>
+            <li><a href="#" onclick="showSection('reporting')">Post-Operation & Reporting</a></li>
+        </ul>
+    </nav>
+
+    <main id="main-content">
+        <!-- Default Dashboard View -->
+        <section id="dashboard" class="active">
+            <h2>Welcome to Gamma Radiography Tracker</h2>
+            <p>Select a module from the navigation menu above.</p>
+        </section>
+
+        <!-- 1. Equipment & Source Management -->
+        <section id="equipment" class="module">
+            <h2>Equipment & Source Management</h2>
+            <p>Track pre-operational maintenance requirements and routine calibration schedules. Log source handling, current physical location, and secure storage vault checkout/return times.</p>
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h3>Equipment Calibration</h3>
+                    <ul id="equipment-list">Loading...</ul>
+                </div>
+                <div class="card">
+                    <h3>Source Vault Logs</h3>
+                    <ul id="sources-list">Loading...</ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Work Planning & Approvals -->
+        <section id="planning" class="module">
+            <h2>Work Planning & Approvals</h2>
+            <p>Pre-job planning, restrict area boundaries calculation, required sign-off fields for CHP and NAVSEA DET RASO compliance checks.</p>
+            <div class="card">
+                <h3>Work Plans</h3>
+                <ul id="work-plans-list">Loading...</ul>
+            </div>
+        </section>
+
+        <!-- 3. Execution & Monitoring -->
+        <section id="execution" class="module">
+            <h2>Execution & Monitoring</h2>
+            <p>Active-work dashboard for tracking continuous monitoring requirements, personnel dosimetry readings, and boundary verification surveys.</p>
+            <div class="card">
+                <h3>Dosimetry Logs</h3>
+                <ul id="dosimetry-list">Loading...</ul>
+            </div>
+        </section>
+
+        <!-- 4. Post-Operation & Reporting -->
+        <section id="reporting" class="module">
+            <h2>Post-Operation & Reporting</h2>
+            <p>Post-job checklist for verifying secure source storage and generating required paperwork (daily utilization logs, audit forms, etc.).</p>
+            <div class="card">
+                <h3>Post Job Reports</h3>
+                <ul id="reports-list">Loading...</ul>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Shipyard Radiography Compliance</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
