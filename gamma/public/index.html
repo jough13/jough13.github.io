@@ -16,16 +16,18 @@
         <div class="loader-text">Syncing data...</div>
     </div>
 
-    <div id="login-screen">
+    <div id="login-screen" style="display: none;">
         <div class="login-card">
             <h2>☢️ Radiography Tracker</h2>
             <p style="color: var(--header-p); margin-bottom: 20px;">Authorized Personnel Only</p>
             <input type="email" id="login-email" placeholder="Email Address" required>
             <input type="password" id="login-password" placeholder="Password" required>
-            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; width: 100%;">
+            
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; margin-bottom: 10px; width: 100%;">
                 <input type="checkbox" id="login-remember" style="width: auto; margin: 0;" checked>
                 <label for="login-remember" style="font-size: 0.9rem; color: var(--text-color);">Stay Logged In</label>
             </div>
+
             <button id="login-btn">Secure Login</button>
             <p id="login-error" style="color: #d9534f; margin-top: 15px; display: none;">Invalid credentials.</p>
         </div>
@@ -134,6 +136,7 @@
                                 <option value="Co-60">Cobalt-60 (Co-60)</option>
                                 <option value="Se-75">Selenium-75 (Se-75)</option>
                                 <option value="Yb-169">Ytterbium-169 (Yb-169)</option>
+                                <option value="Cs-137">Cesium-137 (Cs-137)</option>
                             </select>
 
                             <label for="src-activity">Initial Activity (Curies)</label>
@@ -177,15 +180,21 @@
                         <h3>Survey Meters & Dosimetry <button type="button" class="btn-export" onclick="exportCSV('equipment')">Export CSV</button></h3>
                         <form id="equipment-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                             <div style="display: flex; flex-direction: column; gap: 10px;">
-                                <label for="eq-type">Type</label>
+                                <label for="eq-type">Type / Model</label>
                                 <select id="eq-type" required>
-                                    <option value="">Select Type...</option>
-                                    <option value="survey meter">Survey Meter</option>
-                                    <option value="alarming ratemeter">Alarming Ratemeter</option>
-                                    <option value="pocket dosimeter">Pocket Dosimeter</option>
-                                    <option value="direct reading dosimeter">Direct Reading Dosimeter</option>
-                                    <option value="electronic personal dosimeter">Electronic Personal Dosimeter</option>
-                                    <option value="area monitor">Area Monitor</option>
+                                    <option value="">Select Type / Model...</option>
+                                    <optgroup label="Survey Meters (RADIACs)">
+                                        <option value="IM-268 Survey Meter">IM-268 Survey Meter</option>
+                                        <option value="IM-253 Survey Meter">IM-253 Survey Meter</option>
+                                        <option value="AN/PDR-70 Survey Meter">AN/PDR-70 Survey Meter</option>
+                                        <option value="generic survey meter">Other Survey Meter</option>
+                                    </optgroup>
+                                    <optgroup label="Dosimetry & Alarms">
+                                        <option value="EPD TruDose / Mk2">EPD (TruDose/Mk2)</option>
+                                        <option value="alarming ratemeter">Alarming Ratemeter (e.g., PRM-61)</option>
+                                        <option value="pocket dosimeter">Pocket Dosimeter (SRD)</option>
+                                        <option value="area monitor">Area Monitor</option>
+                                    </optgroup>
                                 </select>
                                 <label for="eq-serial">Serial Number</label>
                                 <input type="text" id="eq-serial" placeholder="e.g. SN-12345" required>
