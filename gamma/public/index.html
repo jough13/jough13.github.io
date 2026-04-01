@@ -14,12 +14,16 @@
 
     <nav>
         <ul>
-            <li><a href="#" onclick="showSection('equipment')">Equipment & Source Management</a></li>
-            <li><a href="#" onclick="showSection('personnel')">Personnel Qualifications</a></li>
-            <li><a href="#" onclick="showSection('planning')">Work Planning & Approvals</a></li>
-            <li><a href="#" onclick="showSection('execution')">Execution & Monitoring</a></li>
-            <li><a href="#" onclick="showSection('reporting')">Post-Operation & Reporting</a></li>
+            <li><a href="#" onclick="showSection('dashboard')">Dashboard</a></li>
+            <li><a href="#" onclick="showSection('equipment')">Equipment & Sources</a></li>
+            <li><a href="#" onclick="showSection('personnel')">Personnel</a></li>
+            <li><a href="#" onclick="showSection('planning')">Work Planning</a></li>
+            <li><a href="#" onclick="showSection('execution')">Execution</a></li>
+            <li><a href="#" onclick="showSection('reporting')">Reporting</a></li>
         </ul>
+        <div class="search-container">
+            <input type="text" id="global-search" placeholder="🔍 Search all records..." onkeyup="filterRecords()">
+        </div>
     </nav>
 
     <main id="main-content">
@@ -68,17 +72,15 @@
                             <li style="background: none; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part037/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">🔒 10 CFR Part 37 (Physical Protection)</a></li>
                         </ul>
                     </div>
-
                 </div>
             </div>
         </section>
 
         <section id="equipment" class="module">
             <h2>Equipment & Source Management</h2>
-            <p>Track pre-operational maintenance requirements and routine calibration schedules. Log source handling, current physical location, and secure storage vault checkout/return times.</p>
             <div class="dashboard-grid">
                 <div class="card">
-                    <h3>Equipment Calibration</h3>
+                    <h3>Equipment Calibration <button type="button" class="btn-export" onclick="exportCSV('equipment')">📥 Export CSV</button></h3>
                     <form id="equipment-form">
                         <label for="eq-type">Type</label>
                         <select id="eq-type" required>
@@ -105,7 +107,7 @@
                     <ul id="equipment-list">Loading...</ul>
                 </div>
                 <div class="card">
-                    <h3>Source Vault Logs</h3>
+                    <h3>Source Vault Logs <button type="button" class="btn-export" onclick="exportCSV('sources')">📥 Export CSV</button></h3>
                     <form id="sources-form">
                         <label for="src-serial">Serial Number</label>
                         <input type="text" id="src-serial" placeholder="e.g. SRC-987" required>
@@ -125,7 +127,7 @@
                         <label for="src-date">Activity Date</label>
                         <input type="date" id="src-date" required>
 
-                        <label for="src-leak-test">Last Leak Test Date (Must be < 6 Months)</label>
+                        <label for="src-leak-test">Last Leak Test Date (< 6 Months)</label>
                         <input type="date" id="src-leak-test" required>
 
                         <label for="src-quarterly-maint">Last Quarterly Maintenance Date</label>
@@ -143,9 +145,8 @@
 
         <section id="personnel" class="module">
             <h2>Personnel Qualifications</h2>
-            <p>Track radiographer certifications, trustworthiness & reliability (T&R), and routine training to ensure only qualified personnel are assigned to active jobs.</p>
             <div class="card">
-                <h3>Radiographer Certifications</h3>
+                <h3>Radiographer Certifications <button type="button" class="btn-export" onclick="exportCSV('personnel')">📥 Export CSV</button></h3>
                 <form id="personnel-form">
                     <label for="per-name">Full Name</label>
                     <input type="text" id="per-name" required>
@@ -167,9 +168,8 @@
 
         <section id="planning" class="module">
             <h2>Work Planning & Approvals</h2>
-            <p>Pre-job planning, restrict area boundaries calculation, required sign-off fields for CHP and NAVSEA DET RASO compliance checks.</p>
             <div class="card">
-                <h3>Work Plans</h3>
+                <h3>Work Plans <button type="button" class="btn-export" onclick="exportCSV('work_plans')">📥 Export CSV</button></h3>
                 <form id="work-plans-form">
                     <label for="wp-job">Job Number</label>
                     <input type="text" id="wp-job" placeholder="e.g. J-2024-001" required>
@@ -204,9 +204,8 @@
 
         <section id="execution" class="module">
             <h2>Execution & Monitoring</h2>
-            <p>Active-work dashboard for tracking continuous monitoring requirements, personnel dosimetry readings, and boundary verification surveys.</p>
             <div class="card">
-                <h3>Dosimetry Logs</h3>
+                <h3>Dosimetry Logs <button type="button" class="btn-export" onclick="exportCSV('dosimetry_logs')">📥 Export CSV</button></h3>
                 <form id="dosimetry-form">
                     <label for="dl-name">Personnel Name</label>
                     <input type="text" id="dl-name" required>
@@ -233,9 +232,8 @@
 
         <section id="reporting" class="module">
             <h2>Post-Operation & Reporting</h2>
-            <p>Post-job checklist for verifying secure source storage and generating required paperwork (daily utilization logs, audit forms, etc.).</p>
             <div class="card">
-                <h3>Post Job Reports</h3>
+                <h3>Post Job Reports <button type="button" class="btn-export" onclick="exportCSV('post_job_reports')">📥 Export CSV</button></h3>
                 <form id="reports-form">
                     <label for="pj-completed-by">Completed By (Name)</label>
                     <input type="text" id="pj-completed-by" required>
@@ -271,8 +269,7 @@
                 <h3 id="modal-title">Record Details</h3>
                 <button class="close-btn" onclick="closeModal()">&times;</button>
             </div>
-            <div id="modal-body">
-                </div>
+            <div id="modal-body"></div>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeModal()">Close</button>
                 <button id="modal-delete-btn" class="btn-danger">Delete Record</button>
