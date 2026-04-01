@@ -1,6 +1,5 @@
 // public/js/app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-// NEW: We import initializeFirestore and persistent cache modules to enable offline functionality!
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, addDoc, doc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 
@@ -15,21 +14,45 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-
-// NEW: Initialize Firestore with Local Caching for OFFLINE MODE
 const db = initializeFirestore(app, {
   localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
 });
 const storage = getStorage(app);
 
-// Helper function to upload files to Firebase Storage
+// --- THEME LOGIC ---
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeButton(savedTheme);
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        updateThemeButton('dark');
+    }
+}
+
+window.toggleTheme = function() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeButton(newTheme);
+}
+
+function updateThemeButton(theme) {
+    const btn = document.getElementById('theme-btn');
+    if (btn) {
+        btn.innerHTML = theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
+    }
+}
+initTheme(); // Run immediately
+
 async function uploadFile(file, folderPath) {
     if (!file) return null;
     try {
         const fileRef = ref(storage, `${folderPath}/${Date.now()}_${file.name}`);
         const snapshot = await uploadBytes(fileRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        return downloadURL;
+        return await getDownloadURL(snapshot.ref);
     } catch (error) {
         console.error("Error uploading file:", error);
         alert("Failed to upload file. Check console.");
@@ -38,7 +61,6 @@ async function uploadFile(file, folderPath) {
 }
 
 function setupEventListeners() {
-    // 1. Equipment Form
     const equipmentForm = document.getElementById('equipment-form');
     if (equipmentForm) {
         equipmentForm.addEventListener('submit', async (e) => {
@@ -61,7 +83,6 @@ function setupEventListeners() {
         });
     }
 
-    // 2. Sources Form
     const sourcesForm = document.getElementById('sources-form');
     if (sourcesForm) {
         sourcesForm.addEventListener('submit', async (e) => {
@@ -89,7 +110,6 @@ function setupEventListeners() {
         });
     }
 
-    // 2.5 Personnel Form
     const personnelForm = document.getElementById('personnel-form');
     if (personnelForm) {
         personnelForm.addEventListener('submit', async (e) => {
@@ -107,7 +127,6 @@ function setupEventListeners() {
         });
     }
 
-    // 3. Work Plans Form
     const workPlansForm = document.getElementById('work-plans-form');
     if (workPlansForm) {
         workPlansForm.addEventListener('submit', async (e) => {
@@ -135,7 +154,6 @@ function setupEventListeners() {
         });
     }
 
-    // 4. Dosimetry Form
     const dosimetryForm = document.getElementById('dosimetry-form');
     if (dosimetryForm) {
         dosimetryForm.addEventListener('submit', async (e) => {
@@ -154,7 +172,6 @@ function setupEventListeners() {
         });
     }
 
-    // 5. Reports Form
     const reportsForm = document.getElementById('reports-form');
     if (reportsForm) {
         reportsForm.addEventListener('submit', async (e) => {
@@ -230,7 +247,7 @@ async function fetchData(collectionName, listId) {
         ul.innerHTML = '';
 
         if (querySnapshot.empty) {
-            ul.innerHTML = `<li>No data found in ${collectionName}.</li>`;
+            ul.innerHTML = `<li style="background: transparent; border: none;">No data found in ${collectionName.replace('_', ' ')}.</li>`;
             return;
         }
 
@@ -279,7 +296,7 @@ async function fetchData(collectionName, listId) {
         });
     } catch (err) {
         console.error(`Error fetching collection ${collectionName}:`, err);
-        ul.innerHTML = `<li style="color:red;">Error loading data or Firestore configured incorrectly.</li>`;
+        ul.innerHTML = `<li style="color:red; background: transparent; border: none;">Error loading data.</li>`;
     }
 }
 
@@ -354,10 +371,10 @@ window.updateDashboard = async function() {
             if (eq.calibration_due_date) {
                 const calDate = new Date(eq.calibration_due_date);
                 if (calDate < today) {
-                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: none; border: none; padding:0; cursor: default;">🚨 OVERDUE: ${eq.type} (SN: ${eq.serial_number}) calibration expired!</li>`;
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 OVERDUE: ${eq.type} (SN: ${eq.serial_number}) calibration expired!</li>`;
                     alertCount++;
                 } else if (calDate < thirtyDaysFromNow) {
-                    alertList.innerHTML += `<li style="color: #f0ad4e; margin-bottom: 5px; background: none; border: none; padding:0; cursor: default;">⚠️ WARNING: ${eq.type} (SN: ${eq.serial_number}) calibration due within 30 days.</li>`;
+                    alertList.innerHTML += `<li style="color: #f0ad4e; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">⚠️ WARNING: ${eq.type} (SN: ${eq.serial_number}) calibration due within 30 days.</li>`;
                     alertCount++;
                 }
             }
@@ -369,17 +386,17 @@ window.updateDashboard = async function() {
                 const lastTest = new Date(src.last_leak_test_date);
                 const daysSinceTest = (today - lastTest) / (1000 * 60 * 60 * 24);
                 if (daysSinceTest > 182) {
-                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: none; border: none; padding:0; cursor: default;">🚨 OVERDUE: Source ${src.serial_number} leak test expired!</li>`;
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 OVERDUE: Source ${src.serial_number} leak test expired!</li>`;
                     alertCount++;
                 } else if (daysSinceTest > 152) { 
-                    alertList.innerHTML += `<li style="color: #f0ad4e; margin-bottom: 5px; background: none; border: none; padding:0; cursor: default;">⚠️ WARNING: Source ${src.serial_number} leak test due within 30 days.</li>`;
+                    alertList.innerHTML += `<li style="color: #f0ad4e; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">⚠️ WARNING: Source ${src.serial_number} leak test due within 30 days.</li>`;
                     alertCount++;
                 }
             }
         });
 
         if (alertCount === 0) {
-            alertList.innerHTML = '<li style="color: #5cb85c; list-style-type: none; background: none; border: none; padding:0; cursor: default;">✅ All equipment and sources are in compliance.</li>';
+            alertList.innerHTML = '<li style="color: #5cb85c; list-style-type: none; background: transparent; border: none; padding:0; cursor: default;">✅ All equipment and sources are in compliance.</li>';
         }
     } catch (err) {
         console.error("Error updating dashboard stats:", err);
@@ -409,7 +426,7 @@ window.openModal = async function(collectionName, docId) {
             let html = '';
             for (const [key, value] of Object.entries(data)) {
                 if(key.includes('_url') && value) {
-                    html += `<p><strong>${key.replace('_url', '').toUpperCase()}:</strong> <a href="${value}" target="_blank">View Uploaded File</a></p>`;
+                    html += `<p><strong>${key.replace('_url', '').toUpperCase()}:</strong> <a href="${value}" target="_blank" style="color: #005A9C;">View Uploaded File</a></p>`;
                 } else {
                     html += `<p><strong>${key.replace(/_/g, ' ').toUpperCase()}:</strong> ${value}</p>`;
                 }
@@ -467,12 +484,9 @@ window.executeDelete = async function() {
 // --- SEARCH & FILTER LOGIC ---
 window.filterRecords = function() {
     const searchInput = document.getElementById('global-search').value.toLowerCase();
-    
-    // Select every single list item inside our specific data lists
     const allRecords = document.querySelectorAll('ul[id$="-list"] li');
     
     allRecords.forEach(record => {
-        // Exclude the "No data found" placeholder texts
         if(record.textContent.includes("No data found")) return;
         
         if (record.textContent.toLowerCase().includes(searchInput)) {
@@ -497,28 +511,23 @@ window.exportCSV = async function(collectionName) {
             dataArray.push({ database_id: doc.id, ...doc.data() });
         });
 
-        // Get headers dynamically based on the first document's keys
         const headers = Object.keys(dataArray[0]);
         let csvContent = headers.join(",") + "\n";
 
-        // Add the rows
         dataArray.forEach(row => {
             const rowString = headers.map(header => {
                 let val = row[header] !== undefined ? row[header] : "";
-                // Escape quotes to prevent CSV breakage
                 val = String(val).replace(/"/g, '""');
                 return `"${val}"`;
             }).join(",");
             csvContent += rowString + "\n";
         });
 
-        // Create the downloadable file blob
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
         
-        // Generate a clean filename: e.g., "equipment_export_2024-04-01.csv"
         const dateStr = new Date().toISOString().split('T')[0];
         link.setAttribute("download", `${collectionName}_export_${dateStr}.csv`);
         
