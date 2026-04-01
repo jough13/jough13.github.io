@@ -2,8 +2,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, addDoc, doc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
-// NEW: Auth Imports
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+// UPDATED: Added persistence imports for "Remember Me" functionality
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCxSXC52M4M176X_U_s5z6tDZsJbyXCdkM",
@@ -20,10 +20,20 @@ const db = initializeFirestore(app, {
   localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
 });
 const storage = getStorage(app);
-const auth = getAuth(app); // NEW: Initialize Auth
+const auth = getAuth(app); 
 
 let calendar; // Global calendar instance
-let isotopeChart; // NEW: Global chart instance
+let isotopeChart; // Global chart instance
+
+// --- NEW: LOADER LOGIC ---
+function showLoader() { 
+    const loader = document.getElementById('global-loader');
+    if (loader) loader.style.display = 'flex'; 
+}
+function hideLoader() { 
+    const loader = document.getElementById('global-loader');
+    if (loader) loader.style.display = 'none'; 
+}
 
 // --- THEME LOGIC ---
 function initTheme() {
@@ -54,7 +64,8 @@ initTheme();
 // Define your Admin / RSO email here:
 const ADMIN_EMAIL = "rso@shipyard.com"; 
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
+    showLoader(); // Trigger loader while checking auth state
     const loginScreen = document.getElementById('login-screen');
     const appWrapper = document.getElementById('app-wrapper');
     const userDisplay = document.getElementById('user-display');
@@ -73,8 +84,6 @@ onAuthStateChanged(auth, (user) => {
         // Find all elements tagged as 'admin-only' and hide/show them
         document.querySelectorAll('.admin-only').forEach(el => {
             if (isAdmin) {
-                // If it's a form, we want flex. If it's a button, inline-block. 
-                // Reverting to empty string lets it fall back to its CSS default.
                 el.style.display = ''; 
             } else {
                 el.style.display = 'none'; 
@@ -82,10 +91,12 @@ onAuthStateChanged(auth, (user) => {
         });
 
         // 4. Boot up the data
-        startApplication();
+        await startApplication();
+        setTimeout(hideLoader, 500); // Give dashboard a half second to paint smoothly
 
     } else {
         // Logged out: Show login, hide app
+        hideLoader();
         if(loginScreen) loginScreen.style.display = 'flex';
         if(appWrapper) appWrapper.style.display = 'none';
     }
@@ -94,13 +105,22 @@ onAuthStateChanged(auth, (user) => {
 const loginBtn = document.getElementById('login-btn');
 if (loginBtn) {
     loginBtn.addEventListener('click', async () => {
+        showLoader(); // Show loading wheel while authenticating
         const email = document.getElementById('login-email').value;
         const pass = document.getElementById('login-password').value;
+        const rememberCheckbox = document.getElementById('login-remember');
+        const remember = rememberCheckbox ? rememberCheckbox.checked : false;
+
         try {
+            // NEW: Enforce "Remember Me" persistence
+            const persistenceType = remember ? browserLocalPersistence : browserSessionPersistence;
+            await setPersistence(auth, persistenceType);
+            
             await signInWithEmailAndPassword(auth, email, pass);
             document.getElementById('login-error').style.display = 'none';
         } catch(err) {
             document.getElementById('login-error').style.display = 'block';
+            hideLoader(); // Hide loader on failure so user can try again
         }
     });
 }
@@ -110,10 +130,11 @@ if (logoutBtn) {
     logoutBtn.addEventListener('click', () => { signOut(auth); });
 }
 
-// --- APP INITIALIZATION (Wrapped in a function to wait for Auth) ---
-function startApplication() {
+// --- APP INITIALIZATION ---
+// UPDATED: Made async so we can await loadAllData during startup
+async function startApplication() {
     window.showSection('dashboard');
-    loadAllData();
+    await loadAllData();
     setupEventListeners();
     populateSourceDropdown(); 
 }
@@ -136,6 +157,7 @@ function setupEventListeners() {
     if (equipmentForm) {
         equipmentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            showLoader();
             const fileInput = document.getElementById('eq-cert');
             const file = fileInput.files[0];
             const certUrl = file ? await uploadFile(file, 'equipment_certs') : null;
@@ -150,7 +172,8 @@ function setupEventListeners() {
             equipmentForm.reset();
             await fetchData('equipment', 'equipment-list');
             updateDashboard();
-            renderCalendar(); // Refresh calendar events
+            renderCalendar(); 
+            hideLoader();
         });
     }
 
@@ -158,6 +181,7 @@ function setupEventListeners() {
     if (sourcesForm) {
         sourcesForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            showLoader();
             const fileInput = document.getElementById('src-cert');
             const file = fileInput.files[0];
             const certUrl = file ? await uploadFile(file, 'source_certs') : null;
@@ -176,6 +200,7 @@ function setupEventListeners() {
             await fetchData('sources', 'sources-list');
             populateSourceDropdown(); 
             updateDashboard();
+            hideLoader();
         });
     }
 
@@ -183,6 +208,7 @@ function setupEventListeners() {
     if (camerasForm) {
         camerasForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            showLoader();
             const data = {
                 make_model: document.getElementById('cam-model').value,
                 serial_number: document.getElementById('cam-serial').value,
@@ -195,6 +221,7 @@ function setupEventListeners() {
             await fetchData('cameras', 'cameras-list');
             updateDashboard();
             renderCalendar();
+            hideLoader();
         });
     }
 
@@ -202,6 +229,7 @@ function setupEventListeners() {
     if (personnelForm) {
         personnelForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            showLoader();
             const data = {
                 full_name: document.getElementById('per-name').value,
                 cert_number: document.getElementById('per-cert').value,
@@ -216,6 +244,7 @@ function setupEventListeners() {
             await fetchData('personnel', 'personnel-list');
             updateDashboard();
             renderCalendar();
+            hideLoader();
         });
     }
 
@@ -223,6 +252,7 @@ function setupEventListeners() {
     if (evalForm) {
         evalForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            showLoader();
             const data = {
                 eval_date: document.getElementById('ev-date').value,
                 radiographer_evaluated: document.getElementById('ev-rad').value,
@@ -246,6 +276,7 @@ function setupEventListeners() {
             await addData('field_evaluations', data);
             evalForm.reset();
             await fetchData('field_evaluations', 'eval-list');
+            hideLoader();
         });
     }
 
@@ -253,6 +284,7 @@ function setupEventListeners() {
     if (workPlansForm) {
         workPlansForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            showLoader();
             const fileInput = document.getElementById('wp-diagram');
             const file = fileInput.files[0];
             const diagramUrl = file ? await uploadFile(file, 'work_plan_diagrams') : null;
@@ -276,10 +308,11 @@ function setupEventListeners() {
             };
             await addData('work_plans', data);
             workPlansForm.reset();
-            togglePRI(); // Reset visual state
+            togglePRI(); 
             await fetchData('work_plans', 'work-plans-list');
             updateDashboard();
             renderCalendar();
+            hideLoader();
         });
     }
 
@@ -287,6 +320,7 @@ function setupEventListeners() {
     if (transportForm) {
         transportForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            showLoader();
             const data = {
                 transport_date: document.getElementById('tr-date').value,
                 camera_sn: document.getElementById('tr-camera').value,
@@ -299,6 +333,7 @@ function setupEventListeners() {
             await addData('transport_logs', data);
             transportForm.reset();
             await fetchData('transport_logs', 'transport-list');
+            hideLoader();
         });
     }
 
@@ -306,6 +341,7 @@ function setupEventListeners() {
     if (dosimetryForm) {
         dosimetryForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            showLoader();
             const data = {
                 personnel_name: document.getElementById('dl-name').value,
                 dosimeter_serial: document.getElementById('dl-serial').value,
@@ -317,6 +353,7 @@ function setupEventListeners() {
             await addData('dosimetry_logs', data);
             dosimetryForm.reset();
             await fetchData('dosimetry_logs', 'dosimetry-list');
+            hideLoader();
         });
     }
 
@@ -324,6 +361,7 @@ function setupEventListeners() {
     if (utilizationForm) {
         utilizationForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            showLoader();
             const data = {
                 job_reference: document.getElementById('ul-job').value,
                 radiographer_in_charge: document.getElementById('ul-ric').value,
@@ -336,6 +374,7 @@ function setupEventListeners() {
             await addData('utilization_logs', data);
             utilizationForm.reset();
             await fetchData('utilization_logs', 'utilization-list');
+            hideLoader();
         });
     }
 
@@ -343,6 +382,7 @@ function setupEventListeners() {
     if (reportsForm) {
         reportsForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            showLoader();
             const fileInput = document.getElementById('pj-doc');
             const file = fileInput.files[0];
             const docUrl = file ? await uploadFile(file, 'report_documents') : null;
@@ -357,6 +397,7 @@ function setupEventListeners() {
             await addData('post_job_reports', data);
             reportsForm.reset();
             await fetchData('post_job_reports', 'reports-list');
+            hideLoader();
         });
     }
 
@@ -609,7 +650,7 @@ window.updateDashboard = async function() {
         const statSources = document.getElementById('stat-sources');
         if(statSources) statSources.textContent = srcSnap.size;
 
-        // NEW: Compile data for Chart.js
+        // Compile data for Chart.js
         let ir192 = 0, co60 = 0, se75 = 0, yb169 = 0;
         srcSnap.forEach(doc => {
             const iso = doc.data().isotope;
@@ -619,7 +660,7 @@ window.updateDashboard = async function() {
             if(iso === 'Yb-169') yb169++;
         });
 
-        // NEW: Render the Chart.js visualizer
+        // Render the Chart.js visualizer
         const ctx = document.getElementById('isotope-chart');
         if(ctx) {
             if(isotopeChart) isotopeChart.destroy(); 
@@ -728,7 +769,7 @@ window.updateDashboard = async function() {
     }
 }
 
-// --- NEW: PDF REPORT GENERATOR USING HTML2PDF ---
+// --- PDF REPORT GENERATOR USING HTML2PDF ---
 window.generatePDFInventory = async function() {
     const srcBody = document.getElementById('pdf-source-body');
     const camBody = document.getElementById('pdf-cam-body');
@@ -739,6 +780,7 @@ window.generatePDFInventory = async function() {
     document.getElementById('pdf-date').textContent = `Date: ${new Date().toLocaleDateString()}`;
 
     try {
+        showLoader();
         const srcSnap = await getDocs(collection(db, 'sources'));
         srcSnap.forEach(d => { 
             const x = d.data(); 
@@ -773,10 +815,12 @@ window.generatePDFInventory = async function() {
             jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
         }).from(element).save().then(() => {
             element.style.display = 'none'; // Hide again after download
+            hideLoader();
         });
 
     } catch (err) {
         console.error("Error generating PDF:", err);
+        hideLoader();
         alert("Failed to generate PDF inventory report.");
     }
 }
@@ -843,6 +887,7 @@ window.closeConfirmModal = function() {
 window.executeDelete = async function() {
     if(!currentOpenDoc) return;
     try {
+        showLoader();
         await deleteDoc(doc(db, currentOpenDoc.collection, currentOpenDoc.id));
         closeConfirmModal();
         closeModal();
@@ -862,7 +907,9 @@ window.executeDelete = async function() {
         await fetchData(currentOpenDoc.collection, listId);
         updateDashboard();
         renderCalendar();
+        hideLoader();
     } catch (err) {
+        hideLoader();
         alert("Error deleting record.");
         console.error("Deletion Error:", err);
     }
