@@ -50,16 +50,40 @@ function updateThemeButton(theme) {
 }
 initTheme(); 
 
-// --- AUTHENTICATION ENGINE ---
+// --- AUTHENTICATION & ROLE ENGINE ---
+// Define your Admin / RSO email here:
+const ADMIN_EMAIL = "rso@shipyard.com"; 
+
 onAuthStateChanged(auth, (user) => {
     const loginScreen = document.getElementById('login-screen');
     const appWrapper = document.getElementById('app-wrapper');
+    const userDisplay = document.getElementById('user-display');
     
     if (user) {
-        // Logged in: Hide login, show app, boot up data
+        // 1. Show the App
         if(loginScreen) loginScreen.style.display = 'none';
         if(appWrapper) appWrapper.style.display = 'block';
+        
+        // 2. Display who is logged in
+        if(userDisplay) userDisplay.textContent = `👤 ${user.email}`;
+
+        // 3. Enforce Role-Based Access Control (RBAC)
+        const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+        
+        // Find all elements tagged as 'admin-only' and hide/show them
+        document.querySelectorAll('.admin-only').forEach(el => {
+            if (isAdmin) {
+                // If it's a form, we want flex. If it's a button, inline-block. 
+                // Reverting to empty string lets it fall back to its CSS default.
+                el.style.display = ''; 
+            } else {
+                el.style.display = 'none'; 
+            }
+        });
+
+        // 4. Boot up the data
         startApplication();
+
     } else {
         // Logged out: Show login, hide app
         if(loginScreen) loginScreen.style.display = 'flex';
