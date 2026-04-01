@@ -2,7 +2,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, addDoc, doc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
-// UPDATED: Added persistence imports for "Remember Me" functionality
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -22,10 +21,10 @@ const db = initializeFirestore(app, {
 const storage = getStorage(app);
 const auth = getAuth(app); 
 
-let calendar; // Global calendar instance
-let isotopeChart; // Global chart instance
+let calendar; 
+let isotopeChart; 
 
-// --- NEW: LOADER LOGIC ---
+// --- LOADER LOGIC ---
 function showLoader() { 
     const loader = document.getElementById('global-loader');
     if (loader) loader.style.display = 'flex'; 
@@ -52,7 +51,7 @@ window.toggleTheme = function() {
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
     updateThemeButton(newTheme);
-    if(isotopeChart) updateDashboard(); // Redraw chart for contrast when theme changes
+    if(isotopeChart) updateDashboard(); 
 }
 function updateThemeButton(theme) {
     const btn = document.getElementById('theme-btn');
@@ -61,27 +60,21 @@ function updateThemeButton(theme) {
 initTheme(); 
 
 // --- AUTHENTICATION & ROLE ENGINE ---
-// Define your Admin / RSO email here:
 const ADMIN_EMAIL = "rso@shipyard.com"; 
 
 onAuthStateChanged(auth, async (user) => {
-    showLoader(); // Trigger loader while checking auth state
+    showLoader(); 
     const loginScreen = document.getElementById('login-screen');
     const appWrapper = document.getElementById('app-wrapper');
     const userDisplay = document.getElementById('user-display');
     
     if (user) {
-        // 1. Show the App
         if(loginScreen) loginScreen.style.display = 'none';
         if(appWrapper) appWrapper.style.display = 'block';
-        
-        // 2. Display who is logged in
         if(userDisplay) userDisplay.textContent = `👤 ${user.email}`;
 
-        // 3. Enforce Role-Based Access Control (RBAC)
         const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
         
-        // Find all elements tagged as 'admin-only' and hide/show them
         document.querySelectorAll('.admin-only').forEach(el => {
             if (isAdmin) {
                 el.style.display = ''; 
@@ -90,12 +83,9 @@ onAuthStateChanged(auth, async (user) => {
             }
         });
 
-        // 4. Boot up the data
         await startApplication();
-        setTimeout(hideLoader, 500); // Give dashboard a half second to paint smoothly
-
+        setTimeout(hideLoader, 500); 
     } else {
-        // Logged out: Show login, hide app
         hideLoader();
         if(loginScreen) loginScreen.style.display = 'flex';
         if(appWrapper) appWrapper.style.display = 'none';
@@ -105,14 +95,13 @@ onAuthStateChanged(auth, async (user) => {
 const loginBtn = document.getElementById('login-btn');
 if (loginBtn) {
     loginBtn.addEventListener('click', async () => {
-        showLoader(); // Show loading wheel while authenticating
+        showLoader(); 
         const email = document.getElementById('login-email').value;
         const pass = document.getElementById('login-password').value;
         const rememberCheckbox = document.getElementById('login-remember');
         const remember = rememberCheckbox ? rememberCheckbox.checked : false;
 
         try {
-            // NEW: Enforce "Remember Me" persistence
             const persistenceType = remember ? browserLocalPersistence : browserSessionPersistence;
             await setPersistence(auth, persistenceType);
             
@@ -120,7 +109,7 @@ if (loginBtn) {
             document.getElementById('login-error').style.display = 'none';
         } catch(err) {
             document.getElementById('login-error').style.display = 'block';
-            hideLoader(); // Hide loader on failure so user can try again
+            hideLoader(); 
         }
     });
 }
@@ -131,7 +120,6 @@ if (logoutBtn) {
 }
 
 // --- APP INITIALIZATION ---
-// UPDATED: Made async so we can await loadAllData during startup
 async function startApplication() {
     window.showSection('dashboard');
     await loadAllData();
@@ -575,7 +563,7 @@ function calculateBoundary() {
     boundaryInput.value = distanceFeet.toFixed(1); 
 }
 
-// --- FULLCALENDAR INTEGRATION ---
+// --- FULLCALENDAR INTEGRATION (UPDATED WITH CLICK LOGIC) ---
 async function renderCalendar() {
     const calendarEl = document.getElementById('calendar');
     if(!calendarEl) return;
@@ -587,7 +575,12 @@ async function renderCalendar() {
         wpSnap.forEach(doc => {
             const data = doc.data();
             if(data.planned_date) {
-                events.push({ title: `Job: ${data.job_number}`, start: data.planned_date, color: '#005A9C' });
+                events.push({ 
+                    title: `Job: ${data.job_number}`, 
+                    start: data.planned_date, 
+                    color: '#005A9C',
+                    extendedProps: { collection: 'work_plans', docId: doc.id } 
+                });
             }
         });
 
@@ -595,7 +588,12 @@ async function renderCalendar() {
         eqSnap.forEach(doc => {
             const data = doc.data();
             if(data.calibration_due_date) {
-                events.push({ title: `Cal Due: ${data.serial_number}`, start: data.calibration_due_date, color: '#f0ad4e' });
+                events.push({ 
+                    title: `Cal Due: ${data.serial_number}`, 
+                    start: data.calibration_due_date, 
+                    color: '#f0ad4e',
+                    extendedProps: { collection: 'equipment', docId: doc.id } 
+                });
             }
         });
 
@@ -605,7 +603,12 @@ async function renderCalendar() {
             if(data.annual_maintenance_date) {
                 let due = new Date(data.annual_maintenance_date);
                 due.setFullYear(due.getFullYear() + 1);
-                events.push({ title: `Maint Due: Cam ${data.serial_number}`, start: due.toISOString().split('T')[0], color: '#d9534f' });
+                events.push({ 
+                    title: `Maint Due: Cam ${data.serial_number}`, 
+                    start: due.toISOString().split('T')[0], 
+                    color: '#d9534f',
+                    extendedProps: { collection: 'cameras', docId: doc.id } 
+                });
             }
         });
 
@@ -615,7 +618,12 @@ async function renderCalendar() {
             if(data.last_6mo_eval_date) {
                 let due = new Date(data.last_6mo_eval_date);
                 due.setMonth(due.getMonth() + 6); 
-                events.push({ title: `Eval Exp: ${data.full_name.split(' ')[0]}`, start: due.toISOString().split('T')[0], color: '#d9534f' });
+                events.push({ 
+                    title: `Eval Exp: ${data.full_name.split(' ')[0]}`, 
+                    start: due.toISOString().split('T')[0], 
+                    color: '#d9534f',
+                    extendedProps: { collection: 'personnel', docId: doc.id } 
+                });
             }
         });
 
@@ -635,11 +643,22 @@ async function renderCalendar() {
             right: 'dayGridMonth,listWeek'
         },
         events: events,
-        height: 650
+        height: 650,
+        // NEW: Wire up the click to open our modal!
+        eventClick: function(info) {
+            const props = info.event.extendedProps;
+            if(props.collection && props.docId) {
+                window.openModal(props.collection, props.docId);
+            }
+        },
+        // NEW: Turn the mouse into a pointer when hovering over events
+        eventMouseEnter: function(info) {
+            info.el.style.cursor = 'pointer';
+        }
     });
 }
 
-// --- COMMAND CENTER DASHBOARD (NOW WITH CHART.JS) ---
+// --- COMMAND CENTER DASHBOARD ---
 window.updateDashboard = async function() {
     try {
         const wpSnap = await getDocs(collection(db, 'work_plans'));
@@ -650,7 +669,6 @@ window.updateDashboard = async function() {
         const statSources = document.getElementById('stat-sources');
         if(statSources) statSources.textContent = srcSnap.size;
 
-        // Compile data for Chart.js
         let ir192 = 0, co60 = 0, se75 = 0, yb169 = 0;
         srcSnap.forEach(doc => {
             const iso = doc.data().isotope;
@@ -660,7 +678,6 @@ window.updateDashboard = async function() {
             if(iso === 'Yb-169') yb169++;
         });
 
-        // Render the Chart.js visualizer
         const ctx = document.getElementById('isotope-chart');
         if(ctx) {
             if(isotopeChart) isotopeChart.destroy(); 
@@ -769,7 +786,6 @@ window.updateDashboard = async function() {
     }
 }
 
-// --- PDF REPORT GENERATOR USING HTML2PDF ---
 window.generatePDFInventory = async function() {
     const srcBody = document.getElementById('pdf-source-body');
     const camBody = document.getElementById('pdf-cam-body');
@@ -805,7 +821,7 @@ window.generatePDFInventory = async function() {
         });
 
         const element = document.getElementById('pdf-report-container');
-        element.style.display = 'block'; // Make visible for PDF engine
+        element.style.display = 'block'; 
 
         html2pdf().set({
             margin: 10,
@@ -814,7 +830,7 @@ window.generatePDFInventory = async function() {
             html2canvas: { scale: 2 },
             jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
         }).from(element).save().then(() => {
-            element.style.display = 'none'; // Hide again after download
+            element.style.display = 'none'; 
             hideLoader();
         });
 
@@ -824,7 +840,6 @@ window.generatePDFInventory = async function() {
         alert("Failed to generate PDF inventory report.");
     }
 }
-
 
 // --- INSPECTOR MODAL & DELETE LOGIC ---
 let currentOpenDoc = null; 
