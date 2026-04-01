@@ -13,7 +13,7 @@
 
     <div id="global-loader">
         <div class="spinner"></div>
-        <div class="loader-text">Decrypting & Syncing Data...</div>
+        <div class="loader-text">Syncing data...</div>
     </div>
 
     <div id="login-screen">
@@ -22,12 +22,10 @@
             <p style="color: var(--header-p); margin-bottom: 20px;">Authorized Personnel Only</p>
             <input type="email" id="login-email" placeholder="Email Address" required>
             <input type="password" id="login-password" placeholder="Password" required>
-            
-            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; margin-bottom: 10px; width: 100%;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; width: 100%;">
                 <input type="checkbox" id="login-remember" style="width: auto; margin: 0;" checked>
                 <label for="login-remember" style="font-size: 0.9rem; color: var(--text-color);">Stay Logged In</label>
             </div>
-
             <button id="login-btn">Secure Login</button>
             <p id="login-error" style="color: #d9534f; margin-top: 15px; display: none;">Invalid credentials.</p>
         </div>
