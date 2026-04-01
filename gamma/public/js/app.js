@@ -18,6 +18,7 @@ const db = initializeFirestore(app, {
   localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
 });
 const storage = getStorage(app);
+let calendar; // Global calendar instance
 
 // --- THEME LOGIC ---
 function initTheme() {
@@ -30,7 +31,6 @@ function initTheme() {
         updateThemeButton('dark');
     }
 }
-
 window.toggleTheme = function() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -38,12 +38,9 @@ window.toggleTheme = function() {
     localStorage.setItem('theme', newTheme);
     updateThemeButton(newTheme);
 }
-
 function updateThemeButton(theme) {
     const btn = document.getElementById('theme-btn');
-    if (btn) {
-        btn.innerHTML = theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
-    }
+    if (btn) btn.innerHTML = theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
 }
 initTheme(); 
 
@@ -68,7 +65,6 @@ function setupEventListeners() {
             const fileInput = document.getElementById('eq-cert');
             const file = fileInput.files[0];
             const certUrl = file ? await uploadFile(file, 'equipment_certs') : null;
-
             const data = {
                 type: document.getElementById('eq-type').value,
                 serial_number: document.getElementById('eq-serial').value,
@@ -80,6 +76,7 @@ function setupEventListeners() {
             equipmentForm.reset();
             await fetchData('equipment', 'equipment-list');
             updateDashboard();
+            renderCalendar(); // Refresh calendar events
         });
     }
 
@@ -90,7 +87,6 @@ function setupEventListeners() {
             const fileInput = document.getElementById('src-cert');
             const file = fileInput.files[0];
             const certUrl = file ? await uploadFile(file, 'source_certs') : null;
-
             const data = {
                 serial_number: document.getElementById('src-serial').value,
                 isotope: document.getElementById('src-isotope').value,
@@ -124,6 +120,7 @@ function setupEventListeners() {
             camerasForm.reset();
             await fetchData('cameras', 'cameras-list');
             updateDashboard();
+            renderCalendar();
         });
     }
 
@@ -144,6 +141,38 @@ function setupEventListeners() {
             personnelForm.reset();
             await fetchData('personnel', 'personnel-list');
             updateDashboard();
+            renderCalendar();
+        });
+    }
+
+    const evalForm = document.getElementById('eval-form');
+    if (evalForm) {
+        evalForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                eval_date: document.getElementById('ev-date').value,
+                radiographer_evaluated: document.getElementById('ev-rad').value,
+                evaluator: document.getElementById('ev-evaluator').value,
+                duties_performed: document.getElementById('ev-duties').value,
+                comments: document.getElementById('ev-comments').value,
+                checklist: {
+                    followed_procedures: document.getElementById('ev-c1').checked,
+                    emergency_knowledge: document.getElementById('ev-c2').checked,
+                    instrument_checks: document.getElementById('ev-c3').checked,
+                    instrument_use: document.getElementById('ev-c4').checked,
+                    dosimetry_use: document.getElementById('ev-c5').checked,
+                    pri_checks: document.getElementById('ev-c6').checked,
+                    key_control: document.getElementById('ev-c7').checked,
+                    boundary_control: document.getElementById('ev-c8').checked,
+                    alara_used: document.getElementById('ev-c9').checked,
+                    logs_completed: document.getElementById('ev-c10').checked
+                },
+                timestamp: new Date().toISOString()
+            };
+            await addData('field_evaluations', data);
+            evalForm.reset();
+            await fetchData('field_evaluations', 'eval-list');
+            // Pro-tip: Submitting this should also ideally update the 'personnel' doc's last_eval_date!
         });
     }
 
@@ -155,13 +184,18 @@ function setupEventListeners() {
             const file = fileInput.files[0];
             const diagramUrl = file ? await uploadFile(file, 'work_plan_diagrams') : null;
 
+            const locType = document.getElementById('wp-loc-type').value;
+
             const data = {
                 job_number: document.getElementById('wp-job').value,
+                location_type: locType,
                 location: document.getElementById('wp-location').value,
                 planned_date: document.getElementById('wp-date').value,
                 source_id: document.getElementById('wp-source').value,
-                calculated_boundary_mr_hr: parseFloat(document.getElementById('wp-boundary').value),
                 collimator_used: document.getElementById('wp-collimator').checked,
+                calculated_boundary_mr_hr: locType === 'temporary' ? parseFloat(document.getElementById('wp-boundary').value) : 'N/A (PRI)',
+                pri_entrance_tested: locType === 'pri' ? document.getElementById('wp-pri-entrance').checked : 'N/A',
+                pri_alarm_tested: locType === 'pri' ? document.getElementById('wp-pri-alarm').checked : 'N/A',
                 chp_approval_status: 'Pending',
                 raso_approval_status: 'Pending',
                 created_at: new Date().toISOString(),
@@ -169,8 +203,29 @@ function setupEventListeners() {
             };
             await addData('work_plans', data);
             workPlansForm.reset();
+            togglePRI(); // Reset visual state
             await fetchData('work_plans', 'work-plans-list');
             updateDashboard();
+            renderCalendar();
+        });
+    }
+
+    const transportForm = document.getElementById('transport-form');
+    if (transportForm) {
+        transportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                transport_date: document.getElementById('tr-date').value,
+                camera_sn: document.getElementById('tr-camera').value,
+                destination: document.getElementById('tr-destination').value,
+                max_contact_reading: parseFloat(document.getElementById('tr-max-contact').value),
+                transport_index: parseFloat(document.getElementById('tr-ti').value),
+                over_water_transport: document.getElementById('tr-water').checked,
+                timestamp: new Date().toISOString()
+            };
+            await addData('transport_logs', data);
+            transportForm.reset();
+            await fetchData('transport_logs', 'transport-list');
         });
     }
 
@@ -218,7 +273,6 @@ function setupEventListeners() {
             const fileInput = document.getElementById('pj-doc');
             const file = fileInput.files[0];
             const docUrl = file ? await uploadFile(file, 'report_documents') : null;
-
             const data = {
                 completed_by: document.getElementById('pj-completed-by').value,
                 source_secured: document.getElementById('pj-source-secured').checked,
@@ -248,6 +302,7 @@ async function addData(collectionName, data) {
     }
 }
 
+// --- UI TOGGLES ---
 window.showSection = function(sectionId) {
     document.querySelectorAll('.module').forEach(el => {
         el.classList.remove('active');
@@ -258,8 +313,29 @@ window.showSection = function(sectionId) {
         target.classList.add('active');
         target.style.display = 'block';
     }
+    // FullCalendar needs to be told to render if its container was previously hidden
+    if(sectionId === 'calendar-view' && calendar) {
+        setTimeout(() => { calendar.render(); }, 100);
+    }
 }
 
+window.togglePRI = function() {
+    const locType = document.getElementById('wp-loc-type').value;
+    const tempWrapper = document.getElementById('wp-temp-wrapper');
+    const priWrapper = document.getElementById('wp-pri-wrapper');
+    
+    if(locType === 'pri') {
+        tempWrapper.style.display = 'none';
+        priWrapper.style.display = 'flex';
+        document.getElementById('wp-boundary').value = '';
+    } else {
+        tempWrapper.style.display = 'flex';
+        priWrapper.style.display = 'none';
+        calculateBoundary(); // Recalculate if they swap back
+    }
+}
+
+// Initialize Application
 window.showSection('dashboard');
 loadAllData();
 setupEventListeners();
@@ -271,22 +347,23 @@ async function loadAllData() {
         fetchData('sources', 'sources-list'),
         fetchData('cameras', 'cameras-list'),
         fetchData('personnel', 'personnel-list'), 
+        fetchData('field_evaluations', 'eval-list'),
         fetchData('work_plans', 'work-plans-list'),
+        fetchData('transport_logs', 'transport-list'),
         fetchData('dosimetry_logs', 'dosimetry-list'),
         fetchData('utilization_logs', 'utilization-list'),
         fetchData('post_job_reports', 'reports-list')
     ]);
     updateDashboard(); 
+    renderCalendar();
 }
 
 async function fetchData(collectionName, listId) {
     const ul = document.getElementById(listId);
     if (!ul) return;
-
     try {
         const querySnapshot = await getDocs(collection(db, collectionName));
         ul.innerHTML = '';
-
         if (querySnapshot.empty) {
             ul.innerHTML = `<li style="background: transparent; border: none;">No data found in ${collectionName.replace('_', ' ')}.</li>`;
             return;
@@ -308,9 +385,13 @@ async function fetchData(collectionName, listId) {
                 displayText = `${item.make_model} (SN: ${item.serial_number}) - Maint: ${item.annual_maintenance_date}`;
             } else if (collectionName === 'personnel') {
                 displayText = `${item.full_name} (Cert: ${item.cert_number}) - Eval: ${item.last_6mo_eval_date}`;
+            } else if (collectionName === 'field_evaluations') {
+                displayText = `${item.eval_date}: ${item.radiographer_evaluated} evaluated by ${item.evaluator}`;
             } else if (collectionName === 'work_plans') {
-                displayText = `Job ${item.job_number} - Location: ${item.location} on ${item.planned_date}`;
+                displayText = `Job ${item.job_number} - Location: ${item.location} (${item.location_type}) on ${item.planned_date}`;
                 docUrl = item.diagram_url;
+            } else if (collectionName === 'transport_logs') {
+                displayText = `${item.transport_date}: Camera ${item.camera_sn} to ${item.destination} (TI: ${item.transport_index})`;
             } else if (collectionName === 'dosimetry_logs') {
                 displayText = `${item.personnel_name} (Dosimeter: ${item.dosimeter_serial}) - ${item.initial_reading}mR to ${item.final_reading}mR`;
             } else if (collectionName === 'utilization_logs') {
@@ -368,10 +449,7 @@ function calculateBoundary() {
     const boundaryInput = document.getElementById('wp-boundary');
     const collimatorChecked = document.getElementById('wp-collimator').checked;
 
-    if(!sourceSelect || !sourceSelect.value) {
-        if(boundaryInput) boundaryInput.value = '';
-        return;
-    }
+    if(!sourceSelect || !sourceSelect.value || !boundaryInput) return;
 
     const selectedOption = sourceSelect.options[sourceSelect.selectedIndex];
     const activity = parseFloat(selectedOption.getAttribute('data-activity'));
@@ -390,7 +468,76 @@ function calculateBoundary() {
     boundaryInput.value = distanceFeet.toFixed(1); 
 }
 
-// --- COMMAND CENTER DASHBOARD (NOW WITH CAMERAS & PERSONNEL!) ---
+// --- FULLCALENDAR INTEGRATION ---
+async function renderCalendar() {
+    const calendarEl = document.getElementById('calendar');
+    if(!calendarEl) return;
+
+    let events = [];
+
+    try {
+        // 1. Plot Work Plans (Blue)
+        const wpSnap = await getDocs(collection(db, 'work_plans'));
+        wpSnap.forEach(doc => {
+            const data = doc.data();
+            if(data.planned_date) {
+                events.push({ title: `Job: ${data.job_number}`, start: data.planned_date, color: '#005A9C' });
+            }
+        });
+
+        // 2. Plot Equipment Calibrations (Orange)
+        const eqSnap = await getDocs(collection(db, 'equipment'));
+        eqSnap.forEach(doc => {
+            const data = doc.data();
+            if(data.calibration_due_date) {
+                events.push({ title: `Cal Due: ${data.serial_number}`, start: data.calibration_due_date, color: '#f0ad4e' });
+            }
+        });
+
+        // 3. Plot Camera Maintenance (Red)
+        const camSnap = await getDocs(collection(db, 'cameras'));
+        camSnap.forEach(doc => {
+            const data = doc.data();
+            if(data.annual_maintenance_date) {
+                // Add 1 year to the last maint date to get the DUE date
+                let due = new Date(data.annual_maintenance_date);
+                due.setFullYear(due.getFullYear() + 1);
+                events.push({ title: `Maint Due: Cam ${data.serial_number}`, start: due.toISOString().split('T')[0], color: '#d9534f' });
+            }
+        });
+
+        // 4. Plot Personnel Eval Expirations (Red)
+        const perSnap = await getDocs(collection(db, 'personnel'));
+        perSnap.forEach(doc => {
+            const data = doc.data();
+            if(data.last_6mo_eval_date) {
+                let due = new Date(data.last_6mo_eval_date);
+                due.setMonth(due.getMonth() + 6); // 6 months!
+                events.push({ title: `Eval Exp: ${data.full_name.split(' ')[0]}`, start: due.toISOString().split('T')[0], color: '#d9534f' });
+            }
+        });
+
+    } catch(err) {
+        console.error("Error loading calendar events:", err);
+    }
+
+    if(calendar) {
+        calendar.destroy(); // Clear old instance before re-rendering
+    }
+
+    calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,listWeek'
+        },
+        events: events,
+        height: 650
+    });
+}
+
+// --- COMMAND CENTER DASHBOARD ---
 window.updateDashboard = async function() {
     try {
         const wpSnap = await getDocs(collection(db, 'work_plans'));
@@ -410,7 +557,6 @@ window.updateDashboard = async function() {
         const thirtyDaysFromNow = new Date();
         thirtyDaysFromNow.setDate(today.getDate() + 30);
 
-        // 1. Check Equipment Calibration
         const eqSnap = await getDocs(collection(db, 'equipment'));
         eqSnap.forEach(doc => {
             const eq = doc.data();
@@ -426,7 +572,6 @@ window.updateDashboard = async function() {
             }
         });
 
-        // 2. Check Source Leak Tests (182 days)
         srcSnap.forEach(doc => {
             const src = doc.data();
             if (src.last_leak_test_date) {
@@ -442,7 +587,6 @@ window.updateDashboard = async function() {
             }
         });
 
-        // 3. Check Camera Maintenance & DU Leak Test (365 days)
         const camSnap = await getDocs(collection(db, 'cameras'));
         camSnap.forEach(doc => {
             const cam = doc.data();
@@ -464,7 +608,6 @@ window.updateDashboard = async function() {
             }
         });
 
-        // 4. Check Personnel 6-Month Evals (182 days) & Drills
         const perSnap = await getDocs(collection(db, 'personnel'));
         perSnap.forEach(doc => {
             const per = doc.data();
@@ -570,11 +713,9 @@ window.generateInventory = async function() {
             </body>
             </html>`;
 
-        // Open in new window
         const reportWindow = window.open('', '_blank');
         reportWindow.document.write(reportHtml);
         reportWindow.document.close();
-
     } catch (err) {
         console.error("Error generating inventory:", err);
         alert("Failed to generate inventory report.");
@@ -603,7 +744,14 @@ window.openModal = async function(collectionName, docId) {
             
             let html = '';
             for (const [key, value] of Object.entries(data)) {
-                if(key.includes('_url') && value) {
+                if(key === 'checklist' && typeof value === 'object') {
+                    // Make the nested eval checklist look nice
+                    html += `<h4>Evaluation Checklist:</h4><ul>`;
+                    for(const [checkKey, checkVal] of Object.entries(value)) {
+                        html += `<li>${checkKey.replace('_', ' ')}: <b>${checkVal ? 'PASS' : 'FAIL'}</b></li>`;
+                    }
+                    html += `</ul>`;
+                } else if(key.includes('_url') && value) {
                     html += `<p><strong>${key.replace('_url', '').toUpperCase()}:</strong> <a href="${value}" target="_blank" style="color: #005A9C;">View Uploaded File</a></p>`;
                 } else {
                     html += `<p><strong>${key.replace(/_/g, ' ').toUpperCase()}:</strong> ${value}</p>`;
@@ -642,19 +790,19 @@ window.executeDelete = async function() {
         
         let listId = '';
         if(currentOpenDoc.collection === 'equipment') listId = 'equipment-list';
-        if(currentOpenDoc.collection === 'sources') {
-            listId = 'sources-list';
-            populateSourceDropdown(); 
-        }
+        if(currentOpenDoc.collection === 'sources') { listId = 'sources-list'; populateSourceDropdown(); }
         if(currentOpenDoc.collection === 'cameras') listId = 'cameras-list';
         if(currentOpenDoc.collection === 'personnel') listId = 'personnel-list';
+        if(currentOpenDoc.collection === 'field_evaluations') listId = 'eval-list';
         if(currentOpenDoc.collection === 'work_plans') listId = 'work-plans-list';
+        if(currentOpenDoc.collection === 'transport_logs') listId = 'transport-list';
         if(currentOpenDoc.collection === 'dosimetry_logs') listId = 'dosimetry-list';
         if(currentOpenDoc.collection === 'utilization_logs') listId = 'utilization-list';
         if(currentOpenDoc.collection === 'post_job_reports') listId = 'reports-list';
         
         await fetchData(currentOpenDoc.collection, listId);
         updateDashboard();
+        renderCalendar();
     } catch (err) {
         alert("Error deleting record.");
         console.error("Deletion Error:", err);
@@ -668,7 +816,6 @@ window.filterRecords = function() {
     
     allRecords.forEach(record => {
         if(record.textContent.includes("No data found")) return;
-        
         if (record.textContent.toLowerCase().includes(searchInput)) {
             record.style.display = '';
         } else {
@@ -688,7 +835,17 @@ window.exportCSV = async function(collectionName) {
 
         const dataArray = [];
         querySnapshot.forEach((doc) => {
-            dataArray.push({ database_id: doc.id, ...doc.data() });
+            // Flatten nested objects (like the eval checklist) for CSV export
+            let docData = doc.data();
+            let flatData = { database_id: doc.id };
+            for(const key in docData) {
+                if(typeof docData[key] === 'object' && docData[key] !== null) {
+                    for(const subKey in docData[key]) flatData[`${key}_${subKey}`] = docData[key][subKey];
+                } else {
+                    flatData[key] = docData[key];
+                }
+            }
+            dataArray.push(flatData);
         });
 
         const headers = Object.keys(dataArray[0]);
