@@ -378,27 +378,40 @@ window.closeModal = function() {
     currentOpenDoc = null;
 }
 
-// Wire up the Delete button
-document.getElementById('modal-delete-btn').addEventListener('click', async () => {
+// 1. Wire up the Inspector's Delete button to open the Custom Warning Modal
+document.getElementById('modal-delete-btn').addEventListener('click', () => {
+    if(!currentOpenDoc) return;
+    document.getElementById('delete-confirm-modal').style.display = 'flex';
+});
+
+// 2. Function to close JUST the warning modal if they change their mind
+window.closeConfirmModal = function() {
+    document.getElementById('delete-confirm-modal').style.display = 'none';
+}
+
+// 3. Function to actually execute the deletion
+window.executeDelete = async function() {
     if(!currentOpenDoc) return;
     
-    const confirmDelete = confirm("Are you sure you want to delete this record? This cannot be undone.");
-    if(confirmDelete) {
-        try {
-            await deleteDoc(doc(db, currentOpenDoc.collection, currentOpenDoc.id));
-            closeModal();
-            // Refresh the specific list we just deleted from
-            let listId = '';
-            if(currentOpenDoc.collection === 'equipment') listId = 'equipment-list';
-            if(currentOpenDoc.collection === 'sources') listId = 'sources-list';
-            if(currentOpenDoc.collection === 'work_plans') listId = 'work-plans-list';
-            if(currentOpenDoc.collection === 'dosimetry_logs') listId = 'dosimetry-list';
-            if(currentOpenDoc.collection === 'post_job_reports') listId = 'reports-list';
-            
-            await fetchData(currentOpenDoc.collection, listId);
-        } catch (err) {
-            alert("Error deleting record.");
-            console.error(err);
-        }
+    try {
+        // Delete from Firestore
+        await deleteDoc(doc(db, currentOpenDoc.collection, currentOpenDoc.id));
+        
+        // Hide both modals
+        closeConfirmModal();
+        closeModal();
+        
+        // Refresh the specific list we just deleted from
+        let listId = '';
+        if(currentOpenDoc.collection === 'equipment') listId = 'equipment-list';
+        if(currentOpenDoc.collection === 'sources') listId = 'sources-list';
+        if(currentOpenDoc.collection === 'work_plans') listId = 'work-plans-list';
+        if(currentOpenDoc.collection === 'dosimetry_logs') listId = 'dosimetry-list';
+        if(currentOpenDoc.collection === 'post_job_reports') listId = 'reports-list';
+        
+        await fetchData(currentOpenDoc.collection, listId);
+    } catch (err) {
+        alert("Error deleting record. Check console for details.");
+        console.error("Deletion Error:", err);
     }
-});
+}
