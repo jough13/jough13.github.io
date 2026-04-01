@@ -1,6 +1,7 @@
 // public/js/app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, addDoc, doc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+// UPDATED: Imported updateDoc to support editing!
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, addDoc, doc, getDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
@@ -125,6 +126,116 @@ if (logoutBtn) {
     logoutBtn.addEventListener('click', () => { signOut(auth); });
 }
 
+// --- EDIT & CLONE ENGINE ---
+let editModeId = null;
+let editModeCollection = null;
+
+const formMaps = {
+    'equipment': { formId: 'equipment-form', fields: { type: 'eq-type', serial_number: 'eq-serial', calibration_due_date: 'eq-cal-date' } },
+    'sources': { formId: 'sources-form', fields: { serial_number: 'src-serial', isotope: 'src-isotope', initial_activity_curies: 'src-activity', activity_date: 'src-date', last_leak_test_date: 'src-leak-test' } },
+    'cameras': { formId: 'cameras-form', fields: { make_model: 'cam-model', serial_number: 'cam-serial', du_leak_test_date: 'cam-du-date', annual_maintenance_date: 'cam-maint-date' } },
+    'personnel': { formId: 'personnel-form', fields: { full_name: 'per-name', cert_number: 'per-cert', trust_authorization_date: 'per-trust', hazmat_expiration: 'per-hazmat', last_6mo_eval_date: 'per-eval', last_annual_drill_date: 'per-drill' } },
+    'field_evaluations': { formId: 'eval-form', fields: { eval_date: 'ev-date', radiographer_evaluated: 'ev-rad', evaluator: 'ev-evaluator', duties_performed: 'ev-duties', comments: 'ev-comments' }, nested: { checklist: { followed_procedures: 'ev-c1', emergency_knowledge: 'ev-c2', instrument_checks: 'ev-c3', instrument_use: 'ev-c4', dosimetry_use: 'ev-c5', pri_checks: 'ev-c6', key_control: 'ev-c7', boundary_control: 'ev-c8', alara_used: 'ev-c9', logs_completed: 'ev-c10' } } },
+    'work_plans': { formId: 'work-plans-form', fields: { job_number: 'wp-job', location_type: 'wp-loc-type', location: 'wp-location', planned_date: 'wp-date', source_id: 'wp-source', collimator_used: 'wp-collimator', calculated_boundary_mr_hr: 'wp-boundary', pri_entrance_tested: 'wp-pri-entrance', pri_alarm_tested: 'wp-pri-alarm' } },
+    'transport_logs': { formId: 'transport-form', fields: { transport_date: 'tr-date', camera_sn: 'tr-camera', destination: 'tr-destination', max_contact_reading: 'tr-max-contact', transport_index: 'tr-ti', over_water_transport: 'tr-water' } },
+    'dosimetry_logs': { formId: 'dosimetry-form', fields: { personnel_name: 'dl-name', dosimeter_serial: 'dl-serial', ratemeter_check_performed: 'dl-ratemeter-check', initial_reading: 'dl-initial', final_reading: 'dl-final' } },
+    'utilization_logs': { formId: 'utilization-form', fields: { job_reference: 'ul-job', radiographer_in_charge: 'ul-ric', participants: 'ul-participants', survey_meter_serial: 'ul-meter', meter_response_checked: 'ul-response', max_survey_reading: 'ul-max-survey' } },
+    'post_job_reports': { formId: 'reports-form', fields: { completed_by: 'pj-completed-by', source_secured: 'pj-source-secured', vault_verified: 'pj-vault-verified' } }
+};
+
+window.editRecord = function() {
+    if(!currentOpenDoc || !currentOpenDoc.fullData) return;
+    populateFormForEditClone(currentOpenDoc, true);
+}
+
+window.cloneRecord = function() {
+    if(!currentOpenDoc || !currentOpenDoc.fullData) return;
+    populateFormForEditClone(currentOpenDoc, false);
+}
+
+function populateFormForEditClone(docObj, isEdit) {
+    const { collection: col, fullData: data, id } = docObj;
+    const map = formMaps[col];
+    if(!map) return;
+
+    // Navigate to correct page
+    const sectionMap = {
+        'equipment': 'equipment', 'sources': 'equipment', 'cameras': 'equipment',
+        'personnel': 'personnel', 'field_evaluations': 'personnel',
+        'work_plans': 'planning',
+        'transport_logs': 'execution', 'dosimetry_logs': 'execution', 'utilization_logs': 'execution',
+        'post_job_reports': 'reporting'
+    };
+    window.showSection(sectionMap[col]);
+    closeModal();
+
+    // Lock the app into Edit Mode if necessary
+    if(isEdit) {
+        editModeId = id;
+        editModeCollection = col;
+    } else {
+        editModeId = null;
+        editModeCollection = null;
+    }
+
+    // Adjust the button to give the user visual feedback
+    const form = document.getElementById(map.formId);
+    const btn = form.querySelector('button[type="submit"]');
+    if(!btn.dataset.originalText) btn.dataset.originalText = btn.textContent;
+    btn.textContent = isEdit ? '💾 Update Record' : '📄 Create Clone';
+    btn.style.backgroundColor = isEdit ? '#f0ad4e' : '#5bc0de';
+    btn.style.color = isEdit ? '#333' : '#fff';
+
+    // Populate all standard fields
+    for (const [dbKey, htmlId] of Object.entries(map.fields)) {
+        const el = document.getElementById(htmlId);
+        if(el && data[dbKey] !== undefined) {
+            if(el.type === 'checkbox') el.checked = data[dbKey];
+            else el.value = data[dbKey];
+        }
+    }
+
+    // Populate complex nested objects (like the 6-month eval checklist)
+    if(map.nested) {
+        for (const [nestedObjKey, nestedMap] of Object.entries(map.nested)) {
+            if(data[nestedObjKey]) {
+                for (const [dbKey, htmlId] of Object.entries(nestedMap)) {
+                    const el = document.getElementById(htmlId);
+                    if(el && data[nestedObjKey][dbKey] !== undefined) {
+                        if(el.type === 'checkbox') el.checked = data[nestedObjKey][dbKey];
+                        else el.value = data[nestedObjKey][dbKey];
+                    }
+                }
+            }
+        }
+    }
+
+    if(col === 'work_plans') togglePRI();
+
+    // Autoscroll down to the form
+    setTimeout(() => {
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        form.style.transition = 'box-shadow 0.5s';
+        form.style.boxShadow = isEdit ? '0 0 15px #f0ad4e' : '0 0 15px #5bc0de';
+        setTimeout(() => { form.style.boxShadow = 'none'; }, 2000);
+    }, 300);
+}
+
+function resetFormButton(collectionName) {
+    const map = formMaps[collectionName];
+    if(map) {
+        const form = document.getElementById(map.formId);
+        const btn = form.querySelector('button[type="submit"]');
+        if(btn && btn.dataset.originalText) {
+            btn.textContent = btn.dataset.originalText;
+            btn.style.backgroundColor = '';
+            btn.style.color = '';
+        }
+        form.style.boxShadow = 'none';
+    }
+}
+
+
 // --- APP INITIALIZATION ---
 async function startApplication() {
     window.showSection('dashboard');
@@ -147,6 +258,26 @@ async function uploadFile(file, folderPath) {
 }
 
 function setupEventListeners() {
+    // Add logic so if a user clicks 'Edit', but then hits 'Reset' or cancels, the UI goes back to normal
+    Object.values(formMaps).forEach(map => {
+        const form = document.getElementById(map.formId);
+        if(form) {
+            form.addEventListener('reset', () => {
+                if (editModeId && editModeCollection && formMaps[editModeCollection] && formMaps[editModeCollection].formId === map.formId) {
+                    editModeId = null;
+                    editModeCollection = null;
+                }
+                const btn = form.querySelector('button[type="submit"]');
+                if(btn && btn.dataset.originalText) {
+                    btn.textContent = btn.dataset.originalText;
+                    btn.style.backgroundColor = '';
+                    btn.style.color = '';
+                }
+                form.style.boxShadow = 'none';
+            });
+        }
+    });
+
     const equipmentForm = document.getElementById('equipment-form');
     if (equipmentForm) {
         equipmentForm.addEventListener('submit', async (e) => {
@@ -285,7 +416,6 @@ function setupEventListeners() {
 
             const locType = document.getElementById('wp-loc-type').value;
 
-            // UPDATED: Changed chp_approval_status to rso_approval_status
             const data = {
                 job_number: document.getElementById('wp-job').value,
                 location_type: locType,
@@ -296,7 +426,7 @@ function setupEventListeners() {
                 calculated_boundary_mr_hr: locType === 'temporary' ? parseFloat(document.getElementById('wp-boundary').value) : 'N/A (PRI)',
                 pri_entrance_tested: locType === 'pri' ? document.getElementById('wp-pri-entrance').checked : 'N/A',
                 pri_alarm_tested: locType === 'pri' ? document.getElementById('wp-pri-alarm').checked : 'N/A',
-                rso_approval_status: 'Pending',
+                chp_approval_status: 'Pending',
                 raso_approval_status: 'Pending',
                 created_at: new Date().toISOString(),
                 diagram_url: diagramUrl
@@ -402,12 +532,38 @@ function setupEventListeners() {
     if(collimatorCheck) collimatorCheck.addEventListener('change', calculateBoundary);
 }
 
+// UPDATED: This function now smartly routes requests to either Create (addDoc) or Update (updateDoc)
 async function addData(collectionName, data) {
     try {
-        await addDoc(collection(db, collectionName), data);
+        if (editModeId && editModeCollection === collectionName) {
+            
+            // If they didn't upload a new file, grab the old file URL from the database so it isn't erased
+            const existingDoc = await getDoc(doc(db, collectionName, editModeId));
+            if(existingDoc.exists()) {
+                const existingData = existingDoc.data();
+                for (const key in data) {
+                    if (key.includes('_url') && data[key] === null) {
+                        data[key] = existingData[key];
+                    }
+                }
+            }
+
+            // Execute the update
+            await updateDoc(doc(db, collectionName, editModeId), data);
+            
+            // Turn off edit mode
+            editModeId = null;
+            editModeCollection = null;
+            resetFormButton(collectionName);
+            
+        } else {
+            // Standard Create/Clone behavior
+            if(!data.timestamp) data.timestamp = new Date().toISOString();
+            await addDoc(collection(db, collectionName), data);
+        }
     } catch (err) {
-        console.error(`Error adding document:`, err);
-        alert(`Failed to save record. Note: If offline, this will save locally and sync when connection returns!`);
+        console.error(`Error saving document:`, err);
+        alert(`Failed to save record.`);
     }
 }
 
@@ -846,15 +1002,11 @@ window.generatePDFInventory = async function() {
     }
 }
 
-// --- UPDATED: INSPECTOR MODAL WITH NEW SPINNER AND SOURCE LOOKUP ---
-let currentOpenDoc = null; 
-
 window.openModal = async function(collectionName, docId) {
     const modal = document.getElementById('inspector-modal');
     const modalBody = document.getElementById('modal-body');
     const title = document.getElementById('modal-title');
     
-    // 1. Show the new mini spinner while fetching
     modalBody.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; padding: 20px;"><div class="mini-spinner"></div><span style="font-weight: bold; color: var(--nav-bg);">Fetching database record...</span></div>';
     title.textContent = `${collectionName.replace('_', ' ').toUpperCase()} RECORD`;
     modal.style.display = 'flex';
@@ -865,15 +1017,11 @@ window.openModal = async function(collectionName, docId) {
         
         if (docSnap.exists()) {
             const data = docSnap.data();
-            currentOpenDoc = { collection: collectionName, id: docId };
+            currentOpenDoc = { collection: collectionName, id: docId, fullData: data };
             
             let html = '';
             for (const [key, value] of Object.entries(data)) {
-                
-                // We format the keys so they look clean and legible
                 let displayKey = key.replace(/_/g, ' ').toUpperCase();
-                
-                // Automatically fix any legacy "CHP Approval Status" entries so the UI stays uniform
                 if (key === 'chp_approval_status') displayKey = 'RSO APPROVAL STATUS'; 
                 
                 if (key === 'checklist' && typeof value === 'object') {
@@ -882,23 +1030,17 @@ window.openModal = async function(collectionName, docId) {
                         html += `<li>${checkKey.replace('_', ' ')}: <b>${checkVal ? 'PASS' : 'FAIL'}</b></li>`;
                     }
                     html += `</ul>`;
-                
-                // 2. The Magic Source ID Lookup!
                 } else if (key === 'source_id') {
                     let sourceDisplay = value;
-                    // Wait, hold on—if it's not deleted, let's grab the actual serial number!
                     if (value && value !== 'DELETED') {
                         try {
                             const srcSnap = await getDoc(doc(db, 'sources', value));
                             if (srcSnap.exists()) {
                                 sourceDisplay = `${srcSnap.data().serial_number} (${srcSnap.data().isotope})`;
                             }
-                        } catch(e) {
-                            console.log("Could not resolve source serial number from ID.");
-                        }
+                        } catch(e) { console.log("Could not resolve source."); }
                     }
                     html += `<p><strong>SOURCE:</strong> ${sourceDisplay}</p>`;
-                
                 } else if(key.includes('_url') && value) {
                     html += `<p><strong>${displayKey.replace(' URL', '')}:</strong> <a href="${value}" target="_blank" style="color: #005A9C;">View Uploaded File</a></p>`;
                 } else {
@@ -960,7 +1102,6 @@ window.executeDelete = async function() {
     }
 }
 
-// --- SEARCH & FILTER LOGIC ---
 window.filterRecords = function() {
     const searchInput = document.getElementById('global-search').value.toLowerCase();
     const allRecords = document.querySelectorAll('ul[id$="-list"] li');
@@ -975,7 +1116,6 @@ window.filterRecords = function() {
     });
 }
 
-// --- CSV EXPORT LOGIC ---
 window.exportCSV = async function(collectionName) {
     try {
         const querySnapshot = await getDocs(collection(db, collectionName));
