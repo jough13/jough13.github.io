@@ -41,15 +41,20 @@ nav ul {
 
 nav ul li a {
     color: white;
+    background-color: #00447A; /* Gives the button a distinct shape */
     text-decoration: none;
     font-weight: bold;
-    padding: 8px 15px;
+    padding: 10px 20px;
     border-radius: 5px;
-    transition: background-color 0.3s;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Adds depth */
+    display: inline-block;
 }
 
 nav ul li a:hover {
-    background-color: #003F6C;
+    background-color: #002244; /* Darkens on hover */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4); /* Shadow expands on hover */
+    transform: translateY(-2px); /* Button 'lifts' slightly when hovered */
 }
 
 main {
