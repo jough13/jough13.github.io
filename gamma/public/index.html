@@ -41,6 +41,7 @@
             <div class="search-container">
                 <input type="text" id="global-search" placeholder="Search records..." onkeyup="filterRecords()">
                 <button type="button" class="theme-toggle" onclick="toggleTheme()" id="theme-btn">🌙 Dark Mode</button>
+                <span id="user-display" style="color: #ccc; font-size: 0.9rem; font-weight: bold; margin-left: 10px;"></span>
                 <button type="button" class="logout-btn" id="logout-btn">Log Out</button>
             </div>
         </nav>
@@ -484,7 +485,7 @@
             <div id="modal-body"></div>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="closeModal()">Close</button>
-                <button id="modal-delete-btn" class="btn-danger">Delete Record</button>
+                <button id="modal-delete-btn" class="btn-danger admin-only">Delete Record</button>
             </div>
         </div>
     </div>
