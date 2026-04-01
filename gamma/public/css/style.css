@@ -57,6 +57,17 @@ nav ul li a:hover {
     transform: translateY(-2px); /* Button 'lifts' slightly when hovered */
 }
 
+/* Fix to prevent nav items from inheriting the white data-card background */
+nav ul li {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+nav ul li:hover {
+    background-color: transparent;
+}
+
 main {
     padding: 20px;
     max-width: 1200px;
