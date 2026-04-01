@@ -1,6 +1,7 @@
 // public/js/app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
 import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCxSXC52M4M176X_U_s5z6tDZsJbyXCdkM",
@@ -15,6 +16,22 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
+
+// Helper function to upload files to Firebase Storage
+async function uploadFile(file, folderPath) {
+    if (!file) return null;
+    try {
+        const fileRef = ref(storage, `${folderPath}/${Date.now()}_${file.name}`);
+        const snapshot = await uploadBytes(fileRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        return downloadURL;
+    } catch (error) {
+        console.error("Error uploading file:", error);
+        alert("Failed to upload file. Check console.");
+        return null;
+    }
+}
 
 function setupEventListeners() {
     // 1. Equipment Form
@@ -22,11 +39,16 @@ function setupEventListeners() {
     if (equipmentForm) {
         equipmentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const fileInput = document.getElementById('eq-cert');
+            const file = fileInput.files[0];
+            const certUrl = file ? await uploadFile(file, 'equipment_certs') : null;
+
             const data = {
                 type: document.getElementById('eq-type').value,
                 serial_number: document.getElementById('eq-serial').value,
                 calibration_due_date: document.getElementById('eq-cal-date').value,
-                maintenance_status: 'Operational'
+                maintenance_status: 'Operational',
+                certificate_url: certUrl
             };
             await addData('equipment', data);
             equipmentForm.reset();
@@ -39,13 +61,18 @@ function setupEventListeners() {
     if (sourcesForm) {
         sourcesForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const fileInput = document.getElementById('src-cert');
+            const file = fileInput.files[0];
+            const certUrl = file ? await uploadFile(file, 'source_certs') : null;
+
             const data = {
                 serial_number: document.getElementById('src-serial').value,
                 isotope: document.getElementById('src-isotope').value,
                 initial_activity_curies: parseFloat(document.getElementById('src-activity').value),
                 activity_date: document.getElementById('src-date').value,
                 current_location: 'Storage Vault',
-                status: 'Stored'
+                status: 'Stored',
+                certificate_url: certUrl
             };
             await addData('sources', data);
             sourcesForm.reset();
@@ -58,6 +85,10 @@ function setupEventListeners() {
     if (workPlansForm) {
         workPlansForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const fileInput = document.getElementById('wp-diagram');
+            const file = fileInput.files[0];
+            const diagramUrl = file ? await uploadFile(file, 'work_plan_diagrams') : null;
+
             const data = {
                 job_number: document.getElementById('wp-job').value,
                 location: document.getElementById('wp-location').value,
@@ -66,7 +97,8 @@ function setupEventListeners() {
                 collimator_used: document.getElementById('wp-collimator').checked,
                 chp_approval_status: 'Pending',
                 raso_approval_status: 'Pending',
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                diagram_url: diagramUrl
             };
             await addData('work_plans', data);
             workPlansForm.reset();
@@ -97,12 +129,17 @@ function setupEventListeners() {
     if (reportsForm) {
         reportsForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const fileInput = document.getElementById('pj-doc');
+            const file = fileInput.files[0];
+            const docUrl = file ? await uploadFile(file, 'report_documents') : null;
+
             const data = {
                 completed_by: document.getElementById('pj-completed-by').value,
                 source_secured: document.getElementById('pj-source-secured').checked,
                 vault_verified: document.getElementById('pj-vault-verified').checked,
                 daily_log_generated: document.getElementById('pj-daily-log').checked,
-                completion_time: new Date().toISOString()
+                completion_time: new Date().toISOString(),
+                document_url: docUrl
             };
             await addData('post_job_reports', data);
             reportsForm.reset();
@@ -180,17 +217,23 @@ async function fetchData(collectionName, listId) {
 
             let displayText = '';
 
+            let docUrl = null;
+
             if (collectionName === 'equipment') {
                 displayText = `${item.type?.toUpperCase() || 'UNKNOWN TYPE'} - Serial: ${item.serial_number} (Cal Due: ${item.calibration_due_date})`;
+                docUrl = item.certificate_url;
             } else if (collectionName === 'sources') {
                 displayText = `${item.isotope} (Serial: ${item.serial_number}) - Activity: ${item.initial_activity_curies} Ci on ${item.activity_date}`;
+                docUrl = item.certificate_url;
             } else if (collectionName === 'work_plans') {
                 displayText = `Job ${item.job_number} - Location: ${item.location} on ${item.planned_date}`;
+                docUrl = item.diagram_url;
             } else if (collectionName === 'dosimetry_logs') {
                 displayText = `${item.personnel_name} (Dosimeter: ${item.dosimeter_serial}) - ${item.initial_reading}mR to ${item.final_reading}mR`;
             } else if (collectionName === 'post_job_reports') {
                 const date = new Date(item.completion_time).toLocaleDateString();
                 displayText = `Report by ${item.completed_by} on ${date} (Source Secured: ${item.source_secured ? 'Yes' : 'No'})`;
+                docUrl = item.document_url;
             } else {
                 // Fallback
                 const values = Object.values(item).slice(0, 3).join(' - ');
@@ -198,6 +241,17 @@ async function fetchData(collectionName, listId) {
             }
 
             li.textContent = displayText;
+
+            if (docUrl) {
+                const link = document.createElement('a');
+                link.href = docUrl;
+                link.target = "_blank";
+                link.textContent = " [View Document]";
+                link.style.fontSize = "0.85em";
+                link.style.color = "#005A9C";
+                li.appendChild(link);
+            }
+
             ul.appendChild(li);
         });
     } catch (err) {
