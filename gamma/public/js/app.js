@@ -21,7 +21,7 @@ const db = initializeFirestore(app, {
 const storage = getStorage(app);
 const auth = getAuth(app); 
 
-// --- GLOBAL VARIABLES (Attached to Window to prevent Module Reference Errors) ---
+// --- GLOBAL VARIABLES ---
 window.calendar = null; 
 window.isotopeChart = null; 
 window.currentOpenDoc = null; 
@@ -985,13 +985,11 @@ window.generatePDFInventory = async function() {
     }
 }
 
-// --- INSPECTOR MODAL & SOURCE LOOKUP ---
 window.openModal = async function(collectionName, docId) {
     const modal = document.getElementById('inspector-modal');
     const modalBody = document.getElementById('modal-body');
     const title = document.getElementById('modal-title');
     
-    // Display the mini-spinner while fetching
     modalBody.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; padding: 20px;"><div class="mini-spinner"></div><span style="font-weight: bold; color: var(--nav-bg);">Fetching database record...</span></div>';
     title.textContent = `${collectionName.replace('_', ' ').toUpperCase()} RECORD`;
     modal.style.display = 'flex';
@@ -1007,8 +1005,6 @@ window.openModal = async function(collectionName, docId) {
             let html = '';
             for (const [key, value] of Object.entries(data)) {
                 let displayKey = key.replace(/_/g, ' ').toUpperCase();
-                
-                // Unify display logic so older records with 'chp_approval_status' show as RSO
                 if (key === 'chp_approval_status') displayKey = 'RSO APPROVAL STATUS'; 
                 
                 if (key === 'checklist' && typeof value === 'object') {
@@ -1017,8 +1013,6 @@ window.openModal = async function(collectionName, docId) {
                         html += `<li>${checkKey.replace('_', ' ')}: <b>${checkVal ? 'PASS' : 'FAIL'}</b></li>`;
                     }
                     html += `</ul>`;
-                
-                // Swap the ugly database ID for a readable Serial Number
                 } else if (key === 'source_id') {
                     let sourceDisplay = value;
                     if (value && value !== 'DELETED') {
@@ -1032,9 +1026,7 @@ window.openModal = async function(collectionName, docId) {
                         } catch(e) { console.log("Could not resolve source."); }
                     }
                     html += `<p><strong>SOURCE:</strong> ${sourceDisplay}</p>`;
-                
-                // Gracefully handle files that were missing or skipped during upload
-                } else if (key.includes('_url')) {
+                } else if(key.includes('_url') && value) {
                     if (value && value !== 'null') {
                         html += `<p><strong>${displayKey.replace(' URL', '')}:</strong> <a href="${value}" target="_blank" style="color: #005A9C;">View Uploaded File</a></p>`;
                     } else {
@@ -1162,5 +1154,61 @@ window.exportCSV = async function(collectionName) {
     } catch (err) {
         console.error("CSV Export failed:", err);
         alert("Failed to generate CSV export.");
+    }
+}
+
+// --- RSO FULL SYSTEM BACKUP ---
+window.fullSystemBackup = async function() {
+    if (!auth.currentUser || auth.currentUser.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+        alert("Unauthorized. Only the RSO may perform a full system backup.");
+        return;
+    }
+
+    const collectionsToBackup = [
+        'equipment', 'sources', 'cameras', 'personnel', 'field_evaluations', 
+        'work_plans', 'transport_logs', 'dosimetry_logs', 'utilization_logs', 'post_job_reports'
+    ];
+    
+    const backupData = {
+        metadata: {
+            exported_by: auth.currentUser.email,
+            export_date: new Date().toISOString(),
+            version: "1.0"
+        },
+        database: {}
+    };
+
+    try {
+        showLoader();
+        for (const colName of collectionsToBackup) {
+            backupData.database[colName] = [];
+            const querySnapshot = await getDocs(collection(db, colName));
+            querySnapshot.forEach((doc) => {
+                backupData.database[colName].push({
+                    database_id: doc.id,
+                    ...doc.data()
+                });
+            });
+        }
+
+        const jsonString = JSON.stringify(backupData, null, 2);
+        
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        
+        const dateStr = new Date().toISOString().split('T')[0];
+        link.setAttribute("download", `Radiography_System_Backup_${dateStr}.json`);
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+    } catch (err) {
+        console.error("Backup failed:", err);
+        alert("Critical failure during system backup.");
+    } finally {
+        hideLoader();
     }
 }
