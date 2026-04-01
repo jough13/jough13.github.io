@@ -1,6 +1,5 @@
 // public/js/app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-// UPDATED: Imported updateDoc to support editing!
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, addDoc, doc, getDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
@@ -22,8 +21,12 @@ const db = initializeFirestore(app, {
 const storage = getStorage(app);
 const auth = getAuth(app); 
 
-let calendar; 
-let isotopeChart; 
+// --- GLOBAL VARIABLES (Attached to Window to prevent Module Reference Errors) ---
+window.calendar = null; 
+window.isotopeChart = null; 
+window.currentOpenDoc = null; 
+window.editModeId = null;
+window.editModeCollection = null;
 
 // --- LOADER LOGIC ---
 function showLoader() { 
@@ -52,7 +55,7 @@ window.toggleTheme = function() {
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
     updateThemeButton(newTheme);
-    if(isotopeChart) updateDashboard(); 
+    if(window.isotopeChart) updateDashboard(); 
 }
 function updateThemeButton(theme) {
     const btn = document.getElementById('theme-btn');
@@ -127,9 +130,6 @@ if (logoutBtn) {
 }
 
 // --- EDIT & CLONE ENGINE ---
-let editModeId = null;
-let editModeCollection = null;
-
 const formMaps = {
     'equipment': { formId: 'equipment-form', fields: { type: 'eq-type', serial_number: 'eq-serial', calibration_due_date: 'eq-cal-date' } },
     'sources': { formId: 'sources-form', fields: { serial_number: 'src-serial', isotope: 'src-isotope', initial_activity_curies: 'src-activity', activity_date: 'src-date', last_leak_test_date: 'src-leak-test' } },
@@ -144,13 +144,13 @@ const formMaps = {
 };
 
 window.editRecord = function() {
-    if(!currentOpenDoc || !currentOpenDoc.fullData) return;
-    populateFormForEditClone(currentOpenDoc, true);
+    if(!window.currentOpenDoc || !window.currentOpenDoc.fullData) return;
+    populateFormForEditClone(window.currentOpenDoc, true);
 }
 
 window.cloneRecord = function() {
-    if(!currentOpenDoc || !currentOpenDoc.fullData) return;
-    populateFormForEditClone(currentOpenDoc, false);
+    if(!window.currentOpenDoc || !window.currentOpenDoc.fullData) return;
+    populateFormForEditClone(window.currentOpenDoc, false);
 }
 
 function populateFormForEditClone(docObj, isEdit) {
@@ -158,7 +158,6 @@ function populateFormForEditClone(docObj, isEdit) {
     const map = formMaps[col];
     if(!map) return;
 
-    // Navigate to correct page
     const sectionMap = {
         'equipment': 'equipment', 'sources': 'equipment', 'cameras': 'equipment',
         'personnel': 'personnel', 'field_evaluations': 'personnel',
@@ -167,18 +166,16 @@ function populateFormForEditClone(docObj, isEdit) {
         'post_job_reports': 'reporting'
     };
     window.showSection(sectionMap[col]);
-    closeModal();
+    window.closeModal();
 
-    // Lock the app into Edit Mode if necessary
     if(isEdit) {
-        editModeId = id;
-        editModeCollection = col;
+        window.editModeId = id;
+        window.editModeCollection = col;
     } else {
-        editModeId = null;
-        editModeCollection = null;
+        window.editModeId = null;
+        window.editModeCollection = null;
     }
 
-    // Adjust the button to give the user visual feedback
     const form = document.getElementById(map.formId);
     const btn = form.querySelector('button[type="submit"]');
     if(!btn.dataset.originalText) btn.dataset.originalText = btn.textContent;
@@ -186,7 +183,6 @@ function populateFormForEditClone(docObj, isEdit) {
     btn.style.backgroundColor = isEdit ? '#f0ad4e' : '#5bc0de';
     btn.style.color = isEdit ? '#333' : '#fff';
 
-    // Populate all standard fields
     for (const [dbKey, htmlId] of Object.entries(map.fields)) {
         const el = document.getElementById(htmlId);
         if(el && data[dbKey] !== undefined) {
@@ -195,7 +191,6 @@ function populateFormForEditClone(docObj, isEdit) {
         }
     }
 
-    // Populate complex nested objects (like the 6-month eval checklist)
     if(map.nested) {
         for (const [nestedObjKey, nestedMap] of Object.entries(map.nested)) {
             if(data[nestedObjKey]) {
@@ -210,9 +205,8 @@ function populateFormForEditClone(docObj, isEdit) {
         }
     }
 
-    if(col === 'work_plans') togglePRI();
+    if(col === 'work_plans') window.togglePRI();
 
-    // Autoscroll down to the form
     setTimeout(() => {
         form.scrollIntoView({ behavior: 'smooth', block: 'center' });
         form.style.transition = 'box-shadow 0.5s';
@@ -234,7 +228,6 @@ function resetFormButton(collectionName) {
         form.style.boxShadow = 'none';
     }
 }
-
 
 // --- APP INITIALIZATION ---
 async function startApplication() {
@@ -258,14 +251,13 @@ async function uploadFile(file, folderPath) {
 }
 
 function setupEventListeners() {
-    // Add logic so if a user clicks 'Edit', but then hits 'Reset' or cancels, the UI goes back to normal
     Object.values(formMaps).forEach(map => {
         const form = document.getElementById(map.formId);
         if(form) {
             form.addEventListener('reset', () => {
-                if (editModeId && editModeCollection && formMaps[editModeCollection] && formMaps[editModeCollection].formId === map.formId) {
-                    editModeId = null;
-                    editModeCollection = null;
+                if (window.editModeId && window.editModeCollection && formMaps[window.editModeCollection] && formMaps[window.editModeCollection].formId === map.formId) {
+                    window.editModeId = null;
+                    window.editModeCollection = null;
                 }
                 const btn = form.querySelector('button[type="submit"]');
                 if(btn && btn.dataset.originalText) {
@@ -296,8 +288,8 @@ function setupEventListeners() {
             await addData('equipment', data);
             equipmentForm.reset();
             await fetchData('equipment', 'equipment-list');
-            updateDashboard();
-            renderCalendar(); 
+            window.updateDashboard();
+            window.renderCalendar(); 
             hideLoader();
         });
     }
@@ -324,7 +316,7 @@ function setupEventListeners() {
             sourcesForm.reset();
             await fetchData('sources', 'sources-list');
             populateSourceDropdown(); 
-            updateDashboard();
+            window.updateDashboard();
             hideLoader();
         });
     }
@@ -344,8 +336,8 @@ function setupEventListeners() {
             await addData('cameras', data);
             camerasForm.reset();
             await fetchData('cameras', 'cameras-list');
-            updateDashboard();
-            renderCalendar();
+            window.updateDashboard();
+            window.renderCalendar();
             hideLoader();
         });
     }
@@ -367,8 +359,8 @@ function setupEventListeners() {
             await addData('personnel', data);
             personnelForm.reset();
             await fetchData('personnel', 'personnel-list');
-            updateDashboard();
-            renderCalendar();
+            window.updateDashboard();
+            window.renderCalendar();
             hideLoader();
         });
     }
@@ -426,17 +418,17 @@ function setupEventListeners() {
                 calculated_boundary_mr_hr: locType === 'temporary' ? parseFloat(document.getElementById('wp-boundary').value) : 'N/A (PRI)',
                 pri_entrance_tested: locType === 'pri' ? document.getElementById('wp-pri-entrance').checked : 'N/A',
                 pri_alarm_tested: locType === 'pri' ? document.getElementById('wp-pri-alarm').checked : 'N/A',
-                chp_approval_status: 'Pending',
+                rso_approval_status: 'Pending',
                 raso_approval_status: 'Pending',
                 created_at: new Date().toISOString(),
                 diagram_url: diagramUrl
             };
             await addData('work_plans', data);
             workPlansForm.reset();
-            togglePRI(); 
+            window.togglePRI(); 
             await fetchData('work_plans', 'work-plans-list');
-            updateDashboard();
-            renderCalendar();
+            window.updateDashboard();
+            window.renderCalendar();
             hideLoader();
         });
     }
@@ -532,13 +524,10 @@ function setupEventListeners() {
     if(collimatorCheck) collimatorCheck.addEventListener('change', calculateBoundary);
 }
 
-// UPDATED: This function now smartly routes requests to either Create (addDoc) or Update (updateDoc)
 async function addData(collectionName, data) {
     try {
-        if (editModeId && editModeCollection === collectionName) {
-            
-            // If they didn't upload a new file, grab the old file URL from the database so it isn't erased
-            const existingDoc = await getDoc(doc(db, collectionName, editModeId));
+        if (window.editModeId && window.editModeCollection === collectionName) {
+            const existingDoc = await getDoc(doc(db, collectionName, window.editModeId));
             if(existingDoc.exists()) {
                 const existingData = existingDoc.data();
                 for (const key in data) {
@@ -547,17 +536,11 @@ async function addData(collectionName, data) {
                     }
                 }
             }
-
-            // Execute the update
-            await updateDoc(doc(db, collectionName, editModeId), data);
-            
-            // Turn off edit mode
-            editModeId = null;
-            editModeCollection = null;
+            await updateDoc(doc(db, collectionName, window.editModeId), data);
+            window.editModeId = null;
+            window.editModeCollection = null;
             resetFormButton(collectionName);
-            
         } else {
-            // Standard Create/Clone behavior
             if(!data.timestamp) data.timestamp = new Date().toISOString();
             await addDoc(collection(db, collectionName), data);
         }
@@ -578,8 +561,8 @@ window.showSection = function(sectionId) {
         target.classList.add('active');
         target.style.display = 'block';
     }
-    if(sectionId === 'calendar-view' && calendar) {
-        setTimeout(() => { calendar.render(); }, 100);
+    if(sectionId === 'calendar-view' && window.calendar) {
+        setTimeout(() => { window.calendar.render(); }, 100);
     }
 }
 
@@ -612,8 +595,8 @@ async function loadAllData() {
         fetchData('utilization_logs', 'utilization-list'),
         fetchData('post_job_reports', 'reports-list')
     ]);
-    updateDashboard(); 
-    renderCalendar();
+    window.updateDashboard(); 
+    window.renderCalendar();
 }
 
 async function fetchData(collectionName, listId) {
@@ -727,7 +710,7 @@ function calculateBoundary() {
 }
 
 // --- FULLCALENDAR INTEGRATION ---
-async function renderCalendar() {
+window.renderCalendar = async function() {
     const calendarEl = document.getElementById('calendar');
     if(!calendarEl) return;
 
@@ -794,11 +777,11 @@ async function renderCalendar() {
         console.error("Error loading calendar events:", err);
     }
 
-    if(calendar) {
-        calendar.destroy(); 
+    if(window.calendar) {
+        window.calendar.destroy(); 
     }
 
-    calendar = new FullCalendar.Calendar(calendarEl, {
+    window.calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         headerToolbar: {
             left: 'prev,next today',
@@ -841,9 +824,9 @@ window.updateDashboard = async function() {
 
         const ctx = document.getElementById('isotope-chart');
         if(ctx) {
-            if(isotopeChart) isotopeChart.destroy(); 
+            if(window.isotopeChart) window.isotopeChart.destroy(); 
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            isotopeChart = new Chart(ctx, {
+            window.isotopeChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
                     labels: ['Ir-192', 'Co-60', 'Se-75', 'Yb-169'],
@@ -1002,11 +985,13 @@ window.generatePDFInventory = async function() {
     }
 }
 
+// --- INSPECTOR MODAL & SOURCE LOOKUP ---
 window.openModal = async function(collectionName, docId) {
     const modal = document.getElementById('inspector-modal');
     const modalBody = document.getElementById('modal-body');
     const title = document.getElementById('modal-title');
     
+    // Display the mini-spinner while fetching
     modalBody.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; padding: 20px;"><div class="mini-spinner"></div><span style="font-weight: bold; color: var(--nav-bg);">Fetching database record...</span></div>';
     title.textContent = `${collectionName.replace('_', ' ').toUpperCase()} RECORD`;
     modal.style.display = 'flex';
@@ -1017,11 +1002,13 @@ window.openModal = async function(collectionName, docId) {
         
         if (docSnap.exists()) {
             const data = docSnap.data();
-            currentOpenDoc = { collection: collectionName, id: docId, fullData: data };
+            window.currentOpenDoc = { collection: collectionName, id: docId, fullData: data };
             
             let html = '';
             for (const [key, value] of Object.entries(data)) {
                 let displayKey = key.replace(/_/g, ' ').toUpperCase();
+                
+                // Unify display logic so older records with 'chp_approval_status' show as RSO
                 if (key === 'chp_approval_status') displayKey = 'RSO APPROVAL STATUS'; 
                 
                 if (key === 'checklist' && typeof value === 'object') {
@@ -1030,6 +1017,8 @@ window.openModal = async function(collectionName, docId) {
                         html += `<li>${checkKey.replace('_', ' ')}: <b>${checkVal ? 'PASS' : 'FAIL'}</b></li>`;
                     }
                     html += `</ul>`;
+                
+                // Swap the ugly database ID for a readable Serial Number
                 } else if (key === 'source_id') {
                     let sourceDisplay = value;
                     if (value && value !== 'DELETED') {
@@ -1037,12 +1026,20 @@ window.openModal = async function(collectionName, docId) {
                             const srcSnap = await getDoc(doc(db, 'sources', value));
                             if (srcSnap.exists()) {
                                 sourceDisplay = `${srcSnap.data().serial_number} (${srcSnap.data().isotope})`;
+                            } else {
+                                sourceDisplay = "Source not found in vault";
                             }
                         } catch(e) { console.log("Could not resolve source."); }
                     }
                     html += `<p><strong>SOURCE:</strong> ${sourceDisplay}</p>`;
-                } else if(key.includes('_url') && value) {
-                    html += `<p><strong>${displayKey.replace(' URL', '')}:</strong> <a href="${value}" target="_blank" style="color: #005A9C;">View Uploaded File</a></p>`;
+                
+                // Gracefully handle files that were missing or skipped during upload
+                } else if (key.includes('_url')) {
+                    if (value && value !== 'null') {
+                        html += `<p><strong>${displayKey.replace(' URL', '')}:</strong> <a href="${value}" target="_blank" style="color: #005A9C;">View Uploaded File</a></p>`;
+                    } else {
+                        html += `<p><strong>${displayKey.replace(' URL', '')}:</strong> <span style="color: #999; font-style: italic;">No file attached</span></p>`;
+                    }
                 } else {
                     html += `<p><strong>${displayKey}:</strong> ${value}</p>`;
                 }
@@ -1059,11 +1056,11 @@ window.openModal = async function(collectionName, docId) {
 
 window.closeModal = function() {
     document.getElementById('inspector-modal').style.display = 'none';
-    currentOpenDoc = null;
+    window.currentOpenDoc = null;
 }
 
 document.getElementById('modal-delete-btn').addEventListener('click', () => {
-    if(!currentOpenDoc) return;
+    if(!window.currentOpenDoc) return;
     document.getElementById('delete-confirm-modal').style.display = 'flex';
 });
 
@@ -1072,28 +1069,28 @@ window.closeConfirmModal = function() {
 }
 
 window.executeDelete = async function() {
-    if(!currentOpenDoc) return;
+    if(!window.currentOpenDoc) return;
     try {
         showLoader();
-        await deleteDoc(doc(db, currentOpenDoc.collection, currentOpenDoc.id));
+        await deleteDoc(doc(db, window.currentOpenDoc.collection, window.currentOpenDoc.id));
         closeConfirmModal();
-        closeModal();
+        window.closeModal();
         
         let listId = '';
-        if(currentOpenDoc.collection === 'equipment') listId = 'equipment-list';
-        if(currentOpenDoc.collection === 'sources') { listId = 'sources-list'; populateSourceDropdown(); }
-        if(currentOpenDoc.collection === 'cameras') listId = 'cameras-list';
-        if(currentOpenDoc.collection === 'personnel') listId = 'personnel-list';
-        if(currentOpenDoc.collection === 'field_evaluations') listId = 'eval-list';
-        if(currentOpenDoc.collection === 'work_plans') listId = 'work-plans-list';
-        if(currentOpenDoc.collection === 'transport_logs') listId = 'transport-list';
-        if(currentOpenDoc.collection === 'dosimetry_logs') listId = 'dosimetry-list';
-        if(currentOpenDoc.collection === 'utilization_logs') listId = 'utilization-list';
-        if(currentOpenDoc.collection === 'post_job_reports') listId = 'reports-list';
+        if(window.currentOpenDoc.collection === 'equipment') listId = 'equipment-list';
+        if(window.currentOpenDoc.collection === 'sources') { listId = 'sources-list'; populateSourceDropdown(); }
+        if(window.currentOpenDoc.collection === 'cameras') listId = 'cameras-list';
+        if(window.currentOpenDoc.collection === 'personnel') listId = 'personnel-list';
+        if(window.currentOpenDoc.collection === 'field_evaluations') listId = 'eval-list';
+        if(window.currentOpenDoc.collection === 'work_plans') listId = 'work-plans-list';
+        if(window.currentOpenDoc.collection === 'transport_logs') listId = 'transport-list';
+        if(window.currentOpenDoc.collection === 'dosimetry_logs') listId = 'dosimetry-list';
+        if(window.currentOpenDoc.collection === 'utilization_logs') listId = 'utilization-list';
+        if(window.currentOpenDoc.collection === 'post_job_reports') listId = 'reports-list';
         
-        await fetchData(currentOpenDoc.collection, listId);
-        updateDashboard();
-        renderCalendar();
+        await fetchData(window.currentOpenDoc.collection, listId);
+        window.updateDashboard();
+        window.renderCalendar();
         hideLoader();
     } catch (err) {
         hideLoader();
