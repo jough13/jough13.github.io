@@ -45,7 +45,7 @@
 
                 <div class="card" style="border-left: 5px solid #d9534f;">
                     <h3 style="color: #d9534f; border: none;">Compliance Alerts</h3>
-                    <ul id="alert-list" style="padding-left: 20px; font-weight: bold; border: none; background: transparent;">
+                    <ul id="alert-list" style="padding-left: 20px; font-weight: bold; border: none; background: transparent; max-height: 200px; overflow-y: auto;">
                         <li style="border: none; background: transparent;">Checking compliance status...</li>
                     </ul>
                 </div>
@@ -80,33 +80,7 @@
         <section id="equipment" class="module">
             <h2>Equipment & Source Management</h2>
             <div class="dashboard-grid">
-                <div class="card">
-                    <h3>Equipment Calibration <button type="button" class="btn-export" onclick="exportCSV('equipment')">Export CSV</button></h3>
-                    <form id="equipment-form">
-                        <label for="eq-type">Type</label>
-                        <select id="eq-type" required>
-                            <option value="">Select Type...</option>
-                            <option value="survey meter">Survey Meter</option>
-                            <option value="alarming ratemeter">Alarming Ratemeter</option>
-                            <option value="pocket dosimeter">Pocket Dosimeter</option>
-                            <option value="direct reading dosimeter">Direct Reading Dosimeter</option>
-                            <option value="electronic personal dosimeter">Electronic Personal Dosimeter</option>
-                            <option value="area monitor">Area Monitor</option>
-                        </select>
-
-                        <label for="eq-serial">Serial Number</label>
-                        <input type="text" id="eq-serial" placeholder="e.g. SN-12345" required>
-
-                        <label for="eq-cal-date">Calibration Due Date</label>
-                        <input type="date" id="eq-cal-date" required>
-
-                        <label for="eq-cert">Upload Calibration Certificate</label>
-                        <input type="file" id="eq-cert" accept=".pdf,.jpg,.jpeg,.png">
-
-                        <button type="submit">Add Equipment</button>
-                    </form>
-                    <ul id="equipment-list">Loading...</ul>
-                </div>
+                
                 <div class="card">
                     <h3>Source Vault Logs <button type="button" class="btn-export" onclick="exportCSV('sources')">Export CSV</button></h3>
                     <form id="sources-form">
@@ -131,9 +105,6 @@
                         <label for="src-leak-test">Last Leak Test Date (< 6 Months)</label>
                         <input type="date" id="src-leak-test" required>
 
-                        <label for="src-quarterly-maint">Last Quarterly Maintenance Date</label>
-                        <input type="date" id="src-quarterly-maint" required>
-
                         <label for="src-cert">Upload Source Certificate / Leak Test</label>
                         <input type="file" id="src-cert" accept=".pdf,.jpg,.jpeg,.png">
 
@@ -141,6 +112,57 @@
                     </form>
                     <ul id="sources-list">Loading...</ul>
                 </div>
+
+                <div class="card">
+                    <h3>Exposure Devices (Cameras) <button type="button" class="btn-export" onclick="exportCSV('cameras')">Export CSV</button></h3>
+                    <form id="cameras-form">
+                        <label for="cam-model">Make & Model</label>
+                        <input type="text" id="cam-model" placeholder="e.g. QSA Global 880 Delta" required>
+
+                        <label for="cam-serial">Serial Number</label>
+                        <input type="text" id="cam-serial" required>
+
+                        <label for="cam-du-date">DU Leak Test Date (< 12 Months)</label>
+                        <input type="date" id="cam-du-date">
+
+                        <label for="cam-maint-date">Annual Maintenance Date (< 12 Months)</label>
+                        <input type="date" id="cam-maint-date" required>
+
+                        <button type="submit">Add Camera</button>
+                    </form>
+                    <ul id="cameras-list">Loading...</ul>
+                </div>
+
+                <div class="card" style="min-width: 100%;">
+                    <h3>Survey Meters & Dosimetry <button type="button" class="btn-export" onclick="exportCSV('equipment')">Export CSV</button></h3>
+                    <form id="equipment-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <label for="eq-type">Type</label>
+                            <select id="eq-type" required>
+                                <option value="">Select Type...</option>
+                                <option value="survey meter">Survey Meter</option>
+                                <option value="alarming ratemeter">Alarming Ratemeter</option>
+                                <option value="pocket dosimeter">Pocket Dosimeter</option>
+                                <option value="direct reading dosimeter">Direct Reading Dosimeter</option>
+                                <option value="electronic personal dosimeter">Electronic Personal Dosimeter</option>
+                                <option value="area monitor">Area Monitor</option>
+                            </select>
+
+                            <label for="eq-serial">Serial Number</label>
+                            <input type="text" id="eq-serial" placeholder="e.g. SN-12345" required>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <label for="eq-cal-date">Calibration Due Date</label>
+                            <input type="date" id="eq-cal-date" required>
+
+                            <label for="eq-cert">Upload Calibration Certificate</label>
+                            <input type="file" id="eq-cert" accept=".pdf,.jpg,.jpeg,.png">
+                            <button type="submit" style="margin-top: auto;">Add Equipment</button>
+                        </div>
+                    </form>
+                    <ul id="equipment-list">Loading...</ul>
+                </div>
+
             </div>
         </section>
 
@@ -148,20 +170,29 @@
             <h2>Personnel Qualifications</h2>
             <div class="card">
                 <h3>Radiographer Certifications <button type="button" class="btn-export" onclick="exportCSV('personnel')">Export CSV</button></h3>
-                <form id="personnel-form">
-                    <label for="per-name">Full Name</label>
-                    <input type="text" id="per-name" required>
+                <form id="personnel-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <label for="per-name">Full Name</label>
+                        <input type="text" id="per-name" required>
 
-                    <label for="per-cert">ASNT / State Cert Number</label>
-                    <input type="text" id="per-cert" required>
+                        <label for="per-cert">ASNT / State Cert Number</label>
+                        <input type="text" id="per-cert" required>
 
-                    <label for="per-trust">T&R Authorization Date</label>
-                    <input type="date" id="per-trust" required>
+                        <label for="per-trust">T&R Authorization Date</label>
+                        <input type="date" id="per-trust" required>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <label for="per-hazmat">Hazmat Training Expiration</label>
+                        <input type="date" id="per-hazmat" required>
 
-                    <label for="per-hazmat">Hazmat Training Expiration</label>
-                    <input type="date" id="per-hazmat" required>
+                        <label for="per-eval">Last 6-Month Field Eval Date</label>
+                        <input type="date" id="per-eval" required>
 
-                    <button type="submit">Add Personnel</button>
+                        <label for="per-drill">Last Annual Emergency Drill Date</label>
+                        <input type="date" id="per-drill" required>
+                        
+                        <button type="submit" style="margin-top: auto;">Add Personnel</button>
+                    </div>
                 </form>
                 <ul id="personnel-list">Loading...</ul>
             </div>
@@ -205,61 +236,94 @@
 
         <section id="execution" class="module">
             <h2>Execution & Monitoring</h2>
-            <div class="card">
-                <h3>Dosimetry Logs <button type="button" class="btn-export" onclick="exportCSV('dosimetry_logs')">Export CSV</button></h3>
-                <form id="dosimetry-form">
-                    <label for="dl-name">Personnel Name</label>
-                    <input type="text" id="dl-name" required>
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h3>Dosimetry Logs <button type="button" class="btn-export" onclick="exportCSV('dosimetry_logs')">Export CSV</button></h3>
+                    <form id="dosimetry-form">
+                        <label for="dl-name">Personnel Name</label>
+                        <input type="text" id="dl-name" required>
 
-                    <label for="dl-serial">Dosimeter Serial</label>
-                    <input type="text" id="dl-serial" required>
+                        <label for="dl-serial">Dosimeter Serial</label>
+                        <input type="text" id="dl-serial" required>
 
-                    <div class="checkbox-group" style="margin-bottom: 10px; background-color: rgba(217, 83, 79, 0.1); padding: 10px; border-radius: 4px; border: 1px solid #d9534f;">
-                        <input type="checkbox" id="dl-ratemeter-check" required>
-                        <label for="dl-ratemeter-check" style="color: #d9534f; font-weight: bold;">Alarming Ratemeter Audible Check Performed (10 CFR 34.47)</label>
-                    </div>
+                        <div class="checkbox-group" style="margin-bottom: 10px; background-color: rgba(217, 83, 79, 0.1); padding: 10px; border-radius: 4px; border: 1px solid #d9534f;">
+                            <input type="checkbox" id="dl-ratemeter-check" required>
+                            <label for="dl-ratemeter-check" style="color: #d9534f; font-weight: bold;">Alarming Ratemeter Audible Check Performed</label>
+                        </div>
 
-                    <label for="dl-initial">Initial Reading (mR)</label>
-                    <input type="number" step="0.1" id="dl-initial" required>
+                        <label for="dl-initial">Initial Reading (mR)</label>
+                        <input type="number" step="0.1" id="dl-initial" required>
 
-                    <label for="dl-final">Final Reading (mR)</label>
-                    <input type="number" step="0.1" id="dl-final" required>
+                        <label for="dl-final">Final Reading (mR)</label>
+                        <input type="number" step="0.1" id="dl-final" required>
 
-                    <button type="submit">Log Dosimetry</button>
-                </form>
-                <ul id="dosimetry-list">Loading...</ul>
+                        <button type="submit">Log Dosimetry</button>
+                    </form>
+                    <ul id="dosimetry-list">Loading...</ul>
+                </div>
+
+                <div class="card">
+                    <h3>Utilization Logs (RAD-010) <button type="button" class="btn-export" onclick="exportCSV('utilization_logs')">Export CSV</button></h3>
+                    <form id="utilization-form">
+                        <label for="ul-job">Job Reference Number</label>
+                        <input type="text" id="ul-job" required>
+
+                        <label for="ul-ric">Radiographer in Charge (RIC)</label>
+                        <input type="text" id="ul-ric" required>
+
+                        <label for="ul-participants">Other Participants</label>
+                        <input type="text" id="ul-participants" placeholder="Comma separated names">
+
+                        <label for="ul-meter">Survey Meter Used (SN)</label>
+                        <input type="text" id="ul-meter" required>
+
+                        <div class="checkbox-group" style="margin-bottom: 10px; background-color: rgba(92, 184, 92, 0.1); padding: 10px; border-radius: 4px; border: 1px solid #5cb85c;">
+                            <input type="checkbox" id="ul-response" required>
+                            <label for="ul-response" style="color: #28a745; font-weight: bold;">Meter Response Checked Prior to Use</label>
+                        </div>
+
+                        <label for="ul-max-survey">Max Device Survey Reading (mR/hr)</label>
+                        <input type="number" step="0.1" id="ul-max-survey" placeholder="Measured on camera after lock" required>
+
+                        <button type="submit">Log Utilization</button>
+                    </form>
+                    <ul id="utilization-list">Loading...</ul>
+                </div>
             </div>
         </section>
 
         <section id="reporting" class="module">
             <h2>Post-Operation & Reporting</h2>
-            <div class="card">
-                <h3>Post Job Reports <button type="button" class="btn-export" onclick="exportCSV('post_job_reports')">Export CSV</button></h3>
-                <form id="reports-form">
-                    <label for="pj-completed-by">Completed By (Name)</label>
-                    <input type="text" id="pj-completed-by" required>
+            <div class="dashboard-grid">
+                <div class="card">
+                    <h3>Post Job Reports <button type="button" class="btn-export" onclick="exportCSV('post_job_reports')">Export CSV</button></h3>
+                    <form id="reports-form">
+                        <label for="pj-completed-by">Completed By (Name)</label>
+                        <input type="text" id="pj-completed-by" required>
 
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="pj-source-secured">
-                        <label for="pj-source-secured">Source Secured</label>
-                    </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="pj-source-secured">
+                            <label for="pj-source-secured">Source Secured</label>
+                        </div>
 
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="pj-vault-verified">
-                        <label for="pj-vault-verified">Vault Verified</label>
-                    </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="pj-vault-verified">
+                            <label for="pj-vault-verified">Vault Verified</label>
+                        </div>
 
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="pj-daily-log">
-                        <label for="pj-daily-log">Daily Log Generated</label>
-                    </div>
+                        <label for="pj-doc">Upload Audit Form / Sign-offs</label>
+                        <input type="file" id="pj-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
 
-                    <label for="pj-doc">Upload Utilization Log / Audit Form</label>
-                    <input type="file" id="pj-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                        <button type="submit">Submit Report</button>
+                    </form>
+                    <ul id="reports-list">Loading...</ul>
+                </div>
 
-                    <button type="submit">Submit Report</button>
-                </form>
-                <ul id="reports-list">Loading...</ul>
+                <div class="card" style="border-left: 5px solid #005A9C;">
+                    <h3 style="border: none; margin-bottom: 5px;">Quarterly Physical Inventory</h3>
+                    <p style="margin-top: 0; color: var(--header-p);">Generates an official RSO signature-ready inventory of all active sources and DU cameras per RAD-010 Section 5.6.</p>
+                    <button type="button" class="btn-secondary" style="width: 100%; font-size: 1.1rem; font-weight: bold; background-color: #005A9C; color: white; border: none; padding: 15px; margin-top: 20px;" onclick="generateInventory()">📄 Generate Official Inventory Report</button>
+                </div>
             </div>
         </section>
     </main>
