@@ -105,45 +105,60 @@ form input, form select {
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    font-size: 1rem;
-}
-
-form button {
-    background-color: #005A9C;
-    color: white;
-    border: none;
-    padding: 10px;
-    font-size: 1rem;
-    font-weight: bold;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-form button:hover {
-    background-color: #003F6C;
 }
 
 .checkbox-group {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 10px;
 }
 
 .checkbox-group input {
     width: auto;
 }
 
+button {
+    background-color: #005A9C;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+button:hover {
+    background-color: #003F6C;
+}
+
+ul {
+    padding-left: 0;
+    list-style: none;
+}
+
+ul li {
+    background: #fff;
+    border: 1px solid #eee;
+    margin-bottom: 5px;
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+ul li:hover {
+    background-color: #e9ecef;
+}
+
 footer {
     text-align: center;
     padding: 10px;
     background-color: #ddd;
-    position: fixed;
-    bottom: 0;
-    width: 100%;
+    margin-top: 40px;
 }
 
-/* Inspector Modal Styles */
+/* Modal Styles */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -161,6 +176,8 @@ footer {
     width: 90%;
     max-width: 500px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    max-height: 80vh;
+    overflow-y: auto;
 }
 
 .modal-header {
@@ -180,9 +197,11 @@ footer {
     font-size: 1.5rem;
     cursor: pointer;
     color: #999;
+    padding: 0;
+    margin: 0;
 }
 
-.close-btn:hover { color: #333; }
+.close-btn:hover { color: #333; background: none; }
 
 .modal-actions {
     margin-top: 20px;
@@ -191,10 +210,7 @@ footer {
     justify-content: flex-end;
 }
 
-.btn-danger { background-color: #d9534f; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+.btn-danger { background-color: #d9534f; }
 .btn-danger:hover { background-color: #c9302c; }
-.btn-secondary { background-color: #ccc; color: #333; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
-
-/* Make lists look clickable */
-ul li { cursor: pointer; padding: 5px; border-radius: 4px; transition: background 0.2s; }
-ul li:hover { background-color: #e9ecef; }
+.btn-secondary { background-color: #ccc; color: #333; }
+.btn-secondary:hover { background-color: #bbb; color: #333; }
