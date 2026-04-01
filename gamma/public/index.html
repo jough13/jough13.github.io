@@ -6,426 +6,476 @@
     <title>Gamma Radiography Tracker</title>
     <link rel="stylesheet" href="css/style.css">
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-    <header>
-        <h1>Shipyard Gamma Radiography Tracker</h1>
-        <p>Compliance and Workflow Tool (10 CFR Part 34 & US Navy Standards)</p>
-    </header>
 
-    <nav>
-        <ul>
-            <li><a href="#" onclick="showSection('dashboard')">Dashboard</a></li>
-            <li><a href="#" onclick="showSection('calendar-view')">Schedule</a></li>
-            <li><a href="#" onclick="showSection('equipment')">Equipment & Sources</a></li>
-            <li><a href="#" onclick="showSection('personnel')">Personnel</a></li>
-            <li><a href="#" onclick="showSection('planning')">Work Planning</a></li>
-            <li><a href="#" onclick="showSection('execution')">Execution</a></li>
-            <li><a href="#" onclick="showSection('reporting')">Reporting</a></li>
-        </ul>
-        <div class="search-container">
-            <input type="text" id="global-search" placeholder="Search records..." onkeyup="filterRecords()">
-            <button type="button" class="theme-toggle" onclick="toggleTheme()" id="theme-btn">🌙 Dark Mode</button>
+    <div id="login-screen">
+        <div class="login-card">
+            <h2>☢️ Radiography Tracker</h2>
+            <p style="color: var(--header-p); margin-bottom: 20px;">Authorized Personnel Only</p>
+            <input type="email" id="login-email" placeholder="Email Address" required>
+            <input type="password" id="login-password" placeholder="Password" required>
+            <button id="login-btn">Secure Login</button>
+            <p id="login-error" style="color: #d9534f; margin-top: 15px; display: none;">Invalid credentials.</p>
         </div>
-    </nav>
+    </div>
 
-    <main id="main-content">
-        <section id="dashboard" class="active module">
-            <h2>Command Center</h2>
-            <div class="dashboard-grid">
-                <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
-                    <h3 style="border: none; margin-bottom: 0;">Active Work Plans</h3>
-                    <h1 id="stat-work-plans" style="font-size: 4rem; color: #005A9C; margin: 10px 0;">-</h1>
-                    <button onclick="showSection('planning')" style="width: 50%; margin: 0 auto;" class="btn-secondary">View Plans</button>
-                </div>
-                <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
-                    <h3 style="border: none; margin-bottom: 0;">Vault Sources</h3>
-                    <h1 id="stat-sources" style="font-size: 4rem; color: #005A9C; margin: 10px 0;">-</h1>
-                    <button onclick="showSection('equipment')" style="width: 50%; margin: 0 auto;" class="btn-secondary">View Sources</button>
-                </div>
-                <div class="card" style="border-left: 5px solid #d9534f;">
-                    <h3 style="color: #d9534f; border: none;">Compliance Alerts</h3>
-                    <ul id="alert-list" style="padding-left: 20px; font-weight: bold; border: none; background: transparent; max-height: 200px; overflow-y: auto;">
-                        <li style="border: none; background: transparent;">Checking compliance status...</li>
-                    </ul>
-                </div>
+    <div id="app-wrapper">
+        <header>
+            <h1>Shipyard Gamma Radiography Tracker</h1>
+            <p>Compliance and Workflow Tool (10 CFR Part 34 & US Navy Standards)</p>
+        </header>
+
+        <nav>
+            <ul>
+                <li><a href="#" onclick="showSection('dashboard')">Dashboard</a></li>
+                <li><a href="#" onclick="showSection('calendar-view')">Schedule</a></li>
+                <li><a href="#" onclick="showSection('equipment')">Equipment & Sources</a></li>
+                <li><a href="#" onclick="showSection('personnel')">Personnel</a></li>
+                <li><a href="#" onclick="showSection('planning')">Work Planning</a></li>
+                <li><a href="#" onclick="showSection('execution')">Execution</a></li>
+                <li><a href="#" onclick="showSection('reporting')">Reporting</a></li>
+            </ul>
+            <div class="search-container">
+                <input type="text" id="global-search" placeholder="Search records..." onkeyup="filterRecords()">
+                <button type="button" class="theme-toggle" onclick="toggleTheme()" id="theme-btn">🌙 Dark Mode</button>
+                <button type="button" class="logout-btn" id="logout-btn">Log Out</button>
             </div>
+        </nav>
 
-            <div class="card" style="margin-top: 20px;">
-                <h3 style="border-bottom: 2px solid var(--nav-bg); padding-bottom: 5px;">Regulatory References & Oversight</h3>
-                <div style="display: flex; gap: 40px; flex-wrap: wrap; padding: 10px 0;">
-                    <div style="flex: 1; min-width: 250px;">
-                        <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--text-color); opacity: 0.8;">NRC 10 CFR Part 34</h4>
-                        <ul style="list-style-type: none; padding: 0; margin: 0; line-height: 1.8;">
-                            <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">Part 34 General Overview</a></li>
-                            <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/part034-0020.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">Subpart C—Equipment</a></li>
-                            <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/part034-0041.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">Subpart D—Radiation Safety Requirements</a></li>
-                            <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/part034-0061.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">Subpart E—Recordkeeping</a></li>
+        <main id="main-content">
+            <section id="dashboard" class="active module">
+                <h2>Command Center</h2>
+                <div class="dashboard-grid">
+                    <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
+                        <h3 style="border: none; margin-bottom: 0;">Active Work Plans</h3>
+                        <h1 id="stat-work-plans" style="font-size: 4rem; color: #005A9C; margin: 10px 0;">-</h1>
+                        <button onclick="showSection('planning')" style="width: 50%; margin: 0 auto;" class="btn-secondary">View Plans</button>
+                    </div>
+                    
+                    <div class="card" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <h3 style="border: none; margin-bottom: 0; width: 100%; text-align: left;">Active Source Breakdown</h3>
+                        <div style="width: 100%; max-width: 250px; margin-top: 10px;">
+                            <canvas id="isotope-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
+                        <h3 style="border: none; margin-bottom: 0;">Vault Sources</h3>
+                        <h1 id="stat-sources" style="font-size: 4rem; color: #005A9C; margin: 10px 0;">-</h1>
+                        <button onclick="showSection('equipment')" style="width: 50%; margin: 0 auto;" class="btn-secondary">View Sources</button>
+                    </div>
+                    
+                    <div class="card" style="border-left: 5px solid #d9534f;">
+                        <h3 style="color: #d9534f; border: none;">Compliance Alerts</h3>
+                        <ul id="alert-list" style="padding-left: 20px; font-weight: bold; border: none; background: transparent; max-height: 200px; overflow-y: auto;">
+                            <li style="border: none; background: transparent;">Checking compliance status...</li>
                         </ul>
                     </div>
-                    <div style="flex: 1; min-width: 250px;">
-                        <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--text-color); opacity: 0.8;">Navy & General Rad Safety</h4>
-                        <ul style="list-style-type: none; padding: 0; margin: 0; line-height: 1.8;">
-                            <li style="background: transparent; border: none; padding: 0;"><a href="https://flankspeed.sharepoint-mil.us/sites/NAVSEA_RadiologicalControls/RASP" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">NAVSEA DET RASO (Flankspeed)</a></li>
-                            <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part020/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">10 CFR Part 20 (Dose Limits)</a></li>
-                            <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part037/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">10 CFR Part 37 (Physical Protection)</a></li>
-                        </ul>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <h3 style="border-bottom: 2px solid var(--nav-bg); padding-bottom: 5px;">Regulatory References & Oversight</h3>
+                    <div style="display: flex; gap: 40px; flex-wrap: wrap; padding: 10px 0;">
+                        <div style="flex: 1; min-width: 250px;">
+                            <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--text-color); opacity: 0.8;">NRC 10 CFR Part 34</h4>
+                            <ul style="list-style-type: none; padding: 0; margin: 0; line-height: 1.8;">
+                                <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">Part 34 General Overview</a></li>
+                                <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/part034-0020.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">Subpart C—Equipment</a></li>
+                                <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/part034-0041.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">Subpart D—Radiation Safety Requirements</a></li>
+                                <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/part034-0061.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">Subpart E—Recordkeeping</a></li>
+                            </ul>
+                        </div>
+                        <div style="flex: 1; min-width: 250px;">
+                            <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--text-color); opacity: 0.8;">Navy & General Rad Safety</h4>
+                            <ul style="list-style-type: none; padding: 0; margin: 0; line-height: 1.8;">
+                                <li style="background: transparent; border: none; padding: 0;"><a href="https://flankspeed.sharepoint-mil.us/sites/NAVSEA_RadiologicalControls/RASP" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">NAVSEA DET RASO (Flankspeed)</a></li>
+                                <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part020/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">10 CFR Part 20 (Dose Limits)</a></li>
+                                <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part037/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">10 CFR Part 37 (Physical Protection)</a></li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <section id="calendar-view" class="module">
-            <h2>Operations & Compliance Calendar</h2>
-            <div class="card">
-                <div id="calendar"></div>
-            </div>
-        </section>
-
-        <section id="equipment" class="module">
-            <h2>Equipment & Source Management</h2>
-            <div class="dashboard-grid">
-                
+            <section id="calendar-view" class="module">
+                <h2>Operations & Compliance Calendar</h2>
                 <div class="card">
-                    <h3>Source Vault Logs <button type="button" class="btn-export" onclick="exportCSV('sources')">Export CSV</button></h3>
-                    <form id="sources-form">
-                        <label for="src-serial">Serial Number</label>
-                        <input type="text" id="src-serial" placeholder="e.g. SRC-987" required>
-
-                        <label for="src-isotope">Isotope</label>
-                        <select id="src-isotope" required>
-                            <option value="">Select Isotope...</option>
-                            <option value="Ir-192">Iridium-192 (Ir-192)</option>
-                            <option value="Co-60">Cobalt-60 (Co-60)</option>
-                            <option value="Se-75">Selenium-75 (Se-75)</option>
-                            <option value="Yb-169">Ytterbium-169 (Yb-169)</option>
-                        </select>
-
-                        <label for="src-activity">Initial Activity (Curies)</label>
-                        <input type="number" step="0.01" id="src-activity" placeholder="e.g. 100.5" required>
-
-                        <label for="src-date">Activity Date</label>
-                        <input type="date" id="src-date" required>
-
-                        <label for="src-leak-test">Last Leak Test Date (< 6 Months)</label>
-                        <input type="date" id="src-leak-test" required>
-
-                        <label for="src-cert">Upload Source Certificate / Leak Test</label>
-                        <input type="file" id="src-cert" accept=".pdf,.jpg,.jpeg,.png">
-
-                        <button type="submit">Log Source</button>
-                    </form>
-                    <ul id="sources-list">Loading...</ul>
+                    <div id="calendar"></div>
                 </div>
+            </section>
 
-                <div class="card">
-                    <h3>Exposure Devices (Cameras) <button type="button" class="btn-export" onclick="exportCSV('cameras')">Export CSV</button></h3>
-                    <form id="cameras-form">
-                        <label for="cam-model">Make & Model</label>
-                        <input type="text" id="cam-model" placeholder="e.g. QSA Global 880 Delta" required>
+            <section id="equipment" class="module">
+                <h2>Equipment & Source Management</h2>
+                <div class="dashboard-grid">
+                    
+                    <div class="card">
+                        <h3>Source Vault Logs <button type="button" class="btn-export" onclick="exportCSV('sources')">Export CSV</button></h3>
+                        <form id="sources-form">
+                            <label for="src-serial">Serial Number</label>
+                            <input type="text" id="src-serial" placeholder="e.g. SRC-987" required>
 
-                        <label for="cam-serial">Serial Number</label>
-                        <input type="text" id="cam-serial" required>
-
-                        <label for="cam-du-date">DU Leak Test Date (< 12 Months)</label>
-                        <input type="date" id="cam-du-date">
-
-                        <label for="cam-maint-date">Annual Maintenance Date (< 12 Months)</label>
-                        <input type="date" id="cam-maint-date" required>
-
-                        <button type="submit">Add Camera</button>
-                    </form>
-                    <ul id="cameras-list">Loading...</ul>
-                </div>
-
-                <div class="card" style="min-width: 100%;">
-                    <h3>Survey Meters & Dosimetry <button type="button" class="btn-export" onclick="exportCSV('equipment')">Export CSV</button></h3>
-                    <form id="equipment-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <label for="eq-type">Type</label>
-                            <select id="eq-type" required>
-                                <option value="">Select Type...</option>
-                                <option value="survey meter">Survey Meter</option>
-                                <option value="alarming ratemeter">Alarming Ratemeter</option>
-                                <option value="pocket dosimeter">Pocket Dosimeter</option>
-                                <option value="direct reading dosimeter">Direct Reading Dosimeter</option>
-                                <option value="electronic personal dosimeter">Electronic Personal Dosimeter</option>
-                                <option value="area monitor">Area Monitor</option>
+                            <label for="src-isotope">Isotope</label>
+                            <select id="src-isotope" required>
+                                <option value="">Select Isotope...</option>
+                                <option value="Ir-192">Iridium-192 (Ir-192)</option>
+                                <option value="Co-60">Cobalt-60 (Co-60)</option>
+                                <option value="Se-75">Selenium-75 (Se-75)</option>
+                                <option value="Yb-169">Ytterbium-169 (Yb-169)</option>
                             </select>
-                            <label for="eq-serial">Serial Number</label>
-                            <input type="text" id="eq-serial" placeholder="e.g. SN-12345" required>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <label for="eq-cal-date">Calibration Due Date</label>
-                            <input type="date" id="eq-cal-date" required>
-                            <label for="eq-cert">Upload Calibration Certificate</label>
-                            <input type="file" id="eq-cert" accept=".pdf,.jpg,.jpeg,.png">
-                            <button type="submit" style="margin-top: auto;">Add Equipment</button>
-                        </div>
-                    </form>
-                    <ul id="equipment-list">Loading...</ul>
-                </div>
-            </div>
-        </section>
 
-        <section id="personnel" class="module">
-            <h2>Personnel Qualifications</h2>
-            <div class="dashboard-grid">
-                <div class="card" style="min-width: 100%;">
-                    <h3>Radiographer Certifications <button type="button" class="btn-export" onclick="exportCSV('personnel')">Export CSV</button></h3>
-                    <form id="personnel-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <label for="per-name">Full Name</label>
-                            <input type="text" id="per-name" required>
-                            <label for="per-cert">ASNT / State Cert Number</label>
-                            <input type="text" id="per-cert" required>
-                            <label for="per-trust">T&R Authorization Date</label>
-                            <input type="date" id="per-trust" required>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <label for="per-hazmat">Hazmat Training Expiration</label>
-                            <input type="date" id="per-hazmat" required>
-                            <label for="per-eval">Last 6-Month Field Eval Date</label>
-                            <input type="date" id="per-eval" required>
-                            <label for="per-drill">Last Annual Emergency Drill Date</label>
-                            <input type="date" id="per-drill" required>
-                            <button type="submit" style="margin-top: auto;">Add Personnel</button>
-                        </div>
-                    </form>
-                    <ul id="personnel-list">Loading...</ul>
-                </div>
+                            <label for="src-activity">Initial Activity (Curies)</label>
+                            <input type="number" step="0.01" id="src-activity" placeholder="e.g. 100.5" required>
 
-                <div class="card" style="min-width: 100%;">
-                    <h3>6-Month Field Evaluation Checklist (RAD-010) <button type="button" class="btn-export" onclick="exportCSV('field_evaluations')">Export CSV</button></h3>
-                    <form id="eval-form">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                            <div>
-                                <label for="ev-date">Date of Evaluation</label>
-                                <input type="date" id="ev-date" required style="width: 100%; box-sizing: border-box;">
-                            </div>
-                            <div>
-                                <label for="ev-rad">Radiographer Evaluated</label>
-                                <input type="text" id="ev-rad" required style="width: 100%; box-sizing: border-box;">
-                            </div>
-                            <div>
-                                <label for="ev-evaluator">Evaluator (RSO or Designee)</label>
-                                <input type="text" id="ev-evaluator" required style="width: 100%; box-sizing: border-box;">
-                            </div>
-                            <div>
-                                <label for="ev-duties">Duties Performed</label>
-                                <input type="text" id="ev-duties" placeholder="e.g. Source exchange, boundary survey" required style="width: 100%; box-sizing: border-box;">
-                            </div>
-                        </div>
+                            <label for="src-date">Activity Date</label>
+                            <input type="date" id="src-date" required>
 
-                        <label>Satisfactory Performance of Attributes:</label>
-                        <div class="checklist-grid">
-                            <div class="checkbox-group"><input type="checkbox" id="ev-c1"><label for="ev-c1">Properly followed operating procedures</label></div>
-                            <div class="checkbox-group"><input type="checkbox" id="ev-c2"><label for="ev-c2">Knowledge of emergency procedures</label></div>
-                            <div class="checkbox-group"><input type="checkbox" id="ev-c3"><label for="ev-c3">Performed survey instrument checks</label></div>
-                            <div class="checkbox-group"><input type="checkbox" id="ev-c4"><label for="ev-c4">Proper use of survey instrument</label></div>
-                            <div class="checkbox-group"><input type="checkbox" id="ev-c5"><label for="ev-c5">Proper use of TLDs & EPDs</label></div>
-                            <div class="checkbox-group"><input type="checkbox" id="ev-c6"><label for="ev-c6">PRI interlocks/warnings checked (if applic.)</label></div>
-                            <div class="checkbox-group"><input type="checkbox" id="ev-c7"><label for="ev-c7">Proper control of camera keys</label></div>
-                            <div class="checkbox-group"><input type="checkbox" id="ev-c8"><label for="ev-c8">Boundary established & controlled (Temp Site)</label></div>
-                            <div class="checkbox-group"><input type="checkbox" id="ev-c9"><label for="ev-c9">ALARA principles utilized</label></div>
-                            <div class="checkbox-group"><input type="checkbox" id="ev-c10"><label for="ev-c10">Proper completion of logs/records</label></div>
-                        </div>
+                            <label for="src-leak-test">Last Leak Test Date (< 6 Months)</label>
+                            <input type="date" id="src-leak-test" required>
 
-                        <label for="ev-comments" style="margin-top: 15px;">Evaluator Comments</label>
-                        <textarea id="ev-comments" rows="3"></textarea>
+                            <label for="src-cert">Upload Source Certificate / Leak Test</label>
+                            <input type="file" id="src-cert" accept=".pdf,.jpg,.jpeg,.png">
 
-                        <button type="submit">Submit Official Evaluation</button>
-                    </form>
-                    <ul id="eval-list">Loading...</ul>
-                </div>
-            </div>
-        </section>
-
-        <section id="planning" class="module">
-            <h2>Work Planning & Approvals</h2>
-            <div class="card">
-                <h3>Work Plans <button type="button" class="btn-export" onclick="exportCSV('work_plans')">Export CSV</button></h3>
-                <form id="work-plans-form">
-                    <label for="wp-job">Job Number</label>
-                    <input type="text" id="wp-job" placeholder="e.g. J-2024-001" required>
-
-                    <label for="wp-loc-type" style="margin-top: 10px;">Operation Location Type</label>
-                    <select id="wp-loc-type" onchange="togglePRI()" style="background-color: #e9ecef; border: 1px solid #005A9C;" required>
-                        <option value="temporary">Temporary Job Site</option>
-                        <option value="pri">Permanent Radiographic Installation (PRI)</option>
-                    </select>
-
-                    <label for="wp-location" style="margin-top: 10px;">Specific Location / Room</label>
-                    <input type="text" id="wp-location" placeholder="e.g. Pier 4 or Vault Room" required>
-
-                    <label for="wp-date">Planned Date</label>
-                    <input type="date" id="wp-date" required>
-
-                    <label for="wp-source">Select Source for Job</label>
-                    <select id="wp-source" required>
-                        <option value="">Loading active sources...</option>
-                    </select>
-
-                    <div id="wp-temp-wrapper" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding: 15px; border: 1px solid #ccc; border-radius: 5px;">
-                        <h4 style="margin: 0; color: #005A9C;">Temporary Job Site Controls</h4>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="wp-collimator">
-                            <label for="wp-collimator">Collimator Used (10x attenuation)</label>
-                        </div>
-                        <label for="wp-boundary">Calculated 2 mR/hr Boundary (Feet)</label>
-                        <input type="number" step="0.1" id="wp-boundary" readonly style="background-color: var(--export-bg); cursor: not-allowed;">
+                            <button type="submit">Log Source</button>
+                        </form>
+                        <ul id="sources-list">Loading...</ul>
                     </div>
 
-                    <div id="wp-pri-wrapper" style="display: none; flex-direction: column; gap: 10px; margin-top: 10px; padding: 15px; border: 1px solid #005A9C; border-radius: 5px; background: rgba(0, 90, 156, 0.05);">
-                        <h4 style="margin: 0; color: #005A9C;">PRI Pre-Operation Checks (RAD-010 5.4.4)</h4>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="wp-pri-entrance">
-                            <label for="wp-pri-entrance" style="font-weight: bold;">Entrance control devices tested for proper operation</label>
-                        </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="wp-pri-alarm">
-                            <label for="wp-pri-alarm" style="font-weight: bold;">Alarm system tested with radiation source (visible & audible)</label>
-                        </div>
+                    <div class="card">
+                        <h3>Exposure Devices (Cameras) <button type="button" class="btn-export" onclick="exportCSV('cameras')">Export CSV</button></h3>
+                        <form id="cameras-form">
+                            <label for="cam-model">Make & Model</label>
+                            <input type="text" id="cam-model" placeholder="e.g. QSA Global 880 Delta" required>
+
+                            <label for="cam-serial">Serial Number</label>
+                            <input type="text" id="cam-serial" required>
+
+                            <label for="cam-du-date">DU Leak Test Date (< 12 Months)</label>
+                            <input type="date" id="cam-du-date">
+
+                            <label for="cam-maint-date">Annual Maintenance Date (< 12 Months)</label>
+                            <input type="date" id="cam-maint-date" required>
+
+                            <button type="submit">Add Camera</button>
+                        </form>
+                        <ul id="cameras-list">Loading...</ul>
                     </div>
 
-                    <label for="wp-diagram" style="margin-top: 10px;">Upload Setup Diagram / Sketch</label>
-                    <input type="file" id="wp-diagram" accept=".pdf,.jpg,.jpeg,.png">
+                    <div class="card" style="min-width: 100%;">
+                        <h3>Survey Meters & Dosimetry <button type="button" class="btn-export" onclick="exportCSV('equipment')">Export CSV</button></h3>
+                        <form id="equipment-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <label for="eq-type">Type</label>
+                                <select id="eq-type" required>
+                                    <option value="">Select Type...</option>
+                                    <option value="survey meter">Survey Meter</option>
+                                    <option value="alarming ratemeter">Alarming Ratemeter</option>
+                                    <option value="pocket dosimeter">Pocket Dosimeter</option>
+                                    <option value="direct reading dosimeter">Direct Reading Dosimeter</option>
+                                    <option value="electronic personal dosimeter">Electronic Personal Dosimeter</option>
+                                    <option value="area monitor">Area Monitor</option>
+                                </select>
+                                <label for="eq-serial">Serial Number</label>
+                                <input type="text" id="eq-serial" placeholder="e.g. SN-12345" required>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <label for="eq-cal-date">Calibration Due Date</label>
+                                <input type="date" id="eq-cal-date" required>
+                                <label for="eq-cert">Upload Calibration Certificate</label>
+                                <input type="file" id="eq-cert" accept=".pdf,.jpg,.jpeg,.png">
+                                <button type="submit" style="margin-top: auto;">Add Equipment</button>
+                            </div>
+                        </form>
+                        <ul id="equipment-list">Loading...</ul>
+                    </div>
+                </div>
+            </section>
 
-                    <button type="submit">Create Work Plan</button>
-                </form>
-                <ul id="work-plans-list">Loading...</ul>
-            </div>
-        </section>
+            <section id="personnel" class="module">
+                <h2>Personnel Qualifications</h2>
+                <div class="dashboard-grid">
+                    <div class="card" style="min-width: 100%;">
+                        <h3>Radiographer Certifications <button type="button" class="btn-export" onclick="exportCSV('personnel')">Export CSV</button></h3>
+                        <form id="personnel-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <label for="per-name">Full Name</label>
+                                <input type="text" id="per-name" required>
+                                <label for="per-cert">ASNT / State Cert Number</label>
+                                <input type="text" id="per-cert" required>
+                                <label for="per-trust">T&R Authorization Date</label>
+                                <input type="date" id="per-trust" required>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <label for="per-hazmat">Hazmat Training Expiration</label>
+                                <input type="date" id="per-hazmat" required>
+                                <label for="per-eval">Last 6-Month Field Eval Date</label>
+                                <input type="date" id="per-eval" required>
+                                <label for="per-drill">Last Annual Emergency Drill Date</label>
+                                <input type="date" id="per-drill" required>
+                                <button type="submit" style="margin-top: auto;">Add Personnel</button>
+                            </div>
+                        </form>
+                        <ul id="personnel-list">Loading...</ul>
+                    </div>
 
-        <section id="execution" class="module">
-            <h2>Execution & Monitoring</h2>
-            <div class="dashboard-grid">
-                
-                <div class="card" style="min-width: 100%;">
-                    <h3>Transportation & Shipping Logs <button type="button" class="btn-export" onclick="exportCSV('transport_logs')">Export CSV</button></h3>
-                    <p style="margin-top: 0; font-size: 0.85rem; color: var(--header-p);">Required for movement of sources to field locations (RAD-010 5.11.4 & 5.12.1)</p>
-                    <form id="transport-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <label for="tr-date">Transport Date</label>
-                            <input type="date" id="tr-date" required>
-                            
-                            <label for="tr-camera">Camera / Exposure Device SN</label>
-                            <input type="text" id="tr-camera" required>
-
-                            <label for="tr-destination">Destination</label>
-                            <input type="text" id="tr-destination" required>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <label for="tr-max-contact">Prior-to-Transport Max Contact (mR/hr)</label>
-                            <input type="number" step="0.1" id="tr-max-contact" required>
-
-                            <label for="tr-ti">Transport Index (TI) at 1 Meter</label>
-                            <input type="number" step="0.1" id="tr-ti" required>
-
-                            <div style="background: rgba(0,0,0,0.05); padding: 10px; border-radius: 5px; margin-top: 10px;">
-                                <div class="checkbox-group">
-                                    <input type="checkbox" id="tr-water">
-                                    <label for="tr-water"><b>Over-Water Transport?</b> (Requires Buoy & Sonar Pinger)</label>
+                    <div class="card" style="min-width: 100%;">
+                        <h3>6-Month Field Evaluation Checklist (RAD-010) <button type="button" class="btn-export" onclick="exportCSV('field_evaluations')">Export CSV</button></h3>
+                        <form id="eval-form">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                <div>
+                                    <label for="ev-date">Date of Evaluation</label>
+                                    <input type="date" id="ev-date" required style="width: 100%; box-sizing: border-box;">
+                                </div>
+                                <div>
+                                    <label for="ev-rad">Radiographer Evaluated</label>
+                                    <input type="text" id="ev-rad" required style="width: 100%; box-sizing: border-box;">
+                                </div>
+                                <div>
+                                    <label for="ev-evaluator">Evaluator (RSO or Designee)</label>
+                                    <input type="text" id="ev-evaluator" required style="width: 100%; box-sizing: border-box;">
+                                </div>
+                                <div>
+                                    <label for="ev-duties">Duties Performed</label>
+                                    <input type="text" id="ev-duties" placeholder="e.g. Source exchange, boundary survey" required style="width: 100%; box-sizing: border-box;">
                                 </div>
                             </div>
-                            <button type="submit" style="margin-top: auto;">Log Transport Survey</button>
-                        </div>
-                    </form>
-                    <ul id="transport-list">Loading...</ul>
-                </div>
 
+                            <label>Satisfactory Performance of Attributes:</label>
+                            <div class="checklist-grid">
+                                <div class="checkbox-group"><input type="checkbox" id="ev-c1"><label for="ev-c1">Properly followed operating procedures</label></div>
+                                <div class="checkbox-group"><input type="checkbox" id="ev-c2"><label for="ev-c2">Knowledge of emergency procedures</label></div>
+                                <div class="checkbox-group"><input type="checkbox" id="ev-c3"><label for="ev-c3">Performed survey instrument checks</label></div>
+                                <div class="checkbox-group"><input type="checkbox" id="ev-c4"><label for="ev-c4">Proper use of survey instrument</label></div>
+                                <div class="checkbox-group"><input type="checkbox" id="ev-c5"><label for="ev-c5">Proper use of TLDs & EPDs</label></div>
+                                <div class="checkbox-group"><input type="checkbox" id="ev-c6"><label for="ev-c6">PRI interlocks/warnings checked (if applic.)</label></div>
+                                <div class="checkbox-group"><input type="checkbox" id="ev-c7"><label for="ev-c7">Proper control of camera keys</label></div>
+                                <div class="checkbox-group"><input type="checkbox" id="ev-c8"><label for="ev-c8">Boundary established & controlled (Temp Site)</label></div>
+                                <div class="checkbox-group"><input type="checkbox" id="ev-c9"><label for="ev-c9">ALARA principles utilized</label></div>
+                                <div class="checkbox-group"><input type="checkbox" id="ev-c10"><label for="ev-c10">Proper completion of logs/records</label></div>
+                            </div>
+
+                            <label for="ev-comments" style="margin-top: 15px;">Evaluator Comments</label>
+                            <textarea id="ev-comments" rows="3"></textarea>
+
+                            <button type="submit">Submit Official Evaluation</button>
+                        </form>
+                        <ul id="eval-list">Loading...</ul>
+                    </div>
+                </div>
+            </section>
+
+            <section id="planning" class="module">
+                <h2>Work Planning & Approvals</h2>
                 <div class="card">
-                    <h3>Dosimetry Logs <button type="button" class="btn-export" onclick="exportCSV('dosimetry_logs')">Export CSV</button></h3>
-                    <form id="dosimetry-form">
-                        <label for="dl-name">Personnel Name</label>
-                        <input type="text" id="dl-name" required>
+                    <h3>Work Plans <button type="button" class="btn-export" onclick="exportCSV('work_plans')">Export CSV</button></h3>
+                    <form id="work-plans-form">
+                        <label for="wp-job">Job Number</label>
+                        <input type="text" id="wp-job" placeholder="e.g. J-2024-001" required>
 
-                        <label for="dl-serial">Dosimeter Serial</label>
-                        <input type="text" id="dl-serial" required>
+                        <label for="wp-loc-type" style="margin-top: 10px;">Operation Location Type</label>
+                        <select id="wp-loc-type" onchange="togglePRI()" style="background-color: #e9ecef; border: 1px solid #005A9C;" required>
+                            <option value="temporary">Temporary Job Site</option>
+                            <option value="pri">Permanent Radiographic Installation (PRI)</option>
+                        </select>
 
-                        <div class="checkbox-group" style="margin-bottom: 10px; background-color: rgba(217, 83, 79, 0.1); padding: 10px; border-radius: 4px; border: 1px solid #d9534f;">
-                            <input type="checkbox" id="dl-ratemeter-check" required>
-                            <label for="dl-ratemeter-check" style="color: #d9534f; font-weight: bold;">Alarming Ratemeter Audible Check Performed</label>
+                        <label for="wp-location" style="margin-top: 10px;">Specific Location / Room</label>
+                        <input type="text" id="wp-location" placeholder="e.g. Pier 4 or Vault Room" required>
+
+                        <label for="wp-date">Planned Date</label>
+                        <input type="date" id="wp-date" required>
+
+                        <label for="wp-source">Select Source for Job</label>
+                        <select id="wp-source" required>
+                            <option value="">Loading active sources...</option>
+                        </select>
+
+                        <div id="wp-temp-wrapper" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding: 15px; border: 1px solid #ccc; border-radius: 5px;">
+                            <h4 style="margin: 0; color: #005A9C;">Temporary Job Site Controls</h4>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="wp-collimator">
+                                <label for="wp-collimator">Collimator Used (10x attenuation)</label>
+                            </div>
+                            <label for="wp-boundary">Calculated 2 mR/hr Boundary (Feet)</label>
+                            <input type="number" step="0.1" id="wp-boundary" readonly style="background-color: var(--export-bg); cursor: not-allowed;">
                         </div>
 
-                        <label for="dl-initial">Initial Reading (mR)</label>
-                        <input type="number" step="0.1" id="dl-initial" required>
+                        <div id="wp-pri-wrapper" style="display: none; flex-direction: column; gap: 10px; margin-top: 10px; padding: 15px; border: 1px solid #005A9C; border-radius: 5px; background: rgba(0, 90, 156, 0.05);">
+                            <h4 style="margin: 0; color: #005A9C;">PRI Pre-Operation Checks (RAD-010 5.4.4)</h4>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="wp-pri-entrance">
+                                <label for="wp-pri-entrance" style="font-weight: bold;">Entrance control devices tested for proper operation</label>
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="wp-pri-alarm">
+                                <label for="wp-pri-alarm" style="font-weight: bold;">Alarm system tested with radiation source (visible & audible)</label>
+                            </div>
+                        </div>
 
-                        <label for="dl-final">Final Reading (mR)</label>
-                        <input type="number" step="0.1" id="dl-final" required>
+                        <label for="wp-diagram" style="margin-top: 10px;">Upload Setup Diagram / Sketch</label>
+                        <input type="file" id="wp-diagram" accept=".pdf,.jpg,.jpeg,.png">
 
-                        <button type="submit">Log Dosimetry</button>
+                        <button type="submit">Create Work Plan</button>
                     </form>
-                    <ul id="dosimetry-list">Loading...</ul>
+                    <ul id="work-plans-list">Loading...</ul>
                 </div>
+            </section>
 
-                <div class="card">
-                    <h3>Utilization Logs (RAD-010) <button type="button" class="btn-export" onclick="exportCSV('utilization_logs')">Export CSV</button></h3>
-                    <form id="utilization-form">
-                        <label for="ul-job">Job Reference Number</label>
-                        <input type="text" id="ul-job" required>
+            <section id="execution" class="module">
+                <h2>Execution & Monitoring</h2>
+                <div class="dashboard-grid">
+                    
+                    <div class="card" style="min-width: 100%;">
+                        <h3>Transportation & Shipping Logs <button type="button" class="btn-export" onclick="exportCSV('transport_logs')">Export CSV</button></h3>
+                        <p style="margin-top: 0; font-size: 0.85rem; color: var(--header-p);">Required for movement of sources to field locations (RAD-010 5.11.4 & 5.12.1)</p>
+                        <form id="transport-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <label for="tr-date">Transport Date</label>
+                                <input type="date" id="tr-date" required>
+                                
+                                <label for="tr-camera">Camera / Exposure Device SN</label>
+                                <input type="text" id="tr-camera" required>
 
-                        <label for="ul-ric">Radiographer in Charge (RIC)</label>
-                        <input type="text" id="ul-ric" required>
+                                <label for="tr-destination">Destination</label>
+                                <input type="text" id="tr-destination" required>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <label for="tr-max-contact">Prior-to-Transport Max Contact (mR/hr)</label>
+                                <input type="number" step="0.1" id="tr-max-contact" required>
 
-                        <label for="ul-participants">Other Participants</label>
-                        <input type="text" id="ul-participants" placeholder="Comma separated names">
+                                <label for="tr-ti">Transport Index (TI) at 1 Meter</label>
+                                <input type="number" step="0.1" id="tr-ti" required>
 
-                        <label for="ul-meter">Survey Meter Used (SN)</label>
-                        <input type="text" id="ul-meter" required>
+                                <div style="background: rgba(0,0,0,0.05); padding: 10px; border-radius: 5px; margin-top: 10px;">
+                                    <div class="checkbox-group">
+                                        <input type="checkbox" id="tr-water">
+                                        <label for="tr-water"><b>Over-Water Transport?</b> (Requires Buoy & Sonar Pinger)</label>
+                                    </div>
+                                </div>
+                                <button type="submit" style="margin-top: auto;">Log Transport Survey</button>
+                            </div>
+                        </form>
+                        <ul id="transport-list">Loading...</ul>
+                    </div>
 
-                        <div class="checkbox-group" style="margin-bottom: 10px; background-color: rgba(92, 184, 92, 0.1); padding: 10px; border-radius: 4px; border: 1px solid #5cb85c;">
-                            <input type="checkbox" id="ul-response" required>
-                            <label for="ul-response" style="color: #28a745; font-weight: bold;">Meter Response Checked Prior to Use</label>
+                    <div class="card">
+                        <h3>Dosimetry Logs <button type="button" class="btn-export" onclick="exportCSV('dosimetry_logs')">Export CSV</button></h3>
+                        <form id="dosimetry-form">
+                            <label for="dl-name">Personnel Name</label>
+                            <input type="text" id="dl-name" required>
+
+                            <label for="dl-serial">Dosimeter Serial</label>
+                            <input type="text" id="dl-serial" required>
+
+                            <div class="checkbox-group" style="margin-bottom: 10px; background-color: rgba(217, 83, 79, 0.1); padding: 10px; border-radius: 4px; border: 1px solid #d9534f;">
+                                <input type="checkbox" id="dl-ratemeter-check" required>
+                                <label for="dl-ratemeter-check" style="color: #d9534f; font-weight: bold;">Alarming Ratemeter Audible Check Performed</label>
+                            </div>
+
+                            <label for="dl-initial">Initial Reading (mR)</label>
+                            <input type="number" step="0.1" id="dl-initial" required>
+
+                            <label for="dl-final">Final Reading (mR)</label>
+                            <input type="number" step="0.1" id="dl-final" required>
+
+                            <button type="submit">Log Dosimetry</button>
+                        </form>
+                        <ul id="dosimetry-list">Loading...</ul>
+                    </div>
+
+                    <div class="card">
+                        <h3>Utilization Logs (RAD-010) <button type="button" class="btn-export" onclick="exportCSV('utilization_logs')">Export CSV</button></h3>
+                        <form id="utilization-form">
+                            <label for="ul-job">Job Reference Number</label>
+                            <input type="text" id="ul-job" required>
+
+                            <label for="ul-ric">Radiographer in Charge (RIC)</label>
+                            <input type="text" id="ul-ric" required>
+
+                            <label for="ul-participants">Other Participants</label>
+                            <input type="text" id="ul-participants" placeholder="Comma separated names">
+
+                            <label for="ul-meter">Survey Meter Used (SN)</label>
+                            <input type="text" id="ul-meter" required>
+
+                            <div class="checkbox-group" style="margin-bottom: 10px; background-color: rgba(92, 184, 92, 0.1); padding: 10px; border-radius: 4px; border: 1px solid #5cb85c;">
+                                <input type="checkbox" id="ul-response" required>
+                                <label for="ul-response" style="color: #28a745; font-weight: bold;">Meter Response Checked Prior to Use</label>
+                            </div>
+
+                            <label for="ul-max-survey">Max Device Survey Reading (mR/hr)</label>
+                            <input type="number" step="0.1" id="ul-max-survey" placeholder="Measured on camera after lock" required>
+
+                            <button type="submit">Log Utilization</button>
+                        </form>
+                        <ul id="utilization-list">Loading...</ul>
+                    </div>
+                </div>
+            </section>
+
+            <section id="reporting" class="module">
+                <h2>Post-Operation & Reporting</h2>
+                <div class="dashboard-grid">
+                    <div class="card" style="min-width: 100%;">
+                        <h3>Post Job Reports <button type="button" class="btn-export" onclick="exportCSV('post_job_reports')">Export CSV</button></h3>
+                        <form id="reports-form">
+                            <label for="pj-completed-by">Completed By (Name)</label>
+                            <input type="text" id="pj-completed-by" required>
+
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="pj-source-secured">
+                                <label for="pj-source-secured">Source Secured</label>
+                            </div>
+
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="pj-vault-verified">
+                                <label for="pj-vault-verified">Vault Verified</label>
+                            </div>
+
+                            <label for="pj-doc">Upload Audit Form / Sign-offs</label>
+                            <input type="file" id="pj-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+
+                            <button type="submit">Submit Report</button>
+                        </form>
+                        <ul id="reports-list">Loading...</ul>
+                    </div>
+
+                    <div class="card" style="border-left: 5px solid #005A9C; min-width: 100%;">
+                        <h3 style="border: none; margin-bottom: 5px;">Quarterly Physical Inventory</h3>
+                        <p style="margin-top: 0; color: var(--header-p);">Generates an official RSO signature-ready inventory of all active sources and DU cameras per RAD-010 Section 5.6.</p>
+                        
+                        <div id="pdf-report-container" style="display: none; padding: 40px; background: white; color: black; font-family: Arial;">
+                            <h2 style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px;">Official Physical Inventory</h2>
+                            <div style="display: flex; justify-content: space-between; font-weight: bold; margin: 20px 0;">
+                                <span id="pdf-date"></span><span>Command: _______________</span>
+                            </div>
+                            <h3>1. Sealed Sources</h3>
+                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;" border="1">
+                                <thead style="background: #eee;"><tr><th>Isotope</th><th>Act (Ci)</th><th>SN</th><th>Location</th><th>Verified</th></tr></thead>
+                                <tbody id="pdf-source-body"></tbody>
+                            </table>
+                            <h3>2. Exposure Devices (DU Shielded)</h3>
+                            <table style="width: 100%; border-collapse: collapse;" border="1">
+                                <thead style="background: #eee;"><tr><th>Model</th><th>SN</th><th>Location</th><th>Verified</th></tr></thead>
+                                <tbody id="pdf-cam-body"></tbody>
+                            </table>
+                            <div style="display: flex; justify-content: space-between; margin-top: 80px;">
+                                <div style="border-top: 1px solid #000; width: 250px; text-align: center; padding-top: 5px;">Verifier Signature</div>
+                                <div style="border-top: 1px solid #000; width: 250px; text-align: center; padding-top: 5px;">RSO Signature</div>
+                            </div>
                         </div>
 
-                        <label for="ul-max-survey">Max Device Survey Reading (mR/hr)</label>
-                        <input type="number" step="0.1" id="ul-max-survey" placeholder="Measured on camera after lock" required>
-
-                        <button type="submit">Log Utilization</button>
-                    </form>
-                    <ul id="utilization-list">Loading...</ul>
+                        <button type="button" class="btn-secondary" style="width: 100%; font-size: 1.1rem; font-weight: bold; background-color: #005A9C; color: white; border: none; padding: 15px; margin-top: 20px;" onclick="generatePDFInventory()">📄 Generate PDF Report</button>
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
+        </main>
 
-        <section id="reporting" class="module">
-            <h2>Post-Operation & Reporting</h2>
-            <div class="dashboard-grid">
-                <div class="card">
-                    <h3>Post Job Reports <button type="button" class="btn-export" onclick="exportCSV('post_job_reports')">Export CSV</button></h3>
-                    <form id="reports-form">
-                        <label for="pj-completed-by">Completed By (Name)</label>
-                        <input type="text" id="pj-completed-by" required>
-
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="pj-source-secured">
-                            <label for="pj-source-secured">Source Secured</label>
-                        </div>
-
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="pj-vault-verified">
-                            <label for="pj-vault-verified">Vault Verified</label>
-                        </div>
-
-                        <label for="pj-doc">Upload Audit Form / Sign-offs</label>
-                        <input type="file" id="pj-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
-
-                        <button type="submit">Submit Report</button>
-                    </form>
-                    <ul id="reports-list">Loading...</ul>
-                </div>
-
-                <div class="card" style="border-left: 5px solid #005A9C;">
-                    <h3 style="border: none; margin-bottom: 5px;">Quarterly Physical Inventory</h3>
-                    <p style="margin-top: 0; color: var(--header-p);">Generates an official RSO signature-ready inventory of all active sources and DU cameras per RAD-010 Section 5.6.</p>
-                    <button type="button" class="btn-secondary" style="width: 100%; font-size: 1.1rem; font-weight: bold; background-color: #005A9C; color: white; border: none; padding: 15px; margin-top: 20px;" onclick="generateInventory()">📄 Generate Official Inventory Report</button>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <div id="inspector-modal" class="modal-overlay">
+        <footer>
+            <p>Shipyard Radiography Compliance - Last Updated 01 Apr 2026</p>
+        </footer>
+    </div> <div id="inspector-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="modal-title">Record Details</h3>
@@ -449,10 +499,6 @@
             </div>
         </div>
     </div>
-
-    <footer>
-        <p>Shipyard Radiography Compliance - Last Updated 01 Apr 2026</p>
-    </footer>
 
     <script type="module" src="js/app.js"></script>
 </body>
