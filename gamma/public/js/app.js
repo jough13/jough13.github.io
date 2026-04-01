@@ -221,12 +221,14 @@ populateSourceDropdown(); // Initial load of the dropdown
 async function loadAllData() {
     await Promise.all([
         fetchData('equipment', 'equipment-list'),
-        fetchData('personnel', 'personnel-list'), // Added Personnel
+        fetchData('personnel', 'personnel-list'), 
         fetchData('sources', 'sources-list'),
         fetchData('work_plans', 'work-plans-list'),
         fetchData('dosimetry_logs', 'dosimetry-list'),
         fetchData('post_job_reports', 'reports-list')
     ]);
+    
+    updateDashboard(); 
 }
 
 async function fetchData(collectionName, listId) {
@@ -421,5 +423,71 @@ window.executeDelete = async function() {
     } catch (err) {
         alert("Error deleting record. Check console for details.");
         console.error("Deletion Error:", err);
+    }
+}
+
+// --- NEW FEATURE: COMMAND CENTER DASHBOARD ---
+
+window.updateDashboard = async function() {
+    try {
+        // 1. Update Quick Stats
+        const wpSnap = await getDocs(collection(db, 'work_plans'));
+        const statWorkPlans = document.getElementById('stat-work-plans');
+        if(statWorkPlans) statWorkPlans.textContent = wpSnap.size;
+
+        const srcSnap = await getDocs(collection(db, 'sources'));
+        const statSources = document.getElementById('stat-sources');
+        if(statSources) statSources.textContent = srcSnap.size;
+
+        // 2. Scan for Compliance Alerts
+        const alertList = document.getElementById('alert-list');
+        if(!alertList) return;
+        
+        alertList.innerHTML = '';
+        let alertCount = 0;
+        const today = new Date();
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+        // Check Equipment Calibration Dates
+        const eqSnap = await getDocs(collection(db, 'equipment'));
+        eqSnap.forEach(doc => {
+            const eq = doc.data();
+            if (eq.calibration_due_date) {
+                const calDate = new Date(eq.calibration_due_date);
+                if (calDate < today) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px;">🚨 OVERDUE: ${eq.type} (SN: ${eq.serial_number}) calibration expired!</li>`;
+                    alertCount++;
+                } else if (calDate < thirtyDaysFromNow) {
+                    alertList.innerHTML += `<li style="color: #f0ad4e; margin-bottom: 5px;">⚠️ WARNING: ${eq.type} (SN: ${eq.serial_number}) calibration due within 30 days.</li>`;
+                    alertCount++;
+                }
+            }
+        });
+
+        // Check Source Leak Tests (Requires < 6 months / ~182 days)
+        srcSnap.forEach(doc => {
+            const src = doc.data();
+            if (src.last_leak_test_date) {
+                const lastTest = new Date(src.last_leak_test_date);
+                const daysSinceTest = (today - lastTest) / (1000 * 60 * 60 * 24);
+                
+                if (daysSinceTest > 182) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px;">🚨 OVERDUE: Source ${src.serial_number} leak test expired (>6 months)!</li>`;
+                    alertCount++;
+                } else if (daysSinceTest > 152) { // Within 30 days of expiring
+                    alertList.innerHTML += `<li style="color: #f0ad4e; margin-bottom: 5px;">⚠️ WARNING: Source ${src.serial_number} leak test due within 30 days.</li>`;
+                    alertCount++;
+                }
+            }
+        });
+
+        // If everything is perfectly compliant
+        if (alertCount === 0) {
+            alertList.innerHTML = '<li style="color: #5cb85c; list-style-type: none;">✅ All equipment and sources are currently in compliance.</li>';
+        }
+
+    } catch (err) {
+        console.error("Error updating dashboard stats:", err);
     }
 }
