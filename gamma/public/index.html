@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gamma Radiography Tracker</title>
     <link rel="stylesheet" href="css/style.css">
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
 </head>
 <body>
     <header>
@@ -15,6 +16,7 @@
     <nav>
         <ul>
             <li><a href="#" onclick="showSection('dashboard')">Dashboard</a></li>
+            <li><a href="#" onclick="showSection('calendar-view')">Schedule</a></li>
             <li><a href="#" onclick="showSection('equipment')">Equipment & Sources</a></li>
             <li><a href="#" onclick="showSection('personnel')">Personnel</a></li>
             <li><a href="#" onclick="showSection('planning')">Work Planning</a></li>
@@ -36,13 +38,11 @@
                     <h1 id="stat-work-plans" style="font-size: 4rem; color: #005A9C; margin: 10px 0;">-</h1>
                     <button onclick="showSection('planning')" style="width: 50%; margin: 0 auto;" class="btn-secondary">View Plans</button>
                 </div>
-                
                 <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
                     <h3 style="border: none; margin-bottom: 0;">Vault Sources</h3>
                     <h1 id="stat-sources" style="font-size: 4rem; color: #005A9C; margin: 10px 0;">-</h1>
                     <button onclick="showSection('equipment')" style="width: 50%; margin: 0 auto;" class="btn-secondary">View Sources</button>
                 </div>
-
                 <div class="card" style="border-left: 5px solid #d9534f;">
                     <h3 style="color: #d9534f; border: none;">Compliance Alerts</h3>
                     <ul id="alert-list" style="padding-left: 20px; font-weight: bold; border: none; background: transparent; max-height: 200px; overflow-y: auto;">
@@ -54,7 +54,6 @@
             <div class="card" style="margin-top: 20px;">
                 <h3 style="border-bottom: 2px solid var(--nav-bg); padding-bottom: 5px;">Regulatory References & Oversight</h3>
                 <div style="display: flex; gap: 40px; flex-wrap: wrap; padding: 10px 0;">
-                    
                     <div style="flex: 1; min-width: 250px;">
                         <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--text-color); opacity: 0.8;">NRC 10 CFR Part 34</h4>
                         <ul style="list-style-type: none; padding: 0; margin: 0; line-height: 1.8;">
@@ -64,7 +63,6 @@
                             <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/part034-0061.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">Subpart E—Recordkeeping</a></li>
                         </ul>
                     </div>
-
                     <div style="flex: 1; min-width: 250px;">
                         <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--text-color); opacity: 0.8;">Navy & General Rad Safety</h4>
                         <ul style="list-style-type: none; padding: 0; margin: 0; line-height: 1.8;">
@@ -74,6 +72,13 @@
                         </ul>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <section id="calendar-view" class="module">
+            <h2>Operations & Compliance Calendar</h2>
+            <div class="card">
+                <div id="calendar"></div>
             </div>
         </section>
 
@@ -147,14 +152,12 @@
                                 <option value="electronic personal dosimeter">Electronic Personal Dosimeter</option>
                                 <option value="area monitor">Area Monitor</option>
                             </select>
-
                             <label for="eq-serial">Serial Number</label>
                             <input type="text" id="eq-serial" placeholder="e.g. SN-12345" required>
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 10px;">
                             <label for="eq-cal-date">Calibration Due Date</label>
                             <input type="date" id="eq-cal-date" required>
-
                             <label for="eq-cert">Upload Calibration Certificate</label>
                             <input type="file" id="eq-cert" accept=".pdf,.jpg,.jpeg,.png">
                             <button type="submit" style="margin-top: auto;">Add Equipment</button>
@@ -162,39 +165,79 @@
                     </form>
                     <ul id="equipment-list">Loading...</ul>
                 </div>
-
             </div>
         </section>
 
         <section id="personnel" class="module">
             <h2>Personnel Qualifications</h2>
-            <div class="card">
-                <h3>Radiographer Certifications <button type="button" class="btn-export" onclick="exportCSV('personnel')">Export CSV</button></h3>
-                <form id="personnel-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <label for="per-name">Full Name</label>
-                        <input type="text" id="per-name" required>
+            <div class="dashboard-grid">
+                <div class="card" style="min-width: 100%;">
+                    <h3>Radiographer Certifications <button type="button" class="btn-export" onclick="exportCSV('personnel')">Export CSV</button></h3>
+                    <form id="personnel-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <label for="per-name">Full Name</label>
+                            <input type="text" id="per-name" required>
+                            <label for="per-cert">ASNT / State Cert Number</label>
+                            <input type="text" id="per-cert" required>
+                            <label for="per-trust">T&R Authorization Date</label>
+                            <input type="date" id="per-trust" required>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <label for="per-hazmat">Hazmat Training Expiration</label>
+                            <input type="date" id="per-hazmat" required>
+                            <label for="per-eval">Last 6-Month Field Eval Date</label>
+                            <input type="date" id="per-eval" required>
+                            <label for="per-drill">Last Annual Emergency Drill Date</label>
+                            <input type="date" id="per-drill" required>
+                            <button type="submit" style="margin-top: auto;">Add Personnel</button>
+                        </div>
+                    </form>
+                    <ul id="personnel-list">Loading...</ul>
+                </div>
 
-                        <label for="per-cert">ASNT / State Cert Number</label>
-                        <input type="text" id="per-cert" required>
+                <div class="card" style="min-width: 100%;">
+                    <h3>6-Month Field Evaluation Checklist (RAD-010) <button type="button" class="btn-export" onclick="exportCSV('field_evaluations')">Export CSV</button></h3>
+                    <form id="eval-form">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <label for="ev-date">Date of Evaluation</label>
+                                <input type="date" id="ev-date" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div>
+                                <label for="ev-rad">Radiographer Evaluated</label>
+                                <input type="text" id="ev-rad" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div>
+                                <label for="ev-evaluator">Evaluator (RSO or Designee)</label>
+                                <input type="text" id="ev-evaluator" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div>
+                                <label for="ev-duties">Duties Performed</label>
+                                <input type="text" id="ev-duties" placeholder="e.g. Source exchange, boundary survey" required style="width: 100%; box-sizing: border-box;">
+                            </div>
+                        </div>
 
-                        <label for="per-trust">T&R Authorization Date</label>
-                        <input type="date" id="per-trust" required>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <label for="per-hazmat">Hazmat Training Expiration</label>
-                        <input type="date" id="per-hazmat" required>
+                        <label>Satisfactory Performance of Attributes:</label>
+                        <div class="checklist-grid">
+                            <div class="checkbox-group"><input type="checkbox" id="ev-c1"><label for="ev-c1">Properly followed operating procedures</label></div>
+                            <div class="checkbox-group"><input type="checkbox" id="ev-c2"><label for="ev-c2">Knowledge of emergency procedures</label></div>
+                            <div class="checkbox-group"><input type="checkbox" id="ev-c3"><label for="ev-c3">Performed survey instrument checks</label></div>
+                            <div class="checkbox-group"><input type="checkbox" id="ev-c4"><label for="ev-c4">Proper use of survey instrument</label></div>
+                            <div class="checkbox-group"><input type="checkbox" id="ev-c5"><label for="ev-c5">Proper use of TLDs & EPDs</label></div>
+                            <div class="checkbox-group"><input type="checkbox" id="ev-c6"><label for="ev-c6">PRI interlocks/warnings checked (if applic.)</label></div>
+                            <div class="checkbox-group"><input type="checkbox" id="ev-c7"><label for="ev-c7">Proper control of camera keys</label></div>
+                            <div class="checkbox-group"><input type="checkbox" id="ev-c8"><label for="ev-c8">Boundary established & controlled (Temp Site)</label></div>
+                            <div class="checkbox-group"><input type="checkbox" id="ev-c9"><label for="ev-c9">ALARA principles utilized</label></div>
+                            <div class="checkbox-group"><input type="checkbox" id="ev-c10"><label for="ev-c10">Proper completion of logs/records</label></div>
+                        </div>
 
-                        <label for="per-eval">Last 6-Month Field Eval Date</label>
-                        <input type="date" id="per-eval" required>
+                        <label for="ev-comments" style="margin-top: 15px;">Evaluator Comments</label>
+                        <textarea id="ev-comments" rows="3"></textarea>
 
-                        <label for="per-drill">Last Annual Emergency Drill Date</label>
-                        <input type="date" id="per-drill" required>
-                        
-                        <button type="submit" style="margin-top: auto;">Add Personnel</button>
-                    </div>
-                </form>
-                <ul id="personnel-list">Loading...</ul>
+                        <button type="submit">Submit Official Evaluation</button>
+                    </form>
+                    <ul id="eval-list">Loading...</ul>
+                </div>
             </div>
         </section>
 
@@ -206,8 +249,14 @@
                     <label for="wp-job">Job Number</label>
                     <input type="text" id="wp-job" placeholder="e.g. J-2024-001" required>
 
-                    <label for="wp-location">Location</label>
-                    <input type="text" id="wp-location" placeholder="e.g. Pier 4" required>
+                    <label for="wp-loc-type" style="margin-top: 10px;">Operation Location Type</label>
+                    <select id="wp-loc-type" onchange="togglePRI()" style="background-color: #e9ecef; border: 1px solid #005A9C;" required>
+                        <option value="temporary">Temporary Job Site</option>
+                        <option value="pri">Permanent Radiographic Installation (PRI)</option>
+                    </select>
+
+                    <label for="wp-location" style="margin-top: 10px;">Specific Location / Room</label>
+                    <input type="text" id="wp-location" placeholder="e.g. Pier 4 or Vault Room" required>
 
                     <label for="wp-date">Planned Date</label>
                     <input type="date" id="wp-date" required>
@@ -217,15 +266,29 @@
                         <option value="">Loading active sources...</option>
                     </select>
 
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="wp-collimator">
-                        <label for="wp-collimator">Collimator Used (10x attenuation)</label>
+                    <div id="wp-temp-wrapper" style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding: 15px; border: 1px solid #ccc; border-radius: 5px;">
+                        <h4 style="margin: 0; color: #005A9C;">Temporary Job Site Controls</h4>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="wp-collimator">
+                            <label for="wp-collimator">Collimator Used (10x attenuation)</label>
+                        </div>
+                        <label for="wp-boundary">Calculated 2 mR/hr Boundary (Feet)</label>
+                        <input type="number" step="0.1" id="wp-boundary" readonly style="background-color: var(--export-bg); cursor: not-allowed;">
                     </div>
 
-                    <label for="wp-boundary">Calculated 2 mR/hr Boundary (Feet)</label>
-                    <input type="number" step="0.1" id="wp-boundary" readonly style="background-color: var(--export-bg); cursor: not-allowed;">
+                    <div id="wp-pri-wrapper" style="display: none; flex-direction: column; gap: 10px; margin-top: 10px; padding: 15px; border: 1px solid #005A9C; border-radius: 5px; background: rgba(0, 90, 156, 0.05);">
+                        <h4 style="margin: 0; color: #005A9C;">PRI Pre-Operation Checks (RAD-010 5.4.4)</h4>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="wp-pri-entrance">
+                            <label for="wp-pri-entrance" style="font-weight: bold;">Entrance control devices tested for proper operation</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="wp-pri-alarm">
+                            <label for="wp-pri-alarm" style="font-weight: bold;">Alarm system tested with radiation source (visible & audible)</label>
+                        </div>
+                    </div>
 
-                    <label for="wp-diagram">Upload Setup Diagram / Sketch</label>
+                    <label for="wp-diagram" style="margin-top: 10px;">Upload Setup Diagram / Sketch</label>
                     <input type="file" id="wp-diagram" accept=".pdf,.jpg,.jpeg,.png">
 
                     <button type="submit">Create Work Plan</button>
@@ -237,6 +300,40 @@
         <section id="execution" class="module">
             <h2>Execution & Monitoring</h2>
             <div class="dashboard-grid">
+                
+                <div class="card" style="min-width: 100%;">
+                    <h3>Transportation & Shipping Logs <button type="button" class="btn-export" onclick="exportCSV('transport_logs')">Export CSV</button></h3>
+                    <p style="margin-top: 0; font-size: 0.85rem; color: var(--header-p);">Required for movement of sources to field locations (RAD-010 5.11.4 & 5.12.1)</p>
+                    <form id="transport-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <label for="tr-date">Transport Date</label>
+                            <input type="date" id="tr-date" required>
+                            
+                            <label for="tr-camera">Camera / Exposure Device SN</label>
+                            <input type="text" id="tr-camera" required>
+
+                            <label for="tr-destination">Destination</label>
+                            <input type="text" id="tr-destination" required>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <label for="tr-max-contact">Prior-to-Transport Max Contact (mR/hr)</label>
+                            <input type="number" step="0.1" id="tr-max-contact" required>
+
+                            <label for="tr-ti">Transport Index (TI) at 1 Meter</label>
+                            <input type="number" step="0.1" id="tr-ti" required>
+
+                            <div style="background: rgba(0,0,0,0.05); padding: 10px; border-radius: 5px; margin-top: 10px;">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="tr-water">
+                                    <label for="tr-water"><b>Over-Water Transport?</b> (Requires Buoy & Sonar Pinger)</label>
+                                </div>
+                            </div>
+                            <button type="submit" style="margin-top: auto;">Log Transport Survey</button>
+                        </div>
+                    </form>
+                    <ul id="transport-list">Loading...</ul>
+                </div>
+
                 <div class="card">
                     <h3>Dosimetry Logs <button type="button" class="btn-export" onclick="exportCSV('dosimetry_logs')">Export CSV</button></h3>
                     <form id="dosimetry-form">
