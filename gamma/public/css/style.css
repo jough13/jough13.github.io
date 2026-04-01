@@ -1,17 +1,75 @@
 /* public/css/style.css */
+
+/* Define Global Theme Variables */
+:root {
+    --bg-color: #f4f4f9;
+    --text-color: #333;
+    --header-bg: #002244;
+    --header-text: #ffffff;
+    --header-p: #ccc;
+    --nav-bg: #005A9C;
+    --nav-btn-bg: #00447A;
+    --nav-btn-hover: #002244;
+    --card-bg: #ffffff;
+    --border-color: #ccc;
+    --card-shadow: rgba(0,0,0,0.1);
+    --list-bg: #ffffff;
+    --list-hover: #e9ecef;
+    --input-bg: #ffffff;
+    --input-text: #333;
+    --footer-bg: #ddd;
+    --modal-bg: #ffffff;
+    --modal-overlay: rgba(0, 34, 68, 0.8);
+    
+    /* New Professional Export Button */
+    --export-bg: #f8f9fa;
+    --export-text: #495057;
+    --export-border: #ced4da;
+    --export-hover: #e2e6ea;
+}
+
+/* Dark Mode Overrides */
+[data-theme="dark"] {
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --header-bg: #0a1118;
+    --header-text: #e0e0e0;
+    --header-p: #aaa;
+    --nav-bg: #1c2b39;
+    --nav-btn-bg: #2c3e50;
+    --nav-btn-hover: #1a252f;
+    --card-bg: #1e1e1e;
+    --border-color: #444;
+    --card-shadow: rgba(0,0,0,0.5);
+    --list-bg: #2a2a2a;
+    --list-hover: #333333;
+    --input-bg: #2c2c2c;
+    --input-text: #e0e0e0;
+    --footer-bg: #111111;
+    --modal-bg: #1e1e1e;
+    --modal-overlay: rgba(0, 0, 0, 0.85);
+
+    --export-bg: #2c3e50;
+    --export-text: #e0e0e0;
+    --export-border: #444;
+    --export-hover: #34495e;
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f4f4f9;
-    color: #333;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 header {
-    background-color: #002244; /* Navy Blue */
-    color: white;
+    background-color: var(--header-bg);
+    color: var(--header-text);
     padding: 1rem;
     text-align: center;
+    transition: background-color 0.3s ease;
 }
 
 header h1 {
@@ -22,17 +80,18 @@ header h1 {
 header p {
     margin-top: 5px;
     font-size: 0.9rem;
-    color: #ccc;
+    color: var(--header-p);
 }
 
 nav {
-    background-color: #005A9C;
+    background-color: var(--nav-bg);
     padding: 15px 20px;
     display: flex;
-    justify-content: center; /* Centers the whole cluster */
+    justify-content: center;
     align-items: center;
     flex-wrap: wrap;
-    gap: 25px; /* Adds clean spacing between buttons and search bar */
+    gap: 25px;
+    transition: background-color 0.3s ease;
 }
 
 nav ul {
@@ -47,8 +106,8 @@ nav ul {
 }
 
 nav ul li a {
-    color: white;
-    background-color: #00447A; 
+    color: #ffffff;
+    background-color: var(--nav-btn-bg);
     text-decoration: none;
     font-weight: bold;
     padding: 10px 20px;
@@ -59,35 +118,30 @@ nav ul li a {
 }
 
 nav ul li a:hover {
-    background-color: #002244; 
+    background-color: var(--nav-btn-hover);
     box-shadow: 0 4px 8px rgba(0,0,0,0.4); 
     transform: translateY(-2px); 
 }
 
-/* Fix to prevent nav items from inheriting the white data-card background */
-nav ul li {
-    background: transparent;
-    border: none;
-    padding: 0;
-}
+nav ul li { background: transparent; border: none; padding: 0; }
+nav ul li:hover { background-color: transparent; }
 
-nav ul li:hover {
-    background-color: transparent;
-}
-
-/* Upgraded Search Bar Styling */
+/* Search Bar & Theme Toggle Container */
 .search-container {
     display: flex;
     align-items: center;
+    gap: 15px;
 }
 
 .search-container input {
-    padding: 10px 18px; /* Taller and thicker padding */
-    border-radius: 25px; /* Softer pill shape */
-    border: 2px solid #00447A; /* Blends better with nav */
+    padding: 10px 18px; 
+    border-radius: 25px; 
+    border: 2px solid var(--nav-btn-bg); 
+    background-color: var(--input-bg);
+    color: var(--input-text);
     outline: none;
-    width: 320px; /* Noticeably wider */
-    font-size: 1.05rem; /* Larger text */
+    width: 320px; 
+    font-size: 1.05rem; 
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
 }
@@ -97,11 +151,28 @@ nav ul li:hover {
     box-shadow: 0 0 8px rgba(255,255,255,0.4), inset 0 2px 4px rgba(0,0,0,0.1);
 }
 
+.theme-toggle {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.5);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.theme-toggle:hover {
+    background-color: rgba(255,255,255,0.15);
+    border-color: white;
+}
+
 main {
     padding: 20px;
     max-width: 1200px;
     margin: 0 auto;
-    padding-bottom: 60px; /* Space for footer */
+    padding-bottom: 60px;
 }
 
 .module { display: none; }
@@ -114,20 +185,21 @@ main {
 }
 
 .card {
-    background-color: white;
-    padding: 20px; /* Added slightly more internal padding */
+    background-color: var(--card-bg);
+    padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px var(--card-shadow);
     flex: 1;
     min-width: 300px;
     margin-bottom: 20px;
+    transition: background-color 0.3s ease;
 }
 
 .card h3 {
     margin-top: 0;
-    border-bottom: 2px solid #002244;
-    padding-bottom: 15px; /* Gives the text and button breathing room */
-    margin-bottom: 20px; /* Separates header from the form */
+    border-bottom: 2px solid var(--nav-bg);
+    padding-bottom: 15px;
+    margin-bottom: 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -137,10 +209,10 @@ main {
 form {
     display: flex;
     flex-direction: column;
-    gap: 12px; /* Slightly more space between inputs */
+    gap: 12px;
     margin-bottom: 20px;
     padding-bottom: 20px;
-    border-bottom: 1px dashed #ccc;
+    border-bottom: 1px dashed var(--border-color);
 }
 
 form label {
@@ -150,13 +222,16 @@ form label {
 
 form input, form select {
     padding: 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
+    background-color: var(--input-bg);
+    color: var(--input-text);
     border-radius: 4px;
     font-size: 1rem;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-form button {
-    background-color: #005A9C;
+form button[type="submit"] {
+    background-color: var(--nav-bg);
     color: white;
     border: none;
     padding: 10px;
@@ -167,39 +242,34 @@ form button {
     transition: background-color 0.3s;
 }
 
-form button:hover { background-color: #003F6C; }
+form button[type="submit"]:hover { background-color: var(--nav-btn-hover); }
 
-/* Upgraded Export Button */
+/* Upgraded, Sleek Export Button */
 .btn-export {
-    background-color: #28a745;
-    color: white;
-    border: 1px solid #218838;
+    background-color: var(--export-bg);
+    color: var(--export-text);
+    border: 1px solid var(--export-border);
     padding: 6px 14px;
     font-size: 0.85rem;
-    font-weight: bold;
+    font-weight: 600;
     border-radius: 5px;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     transition: all 0.2s ease;
 }
 .btn-export:hover { 
-    background-color: #218838; 
-    transform: translateY(-1px); /* Tiny lift effect on hover */
+    background-color: var(--export-hover); 
+    transform: translateY(-1px);
 }
 
-.checkbox-group {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
+.checkbox-group { display: flex; align-items: center; gap: 5px; }
 .checkbox-group input { width: auto; }
 
 ul { padding-left: 0; list-style: none; }
 
 ul li {
-    background: #fff;
-    border: 1px solid #eee;
+    background: var(--list-bg);
+    border: 1px solid var(--border-color);
     margin-bottom: 5px;
     padding: 10px;
     border-radius: 4px;
@@ -207,16 +277,18 @@ ul li {
     transition: background 0.2s;
 }
 
-ul li:hover { background-color: #e9ecef; }
+ul li:hover { background-color: var(--list-hover); }
 
 footer {
     text-align: center;
     padding: 10px;
-    background-color: #ddd;
+    background-color: var(--footer-bg);
+    color: var(--text-color);
     position: fixed;
     bottom: 0;
     width: 100%;
     z-index: 100;
+    transition: background-color 0.3s ease;
 }
 
 /* Modal Styles */
@@ -224,19 +296,20 @@ footer {
     display: none;
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 34, 68, 0.8);
+    background: var(--modal-overlay);
     z-index: 1000;
     justify-content: center;
     align-items: center;
 }
 
 .modal-content {
-    background: white;
+    background: var(--modal-bg);
+    color: var(--text-color);
     padding: 25px;
     border-radius: 8px;
     width: 90%;
     max-width: 500px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     max-height: 80vh;
     overflow-y: auto;
 }
@@ -245,7 +318,7 @@ footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 2px solid #002244;
+    border-bottom: 2px solid var(--nav-bg);
     padding-bottom: 10px;
     margin-bottom: 15px;
 }
@@ -262,7 +335,7 @@ footer {
     margin: 0;
 }
 
-.close-btn:hover { color: #333; }
+.close-btn:hover { color: var(--text-color); }
 
 .modal-actions {
     margin-top: 20px;
@@ -273,5 +346,5 @@ footer {
 
 .btn-danger { background-color: #d9534f; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer;}
 .btn-danger:hover { background-color: #c9302c; }
-.btn-secondary { background-color: #ccc; color: #333; border: none; padding: 10px; border-radius: 4px; cursor: pointer;}
-.btn-secondary:hover { background-color: #bbb; color: #333; }
+.btn-secondary { background-color: var(--export-bg); color: var(--export-text); border: 1px solid var(--export-border); padding: 10px; border-radius: 4px; cursor: pointer;}
+.btn-secondary:hover { background-color: var(--export-hover); }
