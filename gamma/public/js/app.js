@@ -45,7 +45,7 @@ function updateThemeButton(theme) {
         btn.innerHTML = theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode';
     }
 }
-initTheme(); // Run immediately
+initTheme(); 
 
 async function uploadFile(file, folderPath) {
     if (!file) return null;
@@ -97,7 +97,6 @@ function setupEventListeners() {
                 initial_activity_curies: parseFloat(document.getElementById('src-activity').value),
                 activity_date: document.getElementById('src-date').value,
                 last_leak_test_date: document.getElementById('src-leak-test').value,
-                last_quarterly_maint_date: document.getElementById('src-quarterly-maint').value,
                 current_location: 'Storage Vault',
                 status: 'Stored',
                 certificate_url: certUrl
@@ -106,6 +105,24 @@ function setupEventListeners() {
             sourcesForm.reset();
             await fetchData('sources', 'sources-list');
             populateSourceDropdown(); 
+            updateDashboard();
+        });
+    }
+
+    const camerasForm = document.getElementById('cameras-form');
+    if (camerasForm) {
+        camerasForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                make_model: document.getElementById('cam-model').value,
+                serial_number: document.getElementById('cam-serial').value,
+                du_leak_test_date: document.getElementById('cam-du-date').value,
+                annual_maintenance_date: document.getElementById('cam-maint-date').value,
+                timestamp: new Date().toISOString()
+            };
+            await addData('cameras', data);
+            camerasForm.reset();
+            await fetchData('cameras', 'cameras-list');
             updateDashboard();
         });
     }
@@ -119,11 +136,14 @@ function setupEventListeners() {
                 cert_number: document.getElementById('per-cert').value,
                 trust_authorization_date: document.getElementById('per-trust').value,
                 hazmat_expiration: document.getElementById('per-hazmat').value,
+                last_6mo_eval_date: document.getElementById('per-eval').value,
+                last_annual_drill_date: document.getElementById('per-drill').value,
                 logged_time: new Date().toISOString()
             };
             await addData('personnel', data);
             personnelForm.reset();
             await fetchData('personnel', 'personnel-list');
+            updateDashboard();
         });
     }
 
@@ -172,6 +192,25 @@ function setupEventListeners() {
         });
     }
 
+    const utilizationForm = document.getElementById('utilization-form');
+    if (utilizationForm) {
+        utilizationForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                job_reference: document.getElementById('ul-job').value,
+                radiographer_in_charge: document.getElementById('ul-ric').value,
+                participants: document.getElementById('ul-participants').value,
+                survey_meter_serial: document.getElementById('ul-meter').value,
+                meter_response_checked: document.getElementById('ul-response').checked,
+                max_survey_reading: parseFloat(document.getElementById('ul-max-survey').value),
+                logged_time: new Date().toISOString()
+            };
+            await addData('utilization_logs', data);
+            utilizationForm.reset();
+            await fetchData('utilization_logs', 'utilization-list');
+        });
+    }
+
     const reportsForm = document.getElementById('reports-form');
     if (reportsForm) {
         reportsForm.addEventListener('submit', async (e) => {
@@ -184,7 +223,7 @@ function setupEventListeners() {
                 completed_by: document.getElementById('pj-completed-by').value,
                 source_secured: document.getElementById('pj-source-secured').checked,
                 vault_verified: document.getElementById('pj-vault-verified').checked,
-                daily_log_generated: document.getElementById('pj-daily-log').checked,
+                daily_log_generated: true, 
                 completion_time: new Date().toISOString(),
                 document_url: docUrl
             };
@@ -229,10 +268,12 @@ populateSourceDropdown();
 async function loadAllData() {
     await Promise.all([
         fetchData('equipment', 'equipment-list'),
-        fetchData('personnel', 'personnel-list'), 
         fetchData('sources', 'sources-list'),
+        fetchData('cameras', 'cameras-list'),
+        fetchData('personnel', 'personnel-list'), 
         fetchData('work_plans', 'work-plans-list'),
         fetchData('dosimetry_logs', 'dosimetry-list'),
+        fetchData('utilization_logs', 'utilization-list'),
         fetchData('post_job_reports', 'reports-list')
     ]);
     updateDashboard(); 
@@ -263,13 +304,17 @@ async function fetchData(collectionName, listId) {
             } else if (collectionName === 'sources') {
                 displayText = `${item.isotope} (Serial: ${item.serial_number}) - Activity: ${item.initial_activity_curies} Ci on ${item.activity_date}`;
                 docUrl = item.certificate_url;
+            } else if (collectionName === 'cameras') {
+                displayText = `${item.make_model} (SN: ${item.serial_number}) - Maint: ${item.annual_maintenance_date}`;
             } else if (collectionName === 'personnel') {
-                displayText = `${item.full_name} (Cert: ${item.cert_number}) - Hazmat Expires: ${item.hazmat_expiration}`;
+                displayText = `${item.full_name} (Cert: ${item.cert_number}) - Eval: ${item.last_6mo_eval_date}`;
             } else if (collectionName === 'work_plans') {
                 displayText = `Job ${item.job_number} - Location: ${item.location} on ${item.planned_date}`;
                 docUrl = item.diagram_url;
             } else if (collectionName === 'dosimetry_logs') {
                 displayText = `${item.personnel_name} (Dosimeter: ${item.dosimeter_serial}) - ${item.initial_reading}mR to ${item.final_reading}mR`;
+            } else if (collectionName === 'utilization_logs') {
+                displayText = `Job ${item.job_reference} - RIC: ${item.radiographer_in_charge} (Max Survey: ${item.max_survey_reading} mR/hr)`;
             } else if (collectionName === 'post_job_reports') {
                 const date = new Date(item.completion_time).toLocaleDateString();
                 displayText = `Report by ${item.completed_by} on ${date} (Source Secured: ${item.source_secured ? 'Yes' : 'No'})`;
@@ -345,7 +390,7 @@ function calculateBoundary() {
     boundaryInput.value = distanceFeet.toFixed(1); 
 }
 
-// --- COMMAND CENTER DASHBOARD ---
+// --- COMMAND CENTER DASHBOARD (NOW WITH CAMERAS & PERSONNEL!) ---
 window.updateDashboard = async function() {
     try {
         const wpSnap = await getDocs(collection(db, 'work_plans'));
@@ -365,6 +410,7 @@ window.updateDashboard = async function() {
         const thirtyDaysFromNow = new Date();
         thirtyDaysFromNow.setDate(today.getDate() + 30);
 
+        // 1. Check Equipment Calibration
         const eqSnap = await getDocs(collection(db, 'equipment'));
         eqSnap.forEach(doc => {
             const eq = doc.data();
@@ -380,13 +426,14 @@ window.updateDashboard = async function() {
             }
         });
 
+        // 2. Check Source Leak Tests (182 days)
         srcSnap.forEach(doc => {
             const src = doc.data();
             if (src.last_leak_test_date) {
                 const lastTest = new Date(src.last_leak_test_date);
                 const daysSinceTest = (today - lastTest) / (1000 * 60 * 60 * 24);
                 if (daysSinceTest > 182) {
-                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 OVERDUE: Source ${src.serial_number} leak test expired!</li>`;
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 OVERDUE: Source ${src.serial_number} leak test expired (> 6m)!</li>`;
                     alertCount++;
                 } else if (daysSinceTest > 152) { 
                     alertList.innerHTML += `<li style="color: #f0ad4e; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">⚠️ WARNING: Source ${src.serial_number} leak test due within 30 days.</li>`;
@@ -395,15 +442,146 @@ window.updateDashboard = async function() {
             }
         });
 
+        // 3. Check Camera Maintenance & DU Leak Test (365 days)
+        const camSnap = await getDocs(collection(db, 'cameras'));
+        camSnap.forEach(doc => {
+            const cam = doc.data();
+            if (cam.annual_maintenance_date) {
+                const maintDate = new Date(cam.annual_maintenance_date);
+                const daysSinceMaint = (today - maintDate) / (1000 * 60 * 60 * 24);
+                if (daysSinceMaint > 365) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 OVERDUE: Camera ${cam.serial_number} Annual Maint expired (> 12m)!</li>`;
+                    alertCount++;
+                }
+            }
+            if (cam.du_leak_test_date) {
+                const duDate = new Date(cam.du_leak_test_date);
+                const daysSinceDu = (today - duDate) / (1000 * 60 * 60 * 24);
+                if (daysSinceDu > 365) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 OVERDUE: Camera ${cam.serial_number} DU Leak Test expired!</li>`;
+                    alertCount++;
+                }
+            }
+        });
+
+        // 4. Check Personnel 6-Month Evals (182 days) & Drills
+        const perSnap = await getDocs(collection(db, 'personnel'));
+        perSnap.forEach(doc => {
+            const per = doc.data();
+            if (per.last_6mo_eval_date) {
+                const evalDate = new Date(per.last_6mo_eval_date);
+                const daysSinceEval = (today - evalDate) / (1000 * 60 * 60 * 24);
+                if (daysSinceEval > 182) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 DQ WARNING: ${per.full_name} 6-Month Field Eval expired!</li>`;
+                    alertCount++;
+                }
+            }
+            if (per.last_annual_drill_date) {
+                const drillDate = new Date(per.last_annual_drill_date);
+                const daysSinceDrill = (today - drillDate) / (1000 * 60 * 60 * 24);
+                if (daysSinceDrill > 365) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 OVERDUE: ${per.full_name} Annual Emergency Drill expired!</li>`;
+                    alertCount++;
+                }
+            }
+        });
+
         if (alertCount === 0) {
-            alertList.innerHTML = '<li style="color: #5cb85c; list-style-type: none; background: transparent; border: none; padding:0; cursor: default;">✅ All equipment and sources are in compliance.</li>';
+            alertList.innerHTML = '<li style="color: #5cb85c; list-style-type: none; background: transparent; border: none; padding:0; cursor: default;">✅ All equipment, sources, and personnel are in compliance.</li>';
         }
     } catch (err) {
         console.error("Error updating dashboard stats:", err);
     }
 }
 
-// --- INSPECTOR MODAL ---
+// --- QUARTERLY PHYSICAL INVENTORY GENERATOR ---
+window.generateInventory = async function() {
+    try {
+        const srcSnap = await getDocs(collection(db, 'sources'));
+        const camSnap = await getDocs(collection(db, 'cameras'));
+        
+        let reportHtml = `
+            <html>
+            <head>
+                <title>Quarterly Physical Inventory Report</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+                    h1 { text-align: center; border-bottom: 2px solid #002244; padding-bottom: 10px; }
+                    .meta { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 30px; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+                    th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+                    th { background-color: #f4f4f9; }
+                    .signatures { margin-top: 60px; display: flex; justify-content: space-between; }
+                    .sig-line { border-top: 1px solid #333; width: 300px; padding-top: 5px; margin-top: 50px; text-align: center; }
+                    @media print { button { display: none; } }
+                </style>
+            </head>
+            <body>
+                <h1>Quarterly Physical Inventory of Gamma Sources & Devices</h1>
+                <p style="text-align: center; font-style: italic;">Required per NAVSEA S0420-AA-RAD-010 Section 5.6</p>
+                <div class="meta">
+                    <span>Date Generated: ${new Date().toLocaleDateString()}</span>
+                    <span>Command: _____________________</span>
+                </div>
+                
+                <h3>1. Sealed Sources</h3>
+                <table>
+                    <tr><th>Isotope</th><th>Activity (Ci)</th><th>Act. Date</th><th>Serial Number</th><th>Location</th><th>Verified?</th></tr>`;
+        
+        srcSnap.forEach(doc => {
+            const data = doc.data();
+            reportHtml += `<tr>
+                <td>${data.isotope}</td>
+                <td>${data.initial_activity_curies}</td>
+                <td>${data.activity_date}</td>
+                <td>${data.serial_number}</td>
+                <td>${data.current_location}</td>
+                <td style="text-align: center;">[   ]</td>
+            </tr>`;
+        });
+        reportHtml += `</table>`;
+
+        reportHtml += `<h3>2. Exposure Devices (DU Shielded)</h3>
+                <table>
+                    <tr><th>Make/Model</th><th>Serial Number</th><th>Location</th><th>Verified?</th></tr>`;
+        camSnap.forEach(doc => {
+            const data = doc.data();
+            reportHtml += `<tr>
+                <td>${data.make_model}</td>
+                <td>${data.serial_number}</td>
+                <td>Storage Vault</td>
+                <td style="text-align: center;">[   ]</td>
+            </tr>`;
+        });
+        reportHtml += `</table>`;
+
+        reportHtml += `
+                <div class="signatures">
+                    <div>
+                        <div class="sig-line">Printed Name & Signature of Verifier</div>
+                    </div>
+                    <div>
+                        <div class="sig-line">Radiation Safety Officer (RSO) Review</div>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 40px;">
+                    <button onclick="window.print()" style="padding: 10px 20px; font-size: 1.1rem; cursor: pointer;">🖨️ Print Official Report</button>
+                </div>
+            </body>
+            </html>`;
+
+        // Open in new window
+        const reportWindow = window.open('', '_blank');
+        reportWindow.document.write(reportHtml);
+        reportWindow.document.close();
+
+    } catch (err) {
+        console.error("Error generating inventory:", err);
+        alert("Failed to generate inventory report.");
+    }
+}
+
+// --- INSPECTOR MODAL & DELETE LOGIC ---
 let currentOpenDoc = null; 
 
 window.openModal = async function(collectionName, docId) {
@@ -468,9 +646,11 @@ window.executeDelete = async function() {
             listId = 'sources-list';
             populateSourceDropdown(); 
         }
+        if(currentOpenDoc.collection === 'cameras') listId = 'cameras-list';
         if(currentOpenDoc.collection === 'personnel') listId = 'personnel-list';
         if(currentOpenDoc.collection === 'work_plans') listId = 'work-plans-list';
         if(currentOpenDoc.collection === 'dosimetry_logs') listId = 'dosimetry-list';
+        if(currentOpenDoc.collection === 'utilization_logs') listId = 'utilization-list';
         if(currentOpenDoc.collection === 'post_job_reports') listId = 'reports-list';
         
         await fetchData(currentOpenDoc.collection, listId);
