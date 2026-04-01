@@ -1,6 +1,7 @@
 // public/js/app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, doc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+// NEW: We import initializeFirestore and persistent cache modules to enable offline functionality!
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, addDoc, doc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 
 const firebaseConfig = {
@@ -13,9 +14,12 @@ const firebaseConfig = {
     measurementId: "G-XRJWGPV6E5"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+
+// NEW: Initialize Firestore with Local Caching for OFFLINE MODE
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+});
 const storage = getStorage(app);
 
 // Helper function to upload files to Firebase Storage
@@ -53,6 +57,7 @@ function setupEventListeners() {
             await addData('equipment', data);
             equipmentForm.reset();
             await fetchData('equipment', 'equipment-list');
+            updateDashboard();
         });
     }
 
@@ -79,7 +84,8 @@ function setupEventListeners() {
             await addData('sources', data);
             sourcesForm.reset();
             await fetchData('sources', 'sources-list');
-            populateSourceDropdown(); // Update the dropdown with the new source!
+            populateSourceDropdown(); 
+            updateDashboard();
         });
     }
 
@@ -125,6 +131,7 @@ function setupEventListeners() {
             await addData('work_plans', data);
             workPlansForm.reset();
             await fetchData('work_plans', 'work-plans-list');
+            updateDashboard();
         });
     }
 
@@ -170,7 +177,6 @@ function setupEventListeners() {
         });
     }
 
-    // Attach listeners for the auto-math
     const sourceSelect = document.getElementById('wp-source');
     const collimatorCheck = document.getElementById('wp-collimator');
     if(sourceSelect) sourceSelect.addEventListener('change', calculateBoundary);
@@ -181,43 +187,28 @@ async function addData(collectionName, data) {
     try {
         await addDoc(collection(db, collectionName), data);
     } catch (err) {
-        console.error(`Error adding document to ${collectionName}:`, err);
-        alert(`Failed to add record to ${collectionName}. Check console for details.`);
+        console.error(`Error adding document:`, err);
+        alert(`Failed to save record. Note: If offline, this will save locally and sync when connection returns!`);
     }
 }
 
-// Expose showSection globally so inline onclick handlers in HTML continue to work
 window.showSection = function(sectionId) {
-    // Hide all sections
     document.querySelectorAll('.module').forEach(el => {
         el.classList.remove('active');
         el.style.display = 'none';
     });
-
-    // Show the selected section
     const target = document.getElementById(sectionId);
     if (target) {
         target.classList.add('active');
         target.style.display = 'block';
     }
-
-    // Hide dashboard if showing another section
-    if (sectionId !== 'dashboard') {
-        const dashboard = document.getElementById('dashboard');
-        if(dashboard) dashboard.style.display = 'none';
-    } else {
-        const dashboard = document.getElementById('dashboard');
-        if(dashboard) dashboard.style.display = 'block';
-    }
 }
 
-// Initialize UI and data
 window.showSection('dashboard');
 loadAllData();
 setupEventListeners();
-populateSourceDropdown(); // Initial load of the dropdown
+populateSourceDropdown(); 
 
-// Fetch placeholder data from Firestore
 async function loadAllData() {
     await Promise.all([
         fetchData('equipment', 'equipment-list'),
@@ -227,7 +218,6 @@ async function loadAllData() {
         fetchData('dosimetry_logs', 'dosimetry-list'),
         fetchData('post_job_reports', 'reports-list')
     ]);
-    
     updateDashboard(); 
 }
 
@@ -282,11 +272,9 @@ async function fetchData(collectionName, listId) {
                 link.textContent = " [View Document]";
                 link.style.fontSize = "0.85em";
                 link.style.color = "#005A9C";
-                // Prevent the modal from opening when clicking the document link directly
                 link.onclick = (e) => e.stopPropagation(); 
                 li.appendChild(link);
             }
-
             ul.appendChild(li);
         });
     } catch (err) {
@@ -295,16 +283,12 @@ async function fetchData(collectionName, listId) {
     }
 }
 
-// --- NEW FEATURES: RELATIONAL DATA & MATH ---
-
 async function populateSourceDropdown() {
     const sourceSelect = document.getElementById('wp-source');
     if (!sourceSelect) return;
-
     try {
         const querySnapshot = await getDocs(collection(db, 'sources'));
         sourceSelect.innerHTML = '<option value="">Select an active source...</option>';
-        
         querySnapshot.forEach((doc) => {
             const data = doc.data();
             sourceSelect.innerHTML += `
@@ -335,19 +319,74 @@ function calculateBoundary() {
     if(isotope === 'Co-60') gammaConstant = 14000;
 
     let intensityAt1Ft = activity * gammaConstant;
-
     if(collimatorChecked) {
         intensityAt1Ft = intensityAt1Ft * 0.1;
     }
 
     const targetRate = 2.0; 
     const distanceFeet = Math.sqrt(intensityAt1Ft / targetRate);
-    
     boundaryInput.value = distanceFeet.toFixed(1); 
 }
 
-// --- INSPECTOR MODAL ---
+// --- COMMAND CENTER DASHBOARD ---
+window.updateDashboard = async function() {
+    try {
+        const wpSnap = await getDocs(collection(db, 'work_plans'));
+        const statWorkPlans = document.getElementById('stat-work-plans');
+        if(statWorkPlans) statWorkPlans.textContent = wpSnap.size;
 
+        const srcSnap = await getDocs(collection(db, 'sources'));
+        const statSources = document.getElementById('stat-sources');
+        if(statSources) statSources.textContent = srcSnap.size;
+
+        const alertList = document.getElementById('alert-list');
+        if(!alertList) return;
+        
+        alertList.innerHTML = '';
+        let alertCount = 0;
+        const today = new Date();
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+        const eqSnap = await getDocs(collection(db, 'equipment'));
+        eqSnap.forEach(doc => {
+            const eq = doc.data();
+            if (eq.calibration_due_date) {
+                const calDate = new Date(eq.calibration_due_date);
+                if (calDate < today) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: none; border: none; padding:0; cursor: default;">🚨 OVERDUE: ${eq.type} (SN: ${eq.serial_number}) calibration expired!</li>`;
+                    alertCount++;
+                } else if (calDate < thirtyDaysFromNow) {
+                    alertList.innerHTML += `<li style="color: #f0ad4e; margin-bottom: 5px; background: none; border: none; padding:0; cursor: default;">⚠️ WARNING: ${eq.type} (SN: ${eq.serial_number}) calibration due within 30 days.</li>`;
+                    alertCount++;
+                }
+            }
+        });
+
+        srcSnap.forEach(doc => {
+            const src = doc.data();
+            if (src.last_leak_test_date) {
+                const lastTest = new Date(src.last_leak_test_date);
+                const daysSinceTest = (today - lastTest) / (1000 * 60 * 60 * 24);
+                if (daysSinceTest > 182) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: none; border: none; padding:0; cursor: default;">🚨 OVERDUE: Source ${src.serial_number} leak test expired!</li>`;
+                    alertCount++;
+                } else if (daysSinceTest > 152) { 
+                    alertList.innerHTML += `<li style="color: #f0ad4e; margin-bottom: 5px; background: none; border: none; padding:0; cursor: default;">⚠️ WARNING: Source ${src.serial_number} leak test due within 30 days.</li>`;
+                    alertCount++;
+                }
+            }
+        });
+
+        if (alertCount === 0) {
+            alertList.innerHTML = '<li style="color: #5cb85c; list-style-type: none; background: none; border: none; padding:0; cursor: default;">✅ All equipment and sources are in compliance.</li>';
+        }
+    } catch (err) {
+        console.error("Error updating dashboard stats:", err);
+    }
+}
+
+// --- INSPECTOR MODAL ---
 let currentOpenDoc = null; 
 
 window.openModal = async function(collectionName, docId) {
@@ -401,10 +440,8 @@ window.closeConfirmModal = function() {
 
 window.executeDelete = async function() {
     if(!currentOpenDoc) return;
-    
     try {
         await deleteDoc(doc(db, currentOpenDoc.collection, currentOpenDoc.id));
-        
         closeConfirmModal();
         closeModal();
         
@@ -412,7 +449,7 @@ window.executeDelete = async function() {
         if(currentOpenDoc.collection === 'equipment') listId = 'equipment-list';
         if(currentOpenDoc.collection === 'sources') {
             listId = 'sources-list';
-            populateSourceDropdown(); // Update dropdown if a source is deleted!
+            populateSourceDropdown(); 
         }
         if(currentOpenDoc.collection === 'personnel') listId = 'personnel-list';
         if(currentOpenDoc.collection === 'work_plans') listId = 'work-plans-list';
@@ -420,74 +457,77 @@ window.executeDelete = async function() {
         if(currentOpenDoc.collection === 'post_job_reports') listId = 'reports-list';
         
         await fetchData(currentOpenDoc.collection, listId);
+        updateDashboard();
     } catch (err) {
-        alert("Error deleting record. Check console for details.");
+        alert("Error deleting record.");
         console.error("Deletion Error:", err);
     }
 }
 
-// --- NEW FEATURE: COMMAND CENTER DASHBOARD ---
-
-window.updateDashboard = async function() {
-    try {
-        // 1. Update Quick Stats
-        const wpSnap = await getDocs(collection(db, 'work_plans'));
-        const statWorkPlans = document.getElementById('stat-work-plans');
-        if(statWorkPlans) statWorkPlans.textContent = wpSnap.size;
-
-        const srcSnap = await getDocs(collection(db, 'sources'));
-        const statSources = document.getElementById('stat-sources');
-        if(statSources) statSources.textContent = srcSnap.size;
-
-        // 2. Scan for Compliance Alerts
-        const alertList = document.getElementById('alert-list');
-        if(!alertList) return;
+// --- SEARCH & FILTER LOGIC ---
+window.filterRecords = function() {
+    const searchInput = document.getElementById('global-search').value.toLowerCase();
+    
+    // Select every single list item inside our specific data lists
+    const allRecords = document.querySelectorAll('ul[id$="-list"] li');
+    
+    allRecords.forEach(record => {
+        // Exclude the "No data found" placeholder texts
+        if(record.textContent.includes("No data found")) return;
         
-        alertList.innerHTML = '';
-        let alertCount = 0;
-        const today = new Date();
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(today.getDate() + 30);
+        if (record.textContent.toLowerCase().includes(searchInput)) {
+            record.style.display = '';
+        } else {
+            record.style.display = 'none';
+        }
+    });
+}
 
-        // Check Equipment Calibration Dates
-        const eqSnap = await getDocs(collection(db, 'equipment'));
-        eqSnap.forEach(doc => {
-            const eq = doc.data();
-            if (eq.calibration_due_date) {
-                const calDate = new Date(eq.calibration_due_date);
-                if (calDate < today) {
-                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px;">🚨 OVERDUE: ${eq.type} (SN: ${eq.serial_number}) calibration expired!</li>`;
-                    alertCount++;
-                } else if (calDate < thirtyDaysFromNow) {
-                    alertList.innerHTML += `<li style="color: #f0ad4e; margin-bottom: 5px;">⚠️ WARNING: ${eq.type} (SN: ${eq.serial_number}) calibration due within 30 days.</li>`;
-                    alertCount++;
-                }
-            }
-        });
-
-        // Check Source Leak Tests (Requires < 6 months / ~182 days)
-        srcSnap.forEach(doc => {
-            const src = doc.data();
-            if (src.last_leak_test_date) {
-                const lastTest = new Date(src.last_leak_test_date);
-                const daysSinceTest = (today - lastTest) / (1000 * 60 * 60 * 24);
-                
-                if (daysSinceTest > 182) {
-                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px;">🚨 OVERDUE: Source ${src.serial_number} leak test expired (>6 months)!</li>`;
-                    alertCount++;
-                } else if (daysSinceTest > 152) { // Within 30 days of expiring
-                    alertList.innerHTML += `<li style="color: #f0ad4e; margin-bottom: 5px;">⚠️ WARNING: Source ${src.serial_number} leak test due within 30 days.</li>`;
-                    alertCount++;
-                }
-            }
-        });
-
-        // If everything is perfectly compliant
-        if (alertCount === 0) {
-            alertList.innerHTML = '<li style="color: #5cb85c; list-style-type: none;">✅ All equipment and sources are currently in compliance.</li>';
+// --- CSV EXPORT LOGIC ---
+window.exportCSV = async function(collectionName) {
+    try {
+        const querySnapshot = await getDocs(collection(db, collectionName));
+        if (querySnapshot.empty) {
+            alert("No records found to export.");
+            return;
         }
 
+        const dataArray = [];
+        querySnapshot.forEach((doc) => {
+            dataArray.push({ database_id: doc.id, ...doc.data() });
+        });
+
+        // Get headers dynamically based on the first document's keys
+        const headers = Object.keys(dataArray[0]);
+        let csvContent = headers.join(",") + "\n";
+
+        // Add the rows
+        dataArray.forEach(row => {
+            const rowString = headers.map(header => {
+                let val = row[header] !== undefined ? row[header] : "";
+                // Escape quotes to prevent CSV breakage
+                val = String(val).replace(/"/g, '""');
+                return `"${val}"`;
+            }).join(",");
+            csvContent += rowString + "\n";
+        });
+
+        // Create the downloadable file blob
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        
+        // Generate a clean filename: e.g., "equipment_export_2024-04-01.csv"
+        const dateStr = new Date().toISOString().split('T')[0];
+        link.setAttribute("download", `${collectionName}_export_${dateStr}.csv`);
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
     } catch (err) {
-        console.error("Error updating dashboard stats:", err);
+        console.error("CSV Export failed:", err);
+        alert("Failed to generate CSV export.");
     }
 }
