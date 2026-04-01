@@ -15,6 +15,7 @@
     <nav>
         <ul>
             <li><a href="#" onclick="showSection('equipment')">Equipment & Source Management</a></li>
+            <li><a href="#" onclick="showSection('personnel')">Personnel Qualifications</a></li>
             <li><a href="#" onclick="showSection('planning')">Work Planning & Approvals</a></li>
             <li><a href="#" onclick="showSection('execution')">Execution & Monitoring</a></li>
             <li><a href="#" onclick="showSection('reporting')">Post-Operation & Reporting</a></li>
@@ -22,13 +23,11 @@
     </nav>
 
     <main id="main-content">
-        <!-- Default Dashboard View -->
-        <section id="dashboard" class="active">
+        <section id="dashboard" class="active module">
             <h2>Welcome to Gamma Radiography Tracker</h2>
             <p>Select a module from the navigation menu above.</p>
         </section>
 
-        <!-- 1. Equipment & Source Management -->
         <section id="equipment" class="module">
             <h2>Equipment & Source Management</h2>
             <p>Track pre-operational maintenance requirements and routine calibration schedules. Log source handling, current physical location, and secure storage vault checkout/return times.</p>
@@ -81,6 +80,12 @@
                         <label for="src-date">Activity Date</label>
                         <input type="date" id="src-date" required>
 
+                        <label for="src-leak-test">Last Leak Test Date (Must be < 6 Months)</label>
+                        <input type="date" id="src-leak-test" required>
+
+                        <label for="src-quarterly-maint">Last Quarterly Maintenance Date</label>
+                        <input type="date" id="src-quarterly-maint" required>
+
                         <label for="src-cert">Upload Source Certificate / Leak Test</label>
                         <input type="file" id="src-cert" accept=".pdf,.jpg,.jpeg,.png">
 
@@ -91,7 +96,30 @@
             </div>
         </section>
 
-        <!-- 2. Work Planning & Approvals -->
+        <section id="personnel" class="module">
+            <h2>Personnel Qualifications</h2>
+            <p>Track radiographer certifications, trustworthiness & reliability (T&R), and routine training to ensure only qualified personnel are assigned to active jobs.</p>
+            <div class="card">
+                <h3>Radiographer Certifications</h3>
+                <form id="personnel-form">
+                    <label for="per-name">Full Name</label>
+                    <input type="text" id="per-name" required>
+
+                    <label for="per-cert">ASNT / State Cert Number</label>
+                    <input type="text" id="per-cert" required>
+
+                    <label for="per-trust">T&R Authorization Date</label>
+                    <input type="date" id="per-trust" required>
+
+                    <label for="per-hazmat">Hazmat Training Expiration</label>
+                    <input type="date" id="per-hazmat" required>
+
+                    <button type="submit">Add Personnel</button>
+                </form>
+                <ul id="personnel-list">Loading...</ul>
+            </div>
+        </section>
+
         <section id="planning" class="module">
             <h2>Work Planning & Approvals</h2>
             <p>Pre-job planning, restrict area boundaries calculation, required sign-off fields for CHP and NAVSEA DET RASO compliance checks.</p>
@@ -118,7 +146,7 @@
                     </div>
 
                     <label for="wp-boundary">Calculated 2 mR/hr Boundary (Feet)</label>
-                    <input type="number" step="0.1" id="wp-boundary" readonly style="background-color: #e9ecef;">
+                    <input type="number" step="0.1" id="wp-boundary" readonly style="background-color: #e9ecef; cursor: not-allowed;">
 
                     <label for="wp-diagram">Upload Setup Diagram / Sketch</label>
                     <input type="file" id="wp-diagram" accept=".pdf,.jpg,.jpeg,.png">
@@ -129,7 +157,6 @@
             </div>
         </section>
 
-        <!-- 3. Execution & Monitoring -->
         <section id="execution" class="module">
             <h2>Execution & Monitoring</h2>
             <p>Active-work dashboard for tracking continuous monitoring requirements, personnel dosimetry readings, and boundary verification surveys.</p>
@@ -141,6 +168,11 @@
 
                     <label for="dl-serial">Dosimeter Serial</label>
                     <input type="text" id="dl-serial" required>
+
+                    <div class="checkbox-group" style="margin-bottom: 10px; background-color: #f8d7da; padding: 10px; border-radius: 4px; border: 1px solid #f5c6cb;">
+                        <input type="checkbox" id="dl-ratemeter-check" required>
+                        <label for="dl-ratemeter-check" style="color: #721c24; font-weight: bold;">Alarming Ratemeter Audible Check Performed (10 CFR 34.47)</label>
+                    </div>
 
                     <label for="dl-initial">Initial Reading (mR)</label>
                     <input type="number" step="0.1" id="dl-initial" required>
@@ -154,7 +186,6 @@
             </div>
         </section>
 
-        <!-- 4. Post-Operation & Reporting -->
         <section id="reporting" class="module">
             <h2>Post-Operation & Reporting</h2>
             <p>Post-job checklist for verifying secure source storage and generating required paperwork (daily utilization logs, audit forms, etc.).</p>
@@ -204,7 +235,7 @@
         </div>
     </div>
 
-<div id="delete-confirm-modal" class="modal-overlay" style="z-index: 1001;">
+    <div id="delete-confirm-modal" class="modal-overlay" style="z-index: 1001;">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <h3 style="color: #d9534f; margin-top: 0;">Confirm Deletion</h3>
             <p>Are you sure you want to delete this record? This action cannot be undone and will permanently remove it from the database.</p>
@@ -214,7 +245,7 @@
             </div>
         </div>
     </div>
-    
+
     <footer>
         <p>Shipyard Radiography Compliance - Last Updated 01 Apr 2026</p>
     </footer>
