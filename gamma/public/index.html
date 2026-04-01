@@ -42,6 +42,9 @@
                             <option value="survey meter">Survey Meter</option>
                             <option value="alarming ratemeter">Alarming Ratemeter</option>
                             <option value="pocket dosimeter">Pocket Dosimeter</option>
+                            <option value="direct reading dosimeter">Direct Reading Dosimeter</option>
+                            <option value="electronic personal dosimeter">Electronic Personal Dosimeter</option>
+                            <option value="area monitor">Area Monitor</option>
                         </select>
 
                         <label for="eq-serial">Serial Number</label>
@@ -49,6 +52,9 @@
 
                         <label for="eq-cal-date">Calibration Due Date</label>
                         <input type="date" id="eq-cal-date" required>
+
+                        <label for="eq-cert">Upload Calibration Certificate</label>
+                        <input type="file" id="eq-cert" accept=".pdf,.jpg,.jpeg,.png">
 
                         <button type="submit">Add Equipment</button>
                     </form>
@@ -63,8 +69,10 @@
                         <label for="src-isotope">Isotope</label>
                         <select id="src-isotope" required>
                             <option value="">Select Isotope...</option>
-                            <option value="Ir-192">Ir-192</option>
-                            <option value="Co-60">Co-60</option>
+                            <option value="Ir-192">Iridium-192 (Ir-192)</option>
+                            <option value="Co-60">Cobalt-60 (Co-60)</option>
+                            <option value="Se-75">Selenium-75 (Se-75)</option>
+                            <option value="Yb-169">Ytterbium-169 (Yb-169)</option>
                         </select>
 
                         <label for="src-activity">Initial Activity (Curies)</label>
@@ -72,6 +80,9 @@
 
                         <label for="src-date">Activity Date</label>
                         <input type="date" id="src-date" required>
+
+                        <label for="src-cert">Upload Source Certificate / Leak Test</label>
+                        <input type="file" id="src-cert" accept=".pdf,.jpg,.jpeg,.png">
 
                         <button type="submit">Log Source</button>
                     </form>
@@ -103,6 +114,9 @@
                         <input type="checkbox" id="wp-collimator">
                         <label for="wp-collimator">Collimator Used</label>
                     </div>
+
+                    <label for="wp-diagram">Upload Setup Diagram / Sketch</label>
+                    <input type="file" id="wp-diagram" accept=".pdf,.jpg,.jpeg,.png">
 
                     <button type="submit">Create Work Plan</button>
                 </form>
@@ -159,6 +173,9 @@
                         <input type="checkbox" id="pj-daily-log">
                         <label for="pj-daily-log">Daily Log Generated</label>
                     </div>
+
+                    <label for="pj-doc">Upload Utilization Log / Audit Form</label>
+                    <input type="file" id="pj-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
 
                     <button type="submit">Submit Report</button>
                 </form>
