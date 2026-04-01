@@ -19,7 +19,7 @@ const db = initializeFirestore(app, {
   localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
 });
 const storage = getStorage(app);
-const auth = getAuth(app); 
+const auth = getAuth(app);
 
 let calendar; 
 let isotopeChart; 
@@ -74,17 +74,19 @@ onAuthStateChanged(auth, async (user) => {
         if(userDisplay) userDisplay.textContent = `👤 ${user.email}`;
 
         const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-        
         document.querySelectorAll('.admin-only').forEach(el => {
-            if (isAdmin) {
-                el.style.display = ''; 
-            } else {
-                el.style.display = 'none'; 
-            }
+            el.style.display = isAdmin ? '' : 'none'; 
         });
 
-        await startApplication();
-        setTimeout(hideLoader, 500); 
+        // UPDATED: Added bulletproof try/finally block to guarantee the loader hides!
+        try {
+            await startApplication();
+        } catch (err) {
+            console.error("App startup error:", err);
+        } finally {
+            setTimeout(hideLoader, 500); 
+        }
+        
     } else {
         hideLoader();
         if(loginScreen) loginScreen.style.display = 'flex';
@@ -563,7 +565,7 @@ function calculateBoundary() {
     boundaryInput.value = distanceFeet.toFixed(1); 
 }
 
-// --- FULLCALENDAR INTEGRATION (UPDATED WITH CLICK LOGIC) ---
+// --- FULLCALENDAR INTEGRATION ---
 async function renderCalendar() {
     const calendarEl = document.getElementById('calendar');
     if(!calendarEl) return;
@@ -644,21 +646,19 @@ async function renderCalendar() {
         },
         events: events,
         height: 650,
-        // NEW: Wire up the click to open our modal!
         eventClick: function(info) {
             const props = info.event.extendedProps;
             if(props.collection && props.docId) {
                 window.openModal(props.collection, props.docId);
             }
         },
-        // NEW: Turn the mouse into a pointer when hovering over events
         eventMouseEnter: function(info) {
             info.el.style.cursor = 'pointer';
         }
     });
 }
 
-// --- COMMAND CENTER DASHBOARD ---
+// --- COMMAND CENTER DASHBOARD (NOW WITH CHART.JS) ---
 window.updateDashboard = async function() {
     try {
         const wpSnap = await getDocs(collection(db, 'work_plans'));
@@ -669,6 +669,7 @@ window.updateDashboard = async function() {
         const statSources = document.getElementById('stat-sources');
         if(statSources) statSources.textContent = srcSnap.size;
 
+        // NEW: Compile data for Chart.js
         let ir192 = 0, co60 = 0, se75 = 0, yb169 = 0;
         srcSnap.forEach(doc => {
             const iso = doc.data().isotope;
@@ -678,6 +679,7 @@ window.updateDashboard = async function() {
             if(iso === 'Yb-169') yb169++;
         });
 
+        // NEW: Render the Chart.js visualizer
         const ctx = document.getElementById('isotope-chart');
         if(ctx) {
             if(isotopeChart) isotopeChart.destroy(); 
@@ -786,6 +788,7 @@ window.updateDashboard = async function() {
     }
 }
 
+// --- NEW: PDF REPORT GENERATOR USING HTML2PDF ---
 window.generatePDFInventory = async function() {
     const srcBody = document.getElementById('pdf-source-body');
     const camBody = document.getElementById('pdf-cam-body');
@@ -821,7 +824,7 @@ window.generatePDFInventory = async function() {
         });
 
         const element = document.getElementById('pdf-report-container');
-        element.style.display = 'block'; 
+        element.style.display = 'block'; // Make visible for PDF engine
 
         html2pdf().set({
             margin: 10,
@@ -830,7 +833,7 @@ window.generatePDFInventory = async function() {
             html2canvas: { scale: 2 },
             jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
         }).from(element).save().then(() => {
-            element.style.display = 'none'; 
+            element.style.display = 'none'; // Hide again after download
             hideLoader();
         });
 
@@ -840,6 +843,7 @@ window.generatePDFInventory = async function() {
         alert("Failed to generate PDF inventory report.");
     }
 }
+
 
 // --- INSPECTOR MODAL & DELETE LOGIC ---
 let currentOpenDoc = null; 
