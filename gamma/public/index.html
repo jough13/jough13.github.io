@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,7 +22,8 @@
             <li><a href="#" onclick="showSection('reporting')">Reporting</a></li>
         </ul>
         <div class="search-container">
-            <input type="text" id="global-search" placeholder="🔍 Search all records..." onkeyup="filterRecords()">
+            <input type="text" id="global-search" placeholder="Search records..." onkeyup="filterRecords()">
+            <button type="button" class="theme-toggle" onclick="toggleTheme()" id="theme-btn">🌙 Dark Mode</button>
         </div>
     </nav>
 
@@ -43,33 +44,33 @@
                 </div>
 
                 <div class="card" style="border-left: 5px solid #d9534f;">
-                    <h3 style="color: #d9534f;">Compliance Alerts</h3>
-                    <ul id="alert-list" style="padding-left: 20px; font-weight: bold;">
-                        <li>Checking compliance status...</li>
+                    <h3 style="color: #d9534f; border: none;">Compliance Alerts</h3>
+                    <ul id="alert-list" style="padding-left: 20px; font-weight: bold; border: none; background: transparent;">
+                        <li style="border: none; background: transparent;">Checking compliance status...</li>
                     </ul>
                 </div>
             </div>
 
             <div class="card" style="margin-top: 20px;">
-                <h3 style="border-bottom: 2px solid #002244; padding-bottom: 5px;">Regulatory References & Oversight</h3>
+                <h3 style="border-bottom: 2px solid var(--nav-bg); padding-bottom: 5px;">Regulatory References & Oversight</h3>
                 <div style="display: flex; gap: 40px; flex-wrap: wrap; padding: 10px 0;">
                     
                     <div style="flex: 1; min-width: 250px;">
-                        <h4 style="margin-top: 0; margin-bottom: 10px; color: #555;">NRC 10 CFR Part 34 (Radiography)</h4>
+                        <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--text-color); opacity: 0.8;">NRC 10 CFR Part 34</h4>
                         <ul style="list-style-type: none; padding: 0; margin: 0; line-height: 1.8;">
-                            <li style="background: none; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">📄 Part 34 General Overview</a></li>
-                            <li style="background: none; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/part034-0020.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">🔧 Subpart C—Equipment</a></li>
-                            <li style="background: none; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/part034-0041.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">☢️ Subpart D—Radiation Safety Requirements</a></li>
-                            <li style="background: none; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/part034-0061.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">📝 Subpart E—Recordkeeping</a></li>
+                            <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">Part 34 General Overview</a></li>
+                            <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/part034-0020.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">Subpart C—Equipment</a></li>
+                            <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/part034-0041.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">Subpart D—Radiation Safety Requirements</a></li>
+                            <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/part034-0061.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">Subpart E—Recordkeeping</a></li>
                         </ul>
                     </div>
 
                     <div style="flex: 1; min-width: 250px;">
-                        <h4 style="margin-top: 0; margin-bottom: 10px; color: #555;">Navy & General Rad Safety</h4>
+                        <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--text-color); opacity: 0.8;">Navy & General Rad Safety</h4>
                         <ul style="list-style-type: none; padding: 0; margin: 0; line-height: 1.8;">
-                            <li style="background: none; border: none; padding: 0;"><a href="https://flankspeed.sharepoint-mil.us/sites/NAVSEA_RadiologicalControls/RASP" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">⚓ NAVSEA DET RASO (Flankspeed)</a></li>
-                            <li style="background: none; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part020/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">🛡️ 10 CFR Part 20 (Dose Limits)</a></li>
-                            <li style="background: none; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part037/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">🔒 10 CFR Part 37 (Physical Protection)</a></li>
+                            <li style="background: transparent; border: none; padding: 0;"><a href="https://flankspeed.sharepoint-mil.us/sites/NAVSEA_RadiologicalControls/RASP" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">NAVSEA DET RASO (Flankspeed)</a></li>
+                            <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part020/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">10 CFR Part 20 (Dose Limits)</a></li>
+                            <li style="background: transparent; border: none; padding: 0;"><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part037/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">10 CFR Part 37 (Physical Protection)</a></li>
                         </ul>
                     </div>
                 </div>
@@ -80,7 +81,7 @@
             <h2>Equipment & Source Management</h2>
             <div class="dashboard-grid">
                 <div class="card">
-                    <h3>Equipment Calibration <button type="button" class="btn-export" onclick="exportCSV('equipment')">📥 Export CSV</button></h3>
+                    <h3>Equipment Calibration <button type="button" class="btn-export" onclick="exportCSV('equipment')">Export CSV</button></h3>
                     <form id="equipment-form">
                         <label for="eq-type">Type</label>
                         <select id="eq-type" required>
@@ -107,7 +108,7 @@
                     <ul id="equipment-list">Loading...</ul>
                 </div>
                 <div class="card">
-                    <h3>Source Vault Logs <button type="button" class="btn-export" onclick="exportCSV('sources')">📥 Export CSV</button></h3>
+                    <h3>Source Vault Logs <button type="button" class="btn-export" onclick="exportCSV('sources')">Export CSV</button></h3>
                     <form id="sources-form">
                         <label for="src-serial">Serial Number</label>
                         <input type="text" id="src-serial" placeholder="e.g. SRC-987" required>
@@ -146,7 +147,7 @@
         <section id="personnel" class="module">
             <h2>Personnel Qualifications</h2>
             <div class="card">
-                <h3>Radiographer Certifications <button type="button" class="btn-export" onclick="exportCSV('personnel')">📥 Export CSV</button></h3>
+                <h3>Radiographer Certifications <button type="button" class="btn-export" onclick="exportCSV('personnel')">Export CSV</button></h3>
                 <form id="personnel-form">
                     <label for="per-name">Full Name</label>
                     <input type="text" id="per-name" required>
@@ -169,7 +170,7 @@
         <section id="planning" class="module">
             <h2>Work Planning & Approvals</h2>
             <div class="card">
-                <h3>Work Plans <button type="button" class="btn-export" onclick="exportCSV('work_plans')">📥 Export CSV</button></h3>
+                <h3>Work Plans <button type="button" class="btn-export" onclick="exportCSV('work_plans')">Export CSV</button></h3>
                 <form id="work-plans-form">
                     <label for="wp-job">Job Number</label>
                     <input type="text" id="wp-job" placeholder="e.g. J-2024-001" required>
@@ -191,7 +192,7 @@
                     </div>
 
                     <label for="wp-boundary">Calculated 2 mR/hr Boundary (Feet)</label>
-                    <input type="number" step="0.1" id="wp-boundary" readonly style="background-color: #e9ecef; cursor: not-allowed;">
+                    <input type="number" step="0.1" id="wp-boundary" readonly style="background-color: var(--export-bg); cursor: not-allowed;">
 
                     <label for="wp-diagram">Upload Setup Diagram / Sketch</label>
                     <input type="file" id="wp-diagram" accept=".pdf,.jpg,.jpeg,.png">
@@ -205,7 +206,7 @@
         <section id="execution" class="module">
             <h2>Execution & Monitoring</h2>
             <div class="card">
-                <h3>Dosimetry Logs <button type="button" class="btn-export" onclick="exportCSV('dosimetry_logs')">📥 Export CSV</button></h3>
+                <h3>Dosimetry Logs <button type="button" class="btn-export" onclick="exportCSV('dosimetry_logs')">Export CSV</button></h3>
                 <form id="dosimetry-form">
                     <label for="dl-name">Personnel Name</label>
                     <input type="text" id="dl-name" required>
@@ -213,9 +214,9 @@
                     <label for="dl-serial">Dosimeter Serial</label>
                     <input type="text" id="dl-serial" required>
 
-                    <div class="checkbox-group" style="margin-bottom: 10px; background-color: #f8d7da; padding: 10px; border-radius: 4px; border: 1px solid #f5c6cb;">
+                    <div class="checkbox-group" style="margin-bottom: 10px; background-color: rgba(217, 83, 79, 0.1); padding: 10px; border-radius: 4px; border: 1px solid #d9534f;">
                         <input type="checkbox" id="dl-ratemeter-check" required>
-                        <label for="dl-ratemeter-check" style="color: #721c24; font-weight: bold;">Alarming Ratemeter Audible Check Performed (10 CFR 34.47)</label>
+                        <label for="dl-ratemeter-check" style="color: #d9534f; font-weight: bold;">Alarming Ratemeter Audible Check Performed (10 CFR 34.47)</label>
                     </div>
 
                     <label for="dl-initial">Initial Reading (mR)</label>
@@ -233,7 +234,7 @@
         <section id="reporting" class="module">
             <h2>Post-Operation & Reporting</h2>
             <div class="card">
-                <h3>Post Job Reports <button type="button" class="btn-export" onclick="exportCSV('post_job_reports')">📥 Export CSV</button></h3>
+                <h3>Post Job Reports <button type="button" class="btn-export" onclick="exportCSV('post_job_reports')">Export CSV</button></h3>
                 <form id="reports-form">
                     <label for="pj-completed-by">Completed By (Name)</label>
                     <input type="text" id="pj-completed-by" required>
@@ -279,7 +280,7 @@
 
     <div id="delete-confirm-modal" class="modal-overlay" style="z-index: 1001;">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
-            <h3 style="color: #d9534f; margin-top: 0;">Confirm Deletion</h3>
+            <h3 style="color: #d9534f; margin-top: 0; border: none;">Confirm Deletion</h3>
             <p>Are you sure you want to delete this record? This action cannot be undone and will permanently remove it from the database.</p>
             <div class="modal-actions" style="justify-content: center; margin-top: 25px;">
                 <button class="btn-secondary" onclick="closeConfirmModal()">Cancel</button>
