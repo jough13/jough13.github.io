@@ -70,6 +70,8 @@ function setupEventListeners() {
                 isotope: document.getElementById('src-isotope').value,
                 initial_activity_curies: parseFloat(document.getElementById('src-activity').value),
                 activity_date: document.getElementById('src-date').value,
+                last_leak_test_date: document.getElementById('src-leak-test').value,
+                last_quarterly_maint_date: document.getElementById('src-quarterly-maint').value,
                 current_location: 'Storage Vault',
                 status: 'Stored',
                 certificate_url: certUrl
@@ -77,6 +79,25 @@ function setupEventListeners() {
             await addData('sources', data);
             sourcesForm.reset();
             await fetchData('sources', 'sources-list');
+            populateSourceDropdown(); // Update the dropdown with the new source!
+        });
+    }
+
+    // 2.5 Personnel Form
+    const personnelForm = document.getElementById('personnel-form');
+    if (personnelForm) {
+        personnelForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                full_name: document.getElementById('per-name').value,
+                cert_number: document.getElementById('per-cert').value,
+                trust_authorization_date: document.getElementById('per-trust').value,
+                hazmat_expiration: document.getElementById('per-hazmat').value,
+                logged_time: new Date().toISOString()
+            };
+            await addData('personnel', data);
+            personnelForm.reset();
+            await fetchData('personnel', 'personnel-list');
         });
     }
 
@@ -93,6 +114,7 @@ function setupEventListeners() {
                 job_number: document.getElementById('wp-job').value,
                 location: document.getElementById('wp-location').value,
                 planned_date: document.getElementById('wp-date').value,
+                source_id: document.getElementById('wp-source').value,
                 calculated_boundary_mr_hr: parseFloat(document.getElementById('wp-boundary').value),
                 collimator_used: document.getElementById('wp-collimator').checked,
                 chp_approval_status: 'Pending',
@@ -114,6 +136,7 @@ function setupEventListeners() {
             const data = {
                 personnel_name: document.getElementById('dl-name').value,
                 dosimeter_serial: document.getElementById('dl-serial').value,
+                ratemeter_check_performed: document.getElementById('dl-ratemeter-check').checked,
                 initial_reading: parseFloat(document.getElementById('dl-initial').value),
                 final_reading: parseFloat(document.getElementById('dl-final').value),
                 logged_time: new Date().toISOString()
@@ -146,6 +169,12 @@ function setupEventListeners() {
             await fetchData('post_job_reports', 'reports-list');
         });
     }
+
+    // Attach listeners for the auto-math
+    const sourceSelect = document.getElementById('wp-source');
+    const collimatorCheck = document.getElementById('wp-collimator');
+    if(sourceSelect) sourceSelect.addEventListener('change', calculateBoundary);
+    if(collimatorCheck) collimatorCheck.addEventListener('change', calculateBoundary);
 }
 
 async function addData(collectionName, data) {
@@ -182,15 +211,17 @@ window.showSection = function(sectionId) {
     }
 }
 
-// Initialize UI and data (module scripts are naturally deferred)
+// Initialize UI and data
 window.showSection('dashboard');
 loadAllData();
 setupEventListeners();
+populateSourceDropdown(); // Initial load of the dropdown
 
 // Fetch placeholder data from Firestore
 async function loadAllData() {
     await Promise.all([
         fetchData('equipment', 'equipment-list'),
+        fetchData('personnel', 'personnel-list'), // Added Personnel
         fetchData('sources', 'sources-list'),
         fetchData('work_plans', 'work-plans-list'),
         fetchData('dosimetry_logs', 'dosimetry-list'),
@@ -214,9 +245,7 @@ async function fetchData(collectionName, listId) {
         querySnapshot.forEach((doc) => {
             const item = doc.data();
             const li = document.createElement('li');
-
             let displayText = '';
-
             let docUrl = null;
 
             if (collectionName === 'equipment') {
@@ -225,6 +254,8 @@ async function fetchData(collectionName, listId) {
             } else if (collectionName === 'sources') {
                 displayText = `${item.isotope} (Serial: ${item.serial_number}) - Activity: ${item.initial_activity_curies} Ci on ${item.activity_date}`;
                 docUrl = item.certificate_url;
+            } else if (collectionName === 'personnel') {
+                displayText = `${item.full_name} (Cert: ${item.cert_number}) - Hazmat Expires: ${item.hazmat_expiration}`;
             } else if (collectionName === 'work_plans') {
                 displayText = `Job ${item.job_number} - Location: ${item.location} on ${item.planned_date}`;
                 docUrl = item.diagram_url;
@@ -235,13 +266,11 @@ async function fetchData(collectionName, listId) {
                 displayText = `Report by ${item.completed_by} on ${date} (Source Secured: ${item.source_secured ? 'Yes' : 'No'})`;
                 docUrl = item.document_url;
             } else {
-                // Fallback
                 const values = Object.values(item).slice(0, 3).join(' - ');
                 displayText = `ID ${doc.id}: ${values}`;
             }
 
             li.textContent = displayText;
-
             li.setAttribute('onclick', `openModal('${collectionName}', '${doc.id}')`);
 
             if (docUrl) {
@@ -251,6 +280,8 @@ async function fetchData(collectionName, listId) {
                 link.textContent = " [View Document]";
                 link.style.fontSize = "0.85em";
                 link.style.color = "#005A9C";
+                // Prevent the modal from opening when clicking the document link directly
+                link.onclick = (e) => e.stopPropagation(); 
                 li.appendChild(link);
             }
 
@@ -264,7 +295,6 @@ async function fetchData(collectionName, listId) {
 
 // --- NEW FEATURES: RELATIONAL DATA & MATH ---
 
-// Populate the Work Plan source dropdown with live data
 async function populateSourceDropdown() {
     const sourceSelect = document.getElementById('wp-source');
     if (!sourceSelect) return;
@@ -275,7 +305,6 @@ async function populateSourceDropdown() {
         
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            // We store the activity and isotope as HTML data attributes so the math function can use them!
             sourceSelect.innerHTML += `
                 <option value="${doc.id}" data-activity="${data.initial_activity_curies}" data-isotope="${data.isotope}">
                     ${data.isotope} (SN: ${data.serial_number}) - ${data.initial_activity_curies} Ci
@@ -286,7 +315,6 @@ async function populateSourceDropdown() {
     }
 }
 
-// Automatically calculate the boundary distance
 function calculateBoundary() {
     const sourceSelect = document.getElementById('wp-source');
     const boundaryInput = document.getElementById('wp-boundary');
@@ -301,40 +329,24 @@ function calculateBoundary() {
     const activity = parseFloat(selectedOption.getAttribute('data-activity'));
     const isotope = selectedOption.getAttribute('data-isotope');
 
-    // Gamma Constants: roughly 5200 mR/hr at 1 foot per Ci for Ir-192, and 14000 for Co-60.
     let gammaConstant = 5200; 
     if(isotope === 'Co-60') gammaConstant = 14000;
 
     let intensityAt1Ft = activity * gammaConstant;
 
-    // Apply basic attenuation if a collimator is used (assuming 10th value layer for demo)
     if(collimatorChecked) {
         intensityAt1Ft = intensityAt1Ft * 0.1;
     }
 
-    // Inverse Square Law math
-    const targetRate = 2.0; // 2 mR/hr boundary
+    const targetRate = 2.0; 
     const distanceFeet = Math.sqrt(intensityAt1Ft / targetRate);
     
-    boundaryInput.value = distanceFeet.toFixed(1); // output in feet rounded to 1 decimal
+    boundaryInput.value = distanceFeet.toFixed(1); 
 }
 
-// Attach listeners for the auto-math
-document.addEventListener('DOMContentLoaded', () => {
-    const sourceSelect = document.getElementById('wp-source');
-    const collimatorCheck = document.getElementById('wp-collimator');
-    
-    if(sourceSelect) sourceSelect.addEventListener('change', calculateBoundary);
-    if(collimatorCheck) collimatorCheck.addEventListener('change', calculateBoundary);
-});
+// --- INSPECTOR MODAL ---
 
-// Call this right after you call loadAllData() in your existing code!
-populateSourceDropdown();
-
-
-// --- NEW FEATURES: INSPECTOR MODAL ---
-
-let currentOpenDoc = null; // Track what is currently being viewed
+let currentOpenDoc = null; 
 
 window.openModal = async function(collectionName, docId) {
     const modal = document.getElementById('inspector-modal');
@@ -342,7 +354,7 @@ window.openModal = async function(collectionName, docId) {
     const title = document.getElementById('modal-title');
     
     modalBody.innerHTML = '<p>Loading database record...</p>';
-    title.textContent = `${collectionName.toUpperCase()} Record`;
+    title.textContent = `${collectionName.replace('_', ' ').toUpperCase()} RECORD`;
     modal.style.display = 'flex';
     
     try {
@@ -353,10 +365,8 @@ window.openModal = async function(collectionName, docId) {
             const data = docSnap.data();
             currentOpenDoc = { collection: collectionName, id: docId };
             
-            // Format the data cleanly into HTML paragraphs
             let html = '';
             for (const [key, value] of Object.entries(data)) {
-                // If it's a file URL, make it a clickable link
                 if(key.includes('_url') && value) {
                     html += `<p><strong>${key.replace('_url', '').toUpperCase()}:</strong> <a href="${value}" target="_blank">View Uploaded File</a></p>`;
                 } else {
@@ -378,33 +388,31 @@ window.closeModal = function() {
     currentOpenDoc = null;
 }
 
-// 1. Wire up the Inspector's Delete button to open the Custom Warning Modal
 document.getElementById('modal-delete-btn').addEventListener('click', () => {
     if(!currentOpenDoc) return;
     document.getElementById('delete-confirm-modal').style.display = 'flex';
 });
 
-// 2. Function to close JUST the warning modal if they change their mind
 window.closeConfirmModal = function() {
     document.getElementById('delete-confirm-modal').style.display = 'none';
 }
 
-// 3. Function to actually execute the deletion
 window.executeDelete = async function() {
     if(!currentOpenDoc) return;
     
     try {
-        // Delete from Firestore
         await deleteDoc(doc(db, currentOpenDoc.collection, currentOpenDoc.id));
         
-        // Hide both modals
         closeConfirmModal();
         closeModal();
         
-        // Refresh the specific list we just deleted from
         let listId = '';
         if(currentOpenDoc.collection === 'equipment') listId = 'equipment-list';
-        if(currentOpenDoc.collection === 'sources') listId = 'sources-list';
+        if(currentOpenDoc.collection === 'sources') {
+            listId = 'sources-list';
+            populateSourceDropdown(); // Update dropdown if a source is deleted!
+        }
+        if(currentOpenDoc.collection === 'personnel') listId = 'personnel-list';
         if(currentOpenDoc.collection === 'work_plans') listId = 'work-plans-list';
         if(currentOpenDoc.collection === 'dosimetry_logs') listId = 'dosimetry-list';
         if(currentOpenDoc.collection === 'post_job_reports') listId = 'reports-list';
