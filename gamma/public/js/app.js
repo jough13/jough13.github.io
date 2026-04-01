@@ -19,7 +19,7 @@ const db = initializeFirestore(app, {
   localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
 });
 const storage = getStorage(app);
-const auth = getAuth(app);
+const auth = getAuth(app); 
 
 let calendar; 
 let isotopeChart; 
@@ -74,11 +74,15 @@ onAuthStateChanged(auth, async (user) => {
         if(userDisplay) userDisplay.textContent = `👤 ${user.email}`;
 
         const isAdmin = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+        
         document.querySelectorAll('.admin-only').forEach(el => {
-            el.style.display = isAdmin ? '' : 'none'; 
+            if (isAdmin) {
+                el.style.display = ''; 
+            } else {
+                el.style.display = 'none'; 
+            }
         });
 
-        // UPDATED: Added bulletproof try/finally block to guarantee the loader hides!
         try {
             await startApplication();
         } catch (err) {
@@ -281,6 +285,7 @@ function setupEventListeners() {
 
             const locType = document.getElementById('wp-loc-type').value;
 
+            // UPDATED: Changed chp_approval_status to rso_approval_status
             const data = {
                 job_number: document.getElementById('wp-job').value,
                 location_type: locType,
@@ -291,7 +296,7 @@ function setupEventListeners() {
                 calculated_boundary_mr_hr: locType === 'temporary' ? parseFloat(document.getElementById('wp-boundary').value) : 'N/A (PRI)',
                 pri_entrance_tested: locType === 'pri' ? document.getElementById('wp-pri-entrance').checked : 'N/A',
                 pri_alarm_tested: locType === 'pri' ? document.getElementById('wp-pri-alarm').checked : 'N/A',
-                chp_approval_status: 'Pending',
+                rso_approval_status: 'Pending',
                 raso_approval_status: 'Pending',
                 created_at: new Date().toISOString(),
                 diagram_url: diagramUrl
@@ -658,7 +663,7 @@ async function renderCalendar() {
     });
 }
 
-// --- COMMAND CENTER DASHBOARD (NOW WITH CHART.JS) ---
+// --- COMMAND CENTER DASHBOARD ---
 window.updateDashboard = async function() {
     try {
         const wpSnap = await getDocs(collection(db, 'work_plans'));
@@ -669,7 +674,6 @@ window.updateDashboard = async function() {
         const statSources = document.getElementById('stat-sources');
         if(statSources) statSources.textContent = srcSnap.size;
 
-        // NEW: Compile data for Chart.js
         let ir192 = 0, co60 = 0, se75 = 0, yb169 = 0;
         srcSnap.forEach(doc => {
             const iso = doc.data().isotope;
@@ -679,7 +683,6 @@ window.updateDashboard = async function() {
             if(iso === 'Yb-169') yb169++;
         });
 
-        // NEW: Render the Chart.js visualizer
         const ctx = document.getElementById('isotope-chart');
         if(ctx) {
             if(isotopeChart) isotopeChart.destroy(); 
@@ -788,7 +791,6 @@ window.updateDashboard = async function() {
     }
 }
 
-// --- NEW: PDF REPORT GENERATOR USING HTML2PDF ---
 window.generatePDFInventory = async function() {
     const srcBody = document.getElementById('pdf-source-body');
     const camBody = document.getElementById('pdf-cam-body');
@@ -824,7 +826,7 @@ window.generatePDFInventory = async function() {
         });
 
         const element = document.getElementById('pdf-report-container');
-        element.style.display = 'block'; // Make visible for PDF engine
+        element.style.display = 'block'; 
 
         html2pdf().set({
             margin: 10,
@@ -833,7 +835,7 @@ window.generatePDFInventory = async function() {
             html2canvas: { scale: 2 },
             jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
         }).from(element).save().then(() => {
-            element.style.display = 'none'; // Hide again after download
+            element.style.display = 'none'; 
             hideLoader();
         });
 
@@ -844,8 +846,7 @@ window.generatePDFInventory = async function() {
     }
 }
 
-
-// --- INSPECTOR MODAL & DELETE LOGIC ---
+// --- UPDATED: INSPECTOR MODAL WITH NEW SPINNER AND SOURCE LOOKUP ---
 let currentOpenDoc = null; 
 
 window.openModal = async function(collectionName, docId) {
@@ -853,7 +854,8 @@ window.openModal = async function(collectionName, docId) {
     const modalBody = document.getElementById('modal-body');
     const title = document.getElementById('modal-title');
     
-    modalBody.innerHTML = '<p>Loading database record...</p>';
+    // 1. Show the new mini spinner while fetching
+    modalBody.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; padding: 20px;"><div class="mini-spinner"></div><span style="font-weight: bold; color: var(--nav-bg);">Fetching database record...</span></div>';
     title.textContent = `${collectionName.replace('_', ' ').toUpperCase()} RECORD`;
     modal.style.display = 'flex';
     
@@ -867,16 +869,40 @@ window.openModal = async function(collectionName, docId) {
             
             let html = '';
             for (const [key, value] of Object.entries(data)) {
-                if(key === 'checklist' && typeof value === 'object') {
+                
+                // We format the keys so they look clean and legible
+                let displayKey = key.replace(/_/g, ' ').toUpperCase();
+                
+                // Automatically fix any legacy "CHP Approval Status" entries so the UI stays uniform
+                if (key === 'chp_approval_status') displayKey = 'RSO APPROVAL STATUS'; 
+                
+                if (key === 'checklist' && typeof value === 'object') {
                     html += `<h4>Evaluation Checklist:</h4><ul>`;
                     for(const [checkKey, checkVal] of Object.entries(value)) {
                         html += `<li>${checkKey.replace('_', ' ')}: <b>${checkVal ? 'PASS' : 'FAIL'}</b></li>`;
                     }
                     html += `</ul>`;
+                
+                // 2. The Magic Source ID Lookup!
+                } else if (key === 'source_id') {
+                    let sourceDisplay = value;
+                    // Wait, hold on—if it's not deleted, let's grab the actual serial number!
+                    if (value && value !== 'DELETED') {
+                        try {
+                            const srcSnap = await getDoc(doc(db, 'sources', value));
+                            if (srcSnap.exists()) {
+                                sourceDisplay = `${srcSnap.data().serial_number} (${srcSnap.data().isotope})`;
+                            }
+                        } catch(e) {
+                            console.log("Could not resolve source serial number from ID.");
+                        }
+                    }
+                    html += `<p><strong>SOURCE:</strong> ${sourceDisplay}</p>`;
+                
                 } else if(key.includes('_url') && value) {
-                    html += `<p><strong>${key.replace('_url', '').toUpperCase()}:</strong> <a href="${value}" target="_blank" style="color: #005A9C;">View Uploaded File</a></p>`;
+                    html += `<p><strong>${displayKey.replace(' URL', '')}:</strong> <a href="${value}" target="_blank" style="color: #005A9C;">View Uploaded File</a></p>`;
                 } else {
-                    html += `<p><strong>${key.replace(/_/g, ' ').toUpperCase()}:</strong> ${value}</p>`;
+                    html += `<p><strong>${displayKey}:</strong> ${value}</p>`;
                 }
             }
             modalBody.innerHTML = html;
