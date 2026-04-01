@@ -24,8 +24,36 @@
 
     <main id="main-content">
         <section id="dashboard" class="active module">
-            <h2>Welcome to Gamma Radiography Tracker</h2>
-            <p>Select a module from the navigation menu above.</p>
+            <h2>Command Center</h2>
+            <div class="dashboard-grid">
+                <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
+                    <h3 style="border: none; margin-bottom: 0;">Active Work Plans</h3>
+                    <h1 id="stat-work-plans" style="font-size: 4rem; color: #005A9C; margin: 10px 0;">-</h1>
+                    <button onclick="showSection('planning')" style="width: 50%; margin: 0 auto;" class="btn-secondary">View Plans</button>
+                </div>
+                
+                <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
+                    <h3 style="border: none; margin-bottom: 0;">Vault Sources</h3>
+                    <h1 id="stat-sources" style="font-size: 4rem; color: #005A9C; margin: 10px 0;">-</h1>
+                    <button onclick="showSection('equipment')" style="width: 50%; margin: 0 auto;" class="btn-secondary">View Sources</button>
+                </div>
+
+                <div class="card" style="border-left: 5px solid #d9534f;">
+                    <h3 style="color: #d9534f;">Compliance Alerts</h3>
+                    <ul id="alert-list" style="padding-left: 20px; font-weight: bold;">
+                        <li>Checking compliance status...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 20px;">
+                <h3>Regulatory References</h3>
+                <ul style="display: flex; gap: 20px; flex-wrap: wrap; padding: 0;">
+                    <li><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part034/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">📖 10 CFR Part 34</a></li>
+                    <li><a href="https://www.navsea.navy.mil/Home/SUPSHIP/Groton/Departments/Radiological-Control/" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">⚓ NAVSEA RASO</a></li>
+                    <li><a href="https://www.nrc.gov/reading-rm/doc-collections/cfr/part020/index.html" target="_blank" style="color: #005A9C; text-decoration: none; font-weight: bold;">☢️ 10 CFR Part 20 (Dose Limits)</a></li>
+                </ul>
+            </div>
         </section>
 
         <section id="equipment" class="module">
