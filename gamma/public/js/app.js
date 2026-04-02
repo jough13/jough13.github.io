@@ -1938,3 +1938,146 @@ window.executeSystemRestore = function(event) {
     };
     reader.readAsText(file);
 }
+
+// --- GENERATE DIGITAL QUAL CARDS ---
+window.generateQualCards = async function() {
+    const container = document.getElementById('qual-card-container');
+    if(!container) return;
+    
+    showLoader();
+    try {
+        const perSnap = await getDocs(collection(db, 'personnel'));
+        if (perSnap.empty) {
+            alert("No personnel records found.");
+            hideLoader();
+            return;
+        }
+
+        let html = '<div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; font-family: Arial;">';
+        
+        perSnap.forEach(d => {
+            const p = d.data();
+            const qrString = `Name: ${p.full_name}\nCert: ${p.cert_number}\n6-Mo Eval: ${p.last_6mo_eval_date}\nHazmat: ${p.hazmat_expiration}`;
+            const qrData = encodeURIComponent(qrString);
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${qrData}`;
+
+            html += `
+            <div style="border: 2px solid #002244; border-radius: 10px; width: 3.375in; height: 2.125in; padding: 15px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; background: white; color: black; page-break-inside: avoid;">
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 5px 0; color: #005A9C; font-size: 14px;">NAVSEA DET RASO</h3>
+                    <h2 style="margin: 0 0 5px 0; font-size: 16px;">${p.full_name}</h2>
+                    <p style="margin: 2px 0; font-size: 10px;"><b>Cert:</b> ${p.cert_number}</p>
+                    <p style="margin: 2px 0; font-size: 10px;"><b>Eval Exp:</b> ${p.last_6mo_eval_date}</p>
+                    <p style="margin: 2px 0; font-size: 10px;"><b>Hazmat:</b> ${p.hazmat_expiration}</p>
+                    <p style="margin: 2px 0; font-size: 10px;"><b>Auth Date:</b> ${p.trust_authorization_date}</p>
+                </div>
+                <div style="width: 80px; height: 80px; border: 1px solid #ccc; padding: 2px;">
+                    <img src="${qrUrl}" style="width: 100%; height: 100%;">
+                </div>
+            </div>`;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        container.style.display = 'block';
+
+        html2pdf().set({
+            margin: 10,
+            filename: `Radiographer_Qual_Cards_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        }).from(container).save().then(() => {
+            container.style.display = 'none';
+            hideLoader();
+        });
+
+    } catch(e) {
+        console.error("Qual Card Error:", e);
+        hideLoader();
+        alert('Error generating qual cards.');
+    }
+}
+
+// --- MASTER JOB PACKET GENERATOR ---
+window.generateMasterPacket = async function() {
+    const jobNum = document.getElementById('packet-job-number').value.trim();
+    if(!jobNum) { 
+        alert("Please enter a Job Number to compile."); 
+        return; 
+    }
+
+    showLoader();
+    try {
+        const wpQ = query(collection(db, 'work_plans'), where('job_number', '==', jobNum));
+        const wpSnap = await getDocs(wpQ);
+        let wpData = null;
+        wpSnap.forEach(d => wpData = d.data());
+
+        const utQ = query(collection(db, 'utilization_logs'), where('job_reference', '==', jobNum));
+        const utSnap = await getDocs(utQ);
+        let utData = null;
+        utSnap.forEach(d => utData = d.data());
+
+        if(!wpData && !utData) {
+            alert("No records found in the database for that Job Number.");
+            hideLoader();
+            return;
+        }
+
+        const container = document.getElementById('master-packet-container');
+        let html = `<h2 style="text-align:center; border-bottom:3px solid #002244; padding-bottom:10px; margin-bottom: 10px;">MASTER JOB PACKET</h2>`;
+        html += `<h3 style="text-align:center; margin-top: 0; color: #555;">JOB REF: ${jobNum}</h3>`;
+        html += `<div style="display:flex; justify-content:space-between; margin-bottom:20px; font-size: 0.9rem;"><span>Generated: ${new Date().toLocaleDateString()}</span><span>Command: ____________</span></div>`;
+
+        if(wpData) {
+            html += `<h3 style="background:#eee; padding:5px; border-left: 5px solid #005A9C;">PART 1: WORK PLAN & SAFETY CONTROLS</h3>`;
+            html += `<table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size: 0.9rem;" border="1">`;
+            html += `<tr><td style="padding:8px; font-weight:bold; width: 40%;">Planned Date</td><td style="padding:8px;">${wpData.planned_date}</td></tr>`;
+            html += `<tr><td style="padding:8px; font-weight:bold;">Location</td><td style="padding:8px;">${wpData.location} (${wpData.location_type})</td></tr>`;
+            html += `<tr><td style="padding:8px; font-weight:bold;">Calculated Boundary (2mR/hr)</td><td style="padding:8px;">${wpData.calculated_boundary_mr_hr} ft</td></tr>`;
+            html += `<tr><td style="padding:8px; font-weight:bold;">Collimator Used</td><td style="padding:8px;">${wpData.collimator_used ? 'Yes' : 'No'}</td></tr>`;
+            html += `</table>`;
+            
+            if (wpData.sketch_data) {
+                html += `<h4 style="margin-top: 10px;">Boundary Sketch / Setup Diagram:</h4>`;
+                html += `<div style="border: 2px solid #ccc; padding: 5px; text-align: center;"><img src="${wpData.sketch_data}" style="max-width: 100%; height: auto;" /></div>`;
+            }
+        }
+
+        if(utData) {
+            html += `<h3 style="background:#eee; padding:5px; border-left: 5px solid #f0ad4e;">PART 2: UTILIZATION & FIELD LOG</h3>`;
+            html += `<table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size: 0.9rem;" border="1">`;
+            html += `<tr><td style="padding:8px; font-weight:bold; width: 40%;">Radiographer in Charge (RIC)</td><td style="padding:8px;">${utData.radiographer_in_charge}</td></tr>`;
+            html += `<tr><td style="padding:8px; font-weight:bold;">Assistants / Participants</td><td style="padding:8px;">${utData.participants || 'None'}</td></tr>`;
+            html += `<tr><td style="padding:8px; font-weight:bold;">Survey Meter Used (SN)</td><td style="padding:8px;">${utData.survey_meter_serial} (Response Checked: ${utData.meter_response_checked ? 'Yes':'No'})</td></tr>`;
+            html += `<tr><td style="padding:8px; font-weight:bold;">Max Device Survey Reading</td><td style="padding:8px;">${utData.max_survey_reading} mR/hr</td></tr>`;
+            html += `</table>`;
+        }
+
+        html += `<div style="margin-top: 50px; border-top: 1px dashed #000; padding-top:20px; text-align:center; font-size: 0.85rem;">
+                    <p><strong>AUDIT VERIFICATION COMPLETE</strong></p>
+                    <p>Records compiled automatically by the Gamma Radiography Tracker System.</p>
+                 </div>`;
+
+        container.innerHTML = html;
+        container.style.display = 'block';
+
+        html2pdf().set({
+            margin: 15,
+            filename: `Job_Packet_${jobNum}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+        }).from(container).save().then(() => {
+            container.style.display = 'none';
+            document.getElementById('packet-job-number').value = '';
+            hideLoader();
+        });
+
+    } catch (err) {
+        console.error("Packet Error:", err);
+        hideLoader();
+        alert("Failed to generate master packet.");
+    }
+}
