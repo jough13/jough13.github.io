@@ -1,6 +1,5 @@
 // public/js/app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-// UPDATED: Added query and where to support the Master Packet Compiler & Asset Tracking
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, addDoc, doc, getDoc, deleteDoc, updateDoc, writeBatch, query, where } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
@@ -26,19 +25,22 @@ const auth = getAuth(app);
 window.calendar = null; 
 window.isotopeChart = null; 
 window.doseChart = null;
+window.decayChartInstance = null; // NEW: Track the Decay Line Chart
 window.currentOpenDoc = null; 
 window.editModeId = null;
 window.editModeCollection = null;
 window.sigPadDirty = false; 
+window.sketchPadDirty = false; // NEW: Track the Boundary Sketchpad
 let html5QrCode = null; 
 
 // --- LIVE DECAY ENGINE ---
-function calculateCurrentActivity(initialActivity, isotope, activityDateStr) {
+function calculateCurrentActivity(initialActivity, isotope, activityDateStr, targetDateObj = null) {
     if (!initialActivity || !isotope || !activityDateStr) return 0;
     const initial = parseFloat(initialActivity);
     const actDate = new Date(activityDateStr);
-    const today = new Date();
-    const daysElapsed = (today - actDate) / (1000 * 60 * 60 * 24);
+    const targetDate = targetDateObj ? targetDateObj : new Date();
+    
+    const daysElapsed = (targetDate - actDate) / (1000 * 60 * 60 * 24);
     if (daysElapsed < 0) return initial.toFixed(2); 
 
     let halfLifeDays = 0;
@@ -51,6 +53,72 @@ function calculateCurrentActivity(initialActivity, isotope, activityDateStr) {
 
     const currentActivity = initial * Math.pow(0.5, (daysElapsed / halfLifeDays));
     return currentActivity.toFixed(2);
+}
+
+// --- NEW: SOURCE DECAY FORECAST CHART ---
+window.updateDecayChart = async function() {
+    const ctx = document.getElementById('decay-chart');
+    if(!ctx) return;
+    
+    const srcSnap = await getDocs(collection(db, 'sources'));
+    const labels = [];
+    const today = new Date();
+    
+    // Generate X-Axis Labels (Today + next 6 months)
+    for(let i=0; i<=6; i++) {
+        let d = new Date(); 
+        d.setMonth(today.getMonth() + i);
+        labels.push(d.toLocaleDateString(undefined, {month:'short', year:'2-digit'}));
+    }
+    
+    const datasets = [];
+    srcSnap.forEach(doc => {
+        const data = doc.data();
+        if(data.vault_status === 'DELETED') return;
+        
+        const points = [];
+        for(let i=0; i<=6; i++) {
+            let futureDate = new Date(); 
+            futureDate.setMonth(today.getMonth() + i);
+            points.push(calculateCurrentActivity(data.initial_activity_curies, data.isotope, data.activity_date, futureDate));
+        }
+        
+        datasets.push({
+            label: `${data.serial_number} (${data.isotope})`,
+            data: points,
+            tension: 0.3,
+            borderWidth: 2
+        });
+    });
+
+    // Add the 20 Ci Replacement Threshold Line
+    datasets.push({
+        label: 'Replacement Threshold (20 Ci)',
+        data: [20, 20, 20, 20, 20, 20, 20],
+        borderColor: '#d9534f',
+        borderDash: [5, 5],
+        pointRadius: 0,
+        fill: false,
+        borderWidth: 2
+    });
+
+    if(window.decayChartInstance) window.decayChartInstance.destroy();
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    
+    window.decayChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels: labels, datasets: datasets },
+        options: {
+            scales: {
+                y: { 
+                    ticks: { color: isDark ? '#e0e0e0' : '#333' }, 
+                    title: {display: true, text: 'Activity (Curies)', color: isDark ? '#e0e0e0' : '#333'} 
+                },
+                x: { ticks: { color: isDark ? '#e0e0e0' : '#333' } }
+            },
+            plugins: { legend: { labels: { color: isDark ? '#e0e0e0' : '#333' } } }
+        }
+    });
 }
 
 // --- BARCODE SCANNER LOGIC ---
@@ -108,6 +176,7 @@ window.toggleTheme = function() {
     updateThemeButton(newTheme);
     if(window.isotopeChart) updateDashboard(); 
     if(window.doseChart) updateDoseDashboard(); 
+    if(window.decayChartInstance) window.updateDecayChart();
 }
 function updateThemeButton(theme) {
     const btn = document.getElementById('theme-btn');
@@ -347,10 +416,83 @@ window.clearSignature = function() {
     }
 }
 
+// --- NEW: BOUNDARY SKETCHPAD ENGINE ---
+function initSketchPad() {
+    const canvas = document.getElementById('sketch-canvas');
+    if (!canvas) return;
+    
+    // Set internal resolution to match container to prevent stretching
+    canvas.width = canvas.parentElement.clientWidth - 20; 
+    
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let lastX = 0, lastY = 0;
+
+    ctx.strokeStyle = '#d9534f'; // Red ink for boundary lines
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    function draw(e) {
+        if (!isDrawing) return;
+        e.preventDefault(); 
+        
+        let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+        let clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+        
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        const x = (clientX - rect.left) * scaleX;
+        const y = (clientY - rect.top) * scaleY;
+
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+
+        [lastX, lastY] = [x, y];
+        window.sketchPadDirty = true; 
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        isDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        [lastX, lastY] = [(e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY];
+    });
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', () => isDrawing = false);
+    canvas.addEventListener('mouseout', () => isDrawing = false);
+
+    canvas.addEventListener('touchstart', (e) => {
+        isDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        [lastX, lastY] = [(e.touches[0].clientX - rect.left) * scaleX, (e.touches[0].clientY - rect.top) * scaleY];
+    }, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', () => isDrawing = false);
+}
+
+window.clearSketch = function() {
+    const canvas = document.getElementById('sketch-canvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        window.sketchPadDirty = false;
+    }
+}
+
+
 // --- APP INITIALIZATION ---
 async function startApplication() {
     window.showSection('dashboard');
     initSignaturePad();
+    initSketchPad();
     await loadAllData();
     setupEventListeners();
     populateSourceDropdown(); 
@@ -419,11 +561,12 @@ function setupEventListeners() {
                 }
                 form.style.boxShadow = 'none';
                 if(map.formId === 'reports-form') window.clearSignature(); 
+                if(map.formId === 'work-plans-form') window.clearSketch(); 
             });
         }
     });
 
-    // --- NEW: ASSET TRACKING (VAULT CHECK-IN/OUT) FORM LISTENER ---
+    // --- ASSET TRACKING (VAULT CHECK-IN/OUT) FORM LISTENER ---
     const assetForm = document.getElementById('asset-tracking-form');
     if (assetForm) {
         // Toggle the Radiographer/Job fields based on radio button
@@ -520,6 +663,7 @@ function setupEventListeners() {
             await fetchData('sources', 'sources-list');
             populateSourceDropdown(); 
             window.updateDashboard();
+            window.updateDecayChart();
             await updateDeployedAssetsDashboard();
             hideLoader();
         });
@@ -614,6 +758,10 @@ function setupEventListeners() {
 
             const locType = document.getElementById('wp-loc-type').value;
 
+            // Grab the Sketchpad Base64 data
+            const sketchCanvas = document.getElementById('sketch-canvas');
+            const sketchData = (sketchCanvas && window.sketchPadDirty) ? sketchCanvas.toDataURL('image/png') : null;
+
             const data = {
                 job_number: document.getElementById('wp-job').value,
                 location_type: locType,
@@ -627,10 +775,12 @@ function setupEventListeners() {
                 rso_approval_status: 'Pending',
                 raso_approval_status: 'Pending',
                 created_at: new Date().toISOString(),
-                diagram_url: diagramUrl
+                diagram_url: diagramUrl,
+                sketch_data: sketchData
             };
             await addData('work_plans', data);
             workPlansForm.reset();
+            window.clearSketch();
             window.togglePRI(); 
             await fetchData('work_plans', 'work-plans-list');
             window.updateDashboard();
@@ -746,6 +896,9 @@ async function addData(collectionName, data) {
                     if (key === 'signature_data' && data[key] === null && existingData[key]) {
                         data[key] = existingData[key];
                     }
+                    if (key === 'sketch_data' && data[key] === null && existingData[key]) {
+                        data[key] = existingData[key];
+                    }
                 }
             }
             await updateDoc(doc(db, collectionName, window.editModeId), data);
@@ -762,7 +915,7 @@ async function addData(collectionName, data) {
     }
 }
 
-// --- NEW: DEPLOYED ASSETS DASHBOARD ---
+// --- DEPLOYED ASSETS DASHBOARD ---
 async function updateDeployedAssetsDashboard() {
     const list = document.getElementById('deployed-assets-list');
     const badge = document.getElementById('out-count');
@@ -912,8 +1065,9 @@ async function loadAllData() {
     ]);
     window.updateDashboard(); 
     window.renderCalendar();
+    window.updateDecayChart(); // Build forecast curve
     await updateDoseDashboard(); 
-    await updateDeployedAssetsDashboard(); // NEW: Load initial vault status
+    await updateDeployedAssetsDashboard(); 
 }
 
 async function fetchData(collectionName, listId) {
@@ -1296,6 +1450,11 @@ window.generateMasterPacket = async function() {
             html += `<tr><td style="padding:8px; font-weight:bold;">Calculated Boundary (2mR/hr)</td><td style="padding:8px;">${wpData.calculated_boundary_mr_hr} ft</td></tr>`;
             html += `<tr><td style="padding:8px; font-weight:bold;">Collimator Used</td><td style="padding:8px;">${wpData.collimator_used ? 'Yes' : 'No'}</td></tr>`;
             html += `</table>`;
+            
+            if (wpData.sketch_data) {
+                html += `<h4 style="margin-top: 10px;">Boundary Sketch / Setup Diagram:</h4>`;
+                html += `<div style="border: 2px solid #ccc; padding: 5px; text-align: center;"><img src="${wpData.sketch_data}" style="max-width: 100%; height: auto;" /></div>`;
+            }
         }
 
         if(utData) {
@@ -1332,6 +1491,66 @@ window.generateMasterPacket = async function() {
         console.error("Packet Error:", err);
         hideLoader();
         alert("Failed to generate master packet.");
+    }
+}
+
+// --- NEW: GENERATE DIGITAL QUAL CARDS ---
+window.generateQualCards = async function() {
+    const container = document.getElementById('qual-card-container');
+    if(!container) return;
+    
+    showLoader();
+    try {
+        const perSnap = await getDocs(collection(db, 'personnel'));
+        if (perSnap.empty) {
+            alert("No personnel records found.");
+            hideLoader();
+            return;
+        }
+
+        let html = '<div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; font-family: Arial;">';
+        
+        perSnap.forEach(d => {
+            const p = d.data();
+            const qrString = `Name: ${p.full_name}\nCert: ${p.cert_number}\n6-Mo Eval: ${p.last_6mo_eval_date}\nHazmat: ${p.hazmat_expiration}`;
+            const qrData = encodeURIComponent(qrString);
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${qrData}`;
+
+            html += `
+            <div style="border: 2px solid #002244; border-radius: 10px; width: 3.375in; height: 2.125in; padding: 15px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; background: white; color: black; page-break-inside: avoid;">
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 5px 0; color: #005A9C; font-size: 14px;">NAVSEA DET RASO</h3>
+                    <h2 style="margin: 0 0 5px 0; font-size: 16px;">${p.full_name}</h2>
+                    <p style="margin: 2px 0; font-size: 10px;"><b>Cert:</b> ${p.cert_number}</p>
+                    <p style="margin: 2px 0; font-size: 10px;"><b>Eval Exp:</b> ${p.last_6mo_eval_date}</p>
+                    <p style="margin: 2px 0; font-size: 10px;"><b>Hazmat:</b> ${p.hazmat_expiration}</p>
+                    <p style="margin: 2px 0; font-size: 10px;"><b>Auth Date:</b> ${p.trust_authorization_date}</p>
+                </div>
+                <div style="width: 80px; height: 80px; border: 1px solid #ccc; padding: 2px;">
+                    <img src="${qrUrl}" style="width: 100%; height: 100%;">
+                </div>
+            </div>`;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        container.style.display = 'block';
+
+        html2pdf().set({
+            margin: 10,
+            filename: `Radiographer_Qual_Cards_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        }).from(container).save().then(() => {
+            container.style.display = 'none';
+            hideLoader();
+        });
+
+    } catch(e) {
+        console.error("Qual Card Error:", e);
+        hideLoader();
+        alert('Error generating qual cards.');
     }
 }
 
@@ -1435,6 +1654,9 @@ window.openModal = async function(collectionName, docId) {
                 
                 } else if (key === 'signature_data' && value) {
                     html += `<p><strong>SIGNATURE:</strong><br><img src="${value}" style="max-width: 100%; border: 1px solid #ccc; border-radius: 4px; margin-top: 10px; background: white;" /></p>`;
+
+                } else if (key === 'sketch_data' && value) {
+                    html += `<p><strong>SETUP BOUNDARY SKETCH:</strong><br><img src="${value}" style="max-width: 100%; border: 2px solid #ccc; border-radius: 4px; margin-top: 10px; background: white;" /></p>`;
 
                 } else if(key.includes('_url')) {
                     if (value && value !== 'null') {
