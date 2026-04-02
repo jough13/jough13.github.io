@@ -28,6 +28,35 @@ window.currentOpenDoc = null;
 window.editModeId = null;
 window.editModeCollection = null;
 
+// --- NEW: LIVE DECAY ENGINE ---
+// Calculates current activity based on isotope half-life
+function calculateCurrentActivity(initialActivity, isotope, activityDateStr) {
+    if (!initialActivity || !isotope || !activityDateStr) return 0;
+    
+    const initial = parseFloat(initialActivity);
+    const actDate = new Date(activityDateStr);
+    const today = new Date();
+    
+    // Calculate difference in days
+    const daysElapsed = (today - actDate) / (1000 * 60 * 60 * 24);
+    if (daysElapsed < 0) return initial.toFixed(2); // In case date is in the future
+
+    let halfLifeDays = 0;
+    
+    // Standard Navy/Industrial Radiography Half-Lives
+    if (isotope === 'Ir-192') halfLifeDays = 73.83;
+    else if (isotope === 'Co-60') halfLifeDays = 1925.28; // ~5.27 years
+    else if (isotope === 'Se-75') halfLifeDays = 119.78;
+    else if (isotope === 'Yb-169') halfLifeDays = 32.02;
+    else if (isotope === 'Cs-137') halfLifeDays = 10957.5; // ~30 years
+    else return initial.toFixed(2); // Fallback for unknown isotopes
+
+    // A = A0 * (0.5)^(t / T_half)
+    const currentActivity = initial * Math.pow(0.5, (daysElapsed / halfLifeDays));
+    return currentActivity.toFixed(2);
+}
+
+
 // --- LOADER LOGIC ---
 function showLoader() { 
     const loader = document.getElementById('global-loader');
@@ -94,7 +123,6 @@ onAuthStateChanged(auth, async (user) => {
         } finally {
             setTimeout(() => {
                 hideLoader();
-                // NEW: Show Disclaimer Modal if they haven't opted out
                 if (localStorage.getItem('hideDisclaimer') !== 'true') {
                     document.getElementById('disclaimer-modal').style.display = 'flex';
                 }
@@ -258,7 +286,6 @@ async function uploadFile(file, folderPath) {
 
 function setupEventListeners() {
     
-    // NEW: Disclaimer Logic Event Listeners
     const ackCheckbox = document.getElementById('ack-checkbox');
     const proceedBtn = document.getElementById('disclaimer-proceed-btn');
     const dontShowCheckbox = document.getElementById('dont-show-checkbox');
@@ -655,7 +682,9 @@ async function fetchData(collectionName, listId) {
                 displayText = `${item.type?.toUpperCase() || 'UNKNOWN TYPE'} - Serial: ${item.serial_number} (Cal Due: ${item.calibration_due_date})`;
                 docUrl = item.certificate_url;
             } else if (collectionName === 'sources') {
-                displayText = `${item.isotope} (Serial: ${item.serial_number}) - Activity: ${item.initial_activity_curies} Ci on ${item.activity_date}`;
+                // UPDATED: Now displays Current Activity using the Decay Engine!
+                const currentAct = calculateCurrentActivity(item.initial_activity_curies, item.isotope, item.activity_date);
+                displayText = `${item.isotope} (SN: ${item.serial_number}) - Initial: ${item.initial_activity_curies} Ci | CURRENT: ${currentAct} Ci`;
                 docUrl = item.certificate_url;
             } else if (collectionName === 'cameras') {
                 displayText = `${item.make_model} (SN: ${item.serial_number}) - Maint: ${item.annual_maintenance_date}`;
@@ -710,9 +739,13 @@ async function populateSourceDropdown() {
         sourceSelect.innerHTML = '<option value="">Select an active source...</option>';
         querySnapshot.forEach((doc) => {
             const data = doc.data();
+            
+            // UPDATED: Work Plan Dropdown now uses real-time decayed activity for safer calculations!
+            const currentAct = calculateCurrentActivity(data.initial_activity_curies, data.isotope, data.activity_date);
+            
             sourceSelect.innerHTML += `
-                <option value="${doc.id}" data-activity="${data.initial_activity_curies}" data-isotope="${data.isotope}">
-                    ${data.isotope} (SN: ${data.serial_number}) - ${data.initial_activity_curies} Ci
+                <option value="${doc.id}" data-activity="${currentAct}" data-isotope="${data.isotope}">
+                    ${data.isotope} (SN: ${data.serial_number}) - ${currentAct} Ci (Current)
                 </option>`;
         });
     } catch (err) {
@@ -979,9 +1012,11 @@ window.generatePDFInventory = async function() {
         const srcSnap = await getDocs(collection(db, 'sources'));
         srcSnap.forEach(d => { 
             const x = d.data(); 
+            // UPDATED: Make sure the RSO printout shows the CURRENT decayed activity!
+            const currentAct = calculateCurrentActivity(x.initial_activity_curies, x.isotope, x.activity_date);
             srcBody.innerHTML += `<tr>
                 <td style="padding:8px;">${x.isotope}</td>
-                <td style="padding:8px;">${x.initial_activity_curies}</td>
+                <td style="padding:8px;">${currentAct}</td>
                 <td style="padding:8px;">${x.serial_number}</td>
                 <td style="padding:8px;">Vault</td>
                 <td style="padding:8px; text-align:center;">[  ]</td>
@@ -1192,7 +1227,6 @@ window.exportCSV = async function(collectionName) {
     }
 }
 
-// --- RSO FULL SYSTEM BACKUP ---
 window.fullSystemBackup = async function() {
     if (!auth.currentUser || auth.currentUser.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
         alert("Unauthorized. Only the RSO may perform a full system backup.");
