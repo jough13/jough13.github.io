@@ -92,7 +92,13 @@ onAuthStateChanged(auth, async (user) => {
         } catch (err) {
             console.error("App startup error:", err);
         } finally {
-            setTimeout(hideLoader, 500); 
+            setTimeout(() => {
+                hideLoader();
+                // NEW: Show Disclaimer Modal if they haven't opted out
+                if (localStorage.getItem('hideDisclaimer') !== 'true') {
+                    document.getElementById('disclaimer-modal').style.display = 'flex';
+                }
+            }, 500); 
         }
         
     } else {
@@ -251,6 +257,35 @@ async function uploadFile(file, folderPath) {
 }
 
 function setupEventListeners() {
+    
+    // NEW: Disclaimer Logic Event Listeners
+    const ackCheckbox = document.getElementById('ack-checkbox');
+    const proceedBtn = document.getElementById('disclaimer-proceed-btn');
+    const dontShowCheckbox = document.getElementById('dont-show-checkbox');
+
+    if (ackCheckbox && proceedBtn) {
+        ackCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                proceedBtn.disabled = false;
+                proceedBtn.style.opacity = '1';
+                proceedBtn.style.cursor = 'pointer';
+            } else {
+                proceedBtn.disabled = true;
+                proceedBtn.style.opacity = '0.5';
+                proceedBtn.style.cursor = 'not-allowed';
+            }
+        });
+    }
+
+    if (proceedBtn) {
+        proceedBtn.addEventListener('click', () => {
+            if (dontShowCheckbox && dontShowCheckbox.checked) {
+                localStorage.setItem('hideDisclaimer', 'true');
+            }
+            document.getElementById('disclaimer-modal').style.display = 'none';
+        });
+    }
+
     Object.values(formMaps).forEach(map => {
         const form = document.getElementById(map.formId);
         if(form) {
@@ -1026,7 +1061,7 @@ window.openModal = async function(collectionName, docId) {
                         } catch(e) { console.log("Could not resolve source."); }
                     }
                     html += `<p><strong>SOURCE:</strong> ${sourceDisplay}</p>`;
-                } else if(key.includes('_url') && value) {
+                } else if(key.includes('_url')) {
                     if (value && value !== 'null') {
                         html += `<p><strong>${displayKey.replace(' URL', '')}:</strong> <a href="${value}" target="_blank" style="color: #005A9C;">View Uploaded File</a></p>`;
                     } else {
