@@ -1,6 +1,5 @@
 /* public/css/style.css */
 
-/* Define Global Theme Variables */
 :root {
     --bg-color: #f4f4f9;
     --text-color: #333;
@@ -26,7 +25,6 @@
     --export-hover: #e2e6ea;
 }
 
-/* Dark Mode Overrides */
 [data-theme="dark"] {
     --bg-color: #121212;
     --text-color: #e0e0e0;
@@ -54,34 +52,14 @@
 
 body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s ease, color 0.3s ease; }
 
-/* --- UPDATED: SLEEK TOAST LOADER ANIMATION --- */
-#global-loader { 
-    display: none; /* Hidden by default */
-    flex-direction: row; /* Puts spinner and text side-by-side */
-    position: fixed; 
-    bottom: 30px; 
-    right: 30px; 
-    width: auto; 
-    height: auto; 
-    background-color: var(--header-bg); 
-    z-index: 10000; 
-    justify-content: center; 
-    align-items: center; 
-    padding: 15px 25px;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    border-left: 5px solid #5bc0de;
-}
+#global-loader { display: none; flex-direction: row; position: fixed; bottom: 30px; right: 30px; width: auto; height: auto; background-color: var(--header-bg); z-index: 10000; justify-content: center; align-items: center; padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); border-left: 5px solid #5bc0de; }
 .spinner { border: 3px solid rgba(255, 255, 255, 0.1); border-top: 3px solid #5bc0de; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin-right: 15px; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 .loader-text { color: white; font-family: Arial, sans-serif; font-weight: bold; font-size: 0.95rem; letter-spacing: 0.5px; animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-/* --------------------------------------------- */
 
-/* --- MODAL MINI SPINNER --- */
 .mini-spinner { border: 3px solid rgba(0, 90, 156, 0.1); border-top: 3px solid var(--nav-bg); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 12px; }
 
-/* --- SECURE LOGIN SCREEN STYLES --- */
 #login-screen { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; background-color: var(--header-bg); color: white; position: fixed; top: 0; left: 0; width: 100%; z-index: 9999; }
 .login-card { background-color: var(--card-bg); color: var(--text-color); padding: 40px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 100%; max-width: 400px; text-align: center; border-top: 5px solid var(--nav-bg); }
 .login-card h2 { margin-top: 0; color: var(--nav-bg); }
@@ -90,7 +68,6 @@ body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: 
 .login-card button { width: 100%; padding: 12px; background-color: var(--nav-bg); color: white; border: none; border-radius: 4px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 15px; transition: background-color 0.3s; }
 .login-card button:hover { background-color: var(--nav-btn-hover); }
 
-/* MAIN APP WRAPPER */
 #app-wrapper { display: none; }
 
 header { background-color: var(--header-bg); color: var(--header-text); padding: 1rem; text-align: center; transition: background-color 0.3s ease; }
@@ -116,6 +93,11 @@ nav ul li:hover { background-color: transparent; }
 .logout-btn { background-color: #d9534f; border: 1px solid #c9302c; color: white; padding: 10px 15px; border-radius: 25px; cursor: pointer; font-size: 0.9rem; font-weight: bold; transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.2); } 
 .logout-btn:hover { background-color: #c9302c; box-shadow: 0 4px 8px rgba(0,0,0,0.4); transform: translateY(-1px); }
 
+/* --- NEW: AUDIT FILTER BAR --- */
+#audit-filter-bar { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; background: var(--card-bg); padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px var(--card-shadow); margin-bottom: 20px; border-left: 5px solid var(--nav-bg); }
+#audit-filter-bar h4 { margin: 0; color: var(--text-color); }
+#audit-filter-bar input[type="date"] { padding: 6px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--input-bg); color: var(--text-color); font-family: inherit; }
+
 main { padding: 20px; max-width: 1200px; margin: 0 auto; padding-bottom: 60px; }
 .module { display: none; }
 .module.active { display: block; }
@@ -128,6 +110,10 @@ form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; pa
 form label { font-weight: bold; font-size: 0.9rem; }
 form input, form select, form textarea { padding: 8px; border: 1px solid var(--border-color); background-color: var(--input-bg); color: var(--input-text); border-radius: 4px; font-size: 1rem; transition: background-color 0.3s ease, color 0.3s ease; }
 form select optgroup { font-weight: bold; font-style: normal; color: var(--nav-bg); }
+
+/* --- NEW: SIGNATURE CANVAS --- */
+#sig-canvas { border: 2px dashed var(--nav-bg); border-radius: 4px; background: #fafafa; cursor: crosshair; touch-action: none; width: 100%; max-width: 400px; height: 150px; }
+[data-theme="dark"] #sig-canvas { background: #cfcfcf; } /* Keep canvas white-ish in dark mode for visible ink */
 
 form button[type="submit"] { background-color: var(--nav-bg); color: white; border: none; padding: 10px; font-size: 1rem; font-weight: bold; border-radius: 4px; cursor: pointer; transition: background-color 0.3s; }
 form button[type="submit"]:hover { background-color: var(--nav-btn-hover); }
