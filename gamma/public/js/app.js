@@ -138,12 +138,19 @@ window.startScanner = function(targetInputId) {
 }
 
 window.stopScanner = function() {
+    const modal = document.getElementById('scanner-modal');
+    
     if (html5QrCode) {
+        // We attempt to stop the camera, but FORCE the modal to hide even if it throws an error
         html5QrCode.stop().then(() => {
-            document.getElementById('scanner-modal').style.display = 'none';
-        }).catch(err => console.log(err));
+            html5QrCode.clear();
+            modal.style.display = 'none';
+        }).catch(err => {
+            console.log("Camera was not fully running yet:", err);
+            modal.style.display = 'none'; // FORCE HIDE
+        });
     } else {
-        document.getElementById('scanner-modal').style.display = 'none';
+        modal.style.display = 'none';
     }
 }
 
