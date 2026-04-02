@@ -1,0 +1,15 @@
+{
+  "name": "Gamma Radiography Tracker",
+  "short_name": "RadTracker",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#002244",
+  "theme_color": "#005A9C",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/564/564010.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
