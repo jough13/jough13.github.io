@@ -27,35 +27,28 @@ window.isotopeChart = null;
 window.currentOpenDoc = null; 
 window.editModeId = null;
 window.editModeCollection = null;
+window.sigPadDirty = false; // Tracks if a user actually signed the pad
 
-// --- NEW: LIVE DECAY ENGINE ---
-// Calculates current activity based on isotope half-life
+// --- LIVE DECAY ENGINE ---
 function calculateCurrentActivity(initialActivity, isotope, activityDateStr) {
     if (!initialActivity || !isotope || !activityDateStr) return 0;
-    
     const initial = parseFloat(initialActivity);
     const actDate = new Date(activityDateStr);
     const today = new Date();
-    
-    // Calculate difference in days
     const daysElapsed = (today - actDate) / (1000 * 60 * 60 * 24);
-    if (daysElapsed < 0) return initial.toFixed(2); // In case date is in the future
+    if (daysElapsed < 0) return initial.toFixed(2); 
 
     let halfLifeDays = 0;
-    
-    // Standard Navy/Industrial Radiography Half-Lives
     if (isotope === 'Ir-192') halfLifeDays = 73.83;
-    else if (isotope === 'Co-60') halfLifeDays = 1925.28; // ~5.27 years
+    else if (isotope === 'Co-60') halfLifeDays = 1925.28; 
     else if (isotope === 'Se-75') halfLifeDays = 119.78;
     else if (isotope === 'Yb-169') halfLifeDays = 32.02;
-    else if (isotope === 'Cs-137') halfLifeDays = 10957.5; // ~30 years
-    else return initial.toFixed(2); // Fallback for unknown isotopes
+    else if (isotope === 'Cs-137') halfLifeDays = 10957.5; 
+    else return initial.toFixed(2); 
 
-    // A = A0 * (0.5)^(t / T_half)
     const currentActivity = initial * Math.pow(0.5, (daysElapsed / halfLifeDays));
     return currentActivity.toFixed(2);
 }
-
 
 // --- LOADER LOGIC ---
 function showLoader() { 
@@ -263,9 +256,74 @@ function resetFormButton(collectionName) {
     }
 }
 
+// --- NEW: DIGITAL SIGNATURE ENGINE ---
+function initSignaturePad() {
+    const canvas = document.getElementById('sig-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let lastX = 0, lastY = 0;
+
+    // Draw settings
+    ctx.strokeStyle = '#005A9C'; // Navy blue ink
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    function draw(e) {
+        if (!isDrawing) return;
+        e.preventDefault(); 
+        
+        let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+        let clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+        
+        const rect = canvas.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+
+        [lastX, lastY] = [x, y];
+        window.sigPadDirty = true; // They actually drew something
+    }
+
+    // Mouse Events
+    canvas.addEventListener('mousedown', (e) => {
+        isDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        [lastX, lastY] = [e.clientX - rect.left, e.clientY - rect.top];
+    });
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', () => isDrawing = false);
+    canvas.addEventListener('mouseout', () => isDrawing = false);
+
+    // Touch Events
+    canvas.addEventListener('touchstart', (e) => {
+        isDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        [lastX, lastY] = [e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top];
+    }, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', () => isDrawing = false);
+}
+
+window.clearSignature = function() {
+    const canvas = document.getElementById('sig-canvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        window.sigPadDirty = false;
+    }
+}
+
+
 // --- APP INITIALIZATION ---
 async function startApplication() {
     window.showSection('dashboard');
+    initSignaturePad();
     await loadAllData();
     setupEventListeners();
     populateSourceDropdown(); 
@@ -328,6 +386,7 @@ function setupEventListeners() {
                     btn.style.color = '';
                 }
                 form.style.boxShadow = 'none';
+                if(map.formId === 'reports-form') window.clearSignature(); // Clear pad on reset
             });
         }
     });
@@ -562,19 +621,22 @@ function setupEventListeners() {
         reportsForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             showLoader();
-            const fileInput = document.getElementById('pj-doc');
-            const file = fileInput.files[0];
-            const docUrl = file ? await uploadFile(file, 'report_documents') : null;
+            
+            // UPDATED: Grab Base64 Signature Data instead of a file upload
+            const canvas = document.getElementById('sig-canvas');
+            const sigData = (canvas && window.sigPadDirty) ? canvas.toDataURL('image/png') : null;
+
             const data = {
                 completed_by: document.getElementById('pj-completed-by').value,
                 source_secured: document.getElementById('pj-source-secured').checked,
                 vault_verified: document.getElementById('pj-vault-verified').checked,
                 daily_log_generated: true, 
                 completion_time: new Date().toISOString(),
-                document_url: docUrl
+                signature_data: sigData
             };
             await addData('post_job_reports', data);
             reportsForm.reset();
+            window.clearSignature();
             await fetchData('post_job_reports', 'reports-list');
             hideLoader();
         });
@@ -594,6 +656,10 @@ async function addData(collectionName, data) {
                 const existingData = existingDoc.data();
                 for (const key in data) {
                     if (key.includes('_url') && data[key] === null) {
+                        data[key] = existingData[key];
+                    }
+                    // Prevent overwriting a good signature if they edit the form but don't re-sign
+                    if (key === 'signature_data' && data[key] === null && existingData[key]) {
                         data[key] = existingData[key];
                     }
                 }
@@ -678,11 +744,16 @@ async function fetchData(collectionName, listId) {
             let displayText = '';
             let docUrl = null;
 
+            // Figure out the date of this specific record so the Audit Filter can find it
+            let recordDate = item.timestamp || item.created_at || item.logged_time || item.completion_time || item.activity_date || item.planned_date || item.transport_date || item.eval_date || '';
+            if (recordDate) {
+                li.setAttribute('data-date', recordDate.split('T')[0]); // Attach date as metadata tag
+            }
+
             if (collectionName === 'equipment') {
                 displayText = `${item.type?.toUpperCase() || 'UNKNOWN TYPE'} - Serial: ${item.serial_number} (Cal Due: ${item.calibration_due_date})`;
                 docUrl = item.certificate_url;
             } else if (collectionName === 'sources') {
-                // UPDATED: Now displays Current Activity using the Decay Engine!
                 const currentAct = calculateCurrentActivity(item.initial_activity_curies, item.isotope, item.activity_date);
                 displayText = `${item.isotope} (SN: ${item.serial_number}) - Initial: ${item.initial_activity_curies} Ci | CURRENT: ${currentAct} Ci`;
                 docUrl = item.certificate_url;
@@ -704,7 +775,6 @@ async function fetchData(collectionName, listId) {
             } else if (collectionName === 'post_job_reports') {
                 const date = new Date(item.completion_time).toLocaleDateString();
                 displayText = `Report by ${item.completed_by} on ${date} (Source Secured: ${item.source_secured ? 'Yes' : 'No'})`;
-                docUrl = item.document_url;
             } else {
                 const values = Object.values(item).slice(0, 3).join(' - ');
                 displayText = `ID ${doc.id}: ${values}`;
@@ -739,10 +809,7 @@ async function populateSourceDropdown() {
         sourceSelect.innerHTML = '<option value="">Select an active source...</option>';
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            
-            // UPDATED: Work Plan Dropdown now uses real-time decayed activity for safer calculations!
             const currentAct = calculateCurrentActivity(data.initial_activity_curies, data.isotope, data.activity_date);
-            
             sourceSelect.innerHTML += `
                 <option value="${doc.id}" data-activity="${currentAct}" data-isotope="${data.isotope}">
                     ${data.isotope} (SN: ${data.serial_number}) - ${currentAct} Ci (Current)
@@ -1012,7 +1079,6 @@ window.generatePDFInventory = async function() {
         const srcSnap = await getDocs(collection(db, 'sources'));
         srcSnap.forEach(d => { 
             const x = d.data(); 
-            // UPDATED: Make sure the RSO printout shows the CURRENT decayed activity!
             const currentAct = calculateCurrentActivity(x.initial_activity_curies, x.isotope, x.activity_date);
             srcBody.innerHTML += `<tr>
                 <td style="padding:8px;">${x.isotope}</td>
@@ -1096,6 +1162,11 @@ window.openModal = async function(collectionName, docId) {
                         } catch(e) { console.log("Could not resolve source."); }
                     }
                     html += `<p><strong>SOURCE:</strong> ${sourceDisplay}</p>`;
+                
+                // UPDATED: Render the Base64 signature string directly as an Image!
+                } else if (key === 'signature_data' && value) {
+                    html += `<p><strong>SIGNATURE:</strong><br><img src="${value}" style="max-width: 100%; border: 1px solid #ccc; border-radius: 4px; margin-top: 10px; background: white;" /></p>`;
+
                 } else if(key.includes('_url')) {
                     if (value && value !== 'null') {
                         html += `<p><strong>${displayKey.replace(' URL', '')}:</strong> <a href="${value}" target="_blank" style="color: #005A9C;">View Uploaded File</a></p>`;
@@ -1161,18 +1232,41 @@ window.executeDelete = async function() {
     }
 }
 
+// --- UPDATED: ADVANCED AUDIT FILTER LOGIC ---
 window.filterRecords = function() {
     const searchInput = document.getElementById('global-search').value.toLowerCase();
+    
+    // Grab the new Audit Dates
+    const startInput = document.getElementById('filter-start') ? document.getElementById('filter-start').value : '';
+    const endInput = document.getElementById('filter-end') ? document.getElementById('filter-end').value : '';
+    
     const allRecords = document.querySelectorAll('ul[id$="-list"] li');
     
     allRecords.forEach(record => {
         if(record.textContent.includes("No data found")) return;
-        if (record.textContent.toLowerCase().includes(searchInput)) {
+        
+        let matchesText = record.textContent.toLowerCase().includes(searchInput);
+        let matchesDate = true;
+
+        // Check if the record's hidden 'data-date' tag falls outside the requested audit window
+        const recDate = record.getAttribute('data-date');
+        if (startInput && recDate && recDate < startInput) matchesDate = false;
+        if (endInput && recDate && recDate > endInput) matchesDate = false;
+
+        if (matchesText && matchesDate) {
             record.style.display = '';
         } else {
             record.style.display = 'none';
         }
     });
+}
+
+// NEW: Quick reset button for the Audit Bar
+window.clearFilters = function() {
+    if(document.getElementById('filter-start')) document.getElementById('filter-start').value = '';
+    if(document.getElementById('filter-end')) document.getElementById('filter-end').value = '';
+    document.getElementById('global-search').value = '';
+    window.filterRecords();
 }
 
 window.exportCSV = async function(collectionName) {
