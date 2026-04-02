@@ -1,7 +1,7 @@
 // public/js/app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-// UPDATED: Added writeBatch to support the Restore engine
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, addDoc, doc, getDoc, deleteDoc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+// UPDATED: Added query and where to support the Master Packet Compiler & Asset Tracking
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, addDoc, doc, getDoc, deleteDoc, updateDoc, writeBatch, query, where } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
@@ -25,12 +25,12 @@ const auth = getAuth(app);
 // --- GLOBAL VARIABLES ---
 window.calendar = null; 
 window.isotopeChart = null; 
-window.doseChart = null; // NEW: Added for Cumulative Dose Chart
+window.doseChart = null;
 window.currentOpenDoc = null; 
 window.editModeId = null;
 window.editModeCollection = null;
-window.sigPadDirty = false;
-let html5QrCode = null; // NEW: Added for Barcode Scanner
+window.sigPadDirty = false; 
+let html5QrCode = null; 
 
 // --- LIVE DECAY ENGINE ---
 function calculateCurrentActivity(initialActivity, isotope, activityDateStr) {
@@ -53,7 +53,7 @@ function calculateCurrentActivity(initialActivity, isotope, activityDateStr) {
     return currentActivity.toFixed(2);
 }
 
-// --- NEW: BARCODE SCANNER LOGIC ---
+// --- BARCODE SCANNER LOGIC ---
 window.startScanner = function(targetInputId) {
     document.getElementById('scanner-modal').style.display = 'flex';
     html5QrCode = new Html5Qrcode("reader");
@@ -107,7 +107,7 @@ window.toggleTheme = function() {
     localStorage.setItem('theme', newTheme);
     updateThemeButton(newTheme);
     if(window.isotopeChart) updateDashboard(); 
-    if(window.doseChart) updateDoseDashboard(); // Added so dose chart flips colors
+    if(window.doseChart) updateDoseDashboard(); 
 }
 function updateThemeButton(theme) {
     const btn = document.getElementById('theme-btn');
@@ -294,7 +294,8 @@ function initSignaturePad() {
     let isDrawing = false;
     let lastX = 0, lastY = 0;
 
-    ctx.strokeStyle = '#005A9C';
+    // Draw settings
+    ctx.strokeStyle = '#005A9C'; 
     ctx.lineWidth = 3;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
@@ -316,7 +317,7 @@ function initSignaturePad() {
         ctx.stroke();
 
         [lastX, lastY] = [x, y];
-        window.sigPadDirty = true;
+        window.sigPadDirty = true; 
     }
 
     canvas.addEventListener('mousedown', (e) => {
@@ -346,7 +347,6 @@ window.clearSignature = function() {
     }
 }
 
-
 // --- APP INITIALIZATION ---
 async function startApplication() {
     window.showSection('dashboard');
@@ -355,11 +355,9 @@ async function startApplication() {
     setupEventListeners();
     populateSourceDropdown(); 
     
-    // NEW: Register Service Worker for PWA (Offline Mode)
+    // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
-            .then(() => console.log("Offline Mode Active"))
-            .catch(e => console.log(e));
+        navigator.serviceWorker.register('sw.js').then(() => console.log("Offline Mode Active")).catch(e => console.log(e));
     }
 }
 
@@ -425,6 +423,56 @@ function setupEventListeners() {
         }
     });
 
+    // --- NEW: ASSET TRACKING (VAULT CHECK-IN/OUT) FORM LISTENER ---
+    const assetForm = document.getElementById('asset-tracking-form');
+    if (assetForm) {
+        // Toggle the Radiographer/Job fields based on radio button
+        const radios = assetForm.querySelectorAll('input[name="trk-action"]');
+        radios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                document.getElementById('trk-details-group').style.display = e.target.value === 'checkout' ? 'grid' : 'none';
+            });
+        });
+
+        assetForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoader();
+            const action = assetForm.querySelector('input[name="trk-action"]:checked').value;
+            const camSN = document.getElementById('trk-cam').value.trim();
+            const srcSN = document.getElementById('trk-src').value.trim();
+            const user = document.getElementById('trk-user').value.trim();
+            const job = document.getElementById('trk-job').value.trim();
+
+            const status = action === 'checkout' ? 'OUT' : 'IN';
+
+            try {
+                // Update Camera Status
+                const camQ = query(collection(db, 'cameras'), where('serial_number', '==', camSN));
+                const camSnap = await getDocs(camQ);
+                camSnap.forEach(async (d) => {
+                    await updateDoc(doc(db, 'cameras', d.id), { vault_status: status, current_job: job, current_user: user });
+                });
+
+                // Update Source Status
+                const srcQ = query(collection(db, 'sources'), where('serial_number', '==', srcSN));
+                const srcSnap = await getDocs(srcQ);
+                srcSnap.forEach(async (d) => {
+                    await updateDoc(doc(db, 'sources', d.id), { vault_status: status, current_job: job, current_user: user });
+                });
+
+                assetForm.reset();
+                // Ensure UI toggles back correctly after reset
+                document.getElementById('trk-details-group').style.display = 'grid';
+                await updateDeployedAssetsDashboard();
+            } catch (err) {
+                console.error("Asset Tracking Error:", err);
+                alert("Failed to update vault tracking.");
+            } finally {
+                hideLoader();
+            }
+        });
+    }
+
     const equipmentForm = document.getElementById('equipment-form');
     if (equipmentForm) {
         equipmentForm.addEventListener('submit', async (e) => {
@@ -464,7 +512,7 @@ function setupEventListeners() {
                 activity_date: document.getElementById('src-date').value,
                 last_leak_test_date: document.getElementById('src-leak-test').value,
                 current_location: 'Storage Vault',
-                status: 'Stored',
+                vault_status: 'IN', // Default to IN when created
                 certificate_url: certUrl
             };
             await addData('sources', data);
@@ -472,6 +520,7 @@ function setupEventListeners() {
             await fetchData('sources', 'sources-list');
             populateSourceDropdown(); 
             window.updateDashboard();
+            await updateDeployedAssetsDashboard();
             hideLoader();
         });
     }
@@ -486,6 +535,7 @@ function setupEventListeners() {
                 serial_number: document.getElementById('cam-serial').value,
                 du_leak_test_date: document.getElementById('cam-du-date').value,
                 annual_maintenance_date: document.getElementById('cam-maint-date').value,
+                vault_status: 'IN', // Default to IN when created
                 timestamp: new Date().toISOString()
             };
             await addData('cameras', data);
@@ -493,6 +543,7 @@ function setupEventListeners() {
             await fetchData('cameras', 'cameras-list');
             window.updateDashboard();
             window.renderCalendar();
+            await updateDeployedAssetsDashboard();
             hideLoader();
         });
     }
@@ -625,7 +676,7 @@ function setupEventListeners() {
             await addData('dosimetry_logs', data);
             dosimetryForm.reset();
             await fetchData('dosimetry_logs', 'dosimetry-list');
-            updateDoseDashboard(); // Refresh the dose chart
+            updateDoseDashboard(); 
             hideLoader();
         });
     }
@@ -711,7 +762,50 @@ async function addData(collectionName, data) {
     }
 }
 
-// --- NEW: DOSE AGGREGATION & CHARTING ---
+// --- NEW: DEPLOYED ASSETS DASHBOARD ---
+async function updateDeployedAssetsDashboard() {
+    const list = document.getElementById('deployed-assets-list');
+    const badge = document.getElementById('out-count');
+    if (!list) return;
+
+    list.innerHTML = '';
+    let outCount = 0;
+
+    try {
+        // Find Cameras checked out
+        const camQ = query(collection(db, 'cameras'), where('vault_status', '==', 'OUT'));
+        const camSnap = await getDocs(camQ);
+        camSnap.forEach(d => {
+            const data = d.data();
+            list.innerHTML += `<li style="padding: 10px;">📸 Camera <b>${data.serial_number}</b> deployed to ${data.current_user || 'Unknown'} (Job: ${data.current_job || 'Unknown'})</li>`;
+            outCount++;
+        });
+
+        // Find Sources checked out
+        const srcQ = query(collection(db, 'sources'), where('vault_status', '==', 'OUT'));
+        const srcSnap = await getDocs(srcQ);
+        srcSnap.forEach(d => {
+            const data = d.data();
+            list.innerHTML += `<li style="padding: 10px;">☢️ Source <b>${data.serial_number} (${data.isotope})</b> deployed to ${data.current_user || 'Unknown'} (Job: ${data.current_job || 'Unknown'})</li>`;
+            outCount++;
+        });
+
+        if (outCount === 0) {
+            list.innerHTML = '<li style="padding: 10px; color: #5cb85c;">✅ All assets securely in vault.</li>';
+        }
+        
+        if(badge) {
+            badge.textContent = `${outCount} Deployed`;
+            badge.style.background = outCount > 0 ? '#d9534f' : '#5cb85c';
+            badge.style.color = 'white';
+        }
+
+    } catch (err) {
+        console.error("Failed to load deployed assets:", err);
+    }
+}
+
+// --- DOSE AGGREGATION & CHARTING ---
 async function updateDoseDashboard() {
     const logsSnap = await getDocs(collection(db, 'dosimetry_logs'));
     const stats = {};
@@ -818,7 +912,8 @@ async function loadAllData() {
     ]);
     window.updateDashboard(); 
     window.renderCalendar();
-    await updateDoseDashboard(); // Generate initial dose chart
+    await updateDoseDashboard(); 
+    await updateDeployedAssetsDashboard(); // NEW: Load initial vault status
 }
 
 async function fetchData(collectionName, listId) {
@@ -838,7 +933,6 @@ async function fetchData(collectionName, listId) {
             let displayText = '';
             let docUrl = null;
 
-            // Figure out the date of this specific record so the Audit Filter can find it
             let recordDate = item.timestamp || item.created_at || item.logged_time || item.completion_time || item.activity_date || item.planned_date || item.transport_date || item.eval_date || '';
             if (recordDate) {
                 li.setAttribute('data-date', recordDate.split('T')[0]); 
@@ -849,10 +943,14 @@ async function fetchData(collectionName, listId) {
                 docUrl = item.certificate_url;
             } else if (collectionName === 'sources') {
                 const currentAct = calculateCurrentActivity(item.initial_activity_curies, item.isotope, item.activity_date);
-                displayText = `${item.isotope} (SN: ${item.serial_number}) - Initial: ${item.initial_activity_curies} Ci | CURRENT: ${currentAct} Ci`;
+                const statusTag = item.vault_status === 'OUT' ? ' [🦺 DEPLOYED]' : '';
+                displayText = `${item.isotope} (SN: ${item.serial_number}) - Initial: ${item.initial_activity_curies} Ci | CURRENT: ${currentAct} Ci${statusTag}`;
+                if(item.vault_status === 'OUT') li.style.borderLeft = "5px solid #f0ad4e";
                 docUrl = item.certificate_url;
             } else if (collectionName === 'cameras') {
-                displayText = `${item.make_model} (SN: ${item.serial_number}) - Maint: ${item.annual_maintenance_date}`;
+                const statusTag = item.vault_status === 'OUT' ? ' [🦺 DEPLOYED]' : '';
+                displayText = `${item.make_model} (SN: ${item.serial_number}) - Maint: ${item.annual_maintenance_date}${statusTag}`;
+                if(item.vault_status === 'OUT') li.style.borderLeft = "5px solid #f0ad4e";
             } else if (collectionName === 'personnel') {
                 displayText = `${item.full_name} (Cert: ${item.cert_number}) - Eval: ${item.last_6mo_eval_date}`;
             } else if (collectionName === 'field_evaluations') {
@@ -1159,6 +1257,84 @@ window.updateDashboard = async function() {
     }
 }
 
+// --- NEW: MASTER JOB PACKET GENERATOR ---
+window.generateMasterPacket = async function() {
+    const jobNum = document.getElementById('packet-job-number').value.trim();
+    if(!jobNum) { 
+        alert("Please enter a Job Number (e.g., J-2026-DryDock4) to compile."); 
+        return; 
+    }
+
+    showLoader();
+    try {
+        const wpQ = query(collection(db, 'work_plans'), where('job_number', '==', jobNum));
+        const wpSnap = await getDocs(wpQ);
+        let wpData = null;
+        wpSnap.forEach(d => wpData = d.data());
+
+        const utQ = query(collection(db, 'utilization_logs'), where('job_reference', '==', jobNum));
+        const utSnap = await getDocs(utQ);
+        let utData = null;
+        utSnap.forEach(d => utData = d.data());
+
+        if(!wpData && !utData) {
+            alert("No records found in the database for that Job Number.");
+            hideLoader();
+            return;
+        }
+
+        const container = document.getElementById('master-packet-container');
+        let html = `<h2 style="text-align:center; border-bottom:3px solid #002244; padding-bottom:10px; margin-bottom: 10px;">MASTER JOB PACKET</h2>`;
+        html += `<h3 style="text-align:center; margin-top: 0; color: #555;">JOB REF: ${jobNum}</h3>`;
+        html += `<div style="display:flex; justify-content:space-between; margin-bottom:20px; font-size: 0.9rem;"><span>Generated: ${new Date().toLocaleDateString()}</span><span>Command: ____________</span></div>`;
+
+        if(wpData) {
+            html += `<h3 style="background:#eee; padding:5px; border-left: 5px solid #005A9C;">PART 1: WORK PLAN & SAFETY CONTROLS</h3>`;
+            html += `<table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size: 0.9rem;" border="1">`;
+            html += `<tr><td style="padding:8px; font-weight:bold; width: 40%;">Planned Date</td><td style="padding:8px;">${wpData.planned_date}</td></tr>`;
+            html += `<tr><td style="padding:8px; font-weight:bold;">Location</td><td style="padding:8px;">${wpData.location} (${wpData.location_type})</td></tr>`;
+            html += `<tr><td style="padding:8px; font-weight:bold;">Calculated Boundary (2mR/hr)</td><td style="padding:8px;">${wpData.calculated_boundary_mr_hr} ft</td></tr>`;
+            html += `<tr><td style="padding:8px; font-weight:bold;">Collimator Used</td><td style="padding:8px;">${wpData.collimator_used ? 'Yes' : 'No'}</td></tr>`;
+            html += `</table>`;
+        }
+
+        if(utData) {
+            html += `<h3 style="background:#eee; padding:5px; border-left: 5px solid #f0ad4e;">PART 2: UTILIZATION & FIELD LOG</h3>`;
+            html += `<table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size: 0.9rem;" border="1">`;
+            html += `<tr><td style="padding:8px; font-weight:bold; width: 40%;">Radiographer in Charge (RIC)</td><td style="padding:8px;">${utData.radiographer_in_charge}</td></tr>`;
+            html += `<tr><td style="padding:8px; font-weight:bold;">Assistants / Participants</td><td style="padding:8px;">${utData.participants || 'None'}</td></tr>`;
+            html += `<tr><td style="padding:8px; font-weight:bold;">Survey Meter Used (SN)</td><td style="padding:8px;">${utData.survey_meter_serial} (Response Checked: ${utData.meter_response_checked ? 'Yes':'No'})</td></tr>`;
+            html += `<tr><td style="padding:8px; font-weight:bold;">Max Device Survey Reading</td><td style="padding:8px;">${utData.max_survey_reading} mR/hr</td></tr>`;
+            html += `</table>`;
+        }
+
+        html += `<div style="margin-top: 50px; border-top: 1px dashed #000; padding-top:20px; text-align:center; font-size: 0.85rem;">
+                    <p><strong>AUDIT VERIFICATION COMPLETE</strong></p>
+                    <p>Records compiled automatically by the Gamma Radiography Tracker System.</p>
+                 </div>`;
+
+        container.innerHTML = html;
+        container.style.display = 'block';
+
+        html2pdf().set({
+            margin: 15,
+            filename: `Job_Packet_${jobNum}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+        }).from(container).save().then(() => {
+            container.style.display = 'none';
+            document.getElementById('packet-job-number').value = '';
+            hideLoader();
+        });
+
+    } catch (err) {
+        console.error("Packet Error:", err);
+        hideLoader();
+        alert("Failed to generate master packet.");
+    }
+}
+
 window.generatePDFInventory = async function() {
     const srcBody = document.getElementById('pdf-source-body');
     const camBody = document.getElementById('pdf-cam-body');
@@ -1256,8 +1432,10 @@ window.openModal = async function(collectionName, docId) {
                         } catch(e) { console.log("Could not resolve source."); }
                     }
                     html += `<p><strong>SOURCE:</strong> ${sourceDisplay}</p>`;
+                
                 } else if (key === 'signature_data' && value) {
                     html += `<p><strong>SIGNATURE:</strong><br><img src="${value}" style="max-width: 100%; border: 1px solid #ccc; border-radius: 4px; margin-top: 10px; background: white;" /></p>`;
+
                 } else if(key.includes('_url')) {
                     if (value && value !== 'null') {
                         html += `<p><strong>${displayKey.replace(' URL', '')}:</strong> <a href="${value}" target="_blank" style="color: #005A9C;">View Uploaded File</a></p>`;
@@ -1326,6 +1504,7 @@ window.executeDelete = async function() {
 window.filterRecords = function() {
     const searchInput = document.getElementById('global-search').value.toLowerCase();
     
+    // Grab the new Audit Dates
     const startInput = document.getElementById('filter-start') ? document.getElementById('filter-start').value : '';
     const endInput = document.getElementById('filter-end') ? document.getElementById('filter-end').value : '';
     
@@ -1337,6 +1516,7 @@ window.filterRecords = function() {
         let matchesText = record.textContent.toLowerCase().includes(searchInput);
         let matchesDate = true;
 
+        // Check if the record's hidden 'data-date' tag falls outside the requested audit window
         const recDate = record.getAttribute('data-date');
         if (startInput && recDate && recDate < startInput) matchesDate = false;
         if (endInput && recDate && recDate > endInput) matchesDate = false;
@@ -1349,6 +1529,7 @@ window.filterRecords = function() {
     });
 }
 
+// NEW: Quick reset button for the Audit Bar
 window.clearFilters = function() {
     if(document.getElementById('filter-start')) document.getElementById('filter-start').value = '';
     if(document.getElementById('filter-end')) document.getElementById('filter-end').value = '';
