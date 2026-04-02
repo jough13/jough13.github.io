@@ -486,7 +486,6 @@
                         </div>
 
                         <button type="button" class="btn-secondary" style="width: 100%; font-size: 1.1rem; font-weight: bold; background-color: #005A9C; color: white; border: none; padding: 15px; margin-top: 20px;" onclick="generatePDFInventory()">📄 Generate PDF Report</button>
-                        
                         <button type="button" class="btn-secondary admin-only" style="width: 100%; font-size: 1.1rem; font-weight: bold; background-color: #333; color: white; border: none; padding: 15px; margin-top: 10px;" onclick="fullSystemBackup()">💽 Export Full System Backup (JSON)</button>
                     </div>
                 </div>
@@ -522,6 +521,34 @@
             <div class="modal-actions" style="justify-content: center; margin-top: 25px;">
                 <button class="btn-secondary" onclick="closeConfirmModal()">Cancel</button>
                 <button class="btn-danger" onclick="executeDelete()">Yes, Delete Record</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="disclaimer-modal" class="modal-overlay" style="z-index: 10005;">
+        <div class="modal-content" style="max-width: 500px; border-top: 5px solid #d9534f;">
+            <div class="modal-header">
+                <h3 style="color: #d9534f; margin: 0;">⚠️ IMPORTANT DISCLAIMER</h3>
+            </div>
+            <div id="disclaimer-body" style="font-size: 0.95rem; line-height: 1.5;">
+                <p>This application is a <strong>proof of concept only</strong> and should <strong>NOT BE USED</strong> for actual operational work.</p>
+                <p>It is <strong>NOT COMPLIANT</strong> with Nuclear Regulatory Commission (NRC) or Department of Defense (DoD) security policies, regulations, or requirements. It has not been formally reviewed for completeness, accuracy, or cryptographic security.</p>
+                <p>This software is intended strictly as a demonstration product. Do not input real Controlled Unclassified Information (CUI) or actual operational metadata.</p>
+            </div>
+            
+            <div style="margin-top: 20px; background: rgba(0,0,0,0.05); padding: 15px; border-radius: 5px; border: 1px solid var(--border-color);">
+                <div class="checkbox-group" style="margin-bottom: 10px;">
+                    <input type="checkbox" id="ack-checkbox">
+                    <label for="ack-checkbox" style="font-weight: bold; color: var(--text-color);">I acknowledge and understand this warning.</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="dont-show-checkbox">
+                    <label for="dont-show-checkbox" style="font-size: 0.85rem; color: var(--header-p);">Do not show this message again.</label>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button id="disclaimer-proceed-btn" class="btn-secondary" style="background-color: #5cb85c; color: white; border: none; font-weight: bold; opacity: 0.5; cursor: not-allowed;" disabled>Proceed to Dashboard</button>
             </div>
         </div>
     </div>
