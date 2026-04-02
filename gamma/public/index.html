@@ -499,6 +499,9 @@
 
                         <button type="button" class="btn-secondary" style="width: 100%; font-size: 1.1rem; font-weight: bold; background-color: #005A9C; color: white; border: none; padding: 15px; margin-top: 20px;" onclick="generatePDFInventory()">📄 Generate PDF Report</button>
                         <button type="button" class="btn-secondary admin-only" style="width: 100%; font-size: 1.1rem; font-weight: bold; background-color: #333; color: white; border: none; padding: 15px; margin-top: 10px;" onclick="fullSystemBackup()">💽 Export Full System Backup (JSON)</button>
+
+                        <input type="file" id="restore-file-input" accept=".json" style="display: none;" onchange="executeSystemRestore(event)">
+                        <button type="button" class="btn-danger admin-only" style="width: 100%; font-size: 1.1rem; font-weight: bold; padding: 15px; margin-top: 10px;" onclick="document.getElementById('restore-file-input').click()">⚠️ Restore System from Backup</button>
                     </div>
                 </div>
             </section>
