@@ -129,6 +129,12 @@
             <section id="equipment" class="module">
                 <h2>Equipment & Source Management</h2>
                 
+                <div class="card" style="min-width: 100%; border-top: 5px solid #005A9C; margin-bottom: 20px;">
+                    <h3>Source Replacement Predictor (6-Month Decay Forecast)</h3>
+                    <p style="font-size: 0.85rem; color: var(--header-p); margin-top: 0;">Automatically tracks the future decay curve of active vault sources against a 20-Curie administrative replacement threshold.</p>
+                    <canvas id="decay-chart" height="100"></canvas>
+                </div>
+
                 <div class="card" style="border-top: 5px solid #f0ad4e;">
                     <h3>Live Vault Check-In / Check-Out <span id="out-count" style="background:#f0ad4e;color:#333;padding:4px 10px;border-radius:12px;font-size:0.85rem;font-weight:bold;">0 Deployed</span></h3>
                     <form id="asset-tracking-form">
@@ -248,7 +254,13 @@
                 <h2>Personnel Qualifications</h2>
                 <div class="dashboard-grid">
                     <div class="card" style="min-width: 100%;">
-                        <h3>Radiographer Certifications <button type="button" class="btn-export" onclick="exportCSV('personnel')">Export CSV</button></h3>
+                        <h3>Radiographer Certifications 
+                            <button type="button" class="btn-export" onclick="exportCSV('personnel')">Export CSV</button>
+                            <button type="button" class="btn-export" style="background-color: #5bc0de; color: white; margin-left: 10px;" onclick="generateQualCards()">🪪 Print Qual Cards</button>
+                        </h3>
+                        
+                        <div id="qual-card-container" style="display: none; padding: 20px; background: white;"></div>
+
                         <form id="personnel-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                             <div style="display: flex; flex-direction: column; gap: 10px;">
                                 <label for="per-name">Full Name</label>
@@ -364,8 +376,11 @@
                             </div>
                         </div>
 
-                        <label for="wp-diagram" style="margin-top: 10px;">Upload Setup Diagram / Sketch</label>
-                        <input type="file" id="wp-diagram" accept=".pdf,.jpg,.jpeg,.png">
+                        <label style="margin-top: 15px;">Setup Diagram / Boundary Sketch (Draw Below)</label>
+                        <div style="background: var(--input-bg); border-radius: 4px; padding: 10px; margin-bottom: 10px;">
+                            <canvas id="sketch-canvas"></canvas>
+                            <button type="button" class="btn-secondary" onclick="window.clearSketch()" style="width: auto; padding: 5px 15px; margin-top: 5px; font-size: 0.85rem;">Clear Sketch</button>
+                        </div>
 
                         <button type="submit">Create Work Plan</button>
                     </form>
@@ -475,9 +490,7 @@
                         <input type="text" id="packet-job-number" placeholder="Enter Job Number (e.g. J-2024-001)" style="flex: 1; padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
                         <button type="button" class="btn-secondary" style="background-color: #5cb85c; color: white; border: none; font-weight: bold; padding: 10px 20px;" onclick="generateMasterPacket()">📦 Build Packet</button>
                     </div>
-
-                    <div id="master-packet-container" style="display: none; padding: 40px; background: white; color: black; font-family: Arial;">
-                        </div>
+                    <div id="master-packet-container" style="display: none; padding: 40px; background: white; color: black; font-family: Arial;"></div>
                 </div>
 
                 <div class="dashboard-grid">
