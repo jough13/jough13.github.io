@@ -128,14 +128,47 @@
 
             <section id="equipment" class="module">
                 <h2>Equipment & Source Management</h2>
+                
+                <div class="card" style="border-top: 5px solid #f0ad4e;">
+                    <h3>Live Vault Check-In / Check-Out <span id="out-count" style="background:#f0ad4e;color:#333;padding:4px 10px;border-radius:12px;font-size:0.85rem;font-weight:bold;">0 Deployed</span></h3>
+                    <form id="asset-tracking-form">
+                        <div style="display: flex; gap: 20px; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.05); border-radius: 5px;">
+                            <label style="font-weight: bold; cursor: pointer;"><input type="radio" name="trk-action" value="checkout" checked> 📤 CHECK OUT (To Field)</label>
+                            <label style="font-weight: bold; cursor: pointer;"><input type="radio" name="trk-action" value="checkin"> 📥 CHECK IN (To Vault)</label>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <label>Camera S/N <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('trk-cam')">📷 Scan</button></label>
+                                <input type="text" id="trk-cam" required>
+                            </div>
+                            <div>
+                                <label>Source S/N <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('trk-src')">📷 Scan</button></label>
+                                <input type="text" id="trk-src" required>
+                            </div>
+                            <div id="trk-details-group" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <label>Radiographer (RIC)</label>
+                                    <input type="text" id="trk-user">
+                                </div>
+                                <div>
+                                    <label>Job Number</label>
+                                    <input type="text" id="trk-job">
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" style="background-color: #f0ad4e; color: #333; margin-top: 15px;">Process Vault Transfer</button>
+                    </form>
+                    <div style="margin-top: 20px;">
+                        <h4 style="margin-bottom: 5px; border-bottom: 2px solid var(--nav-bg); padding-bottom: 5px;">Currently Deployed Assets</h4>
+                        <ul id="deployed-assets-list" style="border: 1px solid var(--border-color); background: rgba(0,0,0,0.02); min-height: 50px;"></ul>
+                    </div>
+                </div>
+
                 <div class="dashboard-grid">
-                    
                     <div class="card">
                         <h3>Source Vault Logs <button type="button" class="btn-export" onclick="exportCSV('sources')">Export CSV</button></h3>
                         <form id="sources-form">
-                            <label for="src-serial">Serial Number 
-                                <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('src-serial')">📷 Scan</button>
-                            </label>
+                            <label for="src-serial">Serial Number <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('src-serial')">📷 Scan</button></label>
                             <input type="text" id="src-serial" placeholder="e.g. SRC-987" required>
                             <label for="src-isotope">Isotope</label>
                             <select id="src-isotope" required>
@@ -164,9 +197,7 @@
                         <form id="cameras-form">
                             <label for="cam-model">Make & Model</label>
                             <input type="text" id="cam-model" placeholder="e.g. QSA Global 880 Delta" required>
-                            <label for="cam-serial">Serial Number 
-                                <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('cam-serial')">📷 Scan</button>
-                            </label>
+                            <label for="cam-serial">Serial Number <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('cam-serial')">📷 Scan</button></label>
                             <input type="text" id="cam-serial" required>
                             <label for="cam-du-date">DU Leak Test Date (< 12 Months)</label>
                             <input type="date" id="cam-du-date">
@@ -197,9 +228,7 @@
                                         <option value="area monitor">Area Monitor</option>
                                     </optgroup>
                                 </select>
-                                <label for="eq-serial">Serial Number 
-                                    <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('eq-serial')">📷 Scan</button>
-                                </label>
+                                <label for="eq-serial">Serial Number <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('eq-serial')">📷 Scan</button></label>
                                 <input type="text" id="eq-serial" placeholder="e.g. SN-12345" required>
                             </div>
                             <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -356,9 +385,7 @@
                                 <label for="tr-date">Transport Date</label>
                                 <input type="date" id="tr-date" required>
                                 
-                                <label for="tr-camera">Camera / Exposure Device SN 
-                                    <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('tr-camera')">📷 Scan</button>
-                                </label>
+                                <label for="tr-camera">Camera / Exposure Device SN <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('tr-camera')">📷 Scan</button></label>
                                 <input type="text" id="tr-camera" required>
 
                                 <label for="tr-destination">Destination</label>
@@ -389,9 +416,7 @@
                             <label for="dl-name">Personnel Name</label>
                             <input type="text" id="dl-name" required>
 
-                            <label for="dl-serial">Dosimeter Serial 
-                                <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('dl-serial')">📷 Scan</button>
-                            </label>
+                            <label for="dl-serial">Dosimeter Serial <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('dl-serial')">📷 Scan</button></label>
                             <input type="text" id="dl-serial" required>
 
                             <div class="checkbox-group" style="margin-bottom: 10px; background-color: rgba(217, 83, 79, 0.1); padding: 10px; border-radius: 4px; border: 1px solid #d9534f;">
@@ -422,9 +447,7 @@
                             <label for="ul-participants">Other Participants</label>
                             <input type="text" id="ul-participants" placeholder="Comma separated names">
 
-                            <label for="ul-meter">Survey Meter Used (SN) 
-                                <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('ul-meter')">📷 Scan</button>
-                            </label>
+                            <label for="ul-meter">Survey Meter Used (SN) <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="startScanner('ul-meter')">📷 Scan</button></label>
                             <input type="text" id="ul-meter" required>
 
                             <div class="checkbox-group" style="margin-bottom: 10px; background-color: rgba(92, 184, 92, 0.1); padding: 10px; border-radius: 4px; border: 1px solid #5cb85c;">
@@ -444,6 +467,19 @@
 
             <section id="reporting" class="module">
                 <h2>Post-Operation & Reporting</h2>
+                
+                <div class="card" style="border-top: 5px solid #5cb85c; margin-bottom: 20px;">
+                    <h3>Generate Master Job Packet (Audit Export)</h3>
+                    <p style="margin-top: 0; color: var(--header-p); font-size: 0.85rem;">Compiles Work Plans, Utilization Logs, and associated data into a single unified PDF.</p>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="packet-job-number" placeholder="Enter Job Number (e.g. J-2024-001)" style="flex: 1; padding: 10px; border-radius: 4px; border: 1px solid var(--border-color);">
+                        <button type="button" class="btn-secondary" style="background-color: #5cb85c; color: white; border: none; font-weight: bold; padding: 10px 20px;" onclick="generateMasterPacket()">📦 Build Packet</button>
+                    </div>
+
+                    <div id="master-packet-container" style="display: none; padding: 40px; background: white; color: black; font-family: Arial;">
+                        </div>
+                </div>
+
                 <div class="dashboard-grid">
                     <div class="card" style="min-width: 100%;">
                         <h3>Post Job Reports <button type="button" class="btn-export" onclick="exportCSV('post_job_reports')">Export CSV</button></h3>
@@ -499,7 +535,6 @@
 
                         <button type="button" class="btn-secondary" style="width: 100%; font-size: 1.1rem; font-weight: bold; background-color: #005A9C; color: white; border: none; padding: 15px; margin-top: 20px;" onclick="generatePDFInventory()">📄 Generate PDF Report</button>
                         <button type="button" class="btn-secondary admin-only" style="width: 100%; font-size: 1.1rem; font-weight: bold; background-color: #333; color: white; border: none; padding: 15px; margin-top: 10px;" onclick="fullSystemBackup()">💽 Export Full System Backup (JSON)</button>
-
                         <input type="file" id="restore-file-input" accept=".json" style="display: none;" onchange="executeSystemRestore(event)">
                         <button type="button" class="btn-danger admin-only" style="width: 100%; font-size: 1.1rem; font-weight: bold; padding: 15px; margin-top: 10px;" onclick="document.getElementById('restore-file-input').click()">⚠️ Restore System from Backup</button>
                     </div>
