@@ -58,6 +58,15 @@
         </nav>
 
         <main id="main-content">
+            
+            <div id="audit-filter-bar">
+                <h4>🔍 Audit Date Filter:</h4>
+                <label style="font-size: 0.9rem; font-weight: bold;">Start: <input type="date" id="filter-start"></label>
+                <label style="font-size: 0.9rem; font-weight: bold;">End: <input type="date" id="filter-end"></label>
+                <button type="button" class="btn-secondary" onclick="filterRecords()" style="padding: 6px 12px; font-weight: bold;">Apply</button>
+                <button type="button" class="btn-secondary" onclick="clearFilters()" style="padding: 6px 12px;">Clear</button>
+            </div>
+
             <section id="dashboard" class="active module">
                 <h2>Command Center</h2>
                 <div class="dashboard-grid">
@@ -452,8 +461,11 @@
                                 <label for="pj-vault-verified">Vault Verified</label>
                             </div>
 
-                            <label for="pj-doc">Upload Audit Form / Sign-offs</label>
-                            <input type="file" id="pj-doc" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                            <label style="margin-top: 10px;">Digital Signature (RIC / RSO)</label>
+                            <div style="background: var(--input-bg); border-radius: 4px; padding: 10px;">
+                                <canvas id="sig-canvas" width="400" height="150"></canvas>
+                                <button type="button" class="btn-secondary" onclick="window.clearSignature()" style="width: auto; padding: 5px 15px; margin-top: 5px; font-size: 0.85rem;">Eraser</button>
+                            </div>
 
                             <button type="submit">Submit Report</button>
                         </form>
@@ -508,7 +520,6 @@
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="editRecord()" style="background-color: #f0ad4e; color: #333; border: none; font-weight: bold;">✏️ Edit</button>
                 <button class="btn-secondary" onclick="cloneRecord()" style="background-color: #5bc0de; color: #fff; border: none; font-weight: bold;">📄 Clone</button>
-                
                 <button id="modal-delete-btn" class="btn-danger admin-only">Delete Record</button>
             </div>
         </div>
