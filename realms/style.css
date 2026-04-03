@@ -765,3 +765,20 @@ body.loading #start-screen {
     background-color: #c0392b;
     color: #fff;
 }
+
+/* --- FLOATING COMBAT TEXT --- */
+.floating-text {
+    position: absolute;
+    font-family: 'VT323', monospace;
+    font-size: 24px;
+    font-weight: bold;
+    pointer-events: none;
+    animation: floatUp 1s ease-out forwards;
+    z-index: 1000;
+    text-shadow: 0 0 5px #000, 0 0 10px #000;
+}
+
+@keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-40px) scale(1.2); }
+}
