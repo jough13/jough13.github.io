@@ -802,9 +802,9 @@ function setupEventListeners() {
                 raso_approval_status: 'Pending',
                 created_at: new Date().toISOString(),
                 diagram_url: diagramUrl,
-                rwp_ppe: document.getElementById('wp-ppe').value,
-                rwp_barricade: document.getElementById('wp-barricade').value,
-                rwp_briefing: document.getElementById('wp-brief').value,
+                rwp_ppe: Array.from(document.getElementById('wp-ppe').selectedOptions).map(o=>o.value).join(', '),
+                rwp_barricade: Array.from(document.getElementById('wp-barricade').selectedOptions).map(o=>o.value).join(', '),
+                rwp_briefing: Array.from(document.getElementById('wp-brief').selectedOptions).map(o=>o.value).join(', '),
                 sketch_data: sketchData
             };
             await addData('work_plans', data);
@@ -1273,18 +1273,21 @@ function fetchData(collectionName, listId) {
 }
 
 async function populateSourceDropdown() {
-    const sourceSelect = document.getElementById('wp-source');
-    if (!sourceSelect) return;
+    const wpSelect = document.getElementById('wp-source');
+    const trSelect = document.getElementById('tr-source'); // NEW
     try {
         const querySnapshot = await getDocs(collection(db, 'sources'));
-        sourceSelect.innerHTML = '<option value="">Select an active source...</option>';
+        const optionsHTML = '<option value="">Select an active source...</option>';
+        if(wpSelect) wpSelect.innerHTML = optionsHTML;
+        if(trSelect) trSelect.innerHTML = optionsHTML;
+
         querySnapshot.forEach((doc) => {
             const data = doc.data();
             const currentAct = calculateCurrentActivity(data.initial_activity_curies, data.isotope, data.activity_date);
-            sourceSelect.innerHTML += `
-                <option value="${doc.id}" data-activity="${currentAct}" data-isotope="${data.isotope}">
-                    ${data.isotope} (SN: ${data.serial_number}) - ${currentAct} Ci (Current)
-                </option>`;
+            const opt = `<option value="${doc.id}" data-activity="${currentAct}" data-isotope="${data.isotope}">${data.isotope} (SN: ${data.serial_number}) - ${currentAct} Ci</option>`;
+            
+            if(wpSelect) wpSelect.innerHTML += opt;
+            if(trSelect) trSelect.innerHTML += opt;
         });
     } catch (err) {
         console.error("Error loading sources for dropdown:", err);
@@ -2265,22 +2268,32 @@ window.generateMasterPacket = async function() {
     }
 }
 
-// --- BOUNDARY SKETCHPAD ENGINE ---
+// --- ADVANCED BOUNDARY SKETCHPAD ENGINE ---
 window.initSketchPad = function() {
     const canvas = document.getElementById('sketch-canvas');
     if (!canvas) return;
     
-    // Set internal resolution to match container
     canvas.width = canvas.parentElement.clientWidth - 20; 
-    
     const ctx = canvas.getContext('2d');
+    
+    ctx.fillStyle = "#fafafa";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     let isDrawing = false;
     let lastX = 0, lastY = 0;
+    let isEraser = false;
 
-    ctx.strokeStyle = '#d9534f'; // Red ink for boundary lines
-    ctx.lineWidth = 2;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
+    const colorPicker = document.getElementById('sketch-color');
+    const sizePicker = document.getElementById('sketch-size');
+    const eraserBtn = document.getElementById('sketch-eraser');
+
+    if (eraserBtn) {
+        eraserBtn.addEventListener('click', () => {
+            isEraser = !isEraser;
+            eraserBtn.style.backgroundColor = isEraser ? '#d9534f' : '';
+            eraserBtn.style.color = isEraser ? 'white' : '';
+        });
+    }
 
     function draw(e) {
         if (!isDrawing) return;
@@ -2295,6 +2308,11 @@ window.initSketchPad = function() {
         
         const x = (clientX - rect.left) * scaleX;
         const y = (clientY - rect.top) * scaleY;
+
+        ctx.lineWidth = sizePicker ? sizePicker.value : 3;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = isEraser ? '#fafafa' : (colorPicker ? colorPicker.value : '#000000');
 
         ctx.beginPath();
         ctx.moveTo(lastX, lastY);
@@ -2424,6 +2442,27 @@ window.approveWorkPlan = async function() {
             hideLoader();
         }
     }
+}
+
+// --- AUTO-FILL TRANSPORT SOURCE ---
+window.updateTransportSource = function() {
+    const trSelect = document.getElementById('tr-source');
+    const isoInput = document.getElementById('tr-isotope');
+    const actInput = document.getElementById('tr-activity');
+    
+    if(!trSelect || !isoInput || !actInput) return;
+
+    if(trSelect.selectedIndex > 0) {
+        const selectedOption = trSelect.options[trSelect.selectedIndex];
+        isoInput.value = selectedOption.getAttribute('data-isotope');
+        actInput.value = selectedOption.getAttribute('data-activity');
+    } else {
+        isoInput.value = '';
+        actInput.value = '';
+    }
+    
+    // Instantly trigger the DOT math with the live decay value
+    if(window.calculateDOTShipping) window.calculateDOTShipping();
 }
 
 // --- DOT SHIPPING CALCULATOR ENGINE ---
