@@ -724,20 +724,43 @@ function setupEventListeners() {
         personnelForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             showLoader();
+
+            // Helper to grab value or return N/A if the checkbox disabled it
+            const getValOrNA = (id) => {
+                const el = document.getElementById(id);
+                return (el.disabled || !el.value) ? 'N/A' : el.value;
+            };
+
             const data = {
                 full_name: document.getElementById('per-name').value,
-                cert_number: document.getElementById('per-cert').value,
-                trust_authorization_date: document.getElementById('per-trust').value,
-                hazmat_expiration: document.getElementById('per-hazmat').value,
-                last_6mo_eval_date: document.getElementById('per-eval').value,
-                last_annual_drill_date: document.getElementById('per-drill').value,
+                cert_number: getValOrNA('per-cert'),
+                trust_authorization_date: getValOrNA('per-trust'),
+                hazmat_expiration: getValOrNA('per-hazmat'),
+                last_6mo_eval_date: getValOrNA('per-eval'),
+                last_annual_drill_date: getValOrNA('per-drill'),
                 logged_time: new Date().toISOString()
             };
+            
             await addData('personnel', data);
             personnelForm.reset();
+            
+            // Un-disable fields after form reset so it's ready for the next person
+            ['per-cert', 'per-trust', 'per-hazmat', 'per-eval', 'per-drill'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) { 
+                    el.disabled = false; 
+                    el.required = true; 
+                    el.style.backgroundColor = ''; 
+                }
+            });
+            
             await fetchData('personnel', 'personnel-list');
             window.updateDashboard();
             window.renderCalendar();
+            
+            // Refresh the new Dosimetry dropdown so the new hire appears instantly
+            if (window.populatePersonnelDropdown) window.populatePersonnelDropdown(); 
+            
             hideLoader();
         });
     }
@@ -2357,6 +2380,25 @@ window.initSketchPad = function() {
     }, { passive: false });
     canvas.addEventListener('touchmove', draw, { passive: false });
     canvas.addEventListener('touchend', () => isDrawing = false);
+}
+
+// --- PERSONNEL N/A TOGGLE ---
+window.toggleNA = function(inputId, checkbox) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    
+    if (checkbox.checked) {
+        el.dataset.previousValue = el.value; // Save in case they uncheck it
+        el.value = '';
+        el.disabled = true;
+        el.required = false;
+        el.style.backgroundColor = '#e9ecef';
+    } else {
+        el.value = el.dataset.previousValue || '';
+        el.disabled = false;
+        el.required = true;
+        el.style.backgroundColor = '';
+    }
 }
 
 window.clearSketch = function() {
