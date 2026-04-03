@@ -445,6 +445,12 @@
                                 <label for="tr-destination">Destination</label>
                                 <input type="text" id="tr-destination" required>
 
+                                <label for="tr-category">Package Contents</label>
+                                <select id="tr-category" required>
+                                    <option value="instrument">Exposure Device / Instrument</option>
+                                    <option value="material">Check Source / Loose Material</option>
+                                </select>
+
                                 <label for="tr-isotope">Source Isotope</label>
                                 <select id="tr-isotope" required>
                                     <option value="">Select Isotope...</option>
@@ -467,6 +473,7 @@
 
                                 <div style="background: rgba(0,90,156,0.05); padding: 10px; border-radius: 5px; border: 1px solid #005A9C; margin-top: 5px;">
                                     <h4 style="margin: 0 0 5px 0; color: #005A9C; font-size: 0.95rem;">DOT Classification Details</h4>
+                                    <p style="margin: 3px 0; font-size: 0.85rem; line-height: 1.3;"><strong>UN PSN:</strong> <span id="tr-calc-psn" style="font-weight:bold; color: #333;">--</span></p>
                                     <p style="margin: 3px 0; font-size: 0.85rem;"><strong>Package Type:</strong> <span id="tr-calc-pkg" style="font-weight:bold;">--</span></p>
                                     <p style="margin: 3px 0; font-size: 0.85rem;"><strong>Transport Index (TI):</strong> <span id="tr-calc-ti" style="font-weight:bold;">--</span></p>
                                     <p style="margin: 3px 0; font-size: 0.85rem;"><strong>Required Label:</strong> <span id="tr-calc-label" style="font-weight:bold;">--</span></p>
