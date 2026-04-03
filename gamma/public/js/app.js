@@ -802,6 +802,9 @@ function setupEventListeners() {
                 raso_approval_status: 'Pending',
                 created_at: new Date().toISOString(),
                 diagram_url: diagramUrl,
+                rwp_ppe: document.getElementById('wp-ppe').value,
+                rwp_barricade: document.getElementById('wp-barricade').value,
+                rwp_briefing: document.getElementById('wp-brief').value,
                 sketch_data: sketchData
             };
             await addData('work_plans', data);
@@ -1033,22 +1036,34 @@ async function updateDeployedAssetsDashboard() {
     }
 }
 
-// --- DOSE AGGREGATION & CHARTING ---
+// --- DOSE AGGREGATION & ALARA BURN-RATE ---
 async function updateDoseDashboard() {
     const logsSnap = await getDocs(collection(db, 'dosimetry_logs'));
     const stats = {};
+    const thirtyDayStats = {};
+    const today = new Date();
     
     logsSnap.forEach(d => {
         const log = d.data();
         const name = log.personnel_name;
         const dose = (log.final_reading - log.initial_reading);
+        const logDate = new Date(log.logged_time || log.timestamp);
+        
+        // Total Lifetime Dose
         if(!stats[name]) stats[name] = 0;
         stats[name] += dose;
+
+        // 30-Day Rolling Dose (for Burn Rate)
+        const daysOld = (today - logDate) / (1000 * 60 * 60 * 24);
+        if (daysOld <= 30) {
+            if(!thirtyDayStats[name]) thirtyDayStats[name] = 0;
+            thirtyDayStats[name] += dose;
+        }
     });
 
     const list = document.getElementById('dose-summary-list');
     const alertList = document.getElementById('dose-alerts');
-    if(!list) return;
+    if(!list || !alertList) return;
     
     list.innerHTML = ''; 
     alertList.innerHTML = '';
@@ -1057,15 +1072,25 @@ async function updateDoseDashboard() {
     const doseValues = Object.values(stats);
 
     names.forEach(name => {
-        const dose = stats[name];
-        list.innerHTML += `<li>${name}: <strong>${dose.toFixed(2)} mRem</strong></li>`;
-        if(dose > 1000) {
-            alertList.innerHTML += `<li style="color: #d9534f;">🚨 CRITICAL: ${name} is over 1000mRem Administrative Limit!</li>`;
+        const totalDose = stats[name];
+        list.innerHTML += `<li>${name}: <strong>${totalDose.toFixed(2)} mRem</strong></li>`;
+        
+        // ALARA Burn-Rate Calculation
+        const recentDose = thirtyDayStats[name] || 0;
+        const dailyBurnRate = recentDose / 30; 
+        const projectedQuarterlyDose = totalDose + (dailyBurnRate * 90);
+
+        if (totalDose > 1000) {
+            alertList.innerHTML += `<li style="color: #fff; background: #d9534f; padding: 10px; margin-bottom: 5px; border-radius: 4px;">🚨 <strong>CRITICAL:</strong> ${name} is OVER the 1000mRem Administrative Limit!</li>`;
+        } else if (projectedQuarterlyDose > 1000) {
+            alertList.innerHTML += `<li style="color: #333; background: #f0ad4e; padding: 10px; margin-bottom: 5px; border-radius: 4px;">⚠️ <strong>ALARA WARNING:</strong> ${name} is burning ${dailyBurnRate.toFixed(1)} mRem/day. Projected to bust 1000mRem limit this quarter.</li>`;
+        } else if (recentDose > 0) {
+            alertList.innerHTML += `<li style="color: #333; background: #eee; padding: 10px; margin-bottom: 5px; border-radius: 4px;">✅ <strong>ON TRACK:</strong> ${name} is burning ${dailyBurnRate.toFixed(1)} mRem/day. (Safe projection).</li>`;
         }
     });
 
     if (alertList.innerHTML === '') {
-        alertList.innerHTML = '<li style="color: #5cb85c; background: transparent; border: none;">✅ No active exposure warnings.</li>';
+        alertList.innerHTML = '<li style="color: #5cb85c; background: transparent; border: none; padding:0;">No recent dose activity to forecast.</li>';
     }
 
     const ctx = document.getElementById('dose-chart');
@@ -1506,12 +1531,50 @@ window.updateDashboard = async function() {
         if (alertCount === 0) {
             alertList.innerHTML = '<li style="color: #5cb85c; list-style-type: none; background: transparent; border: none; padding:0; cursor: default;">✅ All equipment, sources, and personnel are in compliance.</li>';
         }
+
+        // --- FLEET UTILIZATION ANALYTICS ---
+        const trSnap = await getDocs(collection(db, 'transport_logs'));
+        const fleetCounts = {};
+        
+        // Ensure all registered cameras have at least a baseline of 0
+        camSnap.forEach(doc => { fleetCounts[doc.data().serial_number] = 0; });
+        
+        // Count deployments
+        trSnap.forEach(doc => {
+            const sn = doc.data().camera_sn;
+            if (sn) fleetCounts[sn] = (fleetCounts[sn] || 0) + 1;
+        });
+
+        // Sort by usage
+        const sortedFleet = Object.entries(fleetCounts).sort((a, b) => b[1] - a[1]);
+        
+        const topList = document.getElementById('top-fleet-list');
+        const botList = document.getElementById('bottom-fleet-list');
+        
+        if (topList && botList) {
+            topList.innerHTML = ''; botList.innerHTML = '';
+            
+            // Top 3
+            sortedFleet.slice(0, 3).forEach(cam => {
+                topList.innerHTML += `<li style="padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem;">📸 <strong>Cam ${cam[0]}</strong>: ${cam[1]} deployments</li>`;
+            });
+            // Bottom 3
+            sortedFleet.slice(-3).reverse().forEach(cam => {
+                botList.innerHTML += `<li style="padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem;">💤 <strong>Cam ${cam[0]}</strong>: ${cam[1]} deployments</li>`;
+            });
+            
+            if (sortedFleet.length === 0) {
+                topList.innerHTML = '<li style="color: #999;">Not enough data.</li>';
+                botList.innerHTML = '<li style="color: #999;">Not enough data.</li>';
+            }
+        }
+
     } catch (err) {
         console.error("Error updating dashboard stats:", err);
     }
 }
 
-// --- NEW: MASTER JOB PACKET GENERATOR ---
+// --- MASTER JOB PACKET GENERATOR ---
 window.generateMasterPacket = async function() {
     const jobNum = document.getElementById('packet-job-number').value.trim();
     if(!jobNum) { 
@@ -1748,6 +1811,9 @@ window.openModal = async function(collectionName, docId) {
                         approveBtn.style.display = 'none';
                     }
                 }
+
+                const rwpBtn = document.getElementById('modal-rwp-btn');
+                if (rwpBtn) rwpBtn.style.display = collectionName === 'work_plans' ? 'inline-block' : 'none';
                 
                 if (key === 'checklist' && typeof value === 'object') {
                     html += `<h4>Evaluation Checklist:</h4><ul>`;
@@ -2447,4 +2513,49 @@ window.calculateDOTShipping = function() {
         labelEl.style.border = 'none';
         labelEl.style.color = '';
     }
+}
+
+// --- GENERATE OFFICIAL RWP ---
+window.generateRWP = function() {
+    if(!window.currentOpenDoc || window.currentOpenDoc.collection !== 'work_plans') return;
+    const data = window.currentOpenDoc.fullData;
+    const container = document.getElementById('rwp-container');
+    
+    showLoader();
+    let html = `
+        <div style="border: 3px solid #000; padding: 20px; position: relative;">
+            <h1 style="text-align: center; border-bottom: 2px solid #000; margin-top: 0; padding-bottom: 10px;">RADIATION WORK PERMIT (RWP)</h1>
+            <h3 style="text-align: center; color: #d9534f; margin-top: 0;">POST AT JOB SITE BOUNDARY</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;" border="1">
+                <tr><td style="padding: 10px; background: #eee; width: 30%;"><strong>Job Number:</strong></td><td style="padding: 10px;"><strong>${data.job_number}</strong></td></tr>
+                <tr><td style="padding: 10px; background: #eee;"><strong>Location:</strong></td><td style="padding: 10px;">${data.location} (${data.location_type})</td></tr>
+                <tr><td style="padding: 10px; background: #eee;"><strong>Planned Date:</strong></td><td style="padding: 10px;">${data.planned_date}</td></tr>
+                <tr><td style="padding: 10px; background: #eee;"><strong>Boundary (2mR/hr):</strong></td><td style="padding: 10px;">${data.calculated_boundary_mr_hr} ft</td></tr>
+            </table>
+            <h3 style="margin-top: 20px; background: #002244; color: white; padding: 5px;">SAFETY & COMPLIANCE REQUIREMENTS</h3>
+            <ul style="line-height: 1.8;">
+                <li><strong>Required PPE:</strong> ${data.rwp_ppe || 'Standard'}</li>
+                <li><strong>Barricade Requirements:</strong> ${data.rwp_barricade || 'Standard Rope & Signs'}</li>
+                <li><strong>Briefing Requirements:</strong> ${data.rwp_briefing || 'Standard Pre-Job'}</li>
+                <li><strong>Collimator:</strong> ${data.collimator_used ? 'REQUIRED' : 'Not Required'}</li>
+            </ul>
+            <div style="margin-top: 40px; display: flex; justify-content: space-between; border-top: 2px solid #000; padding-top: 10px;">
+                <span><strong>RSO Status:</strong> ${data.rso_approval_status.toUpperCase()}</span>
+                <span><strong>Approved By:</strong> ${data.rso_approved_by || 'Pending'}</span>
+            </div>
+        </div>`;
+        
+    container.innerHTML = html;
+    container.style.display = 'block';
+
+    html2pdf().set({
+        margin: 10,
+        filename: `RWP_${data.job_number}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+    }).from(container).save().then(() => {
+        container.style.display = 'none';
+        hideLoader();
+    });
 }
