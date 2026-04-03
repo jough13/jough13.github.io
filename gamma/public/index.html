@@ -427,32 +427,57 @@
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; padding: 15px; border: 1px solid #005A9C; border-radius: 5px; background: rgba(0, 90, 156, 0.05);">
-                            <h4 style="grid-column: span 3; margin: 0; color: #005A9C;">RWP Requirements</h4>
+                            <h4 style="grid-column: span 3; margin: 0; color: #005A9C;">RWP Requirements <span style="font-size: 0.8rem; font-weight: normal; color: #555;">(Hold Ctrl/Cmd to select multiple)</span></h4>
                             <div>
                                 <label for="wp-ppe" style="font-size: 0.8rem;">Required PPE</label>
-                                <select id="wp-ppe" style="width: 100%;"><option value="Standard (Dosimetry only)">Standard</option><option value="Anti-C Coveralls">Anti-C Coveralls</option><option value="Lead Apron">Lead Apron</option></select>
+                                <select id="wp-ppe" multiple style="width: 100%; height: 90px; padding: 5px;">
+                                    <option value="Standard Dosimetry">Standard Dosimetry</option>
+                                    <option value="Anti-C Coveralls">Anti-C Coveralls</option>
+                                    <option value="Lead Apron">Lead Apron</option>
+                                    <option value="Safety Glasses">Safety Glasses</option>
+                                    <option value="Gloves">Gloves</option>
+                                </select>
                             </div>
                             <div>
                                 <label for="wp-barricade" style="font-size: 0.8rem;">Barricade Type</label>
-                                <select id="wp-barricade" style="width: 100%;"><option value="Magenta/Yellow Rope & Signs">Rope & Signs</option><option value="Locked Door / Interlock">Locked Door</option><option value="Physical Flashing Light Barrier">Flashing Lights</option></select>
+                                <select id="wp-barricade" multiple style="width: 100%; height: 90px; padding: 5px;">
+                                    <option value="Magenta/Yellow Rope">Magenta/Yellow Rope</option>
+                                    <option value="Signs Posted">Signs Posted</option>
+                                    <option value="Locked Door">Locked Door</option>
+                                    <option value="Flashing Lights">Flashing Lights</option>
+                                    <option value="Guards Posted">Guards Posted</option>
+                                </select>
                             </div>
                             <div>
                                 <label for="wp-brief" style="font-size: 0.8rem;">Briefing</label>
-                                <select id="wp-brief" style="width: 100%;"><option value="Standard Pre-Job Brief">Standard Pre-Job</option><option value="High-Risk Formal Briefing">High-Risk Formal</option></select>
+                                <select id="wp-brief" multiple style="width: 100%; height: 90px; padding: 5px;">
+                                    <option value="Standard Pre-Job">Standard Pre-Job</option>
+                                    <option value="High-Risk Formal">High-Risk Formal</option>
+                                    <option value="ALARA Review">ALARA Review</option>
+                                    <option value="Safety Officer Present">Safety Officer Present</option>
+                                </select>
                             </div>
                         </div>
 
                         <label style="margin-top: 15px;">Setup Diagram / Boundary Sketch (Draw Below)</label>
                         <div style="background: var(--input-bg); border-radius: 4px; padding: 10px; margin-bottom: 10px;">
-                            <canvas id="sketch-canvas"></canvas>
-                            <button type="button" class="btn-secondary" onclick="window.clearSketch()" style="width: auto; padding: 5px 15px; margin-top: 5px; font-size: 0.85rem;">Clear Sketch</button>
+                            
+                            <div style="display: flex; gap: 15px; margin-bottom: 10px; align-items: center; flex-wrap: wrap;">
+                                <label style="font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; gap: 5px;">
+                                    Color: <input type="color" id="sketch-color" value="#000000" style="padding: 0; border: none; width: 30px; height: 30px; cursor: pointer;">
+                                </label>
+                                <label style="font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; gap: 5px;">
+                                    Size: <input type="range" id="sketch-size" min="1" max="20" value="3" style="cursor: pointer;">
+                                </label>
+                                <button type="button" class="btn-secondary" id="sketch-eraser" style="padding: 4px 10px; font-size: 0.85rem;">🧽 Eraser</button>
+                                <button type="button" class="btn-secondary" onclick="window.clearSketch()" style="padding: 4px 10px; font-size: 0.85rem;">🗑️ Clear</button>
+                            </div>
+
+                            <canvas id="sketch-canvas" style="border: 2px dashed #005A9C; border-radius: 4px; background: #fafafa; cursor: crosshair; touch-action: none; width: 100%; height: 300px;"></canvas>
                         </div>
                         
-                        <label style="margin-top: 15px;">Setup Diagram / Boundary Sketch (Draw Below)</label>
-                        <div style="background: var(--input-bg); border-radius: 4px; padding: 10px; margin-bottom: 10px;">
-                            <canvas id="sketch-canvas" style="border: 2px dashed #f0ad4e; border-radius: 4px; background: #fafafa; cursor: crosshair; touch-action: none; width: 100%; height: 300px;"></canvas>
-                            <button type="button" class="btn-secondary" onclick="window.clearSketch()" style="width: auto; padding: 5px 15px; margin-top: 5px; font-size: 0.85rem;">Clear Sketch</button>
-                        </div>
+                        <label for="wp-diagram">Or Upload Diagram (Optional)</label>
+                        <input type="file" id="wp-diagram" accept=".pdf,.jpg,.jpeg,.png">
                         
                         <label for="wp-diagram">Or Upload Diagram (Optional)</label>
                         <input type="file" id="wp-diagram" accept=".pdf,.jpg,.jpeg,.png">
