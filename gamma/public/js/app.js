@@ -513,6 +513,7 @@ async function startApplication() {
     await loadAllData();
     setupEventListeners();
     populateSourceDropdown(); 
+    window.populatePersonnelDropdown();
     
     // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
@@ -1037,84 +1038,79 @@ async function updateDeployedAssetsDashboard() {
 }
 
 // --- DOSE AGGREGATION & ALARA BURN-RATE ---
-async function updateDoseDashboard() {
+window.updateDoseDashboard = async function() {
+    const rosterSnap = await getDocs(collection(db, 'personnel'));
     const logsSnap = await getDocs(collection(db, 'dosimetry_logs'));
+    
     const stats = {};
     const thirtyDayStats = {};
     const today = new Date();
+
+    // Initialize all personnel with 0 mRem by default
+    rosterSnap.forEach(doc => {
+        const name = doc.data().full_name;
+        stats[name] = 0;
+        thirtyDayStats[name] = 0;
+    });
     
     logsSnap.forEach(d => {
         const log = d.data();
-        const name = log.personnel_name;
+        // If they used the old text input, it's just the name. If they use the new dropdown, it strips the cert number off.
+        const name = log.personnel_name.split(' (')[0]; 
         const dose = (log.final_reading - log.initial_reading);
         const logDate = new Date(log.logged_time || log.timestamp);
         
-        // Total Lifetime Dose
-        if(!stats[name]) stats[name] = 0;
+        if (stats[name] === undefined) {
+            stats[name] = 0;
+            thirtyDayStats[name] = 0;
+        }
+        
         stats[name] += dose;
-
-        // 30-Day Rolling Dose (for Burn Rate)
         const daysOld = (today - logDate) / (1000 * 60 * 60 * 24);
         if (daysOld <= 30) {
-            if(!thirtyDayStats[name]) thirtyDayStats[name] = 0;
             thirtyDayStats[name] += dose;
         }
     });
 
-    const list = document.getElementById('dose-summary-list');
+    const tbody = document.getElementById('dose-roster-body');
     const alertList = document.getElementById('dose-alerts');
-    if(!list || !alertList) return;
+    if(!tbody || !alertList) return;
     
-    list.innerHTML = ''; 
+    tbody.innerHTML = ''; 
     alertList.innerHTML = '';
     
-    const names = Object.keys(stats);
-    const doseValues = Object.values(stats);
+    const names = Object.keys(stats).sort();
 
     names.forEach(name => {
         const totalDose = stats[name];
-        list.innerHTML += `<li>${name}: <strong>${totalDose.toFixed(2)} mRem</strong></li>`;
-        
-        // ALARA Burn-Rate Calculation
         const recentDose = thirtyDayStats[name] || 0;
         const dailyBurnRate = recentDose / 30; 
         const projectedQuarterlyDose = totalDose + (dailyBurnRate * 90);
 
+        // Add to Roster Table
+        tbody.innerHTML += `
+            <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 10px; font-weight: bold;">${name}</td>
+                <td style="padding: 10px;">${totalDose.toFixed(2)}</td>
+                <td style="padding: 10px;">${recentDose.toFixed(2)}</td>
+                <td style="padding: 10px; color: ${dailyBurnRate > 5 ? '#d9534f' : 'inherit'};">${dailyBurnRate.toFixed(2)} mRem/day</td>
+            </tr>`;
+        
+        // ALARA Alerts
         if (totalDose > 1000) {
-            alertList.innerHTML += `<li style="color: #fff; background: #d9534f; padding: 10px; margin-bottom: 5px; border-radius: 4px;">🚨 <strong>CRITICAL:</strong> ${name} is OVER the 1000mRem Administrative Limit!</li>`;
+            alertList.innerHTML += `<li style="color: #fff; background: #d9534f; padding: 10px; margin-bottom: 5px; border-radius: 4px;">🚨 <strong>CRITICAL:</strong> ${name} is OVER 1000mRem Limit!</li>`;
         } else if (projectedQuarterlyDose > 1000) {
-            alertList.innerHTML += `<li style="color: #333; background: #f0ad4e; padding: 10px; margin-bottom: 5px; border-radius: 4px;">⚠️ <strong>ALARA WARNING:</strong> ${name} is burning ${dailyBurnRate.toFixed(1)} mRem/day. Projected to bust 1000mRem limit this quarter.</li>`;
+            alertList.innerHTML += `<li style="color: #333; background: #f0ad4e; padding: 10px; margin-bottom: 5px; border-radius: 4px;">⚠️ <strong>ALARA WARNING:</strong> ${name} is burning ${dailyBurnRate.toFixed(1)} mRem/day. Projected to bust limit.</li>`;
         } else if (recentDose > 0) {
-            alertList.innerHTML += `<li style="color: #333; background: #eee; padding: 10px; margin-bottom: 5px; border-radius: 4px;">✅ <strong>ON TRACK:</strong> ${name} is burning ${dailyBurnRate.toFixed(1)} mRem/day. (Safe projection).</li>`;
+            alertList.innerHTML += `<li style="color: #333; background: #eee; padding: 10px; margin-bottom: 5px; border-radius: 4px;">✅ <strong>ON TRACK:</strong> ${name} is burning ${dailyBurnRate.toFixed(1)} mRem/day.</li>`;
         }
     });
 
     if (alertList.innerHTML === '') {
         alertList.innerHTML = '<li style="color: #5cb85c; background: transparent; border: none; padding:0;">No recent dose activity to forecast.</li>';
     }
-
-    const ctx = document.getElementById('dose-chart');
-    if(ctx) {
-        if(window.doseChart) window.doseChart.destroy();
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        window.doseChart = new Chart(ctx, {
-            type: 'bar',
-            data: { 
-                labels: names, 
-                datasets: [{ 
-                    label: 'Cumulative Dose (mRem)', 
-                    data: doseValues, 
-                    backgroundColor: '#005A9C' 
-                }] 
-            },
-            options: { 
-                scales: { 
-                    y: { beginAtZero: true, ticks: { color: isDark ? '#e0e0e0' : '#333' } },
-                    x: { ticks: { color: isDark ? '#e0e0e0' : '#333' } }
-                },
-                plugins: { legend: { labels: { color: isDark ? '#e0e0e0' : '#333' } } }
-            }
-        });
+    if (tbody.innerHTML === '') {
+        tbody.innerHTML = '<tr><td colspan="4" style="padding: 10px;">No personnel found in database.</td></tr>';
     }
 }
 
@@ -1166,8 +1162,9 @@ async function loadAllData() {
     window.updateDashboard(); 
     window.renderCalendar();
     window.updateDecayChart(); // Build forecast curve
-    await updateDoseDashboard(); 
+    await window.updateDoseDashboard();
     await updateDeployedAssetsDashboard(); 
+    window.populatePersonnelDropdown(); // Refresh dropdown when data reloads
 }
 
 // --- REAL-TIME LIVE SYNC ---
@@ -1270,6 +1267,23 @@ function fetchData(collectionName, listId) {
             resolve(); // Resolve anyway so the app doesn't hang forever
         });
     });
+}
+
+// --- POPULATE DOSIMETRY PERSONNEL DROPDOWN ---
+window.populatePersonnelDropdown = async function() {
+    const dlNameSelect = document.getElementById('dl-name');
+    if (!dlNameSelect) return;
+    try {
+        const querySnapshot = await getDocs(collection(db, 'personnel'));
+        dlNameSelect.innerHTML = '<option value="">Select Personnel...</option>';
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            // We store the name and cert number together so we can cleanly parse it later
+            dlNameSelect.innerHTML += `<option value="${data.full_name}">${data.full_name} (${data.cert_number})</option>`;
+        });
+    } catch (err) {
+        console.error("Error loading personnel for dropdown:", err);
+    }
 }
 
 async function populateSourceDropdown() {
