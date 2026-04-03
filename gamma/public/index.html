@@ -444,21 +444,41 @@
 
                                 <label for="tr-destination">Destination</label>
                                 <input type="text" id="tr-destination" required>
+
+                                <label for="tr-isotope">Source Isotope</label>
+                                <select id="tr-isotope" required>
+                                    <option value="">Select Isotope...</option>
+                                    <option value="Ir-192">Iridium-192 (Ir-192)</option>
+                                    <option value="Co-60">Cobalt-60 (Co-60)</option>
+                                    <option value="Se-75">Selenium-75 (Se-75)</option>
+                                    <option value="Yb-169">Ytterbium-169 (Yb-169)</option>
+                                    <option value="Cs-137">Cesium-137 (Cs-137)</option>
+                                </select>
+                                
+                                <label for="tr-activity">Current Activity (Curies)</label>
+                                <input type="number" step="0.01" id="tr-activity" required>
                             </div>
                             <div style="display: flex; flex-direction: column; gap: 10px;">
-                                <label for="tr-max-contact">Prior-to-Transport Max Contact (mR/hr)</label>
-                                <input type="number" step="0.1" id="tr-max-contact" required>
+                                <label for="tr-surface">Max Surface Dose Rate (mR/hr)</label>
+                                <input type="number" step="0.1" id="tr-surface" required>
 
-                                <label for="tr-ti">Transport Index (TI) at 1 Meter</label>
-                                <input type="number" step="0.1" id="tr-ti" required>
+                                <label for="tr-1m">Max Dose Rate at 1 Meter (mR/hr)</label>
+                                <input type="number" step="0.1" id="tr-1m" required>
 
-                                <div style="background: rgba(0,0,0,0.05); padding: 10px; border-radius: 5px; margin-top: 10px;">
+                                <div style="background: rgba(0,90,156,0.05); padding: 10px; border-radius: 5px; border: 1px solid #005A9C; margin-top: 5px;">
+                                    <h4 style="margin: 0 0 5px 0; color: #005A9C; font-size: 0.95rem;">DOT Classification Details</h4>
+                                    <p style="margin: 3px 0; font-size: 0.85rem;"><strong>Package Type:</strong> <span id="tr-calc-pkg" style="font-weight:bold;">--</span></p>
+                                    <p style="margin: 3px 0; font-size: 0.85rem;"><strong>Transport Index (TI):</strong> <span id="tr-calc-ti" style="font-weight:bold;">--</span></p>
+                                    <p style="margin: 3px 0; font-size: 0.85rem;"><strong>Required Label:</strong> <span id="tr-calc-label" style="font-weight:bold;">--</span></p>
+                                </div>
+
+                                <div style="background: rgba(0,0,0,0.05); padding: 10px; border-radius: 5px; margin-top: auto;">
                                     <div class="checkbox-group">
                                         <input type="checkbox" id="tr-water">
-                                        <label for="tr-water"><b>Over-Water Transport?</b> (Requires Buoy & Sonar Pinger)</label>
+                                        <label for="tr-water"><b>Over-Water Transport?</b></label>
                                     </div>
                                 </div>
-                                <button type="submit" style="margin-top: auto;">Log Transport Survey</button>
+                                <button type="submit" style="margin-top: 5px;">Log Transport Survey</button>
                             </div>
                         </form>
                         <ul id="transport-list">Loading...</ul>
