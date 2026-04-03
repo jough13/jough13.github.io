@@ -13,7 +13,7 @@
 </head>
 <body class="loading">
    
-        <div id="start-screen">
+    <div id="start-screen">
         <div class="start-menu">
             <h1>Realms of Rune and Rust</h1>
             <button id="continueButton" style="display: none;">Continue Journey</button>
@@ -41,11 +41,16 @@
             Resources: <span id="glimmering-dust-wrapper"><span class="resource-icon">.</span> <span id="glimmering-dust">0</span></span> | 
             <span id="ancient-scraps-wrapper"><span class="resource-icon">#</span> <span id="ancient-scraps">0</span></span> | 
             <span id="void-essence-display" style="display:none;">VE: <span id="void-essence">0</span> | </span>
-            <span id="runes-collected-wrapper">Runes: <span id="runes-collected">None</span></span>
+            <span id="runes-collected-wrapper">Runes: <span id="runes-collected">None</span></span> | 
+            <span id="inventory-wrapper">Items: <span id="inventory-count">2</span></span>
             <br>
             <span id="companion-display" style="display:none;">Companion: <span id="companion-info"></span></span> | 
             <span id="artifacts-collected-wrapper">Artifacts: <span id="artifacts-collected">0/0</span></span> | 
             <span id="exploration-speed-wrapper">Speed: <span id="exploration-speed">1</span>x</span>
+        </div>
+
+        <div class="progress-container" title="Zone Progress">
+            <div id="zone-progress-bar" class="progress-fill"></div>
         </div>
 
         <div id="game-screen" class="game-screen">
@@ -83,6 +88,13 @@
             <button id="copy-log-button">Copy Log</button>
         </div>
 
+        <!-- NEW: Auto Controls Panel -->
+        <div class="controls-area auto-controls-area">
+            <button id="btn-auto-combat">Auto-Combat: OFF</button>
+            <button id="btn-auto-events">Auto-Events: OFF</button>
+            <button id="btn-auto-progress">Auto-Progress: OFF</button>
+        </div>
+
     <div id="dev-controls" style="display:none;">
         <label for="dev-speed-slider">Developer Speed Multiplier:</label>
         <input type="range" id="dev-speed-slider" min="1" max="50" value="1" step="1">
@@ -93,7 +105,7 @@
     </div>
     
     <footer class="page-footer">
-        <p>Version 0.6.7.4 &bull; Last Updated: August 19, 2025</p>
+        <p>Version 0.8.5 (The Idle Update) &bull; Realms of Rune & Rust</p>
     </footer>
     <div id="artifact-modal-backdrop" class="modal-backdrop">
         <div id="artifact-modal-content" class="modal-content">
@@ -104,6 +116,9 @@
         </div>
     </div>
 
+    <script src="audio.js" defer></script>
+    <script src="lore.js" defer></script>
+    <script src="combat.js" defer></script>
     <script src="game.js" defer></script>
 
    <div id="confirmationModal" class="modal-backdrop" style="display: none;">
