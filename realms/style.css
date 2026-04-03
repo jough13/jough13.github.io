@@ -180,7 +180,41 @@ body.loading .game-container {
 .game-container {
     transition: opacity 0.2s ease-in-out;
 }
-/* --- YOUR CUSTOM GAME STYLES START HERE --- */
+
+.progress-container {
+    width: 100%;
+    height: 6px;
+    background-color: var(--zone-bg-color);
+    border: 1px solid var(--zone-color-dark);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    background-color: var(--zone-color);
+    width: 0%;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 5px var(--zone-color);
+}
+
+@keyframes screenShake {
+    0% { transform: translate(0, 0); }
+    20% { transform: translate(-3px, 2px); }
+    40% { transform: translate(3px, -2px); }
+    60% { transform: translate(-3px, -2px); }
+    80% { transform: translate(3px, 2px); }
+    100% { transform: translate(0, 0); }
+}
+
+.shake {
+    animation: screenShake 0.25s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+.flash-red {
+    transition: background-color 0.05s ease-in-out;
+    background-color: #4a0000 !important;
+}
+
 body {
     font-family: 'Inter', sans-serif;
     background-color: #2c1a2b;
@@ -192,6 +226,7 @@ body {
     min-height: 100vh;
     margin: 0;
     padding: 1rem;
+    transition: background-color 0.3s ease-in-out;
 }
 .game-container {
     font-family: 'VT323', monospace;
@@ -226,9 +261,18 @@ body {
     width: 100%;
     text-align: left;
 }
-.player-char {
-    color: #ffff00; /* Bright Yellow */
+
+.grid-row {
+    display: block;
+    height: 1lh;
 }
+
+.grid-row span {
+    cursor: default;
+}
+
+.player-char { color: #ffff00; }
+.companion-char { color: #98fb98; } 
 .water-tile { color: #6495ed; }
 .bridge-tile { color: #8b4513; }
 .mountain-tile { color: #a9a9a9; }
@@ -239,10 +283,7 @@ body {
 .windchime-tile { color: #ffd700; }
 .guardian-tile { color: #b0e0e6; }
 .oracle-dais-tile { color: #483d8b; }
-.enemy-tile {
-    color: #ff4136;
-    font-weight: bold;
-}
+.enemy-tile { color: #ff4136; font-weight: bold; }
 .blocked-path-tile { color: #708090; }
 .runic-etching-tile { color: #afeeee; }
 .whispering-totem-tile { color: #dda0dd; }
@@ -251,6 +292,7 @@ body {
 .weaver-tile { color: #ba55d3; }
 .sword-stone-tile { color: #c0c0c0; font-weight: bold; }
 .dying-creature-tile { color: #cd853f; }
+.runestone-tile { color: #ff00ff; font-weight: bold; text-shadow: 0 0 5px #ff00ff; }
 
 .stats-bar, .log-area, .controls-area, .decision-area, .message-input-area, .summary-area {
     font-family: 'VT323', monospace;
@@ -260,9 +302,25 @@ body {
     border: 1px dashed var(--zone-color-dark);
     background-color: var(--zone-bg-color);
 }
+
+.auto-controls-area {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    background-color: #151015;
+}
+
+.auto-btn-on {
+    background-color: #1a3a1a !important; 
+    border-color: #32cd32 !important;
+    color: #98fb98 !important;
+    box-shadow: 0 0 8px #32cd3288;
+}
+
 .log-area {
     height: 200px;
-    overflow-y: scroll; /* Always shows */
+    overflow-y: scroll; 
     display: flex;
     flex-direction: column-reverse;
 }
@@ -455,15 +513,15 @@ body {
         white-space: pre-wrap;
     }
 
-/* --- Name Input Prompt Styling --- */
 #decision-buttons-container {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap; 
 }
 
-#playerNameInput {
+#playerNameInput, #companionNameInput {
     background-color: #1a1a1a;
     border: 2px solid #555;
     color: #f0e8f0;
@@ -477,17 +535,16 @@ body {
     width: 60%;
 }
 
-#playerNameInput::placeholder {
+#playerNameInput::placeholder, #companionNameInput::placeholder {
     color: #666;
     opacity: 1;
 }
 
-#playerNameInput:focus {
+#playerNameInput:focus, #companionNameInput:focus {
     border-color: var(--zone-color);
     box-shadow: 0 0 10px var(--zone-color)88;
-  }
+}
 
-/* --- Artifact Modal --- */
 #artifact-modal-backdrop {
     display: none;
     position: fixed;
@@ -583,7 +640,6 @@ body {
   color: #887788;
 }
 
-/* --- START SCREEN STYLES --- */
 #start-screen {
     position: fixed;
     top: 0;
@@ -634,7 +690,6 @@ body.loading #start-screen {
     box-shadow: 0 0 15px #ff8c00;
 }
 
-/* --- CONFIRMATION MODAL STYLES --- */
 .modal-backdrop {
     position: fixed;
     top: 0;
