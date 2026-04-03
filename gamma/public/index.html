@@ -325,18 +325,23 @@
                             <div style="display: flex; flex-direction: column; gap: 10px;">
                                 <label for="per-name">Full Name</label>
                                 <input type="text" id="per-name" required>
-                                <label for="per-cert">ASNT / State Cert Number</label>
+                                
+                                <label for="per-cert">ASNT / State Cert Number <span style="font-size:0.75rem; font-weight:normal; float:right;"><input type="checkbox" onchange="window.toggleNA('per-cert', this)"> Pending</span></label>
                                 <input type="text" id="per-cert" required>
-                                <label for="per-trust">T&R Authorization Date</label>
+                                
+                                <label for="per-trust">T&R Authorization Date <span style="font-size:0.75rem; font-weight:normal; float:right;"><input type="checkbox" onchange="window.toggleNA('per-trust', this)"> N/A</span></label>
                                 <input type="date" id="per-trust" required>
                             </div>
                             <div style="display: flex; flex-direction: column; gap: 10px;">
-                                <label for="per-hazmat">Hazmat Training Expiration</label>
+                                <label for="per-hazmat">Hazmat Training Expiration <span style="font-size:0.75rem; font-weight:normal; float:right;"><input type="checkbox" onchange="window.toggleNA('per-hazmat', this)"> N/A</span></label>
                                 <input type="date" id="per-hazmat" required>
-                                <label for="per-eval">Last 6-Month Field Eval Date</label>
+                                
+                                <label for="per-eval">Last 6-Month Field Eval Date <span style="font-size:0.75rem; font-weight:normal; float:right;"><input type="checkbox" onchange="window.toggleNA('per-eval', this)"> N/A</span></label>
                                 <input type="date" id="per-eval" required>
-                                <label for="per-drill">Last Annual Emergency Drill Date</label>
+                                
+                                <label for="per-drill">Last Annual Emergency Drill Date <span style="font-size:0.75rem; font-weight:normal; float:right;"><input type="checkbox" onchange="window.toggleNA('per-drill', this)"> N/A</span></label>
                                 <input type="date" id="per-drill" required>
+                                
                                 <button type="submit" style="margin-top: auto;">Add Personnel</button>
                             </div>
                         </form>
