@@ -151,6 +151,11 @@
 
             <section id="equipment" class="module">
                 <h2>Equipment & Source Management</h2>
+
+                <div style="margin-bottom: 20px;">
+                    <button type="button" class="btn-secondary" style="background-color: #005A9C; color: white; font-weight: bold; padding: 10px 20px;" onclick="window.generateAssetTags()">🖨️ Print All Asset Tags (QR)</button>
+                </div>
+                <div id="asset-tag-container" style="display: none; padding: 20px; background: white;"></div>
                 
                 <div class="card" style="min-width: 100%; border-top: 5px solid #005A9C; margin-bottom: 20px;">
                     <h3>Source Replacement Predictor (6-Month Decay Forecast)</h3>
@@ -614,6 +619,8 @@
             </div>
             <div id="modal-body"></div>
             <div class="modal-actions">
+                <button id="modal-approve-btn" class="btn-secondary admin-only" style="background-color: #5cb85c; color: white; border: none; font-weight: bold; display: none;" onclick="window.approveWorkPlan()">✅ RSO Approve</button>
+                
                 <button class="btn-secondary" onclick="window.editRecord()" style="background-color: #f0ad4e; color: #333; border: none; font-weight: bold;">✏️ Edit</button>
                 <button class="btn-secondary" onclick="window.cloneRecord()" style="background-color: #5bc0de; color: #fff; border: none; font-weight: bold;">📄 Clone</button>
                 <button id="modal-delete-btn" class="btn-danger admin-only">Delete Record</button>
