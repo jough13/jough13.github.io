@@ -1144,87 +1144,101 @@ async function loadAllData() {
 const activeListeners = {}; // Safely manages our live pipelines
 
 function fetchData(collectionName, listId) {
-    const ul = document.getElementById(listId);
-    if (!ul) return;
-
-    // Clean up existing listener if we re-run this to avoid duplicate data streams
-    if (activeListeners[collectionName]) {
-        activeListeners[collectionName](); 
-    }
-
-    // onSnapshot creates a continuous live connection to the database
-    activeListeners[collectionName] = onSnapshot(collection(db, collectionName), (querySnapshot) => {
-        ul.innerHTML = '';
-        if (querySnapshot.empty) {
-            ul.innerHTML = `<li style="background: transparent; border: none;">No data found in ${collectionName.replace('_', ' ')}.</li>`;
+    return new Promise((resolve) => {
+        const ul = document.getElementById(listId);
+        if (!ul) {
+            resolve();
             return;
         }
 
-        querySnapshot.forEach((doc) => {
-            const item = doc.data();
-            const li = document.createElement('li');
-            let displayText = '';
-            let docUrl = null;
+        // Clean up existing listener if we re-run this to avoid duplicate data streams
+        if (activeListeners[collectionName]) {
+            activeListeners[collectionName](); 
+        }
 
-            let recordDate = item.timestamp || item.created_at || item.logged_time || item.completion_time || item.activity_date || item.planned_date || item.transport_date || item.eval_date || '';
-            if (recordDate) {
-                li.setAttribute('data-date', recordDate.split('T')[0]); 
-            }
+        let isFirstLoad = true;
 
-            if (collectionName === 'equipment') {
-                displayText = `${item.type?.toUpperCase() || 'UNKNOWN TYPE'} - Serial: ${item.serial_number} (Cal Due: ${item.calibration_due_date})`;
-                docUrl = item.certificate_url;
-            } else if (collectionName === 'sources') {
-                const currentAct = calculateCurrentActivity(item.initial_activity_curies, item.isotope, item.activity_date);
-                const statusTag = item.vault_status === 'OUT' ? ' [🦺 DEPLOYED]' : '';
-                displayText = `${item.isotope} (SN: ${item.serial_number}) - Initial: ${item.initial_activity_curies} Ci | CURRENT: ${currentAct} Ci${statusTag}`;
-                if(item.vault_status === 'OUT') li.style.borderLeft = "5px solid #f0ad4e";
-                docUrl = item.certificate_url;
-            } else if (collectionName === 'cameras') {
-                const statusTag = item.vault_status === 'OUT' ? ' [🦺 DEPLOYED]' : '';
-                displayText = `${item.make_model} (SN: ${item.serial_number}) - Maint: ${item.annual_maintenance_date}${statusTag}`;
-                if(item.vault_status === 'OUT') li.style.borderLeft = "5px solid #f0ad4e";
-            } else if (collectionName === 'personnel') {
-                displayText = `${item.full_name} (Cert: ${item.cert_number}) - Eval: ${item.last_6mo_eval_date}`;
-            } else if (collectionName === 'field_evaluations') {
-                displayText = `${item.eval_date}: ${item.radiographer_evaluated} evaluated by ${item.evaluator}`;
-            } else if (collectionName === 'work_plans') {
-                displayText = `Job ${item.job_number} - Location: ${item.location} (${item.location_type}) on ${item.planned_date}`;
-                docUrl = item.diagram_url;
-            } else if (collectionName === 'transport_logs') {
-                const labelTag = item.dot_label ? item.dot_label : 'Unknown Label';
-                const tiTag = item.transport_index !== undefined ? item.transport_index : 'Unknown TI';
-                displayText = `${item.transport_date}: Camera ${item.camera_sn} to ${item.destination} | Label: ${labelTag} (TI: ${tiTag})`;
-            } else if (collectionName === 'dosimetry_logs') {
-                displayText = `${item.personnel_name} (Dosimeter: ${item.dosimeter_serial}) - ${item.initial_reading}mR to ${item.final_reading}mR`;
-            } else if (collectionName === 'utilization_logs') {
-                displayText = `Job ${item.job_reference} - RIC: ${item.radiographer_in_charge} (Max Survey: ${item.max_survey_reading} mR/hr)`;
-            } else if (collectionName === 'post_job_reports') {
-                const date = item.completion_time ? new Date(item.completion_time).toLocaleDateString() : 'Unknown Date';
-                displayText = `Report by ${item.completed_by} on ${date} (Source Secured: ${item.source_secured ? 'Yes' : 'No'})`;
+        // onSnapshot creates a continuous live connection to the database
+        activeListeners[collectionName] = onSnapshot(collection(db, collectionName), (querySnapshot) => {
+            ul.innerHTML = '';
+            if (querySnapshot.empty) {
+                ul.innerHTML = `<li style="background: transparent; border: none;">No data found in ${collectionName.replace('_', ' ')}.</li>`;
             } else {
-                const values = Object.values(item).slice(0, 3).join(' - ');
-                displayText = `ID ${doc.id}: ${values}`;
+                querySnapshot.forEach((doc) => {
+                    const item = doc.data();
+                    const li = document.createElement('li');
+                    let displayText = '';
+                    let docUrl = null;
+
+                    let recordDate = item.timestamp || item.created_at || item.logged_time || item.completion_time || item.activity_date || item.planned_date || item.transport_date || item.eval_date || '';
+                    if (recordDate) {
+                        li.setAttribute('data-date', recordDate.split('T')[0]); 
+                    }
+
+                    if (collectionName === 'equipment') {
+                        displayText = `${item.type?.toUpperCase() || 'UNKNOWN TYPE'} - Serial: ${item.serial_number} (Cal Due: ${item.calibration_due_date})`;
+                        docUrl = item.certificate_url;
+                    } else if (collectionName === 'sources') {
+                        const currentAct = calculateCurrentActivity(item.initial_activity_curies, item.isotope, item.activity_date);
+                        const statusTag = item.vault_status === 'OUT' ? ' [🦺 DEPLOYED]' : '';
+                        displayText = `${item.isotope} (SN: ${item.serial_number}) - Initial: ${item.initial_activity_curies} Ci | CURRENT: ${currentAct} Ci${statusTag}`;
+                        if(item.vault_status === 'OUT') li.style.borderLeft = "5px solid #f0ad4e";
+                        docUrl = item.certificate_url;
+                    } else if (collectionName === 'cameras') {
+                        const statusTag = item.vault_status === 'OUT' ? ' [🦺 DEPLOYED]' : '';
+                        displayText = `${item.make_model} (SN: ${item.serial_number}) - Maint: ${item.annual_maintenance_date}${statusTag}`;
+                        if(item.vault_status === 'OUT') li.style.borderLeft = "5px solid #f0ad4e";
+                    } else if (collectionName === 'personnel') {
+                        displayText = `${item.full_name} (Cert: ${item.cert_number}) - Eval: ${item.last_6mo_eval_date}`;
+                    } else if (collectionName === 'field_evaluations') {
+                        displayText = `${item.eval_date}: ${item.radiographer_evaluated} evaluated by ${item.evaluator}`;
+                    } else if (collectionName === 'work_plans') {
+                        displayText = `Job ${item.job_number} - Location: ${item.location} (${item.location_type}) on ${item.planned_date}`;
+                        docUrl = item.diagram_url;
+                    } else if (collectionName === 'transport_logs') {
+                        const labelTag = item.dot_label ? item.dot_label : 'Unknown Label';
+                        const tiTag = item.transport_index !== undefined ? item.transport_index : 'Unknown TI';
+                        displayText = `${item.transport_date}: Camera ${item.camera_sn} to ${item.destination} | Label: ${labelTag} (TI: ${tiTag})`;
+                    } else if (collectionName === 'dosimetry_logs') {
+                        displayText = `${item.personnel_name} (Dosimeter: ${item.dosimeter_serial}) - ${item.initial_reading}mR to ${item.final_reading}mR`;
+                    } else if (collectionName === 'utilization_logs') {
+                        displayText = `Job ${item.job_reference} - RIC: ${item.radiographer_in_charge} (Max Survey: ${item.max_survey_reading} mR/hr)`;
+                    } else if (collectionName === 'post_job_reports') {
+                        const date = item.completion_time ? new Date(item.completion_time).toLocaleDateString() : 'Unknown Date';
+                        displayText = `Report by ${item.completed_by} on ${date} (Source Secured: ${item.source_secured ? 'Yes' : 'No'})`;
+                    } else {
+                        const values = Object.values(item).slice(0, 3).join(' - ');
+                        displayText = `ID ${doc.id}: ${values}`;
+                    }
+
+                    li.textContent = displayText;
+                    li.setAttribute('onclick', `openModal('${collectionName}', '${doc.id}')`);
+
+                    if (docUrl) {
+                        const link = document.createElement('a');
+                        link.href = docUrl;
+                        link.target = "_blank";
+                        link.textContent = " [View Document]";
+                        link.style.fontSize = "0.85em";
+                        link.style.color = "#005A9C";
+                        link.onclick = (e) => e.stopPropagation(); 
+                        li.appendChild(link);
+                    }
+                    ul.appendChild(li);
+                });
             }
 
-            li.textContent = displayText;
-            li.setAttribute('onclick', `openModal('${collectionName}', '${doc.id}')`);
-
-            if (docUrl) {
-                const link = document.createElement('a');
-                link.href = docUrl;
-                link.target = "_blank";
-                link.textContent = " [View Document]";
-                link.style.fontSize = "0.85em";
-                link.style.color = "#005A9C";
-                link.onclick = (e) => e.stopPropagation(); 
-                li.appendChild(link);
+            // If this is the very first time the snapshot loaded, resolve the promise!
+            if (isFirstLoad) {
+                isFirstLoad = false;
+                resolve();
             }
-            ul.appendChild(li);
+
+        }, (err) => {
+            console.error(`Error syncing collection ${collectionName}:`, err);
+            ul.innerHTML = `<li style="color:red; background: transparent; border: none;">Error loading live data.</li>`;
+            resolve(); // Resolve anyway so the app doesn't hang forever
         });
-    }, (err) => {
-        console.error(`Error syncing collection ${collectionName}:`, err);
-        ul.innerHTML = `<li style="color:red; background: transparent; border: none;">Error loading live data.</li>`;
     });
 }
 
