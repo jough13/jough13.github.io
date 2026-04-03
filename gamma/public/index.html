@@ -249,12 +249,16 @@
                         <form id="cameras-form">
                             <label for="cam-model">Make & Model</label>
                             <input type="text" id="cam-model" placeholder="e.g. QSA Global 880 Delta" required>
+                            
                             <label for="cam-serial">Serial Number <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="window.startScanner('cam-serial')">📷 Scan</button></label>
                             <input type="text" id="cam-serial" required>
-                            <label for="cam-du-date">DU Leak Test Date (< 12 Months)</label>
+                            
+                            <label for="cam-du-date">Date of LAST DU Leak Test</label>
                             <input type="date" id="cam-du-date">
-                            <label for="cam-maint-date">Annual Maintenance Date (< 12 Months)</label>
+                            
+                            <label for="cam-maint-date">Date of LAST Annual Maintenance</label>
                             <input type="date" id="cam-maint-date" required>
+                            
                             <button type="submit">Add Camera</button>
                         </form>
                         <ul id="cameras-list">Loading...</ul>
