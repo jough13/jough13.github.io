@@ -406,6 +406,22 @@
                             </div>
                         </div>
 
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px; padding: 15px; border: 1px solid #005A9C; border-radius: 5px; background: rgba(0, 90, 156, 0.05);">
+                            <h4 style="grid-column: span 3; margin: 0; color: #005A9C;">RWP Requirements</h4>
+                            <div>
+                                <label for="wp-ppe" style="font-size: 0.8rem;">Required PPE</label>
+                                <select id="wp-ppe" style="width: 100%;"><option value="Standard (Dosimetry only)">Standard</option><option value="Anti-C Coveralls">Anti-C Coveralls</option><option value="Lead Apron">Lead Apron</option></select>
+                            </div>
+                            <div>
+                                <label for="wp-barricade" style="font-size: 0.8rem;">Barricade Type</label>
+                                <select id="wp-barricade" style="width: 100%;"><option value="Magenta/Yellow Rope & Signs">Rope & Signs</option><option value="Locked Door / Interlock">Locked Door</option><option value="Physical Flashing Light Barrier">Flashing Lights</option></select>
+                            </div>
+                            <div>
+                                <label for="wp-brief" style="font-size: 0.8rem;">Briefing</label>
+                                <select id="wp-brief" style="width: 100%;"><option value="Standard Pre-Job Brief">Standard Pre-Job</option><option value="High-Risk Formal Briefing">High-Risk Formal</option></select>
+                            </div>
+                        </div>
+
                         <label style="margin-top: 15px;">Setup Diagram / Boundary Sketch (Draw Below)</label>
                         <div style="background: var(--input-bg); border-radius: 4px; padding: 10px; margin-bottom: 10px;">
                             <canvas id="sketch-canvas"></canvas>
@@ -649,7 +665,7 @@
             <div id="modal-body"></div>
             <div class="modal-actions">
                 <button id="modal-approve-btn" class="btn-secondary admin-only" style="background-color: #5cb85c; color: white; border: none; font-weight: bold; display: none;" onclick="window.approveWorkPlan()">✅ RSO Approve</button>
-                
+                <button id="modal-rwp-btn" class="btn-secondary" style="background-color: #002244; color: white; border: none; font-weight: bold; display: none;" onclick="window.generateRWP()">🖨️ Print RWP</button>
                 <button class="btn-secondary" onclick="window.editRecord()" style="background-color: #f0ad4e; color: #333; border: none; font-weight: bold;">✏️ Edit</button>
                 <button class="btn-secondary" onclick="window.cloneRecord()" style="background-color: #5bc0de; color: #fff; border: none; font-weight: bold;">📄 Clone</button>
                 <button id="modal-delete-btn" class="btn-danger admin-only">Delete Record</button>
@@ -695,6 +711,8 @@
             </div>
         </div>
     </div>
+
+    <div id="rwp-container" style="display: none; padding: 40px; background: white; color: black; font-family: Arial; width: 8.5in;"></div>
 
     <script type="module" src="js/app.js"></script>
 </body>
