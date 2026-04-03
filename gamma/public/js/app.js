@@ -536,7 +536,7 @@ async function uploadFile(file, folderPath) {
 function setupEventListeners() {
 
     // Trigger DOT Math on Transport Form
-    ['tr-isotope', 'tr-activity', 'tr-surface', 'tr-1m'].forEach(id => {
+    ['tr-isotope', 'tr-category', 'tr-activity', 'tr-surface', 'tr-1m'].forEach(id => {
         const el = document.getElementById(id);
         if(el) {
             el.addEventListener('input', window.calculateDOTShipping);
@@ -826,20 +826,24 @@ function setupEventListeners() {
             const pkgType = document.getElementById('tr-calc-pkg').textContent;
             const ti = document.getElementById('tr-calc-ti').textContent;
             const label = document.getElementById('tr-calc-label').textContent;
+            const psn = document.getElementById('tr-calc-psn').textContent; 
 
             const data = {
                 transport_date: document.getElementById('tr-date').value,
                 camera_sn: document.getElementById('tr-camera').value,
                 destination: document.getElementById('tr-destination').value,
+                content_category: document.getElementById('tr-category').value, 
                 isotope: document.getElementById('tr-isotope').value,
                 activity_ci: parseFloat(document.getElementById('tr-activity').value),
-                max_contact_reading: parseFloat(document.getElementById('tr-surface').value), // Saved as surface reading
+                max_contact_reading: parseFloat(document.getElementById('tr-surface').value), 
                 transport_index: parseFloat(ti),
                 dot_label: label,
                 package_type: pkgType,
+                proper_shipping_name: psn, 
                 over_water_transport: document.getElementById('tr-water').checked,
                 timestamp: new Date().toISOString()
             };
+            
             await addData('transport_logs', data);
             transportForm.reset();
             
@@ -847,11 +851,12 @@ function setupEventListeners() {
             document.getElementById('tr-calc-pkg').textContent = '--';
             document.getElementById('tr-calc-pkg').style.color = '';
             document.getElementById('tr-calc-ti').textContent = '--';
+            document.getElementById('tr-calc-psn').textContent = '--'; 
             document.getElementById('tr-calc-label').textContent = '--';
             document.getElementById('tr-calc-label').style.background = 'transparent';
             document.getElementById('tr-calc-label').style.border = 'none';
             
-            await fetchData('transport_logs', 'transport-list');
+            // Note: Data syncs automatically now via onSnapshot, so we just hide the loader
             hideLoader();
         });
     }
@@ -2358,6 +2363,7 @@ window.approveWorkPlan = async function() {
 // --- DOT SHIPPING CALCULATOR ENGINE ---
 window.calculateDOTShipping = function() {
     const iso = document.getElementById('tr-isotope')?.value;
+    const category = document.getElementById('tr-category')?.value || 'instrument';
     const actCi = parseFloat(document.getElementById('tr-activity')?.value) || 0;
     const surf = parseFloat(document.getElementById('tr-surface')?.value) || 0;
     const meter = parseFloat(document.getElementById('tr-1m')?.value) || 0;
@@ -2365,10 +2371,11 @@ window.calculateDOTShipping = function() {
     const pkgEl = document.getElementById('tr-calc-pkg');
     const tiEl = document.getElementById('tr-calc-ti');
     const labelEl = document.getElementById('tr-calc-label');
+    const psnEl = document.getElementById('tr-calc-psn'); 
 
     if (!pkgEl || !tiEl || !labelEl) return;
 
-    // 1. Package Type (Using Special Form A1 limits)
+    // 1. Package Type & UN PSN
     let a1LimitCi = Infinity;
     if (iso === 'Ir-192') a1LimitCi = 27.027; 
     else if (iso === 'Co-60') a1LimitCi = 10.81; 
@@ -2377,13 +2384,32 @@ window.calculateDOTShipping = function() {
     else if (iso === 'Cs-137') a1LimitCi = 54.05;
 
     let pkgType = '--';
+    let psn = '--';
+    
     if (iso && actCi > 0) {
-        pkgType = actCi <= a1LimitCi ? 'Type A' : 'Type B';
+        if (actCi < 0.001) {
+            pkgType = 'Excepted Package';
+            pkgEl.style.color = '#5cb85c';
+            if (category === 'instrument') {
+                psn = 'UN2911, Radioactive material, excepted package - instruments or articles, 7';
+            } else {
+                psn = 'UN2910, Radioactive material, excepted package - limited quantity of material, 7';
+            }
+        } else if (actCi <= a1LimitCi) {
+            pkgType = 'Type A';
+            psn = 'UN3332, Radioactive material, Type A package, special form, 7';
+            pkgEl.style.color = '#5cb85c';
+        } else {
+            pkgType = 'Type B';
+            psn = 'UN2916, Radioactive material, Type B(U) package, 7';
+            pkgEl.style.color = '#d9534f';
+        }
         pkgEl.textContent = pkgType;
-        pkgEl.style.color = actCi <= a1LimitCi ? '#5cb85c' : '#d9534f';
+        if(psnEl) psnEl.textContent = psn;
     } else {
         pkgEl.textContent = '--';
         pkgEl.style.color = '';
+        if(psnEl) psnEl.textContent = '--';
     }
 
     // 2. Transport Index (Rounded up to nearest tenth)
