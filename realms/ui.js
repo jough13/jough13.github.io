@@ -3,6 +3,10 @@
 // │ DOM ELEMENT REFERENCES & VIRTUAL DOM SETUP                                │
 // =============================================================================
 
+const loreCompendiumButton = document.getElementById('lore-compendium-button');
+const loreModalBackdrop = document.getElementById('lore-modal-backdrop');
+const loreModalClose = document.getElementById('lore-modal-close');
+const loreList = document.getElementById('lore-list');
 const gameScreenContent = document.getElementById('game-screen-content');
 const gameScreen = document.getElementById('game-screen');
 const copyLogButton = document.getElementById('copy-log-button');
@@ -443,6 +447,52 @@ function showArtifactViewer() {
 function hideArtifactViewer() {
     artifactModalBackdrop.style.display = 'none';
     pauseGameForDecision(false); 
+}
+
+function showLoreCompendium() {
+    loreList.innerHTML = '';
+    let hasLore = false;
+
+    // 1. Check for Zone Introductions and Shrines
+    for (const key in ZONE_LORE) {
+        if (gameState.narrativeFlags[key]) {
+            hasLore = true;
+            const entryDiv = document.createElement('div');
+            entryDiv.className = 'lore-entry';
+            
+            // Format the key to look like a title (e.g., ASHEN_WOODS_INTRO -> Ashen Woods)
+            let formattedTitle = key.replace(/_/g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
+            if (formattedTitle.includes("Intro")) formattedTitle = formattedTitle.replace("Intro", "Arrival");
+            
+            entryDiv.innerHTML = `<h3>${formattedTitle}</h3><p>${ZONE_LORE[key]}</p>`;
+            loreList.appendChild(entryDiv);
+        }
+    }
+
+    // 2. Check for Discovered World Lore Fragments
+    if (typeof WORLD_LORE_FRAGMENTS !== 'undefined') {
+        WORLD_LORE_FRAGMENTS.forEach(frag => {
+            if (gameState.narrativeFlags[frag.key]) {
+                hasLore = true;
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'lore-entry';
+                entryDiv.innerHTML = `<h3>Fragment of the Past</h3><p>${frag.text}</p>`;
+                loreList.appendChild(entryDiv);
+            }
+        });
+    }
+
+    if (!hasLore) {
+        loreList.innerHTML = '<p style="text-align:center; color:#888;">The echoes are silent. You have not discovered any lore yet.</p>';
+    }
+
+    pauseGameForDecision(true);
+    loreModalBackdrop.style.display = 'flex';
+}
+
+function hideLoreCompendium() {
+    loreModalBackdrop.style.display = 'none';
+    pauseGameForDecision(false);
 }
 
 function presentForgeOfferingChoice() {
@@ -1207,7 +1257,23 @@ function setupEventListeners() {
 if (btnAutoCombat) btnAutoCombat.addEventListener('click', () => { gameState.auto.combat = !gameState.auto.combat; updateAutoButtonVisuals(); });
 if (btnAutoEvents) btnAutoEvents.addEventListener('click', () => { gameState.auto.events = !gameState.auto.events; updateAutoButtonVisuals(); });
 if (btnAutoProgress) btnAutoProgress.addEventListener('click', () => { gameState.auto.progress = !gameState.auto.progress; updateAutoButtonVisuals(); });
+
+if (loreCompendiumButton) {
+        loreCompendiumButton.addEventListener('click', showLoreCompendium);
+    }
     
+    if (loreModalClose) {
+        loreModalClose.addEventListener('click', hideLoreCompendium);
+    }
+    
+    if (loreModalBackdrop) {
+        loreModalBackdrop.addEventListener('click', (event) => {
+            if (event.target === loreModalBackdrop) {
+                hideLoreCompendium();
+            }
+        });
+    }
+
 if (meditateButton) {
     meditateButton.addEventListener('click', () => {
         const MEDITATE_DUST_COST = 25;
