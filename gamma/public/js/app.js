@@ -1,6 +1,6 @@
 // public/js/app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, addDoc, doc, getDoc, deleteDoc, updateDoc, writeBatch, query, where } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, getDocs, addDoc, doc, getDoc, deleteDoc, updateDoc, writeBatch, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
@@ -278,6 +278,16 @@ const formMaps = {
 
 window.editRecord = function() {
     if(!window.currentOpenDoc || !window.currentOpenDoc.fullData) return;
+    
+    // --- RSO LOCK-DOWN CHECK ---
+    if (window.currentOpenDoc.collection === 'work_plans' && window.currentOpenDoc.fullData.rso_approval_status === 'Approved') {
+        const currentUser = auth.currentUser ? auth.currentUser.email : '';
+        if (currentUser.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+            alert("🔒 COMPLIANCE LOCK: This Work Plan has been officially approved by the RSO and cannot be modified.");
+            return;
+        }
+    }
+    
     populateFormForEditClone(window.currentOpenDoc, true);
 }
 
@@ -524,6 +534,15 @@ async function uploadFile(file, folderPath) {
 }
 
 function setupEventListeners() {
+
+    // Trigger DOT Math on Transport Form
+    ['tr-isotope', 'tr-activity', 'tr-surface', 'tr-1m'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) {
+            el.addEventListener('input', window.calculateDOTShipping);
+            el.addEventListener('change', window.calculateDOTShipping);
+        }
+    });
     
     const ackCheckbox = document.getElementById('ack-checkbox');
     const proceedBtn = document.getElementById('disclaimer-proceed-btn');
@@ -801,17 +820,37 @@ function setupEventListeners() {
         transportForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             showLoader();
+            
+            // Re-calc to ensure we have the latest values
+            window.calculateDOTShipping();
+            const pkgType = document.getElementById('tr-calc-pkg').textContent;
+            const ti = document.getElementById('tr-calc-ti').textContent;
+            const label = document.getElementById('tr-calc-label').textContent;
+
             const data = {
                 transport_date: document.getElementById('tr-date').value,
                 camera_sn: document.getElementById('tr-camera').value,
                 destination: document.getElementById('tr-destination').value,
-                max_contact_reading: parseFloat(document.getElementById('tr-max-contact').value),
-                transport_index: parseFloat(document.getElementById('tr-ti').value),
+                isotope: document.getElementById('tr-isotope').value,
+                activity_ci: parseFloat(document.getElementById('tr-activity').value),
+                max_contact_reading: parseFloat(document.getElementById('tr-surface').value), // Saved as surface reading
+                transport_index: parseFloat(ti),
+                dot_label: label,
+                package_type: pkgType,
                 over_water_transport: document.getElementById('tr-water').checked,
                 timestamp: new Date().toISOString()
             };
             await addData('transport_logs', data);
             transportForm.reset();
+            
+            // Reset the calc displays
+            document.getElementById('tr-calc-pkg').textContent = '--';
+            document.getElementById('tr-calc-pkg').style.color = '';
+            document.getElementById('tr-calc-ti').textContent = '--';
+            document.getElementById('tr-calc-label').textContent = '--';
+            document.getElementById('tr-calc-label').style.background = 'transparent';
+            document.getElementById('tr-calc-label').style.border = 'none';
+            
             await fetchData('transport_logs', 'transport-list');
             hideLoader();
         });
@@ -890,6 +929,23 @@ function setupEventListeners() {
     if(collimatorCheck) collimatorCheck.addEventListener('change', calculateBoundary);
 }
 
+// --- IMMUTABLE AUDIT TRAIL ENGINE ---
+async function logAudit(action, collectionName, recordId, details) {
+    try {
+        const userEmail = auth.currentUser ? auth.currentUser.email : 'System';
+        await addDoc(collection(db, 'audit_logs'), {
+            timestamp: new Date().toISOString(),
+            user: userEmail,
+            action: action, // 'CREATED', 'UPDATED', or 'DELETED'
+            collection: collectionName,
+            record_id: recordId,
+            details: details
+        });
+    } catch (err) {
+        console.error("Audit log failed to write:", err);
+    }
+}
+
 async function addData(collectionName, data) {
     try {
         if (window.editModeId && window.editModeCollection === collectionName) {
@@ -909,12 +965,19 @@ async function addData(collectionName, data) {
                 }
             }
             await updateDoc(doc(db, collectionName, window.editModeId), data);
+            
+            // Fire an Audit Log for the Edit
+            await logAudit('UPDATED', collectionName, window.editModeId, `Record modified.`);
+            
             window.editModeId = null;
             window.editModeCollection = null;
             resetFormButton(collectionName);
         } else {
             if(!data.timestamp) data.timestamp = new Date().toISOString();
-            await addDoc(collection(db, collectionName), data);
+            const newDocRef = await addDoc(collection(db, collectionName), data);
+            
+            // Fire an Audit Log for Creation
+            await logAudit('CREATED', collectionName, newDocRef.id, `New record added.`);
         }
     } catch (err) {
         console.error(`Error saving document:`, err);
@@ -1077,11 +1140,20 @@ async function loadAllData() {
     await updateDeployedAssetsDashboard(); 
 }
 
-async function fetchData(collectionName, listId) {
+// --- REAL-TIME LIVE SYNC ---
+const activeListeners = {}; // Safely manages our live pipelines
+
+function fetchData(collectionName, listId) {
     const ul = document.getElementById(listId);
     if (!ul) return;
-    try {
-        const querySnapshot = await getDocs(collection(db, collectionName));
+
+    // Clean up existing listener if we re-run this to avoid duplicate data streams
+    if (activeListeners[collectionName]) {
+        activeListeners[collectionName](); 
+    }
+
+    // onSnapshot creates a continuous live connection to the database
+    activeListeners[collectionName] = onSnapshot(collection(db, collectionName), (querySnapshot) => {
         ul.innerHTML = '';
         if (querySnapshot.empty) {
             ul.innerHTML = `<li style="background: transparent; border: none;">No data found in ${collectionName.replace('_', ' ')}.</li>`;
@@ -1120,7 +1192,9 @@ async function fetchData(collectionName, listId) {
                 displayText = `Job ${item.job_number} - Location: ${item.location} (${item.location_type}) on ${item.planned_date}`;
                 docUrl = item.diagram_url;
             } else if (collectionName === 'transport_logs') {
-                displayText = `${item.transport_date}: Camera ${item.camera_sn} to ${item.destination} (TI: ${item.transport_index})`;
+                const labelTag = item.dot_label ? item.dot_label : 'Unknown Label';
+                const tiTag = item.transport_index !== undefined ? item.transport_index : 'Unknown TI';
+                displayText = `${item.transport_date}: Camera ${item.camera_sn} to ${item.destination} | Label: ${labelTag} (TI: ${tiTag})`;
             } else if (collectionName === 'dosimetry_logs') {
                 displayText = `${item.personnel_name} (Dosimeter: ${item.dosimeter_serial}) - ${item.initial_reading}mR to ${item.final_reading}mR`;
             } else if (collectionName === 'utilization_logs') {
@@ -1148,10 +1222,10 @@ async function fetchData(collectionName, listId) {
             }
             ul.appendChild(li);
         });
-    } catch (err) {
-        console.error(`Error fetching collection ${collectionName}:`, err);
-        ul.innerHTML = `<li style="color:red; background: transparent; border: none;">Error loading data.</li>`;
-    }
+    }, (err) => {
+        console.error(`Error syncing collection ${collectionName}:`, err);
+        ul.innerHTML = `<li style="color:red; background: transparent; border: none;">Error loading live data.</li>`;
+    });
 }
 
 async function populateSourceDropdown() {
@@ -1638,6 +1712,23 @@ window.openModal = async function(collectionName, docId) {
             for (const [key, value] of Object.entries(data)) {
                 let displayKey = key.replace(/_/g, ' ').toUpperCase();
                 if (key === 'chp_approval_status') displayKey = 'RSO APPROVAL STATUS'; 
+
+                // --- VISUAL LOCK AND BUTTON TOGGLE ---
+                if (key === 'rso_approval_status') {
+                    if (value === 'Approved') {
+                        html += `<p style="background: #5cb85c; color: white; padding: 5px; border-radius: 4px; display: inline-block;"><strong>🔒 RSO STATUS:</strong> APPROVED</p>`;
+                    } else {
+                        html += `<p style="background: #f0ad4e; color: #333; padding: 5px; border-radius: 4px; display: inline-block;"><strong>RSO STATUS:</strong> ${value}</p>`;
+                    }
+                }
+                const approveBtn = document.getElementById('modal-approve-btn');
+                if (approveBtn) {
+                    if (collectionName === 'work_plans' && data.rso_approval_status !== 'Approved') {
+                        approveBtn.style.display = 'inline-block';
+                    } else {
+                        approveBtn.style.display = 'none';
+                    }
+                }
                 
                 if (key === 'checklist' && typeof value === 'object') {
                     html += `<h4>Evaluation Checklist:</h4><ul>`;
@@ -1703,25 +1794,32 @@ window.executeDelete = async function() {
     if(!window.currentOpenDoc) return;
     try {
         showLoader();
-        await deleteDoc(doc(db, window.currentOpenDoc.collection, window.currentOpenDoc.id));
+        const colToDel = window.currentOpenDoc.collection;
+        const idToDel = window.currentOpenDoc.id;
+        
+        await deleteDoc(doc(db, colToDel, idToDel));
+        
+        // Fire an Audit Log for Deletion
+        await logAudit('DELETED', colToDel, idToDel, `Record permanently deleted.`);
+        
         closeConfirmModal();
         window.closeModal();
         
         let listId = '';
-        if(window.currentOpenDoc.collection === 'equipment') listId = 'equipment-list';
-        if(window.currentOpenDoc.collection === 'sources') { listId = 'sources-list'; populateSourceDropdown(); }
-        if(window.currentOpenDoc.collection === 'cameras') listId = 'cameras-list';
-        if(window.currentOpenDoc.collection === 'personnel') listId = 'personnel-list';
-        if(window.currentOpenDoc.collection === 'field_evaluations') listId = 'eval-list';
-        if(window.currentOpenDoc.collection === 'work_plans') listId = 'work-plans-list';
-        if(window.currentOpenDoc.collection === 'transport_logs') listId = 'transport-list';
-        if(window.currentOpenDoc.collection === 'dosimetry_logs') listId = 'dosimetry-list';
-        if(window.currentOpenDoc.collection === 'utilization_logs') listId = 'utilization-list';
-        if(window.currentOpenDoc.collection === 'post_job_reports') listId = 'reports-list';
+        if(colToDel === 'equipment') listId = 'equipment-list';
+        if(colToDel === 'sources') { listId = 'sources-list'; populateSourceDropdown(); }
+        if(colToDel === 'cameras') listId = 'cameras-list';
+        if(colToDel === 'personnel') listId = 'personnel-list';
+        if(colToDel === 'field_evaluations') listId = 'eval-list';
+        if(colToDel === 'work_plans') listId = 'work-plans-list';
+        if(colToDel === 'transport_logs') listId = 'transport-list';
+        if(colToDel === 'dosimetry_logs') listId = 'dosimetry-list';
+        if(colToDel === 'utilization_logs') listId = 'utilization-list';
+        if(colToDel === 'post_job_reports') listId = 'reports-list';
         
-        await fetchData(window.currentOpenDoc.collection, listId);
-        window.updateDashboard();
-        window.renderCalendar();
+        await fetchData(colToDel, listId);
+        await window.updateDashboard();
+        await window.renderCalendar();
         hideLoader();
     } catch (err) {
         hideLoader();
@@ -2150,5 +2248,163 @@ window.clearSketch = function() {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         window.sketchPadDirty = false;
+    }
+}
+
+// --- GENERATE PHYSICAL ASSET TAGS (QR CODES) ---
+window.generateAssetTags = async function() {
+    const container = document.getElementById('asset-tag-container');
+    if(!container) return;
+    
+    showLoader();
+    try {
+        const eqSnap = await getDocs(collection(db, 'equipment'));
+        const camSnap = await getDocs(collection(db, 'cameras'));
+        
+        let items = [];
+        eqSnap.forEach(d => items.push({type: d.data().type, sn: d.data().serial_number, due: d.data().calibration_due_date}));
+        camSnap.forEach(d => items.push({type: d.data().make_model, sn: d.data().serial_number, due: d.data().annual_maintenance_date}));
+        
+        if (items.length === 0) { 
+            alert("No physical assets found in the database."); 
+            hideLoader(); 
+            return; 
+        }
+        
+        let html = '<div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; font-family: Arial;">';
+        
+        items.forEach(item => {
+            const qrData = encodeURIComponent(`SN: ${item.sn}\nModel: ${item.type}\nDue: ${item.due || 'N/A'}`);
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${qrData}`;
+            
+            html += `
+            <div style="border: 2px dashed #333; width: 2.5in; height: 1.5in; padding: 10px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; background: white; color: black; page-break-inside: avoid;">
+                <div style="flex: 1; padding-right: 10px;">
+                    <h3 style="margin: 0 0 5px 0; font-size: 11px; color: #005A9C;">PROPERTY OF US NAVY</h3>
+                    <h2 style="margin: 0 0 5px 0; font-size: 14px; word-break: break-all;">${item.sn}</h2>
+                    <p style="margin: 2px 0; font-size: 10px;"><b>Model:</b> ${item.type}</p>
+                    <p style="margin: 2px 0; font-size: 10px; color: #d9534f;"><b>Maint/Cal Due:</b><br>${item.due || 'N/A'}</p>
+                </div>
+                <div style="width: 70px; height: 70px;">
+                    <img src="${qrUrl}" style="width: 100%; height: 100%;">
+                </div>
+            </div>`;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        container.style.display = 'block';
+        
+        html2pdf().set({
+            margin: 10,
+            filename: `Physical_Asset_Tags_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        }).from(container).save().then(() => {
+            container.style.display = 'none';
+            hideLoader();
+        });
+    } catch(e) {
+        console.error("Asset Tag Error:", e);
+        hideLoader();
+        alert('Error generating asset tags.');
+    }
+}
+
+// --- APPLY RSO APPROVAL STAMP ---
+window.approveWorkPlan = async function() {
+    if(!window.currentOpenDoc || window.currentOpenDoc.collection !== 'work_plans') return;
+    
+    if (!auth.currentUser || auth.currentUser.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+        alert("Unauthorized. Only the RSO can officially approve Work Plans.");
+        return;
+    }
+
+    if(confirm("Are you sure you want to apply your official RSO Approval to this plan? This will lock it from further edits by standard radiographers.")) {
+        try {
+            showLoader();
+            await updateDoc(doc(db, 'work_plans', window.currentOpenDoc.id), {
+                rso_approval_status: 'Approved',
+                rso_approved_by: auth.currentUser.email,
+                rso_approved_at: new Date().toISOString()
+            });
+            alert("Work Plan officially approved and locked.");
+            window.closeModal();
+            await fetchData('work_plans', 'work-plans-list');
+        } catch(err) {
+            console.error("Approval error:", err);
+            alert("Failed to approve plan.");
+        } finally {
+            hideLoader();
+        }
+    }
+}
+
+// --- DOT SHIPPING CALCULATOR ENGINE ---
+window.calculateDOTShipping = function() {
+    const iso = document.getElementById('tr-isotope')?.value;
+    const actCi = parseFloat(document.getElementById('tr-activity')?.value) || 0;
+    const surf = parseFloat(document.getElementById('tr-surface')?.value) || 0;
+    const meter = parseFloat(document.getElementById('tr-1m')?.value) || 0;
+
+    const pkgEl = document.getElementById('tr-calc-pkg');
+    const tiEl = document.getElementById('tr-calc-ti');
+    const labelEl = document.getElementById('tr-calc-label');
+
+    if (!pkgEl || !tiEl || !labelEl) return;
+
+    // 1. Package Type (Using Special Form A1 limits)
+    let a1LimitCi = Infinity;
+    if (iso === 'Ir-192') a1LimitCi = 27.027; 
+    else if (iso === 'Co-60') a1LimitCi = 10.81; 
+    else if (iso === 'Se-75') a1LimitCi = 81.08; 
+    else if (iso === 'Yb-169') a1LimitCi = 108.1;
+    else if (iso === 'Cs-137') a1LimitCi = 54.05;
+
+    let pkgType = '--';
+    if (iso && actCi > 0) {
+        pkgType = actCi <= a1LimitCi ? 'Type A' : 'Type B';
+        pkgEl.textContent = pkgType;
+        pkgEl.style.color = actCi <= a1LimitCi ? '#5cb85c' : '#d9534f';
+    } else {
+        pkgEl.textContent = '--';
+        pkgEl.style.color = '';
+    }
+
+    // 2. Transport Index (Rounded up to nearest tenth)
+    let ti = 0;
+    if (meter > 0) {
+        ti = meter <= 0.05 ? 0 : Math.ceil(meter * 10) / 10;
+        tiEl.textContent = ti.toFixed(1);
+    } else {
+        tiEl.textContent = '--';
+    }
+
+    // 3. Required Label
+    let label = '--';
+    if (surf > 0 || meter > 0) {
+        if (surf <= 0.5 && ti === 0) {
+            label = 'White-I';
+            labelEl.style.background = '#fff'; labelEl.style.color = '#333'; labelEl.style.border = '1px solid #ccc';
+        } else if (surf <= 50 && ti <= 1) {
+            label = 'Yellow-II';
+            labelEl.style.background = '#ffeb3b'; labelEl.style.color = '#000'; labelEl.style.border = '1px solid #ccc';
+        } else if (surf <= 200 && ti <= 10) {
+            label = 'Yellow-III';
+            labelEl.style.background = '#ffeb3b'; labelEl.style.color = '#d9534f'; labelEl.style.border = '1px solid #d9534f';
+        } else if (surf > 200 || ti > 10) {
+            label = 'Yellow-III (Exclusive Use)';
+            labelEl.style.background = '#d9534f'; labelEl.style.color = '#fff'; labelEl.style.border = '1px solid #333';
+        }
+        labelEl.textContent = label;
+        labelEl.style.padding = '2px 6px';
+        labelEl.style.borderRadius = '3px';
+        labelEl.style.display = 'inline-block';
+    } else {
+        labelEl.textContent = '--';
+        labelEl.style.background = 'transparent';
+        labelEl.style.border = 'none';
+        labelEl.style.color = '';
     }
 }
