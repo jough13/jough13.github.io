@@ -86,6 +86,7 @@
             <button id="save-game-button">Save Game</button>
             <button id="mute-button">Mute Sounds</button>
             <button id="copy-log-button">Copy Log</button>
+            <button id="lore-compendium-button">Lore Compendium</button>
         </div>
 
         <!-- Auto Controls Panel -->
@@ -117,6 +118,15 @@
         </div>
     </div>
 
+    <div id="lore-modal-backdrop" class="modal-backdrop">
+        <div id="lore-modal-content" class="modal-content" style="max-width: 700px;">
+            <h2>Lore Compendium</h2>
+            <button id="lore-modal-close" class="modal-close-button">&times;</button>
+            <div id="lore-list" style="text-align: left; overflow-y: auto; max-height: 60vh; padding-right: 10px;">
+            </div>
+        </div>
+    </div>
+
     <div id="confirmationModal" class="modal-backdrop" style="display: none;">
         <div class="modal-content">
             <p id="modalText"></p>
@@ -128,7 +138,7 @@
     </div>
 
     <!-- MODULAR GAME SCRIPTS -->
-    <script src="zones.js" defer></script>
+    <script src="Zones.js" defer></script>
     <script src="lore.js" defer></script>
     <script src="audio.js" defer></script>
     <script src="engine.js" defer></script>
