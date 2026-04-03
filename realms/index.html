@@ -88,7 +88,7 @@
             <button id="copy-log-button">Copy Log</button>
         </div>
 
-        <!-- NEW: Auto Controls Panel -->
+        <!-- Auto Controls Panel -->
         <div class="controls-area auto-controls-area">
             <button id="btn-auto-combat">Auto-Combat: OFF</button>
             <button id="btn-auto-events">Auto-Events: OFF</button>
@@ -105,8 +105,9 @@
     </div>
     
     <footer class="page-footer">
-        <p>Version 0.8.5 (The Idle Update) &bull; Realms of Rune & Rust</p>
+        <p>Version 0.9.0 (The Architecture Update) &bull; Realms of Rune & Rust</p>
     </footer>
+    
     <div id="artifact-modal-backdrop" class="modal-backdrop">
         <div id="artifact-modal-content" class="modal-content">
             <h2>Collected Artifacts</h2>
@@ -116,12 +117,7 @@
         </div>
     </div>
 
-    <script src="audio.js" defer></script>
-    <script src="lore.js" defer></script>
-    <script src="combat.js" defer></script>
-    <script src="game.js" defer></script>
-
-   <div id="confirmationModal" class="modal-backdrop" style="display: none;">
+    <div id="confirmationModal" class="modal-backdrop" style="display: none;">
         <div class="modal-content">
             <p id="modalText"></p>
             <div class="modal-buttons">
@@ -130,6 +126,14 @@
             </div>
         </div>
     </div>
+
+    <!-- MODULAR GAME SCRIPTS -->
+    <script src="zones.js" defer></script>
+    <script src="lore.js" defer></script>
+    <script src="audio.js" defer></script>
+    <script src="engine.js" defer></script>
+    <script src="combat.js" defer></script>
+    <script src="ui.js" defer></script>
 
 </body>
 </html>
