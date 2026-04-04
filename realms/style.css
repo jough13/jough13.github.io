@@ -820,3 +820,40 @@ body.loading #start-screen {
     background-color: #daa520;
     border-radius: 3px;
 }
+
+/* --- INVENTORY MODAL --- */
+.inventory-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #1a1a24;
+    border: 1px solid #4a4a5a;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+.inventory-item-info strong {
+    color: #f0f8ff;
+    font-size: 1.2em;
+}
+.inventory-item-info p {
+    color: #b0c4de;
+    font-size: 0.9em;
+    margin: 4px 0 0 0;
+    font-style: italic;
+}
+.inventory-use-btn {
+    background-color: #3cb371;
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-family: 'VT323', monospace;
+    font-size: 1.1em;
+    margin-left: 15px;
+}
+.inventory-use-btn:hover {
+    background-color: #2e8b57;
+    box-shadow: 0 0 8px #3cb371;
+}
