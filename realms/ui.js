@@ -1,8 +1,12 @@
-
 // =============================================================================
 // │ DOM ELEMENT REFERENCES & VIRTUAL DOM SETUP                                │
 // =============================================================================
 
+const inventoryButton = document.getElementById('inventory-button');
+const inventoryModalBackdrop = document.getElementById('inventory-modal-backdrop');
+const inventoryModalClose = document.getElementById('inventory-modal-close');
+const inventoryList = document.getElementById('inventory-list');
+const inventoryWrapper = document.getElementById('inventory-wrapper');
 const loreCompendiumButton = document.getElementById('lore-compendium-button');
 const loreModalBackdrop = document.getElementById('lore-modal-backdrop');
 const loreModalClose = document.getElementById('lore-modal-close');
@@ -442,10 +446,12 @@ function showArtifactViewer() {
 
     pauseGameForDecision(true);
     artifactModalBackdrop.style.display = 'flex';
+    setTimeout(() => artifactModalBackdrop.classList.add('visible'), 10);
 }
 
 function hideArtifactViewer() {
-    artifactModalBackdrop.style.display = 'none';
+    artifactModalBackdrop.classList.remove('visible');
+    setTimeout(() => artifactModalBackdrop.style.display = 'none', 250);
     pauseGameForDecision(false); 
 }
 
@@ -488,10 +494,60 @@ function showLoreCompendium() {
 
     pauseGameForDecision(true);
     loreModalBackdrop.style.display = 'flex';
+    setTimeout(() => loreModalBackdrop.classList.add('visible'), 10);
 }
 
 function hideLoreCompendium() {
-    loreModalBackdrop.style.display = 'none';
+    loreModalBackdrop.classList.remove('visible');
+    setTimeout(() => loreModalBackdrop.style.display = 'none', 250);
+    pauseGameForDecision(false);
+}
+
+function showInventory() {
+    inventoryList.innerHTML = '';
+    let hasItems = false;
+
+    for (const itemId in gameState.inventory) {
+        const count = gameState.inventory[itemId];
+        // Only show items that the player has at least 1 of, and that exist in CONSUMABLES
+        if (count > 0 && typeof CONSUMABLES !== 'undefined' && CONSUMABLES[itemId]) {
+            hasItems = true;
+            const item = CONSUMABLES[itemId];
+            const entryDiv = document.createElement('div');
+            entryDiv.className = 'inventory-item';
+            
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'inventory-item-info';
+            infoDiv.innerHTML = `<strong>${item.name} (x${count})</strong><p>${item.description}</p>`;
+            
+            const useBtn = document.createElement('button');
+            useBtn.className = 'inventory-use-btn';
+            useBtn.textContent = 'Use';
+            useBtn.onclick = () => {
+                item.effect();
+                gameState.inventory[itemId]--;
+                renderAll();
+                showInventory(); // Refresh the list instantly to update quantities 
+            };
+            
+            entryDiv.appendChild(infoDiv);
+            entryDiv.appendChild(useBtn);
+            inventoryList.appendChild(entryDiv);
+        }
+    }
+
+    if (!hasItems) {
+        inventoryList.innerHTML = '<p style="text-align:center; color:#888;">Your pack is empty.</p>';
+    }
+
+    pauseGameForDecision(true);
+    inventoryModalBackdrop.style.display = 'flex';
+    setTimeout(() => inventoryModalBackdrop.classList.add('visible'), 10);
+}
+
+function hideInventory() {
+    inventoryModalBackdrop.classList.remove('visible');
+    setTimeout(() => inventoryModalBackdrop.style.display = 'none', 250);
     pauseGameForDecision(false);
 }
 
@@ -1254,11 +1310,33 @@ function setupEventListeners() {
         upgradeSpeedButton.addEventListener('click', attemptUpgradeSpeed);
     }
 
-if (btnAutoCombat) btnAutoCombat.addEventListener('click', () => { gameState.auto.combat = !gameState.auto.combat; updateAutoButtonVisuals(); });
-if (btnAutoEvents) btnAutoEvents.addEventListener('click', () => { gameState.auto.events = !gameState.auto.events; updateAutoButtonVisuals(); });
-if (btnAutoProgress) btnAutoProgress.addEventListener('click', () => { gameState.auto.progress = !gameState.auto.progress; updateAutoButtonVisuals(); });
+    if (inventoryButton) {
+        inventoryButton.addEventListener('click', showInventory);
+    }
+    
+    if (inventoryModalClose) {
+        inventoryModalClose.addEventListener('click', hideInventory);
+    }
+    
+    if (inventoryModalBackdrop) {
+        inventoryModalBackdrop.addEventListener('click', (event) => {
+            if (event.target === inventoryModalBackdrop) {
+                hideInventory();
+            }
+        });
+    }
+    
+    // Make the stat bar text clickable!
+    if (inventoryWrapper) {
+        inventoryWrapper.style.cursor = 'pointer';
+        inventoryWrapper.addEventListener('click', showInventory);
+    }
 
-if (loreCompendiumButton) {
+    if (btnAutoCombat) btnAutoCombat.addEventListener('click', () => { gameState.auto.combat = !gameState.auto.combat; updateAutoButtonVisuals(); });
+    if (btnAutoEvents) btnAutoEvents.addEventListener('click', () => { gameState.auto.events = !gameState.auto.events; updateAutoButtonVisuals(); });
+    if (btnAutoProgress) btnAutoProgress.addEventListener('click', () => { gameState.auto.progress = !gameState.auto.progress; updateAutoButtonVisuals(); });
+
+    if (loreCompendiumButton) {
         loreCompendiumButton.addEventListener('click', showLoreCompendium);
     }
     
