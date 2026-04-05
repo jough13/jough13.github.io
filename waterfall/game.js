@@ -101,13 +101,14 @@ function create() {
 
     });
 
-    // Upgraded Rock Collisions for better splashing!
-    this.physics.add.collider(waterGroup, rockGroup, (drop, rock) => {
-        // Set the velocity absolutely instead of adding to it (+=) so they don't launch sideways
-        drop.setVelocityX(Phaser.Math.Between(-60, 60));
-        
-        // 60% chance to spawn mist when hitting rocks
-        if(Math.random() > 0.4) mistEmitter.explode(1, drop.x, drop.y);
+    // Changed from 'collider' to 'overlap' so water cascades down the cliff face
+    this.physics.add.overlap(waterGroup, rockGroup, (drop, rock) => {
+        // Because overlap triggers every single frame, we only want it to bump and splash 
+        // a small percentage of the time to simulate tumbling down the rocks.
+        if (Math.random() > 0.85) {
+            drop.setVelocityX(Phaser.Math.Between(-30, 30));
+            mistEmitter.explode(1, drop.x, drop.y);
+        }
     }, (drop, rock) => drop.depth === rock.depth);
 
     this.physics.add.overlap(waterGroup, bouncerGroup, (drop, bouncer) => {
