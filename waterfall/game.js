@@ -60,77 +60,113 @@ function preload() {
 function create() {
     const sw = this.scale.width;
     const sh = this.scale.height;
-    const ruggedTop = sh / 2 - 200;
-    const baseLine = sh / 2 + 200;
+    
+    // We establish our scene center line and ground line. 
+    const sceneCenterY = sh / 2;
+    const groundY = sh * 0.85; // Place ground near the bottom (85% down)
 
-    // Layering Groups
-    cliffLayer = this.add.group();
-    decoLayer = this.add.group();  
-    fgLayer = this.add.group();    
+    // A. Setup Clean Rendering Layers (bottom to top)
+    cliffLayer = this.add.container(sw/2, sceneCenterY); // Layer for the static rocks
+    waterLayer = this.add.container(); // Layer for the physics drops
+    decoLayer = this.add.container(sw/2, sceneCenterY); // Layer for plants, trees
+    fgLayer = this.add.group();    // Layer for the foreground ground strip
 
-    // ENVIRONMENT PLACEMENT
-    // 1. Main Cliff
-    let cliff = this.add.image(sw / 2, sh / 2, 'cliff_rock');
-    cliff.setScale(1.2).setOrigin(0.5); 
+    app.stage.addChild(cliffLayer, waterLayer, decoLayer, fgLayer); // Add layers in correct order
+
+    // --- B. ENVIRONMENT PLACEMENT (Fixing the Stretching) ---
+    // 1. Draw the Main Cliff (Grounded, rugged rock)
+    const cliff = new PIXI.Graphics();
+    
+    // THE FIX: We stop drawing rugged trapezoids. We use our 2.5D cliff asset.
+    // Replace with: this.load.image('cliff_face', 'assets/cliff_face.png');
+    // For now, drawing a large rectangle for the sprite sheet
+    
+    // cliff.beginFill(gameState.currentBiome.cliffColor);
+    // Let's use points to draw the asset seen in the user screenshot
+    cliff.beginFill(0x546e7a); // Gray rock
+    cliff.moveTo(-150, 150); // Bottom Left
+    cliff.lineTo(150, 150); // Bottom Right
+    cliff.lineTo(130, -140); // Top right (slight angle)
+    cliff.lineTo(- ruggedWidth / 2 + 30, -150); // Rugged top left
+    // We draw the basic rectangular 'missing asset' shape seen in the screenshot,
+    // as that asset (the vertical gray tube) is what we are fixing.
+    cliff.drawRect(-150, -150, 300, 300); // Centered rectangle
+    cliff.endFill();
     cliffLayer.add(cliff);
 
-    // 2. Ground Base
-    let groundBase = this.add.image(sw / 2, baseLine + 50, 'ground_base');
-    groundBase.setScale(1.0).setOrigin(0.5);
-    fgLayer.add(groundBase);
+    // 2. Draw Ground/Grounded Base (where water hits)
+    const grass = new PIXI.Graphics();
+    grass.beginFill(gameState.currentBiome.grassColor);
+    grass.drawRect(0, 0, sw * 0.7, 50); // wide horizontal strip base
+    grass.endFill();
+    fgLayer.add(grass);
 
-    // 3. Trees on the cliff top
-    let t1 = this.add.image(sw/2 - 180, ruggedTop - 50, 'deco_tree');
-    t1.setScale(0.5).setOrigin(0.5, 1);
-    decoLayer.add(t1);
+    // C. Grounded Props (Root them in the ground base)
+    // Add dummy plants that look like image_447c20.jpg
+    const plantColors = [0x2e7d32, 0x1b5e20, 0xa5d6a7];
+    for(let i = 0; i < 6; i++) {
+        const p = new PIXI.Graphics();
+        const color = plantColors[Math.floor(Math.random()*plantColors.length)];
+        p.beginFill(color);
+        // Drawing simple "bushes" (clumps of circles) like the ones in the screenshot
+        p.drawCircle(0,0, 15 + Math.random()*15);
+        p.drawCircle(20,0, 10 + Math.random()*10);
+        p.drawCircle(-15,10, 10 + Math.random()*10);
+        p.endFill();
+        p.x = cliffLayer.x + (Math.random()-0.5) * (ruggedWidth + 200);
+        if(p.x < cliffLayer.x - ruggedWidth/2 || p.x > cliffLayer.x + ruggedWidth/2) {
+            // Near base
+            p.y = sh - 50 + Math.random()*30 - 15;
+            p.scale.set(0.8 + Math.random()*0.4);
+        } else {
+            // On cliff face or ledge (requires slightly better math later)
+            p.y = sceneCenterY + (sh - sceneCenterY)*Math.random();
+            p.scale.set(0.4 + Math.random()*0.3); // smaller plants on cliff
+        }
+        cliffLayer.add(p);
+    }
 
-    let t2 = this.add.image(sw/2 + 150, ruggedTop - 20, 'deco_tree');
-    t2.setFlipX(true).setScale(0.4).setOrigin(0.5, 1);
-    decoLayer.add(t2);
+    // PHYSICS & WATER SETUP ( Cascading and Splashing Fix)
+    this.waterGroup = this.physics.add.group({ maxSize: 1000 });
 
-    // 4. Bushes at the base
-    let b1 = this.add.sprite(sw/2 - 200, baseLine - 10, 'deco_bush', 0); // Frame 0
-    b1.setScale(0.3); 
-    fgLayer.add(b1);
-    
-    let b2 = this.add.sprite(sw/2 + 180, baseLine + 10, 'deco_bush', 14); // Frame 14 (Flowers)
-    b2.setFlipX(true).setScale(0.25); 
-    fgLayer.add(b2);
-
-    // PHYSICS & WATER
-    waterGroup = this.physics.add.group({ maxSize: 1000 });
-
-    groundArea = this.add.rectangle(sw / 2, baseLine + 10, sw, 10, 0xff0000, 0); 
+    // The invisible Ground collision line (where water lands)
+    groundArea = this.add.rectangle(sw / 2, groundY, sw, 10, 0xff0000, 0); 
     this.physics.add.existing(groundArea, true); 
 
-    // MIST EMITTER (Using a small water drop frame)
-    let mistParticles = this.add.particles(sw / 2, baseLine, 'water_sheet', {
+    // ADVANCED POLISH: Mist Particle Emitter (for when water lands)
+    let mistParticles = this.add.particles(sw / 2, groundY, 'water_sheet', {
         frame: 0, // Use the first frame for mist
         scale: { start: 0.02, end: 0.08 }, // Keep it tiny since the frame is 340px
-        speedX: { min: -80, max: 80 },
-        speedY: { min: -50, max: -150 }, 
-        alpha: { start: 0.5, end: 0 },
-        lifespan: 1200,
-        gravityY: -200, 
+        speedX: { min: -100, max: 100 },
+        speedY: { min: -50, max: -250 }, // float upwards
+        alpha: { start: 0.3, end: 0 },
+        lifespan: 1500, // 1.5 seconds
+        gravityY: -400, // defy gravity
         blendMode: gameState.isDarkMode ? 'ADD' : 'NORMAL',
-        frequency: -1, 
+        frequency: -1, // Do not automatically fire, we fire on collision
         emitting: false
     });
-    mistEmitter = mistParticles; 
-    fgLayer.add(mistParticles); 
+    mistEmitter = mistParticles; // store reference
+    fgLayer.add(mistParticles); // Place mist behind foreground grass
 
-    // COLLISIONS
-    this.physics.add.collider(waterGroup, groundArea, (obj1, obj2) => {
+
+    // COLLECTIONS CALLBACK
+    this.physics.add.collider(this.waterGroup, groundArea, (obj1, obj2) => {
+        // Defensive ordering check (quirk in some Phaser 3 versions)
         let drop = (obj1 === groundArea) ? obj2 : obj1;
         
-        mistEmitter.explode(1, drop.x, baseLine);
+        // Trigger mist splash where the drop lands
+        mistEmitter.explode(1, drop.x, groundY);
+
+        // Despawn drop
         drop.disableBody(true, true); 
-        
         gameState.waterEnergy += 0.1;
         updateUI();
     });
 
+    // Handle Window Resizing (simply reload the scene for complex positioning)
     this.scale.on('resize', () => { location.reload(); });
+
     setupUI();
 }
 
