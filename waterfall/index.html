@@ -16,8 +16,18 @@
         <div class="panel">
             <h1>Waterfall Sandbox</h1>
             <p id="currency-display">Water Drops: 0</p>
-            <p style="font-size: 8px; color: #666; margin-top: 10px;">Select a tool below and click the canvas to build!</p>
-            <button id="clear-btn" style="margin-top: 10px; background: #e57373;">Clear All</button>
+            
+            <!-- NEW: Layer Controls -->
+            <div id="layer-controls">
+                <span>Layer: <span id="layer-display">5</span></span>
+                <div class="layer-btns">
+                    <button id="layer-down">-</button>
+                    <button id="layer-up">+</button>
+                </div>
+            </div>
+            <p class="hint-text">Objects are drawn on this layer. Water only hits rocks on the SAME layer!</p>
+            
+            <button id="clear-btn" style="margin-top: 15px; width: 100%; background: #e57373;">Clear All</button>
         </div>
     </main>
 
