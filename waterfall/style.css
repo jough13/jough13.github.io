@@ -81,7 +81,9 @@ button:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px transpar
 
 /* SHOP BUTTONS */
 .shop-btn { display: block; width: 100%; margin-bottom: 8px; background: #fff9c4; color: #333; }
-.shop-btn:disabled { background: #555; color: #888; cursor: not-allowed; box-shadow: none; transform: translate(4px, 4px); }
+
+/* FIXED: Removed the transform shift so the disabled buttons don't jump around */
+.shop-btn:disabled { background: #555; color: #888; cursor: not-allowed; box-shadow: none; transform: none; }
 
 /* LOCKED TOOLS */
 .locked { opacity: 0.3; filter: grayscale(100%); pointer-events: none; }
