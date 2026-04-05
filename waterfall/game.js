@@ -34,6 +34,7 @@ let waterGroup, rockGroup, decoGroup, spawnerGroup, bouncerGroup, windGroup;
 let groundBase, lake;
 let mistEmitter;
 let floorY = 0;
+let music; // Globally accessible for the toggle
 
 function preload() {
     this.load.image('cliff_rock', 'assets/cliff_face.png'); 
@@ -47,7 +48,9 @@ function preload() {
 function create() {
     const sw = this.scale.width;
     const sh = this.scale.height;
-    floorY = sh - 20;
+    
+    // FIX: Lifted the floor 90px to sit perfectly above your bottom toolbar
+    floorY = sh - 90; 
 
     waterGroup = this.physics.add.group({ maxSize: 1500 });
     rockGroup = this.physics.add.staticGroup(); 
@@ -61,7 +64,8 @@ function create() {
     lake.setDepth(24);
 
     groundBase = this.add.tileSprite(sw / 2, floorY, sw, 256, 'ground_base');
-    groundBase.setOrigin(0.5, 0.2); 
+    // FIX: Setting origin to (0.5, 0) means the very top edge of the grass sits exactly on the floorY line
+    groundBase.setOrigin(0.5, 0); 
     groundBase.setDepth(25); 
     this.physics.add.existing(groundBase, true); 
 
@@ -87,11 +91,11 @@ function create() {
         lake.height += (targetHeight - lake.height) * 0.1; 
     });
 
+    // FIX: Upgraded Rock Collisions for better splashing!
     this.physics.add.collider(waterGroup, rockGroup, (drop, rock) => {
-        // 1. Give the water a chaotic horizontal splash when hitting a rock
+        // Chaotic horizontal splash
         drop.body.velocity.x += Phaser.Math.Between(-60, 60);
-        
-        // 2. Increase the mist chance from 20% to 60% for better ambiance
+        // 60% chance to spawn mist when hitting rocks
         if(Math.random() > 0.4) mistEmitter.explode(1, drop.x, drop.y);
     }, (drop, rock) => drop.depth === rock.depth);
 
@@ -103,7 +107,7 @@ function create() {
         drop.body.velocity.x += 15; 
     }, (drop, wind) => drop.depth === wind.depth);
 
-    const music = this.sound.add('bgm_chill', { loop: true, volume: 0.5 });
+    music = this.sound.add('bgm_chill', { loop: true, volume: 0.5 });
     let musicStarted = false;
     this.input.once('pointerdown', () => {
         if (!musicStarted) {
@@ -146,7 +150,7 @@ function create() {
     });
 
     this.scale.on('resize', (gameSize) => {
-    floorY = gameSize.height - 20;
+        floorY = gameSize.height - 90;
         groundBase.setPosition(gameSize.width / 2, floorY);
         groundBase.setSize(gameSize.width, 256);
         groundBase.body.updateFromGameObject(); 
@@ -177,7 +181,8 @@ function placeObject(x, y, isDragging = false, saveData = null) {
 
     if (type === 'water') {
         let color = liquid === 'water' ? 0x03a9f4 : (liquid === 'slime' ? 0x64dd17 : 0xff3d00);
-        let spawner = this.add.circle(x, y, 12, color, 0.2);
+        // FIX: Lowered opacity from 0.8 to 0.4 for a more transparent spawner
+        let spawner = this.add.circle(x, y, 12, color, 0.4);
         spawner.isSpawner = true;
         spawner.layer = layer;
         spawner.liquid = liquid; 
@@ -330,10 +335,19 @@ function updateUI() {
 function setupUI() {
     const scene = this; 
 
+    // FIX: Audio Toggle Logic
+    let isMusicMuted = false;
+    document.getElementById('audio-toggle').addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        isMusicMuted = !isMusicMuted;
+        if(music) music.setMute(isMusicMuted);
+        e.target.innerText = isMusicMuted ? "🔇 Music Off" : "🔊 Music On";
+    });
+
     document.querySelectorAll('.shop-btn').forEach(btn => {
         btn.addEventListener('pointerdown', (e) => {
             e.stopPropagation();
-            let unlockId = btn.getAttribute('data-unlock'); // FIX: targeted the button directly
+            let unlockId = btn.getAttribute('data-unlock');
             let cost = parseInt(btn.getAttribute('data-cost'));
             
             if (gameState.waterDrops >= cost && !gameState.unlocks[unlockId]) {
@@ -367,10 +381,10 @@ function setupUI() {
     toolBtns.forEach(btn => {
         btn.addEventListener('pointerdown', (e) => {
             e.stopPropagation();
-            if (btn.classList.contains('locked')) return; // FIX: targeted the button directly
+            if (btn.classList.contains('locked')) return; 
             toolBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active'); // FIX: targeted the button directly
-            gameState.currentTool = btn.getAttribute('data-tool'); // FIX: targeted the button directly
+            btn.classList.add('active'); 
+            gameState.currentTool = btn.getAttribute('data-tool'); 
         });
     });
 
