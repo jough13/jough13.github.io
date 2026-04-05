@@ -138,42 +138,73 @@ button:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px transpar
     width: 0%; height: 100%; background: #4592c4; transition: width 0.1s;
 }
 
-/* --- MOBILE PORTRAIT COMPATIBILITY --- */
+/* --- COMPACT MOBILE PORTRAIT UI (FIX) --- */
 @media (max-width: 700px) {
-    /* Shrink the left panel and pin it to the top left */
-    #ui-layer {
-        transform: scale(0.8);
-        transform-origin: top left;
-        top: 10px;
-        left: 10px;
-    }
-
-    /* Shrink the top toggles and pin them to the top right */
-    #top-right-controls {
-        transform: scale(0.8);
-        transform-origin: top right;
-        top: 10px;
-        right: 10px;
-    }
-
-    /* Shrink the shop and tuck it tightly right under the toggles */
-    #shop-layer {
-        transform: scale(0.8);
-        transform-origin: top right;
-        top: 50px; 
-        right: 10px;
-    }
-
-    /* Shrink the bottom toolbar and ensure it stays centered */
+    /* 1. Target all main UI panels and tighten up their overall box models */
+    #ui-layer, 
+    #top-right-controls, 
+    #shop-layer .panel, 
     #toolbar {
-        transform: scale(0.8);
-        transform-origin: bottom center;
-        bottom: 10px;
-        width: 95vw; /* Keeps it contained within the screen edges */
+        padding: 8px !important;         /* Slash padding in half */
+        border-width: 2px !important;   /* Thinner borders for a lighter look */
+        box-shadow: 4px 4px 0px var(--shadow-color) !important; /* Smaller shadows */
+        gap: 4px !important;            /* Tightest possible gaps inside the panels */
     }
 
-    /* Shrink the loading text so it doesn't overflow */
-    #loading-screen h1 {
-        font-size: 10px;
+    /* 2. Shrink all H2 titles and subtitles across the board */
+    h2, .h2 {
+        font-size: 14px !important;     /* Shrink title text significantly */
+        margin-bottom: 2px !important;
+    }
+
+    /* 3. Global reduction of button sizes within the panels */
+    #top-right-controls button, 
+    #toolbar button {
+        font-size: 12px !important;     /* Smaller button font */
+        padding: 5px 8px !important;    /* Smaller button padding */
+        border-width: 2px !important;   /* Thinner button border */
+    }
+
+    /* 4. SPECIFIC PANEL POSITIONING */
+
+    /* Score Panel (Top Left) - Pin it tightly to the top corner */
+    #ui-layer {
+        top: 5px;
+        left: 5px;
+    }
+    /* Shrink the score text and the water drop icon */
+    #score-display { font-size: 16px !important; }
+    #ui-layer img { width: 20px !important; height: 20px !important; }
+
+    /* Top Right Controls (Toggles) - Pin tight and remove fixed width */
+    #top-right-controls {
+        top: 5px;
+        right: 5px;
+        width: auto !important; /* Allow controls to flow naturally */
+        gap: 6px !important;
+    }
+
+    /* Shop Panel (Below Toggles) - Move closer to controls, remove fixed width */
+    #shop-layer {
+        top: 45px; /* Tucked right up against the toggles */
+        right: 5px;
+        width: auto !important; /* Let the content define the width */
+    }
+    /* Force shop icons to a consistent small size (48px is standard for "tiny" mobile inputs) */
+    #shop-layer input[type="image"] {
+        width: 48px !important;
+        height: 48px !important;
+        padding: 2px !important;
+        margin: 0 !important;
+    }
+    /* Reduce the gap on the input row grid */
+    .input-row { gap: 4px !important; }
+
+    /* Toolbar (Bottom) - Maximize width to fit all items, extra tight padding */
+    #toolbar {
+        bottom: 5px;
+        gap: 3px !important;     /* Absurdly tight gap to keep buttons on one line */
+        padding: 5px !important;
+        width: 98vw !important;  /* Ensure it stretches across the screen */
     }
 }
