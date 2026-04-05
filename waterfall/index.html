@@ -5,14 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Waterfall Sandbox</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Load Phaser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
 </head>
 <body class="light-mode">
 
     <button id="theme-toggle" aria-label="Toggle dark and light themes">Dark Mode</button>
 
-    <!-- Top Left UI: Controls & Save/Load -->
     <main id="ui-layer">
         <div class="panel">
             <h1>Waterfall Sandbox</h1>
@@ -40,7 +38,6 @@
         </div>
     </main>
 
-    <!-- Top Right UI: The Shop -->
     <div id="shop-layer">
         <div class="panel">
             <h2 style="margin: 0 0 15px 0; font-size: 12px; color: #ffb300;">Upgrades Shop</h2>
@@ -52,14 +49,12 @@
         </div>
     </div>
 
-    <!-- Bottom Toolbar -->
     <div id="toolbar">
         <button class="tool-btn" data-tool="move">🖐️ Move</button>
         <button class="tool-btn active" data-tool="water">💧 Spout</button>
         <button class="tool-btn" data-tool="rock">🪨 Rock</button>
         <button class="tool-btn" data-tool="tree">🌲 Tree</button>
         
-        <!-- Locked tools have a special class -->
         <button class="tool-btn locked" data-tool="bush" id="tool-bush">🌿 Bush</button>
         <button class="tool-btn locked" data-tool="bouncer" id="tool-bouncer">🍄 Bouncer</button>
         <button class="tool-btn locked" data-tool="wind" id="tool-wind">💨 Wind Right</button>
