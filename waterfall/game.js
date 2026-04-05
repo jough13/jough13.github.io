@@ -49,8 +49,8 @@ function create() {
     const sw = this.scale.width;
     const sh = this.scale.height;
     
-    // FIX: Lifted the floor 90px to sit perfectly above your bottom toolbar
-    floorY = sh - 90; 
+    // FIX 1: Unify the offset to 180 so it clears your bottom toolbar on load
+    floorY = sh - 180; 
 
     waterGroup = this.physics.add.group({ maxSize: 1500 });
     rockGroup = this.physics.add.staticGroup(); 
@@ -63,7 +63,10 @@ function create() {
     lake.setOrigin(0.5, 1); 
     lake.setDepth(24);
 
-    groundBase = this.add.tileSprite(sw / 2, floorY, sw, 256, 'ground_base');
+    // FIX 2: Dynamically grab the height of your cropped ground image
+    const groundHeight = this.textures.get('ground_base').get().height;
+
+    groundBase = this.add.tileSprite(sw / 2, floorY, sw, groundHeight, 'ground_base');
     // FIX: Setting origin to (0.5, 0) means the very top edge of the grass sits exactly on the floorY line
     groundBase.setOrigin(0.5, 0); 
     groundBase.setDepth(25); 
@@ -153,7 +156,10 @@ function create() {
         // Lifted here as well so it stays visible when resizing the window
         floorY = gameSize.height - 180;
         groundBase.setPosition(gameSize.width / 2, floorY);
-        groundBase.setSize(gameSize.width, 256);
+        
+        // FIX 3: Make sure the resize event also uses the dynamic groundHeight
+        groundBase.setSize(gameSize.width, groundHeight);
+        
         groundBase.body.updateFromGameObject(); 
         lake.setPosition(gameSize.width / 2, floorY);
         lake.width = gameSize.width;
