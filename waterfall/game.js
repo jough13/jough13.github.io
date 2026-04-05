@@ -49,18 +49,17 @@ function create() {
     const sh = this.scale.height;
     floorY = sh - 100; 
 
-    // 1. GROUPS
+    // GROUPS
     waterGroup = this.physics.add.group({ maxSize: 1500 });
     rockGroup = this.physics.add.staticGroup(); 
-    bouncerGroup = this.physics.add.staticGroup(); // Trampolines
-    windGroup = this.physics.add.staticGroup(); // Wind zones
+    bouncerGroup = this.physics.add.staticGroup(); 
+    windGroup = this.physics.add.staticGroup(); 
     decoGroup = this.add.group();
     spawnerGroup = this.add.group();
 
-    // 2. ENVIRONMENT
-    // Dynamic Lake (Grows as water collects)
+    // ENVIRONMENT
     lake = this.add.rectangle(sw / 2, floorY, sw, 0, 0x03a9f4, 0.4);
-    lake.setOrigin(0.5, 1); // Anchored to the bottom, scales UP
+    lake.setOrigin(0.5, 1); 
     lake.setDepth(24);
 
     groundBase = this.add.tileSprite(sw / 2, floorY, sw, 256, 'ground_base');
@@ -68,7 +67,6 @@ function create() {
     groundBase.setDepth(25); 
     this.physics.add.existing(groundBase, true); 
 
-    // Mist Particle Emitter (Used when water hits things)
     mistEmitter = this.add.particles(0, 0, 'water_sheet', {
         frame: [30, 31, 32], 
         scale: { start: 0.05, end: 0.1 }, 
@@ -79,40 +77,35 @@ function create() {
     });
     mistEmitter.setDepth(26);
 
-    // 3. COLLISIONS
-    this.physics.add.collider(waterGroup, groundBase, (drop, ground) => {
-        // Visuals: Spawn mist, return drop to pool
+    // COLLISIONS
+    // FIXED: Restored the safe object-checking logic to prevent the disableBody crash!
+    this.physics.add.collider(waterGroup, groundBase, (obj1, obj2) => {
+        let drop = (obj1 === groundBase) ? obj2 : obj1;
+        
         mistEmitter.explode(1, drop.x, floorY);
         drop.disableBody(true, true);
         
-        // Progression
         gameState.waterDrops++;
         updateUI();
 
-        // Juice: Grow the lake!
-        let targetHeight = Math.min(gameState.waterDrops / 20, 150); // Caps at 150px deep
-        lake.height += (targetHeight - lake.height) * 0.1; // Smooth tween effect
+        let targetHeight = Math.min(gameState.waterDrops / 20, 150); 
+        lake.height += (targetHeight - lake.height) * 0.1; 
     });
 
-    // Rock Collisions (Layer Based)
     this.physics.add.collider(waterGroup, rockGroup, (drop, rock) => {
-        // Tiny splash on rocks
         if(Math.random() > 0.8) mistEmitter.explode(1, drop.x, drop.y);
     }, (drop, rock) => drop.depth === rock.depth);
 
-    // Bouncer Collisions (Layer Based)
     this.physics.add.collider(waterGroup, bouncerGroup, (drop, bouncer) => {
-        // BOING! Force immense upward velocity
         drop.setVelocityY(-800);
     }, (drop, bouncer) => drop.depth === bouncer.depth);
 
-    // Wind Zone Overlap (Pushes water without bouncing it)
     this.physics.add.overlap(waterGroup, windGroup, (drop, wind) => {
-        drop.body.velocity.x += 15; // Push Right continuously 
+        drop.body.velocity.x += 15; 
     }, (drop, wind) => drop.depth === wind.depth);
 
 
-    // 4. INPUTS & DRAG
+    // INPUTS & DRAG
     this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
         if (gameState.currentTool !== 'move') return; 
         gameObject.x = dragX; gameObject.y = dragY;
@@ -120,8 +113,8 @@ function create() {
     });
 
     this.input.on('pointerdown', (pointer, currentlyOver) => {
-        if (pointer.y < 250 && pointer.x < 350) return; // Ignore Left UI
-        if (pointer.y < 350 && pointer.x > sw - 350) return; // Ignore Right Shop UI
+        if (pointer.y < 250 && pointer.x < 350) return; 
+        if (pointer.y < 350 && pointer.x > sw - 350) return; 
         if (pointer.y > floorY) return; 
 
         if (gameState.currentTool === 'move') {
@@ -156,7 +149,7 @@ function create() {
     });
 
     setupUI.call(this);
-    loadGame.call(this); // Try to load saved game on start!
+    loadGame.call(this); 
 }
 
 function placeObject(x, y, isDragging = false, saveData = null) {
@@ -170,7 +163,6 @@ function placeObject(x, y, isDragging = false, saveData = null) {
 
     if (isDragging && !['rock', 'wind'].includes(gameState.currentTool)) return; 
 
-    // If loading from save, use save data. Otherwise use current UI state.
     let type = saveData ? saveData.type : gameState.currentTool;
     let layer = saveData ? saveData.layer : gameState.currentLayer;
     let liquid = saveData ? saveData.liquid : gameState.currentLiquid;
@@ -197,19 +189,16 @@ function placeObject(x, y, isDragging = false, saveData = null) {
         rock.customType = 'rock';
     } 
     else if (type === 'bouncer') {
-        // Re-use a bush frame (mushroom) for bouncer, tinted pink
         let bouncer = bouncerGroup.create(x, y, 'deco_bush', 15);
         bouncer.setScale(scale || 0.2); 
-        bouncer.setTint(0xff66bb); // Bright pink!
+        bouncer.setTint(0xff66bb); 
         bouncer.setDepth(layer); 
         bouncer.refreshBody(); 
-        // Hitbox tweak so water bounces off the top
         bouncer.body.setCircle(bouncer.width*0.3, bouncer.width*0.2, bouncer.height*0.4);
         bouncer.setInteractive({ draggable: true }); 
         bouncer.customType = 'bouncer';
     }
     else if (type === 'wind') {
-        // Invisible rectangle that pushes water
         let wind = this.add.rectangle(x, y, 60, 60, 0xffffff, 0.1);
         this.physics.add.existing(wind, true);
         wind.setDepth(layer);
@@ -223,8 +212,6 @@ function placeObject(x, y, isDragging = false, saveData = null) {
         tree.setInteractive({ draggable: true }); 
         tree.customType = 'tree';
         decoGroup.add(tree);
-
-        // JUICE: Gentle Sway Animation
         this.tweens.add({ targets: tree, angle: { from: -2, to: 2 }, duration: Phaser.Math.Between(2000, 3000), yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
     else if (type === 'bush') {
@@ -234,8 +221,6 @@ function placeObject(x, y, isDragging = false, saveData = null) {
         bush.setInteractive({ draggable: true }); 
         bush.customType = 'bush';
         decoGroup.add(bush);
-
-        // JUICE: Gentle Sway Animation
         this.tweens.add({ targets: bush, scaleY: { from: bush.scaleY, to: bush.scaleY * 0.95 }, duration: Phaser.Math.Between(1000, 2000), yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
 }
@@ -245,15 +230,19 @@ function update() {
         let drop = waterGroup.get(spawner.x + Phaser.Math.Between(-5, 5), spawner.y); 
 
         if (drop) {
-            let props = LIQUID_PROPS[spawner.liquid]; // Get physics for this liquid
+            let props = LIQUID_PROPS[spawner.liquid]; 
+            
+            // Generate a random scale and save it directly to the object for stretching later
+            let randomScale = Phaser.Math.FloatBetween(0.03, 0.06);
+            
             drop.setActive(true).setVisible(true);
             drop.enableBody(true, drop.x, drop.y, true, true);
             
             drop.setTexture('water_sheet', Phaser.Math.Between(0, 17)); 
-            drop.setScale(Phaser.Math.FloatBetween(0.03, 0.06)); 
-            drop.setTint(gameState.isDarkMode ? props.tintDark : props.tintLight);
+            drop.setScale(randomScale); 
+            drop.baseScale = randomScale; // Saved here!
             
-            // Apply Liquid Physics
+            drop.setTint(gameState.isDarkMode ? props.tintDark : props.tintLight);
             drop.setBounce(props.bounce);
             drop.body.setGravityY(props.gravityY);
             drop.setVelocityX(Phaser.Math.Between(-10, 10));
@@ -263,8 +252,19 @@ function update() {
     });
 
     waterGroup.children.iterate((drop) => {
-        if (drop && drop.active && drop.y > floorY + 50) {
-            drop.disableBody(true, true);
+        if (drop && drop.active) {
+            
+            // FIXED: Restored the velocity-based stretching functionality!
+            const speedY = drop.body.velocity.y;
+            if (speedY > 0 && drop.baseScale) {
+                // The faster it falls, the more it stretches on the Y axis
+                const stretchScale = drop.baseScale + (speedY * 0.00015);
+                drop.setScale(drop.baseScale, Math.min(stretchScale, drop.baseScale * 3));
+            }
+
+            if (drop.y > floorY + 50) {
+                drop.disableBody(true, true);
+            }
         }
     });
 }
@@ -273,13 +273,12 @@ function update() {
 function saveGame() {
     let saveObj = { drops: gameState.waterDrops, unlocks: gameState.unlocks, objects: [] };
     
-    // Save Spawners
     spawnerGroup.getChildren().forEach(o => saveObj.objects.push({ type: 'water', x: o.x, y: o.y, layer: o.layer, liquid: o.liquid }));
-    // Save Rocks & Bouncers
+    
     [...rockGroup.getChildren(), ...bouncerGroup.getChildren(), ...windGroup.getChildren()].forEach(o => {
         saveObj.objects.push({ type: o.customType, x: o.x, y: o.y, layer: o.depth, scale: o.scaleX });
     });
-    // Save Flora
+    
     decoGroup.getChildren().forEach(o => {
         saveObj.objects.push({ type: o.customType, x: o.x, y: o.y, layer: o.depth, scale: o.scaleX, frame: o.frame.name });
     });
@@ -296,16 +295,13 @@ function loadGame() {
     gameState.waterDrops = parsed.drops || 0;
     gameState.unlocks = parsed.unlocks || gameState.unlocks;
 
-    // Clear board
     rockGroup.clear(true, true); bouncerGroup.clear(true, true); windGroup.clear(true, true);
     decoGroup.clear(true, true); spawnerGroup.clear(true, true);
 
-    // Rebuild board
     if (parsed.objects) {
         parsed.objects.forEach(obj => placeObject.call(this, obj.x, obj.y, false, obj));
     }
     
-    // Reset lake visuals
     lake.height = Math.min(gameState.waterDrops / 20, 150);
     updateUI();
 }
@@ -319,7 +315,6 @@ function updateUI() {
     document.getElementById('liquid-display').innerText = gameState.currentLiquid.toUpperCase();
     document.getElementById('liquid-display').style.color = liquidColor;
 
-    // Handle Shop Buttons & Tool Unlocking
     document.querySelectorAll('.shop-btn').forEach(btn => {
         let unlockId = btn.getAttribute('data-unlock');
         let cost = parseInt(btn.getAttribute('data-cost'));
@@ -328,22 +323,16 @@ function updateUI() {
         if (gameState.unlocks[unlockId]) {
             btn.innerText = "Purchased!";
             btn.disabled = true;
-            if(toolBtn) toolBtn.classList.remove('locked'); // Unhide tool
-            
-            // Special cases for liquids (no tool button, just updates currentLiquid logic)
-            if (unlockId === 'slime' || unlockId === 'lava') {
-                // We add them to a liquid cycle array later
-            }
+            if(toolBtn) toolBtn.classList.remove('locked'); 
         } else {
-            btn.disabled = gameState.waterDrops < cost; // Disable if poor
+            btn.disabled = gameState.waterDrops < cost; 
         }
     });
 }
 
 function setupUI() {
-    const scene = this; // Save reference to Phaser scene
+    const scene = this; 
 
-    // Shop Purchasing
     document.querySelectorAll('.shop-btn').forEach(btn => {
         btn.addEventListener('pointerdown', (e) => {
             e.stopPropagation();
@@ -354,7 +343,6 @@ function setupUI() {
                 gameState.waterDrops -= cost;
                 gameState.unlocks[unlockId] = true;
                 
-                // If they bought a liquid, auto-equip it!
                 if (unlockId === 'slime' || unlockId === 'lava') {
                     gameState.currentLiquid = unlockId;
                 }
@@ -363,7 +351,6 @@ function setupUI() {
         });
     });
 
-    // Liquid Toggling (Clicking the Liquid text cycles available liquids)
     document.getElementById('liquid-controls').addEventListener('pointerdown', (e) => {
         e.stopPropagation();
         let available = ['water'];
@@ -376,23 +363,20 @@ function setupUI() {
         updateUI();
     });
 
-    // Save & Load
     document.getElementById('save-btn').addEventListener('pointerdown', (e) => { e.stopPropagation(); saveGame(); });
     document.getElementById('load-btn').addEventListener('pointerdown', (e) => { e.stopPropagation(); loadGame.call(scene); });
 
-    // Toolbar Tools
     const toolBtns = document.querySelectorAll('.tool-btn');
     toolBtns.forEach(btn => {
         btn.addEventListener('pointerdown', (e) => {
             e.stopPropagation();
-            if (e.target.classList.contains('locked')) return; // Can't click locked tools
+            if (e.target.classList.contains('locked')) return; 
             toolBtns.forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             gameState.currentTool = e.target.getAttribute('data-tool');
         });
     });
 
-    // Basic UI Controls
     document.getElementById('layer-up').addEventListener('pointerdown', (e) => { e.stopPropagation(); if (gameState.currentLayer < 20) gameState.currentLayer++; updateUI(); });
     document.getElementById('layer-down').addEventListener('pointerdown', (e) => { e.stopPropagation(); if (gameState.currentLayer > 0) gameState.currentLayer--; updateUI(); });
     
