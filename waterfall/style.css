@@ -1,114 +1,89 @@
 /* style.css */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-/* Define Light Mode Variables (Grounded Spring) */
 :root {
-    --bg-gradient-top: #e0f2f1;    /* Light teal/mist */
+    --bg-gradient-top: #e0f2f1;    
     --bg-gradient-bottom: #b2dfdb;
-    --panel-bg: rgba(255, 255, 255, 0.85); /* Slightly less opaque */
+    --panel-bg: rgba(255, 255, 255, 0.9); 
     --text-color: #004d40;
-    --accent-color: #26a69a;
-    --btn-bg: #4db6ac;
-    --btn-hover: #80cbc4;
-    --border-color: rgba(0, 0, 0, 0.1);
+    --border-color: #004d40; 
+    --shadow-color: rgba(0, 77, 64, 0.3);
 }
 
-/* Define Dark Mode Variables (Glowing Cosmic Water) */
 .dark-mode {
     --bg-gradient-top: #1a1c2c;   
     --bg-gradient-bottom: #10111a;
-    --panel-bg: rgba(20, 20, 30, 0.85);
+    --panel-bg: rgba(20, 20, 30, 0.9);
     --text-color: #fff;
-    --accent-color: #4592c4;
-    --btn-bg: #29366f;
-    --btn-hover: #4592c4;
-    --border-color: rgba(255, 255, 255, 0.1);
+    --border-color: #4592c4; 
+    --shadow-color: rgba(0, 0, 0, 0.8);
 }
 
 body, html {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    /* Updated, richer gradient background */
+    margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
     background: linear-gradient(to bottom, var(--bg-gradient-top), var(--bg-gradient-bottom));
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Press Start 2P', monospace; 
     color: var(--text-color);
-    transition: background 0.4s ease; /* Smooth mode swap */
+    transition: background 0.4s ease; 
+    -webkit-font-smoothing: none; 
 }
 
-#game-canvas {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    z-index: 1;
-}
+canvas { position: absolute; top: 0; left: 0; z-index: 1; }
 
-#ui-layer {
-    position: absolute;
-    top: 20px; left: 20px;
-    z-index: 2;
-    pointer-events: none;
-}
+#ui-layer { position: absolute; top: 20px; left: 20px; z-index: 2; pointer-events: none; }
 
 .panel {
     background: var(--panel-bg);
     padding: 20px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    backdrop-filter: blur(8px); /* Modern frosted-glass effect */
+    border: 4px solid var(--border-color); 
+    box-shadow: 8px 8px 0px var(--shadow-color);
     pointer-events: auto;
-    transition: background 0.3s, color 0.3s;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    max-width: 300px;
 }
 
-h1 { margin: 0 0 10px 0; font-size: 26px; font-weight: 600; color: var(--accent-color); }
-p { margin: 0 0 20px 0; font-size: 18px; font-weight: bold; }
+h1 { margin: 0 0 15px 0; font-size: 14px; line-height: 1.4; }
+p { margin: 0; font-size: 10px; line-height: 1.6; }
 
-/* The Theme Toggle Button (Top Right) */
 #theme-toggle {
+    position: absolute; top: 20px; right: 20px; z-index: 3; pointer-events: auto;
+}
+
+/* --- TOOLBAR STYLING --- */
+#toolbar {
     position: absolute;
-    top: 20px; right: 20px;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%);
     z-index: 3;
-    pointer-events: auto;
+    display: flex; gap: 10px;
+    background: var(--panel-bg);
+    padding: 10px;
+    border: 4px solid var(--border-color);
+    box-shadow: 8px 8px 0px var(--shadow-color);
 }
 
 button {
-    background: var(--btn-bg);
-    color: var(--text-color);
-    border: none;
-    padding: 12px 20px;
-    border-radius: 6px;
-    font-size: 16px;
-    font-weight: 600;
+    background: #e0e0e0;
+    color: #333;
+    font-family: 'Press Start 2P', monospace; 
+    font-size: 10px;
+    padding: 12px 15px;
+    border: 3px solid #333;
+    box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
     cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
+    transition: all 0.1s;
 }
 
-button:hover { background: var(--btn-hover); transform: translateY(-1px); }
-button:active { transform: translateY(1px); }
-button:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; }
+button:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0px rgba(0,0,0,0.3); }
+button:active { transform: translate(4px, 4px); box-shadow: 0px 0px 0px transparent; }
 
-/* Version Info Styling */
-.version-info {
-    margin-top: 20px;
-    padding-top: 15px;
-    font-size: 12px;
-    font-weight: normal;
-    color: var(--text-color);
-    opacity: 0.6;
-    text-align: center;
-    border-top: 1px solid var(--border-color);
-}
-
-/* Noscript Warning */
-.noscript-warning {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.8);
+/* The selected tool gets a green highlight */
+.tool-btn.active {
+    background: #4caf50;
     color: white;
-    padding: 20px;
-    border-radius: 8px;
-    z-index: 9999;
+    transform: translate(2px, 2px); 
+    box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
 }
+
+/* Make dark mode buttons legible */
+.dark-mode button { background: #333; color: white; border-color: #555; }
+.dark-mode .tool-btn.active { background: #4592c4; }
