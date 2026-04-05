@@ -87,3 +87,28 @@ button {
 button:hover { background: var(--btn-hover); transform: translateY(-1px); }
 button:active { transform: translateY(1px); }
 button:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; }
+
+/* Version Info Styling */
+.version-info {
+    margin-top: 20px;
+    padding-top: 15px;
+    font-size: 12px;
+    font-weight: normal;
+    color: var(--text-color);
+    opacity: 0.6;
+    text-align: center;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Noscript Warning */
+.noscript-warning {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    z-index: 9999;
+}
