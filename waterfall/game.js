@@ -18,12 +18,11 @@ let gameState = {
     waterDrops: 0,
     currentTool: 'water', 
     currentLayer: 5, 
-    currentLiquid: 'water', // 'water', 'slime', 'lava'
+    currentLiquid: 'water', 
     isDarkMode: false,
     unlocks: { bush: false, bouncer: false, wind: false, slime: false, lava: false }
 };
 
-// Define Liquid Physics & Visuals
 const LIQUID_PROPS = {
     water: { tintLight: 0xffffff, tintDark: 0x88ccff, bounce: 0.4, gravityY: 600 },
     slime: { tintLight: 0x64dd17, tintDark: 0x00e676, bounce: 0.9, gravityY: 500 },
@@ -42,7 +41,6 @@ function preload() {
     this.load.image('deco_tree', 'assets/pine_tree.png');
     this.load.spritesheet('water_sheet', 'assets/water_drop.png', { frameWidth: 340, frameHeight: 340 });
     this.load.spritesheet('deco_bush', 'assets/bush_round_small.png', { frameWidth: 512, frameHeight: 512 });
-
     this.load.audio('bgm_chill', 'assets/Droplets_on_the_Bridge.mp3');
 }
 
@@ -51,7 +49,6 @@ function create() {
     const sh = this.scale.height;
     floorY = sh - 100; 
 
-    // GROUPS
     waterGroup = this.physics.add.group({ maxSize: 1500 });
     rockGroup = this.physics.add.staticGroup(); 
     bouncerGroup = this.physics.add.staticGroup(); 
@@ -59,7 +56,6 @@ function create() {
     decoGroup = this.add.group();
     spawnerGroup = this.add.group();
 
-    // ENVIRONMENT
     lake = this.add.rectangle(sw / 2, floorY, sw, 0, 0x03a9f4, 0.4);
     lake.setOrigin(0.5, 1); 
     lake.setDepth(24);
@@ -79,10 +75,8 @@ function create() {
     });
     mistEmitter.setDepth(26);
 
-    // COLLISIONS
     this.physics.add.collider(waterGroup, groundBase, (obj1, obj2) => {
         let drop = (obj1 === groundBase) ? obj2 : obj1;
-        
         mistEmitter.explode(1, drop.x, floorY);
         drop.disableBody(true, true);
         
@@ -97,7 +91,6 @@ function create() {
         if(Math.random() > 0.8) mistEmitter.explode(1, drop.x, drop.y);
     }, (drop, rock) => drop.depth === rock.depth);
 
-    // FIXED: Changed collider to overlap for smooth bouncing!
     this.physics.add.overlap(waterGroup, bouncerGroup, (drop, bouncer) => {
         drop.setVelocityY(-800);
     }, (drop, bouncer) => drop.depth === bouncer.depth);
@@ -106,14 +99,8 @@ function create() {
         drop.body.velocity.x += 15; 
     }, (drop, wind) => drop.depth === wind.depth);
 
-    // Audio Setup
-    // We add it to the scene, set it to loop, and set the volume to a chill 50%
     const music = this.sound.add('bgm_chill', { loop: true, volume: 0.5 });
-    
-    // We use a flag so we only try to play it once
     let musicStarted = false;
-
-    // We wait for the player's first click anywhere on the screen
     this.input.once('pointerdown', () => {
         if (!musicStarted) {
             music.play();
@@ -121,8 +108,6 @@ function create() {
         }
     });
 
-
-    // INPUTS & DRAG
     this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
         if (gameState.currentTool !== 'move') return; 
         gameObject.x = dragX; gameObject.y = dragY;
@@ -219,10 +204,7 @@ function placeObject(x, y, isDragging = false, saveData = null) {
         let wind = this.add.rectangle(x, y, 60, 60, 0xffffff, 0.1);
         this.physics.add.existing(wind, true);
         wind.setDepth(layer);
-        
-        // FIXED: Wind blocks can now be picked up and moved!
         wind.setInteractive({ draggable: true }); 
-        
         windGroup.add(wind);
         wind.customType = 'wind';
     }
@@ -252,16 +234,13 @@ function update() {
 
         if (drop) {
             let props = LIQUID_PROPS[spawner.liquid]; 
-            
             let randomScale = Phaser.Math.FloatBetween(0.03, 0.06);
             
             drop.setActive(true).setVisible(true);
             drop.enableBody(true, drop.x, drop.y, true, true);
-            
             drop.setTexture('water_sheet', Phaser.Math.Between(0, 17)); 
             drop.setScale(randomScale); 
             drop.baseScale = randomScale; 
-            
             drop.setTint(gameState.isDarkMode ? props.tintDark : props.tintLight);
             drop.setBounce(props.bounce);
             drop.body.setGravityY(props.gravityY);
@@ -273,16 +252,12 @@ function update() {
 
     waterGroup.children.iterate((drop) => {
         if (drop && drop.active) {
-            
             const speedY = drop.body.velocity.y;
             if (speedY > 0 && drop.baseScale) {
                 const stretchScale = drop.baseScale + (speedY * 0.00015);
                 drop.setScale(drop.baseScale, Math.min(stretchScale, drop.baseScale * 3));
             }
-
-            if (drop.y > floorY + 50) {
-                drop.disableBody(true, true);
-            }
+            if (drop.y > floorY + 50) drop.disableBody(true, true);
         }
     });
 }
@@ -354,8 +329,8 @@ function setupUI() {
     document.querySelectorAll('.shop-btn').forEach(btn => {
         btn.addEventListener('pointerdown', (e) => {
             e.stopPropagation();
-            let unlockId = e.target.getAttribute('data-unlock');
-            let cost = parseInt(e.target.getAttribute('data-cost'));
+            let unlockId = btn.getAttribute('data-unlock'); // FIX: targeted the button directly
+            let cost = parseInt(btn.getAttribute('data-cost'));
             
             if (gameState.waterDrops >= cost && !gameState.unlocks[unlockId]) {
                 gameState.waterDrops -= cost;
@@ -388,10 +363,10 @@ function setupUI() {
     toolBtns.forEach(btn => {
         btn.addEventListener('pointerdown', (e) => {
             e.stopPropagation();
-            if (e.target.classList.contains('locked')) return; 
+            if (btn.classList.contains('locked')) return; // FIX: targeted the button directly
             toolBtns.forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            gameState.currentTool = e.target.getAttribute('data-tool');
+            btn.classList.add('active'); // FIX: targeted the button directly
+            gameState.currentTool = btn.getAttribute('data-tool'); // FIX: targeted the button directly
         });
     });
 
