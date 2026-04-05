@@ -101,10 +101,11 @@ function create() {
 
     });
 
-    // FIX: Upgraded Rock Collisions for better splashing!
+    // Upgraded Rock Collisions for better splashing!
     this.physics.add.collider(waterGroup, rockGroup, (drop, rock) => {
-        // Chaotic horizontal splash
-        drop.body.velocity.x += Phaser.Math.Between(-60, 60);
+        // Set the velocity absolutely instead of adding to it (+=) so they don't launch sideways
+        drop.setVelocityX(Phaser.Math.Between(-60, 60));
+        
         // 60% chance to spawn mist when hitting rocks
         if(Math.random() > 0.4) mistEmitter.explode(1, drop.x, drop.y);
     }, (drop, rock) => drop.depth === rock.depth);
