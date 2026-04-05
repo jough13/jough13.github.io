@@ -78,7 +78,6 @@ function create() {
     mistEmitter.setDepth(26);
 
     // COLLISIONS
-    // FIXED: Restored the safe object-checking logic to prevent the disableBody crash!
     this.physics.add.collider(waterGroup, groundBase, (obj1, obj2) => {
         let drop = (obj1 === groundBase) ? obj2 : obj1;
         
@@ -96,7 +95,8 @@ function create() {
         if(Math.random() > 0.8) mistEmitter.explode(1, drop.x, drop.y);
     }, (drop, rock) => drop.depth === rock.depth);
 
-    this.physics.add.collider(waterGroup, bouncerGroup, (drop, bouncer) => {
+    // FIXED: Changed collider to overlap for smooth bouncing!
+    this.physics.add.overlap(waterGroup, bouncerGroup, (drop, bouncer) => {
         drop.setVelocityY(-800);
     }, (drop, bouncer) => drop.depth === bouncer.depth);
 
@@ -202,6 +202,10 @@ function placeObject(x, y, isDragging = false, saveData = null) {
         let wind = this.add.rectangle(x, y, 60, 60, 0xffffff, 0.1);
         this.physics.add.existing(wind, true);
         wind.setDepth(layer);
+        
+        // FIXED: Wind blocks can now be picked up and moved!
+        wind.setInteractive({ draggable: true }); 
+        
         windGroup.add(wind);
         wind.customType = 'wind';
     }
@@ -232,7 +236,6 @@ function update() {
         if (drop) {
             let props = LIQUID_PROPS[spawner.liquid]; 
             
-            // Generate a random scale and save it directly to the object for stretching later
             let randomScale = Phaser.Math.FloatBetween(0.03, 0.06);
             
             drop.setActive(true).setVisible(true);
@@ -240,7 +243,7 @@ function update() {
             
             drop.setTexture('water_sheet', Phaser.Math.Between(0, 17)); 
             drop.setScale(randomScale); 
-            drop.baseScale = randomScale; // Saved here!
+            drop.baseScale = randomScale; 
             
             drop.setTint(gameState.isDarkMode ? props.tintDark : props.tintLight);
             drop.setBounce(props.bounce);
@@ -254,10 +257,8 @@ function update() {
     waterGroup.children.iterate((drop) => {
         if (drop && drop.active) {
             
-            // FIXED: Restored the velocity-based stretching functionality!
             const speedY = drop.body.velocity.y;
             if (speedY > 0 && drop.baseScale) {
-                // The faster it falls, the more it stretches on the Y axis
                 const stretchScale = drop.baseScale + (speedY * 0.00015);
                 drop.setScale(drop.baseScale, Math.min(stretchScale, drop.baseScale * 3));
             }
