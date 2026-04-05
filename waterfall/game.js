@@ -168,20 +168,23 @@ function setupUI() {
     const layerDisplay = document.getElementById('layer-display');
     const toolBtns = document.querySelectorAll('.tool-btn');
 
-    // Layer Up/Down Logic
-    document.getElementById('layer-up').addEventListener('click', () => {
+    // FIXED: Changed to 'pointerdown' so the CSS transform doesn't break the click!
+    document.getElementById('layer-up').addEventListener('pointerdown', (e) => {
+        e.stopPropagation(); // Prevents drawing a rock under the UI
         if (gameState.currentLayer < 20) gameState.currentLayer++;
         updateUI();
     });
     
-    document.getElementById('layer-down').addEventListener('click', () => {
+    document.getElementById('layer-down').addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
         if (gameState.currentLayer > 0) gameState.currentLayer--;
         updateUI();
     });
 
     // Tool Selection
     toolBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('pointerdown', (e) => {
+            e.stopPropagation();
             toolBtns.forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             gameState.currentTool = e.target.getAttribute('data-tool');
@@ -189,14 +192,16 @@ function setupUI() {
     });
 
     // Clear Button
-    document.getElementById('clear-btn').addEventListener('click', () => {
+    document.getElementById('clear-btn').addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
         rockGroup.clear(true, true);
         decoGroup.clear(true, true);
         gameState.waterSpawners = [];
     });
 
     // Theme Toggle
-    document.getElementById('theme-toggle').addEventListener('click', () => {
+    document.getElementById('theme-toggle').addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
         gameState.isDarkMode = !gameState.isDarkMode;
         document.body.classList.toggle('dark-mode');
         document.body.classList.toggle('light-mode');
@@ -209,4 +214,7 @@ function setupUI() {
         currencyDisplay.innerText = `Water Drops: ${gameState.waterDrops}`;
         layerDisplay.innerText = gameState.currentLayer;
     };
+    
+    // Call it once to initialize the text correctly on page load!
+    updateUI(); 
 }
