@@ -37,6 +37,19 @@ let floorY = 0;
 let music; // Globally accessible for the toggle
 
 function preload() {
+    // Hook into Phaser's loading events to update our HTML bar
+    this.load.on('progress', (value) => {
+        const fill = document.getElementById('loading-bar-fill');
+        if (fill) fill.style.width = (value * 100) + '%';
+    });
+    
+    // When done, change the text and show the Start button
+    this.load.on('complete', () => {
+        document.getElementById('loading-text').innerText = 'Ready!';
+        document.getElementById('start-game-btn').style.display = 'block';
+    });
+
+    // Your existing asset loading
     this.load.image('cliff_rock', 'assets/cliff_face.png'); 
     this.load.image('ground_base', 'assets/ground_strip.png');
     this.load.image('deco_tree', 'assets/pine_tree.png');
@@ -111,13 +124,6 @@ function create() {
     }, (drop, wind) => drop.depth === wind.depth);
 
     music = this.sound.add('bgm_chill', { loop: true, volume: 0.5 });
-    let musicStarted = false;
-    this.input.once('pointerdown', () => {
-        if (!musicStarted) {
-            music.play();
-            musicStarted = true;
-        }
-    });
 
     this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
         if (gameState.currentTool !== 'move') return; 
@@ -343,7 +349,20 @@ function updateUI() {
 function setupUI() {
     const scene = this; 
 
-    // FIX: Audio Toggle Logic
+    document.getElementById('start-game-btn').addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        
+        // Fade out the loading screen, then remove it
+        document.getElementById('loading-screen').style.opacity = '0';
+        setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 500);
+        
+        // Start the music! 
+        if (!isMusicMuted && music) {
+            music.play();
+        }
+    });
+
+    // Audio Toggle Logic
     let isMusicMuted = false;
     document.getElementById('audio-toggle').addEventListener('pointerdown', (e) => {
         e.stopPropagation();
