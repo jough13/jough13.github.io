@@ -51,7 +51,10 @@ function create() {
 
     // PHYSICS COLLISIONS
     // Water hits floor -> resets
-    this.physics.add.collider(waterGroup, floor, (drop, f) => {
+    this.physics.add.collider(waterGroup, floor, (obj1, obj2) => {
+        // Safely determine which object is the water drop and which is the floor
+        let drop = (obj1 === floor) ? obj2 : obj1;
+        
         drop.disableBody(true, true);
         gameState.waterDrops++;
         updateUI();
