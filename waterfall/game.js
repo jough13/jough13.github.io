@@ -62,7 +62,7 @@ function create() {
     const sw = this.scale.width;
     const sh = this.scale.height;
     
-    // FIX 1: Unify the offset to 180 so it clears your bottom toolbar on load
+    // Unify the offset to 180 so it clears your bottom toolbar on load
     floorY = sh - 180; 
 
     waterGroup = this.physics.add.group({ maxSize: 1500 });
@@ -72,15 +72,11 @@ function create() {
     decoGroup = this.add.group();
     spawnerGroup = this.add.group();
 
-    lake = this.add.rectangle(sw / 2, floorY, sw, 0, 0x03a9f4, 0.4);
-    lake.setOrigin(0.5, 1); 
-    lake.setDepth(24);
-
-    // FIX 2: Dynamically grab the height of your cropped ground image
+    // Dynamically grab the height of your cropped ground image
     const groundHeight = this.textures.get('ground_base').get().height;
 
     groundBase = this.add.tileSprite(sw / 2, floorY, sw, groundHeight, 'ground_base');
-    // FIX: Setting origin to (0.5, 0) means the very top edge of the grass sits exactly on the floorY line
+    // Setting origin to (0.5, 0) means the very top edge of the grass sits exactly on the floorY line
     groundBase.setOrigin(0.5, 0); 
     groundBase.setDepth(25); 
     this.physics.add.existing(groundBase, true); 
@@ -103,8 +99,6 @@ function create() {
         gameState.waterDrops++;
         updateUI();
 
-        let targetHeight = Math.min(gameState.waterDrops / 20, 150); 
-        lake.height += (targetHeight - lake.height) * 0.1; 
     });
 
     // FIX: Upgraded Rock Collisions for better splashing!
@@ -168,8 +162,6 @@ function create() {
         groundBase.setSize(gameSize.width, groundHeight);
         
         groundBase.body.updateFromGameObject(); 
-        lake.setPosition(gameSize.width / 2, floorY);
-        lake.width = gameSize.width;
     });
 
     setupUI.call(this);
@@ -318,7 +310,6 @@ function loadGame() {
         parsed.objects.forEach(obj => placeObject.call(this, obj.x, obj.y, false, obj));
     }
     
-    lake.height = Math.min(gameState.waterDrops / 20, 150);
     updateUI();
 }
 
@@ -421,7 +412,7 @@ function setupUI() {
     document.getElementById('clear-btn').addEventListener('pointerdown', (e) => {
         e.stopPropagation();
         rockGroup.clear(true, true); decoGroup.clear(true, true); spawnerGroup.clear(true, true);
-        bouncerGroup.clear(true, true); windGroup.clear(true, true); lake.height = 0; gameState.waterDrops = 0;
+        bouncerGroup.clear(true, true); windGroup.clear(true, true); gameState.waterDrops = 0;
         updateUI();
     });
 
