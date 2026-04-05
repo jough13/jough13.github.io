@@ -47,7 +47,7 @@ function preload() {
 function create() {
     const sw = this.scale.width;
     const sh = this.scale.height;
-    floorY = sh - 100; 
+    floorY = sh - 20;
 
     waterGroup = this.physics.add.group({ maxSize: 1500 });
     rockGroup = this.physics.add.staticGroup(); 
@@ -88,7 +88,11 @@ function create() {
     });
 
     this.physics.add.collider(waterGroup, rockGroup, (drop, rock) => {
-        if(Math.random() > 0.8) mistEmitter.explode(1, drop.x, drop.y);
+        // 1. Give the water a chaotic horizontal splash when hitting a rock
+        drop.body.velocity.x += Phaser.Math.Between(-60, 60);
+        
+        // 2. Increase the mist chance from 20% to 60% for better ambiance
+        if(Math.random() > 0.4) mistEmitter.explode(1, drop.x, drop.y);
     }, (drop, rock) => drop.depth === rock.depth);
 
     this.physics.add.overlap(waterGroup, bouncerGroup, (drop, bouncer) => {
@@ -142,7 +146,7 @@ function create() {
     });
 
     this.scale.on('resize', (gameSize) => {
-        floorY = gameSize.height - 100;
+    floorY = gameSize.height - 20;
         groundBase.setPosition(gameSize.width / 2, floorY);
         groundBase.setSize(gameSize.width, 256);
         groundBase.body.updateFromGameObject(); 
@@ -173,7 +177,7 @@ function placeObject(x, y, isDragging = false, saveData = null) {
 
     if (type === 'water') {
         let color = liquid === 'water' ? 0x03a9f4 : (liquid === 'slime' ? 0x64dd17 : 0xff3d00);
-        let spawner = this.add.circle(x, y, 12, color, 0.8);
+        let spawner = this.add.circle(x, y, 12, color, 0.2);
         spawner.isSpawner = true;
         spawner.layer = layer;
         spawner.liquid = liquid; 
