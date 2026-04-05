@@ -126,6 +126,7 @@ function create() {
     });
 
     this.input.on('pointerdown', (pointer, currentlyOver) => {
+        // Prevent placing over the UI panels and below the floor
         if (pointer.y < 250 && pointer.x < 350) return; 
         if (pointer.y < 350 && pointer.x > sw - 350) return; 
         if (pointer.y > floorY) return; 
@@ -138,8 +139,8 @@ function create() {
             }
             return;
         }
-
-        if (currentlyOver.length > 0 && gameState.currentTool !== 'eraser') return;
+        
+        // Always attempt to place the object (or erase it) if we aren't using the move tool
         placeObject.call(this, pointer.x, pointer.y);
     });
 
