@@ -5,19 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Waterfall Sandbox</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Load Phaser -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
 </head>
 <body class="light-mode">
 
     <button id="theme-toggle" aria-label="Toggle dark and light themes">Dark Mode</button>
 
-    <!-- Top Left UI -->
+    <!-- Top Left UI: Controls & Save/Load -->
     <main id="ui-layer">
         <div class="panel">
             <h1>Waterfall Sandbox</h1>
-            <p id="currency-display">Water Drops: 0</p>
+            <p id="currency-display" style="color: var(--accent-color); font-size: 14px;">Drops: 0</p>
             
-            <!-- NEW: Layer Controls -->
             <div id="layer-controls">
                 <span>Layer: <span id="layer-display">5</span></span>
                 <div class="layer-btns">
@@ -25,11 +25,32 @@
                     <button id="layer-up">+</button>
                 </div>
             </div>
-            <p class="hint-text">Objects are drawn on this layer. Water only hits rocks on the SAME layer!</p>
             
-            <button id="clear-btn" style="margin-top: 15px; width: 100%; background: #e57373;">Clear All</button>
+            <div id="liquid-controls" style="margin-top: 15px; border-top: 2px dashed var(--border-color); padding-top: 10px;">
+                <span>Liquid: <span id="liquid-display" style="color: #4592c4;">Water</span></span>
+            </div>
+
+            <p class="hint-text">Objects are drawn on the current layer. Water only hits rocks on the SAME layer!</p>
+            
+            <div style="display: flex; gap: 5px; margin-top: 15px;">
+                <button id="save-btn" style="flex: 1; background: #4caf50; color: white;">Save</button>
+                <button id="load-btn" style="flex: 1; background: #ffb300; color: black;">Load</button>
+            </div>
+            <button id="clear-btn" style="margin-top: 5px; width: 100%; background: #e57373;">Clear All</button>
         </div>
     </main>
+
+    <!-- Top Right UI: The Shop -->
+    <div id="shop-layer">
+        <div class="panel">
+            <h2 style="margin: 0 0 15px 0; font-size: 12px; color: #ffb300;">Upgrades Shop</h2>
+            <button class="shop-btn" data-unlock="bush" data-cost="100">🌿 Bush (100)</button>
+            <button class="shop-btn" data-unlock="bouncer" data-cost="500">🍄 Bouncer (500)</button>
+            <button class="shop-btn" data-unlock="wind" data-cost="1000">💨 Wind (1000)</button>
+            <button class="shop-btn" data-unlock="slime" data-cost="2500">🧪 Slime (2500)</button>
+            <button class="shop-btn" data-unlock="lava" data-cost="5000">🌋 Lava (5000)</button>
+        </div>
+    </div>
 
     <!-- Bottom Toolbar -->
     <div id="toolbar">
@@ -37,7 +58,12 @@
         <button class="tool-btn active" data-tool="water">💧 Spout</button>
         <button class="tool-btn" data-tool="rock">🪨 Rock</button>
         <button class="tool-btn" data-tool="tree">🌲 Tree</button>
-        <button class="tool-btn" data-tool="bush">🌿 Bush</button>
+        
+        <!-- Locked tools have a special class -->
+        <button class="tool-btn locked" data-tool="bush" id="tool-bush">🌿 Bush</button>
+        <button class="tool-btn locked" data-tool="bouncer" id="tool-bouncer">🍄 Bouncer</button>
+        <button class="tool-btn locked" data-tool="wind" id="tool-wind">💨 Wind Right</button>
+        
         <button class="tool-btn" data-tool="eraser">❌ Eraser</button>
     </div>
 
