@@ -42,6 +42,8 @@ function preload() {
     this.load.image('deco_tree', 'assets/pine_tree.png');
     this.load.spritesheet('water_sheet', 'assets/water_drop.png', { frameWidth: 340, frameHeight: 340 });
     this.load.spritesheet('deco_bush', 'assets/bush_round_small.png', { frameWidth: 512, frameHeight: 512 });
+
+    this.load.audio('bgm_chill', 'assets/Droplets_on_the_Bridge.mp3');
 }
 
 function create() {
@@ -103,6 +105,21 @@ function create() {
     this.physics.add.overlap(waterGroup, windGroup, (drop, wind) => {
         drop.body.velocity.x += 15; 
     }, (drop, wind) => drop.depth === wind.depth);
+
+    // Audio Setup
+    // We add it to the scene, set it to loop, and set the volume to a chill 50%
+    const music = this.sound.add('bgm_chill', { loop: true, volume: 0.5 });
+    
+    // We use a flag so we only try to play it once
+    let musicStarted = false;
+
+    // We wait for the player's first click anywhere on the screen
+    this.input.once('pointerdown', () => {
+        if (!musicStarted) {
+            music.play();
+            musicStarted = true;
+        }
+    });
 
 
     // INPUTS & DRAG
