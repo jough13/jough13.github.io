@@ -170,7 +170,7 @@ function update(time, delta) {
 // --- 4. UI LOGIC ---
 function setupUI() {
     const currencyDisplay = document.getElementById('currency-display');
-    const panel = document.querySelector('.panel');
+    const panel = document.getElementById('upgrade-container');
     const themeToggle = document.getElementById('theme-toggle');
 
     Object.values(upgrades).forEach(upg => {
