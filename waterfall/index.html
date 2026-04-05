@@ -2,21 +2,35 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="A relaxing retro pixel-art waterfall simulator.">
     <title>Waterfall Simulator</title>
+    
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
 </head>
 <body class="light-mode">
 
-    <button id="theme-toggle">Switch to Dark Mode</button>
+    <button id="theme-toggle" aria-label="Toggle dark and light themes">Switch to Dark Mode</button>
 
-    <div id="ui-layer">
+    <main id="ui-layer">
         <div class="panel">
             <h1>Waterfall Simulator</h1>
             <p id="currency-display">Water Energy: 0</p>
+            
+            <div id="upgrade-container"></div>
+            
+            <div class="version-info">
+                v0.2.0 | Last updated: April 5, 2026
             </div>
-    </div>
+        </div>
+    </main>
+
+    <noscript>
+        <div class="noscript-warning">
+            Please enable JavaScript to play the Waterfall Simulator.
+        </div>
+    </noscript>
 
     <script src="game.js"></script>
 </body>
