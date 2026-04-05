@@ -65,7 +65,7 @@ function create() {
     // Unify the offset to 180 so it clears your bottom toolbar on load
     floorY = sh - 180; 
 
-    waterGroup = this.physics.add.group({ maxSize: 1500 });
+    waterGroup = this.physics.add.group({ maxSize: 800 });
     rockGroup = this.physics.add.staticGroup(); 
     bouncerGroup = this.physics.add.staticGroup(); 
     windGroup = this.physics.add.staticGroup(); 
@@ -93,7 +93,12 @@ function create() {
 
     this.physics.add.collider(waterGroup, groundBase, (obj1, obj2) => {
         let drop = (obj1 === groundBase) ? obj2 : obj1;
-        mistEmitter.explode(1, drop.x, floorY);
+        
+        // QUICK OPTIMIZATION: Only spawn ground mist 30% of the time
+        if (Math.random() > 0.7) {
+            mistEmitter.explode(1, drop.x, floorY);
+        }
+        
         drop.disableBody(true, true);
         
         gameState.waterDrops++;
@@ -247,6 +252,8 @@ function placeObject(x, y, isDragging = false, saveData = null) {
 
 function update() {
     spawnerGroup.getChildren().forEach(spawner => {
+        // QUICK OPTIMIZATION: Only spawn a drop ~25% of the time to save processing power
+        if (Math.random() > 0.25) return;
         let drop = waterGroup.get(spawner.x + Phaser.Math.Between(-5, 5), spawner.y); 
 
         if (drop) {
