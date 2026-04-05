@@ -150,7 +150,8 @@ function create() {
     });
 
     this.scale.on('resize', (gameSize) => {
-        floorY = gameSize.height - 90;
+        // Lifted here as well so it stays visible when resizing the window
+        floorY = gameSize.height - 180;
         groundBase.setPosition(gameSize.width / 2, floorY);
         groundBase.setSize(gameSize.width, 256);
         groundBase.body.updateFromGameObject(); 
