@@ -374,6 +374,8 @@ function resolveUniversalEncounter(encounterId, choiceIndex) {
 if (typeof GameBus !== 'undefined') {
     
     GameBus.on('TICK_PROCESSED', (data) => {
+
+        const { isMovement } = data;
         
         // --- A. GATHER LOCAL DATA ONCE ---
         const loc = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
