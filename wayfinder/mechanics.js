@@ -7,6 +7,41 @@ const PAYDAY_INTERVAL = 30.0; // Pay crew every 30 Stardates
 const COST_PER_CREW = 250;    // 250c per crew member
 
 // ==========================================
+// --- UNIFIED ENTITY MANAGER ---
+// ==========================================
+
+const EntityManager = {
+    entities: [],
+    
+    // Add a new entity to the world
+    add: function(entity) {
+        if (!entity.id) entity.id = "ENT_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+        this.entities.push(entity);
+        return entity;
+    },
+    
+    // Remove an entity by its unique ID
+    remove: function(id) {
+        this.entities = this.entities.filter(e => e.id !== id);
+    },
+    
+    // Wipe everything (used on player death or loading a save)
+    clear: function() {
+        this.entities = [];
+    },
+    
+    // Get all entities that share a specific tag (e.g., 'isHostile', 'isRenderable')
+    getWithTag: function(tag) {
+        return this.entities.filter(e => e[tag] === true);
+    },
+
+    // Get an entity at a specific coordinate
+    getAt: function(x, y) {
+        return this.entities.filter(e => e.x === x && e.y === y);
+    }
+};
+
+// ==========================================
 // --- 1. EVENT FUNCTIONS ---
 // ==========================================
 
@@ -170,7 +205,6 @@ function resolveUniversalEncounter(encounterId, choiceIndex) {
         if (typeof render === 'function') render();
     }
 }
-
 
 // ==========================================
 // --- 2. MASTER TICK LISTENER ---
