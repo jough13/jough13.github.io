@@ -519,6 +519,7 @@ function dumpAllContraband() {
 function scanNPCCargo(npcId) {
     const npc = EntityManager.entities.find(e => e.id === npcId);
     if (!npc) return;
+    
     // 1. Check if the player has the required gear/perk to pierce civilian shields
     const hasPerk = typeof playerPerks !== 'undefined' && playerPerks.has && playerPerks.has('LONG_RANGE_SENSORS');
     const hasScanner = playerShip && playerShip.components && playerShip.components.scanner === 'SCANNER_NEXSTAR_4SE';
@@ -530,7 +531,6 @@ function scanNPCCargo(npcId) {
         return;
     }
 
-    const npc = activeNPCs[index];
     const resultsContainer = document.getElementById('tacticalScanResults');
     
     if (typeof soundManager !== 'undefined') soundManager.playScan();
