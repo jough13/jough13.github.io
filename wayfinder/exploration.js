@@ -2050,3 +2050,78 @@ function resolveUSSEncounter() {
         }
     }
 }
+
+// ==========================================
+// --- DERELICT VESSEL UI & HELPERS ---
+// ==========================================
+
+function openDerelictView() {
+    if (typeof openGenericModal === 'function') {
+        openGenericModal("DERELICT VESSEL");
+    }
+    
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    const listEl = document.getElementById('genericModalList');
+    
+    // Hide list pane for a focused, single-pane view
+    if (listEl) listEl.innerHTML = ''; 
+    
+    const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+    const isLooted = tile && (tile.looted || tile.studied);
+
+    const desc = isLooted 
+        ? "This vessel has been completely stripped of useful salvage. Only the ghosts of its former crew remain." 
+        : "A ruined ship drifts aimlessly in the void. Life support is offline, and the hull is heavily scarred by plasma fire. Potential salvage detected.";
+
+    if (detailEl) {
+        detailEl.innerHTML = `
+            <div style="text-align:center; padding: 20px;">
+                <div style="font-size:60px; filter: drop-shadow(0 0 15px #88AACC); margin-bottom:15px;">🚀</div>
+                <h3 style="color:#88AACC; margin-bottom:15px; letter-spacing: 2px;">UNKNOWN WRECKAGE</h3>
+                <div style="background:rgba(0,0,0,0.5); border:1px solid var(--border-color); padding:15px; border-radius:4px; text-align:left;">
+                    <p style="color:var(--text-color); font-size:13px; line-height:1.6; margin:0; font-style:italic;">
+                        "${desc}"
+                    </p>
+                </div>
+                <div id="derelictInfoBar" style="margin-top:15px; font-weight:bold; font-size:12px;"></div>
+            </div>
+        `;
+    }
+
+    if (actionsEl) {
+        if (isLooted) {
+            actionsEl.innerHTML = `
+                <button class="action-button full-width-btn" onclick="closeDerelictView()">LEAVE WRECKAGE</button>
+            `;
+        } else {
+            actionsEl.innerHTML = `
+                <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="handleDerelictAction('SCAN')">SCAN DATABANKS (+XP)</button>
+                <button class="action-button" style="border-color:var(--warning); color:var(--warning);" onclick="handleDerelictAction('SALVAGE')">SALVAGE SCRAP (Risk Hull)</button>
+                <button class="action-button danger-btn" onclick="handleDerelictAction('BREACH')">BREACH AIRLOCK (Boarding Minigame)</button>
+                <button class="action-button full-width-btn" onclick="closeDerelictView()" style="margin-top: 10px;">DEPART</button>
+            `;
+        }
+    }
+}
+
+function closeDerelictView() {
+    if (typeof closeGenericModal === 'function') closeGenericModal();
+}
+
+function logDerelict(msg, type) {
+    let color = "var(--text-color)";
+    if (type === "good") color = "var(--success)";
+    if (type === "bad") color = "var(--danger)";
+    
+    // 1. Attempt to inject the message into the modal if it's open
+    const infoBar = document.getElementById('derelictInfoBar');
+    if (infoBar) {
+        infoBar.innerHTML = `<span style="color:${color}; animation: fadeIn 0.3s;">${msg}</span>`;
+    }
+    
+    // 2. Push to the main game log
+    if (typeof logMessage === 'function') {
+        logMessage(`<span style="color:${color}">[ DERELICT ] ${msg}</span>`);
+    }
+}
