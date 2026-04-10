@@ -1975,7 +1975,7 @@ function handleSkirmishAction(index, action) {
             logMsg = `<span style="color:var(--danger); font-weight:bold;">[ WARZONE ]</span> Hack failed! We drew direct Concord counter-battery fire! Took ${dmg} hull damage!`;
             if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
             if (playerHull <= 0) {
-                closeModalAndAutoSaveGame();
+                closeGenericModal();
                 if (typeof triggerGameOver === 'function') triggerGameOver("Obliterated by an Aegis Cruiser counter-battery");
                 return;
             }
@@ -2008,7 +2008,7 @@ function handleSkirmishAction(index, action) {
         logMsg = `<span style="color:var(--danger); font-weight:bold;">[ WARZONE ]</span> Coordinated ramming complete! Hull integrity compromised! (+8 Advantage, -${dmg} Hull)`;
         if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
         if (playerHull <= 0) {
-            closeModalAndAutoSaveGame();
+            closeGenericModal();
             if (typeof triggerGameOver === 'function') triggerGameOver("Killed coordinating a K'tharr Ramming Vector");
             return;
         }
@@ -2039,7 +2039,7 @@ function handleSkirmishAction(index, action) {
             logMsg = `<span style="color:var(--danger); font-weight:bold;">[ SCAVENGE ]</span> Eruption! Built-up stray fire built up risk and reactor ignited simultaneously! Took ${finalDmg} hull damage!`;
             if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
             if (playerHull <= 0) {
-                closeModalAndAutoSaveGame();
+                closeGenericModal();
                 if (typeof triggerGameOver === 'function') triggerGameOver("Obliterated in a Warzone Scavenging Critical Failure");
                 return;
             }
