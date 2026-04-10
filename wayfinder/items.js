@@ -123,6 +123,10 @@ const COMMODITIES = {
         basePrice: 180,
         description: "Super-cooled conductive gel used in advanced computing and life-support cryo-pods."
     },
+    WATER: { name: "Purified Water", basePrice: 15, description: "Essential for hydro-farms and organic life." },
+    WEAPONS: { name: "Munitions", basePrice: 200, description: "Standard-issue armaments and munitions." },
+    ILLEGAL_ORGANS: { name: "Black Market Organs", basePrice: 800, illegal: true, description: "Highly illegal biological harvest." },
+    AI_CORE: { name: "A.I. Core", basePrice: 1500, description: "A heavy processing unit required for advanced automation." },
 
     // ==========================================
     // --- INDUSTRIAL & TECH EQUIPMENT ---
