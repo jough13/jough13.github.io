@@ -1145,10 +1145,10 @@ function purchaseTroops(itemId, cost) {
     playerCredits -= cost;
 
     if (itemId === 'MERCENARY_PLATOON') {
-        GameState.ship.forces.marines += 10;
+        playerCargo['MERCENARY_PLATOON'] = (playerCargo['MERCENARY_PLATOON'] || 0) + 1;
         logMessage(`<span style="color:var(--success)">[ BARRACKS ] 10 Marines boarded the vessel.</span>`);
     } else if (itemId === 'ASSAULT_MECH') {
-        GameState.ship.forces.heavyMechs += 1;
+        playerCargo['ASSAULT_MECH'] = (playerCargo['ASSAULT_MECH'] || 0) + 1;
         logMessage(`<span style="color:var(--warning)">[ BARRACKS ] Goliath Assault Mech loaded into the cargo bay.</span>`);
     }
 
