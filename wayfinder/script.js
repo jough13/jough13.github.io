@@ -2763,160 +2763,62 @@ function renderGalacticMap() {
         }
     });
 
-    // --- DRAW DISTRESS CALLS ---
-    activeDistressCalls.forEach(ev => {
-        const screenX = (ev.x - camX) * TILE_SIZE + TILE_SIZE / 2;
-        const screenY = (ev.y - camY) * TILE_SIZE + TILE_SIZE / 2;
-        
-        // Only draw if it's currently on-screen
-        if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
-            ctx.save();
-            
-            // Make it flash rapidly to grab attention!
-            const pulse = (Math.sin(Date.now() / 150) + 1) / 2;
-            
-            ctx.fillStyle = `rgba(255, 170, 0, ${0.4 + (pulse * 0.6)})`; // Warning Orange
-            
-            if (useHighGraphics && !isLightMode) { 
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = '#FFAA00';
-            }
-            
-            ctx.font = `bold ${TILE_SIZE * 1.2}px 'Orbitron', monospace`;
-            ctx.fillText("?", screenX, screenY);
-            
-            // Optional: Draw a tiny timer bar above it so the player knows it's urgent
-            ctx.fillStyle = '#FFAA00';
-            const barWidth = (ev.turnsRemaining / 30) * TILE_SIZE;
-            ctx.fillRect(screenX - (TILE_SIZE/2), screenY - (TILE_SIZE/2) - 4, barWidth, 2);
-            
-            ctx.restore();
-        }
-    });
+    // --- 6. DRAW UNIFIED ENTITIES (LAYER 2) ---
+    // Build a unified render list from Native ECS and Legacy Arrays
+    let renderList = [...EntityManager.entities]; 
+    
+    if (typeof activeEnemies !== 'undefined') activeEnemies.forEach(e => renderList.push({ ...e, char: e.char || 'V', color: e.color || '#FF5555', hasSensorCone: !e.isProbe }));
+    if (typeof activeNPCs !== 'undefined') activeNPCs.forEach(e => renderList.push({ ...e, hasSensorCone: true }));
+    if (typeof activeComets !== 'undefined') activeComets.forEach(e => renderList.push({ ...e, char: '❄️', color: '#00FFFF', glowColor: '#00FFFF', pulseSpeed: 400 }));
+    if (typeof activePlayerDrones !== 'undefined') activePlayerDrones.forEach(e => renderList.push({ ...e, char: e.state === 'MINING' ? '⛏' : 'd', color: '#00FF00', glowColor: '#00FF00', fontSize: 0.7 }));
+    if (typeof activeDistressCalls !== 'undefined') activeDistressCalls.forEach(e => renderList.push({ ...e, char: '?', color: '#FFAA00', glowColor: '#FFAA00', pulseSpeed: 150, showTimerBar: true, timerMax: 60, timerCurrent: e.turnsRemaining }));
+    if (typeof activeSkirmishes !== 'undefined') activeSkirmishes.forEach(e => renderList.push({ ...e, char: '⚔️', color: 'rgba(255, 100, 0, 0.8)', glowColor: '#FF4400', pulseSpeed: 200, fontSize: 1.2 }));
+    if (typeof activeProbes !== 'undefined') activeProbes.forEach(e => renderList.push({ ...e, char: '📡', color: '#00FF00', glowColor: '#00FF00', pulseSpeed: 1000 }));
 
-    // --- DRAW COMETS ---
-    activeComets.forEach(comet => {
-        const screenX = (comet.x - camX) * TILE_SIZE + TILE_SIZE / 2;
-        const screenY = (comet.y - camY) * TILE_SIZE + TILE_SIZE / 2;
+    // This draws EVERYTHING using the new advanced parameters!
+    renderList.forEach(entity => {
+        const screenX = (entity.x - camX) * TILE_SIZE + TILE_SIZE / 2;
+        const screenY = (entity.y - camY) * TILE_SIZE + TILE_SIZE / 2;
         
         if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
             ctx.save();
-            if (useHighGraphics && !isLightMode) { 
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = '#00FFFF';
-            }
-            // Adapts core color to Dark Teal in Light Mode
-            ctx.beginPath();
-            ctx.arc(screenX, screenY, TILE_SIZE * 0.4, 0, Math.PI * 2);
-            ctx.fillStyle = isLightMode ? '#007777' : '#FFFFFF'; 
-            ctx.fill();
             
-            // Adapts halo color to Dark Teal in Light Mode
-            ctx.beginPath();
-            ctx.arc(screenX, screenY, TILE_SIZE * 0.6, 0, Math.PI * 2);
-            ctx.fillStyle = isLightMode ? 'rgba(0, 119, 119, 0.4)' : 'rgba(0, 255, 255, 0.4)';
-            ctx.fill();
-            ctx.restore();
-        }
-    });
-
-    // --- DRAW ACTIVE WARZONES ---
-    if (typeof activeSkirmishes !== 'undefined') {
-        activeSkirmishes.forEach(sk => {
-            const screenX = (sk.x - camX) * TILE_SIZE + TILE_SIZE / 2;
-            const screenY = (sk.y - camY) * TILE_SIZE + TILE_SIZE / 2;
-            
-            if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
-                ctx.save();
-                const pulse = Math.abs(Math.sin(Date.now() / 200)); // Flashes rapidly
-                ctx.fillStyle = `rgba(255, 100, 0, ${0.6 + pulse * 0.4})`;
-                ctx.font = `bold ${TILE_SIZE * 1.2}px 'Orbitron', monospace`;
-                if (useHighGraphics && !isLightMode) { 
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = '#FF4400';
+            // 1. Draw Auras / Sensor Cones / Glows
+            if (entity.glowColor) {
+                const pulse = entity.pulseSpeed ? (Math.sin(Date.now() / entity.pulseSpeed) + 1) / 2 : 1;
+                if (useHighGraphics && !isLightMode) {
+                    ctx.shadowBlur = (entity.glowRadius || 15) + (pulse * 5);
+                    ctx.shadowColor = entity.glowColor;
                 }
-                ctx.fillText("⚔️", screenX, screenY);
-                ctx.restore();
-            }
-        });
-    }
-
-    // --- DRAW PLAYER DRONES ---
-    activePlayerDrones.forEach(drone => {
-        const screenX = (drone.x - camX) * TILE_SIZE + TILE_SIZE / 2;
-        const screenY = (drone.y - camY) * TILE_SIZE + TILE_SIZE / 2;
-        
-        if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
-            ctx.save();
-            ctx.fillStyle = '#00FF00'; // Friendly bright green!
-            ctx.font = `bold ${TILE_SIZE * 0.7}px 'Orbitron', monospace`;
-            if (useHighGraphics && !isLightMode) { 
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = '#00FF00';
-            }
-            
-            let icon = 'd'; // Standard drone icon
-            if (drone.state === 'MINING') icon = '⛏'; // Swaps to pickaxe when working!
-            
-            ctx.fillText(icon, screenX, screenY);
-            ctx.restore();
-        }
-    });
-
-    // Draw Enemies (AND THEIR SENSOR CONES)
-    activeEnemies.forEach(enemy => {
-        const screenX = (enemy.x - camX) * TILE_SIZE + TILE_SIZE / 2;
-        const screenY = (enemy.y - camY) * TILE_SIZE + TILE_SIZE / 2;
-        if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
-            
-            // 🚨 NEW: Draw Enemy Sensor Cone
-            if (useHighGraphics && !isLightMode) {
-                ctx.beginPath();
-                ctx.arc(screenX, screenY, TILE_SIZE * 3.5, 0, Math.PI * 2);
-                ctx.fillStyle = enemy.color + '11'; // Add heavy transparency
-                ctx.fill();
-                ctx.strokeStyle = enemy.color + '44'; 
-                ctx.stroke();
-            }
-
-            ctx.fillStyle = enemy.color || '#FF5555'; 
-            ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`; 
-            const charToDraw = enemy.char || PIRATE_CHAR_VAL;
-            ctx.fillText(charToDraw, screenX, screenY);
-        }
-    });
-
-    // Draw Ambient Traffic (NPCs)
-    if (typeof activeNPCs !== 'undefined') {
-        activeNPCs.forEach(npc => {
-            const screenX = (npc.x - camX) * TILE_SIZE + TILE_SIZE / 2;
-            const screenY = (npc.y - camY) * TILE_SIZE + TILE_SIZE / 2;
-            if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
-                ctx.save();
                 
-                // 🚨 NEW: Draw Concord Patrol Sensor Cone
-                if (useHighGraphics && !isLightMode && (npc.faction === 'CONCORD' || npc.combatProfile === 'CONCORD_PATROL')) {
+                if (entity.hasSensorCone && useHighGraphics && !isLightMode) {
                     ctx.beginPath();
                     ctx.arc(screenX, screenY, TILE_SIZE * 3.5, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(0, 170, 255, 0.05)';
+                    ctx.fillStyle = entity.color + '11'; 
                     ctx.fill();
-                    ctx.strokeStyle = 'rgba(0, 170, 255, 0.2)'; 
+                    ctx.strokeStyle = entity.color + '44'; 
                     ctx.stroke();
                 }
-
-                ctx.fillStyle = npc.color; 
-                if (useHighGraphics && !isLightMode) { 
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = npc.color;
-                }
-                ctx.font = `bold ${TILE_SIZE * 0.9}px 'Orbitron', monospace`;
-                ctx.fillText(npc.char, screenX, screenY);
-                ctx.restore();
             }
-        });
-    }
 
-// Draw Player (GHOST MODE)
+            // 2. Draw the Entity Character
+            ctx.fillStyle = entity.color || '#FFFFFF';
+            const fontSize = entity.fontSize ? (TILE_SIZE * entity.fontSize) : TILE_SIZE;
+            ctx.font = `bold ${fontSize}px 'Orbitron', monospace`;
+            ctx.fillText(entity.char || '?', screenX, screenY);
+            
+            // 3. Draw UI Bars (e.g., Distress Call Timers)
+            if (entity.showTimerBar && entity.timerMax && entity.timerCurrent) {
+                ctx.fillStyle = entity.color;
+                const barWidth = (entity.timerCurrent / entity.timerMax) * TILE_SIZE;
+                ctx.fillRect(screenX - (TILE_SIZE/2), screenY - (TILE_SIZE/2) - 4, barWidth, 2);
+            }
+
+            ctx.restore();
+        }
+    });
+
+    // Draw Player (GHOST MODE)
     if (currentCombatContext) {
         ctx.fillStyle = '#FF5555';
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
