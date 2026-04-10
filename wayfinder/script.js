@@ -3976,35 +3976,7 @@ function handleInteraction() {
                 availableActions.push({ 
                     label: `Fuel Scoop (${starData.scoopYield} Fuel)`, 
                     key: 'h', 
-                    onclick: () => {
-                        if (starData.class === "O" || starData.class === "B") {
-                            const util = COMPONENTS_DATABASE[playerShip.components.utility || "UTIL_NONE"];
-                            
-                            // 🚨 BUG FIX: Safely check for the perk whether it's a Set or a legacy Array!
-                            const hasRadPerk = typeof playerPerks !== 'undefined' && 
-                                ((playerPerks.has && playerPerks.has('HEALTH_PHYSICIST')) || 
-                                 (playerPerks.includes && playerPerks.includes('HEALTH_PHYSICIST')));
-                            
-                            if ((!util || !util.radImmunity) && !hasRadPerk) {
-                                playerHull -= 20;
-                                if (typeof triggerHaptic === 'function') triggerHaptic(200);
-                                logMessage("<span style='color:var(--danger);'>Radiation shielding breached! Hull integrity compromised while scooping.</span>");
-                            } else if (hasRadPerk && (!util || !util.radImmunity)) {
-                                logMessage("<span style='color:var(--success);'>Radiological protocols active. Radiation bypassed safely.</span>");
-                            }
-                        }
-                        if (playerFuel < MAX_FUEL) {
-                            playerFuel = Math.min(MAX_FUEL, playerFuel + starData.scoopYield);
-                            if (typeof showToast === 'function') showToast(`SCOOPED +${starData.scoopYield} HYDROGEN`, "info");
-                            logMessage(`Successfully harvested ${starData.scoopYield} units of coronal plasma.`);
-                            if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
-                            
-                            // Use the master tick engine so colonies produce goods and NPCs move!
-                            if (typeof processGameTick === 'function') processGameTick(1.0, false);
-                        } else {
-                            if (typeof showToast === 'function') showToast("TANKS FULL", "warning");
-                        }
-                    } 
+                    onclick: scoopHydrogen
                 });
                 
                 unlockLoreEntry("PHENOMENON_STAR");
