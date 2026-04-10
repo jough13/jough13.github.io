@@ -1028,16 +1028,6 @@ function processArenaBet(winChance, odds, betAmount) {
 }
 
 // ==========================================
-// --- CREW RECRUITMENT SYSTEM ---
-// ==========================================
-
-// Global helper so your Combat and Trade engines can instantly detect your crew's perks!
-window.hasCrewPerk = function(perkId) {
-    if (!window.playerCrew) return false;
-    return window.playerCrew.some(crew => crew.perk === perkId);
-};
-
-// ==========================================
 // --- MARINE BARRACKS (GROUND FORCES) ---
 // ==========================================
 
