@@ -987,6 +987,8 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                     const numMunitions = colony.buildings['MUNITIONS_PLANT'] || 0;
                     const numVehicleBays = colony.buildings['HEAVY_VEHICLE_BAY'] || 0;
 
+                    const numFactories = colony.buildings['AUTOMATED_FACTORY'] || 0;
+
                     const numScrapYards = colony.buildings['SCRAP_YARD'] || 0;
                     const numRecyclers = colony.buildings['RECYCLING_PLANT'] || 0;
                     const numOreCrushers = colony.buildings['ORE_CRUSHER'] || 0;
