@@ -9,7 +9,7 @@ const COLONY_BUILDINGS = {
     // --- TIER 1: OUTPOST ---
     "HAB_BLOCK": { 
         name: "Habitation Block", tier: 1, unique: false,
-        cost: { "REFINED_ALLOYS": 15, "TECH_PARTS": 2 }, 
+        cost: { "REFINED_ALLOY": 15, "TECH_PARTS": 2 }, 
         upkeep: 10, time: 8, effects: { popCap: 500 }, 
         desc: "Standard housing. +500 Max Population." 
     },
@@ -39,7 +39,7 @@ const COLONY_BUILDINGS = {
     },
     "WATER_EXTRACTOR": {
         name: "Atmospheric Condenser", tier: 1, unique: false,
-        cost: { "REFINED_ALLOYS": 15, "TECH_PARTS": 5 },
+        cost: { "REFINED_ALLOY": 15, "TECH_PARTS": 5 },
         upkeep: 20, time: 10, effects: { waterProd: 10 },
         desc: "Advanced condensation. Generates 10 Water per Stardate."
     },
@@ -51,19 +51,19 @@ const COLONY_BUILDINGS = {
     },
     "HYDRO_FARM": { 
         name: "Hydroponics Farm", tier: 1, unique: false,
-        cost: { "REFINED_ALLOYS": 20, "TECH_PARTS": 5 }, 
+        cost: { "REFINED_ALLOY": 20, "TECH_PARTS": 5 }, 
         upkeep: 25, time: 15, effects: { foodProd: 5, waterConsume: 2 }, 
         desc: "Generates 5 Food. Consumes 2 Water per Stardate." 
     },
     "ALGAE_VATS": { 
         name: "Nutrient Algae Vats", tier: 1, unique: false,
-        cost: { "REFINED_ALLOYS": 10, "MINERALS": 10 }, 
+        cost: { "REFINED_ALLOY": 10, "MINERALS": 10 }, 
         upkeep: 10, time: 12, effects: { foodProd: 3, moralePenalty: -1 }, 
         desc: "Generates 3 Food without needing Water. The awful taste reduces Morale by 1." 
     },
     "SMELTING_FACILITY": {
         name: "Alloy Smelting Plant", tier: 1, unique: false,
-        cost: { "MINERALS": 50, "TECH_PARTS": 10, "REFINED_ALLOYS": 10 },
+        cost: { "MINERALS": 50, "TECH_PARTS": 10, "REFINED_ALLOY": 10 },
         upkeep: 40, time: 20, effects: { alloyProd: 3 },
         desc: "Refines raw ore, generating 3 Refined Alloys per Stardate."
     },
@@ -75,13 +75,13 @@ const COLONY_BUILDINGS = {
     },
     "ORE_CRUSHER": {
         name: "Ore Crusher", tier: 1, unique: false,
-        cost: { "REFINED_ALLOYS": 15 },
+        cost: { "REFINED_ALLOY": 15 },
         upkeep: 25, time: 12, effects: { mineralProd: 5 },
         desc: "A noisy, brutal machine. Guaranteed to output 5 Minerals per Stardate."
     },
     "SCAVENGER_GUILD": {
         name: "Scavenger Guild", tier: 1, unique: true,
-        cost: { "REFINED_ALLOYS": 20, "FOOD_SUPPLIES": 10 },
+        cost: { "REFINED_ALLOY": 20, "FOOD_SUPPLIES": 10 },
         upkeep: 20, time: 14, effects: { randomLoot: true },
         desc: "Locals comb the wastes. Passively generates random Minerals or Tech Parts."
     },
@@ -93,13 +93,13 @@ const COLONY_BUILDINGS = {
     },
     "CLINIC_TENT": {
         name: "Clinic Tent", tier: 1, unique: false,
-        cost: { "MINERALS": 10, "REFINED_ALLOYS": 5 },
+        cost: { "MINERALS": 10, "REFINED_ALLOY": 5 },
         upkeep: 15, time: 5, effects: { medProd: 1, moraleBonus: 1 },
         desc: "Basic triage and first aid. Generates 1 Medical Supply and +1 Morale per Stardate."
     },
     "WATCHTOWER": {
         name: "Watchtower", tier: 1, unique: false,
-        cost: { "MINERALS": 20, "REFINED_ALLOYS": 5 },
+        cost: { "MINERALS": 20, "REFINED_ALLOY": 5 },
         upkeep: 5, time: 5, effects: { defense: 5, moraleBonus: 1 },
         desc: "Provides early warning of pirate raids. +5 Defense and +1 Morale."
     },
@@ -111,7 +111,7 @@ const COLONY_BUILDINGS = {
     },
     "AUTOMATED_TURRET": {
         name: "Automated Turret", tier: 1, unique: false,
-        cost: { "REFINED_ALLOYS": 15, "TECH_PARTS": 5 },
+        cost: { "REFINED_ALLOY": 15, "TECH_PARTS": 5 },
         upkeep: 15, time: 6, effects: { defense: 10 },
         desc: "A basic auto-tracking weapon. +10 Defense without needing Weapons to build."
     },
@@ -123,7 +123,7 @@ const COLONY_BUILDINGS = {
     },
     "LOCAL_BAZAAR": {
         name: "Local Bazaar", tier: 1, unique: true,
-        cost: { "MINERALS": 20, "REFINED_ALLOYS": 10 },
+        cost: { "MINERALS": 20, "REFINED_ALLOY": 10 },
         upkeep: 5, time: 15, effects: { taxEfficiency: 1.1, passiveCredits: 50 },
         desc: "A gritty trading post. Generates 50c per Stardate and boosts tax yield by 10%."
     },
@@ -141,25 +141,25 @@ const COLONY_BUILDINGS = {
     },
     "HOLO_CASTER": {
         name: "Holo-Caster Array", tier: 1, unique: false,
-        cost: { "REFINED_ALLOYS": 10, "TECH_PARTS": 15 },
+        cost: { "REFINED_ALLOY": 10, "TECH_PARTS": 15 },
         upkeep: 20, time: 10, effects: { moraleBonus: 2 },
         desc: "Broadcasts off-world media to the colonists. +2 Morale per Stardate."
     },
     "COMM_RELAY": {
         name: "Comm-Relay Array", tier: 1, unique: true,
-        cost: { "REFINED_ALLOYS": 25, "TECH_PARTS": 10 },
+        cost: { "REFINED_ALLOY": 25, "TECH_PARTS": 10 },
         upkeep: 30, time: 12, effects: { moraleBonus: 1, passiveXP: 5 },
         desc: "Connects the colony to the galactic net. +1 Morale and +5 XP per Stardate."
     },
     "LISTENING_POST": {
         name: "Listening Post", tier: 1, unique: true,
-        cost: { "REFINED_ALLOYS": 10, "TECH_PARTS": 15 },
+        cost: { "REFINED_ALLOY": 10, "TECH_PARTS": 15 },
         upkeep: 40, time: 8, effects: { passiveXP: 10 },
         desc: "Eavesdrops on encrypted Concord transmissions. +10 XP per Stardate."
     },
     "STORAGE_SILOS": {
         name: "Reinforced Silos", tier: 1, unique: false,
-        cost: { "REFINED_ALLOYS": 30 },
+        cost: { "REFINED_ALLOY": 30 },
         upkeep: 5, time: 10, effects: { storageCap: 2500 },
         desc: "Increases maximum colony storage capacity by 2,500 units."
     },
@@ -167,151 +167,151 @@ const COLONY_BUILDINGS = {
     // --- TIER 2: SETTLEMENT ---
     "DEEP_CORE_RIG": { 
         name: "Deep Core Rig", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 80, "TECH_PARTS": 25 }, 
+        cost: { "REFINED_ALLOY": 80, "TECH_PARTS": 25 }, 
         upkeep: 150, time: 30, effects: { resourceMult: 2 }, 
         desc: "Doubles the base planetary mining yields." 
     },
     "DRONE_HUB": {
         name: "Automated Drone Hub", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 80, "TECH_PARTS": 40 },
+        cost: { "REFINED_ALLOY": 80, "TECH_PARTS": 40 },
         upkeep: 200, time: 30, effects: { mineralProd: 5, alloyProd: 2 },
         desc: "Self-sustaining miners. Generates 5 Minerals and 2 Alloys per Stardate, regardless of pop."
     },
     "ATMOS_PROCESSOR": { 
         name: "Atmos-Processor", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 60, "TECH_PARTS": 20, "VOID_CRYSTALS": 1 }, 
+        cost: { "REFINED_ALLOY": 60, "TECH_PARTS": 20, "VOID_CRYSTALS": 1 }, 
         upkeep: 100, time: 35, effects: { moraleBonus: 3 }, 
         desc: "Purifies air, passively regenerating 3 Morale per Stardate." 
     },
     "HYDROPONIC_ORCHARDS": {
         name: "Hydroponic Orchards", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 60, "TECH_PARTS": 15, "WATER": 20 },
+        cost: { "REFINED_ALLOY": 60, "TECH_PARTS": 15, "WATER": 20 },
         upkeep: 80, time: 25, effects: { foodProd: 12, waterConsume: 4 },
         desc: "Massive indoor fruit cultivation. Generates 12 Food. Consumes 4 Water per Stardate."
     },
     "PROTEIN_VATS": {
         name: "Synthetic Protein Vats", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 50, "TECH_PARTS": 30, "WATER": 50 },
+        cost: { "REFINED_ALLOY": 50, "TECH_PARTS": 30, "WATER": 50 },
         upkeep: 120, time: 25, effects: { foodProd: 15, waterConsume: 5 },
         desc: "Mass-produces 15 Food. Consumes 5 Water per Stardate."
     },
     "DEFENSE_BATTERY": { 
         name: "Surface Defense Battery", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 40, "WEAPONS": 15 }, 
+        cost: { "REFINED_ALLOY": 40, "WEAPONS": 15 }, 
         upkeep: 100, time: 20, effects: { defense: 50 }, 
         desc: "Adds 50 Defense Rating to deter raids." 
     },
     "MERCENARY_GARRISON": {
         name: "Mercenary Garrison", tier: 2, unique: true,
-        cost: { "REFINED_ALLOYS": 60, "WEAPONS": 30, "FOOD_SUPPLIES": 20 },
+        cost: { "REFINED_ALLOY": 60, "WEAPONS": 30, "FOOD_SUPPLIES": 20 },
         upkeep: 120, time: 20, effects: { defense: 40 },
         desc: "A massive upgrade over the Militia Tent. Grants +40 Defense."
     },
     "LAW_ENFORCEMENT_HQ": {
         name: "Law Enforcement HQ", tier: 2, unique: true,
-        cost: { "REFINED_ALLOYS": 50, "WEAPONS": 20, "TECH_PARTS": 10 },
+        cost: { "REFINED_ALLOY": 50, "WEAPONS": 20, "TECH_PARTS": 10 },
         upkeep: 150, time: 22, effects: { defense: 30, moraleBonus: 2, crimeReduction: 15 },
         desc: "Establishes order. +30 Defense, +2 Morale, offsets Black Market penalties."
     },
     "AUTOMATED_FACTORY": {
         name: "Automated Factory", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 100, "TECH_PARTS": 30, "AI_CORE": 1 },
+        cost: { "REFINED_ALLOY": 100, "TECH_PARTS": 30, "AI_CORE": 1 },
         upkeep: 200, time: 40, effects: { techProd: 2, alloyConsume: 2 },
         desc: "Generates 2 Tech Parts. Consumes 2 Refined Alloys per Stardate."
     },
     "TECH_REFINERY": {
         name: "Tech Component Refinery", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 70, "TECH_PARTS": 20 },
+        cost: { "REFINED_ALLOY": 70, "TECH_PARTS": 20 },
         upkeep: 150, time: 35, effects: { techProd: 2, mineralConsume: 5 },
         desc: "An alternative to Auto-Factories. Generates 2 Tech Parts by consuming 5 Minerals."
     },
     "MUNITIONS_PLANT": {
         name: "Munitions Plant", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 80, "TECH_PARTS": 20 },
+        cost: { "REFINED_ALLOY": 80, "TECH_PARTS": 20 },
         upkeep: 200, time: 30, effects: { weaponProd: 1, alloyConsume: 5, mineralConsume: 5 },
         desc: "Actively manufactures 1 unit of Weapons. Consumes 5 Alloys and 5 Minerals per Stardate."
     },
     "RECYCLING_PLANT": {
         name: "Industrial Recycling Plant", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 40, "TECH_PARTS": 10 },
+        cost: { "REFINED_ALLOY": 40, "TECH_PARTS": 10 },
         upkeep: 100, time: 25, effects: { alloyProd: 2, techProd: 1, moralePenalty: -1 },
         desc: "Turns waste into 2 Alloys and 1 Tech Part per Stardate, but the smog reduces Morale by 1."
     },
     "ADVANCED_ARMORY": {
         name: "Advanced Armory", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 120, "TECH_PARTS": 50, "WEAPONS": 50 },
+        cost: { "REFINED_ALLOY": 120, "TECH_PARTS": 50, "WEAPONS": 50 },
         upkeep: 250, time: 30, effects: { troopProd: 1, foodConsume: 5, alloyConsume: 5 },
         desc: "Trains 1 MERCENARY_PLATOON per Stardate. Consumes 5 Food and 5 Alloys."
     },
     "SYNTHETIC_WEAVERS": {
         name: "Synthetic Weavers", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 80, "TECH_PARTS": 40 },
+        cost: { "REFINED_ALLOY": 80, "TECH_PARTS": 40 },
         upkeep: 200, time: 30, effects: { luxuryProd: 2, waterConsume: 3, mineralConsume: 5 },
         desc: "Generates 2 Luxury Goods per stardate. Consumes 3 Water and 5 Minerals."
     },
     "STIM_LAB": {
         name: "Underground Stim Lab", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 40, "TECH_PARTS": 15 },
+        cost: { "REFINED_ALLOY": 40, "TECH_PARTS": 15 },
         upkeep: 100, time: 20, effects: { stimProd: 2, medConsume: 1, mineralConsume: 2, moralePenalty: -1 },
         desc: "Illegally synthesizes 2 PROHIBITED_STIMS per Stardate. Consumes Meds and Minerals. -1 Morale."
     },
     "MEDICAL_CLINIC": {
         name: "Frontier Clinic", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 30, "MEDICAL_SUPPLIES": 20, "TECH_PARTS": 10 },
+        cost: { "REFINED_ALLOY": 30, "MEDICAL_SUPPLIES": 20, "TECH_PARTS": 10 },
         upkeep: 80, time: 15, effects: { medProd: 2, moraleBonus: 1 },
         desc: "Synthesizes 2 Medical Supplies per Stardate and boosts morale."
     },
     "BOUNTY_OFFICE": {
         name: "Bounty Hunter Lodge", tier: 2, unique: true,
-        cost: { "REFINED_ALLOYS": 50, "WEAPONS": 20, "TECH_PARTS": 15 },
+        cost: { "REFINED_ALLOY": 50, "WEAPONS": 20, "TECH_PARTS": 15 },
         upkeep: 50, time: 20, effects: { defense: 20, passiveCredits: 200 },
         desc: "Attracts local mercenaries. +20 Defense and +200c per Stardate from bounty payouts."
     },
     "SMUGGLERS_DEN": {
         name: "Smuggler's Den", tier: 2, unique: true,
-        cost: { "REFINED_ALLOYS": 40, "WEAPONS": 15 },
+        cost: { "REFINED_ALLOY": 40, "WEAPONS": 15 },
         upkeep: 0, time: 20, effects: { illegalTaxes: 500, defense: -20, moralePenalty: -1 },
         desc: "A hive of villainy. Launders 500c per Stardate, but invites crime (-20 Def, -1 Morale)."
     },
     "GLADIATOR_PIT": {
         name: "Gladiator Pit", tier: 2, unique: true,
-        cost: { "REFINED_ALLOYS": 50, "WEAPONS": 20 },
+        cost: { "REFINED_ALLOY": 50, "WEAPONS": 20 },
         upkeep: 150, time: 25, effects: { moraleBonus: 4, defense: 10, foodConsume: 2 },
         desc: "Brutal bloodsports. +4 Morale, +10 Defense, but consumes 2 extra Food to feed the fighters."
     },
     "CUSTOMS_OFFICE": {
         name: "Customs & Security Node", tier: 2, unique: true,
-        cost: { "REFINED_ALLOYS": 40, "WEAPONS": 10, "TECH_PARTS": 15 },
+        cost: { "REFINED_ALLOY": 40, "WEAPONS": 10, "TECH_PARTS": 15 },
         upkeep: 200, time: 20, effects: { taxEfficiency: 1.2, crimeReduction: 10 },
         desc: "Increases tax yields by 20% and reduces the penalties of black market nodes."
     },
     "CIVILIAN_SPACEPORT": {
         name: "Civilian Spaceport", tier: 2, unique: true,
-        cost: { "REFINED_ALLOYS": 120, "TECH_PARTS": 40 },
+        cost: { "REFINED_ALLOY": 120, "TECH_PARTS": 40 },
         upkeep: 250, time: 30, effects: { taxEfficiency: 1.25, growthBoost: 1 },
         desc: "Establishes commercial flight paths. +25% Tax Yields and permanently boosts pop growth rate."
     },
     "ORBITAL_BEACON": {
         name: "Orbital Trade Beacon", tier: 2, unique: true,
-        cost: { "REFINED_ALLOYS": 60, "TECH_PARTS": 40 },
+        cost: { "REFINED_ALLOY": 60, "TECH_PARTS": 40 },
         upkeep: 250, time: 25, effects: { taxEfficiency: 1.3 },
         desc: "Guides massive transport ships safely into orbit. Flat 30% boost to tax yields."
     },
     "ORBITAL_TETHER": {
         name: "Orbital Tether", tier: 2, unique: true,
-        cost: { "REFINED_ALLOYS": 80, "TECH_PARTS": 30 },
+        cost: { "REFINED_ALLOY": 80, "TECH_PARTS": 30 },
         upkeep: 300, time: 30, effects: { taxEfficiency: 1.15, passiveCredits: 300 },
         desc: "A localized mini space-elevator. +15% to tax yields and +300c per Stardate."
     },
     "COMMERCE_HUB": {
         name: "Galactic Commerce Hub", tier: 2, unique: true,
-        cost: { "REFINED_ALLOYS": 60, "TECH_PARTS": 25, "LUXURY_GOODS": 10 },
+        cost: { "REFINED_ALLOY": 60, "TECH_PARTS": 25, "LUXURY_GOODS": 10 },
         upkeep: 400, time: 30, effects: { taxMult: 1.5 },
         desc: "Attracts off-world traders. Increases overall tax revenue by 50%."
     },
     "ENTERTAINMENT_NEXUS": {
         name: "Holo-Theater Nexus", tier: 2, unique: false,
-        cost: { "REFINED_ALLOYS": 50, "TECH_PARTS": 30, "LUXURY_GOODS": 20 },
+        cost: { "REFINED_ALLOY": 50, "TECH_PARTS": 30, "LUXURY_GOODS": 20 },
         upkeep: 300, time: 25, effects: { moraleBonus: 5 },
         desc: "Provides massive entertainment value, regenerating 5 Morale per Stardate."
     },
@@ -319,85 +319,85 @@ const COLONY_BUILDINGS = {
     // --- TIER 3: METROPOLIS ---
     "ARCOLOGY_SPIRE": {
         name: "Arcology Spire", tier: 3, unique: false,
-        cost: { "REFINED_ALLOYS": 200, "TECH_PARTS": 100, "VOID_CRYSTALS": 3 },
+        cost: { "REFINED_ALLOY": 200, "TECH_PARTS": 100, "VOID_CRYSTALS": 3 },
         upkeep: 1500, time: 60, effects: { popCap: 5000, moraleBonus: 2 },
         desc: "A self-contained utopia. +5000 Max Population and +2 Morale."
     },
     "XENOBOTANY_DOME": {
         name: "Xenobotany Dome", tier: 3, unique: false,
-        cost: { "REFINED_ALLOYS": 150, "WATER": 100, "TECH_PARTS": 50 },
+        cost: { "REFINED_ALLOY": 150, "WATER": 100, "TECH_PARTS": 50 },
         upkeep: 500, time: 40, effects: { foodProd: 10, medProd: 5 },
         desc: "Cultivates rare flora. Generates 10 Food and 5 Medical Supplies per Stardate."
     },
     "CLIMATE_CONTROLLER": {
         name: "Climate Controller", tier: 3, unique: true,
-        cost: { "REFINED_ALLOYS": 250, "TECH_PARTS": 100, "VOID_CRYSTALS": 2 },
+        cost: { "REFINED_ALLOY": 250, "TECH_PARTS": 100, "VOID_CRYSTALS": 2 },
         upkeep: 2000, time: 60, effects: { waterProd: 30, moraleBonus: 5 },
         desc: "Dominates the planetary weather. Generates 30 Water and +5 Morale."
     },
     "GENE_CLINIC": {
         name: "Gene-Tailoring Clinic", tier: 3, unique: true,
-        cost: { "REFINED_ALLOYS": 200, "TECH_PARTS": 150, "MEDICAL_SUPPLIES": 100, "AI_CORE": 1 },
+        cost: { "REFINED_ALLOY": 200, "TECH_PARTS": 150, "MEDICAL_SUPPLIES": 100, "AI_CORE": 1 },
         upkeep: 1200, time: 50, effects: { medProd: 10, moraleBonus: 5, foodEfficiency: 0.8 },
         desc: "Edits citizen DNA. +10 Medical Supplies, +5 Morale, and permanently reduces colony food consumption by 20%."
     },
     "SPACE_ELEVATOR": {
         name: "Orbital Space Elevator", tier: 3, unique: true,
-        cost: { "REFINED_ALLOYS": 500, "TECH_PARTS": 200, "AI_CORE": 2 },
+        cost: { "REFINED_ALLOY": 500, "TECH_PARTS": 200, "AI_CORE": 2 },
         upkeep: 2500, time: 90, effects: { taxMult: 2.0 },
         desc: "A tether to the heavens. Doubles tax revenue and is required to become a Capital."
     },
     "ORBITAL_SHIELD": {
         name: "Planetary Aegis Shield", tier: 3, unique: true,
-        cost: { "REFINED_ALLOYS": 250, "TECH_PARTS": 150, "VOID_CRYSTALS": 10 },
+        cost: { "REFINED_ALLOY": 250, "TECH_PARTS": 150, "VOID_CRYSTALS": 10 },
         upkeep: 3000, time: 75, effects: { defense: 300, moraleBonus: 5 },
         desc: "An impenetrable energy grid. Massive defense boost. Citizens feel truly safe."
     },
     "PLANETARY_ION_CANNON": {
         name: "Planetary Ion Cannon", tier: 3, unique: true,
-        cost: { "REFINED_ALLOYS": 300, "TECH_PARTS": 100, "WEAPONS": 50, "AI_CORE": 2 },
+        cost: { "REFINED_ALLOY": 300, "TECH_PARTS": 100, "WEAPONS": 50, "AI_CORE": 2 },
         upkeep: 4000, time: 65, effects: { defense: 500 },
         desc: "An apocalyptic surface-to-orbit weapon. Grants +500 Defense."
     },
     "HEAVY_VEHICLE_BAY": {
         name: "Heavy Vehicle Bay", tier: 3, unique: false,
-        cost: { "REFINED_ALLOYS": 400, "TECH_PARTS": 150, "AI_CORE": 5 },
+        cost: { "REFINED_ALLOY": 400, "TECH_PARTS": 150, "AI_CORE": 5 },
         upkeep: 2000, time: 50, effects: { mechProd: 1, alloyConsume: 15, techConsume: 5 },
         desc: "Manufactures 1 ASSAULT_MECH per Stardate. Consumes 15 Alloys and 5 Tech Parts."
     },
     "ORBITAL_SHIPYARD": {
         name: "Orbital Shipyard", tier: 3, unique: true,
-        cost: { "REFINED_ALLOYS": 400, "TECH_PARTS": 200, "AI_CORE": 3 },
+        cost: { "REFINED_ALLOY": 400, "TECH_PARTS": 200, "AI_CORE": 3 },
         upkeep: 1500, time: 100, effects: { passiveCredits: 5000 },
         desc: "Constructs and sells civilian freighters automatically. Generates 5,000c per Stardate."
     },
     "RESEARCH_LABORATORY": {
         name: "Xeno-Research Lab", tier: 3, unique: false,
-        cost: { "REFINED_ALLOYS": 100, "TECH_PARTS": 80, "ANCIENT_RELICS": 2 },
+        cost: { "REFINED_ALLOY": 100, "TECH_PARTS": 80, "ANCIENT_RELICS": 2 },
         upkeep: 800, time: 45, effects: { passiveXP: 50 },
         desc: "Scientists study the planet. Grants you 50 XP globally per Stardate."
     },
     "AI_RESEARCH_LAB": {
         name: "A.I. Research Hub", tier: 3, unique: true,
-        cost: { "REFINED_ALLOYS": 150, "TECH_PARTS": 100, "AI_CORE": 1 },
+        cost: { "REFINED_ALLOY": 150, "TECH_PARTS": 100, "AI_CORE": 1 },
         upkeep: 1500, time: 50, effects: { passiveXP: 100, techProd: 5 },
         desc: "A sprawling silicon mind. Generates an incredible 100 XP and 5 Tech Parts per Stardate."
     },
     "CLONING_FACILITY": {
         name: "Vat-Cloning Facility", tier: 3, unique: true,
-        cost: { "REFINED_ALLOYS": 150, "MEDICAL_SUPPLIES": 100, "ILLEGAL_ORGANS": 15 },
+        cost: { "REFINED_ALLOY": 150, "MEDICAL_SUPPLIES": 100, "ILLEGAL_ORGANS": 15 },
         upkeep: 2000, time: 50, effects: { popGrowthMult: 4, moralePenalty: -5 },
         desc: "Quadruples population growth speed. The ethical violations massively reduce morale."
     },
     "BLACK_MARKET_NODE": {
         name: "Syndicate Node", tier: 3, unique: true,
-        cost: { "REFINED_ALLOYS": 50, "WEAPONS": 50, "PROHIBITED_STIMS": 20 },
+        cost: { "REFINED_ALLOY": 50, "WEAPONS": 50, "PROHIBITED_STIMS": 20 },
         upkeep: 0, time: 30, effects: { illegalTaxes: 1000, defense: -50, moralePenalty: -2 },
         desc: "Launders 1000c per Stardate, but invites heavy crime (-50 Defense, -2 Morale)."
     },
     "SYNDICATE_HEADQUARTERS": {
         name: "Syndicate Headquarters", tier: 3, unique: true,
-        cost: { "REFINED_ALLOYS": 100, "WEAPONS": 100, "LUXURY_GOODS": 50 },
+        cost: { "REFINED_ALLOY": 100, "WEAPONS": 100, "LUXURY_GOODS": 50 },
         upkeep: 0, time: 40, effects: { illegalTaxes: 2500, defense: -100, moralePenalty: -5 },
         desc: "The absolute apex of organized crime. Launders 2,500c per tick. Decimates Defense (-100) and Morale (-5)."
     },
@@ -405,37 +405,37 @@ const COLONY_BUILDINGS = {
     // --- TIER 4: CAPITAL (MEGASTRUCTURES) ---
     "INTERSTELLAR_EXCHANGE": {
         name: "Interstellar Exchange", tier: 4, unique: true,
-        cost: { "REFINED_ALLOYS": 1000, "TECH_PARTS": 500, "LUXURY_GOODS": 100, "AI_CORE": 5 },
+        cost: { "REFINED_ALLOY": 1000, "TECH_PARTS": 500, "LUXURY_GOODS": 100, "AI_CORE": 5 },
         upkeep: 5000, time: 150, effects: { autoTrade: true },
         desc: "Automatically sells 10% of all excess colony resources to the galactic market for pure credits every Stardate."
     },
     "BIOSPHERE_RESERVE": {
         name: "Utopian Biosphere", tier: 4, unique: true,
-        cost: { "REFINED_ALLOYS": 800, "WATER": 500, "TECH_PARTS": 300, "VOID_CRYSTALS": 15 },
+        cost: { "REFINED_ALLOY": 800, "WATER": 500, "TECH_PARTS": 300, "VOID_CRYSTALS": 15 },
         upkeep: 10000, time: 120, effects: { popCap: 50000, moraleBonus: 10 },
         desc: "A massive, planetary-scale terraforming paradise. +50,000 Max Population and +10 Morale."
     },
     "ASTRAL_MONUMENT": {
         name: "Astral Monument", tier: 4, unique: true,
-        cost: { "REFINED_ALLOYS": 2000, "LUXURY_GOODS": 1000, "ANCIENT_RELICS": 10, "VOID_CRYSTALS": 10 },
+        cost: { "REFINED_ALLOY": 2000, "LUXURY_GOODS": 1000, "ANCIENT_RELICS": 10, "VOID_CRYSTALS": 10 },
         upkeep: 2500, time: 180, effects: { moraleBonus: 20, passiveCredits: 10000 },
         desc: "A staggering, awe-inspiring megastructure. Generates +20 Morale and 10,000c per Stardate from galactic tourism."
     },
     "STELLAR_FORGE": {
         name: "Stellar Forge", tier: 4, unique: true,
-        cost: { "REFINED_ALLOYS": 1500, "TECH_PARTS": 800, "AI_CORE": 10, "ANCIENT_RELICS": 5 },
+        cost: { "REFINED_ALLOY": 1500, "TECH_PARTS": 800, "AI_CORE": 10, "ANCIENT_RELICS": 5 },
         upkeep: 8000, time: 200, effects: { alloyProd: 20, techProd: 10 },
         desc: "Harnesses the core of the planet for ultimate industry. Generates 20 Alloys and 10 Tech Parts per Stardate. No resource cost."
     },
     "DARK_MATTER_COLLIDER": {
         name: "Dark Matter Collider", tier: 4, unique: true,
-        cost: { "REFINED_ALLOYS": 3000, "TECH_PARTS": 1500, "AI_CORE": 25, "VOID_CRYSTALS": 5 },
+        cost: { "REFINED_ALLOY": 3000, "TECH_PARTS": 1500, "AI_CORE": 25, "VOID_CRYSTALS": 5 },
         upkeep: 15000, time: 300, effects: { voidProd: 1, passiveXP: 200 },
         desc: "Shatters the fabric of reality. Generates 200 XP and synthesizes 1 VOID_CRYSTAL per Stardate."
     },
     "AI_OVERLORD_CORE": {
         name: "A.I. Overlord Core", tier: 4, unique: true,
-        cost: { "REFINED_ALLOYS": 2000, "TECH_PARTS": 1000, "AI_CORE": 20, "VOID_CRYSTALS": 5 },
+        cost: { "REFINED_ALLOY": 2000, "TECH_PARTS": 1000, "AI_CORE": 20, "VOID_CRYSTALS": 5 },
         upkeep: 12000, time: 250, effects: { omniProd: 2.0, moralePenalty: -10 },
         desc: "Cedes control to a hyper-intelligent AI. Doubles all factory and farm outputs, but heavily penalizes morale and displaces organics."
     }
@@ -482,7 +482,7 @@ function establishColony(locationIndex) {
         morale: 100,
         defense: 0,
         treasury: 0,
-        storage: { "FOOD_SUPPLIES": 25, "WATER": 20, "REFINED_ALLOYS": 30 },
+        storage: { "FOOD_SUPPLIES": 25, "WATER": 20, "REFINED_ALLOY": 30 },
         buildings: { "HAB_BLOCK": 1 }, 
         activeConstruction: null, 
         biome: planet.biome.name,
@@ -584,7 +584,7 @@ function openColonyManagement(colonyId) {
         let upgradeHtml = "";
         
         if (phaseIndex === 0) { 
-            const canUpgrade = colony.population >= 1000 && (colony.storage['REFINED_ALLOYS'] || 0) >= 100 && (colony.storage['TECH_PARTS'] || 0) >= 25;
+            const canUpgrade = colony.population >= 1000 && (colony.storage['REFINED_ALLOY'] || 0) >= 100 && (colony.storage['TECH_PARTS'] || 0) >= 25;
             upgradeHtml = `
                 <div style="background:rgba(0,0,0,0.5); border:1px dashed var(--accent-color); padding:15px; border-radius:4px; margin-top:20px;">
                     <h4 style="color:var(--accent-color); margin:0 0 10px 0;">UPGRADE TO SETTLEMENT (TIER 2)</h4>
@@ -593,7 +593,7 @@ function openColonyManagement(colonyId) {
                 </div>
             `;
         } else if (phaseIndex === 1) { 
-            const canUpgrade = colony.population >= 5000 && (colony.storage['REFINED_ALLOYS'] || 0) >= 500 && (colony.storage['TECH_PARTS'] || 0) >= 150 && (colony.storage['AI_CORE'] || 0) >= 2;
+            const canUpgrade = colony.population >= 5000 && (colony.storage['REFINED_ALLOY'] || 0) >= 500 && (colony.storage['TECH_PARTS'] || 0) >= 150 && (colony.storage['AI_CORE'] || 0) >= 2;
             upgradeHtml = `
                 <div style="background:rgba(0,0,0,0.5); border:1px dashed var(--gold-text); padding:15px; border-radius:4px; margin-top:20px;">
                     <h4 style="color:var(--gold-text); margin:0 0 10px 0;">FOUND A METROPOLIS (TIER 3)</h4>
@@ -603,7 +603,7 @@ function openColonyManagement(colonyId) {
             `;
         } else if (phaseIndex === 2) { 
             const hasElevator = (colony.buildings['SPACE_ELEVATOR'] || 0) > 0;
-            const canUpgrade = hasElevator && colony.population >= 30000 && (colony.storage['REFINED_ALLOYS'] || 0) >= 2000 && (colony.storage['TECH_PARTS'] || 0) >= 500 && (colony.storage['AI_CORE'] || 0) >= 5;
+            const canUpgrade = hasElevator && colony.population >= 30000 && (colony.storage['REFINED_ALLOY'] || 0) >= 2000 && (colony.storage['TECH_PARTS'] || 0) >= 500 && (colony.storage['AI_CORE'] || 0) >= 5;
             upgradeHtml = `
                 <div style="background:rgba(0,0,0,0.5); border:1px dashed #FF88FF; padding:15px; border-radius:4px; margin-top:20px;">
                     <h4 style="color:#FF88FF; margin:0 0 10px 0;">DECLARE SECTOR CAPITAL (TIER 4)</h4>
@@ -778,18 +778,18 @@ function upgradeColonyPhase(colonyId) {
     const phaseIndex = COLONY_PHASES.indexOf(colony.phase);
     
     if (phaseIndex === 0) {
-        colony.storage['REFINED_ALLOYS'] -= 100;
+        colony.storage['REFINED_ALLOY'] -= 100;
         colony.storage['TECH_PARTS'] -= 25;
         colony.phase = 'SETTLEMENT';
         logMessage(`<span style='color:var(--success); font-weight:bold;'>[ MILESTONE REACHED ] ${colony.name} has been officially recognized as a Tier 2 Settlement! New blueprints unlocked.</span>`);
     } else if (phaseIndex === 1) { 
-        colony.storage['REFINED_ALLOYS'] -= 500;
+        colony.storage['REFINED_ALLOY'] -= 500;
         colony.storage['TECH_PARTS'] -= 150;
         colony.storage['AI_CORE'] -= 2;
         colony.phase = 'METROPOLIS';
         logMessage(`<span style='color:var(--gold-text); font-weight:bold;'>[ MILESTONE REACHED ] ${colony.name} has blossomed into a sprawling Metropolis! True power is yours.</span>`);
     } else if (phaseIndex === 2) { 
-        colony.storage['REFINED_ALLOYS'] -= 2000;
+        colony.storage['REFINED_ALLOY'] -= 2000;
         colony.storage['TECH_PARTS'] -= 500;
         colony.storage['AI_CORE'] -= 5;
         colony.phase = 'CAPITAL';
@@ -1123,9 +1123,9 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                     // INDUSTRIAL PRODUCTION (Halts if Storage is Full!)
                     if (!isStorageFull) {
                         // Early Game Resource Generation
-                        if (numScrapYards > 0) colony.storage['REFINED_ALLOYS'] = (colony.storage['REFINED_ALLOYS'] || 0) + (1 * numScrapYards * prodMultiplier);
+                        if (numScrapYards > 0) colony.storage['REFINED_ALLOY'] = (colony.storage['REFINED_ALLOY'] || 0) + (1 * numScrapYards * prodMultiplier);
                         if (numRecyclers > 0) {
-                            colony.storage['REFINED_ALLOYS'] = (colony.storage['REFINED_ALLOYS'] || 0) + (2 * numRecyclers * prodMultiplier);
+                            colony.storage['REFINED_ALLOY'] = (colony.storage['REFINED_ALLOY'] || 0) + (2 * numRecyclers * prodMultiplier);
                             colony.storage['TECH_PARTS'] = (colony.storage['TECH_PARTS'] || 0) + (1 * numRecyclers * prodMultiplier);
                         }
                         if (numOreCrushers > 0) colony.storage['MINERALS'] = (colony.storage['MINERALS'] || 0) + (5 * numOreCrushers * prodMultiplier);
@@ -1139,15 +1139,15 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         // Drone Hubs
                         if (numDroneHubs > 0) {
                             colony.storage['MINERALS'] = (colony.storage['MINERALS'] || 0) + (5 * numDroneHubs * prodMultiplier);
-                            colony.storage['REFINED_ALLOYS'] = (colony.storage['REFINED_ALLOYS'] || 0) + (2 * numDroneHubs * prodMultiplier);
+                            colony.storage['REFINED_ALLOY'] = (colony.storage['REFINED_ALLOY'] || 0) + (2 * numDroneHubs * prodMultiplier);
                         }
 
                         // Smelting
-                        if (colony.buildings['SMELTING_FACILITY']) colony.storage['REFINED_ALLOYS'] = (colony.storage['REFINED_ALLOYS'] || 0) + (3 * colony.buildings['SMELTING_FACILITY'] * prodMultiplier);
+                        if (colony.buildings['SMELTING_FACILITY']) colony.storage['REFINED_ALLOY'] = (colony.storage['REFINED_ALLOY'] || 0) + (3 * colony.buildings['SMELTING_FACILITY'] * prodMultiplier);
                         
                         // Stellar Forge
                         if (colony.buildings['STELLAR_FORGE']) {
-                            colony.storage['REFINED_ALLOYS'] = (colony.storage['REFINED_ALLOYS'] || 0) + (20 * colony.buildings['STELLAR_FORGE'] * prodMultiplier);
+                            colony.storage['REFINED_ALLOY'] = (colony.storage['REFINED_ALLOY'] || 0) + (20 * colony.buildings['STELLAR_FORGE'] * prodMultiplier);
                             colony.storage['TECH_PARTS'] = (colony.storage['TECH_PARTS'] || 0) + (10 * colony.buildings['STELLAR_FORGE'] * prodMultiplier);
                         }
 
@@ -1157,8 +1157,8 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         // Auto Factory
                         if (numFactories > 0) {
                             const alloyNeeded = numFactories * 2;
-                            if ((colony.storage['REFINED_ALLOYS'] || 0) >= alloyNeeded) {
-                                colony.storage['REFINED_ALLOYS'] -= alloyNeeded;
+                            if ((colony.storage['REFINED_ALLOY'] || 0) >= alloyNeeded) {
+                                colony.storage['REFINED_ALLOY'] -= alloyNeeded;
                                 colony.storage['TECH_PARTS'] = (colony.storage['TECH_PARTS'] || 0) + (numFactories * 2 * prodMultiplier);
                             }
                         }
@@ -1202,8 +1202,8 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         if (numMunitions > 0) {
                             const alloyNeeded = numMunitions * 5;
                             const minNeeded = numMunitions * 5;
-                            if ((colony.storage['REFINED_ALLOYS'] || 0) >= alloyNeeded && (colony.storage['MINERALS'] || 0) >= minNeeded) {
-                                colony.storage['REFINED_ALLOYS'] -= alloyNeeded;
+                            if ((colony.storage['REFINED_ALLOY'] || 0) >= alloyNeeded && (colony.storage['MINERALS'] || 0) >= minNeeded) {
+                                colony.storage['REFINED_ALLOY'] -= alloyNeeded;
                                 colony.storage['MINERALS'] -= minNeeded;
                                 colony.storage['WEAPONS'] = (colony.storage['WEAPONS'] || 0) + numMunitions;
                             }
@@ -1212,8 +1212,8 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         if (numArmories > 0) {
                             const alloyNeeded = numArmories * 5;
                             const foodNeeded = numArmories * 5;
-                            if ((colony.storage['REFINED_ALLOYS'] || 0) >= alloyNeeded && (colony.storage['FOOD_SUPPLIES'] || 0) >= foodNeeded) {
-                                colony.storage['REFINED_ALLOYS'] -= alloyNeeded;
+                            if ((colony.storage['REFINED_ALLOY'] || 0) >= alloyNeeded && (colony.storage['FOOD_SUPPLIES'] || 0) >= foodNeeded) {
+                                colony.storage['REFINED_ALLOY'] -= alloyNeeded;
                                 colony.storage['FOOD_SUPPLIES'] -= foodNeeded;
                                 colony.storage['MERCENARY_PLATOON'] = (colony.storage['MERCENARY_PLATOON'] || 0) + numArmories;
                             }
@@ -1222,8 +1222,8 @@ GameBus.on('TICK_PROCESSED', (tick) => {
                         if (numVehicleBays > 0) {
                             const alloyNeeded = numVehicleBays * 15;
                             const techNeeded = numVehicleBays * 5;
-                            if ((colony.storage['REFINED_ALLOYS'] || 0) >= alloyNeeded && (colony.storage['TECH_PARTS'] || 0) >= techNeeded) {
-                                colony.storage['REFINED_ALLOYS'] -= alloyNeeded;
+                            if ((colony.storage['REFINED_ALLOY'] || 0) >= alloyNeeded && (colony.storage['TECH_PARTS'] || 0) >= techNeeded) {
+                                colony.storage['REFINED_ALLOY'] -= alloyNeeded;
                                 colony.storage['TECH_PARTS'] -= techNeeded;
                                 colony.storage['ASSAULT_MECH'] = (colony.storage['ASSAULT_MECH'] || 0) + numVehicleBays;
                             }
