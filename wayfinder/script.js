@@ -7048,23 +7048,8 @@ function devLevelUp() {
 // --- FACTION HIRELING PASSIVES ---
 // ==========================================
 
-function processMercenaryDrawbacks() {
-    // 1. Eclipse Mercenary Cargo Theft (5% chance per sector jump)
-    if (window.hasEclipseMerc && Math.random() < 0.05) { 
-        const cargoItems = Object.keys(playerCargo).filter(k => playerCargo[k] > 0);
-        if (cargoItems.length > 0) {
-            const stolenItem = cargoItems[Math.floor(Math.random() * cargoItems.length)];
-            playerCargo[stolenItem]--;
-            if (playerCargo[stolenItem] <= 0) delete playerCargo[stolenItem];
-            
-            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-            logMessage(`<span style="color:#9933FF; font-weight:bold;">[ CARTEL OPERATIVE ]</span> You catch your mercenary slipping away from the cargo bay. 1x ${COMMODITIES[stolenItem].name} is missing.`);
-            if (typeof showToast === 'function') showToast("CARGO STOLEN", "warning");
-            if (typeof renderUIStats === 'function') renderUIStats();
-        }
-    }
-
-    // 2. Concord Escort Jump Tracking
+function processConcordEscort() {
+    // Concord Escort Jump Tracking
     if (window.concordEscortJumps && window.concordEscortJumps > 0) {
         window.concordEscortJumps--;
         if (window.concordEscortJumps <= 0) {
