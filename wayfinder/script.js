@@ -165,24 +165,24 @@ const NPC_SHIP_TYPES = [
 
 // Spawns 1-2 neutral ships dynamically just outside the player's viewport
 function spawnAmbientNPCs() {
-    // Cap the traffic so the galaxy doesn't get cluttered
-    if (activeNPCs.length >= 4) return; 
+    // Cap the traffic using the ECS
+    const currentNPCs = EntityManager.getWithTag('isNPC').length;
+    if (currentNPCs >= 4) return; 
 
     const numNPCs = Math.floor(Math.random() * 2) + 1; 
 
     for (let i = 0; i < numNPCs; i++) {
-        // Fallback in case NPC_SHIP_TYPES isn't defined yet
         if (typeof NPC_SHIP_TYPES === 'undefined') return;
-        
         const type = NPC_SHIP_TYPES[Math.floor(Math.random() * NPC_SHIP_TYPES.length)];
         
-        // Spawn them slightly off-screen (Radius based on viewport)
         const spawnDist = Math.floor(VIEWPORT_WIDTH_TILES / 2) + 2;
         const angle = Math.random() * Math.PI * 2;
         
-        activeNPCs.push({
+        EntityManager.add({
             x: Math.floor(playerX + Math.cos(angle) * spawnDist),
             y: Math.floor(playerY + Math.sin(angle) * spawnDist),
+            isNPC: true,
+            hasSensorCone: true,
             ...type
         });
     }
@@ -386,7 +386,7 @@ function updateAmbientNPCs() {
 // --- NPC INTERACTION & COMMS ---
 // ==========================================
 
-function interactWithNPC(npc, index) {
+function interactWithNPC(npc) { 
     openGenericModal("PROXIMITY ALERT");
     const modalContent = document.getElementById('genericModalContent');
 
@@ -472,7 +472,7 @@ function interactWithNPC(npc, index) {
                 <button class="action-button" onclick="closeGenericModal()">
                     MAINTAIN COURSE
                 </button>
-                <button class="action-button" onclick="initiateShipToShipTrade(${index})" style="border-color:var(--gold-text); color:var(--gold-text);">
+                <button class="action-button" onclick="initiateShipToShipTrade('${npc.id}')" style="border-color:var(--gold-text); color:var(--gold-text);">
                     REQUEST TRADE
                 </button>
                 
@@ -481,12 +481,12 @@ function interactWithNPC(npc, index) {
                     DUMP CONTRABAND
                 </button>
                 ` : `
-                <button class="action-button" onclick="scanNPCCargo(${index})" style="border-color:var(--accent-color); color:var(--accent-color);">
+                <button class="action-button" onclick="scanNPCCargo('${npc.id}')" style="border-color:var(--accent-color); color:var(--accent-color);">
                     TACTICAL SCAN
                 </button>
                 `}
                 
-                <button class="action-button danger-btn" onclick="commitPiracy(${index})">
+                <button class="action-button danger-btn" onclick="commitPiracy('${npc.id}')">
                     POWER WEAPONS
                 </button>
             </div>
@@ -516,7 +516,9 @@ function dumpAllContraband() {
 
 // --- SENSOR LOGIC ---
 
-function scanNPCCargo(index) {
+function scanNPCCargo(npcId) {
+    const npc = EntityManager.entities.find(e => e.id === npcId);
+    if (!npc) return;
     // 1. Check if the player has the required gear/perk to pierce civilian shields
     const hasPerk = typeof playerPerks !== 'undefined' && playerPerks.has && playerPerks.has('LONG_RANGE_SENSORS');
     const hasScanner = playerShip && playerShip.components && playerShip.components.scanner === 'SCANNER_NEXSTAR_4SE';
@@ -591,11 +593,12 @@ function scanNPCCargo(index) {
 // --- NPC INTERACTION ACTIONS ---
 // ==========================================
 
-function commitPiracy(index) {
-    const npc = activeNPCs[index];
+function commitPiracy(npcId) {
+    const npc = EntityManager.entities.find(e => e.id === npcId);
+    if (!npc) return;
     
-    // 1. Remove them from the peaceful ambient traffic array
-    activeNPCs.splice(index, 1);
+    // Remove them from the peaceful ECS array
+    EntityManager.remove(npcId);
     
     // 2. Convert them into a hostile enemy entity
     if (typeof activeEnemies === 'undefined') window.activeEnemies = [];
@@ -627,8 +630,9 @@ function commitPiracy(index) {
     if (typeof startCombat === 'function') startCombat(enemyEntity);
 }
 
-function initiateShipToShipTrade(index) {
-    const npc = activeNPCs[index];
+function initiateShipToShipTrade(npcId) {
+    const npc = EntityManager.entities.find(e => e.id === npcId);
+    if (!npc) return;
     // We will build this in trade.js!
     if (typeof openShipTrade === 'function') {
         openShipTrade(npc);
@@ -4375,18 +4379,18 @@ function activateDistressBeacon() {
     isAwaitingRescue = true;
 
     // Spawn the physical Fuel Rat at the station's coordinates
-    if (typeof activeNPCs !== 'undefined') {
-        activeNPCs.push({
-            x: rescueTargetStation.x,
-            y: rescueTargetStation.y,
-            name: "Fuel Rats Rescue Tug",
-            char: "R",
-            color: "#FFAA00",
-            state: "RESCUE",
-            isFuelRat: true,
-            desc: "A highly modified, extremely fast salvage tug. They have fuel, you don't."
-        });
-    }
+     EntityManager.add({
+        x: rescueTargetStation.x,
+        y: rescueTargetStation.y,
+        name: "Fuel Rats Rescue Tug",
+        char: "R",
+        color: "#FFAA00",
+        state: "RESCUE",
+        isNPC: true,
+        isFuelRat: true,
+        hasSensorCone: true,
+        desc: "A highly modified, extremely fast salvage tug. They have fuel, you don't."
+    });
 
     // 3. Calculate ETA for narrative
     const dist = Math.max(1, Math.abs(playerX - rescueTargetStation.x) + Math.abs(playerY - rescueTargetStation.y));
