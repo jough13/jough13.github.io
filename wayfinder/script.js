@@ -3406,7 +3406,13 @@ GameBus.on('TICK_PROCESSED', (tick) => {
     if (tick.interrupt) return;
     const { isMovement } = tick;
 
-    if (isMovement && typeof processMercenaryDrawbacks === 'function') processMercenaryDrawbacks();
+    if (isMovement) {
+        // Trigger the advanced mercenary theft logic (from crew.js)
+        if (typeof processMercenaryDrawbacks === 'function') processMercenaryDrawbacks();
+        
+        // Trigger the escort countdown logic (from script.js)
+        if (typeof processConcordEscort === 'function') processConcordEscort();
+    }
 
     if (typeof playerNotoriety !== 'undefined' && playerNotoriety > 0) {
         if (!window.lastNotorietyDecayTime) window.lastNotorietyDecayTime = currentGameDate;
