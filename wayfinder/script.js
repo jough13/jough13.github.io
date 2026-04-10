@@ -165,11 +165,11 @@ const NPC_SHIP_TYPES = [
 
 // Spawns 1-2 neutral ships dynamically just outside the player's viewport
 function spawnAmbientNPCs() {
-    // Cap the traffic using the ECS
-    const currentNPCs = EntityManager.getWithTag('isNPC').length;
+    // Cap the traffic using standard array filtering
+    const currentNPCs = EntityManager.entities.filter(e => e.isNPC).length;
     if (currentNPCs >= 4) return; 
 
-    const numNPCs = Math.floor(Math.random() * 2) + 1; 
+    const numNPCs = Math.floor(Math.random() * 2) + 1;
 
     for (let i = 0; i < numNPCs; i++) {
         if (typeof NPC_SHIP_TYPES === 'undefined') return;
@@ -2080,9 +2080,9 @@ if (typeof window._codexPatched === 'undefined') {
     
     // Clear Caches
     systemCache = {}; 
-    playerCargo = {};
     playerFactionStanding = {};
-    Object.keys(COMMODITIES).forEach(id => playerCargo[id] = 0);
+    
+    // --- THE FIX: MOVED playerCargo INITIALIZATION DOWN ---
 
     // --- Reset World State Deltas & Chunk Cache ---
     worldStateDeltas = {}; 
@@ -2139,6 +2139,11 @@ if (typeof window._codexPatched === 'undefined') {
             maxTroops: 10       
         }
     };
+
+    // --- THE FIX: INITIALIZE CARGO PROXY AFTER SHIP ---
+    // Now that GameState.ship is fresh, we can safely bind the proxy to it
+    playerCargo = {};
+    Object.keys(COMMODITIES).forEach(id => playerCargo[id] = 0);
 
     // Initialize Ammo if applicable
     const startingWeapon = COMPONENTS_DATABASE[playerShip.components.weapon];
