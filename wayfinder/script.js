@@ -2769,7 +2769,7 @@ function renderGalacticMap() {
     
     if (typeof activeEnemies !== 'undefined') activeEnemies.forEach(e => renderList.push({ ...e, char: e.char || 'V', color: e.color || '#FF5555', hasSensorCone: !e.isProbe }));
     if (typeof activeNPCs !== 'undefined') activeNPCs.forEach(e => renderList.push({ ...e, hasSensorCone: true }));
-    if (typeof activeComets !== 'undefined') activeComets.forEach(e => renderList.push({ ...e, char: '❄️', color: '#00FFFF', glowColor: '#00FFFF', pulseSpeed: 400 }));
+    
     if (typeof activePlayerDrones !== 'undefined') activePlayerDrones.forEach(e => renderList.push({ ...e, char: e.state === 'MINING' ? '⛏' : 'd', color: '#00FF00', glowColor: '#00FF00', fontSize: 0.7 }));
     if (typeof activeDistressCalls !== 'undefined') activeDistressCalls.forEach(e => renderList.push({ ...e, char: '?', color: '#FFAA00', glowColor: '#FFAA00', pulseSpeed: 150, showTimerBar: true, timerMax: 60, timerCurrent: e.turnsRemaining }));
     if (typeof activeSkirmishes !== 'undefined') activeSkirmishes.forEach(e => renderList.push({ ...e, char: '⚔️', color: 'rgba(255, 100, 0, 0.8)', glowColor: '#FF4400', pulseSpeed: 200, fontSize: 1.2 }));
@@ -3351,33 +3351,14 @@ GameBus.on('TICK_PROCESSED', (tick) => {
             const vx = Math.sign(playerX - cx + (Math.random() * 10 - 5)) || 1;
             const vy = Math.sign(playerY - cy + (Math.random() * 10 - 5)) || 1;
 
-            activeComets.push({ x: cx, y: cy, vx: vx, vy: vy });
+            EntityManager.add({ 
+                x: cx, y: cy, vx: vx, vy: vy,
+                char: '❄️', color: '#00FFFF', glowColor: '#00FFFF', pulseSpeed: 400,
+                isComet: true 
+            });
+
             logMessage("<span style='color:var(--accent-color); font-weight:bold;'>[ SENSORS ] High-velocity icy body detected entering local space. Intercept for rare isotopes!</span>");
             if (typeof soundManager !== 'undefined') soundManager.playScan();
-        }
-
-        for (let i = activeComets.length - 1; i >= 0; i--) {
-            let comet = activeComets[i];
-            comet.x += comet.vx; comet.y += comet.vy;
-            if (typeof spawnParticles === 'function') spawnParticles(comet.x, comet.y, 'thruster', { x: -comet.vx, y: -comet.vy });
-
-            if (comet.x === playerX && comet.y === playerY) {
-                const ice = 5 + Math.floor(Math.random() * 10);
-                const rare = Math.floor(Math.random() * 3); 
-                playerCargo['HYDROGEN_3'] = (playerCargo['HYDROGEN_3'] || 0) + ice;
-                if (rare > 0) playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + rare;
-                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                
-                let lootMsg = `<span style='color:var(--accent-color); font-weight:bold;'>[ COMET INTERCEPTED ]</span> Harvested ${ice}x Hydrogen-3`;
-                if (rare > 0) lootMsg += ` and ${rare}x Void Crystals!`;
-                logMessage(lootMsg);
-                if (typeof showToast === 'function') showToast("COMET HARVESTED", "success");
-                if (typeof soundManager !== 'undefined') soundManager.playGain();
-                
-                activeComets.splice(i, 1); continue;
-            }
-            const cDist = Math.abs(comet.x - playerX) + Math.abs(comet.y - playerY);
-            if (typeof VIEWPORT_WIDTH_TILES !== 'undefined' && cDist > VIEWPORT_WIDTH_TILES * 1.5) activeComets.splice(i, 1);
         }
     }
 
