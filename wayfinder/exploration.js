@@ -1723,8 +1723,9 @@ function handleDerelictAction(action) {
         // Wait a brief moment for dramatic effect, then transition to the new minigame!
         setTimeout(() => {
             closeDerelictView();
-            if (typeof startDerelictEncounter === 'function') {
-                startDerelictEncounter();
+            // THIS IS THE FIX:
+            if (typeof handleDerelictEncounter === 'function') {
+                handleDerelictEncounter(tile);
             }
         }, 800);
     }
@@ -1990,4 +1991,62 @@ function resolveStrangeSignal(choice) {
     if (typeof renderUIStats === 'function') renderUIStats();
     if (typeof checkLevelUp === 'function') checkLevelUp();
     if (typeof autoSaveGame === 'function') autoSaveGame();
+}
+
+// Add these to the bottom of exploration.js to prevent crashes on unimplemented features:
+
+function startSurfaceExpedition() {
+    logMessage("<span style='color:var(--warning)'>Surface expeditions are currently disabled due to atmospheric storms. (Coming in v1.1)</span>");
+    showToast("EXPEDITIONS DISABLED", "warning");
+}
+
+function hackMachineWorld() {
+    logMessage("<span style='color:var(--danger)'>Core network access denied. Ice-wall encryption too dense. (Coming in v1.1)</span>");
+    showToast("ACCESS DENIED", "error");
+}
+
+// ==========================================
+// --- UNIDENTIFIED SIGNAL SOURCES (USS) ---
+// ==========================================
+
+function resolveUSSEncounter() {
+    if (typeof soundManager !== 'undefined') soundManager.playScan();
+    if (typeof triggerHaptic === 'function') triggerHaptic(50);
+    
+    // Safety check: Don't spawn a derelict on top of a Starbase!
+    const tile = chunkManager.getTile(playerX, playerY);
+    if (getTileChar(tile) !== '.') {
+        logMessage("<span style='color:var(--item-desc-color)'>[ USS CLASSIFIED ] The signal degraded into background noise upon nearing the gravity well.</span>");
+        return;
+    }
+
+    const roll = Math.random();
+    
+    if (roll < 0.25) {
+        // 25% Ambush
+        logMessage("<span style='color:var(--danger); font-weight:bold;'>[ USS CLASSIFIED ] Cartel Ambush! Weapons hot!</span>");
+        if (typeof startCombat === 'function') startCombat();
+    } 
+    else if (roll < 0.50) {
+        // 25% Salvage
+        logMessage("<span style='color:var(--success); font-weight:bold;'>[ USS CLASSIFIED ] Intact cargo pod drifting in the void!</span>");
+        playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + 5;
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        if (typeof showToast === 'function') showToast("SALVAGED TECH PARTS", "success");
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+    } 
+    else if (roll < 0.75) {
+        // 25% Derelict Ship
+        logMessage("<span style='color:var(--warning); font-weight:bold;'>[ USS CLASSIFIED ] A derelict Concord patrol craft.</span>");
+        updateWorldState(playerX, playerY, { char: 'D', type: 'derelict', studied: false });
+        if (typeof openDerelictView === 'function') openDerelictView();
+    } 
+    else {
+        // 25% Deep Space Anomaly
+        logMessage("<span style='color:#9933FF; font-weight:bold;'>[ USS CLASSIFIED ] An uncharted stellar anomaly.</span>");
+        if (typeof handleAnomaly === 'function') {
+            handleAnomaly();
+            updateWorldState(playerX, playerY, { studied: true });
+        }
+    }
 }
