@@ -470,6 +470,8 @@ function renderPlanetView() {
              fuelGained = Math.floor(fuelGained * 1.20); 
          }
 
+         // Mutate the local object so the UI locks immediately
+         cT.scoopedThisVisit = true;
          updateWorldState(playerX, playerY, { scoopedThisVisit: true, lastInteraction: currentGameDate });
          logMsg = `Initiated Deep Scoop on ${starData.class}-Class Star.`;
 
@@ -622,11 +624,14 @@ function renderPlanetView() {
          // FIRE THE TOAST!
          showToast(toastHTML, "success");
          
-     } else {
+} else {
          minedResourcesMessage = "Mining yielded nothing of value this attempt.";
      }
 
      advanceGameTime(0.1);
+     
+     // Mutate the local object so the UI locks immediately
+     asteroid.minedThisVisit = true;
      updateWorldState(playerX, playerY, { minedThisVisit: true, lastInteraction: currentGameDate });
      logMessage(minedResourcesMessage);
  }
@@ -1646,18 +1651,19 @@ function anomalyDetonates() {
     closeGenericModal();
     
     const dmg = 25 + Math.floor(Math.random() * 25);
-    
-    updateWorldState(playerX, playerY, { studied: true }); // It blew up, so it's gone
+    updateWorldState(playerX, playerY, { studied: true }); 
     
     logMessage(`<span style="color:var(--danger)">CONTAINMENT FAILURE! Anomaly collapses violently!</span><br>Hull takes ${dmg} damage!`);
     if (typeof showToast === 'function') showToast("ANOMALY DETONATION", "error");
     
-    // --- THE MAGIC HANDOFF ---
-    // The GameBus now handles the math, the screen shake, the haptics, AND the game-over check!
     GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Vaporized by Anomaly Collapse" });
     
     anomalyContext = null;
-    autoSaveGame(); 
+    
+    // Only save if the player is still alive
+    if (playerHull > 0) {
+        autoSaveGame(); 
+    }
 }
 
 function abortAnomaly() {
@@ -1670,36 +1676,47 @@ function handleDerelictAction(action) {
     const tile = chunkManager.getTile(playerX, playerY);
     if (!tile) return;
 
-    // 1. Stop the exploit instantly
-    if (tile.looted || tile.studied) {
+    // --- QUICK ACTION: SCAN ---
+    if (action === 'SCAN') {
+        if (tile.studied) {
+            logDerelict("Sensors indicate no further data can be extracted.", "neutral");
+            return;
+        }
+        const xp = 25;
+        if (typeof playerXP !== 'undefined') playerXP += xp;
+        logDerelict(`Scan Complete. Structural analysis recorded. +${xp} XP`, 'good');
+        if (typeof checkLevelUp === 'function') checkLevelUp();
+        
+        // Mark as studied, but do NOT mark as looted yet!
+        if (typeof updateWorldState === 'function') {
+            updateWorldState(playerX, playerY, { studied: true });
+        } else {
+            tile.studied = true;
+        }
+        return;
+    }
+
+    // 1. Stop the exploit instantly for physical actions (SALVAGE / BREACH)
+    if (tile.looted) {
         logDerelict("Further attempts yield no new results. The wreck is tapped out.", "neutral");
         return; 
     }
 
     // 2. Permanently save the looted state to the world data!
     if (typeof updateWorldState === 'function') {
-        updateWorldState(playerX, playerY, { looted: true, studied: true });
+        updateWorldState(playerX, playerY, { looted: true });
     } else {
         tile.looted = true;
-        tile.studied = true;
     }
 
-    // --- QUICK ACTION: SCAN ---
-    if (action === 'SCAN') {
-        const xp = 25;
-        playerXP += xp;
-        logDerelict(`Scan Complete. Structural analysis recorded. +${xp} XP`, 'good');
-        if (typeof checkLevelUp === 'function') checkLevelUp();
-    }
     // --- QUICK ACTION: SALVAGE ---
-    else if (action === 'SALVAGE') {
+    if (action === 'SALVAGE') {
         if (Math.random() < 0.7) {
             const scrap = 2 + Math.floor(Math.random() * 5);
             if (currentCargoLoad + scrap <= PLAYER_CARGO_CAPACITY) {
                 playerCargo.TECH_PARTS = (playerCargo.TECH_PARTS || 0) + scrap;
                 if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
                 logDerelict(`Salvage successful. Recovered ${scrap} Tech Parts.`, 'good');
-                if (typeof updateModalInfoBar === 'function') updateModalInfoBar('derelictInfoBar');
             } else {
                 logDerelict("Cargo hold full! Cannot salvage. Wreck destabilized.", 'bad');
             }
@@ -1712,20 +1729,19 @@ function handleDerelictAction(action) {
                 closeDerelictView();
                 if (typeof triggerGameOver === 'function') triggerGameOver("Crushed by Derelict Debris");
             }
-            if (typeof updateModalInfoBar === 'function') updateModalInfoBar('derelictInfoBar');
         }
+        if (typeof updateModalInfoBar === 'function') updateModalInfoBar('derelictInfoBar');
     }
     // --- DEEP DIVE: BREACH ---
     else if (action === 'BREACH') {
         logDerelict("Airlock docking sequence initiated. Transferring control to boarding terminal...", "good");
         if (typeof soundManager !== 'undefined') soundManager.playUIHover();
         
-        // Wait a brief moment for dramatic effect, then transition to the new minigame!
+        // Wait a brief moment for dramatic effect, then transition to the minigame!
         setTimeout(() => {
             closeDerelictView();
-            // THIS IS THE FIX:
-            if (typeof handleDerelictEncounter === 'function') {
-                handleDerelictEncounter(tile);
+            if (typeof startBoardingCombat === 'function') {
+                startBoardingCombat();
             }
         }, 800);
     }
@@ -2044,9 +2060,10 @@ function resolveUSSEncounter() {
     else {
         // 25% Deep Space Anomaly
         logMessage("<span style='color:#9933FF; font-weight:bold;'>[ USS CLASSIFIED ] An uncharted stellar anomaly.</span>");
-        if (typeof handleAnomaly === 'function') {
-            handleAnomaly();
-            updateWorldState(playerX, playerY, { studied: true });
+        
+        // Call the correct function, pass the tile, and let the minigame handle the state saving
+        if (typeof handleAnomalyEncounter === 'function') {
+            handleAnomalyEncounter(tile);
         }
     }
 }
@@ -2076,9 +2093,21 @@ function openDerelictView() {
 
     if (detailEl) {
         detailEl.innerHTML = `
-            <div style="text-align:center; padding: 20px;">
-                <div style="font-size:60px; filter: drop-shadow(0 0 15px #88AACC); margin-bottom:15px;">🚀</div>
-                <h3 style="color:#88AACC; margin-bottom:15px; letter-spacing: 2px;">UNKNOWN WRECKAGE</h3>
+            <div style="text-align:center; padding: 10px;">
+                <img src="assets/derelict.png" alt="Derelict Wreck" style="
+                    width: 100%;
+                    max-width: 420px;
+                    height: auto;
+                    border: 2px solid var(--border-color);
+                    box-shadow: 0 0 25px rgba(136, 170, 204, 0.4);
+                    margin-bottom: 20px;
+                    border-radius: 4px;
+                    display: block;
+                    margin-left: auto;
+                    margin-right: auto;
+                ">
+
+                <h3 style="color:#88AACC; margin-bottom:15px; letter-spacing: 2px; text-transform:uppercase; font-size:18px;">UNKNOWN WRECKAGE</h3>
                 <div style="background:rgba(0,0,0,0.5); border:1px solid var(--border-color); padding:15px; border-radius:4px; text-align:left;">
                     <p style="color:var(--text-color); font-size:13px; line-height:1.6; margin:0; font-style:italic;">
                         "${desc}"
