@@ -41,7 +41,11 @@ function startCombat(specificEnemyEntity = null) {
      const distanceFromCenter = Math.sqrt((playerX * playerX) + (playerY * playerY));
      let difficultyMultiplier = 1 + (distanceFromCenter / 400);
 
-     // --- NEW: Deep clone the ship so we can mutate it safely ---
+     if (specificEnemyEntity && specificEnemyEntity.combatBonusAdvantage) {
+         difficultyMultiplier = Math.max(0.2, difficultyMultiplier - (specificEnemyEntity.combatBonusAdvantage * 0.05));
+     }
+
+     // --- Deep clone the ship so we can mutate it safely ---
      let enemyShipClone = JSON.parse(JSON.stringify(pirateShip));
 
      // 20% chance to spawn an Elite/Mutated variant (unless it's already a legendary boss)
@@ -1048,25 +1052,16 @@ function updateEnemies() {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         // STEALTH MECHANIC 1: NEBULA SLIPPING
-        // If the player is sitting in a nebula (~), sensors are scrambled!
         const playerTile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
         if (playerTile && getTileChar(playerTile) === '~') {
-            // 80% chance the enemy completely loses tracking this turn
             if (Math.random() < 0.80) {
-                // Enemy wanders randomly instead of chasing you
-                enemy.x += (Math.random() > 0.5 ? 1 : -1) * Math.round(Math.random());
-                enemy.y += (Math.random() > 0.5 ? 1 : -1) * Math.round(Math.random());
-                continue; // Skip the rest of their hunting logic
+                continue; // They lose their turn trying to find you
             }
         }
 
-        // 🚨 STEALTH MECHANIC 2: SILENT RUNNING (The new mechanic!)
+        // 🚨 STEALTH MECHANIC 2: SILENT RUNNING
         if (typeof isSilentRunning !== 'undefined' && isSilentRunning && dist > 3) {
-            // If you are stealthing and outside their immediate visual range (3 tiles),
-            // they cannot track you and will just wander aimlessly.
-            enemy.x += (Math.random() > 0.5 ? 1 : -1) * Math.round(Math.random());
-            enemy.y += (Math.random() > 0.5 ? 1 : -1) * Math.round(Math.random());
-            continue; // Skip the hunting AI entirely
+            continue; // They lose their turn
         }
 
         if (dist > 100) { 
@@ -1154,9 +1149,6 @@ function commitPiracy(npcIndex) {
         hull: enemyProfile.baseHull,
         shields: enemyProfile.baseShields
     };
-    
-    // Add them directly to your combat engine
-    activeEnemies.push(hostileEntity);
 
     closeGenericModal();
     logMessage(`<span style="color:var(--danger)">WARNING: You have initiated hostilities against a ${targetNPC.name}!</span>`);
