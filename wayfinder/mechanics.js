@@ -34,19 +34,170 @@ const EntityManager = {
             // SYSTEM 1: Unidentified Signal Sources (USS)
             if (entity.isUSS) {
                 if (isMovement) entity.lifespan--;
-                
-                // Did player intercept it?
                 if (entity.x === playerX && entity.y === playerY) {
                     this.entities.splice(i, 1);
                     if (typeof resolveUSSEncounter === 'function') resolveUSSEncounter();
-                } 
-                // Did it expire?
-                else if (entity.lifespan <= 0) {
+                } else if (entity.lifespan <= 0) {
                     this.entities.splice(i, 1);
                 }
             }
             
-            // We will migrate old systems (Comets, NPCs) into here later!
+            // SYSTEM 2: Comets (Migrated!)
+            if (entity.isComet && isMovement) {
+                // Move the comet
+                entity.x += entity.vx; 
+                entity.y += entity.vy;
+                if (typeof spawnParticles === 'function') spawnParticles(entity.x, entity.y, 'thruster', { x: -entity.vx, y: -entity.vy });
+
+                // Did it hit the player?
+                if (entity.x === playerX && entity.y === playerY) {
+                    const ice = 5 + Math.floor(Math.random() * 10);
+                    const rare = Math.floor(Math.random() * 3); 
+                    playerCargo['HYDROGEN_3'] = (playerCargo['HYDROGEN_3'] || 0) + ice;
+                    if (rare > 0) playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + rare;
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    
+                    let lootMsg = `<span style='color:var(--accent-color); font-weight:bold;'>[ COMET INTERCEPTED ]</span> Harvested ${ice}x Hydrogen-3`;
+                    if (rare > 0) lootMsg += ` and ${rare}x Void Crystals!`;
+                    logMessage(lootMsg);
+                    if (typeof showToast === 'function') showToast("COMET HARVESTED", "success");
+                    if (typeof soundManager !== 'undefined') soundManager.playGain();
+                    
+                    this.entities.splice(i, 1); // Destroy the comet
+                } else {
+                    // Despawn if it flew too far off-screen
+                    const cDist = Math.abs(entity.x - playerX) + Math.abs(entity.y - playerY);
+                    if (typeof VIEWPORT_WIDTH_TILES !== 'undefined' && cDist > VIEWPORT_WIDTH_TILES * 1.5) {
+                        this.entities.splice(i, 1);
+                    }
+                }
+            }
+            // SYSTEM 3: Ambient NPCs & Traffic
+            if (entity.isNPC && isMovement) {
+                // Initialize State Machine if they don't have one
+                if (!entity.state) {
+                    entity.state = 'CRUISING';
+                    entity.vx = 0; entity.vy = 0;
+                    entity.stepsRemaining = 0;
+                }
+
+                // A. DOCKED STATE
+                if (entity.state === 'DOCKED') {
+                    entity.dockTimer--;
+                    if (entity.dockTimer <= 0) {
+                        entity.state = 'CRUISING';
+                        entity.stepsRemaining = Math.floor(Math.random() * 15) + 10;
+                        do {
+                            entity.vx = Math.floor(Math.random() * 3) - 1;
+                            entity.vy = Math.floor(Math.random() * 3) - 1;
+                        } while (entity.vx === 0 && entity.vy === 0);
+                    }
+                }
+                // B. DOCKING STATE
+                else if (entity.state === 'DOCKING') {
+                    if (entity.x < entity.targetX) entity.x++; else if (entity.x > entity.targetX) entity.x--;
+                    if (entity.y < entity.targetY) entity.y++; else if (entity.y > entity.targetY) entity.y--;
+
+                    if (entity.x === entity.targetX && entity.y === entity.targetY) {
+                        entity.state = 'DOCKED';
+                        entity.dockTimer = 20;
+                    }
+                }
+                // B.5 RESCUE STATE
+                else if (entity.state === 'RESCUE') {
+                    for (let step = 0; step < 2; step++) {
+                        if (entity.x < playerX) entity.x++; else if (entity.x > playerX) entity.x--;
+                        if (entity.y < playerY) entity.y++; else if (entity.y > playerY) entity.y--;
+                        if (entity.x === playerX && entity.y === playerY) break;
+                    }
+                }
+                // B.75 HAULER STATE
+                else if (entity.state === 'TRADE_ROUTE') {
+                    if (entity.x < entity.targetX) entity.x++; else if (entity.x > entity.targetX) entity.x--;
+                    if (entity.y < entity.targetY) entity.y++; else if (entity.y > entity.targetY) entity.y--;
+
+                    if (entity.x === entity.targetX && entity.y === entity.targetY) {
+                        const payout = 5000 + Math.floor(Math.random() * 5000);
+                        playerCredits += payout;
+                        logMessage(`<span style='color:var(--gold-text); font-weight:bold;'>[ TRADE ROUTE ] ${entity.name} safely arrived! Earned ${formatNumber(payout)}c.</span>`);
+                        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+                        if (typeof renderUIStats === 'function') renderUIStats();
+                        this.entities.splice(i, 1); continue;
+                    }
+
+                    const pirate = activeEnemies.find(e => e.x === entity.x && e.y === entity.y) || this.entities.find(e => e.isHostile && e.x === entity.x && e.y === entity.y);
+                    if (pirate) {
+                        logMessage(`<span style='color:var(--danger); font-weight:bold;'>[ TRADE ROUTE ] ${entity.name} was destroyed by pirates! Cargo lost.</span>`);
+                        if (typeof soundManager !== 'undefined') soundManager.playExplosion();
+                        this.entities.splice(i, 1); continue;
+                    }
+                }
+                // C. CRUISING STATE
+                else if (entity.state === 'CRUISING') {
+                    if (Math.random() >= 0.30) {
+                        if (Math.random() < 0.10) {
+                            let foundStation = false;
+                            for (let dy = -3; dy <= 3; dy++) {
+                                for (let dx = -3; dx <= 3; dx++) {
+                                    const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(entity.x + dx, entity.y + dy) : null;
+                                    const char = typeof getTileChar === 'function' ? getTileChar(tile) : '.';
+                                    
+                                    if (char === STARBASE_CHAR_VAL || char === OUTPOST_CHAR_VAL) {
+                                        entity.state = 'DOCKING';
+                                        entity.targetX = entity.x + dx;
+                                        entity.targetY = entity.y + dy;
+                                        foundStation = true; break;
+                                    }
+                                }
+                                if (foundStation) break;
+                            }
+                            if (!foundStation) {
+                                if (entity.stepsRemaining <= 0) {
+                                    entity.stepsRemaining = Math.floor(Math.random() * 15) + 5; 
+                                    do {
+                                        entity.vx = Math.floor(Math.random() * 3) - 1;
+                                        entity.vy = Math.floor(Math.random() * 3) - 1;
+                                    } while (entity.vx === 0 && entity.vy === 0);
+                                }
+                                entity.x += entity.vx; entity.y += entity.vy; entity.stepsRemaining--;
+                            }
+                        } else {
+                            if (entity.stepsRemaining <= 0) {
+                                entity.stepsRemaining = Math.floor(Math.random() * 15) + 5; 
+                                do {
+                                    entity.vx = Math.floor(Math.random() * 3) - 1;
+                                    entity.vy = Math.floor(Math.random() * 3) - 1;
+                                } while (entity.vx === 0 && entity.vy === 0);
+                            }
+                            entity.x += entity.vx; entity.y += entity.vy; entity.stepsRemaining--;
+                        }
+                    }
+                }
+
+                // DESPAWN, HAILING, & COLLISIONS
+                const dist = Math.abs(entity.x - playerX) + Math.abs(entity.y - playerY);
+                
+                if (dist > VIEWPORT_WIDTH_TILES && !entity.isColonyHauler) {
+                    this.entities.splice(i, 1); continue;
+                }
+
+                if (dist > 0 && dist <= 3 && Math.random() < 0.15) {
+                    if (entity.hails && entity.hails.length > 0) {
+                        const randomHail = entity.hails[Math.floor(Math.random() * entity.hails.length)];
+                        logMessage(`<span style="color:${entity.color || '#fff'}">[COMMS] ${entity.name}: "${randomHail}"</span>`);
+                    }
+                }
+                
+                if (entity.x === playerX && entity.y === playerY) {
+                    if (entity.isFuelRat) {
+                        this.entities.splice(i, 1);
+                        executeRescueSequence();
+                        continue;
+                    } else {
+                        if (typeof interactWithNPC === 'function') interactWithNPC(entity);
+                    }
+                }
+            }
         }
     }
 };
