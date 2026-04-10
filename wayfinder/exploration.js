@@ -1910,6 +1910,15 @@ function interceptTradeConvoy() {
     if (typeof openTradeModal === 'function') openTradeModal('BUY');
 }
 
+function surveyForColony(planetName, biomeKey, x, y) {
+    if ((playerCargo["COLONY_CHARTER"] || 0) < 1) {
+        showToast("Requires Colony Charter", "error"); return;
+    }
+    showConfirmationModal(`Establish a permanent Concord settlement on ${planetName}? This will consume your Colony Charter.`, () => {
+        establishColony(selectedPlanetIndex); 
+    });
+}
+
 function investigateStrangeSignal() {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
