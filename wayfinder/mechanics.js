@@ -13,31 +13,41 @@ const COST_PER_CREW = 250;    // 250c per crew member
 const EntityManager = {
     entities: [],
     
-    // Add a new entity to the world
     add: function(entity) {
         if (!entity.id) entity.id = "ENT_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
         this.entities.push(entity);
         return entity;
     },
     
-    // Remove an entity by its unique ID
     remove: function(id) {
         this.entities = this.entities.filter(e => e.id !== id);
     },
     
-    // Wipe everything (used on player death or loading a save)
-    clear: function() {
-        this.entities = [];
-    },
+    clear: function() { this.entities = []; },
     
-    // Get all entities that share a specific tag (e.g., 'isHostile', 'isRenderable')
-    getWithTag: function(tag) {
-        return this.entities.filter(e => e[tag] === true);
-    },
-
-    // Get an entity at a specific coordinate
-    getAt: function(x, y) {
-        return this.entities.filter(e => e.x === x && e.y === y);
+    // --- THE NATIVE ECS TICK ENGINE ---
+    tick: function(isMovement) {
+        // Loop backwards to safely remove entities that expire or get destroyed
+        for (let i = this.entities.length - 1; i >= 0; i--) {
+            const entity = this.entities[i];
+            
+            // SYSTEM 1: Unidentified Signal Sources (USS)
+            if (entity.isUSS) {
+                if (isMovement) entity.lifespan--;
+                
+                // Did player intercept it?
+                if (entity.x === playerX && entity.y === playerY) {
+                    this.entities.splice(i, 1);
+                    if (typeof resolveUSSEncounter === 'function') resolveUSSEncounter();
+                } 
+                // Did it expire?
+                else if (entity.lifespan <= 0) {
+                    this.entities.splice(i, 1);
+                }
+            }
+            
+            // We will migrate old systems (Comets, NPCs) into here later!
+        }
     }
 };
 
@@ -281,6 +291,28 @@ if (typeof GameBus !== 'undefined') {
         if (tileChar === '.' && Math.random() < 0.0001) { 
             if (typeof triggerRandomEncounter === 'function') triggerRandomEncounter();
         }
+
+        // --- NATIVE ECS ENGINE UPDATE ---
+    EntityManager.tick(isMovement);
+
+    // Spawn Unidentified Signal Sources (USS)
+    if (isMovement && Math.random() < 0.02) { // 2% chance per jump
+        const dist = 8 + Math.floor(Math.random() * 12); // 8-20 tiles away
+        const angle = Math.random() * Math.PI * 2;
+        
+        EntityManager.add({
+            x: Math.floor(playerX + Math.cos(angle) * dist),
+            y: Math.floor(playerY + Math.sin(angle) * dist),
+            char: '✧', color: '#FFFFFF', glowColor: '#FFFFFF', pulseSpeed: 600,
+            isUSS: true, lifespan: 50 // Lasts 50 moves before fading
+        });
+        
+        // Only notify the player if they have good sensors!
+        if ((typeof hasCrewPerk === 'function' && hasCrewPerk('ASTROMETRICS')) || 
+            (typeof playerPerks !== 'undefined' && playerPerks.has('LONG_RANGE_SENSORS'))) {
+            logMessage("<span style='color:var(--accent-color)'>[ SENSORS ] Unidentified Signal Source (USS) detected in local space.</span>");
+        }
+    }
 
     });
 }
