@@ -227,6 +227,8 @@ function triggerRandomEncounter() {
     
     const randomKey = keys[Math.floor(Math.random() * keys.length)];
     const encounter = ENCOUNTER_DATABASE[randomKey];
+    // Lock the modal if this is a pirate or inescapable event!
+    window.activeHostileEncounter = encounter.id.includes('PIRATE') || encounter.id === 'SPATIAL_ANOMALY';
     
     // Save the active context so it can be reloaded from a save file if needed!
     currentEncounterContext = encounter.id;
@@ -236,32 +238,71 @@ function triggerRandomEncounter() {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    listEl.innerHTML = ''; // Hide side list for full immersion
+    // --- 📡 RESTORING THE SENSOR FLAVOR TEXT FOR LEFT PANEL ---
+    if (listEl) {
+        // Generate consistent "random" numbers based on location and title
+        const pseudoRandom = Math.abs((playerX * 7) ^ (playerY * 13) ^ (encounter.title.length * 5));
+        const distance = (pseudoRandom % 40) + 10;
+        const radLevel = (pseudoRandom % 300) + 15;
+        const sigStrength = (pseudoRandom % 90) + 10;
+        
+        listEl.innerHTML = `
+            <style>
+                @keyframes radarSweep { 0% { left: -30%; } 100% { left: 100%; } }
+            </style>
+            <div style="padding:15px; border-bottom:1px solid var(--border-color);">
+                <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">LONG RANGE TELEMETRY</div>
+                <h4 style="color:${encounter.color || 'var(--accent-color)'}; margin:0; text-transform:uppercase; font-size:14px;">${encounter.title}</h4>
+                <div style="font-size:12px; color:var(--text-color); margin-top:10px; line-height: 1.8;">
+                    • Distance: <span style="color:var(--accent-color)">${distance} Mm</span><br>
+                    • Signature: <span style="color:var(--warning)">${sigStrength}% Match</span><br>
+                    • Emissions: ${radLevel} mSv/h
+                </div>
+            </div>
+            <div style="padding:15px;">
+                <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">THREAT ANALYSIS</div>
+                <div style="font-size:12px; color:var(--text-color); margin-top:5px; line-height: 1.8;">
+                    <span style="color:${encounter.color || 'var(--success)'}">[ STATUS ]</span> Standby<br>
+                    <span style="color:var(--warning)">[ HAZARD ]</span> Variable<br>
+                    <span style="color:var(--accent-color)">[ TARGET ]</span> Locked
+                </div>
+            </div>
+            <div style="padding:15px; text-align:center;">
+                <div style="width:100%; height:2px; background:var(--border-color); position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:0; left:0; width:30%; height:100%; background:${encounter.color || 'var(--accent-color)'}; box-shadow: 0 0 10px ${encounter.color || 'var(--accent-color)'}; animation: radarSweep 2s infinite linear;"></div>
+                </div>
+                <div style="font-size:10px; color:${encounter.color || 'var(--accent-color)'}; margin-top:8px; letter-spacing:2px;">GATHERING DATA...</div>
+            </div>
+        `;
+    }
 
-    // --- 🏴‍☠️ THE FIX: DYNAMIC VISUALS ---
-    // If the encounter is the Pirate Extortion event (or has an image assigned in the DB), use it!
-    // Otherwise, fall back to the standard emoji icon.
+    // --- 🏴‍☠️ DYNAMIC VISUALS FOR THE RIGHT PANEL ---
     let visualHtml = '';
     
-    if (encounter.id === 'PIRATE_EXTORTION' || (encounter.title && encounter.title.toUpperCase().includes('VULTURE'))) {
+    // 1. Check for Pirates (Now checks for the word PIRATE!)
+    if (encounter.id === 'PIRATE_EXTORTION' || (encounter.title && encounter.title.toUpperCase().includes('PIRATE'))) {
          visualHtml = `
             <img src="assets/pirate_ship.png" alt="Pirate Interceptor" style="
-                width: 100%;
-                max-width: 420px;
-                height: auto;
-                border: 2px solid var(--danger);
-                box-shadow: 0 0 25px rgba(255, 0, 0, 0.4);
-                margin-bottom: 20px;
-                border-radius: 4px;
-                display: block;
-                margin-left: auto;
-                margin-right: auto;
+                width: 100%; max-width: 420px; height: auto; border: 2px solid var(--danger);
+                box-shadow: 0 0 25px rgba(255, 0, 0, 0.4); margin-bottom: 20px; border-radius: 4px; display: block; margin-left: auto; margin-right: auto;
             ">
          `;
-    } else if (encounter.image) {
-        // Future-proofing: If you add an 'image' property to other database events, it automatically renders them!
+    } 
+    // 2. Check for Anomalies and Signals
+    else if (encounter.id === 'SPATIAL_ANOMALY' || (encounter.title && (encounter.title.toUpperCase().includes('SIGNAL') || encounter.title.toUpperCase().includes('ANOMALY')))) {
+         visualHtml = `
+            <img src="assets/anomaly.png" alt="Spatial Anomaly" style="
+                width: 100%; max-width: 420px; height: auto; border: 2px solid ${encounter.color || '#9933FF'};
+                box-shadow: 0 0 25px ${encounter.color ? encounter.color + '66' : 'rgba(153, 51, 255, 0.4)'}; margin-bottom: 20px; border-radius: 4px; display: block; margin-left: auto; margin-right: auto;
+            ">
+         `;
+    }
+    // 3. Fallback: Generic image property in DB
+    else if (encounter.image) {
         visualHtml = `<img src="${encounter.image}" alt="${encounter.title}" style="width: 100%; max-width: 420px; height: auto; border: 2px solid ${encounter.color}; box-shadow: 0 0 25px ${encounter.color}44; margin-bottom: 20px; border-radius: 4px; display: block; margin-left: auto; margin-right: auto;">`;
-    } else {
+    } 
+    // 4. Default: Basic Emoji Icon
+    else {
         visualHtml = `<div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px ${encounter.color});">${encounter.icon}</div>`;
     }
 
@@ -313,6 +354,8 @@ function triggerRandomEncounter() {
 }
 
 function resolveUniversalEncounter(encounterId, choiceIndex) {
+    // Release the modal lock since a choice was made!
+    window.activeHostileEncounter = false;
     const encounter = ENCOUNTER_DATABASE[encounterId];
     const choice = encounter.choices[choiceIndex];
     let leveledUp = false;
@@ -365,9 +408,14 @@ function resolveUniversalEncounter(encounterId, choiceIndex) {
             playerFactionStanding[choice.rewards.rep.faction] = (playerFactionStanding[choice.rewards.rep.faction] || 0) + choice.rewards.rep.amount;
         }
         if (choice.rewards.items) {
+            // Track the incoming weight dynamically within the loop
+            let simulatedLoad = currentCargoLoad;
             choice.rewards.items.forEach(item => {
-                if (currentCargoLoad + item.qty <= PLAYER_CARGO_CAPACITY) {
+                const weight = (typeof COMMODITIES !== 'undefined' && COMMODITIES[item.id]) ? (COMMODITIES[item.id].weight || 1) : 1;
+                
+                if (simulatedLoad + (item.qty * weight) <= PLAYER_CARGO_CAPACITY) {
                     playerCargo[item.id] = (playerCargo[item.id] || 0) + item.qty;
+                    simulatedLoad += (item.qty * weight);
                 } else {
                     logMessage(`Could not recover ${item.qty}x ${COMMODITIES[item.id].name}. Cargo hold full!`);
                 }
