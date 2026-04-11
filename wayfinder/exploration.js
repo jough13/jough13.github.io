@@ -2081,11 +2081,50 @@ function openDerelictView() {
     const actionsEl = document.getElementById('genericModalActions');
     const listEl = document.getElementById('genericModalList');
     
-    // Hide list pane for a focused, single-pane view
-    if (listEl) listEl.innerHTML = ''; 
-    
     const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
     const isLooted = tile && (tile.looted || tile.studied);
+
+    // --- NEW: PROCEDURAL SENSOR READOUT FOR THE LEFT PANEL ---
+    if (listEl) {
+        // Generate pseudo-random data based on coordinates for consistency
+        const pseudoRandom = Math.abs((playerX * 13) ^ (playerY * 31)); 
+        const hullIntegrity = (pseudoRandom % 20) + 5; // 5-24%
+        const registry = "NVC-" + ((pseudoRandom % 9000) + 1000);
+        const timeAdrift = (pseudoRandom % 800) + 120; 
+        
+        const lifeSupportColor = isLooted ? "var(--danger)" : "var(--warning)";
+        const lifeSupportText = isLooted ? "OFFLINE (Vented)" : "FAILING (0.2%)";
+
+        listEl.innerHTML = `
+            <div style="padding:15px; border-bottom:1px solid var(--border-color);">
+                <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">DEEP SCAN DATA</div>
+                <h4 style="color:var(--warning); margin:0; text-transform:uppercase;">UNIDENTIFIED WRECK</h4>
+                <div style="font-size:12px; color:var(--text-color); margin-top:5px;">
+                    • Registry: <span style="color:var(--accent-color)">${registry}</span><br>
+                    • Class: Unrecognizable<br>
+                    • Est. Adrift: ~${timeAdrift} days
+                </div>
+            </div>
+            <div style="padding:15px;">
+                <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">SYSTEM DIAGNOSTICS</div>
+                <div style="font-size:12px; color:var(--text-color); margin-top:5px; line-height: 1.8;">
+                    <span style="color:${lifeSupportColor}">[ SYSTEM ]</span> Life Support: ${lifeSupportText}<br>
+                    <span style="color:var(--danger)">[ CRITICAL ]</span> Main Reactor: SCRAMED<br>
+                    <span style="color:var(--danger)">[ CRITICAL ]</span> Hull Integrity: ${hullIntegrity}%<br>
+                    ${isLooted ? 
+                        `<span style="color:var(--item-desc-color)">[ TRACE ]</span> Zero thermal emissions.` : 
+                        `<span style="color:var(--success)">[ TRACE ]</span> Faint power signature detected in lower cargo bays.`
+                    }
+                </div>
+            </div>
+            <div style="padding:15px; margin-top: 10px; background: rgba(255,0,0,0.05); border-top: 1px solid var(--danger);">
+                <div style="font-size:10px; color:var(--danger); letter-spacing:2px; margin-bottom:5px;">HAZARD WARNING</div>
+                <div style="font-size:11px; color:var(--text-color); font-style: italic;">
+                    "Warning. Structural collapse imminent. Micro-meteoroid impacts have compromised primary bulkheads. Boarding actions carry extreme risk."
+                </div>
+            </div>
+        `;
+    }
 
     const desc = isLooted 
         ? "This vessel has been completely stripped of useful salvage. Only the ghosts of its former crew remain." 
