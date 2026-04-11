@@ -5,10 +5,8 @@ class SoundManager {
         this.enabled = false; // Start muted until user interaction
         this.initialized = false;
         
-        // Ambient Drone State
-        this.ambientPlaying = false;
-        this.ambientNodes = [];
-        this.ambientFilter = null;
+        // --- NEW: HTML5 Audio Object for Ambient Track ---
+        this.bgMusic = null;
     }
 
     init() {
@@ -19,10 +17,24 @@ class SoundManager {
         this.masterGain.gain.value = 0.3; // Default master volume (30%)
         this.masterGain.connect(this.ctx.destination);
         
-        // Removed this.enabled = true; and this.startAmbientDrone();
-        // We leave those to toggleMute() so the logic doesn't fight itself!
         this.initialized = true;
         console.log("Audio System Initialized");
+    }
+
+    initBackgroundMusic() {
+        if (this.bgMusic) return; // Prevent creating multiple tracks
+
+        // Create the audio object pointing to your new AI track
+        this.bgMusic = new Audio('assets/Orbiting_A_Sleeping_Star.mp3');
+        this.bgMusic.loop = true; 
+        this.bgMusic.volume = 0.3; // 30% volume sits nicely behind SFX
+
+        // Only auto-play if the player's settings allow audio
+        if (this.enabled) {
+            this.bgMusic.play().catch(err => {
+                console.warn("Browser blocked autoplay. Music will start on first click.", err);
+            });
+        }
     }
 
     setMuteState(wantsAudio) {
@@ -38,10 +50,21 @@ class SoundManager {
         
         if (this.enabled) {
             this.ctx.resume();
-            if (!this.ambientPlaying) this.startAmbientDrone();
-            console.log("Audio Enabled - Drone Active");
+            
+            // Dynamically play the background music based on the toggle
+            if (this.bgMusic) {
+                // Browsers require a user interaction first, the catch handles the error gracefully
+                this.bgMusic.play().catch(e => console.warn("Awaiting user interaction to play audio:", e));
+            } else {
+                // If they unmute and it hasn't been created yet, initialize it!
+                this.initBackgroundMusic();
+            }
+            console.log("Audio Enabled - Music Playing");
         } else {
             this.ctx.suspend();
+            if (this.bgMusic) {
+                this.bgMusic.pause();
+            }
             console.log("Audio Suspended");
         }
         
@@ -51,101 +74,6 @@ class SoundManager {
     toggleMute() {
         // A simple wrapper that flips the current state and saves it
         return this.setMuteState(!this.enabled);
-    }
-
-    // ==========================================
-    // --- GENERATIVE AMBIENT DRONE ---
-    // ==========================================
-
-    startAmbientDrone() {
-        if (!this.enabled || !this.ctx || this.ambientPlaying) return;
-        this.ambientPlaying = true;
-
-        // 1. Create a "Breathing" Lowpass Filter.
-        this.ambientFilter = this.ctx.createBiquadFilter();
-        this.ambientFilter.type = 'lowpass';
-        this.ambientFilter.frequency.value = 400; // Lower baseline for a darker, richer tone
-        this.ambientFilter.connect(this.masterGain);
-
-        // --- Filter Modulation (The Cavern Effect) ---
-        // This slowly sweeps the filter frequency up and down every 10 seconds.
-        // It makes the drone sound like it is echoing through a massive, shifting space.
-        const filterLfo = this.ctx.createOscillator();
-        const filterLfoGain = this.ctx.createGain();
-        filterLfo.type = 'sine';
-        filterLfo.frequency.value = 0.1; // 10 second cycle
-        filterLfoGain.gain.value = 300; // Sweeps the filter between 100Hz and 700Hz
-        
-        filterLfo.connect(filterLfoGain);
-        filterLfoGain.connect(this.ambientFilter.frequency);
-        filterLfo.start();
-
-        // Save this new LFO so we can stop it later
-        this.ambientNodes.push({ osc: filterLfo, gain: filterLfoGain, lfo: filterLfo, lfoGain: filterLfoGain });
-
-        // 2. The Frequencies
-        const baseFreq = 130.81; // C3 (Main Audible Root)
-        const subFreq = 65.41;   // C2 (Felt, rather than heard)
-
-        // 3. The Enriched Layers (Volumes kept very low)
-        
-        // Osc 1: The Sub-Bass (Pure Sine for warmth, very quiet)
-        this._createDroneOsc(subFreq, 'sine', 0.10, 0.03); 
-
-        // Osc 2: The Main Root (Triangle for texture)
-        this._createDroneOsc(baseFreq, 'triangle', 0.12, 0.05); 
-        
-        // Osc 3: The Binaural Detune (Creates the hypnotic pulse)
-        this._createDroneOsc(baseFreq + 1.5, 'sine', 0.12, 0.04); 
-        
-        // Osc 4: The "Lyrical" Perfect Fifth (G3 - Melancholic space vibe)
-        this._createDroneOsc(baseFreq * 1.5, 'sine', 0.06, 0.02); 
-        
-        // Osc 5: The Shimmering Octave (C4 - Barely a whisper)
-        this._createDroneOsc(baseFreq * 2, 'triangle', 0.03, 0.015);
-    }
-
-    _createDroneOsc(freq, type, maxVol, lfoSpeed) {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        
-        // Low Frequency Oscillator (LFO) to make the volume "breathe"
-        const lfo = this.ctx.createOscillator();
-        const lfoGain = this.ctx.createGain();
-
-        osc.type = type;
-        osc.frequency.value = freq;
-
-        lfo.type = 'sine';
-        lfo.frequency.value = lfoSpeed;
-        
-        // Set the LFO to slowly modulate the volume of this specific oscillator
-        gain.gain.value = maxVol / 2;
-        lfoGain.gain.value = maxVol / 2;
-        
-        lfo.connect(lfoGain);
-        lfoGain.connect(gain.gain); 
-
-        osc.connect(gain);
-        gain.connect(this.ambientFilter);
-
-        osc.start();
-        lfo.start();
-
-        this.ambientNodes.push({ osc, gain, lfo, lfoGain });
-    }
-
-    stopAmbientDrone() {
-        if (!this.ambientPlaying) return;
-        this.ambientNodes.forEach(node => {
-            // Fade out smoothly over 3 seconds so it doesn't just abruptly pop
-            node.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 1);
-            setTimeout(() => {
-                try { node.osc.stop(); node.lfo.stop(); } catch(e){}
-            }, 3000);
-        });
-        this.ambientNodes = [];
-        this.ambientPlaying = false;
     }
 
     // ==========================================
