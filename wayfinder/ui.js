@@ -27,6 +27,12 @@ function openGenericModal(title) {
 }
 
 function closeGenericModal() {
+    // THE EXPLOIT FIX
+    if (window.activeHostileEncounter) {
+        if (typeof showToast === 'function') showToast("Comm channel locked. You must respond!", "error");
+        if (typeof soundManager !== 'undefined') soundManager.playError();
+        return; // Kills the function so the modal stays open!
+    }
     document.getElementById('genericModalOverlay').style.display = 'none';
 
     // Clear any running visual intervals
