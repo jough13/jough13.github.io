@@ -238,14 +238,41 @@ function triggerRandomEncounter() {
 
     listEl.innerHTML = ''; // Hide side list for full immersion
 
+    // --- 🏴‍☠️ THE FIX: DYNAMIC VISUALS ---
+    // If the encounter is the Pirate Extortion event (or has an image assigned in the DB), use it!
+    // Otherwise, fall back to the standard emoji icon.
+    let visualHtml = '';
+    
+    if (encounter.id === 'PIRATE_EXTORTION' || (encounter.title && encounter.title.toUpperCase().includes('VULTURE'))) {
+         visualHtml = `
+            <img src="assets/pirate_ship.png" alt="Pirate Interceptor" style="
+                width: 100%;
+                max-width: 420px;
+                height: auto;
+                border: 2px solid var(--danger);
+                box-shadow: 0 0 25px rgba(255, 0, 0, 0.4);
+                margin-bottom: 20px;
+                border-radius: 4px;
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+            ">
+         `;
+    } else if (encounter.image) {
+        // Future-proofing: If you add an 'image' property to other database events, it automatically renders them!
+        visualHtml = `<img src="${encounter.image}" alt="${encounter.title}" style="width: 100%; max-width: 420px; height: auto; border: 2px solid ${encounter.color}; box-shadow: 0 0 25px ${encounter.color}44; margin-bottom: 20px; border-radius: 4px; display: block; margin-left: auto; margin-right: auto;">`;
+    } else {
+        visualHtml = `<div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px ${encounter.color});">${encounter.icon}</div>`;
+    }
+
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 30px 20px;">
-            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px ${encounter.color});">${encounter.icon}</div>
+            ${visualHtml}
             <h3 style="color:${encounter.color}; margin-bottom:15px; letter-spacing: 2px;">${encounter.title}</h3>
             
             <div style="text-align:left; background:rgba(0,0,0,0.5); padding:20px; border-left:3px solid ${encounter.color}; margin-bottom:15px; border-radius:4px;">
-                <p style="color:var(--text-color); font-size:14px; line-height:1.6; margin:0;">
-                    ${encounter.text}
+                <p style="color:var(--text-color); font-size:14px; line-height:1.6; margin:0; font-style:italic;">
+                    "${encounter.text}"
                 </p>
             </div>
         </div>
