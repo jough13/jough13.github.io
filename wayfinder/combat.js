@@ -1129,38 +1129,6 @@ function updateEnemies() {
     }
 }
 
-function commitPiracy(npcIndex) {
-    const targetNPC = activeNPCs[npcIndex];
-    
-    // Remove them from the peaceful traffic array
-    activeNPCs.splice(npcIndex, 1);
-    
-    // Convert them into a hostile enemy using their specific combat profile!
-    const enemyProfile = PIRATE_SHIP_CLASSES[targetNPC.combatProfile];
-    
-    const hostileEntity = {
-        x: playerX,
-        y: playerY,
-        id: Date.now(),
-        name: targetNPC.name, 
-        shipClassKey: targetNPC.combatProfile,
-        hull: enemyProfile.baseHull,
-        shields: enemyProfile.baseShields
-    };
-
-    closeGenericModal();
-    logMessage(`<span style="color:var(--danger)">WARNING: You have initiated hostilities against a ${targetNPC.name}!</span>`);
-    
-    // Penalize Concord Rep for Piracy!
-    playerFactionStanding["CONCORD"] = (playerFactionStanding["CONCORD"] || 0) - 5;
-    if (typeof showToast === 'function') showToast("CONCORD REP -5", "error");
-
-    // Start your combat loop properly!
-    startCombat(hostileEntity); 
-}
-
-
-
 // --- BOARDING COMBAT MINIGAME ---
 
 function startBoardingCombat() {
@@ -1306,24 +1274,24 @@ let raidContext = null;
 function startOutpostRaid(location) {
     if (typeof closeGenericModal === 'function') closeGenericModal(); 
     
-    const deployedPlatoons = playerCargo['MERCENARY_PLATOON'] || 0;
-    const deployedMechs = playerCargo['ASSAULT_MECH'] || 0;
+    // Route logic through the new forces object
+    const totalMarines = playerShip.forces.marines;
+    const deployedMechs = playerShip.forces.heavyMechs;
     
-    // Stop the player if they have no troops!
-    if (deployedPlatoons <= 0) { 
+    if (totalMarines <= 0) { 
         if (typeof showToast === 'function') showToast("NO TROOPS TO DEPLOY", "error"); 
-        logMessage("<span style='color:var(--danger)'>Assault failed. You need Mercenary Platoons in your cargo hold to initiate a raid!</span>");
+        logMessage("<span style='color:var(--danger)'>Assault failed. You need Marines to initiate a raid!</span>");
         return; 
     }
 
-    // 100 HP per Platoon
-    const totalMarineHp = deployedPlatoons * 100;
+    // 10 HP per individual marine
+    const totalMarineHp = totalMarines * 10;
 
-raidContext = {
+    raidContext = {
         locationObj: location,
         playerHp: totalMarineHp, 
         playerMaxHp: totalMarineHp,
-        enemyHp: 150, // Bases are tough!
+        enemyHp: 150, 
         enemyMaxHp: 150,
         enemyName: "Cartel Garrison",
         mechsDeployed: deployedMechs,
@@ -1426,40 +1394,39 @@ function executeRaidAction(action) {
 
     // --- TACTICAL CHOICES ---
     if (action === 'assault') {
-        playerDmg = Math.floor(Math.random() * 20) + 15; // 15-35 dmg to enemy
-        enemyDmg = Math.floor(Math.random() * 15) + 10;  // 10-25 dmg to player
+        playerDmg = Math.floor(Math.random() * 20) + 15; 
+        enemyDmg = Math.floor(Math.random() * 15) + 10;  
         actionLog = `<span style="color:var(--danger)">Marines charge the main gates!</span> Dealt ${playerDmg} damage.`;
         if (typeof soundManager !== 'undefined') soundManager.playLaser();
     } 
     else if (action === 'flank') {
-        playerDmg = Math.floor(Math.random() * 10) + 8; // 8-18 dmg to enemy
-        enemyDmg = Math.floor(Math.random() * 5);       // 0-5 dmg to player
+        playerDmg = Math.floor(Math.random() * 10) + 8; 
+        enemyDmg = Math.floor(Math.random() * 5);       
         actionLog = `<span style="color:var(--accent-color)">Sniper teams take the high ground.</span> Hit guards for ${playerDmg} damage.`;
         if (typeof soundManager !== 'undefined') soundManager.playLaser();
     } 
     else if (action === 'strike') {
         playerFuel -= 25;
-        playerDmg = Math.floor(Math.random() * 30) + 30; // 30-60 massive dmg to enemy!
-        enemyDmg = 0; // Completely safe for the player!
+        playerDmg = Math.floor(Math.random() * 30) + 30; 
+        enemyDmg = 0; 
         actionLog = `<span style="color:var(--warning)">ORBITAL STRIKE!</span> Your ship rains fire from above! ${playerDmg} structural damage!`;
         if (typeof soundManager !== 'undefined') soundManager.playExplosion();
-        if (typeof triggerDamageEffect === 'function') triggerDamageEffect(); // Shake screen!
+        if (typeof triggerDamageEffect === 'function') triggerDamageEffect(); 
         if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED'); 
     } 
     else if (action === 'flee') {
         closeGenericModal();
         logMessage("<span style='color:var(--danger)'>Marines evacuated under heavy fire!</span>");
         
-        // Sync surviving platoons back to the ship (Divide remaining HP by 100 and round up)
-        playerCargo['MERCENARY_PLATOON'] = Math.ceil(ctx.playerHp / 100);
-        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        // Sync surviving marines back to the ship (Divide remaining HP by 10 and round up)
+        playerShip.forces.marines = Math.ceil(ctx.playerHp / 10);
         raidContext = null;
         return;
     }
 
     // --- APPLY MECH MULTIPLIER ---
     if (ctx.mechsDeployed > 0) {
-        playerDmg = Math.floor(playerDmg * 1.5); // 50% more damage!
+        playerDmg = Math.floor(playerDmg * 1.5); 
         actionLog += ` <span style="color:var(--warning)">(Mech Fire Support: +50% Dmg)</span>`;
     }
 
@@ -1467,11 +1434,11 @@ function executeRaidAction(action) {
     ctx.enemyHp -= playerDmg;
     if (ctx.enemyHp < 0) ctx.enemyHp = 0;
 
-    // Enemy Turn (Only if they survive)
+    // Enemy Turn 
     if (ctx.enemyHp > 0) {
         if (enemyDmg > 0) {
             actionLog += ` The garrison returns fire! <span style="color:var(--danger)">Took ${enemyDmg} damage!</span>`;
-            ctx.playerHp -= enemyDmg; // Damage the Marines, NOT the ship!
+            ctx.playerHp -= enemyDmg; 
         } else {
             actionLog += ` The garrison is suppressed and misses their shots!`;
         }
@@ -1484,8 +1451,9 @@ function executeRaidAction(action) {
 
     if (ctx.playerHp <= 0) {
         closeGenericModal();
-        delete playerCargo['MERCENARY_PLATOON']; // All marines died!
-        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        
+        // Wipe out the marines in the forces object
+        playerShip.forces.marines = 0; 
         
         logMessage("<span style='color:var(--danger); font-weight:bold;'>ASSAULT FAILED.</span> Entire landing party was wiped out by the cartel garrison.");
         if (typeof showToast === 'function') showToast("MARINES WIPED OUT", "error");
@@ -1495,11 +1463,8 @@ function executeRaidAction(action) {
         return;
     } 
     else if (ctx.enemyHp <= 0) {
-        // --- POST-RAID DECISION (Pauses the game to ask what to do) ---
-        
-        // Save surviving platoons!
-        playerCargo['MERCENARY_PLATOON'] = Math.ceil(ctx.playerHp / 100);
-        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        // Save surviving marines
+        playerShip.forces.marines = Math.ceil(ctx.playerHp / 10);
         
         const detailEl = document.getElementById('genericDetailContent');
         const actionsEl = document.getElementById('genericModalActions');
@@ -1519,10 +1484,9 @@ function executeRaidAction(action) {
             <button class="action-button danger-btn" onclick="finalizeRaid('RAZE')">RAZE & PILLAGE (Loot & Destroy)</button>
             <button class="action-button" style="border-color:#9933FF; color:#DDA0DD; box-shadow: 0 0 15px rgba(153,51,255,0.3);" onclick="finalizeRaid('CLAIM')">CLAIM OUTPOST (Establish Shadow Port)</button>
         `;
-        return; // Wait for player input!
+        return; 
     }
 
-    // Re-render UI for the next turn
     renderRaidUI();
 }
 
