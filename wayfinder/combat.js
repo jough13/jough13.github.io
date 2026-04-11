@@ -894,7 +894,9 @@ function renderCombatView() {
             <!-- ENEMY INTENT PANEL -->
             <div style="width: 150px; background: ${intentBg}; border: 1px solid var(--danger); border-radius: 8px; padding: 15px; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(255,0,0,0.1);">
                 <div style="font-size: 11px; color: var(--danger); letter-spacing: 2px; margin-bottom: 15px; font-weight: bold; font-family: var(--title-font);">ENEMY INTENT</div>
-                <div style="font-size: 36px; margin-bottom: 15px;">${intent.icon}</div>
+                
+                <div style="font-size: 36px; margin-bottom: 15px; color: var(--text-color); filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.4));">${intent.icon}</div>
+                
                 <div style="font-weight: bold; color: var(--text-color); font-size: 14px; letter-spacing: 1px;">${intent.label.toUpperCase()}</div>
             </div>
 
