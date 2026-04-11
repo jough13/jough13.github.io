@@ -227,59 +227,93 @@ function triggerRandomEncounter() {
     
     const randomKey = keys[Math.floor(Math.random() * keys.length)];
     const encounter = ENCOUNTER_DATABASE[randomKey];
-    // Lock the modal if this is a pirate or inescapable event!
-    window.activeHostileEncounter = encounter.id.includes('PIRATE') || encounter.id === 'SPATIAL_ANOMALY';
     
     // Save the active context so it can be reloaded from a save file if needed!
     currentEncounterContext = encounter.id;
+
+    // Lock the modal if this is a pirate or inescapable event!
+    window.activeHostileEncounter = encounter.id.includes('PIRATE') || encounter.id === 'SPATIAL_ANOMALY';
 
     openGenericModal("DEEP SPACE SENSOR CONTACT");
     const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    // --- 📡 RESTORING THE SENSOR FLAVOR TEXT FOR LEFT PANEL ---
+    // --- 📡 CUSTOM SENSOR FLAVOR TEXT FOR LEFT PANEL ---
     if (listEl) {
         // Generate consistent "random" numbers based on location and title
         const pseudoRandom = Math.abs((playerX * 7) ^ (playerY * 13) ^ (encounter.title.length * 5));
-        const distance = (pseudoRandom % 40) + 10;
-        const radLevel = (pseudoRandom % 300) + 15;
-        const sigStrength = (pseudoRandom % 90) + 10;
+        let customListHtml = '';
+
+        // Check if this is the Binary Star Merger
+        if (encounter.title && encounter.title.toUpperCase().includes('BINARY STAR MERGER')) {
+            const gravShear = (pseudoRandom % 900) + 100;
+            const thermalFlux = ((pseudoRandom % 8) + 1) + "e28 W/m²";
+            
+            customListHtml = `
+                <div style="padding:15px; border-bottom:1px solid var(--border-color);">
+                    <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">LONG RANGE TELEMETRY</div>
+                    <h4 style="color:#FF6600; margin:0; text-transform:uppercase; font-size:14px;">${encounter.title}</h4>
+                    <div style="font-size:12px; color:var(--text-color); margin-top:10px; line-height: 1.8;">
+                        • Gravimetric Shear: <span style="color:var(--danger)">${gravShear} m/s²</span><br>
+                        • Stellar Class: <span style="color:#4488FF">Type-M Binary</span><br>
+                        • Thermal Flux: ${thermalFlux}
+                    </div>
+                </div>
+                <div style="padding:15px;">
+                    <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">THREAT ANALYSIS</div>
+                    <div style="font-size:12px; color:var(--text-color); margin-top:5px; line-height: 1.8;">
+                        <span style="color:var(--danger)">[ STATUS ]</span> Collapsing<br>
+                        <span style="color:var(--danger)">[ HAZARD ]</span> Catastrophic<br>
+                        <span style="color:var(--warning)">[ TARGET ]</span> Evacuate
+                    </div>
+                </div>
+            `;
+        } else {
+            // Default generic sensor text for all other encounters
+            const distance = (pseudoRandom % 40) + 10;
+            const radLevel = (pseudoRandom % 300) + 15;
+            const sigStrength = (pseudoRandom % 90) + 10;
+
+            customListHtml = `
+                <div style="padding:15px; border-bottom:1px solid var(--border-color);">
+                    <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">LONG RANGE TELEMETRY</div>
+                    <h4 style="color:${encounter.color || 'var(--accent-color)'}; margin:0; text-transform:uppercase; font-size:14px;">${encounter.title}</h4>
+                    <div style="font-size:12px; color:var(--text-color); margin-top:10px; line-height: 1.8;">
+                        • Distance: <span style="color:var(--accent-color)">${distance} Mm</span><br>
+                        • Signature: <span style="color:var(--warning)">${sigStrength}% Match</span><br>
+                        • Emissions: ${radLevel} mSv/h
+                    </div>
+                </div>
+                <div style="padding:15px;">
+                    <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">THREAT ANALYSIS</div>
+                    <div style="font-size:12px; color:var(--text-color); margin-top:5px; line-height: 1.8;">
+                        <span style="color:${encounter.color || 'var(--success)'}">[ STATUS ]</span> Standby<br>
+                        <span style="color:var(--warning)">[ HAZARD ]</span> Variable<br>
+                        <span style="color:var(--accent-color)">[ TARGET ]</span> Locked
+                    </div>
+                </div>
+            `;
+        }
         
-        listEl.innerHTML = `
-            <style>
-                @keyframes radarSweep { 0% { left: -30%; } 100% { left: 100%; } }
-            </style>
-            <div style="padding:15px; border-bottom:1px solid var(--border-color);">
-                <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">LONG RANGE TELEMETRY</div>
-                <h4 style="color:${encounter.color || 'var(--accent-color)'}; margin:0; text-transform:uppercase; font-size:14px;">${encounter.title}</h4>
-                <div style="font-size:12px; color:var(--text-color); margin-top:10px; line-height: 1.8;">
-                    • Distance: <span style="color:var(--accent-color)">${distance} Mm</span><br>
-                    • Signature: <span style="color:var(--warning)">${sigStrength}% Match</span><br>
-                    • Emissions: ${radLevel} mSv/h
-                </div>
-            </div>
-            <div style="padding:15px;">
-                <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">THREAT ANALYSIS</div>
-                <div style="font-size:12px; color:var(--text-color); margin-top:5px; line-height: 1.8;">
-                    <span style="color:${encounter.color || 'var(--success)'}">[ STATUS ]</span> Standby<br>
-                    <span style="color:var(--warning)">[ HAZARD ]</span> Variable<br>
-                    <span style="color:var(--accent-color)">[ TARGET ]</span> Locked
-                </div>
-            </div>
+        // Animated scanning visual (common to all encounters)
+        listEl.innerHTML = customListHtml + `
             <div style="padding:15px; text-align:center;">
                 <div style="width:100%; height:2px; background:var(--border-color); position:relative; overflow:hidden;">
                     <div style="position:absolute; top:0; left:0; width:30%; height:100%; background:${encounter.color || 'var(--accent-color)'}; box-shadow: 0 0 10px ${encounter.color || 'var(--accent-color)'}; animation: radarSweep 2s infinite linear;"></div>
                 </div>
                 <div style="font-size:10px; color:${encounter.color || 'var(--accent-color)'}; margin-top:8px; letter-spacing:2px;">GATHERING DATA...</div>
             </div>
+            <style>
+                @keyframes radarSweep { 0% { left: -30%; } 100% { left: 100%; } }
+            </style>
         `;
     }
 
-    // --- 🏴‍☠️ DYNAMIC VISUALS FOR THE RIGHT PANEL ---
+    // --- 🏳️‍🌈 DYNAMIC VISUALS FOR THE RIGHT PANEL ---
     let visualHtml = '';
     
-    // 1. Check for Pirates (Now checks for the word PIRATE!)
+    // 1. Check for Pirates
     if (encounter.id === 'PIRATE_EXTORTION' || (encounter.title && encounter.title.toUpperCase().includes('PIRATE'))) {
          visualHtml = `
             <img src="assets/pirate_ship.png" alt="Pirate Interceptor" style="
@@ -297,11 +331,20 @@ function triggerRandomEncounter() {
             ">
          `;
     }
-    // 3. Fallback: Generic image property in DB
+    // 3. Check for the Binary Star Merger
+    else if (encounter.title && encounter.title.toUpperCase().includes('BINARY STAR MERGER')) {
+         visualHtml = `
+            <img src="assets/binary_merger.png" alt="Binary Star Merger" style="
+                width: 100%; max-width: 420px; height: auto; border: 2px solid #FF6600;
+                box-shadow: 0 0 25px rgba(255, 102, 0, 0.4); margin-bottom: 20px; border-radius: 4px; display: block; margin-left: auto; margin-right: auto;
+            ">
+         `;
+    }
+    // 4. Fallback: Generic image property in DB
     else if (encounter.image) {
         visualHtml = `<img src="${encounter.image}" alt="${encounter.title}" style="width: 100%; max-width: 420px; height: auto; border: 2px solid ${encounter.color}; box-shadow: 0 0 25px ${encounter.color}44; margin-bottom: 20px; border-radius: 4px; display: block; margin-left: auto; margin-right: auto;">`;
     } 
-    // 4. Default: Basic Emoji Icon
+    // 5. Default: Basic Emoji Icon
     else {
         visualHtml = `<div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px ${encounter.color});">${encounter.icon}</div>`;
     }
@@ -309,9 +352,9 @@ function triggerRandomEncounter() {
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 30px 20px;">
             ${visualHtml}
-            <h3 style="color:${encounter.color}; margin-bottom:15px; letter-spacing: 2px;">${encounter.title}</h3>
+            <h3 style="color:${encounter.color || '#FF6600'}; margin-bottom:15px; letter-spacing: 2px;">${encounter.title}</h3>
             
-            <div style="text-align:left; background:rgba(0,0,0,0.5); padding:20px; border-left:3px solid ${encounter.color}; margin-bottom:15px; border-radius:4px;">
+            <div style="text-align:left; background:rgba(0,0,0,0.5); padding:20px; border-left:3px solid ${encounter.color || '#FF6600'}; margin-bottom:15px; border-radius:4px;">
                 <p style="color:var(--text-color); font-size:14px; line-height:1.6; margin:0; font-style:italic;">
                     "${encounter.text}"
                 </p>
