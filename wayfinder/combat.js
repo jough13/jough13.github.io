@@ -404,16 +404,14 @@ function handleCombatAction(action) {
         
         } else if (action === 'board') {
         // --- 🪖 TACTICAL BOARDING ACTION ---
-        // 50% chance to consume 1 full Platoon from cargo
+        // 50% chance to take casualties (lose up to 10 marines)
         let casualties = 0;
         if (Math.random() < 0.5) {
-            casualties = 1;
-            playerCargo['MERCENARY_PLATOON'] = Math.max(0, (playerCargo['MERCENARY_PLATOON'] || 0) - 1);
-            if (playerCargo['MERCENARY_PLATOON'] <= 0) delete playerCargo['MERCENARY_PLATOON'];
-            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+            casualties = Math.min(10, playerShip.forces.marines);
+            playerShip.forces.marines -= casualties;
         }
         
-        combatLog += `<span style='color:var(--danger); font-weight:bold;'>[ BOARDING PARTY DEPLOYED ]</span> Your mercenaries breach the enemy hull! Heavy close-quarters fighting ensues. Sector secured. ${casualties > 0 ? '(-1 Platoon Lost)' : '(No Casualties)'}`;
+        combatLog += `<span style='color:var(--danger); font-weight:bold;'>[ BOARDING PARTY DEPLOYED ]</span> Your marines breach the enemy hull! Heavy close-quarters fighting ensues. Sector secured. ${casualties > 0 ? `(-${casualties} Marines Lost)` : '(No Casualties)'}`;
         
         if (typeof soundManager !== 'undefined') soundManager.playExplosion();
         if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
@@ -846,7 +844,7 @@ function renderCombatView() {
     `;
 
     // TACTICAL BOARDING BUTTON
-    const boardingBtnHtml = ((playerCargo['MERCENARY_PLATOON'] || 0) > 0 && currentCombatContext.pirateShields <= 0) ? `
+    const boardingBtnHtml = (playerShip.forces.marines > 0 && currentCombatContext.pirateShields <= 0) ? `
         <button class="action-button danger-btn" style="grid-column: 1 / -1; padding: 18px; font-size: 16px; letter-spacing: 2px; box-shadow: 0 0 15px rgba(255,0,0,0.4);" onclick="handleCombatAction('board')">
             🪖 INITIATE BOARDING ACTION (Risk Marines for 3x Salvage)
         </button>
