@@ -1132,19 +1132,25 @@ function showTroopDetails(itemId) {
 
 function purchaseTroops(itemId, cost) {
     if (playerCredits < cost) return;
-    playerCredits -= cost;
 
     if (itemId === 'MERCENARY_PLATOON') {
-        playerCargo['MERCENARY_PLATOON'] = (playerCargo['MERCENARY_PLATOON'] || 0) + 1;
+        if (playerShip.forces.marines >= playerShip.forces.maxTroops) {
+            logMessage("<span style='color:var(--danger)'>[ BARRACKS ] Troop capacity exceeded. Cannot accommodate more Marines.</span>");
+            return;
+        }
+        playerCredits -= cost;
+        playerShip.forces.marines += 10;
         logMessage(`<span style="color:var(--success)">[ BARRACKS ] 10 Marines boarded the vessel.</span>`);
     } else if (itemId === 'ASSAULT_MECH') {
-        playerCargo['ASSAULT_MECH'] = (playerCargo['ASSAULT_MECH'] || 0) + 1;
-        logMessage(`<span style="color:var(--warning)">[ BARRACKS ] Goliath Assault Mech loaded into the cargo bay.</span>`);
+        if (playerShip.forces.heavyMechs >= playerShip.forces.maxTroops) {
+            logMessage("<span style='color:var(--danger)'>[ BARRACKS ] Vehicle bay capacity exceeded. Cannot accommodate more Mechs.</span>");
+            return;
+        }
+        playerCredits -= cost;
+        playerShip.forces.heavyMechs += 1;
+        logMessage(`<span style="color:var(--warning)">[ BARRACKS ] Goliath Assault Mech loaded into the vehicle bay.</span>`);
     }
 
-    if (typeof soundManager !== 'undefined') soundManager.playBuy();
-    if (typeof showToast === 'function') showToast("FORCES CONTRACTED", "success");
-    
     if (typeof renderUIStats === 'function') renderUIStats();
-    openBarracksUI(); // Refresh the screen
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
 }
