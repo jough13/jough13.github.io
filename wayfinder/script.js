@@ -189,12 +189,16 @@ function spawnAmbientNPCs() {
 }
 
 // Call this function at the very end of your moveShip(dx, dy) function!
-function updateAmbientNPCs() {
-    if (typeof activeNPCs === 'undefined') return;
 
-    // Loop backward because we might splice (despawn) elements!
-    for (let i = activeNPCs.length - 1; i >= 0; i--) {
-        const npc = activeNPCs[i];
+function updateAmbientNPCs() {
+    if (typeof EntityManager === 'undefined') return;
+
+    // Loop backward because we might remove elements from the ECS
+    for (let i = EntityManager.entities.length - 1; i >= 0; i--) {
+        const npc = EntityManager.entities[i];
+        
+        // Only process actual NPCs, Haulers, or Fuel Rats!
+        if (!npc.isNPC && !npc.isFuelRat && !npc.isColonyHauler) continue;
         
         // ==========================================
         // --- 1. NEW FLIGHT STATE MACHINE ---
@@ -268,7 +272,8 @@ function updateAmbientNPCs() {
                 logMessage(`<span style='color:var(--gold-text); font-weight:bold;'>[ TRADE ROUTE ] ${npc.name} safely arrived at Starbase Alpha! Earned ${formatNumber(payout)}c.</span>`);
                 if (typeof soundManager !== 'undefined') soundManager.playBuy();
                 if (typeof renderUIStats === 'function') renderUIStats();
-                activeNPCs.splice(i, 1); // Despawn the ship safely
+                
+                EntityManager.remove(npc.id); // Despawn the ship safely
                 continue;
             }
 
@@ -277,7 +282,8 @@ function updateAmbientNPCs() {
             if (pirate) {
                 logMessage(`<span style='color:var(--danger); font-weight:bold;'>[ TRADE ROUTE ] ${npc.name} was destroyed by pirates at [${npc.x}, ${-npc.y}]! Cargo lost.</span>`);
                 if (typeof soundManager !== 'undefined') soundManager.playExplosion();
-                activeNPCs.splice(i, 1); // Kill the hauler
+                
+                EntityManager.remove(npc.id); // Kill the hauler
                 continue;
             }
         }
@@ -285,7 +291,6 @@ function updateAmbientNPCs() {
         // C. CRUISING STATE: Standard Spaceflight
         else if (npc.state === 'CRUISING') {
             
-            // --- THE FIX: NPC HESITATION ---
             // 30% chance for the NPC to pause this turn (scanning, adjusting nav, etc.)
             // This makes them effectively move at 0.7x speed, allowing the player to catch them!
             if (Math.random() < 0.30) {
@@ -356,8 +361,8 @@ function updateAmbientNPCs() {
         const dist = Math.abs(npc.x - playerX) + Math.abs(npc.y - playerY);
         
         // Despawn if they drift too far off-screen (Keeps memory clean!)
-                if (dist > VIEWPORT_WIDTH_TILES && !npc.isColonyHauler) { // 🚨 ADDED: && !npc.isColonyHauler
-            activeNPCs.splice(i, 1);
+        if (dist > VIEWPORT_WIDTH_TILES && !npc.isColonyHauler) { 
+            EntityManager.remove(npc.id); // 🚨 ECS FIX
             continue;
         }
 
@@ -372,11 +377,12 @@ function updateAmbientNPCs() {
         // Collision Check (Did you ram them, or did they catch you?)
         if (npc.x === playerX && npc.y === playerY) {
             if (npc.isFuelRat) {
-                activeNPCs.splice(i, 1); // Delete the rat
+                EntityManager.remove(npc.id); // Delete the rat
                 executeRescueSequence(); // Trigger the tow!
                 continue; // Skip the rest of the loop
             } else {
-                if (typeof interactWithNPC === 'function') interactWithNPC(npc, i);
+                // Pass the entity ID instead of the array index
+                if (typeof interactWithNPC === 'function') interactWithNPC(npc, npc.id);
             }
         }
     }
@@ -3347,7 +3353,7 @@ GameBus.on('TICK_PROCESSED', (tick) => {
     }
 
     if (typeof updateEnemies === "function") updateEnemies();
-    if (typeof updateAmbientNPCs === "function") updateAmbientNPCs();
+
     if (typeof updatePlayerDrones === "function") updatePlayerDrones();
 
     // COMET CHASING (Reduced from 1% to 0.1%)
@@ -3371,8 +3377,8 @@ GameBus.on('TICK_PROCESSED', (tick) => {
         }
     }
 
-    // AMBIENT TRAFFIC (Reduced from 5% to 0.5%)
-    if (Math.random() < 0.005 && typeof spawnAmbientNPCs === "function") spawnAmbientNPCs();
+    // AMBIENT TRAFFIC (Reduced from 5% to 1%)
+    if (Math.random() < 0.01 && typeof spawnAmbientNPCs === "function") spawnAmbientNPCs();
 
     // ACTIVE SECTOR WARZONES (Reduced from 1.5% to 0.15%)
     if (typeof activeSkirmishes === 'undefined') window.activeSkirmishes = [];
@@ -3450,6 +3456,10 @@ GameBus.on('TICK_PROCESSED', (tick) => {
 });
 
  function movePlayer(dx, dy) {
+
+    // Wipe station-specific memory on departure
+    currentStationRecruits = null;
+
     // 1. UI & State Blocks
     if (currentTradeContext || currentOutfitContext || currentMissionContext || currentEncounterContext || currentShipyardContext) {
         logMessage("Complete current action first.");
@@ -5365,6 +5375,10 @@ function initializeDOMElements() {
     if (startButton) {
         startButton.addEventListener('click', () => {
             soundManager.init(); // Initialize Audio Context
+            
+            // 🎵 FIRE UP THE AMBIENT MUSIC!
+            if (typeof soundManager !== 'undefined') soundManager.initBackgroundMusic();
+            
             initializeGame(); 
             startGame(seedInput ? seedInput.value : "");
             hideTitleScreen();
@@ -5399,6 +5413,10 @@ function initializeDOMElements() {
         seedInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 soundManager.init(); // Initialize Audio Context
+                
+                // 🎵 FIRE UP THE AMBIENT MUSIC!
+                if (typeof soundManager !== 'undefined') soundManager.initBackgroundMusic();
+                
                 initializeGame();
                 startGame(seedInput.value);
                 hideTitleScreen();
@@ -6107,6 +6125,9 @@ function renderSaveSlots(savesArray) {
         `;
         
         contentDiv.onclick = () => {
+            // 🎵 FIRE UP THE AMBIENT MUSIC!
+            if (typeof soundManager !== 'undefined') soundManager.initBackgroundMusic();
+            
             initializeGame();
             loadGameData(saveObj.raw);
             if (typeof hideTitleScreen === 'function') hideTitleScreen();
