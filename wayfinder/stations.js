@@ -260,10 +260,6 @@ function visitCantina() {
             <strong style="color:var(--accent-color);">Crew Recruitment</strong>
             <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Hire specialized crew members for your ship.</div>
         </div>
-        <div class="generic-list-item" onclick="openLegendaryBounties()" style="cursor: pointer;">
-            <strong style="color:var(--danger);">Most Wanted (Bounties)</strong>
-            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Hunt down legendary targets for exotic weapons.</div>
-        </div>
     `;
 
     detailEl.innerHTML = `
