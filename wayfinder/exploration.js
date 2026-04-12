@@ -3,91 +3,106 @@ let activeColonyId = null;
 // --- PLANETARY INTERACTION UI ---
 function openPlanetView(location) {
     openGenericModal(`ORBITING: ${(location.name || 'Planet').toUpperCase()}`);
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
+    const container = document.getElementById('genericModalContent');
 
     // Parse the biome data cleanly
     const biomeId = location.biome || 'BARREN_ROCK';
-    const biomeData = PLANET_BIOMES && PLANET_BIOMES[biomeId] ? PLANET_BIOMES[biomeId] : { name: biomeId, description: "Unknown planet type.", landable: true, image: "" };
+    const biomeData = PLANET_BIOMES && PLANET_BIOMES[biomeId] ? PLANET_BIOMES[biomeId] : { name: biomeId, description: "Unknown planet type.", landable: true, image: "assets/planet_placeholder.png" };
 
     if (biomeId === 'MACHINE_WORLD') unlockLoreEntry("XENO_MACHINE_WORLD");
     if (biomeId === 'IRRADIATED') unlockLoreEntry("PHENOMENON_IRRADIATED");
 
     // --- Generate unique ID and check dictionary ---
-    // Look to see if there is any colony at the player's exact X/Y coordinates
     const localColonies = Object.values(playerColonies).filter(c => c.x === playerX && c.y === playerY);
     const isColonyHere = localColonies.length > 0;
     const colonyHere = isColonyHere ? localColonies[0] : null;
     const colId = colonyHere ? colonyHere.id : null;
     
-    const planetStatus = isColonyHere ? 
-        `<div style="color:var(--success); font-weight:bold; letter-spacing: 1px;">SETTLED: ${colonyHere.name.toUpperCase()}</div>
-         <div style="color:#666; font-size: 11px; margin-top: 5px;">Concord Recognized Pioneer Settlement</div>` :
-        `<div style="color:var(--danger); font-weight:bold; letter-spacing: 1px;">UNCLAIMED WILDERNESS</div>
-         <div style="color:#666; font-size: 11px; margin-top: 5px;">No civilized structures detected. High concentration of raw materials present in the crust.</div>`;
+    // --- THE IRONCLAD FLEXBOX LAYOUT ---
+    container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
+    
+    const bannerColor = location.color || "var(--accent-color)";
+    let imageSrc = biomeData.image || "assets/planet_placeholder.png";
 
-    // Dynamic Image Loading
-    let imageHtml = biomeData.image ? `<img src="${biomeData.image}" style="width:100px; height:100px; margin-bottom:15px; border-radius:50%; object-fit:cover; border: 2px solid var(--border-color); box-shadow: 0 0 20px rgba(0, 224, 224, 0.2);">` : `<div style="text-align:center; font-size: 60px; margin-bottom:15px; filter: drop-shadow(0 0 15px ${location.color || '#00E0E0'});">🪐</div>`;
-
-    // 1. Render Planet Vitals
-    detailEl.innerHTML = `
-        <div style="text-align:center; padding-top: 20px;">
-            ${imageHtml}
-            <h3 style="color:var(--accent-color); margin-top:0; margin-bottom: 5px; font-size: 24px;">${location.name || 'Uncharted Planet'}</h3>
-            <p style="color:var(--item-desc-color); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-top: 0;">Class: ${biomeData.name}</p>
+    // THE UPGRADE: We stretch the planet's actual biome image to act as a cinematic banner!
+    const headerImageHTML = `
+        <div style="width: 100%; height: 180px; border-radius: 4px; border: 1px solid ${bannerColor}; margin-bottom: 15px; box-shadow: 0 0 25px ${bannerColor}44; flex-shrink: 0; overflow: hidden; background: rgba(0,0,0,0.8); position: relative;">
+            <img src="${imageSrc}" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.6; filter: contrast(1.2);" onerror="this.onerror=null; this.src='assets/planet_placeholder.png';">
+            
+            <div style="position: absolute; bottom: 10px; left: 15px; font-size: 24px; font-weight: bold; color: #FFF; text-shadow: 0 2px 4px rgba(0,0,0,1); font-family: var(--title-font); letter-spacing: 2px;">
+                ${location.name || 'UNCHARTED PLANET'}
+            </div>
+            <div style="position: absolute; top: 10px; right: 15px; font-size: 10px; color: ${bannerColor}; font-weight: bold; background: rgba(0,0,0,0.8); padding: 4px 8px; border: 1px solid ${bannerColor}; border-radius: 4px; letter-spacing: 1px;">
+                CLASS: ${biomeData.name.toUpperCase()}
+            </div>
         </div>
-        
-        <div style="border: 1px dashed var(--border-color); background: var(--bg-color); padding: 15px; margin-top: 20px; border-radius: 4px;">
-            <div style="color:var(--item-desc-color); font-size:10px; margin-bottom: 5px; letter-spacing: 1px;">PLANETARY STATUS:</div>
-            ${planetStatus}
-        </div>
-        
-        <div id="surfaceScanResultBox"></div>
-        
-        <p style="color:var(--text-color); font-size: 13px; line-height: 1.5; margin-top: 20px; font-style: italic;">
-            "${biomeData.description}"
-        </p>
     `;
 
-    // 2. Build the Actions Menu
+    container.innerHTML = `
+        ${headerImageHTML}
+        <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden;">
+            
+            <div style="flex: 1.2; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-color); padding-left: 15px; padding-right: 10px;">
+                <div class="trade-list-header" style="color:${bannerColor}; font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">PLANETARY VITALS</div>
+                <div id="genericModalList" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    
+                    <div style="margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 4px; border-left: 3px solid ${isColonyHere ? 'var(--success)' : '#666'};">
+                        <div style="font-size:11px; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">TERRITORIAL CLAIM</div>
+                        ${isColonyHere ? 
+                            `<div style="color:var(--success); font-weight:bold; font-size:14px; letter-spacing: 1px;">SETTLED: ${colonyHere.name.toUpperCase()}</div>
+                             <div style="color:var(--item-desc-color); font-size: 11px; margin-top: 5px;">Concord Recognized Pioneer Settlement</div>` :
+                            `<div style="color:var(--danger); font-weight:bold; font-size:14px; letter-spacing: 1px;">UNCLAIMED WILDERNESS</div>
+                             <div style="color:var(--item-desc-color); font-size: 11px; margin-top: 5px;">No civilized structures detected. High concentration of raw materials present in the crust.</div>`
+                        }
+                    </div>
+                    
+                    <div id="surfaceScanResultBox"></div>
+                </div>
+            </div>
+            
+            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow: hidden; padding-left: 5px; padding-right: 15px;">
+                <div id="genericDetailContent" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    <div style="text-align:center; padding: 10px 0 20px 0;">
+                        <div style="font-size:50px; margin-bottom:15px; filter: drop-shadow(0 0 15px ${bannerColor}); opacity:0.9;">🪐</div>
+                        <h3 style="color:${bannerColor}; margin-top:0; margin-bottom:10px;">ORBITAL APPROACH</h3>
+                        <p style="color:var(--text-color); font-size:13px; line-height:1.5; font-style:italic; background: rgba(0,0,0,0.3); padding: 10px; border-left: 2px solid ${bannerColor}; text-align: left;">
+                            "${biomeData.description}"
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;">
+                </div>
+            </div>
+        </div>
+    `;
+
+    const actionsEl = document.getElementById('genericModalActions');
     let btnHtml = ``;
 
     // Quick Action: Surface Scan
-    btnHtml += `<button class="action-button" onclick="if(typeof conductSurfaceScan === 'function') conductSurfaceScan()">CONDUCT SURFACE SCAN</button>`;
+    btnHtml += `<button class="action-button" onclick="if(typeof conductSurfaceScan === 'function') conductSurfaceScan()" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;">CONDUCT SURFACE SCAN</button>`;
     
     // Quick Action: Orbital Drill
-    btnHtml += `<button class="action-button" onclick="if(typeof startOrbitalMining === 'function') startOrbitalMining()">ORBITAL EXTRACTION</button>`;
+    btnHtml += `<button class="action-button" onclick="if(typeof startOrbitalMining === 'function') startOrbitalMining()" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;">ORBITAL EXTRACTION</button>`;
 
     // --- Routing to the proper Planet View ---
     if (biomeData && biomeData.landable) {
-        btnHtml += `<button class="action-button" onclick="landOnStandalonePlanet()" style="border-color: var(--success); color: var(--success); margin-top: 10px;">DESCEND TO SURFACE</button>`;
+        btnHtml += `<button class="action-button" onclick="landOnStandalonePlanet()" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px; border-color: var(--success); color: var(--success); box-shadow: 0 0 10px rgba(0,255,0,0.2);">DESCEND TO SURFACE</button>`;
     } else {
-        btnHtml += `<button class="action-button" disabled style="margin-top: 10px; border-color:#444; color:#666;">UNINHABITABLE (CANNOT LAND)</button>`;
+        btnHtml += `<button class="action-button" disabled style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px; border-color:#444; color:#666;">UNINHABITABLE (CANNOT LAND)</button>`;
     }
 
     // --- COLONY BUILDER HOOK ---
-    // If they have the charter, tell them they must land to use it!
     if ((playerCargo["COLONY_CHARTER"] || 0) > 0 && !isColonyHere) {
         if (biomeData && biomeData.landable) {
-            btnHtml += `
-                <button class="action-button" disabled style="border-color: var(--gold-text); color: var(--gold-text); margin-top: 15px; opacity: 0.6;">
-                    🚩 LAND TO ESTABLISH COLONY
-                </button>
-            `;
+            btnHtml += `<button class="action-button" disabled style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px; border-color: var(--gold-text); color: var(--gold-text); opacity: 0.6;">🚩 LAND TO ESTABLISH COLONY</button>`;
         }
     } else if (isColonyHere) {
-        btnHtml += `
-            <button class="action-button" onclick="if(typeof openColonyManagement === 'function') openColonyManagement('${colId}')" style="border-color: var(--success); color: var(--success); margin-top: 15px; box-shadow: 0 0 10px rgba(0, 170, 170, 0.4);">
-                🏢 MANAGE COLONY
-            </button>
-        `;
+        btnHtml += `<button class="action-button" onclick="if(typeof openColonyManagement === 'function') openColonyManagement('${colId}')" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px; border-color: #00E0E0; color: #00E0E0; box-shadow: 0 0 10px rgba(0, 224, 224, 0.4);">🏢 MANAGE COLONY</button>`;
     }
 
-    btnHtml += `
-        <button class="action-button" onclick="closeGenericModal()" style="margin-top: 10px;">
-            LEAVE ORBIT
-        </button>
-    `;
+    btnHtml += `<button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="closeGenericModal()">◀ LEAVE ORBIT</button>`;
 
     actionsEl.innerHTML = btnHtml;
 }
@@ -1000,20 +1015,19 @@ function scanLocation() {
 
     // 2. Setup default fallback data (for empty space)
     let targetName = "DEEP SPACE";
-    let targetImage = "assets/planet_placeholder.png"; // Ensure you have a generic image or it will use the fallback
+    let targetImage = "assets/radar_scan.png"; 
     let threatLevel = "LOW";
-    let flavorText = "Sensors detect nothing but the cosmic background radiation.";
+    let flavorText = "Sensors detect nothing but the cosmic background radiation. The void is empty here.";
     let faction = getFactionAt(playerX, playerY);
     
     // 3. Determine what we are scanning and pull its specific data
     if (tileObject && tileObject.type === 'location') {
         targetName = tileObject.name;
         
-        // This handles both simple strings AND the detailed object approach we discussed
         if (typeof tileObject.scanFlavor === 'object') {
             flavorText = `
-                <strong>Atmosphere:</strong> ${tileObject.scanFlavor.atmosphere || 'Unknown'}<br>
-                <strong>Anomalies:</strong> ${tileObject.scanFlavor.notableAnomalies || 'None Detected'}
+                <strong style="color:var(--text-color);">Atmosphere:</strong> ${tileObject.scanFlavor.atmosphere || 'Unknown'}<br>
+                <strong style="color:var(--text-color);">Anomalies:</strong> ${tileObject.scanFlavor.notableAnomalies || 'None Detected'}
             `;
             threatLevel = tileObject.scanFlavor.threatLevel || "UNKNOWN";
         } else {
@@ -1030,7 +1044,6 @@ function scanLocation() {
         const tileChar = getTileChar(tileObject);
         
         // --- DYNAMIC SIGNAL INTERCEPT ---
-        // 15% chance to hit a dynamic signal instead of an empty radar sweep
         if (tileChar === EMPTY_SPACE_CHAR_VAL && Math.random() < 0.15) {
             triggerSignalIntercept();
             return; // Halt the standard "Deep Space" scan screen
@@ -1040,7 +1053,7 @@ function scanLocation() {
             case STAR_CHAR_VAL:
                 targetName = "STELLAR BODY";
                 flavorText = `Brilliant star. ${tileObject.richness > 0.75 ? "High hydrogen concentrations detected!" : ""}`;
-                targetImage = "assets/o_class.png"; // Fallback star image
+                targetImage = "assets/o_class.png"; 
                 threatLevel = "EXTREME (HEAT/RADIATION)";
                 break;
             case ASTEROID_CHAR_VAL:
@@ -1073,59 +1086,56 @@ function scanLocation() {
 
     // 4. Open the UI Modal
     openGenericModal("SENSOR SWEEP RESULTS");
-    
     const container = document.getElementById('genericModalContent');
-    const actionsEl = document.getElementById('genericModalActions');
 
-    // Wipe any previous modal layouts (like the two-column lists)
-    document.getElementById('genericModalList').innerHTML = '';
-    document.getElementById('genericDetailContent').innerHTML = '';
-
-    // Reset container styling to allow our Flexbox classes to take over
-    container.style.display = 'block';
-    container.style.padding = '0';
+    // --- 5. THE IRONCLAD FLEXBOX LAYOUT ---
+    container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden; padding: 20px; box-sizing: border-box;";
     
-    // 5. Inject the Side-by-Side Flex Layout HTML
     container.innerHTML = `
-        <div class="modal-split-layout" style="padding: 20px;">
+        <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden;">
             
-            <div class="modal-left-pane">
-                <img src="${targetImage}" alt="Scan Image" onerror="this.src='assets/outpost.png'" style="width: 100%; max-width: 150px; height: auto; aspect-ratio: 1; object-fit: cover; background: rgba(0,0,0,0.5); padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
-                <div class="sys-meta-row" style="margin-top: 15px; justify-content: center; width: 100%;">
-                    <span style="color: ${threatLevel.includes('HIGH') || threatLevel.includes('EXTREME') ? 'var(--danger)' : 'var(--warning)'}; font-weight: bold; text-align: center;">
-                        THREAT LEVEL:<br>${threatLevel}
-                    </span>
-                </div>
-            </div>
-
-            <div class="modal-right-pane">
-                <h2 class="sys-title-large" style="color: var(--accent-color); margin-bottom: 5px;">${targetName.toUpperCase()}</h2>
-                <div style="font-size: 10px; color: #888; letter-spacing: 2px; margin-bottom: 15px; text-transform: uppercase;">
-                    FACTION ZONE: ${faction}
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; overflow: hidden; border-right: 1px solid var(--border-color); padding-right: 20px;">
+                <div style="width: 100%; aspect-ratio: 1; max-width: 200px; border-radius: 8px; border: 1px solid var(--border-color); overflow: hidden; box-shadow: 0 0 20px rgba(0, 224, 224, 0.1); background: rgba(0,0,0,0.5);">
+                    <img src="${targetImage}" alt="Scan Image" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='assets/radar_scan.png';">
                 </div>
                 
-                <div class="scan-data-box" style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); padding: 15px; border-radius: 4px;">
-                <h4 style="margin: 0 0 10px 0; color: var(--text-color); font-size: 12px; border-bottom: 1px solid #333; padding-bottom: 5px;">TACTICAL ASSESSMENT</h4>
-                    <p class="sys-flavor-text" style="margin: 0; line-height: 1.6; color: var(--item-desc-color);">${flavorText}</p>
-                    
-                    ${scanBonus > 0 ? `
-                        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed var(--accent-color);">
-                            <span style="color: var(--success); font-size: 11px; font-weight: bold;">[+] ENHANCED SENSOR DATA:</span>
-                            <p style="font-size: 12px; color: #aaa; margin-top: 5px;">Advanced telemetry processing complete. Sub-surface structural integrity mapped.</p>
-                        </div>
-                    ` : ''}
+                <div style="margin-top: 20px; width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); padding: 15px 10px; border-radius: 4px; text-align: center;">
+                    <div style="font-size: 10px; color: #888; letter-spacing: 2px; margin-bottom: 8px;">THREAT LEVEL</div>
+                    <div style="color: ${threatLevel.includes('HIGH') || threatLevel.includes('EXTREME') ? 'var(--danger)' : 'var(--warning)'}; font-weight: bold; font-size: 14px;">
+                        ${threatLevel}
+                    </div>
                 </div>
             </div>
 
+            <div style="flex: 1.5; display: flex; flex-direction: column; overflow: hidden;">
+                <div style="flex: 1; overflow-y: auto; padding-right: 15px; display: flex; flex-direction: column;">
+                    
+                    <h2 style="color: var(--accent-color); margin: 0 0 5px 0; font-size: 22px; letter-spacing: 1px;">${targetName.toUpperCase()}</h2>
+                    <div style="font-size: 10px; color: #888; letter-spacing: 2px; margin-bottom: 20px; text-transform: uppercase;">
+                        FACTION ZONE: ${faction}
+                    </div>
+                    
+                    <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); padding: 15px; border-radius: 4px; box-sizing: border-box; width: 100%;">
+                        <h4 style="margin: 0 0 10px 0; color: var(--text-color); font-size: 12px; border-bottom: 1px solid #333; padding-bottom: 5px; letter-spacing: 1px;">TACTICAL ASSESSMENT</h4>
+                        <p style="margin: 0; line-height: 1.6; color: var(--item-desc-color); font-size: 13px;">${flavorText}</p>
+                        
+                        ${scanBonus > 0 ? `
+                            <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed var(--accent-color);">
+                                <span style="color: var(--success); font-size: 11px; font-weight: bold; letter-spacing: 1px;">[+] ENHANCED SENSOR DATA:</span>
+                                <p style="font-size: 12px; color: #aaa; margin-top: 5px; line-height: 1.5;">Advanced telemetry processing complete. Sub-surface structural integrity mapped.</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                </div>
+                
+                <div id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-right: 15px;">
+                    <button class="action-button full-width-btn" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="closeGenericModal()">CLOSE SENSORS</button>
+                </div>
+            </div>
         </div>
     `;
-
-    // 6. Provide the exit button
-    actionsEl.innerHTML = `
-        <button class="action-button full-width-btn" style="max-width: 300px; margin: 0 auto;" onclick="closeGenericModal()">CLOSE SENSORS</button>
-    `;
 }
-
 
 // ==========================================
 // --- ASTROPHYSICS: DEEP SCAN UI ---
@@ -2077,99 +2087,106 @@ function openDerelictView() {
         openGenericModal("DERELICT VESSEL");
     }
     
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
-    const listEl = document.getElementById('genericModalList');
-    
+    const container = document.getElementById('genericModalContent');
     const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
     const isLooted = tile && (tile.looted || tile.studied);
 
-    // --- NEW: PROCEDURAL SENSOR READOUT FOR THE LEFT PANEL ---
-    if (listEl) {
-        // Generate pseudo-random data based on coordinates for consistency
-        const pseudoRandom = Math.abs((playerX * 13) ^ (playerY * 31)); 
-        const hullIntegrity = (pseudoRandom % 20) + 5; // 5-24%
-        const registry = "NVC-" + ((pseudoRandom % 9000) + 1000);
-        const timeAdrift = (pseudoRandom % 800) + 120; 
-        
-        const lifeSupportColor = isLooted ? "var(--danger)" : "var(--warning)";
-        const lifeSupportText = isLooted ? "OFFLINE (Vented)" : "FAILING (0.2%)";
+    // --- THE IRONCLAD FLEXBOX LAYOUT ---
+    container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
 
-        listEl.innerHTML = `
-            <div style="padding:15px; border-bottom:1px solid var(--border-color);">
-                <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">DEEP SCAN DATA</div>
-                <h4 style="color:var(--warning); margin:0; text-transform:uppercase;">UNIDENTIFIED WRECK</h4>
-                <div style="font-size:12px; color:var(--text-color); margin-top:5px;">
-                    • Registry: <span style="color:var(--accent-color)">${registry}</span><br>
-                    • Class: Unrecognizable<br>
-                    • Est. Adrift: ~${timeAdrift} days
-                </div>
-            </div>
-            <div style="padding:15px;">
-                <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">SYSTEM DIAGNOSTICS</div>
-                <div style="font-size:12px; color:var(--text-color); margin-top:5px; line-height: 1.8;">
-                    <span style="color:${lifeSupportColor}">[ SYSTEM ]</span> Life Support: ${lifeSupportText}<br>
-                    <span style="color:var(--danger)">[ CRITICAL ]</span> Main Reactor: SCRAMED<br>
-                    <span style="color:var(--danger)">[ CRITICAL ]</span> Hull Integrity: ${hullIntegrity}%<br>
-                    ${isLooted ? 
-                        `<span style="color:var(--item-desc-color)">[ TRACE ]</span> Zero thermal emissions.` : 
-                        `<span style="color:var(--success)">[ TRACE ]</span> Faint power signature detected in lower cargo bays.`
-                    }
-                </div>
-            </div>
-            <div style="padding:15px; margin-top: 10px; background: rgba(255,0,0,0.05); border-top: 1px solid var(--danger);">
-                <div style="font-size:10px; color:var(--danger); letter-spacing:2px; margin-bottom:5px;">HAZARD WARNING</div>
-                <div style="font-size:11px; color:var(--text-color); font-style: italic;">
-                    "Warning. Structural collapse imminent. Micro-meteoroid impacts have compromised primary bulkheads. Boarding actions carry extreme risk."
-                </div>
-            </div>
-        `;
-    }
+    // The eerie cold-green/grey accent color to match your asset!
+    const eerieColor = "#669988";
+
+    // Bulletproof Image Tag
+    const headerImageHTML = `
+        <div style="width: 100%; height: 180px; border-radius: 4px; border: 1px solid ${eerieColor}; margin-bottom: 15px; box-shadow: 0 0 25px rgba(102, 153, 136, 0.2); flex-shrink: 0; overflow: hidden; background: rgba(0,0,0,0.8);">
+            <img src="assets/derelict_banner.png" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8;" onerror="this.onerror=null; this.src='assets/derelict_banner.png';">
+        </div>
+    `;
+
+    // Procedural Data for Immersion
+    const pseudoRandom = Math.abs((playerX * 13) ^ (playerY * 31)); 
+    const hullIntegrity = (pseudoRandom % 20) + 5; 
+    const registry = "NVC-" + ((pseudoRandom % 9000) + 1000);
+    const timeAdrift = (pseudoRandom % 800) + 120; 
+    
+    const lifeSupportColor = isLooted ? "var(--danger)" : "var(--warning)";
+    const lifeSupportText = isLooted ? "OFFLINE (Vented)" : "FAILING (0.2%)";
 
     const desc = isLooted 
         ? "This vessel has been completely stripped of useful salvage. Only the ghosts of its former crew remain." 
         : "A ruined ship drifts aimlessly in the void. Life support is offline, and the hull is heavily scarred by plasma fire. Potential salvage detected.";
 
-    if (detailEl) {
-        detailEl.innerHTML = `
-            <div style="text-align:center; padding: 10px;">
-                <img src="assets/derelict.png" alt="Derelict Wreck" style="
-                    width: 100%;
-                    max-width: 420px;
-                    height: auto;
-                    border: 2px solid var(--border-color);
-                    box-shadow: 0 0 25px rgba(136, 170, 204, 0.4);
-                    margin-bottom: 20px;
-                    border-radius: 4px;
-                    display: block;
-                    margin-left: auto;
-                    margin-right: auto;
-                ">
+    container.innerHTML = `
+        ${headerImageHTML}
+        <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden;">
+            
+            <div style="flex: 1.2; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-color); padding-left: 15px; padding-right: 10px;">
+                <div class="trade-list-header" style="color:${eerieColor}; font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">SENSOR READOUT</div>
+                <div id="genericModalList" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    
+                    <div style="margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 4px; border-left: 3px solid ${eerieColor};">
+                        <h4 style="color:${eerieColor}; margin:0 0 5px 0; text-transform:uppercase; letter-spacing: 1px;">UNIDENTIFIED WRECK</h4>
+                        <div style="font-size:12px; color:var(--text-color); margin-top:5px;">
+                            • Registry: <span style="color:var(--accent-color)">${registry}</span><br>
+                            • Class: Unrecognizable<br>
+                            • Est. Adrift: ~${timeAdrift} days
+                        </div>
+                    </div>
 
-                <h3 style="color:#88AACC; margin-bottom:15px; letter-spacing: 2px; text-transform:uppercase; font-size:18px;">UNKNOWN WRECKAGE</h3>
-                <div style="background:rgba(0,0,0,0.5); border:1px solid var(--border-color); padding:15px; border-radius:4px; text-align:left;">
-                    <p style="color:var(--text-color); font-size:13px; line-height:1.6; margin:0; font-style:italic;">
-                        "${desc}"
-                    </p>
+                    <div style="padding:15px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); border-radius: 4px;">
+                        <div style="font-size:10px; color:#888; letter-spacing:2px; margin-bottom:10px;">SYSTEM DIAGNOSTICS</div>
+                        <div style="font-size:12px; color:var(--text-color); line-height: 1.8;">
+                            <span style="color:${lifeSupportColor}">[ SYSTEM ]</span> Life Support: ${lifeSupportText}<br>
+                            <span style="color:var(--danger)">[ CRITICAL ]</span> Main Reactor: SCRAMED<br>
+                            <span style="color:var(--danger)">[ CRITICAL ]</span> Hull Integrity: ${hullIntegrity}%<br>
+                            ${isLooted ? 
+                                `<span style="color:var(--item-desc-color)">[ TRACE ]</span> Zero thermal emissions.` : 
+                                `<span style="color:var(--success)">[ TRACE ]</span> Faint power signature detected in lower cargo bays.`
+                            }
+                        </div>
+                    </div>
+
+                    <div style="padding:15px; margin-top: 15px; background: rgba(255,0,0,0.05); border-left: 3px solid var(--danger); border-radius: 4px;">
+                        <div style="font-size:10px; color:var(--danger); letter-spacing:2px; margin-bottom:5px;">HAZARD WARNING</div>
+                        <div style="font-size:11px; color:var(--text-color); font-style: italic;">
+                            "Warning. Structural collapse imminent. Micro-meteoroid impacts have compromised primary bulkheads. Boarding actions carry extreme risk."
+                        </div>
+                    </div>
+
                 </div>
-                <div id="derelictInfoBar" style="margin-top:15px; font-weight:bold; font-size:12px;"></div>
             </div>
-        `;
-    }
+            
+            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow: hidden; padding-left: 5px; padding-right: 15px;">
+                <div id="genericDetailContent" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    <div style="text-align:center; padding: 20px 0;">
+                        <div style="font-size:50px; margin-bottom:15px; filter: drop-shadow(0 0 15px ${eerieColor}); opacity:0.8;">👻</div>
+                        <h3 style="color:${eerieColor}; margin-top:0; margin-bottom:10px; letter-spacing: 2px;">DEAD IN THE WATER</h3>
+                        <p style="color:var(--text-color); font-size:13px; line-height:1.5; font-style:italic; background: rgba(0,0,0,0.3); padding: 10px; border-left: 2px solid ${eerieColor}; text-align: left;">
+                            "${desc}"
+                        </p>
+                        <div id="derelictInfoBar" style="margin-top:15px; font-weight:bold; font-size:12px;"></div>
+                    </div>
+                </div>
+                <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;">
+                    </div>
+            </div>
+        </div>
+    `;
 
-    if (actionsEl) {
-        if (isLooted) {
-            actionsEl.innerHTML = `
-                <button class="action-button full-width-btn" onclick="closeDerelictView()">LEAVE WRECKAGE</button>
-            `;
-        } else {
-            actionsEl.innerHTML = `
-                <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="handleDerelictAction('SCAN')">SCAN DATABANKS (+XP)</button>
-                <button class="action-button" style="border-color:var(--warning); color:var(--warning);" onclick="handleDerelictAction('SALVAGE')">SALVAGE SCRAP (Risk Hull)</button>
-                <button class="action-button danger-btn" onclick="handleDerelictAction('BREACH')">BREACH AIRLOCK (Boarding Minigame)</button>
-                <button class="action-button full-width-btn" onclick="closeDerelictView()" style="margin-top: 10px;">DEPART</button>
-            `;
-        }
+    const actionsEl = document.getElementById('genericModalActions');
+
+    if (isLooted) {
+        actionsEl.innerHTML = `
+            <button class="action-button full-width-btn" onclick="closeDerelictView()" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;">LEAVE WRECKAGE</button>
+        `;
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color:var(--accent-color); color:var(--accent-color); margin-bottom: 10px;" onclick="handleDerelictAction('SCAN')">SCAN DATABANKS (+XP)</button>
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color:var(--warning); color:var(--warning); margin-bottom: 10px;" onclick="handleDerelictAction('SALVAGE')">SALVAGE SCRAP (Risk Hull)</button>
+            <button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" onclick="handleDerelictAction('BREACH')">BREACH AIRLOCK (Combat)</button>
+            <button class="action-button full-width-btn" onclick="closeDerelictView()" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;">DEPART</button>
+        `;
     }
 }
 
