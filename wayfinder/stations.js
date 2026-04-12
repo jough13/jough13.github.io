@@ -125,8 +125,6 @@ function renderStationMenu(location, faction) {
     let html = '';
 
     // --- SAVE FILE COMPATIBILITY PATCH (UNIVERSAL) ---
-    // If the location's trade arrays were stripped during a save/load cycle to save space,
-    // we safely restore them from the master LOCATIONS_DATA database right here!
     if (typeof LOCATIONS_DATA !== 'undefined' && LOCATIONS_DATA[location.name]) {
         const baseData = LOCATIONS_DATA[location.name];
         if (!location.sells || location.sells.length === 0) {
@@ -142,7 +140,6 @@ function renderStationMenu(location, faction) {
 
     const isBlackMarketNode = location.isBlackMarket || location.name === 'Planet Xerxes' || location.name === 'Xerxes Prime';
 
-    // Helper for generating buttons
     const createBtn = (icon, title, sub, action, extraStyle="", extraClass="") => `
         <button class="station-action-btn ${extraClass}" style="${extraStyle}" onclick="${action}">
             <div class="btn-icon">${icon}</div>
@@ -158,7 +155,6 @@ function renderStationMenu(location, faction) {
         html += createBtn('💀', 'Shadow Network: Buy', 'Acquire illicit goods', "openTradeModal('buy')", "", "xerxes-btn xerxes-spire-btn");
         html += createBtn('💰', 'Shadow Network: Sell', 'Fence contraband', "openTradeModal('sell')", "", "xerxes-btn xerxes-spire-btn");
     } else {
-        // Now this will correctly fire because the arrays are guaranteed to be restored!
         if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) {
             html += createBtn('🛒', 'Marketplace', 'Buy Commodities', "openTradeModal('buy')");
             html += createBtn('💰', 'Sell Cargo', 'Offload Goods', "openTradeModal('sell')");
@@ -168,7 +164,10 @@ function renderStationMenu(location, faction) {
     // --- 2. STANDARD SERVICES ---
     html += createBtn('📜', 'Mission Board', 'Contracts & Deliveries', "displayMissionBoard()");
     html += createBtn('🎯', 'Bounty Board', 'Hunt Cartel Targets', "openBountyBoard()", "border-left: 3px solid var(--danger);");
-    html += createBtn('⚙️', 'Outfitting', 'Upgrades & Parts', "displayOutfittingScreen()");
+    
+    // Point the Outfitting button to our new UI function!
+    html += createBtn('⚙️', 'Outfitting', 'Subsystems & Upgrades', "openOutfittingUI()", "border-left: 3px solid var(--accent-color);");
+    
     html += createBtn('🍸', 'Cantina', 'Rumors & Rest (10c)', "visitCantina()");
 
     // --- 3. MAJOR HUB ONLY SERVICES ---
@@ -192,7 +191,6 @@ function renderStationMenu(location, faction) {
         html += createBtn('⚖️', 'Security Office', 'Clear Bounties', "clearConcordBounty()", "border-left: 3px solid var(--accent-color);");
         html += createBtn('🛡️', 'Aegis Armory', 'Concord Gear', "openConcordArmory()", "border-left: 3px solid var(--accent-color);");
         html += createBtn('📡', 'Naval Command', 'Hire Escort', "requestConcordEscort()", "border-left: 3px solid var(--accent-color);");
-        
         html += createBtn('🪖', 'Marine Barracks', 'Recruit Ground Forces', "openBarracksUI()", "border-left: 3px solid var(--accent-color);");
 
     } else if (faction === 'KTHARR') {
@@ -566,41 +564,65 @@ function clearConcordBounty() {
 
 function openConcordArmory() {
     openGenericModal("AEGIS ARMORY");
-    const listEl = document.getElementById('genericModalList');
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
-
+    
     // How much reputation is required to shop here?
     const reqRep = 20; 
-    const concordRep = playerFactionStanding["CONCORD"] || 0;
+    const concordRep = typeof playerFactionStanding !== 'undefined' ? (playerFactionStanding["CONCORD"] || 0) : 0;
     const hasClearance = concordRep >= reqRep;
+    
+    // --- THE IRONCLAD FLEXBOX LAYOUT ---
+    const container = document.getElementById('genericModalContent');
+    container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
+    
+    // Bulletproof Image Tag (Tries .jpg first, falls back to .png)
+    const headerImageHTML = `
+        <div style="width: 100%; height: 180px; border-radius: 4px; border: 1px solid var(--accent-color); margin-bottom: 15px; box-shadow: 0 0 25px rgba(0, 224, 224, 0.2); flex-shrink: 0; overflow: hidden; background: rgba(0,0,0,0.5);">
+            <img src="assets/armory_banner.jpg" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='assets/armory_banner.png';">
+        </div>
+    `;
 
-    // 1. Render the Quartermaster Intro
-    detailEl.innerHTML = `
-        <div style="text-align:center; padding: 20px;">
-            <div style="font-size:60px; margin-bottom:15px; filter: hue-rotate(180deg);">🛡️</div>
-            <h3 style="color:var(--accent-color); margin-bottom:10px;">CONCORD MUNITIONS</h3>
-            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5; font-style:italic;">"Authorized personnel only. All equipment is strictly regulated under Concord Martial Law Section 4."</p>
+    container.innerHTML = `
+        ${headerImageHTML}
+        <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden;">
             
-            <div style="margin-top: 20px; padding: 15px; background: rgba(0,224,224,0.05); border: 1px solid var(--accent-color); border-radius: 4px;">
-                <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Security Clearance</div>
-                <div style="font-size: 18px; font-weight: bold; font-family: var(--title-font); letter-spacing: 2px; color: ${hasClearance ? 'var(--success)' : 'var(--danger)'};">
-                    ${hasClearance ? 'AUTHORIZED' : 'DENIED'}
+            <div style="flex: 1.2; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-color); padding-left: 15px; padding-right: 10px;">
+                <div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">AUTHORIZED REQUISITIONS</div>
+                <div id="genericModalList" style="flex: 1; overflow-y: auto; padding-right: 10px;"></div>
+            </div>
+            
+            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow: hidden; padding-left: 5px; padding-right: 15px;">
+                <div id="genericDetailContent" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    <div style="text-align:center; padding: 20px 0;">
+                        <h3 style="color:var(--accent-color); margin-bottom:10px; letter-spacing: 2px;">CONCORD MUNITIONS</h3>
+                        <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5; font-style:italic;">
+                            "Authorized personnel only. All equipment is strictly regulated under Concord Martial Law Section 4."
+                        </p>
+                        
+                        <div style="margin-top: 20px; padding: 15px; background: rgba(0,224,224,0.05); border: 1px solid var(--accent-color); border-radius: 4px;">
+                            <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Security Clearance</div>
+                            <div style="font-size: 18px; font-weight: bold; font-family: var(--title-font); letter-spacing: 2px; color: ${hasClearance ? 'var(--success)' : 'var(--danger)'};">
+                                ${hasClearance ? 'AUTHORIZED' : 'DENIED'}
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-color); margin-top: 5px;">
+                                Reputation: ${concordRep} / ${reqRep}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div style="font-size: 12px; color: var(--text-color); margin-top: 5px;">
-                    Reputation: ${concordRep} / ${reqRep}
+                <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;">
+                    <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
                 </div>
             </div>
         </div>
     `;
-    actionsEl.innerHTML = '';
-    listEl.innerHTML = '';
 
-    // 2. Fetch Concord Gear from your database
+    const listEl = document.getElementById('genericModalList');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Fetch Concord Gear from your database
     let concordItems = [];
     for (const compId in COMPONENTS_DATABASE) {
         const comp = COMPONENTS_DATABASE[compId];
-        // We look for items specifically branded as Concord
         if (comp.manufacturer === 'CONCORD' || comp.reqFaction === 'CONCORD') {
             concordItems.push({ id: compId, ...comp });
         }
@@ -611,22 +633,37 @@ function openConcordArmory() {
          return;
     }
 
-    // 3. Render the Gear List
+    // Render the Gear List
     concordItems.forEach(comp => {
         const row = document.createElement('div');
         row.className = 'trade-item-row';
+        row.style.cssText = "padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; display:flex; justify-content:space-between; align-items:center;";
         
-        // If they don't have the rep, make the list look locked and ominous
         if (!hasClearance) {
             row.style.opacity = '0.4';
-            row.innerHTML = `<span style="color:var(--danger); font-weight:bold;">🔒 RESTRICTED ITEM</span> <span style="color:var(--text-color); font-size:10px;">${comp.slot.toUpperCase()}</span>`;
+            row.innerHTML = `
+                <div>
+                    <div style="color:var(--danger); font-weight:bold; font-size: 13px;">🔒 RESTRICTED ITEM</div>
+                    <div style="color:var(--text-color); font-size: 10px; margin-top: 4px;">${comp.slot.toUpperCase()}</div>
+                </div>
+            `;
             row.onclick = () => {
-                actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>CLEARANCE LEVEL TOO LOW</button>`;
+                actionsEl.innerHTML = `
+                    <button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" disabled>CLEARANCE LEVEL TOO LOW</button>
+                    <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
+                `;
                 if (typeof soundManager !== 'undefined') soundManager.playError();
             };
         } else {
-            // Authorized view
-            row.innerHTML = `<span style="color:var(--accent-color); font-weight:bold;">${comp.name}</span> <span style="color:var(--gold-text)">${formatNumber(comp.cost)}c</span>`;
+            row.innerHTML = `
+                <div>
+                    <div style="color:var(--accent-color); font-weight:bold; font-size: 13px;">${comp.name}</div>
+                    <div style="color:var(--item-desc-color); font-size: 10px; margin-top: 4px;">${comp.slot.toUpperCase()}</div>
+                </div>
+                <div style="text-align:right;">
+                    <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(comp.cost)}c</span>
+                </div>
+            `;
             row.onclick = () => showConcordArmoryDetails(comp.id);
         }
         listEl.appendChild(row);
@@ -647,18 +684,18 @@ function showConcordArmoryDetails(compId) {
     const actionsEl = document.getElementById('genericModalActions');
 
     detailEl.innerHTML = `
-        <div style="padding: 15px; text-align: center;">
-            <div style="font-size: 40px; margin-bottom: 10px;">📦</div>
+        <div style="text-align: center; padding: 20px 0;">
+            <div style="font-size: 50px; margin-bottom: 10px; filter: drop-shadow(0 0 10px rgba(0,224,224,0.4));">📦</div>
             <h3 style="color:var(--accent-color); margin-top:0; margin-bottom: 5px;">${comp.name.toUpperCase()}</h3>
             
             <div style="background: rgba(0,224,224,0.1); border: 1px solid var(--accent-color); display: inline-block; padding: 4px 8px; border-radius: 2px; font-size: 10px; color: var(--accent-color); margin-bottom: 15px; letter-spacing: 1px;">
                 MIL-SPEC ${comp.slot.toUpperCase()}
             </div>
             
-            <p style="font-size:13px; color:var(--item-desc-color); margin-bottom: 20px; line-height: 1.5;">${comp.description}</p>
+            <p style="font-size:13px; color:var(--text-color); text-align:left; background:rgba(0,0,0,0.3); border-left:2px solid var(--accent-color); padding:10px; margin-bottom: 20px; line-height: 1.5;">${comp.description}</p>
             
-            <div class="trade-math-area">
-                <div class="trade-stat-row"><span>Requisition Fee:</span> <span>${formatNumber(comp.cost)}c</span></div>
+            <div class="trade-math-area" style="text-align:left;">
+                <div class="trade-stat-row"><span>Requisition Fee:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(comp.cost)}c</span></div>
                 <div class="trade-stat-row" style="color:#888"><span>Trade-In (${currentComp ? currentComp.name : 'None'}):</span> <span>-${formatNumber(tradeInValue)}c</span></div>
                 <div class="trade-stat-row" style="margin-top:10px; border-top:1px dashed var(--border-color); padding-top:10px; font-weight:bold;">
                     <span style="color:var(--text-color);">NET COST:</span> <span style="color:var(--gold-text)">${formatNumber(netCost)}c</span>
@@ -668,17 +705,23 @@ function showConcordArmoryDetails(compId) {
     `;
 
     // Re-use your perfectly working Outfitting logic for the actual purchase!
+    let btnHtml = "";
     if (playerShip.components[comp.slot] === compId) {
-        actionsEl.innerHTML = `<button class="action-button" disabled>ALREADY EQUIPPED</button>`;
+        btnHtml = `<button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" disabled>ALREADY EQUIPPED</button>`;
     } else if (playerCredits < netCost) {
-        actionsEl.innerHTML = `<button class="action-button" disabled>INSUFFICIENT FUNDS (${formatNumber(netCost)}c)</button>`;
+        btnHtml = `<button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" disabled>INSUFFICIENT FUNDS (${formatNumber(netCost)}c)</button>`;
     } else {
-        actionsEl.innerHTML = `
-            <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 15px rgba(0,224,224,0.2);" onclick="confirmBuyComponent('${compId}')">
+        btnHtml = `
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px; border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 15px rgba(0,224,224,0.2);" onclick="confirmBuyComponent('${compId}')">
                 AUTHORIZE REQUISITION
             </button>
         `;
     }
+    
+    // Add the sleek back button so they can leave the menu easily!
+    btnHtml += `<button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>`;
+    
+    actionsEl.innerHTML = btnHtml;
 }
 
 function requestConcordEscort() {
