@@ -574,10 +574,9 @@ function openConcordArmory() {
     const container = document.getElementById('genericModalContent');
     container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
     
-    // Bulletproof Image Tag (Tries .jpg first, falls back to .png)
     const headerImageHTML = `
         <div style="width: 100%; height: 180px; border-radius: 4px; border: 1px solid var(--accent-color); margin-bottom: 15px; box-shadow: 0 0 25px rgba(0, 224, 224, 0.2); flex-shrink: 0; overflow: hidden; background: rgba(0,0,0,0.5);">
-            <img src="assets/armory_banner.jpg" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='assets/armory_banner.png';">
+            <img src="assets/armory_banner.png" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='assets/armory_banner.png';">
         </div>
     `;
 
@@ -726,46 +725,85 @@ function showConcordArmoryDetails(compId) {
 
 function requestConcordEscort() {
     openGenericModal("NAVAL COMMAND : ESCORT WING");
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
-    document.getElementById('genericModalList').innerHTML = ''; // Hide list pane for a focused view
 
     const cost = 1500;
     const duration = 10;
+    const canAfford = playerCredits >= cost;
+    const isAlreadyHired = window.concordEscortJumps && window.concordEscortJumps > 0;
 
-    detailEl.innerHTML = `
-        <div style="text-align:center; padding: 20px;">
-            <div style="font-size:60px; margin-bottom:15px; filter: hue-rotate(180deg);">🛡️</div>
-            <h3 style="color:var(--accent-color); margin-bottom:10px;">AEGIS ESCORT WING</h3>
-            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
-                "Space is dangerous, Commander. For a fee, we can assign a heavy gunship to shadow your vessel and provide covering fire during combat encounters."
-            </p>
-            <div style="margin-top: 20px; padding: 15px; background: rgba(0, 224, 224, 0.05); border: 1px dashed var(--accent-color); border-radius: 4px;">
-                <div style="color: var(--text-color); font-size: 14px; margin-bottom: 8px;">
-                    <strong>Contract Duration:</strong> ${duration} Sector Jumps
+    // --- THE IRONCLAD FLEXBOX LAYOUT ---
+    const container = document.getElementById('genericModalContent');
+    container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
+    
+    const headerImageHTML = `
+        <div style="width: 100%; height: 180px; border-radius: 4px; border: 1px solid var(--accent-color); margin-bottom: 15px; box-shadow: 0 0 25px rgba(0, 224, 224, 0.2); flex-shrink: 0; overflow: hidden; background: rgba(0,0,0,0.5);">
+            <img src="assets/escort_banner.png" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='assets/escort_banner.png';">
+        </div>
+    `;
+
+    container.innerHTML = `
+        ${headerImageHTML}
+        <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden;">
+            
+            <div style="flex: 1.2; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-color); padding-left: 15px; padding-right: 10px;">
+                <div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">SUPPORT WINGS</div>
+                <div id="genericModalList" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    
+                    <div class="trade-item-row" style="padding: 12px 10px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; background: rgba(0,224,224,0.1); border-left: 3px solid var(--accent-color);">
+                        <div>
+                            <div style="color:var(--accent-color); font-weight:bold; font-size: 13px;">Heavy Gunship Escort</div>
+                            <div style="color:var(--item-desc-color); font-size: 10px; margin-top: 4px;">Class-4 Support Vessel</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(cost)}c</span>
+                        </div>
+                    </div>
+                    
                 </div>
-                <div style="color: var(--text-color); font-size: 14px;">
-                    <strong>Service Fee:</strong> <span style="color:var(--gold-text)">${cost}c</span>
+            </div>
+            
+            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow: hidden; padding-left: 5px; padding-right: 15px;">
+                <div id="genericDetailContent" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    <div style="text-align:center; padding: 20px 0;">
+                        <div style="font-size:50px; margin-bottom:10px; filter: drop-shadow(0 0 10px rgba(0,224,224,0.4));">🛡️</div>
+                        <h3 style="color:var(--accent-color); margin-top:0; margin-bottom:10px; letter-spacing: 2px;">AEGIS ESCORT WING</h3>
+                        
+                        <p style="color:var(--text-color); font-size:13px; line-height:1.5; text-align:left; background:rgba(0,0,0,0.3); border-left:2px solid var(--accent-color); padding:10px; margin-bottom: 20px;">
+                            "Space is dangerous, Commander. For a fee, we can assign a heavy gunship to shadow your vessel and provide covering fire during combat encounters."
+                        </p>
+                        
+                        <div class="trade-math-area" style="text-align:left;">
+                            <div class="trade-stat-row"><span>Contract Duration:</span> <span style="color:var(--text-color); font-weight:bold;">${duration} Sector Jumps</span></div>
+                            <div class="trade-stat-row"><span>Service Fee:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(cost)}c</span></div>
+                        </div>
+                    </div>
                 </div>
+                <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;">
+                    </div>
             </div>
         </div>
     `;
 
-    const canAfford = playerCredits >= cost;
-    const isAlreadyHired = window.concordEscortJumps && window.concordEscortJumps > 0;
+    const actionsEl = document.getElementById('genericModalActions');
 
+    // Setup the properly sized and padded buttons
     if (isAlreadyHired) {
         actionsEl.innerHTML = `
-            <button class="action-button" disabled>ESCORT ACTIVE (${window.concordEscortJumps} JUMPS LEFT)</button>
-            <button class="action-button" onclick="openStationView()">RETURN TO CONCOURSE</button>
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" disabled>ESCORT ACTIVE (${window.concordEscortJumps} JUMPS LEFT)</button>
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
+        `;
+    } else if (!canAfford) {
+        actionsEl.innerHTML = `
+            <button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" disabled>INSUFFICIENT FUNDS (${formatNumber(cost)}c)</button>
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
         `;
     } else {
         actionsEl.innerHTML = `
-            <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 10px rgba(0,224,224,0.2);" 
-                ${!canAfford ? 'disabled' : ''} onclick="executeConcordEscort(${cost}, ${duration})">
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px; border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 15px rgba(0,224,224,0.2);" 
+                onclick="executeConcordEscort(${cost}, ${duration})">
                 AUTHORIZE CONTRACT
             </button>
-            <button class="action-button" onclick="openStationView()">CANCEL</button>
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
         `;
     }
 }
@@ -773,7 +811,7 @@ function requestConcordEscort() {
 function executeConcordEscort(cost, duration) {
     if (playerCredits < cost) return;
     playerCredits -= cost;
-    window.concordEscortJumps = duration; // Global tracker you can hook into script.js!
+    window.concordEscortJumps = duration; // Global tracker
     
     if (typeof soundManager !== 'undefined') soundManager.playBuy();
     logMessage(`<span style='color:var(--accent-color); font-weight:bold;'>[ AEGIS COMMAND ]</span> Escort wing assigned. They will shadow you for ${duration} jumps.`);
