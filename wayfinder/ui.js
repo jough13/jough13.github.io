@@ -660,6 +660,25 @@ function updateCurrentCargoLoad() {
 function openCargoModal() {
     window.cargoSortMode = window.cargoSortMode || 'NAME'; // Default sort state
     openGenericModal("CARGO MANIFEST");
+    
+    // --- THE IRONCLAD FLEXBOX LAYOUT ---
+    const container = document.getElementById('genericModalContent');
+    container.style.cssText = "display: flex; gap: 20px; height: 100%; overflow: hidden; padding-top: 15px;";
+    
+    // We completely overwrite the generic layout to strictly control the scrolling zones!
+    container.innerHTML = `
+        <div style="flex: 1.2; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-color); padding-right: 10px; padding-left: 15px;">
+            <div id="cargoSortHeader" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 10px; flex-shrink: 0;">
+                </div>
+            <div id="genericModalList" style="flex: 1; overflow-y: auto; padding-right: 10px;"></div>
+        </div>
+        
+        <div style="width: 340px; display: flex; flex-direction: column; overflow: hidden; padding-right: 15px;">
+            <div id="genericDetailContent" style="flex: 1; overflow-y: auto; padding-right: 10px;"></div>
+            <div id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;"></div>
+        </div>
+    `;
+    
     renderCargoList();
 }
 
@@ -677,7 +696,9 @@ function renderCargoList() {
     const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
+    const sortHeader = document.getElementById('cargoSortHeader');
     
+    if (!listEl) return;
     listEl.innerHTML = '';
     
     // --- 1. Map Cargo into a Sortable Array ---
@@ -704,42 +725,27 @@ function renderCargoList() {
                 <h3 style="color:#666;">HOLD EMPTY</h3>
                 <p style="color:var(--item-desc-color); font-size:12px;">No physical goods detected in the cargo bay.</p>
             </div>`;
-        actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="closeGenericModal()">CLOSE</button>`;
+        actionsEl.innerHTML = `<button class="action-button full-width-btn" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="closeGenericModal()">CLOSE MANIFEST</button>`;
+        if(sortHeader) sortHeader.innerHTML = `<span style="color:var(--item-desc-color); font-size:10px; letter-spacing:2px;">INVENTORY</span>`;
         return;
     }
 
     // --- 2. Build the Sorting Header ---
-    const sortHeader = document.createElement('div');
-    sortHeader.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; position: sticky; top: 0; background: var(--bg-color); z-index: 5;";
-    
-    let sortLabel = "A-Z";
-    if (window.cargoSortMode === 'VALUE') sortLabel = "TOTAL VALUE";
-    if (window.cargoSortMode === 'QUANTITY') sortLabel = "QUANTITY";
-    if (window.cargoSortMode === 'ILLEGAL') sortLabel = "CONTRABAND";
+    if (sortHeader) {
+        let sortLabel = "A-Z";
+        if (window.cargoSortMode === 'VALUE') sortLabel = "TOTAL VALUE";
+        if (window.cargoSortMode === 'QUANTITY') sortLabel = "QUANTITY";
+        if (window.cargoSortMode === 'ILLEGAL') sortLabel = "CONTRABAND";
 
-    sortHeader.innerHTML = `
-        <span style="color:var(--item-desc-color); font-size:10px; letter-spacing:2px;">INVENTORY</span>
-        <button class="action-button" style="padding: 6px 10px; font-size: 10px; border-color:var(--accent-color); color:var(--accent-color);" onclick="cycleCargoSort()">
-            SORT: ${sortLabel} ⟳
-        </button>
-    `;
-    listEl.appendChild(sortHeader);
+        sortHeader.innerHTML = `
+            <span style="color:var(--accent-color); font-size:10px; letter-spacing:2px;">INVENTORY</span>
+            <button class="action-button" style="padding: 6px 10px; font-size: 10px; border-color:var(--accent-color); color:var(--accent-color);" onclick="cycleCargoSort()">
+                SORT: ${sortLabel} ⟳
+            </button>
+        `;
+    }
 
     // --- 3. Apply the Sorting Algorithm ---
-    cargoArray.sort((a, b) => {
-        if (window.cargoSortMode === 'VALUE') {
-            return (b.value * b.qty) - (a.value * a.qty); // Highest total stack value first
-        } else if (window.cargoSortMode === 'QUANTITY') {
-            return b.qty - a.qty; // Largest stacks first
-        } else if (window.cargoSortMode === 'ILLEGAL') {
-            if (b.illegal !== a.illegal) return b.illegal - a.illegal; // Contraband at the top
-            return a.name.localeCompare(b.name); // Secondary sort A-Z
-        } else {
-            return a.name.localeCompare(b.name); // Standard A-Z
-        }
-    });
-
-    // --- 4. Render the Sorted Rows ---
     cargoArray.sort((a, b) => {
         if (window.cargoSortMode === 'VALUE') {
             return (b.value * b.qty) - (a.value * a.qty); 
@@ -753,29 +759,33 @@ function renderCargoList() {
         }
     });
 
-    // Create an off-screen fragment
+    // --- 4. Render the Sorted Rows ---
     const fragment = document.createDocumentFragment();
 
-    // Render the Sorted Rows to the Fragment ---
     cargoArray.forEach(item => {
         const row = document.createElement('div');
         row.className = 'trade-item-row';
         row.style.cursor = 'pointer';
+        row.style.cssText = "padding: 12px 10px; border-bottom: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;";
         
         if (item.illegal) row.style.borderLeft = '3px solid var(--danger)';
         if (window.activeCargoItem === item.key) row.style.background = 'rgba(0, 224, 224, 0.1)';
 
         let subtext = "";
-        if (window.cargoSortMode === 'VALUE') subtext = `<span style="color:var(--gold-text); font-size:10px; margin-left:10px; opacity:0.8;">${formatNumber(item.value * item.qty)}c</span>`;
+        if (window.cargoSortMode === 'VALUE') subtext = `<div style="color:var(--gold-text); font-size:10px; opacity:0.8; margin-top:4px;">Value: ${formatNumber(item.value * item.qty)}c</div>`;
         
-        row.innerHTML = `<span>${item.illegal ? '⚠️' : '📦'} ${item.name} ${subtext}</span> <span style="color:var(--accent-color); font-weight:bold;">x${item.qty}</span>`;
+        row.innerHTML = `
+            <div>
+                <div style="font-weight:bold; color:var(--item-name-color); font-size: 13px;">${item.illegal ? '⚠️' : '📦'} ${item.name}</div>
+                ${subtext}
+            </div>
+            <div style="color:var(--accent-color); font-weight:bold; font-size:14px;">x${item.qty}</div>
+        `;
         row.onclick = () => selectCargoItem(item.key);
         
-        // Append to the invisible fragment, NOT the live DOM
         fragment.appendChild(row);
     });
 
-    // Push all rows to the screen at the exact same time
     listEl.appendChild(fragment);
 
     // Auto-select the active item, or the first item in the list if none is active
@@ -839,18 +849,18 @@ function selectCargoItem(key) {
     let useButtonHtml = "";
     if (itemDef.onUse) {
         useButtonHtml = `
-        <button class="action-button" style="border-color:var(--success); color:var(--success); box-shadow: 0 0 10px rgba(0,255,0,0.2);" onclick="useCargoItem('${key}')">
+        <button class="action-button" style="border-color:var(--success); color:var(--success); box-shadow: 0 0 10px rgba(0,255,0,0.2); width:100%; padding:10px; margin-bottom:10px;" onclick="useCargoItem('${key}')">
             ACTIVATE / USE ITEM
         </button>`;
     }
 
     actionsEl.innerHTML = `
         ${useButtonHtml}
-        <div style="display:flex; gap:10px; width:100%;">
-            <button class="action-button danger-btn" style="flex:1;" onclick="jettisonItem('${key}', 1)">EJECT 1x</button>
-            <button class="action-button danger-btn" style="flex:1; background:rgba(204,0,0,0.1);" onclick="jettisonItem('${key}', 'ALL')">DUMP ALL</button>
+        <div style="display:flex; gap:10px; width:100%; margin-bottom:10px;">
+            <button class="action-button danger-btn" style="flex:1; padding:10px;" onclick="jettisonItem('${key}', 1)">EJECT 1x</button>
+            <button class="action-button danger-btn" style="flex:1; padding:10px; background:rgba(204,0,0,0.1);" onclick="jettisonItem('${key}', 'ALL')">DUMP ALL</button>
         </div>
-        <button class="action-button" onclick="closeGenericModal()">CLOSE MANIFEST</button>
+        <button class="action-button" style="width:100%; padding:10px; border-color:#888; color:#888;" onclick="closeGenericModal()">CLOSE MANIFEST</button>
     `;
 }
 
