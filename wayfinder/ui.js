@@ -463,7 +463,14 @@ function displayCommanderProfile(tab = 'OVERVIEW') {
         const xpReq = Math.floor(BASE_XP_TO_LEVEL * Math.pow(playerLevel, XP_LEVEL_EXPONENT));
 
         html += `
-            <h3 style="color:var(--accent-color); border-bottom:1px solid #333; padding-bottom:10px; margin-top:0;">OVERVIEW</h3>
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                <img src="${typeof playerPfp !== 'undefined' ? playerPfp : 'assets/pfp_01.png'}" alt="Commander Profile" style="width: 80px; height: 80px; border-radius: 4px; border: 2px solid var(--accent-color); object-fit: cover; box-shadow: 0 0 15px rgba(0, 224, 224, 0.2);">
+                <div>
+                    <h3 style="color:var(--accent-color); margin: 0 0 5px 0; font-size: 18px; letter-spacing: 2px;">${playerName.toUpperCase()}</h3>
+                    <div style="color:var(--item-desc-color); font-size: 10px; letter-spacing: 2px;">CONCORD REGISTRY IDENT</div>
+                </div>
+            </div>
+
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; font-size:13px; line-height:1.5;">
                 <div style="color:#888;">Clearance Level:</div> <div style="color:var(--text-color); text-align:right; font-weight:bold;">${playerLevel}</div>
                 <div style="color:#888;">Experience:</div> <div style="color:var(--text-color); text-align:right;">${Math.floor(playerXP)} / ${xpReq}</div>
