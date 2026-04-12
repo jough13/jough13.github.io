@@ -217,16 +217,24 @@ function renderStationMenu(location, faction) {
     menuGrid.innerHTML = html;
 }
 
+// --- STATE MANAGEMENT ---
+// This object persists throughout the session, storing which cantina image is assigned to which station.
+if (typeof window._stationCantinaBannerAssignments === 'undefined') {
+    window._stationCantinaBannerAssignments = {};
+}
+
 // --- CANTINA & RUMOR SYSTEM ---
-
 function visitCantina() {
-    openGenericModal("STATION CANTINA");
+    const location = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+    let stationName = location ? location.name.toUpperCase() : "STARBASE";
+    let faction = location ? location.faction : "INDEPENDENT";
 
-    const listEl = document.getElementById('genericModalList');
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
-
-    const location = chunkManager.getTile(playerX, playerY);
+    // Set dynamic branding colors
+    let brandColor = "var(--accent-color)";
+    if (faction === 'CONCORD') brandColor = "#4488FF";
+    else if (faction === 'ECLIPSE') brandColor = "#9933FF";
+    else if (faction === 'KTHARR') brandColor = "var(--danger)";
+    else brandColor = "var(--success)";
 
     let randomFlavor = [
         "The air is thick with smoke and the hum of a failing ventilation unit.",
@@ -235,43 +243,96 @@ function visitCantina() {
         "The bartender polishes a glass with a rag that looks grease-stained."
     ][Math.floor(Math.random() * 4)];
 
-    // Reduced height to 130px to prevent the bottom from getting cut off!
-    let headerArt = `<img src="assets/outpost_cantina.png" style="width:100%; height: 130px; object-fit: cover; object-position: center; border-radius:6px; border:1px solid var(--border-color); box-shadow: 0 0 15px rgba(0, 224, 224, 0.1); margin-bottom: 15px;">`;
+    const isBlackMarket = location && location.name === 'The Rusty Anchor';
 
-    if (location && location.name === 'The Rusty Anchor') {
-        headerArt = `<img src="assets/rusty_cantina.png" style="width:100%; height: 130px; object-fit: cover; object-position: center; border-radius:6px; border:1px solid #9C27B0; box-shadow: 0 0 15px rgba(156, 39, 176, 0.3); margin-bottom: 15px;">`;
+    if (isBlackMarket) {
+        brandColor = "#9C27B0";
         randomFlavor = "The air is thick with the smell of ozone, illegal stims, and danger.";
     }
 
-    listEl.innerHTML = `
-        <div style="padding:15px; text-align:center;">
-            ${headerArt}
-            <p style="color:var(--text-color); font-style:italic; font-size: 13px; margin: 0;">"${randomFlavor}"</p>
-        </div>
-        <div class="generic-list-item" onclick="buyDrink()" style="cursor: pointer;">
-            <strong style="color:var(--accent-color);">Buy a Drink (10c)</strong>
-            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Restores 15 Hull.</div>
-        </div>
-        <div class="generic-list-item" onclick="listenToRumors()" style="cursor: pointer;">
-            <strong style="color:var(--accent-color);">Eavesdrop on Rumors</strong>
-            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Listen to local chatter for clues.</div>
-        </div>
-        <div class="generic-list-item" onclick="openRecruitmentBoard()" style="cursor: pointer;">
-            <strong style="color:var(--accent-color);">Crew Recruitment</strong>
-            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Hire specialized crew members for your ship.</div>
+    // --- 🚨 PERSISTENT RANDOMIZATION LOGIC 🚨 ---
+    
+    // 1. Define the two separate asset pools
+    const normalBanners = ['assets/outpost_cantina.png', 'assets/outpost_cantina2.png'];
+    const rustyBanners = ['assets/rusty_cantina.png', 'assets/rusty_cantina2.png'];
+    
+    // 2. Check if this station already has an assigned banner
+    let assignedBanner = window._stationCantinaBannerAssignments[stationName];
+    
+    // 3. If no assignment exists, pick a random one from the correct pool and save it!
+    if (!assignedBanner) {
+        const availableBanners = isBlackMarket ? rustyBanners : normalBanners;
+        assignedBanner = availableBanners[Math.floor(Math.random() * availableBanners.length)];
+        window._stationCantinaBannerAssignments[stationName] = assignedBanner;
+        console.log(`🍻 Assigned ${assignedBanner} to ${stationName} cantina.`);
+    }
+
+    openGenericModal(`${stationName} : CANTINA`);
+
+    // --- THE IRONCLAD FLEXBOX LAYOUT ---
+    const container = document.getElementById('genericModalContent');
+    container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
+
+    const headerImageHTML = `
+        <div style="width: 100%; height: 180px; border-radius: 4px; border: 1px solid ${brandColor}; margin-bottom: 15px; box-shadow: 0 0 25px ${brandColor}44; flex-shrink: 0; overflow: hidden; background: rgba(0,0,0,0.5);">
+            <img src="${assignedBanner}" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;" onerror="this.onerror=null; this.src='assets/outpost_cantina.png';">
         </div>
     `;
 
-    detailEl.innerHTML = `
-        <div style="padding:40px 20px; text-align:center; color:var(--item-desc-color);">
-            Select an option from the menu.
+    container.innerHTML = `
+        ${headerImageHTML}
+        <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden;">
+            
+            <div style="flex: 1.2; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-color); padding-left: 15px; padding-right: 10px;">
+                <div class="trade-list-header" style="color:${brandColor}; font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">LOCAL AMENITIES</div>
+                <div id="genericModalList" style="flex: 1; overflow-y: auto; padding-right: 10px;"></div>
+            </div>
+            
+            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow: hidden; padding-left: 5px; padding-right: 15px;">
+                <div id="genericDetailContent" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    <div style="text-align:center; padding: 20px 0;">
+                        <div style="font-size:50px; margin-bottom:15px; filter: drop-shadow(0 0 15px ${brandColor}); opacity:0.8;">🍻</div>
+                        <h3 style="color:${brandColor}; margin-top:0; margin-bottom:10px; letter-spacing: 2px;">THE LOCAL WATERING HOLE</h3>
+                        <p style="color:var(--text-color); font-size:13px; line-height:1.5; font-style:italic; background: rgba(0,0,0,0.3); padding: 10px; border-left: 2px solid ${brandColor}; text-align: left;">
+                            "${randomFlavor}"
+                        </p>
+                    </div>
+                </div>
+                <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;">
+                    <button class="action-button full-width-btn" onclick="openStationView()" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;">◀ BACK TO CONCOURSE</button>
+                </div>
+            </div>
         </div>
     `;
 
-    // --- Route the exit button back to the station ---
-    actionsEl.innerHTML = `
-        <button class="action-button" onclick="openStationView()">BACK TO CONCOURSE</button>
-    `;
+    const listEl = document.getElementById('genericModalList');
+
+    // Build the interactive buttons using the stylized flexbox rows
+    const actions = [
+        { name: "Buy a Drink", desc: "Restores 15 Hull.", cost: "10c", icon: "🥃", fn: "buyDrink()" },
+        { name: "Eavesdrop on Rumors", desc: "Listen to local chatter for clues.", cost: "FREE", icon: "👂", fn: "listenToRumors()" },
+        { name: "Crew Recruitment", desc: "Hire specialized crew members.", cost: "VARIES", icon: "🧑‍🚀", fn: "openRecruitmentBoard()" }
+    ];
+
+    actions.forEach(act => {
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        row.style.cssText = "padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; display:flex; justify-content:space-between; align-items:center;";
+        row.innerHTML = `
+            <div style="display:flex; align-items:center; gap:15px;">
+                <div style="font-size: 20px; filter: drop-shadow(0 0 5px ${brandColor});">${act.icon}</div>
+                <div>
+                    <div style="color:${brandColor}; font-weight:bold; font-size: 13px;">${act.name}</div>
+                    <div style="color:var(--item-desc-color); font-size: 10px; margin-top: 4px;">${act.desc}</div>
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <span style="color:var(--gold-text); font-weight:bold;">${act.cost}</span>
+            </div>
+        `;
+        row.onclick = () => eval(act.fn);
+        listEl.appendChild(row);
+    });
 }
 
 // ==========================================
