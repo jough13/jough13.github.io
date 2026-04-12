@@ -1,17 +1,34 @@
-
-
 // ==========================================
 // --- SHIPYARD UI & PURCHASING LOGIC ---
 // ==========================================
 
 function displayShipyard() {
-    openGenericModal("STARBASE SHIPYARD");
+    // 1. Get the current station to make the UI dynamic!
+    const location = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+    let stationName = location ? location.name.toUpperCase() : "STARBASE";
+    let faction = location ? location.faction : "INDEPENDENT";
+    
+    // 2. Set dynamic branding colors based on who owns the station
+    let brandColor = "var(--accent-color)";
+    if (faction === 'CONCORD') brandColor = "#4488FF";
+    else if (faction === 'ECLIPSE') brandColor = "#9933FF";
+    else if (faction === 'KTHARR') brandColor = "var(--danger)";
+    else brandColor = "var(--success)";
+
+    openGenericModal(`${stationName} : SHIPYARD`);
     const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">CHASSIS MANIFEST</div>`;
+    listEl.innerHTML = `<div class="trade-list-header" style="color:${brandColor}; font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">CHASSIS MANIFEST</div>`;
     
+    // --- THE DYNAMIC CINEMATIC HEADER ---
+    const headerHtml = `
+        <div style="width: 100%; height: 180px; background: url('assets/shipyard_banner.png') center/cover; border-radius: 4px; border: 1px solid ${brandColor}; margin-bottom: 20px; box-shadow: 0 0 25px ${brandColor}44;">
+        </div>
+        <h3 style="color:${brandColor}; margin-bottom:10px; letter-spacing: 2px;">${stationName} YARDS</h3>
+    `;
+
     // 1. Build the Left Pane (The Manifest)
     for (const shipId in SHIP_CLASSES) {
         const ship = SHIP_CLASSES[shipId];
@@ -37,24 +54,16 @@ function displayShipyard() {
                 </div>
             `;
             row.onclick = () => {
+                // 🚨 THE FIX: No more hardcoded "Concord", uses the dynamic header!
                 detailEl.innerHTML = `
-        <div style="position: relative; width: 100%; height: 180px; background: url('assets/shipyard_banner.png') center/cover; border-radius: 4px; border: 1px solid #4488FF; margin-bottom: 20px; overflow: hidden; box-shadow: 0 0 25px rgba(68, 136, 255, 0.15);">
-            <div style="position: absolute; inset: 0; background: linear-gradient(to top, var(--bg-color) 5%, transparent 100%);"></div>
-            <div style="position: absolute; bottom: 10px; left: 0; width: 100%; text-align: center;">
-                <div style="font-size:45px; filter: drop-shadow(0 0 15px #4488FF);">🚀</div>
-            </div>
-        </div>
-
-        <div style="text-align:center; padding: 0 20px 20px 20px;">
-            <h3 style="color:#4488FF; margin-bottom:10px; letter-spacing: 2px;">CONCORD SHIPYARDS</h3>
-            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
-                Browse available chassis frames. Purchasing a new vessel will automatically transfer your current subsystems, cargo, and crew.
-            </p>
-            <div style="margin-top: 20px; font-size: 14px; color: var(--gold-text); border: 1px solid var(--border-color); padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px;">
-                Available Funds: <b>${formatNumber(playerCredits)}c</b>
-            </div>
-        </div>
-    `;
+                    <div style="text-align:center; padding: 0 20px 20px 20px;">
+                        ${headerHtml}
+                        <div style="background: rgba(255,0,0,0.1); border: 1px solid var(--danger); padding: 15px; border-radius: 4px; margin-top: 15px; text-align: left;">
+                            <div style="color:var(--danger); font-weight:bold; letter-spacing: 1px; border-bottom: 1px solid var(--danger); padding-bottom: 5px; margin-bottom: 8px;">ACCESS DENIED</div>
+                            <p style="color:var(--item-desc-color); font-size:12px; margin:0; line-height: 1.5;">You lack the necessary <span style="color:var(--text-color); font-weight:bold;">${ship.reqFaction}</span> faction standing to purchase this chassis. Gain reputation by completing local contracts.</p>
+                        </div>
+                    </div>
+                `;
                 actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>RESTRICTED CHASSIS</button>`;
                 if (typeof soundManager !== 'undefined') soundManager.playError();
             };
@@ -73,14 +82,16 @@ function displayShipyard() {
     }
 
     // 2. Default Landing Screen (Right Pane)
+    // 🚨 THE FIX: Injects the beautiful banner immediately upon opening the menu!
     detailEl.innerHTML = `
-        <div style="text-align:center; padding: 40px 20px;">
-            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px var(--accent-color)); opacity:0.6;">🏭</div>
-            <h3 style="color:var(--accent-color); margin-bottom:10px;">AUTHORIZED DEALERSHIP</h3>
+        <div style="text-align:center; padding: 0 20px 20px 20px;">
+            ${headerHtml}
             <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
-                Select a hull from the manifest on the left to view its specifications and place an order. 
-                Your current vessel and installed components will be automatically appraised for trade-in value.
+                Browse available chassis frames. Purchasing a new vessel will automatically transfer your current subsystems, cargo, and crew.
             </p>
+            <div style="margin-top: 20px; font-size: 14px; color: var(--gold-text); border: 1px solid var(--border-color); padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px;">
+                Available Funds: <b>${formatNumber(playerCredits)}c</b>
+            </div>
         </div>
     `;
     actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="openStationView()">RETURN TO CONCOURSE</button>`;
@@ -760,12 +771,7 @@ function openOutfittingUI() {
     const listEl = document.getElementById('genericModalList');
 
     detailEl.innerHTML = `
-        <div style="position: relative; width: 100%; height: 180px; background: url('assets/outfitting_banner.png') center/cover; border-radius: 4px; border: 1px solid var(--accent-color); margin-bottom: 20px; overflow: hidden; box-shadow: 0 0 25px rgba(0, 224, 224, 0.15);">
-            <div style="position: absolute; inset: 0; background: linear-gradient(to top, var(--bg-color) 5%, transparent 100%);"></div>
-            
-            <div style="position: absolute; bottom: 10px; left: 0; width: 100%; text-align: center;">
-                <div style="font-size:45px; filter: drop-shadow(0 0 15px var(--accent-color));">🔧</div>
-            </div>
+        <div style="width: 100%; height: 180px; background: url('assets/outfitting_banner.png') center/cover; border-radius: 4px; border: 1px solid var(--accent-color); margin-bottom: 20px; box-shadow: 0 0 25px rgba(0, 224, 224, 0.15);">
         </div>
 
         <div style="text-align:center; padding: 0 20px 20px 20px;">
