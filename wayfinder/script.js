@@ -14,7 +14,6 @@ function bootSequence() {
     }
 
     // 2. Check for returning players (Looking for a save file or a 'has played' flag)
-    // Replace 'wayfinder_save_data' with whatever your actual save key is!
     let isReturningPlayer = localStorage.getItem('wayfinder_save_data') !== null;
 
     if (!isReturningPlayer) {
@@ -39,6 +38,11 @@ function bootSequence() {
         
         const video = document.getElementById('introVideo');
         video.muted = !shouldEnableAudio; // Mute the video if the player has audio off!
+        
+        // Pause the ambient background music while the cinematic plays!
+        if (shouldEnableAudio && typeof soundManager !== 'undefined' && soundManager.bgMusic) {
+            soundManager.bgMusic.pause();
+        }
         
         // When the video finishes naturally, transition into the game
         video.onended = () => {
@@ -69,6 +73,13 @@ function completeBootTransition(titleScreen, shouldEnableAudio) {
     // Play the Warp Spool-up SFX
     if (shouldEnableAudio && typeof soundManager !== 'undefined') {
         setTimeout(() => soundManager.playWarp(), 300); 
+        
+        // Resume the ambient track now that the intro has concluded!
+        if (soundManager.bgMusic) {
+            soundManager.bgMusic.play().catch(err => {
+                console.warn("Browser blocked autoplay until user interaction.", err);
+            });
+        }
     }
 
     // Inject flavor text
