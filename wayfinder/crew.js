@@ -14,49 +14,134 @@ window.hasCrewPerk = function(perkId) {
 function openRecruitmentBoard() {
     openGenericModal("CANTINA RECRUITMENT"); 
     
-    const listEl = document.getElementById('genericModalList');
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
-
     // Generate new recruits if the station pool is empty
-        if (typeof currentStationRecruits === 'undefined' || currentStationRecruits === null) {
+    if (typeof currentStationRecruits === 'undefined' || currentStationRecruits === null) {
         currentStationRecruits = generateStationRecruits();
     }
 
-    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">AVAILABLE FREELANCERS</div>`;
+    // --- THE IRONCLAD FLEXBOX LAYOUT ---
+    const container = document.getElementById('genericModalContent');
+    container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
+
+    const headerImageHTML = `
+        <div style="width: 100%; height: 180px; border-radius: 4px; border: 1px solid var(--accent-color); margin-bottom: 15px; box-shadow: 0 0 25px rgba(0, 224, 224, 0.2); flex-shrink: 0; overflow: hidden; background: rgba(0,0,0,0.5);">
+            <img src="assets/crew_banner.png" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;" onerror="this.onerror=null; this.src='assets/crew_banner.png';">
+        </div>
+    `;
+
+    container.innerHTML = `
+        ${headerImageHTML}
+        <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden;">
+            
+            <div style="flex: 1.2; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-color); padding-left: 15px; padding-right: 10px;">
+                <div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">AVAILABLE FREELANCERS</div>
+                <div id="genericModalList" style="flex: 1; overflow-y: auto; padding-right: 10px;"></div>
+            </div>
+            
+            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow: hidden; padding-left: 5px; padding-right: 15px;">
+                <div id="genericDetailContent" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    <div style="text-align:center; padding: 10px 0 20px 0;">
+                        <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px rgba(0,224,224,0.4)); opacity:0.8;">👨‍🚀</div>
+                        <h3 style="color:var(--accent-color); margin-top:0; margin-bottom:10px; letter-spacing: 2px;">LOCAL DOSSIERS</h3>
+                        <p style="color:var(--text-color); font-size:13px; line-height:1.5; font-style:italic; background: rgba(0,0,0,0.3); padding: 10px; border-left: 2px solid var(--accent-color); text-align: left;">
+                            "Review the files of spacers looking for a bunk. They charge an upfront signing bonus, but their passive perks are permanent."
+                        </p>
+                        <div style="margin-top: 20px; font-size: 13px; font-weight: bold; color: var(--gold-text); background: rgba(255,215,0,0.05); border: 1px solid #886600; padding: 10px; border-radius: 4px;">
+                            Current Crew Size: ${playerCrew.length} / ${typeof MAX_CREW !== 'undefined' ? MAX_CREW : 3}
+                        </div>
+                    </div>
+                </div>
+                <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;">
+                    <button class="action-button full-width-btn" onclick="visitCantina()" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;">◀ BACK TO CANTINA</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const listEl = document.getElementById('genericModalList');
     
     if (currentStationRecruits.length === 0) {
-        listEl.innerHTML += `<div style="padding:15px; color:#888;">No capable spacers are looking for work here today. Try another station.</div>`;
+        listEl.innerHTML = `<div style="padding:15px; color:#888; font-style:italic;">No capable spacers are looking for work here today. Try another station.</div>`;
     } else {
         currentStationRecruits.forEach((recruit, index) => {
             const row = document.createElement('div');
             row.className = 'trade-item-row';
-            row.style.cursor = 'pointer';
+            row.style.cssText = "padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; display:flex; justify-content:space-between; align-items:center;";
+            
+            // Special styling for Legendary crew members
+            const nameColor = recruit.isLegendary ? 'var(--gold-text)' : 'var(--accent-color)';
+            if (recruit.isLegendary) {
+                row.style.borderLeft = '3px solid var(--gold-text)';
+                row.style.background = 'rgba(255,215,0,0.05)';
+            }
+
             row.innerHTML = `
-                <div style="display:flex; flex-direction:column; gap: 4px;">
-                    <span style="color:${recruit.isLegendary ? 'var(--gold-text)' : 'var(--accent-color)'}; font-weight:bold;">${recruit.name}</span> 
-                    <span style="color:var(--item-desc-color); font-size:10px;">${recruit.role}</span>
+                <div>
+                    <div style="color:${nameColor}; font-weight:bold; font-size: 13px;">${recruit.name}</div>
+                    <div style="color:var(--item-desc-color); font-size: 10px; margin-top: 4px;">${recruit.role}</div>
                 </div>
-                <div style="color:var(--success); font-size:12px; font-weight:bold;">${formatNumber(recruit.cost)}c</div>
+                <div style="text-align:right;">
+                    <span style="color:var(--success); font-weight:bold;">${formatNumber(recruit.cost)}c</span>
+                </div>
             `;
             row.onclick = () => showRecruitDetails(index);
             listEl.appendChild(row);
         });
     }
+}
+
+function showRecruitDetails(index) {
+    const recruit = currentStationRecruits[index];
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    const nameColor = recruit.isLegendary ? 'var(--gold-text)' : 'var(--accent-color)';
 
     detailEl.innerHTML = `
-        <div style="text-align:center; padding: 40px 20px;">
-            <div style="font-size:60px; margin-bottom:15px; opacity:0.5;">👨‍🚀</div>
-            <h3 style="color:var(--accent-color); margin-bottom:10px;">LOCAL FREELANCERS</h3>
-            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
-                Review the dossiers of spacers looking for a bunk on a decent ship. They charge an upfront signing bonus, but their passive perks are permanent.
+        <div style="text-align:center; padding: 10px 0;">
+            <div style="position: relative; display: inline-block; margin-bottom: 15px;">
+                <img src="${recruit.image || 'assets/default_npc.png'}" alt="Portrait" style="width:100px; height:100px; border-radius:4px; border:2px solid ${nameColor}; object-fit:cover; box-shadow: 0 0 15px ${recruit.isLegendary ? 'rgba(255,215,0,0.3)' : 'rgba(0,224,224,0.3)'};">
+                ${recruit.isLegendary ? '<div style="position: absolute; top: -10px; right: -10px; font-size: 24px; filter: drop-shadow(0 0 5px var(--gold-text));">⭐</div>' : ''}
+            </div>
+            
+            <h3 style="color:${nameColor}; margin:0 0 5px 0;">${recruit.name.toUpperCase()}</h3>
+            
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); display: inline-block; padding: 4px 8px; border-radius: 2px; font-size: 10px; color: var(--text-color); margin-bottom: 15px; letter-spacing: 1px;">
+                ${recruit.role.toUpperCase()}
+            </div>
+            
+            <p style="font-size:13px; color:var(--text-color); margin-bottom: 20px; line-height: 1.5; text-align: left; background: rgba(0,0,0,0.2); padding: 10px; border-left: 2px solid ${nameColor};">
+                "${recruit.desc}"
             </p>
-            <div style="margin-top: 20px; font-size: 13px; font-weight: bold; color: var(--gold-text);">
-                Current Crew Size: ${playerCrew.length} / ${typeof MAX_CREW !== 'undefined' ? MAX_CREW : 3}
+            
+            <div class="trade-math-area" style="text-align:left;">
+                <div class="trade-stat-row"><span>Signing Bonus:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(recruit.cost)}c</span></div>
+                <div class="trade-stat-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-color);">
+                    <span>Granted Perk:</span> <span style="color:var(--success); font-weight:bold;">${recruit.perk.replace('_', ' ')}</span>
+                </div>
             </div>
         </div>
     `;
-    actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="visitCantina()">BACK TO CANTINA</button>`;
+
+    const canAfford = playerCredits >= recruit.cost;
+    const hasSpace = playerCrew.length < (typeof MAX_CREW !== 'undefined' ? MAX_CREW : 3);
+
+    let btnHtml = "";
+    if (!hasSpace) {
+        btnHtml = `<button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" disabled>CREW QUARTERS FULL</button>`;
+    } else if (!canAfford) {
+        btnHtml = `<button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" disabled>INSUFFICIENT FUNDS (${formatNumber(recruit.cost)}c)</button>`;
+    } else {
+        btnHtml = `
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px; border-color:var(--success); color:var(--success); box-shadow: 0 0 10px rgba(0,255,0,0.2);" onclick="hireRecruit(${index})">
+                AUTHORIZE HIRE
+            </button>
+        `;
+    }
+    
+    // Inject the Return Button
+    btnHtml += `<button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openRecruitmentBoard()">◀ CANCEL</button>`;
+    actionsEl.innerHTML = btnHtml;
 }
 
 function showRecruitDetails(index) {
