@@ -134,76 +134,136 @@ function generateMissionsForStation(stationName) {
 
 // --- OVERRIDE: DISPLAY MISSIONS ---
 function displayMissionBoard() {
-    const location = chunkManager.getTile(playerX, playerY);
+    // 1. Get location data dynamically
+    const location = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : {name: "STARBASE", faction: "INDEPENDENT"};
     const stationName = location.name;
+    const faction = location.faction || "INDEPENDENT";
     
+    // 2. Set dynamic branding colors
+    let brandColor = "var(--accent-color)";
+    if (faction === 'CONCORD') brandColor = "#4488FF";
+    else if (faction === 'ECLIPSE') brandColor = "#9933FF";
+    else if (faction === 'KTHARR') brandColor = "var(--danger)";
+    else brandColor = "var(--success)";
+
     if (!MISSIONS_DATABASE[stationName]) {
          MISSIONS_DATABASE[stationName] = generateMissionsForStation(stationName);
     }
     
-    openGenericModal("MISSION CONTRACTS");
+    openGenericModal(`${stationName.toUpperCase()} : CONTRACTS`);
     
-    const listEl = document.getElementById('genericModalList');
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
+    // --- 3. THE IRONCLAD FLEXBOX LAYOUT ---
+    const container = document.getElementById('genericModalContent');
+    container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
     
-    const missions = MISSIONS_DATABASE[stationName];
-    
-    missions.forEach((mission, index) => {
-        if(playerCompletedMissions.has(mission.id)) return;
-        
-        const row = document.createElement('div');
-        row.className = 'trade-item-row';
-        // Added var(--text-color) for the title and var(--gold-text) for credits
-        row.innerHTML = `<span style="color:var(--text-color); font-weight:bold;">${mission.title}</span> <span style="color:var(--gold-text, #FFD700)">${formatNumber(mission.rewards.credits)}c</span>`;
-        row.onclick = () => showMissionDetails(stationName, index);
-        listEl.appendChild(row);
-    });
-    
-    if(listEl.children.length === 0) {
-        listEl.innerHTML = "<div style='padding:10px; color:var(--text-color);'>No contracts available.</div>";
-    }
-
-    // --- Render Default Detail View ---
-    detailEl.innerHTML = `
-        <div style="padding: 40px 20px; text-align:center; color:var(--item-desc-color);">
-            Select a contract from the board to view mission parameters.
+    const headerImageHTML = `
+        <div style="width: 100%; height: 180px; border-radius: 4px; border: 1px solid ${brandColor}; margin-bottom: 15px; box-shadow: 0 0 25px ${brandColor}44; flex-shrink: 0; overflow: hidden; background: rgba(0,0,0,0.5);">
+            <img src="assets/mission_banner.png" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='assets/mission_banner.png';">
         </div>
     `;
 
-    // --- Route the exit button back to the station ---
-    actionsEl.innerHTML = `
-        <button class="action-button" onclick="openStationView()">BACK TO CONCOURSE</button>
+    container.innerHTML = `
+        ${headerImageHTML}
+        <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden;">
+            
+            <div style="flex: 1.2; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-color); padding-left: 15px; padding-right: 10px;">
+                <div class="trade-list-header" style="color:${brandColor}; font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">AVAILABLE CONTRACTS</div>
+                <div id="genericModalList" style="flex: 1; overflow-y: auto; padding-right: 10px;"></div>
+            </div>
+            
+            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow: hidden; padding-left: 5px; padding-right: 15px;">
+                <div id="genericDetailContent" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    <div style="text-align:center; padding: 20px 0;">
+                        <h3 style="color:${brandColor}; margin-bottom:10px; letter-spacing: 2px;">LOCAL CONTRACTS</h3>
+                        <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                            Review available bounties, courier requests, and exploration directives. Accepting a contract requires a commitment, and failure may result in reputation penalties.
+                        </p>
+                        <div style="margin-top: 20px; font-size: 14px; color: var(--text-color); border: 1px solid var(--border-color); padding: 10px; background: rgba(0,0,0,0.3); border-radius: 4px;">
+                            Current ${faction} Standing: <b style="color:${brandColor};">${typeof playerFactionStanding !== 'undefined' ? (playerFactionStanding[faction] || 0) : 0} Rep</b>
+                        </div>
+                    </div>
+                </div>
+                <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;">
+                    <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
+                </div>
+            </div>
+        </div>
     `;
+
+    const listEl = document.getElementById('genericModalList');
+    const missions = MISSIONS_DATABASE[stationName];
+    let foundActive = false;
+
+    missions.forEach((mission, index) => {
+        if(playerCompletedMissions.has(mission.id)) return;
+        foundActive = true;
+        
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        row.style.cssText = "padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; display:flex; justify-content:space-between; align-items:center;";
+        
+        let typeColor = "var(--success)";
+        if(mission.type === 'BOUNTY') typeColor = "var(--danger)";
+        if(mission.type === 'DELIVERY') typeColor = "var(--warning)";
+        if(mission.type === 'SURVEY') typeColor = "#4488FF";
+
+        row.innerHTML = `
+            <div>
+                <div style="color:var(--text-color); font-weight:bold; font-size: 13px;">${mission.title}</div>
+                <div style="color:${typeColor}; font-size: 10px; letter-spacing: 1px; margin-top: 4px;">[ ${mission.type} ]</div>
+            </div>
+            <div style="text-align:right;">
+                <span style="color:var(--gold-text, #FFD700); font-weight:bold;">${formatNumber(mission.rewards.credits)}c</span>
+            </div>
+        `;
+        row.onclick = () => showMissionDetails(stationName, index, brandColor);
+        listEl.appendChild(row);
+    });
+    
+    if(!foundActive) {
+        listEl.innerHTML = "<div style='padding:15px; color:#888; font-style:italic;'>No contracts currently available. Check back later.</div>";
+    }
 }
 
-function showMissionDetails(stationName, index) {
+function showMissionDetails(stationName, index, brandColor) {
     const mission = MISSIONS_DATABASE[stationName][index];
+    const isActive = playerActiveMission !== null;
     
-    // Swapped hardcoded #888 for var(--item-desc-color) and added var(--text-color)
+    let typeColor = "var(--success)";
+    if(mission.type === 'BOUNTY') typeColor = "var(--danger)";
+    if(mission.type === 'DELIVERY') typeColor = "var(--warning)";
+    if(mission.type === 'SURVEY') typeColor = "#4488FF";
+
     let html = `
-        <h3 style="color:var(--accent-color); margin-bottom: 5px;">${mission.title}</h3>
-        <p style="font-size:12px; color:var(--item-desc-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Client: ${mission.giver}</p>
-        <p style="color:var(--text-color); line-height: 1.4;">${mission.description}</p>
+        <div style="font-size:10px; color:${typeColor}; letter-spacing:2px; margin-bottom:5px;">
+            [ ${mission.type} CONTRACT ]
+        </div>
+        <h3 style="color:${brandColor}; margin:0 0 5px 0;">${mission.title}</h3>
+        <p style="font-size:11px; color:var(--item-desc-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">Client: ${mission.giver}</p>
         
-        <div class="trade-math-area" style="margin-top: 15px;">
-            <div class="trade-stat-row"><span style="color:var(--item-desc-color);">Credits:</span> <span style="color:var(--gold-text, #FFD700); font-weight:bold;">${formatNumber(mission.rewards.credits)}</span></div>
-            <div class="trade-stat-row"><span style="color:var(--item-desc-color);">XP:</span> <span style="color:var(--success, #00FF00); font-weight:bold;">${formatNumber(mission.rewards.xp)}</span></div>
+        <p style="color:var(--text-color); font-size:12px; line-height: 1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid ${typeColor}; margin-bottom:20px;">
+            "${mission.description}"
+        </p>
+        
+        <div class="trade-math-area">
+            <div style="font-size:10px; color:${brandColor}; letter-spacing:1px; margin-bottom:8px; border-bottom:1px solid #333; padding-bottom:4px;">REWARD TELEMETRY</div>
+            <div class="trade-stat-row"><span style="color:var(--item-desc-color);">Credits:</span> <span style="color:var(--gold-text, #FFD700); font-weight:bold;">${formatNumber(mission.rewards.credits)}c</span></div>
+            <div class="trade-stat-row"><span style="color:var(--item-desc-color);">Experience:</span> <span style="color:var(--success, #00FF00); font-weight:bold;">+${formatNumber(mission.rewards.xp)} XP</span></div>
+            ${mission.rewards.notoriety !== 0 ? `<div class="trade-stat-row"><span style="color:var(--item-desc-color);">Notoriety:</span> <span style="color:${mission.rewards.notoriety > 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${mission.rewards.notoriety > 0 ? '+' : ''}${mission.rewards.notoriety}</span></div>` : ''}
         </div>
     `;
     
     document.getElementById('genericDetailContent').innerHTML = html;
     
-    const isActive = playerActiveMission !== null;
-    
-    // --- Added the Back to Concourse escape hatch right below the accept button! ---
+    // --- SLEEK BUTTON SIZING ---
     const btnHtml = `
         <button class="action-button" ${isActive ? 'disabled' : ''} 
+            style="${isActive ? '' : `border-color:${brandColor}; color:${brandColor};`} width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;"
             onclick="confirmAcceptMission('${stationName}', ${index})">
-            ${isActive ? 'FINISH CURRENT JOB FIRST' : 'ACCEPT CONTRACT'}
+            ${isActive ? 'FINISH CURRENT JOB FIRST' : 'AUTHORIZE CONTRACT'}
         </button>
-        <button class="action-button" onclick="openStationView()" style="margin-top: 10px;">
-            BACK TO CONCOURSE
+        <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">
+            ◀ BACK TO CONCOURSE
         </button>
     `;
     
@@ -514,34 +574,105 @@ function renderMissionTracker() {
     textEl.style.color = "#FFD700";
 }
 
-function openBountyBoard() {
-    openGenericModal("CONCORD BOUNTY BOARD");
-    const listEl = document.getElementById('genericModalList');
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
+// --- STATE MANAGEMENT ---
+// This object will persist throughout the play session, storing which image is assigned to which station.
+// It uses window scope to survive if missions.js is reloaded.
+if (typeof window._stationBountyBannerAssignments === 'undefined') {
+    window._stationBountyBannerAssignments = {};
+}
 
-    // Ensure targets exist for this station
-    if (!currentStationBounties || currentStationBounties.length === 0) {
-        generateBountyTargets();
+function openBountyBoard() {
+    const location = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : {name: "STARBASE", faction: "CONCORD"};
+    const stationName = location.name;
+    const faction = location.faction || "CONCORD";
+    
+    let brandColor = "var(--danger)"; // Bounties are always red!
+
+    openGenericModal(`${stationName.toUpperCase()} : BOUNTY BOARD`);
+    
+    const container = document.getElementById('genericModalContent');
+    container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
+    
+    // --- 🚨 PERSISTENT RANDOMIZATION LOGIC 🚨 ---
+    
+    // 1. Define the possible assets (Note: extensions differ as requested)
+    const availableBanners = ['assets/bounty_banner.png', 'assets/bounty_banner2.png'];
+    
+    // 2. Check if this station already has an assigned banner
+    let assignedBanner = window._stationBountyBannerAssignments[stationName];
+    
+    // 3. If no assignment exists, pick a random one and save it!
+    if (!assignedBanner) {
+        assignedBanner = availableBanners[Math.floor(Math.random() * availableBanners.length)];
+        window._stationBountyBannerAssignments[stationName] = assignedBanner;
+        console.log(`📡 Assigned ${assignedBanner} to ${stationName} terminal.`);
     }
 
-    listEl.innerHTML = '';
+    const headerImageHTML = `
+        <div style="width: 100%; height: 180px; background: url('${assignedBanner}') center/cover; border-radius: 4px; border: 1px solid ${brandColor}; margin-bottom: 15px; box-shadow: 0 0 25px ${brandColor}44; flex-shrink: 0;" onerror="this.style.display='none'"></div>
+    `;
 
-    // If player has an active bounty, show ONLY that
+    container.innerHTML = `
+        ${headerImageHTML}
+        <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden;">
+            <div style="flex: 1.2; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-color); padding-left: 15px; padding-right: 10px;">
+                <div class="trade-list-header" style="color:${brandColor}; font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">ACTIVE TARGETS</div>
+                <div id="genericModalList" style="flex: 1; overflow-y: auto; padding-right: 10px;"></div>
+            </div>
+            
+            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow: hidden; padding-left: 5px; padding-right: 15px;">
+                <div id="genericDetailContent" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    <div style="text-align:center; padding: 20px 0;">
+                        <h3 style="color:${brandColor}; margin-bottom:10px; letter-spacing: 2px;">WANTED BY ${faction}</h3>
+                        <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                            Sanctioned elimination contracts. Targets are considered armed and highly dangerous. Bounties are paid upon confirmed destruction of the target vessel.
+                        </p>
+                    </div>
+                </div>
+                <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;">
+                    <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const listEl = document.getElementById('genericModalList');
+
+    if (!currentStationBounties || currentStationBounties.length === 0) {
+        if(typeof generateBountyTargets === 'function') generateBountyTargets();
+    }
+
     if (playerActiveBounty) {
-        listEl.innerHTML = `<div style="padding:15px; color:var(--warning);">Active Contract: ${playerActiveBounty.targetName}</div>`;
+        listEl.innerHTML = `
+            <div class="trade-item-row" style="background: rgba(255,0,0,0.1); border-left: 3px solid var(--danger); padding: 12px 10px; cursor: pointer;" onclick="showBountyDetails(playerActiveBounty, true)">
+                <div style="color:var(--warning); font-size: 10px; letter-spacing: 1px; margin-bottom: 4px;">[ ACTIVE PURSUIT ]</div>
+                <div style="color:var(--danger); font-weight:bold; font-size: 14px;">${playerActiveBounty.targetName}</div>
+            </div>
+        `;
         showBountyDetails(playerActiveBounty, true);
         return;
     }
 
-    // Otherwise, list available bounties
-    currentStationBounties.forEach(bounty => {
-        const row = document.createElement('div');
-        row.className = 'trade-item-row';
-        row.innerHTML = `<span style="color:var(--danger); font-weight:bold;">${bounty.targetName}</span> <span style="color:var(--gold-text)">${formatNumber(bounty.reward)}c</span>`;
-        row.onclick = () => showBountyDetails(bounty, false);
-        listEl.appendChild(row);
-    });
+    if(currentStationBounties && currentStationBounties.length > 0) {
+        currentStationBounties.forEach(bounty => {
+            const row = document.createElement('div');
+            row.className = 'trade-item-row';
+            row.style.cssText = "padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; display:flex; justify-content:space-between; align-items:center;";
+            row.innerHTML = `
+                <div>
+                    <div style="color:var(--danger); font-weight:bold; font-size: 13px;">${bounty.targetName}</div>
+                    <div style="color:var(--item-desc-color); font-size: 10px; margin-top: 4px;">Threat: Class ${bounty.difficulty}</div>
+                </div>
+                <div style="text-align:right;">
+                    <span style="color:var(--gold-text, #FFD700); font-weight:bold;">${formatNumber(bounty.reward)}c</span>
+                </div>
+            `;
+            row.onclick = () => showBountyDetails(bounty, false);
+            listEl.appendChild(row);
+        });
+    } else {
+        listEl.innerHTML = "<div style='padding:15px; color:#888; font-style:italic;'>No local bounties posted at this time.</div>";
+    }
 }
 
 function showBountyDetails(bounty, isActive) {
@@ -550,23 +681,29 @@ function showBountyDetails(bounty, isActive) {
 
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 15px;">
-            <div style="font-size:50px; margin-bottom:10px;">🎯</div>
+            <div style="font-size:50px; margin-bottom:10px; filter: drop-shadow(0 0 15px var(--danger));">🎯</div>
             <h3 style="color:var(--danger); margin:0;">${bounty.targetName.toUpperCase()}</h3>
-            <div style="color:var(--item-desc-color); font-size:12px; margin-bottom:15px;">WANTED FOR: ${bounty.crime.toUpperCase()}</div>
+            <div style="color:var(--item-desc-color); font-size:12px; margin-bottom:15px; border-bottom: 1px solid #333; padding-bottom: 10px;">WANTED FOR: ${bounty.crime.toUpperCase()}</div>
             
             <div style="background:rgba(0,0,0,0.3); border:1px solid #333; padding:10px; border-radius:4px; text-align:left;">
-                <div style="margin-bottom:5px;"><span style="color:#888;">Threat Level:</span> <span style="color:var(--warning);">Class ${bounty.difficulty}</span></div>
-                <div style="margin-bottom:5px;"><span style="color:#888;">Vessel:</span> <span style="color:var(--text-color);">${bounty.shipClass}</span></div>
-                <div style="margin-bottom:5px;"><span style="color:#888;">Last Seen:</span> <span style="color:var(--accent-color);">Sector [${bounty.x}, ${bounty.y}]</span></div>
-                <div style="margin-top:10px; border-top:1px dashed #444; padding-top:10px;"><span style="color:#888;">Bounty Payout:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(bounty.reward)}c</span></div>
+                <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Threat Level:</span> <span style="color:var(--warning); font-weight:bold;">Class ${bounty.difficulty}</span></div>
+                <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Vessel Type:</span> <span style="color:var(--text-color);">${bounty.shipClass}</span></div>
+                <div style="margin-bottom:8px; display:flex; justify-content:space-between;"><span style="color:#888;">Last Seen:</span> <span style="color:var(--accent-color);">Sector [${bounty.x}, ${bounty.y}]</span></div>
+                <div style="margin-top:12px; border-top:1px dashed #444; padding-top:10px; display:flex; justify-content:space-between;"><span style="color:#888;">Bounty Payout:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(bounty.reward)}c</span></div>
             </div>
         </div>
     `;
 
     if (isActive) {
-        actionsEl.innerHTML = `<button class="action-button danger-btn" onclick="abandonBounty()">ABANDON CONTRACT</button>`;
+        actionsEl.innerHTML = `
+            <button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" onclick="abandonBounty()">ABANDON CONTRACT</button>
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
+        `;
     } else {
-        actionsEl.innerHTML = `<button class="action-button" style="border-color:var(--danger); color:var(--danger);" onclick="acceptBounty('${bounty.id}')">ACCEPT CONTRACT</button>`;
+        actionsEl.innerHTML = `
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color:var(--danger); color:var(--danger); margin-bottom: 10px;" onclick="acceptBounty('${bounty.id}')">ACCEPT CONTRACT</button>
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
+        `;
     }
 }
 
@@ -698,10 +835,11 @@ function processBountyVictory(defeatedEnemy) {
   * @returns {string|null} The ID of a commodity or null.
   */
  
- function selectRandomCommodity(locationName) {
+function selectRandomCommodity(locationName) {
      const location = LOCATIONS_DATA[locationName];
      if (!location || !location.buys || location.buys.length === 0) return null;
 
      const commodity = location.buys[Math.floor(Math.random() * location.buys.length)];
-     return commodity.id;
+     // Handles both {id: "..."} objects and plain "..." strings!
+     return commodity.id || commodity; 
  }
