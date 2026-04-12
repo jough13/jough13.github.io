@@ -20,20 +20,15 @@ function openTradeModal(mode) {
 
     // --- ECONOMY RESTOCK LOGIC (Time-Gated) ---
     if (!window.activeTradeNPC && (!location.lastRestockTime || (currentGameDate - location.lastRestockTime) > 1.0)) {
-        
-        // 🚨 SUPPLY CHAIN ENGINE
         if (location.factory) {
             let buyStock = location.buys.find(b => b.id === location.factory.consumes);
             let sellStock = location.sells.find(s => s.id === location.factory.produces);
-            
             if (buyStock && sellStock) {
                 if (buyStock.stock >= location.factory.consumeQty) {
-                    // Factory is running! Consume raw materials, produce finished goods.
                     buyStock.stock -= location.factory.consumeQty;
                     sellStock.stock += location.factory.produceQty;
-                    sellStock.priceMod = 1.0; // Price normalizes
+                    sellStock.priceMod = 1.0; 
                 } else {
-                    // Factory stalled! Price of finished goods skyrockets due to shortage!
                     sellStock.priceMod = 2.5; 
                 }
             }
@@ -43,48 +38,38 @@ function openTradeModal(mode) {
                 if (item.stock < 100) item.stock += Math.floor(Math.random() * 3) + 1;
             });
         }
-        if (location.buys) {
-            location.buys.forEach(item => {
-                if (item.stock > 0) item.stock = Math.max(0, item.stock - (Math.floor(Math.random() * 2) + 1));
-            });
-        }
         location.lastRestockTime = currentGameDate;
-    }
-    
-    if (!window.activeTradeNPC && location.buys) {
-        location.buys.forEach(item => {
-            if (item.stock > 0) item.stock = Math.max(0, item.stock - (Math.floor(Math.random() * 2) + 1));
-        });
     }
 
     const isBuy = mode === 'buy';
     
-    // --- 1. OPEN MODAL & DYNAMIC TITLE ---
-    let modalTitle = isBuy ? "STATION MARKETPLACE" : "CARGO MANIFEST";
+    // --- 1. DYNAMIC TITLE FIX ---
+    let modalTitle = "MARKETPLACE";
     const faction = location.faction; 
 
     if (window.activeTradeNPC) {
-        modalTitle = isBuy ? "SHIP-TO-SHIP : BUY" : "SHIP-TO-SHIP : SELL";
+        modalTitle = isBuy ? "SHIP COMM-LINK : BUY" : "SHIP COMM-LINK : SELL";
     } else if (location.isBlackMarket) {
         modalTitle = isBuy ? "SHADOW NETWORK : BUY" : "SHADOW NETWORK : SELL";
     } else if (faction === 'KTHARR') {
-        modalTitle = isBuy ? "PROVING GROUNDS : BETTING DECK" : "PROVING GROUNDS : FENCE COMMODITIES";
+        modalTitle = isBuy ? "PROVING GROUNDS : BUY" : "PROVING GROUNDS : SELL";
+    } else {
+        modalTitle = isBuy ? "STATION MARKETPLACE : BUY" : "STATION MARKETPLACE : SELL";
     }
     
     openGenericModal(modalTitle);
 
     // --- 2. DYNAMIC FACTION BANNER RESOLUTION ---
-    let headerImageHTML = "";
     let bannerSrc = 'assets/concord_market.png';
     let borderColor = 'var(--accent-color)';
     let glowColor = 'rgba(0, 224, 224, 0.15)'; 
     
     if (window.activeTradeNPC) {
-        bannerSrc = 'assets/civ_hauler.png'; // Reusing your ship asset for the banner
+        bannerSrc = 'assets/civ_hauler.jpg'; 
         borderColor = 'var(--gold-text)';
         glowColor = 'rgba(255, 215, 0, 0.2)';
     } else if (location.isBlackMarket) {
-        bannerSrc = 'assets/black_market.png';
+        bannerSrc = 'assets/black_market.jpg';
         borderColor = '#9C27B0'; 
         glowColor = 'rgba(156, 39, 176, 0.2)';
     } else {
@@ -107,45 +92,46 @@ function openTradeModal(mode) {
         }
     }
 
-    headerImageHTML = `
-        <div style="width: 100%; height: 140px; background-image: url('${bannerSrc}'); background-size: cover; background-position: center 25%; border: 1px solid ${borderColor}; border-radius: 6px; margin-bottom: 20px; box-shadow: 0 5px 20px ${glowColor}; flex-shrink: 0;"></div>
+    const headerImageHTML = `
+        <div style="width: 100%; height: 140px; background-image: url('${bannerSrc}'); background-size: cover; background-position: center 25%; border: 1px solid ${borderColor}; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 5px 20px ${glowColor}; flex-shrink: 0;"></div>
     `;
 
+    // --- 3. THE PADDED FLEXBOX LAYOUT ---
     const container = document.getElementById('genericModalContent');
-    container.style.display = 'flex';
-    container.style.flexDirection = 'column';
+    
+    container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
     
     container.innerHTML = `
         ${headerImageHTML}
-        <div style="display: flex; gap: 20px; flex: 1; min-height: 350px; overflow: hidden;">
-            <div id="genericModalList" style="flex: 1.2; overflow-y: auto; padding-right: 15px; border-right: 1px solid var(--border-color);"></div>
-            <div id="genericDetailContent" style="width: 340px; padding-left: 10px; padding-right: 20px; overflow-y: auto;">
-                <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; height: 100%;">
-                    <div style="font-size: 50px; margin-bottom: 20px; opacity: 0.1;">📊</div>
-                    <p style="color:var(--text-color); text-align:center; font-size: 14px; line-height: 1.6; padding: 0 15px;">
-                        Select a commodity from the list to view local market analytics and price trends.
-                    </p>
+        <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden;">
+            
+            <div style="flex: 1.2; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-color); padding-left: 15px; padding-right: 10px;">
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-shrink: 0;">
+                    <button class="action-button" style="flex: 1; border-color: ${isBuy ? 'var(--accent-color)' : '#555'}; color: ${isBuy ? 'var(--accent-color)' : '#888'};" onclick="openTradeModal('buy')">🛒 BUY</button>
+                    <button class="action-button" style="flex: 1; border-color: ${!isBuy ? 'var(--success)' : '#555'}; color: ${!isBuy ? 'var(--success)' : '#888'};" onclick="openTradeModal('sell')">📦 SELL</button>
                 </div>
+                
+                <div id="genericModalList" style="flex: 1; overflow-y: auto; padding-right: 10px;"></div>
+            </div>
+            
+            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow: hidden; padding-left: 5px; padding-right: 15px;">
+                
+                <div id="genericDetailContent" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; height: 100%;">
+                        <div style="font-size: 50px; margin-bottom: 20px; opacity: 0.1;">📊</div>
+                        <p style="color:var(--text-color); text-align:center; font-size: 14px; line-height: 1.6; padding: 0 15px;">
+                            Select a commodity from the list to view local market analytics and price trends.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;"></div>
             </div>
         </div>
     `;
 
     const listEl = document.getElementById('genericModalList');
-    const detailEl = document.getElementById('genericDetailContent');
-    
-    listEl.innerHTML = '';
-    
-    // --- NEW UI TABS: Clickable Buy/Sell Toggles! ---
-    const toggleHeader = document.createElement('div');
-    toggleHeader.style.cssText = "display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; position: sticky; top: 0; background: var(--bg-color); z-index: 5;";
-    toggleHeader.innerHTML = `
-        <button class="action-button" style="flex: 1; border-color: ${isBuy ? 'var(--accent-color)' : '#555'}; color: ${isBuy ? 'var(--accent-color)' : '#888'};" onclick="openTradeModal('buy')">🛒 BUY</button>
-        <button class="action-button" style="flex: 1; border-color: ${!isBuy ? 'var(--success)' : '#555'}; color: ${!isBuy ? 'var(--success)' : '#888'};" onclick="openTradeModal('sell')">📦 SELL</button>
-    `;
-    listEl.appendChild(toggleHeader);
-    
-    // --- 3. POPULATE THE LISTS ---
-    // Use a DocumentFragment for the Trade UI
     const fragment = document.createDocumentFragment();
 
     if (isBuy) {
@@ -158,11 +144,9 @@ function openTradeModal(mode) {
             items.forEach(itemEntry => {
                 const itemId = itemEntry.id || itemEntry;
                 const stock = itemEntry.stock || 99; 
-                // Notice we pass 'fragment' instead of 'listEl' here!
                 renderTradeRow(itemId, stock, true, location, fragment);
             });
         }
-        
     } else {
         const playerHas = Object.keys(playerCargo).filter(id => playerCargo[id] > 0);
         const stationBuys = location.buys || [];
@@ -171,7 +155,7 @@ function openTradeModal(mode) {
             const header = document.createElement('div');
             header.className = 'trade-list-header';
             header.style.cssText = "color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;";
-            header.textContent = "YOUR CARGO";
+            header.textContent = "COMMODITIES IN CARGO HOLD"; 
             fragment.appendChild(header);
 
             playerHas.forEach(itemId => {
@@ -204,8 +188,116 @@ function openTradeModal(mode) {
         }
     }
 
-    // Push all generated trade rows to the screen at once!
     listEl.appendChild(fragment);
+
+    // --- 🚨 INJECT SIZED-DOWN RETURN BUTTON 🚨 ---
+    // Removed 'full-width-btn' to avoid messy CSS margins. 
+    // Reduced padding and font-size to make it perfectly compact!
+    const actionsEl = document.getElementById('genericModalActions');
+    if (actionsEl) {
+        if (window.activeTradeNPC && window.activeTradeNPC.id) {
+            actionsEl.innerHTML = `
+                <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: var(--accent-color); color: var(--accent-color);" onclick="interactWithNPC(null, '${window.activeTradeNPC.id}')">
+                    RETURN TO COMM LINK
+                </button>
+            `;
+        } else {
+            actionsEl.innerHTML = `
+                <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="closeGenericModal()">
+                    ◀ BACK TO STATION
+                </button>
+            `;
+        }
+    }
+}
+
+function renderTradeRow(itemId, qty, isBuy, location, listEl) {
+    const item = COMMODITIES[itemId];
+    if (!item) return;
+
+    let isLocked = false;
+    let lockReason = "";
+    if (isBuy && item.reqFaction) {
+        const currentRep = playerFactionStanding[item.reqFaction] || 0;
+        if (currentRep < item.minRep) {
+            isLocked = true;
+            lockReason = `Requires ${item.reqFaction} Rep`;
+        }
+    }
+
+    const row = document.createElement('div');
+    row.className = 'trade-item-row';
+    
+    // FIX: Added padding-right: 15px so the buttons don't hug the scroll edge!
+    row.style.cssText = "padding: 14px 10px; padding-right: 15px; border-bottom: 1px solid var(--border-color); display: flex; gap: 15px;";
+    
+    if (isLocked) row.style.opacity = "0.5";
+
+    const price = calculateItemPrice(item, isBuy, location);
+
+    let actionButtonHtml = "";
+    if (isLocked) {
+        actionButtonHtml = `<button class="trade-btn locked" style="width:100%; padding:8px; font-size:13px;" disabled>🔒 LOCKED</button>`;
+    } else {
+        const actionClass = isBuy ? 'buy' : 'sell';
+        const disabled = (isBuy && playerCredits < price) || (!isBuy && qty <= 0);
+        
+        const flexContainer = `<div style="display:flex; flex-wrap:nowrap; gap:6px; justify-content:flex-end; align-items:center;">`;
+        
+        if (isBuy) {
+            actionButtonHtml = flexContainer + `
+                <button class="trade-btn ${actionClass}" ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', true, 1)" style="padding:8px 12px; font-size:13px; cursor:pointer; min-width:60px;">
+                    ${formatNumber(price)}c
+                </button>
+                <button class="trade-btn ${actionClass}" style="padding:8px; font-weight:bold; font-size:12px; min-width: 40px; cursor:pointer;" 
+                    ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', true, 10)" title="Buy 10">
+                    +10
+                </button>
+                <button class="trade-btn ${actionClass}" style="padding:8px; font-weight:bold; font-size:12px; min-width: 40px; cursor:pointer;" 
+                    onclick="executeTrade('${itemId}', true, 'custom')" title="Enter Amount">
+                    #
+                </button>
+            </div>`;
+        } else {
+            actionButtonHtml = flexContainer + `
+                <button class="trade-btn ${actionClass}" ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', false, 1)" style="padding:8px 12px; font-size:13px; cursor:pointer; min-width:60px;">
+                    ${formatNumber(price)}c
+                </button>
+                <button class="trade-btn ${actionClass}" style="padding:8px; font-weight:bold; font-size:12px; min-width: 40px; cursor:pointer;" 
+                    ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', false, 'all')" title="Sell All">
+                    ALL
+                </button>
+                <button class="trade-btn ${actionClass}" style="padding:8px; font-weight:bold; font-size:12px; min-width: 40px; cursor:pointer;" 
+                    ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', false, 'custom')" title="Enter Amount">
+                    #
+                </button>
+            </div>`;
+        }
+    }
+
+    row.innerHTML = `
+        <div class="trade-item-icon" onclick="displayMarketAnalysis('${itemId}')" style="cursor:pointer; font-size: 32px; padding-top: 2px;">${item.icon || '📦'}</div>
+        
+        <div class="trade-item-details" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+            <div class="trade-item-name" onclick="displayMarketAnalysis('${itemId}')" style="cursor:pointer; font-size: 15px; font-weight: bold; color: var(--item-name-color); letter-spacing: 0.5px;">
+                ${item.name} 
+                ${isLocked ? `<span style="color:var(--danger); font-size:11px; margin-left: 6px;">(${lockReason})</span>` : ''}
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div class="trade-item-sub" onclick="displayMarketAnalysis('${itemId}')" style="cursor:pointer; font-size: 13px; color: var(--text-color); line-height: 1.4;">
+                    <div>${isBuy ? `In Stock: ${qty}` : `Owned: ${qty}`}</div>
+                    <div style="color:var(--gold-text); font-size: 11px;">Galactic Base: ${formatNumber(item.basePrice)}c</div>
+                </div>
+                
+                <div class="trade-item-actions">
+                    ${actionButtonHtml}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    listEl.appendChild(row);
 }
 
 function renderTradeRow(itemId, qty, isBuy, location, listEl) {
@@ -440,7 +532,9 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
              if (typeof showToast === 'function') showToast("Insufficient Credits!", "error");
              return;
         }
-        if (currentCargoLoad + qtyToTrade > PLAYER_CARGO_CAPACITY) {
+        
+        // Multiply the requested quantity by the item's actual weight
+        if (currentCargoLoad + (qtyToTrade * itemWeight) > PLAYER_CARGO_CAPACITY) {
             if (typeof showToast === 'function') showToast("Not enough Cargo Space!", "error");
             return;
         }
@@ -814,7 +908,9 @@ function processShadowBrokerTrade(itemId) {
                 const value = (COMMODITIES[id].basePrice * 3) * qty;
                 totalProfit += value;
                 soldItemsText.push(`${qty}x ${COMMODITIES[id].name}`);
-                playerCargo[id] = 0;
+                
+                // FIX: Completely delete the item from the cargo object
+                delete playerCargo[id]; 
             }
         }
     } else {
@@ -822,7 +918,9 @@ function processShadowBrokerTrade(itemId) {
         const value = (COMMODITIES[itemId].basePrice * 3) * qty;
         totalProfit += value;
         soldItemsText.push(`${qty}x ${COMMODITIES[itemId].name}`);
-        playerCargo[itemId] = 0;
+        
+        // Completely delete the item
+        delete playerCargo[itemId];
     }
 
     if (totalProfit > 0) {
@@ -1033,20 +1131,22 @@ function processDecryption(method, itemId = 'ENCRYPTED_ENGRAM') {
 }
 
 function fenceEclipseContraband() {
-    let soldSomething = false;
-    let totalProfit = 0;
-    
-    for (const itemID in playerCargo) {
-        if (playerCargo[itemID] > 0 && typeof COMMODITIES !== 'undefined' && COMMODITIES[itemID] && COMMODITIES[itemID].illegal) {
-            const qty = playerCargo[itemID];
-            const value = (COMMODITIES[itemID].basePrice * 3) * qty; 
-            
-            playerCredits += value;
-            totalProfit += value;
-            playerCargo[itemID] = 0;
-            soldSomething = true;
+        let soldSomething = false;
+        let totalProfit = 0;
+        
+        for (const itemID in playerCargo) {
+            if (playerCargo[itemID] > 0 && typeof COMMODITIES !== 'undefined' && COMMODITIES[itemID] && COMMODITIES[itemID].illegal) {
+                const qty = playerCargo[itemID];
+                const value = (COMMODITIES[itemID].basePrice * 3) * qty; 
+                
+                playerCredits += value;
+                totalProfit += value;
+                
+                // Delete the key instead of setting it to 0
+                delete playerCargo[itemID];
+                soldSomething = true;
+            }
         }
-    }
     
     if (soldSomething) {
         if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
@@ -1072,13 +1172,14 @@ function buyFakeID() {
 function openShipTrade(npc) {
     // Generate a temporary trading profile based on the NPC being hailed
     window.activeTradeNPC = {
+        id: npc.id, // Save the ID so the back button can use it!
         name: npc.name + " (Ship-to-Ship)",
         type: 'location',
         isNPC: true,
         faction: npc.faction || 'INDEPENDENT',
         isBlackMarket: npc.faction === 'ECLIPSE',
         sells: [
-            { id: "FUEL_CELLS", priceMod: 1.5, stock: Math.floor(Math.random() * 10) + 5 }, // Marked up deep space delivery
+            { id: "FUEL_CELLS", priceMod: 1.5, stock: Math.floor(Math.random() * 10) + 5 },
             { id: "MEDICAL_SUPPLIES", priceMod: 1.2, stock: Math.floor(Math.random() * 5) + 2 }
         ],
         buys: [
