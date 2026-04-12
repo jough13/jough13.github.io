@@ -1114,9 +1114,6 @@ function processArenaBet(winChance, odds, betAmount) {
 
 function openBarracksUI() {
     openGenericModal("AEGIS MARINE BARRACKS");
-    const listEl = document.getElementById('genericModalList');
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
 
     // Make sure the GameState forces object exists just in case it's an old save file
     if (!GameState.ship.forces) {
@@ -1127,45 +1124,87 @@ function openBarracksUI() {
     const currentMarines = GameState.ship.forces.marines || 0;
     const currentMechs = GameState.ship.forces.heavyMechs || 0;
 
-    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">GROUND FORCES FOR HIRE</div>`;
+    // --- THE IRONCLAD FLEXBOX LAYOUT ---
+    const container = document.getElementById('genericModalContent');
+    container.style.cssText = "display: flex; flex-direction: column; height: 100%; overflow: hidden;";
+    
+    const headerImageHTML = `
+        <div style="width: 100%; height: 180px; border-radius: 4px; border: 1px solid var(--accent-color); margin-bottom: 15px; box-shadow: 0 0 25px rgba(0, 224, 224, 0.2); flex-shrink: 0; overflow: hidden; background: rgba(0,0,0,0.5);">
+            <img src="assets/barracks_banner.png" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='assets/barracks_banner.png';">
+        </div>
+    `;
+
+    container.innerHTML = `
+        ${headerImageHTML}
+        <div style="display: flex; gap: 20px; flex: 1; min-height: 0; overflow: hidden;">
+            
+            <div style="flex: 1.2; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-color); padding-left: 15px; padding-right: 10px;">
+                <div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom: 5px;">GROUND FORCES FOR HIRE</div>
+                <div id="genericModalList" style="flex: 1; overflow-y: auto; padding-right: 10px;"></div>
+            </div>
+            
+            <div id="genericModalDetails" style="width: 340px; display: flex; flex-direction: column; overflow: hidden; padding-left: 5px; padding-right: 15px;">
+                <div id="genericDetailContent" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    <div style="text-align:center; padding: 20px 0;">
+                        <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px rgba(0,224,224,0.4)); opacity:0.8;">🪖</div>
+                        <h3 style="color:var(--accent-color); margin-top:0; margin-bottom:10px;">EXPEDITIONARY FORCES</h3>
+                        <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                            "You can't conquer a pirate stronghold from orbit, Commander. Hire ground troops to assault fortified Cartel bases and secure the vaults inside."
+                        </p>
+                        
+                        <div class="trade-math-area" style="margin-top: 20px; background: rgba(0, 224, 224, 0.05); border: 1px dashed var(--accent-color);">
+                            <div style="color: var(--accent-color); font-size: 11px; margin-bottom: 8px; font-weight: bold; letter-spacing: 1px;">CURRENT MANIFEST</div>
+                            <div style="display:flex; justify-content:space-between; font-size: 13px; margin-bottom: 5px;">
+                                <span style="color:var(--text-color)">Active Marines:</span> 
+                                <span style="color:${currentMarines > 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${currentMarines} / ${maxTroops}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size: 13px;">
+                                <span style="color:var(--text-color)">Heavy Mechs:</span> 
+                                <span style="color:var(--warning); font-weight:bold;">${currentMechs}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="trade-btn-group" id="genericModalActions" style="margin-top: 15px; flex-shrink: 0; padding-bottom: 5px;">
+                    <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openStationView()">◀ BACK TO CONCOURSE</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const listEl = document.getElementById('genericModalList');
 
     // 1. Mercenary Platoon Button
     const marineRow = document.createElement('div');
     marineRow.className = 'trade-item-row';
-    marineRow.innerHTML = `<span style="color:var(--text-color); font-weight:bold;">Mercenary Platoon (+10 Marines)</span> <span style="color:var(--gold-text)">5,000c</span>`;
+    marineRow.style.cssText = "padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; display:flex; justify-content:space-between; align-items:center;";
+    marineRow.innerHTML = `
+        <div>
+            <div style="color:var(--accent-color); font-weight:bold; font-size: 13px;">Mercenary Platoon</div>
+            <div style="color:var(--success); font-size: 10px; margin-top: 4px;">+10 Marines</div>
+        </div>
+        <div style="text-align:right;">
+            <span style="color:var(--gold-text); font-weight:bold;">5,000c</span>
+        </div>
+    `;
     marineRow.onclick = () => showTroopDetails('MERCENARY_PLATOON');
     listEl.appendChild(marineRow);
 
     // 2. Assault Mech Button
     const mechRow = document.createElement('div');
     mechRow.className = 'trade-item-row';
-    mechRow.innerHTML = `<span style="color:var(--text-color); font-weight:bold;">Goliath Assault Mech (+1 Mech)</span> <span style="color:var(--gold-text)">15,000c</span>`;
-    mechRow.onclick = () => showTroopDetails('ASSAULT_MECH');
-    listEl.appendChild(mechRow);
-
-    detailEl.innerHTML = `
-        <div style="text-align:center; padding: 20px;">
-            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px rgba(0,224,224,0.4)); opacity:0.8;">🪖</div>
-            <h3 style="color:var(--accent-color); margin-bottom:10px;">EXPEDITIONARY FORCES</h3>
-            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
-                "You can't conquer a pirate stronghold from orbit, Commander. Hire ground troops to assault fortified Cartel bases and secure the vaults inside."
-            </p>
-            
-            <div class="trade-math-area" style="margin-top: 20px; background: rgba(0, 224, 224, 0.05); border: 1px dashed var(--accent-color);">
-                <div style="color: var(--accent-color); font-size: 11px; margin-bottom: 8px; font-weight: bold; letter-spacing: 1px;">CURRENT MANIFEST</div>
-                <div style="display:flex; justify-content:space-between; font-size: 13px; margin-bottom: 5px;">
-                    <span style="color:var(--text-color)">Active Marines:</span> 
-                    <span style="color:${currentMarines > 0 ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${currentMarines} / ${maxTroops}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; font-size: 13px;">
-                    <span style="color:var(--text-color)">Heavy Mechs:</span> 
-                    <span style="color:var(--warning); font-weight:bold;">${currentMechs}</span>
-                </div>
-            </div>
+    mechRow.style.cssText = "padding: 12px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; display:flex; justify-content:space-between; align-items:center;";
+    mechRow.innerHTML = `
+        <div>
+            <div style="color:var(--warning); font-weight:bold; font-size: 13px;">Goliath Assault Mech</div>
+            <div style="color:var(--success); font-size: 10px; margin-top: 4px;">+1 Heavy Mech</div>
+        </div>
+        <div style="text-align:right;">
+            <span style="color:var(--gold-text); font-weight:bold;">15,000c</span>
         </div>
     `;
-
-    actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="openStationView()">RETURN TO CONCOURSE</button>`;
+    mechRow.onclick = () => showTroopDetails('ASSAULT_MECH');
+    listEl.appendChild(mechRow);
 }
 
 function showTroopDetails(itemId) {
@@ -1181,34 +1220,41 @@ function showTroopDetails(itemId) {
         isFull = true;
     }
 
+    let typeColor = item.isVehicle ? "var(--warning)" : "var(--accent-color)";
+
     detailEl.innerHTML = `
-        <div style="text-align:center; padding: 20px;">
-            <div style="font-size:50px; margin-bottom:10px;">${item.isVehicle ? '🤖' : '🪖'}</div>
+        <div style="text-align:center; padding: 20px 0;">
+            <div style="font-size:50px; margin-bottom:10px; filter: drop-shadow(0 0 10px ${typeColor});">${item.isVehicle ? '🤖' : '🪖'}</div>
             <h3 style="color:var(--item-name-color); margin:0 0 15px 0;">${item.name.toUpperCase()}</h3>
             
-            <p style="color:var(--text-color); font-size:12px; line-height:1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid var(--accent-color); margin-bottom:20px; text-align:left;">
+            <p style="color:var(--text-color); font-size:12px; line-height:1.5; text-align:left; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid ${typeColor}; margin-bottom:20px;">
                 "${item.description}"
             </p>
 
-            <div class="trade-math-area" style="text-align:left; background:rgba(0,0,0,0.5);">
+            <div class="trade-math-area" style="text-align:left;">
                 <div class="trade-stat-row"><span>Contract Cost:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(item.basePrice)}c</span></div>
                 <div class="trade-stat-row"><span>Force Yield:</span> <span style="color:var(--success); font-weight:bold;">${item.isVehicle ? '+1 Heavy Mech' : '+10 Marines'}</span></div>
             </div>
         </div>
     `;
 
+    // Safely generate the correct button states with strict sizing
+    let btnHtml = "";
     if (playerCredits < item.basePrice) {
-        actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>INSUFFICIENT FUNDS</button>`;
+        btnHtml = `<button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" disabled>INSUFFICIENT FUNDS (${formatNumber(item.basePrice)}c)</button>`;
     } else if (isFull) {
-        actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>BARRACKS CAPACITY EXCEEDED</button>`;
+        btnHtml = `<button class="action-button danger-btn" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px;" disabled>BARRACKS CAPACITY EXCEEDED</button>`;
     } else {
-        actionsEl.innerHTML = `
-            <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 15px rgba(0,224,224,0.2);" onclick="purchaseTroops('${itemId}', ${item.basePrice})">
+        btnHtml = `
+            <button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; margin-bottom: 10px; border-color:${typeColor}; color:${typeColor}; box-shadow: 0 0 15px rgba(0,224,224,0.2);" onclick="purchaseTroops('${itemId}', ${item.basePrice})">
                 AUTHORIZE DEPLOYMENT
             </button>
         `;
     }
-    actionsEl.innerHTML += `<button class="action-button" onclick="openBarracksUI()">CANCEL</button>`;
+    
+    // Inject the Return Button
+    btnHtml += `<button class="action-button" style="width: 100%; padding: 10px; font-size: 12px; border-color: #888; color: #888;" onclick="openBarracksUI()">◀ BACK TO BARRACKS</button>`;
+    actionsEl.innerHTML = btnHtml;
 }
 
 function purchaseTroops(itemId, cost) {
