@@ -58,7 +58,7 @@ tr:hover{background-color:#f1f1f1}
             <span class="close-btn" id="closeModal">&times;</span>
             <h2>How the Hybrid Engine Works</h2>
             <p>Traditional Elo systems only look at wins and losses, ignoring the chaotic nature of soccer where the better team frequently loses to a lucky bounce. Pure Expected Goals (xG) models ignore the fact that actually finishing chances matters.</p>
-            <p>This <strong>Hybrid xG-Elo</strong> system solves this by blending the two. Every match is recalculated to establish a highly accurate historical baseline. MLS teams begin their baseline at 1500, while USL Championship teams begin at 1350. Open Cup matches integrate both leagues to establish the true mathematical gap between divisions over time.</p>
+            <p>This <strong>Hybrid xG-Elo</strong> system solves this by blending the two. Every match is recalculated to establish a highly accurate historical baseline. MLS teams begin their baseline at 1500, USL Championship teams begin at 1350, and all lower-division or amateur teams begin at 1200. Open Cup matches integrate all leagues to establish the true mathematical gap between divisions over time.</p>
             
             <h3>The Philosophy: Why These Specific Weights?</h3>
             <p><strong>1. The 70/30 Split (Result vs. xG)</strong><br>
@@ -271,8 +271,17 @@ tr:hover{background-color:#f1f1f1}
                 if (!isNaN(row.parsedDate.getFullYear()) && row.parsedDate.getFullYear() > maxYear) maxYear = row.parsedDate.getFullYear();
             });
 
-            // Known USL teams as a safety net
-            const knownUSL = ["SAC", "TBR", "PHX", "LOU", "PIT", "IND", "COS", "DET", "MEM", "BHM", "MIA", "NCA", "MB", "OC", "SAN", "ELP", "RGV", "LV", "NM", "TUL", "NO", "CHS", "RIC", "HFD", "LDN", "SA", "OAK"];
+            // PRE-PASS: Scan files to assign permanent initial baselines
+            let startingElo = {};
+            validData.forEach(row => {
+                if (row._league === 'USL') {
+                    startingElo[row.Home + ' (USL)'] = 1350.0;
+                    startingElo[row.Away + ' (USL)'] = 1350.0;
+                } else if (row._league === 'MLS') {
+                    startingElo[row.Home] = 1500.0;
+                    startingElo[row.Away] = 1500.0;
+                }
+            });
 
             validData.forEach(row => {
                 let home = row['Home'], away = row['Away'];
@@ -283,12 +292,9 @@ tr:hover{background-color:#f1f1f1}
                     away = away + ' (USL)';
                 }
                 
-                // If it's a USOC match, the teams are already mapped and parsed correctly! 
-                
                 // Add teams to the active standings if they played in the current year
                 if (row.parsedDate.getFullYear() === maxYear) { 
-                    // Exclude non-MLS/USL teams from final standings (like amateur teams)
-                    // We check if they end in (USL) or are 2/3 letters long (MLS)
+                    // We check if they end in (USL) or are 2-4 letters long (MLS) to keep amateurs out of the final table
                     const isMLS = home.length <= 4 && !home.includes(" ");
                     const isUSL = home.includes("(USL)");
                     if (isMLS || isUSL) activeTeams.add(home);
@@ -298,22 +304,16 @@ tr:hover{background-color:#f1f1f1}
                     if (isAwayMLS || isAwayUSL) activeTeams.add(away);
                 }
                 
-                // Initialize Elo based on dynamic tag or fallback array.
-                // We default unknown/amateur USOC teams to 1350 (same as USLC) so they don't drag MLS down too hard initially
+                // Initialize Elo based on the pre-pass dictionary (1500 for MLS, 1350 for USL, 1200 for everyone else)
                 if (!ratings[home]) {
-                    if (row._league === 'USL') ratings[home] = 1350.0;
-                    else if (row._league === 'MLS') ratings[home] = 1500.0;
-                    else if (home.includes("(USL)") || knownUSL.includes(home)) ratings[home] = 1350.0;
-                    else if (home.length <= 4) ratings[home] = 1500.0; // Likely MLS
-                    else ratings[home] = 1350.0; // Amateur/Lower division USOC team
+                    if (startingElo[home]) ratings[home] = startingElo[home];
+                    else if (home.includes("(USL)")) ratings[home] = 1350.0; // Fallback for USL
+                    else ratings[home] = 1200.0; // Lower division / Amateur
                 }
-                
                 if (!ratings[away]) {
-                    if (row._league === 'USL') ratings[away] = 1350.0;
-                    else if (row._league === 'MLS') ratings[away] = 1500.0;
-                    else if (away.includes("(USL)") || knownUSL.includes(away)) ratings[away] = 1350.0;
-                    else if (away.length <= 4) ratings[away] = 1500.0; 
-                    else ratings[away] = 1350.0;
+                    if (startingElo[away]) ratings[away] = startingElo[away];
+                    else if (away.includes("(USL)")) ratings[away] = 1350.0; // Fallback for USL
+                    else ratings[away] = 1200.0; // Lower division / Amateur
                 }
                 
                 if (!window.teamForm[home]) window.teamForm[home] = [];
