@@ -120,13 +120,12 @@ tr:hover{background-color:#f1f1f1}
     </div>
 
     <script>
-        // Global State Variables
         window.teamForm = {};
         window.teamEloHistory = {}; 
         window.ratings = {};
         window.lastChange = {};
         window.activeTeams = new Set();
-        window.currentFilter = 'USL'; // Default view: MLS + USLC
+        window.currentFilter = 'USL'; 
         
         let teamChartInstance = null; 
         const mlsTeamsList = ['ATL', 'ATX', 'CHI', 'CHV', 'CIN', 'CLB', 'CLT', 'COL', 'DCU', 'FCD', 'HOU', 'LAFC', 'LAG', 'MIA', 'MIN', 'MTL', 'NER', 'NSH', 'NYC', 'NYRB', 'ORL', 'PHI', 'POR', 'RSL', 'SD', 'SEA', 'SJE', 'SKC', 'STL', 'TOR', 'VAN'];
@@ -141,12 +140,11 @@ tr:hover{background-color:#f1f1f1}
             if (e.target == formModal) formModal.style.display = "none";
         }
 
-        // Toggle Filter Logic
         function setFilter(filterType) {
             window.currentFilter = filterType;
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('btn-' + filterType).classList.add('active');
-            updateDisplay(); // Recalculate ranks and render
+            updateDisplay(); 
         }
 
         function showTeamForm(team) {
@@ -219,16 +217,16 @@ tr:hover{background-color:#f1f1f1}
             });
         }
 
-        // --- AUTOMATIC TRIPLE-FETCH ON PAGE LOAD ---
         window.onload = function() {
-            // CACHE BUSTER: Forces GitHub Pages to fetch the newest version of the CSVs!
-            const cacheBuster = "?v=" + new Date().getTime();
+            // CACHE BUSTER
+            const cb = "?v=" + new Date().getTime();
 
             const fetchCSV = (url, sourceLeague) => new Promise(resolve => {
                 Papa.parse(url, {
                     download: true,
                     header: true,
                     skipEmptyLines: true,
+                    transformHeader: function(h) { return h.trim().replace(/"/g, ''); }, // Bulletproof Headers
                     complete: function(results) {
                         results.data.forEach(row => row._league = sourceLeague);
                         resolve(results.data);
@@ -241,9 +239,9 @@ tr:hover{background-color:#f1f1f1}
             });
 
             Promise.all([
-                fetchCSV("mls_data.csv" + cacheBuster, "MLS"),
-                fetchCSV("usl_data.csv" + cacheBuster, "USL"),
-                fetchCSV("usoc_data.csv" + cacheBuster, "USOC")
+                fetchCSV("mls_data.csv" + cb, "MLS"),
+                fetchCSV("usl_data.csv" + cb, "USL"),
+                fetchCSV("usoc_data.csv" + cb, "USOC")
             ]).then(results => {
                 const combinedData = [...results[0], ...results[1], ...results[2]];
                 if (combinedData.length === 0) {
@@ -254,7 +252,6 @@ tr:hover{background-color:#f1f1f1}
             });
         };
 
-        // --- MULTI-FILE MANUAL UPLOAD ---
         document.getElementById('csvFileInput').addEventListener('change', function(e) {
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
@@ -274,6 +271,7 @@ tr:hover{background-color:#f1f1f1}
                 Papa.parse(file, { 
                     header: true, 
                     skipEmptyLines: true, 
+                    transformHeader: function(h) { return h.trim().replace(/"/g, ''); },
                     complete: function(r) { 
                         r.data.forEach(row => row._league = leagueTag);
                         allData = allData.concat(r.data);
@@ -287,9 +285,10 @@ tr:hover{background-color:#f1f1f1}
         });
 
         function processData(data) {
+            // Bulletproof Row Filtering
             let validData = data.filter(row => row.Date && row.Home && row.Away);
             validData.forEach(row => {
-                row.parsedDate = new Date(row.Date + 'T12:00:00');
+                row.parsedDate = new Date(row.Date.trim() + 'T12:00:00');
             });
             validData.sort((a, b) => a.parsedDate - b.parsedDate);
 
@@ -301,12 +300,13 @@ tr:hover{background-color:#f1f1f1}
             const latestDate = validData[validData.length - 1].parsedDate;
             const fDate = latestDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
+            // Ensure we catch the keys regardless of capitalization/spacing
             const keys = Object.keys(validData[0]);
-            const hgKey = keys.find(k => k === 'HG' || k.includes('HGGoals')) || 'HG';
-            const agKey = keys.find(k => k === 'AG' || k.includes('AGGoals')) || 'AG';
-            const hXgKey = keys.find(k => k === 'HxGt' || k.includes('HxGtTeam')) || 'HxGt';
-            const aXgKey = keys.find(k => k === 'AxGt' || k.includes('AxGtTeam')) || 'AxGt';
-            const gdKey = keys.find(k => k === 'GD' || k.includes('GDGoal Difference')) || 'GD';
+            const hgKey = keys.find(k => k.includes('HG')) || 'HG';
+            const agKey = keys.find(k => k.includes('AG')) || 'AG';
+            const hXgKey = keys.find(k => k.includes('HxGt')) || 'HxGt';
+            const aXgKey = keys.find(k => k.includes('AxGt')) || 'AxGt';
+            const gdKey = keys.find(k => k.includes('GD')) || 'GD';
 
             window.ratings = {}; 
             window.lastChange = {}; 
@@ -324,16 +324,18 @@ tr:hover{background-color:#f1f1f1}
             let startingElo = {};
             validData.forEach(row => {
                 if (row._league === 'USL') {
-                    startingElo[row.Home + ' (USL)'] = 1350.0;
-                    startingElo[row.Away + ' (USL)'] = 1350.0;
+                    startingElo[row.Home.trim() + ' (USL)'] = 1350.0;
+                    startingElo[row.Away.trim() + ' (USL)'] = 1350.0;
                 } else if (row._league === 'MLS') {
-                    startingElo[row.Home] = 1500.0;
-                    startingElo[row.Away] = 1500.0;
+                    startingElo[row.Home.trim()] = 1500.0;
+                    startingElo[row.Away.trim()] = 1500.0;
                 }
             });
 
             validData.forEach(row => {
-                let home = row['Home'], away = row['Away'];
+                // Trim trailing spaces to prevent NaN logic breaks
+                let home = row.Home.trim();
+                let away = row.Away.trim();
 
                 if (row._league === 'USL') {
                     home = home + ' (USL)';
@@ -365,7 +367,8 @@ tr:hover{background-color:#f1f1f1}
                 const r_home_old = window.ratings[home], r_away_old = window.ratings[away];
                 const e_home = 1 / (1 + Math.pow(10, (r_away_old - (r_home_old + 25)) / 400));
 
-                const xg_home = parseFloat(row[hXgKey]), xg_away = parseFloat(row[aXgKey]);
+                const xg_home = parseFloat(row[hXgKey]);
+                const xg_away = parseFloat(row[aXgKey]);
                 
                 let xg_share = 0.5;
                 if (!isNaN(xg_home) && !isNaN(xg_away) && (xg_home + xg_away) > 0) xg_share = xg_home / (xg_home + xg_away);
@@ -400,14 +403,12 @@ tr:hover{background-color:#f1f1f1}
             document.getElementById('statusMessage').style.display = "none";
             document.getElementById('filterContainer').style.display = "flex";
             
-            updateDisplay(); // Triggers the filtering and rendering
+            updateDisplay(); 
         }
 
-        // --- FILTER & DISPLAY LOGIC ---
         function updateDisplay() {
             let filteredTeams = new Set();
             
-            // Apply the active filter
             for (let team of window.activeTeams) {
                 const isUSL = team.includes("(USL)");
                 const isMLS = mlsTeamsList.includes(team);
@@ -417,11 +418,10 @@ tr:hover{background-color:#f1f1f1}
                 } else if (window.currentFilter === 'USL') {
                     if (isMLS || isUSL) filteredTeams.add(team);
                 } else {
-                    filteredTeams.add(team); // ALL tab
+                    filteredTeams.add(team); 
                 }
             }
 
-            // Calculate 'Previous Rank' based ONLY on filtered teams
             let prevStandings = [];
             for (let team of filteredTeams) {
                 let c = window.lastChange[team] || 0;
@@ -431,14 +431,12 @@ tr:hover{background-color:#f1f1f1}
             let prevRanks = {};
             prevStandings.forEach((item, idx) => { prevRanks[item.team] = idx + 1; });
 
-            // Calculate 'Current Rank'
             let finalStandings = [];
             for (let team of filteredTeams) {
                 finalStandings.push({ team: team, elo: window.ratings[team], change: window.lastChange[team] || 0 });
             }
             finalStandings.sort((a, b) => b.elo - a.elo);
             
-            // Assign rank changes
             finalStandings.forEach((item, idx) => {
                 let currentRank = idx + 1;
                 item.rank_change = prevRanks[item.team] - currentRank;
