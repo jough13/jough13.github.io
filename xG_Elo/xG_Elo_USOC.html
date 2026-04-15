@@ -59,7 +59,8 @@ tr:hover{background-color:#f1f1f1}
 
     <div class="filter-container" id="filterContainer" style="display: none;">
         <button id="btn-MLS" class="filter-btn" onclick="setFilter('MLS')">MLS Only</button>
-        <button id="btn-USL" class="filter-btn active" onclick="setFilter('USL')">MLS + USLC</button>
+        <button id="btn-USL" class="filter-btn" onclick="setFilter('USL')">MLS + USLC</button>
+        <button id="btn-USL1" class="filter-btn active" onclick="setFilter('USL1')">MLS + USLC + USL1</button>
         <button id="btn-ALL" class="filter-btn" onclick="setFilter('ALL')">All Teams (Inc. USOC)</button>
     </div>
 
@@ -68,7 +69,7 @@ tr:hover{background-color:#f1f1f1}
             <span class="close-btn" id="closeModal">&times;</span>
             <h2>How the Hybrid Engine Works</h2>
             <p>Traditional Elo systems only look at wins and losses, ignoring the chaotic nature of soccer where the better team frequently loses to a lucky bounce. Pure Expected Goals (xG) models ignore the fact that actually finishing chances matters.</p>
-            <p>This <strong>Hybrid xG-Elo</strong> system solves this by blending the two. Every match is recalculated to establish a highly accurate historical baseline. MLS teams begin their baseline at 1500, USL Championship teams begin at 1350, and all lower-division or amateur teams begin at 1200. Open Cup matches integrate all leagues to establish the true mathematical gap between divisions over time.</p>
+            <p>This <strong>Hybrid xG-Elo</strong> system solves this by blending the two. Every match is recalculated to establish a highly accurate historical baseline. MLS teams begin their baseline at 1500, USL Championship teams begin at 1350, USL League One teams begin at 1250, and all lower-division or amateur teams begin at 1200. Open Cup matches integrate all leagues to establish the true mathematical gap between divisions over time.</p>
             
             <h3>The Philosophy: Why These Specific Weights?</h3>
             <p><strong>1. The 70/30 Split (Result vs. xG)</strong><br>
@@ -108,14 +109,14 @@ tr:hover{background-color:#f1f1f1}
     </div>
 
     <div id="statusMessage" class="status-msg">
-        <strong>Loading:</strong> Crunching MLS, USLC, and USOC historical data...
+        <strong>Loading:</strong> Crunching MLS, USLC, USL1, and USOC historical data...
     </div>
 
     <div id="tableContainer"></div>
 
     <div class="upload-section">
         <h3>Update the Standings manually (Optional)</h3>
-        <p>You can test the engine locally by uploading multiple CSV files at once. Highlight <strong>mls_data.csv</strong>, <strong>usl_data.csv</strong>, and <strong>usoc_data.csv</strong> and upload them all together!</p>
+        <p>You can test the engine locally by uploading multiple CSV files at once. Highlight <strong>mls_data.csv</strong>, <strong>usl_data.csv</strong>, <strong>usl1_data.csv</strong>, and <strong>usoc_data.csv</strong> and upload them all together!</p>
         <input type="file" id="csvFileInput" accept=".csv" multiple />
     </div>
 
@@ -125,7 +126,7 @@ tr:hover{background-color:#f1f1f1}
         window.ratings = {};
         window.lastChange = {};
         window.activeTeams = new Set();
-        window.currentFilter = 'USL'; 
+        window.currentFilter = 'USL1'; // Default view: MLS + USLC + USL1
         
         let teamChartInstance = null; 
         const mlsTeamsList = ['ATL', 'ATX', 'CHI', 'CHV', 'CIN', 'CLB', 'CLT', 'COL', 'DCU', 'FCD', 'HOU', 'LAFC', 'LAG', 'MIA', 'MIN', 'MTL', 'NER', 'NSH', 'NYC', 'NYRB', 'ORL', 'PHI', 'POR', 'RSL', 'SD', 'SEA', 'SJE', 'SKC', 'STL', 'TOR', 'VAN'];
@@ -226,7 +227,7 @@ tr:hover{background-color:#f1f1f1}
                     download: true,
                     header: true,
                     skipEmptyLines: true,
-                    transformHeader: function(h) { return h.trim().replace(/"/g, ''); }, // Bulletproof Headers
+                    transformHeader: function(h) { return h.trim().replace(/"/g, ''); }, 
                     complete: function(results) {
                         results.data.forEach(row => row._league = sourceLeague);
                         resolve(results.data);
@@ -238,12 +239,14 @@ tr:hover{background-color:#f1f1f1}
                 });
             });
 
+            // Fetch MLS, USL, USL1, and USOC data simultaneously!
             Promise.all([
                 fetchCSV("mls_data.csv" + cb, "MLS"),
                 fetchCSV("usl_data.csv" + cb, "USL"),
+                fetchCSV("usl1_data.csv" + cb, "USL1"),
                 fetchCSV("usoc_data.csv" + cb, "USOC")
             ]).then(results => {
-                const combinedData = [...results[0], ...results[1], ...results[2]];
+                const combinedData = [...results[0], ...results[1], ...results[2], ...results[3]];
                 if (combinedData.length === 0) {
                     document.getElementById('statusMessage').innerHTML = "<span style='color:#c0392b;'><strong>Error loading data.</strong> Make sure your CSVs are uploaded to GitHub.</span>";
                     return;
@@ -265,8 +268,11 @@ tr:hover{background-color:#f1f1f1}
 
             files.forEach(file => {
                 let leagueTag = 'USOC';
+                
+                // IMPORTANT: Check for USL1 before USL so they don't get mixed up!
                 if (file.name.toLowerCase().includes('mls')) leagueTag = 'MLS';
-                if (file.name.toLowerCase().includes('usl')) leagueTag = 'USL';
+                else if (file.name.toLowerCase().includes('usl1')) leagueTag = 'USL1';
+                else if (file.name.toLowerCase().includes('usl')) leagueTag = 'USL';
 
                 Papa.parse(file, { 
                     header: true, 
@@ -285,7 +291,6 @@ tr:hover{background-color:#f1f1f1}
         });
 
         function processData(data) {
-            // Bulletproof Row Filtering
             let validData = data.filter(row => row.Date && row.Home && row.Away);
             validData.forEach(row => {
                 row.parsedDate = new Date(row.Date.trim() + 'T12:00:00');
@@ -300,7 +305,6 @@ tr:hover{background-color:#f1f1f1}
             const latestDate = validData[validData.length - 1].parsedDate;
             const fDate = latestDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
-            // Ensure we catch the keys regardless of capitalization/spacing
             const keys = Object.keys(validData[0]);
             const hgKey = keys.find(k => k.includes('HG')) || 'HG';
             const agKey = keys.find(k => k.includes('AG')) || 'AG';
@@ -323,7 +327,10 @@ tr:hover{background-color:#f1f1f1}
 
             let startingElo = {};
             validData.forEach(row => {
-                if (row._league === 'USL') {
+                if (row._league === 'USL1') {
+                    startingElo[row.Home.trim() + ' (USL1)'] = 1250.0;
+                    startingElo[row.Away.trim() + ' (USL1)'] = 1250.0;
+                } else if (row._league === 'USL') {
                     startingElo[row.Home.trim() + ' (USL)'] = 1350.0;
                     startingElo[row.Away.trim() + ' (USL)'] = 1350.0;
                 } else if (row._league === 'MLS') {
@@ -333,11 +340,14 @@ tr:hover{background-color:#f1f1f1}
             });
 
             validData.forEach(row => {
-                // Trim trailing spaces to prevent NaN logic breaks
                 let home = row.Home.trim();
                 let away = row.Away.trim();
 
-                if (row._league === 'USL') {
+                // Assign the correct league suffix
+                if (row._league === 'USL1') {
+                    home = home + ' (USL1)';
+                    away = away + ' (USL1)';
+                } else if (row._league === 'USL') {
                     home = home + ' (USL)';
                     away = away + ' (USL)';
                 }
@@ -347,13 +357,16 @@ tr:hover{background-color:#f1f1f1}
                     window.activeTeams.add(away);
                 }
                 
+                // Initialize Elo based on the pre-pass
                 if (!window.ratings[home]) {
                     if (startingElo[home]) window.ratings[home] = startingElo[home];
+                    else if (home.includes("(USL1)")) window.ratings[home] = 1250.0;
                     else if (home.includes("(USL)") || knownUSL.includes(home)) window.ratings[home] = 1350.0;
                     else window.ratings[home] = 1200.0; 
                 }
                 if (!window.ratings[away]) {
                     if (startingElo[away]) window.ratings[away] = startingElo[away];
+                    else if (away.includes("(USL1)")) window.ratings[away] = 1250.0;
                     else if (away.includes("(USL)") || knownUSL.includes(away)) window.ratings[away] = 1350.0;
                     else window.ratings[away] = 1200.0; 
                 }
@@ -371,7 +384,6 @@ tr:hover{background-color:#f1f1f1}
                 const xg_away = parseFloat(row[aXgKey]);
                 const hg = parseFloat(row[hgKey]), ag = parseFloat(row[agKey]);
 
-                // Determine Match Result (1 = Win, 0.5 = Draw, 0 = Loss)
                 let s_home = 0.5;
                 if (!isNaN(hg) && !isNaN(ag)) { 
                     if (hg > ag) s_home = 1.0; 
@@ -384,7 +396,7 @@ tr:hover{background-color:#f1f1f1}
                     let xg_share = xg_home / (xg_home + xg_away);
                     a_home = (0.7 * s_home) + (0.3 * xg_share);
                 } else {
-                    a_home = s_home; // 100% Scoreboard
+                    a_home = s_home;
                 }
 
                 const gd = parseFloat(row[gdKey]);
@@ -418,13 +430,16 @@ tr:hover{background-color:#f1f1f1}
             let filteredTeams = new Set();
             
             for (let team of window.activeTeams) {
-                const isUSL = team.includes("(USL)");
+                const isUSL1 = team.includes("(USL1)");
+                const isUSL = team.includes("(USL)") && !isUSL1; // Ensure standard USL isn't picking up USL1
                 const isMLS = mlsTeamsList.includes(team);
                 
                 if (window.currentFilter === 'MLS') {
                     if (isMLS) filteredTeams.add(team);
                 } else if (window.currentFilter === 'USL') {
                     if (isMLS || isUSL) filteredTeams.add(team);
+                } else if (window.currentFilter === 'USL1') {
+                    if (isMLS || isUSL || isUSL1) filteredTeams.add(team);
                 } else {
                     filteredTeams.add(team); 
                 }
@@ -483,7 +498,6 @@ tr:hover{background-color:#f1f1f1}
                 }
                 formHtml += '</div>';
 
-                // Escape any single quotes in the team name so it doesn't break the onclick function
                 let safeTeamName = item.team.replace(/'/g, "\\'");
 
                 html += `<tr><td>${rankHtml}</td>
