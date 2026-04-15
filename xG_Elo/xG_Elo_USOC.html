@@ -483,8 +483,11 @@ tr:hover{background-color:#f1f1f1}
                 }
                 formHtml += '</div>';
 
+                // Escape any single quotes in the team name so it doesn't break the onclick function
+                let safeTeamName = item.team.replace(/'/g, "\\'");
+
                 html += `<tr><td>${rankHtml}</td>
-                         <td><span class="team-name" onclick="showTeamForm('${item.team}')"><strong>${item.team}</strong></span></td>
+                         <td><span class="team-name" onclick="showTeamForm('${safeTeamName}')"><strong>${item.team}</strong></span></td>
                          <td>${item.elo.toFixed(1)} ${cInd}</td><td>${formHtml}</td></tr>`;
             });
             html += '</table>';
