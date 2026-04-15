@@ -12,6 +12,10 @@ h1{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom
 .info-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;background-color:#00285e;color:white;border-radius:50%;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.2);transition:0.2s}
 .info-btn:hover{background-color:#e31837}
 .as-of-date{display:block;width:fit-content;margin:0 auto 20px auto;background-color:#e31837;color:white;padding:5px 12px;border-radius:15px;font-size:0.9em;font-weight:bold}
+.filter-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.filter-btn { padding: 8px 18px; border: 2px solid #00285e; border-radius: 20px; background-color: #f4f4f9; color: #00285e; font-size: 0.95em; font-weight: bold; cursor: pointer; transition: 0.2s; }
+.filter-btn.active { background-color: #00285e; color: white; }
+.filter-btn:hover:not(.active) { background-color: #eef2f5; }
 .upload-section{background:#fff;padding:20px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);text-align:center;margin-top:40px;margin-bottom:30px;border-top:4px solid #00285e}
 input[type="file"]{margin-top:10px}
 table{width:100%;border-collapse:collapse;background:#fff;box-shadow:0 4px 6px rgba(0,0,0,0.1);border-radius:8px;overflow:hidden}
@@ -50,7 +54,13 @@ tr:hover{background-color:#f1f1f1}
     <div class="header">
         <h1>⚽ American Soccer Hybrid xG-Elo <span id="infoButton" class="info-btn" title="How does this work?">?</span></h1>
         <div class="as-of-date" id="dateBadge">Fetching Data...</div>
-        <p>A unified power ranking for MLS and USLC weighting match results (70%) and expected goals share (30%).<br><em>Hover over the form badges, or click a team name for deep dive details!</em></p>
+        <p>A unified power ranking weighting match results (70%) and expected goals share (30%).<br><em>Hover over the form badges, or click a team name for deep dive details!</em></p>
+    </div>
+
+    <div class="filter-container" id="filterContainer" style="display: none;">
+        <button id="btn-MLS" class="filter-btn" onclick="setFilter('MLS')">MLS Only</button>
+        <button id="btn-USL" class="filter-btn active" onclick="setFilter('USL')">MLS + USLC</button>
+        <button id="btn-ALL" class="filter-btn" onclick="setFilter('ALL')">All Teams (Inc. USOC)</button>
     </div>
 
     <div id="methodologyModal" class="modal">
@@ -105,15 +115,21 @@ tr:hover{background-color:#f1f1f1}
 
     <div class="upload-section">
         <h3>Update the Standings manually (Optional)</h3>
-        <p>This page automatically loads the latest data from the server, but you can upload a newer <strong>ASA Match Logs CSV</strong> to instantly override it below!</p>
-        <input type="file" id="csvFileInput" accept=".csv" />
+        <p>You can test the engine locally by uploading multiple CSV files at once. Highlight <strong>mls_data.csv</strong>, <strong>usl_data.csv</strong>, and <strong>usoc_data.csv</strong> and upload them all together!</p>
+        <input type="file" id="csvFileInput" accept=".csv" multiple />
     </div>
 
     <script>
-        // Start completely empty! 
+        // Global State Variables
         window.teamForm = {};
         window.teamEloHistory = {}; 
+        window.ratings = {};
+        window.lastChange = {};
+        window.activeTeams = new Set();
+        window.currentFilter = 'USL'; // Default view: MLS + USLC
+        
         let teamChartInstance = null; 
+        const mlsTeamsList = ['ATL', 'ATX', 'CHI', 'CHV', 'CIN', 'CLB', 'CLT', 'COL', 'DCU', 'FCD', 'HOU', 'LAFC', 'LAG', 'MIA', 'MIN', 'MTL', 'NER', 'NSH', 'NYC', 'NYRB', 'ORL', 'PHI', 'POR', 'RSL', 'SD', 'SEA', 'SJE', 'SKC', 'STL', 'TOR', 'VAN'];
 
         var methModal = document.getElementById("methodologyModal");
         var formModal = document.getElementById("teamFormModal");
@@ -123,6 +139,14 @@ tr:hover{background-color:#f1f1f1}
         window.onclick = function(e) {
             if (e.target == methModal) methModal.style.display = "none";
             if (e.target == formModal) formModal.style.display = "none";
+        }
+
+        // Toggle Filter Logic
+        function setFilter(filterType) {
+            window.currentFilter = filterType;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('btn-' + filterType).classList.add('active');
+            updateDisplay(); // Recalculate ranks and render
         }
 
         function showTeamForm(team) {
@@ -141,7 +165,6 @@ tr:hover{background-color:#f1f1f1}
                     let chgStr = m.c > 0 ? `+${m.c.toFixed(1)}` : m.c.toFixed(1);
                     let chgClass = m.c > 0 ? 'c-pos' : (m.c < 0 ? 'c-neg' : 'c-neu');
                     
-                    // Handle missing xG data visually for Open Cup matches
                     let xgStr = "N/A";
                     if (!isNaN(m.xf) && !isNaN(m.xa) && (m.xf > 0 || m.xa > 0)) {
                         xgStr = `${m.xf.toFixed(2)} - ${m.xa.toFixed(2)}`;
@@ -187,9 +210,7 @@ tr:hover{background-color:#f1f1f1}
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        x: { ticks: { maxTicksLimit: 8 } }
-                    },
+                    scales: { x: { ticks: { maxTicksLimit: 8 } } },
                     plugins: {
                         legend: { display: false },
                         title: { display: true, text: 'Elo Progression (Last 34 Matches)', padding: {bottom: 10} }
@@ -200,6 +221,9 @@ tr:hover{background-color:#f1f1f1}
 
         // --- AUTOMATIC TRIPLE-FETCH ON PAGE LOAD ---
         window.onload = function() {
+            // CACHE BUSTER: Forces GitHub Pages to fetch the newest version of the CSVs!
+            const cacheBuster = "?v=" + new Date().getTime();
+
             const fetchCSV = (url, sourceLeague) => new Promise(resolve => {
                 Papa.parse(url, {
                     download: true,
@@ -216,28 +240,50 @@ tr:hover{background-color:#f1f1f1}
                 });
             });
 
-            // Fetch MLS, USL, and the new USOC data simultaneously!
             Promise.all([
-                fetchCSV("mls_data.csv", "MLS"),
-                fetchCSV("usl_data.csv", "USL"),
-                fetchCSV("usoc_data.csv", "USOC")
+                fetchCSV("mls_data.csv" + cacheBuster, "MLS"),
+                fetchCSV("usl_data.csv" + cacheBuster, "USL"),
+                fetchCSV("usoc_data.csv" + cacheBuster, "USOC")
             ]).then(results => {
                 const combinedData = [...results[0], ...results[1], ...results[2]];
                 if (combinedData.length === 0) {
-                    document.getElementById('statusMessage').innerHTML = "<span style='color:#c0392b;'><strong>Error loading data.</strong> Make sure 'mls_data.csv', 'usl_data.csv', and 'usoc_data.csv' are in the correct folder.</span>";
+                    document.getElementById('statusMessage').innerHTML = "<span style='color:#c0392b;'><strong>Error loading data.</strong> Make sure your CSVs are uploaded to GitHub.</span>";
                     return;
                 }
                 processData(combinedData);
             });
         };
 
-        // --- MANUAL UPLOAD FALLBACK ---
+        // --- MULTI-FILE MANUAL UPLOAD ---
         document.getElementById('csvFileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+            
             document.getElementById('statusMessage').style.display = "block";
-            document.getElementById('statusMessage').innerHTML = "<strong>Loading:</strong> Crunching manual data upload...";
-            Papa.parse(file, { header: true, skipEmptyLines: true, complete: function(r) { processData(r.data); } });
+            document.getElementById('tableContainer').innerHTML = "";
+            document.getElementById('statusMessage').innerHTML = `<strong>Loading:</strong> Crunching ${files.length} manually uploaded files...`;
+            
+            let allData = [];
+            let filesProcessed = 0;
+
+            files.forEach(file => {
+                let leagueTag = 'USOC';
+                if (file.name.toLowerCase().includes('mls')) leagueTag = 'MLS';
+                if (file.name.toLowerCase().includes('usl')) leagueTag = 'USL';
+
+                Papa.parse(file, { 
+                    header: true, 
+                    skipEmptyLines: true, 
+                    complete: function(r) { 
+                        r.data.forEach(row => row._league = leagueTag);
+                        allData = allData.concat(r.data);
+                        filesProcessed++;
+                        if (filesProcessed === files.length) {
+                            processData(allData);
+                        }
+                    } 
+                });
+            });
         });
 
         function processData(data) {
@@ -245,7 +291,6 @@ tr:hover{background-color:#f1f1f1}
             validData.forEach(row => {
                 row.parsedDate = new Date(row.Date + 'T12:00:00');
             });
-            // Sort combined data purely chronologically so tournaments interleave perfectly!
             validData.sort((a, b) => a.parsedDate - b.parsedDate);
 
             if (validData.length === 0) {
@@ -263,7 +308,10 @@ tr:hover{background-color:#f1f1f1}
             const aXgKey = keys.find(k => k === 'AxGt' || k.includes('AxGtTeam')) || 'AxGt';
             const gdKey = keys.find(k => k === 'GD' || k.includes('GDGoal Difference')) || 'GD';
 
-            let ratings = {}; let lastChange = {}; let activeTeams = new Set(); let maxYear = 0;
+            window.ratings = {}; 
+            window.lastChange = {}; 
+            window.activeTeams = new Set(); 
+            let maxYear = 0;
             window.teamForm = {};
             window.teamEloHistory = {};
 
@@ -271,7 +319,8 @@ tr:hover{background-color:#f1f1f1}
                 if (!isNaN(row.parsedDate.getFullYear()) && row.parsedDate.getFullYear() > maxYear) maxYear = row.parsedDate.getFullYear();
             });
 
-            // PRE-PASS: Scan files to assign permanent initial baselines
+            const knownUSL = ["SAC", "TBR", "PHX", "LOU", "PIT", "IND", "COS", "DET", "MEM", "BHM", "MIA", "NCA", "MB", "OC", "SAN", "ELP", "RGV", "LV", "NM", "TUL", "NO", "CHS", "RIC", "HFD", "LDN", "SA", "OAK"];
+
             let startingElo = {};
             validData.forEach(row => {
                 if (row._league === 'USL') {
@@ -286,34 +335,25 @@ tr:hover{background-color:#f1f1f1}
             validData.forEach(row => {
                 let home = row['Home'], away = row['Away'];
 
-                // Prevent naming clashes by adding " (USL)" to teams from the USL dataset
                 if (row._league === 'USL') {
                     home = home + ' (USL)';
                     away = away + ' (USL)';
                 }
                 
-                // Add teams to the active standings if they played in the current year
                 if (row.parsedDate.getFullYear() === maxYear) { 
-                    // We check if they end in (USL) or are 2-4 letters long (MLS) to keep amateurs out of the final table
-                    const isMLS = home.length <= 4 && !home.includes(" ");
-                    const isUSL = home.includes("(USL)");
-                    if (isMLS || isUSL) activeTeams.add(home);
-                    
-                    const isAwayMLS = away.length <= 4 && !away.includes(" ");
-                    const isAwayUSL = away.includes("(USL)");
-                    if (isAwayMLS || isAwayUSL) activeTeams.add(away);
+                    window.activeTeams.add(home);
+                    window.activeTeams.add(away);
                 }
                 
-                // Initialize Elo based on the pre-pass dictionary (1500 for MLS, 1350 for USL, 1200 for everyone else)
-                if (!ratings[home]) {
-                    if (startingElo[home]) ratings[home] = startingElo[home];
-                    else if (home.includes("(USL)")) ratings[home] = 1350.0; // Fallback for USL
-                    else ratings[home] = 1200.0; // Lower division / Amateur
+                if (!window.ratings[home]) {
+                    if (startingElo[home]) window.ratings[home] = startingElo[home];
+                    else if (home.includes("(USL)") || knownUSL.includes(home)) window.ratings[home] = 1350.0;
+                    else window.ratings[home] = 1200.0; 
                 }
-                if (!ratings[away]) {
-                    if (startingElo[away]) ratings[away] = startingElo[away];
-                    else if (away.includes("(USL)")) ratings[away] = 1350.0; // Fallback for USL
-                    else ratings[away] = 1200.0; // Lower division / Amateur
+                if (!window.ratings[away]) {
+                    if (startingElo[away]) window.ratings[away] = startingElo[away];
+                    else if (away.includes("(USL)") || knownUSL.includes(away)) window.ratings[away] = 1350.0;
+                    else window.ratings[away] = 1200.0; 
                 }
                 
                 if (!window.teamForm[home]) window.teamForm[home] = [];
@@ -322,12 +362,11 @@ tr:hover{background-color:#f1f1f1}
                 if (!window.teamEloHistory[home]) window.teamEloHistory[home] = [];
                 if (!window.teamEloHistory[away]) window.teamEloHistory[away] = [];
 
-                const r_home_old = ratings[home], r_away_old = ratings[away];
+                const r_home_old = window.ratings[home], r_away_old = window.ratings[away];
                 const e_home = 1 / (1 + Math.pow(10, (r_away_old - (r_home_old + 25)) / 400));
 
                 const xg_home = parseFloat(row[hXgKey]), xg_away = parseFloat(row[aXgKey]);
                 
-                // If there is no xG data (like in USOC), xg_share defaults to 0.5 (neutral)
                 let xg_share = 0.5;
                 if (!isNaN(xg_home) && !isNaN(xg_away) && (xg_home + xg_away) > 0) xg_share = xg_home / (xg_home + xg_away);
 
@@ -339,55 +378,76 @@ tr:hover{background-color:#f1f1f1}
 
                 const gd = parseFloat(row[gdKey]);
                 let b_mult = 1.0;
-                // If GD isn't explicitly in the row (USOC), calculate it manually
                 let calc_gd = isNaN(gd) ? (hg - ag) : gd;
                 if (!isNaN(calc_gd) && Math.abs(calc_gd) >= 3) b_mult = 1 + (Math.abs(calc_gd) * 0.02);
 
                 const r_home_change = 32 * b_mult * (a_home - e_home);
                 const r_away_change = -r_home_change;
 
-                ratings[home] += r_home_change; ratings[away] += r_away_change;
-                lastChange[home] = r_home_change; lastChange[away] = r_away_change;
+                window.ratings[home] += r_home_change; window.ratings[away] += r_away_change;
+                window.lastChange[home] = r_home_change; window.lastChange[away] = r_away_change;
                 
                 const dStr = row.parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
                 
                 window.teamForm[home].push({ d: dStr, o: away, h: 1, gf: isNaN(hg)?0:hg, ga: isNaN(ag)?0:ag, xf: isNaN(xg_home)?0:xg_home, xa: isNaN(xg_away)?0:xg_away, c: r_home_change });
                 window.teamForm[away].push({ d: dStr, o: home, h: 0, gf: isNaN(ag)?0:ag, ga: isNaN(hg)?0:hg, xf: isNaN(xg_away)?0:xg_away, xa: isNaN(xg_home)?0:xg_home, c: r_away_change });
                 
-                window.teamEloHistory[home].push({ d: dStr, elo: ratings[home] });
-                window.teamEloHistory[away].push({ d: dStr, elo: ratings[away] });
+                window.teamEloHistory[home].push({ d: dStr, elo: window.ratings[home] });
+                window.teamEloHistory[away].push({ d: dStr, elo: window.ratings[away] });
             });
 
-            let prevStandings = [];
-            for (let team in ratings) {
-                if (activeTeams.has(team)) {
-                    let c = lastChange[team] || 0;
-                    prevStandings.push({ team: team, prev_elo: ratings[team] - c });
+            document.getElementById('dateBadge').innerText = "Current as of " + fDate;
+            document.getElementById('statusMessage').style.display = "none";
+            document.getElementById('filterContainer').style.display = "flex";
+            
+            updateDisplay(); // Triggers the filtering and rendering
+        }
+
+        // --- FILTER & DISPLAY LOGIC ---
+        function updateDisplay() {
+            let filteredTeams = new Set();
+            
+            // Apply the active filter
+            for (let team of window.activeTeams) {
+                const isUSL = team.includes("(USL)");
+                const isMLS = mlsTeamsList.includes(team);
+                
+                if (window.currentFilter === 'MLS') {
+                    if (isMLS) filteredTeams.add(team);
+                } else if (window.currentFilter === 'USL') {
+                    if (isMLS || isUSL) filteredTeams.add(team);
+                } else {
+                    filteredTeams.add(team); // ALL tab
                 }
+            }
+
+            // Calculate 'Previous Rank' based ONLY on filtered teams
+            let prevStandings = [];
+            for (let team of filteredTeams) {
+                let c = window.lastChange[team] || 0;
+                prevStandings.push({ team: team, prev_elo: window.ratings[team] - c });
             }
             prevStandings.sort((a, b) => b.prev_elo - a.prev_elo);
             let prevRanks = {};
             prevStandings.forEach((item, idx) => { prevRanks[item.team] = idx + 1; });
 
+            // Calculate 'Current Rank'
             let finalStandings = [];
-            for (let team in ratings) {
-                if (activeTeams.has(team)) {
-                    finalStandings.push({ team: team, elo: ratings[team], change: lastChange[team] || 0 });
-                }
+            for (let team of filteredTeams) {
+                finalStandings.push({ team: team, elo: window.ratings[team], change: window.lastChange[team] || 0 });
             }
             finalStandings.sort((a, b) => b.elo - a.elo);
             
+            // Assign rank changes
             finalStandings.forEach((item, idx) => {
                 let currentRank = idx + 1;
                 item.rank_change = prevRanks[item.team] - currentRank;
             });
             
-            renderTable(finalStandings);
-            document.getElementById('dateBadge').innerText = "Current as of " + fDate;
-            document.getElementById('statusMessage').style.display = "none";
+            renderTableHTML(finalStandings);
         }
 
-        function renderTable(standings) {
+        function renderTableHTML(standings) {
             let html = '<table><tr><th style="min-width:70px;">Rank</th><th>Team</th><th>Hybrid Elo Rating</th><th>Recent Form</th></tr>';
             standings.forEach((item, index) => {
                 let cInd = '';
