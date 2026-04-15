@@ -369,15 +369,23 @@ tr:hover{background-color:#f1f1f1}
 
                 const xg_home = parseFloat(row[hXgKey]);
                 const xg_away = parseFloat(row[aXgKey]);
-                
-                let xg_share = 0.5;
-                if (!isNaN(xg_home) && !isNaN(xg_away) && (xg_home + xg_away) > 0) xg_share = xg_home / (xg_home + xg_away);
-
                 const hg = parseFloat(row[hgKey]), ag = parseFloat(row[agKey]);
-                let s_home = 0.5;
-                if (!isNaN(hg) && !isNaN(ag)) { if (hg > ag) s_home = 1.0; else if (hg < ag) s_home = 0.0; }
 
-                const a_home = (0.7 * s_home) + (0.3 * xg_share);
+                // Determine Match Result (1 = Win, 0.5 = Draw, 0 = Loss)
+                let s_home = 0.5;
+                if (!isNaN(hg) && !isNaN(ag)) { 
+                    if (hg > ag) s_home = 1.0; 
+                    else if (hg < ag) s_home = 0.0; 
+                }
+
+                // DYNAMIC WEIGHTING: 70/30 if xG exists, 100/0 if missing (Open Cup)
+                let a_home;
+                if (!isNaN(xg_home) && !isNaN(xg_away) && (xg_home + xg_away) > 0) {
+                    let xg_share = xg_home / (xg_home + xg_away);
+                    a_home = (0.7 * s_home) + (0.3 * xg_share);
+                } else {
+                    a_home = s_home; // 100% Scoreboard
+                }
 
                 const gd = parseFloat(row[gdKey]);
                 let b_mult = 1.0;
