@@ -268,7 +268,14 @@ tr:hover{background-color:#f1f1f1}
             const knownUSL = ["SAC", "TBR", "PHX", "LOU", "PIT", "IND", "COS", "DET", "MEM", "BHM", "MIA", "NCA", "MB", "OC", "SAN", "ELP", "RGV", "LV", "NM", "TUL", "NO", "CHS", "RIC", "HFD", "LDN", "SA", "OAK"];
 
             validData.forEach(row => {
-                const home = row['Home'], away = row['Away'];
+                let home = row['Home'], away = row['Away'];
+
+                // Prevent naming clashes by adding " (USL)" to teams from the USL dataset
+                if (row._league === 'USL') {
+                    home = home + ' (USL)';
+                    away = away + ' (USL)';
+                }
+                
                 if (row.parsedDate.getFullYear() === maxYear) { activeTeams.add(home); activeTeams.add(away); }
                 
                 // Initialize Elo (1500 for MLS, 1350 for USLC) based on dynamic tag or fallback array
