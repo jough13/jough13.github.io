@@ -199,9 +199,11 @@
         };
 
         // --- PHYSICS INITIALIZATION ---
-        // Notice the assetPath is pointing to the folder we built in Phase 2!
+        // Dynamically grabs your exact current URL and appends the assets folder cleanly
+        const basePath = window.location.href.split('?')[0].replace(/\/$/, '');
+        
         const box = new DiceBox("#dice-box", {
-            assetPath: "./assets/", 
+            assetPath: basePath + "/assets/", 
             theme: "default",
             themeColor: "#00ffcc", 
             scale: 7,              
@@ -209,7 +211,7 @@
             friction: 0.8,
             restitution: 0.5,      
             shadows: true,
-            delay: 100 // Adds a slight delay to ensure physics workers catch up
+            delay: 100 
         });
 
         // Start the engine
