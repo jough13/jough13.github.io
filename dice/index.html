@@ -199,11 +199,9 @@
         };
 
         // --- PHYSICS INITIALIZATION ---
-        // Dynamically grabs your exact current URL and appends the assets folder cleanly
-        const basePath = window.location.href.split('?')[0].replace(/\/$/, '');
-        
+        // Stripped down to a pure relative path so GitHub Pages perfectly maps the folder
         const box = new DiceBox("#dice-box", {
-            assetPath: basePath + "/assets/", 
+            assetPath: "assets/", 
             theme: "default",
             themeColor: "#00ffcc", 
             scale: 7,              
