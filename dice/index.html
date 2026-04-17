@@ -2,19 +2,50 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Vibe Roller Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultimate Physics Cyber-Dice</title>
+    <link rel="icon" href="data:,">
     <style>
-        /* Cyberpunk/Neon Dark Theme */
+        /* CSS Variables for Day/Night Theme Switching */
+        :root {
+            --bg-color: #050510;
+            --text-color: #fff;
+            --ui-bg: rgba(10, 10, 20, 0.85);
+            --border-color: #00ffcc;
+            --btn-bg: #111;
+            --btn-text: #00ffcc;
+            --btn-hover-bg: #00ffcc;
+            --btn-hover-text: #000;
+            --hud-color: #ff00ff;
+            --hud-shadow: #ff00ff;
+            --status-color: #00ffcc;
+        }
+
+        body.light-mode {
+            --bg-color: #e0e5ec;
+            --text-color: #222;
+            --ui-bg: rgba(255, 255, 255, 0.9);
+            --border-color: #0088ff;
+            --btn-bg: #f0f5fa;
+            --btn-text: #0088ff;
+            --btn-hover-bg: #0088ff;
+            --btn-hover-text: #fff;
+            --hud-color: #ff0055;
+            --hud-shadow: rgba(255, 0, 85, 0.4);
+            --status-color: #0088ff;
+        }
+
         body { 
             margin: 0; 
             overflow: hidden; 
-            background-color: #121212; 
+            background-color: var(--bg-color); 
             font-family: 'Courier New', Courier, monospace; 
-            color: #fff; 
+            color: var(--text-color); 
+            overscroll-behavior-y: contain;
+            transition: background-color 0.5s ease;
         }
         
-        /* The canvas container for the 3D dice */
+        /* The invisible container where the 3D physics happen */
         #dice-box { 
             width: 100vw; 
             height: 100vh; 
@@ -27,133 +58,200 @@
         /* UI Control Panel */
         #ui { 
             position: absolute; 
-            bottom: 30px; 
+            bottom: 20px; 
             left: 50%; 
             transform: translateX(-50%); 
             z-index: 10; 
             display: flex; 
-            gap: 12px; 
+            gap: 10px; 
             flex-wrap: wrap; 
             justify-content: center; 
-            background: rgba(10, 10, 10, 0.85); 
-            padding: 20px; 
+            background: var(--ui-bg); 
+            padding: 15px; 
             border-radius: 16px; 
-            border: 1px solid #333;
+            border: 1px solid var(--border-color);
             box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
             backdrop-filter: blur(5px);
+            width: 90%;
+            max-width: 500px; 
+            transition: all 0.5s ease;
         }
         
         button { 
-            background: #222; 
-            color: #00ffcc; 
-            border: 2px solid #00ffcc; 
-            padding: 12px 24px; 
-            font-size: 18px; 
+            background: var(--btn-bg); 
+            color: var(--btn-text); 
+            border: 2px solid var(--border-color); 
+            padding: 12px 18px; 
+            font-size: 16px; 
             border-radius: 8px; 
             cursor: pointer; 
             transition: all 0.2s ease-in-out; 
             font-weight: bold; 
-            text-transform: uppercase; 
+            flex: 1 1 calc(33% - 20px); 
+            min-width: 60px;
+            touch-action: manipulation; 
+            user-select: none; 
+            -webkit-user-select: none;
+            text-transform: uppercase;
         }
         
-        button:hover { 
-            background: #00ffcc; 
-            color: #000; 
-            box-shadow: 0 0 15px #00ffcc; 
+        button:hover, button:active { 
+            background: var(--btn-hover-bg); 
+            color: var(--btn-hover-text); 
+            box-shadow: 0 0 15px var(--btn-hover-bg); 
             transform: translateY(-2px);
         }
 
-        .btn-clear {
-            border-color: #ff0055;
-            color: #ff0055;
+        #theme-toggle {
+            flex: 1 1 100%;
+            margin-bottom: 10px;
+            border-style: dashed;
         }
 
+        .btn-clear {
+            border-color: #ff0055 !important;
+            color: #ff0055 !important;
+        }
         .btn-clear:hover {
-            background: #ff0055;
-            box-shadow: 0 0 15px #ff0055;
+            background: #ff0055 !important;
+            color: #fff !important;
+            box-shadow: 0 0 15px #ff0055 !important;
         }
         
-        /* Readout Display */
-        #result { 
+        /* The Massive Result Readout */
+        #result-hud { 
             position: absolute; 
-            top: 40px; 
+            top: 12%; 
             left: 50%; 
             transform: translateX(-50%); 
             z-index: 10; 
-            font-size: 48px; 
+            font-size: 80px; 
             font-weight: bold; 
-            color: #ff00ff; 
-            text-shadow: 0 0 15px #ff00ff, 0 0 30px #ff00ff; 
+            color: var(--hud-color); 
+            text-shadow: 0 0 15px var(--hud-shadow), 0 0 30px var(--hud-shadow); 
             pointer-events: none; 
             text-align: center;
-            transition: opacity 0.3s;
+            opacity: 1;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .status {
+            font-size: 24px;
+            color: var(--status-color);
+            text-shadow: 0 0 10px var(--status-color);
+            margin-bottom: 5px;
+            transition: all 0.3s ease;
+        }
+
+        /* Mobile Resizing */
+        @media (max-width: 600px) {
+            #result-hud { font-size: 60px; top: 10%; }
+            .status { font-size: 18px; }
+            button { padding: 15px 10px; font-size: 14px; }
+            #ui { bottom: 15px; padding: 10px; gap: 8px; }
         }
     </style>
 </head>
 <body>
     
-    <div id="result">Awaiting Input...</div>
+    <div id="result-hud">
+        <div class="status" id="status-text">INITIALIZING...</div>
+        <div id="number-display">--</div>
+    </div>
     
     <div id="dice-box"></div>
     
     <div id="ui">
+        <button id="theme-toggle" onclick="toggleTheme()">TOGGLE DAY MODE ☀️</button>
         <button onclick="rollDice('1d4')">D4</button>
         <button onclick="rollDice('1d6')">D6</button>
         <button onclick="rollDice('1d8')">D8</button>
         <button onclick="rollDice('1d10')">D10</button>
         <button onclick="rollDice('1d12')">D12</button>
         <button onclick="rollDice('1d20')">D20</button>
-        
         <button onclick="rollDice('3d6')">3xD6</button>
-        
-        <button class="btn-clear" onclick="box.clear()">Clear</button>
+        <button class="btn-clear" onclick="clearDice()">Clear</button>
     </div>
 
     <script type="module">
         import DiceBox from "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/dice-box.es.min.js";
 
-        const resultDisplay = document.getElementById('result');
+        const statusText = document.getElementById('status-text');
+        const numberDisplay = document.getElementById('number-display');
+        const resultHud = document.getElementById('result-hud');
 
-        // Initialize the WebGL physics environment
+        // --- THEME LOGIC ---
+        let isLightMode = false;
+        window.toggleTheme = function() {
+            isLightMode = !isLightMode;
+            const btn = document.getElementById('theme-toggle');
+            if (isLightMode) {
+                document.body.classList.add('light-mode');
+                btn.innerText = "TOGGLE NIGHT MODE 🌙";
+                // Update the physical dice color to match the theme!
+                box.updateConfig({ themeColor: "#0088ff" }); 
+            } else {
+                document.body.classList.remove('light-mode');
+                btn.innerText = "TOGGLE DAY MODE ☀️";
+                box.updateConfig({ themeColor: "#00ffcc" });
+            }
+        };
+
+        // --- PHYSICS INITIALIZATION ---
+        // Notice the assetPath is pointing to the folder we built in Phase 2!
         const box = new DiceBox("#dice-box", {
-            assetPath: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/assets/",
+            assetPath: "./assets/", 
             theme: "default",
-            themeColor: "#ff00ff", // Neon pink dice
-            scale: 7,              // Size of the dice
+            themeColor: "#00ffcc", 
+            scale: 7,              
             gravity: 2,
             friction: 0.8,
-            restitution: 0.5,      // Bounciness
-            shadows: true
+            restitution: 0.5,      
+            shadows: true,
+            delay: 100 // Adds a slight delay to ensure physics workers catch up
         });
 
-        // Load the 3D models and physics workers
+        // Start the engine
         box.init().then(() => {
-            resultDisplay.textContent = "Roll the Bones!";
+            statusText.innerText = "SYSTEM READY";
+            numberDisplay.innerText = "00";
+        }).catch((err) => {
+            console.error("Physics Engine Failed to Load. Check your local server and assets folder!", err);
+            statusText.innerText = "ASSET ERROR";
+            statusText.style.color = "red";
         });
 
-        // Global function attached to window so inline HTML onclick can reach it
+        // --- ROLL LOGIC ---
         window.rollDice = (notation) => {
-            resultDisplay.style.opacity = '0.5';
-            resultDisplay.textContent = "Rolling...";
+            if (navigator.vibrate) navigator.vibrate(50);
             
-            // Pass standard dice notation (e.g., '1d20', '3d6')
+            resultHud.style.opacity = '0.5';
+            statusText.innerText = `ROLLING ${notation}...`;
+            numberDisplay.innerText = "??";
+            
+            // The box.roll command handles all the physics throwing
             box.roll(notation);
         };
 
-        // Event listener for when the physics simulation settles
+        // --- RESULTS LOGIC ---
+        // This fires automatically when all dice stop moving
         box.onRollComplete = (results) => {
-            // results is an array of die objects
+            // Calculate total for multiple dice
             const total = results.reduce((sum, die) => sum + die.value, 0);
             
-            resultDisplay.style.opacity = '1';
-            resultDisplay.textContent = `Result: ${total}`;
-            
-            // Log full data object for deeper custom logic later
-            console.log("Roll Breakdown:", results); 
+            resultHud.style.opacity = '1';
+            statusText.innerText = "RESULT";
+            numberDisplay.innerText = total;
+
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         };
         
-        // Expose the box object to the window for the clear button
-        window.box = box;
+        window.clearDice = () => {
+            box.clear();
+            statusText.innerText = "SYSTEM READY";
+            numberDisplay.innerText = "--";
+        };
     </script>
 </body>
 </html>
