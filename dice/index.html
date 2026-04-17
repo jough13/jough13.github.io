@@ -45,7 +45,6 @@
             transition: background-color 0.5s ease;
         }
         
-        /* The invisible container where the 3D physics happen */
         #dice-box { 
             width: 100vw; 
             height: 100vh; 
@@ -55,7 +54,6 @@
             z-index: 1; 
         }
         
-        /* UI Control Panel */
         #ui { 
             position: absolute; 
             bottom: 20px; 
@@ -118,7 +116,6 @@
             box-shadow: 0 0 15px #ff0055 !important;
         }
         
-        /* The Massive Result Readout */
         #result-hud { 
             position: absolute; 
             top: 12%; 
@@ -144,7 +141,6 @@
             transition: all 0.3s ease;
         }
 
-        /* Mobile Resizing */
         @media (max-width: 600px) {
             #result-hud { font-size: 60px; top: 10%; }
             .status { font-size: 18px; }
@@ -181,7 +177,6 @@
         const numberDisplay = document.getElementById('number-display');
         const resultHud = document.getElementById('result-hud');
 
-        // --- THEME LOGIC ---
         let isLightMode = false;
         window.toggleTheme = function() {
             isLightMode = !isLightMode;
@@ -189,7 +184,6 @@
             if (isLightMode) {
                 document.body.classList.add('light-mode');
                 btn.innerText = "TOGGLE NIGHT MODE 🌙";
-                // Update the physical dice color to match the theme!
                 box.updateConfig({ themeColor: "#0088ff" }); 
             } else {
                 document.body.classList.remove('light-mode');
@@ -199,9 +193,11 @@
         };
 
         // --- PHYSICS INITIALIZATION ---
-        // Stripped down to a pure relative path so GitHub Pages perfectly maps the folder
+        // THE FIX: Forces an absolute URL path based on wherever this file is currently hosted
+        const absoluteAssetPath = new URL('./assets/', window.location.href).href;
+
         const box = new DiceBox("#dice-box", {
-            assetPath: "assets/", 
+            assetPath: absoluteAssetPath, 
             theme: "default",
             themeColor: "#00ffcc", 
             scale: 7,              
@@ -212,17 +208,15 @@
             delay: 100 
         });
 
-        // Start the engine
         box.init().then(() => {
             statusText.innerText = "SYSTEM READY";
             numberDisplay.innerText = "00";
         }).catch((err) => {
-            console.error("Physics Engine Failed to Load. Check your local server and assets folder!", err);
+            console.error("Physics Engine Failed to Load.", err);
             statusText.innerText = "ASSET ERROR";
             statusText.style.color = "red";
         });
 
-        // --- ROLL LOGIC ---
         window.rollDice = (notation) => {
             if (navigator.vibrate) navigator.vibrate(50);
             
@@ -230,14 +224,10 @@
             statusText.innerText = `ROLLING ${notation}...`;
             numberDisplay.innerText = "??";
             
-            // The box.roll command handles all the physics throwing
             box.roll(notation);
         };
 
-        // --- RESULTS LOGIC ---
-        // This fires automatically when all dice stop moving
         box.onRollComplete = (results) => {
-            // Calculate total for multiple dice
             const total = results.reduce((sum, die) => sum + die.value, 0);
             
             resultHud.style.opacity = '1';
