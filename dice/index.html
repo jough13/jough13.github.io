@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Vibe Roller Portal</title>
+    <style>
+        /* Cyberpunk/Neon Dark Theme */
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #121212; 
+            font-family: 'Courier New', Courier, monospace; 
+            color: #fff; 
+        }
+        
+        /* The canvas container for the 3D dice */
+        #dice-box { 
+            width: 100vw; 
+            height: 100vh; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            z-index: 1; 
+        }
+        
+        /* UI Control Panel */
+        #ui { 
+            position: absolute; 
+            bottom: 30px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            z-index: 10; 
+            display: flex; 
+            gap: 12px; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            background: rgba(10, 10, 10, 0.85); 
+            padding: 20px; 
+            border-radius: 16px; 
+            border: 1px solid #333;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+            backdrop-filter: blur(5px);
+        }
+        
+        button { 
+            background: #222; 
+            color: #00ffcc; 
+            border: 2px solid #00ffcc; 
+            padding: 12px 24px; 
+            font-size: 18px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: all 0.2s ease-in-out; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+        }
+        
+        button:hover { 
+            background: #00ffcc; 
+            color: #000; 
+            box-shadow: 0 0 15px #00ffcc; 
+            transform: translateY(-2px);
+        }
+
+        .btn-clear {
+            border-color: #ff0055;
+            color: #ff0055;
+        }
+
+        .btn-clear:hover {
+            background: #ff0055;
+            box-shadow: 0 0 15px #ff0055;
+        }
+        
+        /* Readout Display */
+        #result { 
+            position: absolute; 
+            top: 40px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            z-index: 10; 
+            font-size: 48px; 
+            font-weight: bold; 
+            color: #ff00ff; 
+            text-shadow: 0 0 15px #ff00ff, 0 0 30px #ff00ff; 
+            pointer-events: none; 
+            text-align: center;
+            transition: opacity 0.3s;
+        }
+    </style>
+</head>
+<body>
+    
+    <div id="result">Awaiting Input...</div>
+    
+    <div id="dice-box"></div>
+    
+    <div id="ui">
+        <button onclick="rollDice('1d4')">D4</button>
+        <button onclick="rollDice('1d6')">D6</button>
+        <button onclick="rollDice('1d8')">D8</button>
+        <button onclick="rollDice('1d10')">D10</button>
+        <button onclick="rollDice('1d12')">D12</button>
+        <button onclick="rollDice('1d20')">D20</button>
+        
+        <button onclick="rollDice('3d6')">3xD6</button>
+        
+        <button class="btn-clear" onclick="box.clear()">Clear</button>
+    </div>
+
+    <script type="module">
+        import DiceBox from "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/dice-box.es.min.js";
+
+        const resultDisplay = document.getElementById('result');
+
+        // Initialize the WebGL physics environment
+        const box = new DiceBox("#dice-box", {
+            assetPath: "https://unpkg.com/@3d-dice/dice-box@1.1.3/dist/assets/",
+            theme: "default",
+            themeColor: "#ff00ff", // Neon pink dice
+            scale: 7,              // Size of the dice
+            gravity: 2,
+            friction: 0.8,
+            restitution: 0.5,      // Bounciness
+            shadows: true
+        });
+
+        // Load the 3D models and physics workers
+        box.init().then(() => {
+            resultDisplay.textContent = "Roll the Bones!";
+        });
+
+        // Global function attached to window so inline HTML onclick can reach it
+        window.rollDice = (notation) => {
+            resultDisplay.style.opacity = '0.5';
+            resultDisplay.textContent = "Rolling...";
+            
+            // Pass standard dice notation (e.g., '1d20', '3d6')
+            box.roll(notation);
+        };
+
+        // Event listener for when the physics simulation settles
+        box.onRollComplete = (results) => {
+            // results is an array of die objects
+            const total = results.reduce((sum, die) => sum + die.value, 0);
+            
+            resultDisplay.style.opacity = '1';
+            resultDisplay.textContent = `Result: ${total}`;
+            
+            // Log full data object for deeper custom logic later
+            console.log("Roll Breakdown:", results); 
+        };
+        
+        // Expose the box object to the window for the clear button
+        window.box = box;
+    </script>
+</body>
+</html>
