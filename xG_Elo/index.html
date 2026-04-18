@@ -129,8 +129,9 @@ tr:hover{background-color:#f1f1f1}
     <script>
         // Start completely empty! 
         window.teamForm = {};
-        window.teamEloHistory = {}; // New object to store the rating over time!
-        let teamChartInstance = null; // Stores our active chart
+        window.teamEloHistory = {}; 
+        window.ratings = {}; // Global scoped for Modal access
+        let teamChartInstance = null; 
 
         var methModal = document.getElementById("methodologyModal");
         var formModal = document.getElementById("teamFormModal");
@@ -143,8 +144,45 @@ tr:hover{background-color:#f1f1f1}
         }
 
         function showTeamForm(team) {
+            const fullHistory = window.teamEloHistory[team] || [];
             const last5 = (window.teamForm[team] || []).slice(-5).reverse(); 
+            
+            // Safely fetch current Elo to prevent crashes if history is empty
+            const currentRating = (window.ratings && window.ratings[team]) ? window.ratings[team] : 0;
+            
+            let maxElo = -Infinity, minElo = Infinity;
+            let maxDate = "N/A", minDate = "N/A";
+            
+            if (fullHistory.length > 0) {
+                fullHistory.forEach(h => {
+                    if (h.elo > maxElo) { maxElo = h.elo; maxDate = h.d; }
+                    if (h.elo < minElo) { minElo = h.elo; minDate = h.d; }
+                });
+            } else {
+                maxElo = currentRating;
+                minElo = currentRating;
+            }
+
             let html = `<h2>${team} - Form & Elo Trend</h2>`;
+            
+            // Inject the High/Low/Current mini-dashboard
+            html += `<div style="display: flex; justify-content: space-around; background: #f4f4f9; padding: 15px; border-radius: 6px; border: 1px solid #dcdcdc; margin-bottom: 20px;">
+                        <div style="text-align: center;">
+                            <span style="font-size: 0.85em; color: #555; text-transform: uppercase; font-weight: bold;">All-Time High</span><br>
+                            <strong style="color: #27ae60; font-size: 1.4em;">${maxElo.toFixed(1)}</strong> <br>
+                            <span style="font-size: 0.8em; color: #777;">${maxDate}</span>
+                        </div>
+                        <div style="text-align: center;">
+                            <span style="font-size: 0.85em; color: #555; text-transform: uppercase; font-weight: bold;">Current Elo</span><br>
+                            <strong style="color: #00285e; font-size: 1.4em;">${currentRating.toFixed(1)}</strong>
+                        </div>
+                        <div style="text-align: center;">
+                            <span style="font-size: 0.85em; color: #555; text-transform: uppercase; font-weight: bold;">All-Time Low</span><br>
+                            <strong style="color: #c0392b; font-size: 1.4em;">${minElo.toFixed(1)}</strong> <br>
+                            <span style="font-size: 0.8em; color: #777;">${minDate}</span>
+                        </div>
+                     </div>`;
+
             html += `<table id="formTable"><tr><th>Date</th><th>Opponent</th><th>Result</th><th>Score</th><th>xG</th><th>Elo Change</th></tr>`;
             
             if (last5.length === 0) {
@@ -212,7 +250,8 @@ tr:hover{background-color:#f1f1f1}
 
         // --- AUTOMATIC FETCH ON PAGE LOAD ---
         window.onload = function() {
-            Papa.parse("mls_data.csv", {
+            const cacheBuster = "?v=" + new Date().getTime(); // Bust the cache
+            Papa.parse("mls_data.csv" + cacheBuster, {
                 download: true,
                 header: true,
                 skipEmptyLines: true,
@@ -310,6 +349,9 @@ tr:hover{background-color:#f1f1f1}
                 window.teamEloHistory[away].push({ d: dStr, elo: ratings[away] });
             });
 
+            // Make ratings global for the modal
+            window.ratings = ratings;
+
             let prevStandings = [];
             for (let team in ratings) {
                 if (activeTeams.has(team)) {
@@ -371,8 +413,11 @@ tr:hover{background-color:#f1f1f1}
                 }
                 formHtml += '</div>';
 
+                // Escape quotes to prevent bugs when team names have apostrophes
+                let safeTeamName = item.team.replace(/'/g, "\\'");
+
                 html += `<tr><td>${rankHtml}</td>
-                         <td><span class="team-name" onclick="showTeamForm('${item.team}')"><strong>${item.team}</strong></span></td>
+                         <td><span class="team-name" onclick="showTeamForm('${safeTeamName}')"><strong>${item.team}</strong></span></td>
                          <td>${item.elo.toFixed(1)} ${cInd}</td><td>${formHtml}</td></tr>`;
             });
             html += '</table>';
