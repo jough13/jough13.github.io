@@ -143,8 +143,43 @@ tr:hover{background-color:#f1f1f1}
         }
 
         function showTeamForm(team) {
+            const fullHistory = window.teamEloHistory[team] || [];
             const last5 = (window.teamForm[team] || []).slice(-5).reverse(); 
+            
+            // Loop through history to find the all-time high and low
+            let maxElo = -Infinity, minElo = Infinity;
+            let maxDate = "N/A", minDate = "N/A";
+            
+            if (fullHistory.length > 0) {
+                fullHistory.forEach(h => {
+                    if (h.elo > maxElo) { maxElo = h.elo; maxDate = h.d; }
+                    if (h.elo < minElo) { minElo = h.elo; minDate = h.d; }
+                });
+            } else {
+                maxElo = window.ratings[team] || 0;
+                minElo = window.ratings[team] || 0;
+            }
+
             let html = `<h2>${team} - Form & Elo Trend</h2>`;
+            
+            // Inject the new High/Low/Current mini-dashboard
+            html += `<div style="display: flex; justify-content: space-around; background: #f4f4f9; padding: 15px; border-radius: 6px; border: 1px solid #dcdcdc; margin-bottom: 20px;">
+                        <div style="text-align: center;">
+                            <span style="font-size: 0.85em; color: #555; text-transform: uppercase; font-weight: bold;">All-Time High</span><br>
+                            <strong style="color: #27ae60; font-size: 1.4em;">${maxElo.toFixed(1)}</strong> <br>
+                            <span style="font-size: 0.8em; color: #777;">${maxDate}</span>
+                        </div>
+                        <div style="text-align: center;">
+                            <span style="font-size: 0.85em; color: #555; text-transform: uppercase; font-weight: bold;">Current Elo</span><br>
+                            <strong style="color: #00285e; font-size: 1.4em;">${(window.ratings[team] || 0).toFixed(1)}</strong>
+                        </div>
+                        <div style="text-align: center;">
+                            <span style="font-size: 0.85em; color: #555; text-transform: uppercase; font-weight: bold;">All-Time Low</span><br>
+                            <strong style="color: #c0392b; font-size: 1.4em;">${minElo.toFixed(1)}</strong> <br>
+                            <span style="font-size: 0.8em; color: #777;">${minDate}</span>
+                        </div>
+                     </div>`;
+
             html += `<table id="formTable"><tr><th>Date</th><th>Opponent</th><th>Result</th><th>Score</th><th>xG</th><th>Elo Change</th></tr>`;
             
             if (last5.length === 0) {
@@ -157,13 +192,18 @@ tr:hover{background-color:#f1f1f1}
                     else if (m.gf < m.ga) { res = 'L'; resClass = 'c-neg'; }
                     let chgStr = m.c > 0 ? `+${m.c.toFixed(1)}` : m.c.toFixed(1);
                     let chgClass = m.c > 0 ? 'c-pos' : (m.c < 0 ? 'c-neg' : 'c-neu');
+                    
+                    let xgStr = "N/A";
+                    if (!isNaN(m.xf) && !isNaN(m.xa) && (m.xf > 0 || m.xa > 0)) {
+                        xgStr = `${m.xf.toFixed(2)} - ${m.xa.toFixed(2)}`;
+                    }
+
                     html += `<tr><td>${m.d}</td><td>${oppStr}</td><td><strong class="${resClass}">${res}</strong></td>
-                             <td>${m.gf} - ${m.ga}</td><td>${m.xf.toFixed(2)} - ${m.xa.toFixed(2)}</td><td class="${chgClass}">${chgStr}</td></tr>`;
+                             <td>${m.gf} - ${m.ga}</td><td>${xgStr}</td><td class="${chgClass}">${chgStr}</td></tr>`;
                 });
             }
             html += `</table>`;
 
-            // Inject the Canvas for the Chart
             html += `<div style="position: relative; height: 250px; margin-top: 25px;">
                         <canvas id="teamChart"></canvas>
                      </div>`;
@@ -171,14 +211,13 @@ tr:hover{background-color:#f1f1f1}
             document.getElementById('teamFormContent').innerHTML = html;
             formModal.style.display = "block";
 
-            // Draw the Chart!
-            const historyData = (window.teamEloHistory[team] || []).slice(-34); // ~1 full season
+            const historyData = (window.teamEloHistory[team] || []).slice(-34); 
             const labels = historyData.map(h => h.d);
             const dataPts = historyData.map(h => h.elo);
 
             const ctx = document.getElementById('teamChart').getContext('2d');
             if (teamChartInstance) {
-                teamChartInstance.destroy(); // Destroy old chart so they don't overlap
+                teamChartInstance.destroy(); 
             }
             
             teamChartInstance = new Chart(ctx, {
@@ -193,15 +232,13 @@ tr:hover{background-color:#f1f1f1}
                         borderWidth: 2,
                         pointRadius: 2,
                         fill: true,
-                        tension: 0.2 // slight curve
+                        tension: 0.2 
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        x: { ticks: { maxTicksLimit: 8 } }
-                    },
+                    scales: { x: { ticks: { maxTicksLimit: 8 } } },
                     plugins: {
                         legend: { display: false },
                         title: { display: true, text: 'Elo Progression (Last 34 Matches)', padding: {bottom: 10} }
@@ -209,7 +246,6 @@ tr:hover{background-color:#f1f1f1}
                 }
             });
         }
-
         // --- AUTOMATIC FETCH ON PAGE LOAD ---
         window.onload = function() {
             Papa.parse("mls_data.csv", {
