@@ -121,12 +121,13 @@ tr:hover{background-color:#f1f1f1}
     </div>
 
     <script>
+        // GLOBAL SCOPE INITIALIZATION
         window.teamForm = {};
         window.teamEloHistory = {}; 
         window.ratings = {};
         window.lastChange = {};
         window.activeTeams = new Set();
-        window.currentFilter = 'USL1'; // Default view: MLS + USLC + USL1
+        window.currentFilter = 'USL1'; 
         
         let teamChartInstance = null; 
         const mlsTeamsList = ['ATL', 'ATX', 'CHI', 'CHV', 'CIN', 'CLB', 'CLT', 'COL', 'DCU', 'FCD', 'HOU', 'LAFC', 'LAG', 'MIA', 'MIN', 'MTL', 'NER', 'NSH', 'NYC', 'NYRB', 'ORL', 'PHI', 'POR', 'RSL', 'SD', 'SEA', 'SJE', 'SKC', 'STL', 'TOR', 'VAN'];
@@ -149,8 +150,44 @@ tr:hover{background-color:#f1f1f1}
         }
 
         function showTeamForm(team) {
+            const fullHistory = window.teamEloHistory[team] || [];
             const last5 = (window.teamForm[team] || []).slice(-5).reverse(); 
+            
+            // Safely fetch current Elo to prevent crashes if history is empty
+            const currentRating = (window.ratings && window.ratings[team]) ? window.ratings[team] : 0;
+            
+            let maxElo = -Infinity, minElo = Infinity;
+            let maxDate = "N/A", minDate = "N/A";
+            
+            if (fullHistory.length > 0) {
+                fullHistory.forEach(h => {
+                    if (h.elo > maxElo) { maxElo = h.elo; maxDate = h.d; }
+                    if (h.elo < minElo) { minElo = h.elo; minDate = h.d; }
+                });
+            } else {
+                maxElo = currentRating;
+                minElo = currentRating;
+            }
+
             let html = `<h2>${team} - Form & Elo Trend</h2>`;
+            
+            html += `<div style="display: flex; justify-content: space-around; background: #f4f4f9; padding: 15px; border-radius: 6px; border: 1px solid #dcdcdc; margin-bottom: 20px;">
+                        <div style="text-align: center;">
+                            <span style="font-size: 0.85em; color: #555; text-transform: uppercase; font-weight: bold;">All-Time High</span><br>
+                            <strong style="color: #27ae60; font-size: 1.4em;">${maxElo.toFixed(1)}</strong> <br>
+                            <span style="font-size: 0.8em; color: #777;">${maxDate}</span>
+                        </div>
+                        <div style="text-align: center;">
+                            <span style="font-size: 0.85em; color: #555; text-transform: uppercase; font-weight: bold;">Current Elo</span><br>
+                            <strong style="color: #00285e; font-size: 1.4em;">${currentRating.toFixed(1)}</strong>
+                        </div>
+                        <div style="text-align: center;">
+                            <span style="font-size: 0.85em; color: #555; text-transform: uppercase; font-weight: bold;">All-Time Low</span><br>
+                            <strong style="color: #c0392b; font-size: 1.4em;">${minElo.toFixed(1)}</strong> <br>
+                            <span style="font-size: 0.8em; color: #777;">${minDate}</span>
+                        </div>
+                     </div>`;
+
             html += `<table id="formTable"><tr><th>Date</th><th>Opponent</th><th>Result</th><th>Score</th><th>xG</th><th>Elo Change</th></tr>`;
             
             if (last5.length === 0) {
@@ -219,7 +256,7 @@ tr:hover{background-color:#f1f1f1}
         }
 
         window.onload = function() {
-            // CACHE BUSTER
+            // CACHE BUSTER: Tricks the browser into fetching fresh data instead of using yesterday's cache
             const cb = "?v=" + new Date().getTime();
 
             const fetchCSV = (url, sourceLeague) => new Promise(resolve => {
@@ -239,7 +276,6 @@ tr:hover{background-color:#f1f1f1}
                 });
             });
 
-            // Fetch MLS, USL, USL1, and USOC data simultaneously!
             Promise.all([
                 fetchCSV("mls_data.csv" + cb, "MLS"),
                 fetchCSV("usl_data.csv" + cb, "USL"),
@@ -269,7 +305,6 @@ tr:hover{background-color:#f1f1f1}
             files.forEach(file => {
                 let leagueTag = 'USOC';
                 
-                // IMPORTANT: Check for USL1 before USL so they don't get mixed up!
                 if (file.name.toLowerCase().includes('mls')) leagueTag = 'MLS';
                 else if (file.name.toLowerCase().includes('usl1')) leagueTag = 'USL1';
                 else if (file.name.toLowerCase().includes('usl')) leagueTag = 'USL';
@@ -343,7 +378,6 @@ tr:hover{background-color:#f1f1f1}
                 let home = row.Home.trim();
                 let away = row.Away.trim();
 
-                // Assign the correct league suffix
                 if (row._league === 'USL1') {
                     home = home + ' (USL1)';
                     away = away + ' (USL1)';
@@ -357,7 +391,6 @@ tr:hover{background-color:#f1f1f1}
                     window.activeTeams.add(away);
                 }
                 
-                // Initialize Elo based on the pre-pass
                 if (!window.ratings[home]) {
                     if (startingElo[home]) window.ratings[home] = startingElo[home];
                     else if (home.includes("(USL1)")) window.ratings[home] = 1250.0;
@@ -390,7 +423,6 @@ tr:hover{background-color:#f1f1f1}
                     else if (hg < ag) s_home = 0.0; 
                 }
 
-                // DYNAMIC WEIGHTING: 70/30 if xG exists, 100/0 if missing (Open Cup)
                 let a_home;
                 if (!isNaN(xg_home) && !isNaN(xg_away) && (xg_home + xg_away) > 0) {
                     let xg_share = xg_home / (xg_home + xg_away);
@@ -431,7 +463,7 @@ tr:hover{background-color:#f1f1f1}
             
             for (let team of window.activeTeams) {
                 const isUSL1 = team.includes("(USL1)");
-                const isUSL = team.includes("(USL)") && !isUSL1; // Ensure standard USL isn't picking up USL1
+                const isUSL = team.includes("(USL)") && !isUSL1; 
                 const isMLS = mlsTeamsList.includes(team);
                 
                 if (window.currentFilter === 'MLS') {
