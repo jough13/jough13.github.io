@@ -172,3 +172,30 @@ export function calculateBoundary() {
     let intensityAt1Ft = activity * gammaConstant; if(collimatorChecked) intensityAt1Ft = intensityAt1Ft * 0.1;
     const distanceFeet = Math.sqrt(intensityAt1Ft / 2.0); boundaryInput.value = distanceFeet.toFixed(1); 
 }
+
+export function openDeleteConfirm() {
+    if(!window.currentOpenDoc) return;
+    const modal = document.getElementById('delete-confirm-modal');
+    const srcFields = document.getElementById('delete-source-fields');
+    const title = document.getElementById('delete-modal-title');
+    const desc = document.getElementById('delete-modal-desc');
+    const btn = document.getElementById('modal-confirm-delete-btn');
+
+    if (window.currentOpenDoc.collection === 'sources') {
+        title.textContent = "Confirm Source Disposal";
+        title.style.color = "#f0ad4e";
+        desc.textContent = "To remove a source from the active inventory, you must provide transfer or disposal paperwork for the audit trail. The source will be permanently archived.";
+        if(srcFields) {
+            srcFields.style.display = 'block';
+            document.getElementById('del-src-file').value = ''; 
+        }
+        btn.textContent = "Archive & Dispose Source";
+    } else {
+        title.textContent = "Confirm Deletion";
+        title.style.color = "#d9534f";
+        desc.textContent = "Are you sure you want to delete this record? This action cannot be undone and will permanently remove it from the database.";
+        if(srcFields) srcFields.style.display = 'none';
+        btn.textContent = "Yes, Delete Record";
+    }
+    modal.style.display = 'flex';
+}
