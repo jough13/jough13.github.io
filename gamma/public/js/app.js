@@ -16,7 +16,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({tabManager: persistentMultipleTabManager()})
+  localCache: persistentLocalCache()
 });
 const storage = getStorage(app);
 const auth = getAuth(app); 
@@ -25,12 +25,12 @@ const auth = getAuth(app);
 window.calendar = null; 
 window.isotopeChart = null; 
 window.doseChart = null;
-window.decayChartInstance = null; // NEW: Track the Decay Line Chart
+window.decayChartInstance = null; // Track the Decay Line Chart
 window.currentOpenDoc = null; 
 window.editModeId = null;
 window.editModeCollection = null;
 window.sigPadDirty = false; 
-window.sketchPadDirty = false; // NEW: Track the Boundary Sketchpad
+window.sketchPadDirty = false; // Track the Boundary Sketchpad
 let html5QrCode = null; 
 
 // --- LIVE DECAY ENGINE ---
@@ -1225,12 +1225,14 @@ async function loadAllData() {
         fetchData('utilization_logs', 'utilization-list'),
         fetchData('post_job_reports', 'reports-list')
     ]);
-    window.updateDashboard(); 
-    window.renderCalendar();
-    window.updateDecayChart(); // Build forecast curve
+    
+    // Await these sequentially! Firing them concurrently hammers the local cache.
+    await window.updateDashboard(); 
+    await window.renderCalendar();
+    await window.updateDecayChart(); 
     await window.updateDoseDashboard();
     await updateDeployedAssetsDashboard(); 
-    window.populatePersonnelDropdown(); // Refresh dropdown when data reloads
+    if(window.populatePersonnelDropdown) window.populatePersonnelDropdown(); 
 }
 
 // --- REAL-TIME LIVE SYNC ---
@@ -1511,23 +1513,28 @@ window.updateDashboard = async function() {
             if(iso === 'Yb-169') yb169++;
         });
 
-        const ctx = document.getElementById('isotope-chart');
-        if(ctx) {
-            if(window.isotopeChart) window.isotopeChart.destroy(); 
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            window.isotopeChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Ir-192', 'Co-60', 'Se-75', 'Yb-169'],
-                    datasets: [{
-                        data: [ir192, co60, se75, yb169],
-                        backgroundColor: ['#005A9C', '#d9534f', '#f0ad4e', '#5cb85c'],
-                        borderWidth: 1,
-                        borderColor: isDark ? '#1e1e1e' : '#fff'
-                    }]
-                },
-                options: { plugins: { legend: { labels: { color: isDark ? '#e0e0e0' : '#333' } } } }
-            });
+        try {
+            const ctx = document.getElementById('isotope-chart');
+            // Ensure the Chart library is fully loaded before drawing
+            if(ctx && typeof Chart !== 'undefined') {
+                if(window.isotopeChart) window.isotopeChart.destroy(); 
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                window.isotopeChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Ir-192', 'Co-60', 'Se-75', 'Yb-169'],
+                        datasets: [{
+                            data: [ir192, co60, se75, yb169],
+                            backgroundColor: ['#005A9C', '#d9534f', '#f0ad4e', '#5cb85c'],
+                            borderWidth: 1,
+                            borderColor: isDark ? '#1e1e1e' : '#fff'
+                        }]
+                    },
+                    options: { plugins: { legend: { labels: { color: isDark ? '#e0e0e0' : '#333' } } } }
+                });
+            }
+        } catch (chartErr) {
+            console.warn("Chart failed to render, but continuing compliance checks...", chartErr);
         }
 
         const alertList = document.getElementById('alert-list');
