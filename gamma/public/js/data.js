@@ -1,16 +1,27 @@
 // public/js/data.js
 
 import { calculateCurrentActivity } from "./analytics.js";
-import { formMaps } from "./app.js";
 import { ADMIN_EMAIL } from "./auth.js";
-
 import { collection, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { db, storage, auth } from "./firebase-config.js";
 import { showLoader, hideLoader, closeConfirmModal, closeModal } from "./ui.js";
 
-// --- STATE MANAGERS ---
+// --- STATE MANAGERS & CONFIG ---
 const activeListeners = {}; 
+
+export const formMaps = {
+    'equipment': { formId: 'equipment-form', fields: { type: 'eq-type', serial_number: 'eq-serial', calibration_due_date: 'eq-cal-date' } },
+    'sources': { formId: 'sources-form', fields: { serial_number: 'src-serial', isotope: 'src-isotope', initial_activity_curies: 'src-activity', activity_date: 'src-date', last_leak_test_date: 'src-leak-test' } },
+    'cameras': { formId: 'cameras-form', fields: { make_model: 'cam-model', serial_number: 'cam-serial', du_leak_test_date: 'cam-du-date', annual_maintenance_date: 'cam-maint-date' } },
+    'personnel': { formId: 'personnel-form', fields: { full_name: 'per-name', cert_number: 'per-cert', trust_authorization_date: 'per-trust', hazmat_expiration: 'per-hazmat', last_6mo_eval_date: 'per-eval', last_annual_drill_date: 'per-drill' } },
+    'field_evaluations': { formId: 'eval-form', fields: { eval_date: 'ev-date', radiographer_evaluated: 'ev-rad', evaluator: 'ev-evaluator', duties_performed: 'ev-duties', comments: 'ev-comments' }, nested: { checklist: { followed_procedures: 'ev-c1', emergency_knowledge: 'ev-c2', instrument_checks: 'ev-c3', instrument_use: 'ev-c4', dosimetry_use: 'ev-c5', pri_checks: 'ev-c6', key_control: 'ev-c7', boundary_control: 'ev-c8', alara_used: 'ev-c9', logs_completed: 'ev-c10' } } },
+    'work_plans': { formId: 'work-plans-form', fields: { job_number: 'wp-job', location_type: 'wp-loc-type', location: 'wp-location', planned_date: 'wp-date', source_id: 'wp-source', collimator_used: 'wp-collimator', calculated_boundary_mr_hr: 'wp-boundary', pri_entrance_tested: 'wp-pri-entrance', pri_alarm_tested: 'wp-pri-alarm' } },
+    'transport_logs': { formId: 'transport-form', fields: { transport_date: 'tr-date', camera_sn: 'tr-camera', destination: 'tr-destination', max_contact_reading: 'tr-surface', over_water_transport: 'tr-water' } },
+    'dosimetry_logs': { formId: 'dosimetry-form', fields: { personnel_name: 'dl-name', dosimeter_serial: 'dl-serial', ratemeter_check_performed: 'dl-ratemeter-check', initial_reading: 'dl-initial', final_reading: 'dl-final' } },
+    'utilization_logs': { formId: 'utilization-form', fields: { job_reference: 'ul-job', radiographer_in_charge: 'ul-ric', participants: 'ul-participants', survey_meter_serial: 'ul-meter', meter_response_checked: 'ul-response', max_survey_reading: 'ul-max-survey' } },
+    'post_job_reports': { formId: 'reports-form', fields: { completed_by: 'pj-completed-by', source_secured: 'pj-source-secured', vault_verified: 'pj-vault-verified' } }
+};
 
 // --- UTILITIES ---
 export async function uploadFile(file, folderPath) {
@@ -43,7 +54,7 @@ export async function logAudit(action, collectionName, recordId, details) {
 }
 
 // --- CORE CRUD OPERATIONS ---
-export async function addData(collectionName, data, formMaps) {
+export async function addData(collectionName, data) {
     try {
         if (window.editModeId && window.editModeCollection === collectionName) {
             const existingDoc = await getDoc(doc(db, collectionName, window.editModeId));
@@ -97,7 +108,6 @@ export async function executeDelete() {
         closeConfirmModal();
         closeModal();
         
-        // Let the UI charts/dashboards know they need to refresh
         if (window.updateDashboard) await window.updateDashboard();
         if (window.renderCalendar) await window.renderCalendar();
         hideLoader();
@@ -134,13 +144,14 @@ export function fetchData(collectionName, listId) {
                     let recordDate = item.timestamp || item.created_at || item.logged_time || item.completion_time || item.activity_date || item.planned_date || item.transport_date || item.eval_date || '';
                     if (recordDate) li.setAttribute('data-date', recordDate.split('T')[0]); 
 
-                    // Standard UI Formatting based on Collection
+                    // Standard UI Formatting restored!
                     if (collectionName === 'equipment') {
                         displayText = `${item.type?.toUpperCase() || 'UNKNOWN TYPE'} - Serial: ${item.serial_number} (Cal Due: ${item.calibration_due_date})`;
                         docUrl = item.certificate_url;
                     } else if (collectionName === 'sources') {
+                        const currentAct = calculateCurrentActivity(item.initial_activity_curies, item.isotope, item.activity_date);
                         const statusTag = item.vault_status === 'OUT' ? ' [🦺 DEPLOYED]' : '';
-                        displayText = `${item.isotope} (SN: ${item.serial_number}) - Initial: ${item.initial_activity_curies} Ci${statusTag}`;
+                        displayText = `${item.isotope} (SN: ${item.serial_number}) - Initial: ${item.initial_activity_curies} Ci | CURRENT: ${currentAct} Ci${statusTag}`;
                         if(item.vault_status === 'OUT') li.style.borderLeft = "5px solid #f0ad4e";
                         docUrl = item.certificate_url;
                     } else if (collectionName === 'cameras') {
@@ -149,11 +160,22 @@ export function fetchData(collectionName, listId) {
                         if(item.vault_status === 'OUT') li.style.borderLeft = "5px solid #f0ad4e";
                     } else if (collectionName === 'personnel') {
                         displayText = `${item.full_name} (Cert: ${item.cert_number}) - Eval: ${item.last_6mo_eval_date}`;
+                    } else if (collectionName === 'field_evaluations') {
+                        displayText = `${item.eval_date}: ${item.radiographer_evaluated} evaluated by ${item.evaluator}`;
                     } else if (collectionName === 'work_plans') {
                         displayText = `Job ${item.job_number} - Location: ${item.location} (${item.location_type}) on ${item.planned_date}`;
                         docUrl = item.diagram_url;
                     } else if (collectionName === 'transport_logs') {
-                        displayText = `${item.transport_date}: Camera ${item.camera_sn} to ${item.destination}`;
+                        const labelTag = item.dot_label ? item.dot_label : 'Unknown Label';
+                        const tiTag = item.transport_index !== undefined ? item.transport_index : 'Unknown TI';
+                        displayText = `${item.transport_date}: Camera ${item.camera_sn} to ${item.destination} | Label: ${labelTag} (TI: ${tiTag})`;
+                    } else if (collectionName === 'dosimetry_logs') {
+                        displayText = `${item.personnel_name} (Dosimeter: ${item.dosimeter_serial}) - ${item.initial_reading}mR to ${item.final_reading}mR`;
+                    } else if (collectionName === 'utilization_logs') {
+                        displayText = `Job ${item.job_reference} - RIC: ${item.radiographer_in_charge} (Max Survey: ${item.max_survey_reading} mR/hr)`;
+                    } else if (collectionName === 'post_job_reports') {
+                        const date = item.completion_time ? new Date(item.completion_time).toLocaleDateString() : 'Unknown Date';
+                        displayText = `Report by ${item.completed_by} on ${date} (Source Secured: ${item.source_secured ? 'Yes' : 'No'})`;
                     } else {
                         const values = Object.values(item).slice(0, 3).join(' - ');
                         displayText = `ID ${doc.id}: ${values}`;
@@ -189,9 +211,9 @@ export function fetchData(collectionName, listId) {
 }
 
 // --- INITIALIZE ALL EVENT LISTENERS ---
-export function setupEventListeners(formMaps) {
+export function setupEventListeners() {
     
-    // Example: Equipment Form Listener
+    // Equipment Form Listener
     const equipmentForm = document.getElementById('equipment-form');
     if (equipmentForm) {
         equipmentForm.addEventListener('submit', async (e) => {
@@ -207,7 +229,7 @@ export function setupEventListeners(formMaps) {
                 maintenance_status: 'Operational',
                 certificate_url: certUrl
             };
-            await addData('equipment', data, formMaps);
+            await addData('equipment', data);
             equipmentForm.reset();
             if(window.updateDashboard) window.updateDashboard();
             if(window.renderCalendar) window.renderCalendar(); 
@@ -215,7 +237,7 @@ export function setupEventListeners(formMaps) {
         });
     }
 
-    // Example: Vault Check-In/Out Listener
+    // Vault Check-In/Out Listener
     const assetForm = document.getElementById('asset-tracking-form');
     if (assetForm) {
         const radios = assetForm.querySelectorAll('input[name="trk-action"]');
@@ -231,20 +253,23 @@ export function setupEventListeners(formMaps) {
             const action = assetForm.querySelector('input[name="trk-action"]:checked').value;
             const camSN = document.getElementById('trk-cam').value.trim();
             const srcSN = document.getElementById('trk-src').value.trim();
+            const user = document.getElementById('trk-user').value.trim();
+            const job = document.getElementById('trk-job').value.trim();
             const status = action === 'checkout' ? 'OUT' : 'IN';
 
             try {
                 if (camSN) {
                     const camQ = query(collection(db, 'cameras'), where('serial_number', '==', camSN));
                     const camSnap = await getDocs(camQ);
-                    camSnap.forEach(async (d) => await updateDoc(doc(db, 'cameras', d.id), { vault_status: status }));
+                    camSnap.forEach(async (d) => await updateDoc(doc(db, 'cameras', d.id), { vault_status: status, current_job: job, current_user: user }));
                 }
                 if (srcSN) {
                     const srcQ = query(collection(db, 'sources'), where('serial_number', '==', srcSN));
                     const srcSnap = await getDocs(srcQ);
-                    srcSnap.forEach(async (d) => await updateDoc(doc(db, 'sources', d.id), { vault_status: status }));
+                    srcSnap.forEach(async (d) => await updateDoc(doc(db, 'sources', d.id), { vault_status: status, current_job: job, current_user: user }));
                 }
                 assetForm.reset();
+                document.getElementById('trk-details-group').style.display = 'grid';
                 if(window.updateDeployedAssetsDashboard) await window.updateDeployedAssetsDashboard();
             } catch (err) {
                 console.error("Asset Tracking Error:", err);
@@ -256,7 +281,7 @@ export function setupEventListeners(formMaps) {
 
     // Universal Form Listener for all other mapped forms
     for (const [collectionName, map] of Object.entries(formMaps)) {
-        if (map.formId === 'equipment-form') continue; // Handled explicitly above
+        if (map.formId === 'equipment-form') continue; 
 
         const form = document.getElementById(map.formId);
         if (form) {
@@ -265,15 +290,22 @@ export function setupEventListeners(formMaps) {
                 showLoader();
                 let data = {};
                 
-                // 1. Grab all standard text/number/checkbox inputs mapped in formMaps
+                // 1. Grab inputs & correctly type-cast numbers
                 for (const [dbKey, htmlId] of Object.entries(map.fields)) {
                     const el = document.getElementById(htmlId);
                     if (el) {
-                        data[dbKey] = el.type === 'checkbox' ? el.checked : el.value;
+                        if (el.type === 'checkbox') {
+                            data[dbKey] = el.checked;
+                        } else if (el.type === 'number') {
+                            data[dbKey] = parseFloat(el.value) || 0;
+                        } else {
+                            // Properly save "N/A" if the checkbox disabled the field
+                            data[dbKey] = el.disabled ? 'N/A' : el.value;
+                        }
                     }
                 }
 
-                // 2. Handle nested checklist items (for Field Evaluations)
+                // 2. Handle nested checklist items 
                 if (map.nested && map.nested.checklist) {
                     data.checklist = {};
                     for (const [chkKey, chkId] of Object.entries(map.nested.checklist)) {
@@ -282,7 +314,7 @@ export function setupEventListeners(formMaps) {
                     }
                 }
 
-                // 3. Handle Special Cases (Files, Canvases, Vault Status, Multi-Selects)
+                // 3. Handle Special Cases (Files, Canvases, Vault Status)
                 if (collectionName === 'sources' || collectionName === 'cameras') {
                     data.vault_status = 'IN';
                     if (collectionName === 'sources') {
@@ -312,21 +344,57 @@ export function setupEventListeners(formMaps) {
                         if(canvas) data.sketch_data = canvas.toDataURL('image/png');
                     }
                 }
-
-                if (collectionName === 'post_job_reports' && window.sigPadDirty) {
-                    const canvas = document.getElementById('sig-canvas');
-                    if(canvas) data.signature_data = canvas.toDataURL('image/png');
+                
+                // Restoring missing Transport logic
+                if (collectionName === 'transport_logs') {
+                    if(window.calculateDOTShipping) window.calculateDOTShipping();
+                    data.content_category = document.getElementById('tr-category')?.value || '';
+                    data.isotope = document.getElementById('tr-isotope')?.value || '';
+                    data.activity_ci = parseFloat(document.getElementById('tr-activity')?.value) || 0;
+                    data.package_type = document.getElementById('tr-calc-pkg')?.textContent || '--';
+                    data.transport_index = parseFloat(document.getElementById('tr-calc-ti')?.textContent) || 0;
+                    data.dot_label = document.getElementById('tr-calc-label')?.textContent || '--';
+                    data.proper_shipping_name = document.getElementById('tr-calc-psn')?.textContent || '--';
                 }
 
-                // Save to database and reset UI
-                await addData(collectionName, data, formMaps);
+                if (collectionName === 'post_job_reports') {
+                    data.daily_log_generated = true;
+                    if (window.sigPadDirty) {
+                        const canvas = document.getElementById('sig-canvas');
+                        if(canvas) data.signature_data = canvas.toDataURL('image/png');
+                    }
+                }
+
+                // Save to database
+                await addData(collectionName, data);
+                
+                // Trigger dynamic UI updates based on the collection we just modified
+                if (collectionName === 'sources') {
+                    if(window.populateSourceDropdown) window.populateSourceDropdown();
+                    if(window.updateDecayChart) window.updateDecayChart();
+                }
+                if (collectionName === 'personnel' && window.populatePersonnelDropdown) {
+                    window.populatePersonnelDropdown();
+                }
+                if ((collectionName === 'cameras' || collectionName === 'sources') && window.updateDeployedAssetsDashboard) {
+                    window.updateDeployedAssetsDashboard();
+                }
                 
                 form.reset();
-                if (collectionName === 'work_plans') window.clearSketch();
-                if (collectionName === 'post_job_reports') window.clearSignature();
+                if (collectionName === 'work_plans' && window.clearSketch) window.clearSketch();
+                if (collectionName === 'post_job_reports' && window.clearSignature) window.clearSignature();
                 
                 if (window.updateDashboard) window.updateDashboard();
                 if (window.renderCalendar) window.renderCalendar();
+                
+                // Specifically un-disable personnel fields after reset
+                if (collectionName === 'personnel') {
+                    ['per-cert', 'per-trust', 'per-hazmat', 'per-eval', 'per-drill'].forEach(id => {
+                        const ele = document.getElementById(id);
+                        if(ele) { ele.disabled = false; ele.required = true; ele.style.backgroundColor = ''; }
+                    });
+                }
+                
                 hideLoader();
             });
         }
@@ -454,9 +522,7 @@ function populateFormForEditClone(docObj, isEdit) {
     }, 300);
 }
 
-// Attach isolated UI event listeners
 export function attachMinorListeners() {
-    // DOT Math auto-calc listeners
     ['tr-isotope', 'tr-category', 'tr-activity', 'tr-surface', 'tr-1m'].forEach(id => {
         const el = document.getElementById(id);
         if(el) {
@@ -465,13 +531,11 @@ export function attachMinorListeners() {
         }
     });
 
-    // Boundary auto-calc listeners
     const sourceSelect = document.getElementById('wp-source');
     const collimatorCheck = document.getElementById('wp-collimator');
     if(sourceSelect) sourceSelect.addEventListener('change', window.calculateBoundary);
     if(collimatorCheck) collimatorCheck.addEventListener('change', window.calculateBoundary);
 
-    // Disclaimer Modal
     const ackCheckbox = document.getElementById('ack-checkbox');
     const proceedBtn = document.getElementById('disclaimer-proceed-btn');
     const dontShowCheckbox = document.getElementById('dont-show-checkbox');
