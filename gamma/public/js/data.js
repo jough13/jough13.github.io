@@ -292,6 +292,9 @@ export function setupEventListeners(formMaps) {
                 }
 
                 if (collectionName === 'work_plans') {
+                    data.rso_approval_status = 'Pending';
+                    data.raso_approval_status = 'Pending';
+                    
                     const ppe = document.getElementById('wp-ppe');
                     if(ppe) data.rwp_ppe = Array.from(ppe.selectedOptions).map(o => o.value).join(', ');
                     
