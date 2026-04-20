@@ -54,8 +54,9 @@ export function showSection(sectionId) {
         target.classList.add('active');
         target.style.display = 'block';
     }
-    if(sectionId === 'calendar-view' && window.calendar) {
-        setTimeout(() => { window.calendar.render(); }, 100);
+    
+    if(sectionId === 'calendar-view' && window.calendarInstance) {
+        setTimeout(() => { window.calendarInstance.render(); }, 100);
     }
 }
 
