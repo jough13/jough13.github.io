@@ -522,14 +522,15 @@
                         <h3>Transportation & Shipping Logs <button type="button" class="btn-export" onclick="window.exportCSV('transport_logs')">Export CSV</button></h3>
                         <p style="margin-top: 0; font-size: 0.85rem; color: var(--header-p);">Required for movement of sources to field locations (RAD-010 5.11.4 & 5.12.1)</p>
                         <form id="transport-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            
                             <div style="display: flex; flex-direction: column; gap: 10px;">
                                 <label for="tr-date">Transport Date</label>
                                 <input type="date" id="tr-date" required>
                                 
                                 <label for="tr-camera">Camera / Exposure Device SN <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="window.startScanner('tr-camera')">📷 Scan</button></label>
-                                    <select id="tr-camera" required>
-                                        <option value="">Select Camera...</option>
-                                    </select>
+                                <select id="tr-camera" required>
+                                    <option value="">Select Camera...</option>
+                                </select>
 
                                 <label for="tr-destination">Destination</label>
                                 <input type="text" id="tr-destination" required>
@@ -555,7 +556,7 @@
                                         <input type="number" step="0.01" id="tr-activity" readonly style="background: #eee; cursor: not-allowed; border-color: #ccc;">
                                     </div>
                                 </div>
-                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                            </div> <div style="display: flex; flex-direction: column; gap: 10px;">
                                 <label for="tr-surface">Max Surface Dose Rate (mR/hr)</label>
                                 <input type="number" step="0.1" id="tr-surface" required>
 
