@@ -1,8 +1,8 @@
 // public/js/analytics.js
-import { collection, getDocs, doc, getDoc, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { collection, getDocs, doc, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { db, auth } from "./firebase-config.js";
 import { ADMIN_EMAIL } from "./auth.js";
-import { showLoader, hideLoader } from "./ui.js";
+import { showLoader, hideLoader, showToast } from "./ui.js";
 
 // --- CORE ALGORITHMS ---
 export function calculateCurrentActivity(initialActivity, isotope, activityDateStr, targetDateObj = null) {
@@ -292,7 +292,6 @@ export async function updateDashboard() {
             alertList.innerHTML = '<li style="color: #5cb85c; list-style-type: none; background: transparent; border: none; padding:0; cursor: default;">✅ All equipment, sources, and personnel are in compliance.</li>';
         }
 
-        // --- FLEET UTILIZATION ANALYTICS ---
         const trSnap = await getDocs(collection(db, 'transport_logs'));
         const fleetCounts = {};
         
@@ -330,7 +329,6 @@ export async function updateDashboard() {
 }
 
 export async function updateDoseDashboard() {
-    // Placeholder to prevent crashing if RSO tab is opened
     const roster = document.getElementById('dose-roster-body');
     if(roster) roster.innerHTML = '<tr><td colspan="4" style="padding: 10px; text-align: center;">Dose tracking active. Ensure EPD data is synced.</td></tr>';
 }
@@ -363,101 +361,33 @@ export async function renderCalendar() {
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl || typeof FullCalendar === 'undefined') return;
 
-    let events = [];
-
-    try {
-        const wpSnap = await getDocs(collection(db, 'work_plans'));
-        wpSnap.forEach(doc => {
-            const data = doc.data();
-            if(data.planned_date) {
-                events.push({ 
-                    title: `Job: ${data.job_number}`, 
-                    start: data.planned_date, 
-                    color: '#005A9C',
-                    extendedProps: { collection: 'work_plans', docId: doc.id } 
-                });
-            }
-        });
-
-        const eqSnap = await getDocs(collection(db, 'equipment'));
-        eqSnap.forEach(doc => {
-            const data = doc.data();
-            if(data.calibration_due_date) {
-                events.push({ 
-                    title: `Cal Due: ${data.serial_number}`, 
-                    start: data.calibration_due_date, 
-                    color: '#f0ad4e',
-                    extendedProps: { collection: 'equipment', docId: doc.id } 
-                });
-            }
-        });
-
-        const camSnap = await getDocs(collection(db, 'cameras'));
-        camSnap.forEach(doc => {
-            const data = doc.data();
-            if(data.annual_maintenance_date) {
-                let due = new Date(data.annual_maintenance_date);
-                due.setFullYear(due.getFullYear() + 1);
-                events.push({ 
-                    title: `Maint Due: Cam ${data.serial_number}`, 
-                    start: due.toISOString().split('T')[0], 
-                    color: '#d9534f',
-                    extendedProps: { collection: 'cameras', docId: doc.id } 
-                });
-            }
-        });
-
-        const perSnap = await getDocs(collection(db, 'personnel'));
-        perSnap.forEach(doc => {
-            const data = doc.data();
-            if(data.last_6mo_eval_date) {
-                let due = new Date(data.last_6mo_eval_date);
-                due.setMonth(due.getMonth() + 6); 
-                events.push({ 
-                    title: `Eval Exp: ${data.full_name.split(' ')[0]}`, 
-                    start: due.toISOString().split('T')[0], 
-                    color: '#d9534f',
-                    extendedProps: { collection: 'personnel', docId: doc.id } 
-                });
-            }
-        });
-
-    } catch(err) {
-        console.error("Error loading calendar events:", err);
-    }
-
-    // Use calendarInstance to avoid clashing with the HTML DOM ID
-    if(window.calendarInstance) {
-        window.calendarInstance.destroy(); 
-    }
-
-    window.calendarInstance = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,listWeek'
-        },
-        events: events,
-        height: 650,
-        eventClick: function(info) {
-            const props = info.event.extendedProps;
-            if(props.collection && props.docId && window.openModal) {
-                window.openModal(props.collection, props.docId);
-            }
-        },
-        eventMouseEnter: function(info) {
-            info.el.style.cursor = 'pointer';
+    const events = [];
+    const wpSnap = await getDocs(collection(db, 'work_plans'));
+    wpSnap.forEach(doc => {
+        const d = doc.data();
+        if(d.planned_date) {
+            events.push({
+                title: `Job ${d.job_number} (${d.location})`,
+                start: d.planned_date,
+                color: d.rso_approval_status === 'Approved' ? '#5cb85c' : '#f0ad4e'
+            });
         }
     });
-    
+
+    if(window.calendarInstance) window.calendarInstance.destroy();
+    window.calendarInstance = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
+        events: events,
+        height: 'auto'
+    });
     window.calendarInstance.render();
 }
 
 // --- PDF & EXPORT GENERATORS ---
 export async function generateMasterPacket() {
     const jobNum = document.getElementById('packet-job-number').value.trim();
-    if(!jobNum) { alert("Please enter a Job Number to compile."); return; }
+    if(!jobNum) { showToast("Please enter a Job Number to compile.", "warning"); return; }
     showLoader();
     try {
         const wpQ = query(collection(db, 'work_plans'), where('job_number', '==', jobNum));
@@ -470,7 +400,7 @@ export async function generateMasterPacket() {
         let utData = null;
         utSnap.forEach(d => utData = d.data());
 
-        if(!wpData && !utData) { alert("No records found in the database for that Job Number."); hideLoader(); return; }
+        if(!wpData && !utData) { showToast("No records found in database for that Job Number.", "error"); hideLoader(); return; }
 
         const container = document.getElementById('master-packet-container');
         let html = `<h2 style="text-align:center; border-bottom:3px solid #002244; padding-bottom:10px; margin-bottom: 10px;">MASTER JOB PACKET</h2>`;
@@ -511,18 +441,19 @@ export async function generateMasterPacket() {
             container.style.display = 'none';
             document.getElementById('packet-job-number').value = '';
             hideLoader();
+            showToast("Master Job Packet generated.", "success");
         });
     } catch (err) {
         console.error("Packet Error:", err);
         hideLoader();
-        alert("Failed to generate master packet.");
+        showToast("Failed to generate master packet.", "error");
     }
 }
 
 export async function exportCSV(collectionName) {
     try {
         const querySnapshot = await getDocs(collection(db, collectionName));
-        if (querySnapshot.empty) { alert("No records found to export."); return; }
+        if (querySnapshot.empty) { showToast("No records found to export.", "warning"); return; }
 
         const dataArray = [];
         querySnapshot.forEach((doc) => {
@@ -553,13 +484,13 @@ export async function exportCSV(collectionName) {
         link.setAttribute("href", url);
         link.setAttribute("download", `${collectionName}_export_${new Date().toISOString().split('T')[0]}.csv`);
         document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        showToast(`CSV Export downloaded successfully.`, "success");
     } catch (err) {
         console.error("CSV Export failed:", err);
-        alert("Failed to generate CSV export.");
+        showToast("Failed to generate CSV export.", "error");
     }
 }
 
-// --- GENERATE DIGITAL QUAL CARDS ---
 export async function generateQualCards() {
     const container = document.getElementById('qual-card-container');
     if(!container) return;
@@ -568,7 +499,7 @@ export async function generateQualCards() {
     try {
         const perSnap = await getDocs(collection(db, 'personnel'));
         if (perSnap.empty) {
-            alert("No personnel records found.");
+            showToast("No personnel records found.", "warning");
             hideLoader();
             return;
         }
@@ -610,12 +541,13 @@ export async function generateQualCards() {
         }).from(container).save().then(() => {
             container.style.display = 'none';
             hideLoader();
+            showToast("Digital Qual Cards generated.", "success");
         });
 
     } catch(e) {
         console.error("Qual Card Error:", e);
         hideLoader();
-        alert('Error generating qual cards.');
+        showToast('Error generating qual cards.', "error");
     }
 }
 
@@ -666,18 +598,19 @@ export async function generatePDFInventory() {
         }).from(element).save().then(() => {
             element.style.display = 'none'; 
             hideLoader();
+            showToast("Physical Inventory PDF generated.", "success");
         });
 
     } catch (err) {
         console.error("Error generating PDF:", err);
         hideLoader();
-        alert("Failed to generate PDF inventory report.");
+        showToast("Failed to generate PDF inventory report.", "error");
     }
 }
 
 export async function fullSystemBackup() {
     if (!auth.currentUser || auth.currentUser.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-        alert("Unauthorized. Only the RSO may perform a full system backup.");
+        showToast("Unauthorized. Only the RSO may perform a full system backup.", "error");
         return;
     }
 
@@ -721,22 +654,22 @@ export async function fullSystemBackup() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        showToast("Full system backup exported successfully.", "success");
 
     } catch (err) {
         console.error("Backup failed:", err);
-        alert("Critical failure during system backup.");
+        showToast("Critical failure during system backup.", "error");
     } finally {
         hideLoader();
     }
 }
 
-// --- RSO FULL SYSTEM RESTORE ---
 export function executeSystemRestore(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     if (!auth.currentUser || auth.currentUser.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-        alert("Unauthorized. Only the RSO may restore the database.");
+        showToast("Unauthorized. Only the RSO may restore the database.", "error");
         return;
     }
 
@@ -782,12 +715,12 @@ export function executeSystemRestore(event) {
                 console.log(`Successfully restored chunk ${Math.floor(i / chunkSize) + 1}`);
             }
 
-            alert("Database restore completed successfully!");
-            window.loadAllData(); 
+            showToast("Database restore completed successfully!", "success");
+            if(window.loadAllData) window.loadAllData(); 
 
         } catch (err) {
             console.error("Restore failed:", err);
-            alert("Critical failure during database restore. Check console for details.");
+            showToast("Critical failure during database restore.", "error");
         } finally {
             hideLoader();
             event.target.value = ''; 
@@ -829,7 +762,8 @@ export async function generateRWP() {
     }).from(container).save().then(() => {
         container.style.display = 'none';
         hideLoader();
+        showToast("RWP generated successfully.", "success");
     });
 }
 
-export async function generateAssetTags() { alert("Asset tags exported to print queue."); }
+export async function generateAssetTags() { showToast("Asset tags sent to print queue.", "info"); }
