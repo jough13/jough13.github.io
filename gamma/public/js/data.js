@@ -6,7 +6,6 @@ import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/fireba
 import { db, storage, auth } from "./firebase-config.js";
 import { showLoader, hideLoader, closeConfirmModal, closeModal } from "./ui.js";
 
-// --- STATE MANAGERS & CONFIG ---
 const activeListeners = {}; 
 
 export const formMaps = {
@@ -22,7 +21,6 @@ export const formMaps = {
     'post_job_reports': { formId: 'reports-form', fields: { completed_by: 'pj-completed-by', source_secured: 'pj-source-secured', vault_verified: 'pj-vault-verified' } }
 };
 
-// --- UTILITIES ---
 export async function uploadFile(file, folderPath) {
     if (!file) return null;
     try {
@@ -47,12 +45,9 @@ export async function logAudit(action, collectionName, recordId, details) {
             record_id: recordId,
             details: details
         });
-    } catch (err) {
-        console.error("Audit log failed to write:", err);
-    }
+    } catch (err) { console.error("Audit log failed to write:", err); }
 }
 
-// --- CORE CRUD OPERATIONS ---
 export async function addData(collectionName, data) {
     try {
         if (window.editModeId && window.editModeCollection === collectionName) {
@@ -116,16 +111,30 @@ export async function executeDelete() {
     }
 }
 
-// --- LIVE DATA SYNC (onSnapshot) ---
+// 🐛 BUG FIX: The missing RSO Approval Function
+export async function approveWorkPlan() {
+    if (!window.currentOpenDoc || window.currentOpenDoc.collection !== 'work_plans') return;
+    try {
+        showLoader();
+        await updateDoc(doc(db, 'work_plans', window.currentOpenDoc.id), { rso_approval_status: 'Approved' });
+        await logAudit('UPDATED', 'work_plans', window.currentOpenDoc.id, `RSO officially approved Work Plan.`);
+        alert("Work Plan officially approved by RSO.");
+        closeModal();
+        if(window.updateDashboard) window.updateDashboard();
+        if(window.renderCalendar) window.renderCalendar();
+        hideLoader();
+    } catch (e) {
+        console.error("Failed to approve work plan:", e);
+        hideLoader();
+    }
+}
+
 export function fetchData(collectionName, listId) {
     return new Promise((resolve) => {
         const ul = document.getElementById(listId);
         if (!ul) return resolve();
 
-        if (activeListeners[collectionName]) {
-            activeListeners[collectionName](); 
-        }
-
+        if (activeListeners[collectionName]) activeListeners[collectionName](); 
         let isFirstLoad = true;
 
         activeListeners[collectionName] = onSnapshot(collection(db, collectionName), (querySnapshot) => {
@@ -194,11 +203,7 @@ export function fetchData(collectionName, listId) {
                     ul.appendChild(li);
                 });
             }
-
-            if (isFirstLoad) {
-                isFirstLoad = false;
-                resolve();
-            }
+            if (isFirstLoad) { isFirstLoad = false; resolve(); }
         }, (err) => {
             console.error(`Error syncing ${collectionName}:`, err);
             ul.innerHTML = `<li style="color:red; background: transparent; border: none;">Error loading live data.</li>`;
@@ -207,9 +212,7 @@ export function fetchData(collectionName, listId) {
     });
 }
 
-// --- INITIALIZE ALL EVENT LISTENERS ---
 export function setupEventListeners() {
-    
     const equipmentForm = document.getElementById('equipment-form');
     if (equipmentForm) {
         equipmentForm.addEventListener('submit', async (e) => {
@@ -274,7 +277,6 @@ export function setupEventListeners() {
         });
     }
 
-    // Universal Form Listener
     for (const [collectionName, map] of Object.entries(formMaps)) {
         if (map.formId === 'equipment-form') continue; 
 
@@ -388,7 +390,6 @@ export function setupEventListeners() {
     }
 }
 
-// --- DROPDOWN POPULATORS ---
 export async function populatePersonnelDropdown() {
     const dlNameSelect = document.getElementById('dl-name');
     if (!dlNameSelect) return;
@@ -423,7 +424,6 @@ export async function populateSourceDropdown() {
     } catch (err) { console.error("Error loading sources:", err); }
 }
 
-// --- EDIT & CLONE ENGINE ---
 export function editRecord() {
     if(!window.currentOpenDoc || !window.currentOpenDoc.fullData) return;
     if (window.currentOpenDoc.collection === 'work_plans' && window.currentOpenDoc.fullData.rso_approval_status === 'Approved') {
