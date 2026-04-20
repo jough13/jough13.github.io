@@ -234,6 +234,23 @@
                 </div>
 
                 <div class="dashboard-grid">
+                    
+                    <div class="card">
+                        <h3>Exposure Devices (Cameras) <button type="button" class="btn-export" onclick="window.exportCSV('cameras')">Export CSV</button></h3>
+                        <form id="cameras-form">
+                            <label for="cam-model">Make & Model</label>
+                            <input type="text" id="cam-model" placeholder="e.g. QSA Global 880 Delta" required>
+                            <label for="cam-serial">Serial Number <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="window.startScanner('cam-serial')">📷 Scan</button></label>
+                            <input type="text" id="cam-serial" required>
+                            <label for="cam-du-date">Date of LAST DU Leak Test</label>
+                            <input type="date" id="cam-du-date">
+                            <label for="cam-maint-date">Date of LAST Annual Maintenance</label>
+                            <input type="date" id="cam-maint-date" required>
+                            <button type="submit">Add Camera</button>
+                        </form>
+                        <ul id="cameras-list">Loading...</ul>
+                    </div>
+
                     <div class="card">
                         <h3>Source Vault Logs <button type="button" class="btn-export" onclick="window.exportCSV('sources')">Export CSV</button></h3>
                         <form id="sources-form">
@@ -256,29 +273,10 @@
                             <input type="date" id="src-leak-test" required>
                             <label for="src-cert">Upload Source Certificate / Leak Test</label>
                             <input type="file" id="src-cert" accept=".pdf,.jpg,.jpeg,.png">
-                            <button type="submit">Log Source</button>
+                            
+                            <button type="submit">Add Source</button>
                         </form>
                         <ul id="sources-list">Loading...</ul>
-                    </div>
-
-                    <div class="card">
-                        <h3>Exposure Devices (Cameras) <button type="button" class="btn-export" onclick="window.exportCSV('cameras')">Export CSV</button></h3>
-                        <form id="cameras-form">
-                            <label for="cam-model">Make & Model</label>
-                            <input type="text" id="cam-model" placeholder="e.g. QSA Global 880 Delta" required>
-                            
-                            <label for="cam-serial">Serial Number <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="window.startScanner('cam-serial')">📷 Scan</button></label>
-                            <input type="text" id="cam-serial" required>
-                            
-                            <label for="cam-du-date">Date of LAST DU Leak Test</label>
-                            <input type="date" id="cam-du-date">
-                            
-                            <label for="cam-maint-date">Date of LAST Annual Maintenance</label>
-                            <input type="date" id="cam-maint-date" required>
-                            
-                            <button type="submit">Add Camera</button>
-                        </form>
-                        <ul id="cameras-list">Loading...</ul>
                     </div>
 
                     <div class="card" style="min-width: 100%;">
@@ -743,18 +741,31 @@
                 <button id="modal-rwp-btn" class="btn-secondary" style="background-color: #002244; color: white; border: none; font-weight: bold; display: none;" onclick="window.generateRWP()">🖨️ Print RWP</button>
                 <button class="btn-secondary" onclick="window.editRecord()" style="background-color: #f0ad4e; color: #333; border: none; font-weight: bold;">✏️ Edit</button>
                 <button class="btn-secondary" onclick="window.cloneRecord()" style="background-color: #5bc0de; color: #fff; border: none; font-weight: bold;">📄 Clone</button>
-                <button id="modal-delete-btn" class="btn-danger admin-only">Delete Record</button>
+                <button id="modal-delete-btn" class="btn-danger admin-only" onclick="window.openDeleteConfirm()">Delete Record</button>
             </div>
         </div>
     </div>
 
     <div id="delete-confirm-modal" class="modal-overlay" style="z-index: 1001;">
-        <div class="modal-content" style="max-width: 400px; text-align: center;">
-            <h3 style="color: #d9534f; margin-top: 0; border: none;">Confirm Deletion</h3>
-            <p>Are you sure you want to delete this record? This action cannot be undone and will permanently remove it from the database.</p>
+        <div class="modal-content" style="max-width: 450px; text-align: center;">
+            <h3 id="delete-modal-title" style="color: #d9534f; margin-top: 0; border: none;">Confirm Deletion</h3>
+            <p id="delete-modal-desc">Are you sure you want to delete this record? This action cannot be undone and will permanently remove it from the database.</p>
+            
+            <div id="delete-source-fields" style="display: none; margin-top: 15px; text-align: left; background: rgba(0,0,0,0.05); padding: 15px; border-radius: 4px; border: 1px solid var(--border-color);">
+                <label style="font-weight: bold; font-size: 0.9rem;">Transfer/Disposal Status</label>
+                <select id="del-src-status" style="width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 15px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    <option value="Transferred">Transferred to Authorized Licensee</option>
+                    <option value="Disposed">Properly Disposed / Decayed</option>
+                    <option value="Lost_Stolen">Reported Lost or Stolen</option>
+                </select>
+                
+                <label style="font-weight: bold; font-size: 0.9rem;">Upload Record (Required for Audit)</label>
+                <input type="file" id="del-src-file" accept=".pdf,.jpg,.jpeg,.png" style="width: 100%; margin-top: 5px;">
+            </div>
+
             <div class="modal-actions" style="justify-content: center; margin-top: 25px;">
                 <button class="btn-secondary" onclick="window.closeConfirmModal()">Cancel</button>
-                <button class="btn-danger" onclick="window.executeDelete()">Yes, Delete Record</button>
+                <button class="btn-danger" id="modal-confirm-delete-btn" onclick="window.executeDelete()">Yes, Delete Record</button>
             </div>
         </div>
     </div>
