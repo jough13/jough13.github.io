@@ -9,7 +9,7 @@ import {
 } from "./ui.js";
 import { 
     fetchData, setupEventListeners, executeDelete, 
-    populateSourceDropdown, populatePersonnelDropdown, editRecord, cloneRecord, attachMinorListeners, approveWorkPlan
+    populateSourceDropdown, populatePersonnelDropdown, editRecord, cloneRecord, attachMinorListeners, approveWorkPlan, forceReconnect
 } from "./data.js";
 import { 
     updateDecayChart, updateDashboard, updateDoseDashboard, updateDeployedAssetsDashboard,
@@ -116,3 +116,5 @@ window.renderCalendar = renderCalendar;
 window.generateAssetTags = generateAssetTags;
 
 window.loadAllData = loadAllData;
+
+window.forceReconnect = forceReconnect;
