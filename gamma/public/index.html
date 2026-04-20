@@ -208,20 +208,26 @@
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                             <div>
                                 <label>Camera S/N <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="window.startScanner('trk-cam')">📷 Scan</button></label>
-                                <input type="text" id="trk-cam">
+                                <select id="trk-cam">
+                                    <option value="">Select Camera...</option>
+                                </select>
                             </div>
                             <div>
                                 <label>Source S/N <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="window.startScanner('trk-src')">📷 Scan</button></label>
-                                <input type="text" id="trk-src">
+                                <select id="trk-src">
+                                    <option value="">Select Source...</option>
+                                </select>
                             </div>
                             <div id="trk-details-group" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                                 <div>
                                     <label>Radiographer (RIC)</label>
-                                    <input type="text" id="trk-user">
+                                    <select id="trk-user">
+                                        <option value="">Select Personnel...</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label>Job Number</label>
-                                    <input type="text" id="trk-job">
+                                    <input type="text" id="trk-job" placeholder="e.g. J-2026-001">
                                 </div>
                             </div>
                         </div>
