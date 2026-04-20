@@ -21,9 +21,10 @@ export const formMaps = {
     'post_job_reports': { formId: 'reports-form', fields: { completed_by: 'pj-completed-by', source_secured: 'pj-source-secured', vault_verified: 'pj-vault-verified' } }
 };
 
+// --- NETWORK MANAGEMENT ---
 export async function manualGoOffline() {
     try {
-        await disableNetwork(db); // Instantly cuts Firebase off, forcing instant cache reads
+        await disableNetwork(db); 
         document.getElementById('btn-force-offline').style.display = 'none';
         document.getElementById('btn-force-online').style.display = 'inline-block';
         document.getElementById('network-status').innerHTML = '🔴 Offline';
@@ -35,7 +36,7 @@ export async function manualGoOffline() {
 export async function manualGoOnline() {
     try {
         showToast("Attempting to reconnect...", "info");
-        await enableNetwork(db); // Re-opens Firebase's connection
+        await enableNetwork(db); 
         document.getElementById('btn-force-online').style.display = 'none';
         document.getElementById('btn-force-offline').style.display = 'inline-block';
         document.getElementById('network-status').innerHTML = '🟢 Online';
@@ -135,7 +136,6 @@ export async function executeDelete() {
             const fileUrl = await uploadFile(file, 'source_disposals');
             const status = document.getElementById('del-src-status').value;
 
-            // Soft-Delete: We mark it deleted, but keep the record
             await updateDoc(doc(db, colToDel, idToDel), {
                 vault_status: 'DELETED',
                 disposal_status: status,
@@ -146,7 +146,6 @@ export async function executeDelete() {
             showToast("Source officially archived and removed from active inventory.", "success");
             
         } else {
-            // Standard Hard-Delete for non-sources
             await deleteDoc(doc(db, colToDel, idToDel));
             await logAudit('DELETED', colToDel, idToDel, `Record permanently deleted.`);
             showToast("Record permanently deleted.", "info");
@@ -193,18 +192,12 @@ export function fetchData(collectionName, listId) {
         if (activeListeners[collectionName]) activeListeners[collectionName](); 
         let isFirstLoad = true;
 
-        // NEW: 10-Second Firebase Timeout Detector
-        let connectionTimeout = setTimeout(() => {
-            setAppOffline(); // Turns the button RED and makes it clickable
-        }, 10000);
+        let connectionTimeout = setTimeout(() => { setAppOffline(); }, 10000);
 
-        // Notice we added { includeMetadataChanges: true } to track cache vs server
         activeListeners[collectionName] = onSnapshot(collection(db, collectionName), { includeMetadataChanges: true }, (querySnapshot) => {
-            
-            // If data comes from the server, we are truly online.
             if (!querySnapshot.metadata.fromCache) {
-                clearTimeout(connectionTimeout); // Cancel the offline timer
-                setAppOnline(); // Turn button GREEN
+                clearTimeout(connectionTimeout); 
+                setAppOnline(); 
             }
             
             ul.innerHTML = '';
@@ -302,9 +295,7 @@ export function setupEventListeners() {
             equipmentForm.reset();
             if(window.updateDashboard) window.updateDashboard();
             if(window.renderCalendar) window.renderCalendar(); 
-
             if(window.populateSurveyMeterDropdown) window.populateSurveyMeterDropdown();
-            
             hideLoader();
         });
     }
@@ -468,6 +459,7 @@ export function setupEventListeners() {
     }
 }
 
+// --- DROPDOWN POPULATORS ---
 export async function populatePersonnelDropdown() {
     const dlNameSelect = document.getElementById('dl-name');
     const trkUserSelect = document.getElementById('trk-user'); 
@@ -494,6 +486,32 @@ export async function populatePersonnelDropdown() {
             if(pjCompletedBySelect) pjCompletedBySelect.innerHTML += `<option value="${val}">${val}</option>`;
         });
     } catch (err) { console.error("Error loading personnel:", err); }
+}
+
+export async function populateSourceDropdown() {
+    const wpSelect = document.getElementById('wp-source');
+    const trSelect = document.getElementById('tr-source');
+    const trkSelect = document.getElementById('trk-src'); 
+    try {
+        const querySnapshot = await getDocs(collection(db, 'sources'));
+        const optionsHTML = '<option value="">Select an active source...</option>';
+        if(wpSelect) wpSelect.innerHTML = optionsHTML;
+        if(trSelect) trSelect.innerHTML = optionsHTML;
+        if(trkSelect) trkSelect.innerHTML = '<option value="">Select Source...</option>';
+
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if(data.vault_status !== 'DELETED') {
+                const currentAct = calculateCurrentActivity(data.initial_activity_curies, data.isotope, data.activity_date);
+                const opt = `<option value="${doc.id}" data-activity="${currentAct}" data-isotope="${data.isotope}">${data.isotope} (SN: ${data.serial_number}) - ${currentAct} Ci</option>`;
+                const trkOpt = `<option value="${data.serial_number}">${data.isotope} (SN: ${data.serial_number})</option>`;
+                
+                if(wpSelect) wpSelect.innerHTML += opt;
+                if(trSelect) trSelect.innerHTML += opt;
+                if(trkSelect) trkSelect.innerHTML += trkOpt;
+            }
+        });
+    } catch (err) { console.error("Error loading sources:", err); }
 }
 
 export async function populateCameraDropdown() {
@@ -527,48 +545,7 @@ export async function populateSurveyMeterDropdown() {
     } catch (err) { console.error("Error loading equipment:", err); }
 }
 
-export async function populateSourceDropdown() {
-    const wpSelect = document.getElementById('wp-source');
-    const trSelect = document.getElementById('tr-source');
-    const trkSelect = document.getElementById('trk-src'); // NEW: Vault Source
-    try {
-        const querySnapshot = await getDocs(collection(db, 'sources'));
-        const optionsHTML = '<option value="">Select an active source...</option>';
-        if(wpSelect) wpSelect.innerHTML = optionsHTML;
-        if(trSelect) trSelect.innerHTML = optionsHTML;
-        if(trkSelect) trkSelect.innerHTML = '<option value="">Select Source...</option>';
-
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            if(data.vault_status !== 'DELETED') {
-                const currentAct = calculateCurrentActivity(data.initial_activity_curies, data.isotope, data.activity_date);
-                const opt = `<option value="${doc.id}" data-activity="${currentAct}" data-isotope="${data.isotope}">${data.isotope} (SN: ${data.serial_number}) - ${currentAct} Ci</option>`;
-                
-                // The Vault form searches by Serial Number, not Database ID
-                const trkOpt = `<option value="${data.serial_number}">${data.isotope} (SN: ${data.serial_number})</option>`;
-                
-                if(wpSelect) wpSelect.innerHTML += opt;
-                if(trSelect) trSelect.innerHTML += opt;
-                if(trkSelect) trkSelect.innerHTML += trkOpt;
-            }
-        });
-    } catch (err) { console.error("Error loading sources:", err); }
-}
-
-// Camera Dropdown Logic
-export async function populateCameraDropdown() {
-    const trkCamSelect = document.getElementById('trk-cam');
-    if (!trkCamSelect) return;
-    try {
-        const querySnapshot = await getDocs(collection(db, 'cameras'));
-        trkCamSelect.innerHTML = '<option value="">Select Camera...</option>';
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            trkCamSelect.innerHTML += `<option value="${data.serial_number}">${data.make_model} (SN: ${data.serial_number})</option>`;
-        });
-    } catch (err) { console.error("Error loading cameras:", err); }
-}
-
+// --- EDIT & CLONE ENGINE ---
 export function editRecord() {
     if(!window.currentOpenDoc || !window.currentOpenDoc.fullData) return;
     if (window.currentOpenDoc.collection === 'work_plans' && window.currentOpenDoc.fullData.rso_approval_status === 'Approved') {
