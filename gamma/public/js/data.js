@@ -155,9 +155,12 @@ export function fetchData(collectionName, listId) {
         let isFirstLoad = true;
 
         activeListeners[collectionName] = onSnapshot(collection(db, collectionName), (querySnapshot) => {
-            // Data successfully retrieved from Firebase, we are online!
-            setAppOnline();
-            
+
+            // Only declare online if data came directly from the Firebase server
+            if (!querySnapshot.metadata.fromCache) {
+                setAppOnline();
+            }
+
             ul.innerHTML = '';
             if (querySnapshot.empty) {
                 ul.innerHTML = `<li style="background: transparent; border: none;">No data found in ${collectionName.replace('_', ' ')}.</li>`;
