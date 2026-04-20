@@ -4,6 +4,25 @@ import { db, auth } from "./firebase-config.js";
 import { ADMIN_EMAIL } from "./auth.js";
 import { showLoader, hideLoader, showToast } from "./ui.js";
 
+// NEW: 3-Second Chokehold for Firebase
+async function fetchWithTimeout(ref) {
+    const isOffline = document.getElementById('network-status')?.classList.contains('status-offline');
+    if (isOffline) return await getDocsFromCache(ref); // If already offline, instant return
+
+    try {
+        // Race the server fetch against a 3-second timer
+        const snap = await Promise.race([
+            getDocs(ref),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+        ]);
+        return snap;
+    } catch (err) {
+        console.warn("Firebase took too long. Auto-switching to Offline Mode.");
+        if (window.manualGoOffline) window.manualGoOffline(); // Auto-click the offline button
+        return await getDocsFromCache(ref); // Return cache instantly so UI doesn't freeze
+    }
+}
+
 export function calculateCurrentActivity(initialActivity, isotope, activityDateStr, targetDateObj = null) {
     if (!initialActivity || !isotope || !activityDateStr) return 0;
     const initial = parseFloat(initialActivity);
@@ -125,7 +144,7 @@ export async function updateDecayChart() {
         return;
     }
     try {
-        const srcSnap = await getDocs(collection(db, 'sources'));
+        const srcSnap = await fetchWithTimeout(collection(db, 'sources'));
         const labels = [];
         const today = new Date();
         for(let i=0; i<=6; i++) {
@@ -157,17 +176,14 @@ export async function updateDecayChart() {
 export async function updateDashboard() {
     let srcSnap, camSnap;
 
-    // 1. Check if the UI is currently in offline mode
-    const isOffline = document.getElementById('network-status')?.classList.contains('status-offline');
-
     // BLOCK 1: Top Counters
     try {
         const wpRef = collection(db, 'work_plans');
         const srcRef = collection(db, 'sources');
 
-        // 2. Route the fetch based on network status
-        const wpSnap = isOffline ? await getDocsFromCache(wpRef) : await getDocs(wpRef);
-        srcSnap = isOffline ? await getDocsFromCache(srcRef) : await getDocs(srcRef);
+        // USE THE NEW HELPER INSTEAD OF DIRECT getDocs
+        const wpSnap = await fetchWithTimeout(wpRef);
+        srcSnap = await fetchWithTimeout(srcRef);
 
         const statWorkPlans = document.getElementById('stat-work-plans');
         if(statWorkPlans) statWorkPlans.textContent = wpSnap.size;
@@ -207,7 +223,7 @@ export async function updateDashboard() {
             const today = new Date();
             const thirtyDaysFromNow = new Date(); thirtyDaysFromNow.setDate(today.getDate() + 30);
 
-            const eqSnap = await getDocs(collection(db, 'equipment'));
+            const eqSnap = await fetchWithTimeout(collection(db, 'equipment'));
             eqSnap.forEach(doc => {
                 const eq = doc.data();
                 if (eq.calibration_due_date) {
@@ -229,7 +245,7 @@ export async function updateDashboard() {
                 });
             }
 
-            camSnap = await getDocs(collection(db, 'cameras'));
+            camSnap = await fetchWithTimeout(collection(db, 'cameras'));
             camSnap.forEach(doc => {
                 const cam = doc.data();
                 if (cam.annual_maintenance_date) {
@@ -242,7 +258,7 @@ export async function updateDashboard() {
                 }
             });
 
-            const perSnap = await getDocs(collection(db, 'personnel'));
+            const perSnap = await fetchWithTimeout(collection(db, 'personnel'));
             perSnap.forEach(doc => {
                 const per = doc.data();
                 if (per.last_6mo_eval_date && (today - new Date(per.last_6mo_eval_date)) / (1000 * 60 * 60 * 24) > 182) { alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 DQ WARNING: ${per.full_name} 6-Month Field Eval expired!</li>`; alertCount++; }
@@ -261,7 +277,7 @@ export async function updateDashboard() {
         const topList = document.getElementById('top-fleet-list');
         const botList = document.getElementById('bottom-fleet-list');
         if (topList && botList && camSnap) {
-            const trSnap = await getDocs(collection(db, 'transport_logs'));
+            const trSnap = await fetchWithTimeout(collection(db, 'transport_logs'));
             const fleetCounts = {};
             camSnap.forEach(doc => { fleetCounts[doc.data().serial_number] = 0; });
             trSnap.forEach(doc => { const sn = doc.data().camera_sn; if (sn) fleetCounts[sn] = (fleetCounts[sn] || 0) + 1; });
@@ -286,10 +302,10 @@ export async function updateDeployedAssetsDashboard() {
     if(!list || !countEl) return;
     try {
         let count = 0; list.innerHTML = '';
-        const camSnap = await getDocs(query(collection(db, 'cameras'), where('vault_status', '==', 'OUT')));
+        const camSnap = await fetchWithTimeout(query(collection(db, 'cameras'), where('vault_status', '==', 'OUT')));
         camSnap.forEach(d => { count++; list.innerHTML += `<li style="border-left: 4px solid #f0ad4e;">📷 Camera ${d.data().serial_number} (${d.data().make_model})</li>`; });
 
-        const srcSnap = await getDocs(query(collection(db, 'sources'), where('vault_status', '==', 'OUT')));
+        const srcSnap = await fetchWithTimeout(query(collection(db, 'sources'), where('vault_status', '==', 'OUT')));
         srcSnap.forEach(d => { count++; list.innerHTML += `<li style="border-left: 4px solid #d9534f;">☢️ Source ${d.data().serial_number} (${d.data().isotope})</li>`; });
 
         countEl.textContent = `${count} Deployed`;
@@ -305,7 +321,7 @@ export async function renderCalendar() {
     }
     const events = [];
     try {
-        const wpSnap = await getDocs(collection(db, 'work_plans'));
+        const wpSnap = await fetchWithTimeout(collection(db, 'work_plans'));
         wpSnap.forEach(doc => { const d = doc.data(); if(d.planned_date) events.push({ title: `Job ${d.job_number} (${d.location})`, start: d.planned_date, color: d.rso_approval_status === 'Approved' ? '#5cb85c' : '#f0ad4e' }); });
     } catch(e) {}
     
