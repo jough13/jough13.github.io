@@ -370,7 +370,9 @@
                                 </div>
                                 <div>
                                     <label for="ev-rad">Radiographer Evaluated</label>
-                                    <input type="text" id="ev-rad" required style="width: 100%; box-sizing: border-box;">
+                                    <select id="ev-rad" required style="width: 100%; box-sizing: border-box;">
+                                        <option value="">Select Personnel...</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label for="ev-evaluator">Evaluator (RSO or Designee)</label>
@@ -525,7 +527,9 @@
                                 <input type="date" id="tr-date" required>
                                 
                                 <label for="tr-camera">Camera / Exposure Device SN <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="window.startScanner('tr-camera')">📷 Scan</button></label>
-                                <input type="text" id="tr-camera" required>
+                                    <select id="tr-camera" required>
+                                        <option value="">Select Camera...</option>
+                                    </select>
 
                                 <label for="tr-destination">Destination</label>
                                 <input type="text" id="tr-destination" required>
@@ -612,13 +616,17 @@
                             <input type="text" id="ul-job" required>
 
                             <label for="ul-ric">Radiographer in Charge (RIC)</label>
-                            <input type="text" id="ul-ric" required>
+                            <select id="ul-ric" required>
+                                <option value="">Select Personnel...</option>
+                            </select>
 
                             <label for="ul-participants">Other Participants</label>
                             <input type="text" id="ul-participants" placeholder="Comma separated names">
 
                             <label for="ul-meter">Survey Meter Used (SN) <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="window.startScanner('ul-meter')">📷 Scan</button></label>
-                            <input type="text" id="ul-meter" required>
+                            <select id="ul-meter" required>
+                                <option value="">Select Survey Meter...</option>
+                            </select>
 
                             <div class="checkbox-group" style="margin-bottom: 10px; background-color: rgba(92, 184, 92, 0.1); padding: 10px; border-radius: 4px; border: 1px solid #5cb85c;">
                                 <input type="checkbox" id="ul-response" required>
@@ -653,7 +661,9 @@
                         <h3>Post Job Reports <button type="button" class="btn-export" onclick="window.exportCSV('post_job_reports')">Export CSV</button></h3>
                         <form id="reports-form">
                             <label for="pj-completed-by">Completed By (Name)</label>
-                            <input type="text" id="pj-completed-by" required>
+                            <select id="pj-completed-by" required>
+                                <option value="">Select Personnel...</option>
+                            </select>
 
                             <div class="checkbox-group">
                                 <input type="checkbox" id="pj-source-secured">
