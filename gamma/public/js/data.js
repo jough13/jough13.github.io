@@ -1,0 +1,254 @@
+// public/js/data.js
+import { collection, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
+import { db, storage, auth } from "./firebase-config.js";
+import { showLoader, hideLoader, closeConfirmModal, closeModal } from "./ui.js";
+
+// --- STATE MANAGERS ---
+const activeListeners = {}; 
+
+// --- UTILITIES ---
+export async function uploadFile(file, folderPath) {
+    if (!file) return null;
+    try {
+        const fileRef = ref(storage, `${folderPath}/${Date.now()}_${file.name}`);
+        const snapshot = await uploadBytes(fileRef, file);
+        return await getDownloadURL(snapshot.ref);
+    } catch (error) {
+        console.error("Error uploading file:", error);
+        alert("Failed to upload file. Check console.");
+        return null;
+    }
+}
+
+export async function logAudit(action, collectionName, recordId, details) {
+    try {
+        const userEmail = auth.currentUser ? auth.currentUser.email : 'System';
+        await addDoc(collection(db, 'audit_logs'), {
+            timestamp: new Date().toISOString(),
+            user: userEmail,
+            action: action, 
+            collection: collectionName,
+            record_id: recordId,
+            details: details
+        });
+    } catch (err) {
+        console.error("Audit log failed to write:", err);
+    }
+}
+
+// --- CORE CRUD OPERATIONS ---
+export async function addData(collectionName, data, formMaps) {
+    try {
+        if (window.editModeId && window.editModeCollection === collectionName) {
+            const existingDoc = await getDoc(doc(db, collectionName, window.editModeId));
+            if(existingDoc.exists()) {
+                const existingData = existingDoc.data();
+                for (const key in data) {
+                    if (key.includes('_url') && data[key] === null) data[key] = existingData[key];
+                    if (key === 'signature_data' && data[key] === null && existingData[key]) data[key] = existingData[key];
+                    if (key === 'sketch_data' && data[key] === null && existingData[key]) data[key] = existingData[key];
+                }
+            }
+            await updateDoc(doc(db, collectionName, window.editModeId), data);
+            await logAudit('UPDATED', collectionName, window.editModeId, `Record modified.`);
+            
+            window.editModeId = null;
+            window.editModeCollection = null;
+            
+            // Reset Form UI
+            const map = formMaps[collectionName];
+            if(map) {
+                const form = document.getElementById(map.formId);
+                const btn = form.querySelector('button[type="submit"]');
+                if(btn && btn.dataset.originalText) {
+                    btn.textContent = btn.dataset.originalText;
+                    btn.style.backgroundColor = '';
+                    btn.style.color = '';
+                }
+                form.style.boxShadow = 'none';
+            }
+        } else {
+            if(!data.timestamp) data.timestamp = new Date().toISOString();
+            const newDocRef = await addDoc(collection(db, collectionName), data);
+            await logAudit('CREATED', collectionName, newDocRef.id, `New record added.`);
+        }
+    } catch (err) {
+        console.error(`Error saving document:`, err);
+        alert(`Failed to save record.`);
+    }
+}
+
+export async function executeDelete() {
+    if(!window.currentOpenDoc) return;
+    try {
+        showLoader();
+        const colToDel = window.currentOpenDoc.collection;
+        const idToDel = window.currentOpenDoc.id;
+        
+        await deleteDoc(doc(db, colToDel, idToDel));
+        await logAudit('DELETED', colToDel, idToDel, `Record permanently deleted.`);
+        
+        closeConfirmModal();
+        closeModal();
+        
+        // Let the UI charts/dashboards know they need to refresh
+        if (window.updateDashboard) await window.updateDashboard();
+        if (window.renderCalendar) await window.renderCalendar();
+        hideLoader();
+    } catch (err) {
+        hideLoader();
+        alert("Error deleting record.");
+        console.error("Deletion Error:", err);
+    }
+}
+
+// --- LIVE DATA SYNC (onSnapshot) ---
+export function fetchData(collectionName, listId) {
+    return new Promise((resolve) => {
+        const ul = document.getElementById(listId);
+        if (!ul) return resolve();
+
+        if (activeListeners[collectionName]) {
+            activeListeners[collectionName](); 
+        }
+
+        let isFirstLoad = true;
+
+        activeListeners[collectionName] = onSnapshot(collection(db, collectionName), (querySnapshot) => {
+            ul.innerHTML = '';
+            if (querySnapshot.empty) {
+                ul.innerHTML = `<li style="background: transparent; border: none;">No data found in ${collectionName.replace('_', ' ')}.</li>`;
+            } else {
+                querySnapshot.forEach((doc) => {
+                    const item = doc.data();
+                    const li = document.createElement('li');
+                    let displayText = '';
+                    let docUrl = null;
+
+                    let recordDate = item.timestamp || item.created_at || item.logged_time || item.completion_time || item.activity_date || item.planned_date || item.transport_date || item.eval_date || '';
+                    if (recordDate) li.setAttribute('data-date', recordDate.split('T')[0]); 
+
+                    // Standard UI Formatting based on Collection
+                    if (collectionName === 'equipment') {
+                        displayText = `${item.type?.toUpperCase() || 'UNKNOWN TYPE'} - Serial: ${item.serial_number} (Cal Due: ${item.calibration_due_date})`;
+                        docUrl = item.certificate_url;
+                    } else if (collectionName === 'sources') {
+                        const statusTag = item.vault_status === 'OUT' ? ' [🦺 DEPLOYED]' : '';
+                        displayText = `${item.isotope} (SN: ${item.serial_number}) - Initial: ${item.initial_activity_curies} Ci${statusTag}`;
+                        if(item.vault_status === 'OUT') li.style.borderLeft = "5px solid #f0ad4e";
+                        docUrl = item.certificate_url;
+                    } else if (collectionName === 'cameras') {
+                        const statusTag = item.vault_status === 'OUT' ? ' [🦺 DEPLOYED]' : '';
+                        displayText = `${item.make_model} (SN: ${item.serial_number}) - Maint: ${item.annual_maintenance_date}${statusTag}`;
+                        if(item.vault_status === 'OUT') li.style.borderLeft = "5px solid #f0ad4e";
+                    } else if (collectionName === 'personnel') {
+                        displayText = `${item.full_name} (Cert: ${item.cert_number}) - Eval: ${item.last_6mo_eval_date}`;
+                    } else if (collectionName === 'work_plans') {
+                        displayText = `Job ${item.job_number} - Location: ${item.location} (${item.location_type}) on ${item.planned_date}`;
+                        docUrl = item.diagram_url;
+                    } else if (collectionName === 'transport_logs') {
+                        displayText = `${item.transport_date}: Camera ${item.camera_sn} to ${item.destination}`;
+                    } else {
+                        const values = Object.values(item).slice(0, 3).join(' - ');
+                        displayText = `ID ${doc.id}: ${values}`;
+                    }
+
+                    li.textContent = displayText;
+                    li.setAttribute('onclick', `openModal('${collectionName}', '${doc.id}')`);
+
+                    if (docUrl) {
+                        const link = document.createElement('a');
+                        link.href = docUrl;
+                        link.target = "_blank";
+                        link.textContent = " [View Document]";
+                        link.style.fontSize = "0.85em";
+                        link.style.color = "#005A9C";
+                        link.onclick = (e) => e.stopPropagation(); 
+                        li.appendChild(link);
+                    }
+                    ul.appendChild(li);
+                });
+            }
+
+            if (isFirstLoad) {
+                isFirstLoad = false;
+                resolve();
+            }
+        }, (err) => {
+            console.error(`Error syncing ${collectionName}:`, err);
+            ul.innerHTML = `<li style="color:red; background: transparent; border: none;">Error loading live data.</li>`;
+            resolve(); 
+        });
+    });
+}
+
+// --- INITIALIZE ALL EVENT LISTENERS ---
+export function setupEventListeners(formMaps) {
+    
+    // Example: Equipment Form Listener
+    const equipmentForm = document.getElementById('equipment-form');
+    if (equipmentForm) {
+        equipmentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoader();
+            const fileInput = document.getElementById('eq-cert');
+            const file = fileInput.files[0];
+            const certUrl = file ? await uploadFile(file, 'equipment_certs') : null;
+            const data = {
+                type: document.getElementById('eq-type').value,
+                serial_number: document.getElementById('eq-serial').value,
+                calibration_due_date: document.getElementById('eq-cal-date').value,
+                maintenance_status: 'Operational',
+                certificate_url: certUrl
+            };
+            await addData('equipment', data, formMaps);
+            equipmentForm.reset();
+            if(window.updateDashboard) window.updateDashboard();
+            if(window.renderCalendar) window.renderCalendar(); 
+            hideLoader();
+        });
+    }
+
+    // Example: Vault Check-In/Out Listener
+    const assetForm = document.getElementById('asset-tracking-form');
+    if (assetForm) {
+        const radios = assetForm.querySelectorAll('input[name="trk-action"]');
+        radios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                document.getElementById('trk-details-group').style.display = e.target.value === 'checkout' ? 'grid' : 'none';
+            });
+        });
+
+        assetForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoader();
+            const action = assetForm.querySelector('input[name="trk-action"]:checked').value;
+            const camSN = document.getElementById('trk-cam').value.trim();
+            const srcSN = document.getElementById('trk-src').value.trim();
+            const status = action === 'checkout' ? 'OUT' : 'IN';
+
+            try {
+                if (camSN) {
+                    const camQ = query(collection(db, 'cameras'), where('serial_number', '==', camSN));
+                    const camSnap = await getDocs(camQ);
+                    camSnap.forEach(async (d) => await updateDoc(doc(db, 'cameras', d.id), { vault_status: status }));
+                }
+                if (srcSN) {
+                    const srcQ = query(collection(db, 'sources'), where('serial_number', '==', srcSN));
+                    const srcSnap = await getDocs(srcQ);
+                    srcSnap.forEach(async (d) => await updateDoc(doc(db, 'sources', d.id), { vault_status: status }));
+                }
+                assetForm.reset();
+                if(window.updateDeployedAssetsDashboard) await window.updateDeployedAssetsDashboard();
+            } catch (err) {
+                console.error("Asset Tracking Error:", err);
+            } finally {
+                hideLoader();
+            }
+        });
+    }
+
+    // Note: You will move the rest of your form submission listeners (sources-form, cameras-form, etc.) 
+    // into this setupEventListeners function exactly like the examples above!
+}
