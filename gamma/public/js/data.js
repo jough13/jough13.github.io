@@ -249,6 +249,78 @@ export function setupEventListeners(formMaps) {
         });
     }
 
-    // Note: You will move the rest of your form submission listeners (sources-form, cameras-form, etc.) 
-    // into this setupEventListeners function exactly like the examples above!
+    // Universal Form Listener for all other mapped forms
+    for (const [collectionName, map] of Object.entries(formMaps)) {
+        if (map.formId === 'equipment-form') continue; // Handled explicitly above
+
+        const form = document.getElementById(map.formId);
+        if (form) {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                showLoader();
+                let data = {};
+                
+                // 1. Grab all standard text/number/checkbox inputs mapped in formMaps
+                for (const [dbKey, htmlId] of Object.entries(map.fields)) {
+                    const el = document.getElementById(htmlId);
+                    if (el) {
+                        data[dbKey] = el.type === 'checkbox' ? el.checked : el.value;
+                    }
+                }
+
+                // 2. Handle nested checklist items (for Field Evaluations)
+                if (map.nested && map.nested.checklist) {
+                    data.checklist = {};
+                    for (const [chkKey, chkId] of Object.entries(map.nested.checklist)) {
+                        const cel = document.getElementById(chkId);
+                        if(cel) data.checklist[chkKey] = cel.checked;
+                    }
+                }
+
+                // 3. Handle Special Cases (Files, Canvases, Vault Status, Multi-Selects)
+                if (collectionName === 'sources' || collectionName === 'cameras') {
+                    data.vault_status = 'IN';
+                    if (collectionName === 'sources') {
+                        const fileInput = document.getElementById('src-cert');
+                        if(fileInput && fileInput.files[0]) data.certificate_url = await uploadFile(fileInput.files[0], 'source_certs');
+                    }
+                }
+
+                if (collectionName === 'work_plans') {
+                    const ppe = document.getElementById('wp-ppe');
+                    if(ppe) data.rwp_ppe = Array.from(ppe.selectedOptions).map(o => o.value).join(', ');
+                    
+                    const bar = document.getElementById('wp-barricade');
+                    if(bar) data.rwp_barricade = Array.from(bar.selectedOptions).map(o => o.value).join(', ');
+                    
+                    const brief = document.getElementById('wp-brief');
+                    if(brief) data.rwp_briefing = Array.from(brief.selectedOptions).map(o => o.value).join(', ');
+
+                    const fileInput = document.getElementById('wp-diagram');
+                    if(fileInput && fileInput.files[0]) data.diagram_url = await uploadFile(fileInput.files[0], 'work_plans');
+
+                    if (window.sketchPadDirty) {
+                        const canvas = document.getElementById('sketch-canvas');
+                        if(canvas) data.sketch_data = canvas.toDataURL('image/png');
+                    }
+                }
+
+                if (collectionName === 'post_job_reports' && window.sigPadDirty) {
+                    const canvas = document.getElementById('sig-canvas');
+                    if(canvas) data.signature_data = canvas.toDataURL('image/png');
+                }
+
+                // Save to database and reset UI
+                await addData(collectionName, data, formMaps);
+                
+                form.reset();
+                if (collectionName === 'work_plans') window.clearSketch();
+                if (collectionName === 'post_job_reports') window.clearSignature();
+                
+                if (window.updateDashboard) window.updateDashboard();
+                if (window.renderCalendar) window.renderCalendar();
+                hideLoader();
+            });
+        }
+    }
 }
