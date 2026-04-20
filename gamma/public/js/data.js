@@ -4,7 +4,7 @@ import { ADMIN_EMAIL } from "./auth.js";
 import { collection, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, getDocs, onSnapshot, enableNetwork, disableNetwork } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { db, storage, auth } from "./firebase-config.js";
-import { showLoader, hideLoader, closeConfirmModal, closeModal, showToast } from "./ui.js";
+import { showLoader, hideLoader, closeConfirmModal, closeModal, showToast, setAppOffline, setAppOnline } from "./ui.js";
 
 const activeListeners = {}; 
 
@@ -26,9 +26,11 @@ export async function forceReconnect() {
         showToast("Attempting to force sync with server...", "info");
         await disableNetwork(db);
         await enableNetwork(db);
-        showToast("Network reset successful. Live Syncing.", "success");
+        setAppOnline();
         if(window.loadAllData) window.loadAllData();
     } catch(e) {
+        console.error("Force reconnect failed:", e);
+        setAppOffline();
         showToast("Reconnection failed. Still offline.", "error");
     }
 }
@@ -153,6 +155,9 @@ export function fetchData(collectionName, listId) {
         let isFirstLoad = true;
 
         activeListeners[collectionName] = onSnapshot(collection(db, collectionName), (querySnapshot) => {
+            // Data successfully retrieved from Firebase, we are online!
+            setAppOnline();
+            
             ul.innerHTML = '';
             if (querySnapshot.empty) {
                 ul.innerHTML = `<li style="background: transparent; border: none;">No data found in ${collectionName.replace('_', ' ')}.</li>`;
@@ -221,7 +226,9 @@ export function fetchData(collectionName, listId) {
             if (isFirstLoad) { isFirstLoad = false; resolve(); }
         }, (err) => {
             console.error(`Error syncing ${collectionName}:`, err);
-            ul.innerHTML = `<li style="color:red; background: transparent; border: none;">Error loading live data.</li>`;
+            // IF FIRESTORE FAILS, TRIGGER THE RED BUTTON
+            setAppOffline(); 
+            ul.innerHTML = `<li style="color:red; background: transparent; border: none;">Error loading live data (Offline).</li>`;
             resolve(); 
         });
     });
@@ -553,7 +560,7 @@ export function attachMinorListeners() {
         proceedBtn.addEventListener('click', () => {
             if (dontShowCheckbox && dontShowCheckbox.checked) localStorage.setItem('hideDisclaimer', 'true');
             document.getElementById('disclaimer-modal').style.display = 'none';
-            showToast("Welcome to the Gamma Radiography Tracker", "info"); // Friendly welcome toast!
+            showToast("Welcome to the Gamma Radiography Tracker", "info");
         });
     }
 }
