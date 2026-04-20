@@ -319,14 +319,102 @@ export async function renderCalendar() {
         if (calendarEl) calendarEl.innerHTML = '<p style="text-align:center; padding:20px; color:#999;">Calendar unavailable (Offline Mode).</p>';
         return;
     }
+    
     const events = [];
+    
     try {
+        // 1. Fetch Work Plans
         const wpSnap = await fetchWithTimeout(collection(db, 'work_plans'));
-        wpSnap.forEach(doc => { const d = doc.data(); if(d.planned_date) events.push({ title: `Job ${d.job_number} (${d.location})`, start: d.planned_date, color: d.rso_approval_status === 'Approved' ? '#5cb85c' : '#f0ad4e' }); });
-    } catch(e) {}
+        wpSnap.forEach(doc => { 
+            const d = doc.data(); 
+            if(d.planned_date) {
+                events.push({ 
+                    title: `Job ${d.job_number} (${d.location})`, 
+                    start: d.planned_date, 
+                    color: d.rso_approval_status === 'Approved' ? '#5cb85c' : '#f0ad4e',
+                    // Pass the database ID and collection name into the event
+                    extendedProps: { collection: 'work_plans', docId: doc.id } 
+                }); 
+            } 
+        });
+
+        // 2. Fetch Equipment Calibrations
+        const eqSnap = await fetchWithTimeout(collection(db, 'equipment'));
+        eqSnap.forEach(doc => {
+            const data = doc.data();
+            if(data.calibration_due_date) {
+                events.push({ 
+                    title: `Cal Due: ${data.serial_number}`, 
+                    start: data.calibration_due_date, 
+                    color: '#f0ad4e',
+                    extendedProps: { collection: 'equipment', docId: doc.id } 
+                });
+            }
+        });
+
+        // 3. Fetch Camera Maintenance
+        const camSnap = await fetchWithTimeout(collection(db, 'cameras'));
+        camSnap.forEach(doc => {
+            const data = doc.data();
+            if(data.annual_maintenance_date) {
+                let due = new Date(data.annual_maintenance_date);
+                due.setFullYear(due.getFullYear() + 1);
+                events.push({ 
+                    title: `Maint Due: Cam ${data.serial_number}`, 
+                    start: due.toISOString().split('T')[0], 
+                    color: '#d9534f',
+                    extendedProps: { collection: 'cameras', docId: doc.id } 
+                });
+            }
+        });
+
+        // 4. Fetch Personnel Eval Expirations
+        const perSnap = await fetchWithTimeout(collection(db, 'personnel'));
+        perSnap.forEach(doc => {
+            const data = doc.data();
+            if(data.last_6mo_eval_date) {
+                let due = new Date(data.last_6mo_eval_date);
+                due.setMonth(due.getMonth() + 6); 
+                events.push({ 
+                    title: `Eval Exp: ${data.full_name.split(' ')[0]}`, 
+                    start: due.toISOString().split('T')[0], 
+                    color: '#d9534f',
+                    extendedProps: { collection: 'personnel', docId: doc.id } 
+                });
+            }
+        });
+
+    } catch(e) {
+        console.warn("Calendar failed to fetch some events:", e);
+    }
     
     if(window.calendarInstance) window.calendarInstance.destroy();
-    window.calendarInstance = new FullCalendar.Calendar(calendarEl, { initialView: 'dayGridMonth', headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' }, events: events, height: 'auto' });
+    
+    window.calendarInstance = new FullCalendar.Calendar(calendarEl, { 
+        initialView: 'dayGridMonth', 
+        headerToolbar: { 
+            left: 'prev,next today', 
+            center: 'title', 
+            right: 'dayGridMonth,timeGridWeek,listWeek' 
+        }, 
+        events: events, 
+        height: 'auto',
+        
+        // NEW: When an event is clicked, open the inspector modal
+        eventClick: function(info) {
+            const props = info.event.extendedProps;
+            if(props.collection && props.docId) {
+                // Call the global openModal function from ui.js
+                window.openModal(props.collection, props.docId);
+            }
+        },
+        
+        // NEW: Change the mouse cursor to a pointer so users know it is clickable
+        eventMouseEnter: function(info) {
+            info.el.style.cursor = 'pointer';
+        }
+    });
+    
     window.calendarInstance.render();
 }
 
