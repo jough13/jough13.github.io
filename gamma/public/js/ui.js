@@ -71,10 +71,31 @@ export function toggleTheme() {
 
 function updateThemeButton(theme) { const btn = document.getElementById('theme-btn'); if (btn) btn.innerHTML = theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'; }
 
+// Replace the showSection function in ui.js with this:
 export function showSection(sectionId) {
-    document.querySelectorAll('.module').forEach(el => { el.classList.remove('active'); el.style.display = 'none'; });
-    const target = document.getElementById(sectionId); if (target) { target.classList.add('active'); target.style.display = 'block'; }
-    if(sectionId === 'calendar-view' && window.calendarInstance) setTimeout(() => { window.calendarInstance.render(); }, 100);
+    document.querySelectorAll('.module').forEach(el => { 
+        el.classList.remove('active'); 
+        el.style.display = 'none'; 
+    });
+    
+    const target = document.getElementById(sectionId); 
+    if (target) { 
+        target.classList.add('active'); 
+        target.style.display = 'block'; 
+        
+        // Re-calculate canvas width when the container is finally visible
+        const sketchCanvas = target.querySelector('#sketch-canvas');
+        if (sketchCanvas && sketchCanvas.width === 0) {
+            sketchCanvas.width = sketchCanvas.parentElement.clientWidth - 20;
+            const ctx = sketchCanvas.getContext('2d');
+            ctx.fillStyle = "#fafafa"; 
+            ctx.fillRect(0, 0, sketchCanvas.width, sketchCanvas.height);
+        }
+    }
+    
+    if(sectionId === 'calendar-view' && window.calendarInstance) {
+        setTimeout(() => { window.calendarInstance.render(); }, 100);
+    }
 }
 
 export function togglePRI() {
