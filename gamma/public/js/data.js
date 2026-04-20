@@ -21,21 +21,30 @@ export const formMaps = {
     'post_job_reports': { formId: 'reports-form', fields: { completed_by: 'pj-completed-by', source_secured: 'pj-source-secured', vault_verified: 'pj-vault-verified' } }
 };
 
-export async function forceReconnect() {
+export async function manualGoOffline() {
     try {
-        showToast("Attempting to force sync with server...", "info");
-        // Disable and re-enable network to force Firebase to try a fresh connection
-        await disableNetwork(db);
-        await enableNetwork(db);
-        
-        // We do NOT call setAppOnline() here anymore. 
-        // We let the onSnapshot listener naturally turn the button green if the enableNetwork succeeds.
-        
+        await disableNetwork(db); // Instantly cuts Firebase off, forcing instant cache reads
+        document.getElementById('btn-force-offline').style.display = 'none';
+        document.getElementById('btn-force-online').style.display = 'inline-block';
+        document.getElementById('network-status').innerHTML = '🔴 Offline';
+        document.getElementById('network-status').classList.add('status-offline');
+        showToast("App is now in Offline Mode. Data will pull instantly from cache.", "warning");
+    } catch(e) { console.error(e); }
+}
+
+export async function manualGoOnline() {
+    try {
+        showToast("Attempting to reconnect...", "info");
+        await enableNetwork(db); // Re-opens Firebase's connection
+        document.getElementById('btn-force-online').style.display = 'none';
+        document.getElementById('btn-force-offline').style.display = 'inline-block';
+        document.getElementById('network-status').innerHTML = '🟢 Online';
+        document.getElementById('network-status').classList.remove('status-offline');
+        showToast("Reconnected to database!", "success");
         if(window.loadAllData) window.loadAllData();
-    } catch(e) {
-        console.error("Force reconnect failed:", e);
-        setAppOffline();
-        showToast("Reconnection failed. Still offline.", "error");
+    } catch(e) { 
+        console.error(e); 
+        showToast("Reconnection failed.", "error"); 
     }
 }
 
