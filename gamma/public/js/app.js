@@ -5,7 +5,7 @@ import {
     togglePRI, toggleNA, initSignaturePad, clearSignature, 
     initSketchPad, clearSketch, openModal, closeModal, closeConfirmModal,
     startScanner, stopScanner, filterRecords, clearFilters, calculateBoundary,
-    showToast, initNetworkMonitor, setAppOffline, setAppOnline
+    showToast, initNetworkMonitor, setAppOffline, setAppOnline, openDeleteConfirm
 } from "./ui.js";
 import { 
     fetchData, setupEventListeners, executeDelete, 
@@ -122,3 +122,5 @@ window.setAppOffline = setAppOffline;
 window.setAppOnline = setAppOnline;
 window.manualGoOffline = manualGoOffline;
 window.manualGoOnline = manualGoOnline;
+
+window.openDeleteConfirm = openDeleteConfirm;
