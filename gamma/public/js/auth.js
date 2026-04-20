@@ -1,10 +1,10 @@
 // public/js/auth.js
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { auth } from "./firebase-config.js";
-// We will import app startup and UI loader functions from our orchestrator later
-import { startApplication, showLoader, hideLoader } from "./app.js";
+import { startApplication } from "./app.js";
+import { showLoader, hideLoader } from "./ui.js";
 
-export const ADMIN_EMAIL = "rso@shipyard.com"; 
+export const ADMIN_EMAIL = "rso@shipyard.com";
 
 export function initAuth() {
     onAuthStateChanged(auth, async (user) => {
