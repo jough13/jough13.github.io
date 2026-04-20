@@ -5,7 +5,6 @@ import { showLoader, hideLoader } from "./ui.js";
 
 export const ADMIN_EMAIL = "rso@shipyard.com";
 
-// Passing onLoginSuccess safely breaks the circular dependency with app.js
 export function initAuth(onLoginSuccess) {
     onAuthStateChanged(auth, async (user) => {
         showLoader(); 
@@ -34,9 +33,11 @@ export function initAuth(onLoginSuccess) {
 
             setTimeout(() => {
                 hideLoader();
-                // FIX: localStorage check bypassed entirely so it forces open on every refresh!
-                const modal = document.getElementById('disclaimer-modal');
-                if(modal) modal.style.display = 'flex';
+                // Restored localStorage check so the "Don't show" checkbox works
+                if (localStorage.getItem('hideDisclaimer') !== 'true') {
+                    const modal = document.getElementById('disclaimer-modal');
+                    if(modal) modal.style.display = 'flex';
+                }
             }, 500); 
             
         } else {
