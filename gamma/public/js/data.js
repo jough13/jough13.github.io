@@ -409,6 +409,9 @@ export function setupEventListeners() {
                     if(window.populateSourceDropdown) window.populateSourceDropdown();
                     if(window.updateDecayChart) window.updateDecayChart();
                 }
+                if (collectionName === 'cameras') {
+                    if(window.populateCameraDropdown) window.populateCameraDropdown();
+                }
                 if (collectionName === 'personnel' && window.populatePersonnelDropdown) {
                     window.populatePersonnelDropdown();
                 }
@@ -438,13 +441,18 @@ export function setupEventListeners() {
 
 export async function populatePersonnelDropdown() {
     const dlNameSelect = document.getElementById('dl-name');
-    if (!dlNameSelect) return;
+    const trkUserSelect = document.getElementById('trk-user'); // NEW: Vault User
+    
     try {
         const querySnapshot = await getDocs(collection(db, 'personnel'));
-        dlNameSelect.innerHTML = '<option value="">Select Personnel...</option>';
+        const optHTML = '<option value="">Select Personnel...</option>';
+        if(dlNameSelect) dlNameSelect.innerHTML = optHTML;
+        if(trkUserSelect) trkUserSelect.innerHTML = optHTML;
+
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            dlNameSelect.innerHTML += `<option value="${data.full_name}">${data.full_name} (${data.cert_number})</option>`;
+            if(dlNameSelect) dlNameSelect.innerHTML += `<option value="${data.full_name}">${data.full_name} (${data.cert_number})</option>`;
+            if(trkUserSelect) trkUserSelect.innerHTML += `<option value="${data.full_name}">${data.full_name}</option>`;
         });
     } catch (err) { console.error("Error loading personnel:", err); }
 }
@@ -452,22 +460,43 @@ export async function populatePersonnelDropdown() {
 export async function populateSourceDropdown() {
     const wpSelect = document.getElementById('wp-source');
     const trSelect = document.getElementById('tr-source');
+    const trkSelect = document.getElementById('trk-src'); // NEW: Vault Source
     try {
         const querySnapshot = await getDocs(collection(db, 'sources'));
         const optionsHTML = '<option value="">Select an active source...</option>';
         if(wpSelect) wpSelect.innerHTML = optionsHTML;
         if(trSelect) trSelect.innerHTML = optionsHTML;
+        if(trkSelect) trkSelect.innerHTML = '<option value="">Select Source...</option>';
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
             if(data.vault_status !== 'DELETED') {
                 const currentAct = calculateCurrentActivity(data.initial_activity_curies, data.isotope, data.activity_date);
                 const opt = `<option value="${doc.id}" data-activity="${currentAct}" data-isotope="${data.isotope}">${data.isotope} (SN: ${data.serial_number}) - ${currentAct} Ci</option>`;
+                
+                // The Vault form searches by Serial Number, not Database ID
+                const trkOpt = `<option value="${data.serial_number}">${data.isotope} (SN: ${data.serial_number})</option>`;
+                
                 if(wpSelect) wpSelect.innerHTML += opt;
                 if(trSelect) trSelect.innerHTML += opt;
+                if(trkSelect) trkSelect.innerHTML += trkOpt;
             }
         });
     } catch (err) { console.error("Error loading sources:", err); }
+}
+
+// Camera Dropdown Logic
+export async function populateCameraDropdown() {
+    const trkCamSelect = document.getElementById('trk-cam');
+    if (!trkCamSelect) return;
+    try {
+        const querySnapshot = await getDocs(collection(db, 'cameras'));
+        trkCamSelect.innerHTML = '<option value="">Select Camera...</option>';
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            trkCamSelect.innerHTML += `<option value="${data.serial_number}">${data.make_model} (SN: ${data.serial_number})</option>`;
+        });
+    } catch (err) { console.error("Error loading cameras:", err); }
 }
 
 export function editRecord() {
