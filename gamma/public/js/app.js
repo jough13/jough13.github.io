@@ -3,9 +3,13 @@ import { initAuth } from "./auth.js";
 import { 
     showLoader, hideLoader, initTheme, toggleTheme, showSection, 
     togglePRI, toggleNA, initSignaturePad, clearSignature, 
-    initSketchPad, clearSketch, openModal, closeModal, closeConfirmModal 
+    initSketchPad, clearSketch, openModal, closeModal, closeConfirmModal,
+    startScanner, stopScanner, filterRecords, clearFilters, calculateBoundary 
 } from "./ui.js";
-import { fetchData, setupEventListeners, executeDelete } from "./data.js";
+import { 
+    fetchData, setupEventListeners, executeDelete, 
+    populateSourceDropdown, populatePersonnelDropdown, editRecord, cloneRecord, attachMinorListeners 
+} from "./data.js";
 import { 
     updateDecayChart, updateDashboard, updateDoseDashboard, updateDeployedAssetsDashboard,
     generateMasterPacket, generateQualCards, generatePDFInventory, generateRWP, 
@@ -13,18 +17,12 @@ import {
     renderCalendar, generateAssetTags 
 } from "./analytics.js";
 
-// And add them to your window exports at the bottom:
-window.renderCalendar = renderCalendar;
-window.generateAssetTags = generateAssetTags;
-
-// --- GLOBALS EXPOSED FOR UI MODULES ---
 window.sigPadDirty = false; 
 window.sketchPadDirty = false;
 window.currentOpenDoc = null; 
 window.editModeId = null;
 window.editModeCollection = null;
 
-// --- FORM MAPS ---
 export const formMaps = {
     'equipment': { formId: 'equipment-form', fields: { type: 'eq-type', serial_number: 'eq-serial', calibration_due_date: 'eq-cal-date' } },
     'sources': { formId: 'sources-form', fields: { serial_number: 'src-serial', isotope: 'src-isotope', initial_activity_curies: 'src-activity', activity_date: 'src-date', last_leak_test_date: 'src-leak-test' } },
@@ -38,7 +36,6 @@ export const formMaps = {
     'post_job_reports': { formId: 'reports-form', fields: { completed_by: 'pj-completed-by', source_secured: 'pj-source-secured', vault_verified: 'pj-vault-verified' } }
 };
 
-// --- DATA INITIALIZATION ---
 export async function loadAllData() {
     await Promise.all([
         fetchData('equipment', 'equipment-list'),
@@ -53,7 +50,6 @@ export async function loadAllData() {
         fetchData('post_job_reports', 'reports-list')
     ]);
     
-    // Call UI and Analytics updaters sequentially
     await updateDashboard(); 
     if(window.renderCalendar) await window.renderCalendar();
     await updateDecayChart(); 
@@ -61,7 +57,6 @@ export async function loadAllData() {
     await updateDeployedAssetsDashboard(); 
 }
 
-// --- APP INITIALIZATION ---
 export async function startApplication() {
     initTheme();
     showSection('dashboard');
@@ -69,6 +64,10 @@ export async function startApplication() {
     initSketchPad();
     
     setupEventListeners(formMaps); 
+    attachMinorListeners(); 
+    await populateSourceDropdown();
+    await populatePersonnelDropdown();
+    
     await loadAllData(); 
     
     if ('serviceWorker' in navigator) {
@@ -76,10 +75,9 @@ export async function startApplication() {
     }
 }
 
-// --- KICKOFF ---
 initAuth();
 
-// --- WINDOW EXPORTS FOR HTML INLINE HANDLERS ---
+// --- WINDOW EXPORTS ---
 window.showLoader = showLoader;
 window.hideLoader = hideLoader;
 window.toggleTheme = toggleTheme;
@@ -92,8 +90,15 @@ window.openModal = openModal;
 window.closeModal = closeModal;
 window.closeConfirmModal = closeConfirmModal;
 window.executeDelete = executeDelete;
+window.startScanner = startScanner;
+window.stopScanner = stopScanner;
+window.filterRecords = filterRecords;
+window.clearFilters = clearFilters;
+window.calculateBoundary = calculateBoundary;
+window.editRecord = editRecord;
+window.cloneRecord = cloneRecord;
+window.populatePersonnelDropdown = populatePersonnelDropdown;
 
-// Analytics & Reports Exports
 window.updateDecayChart = updateDecayChart;
 window.updateDashboard = updateDashboard;
 window.updateDoseDashboard = updateDoseDashboard;
@@ -107,3 +112,5 @@ window.calculateDOTShipping = calculateDOTShipping;
 window.updateTransportSource = updateTransportSource;
 window.fullSystemBackup = fullSystemBackup;
 window.executeSystemRestore = executeSystemRestore;
+window.renderCalendar = renderCalendar;
+window.generateAssetTags = generateAssetTags;
