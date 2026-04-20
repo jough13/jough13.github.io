@@ -33,6 +33,8 @@ export function initAuth(onLoginSuccess) {
             
             hideLoader(); // Removed the clunky modal popup from here!
 
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+
         } else {
             hideLoader();
             if(loginScreen) loginScreen.style.display = 'flex';
