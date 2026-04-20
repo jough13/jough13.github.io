@@ -1,5 +1,4 @@
 // public/js/data.js
-
 import { calculateCurrentActivity } from "./analytics.js";
 import { ADMIN_EMAIL } from "./auth.js";
 import { collection, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
@@ -72,7 +71,6 @@ export async function addData(collectionName, data) {
             window.editModeId = null;
             window.editModeCollection = null;
             
-            // Reset Form UI
             const map = formMaps[collectionName];
             if(map) {
                 const form = document.getElementById(map.formId);
@@ -144,7 +142,6 @@ export function fetchData(collectionName, listId) {
                     let recordDate = item.timestamp || item.created_at || item.logged_time || item.completion_time || item.activity_date || item.planned_date || item.transport_date || item.eval_date || '';
                     if (recordDate) li.setAttribute('data-date', recordDate.split('T')[0]); 
 
-                    // Standard UI Formatting restored!
                     if (collectionName === 'equipment') {
                         displayText = `${item.type?.toUpperCase() || 'UNKNOWN TYPE'} - Serial: ${item.serial_number} (Cal Due: ${item.calibration_due_date})`;
                         docUrl = item.certificate_url;
@@ -213,7 +210,6 @@ export function fetchData(collectionName, listId) {
 // --- INITIALIZE ALL EVENT LISTENERS ---
 export function setupEventListeners() {
     
-    // Equipment Form Listener
     const equipmentForm = document.getElementById('equipment-form');
     if (equipmentForm) {
         equipmentForm.addEventListener('submit', async (e) => {
@@ -237,7 +233,6 @@ export function setupEventListeners() {
         });
     }
 
-    // Vault Check-In/Out Listener
     const assetForm = document.getElementById('asset-tracking-form');
     if (assetForm) {
         const radios = assetForm.querySelectorAll('input[name="trk-action"]');
@@ -279,7 +274,7 @@ export function setupEventListeners() {
         });
     }
 
-    // Universal Form Listener for all other mapped forms
+    // Universal Form Listener
     for (const [collectionName, map] of Object.entries(formMaps)) {
         if (map.formId === 'equipment-form') continue; 
 
@@ -290,7 +285,6 @@ export function setupEventListeners() {
                 showLoader();
                 let data = {};
                 
-                // 1. Grab inputs & correctly type-cast numbers
                 for (const [dbKey, htmlId] of Object.entries(map.fields)) {
                     const el = document.getElementById(htmlId);
                     if (el) {
@@ -299,13 +293,11 @@ export function setupEventListeners() {
                         } else if (el.type === 'number') {
                             data[dbKey] = parseFloat(el.value) || 0;
                         } else {
-                            // Properly save "N/A" if the checkbox disabled the field
                             data[dbKey] = el.disabled ? 'N/A' : el.value;
                         }
                     }
                 }
 
-                // 2. Handle nested checklist items 
                 if (map.nested && map.nested.checklist) {
                     data.checklist = {};
                     for (const [chkKey, chkId] of Object.entries(map.nested.checklist)) {
@@ -314,7 +306,6 @@ export function setupEventListeners() {
                     }
                 }
 
-                // 3. Handle Special Cases (Files, Canvases, Vault Status)
                 if (collectionName === 'sources' || collectionName === 'cameras') {
                     data.vault_status = 'IN';
                     if (collectionName === 'sources') {
@@ -345,7 +336,6 @@ export function setupEventListeners() {
                     }
                 }
                 
-                // Restoring missing Transport logic
                 if (collectionName === 'transport_logs') {
                     if(window.calculateDOTShipping) window.calculateDOTShipping();
                     data.content_category = document.getElementById('tr-category')?.value || '';
@@ -365,10 +355,8 @@ export function setupEventListeners() {
                     }
                 }
 
-                // Save to database
                 await addData(collectionName, data);
                 
-                // Trigger dynamic UI updates based on the collection we just modified
                 if (collectionName === 'sources') {
                     if(window.populateSourceDropdown) window.populateSourceDropdown();
                     if(window.updateDecayChart) window.updateDecayChart();
@@ -387,7 +375,6 @@ export function setupEventListeners() {
                 if (window.updateDashboard) window.updateDashboard();
                 if (window.renderCalendar) window.renderCalendar();
                 
-                // Specifically un-disable personnel fields after reset
                 if (collectionName === 'personnel') {
                     ['per-cert', 'per-trust', 'per-hazmat', 'per-eval', 'per-drill'].forEach(id => {
                         const ele = document.getElementById(id);
