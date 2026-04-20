@@ -4,7 +4,7 @@ import { ADMIN_EMAIL } from "./auth.js";
 import { collection, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { db, storage, auth } from "./firebase-config.js";
-import { showLoader, hideLoader, closeConfirmModal, closeModal } from "./ui.js";
+import { showLoader, hideLoader, closeConfirmModal, closeModal, showToast } from "./ui.js";
 
 const activeListeners = {}; 
 
@@ -29,7 +29,7 @@ export async function uploadFile(file, folderPath) {
         return await getDownloadURL(snapshot.ref);
     } catch (error) {
         console.error("Error uploading file:", error);
-        alert("Failed to upload file. Check console.");
+        showToast("Failed to upload file to storage.", "error");
         return null;
     }
 }
@@ -77,14 +77,16 @@ export async function addData(collectionName, data) {
                 }
                 form.style.boxShadow = 'none';
             }
+            showToast("Record successfully updated.", "success");
         } else {
             if(!data.timestamp) data.timestamp = new Date().toISOString();
             const newDocRef = await addDoc(collection(db, collectionName), data);
             await logAudit('CREATED', collectionName, newDocRef.id, `New record added.`);
+            showToast("New record created successfully.", "success");
         }
     } catch (err) {
         console.error(`Error saving document:`, err);
-        alert(`Failed to save record.`);
+        showToast("Failed to save record. Check connection.", "error");
     }
 }
 
@@ -104,28 +106,29 @@ export async function executeDelete() {
         if (window.updateDashboard) await window.updateDashboard();
         if (window.renderCalendar) await window.renderCalendar();
         hideLoader();
+        showToast("Record permanently deleted.", "info");
     } catch (err) {
         hideLoader();
-        alert("Error deleting record.");
         console.error("Deletion Error:", err);
+        showToast("Error deleting record.", "error");
     }
 }
 
-// 🐛 BUG FIX: The missing RSO Approval Function
 export async function approveWorkPlan() {
     if (!window.currentOpenDoc || window.currentOpenDoc.collection !== 'work_plans') return;
     try {
         showLoader();
         await updateDoc(doc(db, 'work_plans', window.currentOpenDoc.id), { rso_approval_status: 'Approved' });
         await logAudit('UPDATED', 'work_plans', window.currentOpenDoc.id, `RSO officially approved Work Plan.`);
-        alert("Work Plan officially approved by RSO.");
         closeModal();
         if(window.updateDashboard) window.updateDashboard();
         if(window.renderCalendar) window.renderCalendar();
         hideLoader();
+        showToast("Work Plan officially approved by RSO.", "success");
     } catch (e) {
         console.error("Failed to approve work plan:", e);
         hideLoader();
+        showToast("Failed to approve plan.", "error");
     }
 }
 
@@ -268,9 +271,11 @@ export function setupEventListeners() {
                 }
                 assetForm.reset();
                 document.getElementById('trk-details-group').style.display = 'grid';
+                showToast("Vault transfer recorded successfully.", "success");
                 if(window.updateDeployedAssetsDashboard) await window.updateDeployedAssetsDashboard();
             } catch (err) {
                 console.error("Asset Tracking Error:", err);
+                showToast("Failed to process vault transfer.", "error");
             } finally {
                 hideLoader();
             }
@@ -429,7 +434,7 @@ export function editRecord() {
     if (window.currentOpenDoc.collection === 'work_plans' && window.currentOpenDoc.fullData.rso_approval_status === 'Approved') {
         const currentUser = auth.currentUser ? auth.currentUser.email : '';
         if (currentUser.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-            alert("🔒 COMPLIANCE LOCK: This Work Plan has been officially approved by the RSO and cannot be modified.");
+            showToast("🔒 COMPLIANCE LOCK: This Work Plan has been officially approved by the RSO and cannot be modified.", "warning");
             return;
         }
     }
@@ -536,6 +541,7 @@ export function attachMinorListeners() {
         proceedBtn.addEventListener('click', () => {
             if (dontShowCheckbox && dontShowCheckbox.checked) localStorage.setItem('hideDisclaimer', 'true');
             document.getElementById('disclaimer-modal').style.display = 'none';
+            showToast("Welcome to the Gamma Radiography Tracker", "info"); // Friendly welcome toast!
         });
     }
 }
