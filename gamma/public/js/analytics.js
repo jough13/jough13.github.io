@@ -170,40 +170,24 @@ export async function updateDecayChart() {
 }
 
 export async function updateDashboard() {
-    const plansSnap = await getDocs(collection(db, 'work_plans'));
-    const srcSnap = await getDocs(collection(db, 'sources'));
-    
-    let planCount = 0;
-    plansSnap.forEach(doc => { if(doc.data().rso_approval_status !== 'Approved') planCount++; });
-    
-    let ir192=0, co60=0, se75=0, yb169=0;
-    let vaultCount = 0;
-    const alertList = document.getElementById('alert-list');
-    if(alertList) alertList.innerHTML = '';
-    
-    srcSnap.forEach(doc => {
-        const data = doc.data();
-        if(data.vault_status !== 'DELETED') {
-            vaultCount++;
-            if(data.isotope === 'Ir-192') ir192++;
-            if(data.isotope === 'Co-60') co60++;
-            if(data.isotope === 'Se-75') se75++;
-            if(data.isotope === 'Yb-169') yb169++;
-
-            // Basic decay alert
-            const currentAct = calculateCurrentActivity(data.initial_activity_curies, data.isotope, data.activity_date);
-            if (currentAct < 20 && alertList) {
-                alertList.innerHTML += `<li style="border-left: 3px solid #d9534f;">Source ${data.serial_number} (${data.isotope}) is below 20 Ci (${currentAct} Ci). Flag for replacement.</li>`;
-            }
-        }
-    });
-
-    const statPlans = document.getElementById('stat-work-plans');
-    const statSources = document.getElementById('stat-sources');
-    if(statPlans) statPlans.textContent = planCount;
-    if(statSources) statSources.textContent = vaultCount;
-
     try {
+        const wpSnap = await getDocs(collection(db, 'work_plans'));
+        const statWorkPlans = document.getElementById('stat-work-plans');
+        if(statWorkPlans) statWorkPlans.textContent = wpSnap.size;
+
+        const srcSnap = await getDocs(collection(db, 'sources'));
+        const statSources = document.getElementById('stat-sources');
+        if(statSources) statSources.textContent = srcSnap.size;
+
+        let ir192 = 0, co60 = 0, se75 = 0, yb169 = 0;
+        srcSnap.forEach(doc => {
+            const iso = doc.data().isotope;
+            if(iso === 'Ir-192') ir192++;
+            if(iso === 'Co-60') co60++;
+            if(iso === 'Se-75') se75++;
+            if(iso === 'Yb-169') yb169++;
+        });
+
         const ctx = document.getElementById('isotope-chart');
         if(ctx && typeof Chart !== 'undefined') {
             if(window.isotopeChart) window.isotopeChart.destroy(); 
@@ -222,7 +206,127 @@ export async function updateDashboard() {
                 options: { plugins: { legend: { labels: { color: isDark ? '#e0e0e0' : '#333' } } } }
             });
         }
-    } catch (e) { console.warn("Chart skipped", e); }
+
+        const alertList = document.getElementById('alert-list');
+        if(!alertList) return;
+        
+        alertList.innerHTML = '';
+        let alertCount = 0;
+        const today = new Date();
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+        const eqSnap = await getDocs(collection(db, 'equipment'));
+        eqSnap.forEach(doc => {
+            const eq = doc.data();
+            if (eq.calibration_due_date) {
+                const calDate = new Date(eq.calibration_due_date);
+                if (calDate < today) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 OVERDUE: ${eq.type} (SN: ${eq.serial_number}) calibration expired!</li>`;
+                    alertCount++;
+                } else if (calDate < thirtyDaysFromNow) {
+                    alertList.innerHTML += `<li style="color: #f0ad4e; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">⚠️ WARNING: ${eq.type} (SN: ${eq.serial_number}) calibration due within 30 days.</li>`;
+                    alertCount++;
+                }
+            }
+        });
+
+        srcSnap.forEach(doc => {
+            const src = doc.data();
+            if (src.last_leak_test_date) {
+                const lastTest = new Date(src.last_leak_test_date);
+                const daysSinceTest = (today - lastTest) / (1000 * 60 * 60 * 24);
+                if (daysSinceTest > 182) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 OVERDUE: Source ${src.serial_number} leak test expired (> 6m)!</li>`;
+                    alertCount++;
+                } else if (daysSinceTest > 152) { 
+                    alertList.innerHTML += `<li style="color: #f0ad4e; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">⚠️ WARNING: Source ${src.serial_number} leak test due within 30 days.</li>`;
+                    alertCount++;
+                }
+            }
+        });
+
+        const camSnap = await getDocs(collection(db, 'cameras'));
+        camSnap.forEach(doc => {
+            const cam = doc.data();
+            if (cam.annual_maintenance_date) {
+                const maintDate = new Date(cam.annual_maintenance_date);
+                const daysSinceMaint = (today - maintDate) / (1000 * 60 * 60 * 24);
+                if (daysSinceMaint > 365) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 OVERDUE: Camera ${cam.serial_number} Annual Maint expired (> 12m)!</li>`;
+                    alertCount++;
+                }
+            }
+            if (cam.du_leak_test_date) {
+                const duDate = new Date(cam.du_leak_test_date);
+                const daysSinceDu = (today - duDate) / (1000 * 60 * 60 * 24);
+                if (daysSinceDu > 365) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 OVERDUE: Camera ${cam.serial_number} DU Leak Test expired!</li>`;
+                    alertCount++;
+                }
+            }
+        });
+
+        const perSnap = await getDocs(collection(db, 'personnel'));
+        perSnap.forEach(doc => {
+            const per = doc.data();
+            if (per.last_6mo_eval_date) {
+                const evalDate = new Date(per.last_6mo_eval_date);
+                const daysSinceEval = (today - evalDate) / (1000 * 60 * 60 * 24);
+                if (daysSinceEval > 182) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 DQ WARNING: ${per.full_name} 6-Month Field Eval expired!</li>`;
+                    alertCount++;
+                }
+            }
+            if (per.last_annual_drill_date) {
+                const drillDate = new Date(per.last_annual_drill_date);
+                const daysSinceDrill = (today - drillDate) / (1000 * 60 * 60 * 24);
+                if (daysSinceDrill > 365) {
+                    alertList.innerHTML += `<li style="color: #d9534f; margin-bottom: 5px; background: transparent; border: none; padding:0; cursor: default;">🚨 OVERDUE: ${per.full_name} Annual Emergency Drill expired!</li>`;
+                    alertCount++;
+                }
+            }
+        });
+
+        if (alertCount === 0) {
+            alertList.innerHTML = '<li style="color: #5cb85c; list-style-type: none; background: transparent; border: none; padding:0; cursor: default;">✅ All equipment, sources, and personnel are in compliance.</li>';
+        }
+
+        // --- FLEET UTILIZATION ANALYTICS ---
+        const trSnap = await getDocs(collection(db, 'transport_logs'));
+        const fleetCounts = {};
+        
+        camSnap.forEach(doc => { fleetCounts[doc.data().serial_number] = 0; });
+        
+        trSnap.forEach(doc => {
+            const sn = doc.data().camera_sn;
+            if (sn) fleetCounts[sn] = (fleetCounts[sn] || 0) + 1;
+        });
+
+        const sortedFleet = Object.entries(fleetCounts).sort((a, b) => b[1] - a[1]);
+        
+        const topList = document.getElementById('top-fleet-list');
+        const botList = document.getElementById('bottom-fleet-list');
+        
+        if (topList && botList) {
+            topList.innerHTML = ''; botList.innerHTML = '';
+            
+            sortedFleet.slice(0, 3).forEach(cam => {
+                topList.innerHTML += `<li style="padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem;">📸 <strong>Cam ${cam[0]}</strong>: ${cam[1]} deployments</li>`;
+            });
+            sortedFleet.slice(-3).reverse().forEach(cam => {
+                botList.innerHTML += `<li style="padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem;">💤 <strong>Cam ${cam[0]}</strong>: ${cam[1]} deployments</li>`;
+            });
+            
+            if (sortedFleet.length === 0) {
+                topList.innerHTML = '<li style="color: #999;">Not enough data.</li>';
+                botList.innerHTML = '<li style="color: #999;">Not enough data.</li>';
+            }
+        }
+
+    } catch (err) {
+        console.error("Error updating dashboard stats:", err);
+    }
 }
 
 export async function updateDoseDashboard() {
