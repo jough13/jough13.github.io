@@ -492,7 +492,7 @@ export async function exportCSV(collectionName) {
 }
 
 // --- GENERATE DIGITAL QUAL CARDS ---
-window.generateQualCards = async function() {
+export async function generateQualCards() {
     const container = document.getElementById('qual-card-container');
     if(!container) return;
     
@@ -551,7 +551,7 @@ window.generateQualCards = async function() {
     }
 }
 
-window.generatePDFInventory = async function() {
+export async function generatePDFInventory() {
     const srcBody = document.getElementById('pdf-source-body');
     const camBody = document.getElementById('pdf-cam-body');
     if(!srcBody || !camBody) return;
@@ -607,7 +607,7 @@ window.generatePDFInventory = async function() {
     }
 }
 
-window.fullSystemBackup = async function() {
+export async function fullSystemBackup() {
     if (!auth.currentUser || auth.currentUser.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
         alert("Unauthorized. Only the RSO may perform a full system backup.");
         return;
@@ -663,7 +663,7 @@ window.fullSystemBackup = async function() {
 }
 
 // --- RSO FULL SYSTEM RESTORE ---
-window.executeSystemRestore = function(event) {
+export function executeSystemRestore(event) {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -764,5 +764,4 @@ export async function generateRWP() {
     });
 }
 
-// Add the exports missing from app.js Orchestrator sync
 export async function generateAssetTags() { alert("Asset tags exported to print queue."); }
