@@ -8,7 +8,7 @@ import {
 } from "./ui.js";
 import { 
     fetchData, setupEventListeners, executeDelete, 
-    populateSourceDropdown, populatePersonnelDropdown, editRecord, cloneRecord, attachMinorListeners 
+    populateSourceDropdown, populatePersonnelDropdown, editRecord, cloneRecord, attachMinorListeners, approveWorkPlan
 } from "./data.js";
 import { 
     updateDecayChart, updateDashboard, updateDoseDashboard, updateDeployedAssetsDashboard,
@@ -62,7 +62,8 @@ export async function startApplication() {
     }
 }
 
-initAuth();
+// 🐛 BUG FIX: Pass the initialization callback so the database connects
+initAuth(startApplication);
 
 // --- WINDOW EXPORTS ---
 window.showLoader = showLoader;
@@ -86,6 +87,7 @@ window.editRecord = editRecord;
 window.cloneRecord = cloneRecord;
 window.populatePersonnelDropdown = populatePersonnelDropdown;
 window.populateSourceDropdown = populateSourceDropdown;
+window.approveWorkPlan = approveWorkPlan; 
 
 window.updateDecayChart = updateDecayChart;
 window.updateDashboard = updateDashboard;
@@ -102,3 +104,5 @@ window.fullSystemBackup = fullSystemBackup;
 window.executeSystemRestore = executeSystemRestore;
 window.renderCalendar = renderCalendar;
 window.generateAssetTags = generateAssetTags;
+
+window.loadAllData = loadAllData; // Needed for Database Restore feature
