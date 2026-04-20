@@ -5,7 +5,7 @@ import {
     togglePRI, toggleNA, initSignaturePad, clearSignature, 
     initSketchPad, clearSketch, openModal, closeModal, closeConfirmModal,
     startScanner, stopScanner, filterRecords, clearFilters, calculateBoundary,
-    showToast, initNetworkMonitor // <-- Added UI Polish imports
+    showToast, initNetworkMonitor, setAppOffline, setAppOnline
 } from "./ui.js";
 import { 
     fetchData, setupEventListeners, executeDelete, 
@@ -48,7 +48,7 @@ export async function loadAllData() {
 
 export async function startApplication() {
     initTheme();
-    initNetworkMonitor(); // <-- Start monitoring offline mode
+    initNetworkMonitor(); 
     showSection('dashboard');
     initSignaturePad();
     initSketchPad();
@@ -97,7 +97,7 @@ window.cloneRecord = cloneRecord;
 window.populatePersonnelDropdown = populatePersonnelDropdown;
 window.populateSourceDropdown = populateSourceDropdown;
 window.approveWorkPlan = approveWorkPlan; 
-window.showToast = showToast; // <-- Expose Toast globally
+window.showToast = showToast; 
 
 window.updateDecayChart = updateDecayChart;
 window.updateDashboard = updateDashboard;
@@ -116,5 +116,6 @@ window.renderCalendar = renderCalendar;
 window.generateAssetTags = generateAssetTags;
 
 window.loadAllData = loadAllData;
-
 window.forceReconnect = forceReconnect;
+window.setAppOffline = setAppOffline;
+window.setAppOnline = setAppOnline;
