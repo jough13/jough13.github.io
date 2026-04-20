@@ -201,11 +201,11 @@
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                             <div>
                                 <label>Camera S/N <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="window.startScanner('trk-cam')">📷 Scan</button></label>
-                                <input type="text" id="trk-cam" required>
+                                <input type="text" id="trk-cam">
                             </div>
                             <div>
                                 <label>Source S/N <button type="button" class="btn-export" style="padding: 2px 8px;" onclick="window.startScanner('trk-src')">📷 Scan</button></label>
-                                <input type="text" id="trk-src" required>
+                                <input type="text" id="trk-src">
                             </div>
                             <div id="trk-details-group" style="grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                                 <div>
@@ -490,9 +490,6 @@
 
                             <canvas id="sketch-canvas" style="border: 2px dashed #005A9C; border-radius: 4px; background: #fafafa; cursor: crosshair; touch-action: none; width: 100%; height: 300px;"></canvas>
                         </div>
-                        
-                        <label for="wp-diagram">Or Upload Diagram (Optional)</label>
-                        <input type="file" id="wp-diagram" accept=".pdf,.jpg,.jpeg,.png">
                         
                         <label for="wp-diagram">Or Upload Diagram (Optional)</label>
                         <input type="file" id="wp-diagram" accept=".pdf,.jpg,.jpeg,.png">
