@@ -148,3 +148,57 @@ footer { text-align: center; padding: 10px; background-color: var(--footer-bg); 
 .fc { background: var(--card-bg); color: var(--text-color); border-radius: 8px; }
 .fc-theme-standard th { background: var(--nav-bg); color: white; padding: 5px; }
 .fc-daygrid-day-number { color: var(--text-color); text-decoration: none; padding: 4px; }
+
+/* --- TOAST NOTIFICATIONS --- */
+#toast-container {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    z-index: 10500;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.toast {
+    min-width: 250px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: bold;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+    transform: translateX(120%);
+    animation: slideInToast 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+.toast.fade-out { animation: fadeOutToast 0.5s forwards; }
+.toast-success { background-color: #28a745; border-left: 6px solid #1e7e34; }
+.toast-error { background-color: #dc3545; border-left: 6px solid #a71d2a; }
+.toast-warning { background-color: #ffc107; color: #333; border-left: 6px solid #d39e00; }
+.toast-info { background-color: #17a2b8; border-left: 6px solid #117a8b; }
+@keyframes slideInToast { to { transform: translateX(0); } }
+@keyframes fadeOutToast { to { opacity: 0; transform: translateX(100%); } }
+
+/* --- NETWORK STATUS BADGE --- */
+#network-status {
+    font-size: 0.85rem;
+    font-weight: bold;
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.1);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+    transition: all 0.3s ease;
+}
+.status-offline {
+    background: rgba(220, 53, 69, 0.2) !important;
+    color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
+}
