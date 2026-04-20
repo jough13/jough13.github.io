@@ -22,6 +22,7 @@ window.sketchPadDirty = false;
 window.currentOpenDoc = null; 
 window.editModeId = null;
 window.editModeCollection = null;
+window.calendarInstance = null; 
 
 export async function loadAllData() {
     await Promise.all([
