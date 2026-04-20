@@ -9,7 +9,7 @@ import {
 } from "./ui.js";
 import { 
     fetchData, setupEventListeners, executeDelete, 
-    populateSourceDropdown, populatePersonnelDropdown, populateCameraDropdown, editRecord, cloneRecord, attachMinorListeners, approveWorkPlan, manualGoOffline, manualGoOnline
+    populateSourceDropdown, populatePersonnelDropdown, populateCameraDropdown, populateSurveyMeterDropdown, editRecord, cloneRecord, attachMinorListeners, approveWorkPlan, manualGoOffline, manualGoOnline
 } from "./data.js";
 import { 
     updateDecayChart, updateDashboard, updateDoseDashboard, updateDeployedAssetsDashboard,
@@ -58,6 +58,7 @@ export async function startApplication() {
     await populateSourceDropdown();
     await populatePersonnelDropdown();
     await populateCameraDropdown(); 
+    await populateSurveyMeterDropdown(); 
     
     await loadAllData(); 
     
@@ -87,6 +88,7 @@ window.clearSketch = clearSketch;
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.closeConfirmModal = closeConfirmModal;
+window.openDeleteConfirm = openDeleteConfirm;
 window.executeDelete = executeDelete;
 window.startScanner = startScanner;
 window.stopScanner = stopScanner;
@@ -98,6 +100,7 @@ window.cloneRecord = cloneRecord;
 window.populatePersonnelDropdown = populatePersonnelDropdown;
 window.populateSourceDropdown = populateSourceDropdown;
 window.populateCameraDropdown = populateCameraDropdown;
+window.populateSurveyMeterDropdown = populateSurveyMeterDropdown;
 window.approveWorkPlan = approveWorkPlan; 
 window.showToast = showToast; 
 
@@ -122,5 +125,3 @@ window.setAppOffline = setAppOffline;
 window.setAppOnline = setAppOnline;
 window.manualGoOffline = manualGoOffline;
 window.manualGoOnline = manualGoOnline;
-
-window.openDeleteConfirm = openDeleteConfirm;
