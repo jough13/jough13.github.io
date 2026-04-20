@@ -302,6 +302,9 @@ export function setupEventListeners() {
             equipmentForm.reset();
             if(window.updateDashboard) window.updateDashboard();
             if(window.renderCalendar) window.renderCalendar(); 
+
+            if(window.populateSurveyMeterDropdown) window.populateSurveyMeterDropdown();
+            
             hideLoader();
         });
     }
@@ -467,20 +470,61 @@ export function setupEventListeners() {
 
 export async function populatePersonnelDropdown() {
     const dlNameSelect = document.getElementById('dl-name');
-    const trkUserSelect = document.getElementById('trk-user'); // NEW: Vault User
-    
+    const trkUserSelect = document.getElementById('trk-user'); 
+    const evRadSelect = document.getElementById('ev-rad');
+    const ulRicSelect = document.getElementById('ul-ric');
+    const pjCompletedBySelect = document.getElementById('pj-completed-by');
+
     try {
         const querySnapshot = await getDocs(collection(db, 'personnel'));
         const optHTML = '<option value="">Select Personnel...</option>';
         if(dlNameSelect) dlNameSelect.innerHTML = optHTML;
         if(trkUserSelect) trkUserSelect.innerHTML = optHTML;
+        if(evRadSelect) evRadSelect.innerHTML = optHTML;
+        if(ulRicSelect) ulRicSelect.innerHTML = optHTML;
+        if(pjCompletedBySelect) pjCompletedBySelect.innerHTML = optHTML;
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            if(dlNameSelect) dlNameSelect.innerHTML += `<option value="${data.full_name}">${data.full_name} (${data.cert_number})</option>`;
-            if(trkUserSelect) trkUserSelect.innerHTML += `<option value="${data.full_name}">${data.full_name}</option>`;
+            const val = data.full_name;
+            if(dlNameSelect) dlNameSelect.innerHTML += `<option value="${val}">${val} (${data.cert_number})</option>`;
+            if(trkUserSelect) trkUserSelect.innerHTML += `<option value="${val}">${val}</option>`;
+            if(evRadSelect) evRadSelect.innerHTML += `<option value="${val}">${val}</option>`;
+            if(ulRicSelect) ulRicSelect.innerHTML += `<option value="${val}">${val}</option>`;
+            if(pjCompletedBySelect) pjCompletedBySelect.innerHTML += `<option value="${val}">${val}</option>`;
         });
     } catch (err) { console.error("Error loading personnel:", err); }
+}
+
+export async function populateCameraDropdown() {
+    const trkCamSelect = document.getElementById('trk-cam');
+    const trCameraSelect = document.getElementById('tr-camera');
+    try {
+        const querySnapshot = await getDocs(collection(db, 'cameras'));
+        const optHTML = '<option value="">Select Camera...</option>';
+        if(trkCamSelect) trkCamSelect.innerHTML = optHTML;
+        if(trCameraSelect) trCameraSelect.innerHTML = optHTML;
+
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const opt = `<option value="${data.serial_number}">${data.make_model} (SN: ${data.serial_number})</option>`;
+            if(trkCamSelect) trkCamSelect.innerHTML += opt;
+            if(trCameraSelect) trCameraSelect.innerHTML += opt;
+        });
+    } catch (err) { console.error("Error loading cameras:", err); }
+}
+
+export async function populateSurveyMeterDropdown() {
+    const ulMeterSelect = document.getElementById('ul-meter');
+    if (!ulMeterSelect) return;
+    try {
+        const querySnapshot = await getDocs(collection(db, 'equipment'));
+        ulMeterSelect.innerHTML = '<option value="">Select Survey Meter...</option>';
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            ulMeterSelect.innerHTML += `<option value="${data.serial_number}">${data.type} (SN: ${data.serial_number})</option>`;
+        });
+    } catch (err) { console.error("Error loading equipment:", err); }
 }
 
 export async function populateSourceDropdown() {
