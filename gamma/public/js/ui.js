@@ -3,6 +3,65 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-
 import { db, auth } from "./firebase-config.js";
 import { ADMIN_EMAIL } from "./auth.js";
 
+// --- TOAST NOTIFICATIONS & UX POLISH ---
+export function showToast(message, type = 'success', duration = 4000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    let icon = '✅';
+    if (type === 'error') icon = '🚨';
+    if (type === 'warning') icon = '⚠️';
+    if (type === 'info') icon = 'ℹ️';
+
+    toast.innerHTML = `<span>${icon} &nbsp; ${message}</span>`;
+    container.appendChild(toast);
+
+    // Click to dismiss early
+    toast.addEventListener('click', () => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 500);
+    });
+
+    // Auto dismiss
+    setTimeout(() => {
+        if(toast.parentElement) {
+            toast.classList.add('fade-out');
+            setTimeout(() => toast.remove(), 500);
+        }
+    }, duration);
+}
+
+export function initNetworkMonitor() {
+    const statusBadge = document.getElementById('network-status');
+    if (!statusBadge) return;
+
+    function updateNetworkStatus() {
+        if (navigator.onLine) {
+            statusBadge.innerHTML = '🟢 Online';
+            statusBadge.classList.remove('status-offline');
+            statusBadge.title = "Connected: Syncing Live";
+            showToast("Network restored. Syncing data...", "success");
+        } else {
+            statusBadge.innerHTML = '🔴 Offline';
+            statusBadge.classList.add('status-offline');
+            statusBadge.title = "Disconnected: Working Locally";
+            showToast("You are offline. Data will sync when connection returns.", "warning", 6000);
+        }
+    }
+
+    window.addEventListener('online', updateNetworkStatus);
+    window.addEventListener('offline', updateNetworkStatus);
+    
+    // Set initial state silently on load
+    if (!navigator.onLine) {
+        statusBadge.innerHTML = '🔴 Offline';
+        statusBadge.classList.add('status-offline');
+    }
+}
+
 // --- LOADER LOGIC ---
 export function showLoader() { 
     const loader = document.getElementById('global-loader');
@@ -32,7 +91,6 @@ export function toggleTheme() {
     localStorage.setItem('theme', newTheme);
     updateThemeButton(newTheme);
     
-    // We will call these safely if they exist on the window object
     if(window.isotopeChart && window.updateDashboard) window.updateDashboard(); 
     if(window.doseChart && window.updateDoseDashboard) window.updateDoseDashboard(); 
     if(window.decayChartInstance && window.updateDecayChart) window.updateDecayChart();
@@ -205,7 +263,6 @@ export function initSketchPad() {
         window.sketchPadDirty = true; 
     }
 
-    // Event listeners for sketchpad
     canvas.addEventListener('mousedown', (e) => {
         isDrawing = true;
         const rect = canvas.getBoundingClientRect();
@@ -344,7 +401,7 @@ export function startScanner(targetInputId) {
         isScannerRunning = true; 
     }).catch(err => {
         console.error("Scanner failed:", err);
-        alert("Could not access camera.");
+        showToast("Could not access camera for scanning.", "error");
         stopScanner();
     });
 }
@@ -392,7 +449,6 @@ export function clearFilters() {
     filterRecords();
 }
 
-// --- BOUNDARY CALCULATOR ---
 export function calculateBoundary() {
     const sourceSelect = document.getElementById('wp-source');
     const boundaryInput = document.getElementById('wp-boundary');
