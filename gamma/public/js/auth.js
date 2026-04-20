@@ -30,16 +30,9 @@ export function initAuth(onLoginSuccess) {
                     console.error("App startup error:", err);
                 }
             }
-
-            setTimeout(() => {
-                hideLoader();
-                // Restored localStorage check so the "Don't show" checkbox works
-                if (localStorage.getItem('hideDisclaimer') !== 'true') {
-                    const modal = document.getElementById('disclaimer-modal');
-                    if(modal) modal.style.display = 'flex';
-                }
-            }, 500); 
             
+            hideLoader(); // Removed the clunky modal popup from here!
+
         } else {
             hideLoader();
             if(loginScreen) loginScreen.style.display = 'flex';
