@@ -21,31 +21,34 @@ export function showToast(message, type = 'success', duration = 4000) {
     setTimeout(() => { if(toast.parentElement) { toast.classList.add('fade-out'); setTimeout(() => toast.remove(), 500); } }, duration);
 }
 
+export function setAppOffline() {
+    const statusBadge = document.getElementById('network-status');
+    if (statusBadge && !statusBadge.classList.contains('status-offline')) {
+        statusBadge.innerHTML = '🔴 Offline - Click to Reconnect';
+        statusBadge.classList.add('status-offline');
+        statusBadge.title = "Database connection lost. Click to force sync.";
+        showToast("Database disconnected. App running in offline mode.", "warning", 5000);
+    }
+}
+
+export function setAppOnline() {
+    const statusBadge = document.getElementById('network-status');
+    if (statusBadge && statusBadge.classList.contains('status-offline')) {
+        statusBadge.innerHTML = '🟢 Online';
+        statusBadge.classList.remove('status-offline');
+        statusBadge.title = "Connected to Database";
+        showToast("Database connection restored!", "success");
+    }
+}
+
 export function initNetworkMonitor() {
     const statusBadge = document.getElementById('network-status');
     if (!statusBadge) return;
 
-    function updateNetworkStatus() {
-        if (navigator.onLine) {
-            statusBadge.innerHTML = '🟢 Online';
-            statusBadge.classList.remove('status-offline');
-            statusBadge.title = "Click to force sync";
-            showToast("Network restored. Syncing data...", "success");
-            if (window.forceReconnect) window.forceReconnect(); // Auto sync on reconnect
-        } else {
-            statusBadge.innerHTML = '🔴 Offline';
-            statusBadge.classList.add('status-offline');
-            statusBadge.title = "Working Locally (Offline)";
-            showToast("Offline. Data will save locally and sync later.", "warning", 6000);
-        }
-    }
-
-    window.addEventListener('online', updateNetworkStatus);
-    window.addEventListener('offline', updateNetworkStatus);
-    if (!navigator.onLine) {
-        statusBadge.innerHTML = '🔴 Offline';
-        statusBadge.classList.add('status-offline');
-    }
+    window.addEventListener('online', setAppOnline);
+    window.addEventListener('offline', setAppOffline);
+    
+    if (!navigator.onLine) setAppOffline();
 }
 
 export function showLoader() { const l = document.getElementById('global-loader'); if (l) l.style.display = 'flex'; }
