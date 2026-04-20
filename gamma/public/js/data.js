@@ -24,9 +24,13 @@ export const formMaps = {
 export async function forceReconnect() {
     try {
         showToast("Attempting to force sync with server...", "info");
+        // Disable and re-enable network to force Firebase to try a fresh connection
         await disableNetwork(db);
         await enableNetwork(db);
-        setAppOnline();
+        
+        // We do NOT call setAppOnline() here anymore. 
+        // We let the onSnapshot listener naturally turn the button green if the enableNetwork succeeds.
+        
         if(window.loadAllData) window.loadAllData();
     } catch(e) {
         console.error("Force reconnect failed:", e);
@@ -154,13 +158,20 @@ export function fetchData(collectionName, listId) {
         if (activeListeners[collectionName]) activeListeners[collectionName](); 
         let isFirstLoad = true;
 
-        activeListeners[collectionName] = onSnapshot(collection(db, collectionName), (querySnapshot) => {
+        // NEW: 10-Second Firebase Timeout Detector
+        let connectionTimeout = setTimeout(() => {
+            setAppOffline(); // Turns the button RED and makes it clickable
+        }, 10000);
 
-            // Only declare online if data came directly from the Firebase server
+        // Notice we added { includeMetadataChanges: true } to track cache vs server
+        activeListeners[collectionName] = onSnapshot(collection(db, collectionName), { includeMetadataChanges: true }, (querySnapshot) => {
+            
+            // If data comes from the server, we are truly online.
             if (!querySnapshot.metadata.fromCache) {
-                setAppOnline();
+                clearTimeout(connectionTimeout); // Cancel the offline timer
+                setAppOnline(); // Turn button GREEN
             }
-
+            
             ul.innerHTML = '';
             if (querySnapshot.empty) {
                 ul.innerHTML = `<li style="background: transparent; border: none;">No data found in ${collectionName.replace('_', ' ')}.</li>`;
@@ -229,7 +240,6 @@ export function fetchData(collectionName, listId) {
             if (isFirstLoad) { isFirstLoad = false; resolve(); }
         }, (err) => {
             console.error(`Error syncing ${collectionName}:`, err);
-            // IF FIRESTORE FAILS, TRIGGER THE RED BUTTON
             setAppOffline(); 
             ul.innerHTML = `<li style="color:red; background: transparent; border: none;">Error loading live data (Offline).</li>`;
             resolve(); 
