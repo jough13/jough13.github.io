@@ -9,8 +9,13 @@ import { fetchData, setupEventListeners, executeDelete } from "./data.js";
 import { 
     updateDecayChart, updateDashboard, updateDoseDashboard, updateDeployedAssetsDashboard,
     generateMasterPacket, generateQualCards, generatePDFInventory, generateRWP, 
-    exportCSV, calculateDOTShipping, updateTransportSource, fullSystemBackup, executeSystemRestore 
+    exportCSV, calculateDOTShipping, updateTransportSource, fullSystemBackup, executeSystemRestore,
+    renderCalendar, generateAssetTags 
 } from "./analytics.js";
+
+// And add them to your window exports at the bottom:
+window.renderCalendar = renderCalendar;
+window.generateAssetTags = generateAssetTags;
 
 // --- GLOBALS EXPOSED FOR UI MODULES ---
 window.sigPadDirty = false; 
