@@ -124,20 +124,46 @@ export async function executeDelete() {
         const colToDel = window.currentOpenDoc.collection;
         const idToDel = window.currentOpenDoc.id;
         
-        await deleteDoc(doc(db, colToDel, idToDel));
-        await logAudit('DELETED', colToDel, idToDel, `Record permanently deleted.`);
+        if (colToDel === 'sources') {
+            const fileInput = document.getElementById('del-src-file');
+            if (!fileInput || !fileInput.files[0]) {
+                hideLoader();
+                showToast("Audit Requirement: You must upload transfer/disposal paperwork.", "error");
+                return;
+            }
+            const file = fileInput.files[0];
+            const fileUrl = await uploadFile(file, 'source_disposals');
+            const status = document.getElementById('del-src-status').value;
+
+            // Soft-Delete: We mark it deleted, but keep the record
+            await updateDoc(doc(db, colToDel, idToDel), {
+                vault_status: 'DELETED',
+                disposal_status: status,
+                disposal_record_url: fileUrl,
+                disposal_date: new Date().toISOString()
+            });
+            await logAudit('DISPOSED', colToDel, idToDel, `Source officially disposed/transferred.`);
+            showToast("Source officially archived and removed from active inventory.", "success");
+            
+        } else {
+            // Standard Hard-Delete for non-sources
+            await deleteDoc(doc(db, colToDel, idToDel));
+            await logAudit('DELETED', colToDel, idToDel, `Record permanently deleted.`);
+            showToast("Record permanently deleted.", "info");
+        }
         
         closeConfirmModal();
         closeModal();
         
         if (window.updateDashboard) await window.updateDashboard();
         if (window.renderCalendar) await window.renderCalendar();
+        if (window.updateDeployedAssetsDashboard) await window.updateDeployedAssetsDashboard();
+        
         hideLoader();
-        showToast("Record permanently deleted.", "info");
     } catch (err) {
         hideLoader();
         console.error("Deletion Error:", err);
-        showToast("Error deleting record.", "error");
+        showToast("Error processing deletion.", "error");
     }
 }
 
