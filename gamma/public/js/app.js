@@ -61,9 +61,17 @@ export async function startApplication() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(e => console.log(e));
     }
+
+    // GUARANTEED SAFE POPUP TRIGGER
+    // Fired only after all data and event listeners are 100% loaded.
+    setTimeout(() => {
+        if (localStorage.getItem('hideDisclaimer') !== 'true') {
+            const modal = document.getElementById('disclaimer-modal');
+            if(modal) modal.style.display = 'flex';
+        }
+    }, 250);
 }
 
-// 🐛 BUG FIX: Pass the initialization callback so the database connects
 initAuth(startApplication);
 
 // --- WINDOW EXPORTS ---
@@ -106,4 +114,4 @@ window.executeSystemRestore = executeSystemRestore;
 window.renderCalendar = renderCalendar;
 window.generateAssetTags = generateAssetTags;
 
-window.loadAllData = loadAllData; // Needed for Database Restore feature
+window.loadAllData = loadAllData;
