@@ -4,7 +4,8 @@ import {
     showLoader, hideLoader, initTheme, toggleTheme, showSection, 
     togglePRI, toggleNA, initSignaturePad, clearSignature, 
     initSketchPad, clearSketch, openModal, closeModal, closeConfirmModal,
-    startScanner, stopScanner, filterRecords, clearFilters, calculateBoundary 
+    startScanner, stopScanner, filterRecords, clearFilters, calculateBoundary,
+    showToast, initNetworkMonitor // <-- Added UI Polish imports
 } from "./ui.js";
 import { 
     fetchData, setupEventListeners, executeDelete, 
@@ -47,6 +48,7 @@ export async function loadAllData() {
 
 export async function startApplication() {
     initTheme();
+    initNetworkMonitor(); // <-- Start monitoring offline mode
     showSection('dashboard');
     initSignaturePad();
     initSketchPad();
@@ -62,8 +64,6 @@ export async function startApplication() {
         navigator.serviceWorker.register('sw.js').catch(e => console.log(e));
     }
 
-    // GUARANTEED SAFE POPUP TRIGGER
-    // Fired only after all data and event listeners are 100% loaded.
     setTimeout(() => {
         if (localStorage.getItem('hideDisclaimer') !== 'true') {
             const modal = document.getElementById('disclaimer-modal');
@@ -97,6 +97,7 @@ window.cloneRecord = cloneRecord;
 window.populatePersonnelDropdown = populatePersonnelDropdown;
 window.populateSourceDropdown = populateSourceDropdown;
 window.approveWorkPlan = approveWorkPlan; 
+window.showToast = showToast; // <-- Expose Toast globally
 
 window.updateDecayChart = updateDecayChart;
 window.updateDashboard = updateDashboard;
