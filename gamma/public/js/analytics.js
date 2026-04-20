@@ -363,27 +363,95 @@ export async function renderCalendar() {
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl || typeof FullCalendar === 'undefined') return;
 
-    const events = [];
-    const wpSnap = await getDocs(collection(db, 'work_plans'));
-    wpSnap.forEach(doc => {
-        const d = doc.data();
-        if(d.planned_date) {
-            events.push({
-                title: `Job ${d.job_number} (${d.location})`,
-                start: d.planned_date,
-                color: d.rso_approval_status === 'Approved' ? '#5cb85c' : '#f0ad4e'
-            });
+    let events = [];
+
+    try {
+        const wpSnap = await getDocs(collection(db, 'work_plans'));
+        wpSnap.forEach(doc => {
+            const data = doc.data();
+            if(data.planned_date) {
+                events.push({ 
+                    title: `Job: ${data.job_number}`, 
+                    start: data.planned_date, 
+                    color: '#005A9C',
+                    extendedProps: { collection: 'work_plans', docId: doc.id } 
+                });
+            }
+        });
+
+        const eqSnap = await getDocs(collection(db, 'equipment'));
+        eqSnap.forEach(doc => {
+            const data = doc.data();
+            if(data.calibration_due_date) {
+                events.push({ 
+                    title: `Cal Due: ${data.serial_number}`, 
+                    start: data.calibration_due_date, 
+                    color: '#f0ad4e',
+                    extendedProps: { collection: 'equipment', docId: doc.id } 
+                });
+            }
+        });
+
+        const camSnap = await getDocs(collection(db, 'cameras'));
+        camSnap.forEach(doc => {
+            const data = doc.data();
+            if(data.annual_maintenance_date) {
+                let due = new Date(data.annual_maintenance_date);
+                due.setFullYear(due.getFullYear() + 1);
+                events.push({ 
+                    title: `Maint Due: Cam ${data.serial_number}`, 
+                    start: due.toISOString().split('T')[0], 
+                    color: '#d9534f',
+                    extendedProps: { collection: 'cameras', docId: doc.id } 
+                });
+            }
+        });
+
+        const perSnap = await getDocs(collection(db, 'personnel'));
+        perSnap.forEach(doc => {
+            const data = doc.data();
+            if(data.last_6mo_eval_date) {
+                let due = new Date(data.last_6mo_eval_date);
+                due.setMonth(due.getMonth() + 6); 
+                events.push({ 
+                    title: `Eval Exp: ${data.full_name.split(' ')[0]}`, 
+                    start: due.toISOString().split('T')[0], 
+                    color: '#d9534f',
+                    extendedProps: { collection: 'personnel', docId: doc.id } 
+                });
+            }
+        });
+
+    } catch(err) {
+        console.error("Error loading calendar events:", err);
+    }
+
+    // Use calendarInstance to avoid clashing with the HTML DOM ID
+    if(window.calendarInstance) {
+        window.calendarInstance.destroy(); 
+    }
+
+    window.calendarInstance = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,listWeek'
+        },
+        events: events,
+        height: 650,
+        eventClick: function(info) {
+            const props = info.event.extendedProps;
+            if(props.collection && props.docId && window.openModal) {
+                window.openModal(props.collection, props.docId);
+            }
+        },
+        eventMouseEnter: function(info) {
+            info.el.style.cursor = 'pointer';
         }
     });
-
-    if(window.calendar) window.calendar.destroy();
-    window.calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
-        events: events,
-        height: 'auto'
-    });
-    window.calendar.render();
+    
+    window.calendarInstance.render();
 }
 
 // --- PDF & EXPORT GENERATORS ---
