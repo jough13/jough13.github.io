@@ -57,6 +57,7 @@
             <div class="search-container">
                 <input type="text" id="global-search" placeholder="Search records..." onkeyup="window.filterRecords()">
                 <button type="button" class="theme-toggle" onclick="window.toggleTheme()" id="theme-btn">🌙 Dark Mode</button>
+                 <span id="network-status" title="Network Active">🟢 Online</span>
                 <span id="user-display"></span>
                 <button type="button" class="logout-btn" id="logout-btn">Log Out</button>
             </div>
@@ -774,6 +775,8 @@
     </div>
 
     <div id="rwp-container" style="display: none; padding: 40px; background: white; color: black; font-family: Arial; width: 8.5in;"></div>
+
+    <div id="toast-container"></div>
 
     <script type="module" src="js/app.js"></script>
 </body>
