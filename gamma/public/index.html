@@ -191,12 +191,6 @@
                     <button type="button" class="btn-secondary" style="background-color: #005A9C; color: white; font-weight: bold; padding: 10px 20px;" onclick="window.generateAssetTags()">🖨️ Print All Asset Tags (QR)</button>
                 </div>
                 <div id="asset-tag-container" style="display: none; padding: 20px; background: white;"></div>
-                
-                <div class="card" style="min-width: 100%; border-top: 5px solid #005A9C; margin-bottom: 20px;">
-                    <h3>Source Replacement Predictor (6-Month Decay Forecast)</h3>
-                    <p style="font-size: 0.85rem; color: var(--header-p); margin-top: 0;">Automatically tracks the future decay curve of active vault sources against a 20-Curie administrative replacement threshold.</p>
-                    <canvas id="decay-chart" height="100"></canvas>
-                </div>
 
                 <div class="card" style="border-top: 5px solid #f0ad4e;">
                     <h3>Live Vault Check-In / Check-Out <span id="out-count" style="background:#f0ad4e;color:#333;padding:4px 10px;border-radius:12px;font-size:0.85rem;font-weight:bold;">0 Deployed</span></h3>
@@ -321,6 +315,13 @@
                         <ul id="equipment-list">Loading...</ul>
                     </div>
                 </div>
+
+                <div class="card" style="min-width: 100%; border-top: 5px solid #005A9C; margin-top: 20px;">
+                    <h3>Source Replacement Predictor (6-Month Decay Forecast)</h3>
+                    <p style="font-size: 0.85rem; color: var(--header-p); margin-top: 0;">Automatically tracks the future decay curve of active vault sources against a 20-Curie administrative replacement threshold.</p>
+                    <canvas id="decay-chart" height="100"></canvas>
+                </div>
+
             </section>
 
             <section id="personnel" class="module">
