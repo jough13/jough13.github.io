@@ -1,7 +1,7 @@
 // public/js/data.js
 import { calculateCurrentActivity } from "./analytics.js";
 import { ADMIN_EMAIL } from "./auth.js";
-import { collection, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { collection, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, getDocs, onSnapshot, enableNetwork, disableNetwork } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { db, storage, auth } from "./firebase-config.js";
 import { showLoader, hideLoader, closeConfirmModal, closeModal, showToast } from "./ui.js";
@@ -20,6 +20,18 @@ export const formMaps = {
     'utilization_logs': { formId: 'utilization-form', fields: { job_reference: 'ul-job', radiographer_in_charge: 'ul-ric', participants: 'ul-participants', survey_meter_serial: 'ul-meter', meter_response_checked: 'ul-response', max_survey_reading: 'ul-max-survey' } },
     'post_job_reports': { formId: 'reports-form', fields: { completed_by: 'pj-completed-by', source_secured: 'pj-source-secured', vault_verified: 'pj-vault-verified' } }
 };
+
+export async function forceReconnect() {
+    try {
+        showToast("Attempting to force sync with server...", "info");
+        await disableNetwork(db);
+        await enableNetwork(db);
+        showToast("Network reset successful. Live Syncing.", "success");
+        if(window.loadAllData) window.loadAllData();
+    } catch(e) {
+        showToast("Reconnection failed. Still offline.", "error");
+    }
+}
 
 export async function uploadFile(file, folderPath) {
     if (!file) return null;
