@@ -9,8 +9,7 @@ import {
 } from "./ui.js";
 import { 
     fetchData, setupEventListeners, executeDelete, 
-    populateSourceDropdown, populatePersonnelDropdown, editRecord, cloneRecord, attachMinorListeners, approveWorkPlan, 
-    manualGoOffline, manualGoOnline
+    populateSourceDropdown, populatePersonnelDropdown, editRecord, cloneRecord, attachMinorListeners, approveWorkPlan, manualGoOffline, manualGoOnline
 } from "./data.js";
 import { 
     updateDecayChart, updateDashboard, updateDoseDashboard, updateDeployedAssetsDashboard,
