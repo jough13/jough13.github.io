@@ -1,12 +1,12 @@
 // public/js/auth.js
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { auth } from "./firebase-config.js";
-import { startApplication } from "./app.js";
 import { showLoader, hideLoader } from "./ui.js";
 
-export const ADMIN_EMAIL = "rso@shipyard.com"; 
+export const ADMIN_EMAIL = "rso@shipyard.com";
 
-export function initAuth() {
+// Passing onLoginSuccess safely breaks the circular dependency with app.js
+export function initAuth(onLoginSuccess) {
     onAuthStateChanged(auth, async (user) => {
         showLoader(); 
         const loginScreen = document.getElementById('login-screen');
@@ -24,18 +24,21 @@ export function initAuth() {
                 el.style.display = isAdmin ? '' : 'none'; 
             });
 
-            try {
-                await startApplication();
-            } catch (err) {
-                console.error("App startup error:", err);
-            } finally {
-                setTimeout(() => {
-                    hideLoader();
-                    // FIX: Bypassed the localStorage check so the modal forces open for testing!
-                    const modal = document.getElementById('disclaimer-modal');
-                    if(modal) modal.style.display = 'flex';
-                }, 500); 
+            if (onLoginSuccess) {
+                try {
+                    await onLoginSuccess();
+                } catch (err) {
+                    console.error("App startup error:", err);
+                }
             }
+
+            setTimeout(() => {
+                hideLoader();
+                // FIX: localStorage check bypassed entirely so it forces open on every refresh!
+                const modal = document.getElementById('disclaimer-modal');
+                if(modal) modal.style.display = 'flex';
+            }, 500); 
+            
         } else {
             hideLoader();
             if(loginScreen) loginScreen.style.display = 'flex';
