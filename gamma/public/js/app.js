@@ -122,6 +122,8 @@ window.updateDecayChart = async function() {
 }
 
 // --- BARCODE SCANNER LOGIC ---
+let isScannerRunning = false;
+
 window.startScanner = function(targetInputId) {
     document.getElementById('scanner-modal').style.display = 'flex';
     html5QrCode = new Html5Qrcode("reader");
@@ -130,11 +132,32 @@ window.startScanner = function(targetInputId) {
     html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
         document.getElementById(targetInputId).value = decodedText;
         window.stopScanner();
+    }).then(() => {
+        isScannerRunning = true; 
     }).catch(err => {
         console.error("Scanner failed:", err);
         alert("Could not access camera.");
         window.stopScanner();
     });
+}
+
+window.stopScanner = function() {
+    const modal = document.getElementById('scanner-modal');
+    
+    if (html5QrCode && isScannerRunning) {
+        html5QrCode.stop().then(() => {
+            html5QrCode.clear();
+            isScannerRunning = false;
+            modal.style.display = 'none';
+        }).catch(err => {
+            console.log("Error stopping scanner:", err);
+            modal.style.display = 'none';
+        });
+    } else {
+        if(html5QrCode) html5QrCode.clear();
+        modal.style.display = 'none';
+        isScannerRunning = false;
+    }
 }
 
 window.stopScanner = function() {
@@ -270,7 +293,7 @@ const formMaps = {
     'personnel': { formId: 'personnel-form', fields: { full_name: 'per-name', cert_number: 'per-cert', trust_authorization_date: 'per-trust', hazmat_expiration: 'per-hazmat', last_6mo_eval_date: 'per-eval', last_annual_drill_date: 'per-drill' } },
     'field_evaluations': { formId: 'eval-form', fields: { eval_date: 'ev-date', radiographer_evaluated: 'ev-rad', evaluator: 'ev-evaluator', duties_performed: 'ev-duties', comments: 'ev-comments' }, nested: { checklist: { followed_procedures: 'ev-c1', emergency_knowledge: 'ev-c2', instrument_checks: 'ev-c3', instrument_use: 'ev-c4', dosimetry_use: 'ev-c5', pri_checks: 'ev-c6', key_control: 'ev-c7', boundary_control: 'ev-c8', alara_used: 'ev-c9', logs_completed: 'ev-c10' } } },
     'work_plans': { formId: 'work-plans-form', fields: { job_number: 'wp-job', location_type: 'wp-loc-type', location: 'wp-location', planned_date: 'wp-date', source_id: 'wp-source', collimator_used: 'wp-collimator', calculated_boundary_mr_hr: 'wp-boundary', pri_entrance_tested: 'wp-pri-entrance', pri_alarm_tested: 'wp-pri-alarm' } },
-    'transport_logs': { formId: 'transport-form', fields: { transport_date: 'tr-date', camera_sn: 'tr-camera', destination: 'tr-destination', max_contact_reading: 'tr-max-contact', transport_index: 'tr-ti', over_water_transport: 'tr-water' } },
+    'transport_logs': { formId: 'transport-form', fields: { transport_date: 'tr-date', camera_sn: 'tr-camera', destination: 'tr-destination', max_contact_reading: 'tr-surface', over_water_transport: 'tr-water' } },
     'dosimetry_logs': { formId: 'dosimetry-form', fields: { personnel_name: 'dl-name', dosimeter_serial: 'dl-serial', ratemeter_check_performed: 'dl-ratemeter-check', initial_reading: 'dl-initial', final_reading: 'dl-final' } },
     'utilization_logs': { formId: 'utilization-form', fields: { job_reference: 'ul-job', radiographer_in_charge: 'ul-ric', participants: 'ul-participants', survey_meter_serial: 'ul-meter', meter_response_checked: 'ul-response', max_survey_reading: 'ul-max-survey' } },
     'post_job_reports': { formId: 'reports-form', fields: { completed_by: 'pj-completed-by', source_secured: 'pj-source-secured', vault_verified: 'pj-vault-verified' } }
@@ -329,8 +352,28 @@ function populateFormForEditClone(docObj, isEdit) {
     for (const [dbKey, htmlId] of Object.entries(map.fields)) {
         const el = document.getElementById(htmlId);
         if(el && data[dbKey] !== undefined) {
-            if(el.type === 'checkbox') el.checked = data[dbKey];
-            else el.value = data[dbKey];
+            if(el.type === 'checkbox') {
+                el.checked = data[dbKey];
+            } else {
+                // Find the associated N/A checkbox if it exists
+                const specificLabel = document.querySelector(`label[for="${htmlId}"]`);
+                const checkbox = specificLabel ? specificLabel.querySelector('input[type="checkbox"]') : null;
+
+                if (data[dbKey] === 'N/A') {
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        window.toggleNA(htmlId, checkbox);
+                    } else {
+                        el.value = 'N/A';
+                    }
+                } else {
+                    if (checkbox) {
+                        checkbox.checked = false;
+                        window.toggleNA(htmlId, checkbox);
+                    }
+                    el.value = data[dbKey];
+                }
+            }
         }
     }
 
@@ -2160,497 +2203,4 @@ window.executeSystemRestore = function(event) {
         }
     };
     reader.readAsText(file);
-}
-
-// --- GENERATE DIGITAL QUAL CARDS ---
-window.generateQualCards = async function() {
-    const container = document.getElementById('qual-card-container');
-    if(!container) return;
-    
-    showLoader();
-    try {
-        const perSnap = await getDocs(collection(db, 'personnel'));
-        if (perSnap.empty) {
-            alert("No personnel records found.");
-            hideLoader();
-            return;
-        }
-
-        let html = '<div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; font-family: Arial;">';
-        
-        perSnap.forEach(d => {
-            const p = d.data();
-            const qrString = `Name: ${p.full_name}\nCert: ${p.cert_number}\n6-Mo Eval: ${p.last_6mo_eval_date}\nHazmat: ${p.hazmat_expiration}`;
-            const qrData = encodeURIComponent(qrString);
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${qrData}`;
-
-            html += `
-            <div style="border: 2px solid #002244; border-radius: 10px; width: 3.375in; height: 2.125in; padding: 15px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; background: white; color: black; page-break-inside: avoid;">
-                <div style="flex: 1;">
-                    <h3 style="margin: 0 0 5px 0; color: #005A9C; font-size: 14px;">NAVSEA DET RASO</h3>
-                    <h2 style="margin: 0 0 5px 0; font-size: 16px;">${p.full_name}</h2>
-                    <p style="margin: 2px 0; font-size: 10px;"><b>Cert:</b> ${p.cert_number}</p>
-                    <p style="margin: 2px 0; font-size: 10px;"><b>Eval Exp:</b> ${p.last_6mo_eval_date}</p>
-                    <p style="margin: 2px 0; font-size: 10px;"><b>Hazmat:</b> ${p.hazmat_expiration}</p>
-                    <p style="margin: 2px 0; font-size: 10px;"><b>Auth Date:</b> ${p.trust_authorization_date}</p>
-                </div>
-                <div style="width: 80px; height: 80px; border: 1px solid #ccc; padding: 2px;">
-                    <img src="${qrUrl}" style="width: 100%; height: 100%;">
-                </div>
-            </div>`;
-        });
-        
-        html += '</div>';
-        container.innerHTML = html;
-        container.style.display = 'block';
-
-        html2pdf().set({
-            margin: 10,
-            filename: `Radiographer_Qual_Cards_${new Date().toISOString().split('T')[0]}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-        }).from(container).save().then(() => {
-            container.style.display = 'none';
-            hideLoader();
-        });
-
-    } catch(e) {
-        console.error("Qual Card Error:", e);
-        hideLoader();
-        alert('Error generating qual cards.');
-    }
-}
-
-// --- MASTER JOB PACKET GENERATOR ---
-window.generateMasterPacket = async function() {
-    const jobNum = document.getElementById('packet-job-number').value.trim();
-    if(!jobNum) { 
-        alert("Please enter a Job Number to compile."); 
-        return; 
-    }
-
-    showLoader();
-    try {
-        const wpQ = query(collection(db, 'work_plans'), where('job_number', '==', jobNum));
-        const wpSnap = await getDocs(wpQ);
-        let wpData = null;
-        wpSnap.forEach(d => wpData = d.data());
-
-        const utQ = query(collection(db, 'utilization_logs'), where('job_reference', '==', jobNum));
-        const utSnap = await getDocs(utQ);
-        let utData = null;
-        utSnap.forEach(d => utData = d.data());
-
-        if(!wpData && !utData) {
-            alert("No records found in the database for that Job Number.");
-            hideLoader();
-            return;
-        }
-
-        const container = document.getElementById('master-packet-container');
-        let html = `<h2 style="text-align:center; border-bottom:3px solid #002244; padding-bottom:10px; margin-bottom: 10px;">MASTER JOB PACKET</h2>`;
-        html += `<h3 style="text-align:center; margin-top: 0; color: #555;">JOB REF: ${jobNum}</h3>`;
-        html += `<div style="display:flex; justify-content:space-between; margin-bottom:20px; font-size: 0.9rem;"><span>Generated: ${new Date().toLocaleDateString()}</span><span>Command: ____________</span></div>`;
-
-        if(wpData) {
-            html += `<h3 style="background:#eee; padding:5px; border-left: 5px solid #005A9C;">PART 1: WORK PLAN & SAFETY CONTROLS</h3>`;
-            html += `<table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size: 0.9rem;" border="1">`;
-            html += `<tr><td style="padding:8px; font-weight:bold; width: 40%;">Planned Date</td><td style="padding:8px;">${wpData.planned_date}</td></tr>`;
-            html += `<tr><td style="padding:8px; font-weight:bold;">Location</td><td style="padding:8px;">${wpData.location} (${wpData.location_type})</td></tr>`;
-            html += `<tr><td style="padding:8px; font-weight:bold;">Calculated Boundary (2mR/hr)</td><td style="padding:8px;">${wpData.calculated_boundary_mr_hr} ft</td></tr>`;
-            html += `<tr><td style="padding:8px; font-weight:bold;">Collimator Used</td><td style="padding:8px;">${wpData.collimator_used ? 'Yes' : 'No'}</td></tr>`;
-            html += `</table>`;
-            
-            if (wpData.sketch_data) {
-                html += `<h4 style="margin-top: 10px;">Boundary Sketch / Setup Diagram:</h4>`;
-                html += `<div style="border: 2px solid #ccc; padding: 5px; text-align: center;"><img src="${wpData.sketch_data}" style="max-width: 100%; height: auto;" /></div>`;
-            }
-        }
-
-        if(utData) {
-            html += `<h3 style="background:#eee; padding:5px; border-left: 5px solid #f0ad4e;">PART 2: UTILIZATION & FIELD LOG</h3>`;
-            html += `<table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size: 0.9rem;" border="1">`;
-            html += `<tr><td style="padding:8px; font-weight:bold; width: 40%;">Radiographer in Charge (RIC)</td><td style="padding:8px;">${utData.radiographer_in_charge}</td></tr>`;
-            html += `<tr><td style="padding:8px; font-weight:bold;">Assistants / Participants</td><td style="padding:8px;">${utData.participants || 'None'}</td></tr>`;
-            html += `<tr><td style="padding:8px; font-weight:bold;">Survey Meter Used (SN)</td><td style="padding:8px;">${utData.survey_meter_serial} (Response Checked: ${utData.meter_response_checked ? 'Yes':'No'})</td></tr>`;
-            html += `<tr><td style="padding:8px; font-weight:bold;">Max Device Survey Reading</td><td style="padding:8px;">${utData.max_survey_reading} mR/hr</td></tr>`;
-            html += `</table>`;
-        }
-
-        html += `<div style="margin-top: 50px; border-top: 1px dashed #000; padding-top:20px; text-align:center; font-size: 0.85rem;">
-                    <p><strong>AUDIT VERIFICATION COMPLETE</strong></p>
-                    <p>Records compiled automatically by the Gamma Radiography Tracker System.</p>
-                 </div>`;
-
-        container.innerHTML = html;
-        container.style.display = 'block';
-
-        html2pdf().set({
-            margin: 15,
-            filename: `Job_Packet_${jobNum}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-        }).from(container).save().then(() => {
-            container.style.display = 'none';
-            document.getElementById('packet-job-number').value = '';
-            hideLoader();
-        });
-
-    } catch (err) {
-        console.error("Packet Error:", err);
-        hideLoader();
-        alert("Failed to generate master packet.");
-    }
-}
-
-// --- ADVANCED BOUNDARY SKETCHPAD ENGINE ---
-window.initSketchPad = function() {
-    const canvas = document.getElementById('sketch-canvas');
-    if (!canvas) return;
-    
-    canvas.width = canvas.parentElement.clientWidth - 20; 
-    const ctx = canvas.getContext('2d');
-    
-    ctx.fillStyle = "#fafafa";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    let isDrawing = false;
-    let lastX = 0, lastY = 0;
-    let isEraser = false;
-
-    const colorPicker = document.getElementById('sketch-color');
-    const sizePicker = document.getElementById('sketch-size');
-    const eraserBtn = document.getElementById('sketch-eraser');
-
-    if (eraserBtn) {
-        eraserBtn.addEventListener('click', () => {
-            isEraser = !isEraser;
-            eraserBtn.style.backgroundColor = isEraser ? '#d9534f' : '';
-            eraserBtn.style.color = isEraser ? 'white' : '';
-        });
-    }
-
-    function draw(e) {
-        if (!isDrawing) return;
-        e.preventDefault(); 
-        
-        let clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-        let clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
-        
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        
-        const x = (clientX - rect.left) * scaleX;
-        const y = (clientY - rect.top) * scaleY;
-
-        ctx.lineWidth = sizePicker ? sizePicker.value : 3;
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = isEraser ? '#fafafa' : (colorPicker ? colorPicker.value : '#000000');
-
-        ctx.beginPath();
-        ctx.moveTo(lastX, lastY);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-
-        [lastX, lastY] = [x, y];
-        window.sketchPadDirty = true; 
-    }
-
-    canvas.addEventListener('mousedown', (e) => {
-        isDrawing = true;
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        [lastX, lastY] = [(e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY];
-    });
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', () => isDrawing = false);
-    canvas.addEventListener('mouseout', () => isDrawing = false);
-
-    canvas.addEventListener('touchstart', (e) => {
-        isDrawing = true;
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        [lastX, lastY] = [(e.touches[0].clientX - rect.left) * scaleX, (e.touches[0].clientY - rect.top) * scaleY];
-    }, { passive: false });
-    canvas.addEventListener('touchmove', draw, { passive: false });
-    canvas.addEventListener('touchend', () => isDrawing = false);
-}
-
-// --- PERSONNEL N/A TOGGLE ---
-window.toggleNA = function(inputId, checkbox) {
-    const el = document.getElementById(inputId);
-    if (!el) return;
-    
-    if (checkbox.checked) {
-        el.dataset.previousValue = el.value; // Save in case they uncheck it
-        el.value = '';
-        el.disabled = true;
-        el.required = false;
-        el.style.backgroundColor = '#e9ecef';
-    } else {
-        el.value = el.dataset.previousValue || '';
-        el.disabled = false;
-        el.required = true;
-        el.style.backgroundColor = '';
-    }
-}
-
-window.clearSketch = function() {
-    const canvas = document.getElementById('sketch-canvas');
-    if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        window.sketchPadDirty = false;
-    }
-}
-
-// --- GENERATE PHYSICAL ASSET TAGS (QR CODES) ---
-window.generateAssetTags = async function() {
-    const container = document.getElementById('asset-tag-container');
-    if(!container) return;
-    
-    showLoader();
-    try {
-        const eqSnap = await getDocs(collection(db, 'equipment'));
-        const camSnap = await getDocs(collection(db, 'cameras'));
-        
-        let items = [];
-        eqSnap.forEach(d => items.push({type: d.data().type, sn: d.data().serial_number, due: d.data().calibration_due_date}));
-        camSnap.forEach(d => items.push({type: d.data().make_model, sn: d.data().serial_number, due: d.data().annual_maintenance_date}));
-        
-        if (items.length === 0) { 
-            alert("No physical assets found in the database."); 
-            hideLoader(); 
-            return; 
-        }
-        
-        let html = '<div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; font-family: Arial;">';
-        
-        items.forEach(item => {
-            const qrData = encodeURIComponent(`SN: ${item.sn}\nModel: ${item.type}\nDue: ${item.due || 'N/A'}`);
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${qrData}`;
-            
-            html += `
-            <div style="border: 2px dashed #333; width: 2.5in; height: 1.5in; padding: 10px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; background: white; color: black; page-break-inside: avoid;">
-                <div style="flex: 1; padding-right: 10px;">
-                    <h3 style="margin: 0 0 5px 0; font-size: 11px; color: #005A9C;">PROPERTY OF US NAVY</h3>
-                    <h2 style="margin: 0 0 5px 0; font-size: 14px; word-break: break-all;">${item.sn}</h2>
-                    <p style="margin: 2px 0; font-size: 10px;"><b>Model:</b> ${item.type}</p>
-                    <p style="margin: 2px 0; font-size: 10px; color: #d9534f;"><b>Maint/Cal Due:</b><br>${item.due || 'N/A'}</p>
-                </div>
-                <div style="width: 70px; height: 70px;">
-                    <img src="${qrUrl}" style="width: 100%; height: 100%;">
-                </div>
-            </div>`;
-        });
-        
-        html += '</div>';
-        container.innerHTML = html;
-        container.style.display = 'block';
-        
-        html2pdf().set({
-            margin: 10,
-            filename: `Physical_Asset_Tags_${new Date().toISOString().split('T')[0]}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-        }).from(container).save().then(() => {
-            container.style.display = 'none';
-            hideLoader();
-        });
-    } catch(e) {
-        console.error("Asset Tag Error:", e);
-        hideLoader();
-        alert('Error generating asset tags.');
-    }
-}
-
-// --- APPLY RSO APPROVAL STAMP ---
-window.approveWorkPlan = async function() {
-    if(!window.currentOpenDoc || window.currentOpenDoc.collection !== 'work_plans') return;
-    
-    if (!auth.currentUser || auth.currentUser.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-        alert("Unauthorized. Only the RSO can officially approve Work Plans.");
-        return;
-    }
-
-    if(confirm("Are you sure you want to apply your official RSO Approval to this plan? This will lock it from further edits by standard radiographers.")) {
-        try {
-            showLoader();
-            await updateDoc(doc(db, 'work_plans', window.currentOpenDoc.id), {
-                rso_approval_status: 'Approved',
-                rso_approved_by: auth.currentUser.email,
-                rso_approved_at: new Date().toISOString()
-            });
-            alert("Work Plan officially approved and locked.");
-            window.closeModal();
-            await fetchData('work_plans', 'work-plans-list');
-        } catch(err) {
-            console.error("Approval error:", err);
-            alert("Failed to approve plan.");
-        } finally {
-            hideLoader();
-        }
-    }
-}
-
-// --- AUTO-FILL TRANSPORT SOURCE ---
-window.updateTransportSource = function() {
-    const trSelect = document.getElementById('tr-source');
-    const isoInput = document.getElementById('tr-isotope');
-    const actInput = document.getElementById('tr-activity');
-    
-    if(!trSelect || !isoInput || !actInput) return;
-
-    if(trSelect.selectedIndex > 0) {
-        const selectedOption = trSelect.options[trSelect.selectedIndex];
-        isoInput.value = selectedOption.getAttribute('data-isotope');
-        actInput.value = selectedOption.getAttribute('data-activity');
-    } else {
-        isoInput.value = '';
-        actInput.value = '';
-    }
-    
-    // Instantly trigger the DOT math with the live decay value
-    if(window.calculateDOTShipping) window.calculateDOTShipping();
-}
-
-// --- DOT SHIPPING CALCULATOR ENGINE ---
-window.calculateDOTShipping = function() {
-    const iso = document.getElementById('tr-isotope')?.value;
-    const category = document.getElementById('tr-category')?.value || 'instrument';
-    const actCi = parseFloat(document.getElementById('tr-activity')?.value) || 0;
-    const surf = parseFloat(document.getElementById('tr-surface')?.value) || 0;
-    const meter = parseFloat(document.getElementById('tr-1m')?.value) || 0;
-
-    const pkgEl = document.getElementById('tr-calc-pkg');
-    const tiEl = document.getElementById('tr-calc-ti');
-    const labelEl = document.getElementById('tr-calc-label');
-    const psnEl = document.getElementById('tr-calc-psn'); 
-
-    if (!pkgEl || !tiEl || !labelEl) return;
-
-    // 1. Package Type & UN PSN
-    let a1LimitCi = Infinity;
-    if (iso === 'Ir-192') a1LimitCi = 27.027; 
-    else if (iso === 'Co-60') a1LimitCi = 10.81; 
-    else if (iso === 'Se-75') a1LimitCi = 81.08; 
-    else if (iso === 'Yb-169') a1LimitCi = 108.1;
-    else if (iso === 'Cs-137') a1LimitCi = 54.05;
-
-    let pkgType = '--';
-    let psn = '--';
-    
-    if (iso && actCi > 0) {
-        if (actCi < 0.001) {
-            pkgType = 'Excepted Package';
-            pkgEl.style.color = '#5cb85c';
-            if (category === 'instrument') {
-                psn = 'UN2911, Radioactive material, excepted package - instruments or articles, 7';
-            } else {
-                psn = 'UN2910, Radioactive material, excepted package - limited quantity of material, 7';
-            }
-        } else if (actCi <= a1LimitCi) {
-            pkgType = 'Type A';
-            psn = 'UN3332, Radioactive material, Type A package, special form, 7';
-            pkgEl.style.color = '#5cb85c';
-        } else {
-            pkgType = 'Type B';
-            psn = 'UN2916, Radioactive material, Type B(U) package, 7';
-            pkgEl.style.color = '#d9534f';
-        }
-        pkgEl.textContent = pkgType;
-        if(psnEl) psnEl.textContent = psn;
-    } else {
-        pkgEl.textContent = '--';
-        pkgEl.style.color = '';
-        if(psnEl) psnEl.textContent = '--';
-    }
-
-    // 2. Transport Index (Rounded up to nearest tenth)
-    let ti = 0;
-    if (meter > 0) {
-        ti = meter <= 0.05 ? 0 : Math.ceil(meter * 10) / 10;
-        tiEl.textContent = ti.toFixed(1);
-    } else {
-        tiEl.textContent = '--';
-    }
-
-    // 3. Required Label
-    let label = '--';
-    if (surf > 0 || meter > 0) {
-        if (surf <= 0.5 && ti === 0) {
-            label = 'White-I';
-            labelEl.style.background = '#fff'; labelEl.style.color = '#333'; labelEl.style.border = '1px solid #ccc';
-        } else if (surf <= 50 && ti <= 1) {
-            label = 'Yellow-II';
-            labelEl.style.background = '#ffeb3b'; labelEl.style.color = '#000'; labelEl.style.border = '1px solid #ccc';
-        } else if (surf <= 200 && ti <= 10) {
-            label = 'Yellow-III';
-            labelEl.style.background = '#ffeb3b'; labelEl.style.color = '#d9534f'; labelEl.style.border = '1px solid #d9534f';
-        } else if (surf > 200 || ti > 10) {
-            label = 'Yellow-III (Exclusive Use)';
-            labelEl.style.background = '#d9534f'; labelEl.style.color = '#fff'; labelEl.style.border = '1px solid #333';
-        }
-        labelEl.textContent = label;
-        labelEl.style.padding = '2px 6px';
-        labelEl.style.borderRadius = '3px';
-        labelEl.style.display = 'inline-block';
-    } else {
-        labelEl.textContent = '--';
-        labelEl.style.background = 'transparent';
-        labelEl.style.border = 'none';
-        labelEl.style.color = '';
-    }
-}
-
-// --- GENERATE OFFICIAL RWP ---
-window.generateRWP = function() {
-    if(!window.currentOpenDoc || window.currentOpenDoc.collection !== 'work_plans') return;
-    const data = window.currentOpenDoc.fullData;
-    const container = document.getElementById('rwp-container');
-    
-    showLoader();
-    let html = `
-        <div style="border: 3px solid #000; padding: 20px; position: relative;">
-            <h1 style="text-align: center; border-bottom: 2px solid #000; margin-top: 0; padding-bottom: 10px;">RADIATION WORK PERMIT (RWP)</h1>
-            <h3 style="text-align: center; color: #d9534f; margin-top: 0;">POST AT JOB SITE BOUNDARY</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;" border="1">
-                <tr><td style="padding: 10px; background: #eee; width: 30%;"><strong>Job Number:</strong></td><td style="padding: 10px;"><strong>${data.job_number}</strong></td></tr>
-                <tr><td style="padding: 10px; background: #eee;"><strong>Location:</strong></td><td style="padding: 10px;">${data.location} (${data.location_type})</td></tr>
-                <tr><td style="padding: 10px; background: #eee;"><strong>Planned Date:</strong></td><td style="padding: 10px;">${data.planned_date}</td></tr>
-                <tr><td style="padding: 10px; background: #eee;"><strong>Boundary (2mR/hr):</strong></td><td style="padding: 10px;">${data.calculated_boundary_mr_hr} ft</td></tr>
-            </table>
-            <h3 style="margin-top: 20px; background: #002244; color: white; padding: 5px;">SAFETY & COMPLIANCE REQUIREMENTS</h3>
-            <ul style="line-height: 1.8;">
-                <li><strong>Required PPE:</strong> ${data.rwp_ppe || 'Standard'}</li>
-                <li><strong>Barricade Requirements:</strong> ${data.rwp_barricade || 'Standard Rope & Signs'}</li>
-                <li><strong>Briefing Requirements:</strong> ${data.rwp_briefing || 'Standard Pre-Job'}</li>
-                <li><strong>Collimator:</strong> ${data.collimator_used ? 'REQUIRED' : 'Not Required'}</li>
-            </ul>
-            <div style="margin-top: 40px; display: flex; justify-content: space-between; border-top: 2px solid #000; padding-top: 10px;">
-                <span><strong>RSO Status:</strong> ${data.rso_approval_status.toUpperCase()}</span>
-                <span><strong>Approved By:</strong> ${data.rso_approved_by || 'Pending'}</span>
-            </div>
-        </div>`;
-        
-    container.innerHTML = html;
-    container.style.display = 'block';
-
-    html2pdf().set({
-        margin: 10,
-        filename: `RWP_${data.job_number}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-    }).from(container).save().then(() => {
-        container.style.display = 'none';
-        hideLoader();
-    });
 }
