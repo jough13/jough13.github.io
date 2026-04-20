@@ -1,4 +1,9 @@
 // public/js/data.js
+
+import { calculateCurrentActivity } from "./analytics.js";
+import { formMaps } from "./app.js";
+import { ADMIN_EMAIL } from "./auth.js";
+
 import { collection, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 import { db, storage, auth } from "./firebase-config.js";
@@ -322,5 +327,161 @@ export function setupEventListeners(formMaps) {
                 hideLoader();
             });
         }
+    }
+}
+
+// --- DROPDOWN POPULATORS ---
+export async function populatePersonnelDropdown() {
+    const dlNameSelect = document.getElementById('dl-name');
+    if (!dlNameSelect) return;
+    try {
+        const querySnapshot = await getDocs(collection(db, 'personnel'));
+        dlNameSelect.innerHTML = '<option value="">Select Personnel...</option>';
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            dlNameSelect.innerHTML += `<option value="${data.full_name}">${data.full_name} (${data.cert_number})</option>`;
+        });
+    } catch (err) { console.error("Error loading personnel:", err); }
+}
+
+export async function populateSourceDropdown() {
+    const wpSelect = document.getElementById('wp-source');
+    const trSelect = document.getElementById('tr-source');
+    try {
+        const querySnapshot = await getDocs(collection(db, 'sources'));
+        const optionsHTML = '<option value="">Select an active source...</option>';
+        if(wpSelect) wpSelect.innerHTML = optionsHTML;
+        if(trSelect) trSelect.innerHTML = optionsHTML;
+
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            if(data.vault_status !== 'DELETED') {
+                const currentAct = calculateCurrentActivity(data.initial_activity_curies, data.isotope, data.activity_date);
+                const opt = `<option value="${doc.id}" data-activity="${currentAct}" data-isotope="${data.isotope}">${data.isotope} (SN: ${data.serial_number}) - ${currentAct} Ci</option>`;
+                if(wpSelect) wpSelect.innerHTML += opt;
+                if(trSelect) trSelect.innerHTML += opt;
+            }
+        });
+    } catch (err) { console.error("Error loading sources:", err); }
+}
+
+// --- EDIT & CLONE ENGINE ---
+export function editRecord() {
+    if(!window.currentOpenDoc || !window.currentOpenDoc.fullData) return;
+    if (window.currentOpenDoc.collection === 'work_plans' && window.currentOpenDoc.fullData.rso_approval_status === 'Approved') {
+        const currentUser = auth.currentUser ? auth.currentUser.email : '';
+        if (currentUser.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+            alert("🔒 COMPLIANCE LOCK: This Work Plan has been officially approved by the RSO and cannot be modified.");
+            return;
+        }
+    }
+    populateFormForEditClone(window.currentOpenDoc, true);
+}
+
+export function cloneRecord() {
+    if(!window.currentOpenDoc || !window.currentOpenDoc.fullData) return;
+    populateFormForEditClone(window.currentOpenDoc, false);
+}
+
+function populateFormForEditClone(docObj, isEdit) {
+    const { collection: col, fullData: data, id } = docObj;
+    const map = formMaps[col];
+    if(!map) return;
+
+    const sectionMap = {
+        'equipment': 'equipment', 'sources': 'equipment', 'cameras': 'equipment',
+        'personnel': 'personnel', 'field_evaluations': 'personnel',
+        'work_plans': 'planning',
+        'transport_logs': 'execution', 'dosimetry_logs': 'execution', 'utilization_logs': 'execution',
+        'post_job_reports': 'reporting'
+    };
+    window.showSection(sectionMap[col]);
+    closeModal();
+
+    window.editModeId = isEdit ? id : null;
+    window.editModeCollection = isEdit ? col : null;
+
+    const form = document.getElementById(map.formId);
+    const btn = form.querySelector('button[type="submit"]');
+    if(!btn.dataset.originalText) btn.dataset.originalText = btn.textContent;
+    btn.textContent = isEdit ? '💾 Update Record' : '📄 Create Clone';
+    btn.style.backgroundColor = isEdit ? '#f0ad4e' : '#5bc0de';
+    btn.style.color = isEdit ? '#333' : '#fff';
+
+    for (const [dbKey, htmlId] of Object.entries(map.fields)) {
+        const el = document.getElementById(htmlId);
+        if(el && data[dbKey] !== undefined) {
+            if(el.type === 'checkbox') {
+                el.checked = data[dbKey];
+            } else {
+                const specificLabel = document.querySelector(`label[for="${htmlId}"]`);
+                const checkbox = specificLabel ? specificLabel.querySelector('input[type="checkbox"]') : null;
+
+                if (data[dbKey] === 'N/A') {
+                    if (checkbox) { checkbox.checked = true; window.toggleNA(htmlId, checkbox); } 
+                    else { el.value = 'N/A'; }
+                } else {
+                    if (checkbox) { checkbox.checked = false; window.toggleNA(htmlId, checkbox); }
+                    el.value = data[dbKey];
+                }
+            }
+        }
+    }
+
+    if(map.nested) {
+        for (const [nestedObjKey, nestedMap] of Object.entries(map.nested)) {
+            if(data[nestedObjKey]) {
+                for (const [dbKey, htmlId] of Object.entries(nestedMap)) {
+                    const el = document.getElementById(htmlId);
+                    if(el && data[nestedObjKey][dbKey] !== undefined) {
+                        if(el.type === 'checkbox') el.checked = data[nestedObjKey][dbKey];
+                        else el.value = data[nestedObjKey][dbKey];
+                    }
+                }
+            }
+        }
+    }
+
+    if(col === 'work_plans') window.togglePRI();
+    setTimeout(() => {
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        form.style.transition = 'box-shadow 0.5s';
+        form.style.boxShadow = isEdit ? '0 0 15px #f0ad4e' : '0 0 15px #5bc0de';
+        setTimeout(() => { form.style.boxShadow = 'none'; }, 2000);
+    }, 300);
+}
+
+// Attach isolated UI event listeners
+export function attachMinorListeners() {
+    // DOT Math auto-calc listeners
+    ['tr-isotope', 'tr-category', 'tr-activity', 'tr-surface', 'tr-1m'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) {
+            el.addEventListener('input', window.calculateDOTShipping);
+            el.addEventListener('change', window.calculateDOTShipping);
+        }
+    });
+
+    // Boundary auto-calc listeners
+    const sourceSelect = document.getElementById('wp-source');
+    const collimatorCheck = document.getElementById('wp-collimator');
+    if(sourceSelect) sourceSelect.addEventListener('change', window.calculateBoundary);
+    if(collimatorCheck) collimatorCheck.addEventListener('change', window.calculateBoundary);
+
+    // Disclaimer Modal
+    const ackCheckbox = document.getElementById('ack-checkbox');
+    const proceedBtn = document.getElementById('disclaimer-proceed-btn');
+    const dontShowCheckbox = document.getElementById('dont-show-checkbox');
+
+    if (ackCheckbox && proceedBtn) {
+        ackCheckbox.addEventListener('change', (e) => {
+            proceedBtn.disabled = !e.target.checked;
+            proceedBtn.style.opacity = e.target.checked ? '1' : '0.5';
+            proceedBtn.style.cursor = e.target.checked ? 'pointer' : 'not-allowed';
+        });
+        proceedBtn.addEventListener('click', () => {
+            if (dontShowCheckbox && dontShowCheckbox.checked) localStorage.setItem('hideDisclaimer', 'true');
+            document.getElementById('disclaimer-modal').style.display = 'none';
+        });
     }
 }
