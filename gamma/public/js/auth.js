@@ -4,7 +4,7 @@ import { auth } from "./firebase-config.js";
 import { startApplication } from "./app.js";
 import { showLoader, hideLoader } from "./ui.js";
 
-export const ADMIN_EMAIL = "rso@shipyard.com";
+export const ADMIN_EMAIL = "rso@shipyard.com"; 
 
 export function initAuth() {
     onAuthStateChanged(auth, async (user) => {
@@ -31,9 +31,9 @@ export function initAuth() {
             } finally {
                 setTimeout(() => {
                     hideLoader();
-                    if (localStorage.getItem('hideDisclaimer') !== 'true') {
-                        document.getElementById('disclaimer-modal').style.display = 'flex';
-                    }
+                    // FIX: Bypassed the localStorage check so the modal forces open for testing!
+                    const modal = document.getElementById('disclaimer-modal');
+                    if(modal) modal.style.display = 'flex';
                 }, 500); 
             }
         } else {
