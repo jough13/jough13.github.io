@@ -58,7 +58,11 @@
                 <input type="text" id="global-search" placeholder="Search records..." onkeyup="window.filterRecords()">
                 <button type="button" class="theme-toggle" onclick="window.toggleTheme()" id="theme-btn">🌙 Dark Mode</button>
                 
-                <span id="network-status" onclick="window.forceReconnect()" title="Click to force sync">🟢 Online</span> 
+                <div id="network-controls" style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.1); padding: 5px 10px; border-radius: 20px;">
+                    <span id="network-status" style="font-size: 0.85rem; font-weight: bold; color: white;">🟢 Online</span>
+                    <button type="button" id="btn-force-offline" class="btn-export" onclick="window.manualGoOffline()" style="background-color: #f0ad4e; color: #333; border: none; padding: 4px 10px;">⚡ Work Offline</button>
+                    <button type="button" id="btn-force-online" class="btn-export" onclick="window.manualGoOnline()" style="background-color: #d9534f; color: white; border: none; padding: 4px 10px; display: none;">🔌 Reconnect</button>
+                </div>
                 
                 <span id="user-display"></span>
                 <button type="button" class="logout-btn" id="logout-btn">Log Out</button>
