@@ -9,7 +9,7 @@ import {
 } from "./ui.js";
 import { 
     fetchData, setupEventListeners, executeDelete, 
-    populateSourceDropdown, populatePersonnelDropdown, editRecord, cloneRecord, attachMinorListeners, approveWorkPlan, manualGoOffline, manualGoOnline
+    populateSourceDropdown, populatePersonnelDropdown, populateCameraDropdown, editRecord, cloneRecord, attachMinorListeners, approveWorkPlan, manualGoOffline, manualGoOnline
 } from "./data.js";
 import { 
     updateDecayChart, updateDashboard, updateDoseDashboard, updateDeployedAssetsDashboard,
@@ -57,6 +57,7 @@ export async function startApplication() {
     attachMinorListeners(); 
     await populateSourceDropdown();
     await populatePersonnelDropdown();
+    await populateCameraDropdown(); 
     
     await loadAllData(); 
     
@@ -96,6 +97,7 @@ window.editRecord = editRecord;
 window.cloneRecord = cloneRecord;
 window.populatePersonnelDropdown = populatePersonnelDropdown;
 window.populateSourceDropdown = populateSourceDropdown;
+window.populateCameraDropdown = populateCameraDropdown;
 window.approveWorkPlan = approveWorkPlan; 
 window.showToast = showToast; 
 
