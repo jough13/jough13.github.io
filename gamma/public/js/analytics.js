@@ -1,5 +1,5 @@
 // public/js/analytics.js
-import { collection, getDocs, doc, getDoc, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import { collection, getDocs, getDocsFromCache, doc, getDoc, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 import { db, auth } from "./firebase-config.js";
 import { ADMIN_EMAIL } from "./auth.js";
 import { showLoader, hideLoader, showToast } from "./ui.js";
@@ -156,17 +156,27 @@ export async function updateDecayChart() {
 
 export async function updateDashboard() {
     let srcSnap, camSnap;
-    
+
+    // 1. Check if the UI is currently in offline mode
+    const isOffline = document.getElementById('network-status')?.classList.contains('status-offline');
+
     // BLOCK 1: Top Counters
     try {
-        const wpSnap = await getDocs(collection(db, 'work_plans'));
+        const wpRef = collection(db, 'work_plans');
+        const srcRef = collection(db, 'sources');
+
+        // 2. Route the fetch based on network status
+        const wpSnap = isOffline ? await getDocsFromCache(wpRef) : await getDocs(wpRef);
+        srcSnap = isOffline ? await getDocsFromCache(srcRef) : await getDocs(srcRef);
+
         const statWorkPlans = document.getElementById('stat-work-plans');
         if(statWorkPlans) statWorkPlans.textContent = wpSnap.size;
 
-        srcSnap = await getDocs(collection(db, 'sources'));
         const statSources = document.getElementById('stat-sources');
         if(statSources) statSources.textContent = srcSnap.size;
-    } catch(e) { console.warn("Dashboard stats failed (Offline)."); }
+    } catch(e) { 
+        console.warn("Dashboard stats failed.", e); 
+    }
 
     // BLOCK 2: Doughnut Chart
     try {
