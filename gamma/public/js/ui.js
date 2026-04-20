@@ -325,3 +325,90 @@ export function closeModal() {
 export function closeConfirmModal() {
     document.getElementById('delete-confirm-modal').style.display = 'none';
 }
+
+// --- BARCODE SCANNER LOGIC ---
+let isScannerRunning = false;
+let html5QrCode = null;
+
+export function startScanner(targetInputId) {
+    document.getElementById('scanner-modal').style.display = 'flex';
+    if(typeof Html5Qrcode === 'undefined') return;
+    html5QrCode = new Html5Qrcode("reader");
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+    html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
+        document.getElementById(targetInputId).value = decodedText;
+        stopScanner();
+    }).then(() => {
+        isScannerRunning = true; 
+    }).catch(err => {
+        console.error("Scanner failed:", err);
+        alert("Could not access camera.");
+        stopScanner();
+    });
+}
+
+export function stopScanner() {
+    const modal = document.getElementById('scanner-modal');
+    if (html5QrCode && isScannerRunning) {
+        html5QrCode.stop().then(() => {
+            html5QrCode.clear();
+            isScannerRunning = false;
+            modal.style.display = 'none';
+        }).catch(err => {
+            modal.style.display = 'none';
+        });
+    } else {
+        if(html5QrCode) html5QrCode.clear();
+        modal.style.display = 'none';
+        isScannerRunning = false;
+    }
+}
+
+// --- SEARCH & FILTER LOGIC ---
+export function filterRecords() {
+    const searchInput = document.getElementById('global-search').value.toLowerCase();
+    const startInput = document.getElementById('filter-start') ? document.getElementById('filter-start').value : '';
+    const endInput = document.getElementById('filter-end') ? document.getElementById('filter-end').value : '';
+    const allRecords = document.querySelectorAll('ul[id$="-list"] li');
+    
+    allRecords.forEach(record => {
+        if(record.textContent.includes("No data found")) return;
+        let matchesText = record.textContent.toLowerCase().includes(searchInput);
+        let matchesDate = true;
+        const recDate = record.getAttribute('data-date');
+        if (startInput && recDate && recDate < startInput) matchesDate = false;
+        if (endInput && recDate && recDate > endInput) matchesDate = false;
+
+        record.style.display = (matchesText && matchesDate) ? '' : 'none';
+    });
+}
+
+export function clearFilters() {
+    if(document.getElementById('filter-start')) document.getElementById('filter-start').value = '';
+    if(document.getElementById('filter-end')) document.getElementById('filter-end').value = '';
+    document.getElementById('global-search').value = '';
+    filterRecords();
+}
+
+// --- BOUNDARY CALCULATOR ---
+export function calculateBoundary() {
+    const sourceSelect = document.getElementById('wp-source');
+    const boundaryInput = document.getElementById('wp-boundary');
+    const collimatorChecked = document.getElementById('wp-collimator') ? document.getElementById('wp-collimator').checked : false;
+
+    if(!sourceSelect || !sourceSelect.value || !boundaryInput || sourceSelect.selectedIndex <= 0) return;
+
+    const selectedOption = sourceSelect.options[sourceSelect.selectedIndex];
+    const activity = parseFloat(selectedOption.getAttribute('data-activity'));
+    const isotope = selectedOption.getAttribute('data-isotope');
+
+    let gammaConstant = 5200; 
+    if(isotope === 'Co-60') gammaConstant = 14000;
+
+    let intensityAt1Ft = activity * gammaConstant;
+    if(collimatorChecked) intensityAt1Ft = intensityAt1Ft * 0.1;
+
+    const distanceFeet = Math.sqrt(intensityAt1Ft / 2.0);
+    boundaryInput.value = distanceFeet.toFixed(1); 
+}
