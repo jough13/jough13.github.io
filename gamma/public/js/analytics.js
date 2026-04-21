@@ -352,8 +352,12 @@ export async function updateDoseDashboard() {
             }
         });
 
-        if (alertList.innerHTML === '') alertList.innerHTML = '<li style="color: #5cb85c; background: transparent; border: none; padding:0;">No recent dose activity to forecast.</li>';
-        if (tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="4" style="padding: 10px;">No personnel found in database.</td></tr>';
+        if (alertList.innerHTML === '') {
+            alertList.innerHTML = '<li style="color: #5cb85c; background: transparent; border: none; padding:0; cursor: default; pointer-events: none;">No recent dose activity to forecast.</li>';
+        }
+        if (tbody.innerHTML === '') {
+            tbody.innerHTML = '<tr><td colspan="4" style="padding: 10px; cursor: default; pointer-events: none;">No personnel found in database.</td></tr>';
+        }
     } catch(e) {
         console.warn("Dose dashboard failed to load offline.", e);
         tbody.innerHTML = '<tr><td colspan="4" style="padding: 10px; color: #d9534f;">⚠️ Offline: Cannot calculate ALARA projections.</td></tr>';
