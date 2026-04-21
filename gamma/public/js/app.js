@@ -15,7 +15,7 @@ import {
     updateDecayChart, updateDashboard, updateDoseDashboard, updateDeployedAssetsDashboard,
     generateMasterPacket, generateQualCards, generatePDFInventory, generateRWP, 
     exportCSV, calculateDOTShipping, updateTransportSource, fullSystemBackup, executeSystemRestore,
-    renderCalendar, generateAssetTags 
+    renderCalendar, generateAssetTags, generateMonthlyReport 
 } from "./analytics.js";
 
 window.sigPadDirty = false; 
@@ -127,3 +127,5 @@ window.manualGoOffline = manualGoOffline;
 window.manualGoOnline = manualGoOnline;
 
 window.syncOfflineVault = syncOfflineVault;
+
+window.generateMonthlyReport = generateMonthlyReport;
