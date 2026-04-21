@@ -118,7 +118,7 @@ export async function addData(collectionName, data) {
     }
 }
 
-export async function executeDelete() {export async function executeDelete() {
+export async function executeDelete() {
     if(!window.currentOpenDoc) return;
     try {
         showLoader();
