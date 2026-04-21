@@ -292,8 +292,72 @@ export async function updateDashboard() {
 }
 
 export async function updateDoseDashboard() {
-    const roster = document.getElementById('dose-roster-body');
-    if(roster) roster.innerHTML = '<tr><td colspan="4" style="padding: 10px; text-align: center;">Dose tracking active. Ensure EPD data is synced.</td></tr>';
+    const tbody = document.getElementById('dose-roster-body');
+    const alertList = document.getElementById('dose-alerts');
+    if(!tbody || !alertList) return;
+
+    try {
+        const rosterSnap = await fetchWithTimeout(collection(db, 'personnel'));
+        const logsSnap = await fetchWithTimeout(collection(db, 'dosimetry_logs'));
+
+        const stats = {};
+        const thirtyDayStats = {};
+        const today = new Date();
+
+        rosterSnap.forEach(doc => {
+            const name = doc.data().full_name;
+            stats[name] = 0;
+            thirtyDayStats[name] = 0;
+        });
+
+        logsSnap.forEach(d => {
+            const log = d.data();
+            // Strip the cert number out if it came from the new dropdown
+            const name = log.personnel_name ? log.personnel_name.split(' (')[0] : 'Unknown';
+            const dose = (log.final_reading - log.initial_reading) || 0;
+            const logDate = new Date(log.logged_time || log.timestamp || new Date());
+
+            if (stats[name] === undefined) { stats[name] = 0; thirtyDayStats[name] = 0; }
+
+            stats[name] += dose;
+            if ((today - logDate) / (1000 * 60 * 60 * 24) <= 30) {
+                thirtyDayStats[name] += dose;
+            }
+        });
+
+        tbody.innerHTML = '';
+        alertList.innerHTML = '';
+        const names = Object.keys(stats).sort();
+
+        names.forEach(name => {
+            const totalDose = stats[name];
+            const recentDose = thirtyDayStats[name] || 0;
+            const dailyBurnRate = recentDose / 30;
+            const projectedQuarterlyDose = totalDose + (dailyBurnRate * 90);
+
+            tbody.innerHTML += `
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 10px; font-weight: bold;">${name}</td>
+                    <td style="padding: 10px;">${totalDose.toFixed(2)}</td>
+                    <td style="padding: 10px;">${recentDose.toFixed(2)}</td>
+                    <td style="padding: 10px; color: ${dailyBurnRate > 5 ? '#d9534f' : 'inherit'};">${dailyBurnRate.toFixed(2)} mRem/day</td>
+                </tr>`;
+
+            if (totalDose > 1000) {
+                alertList.innerHTML += `<li style="color: #fff; background: #d9534f; padding: 10px; margin-bottom: 5px; border-radius: 4px;">🚨 <strong>CRITICAL:</strong> ${name} is OVER 1000mRem Limit!</li>`;
+            } else if (projectedQuarterlyDose > 1000) {
+                alertList.innerHTML += `<li style="color: #333; background: #f0ad4e; padding: 10px; margin-bottom: 5px; border-radius: 4px;">⚠️ <strong>ALARA WARNING:</strong> ${name} is burning ${dailyBurnRate.toFixed(1)} mRem/day. Projected to bust limit.</li>`;
+            } else if (recentDose > 0) {
+                alertList.innerHTML += `<li style="color: #333; background: #eee; padding: 10px; margin-bottom: 5px; border-radius: 4px;">✅ <strong>ON TRACK:</strong> ${name} is burning ${dailyBurnRate.toFixed(1)} mRem/day.</li>`;
+            }
+        });
+
+        if (alertList.innerHTML === '') alertList.innerHTML = '<li style="color: #5cb85c; background: transparent; border: none; padding:0;">No recent dose activity to forecast.</li>';
+        if (tbody.innerHTML === '') tbody.innerHTML = '<tr><td colspan="4" style="padding: 10px;">No personnel found in database.</td></tr>';
+    } catch(e) {
+        console.warn("Dose dashboard failed to load offline.", e);
+        tbody.innerHTML = '<tr><td colspan="4" style="padding: 10px; color: #d9534f;">⚠️ Offline: Cannot calculate ALARA projections.</td></tr>';
+    }
 }
 
 export async function updateDeployedAssetsDashboard() {
