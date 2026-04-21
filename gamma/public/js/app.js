@@ -9,7 +9,7 @@ import {
 } from "./ui.js";
 import { 
     fetchData, setupEventListeners, executeDelete, 
-    populateSourceDropdown, populatePersonnelDropdown, populateCameraDropdown, populateSurveyMeterDropdown, editRecord, cloneRecord, attachMinorListeners, approveWorkPlan, manualGoOffline, manualGoOnline
+    populateSourceDropdown, populatePersonnelDropdown, populateCameraDropdown, populateSurveyMeterDropdown, editRecord, cloneRecord, attachMinorListeners, approveWorkPlan, manualGoOffline, manualGoOnline, syncOfflineVault
 } from "./data.js";
 import { 
     updateDecayChart, updateDashboard, updateDoseDashboard, updateDeployedAssetsDashboard,
@@ -125,3 +125,5 @@ window.setAppOffline = setAppOffline;
 window.setAppOnline = setAppOnline;
 window.manualGoOffline = manualGoOffline;
 window.manualGoOnline = manualGoOnline;
+
+window.syncOfflineVault = syncOfflineVault;
