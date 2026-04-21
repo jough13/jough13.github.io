@@ -1,9 +1,14 @@
-const CACHE_NAME = 'rad-tracker-v3';
+const CACHE_NAME = 'rad-tracker-v4'; // Bumped version to force cache refresh
 const ASSETS = [
   './',
   'index.html',
   'css/style.css',
-  'js/app.js'
+  'js/app.js',
+  'js/auth.js',
+  'js/data.js',
+  'js/ui.js',
+  'js/analytics.js',
+  'js/firebase-config.js'
 ];
 
 self.addEventListener('install', (e) => {
