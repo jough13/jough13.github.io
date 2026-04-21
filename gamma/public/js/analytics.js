@@ -603,3 +603,113 @@ export async function generateRWP() {
 }
 
 export async function generateAssetTags() { showToast("Asset tags sent to print queue.", "info"); }
+
+// --- MONTHLY COMMAND REPORT GENERATOR ---
+export async function generateMonthlyReport() {
+    showLoader();
+    try {
+        // Fetch necessary data
+        const srcSnap = await getDocs(collection(db, 'sources'));
+        const wpSnap = await getDocs(collection(db, 'work_plans'));
+        const eqSnap = await getDocs(collection(db, 'equipment'));
+        
+        let totalSources = 0;
+        let deployedSources = 0;
+        let sourceRows = '';
+        
+        srcSnap.forEach(doc => {
+            const d = doc.data();
+            if (d.vault_status !== 'DELETED') {
+                totalSources++;
+                if(d.vault_status === 'OUT') deployedSources++;
+                const curAct = calculateCurrentActivity(d.initial_activity_curies, d.isotope, d.activity_date);
+                sourceRows += `<tr>
+                    <td style="padding: 6px; border: 1px solid #ccc;">${d.isotope}</td>
+                    <td style="padding: 6px; border: 1px solid #ccc;">${d.serial_number}</td>
+                    <td style="padding: 6px; border: 1px solid #ccc;">${curAct} Ci</td>
+                    <td style="padding: 6px; border: 1px solid #ccc; color: ${d.vault_status === 'OUT' ? '#d9534f' : '#5cb85c'};"><b>${d.vault_status}</b></td>
+                </tr>`;
+            }
+        });
+
+        let totalJobs = wpSnap.size;
+
+        // Count expired equipment
+        let expiredEq = 0;
+        const today = new Date();
+        eqSnap.forEach(doc => {
+            const calDate = new Date(doc.data().calibration_due_date);
+            if (calDate < today) expiredEq++;
+        });
+
+        // Create the hidden container for the PDF
+        const container = document.createElement('div');
+        container.style.width = '8.5in';
+        container.style.padding = '40px';
+        container.style.fontFamily = 'Arial, sans-serif';
+        container.style.color = '#333';
+        container.style.background = 'white';
+
+        container.innerHTML = `
+            <div style="text-align: center; border-bottom: 4px solid #002244; padding-bottom: 15px; margin-bottom: 25px;">
+                <h1 style="margin: 0; color: #002244; font-size: 24px; text-transform: uppercase;">NAVSEA DET RASO</h1>
+                <h2 style="margin: 5px 0 0 0; color: #005A9C; font-size: 18px;">Monthly Radiation Safety Command Brief</h2>
+                <p style="margin: 5px 0 0 0; font-size: 12px; color: #555;">Generated on: ${new Date().toLocaleDateString()}</p>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+                <div style="background: #f4f4f9; padding: 15px; border: 1px solid #ccc; border-radius: 5px; width: 30%; text-align: center;">
+                    <h3 style="margin: 0; font-size: 14px; color: #555;">Total Work Plans</h3>
+                    <p style="font-size: 28px; font-weight: bold; color: #005A9C; margin: 10px 0 0 0;">${totalJobs}</p>
+                </div>
+                <div style="background: #f4f4f9; padding: 15px; border: 1px solid #ccc; border-radius: 5px; width: 30%; text-align: center;">
+                    <h3 style="margin: 0; font-size: 14px; color: #555;">Active Sources</h3>
+                    <p style="font-size: 28px; font-weight: bold; color: #005A9C; margin: 10px 0 0 0;">${totalSources}</p>
+                </div>
+                <div style="background: ${expiredEq > 0 ? '#fdf0f0' : '#f4f4f9'}; padding: 15px; border: 1px solid ${expiredEq > 0 ? '#d9534f' : '#ccc'}; border-radius: 5px; width: 30%; text-align: center;">
+                    <h3 style="margin: 0; font-size: 14px; color: #555;">Calibration Delinquencies</h3>
+                    <p style="font-size: 28px; font-weight: bold; color: ${expiredEq > 0 ? '#d9534f' : '#5cb85c'}; margin: 10px 0 0 0;">${expiredEq}</p>
+                </div>
+            </div>
+
+            <h3 style="border-bottom: 2px solid #ccc; padding-bottom: 5px;">Vault Source Status</h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 30px;">
+                <thead>
+                    <tr style="background: #002244; color: white;">
+                        <th style="padding: 8px; text-align: left;">Isotope</th>
+                        <th style="padding: 8px; text-align: left;">Serial Number</th>
+                        <th style="padding: 8px; text-align: left;">Current Activity</th>
+                        <th style="padding: 8px; text-align: left;">Deployment Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sourceRows || '<tr><td colspan="4" style="text-align: center; padding: 10px;">No active sources found.</td></tr>'}
+                </tbody>
+            </table>
+
+            <div style="margin-top: 50px; font-size: 12px;">
+                <p><b>RSO Signature:</b> ________________________________________</p>
+                <p><b>Date:</b> ___________________</p>
+            </div>
+        `;
+
+        document.body.appendChild(container);
+
+        html2pdf().set({
+            margin: 15,
+            filename: `RASO_Monthly_Brief_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+        }).from(container).save().then(() => {
+            document.body.removeChild(container);
+            hideLoader();
+            showToast("Command Report generated successfully.", "success");
+        });
+
+    } catch(err) {
+        console.error("Report generation failed:", err);
+        hideLoader();
+        showToast("Failed to generate command report.", "error");
+    }
+}
