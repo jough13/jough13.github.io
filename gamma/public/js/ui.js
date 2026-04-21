@@ -197,26 +197,39 @@ export function calculateBoundary() {
 export function openDeleteConfirm() {
     if(!window.currentOpenDoc) return;
     const modal = document.getElementById('delete-confirm-modal');
-    const srcFields = document.getElementById('delete-source-fields');
+    const auditFields = document.getElementById('delete-audit-fields'); // Updated ID
     const title = document.getElementById('delete-modal-title');
     const desc = document.getElementById('delete-modal-desc');
     const btn = document.getElementById('modal-confirm-delete-btn');
+    const fileInput = document.getElementById('del-audit-file');
 
-    if (window.currentOpenDoc.collection === 'sources') {
-        title.textContent = "Confirm Source Disposal";
+    if (window.currentOpenDoc.collection === 'sources' || window.currentOpenDoc.collection === 'cameras') {
+        title.textContent = `Confirm ${window.currentOpenDoc.collection === 'sources' ? 'Source' : 'Camera'} Disposal`;
         title.style.color = "#f0ad4e";
-        desc.textContent = "To remove a source from the active inventory, you must provide transfer or disposal paperwork for the audit trail. The source will be permanently archived.";
-        if(srcFields) {
-            srcFields.style.display = 'block';
-            document.getElementById('del-src-file').value = ''; 
+        desc.textContent = "To remove this asset from the active inventory, you must provide transfer or disposal paperwork for the audit trail. The record will be permanently archived.";
+        if(auditFields) {
+            auditFields.style.display = 'block';
+            if(fileInput) fileInput.value = ''; 
         }
-        btn.textContent = "Archive & Dispose Source";
+        btn.textContent = "Archive & Dispose Asset";
+        btn.style.backgroundColor = "#f0ad4e"; // Warning Yellow
+        
+    } else if (window.currentOpenDoc.collection === 'personnel') {
+        title.textContent = "Deactivate Personnel";
+        title.style.color = "#f0ad4e";
+        desc.textContent = "Due to NRC/OSHA dose retention requirements, personnel cannot be permanently deleted. This action will mark them as INACTIVE and remove them from all job rosters while preserving their ALARA history.";
+        if(auditFields) auditFields.style.display = 'none';
+        btn.textContent = "Deactivate Personnel";
+        btn.style.backgroundColor = "#f0ad4e";
+        
     } else {
         title.textContent = "Confirm Deletion";
         title.style.color = "#d9534f";
         desc.textContent = "Are you sure you want to delete this record? This action cannot be undone and will permanently remove it from the database.";
-        if(srcFields) srcFields.style.display = 'none';
+        if(auditFields) auditFields.style.display = 'none';
         btn.textContent = "Yes, Delete Record";
+        btn.style.backgroundColor = "#d9534f"; // Danger Red
     }
+    
     modal.style.display = 'flex';
 }
