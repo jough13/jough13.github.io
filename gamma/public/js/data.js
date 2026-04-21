@@ -680,3 +680,58 @@ export function attachMinorListeners() {
         });
     }
 }
+
+// --- OFFLINE DOCUMENT VAULT SYNC ---
+export async function syncOfflineVault() {
+    showLoader();
+    showToast("Scanning database for documents...", "info");
+    try {
+        const collectionsToScan = ['equipment', 'sources', 'work_plans'];
+        let docUrls = [];
+
+        // 1. Gather all document URLs from the database
+        for (const col of collectionsToScan) {
+            const snap = await getDocs(collection(db, col));
+            snap.forEach(doc => {
+                const data = doc.data();
+                if (data.certificate_url && data.certificate_url !== 'null') docUrls.push(data.certificate_url);
+                if (data.diagram_url && data.diagram_url !== 'null') docUrls.push(data.diagram_url);
+            });
+        }
+
+        if (docUrls.length === 0) {
+            showToast("No documents found to sync.", "info");
+            hideLoader();
+            return;
+        }
+
+        showToast(`Downloading ${docUrls.length} documents to offline vault...`, "info");
+        
+        // 2. Force the browser to cache them into the DOC_CACHE
+        const cache = await caches.open('rad-documents-v1');
+        let successCount = 0;
+        
+        for (const url of docUrls) {
+            try {
+                // Check if we already have it to save bandwidth
+                const existing = await cache.match(url);
+                if (!existing) {
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        await cache.put(url, response);
+                        successCount++;
+                    }
+                }
+            } catch(err) {
+                console.warn("Failed to cache a document:", err);
+            }
+        }
+
+        showToast(`Vault Sync Complete! ${successCount} new documents secured for offline use.`, "success");
+    } catch(e) {
+        console.error("Vault sync failed:", e);
+        showToast("Failed to complete vault synchronization.", "error");
+    } finally {
+        hideLoader();
+    }
+}
