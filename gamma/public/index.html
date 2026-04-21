@@ -82,8 +82,12 @@
                 <button type="button" class="btn-secondary" onclick="window.clearFilters()" style="padding: 6px 12px;">Clear</button>
             </div>
 
-            <section id="dashboard" class="active module">
-                <h2>Command Center</h2>
+            <section id="dashboard" class="module active">
+                
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px;">
+                    <h2 style="margin-bottom: 0;">Command Center</h2>
+                    <button type="button" class="btn-export admin-only" onclick="window.generateMonthlyReport()" style="background-color: #002244; color: white; padding: 8px 15px; border-radius: 5px; font-weight: bold; border: 1px solid #ccc; box-shadow: var(--card-shadow);">📊 Print Monthly Command Report</button>
+                </div>
                 <div class="dashboard-grid">
                     <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
                         <h3 style="border: none; margin-bottom: 0;">Active Work Plans</h3>
