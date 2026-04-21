@@ -118,23 +118,22 @@ export async function addData(collectionName, data) {
     }
 }
 
-export async function executeDelete() {
+export async function executeDelete() {export async function executeDelete() {
     if(!window.currentOpenDoc) return;
     try {
         showLoader();
         const colToDel = window.currentOpenDoc.collection;
         const idToDel = window.currentOpenDoc.id;
         
-        if (colToDel === 'sources') {
-            const fileInput = document.getElementById('del-src-file');
+        if (colToDel === 'sources' || colToDel === 'cameras') {
+            const fileInput = document.getElementById('del-audit-file');
             if (!fileInput || !fileInput.files[0]) {
                 hideLoader();
                 showToast("Audit Requirement: You must upload transfer/disposal paperwork.", "error");
                 return;
             }
-            const file = fileInput.files[0];
-            const fileUrl = await uploadFile(file, 'source_disposals');
-            const status = document.getElementById('del-src-status').value;
+            const fileUrl = await uploadFile(fileInput.files[0], `${colToDel}_disposals`);
+            const status = document.getElementById('del-audit-status').value;
 
             await updateDoc(doc(db, colToDel, idToDel), {
                 vault_status: 'DELETED',
@@ -142,8 +141,17 @@ export async function executeDelete() {
                 disposal_record_url: fileUrl,
                 disposal_date: new Date().toISOString()
             });
-            await logAudit('DISPOSED', colToDel, idToDel, `Source officially disposed/transferred.`);
-            showToast("Source officially archived and removed from active inventory.", "success");
+            await logAudit('DISPOSED', colToDel, idToDel, `Asset officially disposed/transferred.`);
+            showToast("Asset officially archived and removed from active inventory.", "success");
+            
+        } else if (colToDel === 'personnel') {
+            // Soft-Delete for Personnel
+            await updateDoc(doc(db, colToDel, idToDel), {
+                status: 'INACTIVE',
+                deactivation_date: new Date().toISOString()
+            });
+            await logAudit('DEACTIVATED', colToDel, idToDel, `Personnel marked inactive. Dose records retained.`);
+            showToast("Personnel marked INACTIVE.", "success");
             
         } else {
             await deleteDoc(doc(db, colToDel, idToDel));
@@ -154,6 +162,11 @@ export async function executeDelete() {
         closeConfirmModal();
         closeModal();
         
+        // Refresh UI
+        if (colToDel === 'personnel' && window.populatePersonnelDropdown) window.populatePersonnelDropdown();
+        if (colToDel === 'cameras' && window.populateCameraDropdown) window.populateCameraDropdown();
+        if (colToDel === 'sources' && window.populateSourceDropdown) window.populateSourceDropdown();
+
         if (window.updateDashboard) await window.updateDashboard();
         if (window.renderCalendar) await window.renderCalendar();
         if (window.updateDeployedAssetsDashboard) await window.updateDeployedAssetsDashboard();
@@ -227,7 +240,9 @@ export function fetchData(collectionName, listId) {
                         displayText = `${item.make_model} (SN: ${item.serial_number}) - Maint: ${item.annual_maintenance_date}${statusTag}`;
                         if(item.vault_status === 'OUT') li.style.borderLeft = "5px solid #f0ad4e";
                     } else if (collectionName === 'personnel') {
-                        displayText = `${item.full_name} (Cert: ${item.cert_number}) - Eval: ${item.last_6mo_eval_date}`;
+                        const inactiveTag = item.status === 'INACTIVE' ? ' [🚫 INACTIVE]' : '';
+                        displayText = `${item.full_name} (Cert: ${item.cert_number}) - Eval: ${item.last_6mo_eval_date}${inactiveTag}`;
+                        if(item.status === 'INACTIVE') li.style.color = '#999'; // Gray out deactivated users
                     } else if (collectionName === 'field_evaluations') {
                         displayText = `${item.eval_date}: ${item.radiographer_evaluated} evaluated by ${item.evaluator}`;
                     } else if (collectionName === 'work_plans') {
@@ -478,12 +493,15 @@ export async function populatePersonnelDropdown() {
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            const val = data.full_name;
-            if(dlNameSelect) dlNameSelect.innerHTML += `<option value="${val}">${val} (${data.cert_number})</option>`;
-            if(trkUserSelect) trkUserSelect.innerHTML += `<option value="${val}">${val}</option>`;
-            if(evRadSelect) evRadSelect.innerHTML += `<option value="${val}">${val}</option>`;
-            if(ulRicSelect) ulRicSelect.innerHTML += `<option value="${val}">${val}</option>`;
-            if(pjCompletedBySelect) pjCompletedBySelect.innerHTML += `<option value="${val}">${val}</option>`;
+            // ONLY load active personnel into the dropdowns!
+            if (data.status !== 'INACTIVE') {
+                const val = data.full_name;
+                if(dlNameSelect) dlNameSelect.innerHTML += `<option value="${val}">${val} (${data.cert_number})</option>`;
+                if(trkUserSelect) trkUserSelect.innerHTML += `<option value="${val}">${val}</option>`;
+                if(evRadSelect) evRadSelect.innerHTML += `<option value="${val}">${val}</option>`;
+                if(ulRicSelect) ulRicSelect.innerHTML += `<option value="${val}">${val}</option>`;
+                if(pjCompletedBySelect) pjCompletedBySelect.innerHTML += `<option value="${val}">${val}</option>`;
+            }
         });
     } catch (err) { console.error("Error loading personnel:", err); }
 }
