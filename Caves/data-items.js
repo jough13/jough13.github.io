@@ -747,31 +747,41 @@ window.ITEM_DATA = {
         effect: (state) => {
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 40);
             logMessage("Ahhh. Crisp and cold. (+40 Thirst)");
-            triggerStatAnimation(statDisplays.stamina, 'stat-pulse-blue'); // Thirst boosts stamina regen indirectly
+            triggerStatAnimation(statDisplays.stamina, 'stat-pulse-blue'); 
 
+            const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle');
             const waterStack = state.player.inventory.find(i => i.name === 'Clean Water');
 
-            // Case 1: Last item in stack. Morph it into a bottle.
-        if (waterStack && waterStack.quantity === 1) {
-            waterStack.name = 'Empty Bottle';
-            waterStack.tile = '🫙';
-            waterStack.type = 'consumable'; // Ensure type is correct
-            waterStack.effect = ITEM_DATA['🫙'].effect;
-            // Return FALSE so the engine doesn't delete the item slot
-            return false; 
-        } 
-        // Case 2: Stack > 1. Give a new bottle and consume 1 water.
-        else {
-            if (state.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                state.player.inventory.push({ name: 'Empty Bottle', type: 'consumable', quantity: 1, tile: '🫙' });
-            } else {
-                logMessage("No room for the Empty Bottle! It falls to the ground.");
-                // Optional: chunkManager.setWorldTile(state.player.x, state.player.y, '🫙');
+            // Case 1: We already have a stack of Empty Bottles. Add to it.
+            if (existingBottle) {
+                existingBottle.quantity++;
+                return true; // Consume 1 water
+            } 
+            // Case 2: No bottle stack, and this is our LAST water. Morph it in-place.
+            else if (waterStack && waterStack.quantity === 1) {
+                waterStack.name = 'Empty Bottle';
+                waterStack.tile = '🫙';
+                waterStack.type = 'consumable';
+                waterStack.effect = ITEM_DATA['🫙'].effect; // Fixes the "Morphed Bottle" bug!
+                return false; // Do not consume the slot, we repurposed it
+            } 
+            // Case 3: We have multiple waters, so we need a new inventory slot for the bottle.
+            else {
+                if (state.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    state.player.inventory.push({ 
+                        name: 'Empty Bottle', 
+                        type: 'consumable', 
+                        quantity: 1, 
+                        tile: '🫙',
+                        effect: ITEM_DATA['🫙'].effect
+                    });
+                } else {
+                    logMessage("No room for the Empty Bottle! It falls to the ground.");
+                }
+                return true; // Consume 1 water
             }
-            return true; // Consume 1 water from stack
         }
-    }
-},
+    },
     '🤢': {
         name: 'Dirty Water',
         type: 'consumable',
@@ -780,14 +790,41 @@ window.ITEM_DATA = {
         effect: (state) => {
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 15);
             logMessage("You choke it down. (+15 Thirst)");
-            // 20% chance to feel sick (stop regen for a bit)
+            
+            // 20% chance to feel sick
             if (Math.random() < 0.2) {
                 logMessage("Your stomach churns... (Poisoned)");
                 state.player.poisonTurns = 3;
             }
-            // Return Empty Bottle
-            if (state.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                state.player.inventory.push({ name: 'Empty Bottle', type: 'consumable', quantity: 1, tile: '🫙' });
+
+            const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle');
+            const waterStack = state.player.inventory.find(i => i.name === 'Dirty Water');
+
+            // Apply the exact same logic as Clean Water
+            if (existingBottle) {
+                existingBottle.quantity++;
+                return true; 
+            } 
+            else if (waterStack && waterStack.quantity === 1) {
+                waterStack.name = 'Empty Bottle';
+                waterStack.tile = '🫙';
+                waterStack.type = 'consumable';
+                waterStack.effect = ITEM_DATA['🫙'].effect; 
+                return false; 
+            } 
+            else {
+                if (state.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    state.player.inventory.push({ 
+                        name: 'Empty Bottle', 
+                        type: 'consumable', 
+                        quantity: 1, 
+                        tile: '🫙',
+                        effect: ITEM_DATA['🫙'].effect
+                    });
+                } else {
+                    logMessage("No room for the Empty Bottle! It falls to the ground.");
+                }
+                return true; 
             }
         }
     },
