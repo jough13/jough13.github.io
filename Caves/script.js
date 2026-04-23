@@ -1651,8 +1651,27 @@ function turnInQuest(questId) {
                 });
                 logMessage(`You received: ${rewardItem.name} (x${qty})`);
             } else {
-                logMessage(`You received a ${rewardItem.name}, but your inventory was full! It fell to the ground.`);
-                // Logic to drop it on the ground would go here, but for now we warn them.
+                logMessage(`Your inventory is full! The ${rewardItem.name} falls to the ground.`);
+                
+                const dropTile = rewardKey || '🎒'; // Fallback to a bag icon if missing
+                
+                // Place the item on the map under the player
+                if (gameState.mapMode === 'overworld') {
+                    chunkManager.setWorldTile(gameState.player.x, gameState.player.y, dropTile);
+                } else if (gameState.mapMode === 'dungeon') {
+                    chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] = dropTile;
+                } else if (gameState.mapMode === 'castle') {
+                    chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x] = dropTile;
+                }
+                
+                // Clear the "looted" memory for this exact coordinate so it can be picked up!
+                let tileId = (gameState.mapMode === 'overworld') 
+                    ? `${gameState.player.x},${-gameState.player.y}`
+                    : `${gameState.currentCaveId || gameState.currentCastleId}:${gameState.player.x},${-gameState.player.y}`;
+                gameState.lootedTiles.delete(tileId);
+                
+                gameState.mapDirty = true;
+                render(); // Force redraw so they see the item instantly
             }
         }
     }
@@ -4194,7 +4213,16 @@ async function attemptMovePlayer(newX, newY) {
                     logMessage(`You unearthed a ${template.name}!`);
                     grantXp(25); // Discovery XP
                 } else {
-                    logMessage(`You found a ${template.name}, but your inventory is full.`);
+                    logMessage(`You unearthed a ${template.name}, but your inventory is full! It drops to the ground.`);
+                    // Drop the artifact on the ground
+                    const dropTile = template.tile || key;
+                    if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, dropTile);
+                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = dropTile;
+                    else chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = dropTile;
+                    
+                    // We don't need to delete from lootedTiles here because dig spots are consumed/turned into floor
+                    gameState.mapDirty = true;
+                    render();
                 }
             } else {
                 // 50% Chance: Just dirt/worms
@@ -5042,7 +5070,18 @@ async function attemptMovePlayer(newX, newY) {
                             });
                             logMessage("You found the Scholar's Spectacles!");
                         } else {
-                            logMessage("You found the Spectacles, but your pack was full! (They are lost in the rubble...)");
+                            logMessage("Your pack is full! The Spectacles drop to the floor.");
+                            // Drop the spectacles ('👓') on the ruin tile (newX, newY)
+                            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '👓');
+                            else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = '👓';
+                            else chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '👓';
+                            
+                            // Un-mark the tile as looted so they can pick them up
+                            let tileId = (gameState.mapMode === 'overworld') ? `${newX},${-newY}` : `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
+                            gameState.lootedTiles.delete(tileId);
+                            
+                            gameState.mapDirty = true;
+                            render();
                         }
                     }
                 } else {
@@ -6237,7 +6276,7 @@ function clearSessionState() {
 
     // --- LISTENER CLEANUP ---
     if (sharedEnemiesListener) {
-        rtdb.ref('worldEnemies').off('value', sharedEnemiesListener);
+        sharedEnemiesListener(); // Execute the cleanup wrapper!
         sharedEnemiesListener = null;
     }
     if (chatListener) { // If you saved the chat listener reference
