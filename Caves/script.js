@@ -4639,8 +4639,8 @@ async function attemptMovePlayer(newX, newY) {
                     name: 'Healing Potion',
                     type: 'consumable',
                     quantity: 1,
-                    tile: '+',
-                    effect: ITEM_DATA['+'].effect
+                    tile: '♥',
+                    effect: ITEM_DATA['♥'].effect
                 });
             } else if (roll < 0.6) {
                 logMessage("...and feel refreshed! (Full Heal)");
@@ -5107,10 +5107,10 @@ async function attemptMovePlayer(newX, newY) {
                 const dist = Math.sqrt(newX * newX + newY * newY);
                 if (dist > 250) {
                     // High Tier + New Trade Goods (Shells, Pearls, Idols)
-                    lootTable = ['$', '$', 'S', '🔮', '+', '⚔️l', '⛓️', '💎', '🧪', '🐚', '💎b', '🗿'];
+                    lootTable = ['$', '$', 'S', '🔮', '♥', '⚔️l', '⛓️', '💎', '🧪e', '🐚', '💎b', '🗿'];
                 } else {
                     // Low Tier + Common Trade Goods (Shells, Spools)
-                    lootTable = ['$', '$', '(', '†', '+', '!', '[', '🛡️w', '🐚', '🧵'];
+                    lootTable = ['$', '$', '(', '†', '♥', '!', '[', '🛡️w', '🐚', '🧵'];
                 }
             }
             const seed = stringToSeed(tileId);
@@ -6484,7 +6484,10 @@ async function enterGame(playerData) {
     }
 
     // --- SETUP LISTENERS ---
-    if (sharedEnemiesListener) rtdb.ref('worldEnemies').off('value', sharedEnemiesListener);
+    if (sharedEnemiesListener) {
+        sharedEnemiesListener(); // Execute the cleanup wrapper!
+        sharedEnemiesListener = null;
+    }
     if (chatListener) rtdb.ref('chat').off('child_added', chatListener);
 
     onlinePlayerRef = rtdb.ref(`onlinePlayers/${player_id}`);
