@@ -301,6 +301,7 @@ async function processOverworldEnemyTurns() {
             if (canMove) {
                 // Combat Check
                 if (finalX === playerX && finalY === playerY) {
+                    if (gameState.godMode) continue; 
                     const dmg = Math.max(1, enemy.attack - (gameState.player.defenseBonus || 0));
                     gameState.player.health -= dmg;
                     gameState.screenShake = 10;
@@ -1221,6 +1222,7 @@ function getPlayerDamageModifier(baseDamage) {
 
 
 function handlePlayerDeath() {
+    if (gameState.godMode) return false;
     if (gameState.player.health > 0) return false; // Not dead
 
     if (saveTimeout) {
