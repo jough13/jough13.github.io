@@ -5,42 +5,33 @@
  * the previous one is cancelled and the new one takes its place.
  */
 
-function triggerDebouncedSave(updates) {
-    // 1. Cancel any previously pending save
-    if (saveTimeout) {
-        clearTimeout(saveTimeout);
-    }
+let pendingSaveData = null; // Add this to your globals at the top
 
-    // 2. Set a new timer for 2 seconds
+function triggerDebouncedSave(updates) {
+    if (saveTimeout) clearTimeout(saveTimeout);
+    pendingSaveData = updates; // Store it globally
+    
     saveTimeout = setTimeout(() => {
-        if (playerRef) {
-            // This runs 2 seconds after the player STOPS moving
-            playerRef.update(updates).catch(err => {
-                console.error("Auto-save failed:", err);
-            });
-            console.log("☁️ Auto-saved to cloud."); // Debug log
+        if (playerRef && pendingSaveData) {
+            playerRef.update(pendingSaveData).catch(err => console.error(err));
         }
         saveTimeout = null;
+        pendingSaveData = null;
     }, 2000); 
 }
-
-/**
- * Forces any pending debounced save to happen immediately.
- * Call this before entering combat or closing the window.
- */
 
 function flushPendingSave(updates = null) {
     if (saveTimeout) {
         clearTimeout(saveTimeout);
         saveTimeout = null;
         
-        // If specific updates provided, use them. Otherwise, we rely on the 
-        // fact that game state is robust, but technically we need the data object.
-        // In this implementation, we usually pass the latest updates data.
-        if (updates && playerRef) {
-            playerRef.update(updates);
+        // Use provided updates, or fallback to the global pending data
+        const dataToSave = updates || pendingSaveData;
+        if (dataToSave && playerRef) {
+            playerRef.update(dataToSave);
             console.log("☁️ Forced flush save.");
         }
+        pendingSaveData = null;
     }
 }
 
@@ -48,6 +39,7 @@ function flushPendingSave(updates = null) {
  * Saves the complete current game state to Firestore immediately.
  * Provides user feedback on success or failure.
  */
+
 async function manualSaveGame() {
     if (!playerRef) {
         logMessage("{red:Cannot save: Not connected to a character.}");
