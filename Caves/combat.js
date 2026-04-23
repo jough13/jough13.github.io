@@ -14,7 +14,10 @@ function getScaledEnemy(enemyTemplate, x, y) {
     // 3. Apply Base Scaling (10% stats per zone level)
     const multiplier = 1 + (zoneLevel * 0.10);
 
-    enemy.maxHealth = Math.floor(enemy.maxHealth * multiplier);
+    // EASY WIN: Add a +/- 10% variance to health so packs of enemies don't all have identical HP!
+    const variance = 0.9 + (Math.random() * 0.2); 
+    
+    enemy.maxHealth = Math.max(1, Math.floor(enemy.maxHealth * multiplier * variance));
     enemy.attack = Math.floor(enemy.attack * multiplier) + Math.floor(zoneLevel / 3);
     enemy.xp = Math.floor(enemy.xp * multiplier);
 
@@ -76,8 +79,8 @@ function getScaledEnemy(enemyTemplate, x, y) {
 
     return enemy;
 }
-async function wakeUpNearbyEnemies() {
 
+async function wakeUpNearbyEnemies() {
     if (gameState.mapMode !== 'overworld') return;
 
     // Determine player location
@@ -162,7 +165,6 @@ async function wakeUpNearbyEnemies() {
  * runs the AI per interval. Includes logic to break stale locks.
  */
 async function runSharedAiTurns() {
-    
     if (gameState.mapMode !== 'overworld') return; 
 
     const now = Date.now();
@@ -207,7 +209,6 @@ async function runSharedAiTurns() {
 }
 
 async function processOverworldEnemyTurns() {
-
     if (gameState.mapMode !== 'overworld') return;
 
     const playerX = gameState.player.x;
@@ -252,7 +253,8 @@ async function processOverworldEnemyTurns() {
         if (processedIdsThisFrame.has(enemyId)) continue;
 
         const enemy = gameState.sharedEnemies[enemyId];
-                // --- SAFETY CHECK ---
+        
+        // --- SAFETY CHECK ---
         // If enemy is missing or coords are invalid, skip it (don't crash the loop)
         if (!enemy || typeof enemy.x !== 'number' || typeof enemy.y !== 'number') {
             continue;
@@ -302,18 +304,63 @@ async function processOverworldEnemyTurns() {
                 // Combat Check
                 if (finalX === playerX && finalY === playerY) {
                     if (gameState.godMode) continue; 
-                    const dmg = Math.max(1, enemy.attack - (gameState.player.defenseBonus || 0));
-                    gameState.player.health -= dmg;
-                    gameState.screenShake = 10;
+                    
+                    // EASY WIN: Calculate Total Defense & Dodge (Parity with Dungeons!)
+                    const armorDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
+                    const baseDefense = Math.floor(gameState.player.dexterity / 3);
+                    const buffDefense = gameState.player.defenseBonus || 0;
+                    const talentDefense = (gameState.player.talents && gameState.player.talents.includes('iron_skin')) ? 1 : 0;
+                    const conBonus = Math.floor(gameState.player.constitution * 0.1);
+                    const totalDefense = baseDefense + armorDefense + buffDefense + conBonus + talentDefense;
 
-                    const wrapper = document.getElementById('gameCanvasWrapper');
-                    wrapper.classList.remove('damage-flash'); // Reset animation
-                    void wrapper.offsetWidth; // Trigger reflow
-                    wrapper.classList.add('damage-flash');
+                    let dodgeChance = Math.min(gameState.player.luck * 0.002, 0.25);
+                    if (gameState.player.talents && gameState.player.talents.includes('evasion')) {
+                        dodgeChance += 0.10;
+                    }
 
-                    logMessage(`A ${enemy.name} attacks you for ${dmg} damage!`);
-                    triggerStatFlash(statDisplays.health, false);
-                    if (gameState.player.health <= 0) handlePlayerDeath();
+                    if (Math.random() < dodgeChance) {
+                        logMessage(`The ${enemy.name} attacks, but you dodge!`);
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, "Dodge!", "#3b82f6");
+                        processedIdsThisFrame.add(enemyId);
+                        continue;
+                    }
+
+                    // Apply unified damage calc
+                    let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
+
+                    // Shield Absorb
+                    if (gameState.player.shieldValue > 0) {
+                        const absorb = Math.min(gameState.player.shieldValue, dmg);
+                        gameState.player.shieldValue -= absorb;
+                        dmg -= absorb;
+                        logMessage(`Shield absorbs ${absorb} damage!`);
+                        if (gameState.player.shieldValue === 0) logMessage("Your Arcane Shield shatters!");
+                    }
+
+                    if (dmg > 0) {
+                        gameState.player.health -= dmg;
+                        gameState.screenShake = 10;
+
+                        const wrapper = document.getElementById('gameCanvasWrapper');
+                        if (wrapper) {
+                            wrapper.classList.remove('damage-flash'); 
+                            void wrapper.offsetWidth; // Trigger reflow
+                            wrapper.classList.add('damage-flash');
+                        }
+
+                        logMessage(`A ${enemy.name} attacks you for {red:${dmg}} damage!`);
+                        triggerStatFlash(statDisplays.health, false);
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
+                        
+                        if (gameState.player.health <= 0) handlePlayerDeath();
+                    }
+
+                    // Overworld Thorns logic
+                    if (gameState.player.thornsValue > 0) {
+                        handleOverworldCombat(enemy.x, enemy.y, ENEMY_DATA[enemy.tile], enemy.tile, gameState.player.thornsValue);
+                        logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} thorn damage!`);
+                    }
+
                     processedIdsThisFrame.add(enemyId);
                     continue; 
                 }
@@ -327,10 +374,6 @@ async function processOverworldEnemyTurns() {
                 if (newDist < oldDist && isChasing && newDist > 10 && newDist < 16) {
                     // 10% chance to hear it so chat isn't spammed
                     if (Math.random() < 0.10) {
-                        // Invert direction: if enemy is to the North (0, -1), the sound comes FROM the North.
-                        // We use the enemy's movement dir (dirX, dirY). If enemy moves South (0, 1) to chase you,
-                        // they are currently North of you.
-                        // Actually, getDirectionString takes a vector. Let's calculate the vector relative to player.
                         const soundDir = { x: Math.sign(enemy.x - playerX), y: Math.sign(enemy.y - playerY) };
                         const dirStr = getDirectionString(soundDir); 
                         logMessage(`{gray:You hear twigs snapping to the ${dirStr}...}`);
@@ -624,6 +667,7 @@ function processEnemyTurns() {
 
                 // Check collision with player
                 if (tile.x === player.x && tile.y === player.y) {
+                    if (gameState.godMode) return;
                     const dmg = Math.floor(enemy.attack * 1.5); // 150% Damage (Rounded down)
                     player.health -= dmg;
                     gameState.screenShake = 15;
@@ -681,6 +725,8 @@ function processEnemyTurns() {
 
         // Melee Attack (Range 1)
         if (distSq <= 2) {
+            if (gameState.godMode) return;
+
             const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
             const baseDefense = Math.floor(player.dexterity / 3);
             const buffDefense = player.defenseBonus || 0;
@@ -697,7 +743,7 @@ function processEnemyTurns() {
 
             if (Math.random() < dodgeChance) {
                 logMessage(`The ${enemy.name} attacks, but you dodge!`);
-                ParticleSystem.createFloatingText(player.x, player.y, "Dodge!", "#3b82f6");
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "Dodge!", "#3b82f6");
             } else {
                 // Ensure damage is an integer (Math.floor)
                 let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
@@ -715,7 +761,7 @@ function processEnemyTurns() {
                     gameState.screenShake = 10; // Shake intensity
                     triggerStatFlash(statDisplays.health, false);
                     logMessage(`The ${enemy.name} hits you for {red:${dmg}} damage!`);
-                    ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
 
                     // --- DEATH CHECK ---
                     if (handlePlayerDeath()) return;
@@ -740,6 +786,8 @@ function processEnemyTurns() {
         // Caster Attack (Range Check)
         const castRangeSq = Math.pow(enemy.castRange || 6, 2);
         if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20) {
+            if (gameState.godMode) return;
+
             // Ensure spell damage is integer
             const spellDmg = Math.max(1, Math.floor(enemy.spellDamage || 1));
             
@@ -939,6 +987,13 @@ async function runCompanionTurn() {
                 const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
                 enemy.health -= dmg;
                 logMessage(`Your ${companion.name} attacks ${enemy.name} for ${dmg} damage!`);
+                
+                // EASY WIN: Add Particle Effect for Companion hit
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createExplosion(tx, ty, '#86efac', 5); // Light green for pet
+                    ParticleSystem.createFloatingText(tx, ty, `-${dmg}`, '#fff');
+                }
+
                 attacked = true;
 
                 if (enemy.health <= 0) {
@@ -959,17 +1014,16 @@ async function runCompanionTurn() {
                 const enemyId = `overworld:${tx},${-ty}`;
                 const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
+                // Calculate visual damage ahead of time for particles
+                const visualDmg = Math.max(1, companion.attack - (enemyData.defense || 0));
+
                 // --- Custom Transaction for Companion ---
-                // We do NOT use handleOverworldCombat here to avoid player taking damage
                 try {
                     await enemyRef.transaction(currentData => {
                         let enemy = currentData;
 
-                        // If enemy doesn't exist in DB yet (fresh spawn), we create it momentarily to hit it
                         if (enemy === null) {
-                            // Safety check inside transaction
                             if (!enemyData) return null;
-
                             const scaledStats = getScaledEnemy(enemyData, tx, ty);
                             enemy = { ...scaledStats, tile: tile };
                         }
@@ -984,16 +1038,21 @@ async function runCompanionTurn() {
                         return enemy;
                     }, (error, committed, snapshot) => {
                         if (committed) {
+                            // EASY WIN: Companion Particles
+                            if (typeof ParticleSystem !== 'undefined') {
+                                ParticleSystem.createExplosion(tx, ty, '#86efac', 5); 
+                                ParticleSystem.createFloatingText(tx, ty, `-${visualDmg}`, '#fff');
+                            }
+
                             if (!snapshot.exists()) {
                                 // Enemy died
                                 logMessage(`Your ${companion.name} vanquished the ${enemyData.name}!`);
                                 grantXp(Math.floor(enemyData.xp / 2));
-                                // Visual cleanup handled by listener, but we can update local chunk tile
                                 chunkManager.setWorldTile(tx, ty, '.');
                                 if (gameState.sharedEnemies[enemyId]) {
                                     delete gameState.sharedEnemies[enemyId];
                                 }
-                                render(); // Force update
+                                render(); 
                             } else {
                                 // Enemy survived
                                 logMessage(`Your ${companion.name} hits the ${enemyData.name}!`);
@@ -1059,14 +1118,11 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                 logMessage(`The ${enemyInfo.name} was vanquished!`);
                 
                 // --- SAFELY GRANT REWARDS ---
-                // We wrap this in try/catch so a logic error (like a bad quest ID) 
-                // doesn't trigger the "Network Error" message.
                 try {
                     grantXp(enemyInfo.xp);
                     updateQuestProgress(newTile); 
                 } catch (rewardErr) {
                     console.error("Reward Logic Error:", rewardErr);
-                    // We don't alert the user, we just log it, so they don't think combat failed.
                 }
 
                 // B. Cleanup Map Logic
@@ -1105,7 +1161,6 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
     } catch (error) {
         console.error("Combat Error:", error);
-        // Display the ACTUAL error message to the player for debugging
         logMessage(`Error: ${error.message || "Network Sync Failed"}`);
     } finally {
         // 5. FINAL SAVE
@@ -1123,11 +1178,9 @@ function registerKill(enemy) {
     // 2. Determine XP Value (Safety Fallback)
     let amount = 0;
     
-    // Priority A: The specific enemy's stored XP (includes scaling/elite bonuses)
     if (enemy.xp !== undefined && enemy.xp !== null) {
         amount = Number(enemy.xp);
     } 
-    // Priority B: Fallback to the base template data
     else if (tile && ENEMY_DATA[tile]) {
         amount = ENEMY_DATA[tile].xp || 0;
         console.warn(`⚠️ Enemy instance missing XP. Fell back to template for ${enemy.name}.`);
@@ -1141,7 +1194,6 @@ function registerKill(enemy) {
     }
 
     // 4. Update Kill Count (Stats)
-    // Use the base name (remove "Feral", "Savage" prefixes) for clean tracking
     let baseName = enemy.name;
     if (tile && ENEMY_DATA[tile]) {
         baseName = ENEMY_DATA[tile].name;
@@ -1241,11 +1293,11 @@ function handlePlayerDeath() {
     if (player.equipment.weapon) applyStatBonuses(player.equipment.weapon, -1);
     if (player.equipment.armor) applyStatBonuses(player.equipment.armor, -1);
 
-    // 3. UI UPDATES (Moved UP so they happen before any potential save errors)
+    // 3. UI UPDATES
     const goldLost = Math.floor(player.coins / 2);
     document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
     document.getElementById('finalCoinsDisplay').textContent = `Gold lost: ${goldLost}`;
-    gameOverModal.classList.remove('hidden'); // Show the modal immediately
+    gameOverModal.classList.remove('hidden');
 
     // 4. CORPSE SCATTER LOGIC
     const deathX = player.x;
@@ -1270,7 +1322,6 @@ function handlePlayerDeath() {
                     else tile = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
                     if (tile === '.') {
-                        // Use item.tile, fallback to templateId, fallback to generic bag '🎒'
                         const dropIcon = item.tile || item.templateId || '🎒';
 
                         if (gameState.mapMode === 'overworld') {
@@ -1282,7 +1333,7 @@ function handlePlayerDeath() {
                             const lKey = `${lX},${lY}`;
                             
                             if (!pendingUpdates[cId]) pendingUpdates[cId] = {};
-                            pendingUpdates[cId][lKey] = dropIcon; // Apply fallback here
+                            pendingUpdates[cId][lKey] = dropIcon; 
                         } else if (gameState.mapMode === 'dungeon') {
                             chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = dropIcon;
                         } else {
@@ -1295,10 +1346,9 @@ function handlePlayerDeath() {
         }
     }
 
-    // 5. Apply map updates (Wrapped in Sanitize to prevent crashes)
+    // 5. Apply map updates
     if (gameState.mapMode === 'overworld') {
         for (const [cId, updates] of Object.entries(pendingUpdates)) {
-            // Sanitize the updates object to remove 'undefined' values before sending
             const safeUpdates = sanitizeForFirebase(updates); 
             db.collection('worldState').doc(cId).set(safeUpdates, { merge: true })
                 .catch(err => console.error("Failed to drop corpse loot:", err));
@@ -1308,7 +1358,6 @@ function handlePlayerDeath() {
     // 6. CALCULATE PENALTIES & SAVE
     player.coins -= goldLost;
     
-    // Clear inventory immediately so it can't be accessed while dead
     player.inventory = []; 
     player.equipment = { weapon: { name: 'Fists', damage: 0 }, armor: { name: 'Simple Tunic', defense: 0 } };
 
