@@ -198,9 +198,9 @@ generateCave(caveId) {
 
         // --- 4. Place procedural loot and decorations ---
 
-        const CAVE_LOOT_TABLE = ['+', '🔮', '💜', 'S', '$', '📄', '🍄', '🏺', '⚰️'];
+        const CAVE_LOOT_TABLE = ['♥', '🔮', '💜', 'S', '$', '📄', '🍄', '🏺', '⚰️'];
         const lootQuantity = Math.floor(random() * 4);
-
+        
         for (let i = 0; i < lootQuantity; i++) {
             const itemToPlace = CAVE_LOOT_TABLE[Math.floor(random() * CAVE_LOOT_TABLE.length)];
             let placed = false;
