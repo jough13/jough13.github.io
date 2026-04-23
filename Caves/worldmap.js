@@ -1,375 +1,277 @@
-// --- WORLD MAP SYSTEM ---
-const mapModal = document.getElementById('mapModal');
-const worldMapCanvas = document.getElementById('worldMapCanvas');
-const worldMapCtx = worldMapCanvas.getContext('2d');
-const mapCoordsDisplay = document.getElementById('mapCoords');
+// --- CENTRAL INPUT HANDLER ---
+function handleInput(key) {
 
-// Settings
-const MAP_SCALE = 4;
-const MAP_CHUNK_SIZE = 16; // Renamed to avoid conflicts, explicit constant
-
-// Camera State
-let mapCamera = { x: 0, y: 0 };
-let isDraggingMap = false;
-let lastMouseX = 0;
-let lastMouseY = 0;
-
-function openWorldMap() {
-    mapModal.classList.remove('hidden');
-
-    // 1. Center Camera on Player immediately
-    mapCamera.x = gameState.player.x;
-    mapCamera.y = gameState.player.y;
-
-    // 2. Force Exploration of CURRENT tile immediately
-    // This ensures you are never standing in a "void" when you open the map
-    updateExploration();
-
-    // 3. Resize Canvas to fill the modal window
-    fitMapCanvasToContainer();
-
-    // 4. Render
-    renderWorldMap();
-}
-
-function closeWorldMap() {
-    mapModal.classList.add('hidden');
-}
-
-function fitMapCanvasToContainer() {
-    const container = worldMapCanvas.parentElement;
-    if (container.clientWidth > 0 && container.clientHeight > 0) {
-        worldMapCanvas.width = container.clientWidth;
-        worldMapCanvas.height = container.clientHeight;
-    }
-}
-
-// Visual Settings State
-let crtEnabled = localStorage.getItem('crtSetting') !== 'false'; // Default to true
-
-function applyVisualSettings() {
-
-    const container = document.getElementById('gameCanvasWrapper');
-
-    if (container) {
-        if (crtEnabled) {
-            container.classList.add('crt');
-        } else {
-            container.classList.remove('crt');
-        }
-    }
-}
-
-function initSettingsListeners() {
-    console.log("⚙️ Initializing Settings Listeners...");
-
-    // --- DOM ELEMENTS ---
-    const modal = document.getElementById('settingsModal');
-    const closeBtn = document.getElementById('closeSettingsButton');
-    const openBtn = document.getElementById('settingsButton');
-
-    // Audio Checkboxes
-    const cbMaster = document.getElementById('settingMaster');
-    const cbSteps = document.getElementById('settingSteps');
-    const cbCombat = document.getElementById('settingCombat');
-    const cbMagic = document.getElementById('settingMagic');
-    const cbUI = document.getElementById('settingUI');
-
-    // Visual Checkboxes
-    const cbCRT = document.getElementById('settingCRT');
-
-    // Cloud Backup Buttons
-    const btnBackup = document.getElementById('btnBackup');
-    const btnRestore = document.getElementById('btnRestore');
-
-    const btnManualSave = document.getElementById('btnManualSave'); // Get the new button
-
-    // Safety Check: If critical UI is missing, abort to prevent errors
-    if (!modal || !openBtn || !closeBtn) {
-        console.error("❌ Critical Settings UI elements missing from HTML!");
+    // 1. INPUT LOCK: Prevent spamming while network/animations are processing
+    if (isProcessingMove) {
+        // Suppress console spam for smoother background execution
         return;
     }
 
-    // --- HELPER: SYNC UI ---
-    // Updates checkboxes to match current global variables/localStorage
-    const syncUI = () => {
-        // Audio Sync
-        if (cbMaster) cbMaster.checked = AudioSystem.settings.master;
-        if (cbSteps) cbSteps.checked = AudioSystem.settings.steps;
-        if (cbCombat) cbCombat.checked = AudioSystem.settings.combat;
-        if (cbMagic) cbMagic.checked = AudioSystem.settings.magic;
-        if (cbUI) cbUI.checked = AudioSystem.settings.ui;
+    // 2. Audio Context Resume (Browser Policy)
+    if (AudioSystem.ctx && AudioSystem.ctx.state === 'suspended') {
+        AudioSystem.ctx.resume();
+    }
 
-        // Visual Sync
-        if (cbCRT) cbCRT.checked = crtEnabled;
+    // 3. Robust Safety Check
+    // Ensure player is logged in and data exists before doing anything.
+    // Also check if gameContainer is visible to prevent moving while in Character Select.
+    if (!player_id || !gameState || !gameState.player || gameContainer.classList.contains('hidden')) {
+        return;
+    }
 
-        // Master Volume Logic: Disable sub-options if master is off
-        if (cbMaster) {
-            const isMasterOn = cbMaster.checked;
-            [cbSteps, cbCombat, cbMagic, cbUI].forEach(cb => {
-                if (cb) {
-                    cb.disabled = !isMasterOn;
-                    // Visual flair: dim the label if disabled (optional, depends on CSS)
-                    cb.parentElement.style.opacity = isMasterOn ? '1' : '0.5';
-                }
-            });
+    // --- EASY WIN: UNIVERSAL ESCAPE KEY / MODAL CLOSER ---
+    // Instead of hardcoding 12 different modal checks, we dynamically find the open one!
+    if (key === 'Escape') {
+        if (gameState.isAiming) {
+            gameState.isAiming = false;
+            gameState.abilityToAim = null;
+            logMessage("Aiming canceled.");
+            return;
         }
-    };
-
-    // --- 1. OPEN/CLOSE MODAL ---
-    
-    openBtn.onclick = (e) => {
-        e.preventDefault();
         
-        // 1. Refresh Checkboxes
-        syncUI();
-        
-        // 2. Refresh Backup Timestamp (Async)
-        updateBackupUI(); 
-        
-        // 3. Show Modal
-        modal.classList.remove('hidden');
-    };
-
-    closeBtn.onclick = (e) => {
-        e.preventDefault();
-        modal.classList.add('hidden');
-    };
-
-    // --- 2. AUDIO HANDLERS ---
-    
-    const handleAudioToggle = (key, element) => {
-        if (!element) return;
-        element.onchange = (e) => {
-            // Update State
-            AudioSystem.settings[key] = e.target.checked;
-            AudioSystem.saveSettings();
-            
-            // If Master changed, update the UI (disable/enable children)
-            if (key === 'master') syncUI();
-
-            // Feedback Sound
-            if (e.target.checked && AudioSystem.settings.master) {
-                if (key === 'steps') AudioSystem.playStep();
-                else AudioSystem.playCoin();
-            }
-        };
-    };
-
-    handleAudioToggle('master', cbMaster);
-    handleAudioToggle('steps', cbSteps);
-    handleAudioToggle('combat', cbCombat);
-    handleAudioToggle('magic', cbMagic);
-    handleAudioToggle('ui', cbUI);
-
-    // --- 3. VISUAL HANDLERS ---
-
-    if (cbCRT) {
-        cbCRT.onchange = (e) => {
-            crtEnabled = e.target.checked;
-            localStorage.setItem('crtSetting', crtEnabled);
-            applyVisualSettings(); // Apply CSS class immediately
-            
-            if (crtEnabled) AudioSystem.playMagic(); // Sound effect
-        };
-    }
-
-    // --- 4. CLOUD BACKUP HANDLERS ---
-
-    if (btnBackup) {
-        btnBackup.onclick = (e) => {
-            e.preventDefault();
-            // Prevent spamming
-            btnBackup.disabled = true;
-            btnBackup.textContent = "Saving...";
-            
-            createCloudBackup().then(() => {
-                btnBackup.disabled = false;
-                btnBackup.textContent = "☁️ Create Backup";
-            });
-        };
-    }
-
-    if (btnRestore) {
-        btnRestore.onclick = (e) => {
-            e.preventDefault();
-            restoreCloudBackup();
-        };
-    }
-
-    // --- 5. MANUAL SAVE HANDLER ---
-    if (btnManualSave) {
-        btnManualSave.onclick = (e) => {
-            e.preventDefault();
-            manualSaveGame();
-        };
-    }
-    
-    console.log("✅ Settings Listeners (Audio, Visuals, Backups, Manual Save) Attached.");
-}
-
-function renderWorldMap() {
-    if (!gameState.player.exploredChunks) return;
-
-    // 1. Clear Background (Black Void)
-    worldMapCtx.fillStyle = '#000000';
-    worldMapCtx.fillRect(0, 0, worldMapCanvas.width, worldMapCanvas.height);
-
-    // 2. Calculate Screen Center
-    const centerX = Math.floor(worldMapCanvas.width / 2);
-    const centerY = Math.floor(worldMapCanvas.height / 2);
-
-    // 3. Iterate ONLY Explored Chunks
-    gameState.exploredChunks.forEach(chunkId => {
-        const [cx, cy] = chunkId.split(',').map(Number);
-
-        if (isNaN(cx) || isNaN(cy)) return; // Safety check
-
-        // Chunk's World Position (Top-Left of the chunk)
-        const chunkWorldX = cx * MAP_CHUNK_SIZE;
-        const chunkWorldY = cy * MAP_CHUNK_SIZE;
-
-        // Calculate Screen Position for this chunk
-        // Formula: (ChunkWorldPos - CameraPos) * Scale + CenterOffset
-        const screenX = Math.floor((chunkWorldX - mapCamera.x) * MAP_SCALE + centerX);
-        const screenY = Math.floor((chunkWorldY - mapCamera.y) * MAP_SCALE + centerY);
-
-        // Optimization: Skip drawing if completely off-screen
-        const chunkSizeOnScreen = MAP_CHUNK_SIZE * MAP_SCALE;
-        if (screenX + chunkSizeOnScreen < 0 || screenX > worldMapCanvas.width ||
-            screenY + chunkSizeOnScreen < 0 || screenY > worldMapCanvas.height) {
+        if (gameState.isDroppingItem) {
+            gameState.isDroppingItem = false;
+            logMessage("Drop canceled.");
+            renderInventory(); // Reset visuals to normal
             return;
         }
 
-        // Draw Tiles in Chunk
-        for (let y = 0; y < MAP_CHUNK_SIZE; y++) {
-            for (let x = 0; x < MAP_CHUNK_SIZE; x++) {
-                const worldX = chunkWorldX + x;
-                const worldY = chunkWorldY + y;
+        // Find any active modal
+        const activeModal = document.querySelector('.modal-overlay:not(.hidden)');
+        if (activeModal) {
+            // Specific teardown hooks if needed
+            if (activeModal.id === 'inventoryModal') closeInventoryModal();
+            else if (activeModal.id === 'mapModal') closeWorldMap();
+            else activeModal.classList.add('hidden'); // Generic close
+            return;
+        }
+        
+        return; // Nothing to close
+    }
 
-                const color = getBiomeColorForMap(worldX, worldY);
+    // 4. Dead Check
+    // Now that we've handled system keys (Escape), we block gameplay inputs if dead.
+    if (gameState.player.health <= 0) return;
 
-                // Draw pixel
-                worldMapCtx.fillStyle = color;
-                worldMapCtx.fillRect(
-                    screenX + (x * MAP_SCALE),
-                    screenY + (y * MAP_SCALE),
-                    MAP_SCALE,
-                    MAP_SCALE
-                );
-            }
+    if (key.toLowerCase() === 'q') {
+        drinkFromSource();
+        return;
+    }
+
+    // --- DROP MODE ---
+    if (gameState.isDroppingItem) {
+        // Pass the key string directly
+        handleItemDrop(key);
+        return;
+    }
+
+    // --- AIMING MODE ---
+    if (gameState.isAiming) {
+        let dirX = 0, dirY = 0;
+        
+        // Include numpad for aiming too!
+        if (key === 'ArrowUp' || key.toLowerCase() === 'w' || key === '8') dirY = -1;
+        else if (key === 'ArrowDown' || key.toLowerCase() === 's' || key === '2') dirY = 1;
+        else if (key === 'ArrowLeft' || key.toLowerCase() === 'a' || key === '4') dirX = -1;
+        else if (key === 'ArrowRight' || key.toLowerCase() === 'd' || key === '6') dirX = 1;
+        // Diagonals for aiming
+        else if (key === '7' || key === 'Home') { dirX = -1; dirY = -1; }
+        else if (key === '9' || key === 'PageUp') { dirX = 1; dirY = -1; }
+        else if (key === '1' || key === 'End') { dirX = -1; dirY = 1; }
+        else if (key === '3' || key === 'PageDown') { dirX = 1; dirY = 1; }
+
+        if (dirX !== 0 || dirY !== 0) {
+            const abilityId = gameState.abilityToAim;
+            // Route abilities
+            if (abilityId === 'lunge') executeLunge(dirX, dirY);
+            else if (abilityId === 'shieldBash' || abilityId === 'cleave' || abilityId === 'kick' || abilityId === 'crush') executeMeleeSkill(abilityId, dirX, dirY);
+            else if (abilityId === 'quickstep') executeQuickstep(dirX, dirY);
+            else if (SPELL_DATA[abilityId]) executeAimedSpell(abilityId, dirX, dirY);
+            else if (abilityId === 'pacify') executePacify(dirX, dirY);
+            else if (abilityId === 'inflictMadness') executeInflictMadness(dirX, dirY);
+            else if (abilityId === 'tame') executeTame(dirX, dirY);
+            else logMessage("Unknown ability. Aiming canceled.");
+
+            gameState.isAiming = false;
+            gameState.abilityToAim = null;
+        } else {
+            logMessage("Invalid direction. Use Arrow keys or Numpad.");
+        }
+        return;
+    }
+
+     // --- DROP MODE TOGGLE ---
+    if (gameState.inventoryMode && key.toLowerCase() === 'd') {
+        if (gameState.player.inventory.length === 0) {
+            logMessage("Inventory empty.");
+            return;
+        }
+        
+        // Toggle Drop Mode State
+        gameState.isDroppingItem = !gameState.isDroppingItem;
+
+        if (gameState.isDroppingItem) {
+            logMessage("Drop Mode: Select an item to discard.");
+        } else {
+            logMessage("Drop Mode cancelled.");
         }
 
-        // Debug: Draw faint outline around chunk to verify alignment
-        // worldMapCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        // worldMapCtx.lineWidth = 1;
-        // worldMapCtx.strokeRect(screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
-    });
+        // Re-render to show red borders (DO NOT CLOSE MODAL)
+        renderInventory(); 
+        return;
+    }
 
-    // 4. Draw Player Marker
-    // The player is always at 'mapCamera' coordinates + center offset
-    // This assumes camera is locked to player unless dragged.
-    const playerScreenX = (gameState.player.x - mapCamera.x) * MAP_SCALE + centerX;
-    const playerScreenY = (gameState.player.y - mapCamera.y) * MAP_SCALE + centerY;
+    // --- NUMBER KEYS (1-9) ---
+    // This handles both Using and Dropping based on state
+    const keyNum = parseInt(key);
+    if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
+        
+        // Priority 1: Drop Mode active?
+        if (gameState.isDroppingItem) {
+            handleItemDrop(key); // Use the string key "1", "2", etc.
+            return;
+        }
 
-    // Draw Red Dot (with white border for visibility)
-    worldMapCtx.fillStyle = '#ef4444';
-    worldMapCtx.beginPath();
-    worldMapCtx.arc(playerScreenX, playerScreenY, 4, 0, Math.PI * 2);
-    worldMapCtx.fill();
-    worldMapCtx.strokeStyle = '#ffffff';
-    worldMapCtx.lineWidth = 2;
-    worldMapCtx.stroke();
+        // Priority 2: Inventory Open? Use Item.
+        if (gameState.inventoryMode) {
+            useInventoryItem(keyNum - 1);
+            return;
+        }
 
-    // 5. Update Coordinates Text
-    mapCoordsDisplay.textContent = `Current Location: ${gameState.player.x}, ${-gameState.player.y}`;
+        // Priority 3: Normal Hotbar usage
+        // Note: Only 1-5 usually used for hotbar, but we check range 1-9 to be safe
+        if (keyNum <= 5) {
+            useHotbarSlot(keyNum - 1);
+            return;
+        }
+    }
+
+    if (key.toLowerCase() === 'g') {
+        // 1. Get tile ID
+        let tileId;
+        if (gameState.mapMode === 'overworld') tileId = `${gameState.player.x},${-gameState.player.y}`;
+        else tileId = `${gameState.currentCaveId || gameState.currentCastleId}:${gameState.player.x},${-gameState.player.y}`;
+
+        // 2. Check current tile for lootable items
+        const currentTile = (gameState.mapMode === 'overworld') 
+            ? chunkManager.getTile(gameState.player.x, gameState.player.y)
+            : (gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] : chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x]);
+
+        // 3. Trigger pickup if it's an item
+        if (ITEM_DATA[currentTile]) {
+            // We reuse the move logic's pickup code by faking a "wait" on the spot
+            logMessage("You scour the ground for items...");
+            attemptMovePlayer(gameState.player.x, gameState.player.y); 
+            return;
+        } else {
+            logMessage("There is nothing here to pick up.");
+            return;
+        }
+    }
+
+    // --- EASY WIN: MENU TOGGLES ---
+    // Instead of just opening, pressing the key again closes the menu!
+    const toggleModal = (modalEl, openFunc, closeFunc) => {
+        if (!modalEl.classList.contains('hidden')) {
+            if (closeFunc) closeFunc();
+            else modalEl.classList.add('hidden');
+        } else {
+            openFunc();
+        }
+    };
+
+    if (key.toLowerCase() === 'i') { toggleModal(inventoryModal, openInventoryModal, closeInventoryModal); return; }
+    if (key.toLowerCase() === 'm') { toggleModal(mapModal, openWorldMap, closeWorldMap); return; }
+    if (key.toLowerCase() === 'b') { toggleModal(spellModal, openSpellbook); return; }
+    if (key.toLowerCase() === 'k') { toggleModal(skillModal, openSkillbook); return; }
+    if (key.toLowerCase() === 'c') { toggleModal(collectionsModal, openCollections); return; }
+    if (key.toLowerCase() === 'p') { toggleModal(talentModal, openTalentModal); return; }
+
+    // Auto-focus chat on Enter
+    if (key === 'Enter') { document.getElementById('chatInput').focus(); return; }
+
+    // --- EASY WIN: UNIVERSAL GUARD: BLOCK MOVEMENT IF MENUS ARE OPEN ---
+    // Replaced the massive if-statement block with a clean DOM query
+    const anyModalOpen = document.querySelector('.modal-overlay:not(.hidden)');
+    if (anyModalOpen || gameState.inventoryMode) {
+        return;
+    }
+
+    // 1. THROTTLE CHECK & BUFFERING
+    const now = Date.now();
+    if (now - lastActionTime < ACTION_COOLDOWN) {
+        // Buffer movement keys (including numpad) to prevent menu weirdness
+        const moveKeys = [
+            'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 
+            'w', 'a', 's', 'd', 'W', 'A', 'S', 'D',
+            '1', '2', '3', '4', '6', '7', '8', '9',
+            'Home', 'End', 'PageUp', 'PageDown'
+        ];
+
+        if (moveKeys.includes(key)) {
+            inputBuffer = key; // Store the intent
+        }
+        return;
+    }
+
+    // If we are executing a move, clear the buffer so we don't double-move later
+    inputBuffer = null;
+
+    let newX = gameState.player.x;
+    let newY = gameState.player.y;
+    let moved = false;
+
+    // --- EASY WIN: NUMPAD & DIAGONAL SUPPORT ---
+    switch (key) {
+        // Cardinals
+        case 'ArrowUp': case 'w': case 'W': case '8': newY--; moved = true; break;
+        case 'ArrowDown': case 's': case 'S': case '2': newY++; moved = true; break;
+        case 'ArrowLeft': case 'a': case 'A': case '4': newX--; moved = true; break;
+        case 'ArrowRight': case 'd': case 'D': case '6': newX++; moved = true; break;
+        
+        // Diagonals (Numpad)
+        case '7': case 'Home': newX--; newY--; moved = true; break; // NW
+        case '9': case 'PageUp': newX++; newY--; moved = true; break; // NE
+        case '1': case 'End': newX--; newY++; moved = true; break; // SW
+        case '3': case 'PageDown': newX++; newY++; moved = true; break; // SE
+
+        case 'r': case 'R':
+            restPlayer();
+            lastActionTime = now; 
+            return;
+        case ' ': case '5': case '.': // Spacebar or Numpad center/dot to skip turn
+            logMessage("You wait a moment.");
+            endPlayerTurn();
+            lastActionTime = now; 
+            return;
+    }
+
+    if (moved) {
+        lastActionTime = now; // Update timer only if we actually move
+        attemptMovePlayer(newX, newY);
+    }
 }
 
-// --- MAP CONTROLS (Panning) ---
-worldMapCanvas.addEventListener('mousedown', (e) => {
-    isDraggingMap = true;
-    lastMouseX = e.clientX;
-    lastMouseY = e.clientY;
-    worldMapCanvas.style.cursor = 'grabbing';
+// Attach the listener
+document.addEventListener('keydown', (event) => {
+    // 1. Ignore if typing in chat
+    if (document.activeElement === chatInput) return;
+
+    // 2. Prevent default scrolling for game keys
+    // Added numpad and auxiliary keys to prevent page jumping
+    const keysToBlock = [
+        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', ' ',
+        'Home', 'End', 'PageUp', 'PageDown'
+    ];
+
+    if (keysToBlock.includes(event.key)) {
+        event.preventDefault();
+    }
+
+    // 3. Pass the input to the game logic
+    handleInput(event.key);
 });
 
-window.addEventListener('mouseup', () => {
-    isDraggingMap = false;
-    worldMapCanvas.style.cursor = 'grab';
-});
-
-window.addEventListener('mousemove', (e) => {
-    if (!isDraggingMap) return;
-
-    const dx = e.clientX - lastMouseX;
-    const dy = e.clientY - lastMouseY;
-
-    // Move camera opposite to drag
-    mapCamera.x -= dx / MAP_SCALE;
-    mapCamera.y -= dy / MAP_SCALE;
-
-    lastMouseX = e.clientX;
-    lastMouseY = e.clientY;
-
-    renderWorldMap();
-});
-
-// Helper
-function getBiomeColorForMap(x, y) {
-    const elev = elevationNoise.noise(x / 70, y / 70);
-    const moist = moistureNoise.noise(x / 50, y / 50);
-
-    if (elev < 0.35) return '#3b82f6'; // Water
-    if (elev < 0.4 && moist > 0.7) return '#422006'; // Swamp
-    if (elev > 0.8) return '#57534e'; // Mountain
-    if (elev > 0.6 && moist < 0.3) return '#2d2d2d'; // Deadlands
-    if (moist < 0.15) return '#fde047'; // Desert
-    if (moist > 0.55) return '#14532d'; // Forest
-    return '#22c55e'; // Plains
-}
-
-
-
-
-
-
-
-
-
-// --- HELPER: DRAW FANCY MOUNTAIN (OPTIMIZED) ---
-function drawMountain(ctx, x, y, size) {
-    // Use the global cache we created in Step 1
-    if (!cachedThemeColors.mtnBase) updateThemeColors();
-
-    const { mtnBase, mtnShadow, mtnCap } = cachedThemeColors;
-
-    // 1. Draw the main mountain body
-    ctx.fillStyle = mtnBase;
-    ctx.beginPath();
-    ctx.moveTo(x, y + size);
-    ctx.lineTo(x + size / 2, y + size * 0.1);
-    ctx.lineTo(x + size, y + size);
-    ctx.closePath();
-    ctx.fill();
-
-    // 2. Draw the shadow
-    ctx.fillStyle = mtnShadow;
-    ctx.beginPath();
-    ctx.moveTo(x + size / 2, y + size * 0.1);
-    ctx.lineTo(x + size, y + size);
-    ctx.lineTo(x + size / 2, y + size);
-    ctx.closePath();
-    ctx.fill();
-
-    // 3. Draw the snow cap
-    ctx.fillStyle = mtnCap;
-    ctx.beginPath();
-    ctx.moveTo(x + size * 0.25, y + size * 0.5);
-    ctx.lineTo(x + size * 0.35, y + size * 0.4);
-    ctx.lineTo(x + size * 0.5, y + size * 0.55);
-    ctx.lineTo(x + size * 0.65, y + size * 0.4);
-    ctx.lineTo(x + size * 0.75, y + size * 0.5);
-    ctx.lineTo(x + size / 2, y + size * 0.1);
-    ctx.closePath();
-    ctx.fill();
-}
+// DEBOUNCE RESIZE: Only resize once the user STOPS dragging the window (saves CPU)
+let resizeTimer;
+window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resizeCanvas, 100); });
