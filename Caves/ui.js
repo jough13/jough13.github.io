@@ -68,7 +68,6 @@ const skillTrainerList = document.getElementById('skillTrainerList');
 const skillTrainerStatPoints = document.getElementById('skillTrainerStatPoints');
 
 const equippedWeaponDisplay = document.getElementById('equippedWeaponDisplay');
-
 const equippedArmorDisplay = document.getElementById('equippedArmorDisplay');
 
 const coreStatsPanel = document.getElementById('coreStatsPanel');
@@ -124,9 +123,8 @@ const renderStats = () => {
 
             if (statName === 'xp') {
                 const max = gameState.player.xpToNextLevel;
-                const percent = (value / max) * 100;
+                const percent = Math.max(0, Math.min(100, (value / max) * 100));
 
-                // Update text and bar width
                 element.textContent = `XP: ${value} / ${max}`;
                 statBarElements.xp.style.width = `${percent}%`;
 
@@ -142,91 +140,99 @@ const renderStats = () => {
 
             } else if (statName === 'health') {
                 const max = gameState.player.maxHealth;
-                const percent = (value / max) * 100;
+                const percent = Math.max(0, Math.min(100, (value / max) * 100));
 
-                // Update bar width
                 statBarElements.health.style.width = `${percent}%`;
                 
-                // 1. Calculate display value (Round up to avoid 9.99/10)
                 let displayHealth = Math.ceil(value); 
-                
-                // 2. Declare string ONCE
                 let healthString = `${label}: ${displayHealth}`;
 
-                // 3. Add Shield text if active
                 if (gameState.player.shieldValue > 0) {
                     healthString += ` <span class="text-blue-400">(+${Math.ceil(gameState.player.shieldValue)})</span>`;
                 }
                 
-                // 4. Update the element text
                 element.innerHTML = healthString;
 
-                // Update text and bar color
-                element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500'); // Clear old text colors
-
+                element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500', 'text-purple-500'); 
                 const canvasWrapper = document.getElementById('gameCanvasWrapper');
 
-                if (percent > 60) {
-                    element.classList.add('text-green-500');
-                    statBarElements.health.style.backgroundColor = '#22c55e'; // Green
-                    canvasWrapper.classList.remove('critical-health'); // Safe
-                } else if (percent > 25) {
-                    element.classList.add('text-yellow-500');
-                    statBarElements.health.style.backgroundColor = '#eab308'; // Yellow
-                    canvasWrapper.classList.remove('critical-health'); // Safe
+                // EASY WIN: Poisoned Health Bar Tinting
+                if (gameState.player.poisonTurns > 0) {
+                    element.classList.add('text-purple-500');
+                    statBarElements.health.style.backgroundColor = '#a855f7'; // Sickly Purple
+                    canvasWrapper.classList.add('critical-health'); // Keep pulsing to indicate danger
                 } else {
-                    element.classList.add('text-red-500');
-                    statBarElements.health.style.backgroundColor = '#ef4444'; // Red
-                    canvasWrapper.classList.add('critical-health'); // DANGER! Pulse screen!
+                    if (percent > 60) {
+                        element.classList.add('text-green-500');
+                        statBarElements.health.style.backgroundColor = '#22c55e'; 
+                        canvasWrapper.classList.remove('critical-health'); 
+                    } else if (percent > 25) {
+                        element.classList.add('text-yellow-500');
+                        statBarElements.health.style.backgroundColor = '#eab308'; 
+                        canvasWrapper.classList.remove('critical-health'); 
+                    } else {
+                        element.classList.add('text-red-500');
+                        statBarElements.health.style.backgroundColor = '#ef4444'; 
+                        canvasWrapper.classList.add('critical-health'); 
+                    }
                 }
 
             } else if (statName === 'mana') {
                 const max = gameState.player.maxMana;
-                const percent = (value / max) * 100;
+                const percent = Math.max(0, Math.min(100, (value / max) * 100));
                 statBarElements.mana.style.width = `${percent}%`;
-                element.textContent = `${label}: ${value}`;
+                element.textContent = `${label}: ${Math.floor(value)}`;
 
             } else if (statName === 'stamina') {
                 const max = gameState.player.maxStamina;
-                const percent = (value / max) * 100;
+                const percent = Math.max(0, Math.min(100, (value / max) * 100));
                 statBarElements.stamina.style.width = `${percent}%`;
-                element.textContent = `${label}: ${value}`;
+                element.textContent = `${label}: ${Math.floor(value)}`;
+
+                // EASY WIN: Frostbite Stamina Bar Tinting
+                element.classList.remove('text-green-500', 'text-cyan-400');
+                if (gameState.player.frostbiteTurns > 0) {
+                    element.classList.add('text-cyan-400');
+                    statBarElements.stamina.style.backgroundColor = '#38bdf8'; // Icy Blue
+                } else {
+                    element.classList.add('text-green-500');
+                    statBarElements.stamina.style.backgroundColor = '#16a34a'; // Normal Green
+                }
 
             } else if (statName === 'wits') {
                 let witsText = `${label}: ${value}`;
-                // Check for bonus
                 if (gameState.player.witsBonus > 0) {
                     witsText += ` <span class="text-green-500">(+${gameState.player.witsBonus})</span>`;
                 }
-                // Use innerHTML to render the color span
                 element.innerHTML = witsText;
 
             } else if (statName === 'psyche') {
                 const max = gameState.player.maxPsyche;
-                const percent = (value / max) * 100;
+                const percent = Math.max(0, Math.min(100, (value / max) * 100));
                 statBarElements.psyche.style.width = `${percent}%`;
-                element.textContent = `${label}: ${value}`;
+                element.textContent = `${label}: ${Math.floor(value)}`;
 
             } else if (statName === 'hunger') {
                 const max = gameState.player.maxHunger;
-                const percent = (value / max) * 100;
+                const percent = Math.max(0, Math.min(100, (value / max) * 100));
                 statBarElements.hunger.style.width = `${percent}%`;
-                element.textContent = `${label}: ${Math.floor(value)}`; // Use Math.floor to hide decimals
+                element.textContent = `${label}: ${Math.floor(value)}`; 
+
             } else if (statName === 'thirst') {
                 const max = gameState.player.maxThirst;
-                const percent = (value / max) * 100;
+                const percent = Math.max(0, Math.min(100, (value / max) * 100));
                 statBarElements.thirst.style.width = `${percent}%`;
                 element.textContent = `${label}: ${Math.floor(value)}`;
 
             } else {
-                // Default case for Coins, Level, and Core Stats
                 element.textContent = `${label}: ${value}`;
             }
         }
     }
-        // Only update if mapMode is active (meaning we are actually playing, not in menus)
+    
+    // Update Document Title
     if (gameState.mapMode && gameState.player && gameState.player.level) {
-        document.title = `HP: ${gameState.player.health}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
+        document.title = `HP: ${Math.ceil(gameState.player.health)}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
     }
 };
 
@@ -238,7 +244,7 @@ const renderInventory = () => {
     if (gameState.isDroppingItem) {
         titleElement.textContent = "SELECT ITEM TO DROP";
         titleElement.classList.add('text-red-500', 'font-extrabold');
-        titleElement.classList.remove('text-default'); // Assuming standard text color class
+        titleElement.classList.remove('text-default'); 
     } else {
         titleElement.textContent = "Inventory";
         titleElement.classList.remove('text-red-500', 'font-extrabold');
@@ -260,6 +266,9 @@ const renderInventory = () => {
             } else if (item.isEquipped) {
                 // Gold Border for Equipped
                 slotClass += ' equipped';
+            } else if (item.type === 'consumable') {
+                // EASY WIN: Subtle blue tint for consumables (Potions/Food)
+                slotClass += ' bg-blue-900 bg-opacity-10 hover:border-blue-500';
             } else {
                 // Standard Hover
                 slotClass += ' hover:border-blue-500';
@@ -313,14 +322,14 @@ const renderEquipment = () => {
     const weapon = player.equipment.weapon || { name: 'Fists', damage: 0 };
 
     // Calculate total damage, including the new strength buff
-    const playerStrength = player.strength + (player.strengthBonus || 0); // <-- APPLY BUFF
+    const playerStrength = player.strength + (player.strengthBonus || 0); 
     const baseDamage = playerStrength;
     const weaponDamage = weapon.damage || 0;
     const totalDamage = baseDamage + weaponDamage;
 
     // Update the display to show the buff
     let weaponString = `Weapon: ${weapon.name} (+${weaponDamage})`;
-    if (player.strengthBonus > 0) { // <-- ADDED THIS BLOCK
+    if (player.strengthBonus > 0) { 
         weaponString += ` <span class="text-green-500">[Strong +${player.strengthBonus} (${player.strengthBonusTurns}t)]</span>`;
     }
     equippedWeaponDisplay.innerHTML = weaponString;
@@ -388,18 +397,15 @@ function updateRegionDisplay() {
             grantXp(50);
         }
     } else if (gameState.mapMode === 'dungeon') {
-        // Display the procedurally generated cave name
-        regionDisplay.textContent = getCaveName(gameState.currentCaveId); //
+        regionDisplay.textContent = getCaveName(gameState.currentCaveId); 
     } else if (gameState.mapMode === 'castle') {
-        // Display the procedurally generated castle name
-        regionDisplay.textContent = getCastleName(gameState.currentCastleId); //
+        regionDisplay.textContent = getCastleName(gameState.currentCastleId); 
     }
 }
 
 function triggerStatFlash(statElement, positive = true) {
     const animationClass = positive ? 'stat-flash-green' : 'stat-flash-red';
     statElement.classList.add(animationClass);
-    // Remove the class after the animation finishes to allow it to be re-triggered
     setTimeout(() => {
         statElement.classList.remove(animationClass);
     }, 500);
@@ -407,17 +413,14 @@ function triggerStatFlash(statElement, positive = true) {
 
 function triggerStatAnimation(statElement, animationClass) {
     statElement.classList.add(animationClass);
-    // Remove the class after the animation finishes
     setTimeout(() => {
         statElement.classList.remove(animationClass);
-    }, 600); // 600ms matches the CSS animation time
+    }, 600); 
 }
-
 
 /**
  * Updates the UI to show active buff and debuff icons.
  */
-
 function renderStatusEffects() {
     if (!statusEffectsPanel) return; // Safety check
 
@@ -445,3 +448,31 @@ function renderStatusEffects() {
 
     statusEffectsPanel.innerHTML = icons;
 }
+
+// --- EASY WIN: INJECT STAT TOOLTIPS ---
+// This runs once when the file loads to give players context on what stats do!
+(function initStatTooltips() {
+    const statDescriptions = {
+        strength: "Increases Melee Damage and carry weight.",
+        wits: "Increases Max Mana, Spell Damage, and Shield strength.",
+        constitution: "Increases Max Health and Base Defense.",
+        dexterity: "Increases Dodge Chance, Stealth, and Base Defense.",
+        charisma: "Improves Shop Prices and Taming/Pacify chances.",
+        luck: "Increases Critical Hit chance, Dodge chance, and rare Loot drops.",
+        willpower: "Increases Max Psyche and Dark/Frost spell damage.",
+        perception: "Increases Accuracy and chance to find Secret Doors.",
+        endurance: "Increases Max Stamina and resistance to Swamp Sickness.",
+        intuition: "Improves Nature/Druid spells and senses unseen enemies."
+    };
+
+    // Delay slightly to ensure DOM is fully parsed
+    setTimeout(() => {
+        for (const stat in statDescriptions) {
+            const displayEl = statDisplays[stat];
+            if (displayEl && displayEl.parentElement) {
+                displayEl.parentElement.title = statDescriptions[stat];
+                displayEl.parentElement.classList.add('cursor-help'); // Add a little question mark cursor
+            }
+        }
+    }, 500);
+})();
