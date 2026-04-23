@@ -2840,16 +2840,12 @@ function endPlayerTurn() {
         const hasArmor = player.equipment.armor && player.equipment.armor.name.includes('Dragonscale');
         const hasPotion = player.fireResistTurns > 0;
 
-        if (!hasArmor && !hasPotion && !gameState.godMode) { 
-            logMessage("The lava burns you! (2 Dmg)");
-            player.health -= 2;
-
-        if (!hasArmor && !hasPotion) {
+        if (!hasArmor && !hasPotion && !gameState.godMode) {
             logMessage("The lava burns you! (2 Dmg)");
             player.health -= 2;
             gameState.screenShake = 10;
             triggerStatFlash(statDisplays.health, false);
-            ParticleSystem.createFloatingText(player.x, player.y, "BURN", "#ef4444");
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "BURN", "#ef4444");
 
             if (handlePlayerDeath()) return;
         }
@@ -2864,16 +2860,11 @@ function endPlayerTurn() {
             if (player.waterBreathingTurns === 0 && updates.waterBreathingTurns === 0) {
                 logMessage("Your magical gills fade away...");
             }
-
-        if (!hasGills && !isBoating) {
-            if (player.waterBreathingTurns === 0 && updates.waterBreathingTurns === 0) {
-                logMessage("Your magical gills fade away...");
-            }
             logMessage("The deep water swallows you whole!");
             logMessage("You have drowned.");
 
             player.health = 0;
-            ParticleSystem.createFloatingText(player.x, player.y, "☠️", "#1e3a8a");
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "☠️", "#1e3a8a");
 
             handlePlayerDeath();
             return;
