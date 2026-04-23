@@ -6,7 +6,8 @@ const chunkManager = {
     caveThemes: {},
     castleMaps: {},
     caveEnemies: {},
-generateCave(caveId) {
+    
+    generateCave(caveId) {
         if (this.caveMaps[caveId]) return this.caveMaps[caveId];
 
         // --- 1. Setup Variables (Dynamic Scaling) ---
@@ -446,7 +447,7 @@ generateCave(caveId) {
         return map;
     },
 
-    generateCastle(castleId, forcedLayoutKey = null) { // <-- ADD THIS
+    generateCastle(castleId, forcedLayoutKey = null) { 
         if (this.castleMaps[castleId]) return this.castleMaps[castleId];
 
         // 1. Use the castleId to pick a layout
@@ -467,24 +468,22 @@ generateCave(caveId) {
         this.castleSpawnPoints = this.castleSpawnPoints || {};
         this.castleSpawnPoints[castleId] = layout.spawn;
 
-        // --- MODIFICATION END ---
-
         const map = baseMap.map(row => [...row]);
 
         const random = Alea(stringToSeed(castleId)); 
 
         // Calculate the maximum width of any row
-let maxWidth = 0;
-for (let r of map) {
-    if (r.length > maxWidth) maxWidth = r.length;
-}
+        let maxWidth = 0;
+        for (let r of map) {
+            if (r.length > maxWidth) maxWidth = r.length;
+        }
 
-// Pad shorter rows with walls ('▓') or void (' ') to match maxWidth
-for (let y = 0; y < map.length; y++) {
-    while (map[y].length < maxWidth) {
-        map[y].push('▓'); // Fill gaps on the right side with Wall
-    }
-}
+        // Pad shorter rows with walls ('▓') or void (' ') to match maxWidth
+        for (let y = 0; y < map.length; y++) {
+            while (map[y].length < maxWidth) {
+                map[y].push('▓'); // Fill gaps on the right side with Wall
+            }
+        }
 
         const npcTypesToSpawn = ['N', 'N', '§', 'H']; // 2 Villagers, 1 Shop, 1 Healer
         let spawnAttempts = 50; // Try 50 times to place them
@@ -504,51 +503,38 @@ for (let y = 0; y < map.length; y++) {
             }
         }
 
-        // Ensure the tiles adjacent to spawn are walkable, fixing the
-        // bug where players can be walled-in by procedural generation.
+        // Ensure the tiles adjacent to spawn are walkable
         const spawnX = layout.spawn.x;
         const spawnY = layout.spawn.y;
 
-        // List of adjacent coordinates [y, x]
         const adjacentCoords = [
             [spawnY - 1, spawnX], // North
             [spawnY + 1, spawnX], // South
             [spawnY, spawnX - 1], // West
-            [spawnY, spawnX + 1] // East
+            [spawnY, spawnX + 1]  // East
         ];
 
         // These tiles should NOT be overwritten
         const protectedTiles = ['▓', 'X', 'B', '📖'];
 
         for (const [y, x] of adjacentCoords) {
-            // Bounds check
             if (map[y] && map[y][x]) {
-                // Get the *original* tile from the layout
                 const originalTile = (baseMap[y] && baseMap[y][x]) ? baseMap[y][x] : '▓';
-
-                // If the original tile is NOT a protected tile,
-                // force it to be a floor.
-                // This clears any '▒' (rubble) or 'N', 'H', '§' (NPCs)
                 if (!protectedTiles.includes(originalTile)) {
                     map[y][x] = '.';
                 }
             }
         }
 
-                if (map[spawnY] && map[spawnY][spawnX] !== undefined) {
+        if (map[spawnY] && map[spawnY][spawnX] !== undefined) {
             map[spawnY][spawnX] = '.';
         } else {
             console.error(`CRITICAL: Spawn point {x:${spawnX}, y:${spawnY}} is out of bounds for layout!`);
             // Fallback: Force spawn to 1,1 to prevent crash
             if(map[1] && map[1][1]) map[1][1] = '.';
-            // Note: Player might spawn in a wall if layout is tiny, but game won't crash.
         }
 
-        // Finally, ensure the spawn tile itself is a floor tile
-        map[spawnY][spawnX] = '.';
-
-        // Extract Guards to Entities (Living World) ---
-        // Clear old friendly NPCs for this ID to prevent duplicates
+        // Extract Guards to Entities (Living World)
         this.friendlyNpcs = this.friendlyNpcs || {};
         this.friendlyNpcs[castleId] = [];
 
@@ -582,7 +568,7 @@ for (let y = 0; y < map.length; y++) {
         return map;
     },
 
-    listenToChunkState(chunkX, chunkY, onInitialLoad = null) { // Added callback param
+    listenToChunkState(chunkX, chunkY, onInitialLoad = null) { 
         const chunkId = `${chunkX},${chunkY}`;
 
         // If we are already listening, just fire the callback immediately
@@ -619,7 +605,6 @@ for (let y = 0; y < map.length; y++) {
         
         this.worldState[chunkId][tileKey] = newTile;
 
-        // --- FIX: Sanitize before saving to prevent "Unsupported field value: undefined" crash ---
         const safeData = sanitizeForFirebase(this.worldState[chunkId]);
 
         db.collection('worldState').doc(chunkId).set(safeData, {
@@ -631,12 +616,6 @@ for (let y = 0; y < map.length; y++) {
 
     // Helper: Determine enemy spawn based on Biome and Distance
     getEnemySpawn(biome, dist, random) {
-        // --- CONFIGURATION ---
-        // Tier 0: 0-500 (Tutorial/Easy - Rats, Snakes, Weak Bandits)
-        // Tier 1: 500-1500 (Standard - Wolves, Goblins, Skeletons)
-        // Tier 2: 1500-3000 (Hard - Bears, Orcs, Draugr)
-        // Tier 3: 3000-6000 (Very Hard - Golems, Yetis, Demons)
-        // Tier 4: 6000+ (Nightmare - Dragons, Rexes, Horrors)
         const TIER_THRESHOLDS = [500, 1500, 3000, 6000];
 
         // 1. Calculate Tier dynamically
@@ -652,54 +631,51 @@ for (let y = 0; y < map.length; y++) {
         // 2. Define Spawn Tables
         const spawns = {
             '.': { // Plains
-                0: ['r', 'r', 'b'], // Rat, Rat, Bandit
-                1: ['b', 'w', 'o'], // Bandit, Wolf, Orc
-                2: ['o', 'C', '🐺'], // Orc, Chief, Dire Wolf
-                3: ['o', '🐺', 'Ø'], // Orc, Dire Wolf, Ogre
-                4: ['Ø', '🦖', '🤖'] // Ogre, Rex, Guardian
+                0: ['r', 'r', 'b'], 
+                1: ['b', 'w', 'o'], 
+                2: ['o', 'C', '🐺'], 
+                3: ['o', '🐺', 'Ø'], 
+                4: ['Ø', '🦖', '🤖'] 
             },
             'F': { // Forest
-                0: ['🐍', '🦌', '🐗'], // Snake, Stag, Boar
-                1: ['w', '🐗', '🐻'], // Wolf, Boar, Bear
-                2: ['🐻', '🐺', '🕸'], // Bear, Dire Wolf, Web (Spider)
-                3: ['🐺', '🐻', '🌲'], // Dire Wolf, Bear, Ent (Treant)
-                4: ['🌲', '🧛', '👾'] // Treant, Vampire, Horror
+                0: ['🐍', '🦌', '🐗'], 
+                1: ['w', '🐗', '🐻'], 
+                2: ['🐻', '🐺', '🕸'], 
+                3: ['🐺', '🐻', '🌲'], 
+                4: ['🌲', '🧛', '👾'] 
             },
             '^': { // Mountain
-                0: ['🦇', 'g', 'R'], // Bat, Goblin, Recruit
-                1: ['g', 's', '🦅'], // Goblin, Skeleton, Eagle
-                // WAS: 2: ['s', '🗿', 'Y'],
-                2: ['s', '🧌', 'Y'], // Skeleton, Golem (New Icon), Yeti
-                // WAS: 3: ['Y', 'Ø', '🐲'],
-                3: ['Y', '🧌', '🐲'], // Yeti, Golem, Drake
-                4: ['🐲', '🦖', '🤖'] // Drake, Rex, Guardian
+                0: ['🦇', 'g', 'R'], 
+                1: ['g', 's', '🦅'], 
+                2: ['s', '🧌', 'Y'], 
+                3: ['Y', '🧌', '🐲'], 
+                4: ['🐲', '🦖', '🤖'] 
             },
             '≈': { // Swamp
                 0: ['🦟', '🐸', '🐍'], 
                 1: ['🐍', 'l', 'Z'], 
-                2: ['Z', 'l', 'a'], // Swapped missing skull for Acolyte
-                3: ['Z', 'a', '🐉h'], // Swapped missing Hydra string for new Hydra ID
+                2: ['Z', 'l', 'a'], 
+                3: ['Z', 'a', '🐉h'], 
                 4: ['🐉h', '👾', '🧛'] 
             },
             'D': { // Desert
                 0: ['🦂s', '🐍', '🌵'], 
                 1: ['🦂', '🐍c', '🌵'], 
                 2: ['🦂', 'm', 'a'], 
-                3: ['m', 'a', '🔥e'], // Swapped missing Efreet string for new Efreet ID
+                3: ['m', 'a', '🔥e'], 
                 4: ['🔥e', '🦖', '🤖'] 
             },
             'd': { // Deadlands
                 0: ['s', 'b', 'R'], 
                 1: ['s', 'Z', 'a'], 
-                2: ['Z', 'a', '😈d'], // Fixed Void Demon ID
-                3: ['😈d', 'v', '🧙'], // Fixed Void Demon ID
+                2: ['Z', 'a', '😈d'], 
+                3: ['😈d', 'v', '🧙'], 
                 4: ['🧙', '👾', '🧛'] 
             }
         };
 
         // 3. Select Enemy
         const table = spawns[biome];
-        // If biome isn't listed (e.g. Water), no spawn
         if (!table) return null;
 
         // Cap the tier at the maximum defined for this biome
@@ -709,8 +685,7 @@ for (let y = 0; y < map.length; y++) {
         const tierList = table[safeTier];
         if (!tierList) return null;
 
-        // Weighted Random Selection
-        // 60% Common, 30% Uncommon, 10% Rare
+        // Weighted Random Selection (60% Common, 30% Uncommon, 10% Rare)
         const roll = random();
         if (roll < 0.60) return tierList[0];
         if (roll < 0.90) return tierList[1];
@@ -723,12 +698,29 @@ for (let y = 0; y < map.length; y++) {
 
         let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE));
 
+        // --- EASY WIN: Fast Deterministic Spawn Dictionary ---
+        const DETERMINISTIC_SPAWNS = {
+            "0,-50": "⬆️",
+            "50,0": "➡️",
+            "-50,0": "⬅️",
+            "0,50": "⬇️",
+            "35,35": "🚪" 
+        };
+
         for (let y = 0; y < this.CHUNK_SIZE; y++) {
             for (let x = 0; x < this.CHUNK_SIZE; x++) {
                 const worldX = chunkX * this.CHUNK_SIZE + x;
                 const worldY = chunkY * this.CHUNK_SIZE + y;
 
-                // Calculate Distance from Spawn (0,0)
+                // --- 1. CHECK DETERMINISTIC SPAWNS FIRST ---
+                const dSpawn = DETERMINISTIC_SPAWNS[`${worldX},${worldY}`];
+                if (dSpawn) {
+                    this.setWorldTile(worldX, worldY, dSpawn);
+                    chunkData[y][x] = dSpawn;
+                    continue; 
+                }
+
+                // Calculate Distance
                 const dist = Math.sqrt(worldX * worldX + worldY * worldY);
 
                 // --- BIOME GENERATION ---
@@ -742,7 +734,6 @@ for (let y = 0; y < map.length; y++) {
                 else if (elev > 0.6 && moist < 0.3) tile = 'd';
                 else if (moist < 0.15) tile = 'D';
                 else if (moist > 0.55) tile = 'F';
-                else tile = '.';
 
                 // --- SAFETY OVERRIDE: SPAWN IS ALWAYS SAFE ---
                 if (Math.abs(worldX) < 3 && Math.abs(worldY) < 3) {
@@ -751,44 +742,8 @@ for (let y = 0; y < map.length; y++) {
 
                 const featureRoll = random();
 
-                // ... inside generateChunk loop ...
-
-// --- PUZZLE SPAWNS (Deterministic Locations) ---
-// We place the 4 obelisks at specific distances in cardinal directions from spawn (0,0)
-
-// North Obelisk (High Y negative)
-if (worldX === 0 && worldY === -50) { 
-    this.setWorldTile(worldX, worldY, '⬆️'); // USE NEW KEY
-    chunkData[y][x] = '⬆️';
-}
-// East Obelisk (High X positive)
-else if (worldX === 50 && worldY === 0) { 
-    this.setWorldTile(worldX, worldY, '➡️'); // USE NEW KEY
-    chunkData[y][x] = '➡️';
-}
-// West Obelisk
-else if (worldX === -50 && worldY === 0) { 
-    this.setWorldTile(worldX, worldY, '⬅️'); // USE NEW KEY
-    chunkData[y][x] = '⬅️';
-}
-// South Obelisk
-else if (worldX === 0 && worldY === 50) { 
-    this.setWorldTile(worldX, worldY, '⬇️'); // USE NEW KEY
-    chunkData[y][x] = '⬇️';
-}
-// The Vault Entrance (Somewhere tricky)
-else if (worldX === 35 && worldY === 35) {
-    this.setWorldTile(worldX, worldY, '🚪'); // USE NEW KEY
-    chunkData[y][x] = '🚪';
-}
-// The Vault Entrance (Somewhere tricky)
-else if (worldX === 35 && worldY === 35) {
-    this.setWorldTile(worldX, worldY, '⛩️d');
-    chunkData[y][x] = '⛩️d';
-}
-
                 // --- 1. LEGENDARY LANDMARKS (Unique, Very Rare) ---
-                if (tile === '.' && featureRoll < 0.0000005) { // 1 in 2M
+                if (tile === '.' && featureRoll < 0.0000005) { 
                     this.setWorldTile(worldX, worldY, '♛');
                     chunkData[y][x] = '♛';
                 }
@@ -796,7 +751,6 @@ else if (worldX === 35 && worldY === 35) {
                     this.setWorldTile(worldX, worldY, '🕳️');
                     chunkData[y][x] = '🕳️';
                 }
-
                 // --- 2. BIOME ANOMALIES (Very Rare) ---
                 else if (tile === 'F' && featureRoll < 0.0001) {
                     this.setWorldTile(worldX, worldY, '🌳e');
@@ -810,7 +764,6 @@ else if (worldX === 35 && worldY === 35) {
                     this.setWorldTile(worldX, worldY, '🦴d');
                     chunkData[y][x] = '🦴d';
                 }
-
                 // --- 3. RARE STRUCTURES (Scaled by Distance) ---
                 else if (tile === '.' && featureRoll < 0.000005) { // Safe Haven
                     this.setWorldTile(worldX, worldY, 'V');
@@ -836,7 +789,6 @@ else if (worldX === 35 && worldY === 35) {
                     this.setWorldTile(worldX, worldY, 'Ω');
                     chunkData[y][x] = 'Ω';
                 }
-
                 // --- 4. MAJOR STRUCTURES (Explicit Spawn Rates) ---
                 else if (tile === '^' && featureRoll < 0.008) {
                     this.setWorldTile(worldX, worldY, '⛰');
@@ -854,42 +806,26 @@ else if (worldX === 35 && worldY === 35) {
                     this.setWorldTile(worldX, worldY, '⛰');
                     chunkData[y][x] = '⛰';
                 }
-
                 // --- 5. COMMON FEATURES ---
                 else if (tile === '.' && featureRoll < 0.0005) {
-    // 1. Grab every key from TILE_DATA
-    let features = Object.keys(TILE_DATA);
+                    let features = Object.keys(TILE_DATA);
+                    features = features.filter(f => {
+                        const data = TILE_DATA[f];
+                        const allowedTypes = ['lore', 'lore_statue', 'loot_container', 'campsite', 'decoration'];
+                        return allowedTypes.includes(data.type);
+                    });
 
-    // 2. Filter to ONLY include generic, non-breaking features
-    features = features.filter(f => {
-        const data = TILE_DATA[f];
-        
-        // We ONLY want these specific types to spawn randomly in the fields
-        const allowedTypes = [
-            'lore',           // Signposts
-            'lore_statue',    // Statues / Hermits
-            'loot_container', // Chests / Shipwrecks
-            'campsite',       // Tents
-            'decoration'      // Trees / Rocks
-        ];
-
-        return allowedTypes.includes(data.type);
-    });
-
-    // 3. Pick one at random from the safe list
-    if (features.length > 0) {
-        const featureTile = features[Math.floor(random() * features.length)];
-        this.setWorldTile(worldX, worldY, featureTile);
-        chunkData[y][x] = featureTile;
-    }
-}
-
+                    if (features.length > 0) {
+                        const featureTile = features[Math.floor(random() * features.length)];
+                        this.setWorldTile(worldX, worldY, featureTile);
+                        chunkData[y][x] = featureTile;
+                    }
+                }
                 // --- 6. RIDDLE STATUES ---
                 else if (tile === '.' && featureRoll < 0.00008) {
                     this.setWorldTile(worldX, worldY, '?');
                     chunkData[y][x] = '?';
                 }
-
                 // --- 7. GENERIC STRUCTURES ---
                 else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0001) {
                     this.setWorldTile(worldX, worldY, '🏛️');
@@ -899,38 +835,25 @@ else if (worldX === 35 && worldY === 35) {
                     this.setWorldTile(worldX, worldY, '⛺');
                     chunkData[y][x] = '⛺';
                 }
-
-                // --- 8. ARCHAEOLOGY SPOTS (The Fix!) ---
-                // We check this BEFORE enemies so you don't get a goblin standing on a dig spot
+                // --- 8. ARCHAEOLOGY SPOTS ---
                 else if (['.', 'd', 'D', 'F'].includes(tile) && featureRoll < (tile === 'd' || tile === 'D' ? 0.0015 : 0.0005)) {
                     this.setWorldTile(worldX, worldY, '∴');
                     chunkData[y][x] = '∴';
                 }
-
                 else {
                     // --- 9. ENEMY & RESOURCE SPAWNING ---
                     const hostileRoll = random();
 
-                    // Base Spawn Chance
                     let spawnChance = 0.0015;
-
-                    // Biome Modifiers
                     if (tile === 'F') spawnChance = 0.0025;
                     if (tile === 'd') spawnChance = 0.0040;
                     if (tile === '^') spawnChance = 0.0020;
 
                     if (hostileRoll < spawnChance) {
-        
-        // --- NEW SAFETY CHECK ---
-        // If within 200 tiles of spawn, force distance to 0 for spawn calculation.
-        // This ensures even if a Mountain spawns at x=10, y=10, 
-        // it generates Bats (Tier 0) instead of Yetis (Tier 3).
-        const effectiveDist = (dist < 200) ? 0 : dist;
+                        const effectiveDist = (dist < 200) ? 0 : dist;
+                        const enemyTile = this.getEnemySpawn(tile, effectiveDist, random);
 
-        // Pass effectiveDist instead of dist
-        const enemyTile = this.getEnemySpawn(tile, effectiveDist, random);
-
-        if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
+                        if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
                             chunkData[y][x] = enemyTile;
                             if (TILE_DATA[enemyTile]) {
                                 this.setWorldTile(worldX, worldY, enemyTile);
@@ -955,34 +878,28 @@ else if (worldX === 35 && worldY === 35) {
             }
         }
 
-        // --- SMOOTHING PASS ---
+        // --- EASY WIN: ZERO-ALLOCATION SMOOTHING PASS ---
+        const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈'];
+        
         for (let y = 1; y < this.CHUNK_SIZE - 1; y++) {
             for (let x = 1; x < this.CHUNK_SIZE - 1; x++) {
                 const currentTile = chunkData[y][x];
-                const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈'];
                 if (!naturalTerrain.includes(currentTile)) continue;
 
-                const neighbors = [
-                    chunkData[y - 1][x], chunkData[y + 1][x],
-                    chunkData[y][x - 1], chunkData[y][x + 1]
-                ];
+                const nN = chunkData[y - 1][x];
+                const nS = chunkData[y + 1][x];
+                const nW = chunkData[y][x - 1];
+                const nE = chunkData[y][x + 1];
 
-                const counts = {};
-                let maxCount = 0;
-                let dominantTile = null;
-
-                neighbors.forEach(n => {
-                    if (naturalTerrain.includes(n)) {
-                        counts[n] = (counts[n] || 0) + 1;
-                        if (counts[n] > maxCount) {
-                            maxCount = counts[n];
-                            dominantTile = n;
-                        }
+                // If 3 adjacent tiles share the same natural terrain type, assimilate to it
+                if (naturalTerrain.includes(nN)) {
+                    if ((nN === nS && nN === nE) || (nN === nS && nN === nW) || (nN === nE && nN === nW)) {
+                        chunkData[y][x] = nN;
+                        continue;
                     }
-                });
-
-                if (maxCount >= 3 && dominantTile !== currentTile) {
-                    chunkData[y][x] = dominantTile;
+                }
+                if (naturalTerrain.includes(nS) && nS === nE && nS === nW) {
+                    chunkData[y][x] = nS;
                 }
             }
         }
@@ -998,60 +915,40 @@ else if (worldX === 35 && worldY === 35) {
         const localX = (worldX % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
         const localY = (worldY % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
         const tileKey = `${localX},${localY}`;
+        
         if (this.worldState[chunkId] && this.worldState[chunkId][tileKey] !== undefined) {
             return this.worldState[chunkId][tileKey];
         }
         if (!this.loadedChunks[chunkId]) {
             this.generateChunk(chunkX, chunkY);
         }
-        const chunk = this.loadedChunks[chunkId];
-        return chunk[localY][localX];
+        return this.loadedChunks[chunkId][localY][localX];
     },
+    
     unloadOutOfRangeChunks: function (playerChunkX, playerChunkY) {
-        // This defines how many chunks to keep loaded around the player.
-        // '2' means a 5x5 grid (2 chunks N, S, E, W + the center one).
         const VIEW_RADIUS_CHUNKS = 2;
-
-        // 1. Create a Set of all chunk IDs that *should* be visible.
         const visibleChunkIds = new Set();
+        
         for (let y = -VIEW_RADIUS_CHUNKS; y <= VIEW_RADIUS_CHUNKS; y++) {
             for (let x = -VIEW_RADIUS_CHUNKS; x <= VIEW_RADIUS_CHUNKS; x++) {
-                const chunkId = `${playerChunkX + x},${playerChunkY + y}`;
-                visibleChunkIds.add(chunkId);
+                visibleChunkIds.add(`${playerChunkX + x},${playerChunkY + y}`);
             }
         }
 
-        // 2. Loop through all chunk listeners we currently have active.
         for (const chunkId in worldStateListeners) {
-
-            // 3. If an active listener is *not* in our visible set...
             if (!visibleChunkIds.has(chunkId)) {
-
-                // 4. ...unload it!
-                // console.log(`Unloading chunk: ${chunkId}`); // For debugging
-
-                // Call the unsubscribe function to stop listening
                 worldStateListeners[chunkId]();
-
-                // Remove it from our tracking object
                 delete worldStateListeners[chunkId];
 
-                // (Optional but recommended) Clear the cached terrain data
-                if (this.loadedChunks[chunkId]) {
-                    delete this.loadedChunks[chunkId];
-                }
-
-                // (Optional but recommended) Clear the cached world state
-                if (this.worldState[chunkId]) {
-                    delete this.worldState[chunkId];
-                }
+                if (this.loadedChunks[chunkId]) delete this.loadedChunks[chunkId];
+                if (this.worldState[chunkId]) delete this.worldState[chunkId];
             }
         }
     }
 };
 
 // --- SPATIAL PARTITIONING HELPERS ---
-const SPATIAL_CHUNK_SIZE = 16; // Match your chunkManager size
+const SPATIAL_CHUNK_SIZE = 16; 
 
 function getSpatialKey(x, y) {
     const cx = Math.floor(x / SPATIAL_CHUNK_SIZE);
@@ -1066,7 +963,7 @@ function updateSpatialMap(enemyId, oldX, oldY, newX, newY) {
         if (gameState.enemySpatialMap.has(oldKey)) {
             const set = gameState.enemySpatialMap.get(oldKey);
             set.delete(enemyId);
-            if (set.size === 0) gameState.enemySpatialMap.delete(oldKey); // Cleanup
+            if (set.size === 0) gameState.enemySpatialMap.delete(oldKey); 
         }
     }
 
@@ -1079,21 +976,3 @@ function updateSpatialMap(enemyId, oldX, oldY, newX, newY) {
         gameState.enemySpatialMap.get(newKey).add(enemyId);
     }
 }
-
-// --- OPTIMIZATION: Spatial Hash ---
-const SpatialHash = {
-    buckets: new Map(),
-    getKey: (x, y) => `${x},${y}`,
-    add: function(entity, x, y) {
-        this.buckets.set(this.getKey(x, y), entity);
-    },
-    remove: function(x, y) {
-        this.buckets.delete(this.getKey(x, y));
-    },
-    get: function(x, y) {
-        return this.buckets.get(this.getKey(x, y));
-    },
-    clear: function() {
-        this.buckets.clear();
-    }
-};
