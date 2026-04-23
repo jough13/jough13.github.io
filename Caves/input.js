@@ -1,9 +1,9 @@
 // --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
 
-     // 1. INPUT LOCK: Prevent spamming while network/animations are processing
+    // 1. INPUT LOCK: Prevent spamming while network/animations are processing
     if (isProcessingMove) {
-        console.log("Input blocked: Move in progress.");
+        // Suppress console spam for smoother background execution
         return;
     }
 
@@ -12,22 +12,16 @@ function handleInput(key) {
         AudioSystem.ctx.resume();
     }
 
-    // 2. Robust Safety Check
+    // 3. Robust Safety Check
     // Ensure player is logged in and data exists before doing anything.
     // Also check if gameContainer is visible to prevent moving while in Character Select.
     if (!player_id || !gameState || !gameState.player || gameContainer.classList.contains('hidden')) {
         return;
     }
 
-     // --- ESCAPE KEY UPDATE ---
+    // --- EASY WIN: UNIVERSAL ESCAPE KEY / MODAL CLOSER ---
+    // Instead of hardcoding 12 different modal checks, we dynamically find the open one!
     if (key === 'Escape') {
-        if (!helpModal.classList.contains('hidden')) { helpModal.classList.add('hidden'); return; }
-        if (!loreModal.classList.contains('hidden')) { loreModal.classList.add('hidden'); return; }
-        // if (!inventoryModal.classList.contains('hidden')) ... (This line is handled by logic below now)
-        if (!skillModal.classList.contains('hidden')) { skillModal.classList.add('hidden'); return; }
-        if (!craftingModal.classList.contains('hidden')) { craftingModal.classList.add('hidden'); return; }
-        if (!settingsModal.classList.contains('hidden')) { settingsModal.classList.add('hidden'); return; } 
-
         if (gameState.isAiming) {
             gameState.isAiming = false;
             gameState.abilityToAim = null;
@@ -35,7 +29,6 @@ function handleInput(key) {
             return;
         }
         
-        // If in Drop Mode, Cancel Drop Mode but keep Inventory Open
         if (gameState.isDroppingItem) {
             gameState.isDroppingItem = false;
             logMessage("Drop canceled.");
@@ -43,59 +36,29 @@ function handleInput(key) {
             return;
         }
 
-        if (gameState.inventoryMode) {
-            closeInventoryModal();
+        // Find any active modal
+        const activeModal = document.querySelector('.modal-overlay:not(.hidden)');
+        if (activeModal) {
+            // Specific teardown hooks if needed
+            if (activeModal.id === 'inventoryModal') closeInventoryModal();
+            else if (activeModal.id === 'mapModal') closeWorldMap();
+            else activeModal.classList.add('hidden'); // Generic close
             return;
         }
-        return;
-    }
-
-    // 3. Allow 'Escape' even if dead
-    // This prevents getting stuck in menus after death.
-    if (key === 'Escape') {
-        if (!helpModal.classList.contains('hidden')) { helpModal.classList.add('hidden'); return; }
-        if (!loreModal.classList.contains('hidden')) { loreModal.classList.add('hidden'); return; }
-        if (!inventoryModal.classList.contains('hidden')) { closeInventoryModal(); return; }
-        if (!skillModal.classList.contains('hidden')) { skillModal.classList.add('hidden'); return; }
-        if (!craftingModal.classList.contains('hidden')) { craftingModal.classList.add('hidden'); return; }
-        if (!settingsModal.classList.contains('hidden')) { settingsModal.classList.add('hidden'); return; } // Added Settings Modal support
-
-        if (typeof questModal !== 'undefined' && !questModal.classList.contains('hidden')) { questModal.classList.add('hidden'); return; }
-        if (typeof stashModal !== 'undefined' && !stashModal.classList.contains('hidden')) { stashModal.classList.add('hidden'); return; }
-        if (typeof collectionsModal !== 'undefined' && !collectionsModal.classList.contains('hidden')) { collectionsModal.classList.add('hidden'); return; }
-        if (typeof fastTravelModal !== 'undefined' && !fastTravelModal.classList.contains('hidden')) { fastTravelModal.classList.add('hidden'); return; }
-        if (typeof evolutionModal !== 'undefined' && !evolutionModal.classList.contains('hidden')) { evolutionModal.classList.add('hidden'); return; }
-
-        if (gameState.isDroppingItem) {
-            logMessage("Drop canceled.");
-            gameState.isDroppingItem = false;
-            return;
-        }
-        if (gameState.isAiming) {
-            gameState.isAiming = false;
-            gameState.abilityToAim = null;
-            logMessage("Aiming canceled.");
-            return;
-        }
-        if (gameState.inventoryMode) {
-            logMessage("Exited inventory mode.");
-            gameState.inventoryMode = false;
-            return;
-        }
-        return;
+        
+        return; // Nothing to close
     }
 
     // 4. Dead Check
     // Now that we've handled system keys (Escape), we block gameplay inputs if dead.
     if (gameState.player.health <= 0) return;
 
-    if (key === 'q' || key === 'Q') {
+    if (key.toLowerCase() === 'q') {
         drinkFromSource();
         return;
     }
 
     // --- DROP MODE ---
-
     if (gameState.isDroppingItem) {
         // Pass the key string directly
         handleItemDrop(key);
@@ -105,10 +68,17 @@ function handleInput(key) {
     // --- AIMING MODE ---
     if (gameState.isAiming) {
         let dirX = 0, dirY = 0;
-        if (key === 'ArrowUp' || key === 'w' || key === 'W') dirY = -1;
-        else if (key === 'ArrowDown' || key === 's' || key === 'S') dirY = 1;
-        else if (key === 'ArrowLeft' || key === 'a' || key === 'A') dirX = -1;
-        else if (key === 'ArrowRight' || key === 'd' || key === 'D') dirX = 1;
+        
+        // Include numpad for aiming too!
+        if (key === 'ArrowUp' || key.toLowerCase() === 'w' || key === '8') dirY = -1;
+        else if (key === 'ArrowDown' || key.toLowerCase() === 's' || key === '2') dirY = 1;
+        else if (key === 'ArrowLeft' || key.toLowerCase() === 'a' || key === '4') dirX = -1;
+        else if (key === 'ArrowRight' || key.toLowerCase() === 'd' || key === '6') dirX = 1;
+        // Diagonals for aiming
+        else if (key === '7' || key === 'Home') { dirX = -1; dirY = -1; }
+        else if (key === '9' || key === 'PageUp') { dirX = 1; dirY = -1; }
+        else if (key === '1' || key === 'End') { dirX = -1; dirY = 1; }
+        else if (key === '3' || key === 'PageDown') { dirX = 1; dirY = 1; }
 
         if (dirX !== 0 || dirY !== 0) {
             const abilityId = gameState.abilityToAim;
@@ -125,14 +95,13 @@ function handleInput(key) {
             gameState.isAiming = false;
             gameState.abilityToAim = null;
         } else {
-            logMessage("Invalid direction. Use D-Pad or Arrow keys.");
+            logMessage("Invalid direction. Use Arrow keys or Numpad.");
         }
         return;
     }
 
      // --- DROP MODE TOGGLE ---
-    // If we are in inventory mode and press D
-    if (gameState.inventoryMode && (key === 'd' || key === 'D')) {
+    if (gameState.inventoryMode && key.toLowerCase() === 'd') {
         if (gameState.player.inventory.length === 0) {
             logMessage("Inventory empty.");
             return;
@@ -177,64 +146,67 @@ function handleInput(key) {
         }
     }
 
-    if (key === 'g' || key === 'G') {
-    // 1. Get tile ID
-    let tileId;
-    if (gameState.mapMode === 'overworld') tileId = `${gameState.player.x},${-gameState.player.y}`;
-    else tileId = `${gameState.currentCaveId || gameState.currentCastleId}:${gameState.player.x},${-gameState.player.y}`;
+    if (key.toLowerCase() === 'g') {
+        // 1. Get tile ID
+        let tileId;
+        if (gameState.mapMode === 'overworld') tileId = `${gameState.player.x},${-gameState.player.y}`;
+        else tileId = `${gameState.currentCaveId || gameState.currentCastleId}:${gameState.player.x},${-gameState.player.y}`;
 
-    // 2. Check current tile for lootable items
-    const currentTile = (gameState.mapMode === 'overworld') 
-        ? chunkManager.getTile(gameState.player.x, gameState.player.y)
-        : (gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] : chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x]);
+        // 2. Check current tile for lootable items
+        const currentTile = (gameState.mapMode === 'overworld') 
+            ? chunkManager.getTile(gameState.player.x, gameState.player.y)
+            : (gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] : chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x]);
 
-    // 3. Trigger pickup if it's an item
-    if (ITEM_DATA[currentTile]) {
-        // We reuse the move logic's pickup code by faking a "wait" on the spot
-        logMessage("You scour the ground for items...");
-        attemptMovePlayer(gameState.player.x, gameState.player.y); 
-        return;
-    } else {
-        logMessage("There is nothing here to pick up.");
-        return;
+        // 3. Trigger pickup if it's an item
+        if (ITEM_DATA[currentTile]) {
+            // We reuse the move logic's pickup code by faking a "wait" on the spot
+            logMessage("You scour the ground for items...");
+            attemptMovePlayer(gameState.player.x, gameState.player.y); 
+            return;
+        } else {
+            logMessage("There is nothing here to pick up.");
+            return;
+        }
     }
-}
 
-    // --- MENUS ---
-    if (key === 'i' || key === 'I') { openInventoryModal(); return; }
-    if (key === 'm' || key === 'M') { openWorldMap(); return; }
-    if (key === 'b' || key === 'B') { openSpellbook(); return; }
-    if (key === 'k' || key === 'K') { openSkillbook(); return; }
-    if (key === 'c' || key === 'C') { openCollections(); return; }
-    if (key === 'p' || key === 'P') { openTalentModal(); return; }
+    // --- EASY WIN: MENU TOGGLES ---
+    // Instead of just opening, pressing the key again closes the menu!
+    const toggleModal = (modalEl, openFunc, closeFunc) => {
+        if (!modalEl.classList.contains('hidden')) {
+            if (closeFunc) closeFunc();
+            else modalEl.classList.add('hidden');
+        } else {
+            openFunc();
+        }
+    };
+
+    if (key.toLowerCase() === 'i') { toggleModal(inventoryModal, openInventoryModal, closeInventoryModal); return; }
+    if (key.toLowerCase() === 'm') { toggleModal(mapModal, openWorldMap, closeWorldMap); return; }
+    if (key.toLowerCase() === 'b') { toggleModal(spellModal, openSpellbook); return; }
+    if (key.toLowerCase() === 'k') { toggleModal(skillModal, openSkillbook); return; }
+    if (key.toLowerCase() === 'c') { toggleModal(collectionsModal, openCollections); return; }
+    if (key.toLowerCase() === 'p') { toggleModal(talentModal, openTalentModal); return; }
 
     // Auto-focus chat on Enter
     if (key === 'Enter') { document.getElementById('chatInput').focus(); return; }
 
-    // --- GUARD: BLOCK MOVEMENT IF MENUS ARE OPEN ---
-    // This prevents walking while in Inventory, Shop, or Map
-    if (gameState.inventoryMode || 
-        (typeof mapModal !== 'undefined' && !mapModal.classList.contains('hidden')) || 
-        (typeof spellModal !== 'undefined' && !spellModal.classList.contains('hidden')) ||
-        (typeof skillModal !== 'undefined' && !skillModal.classList.contains('hidden')) ||
-        (typeof shopModal !== 'undefined' && !shopModal.classList.contains('hidden')) ||
-        (typeof craftingModal !== 'undefined' && !craftingModal.classList.contains('hidden')) ||
-        (typeof stashModal !== 'undefined' && !stashModal.classList.contains('hidden')) ||
-        (typeof questModal !== 'undefined' && !questModal.classList.contains('hidden')) ||
-        (typeof loreModal !== 'undefined' && !loreModal.classList.contains('hidden')) ||
-        (typeof talentModal !== 'undefined' && !talentModal.classList.contains('hidden')) ||
-        (typeof collectionsModal !== 'undefined' && !collectionsModal.classList.contains('hidden')) ||
-        (typeof settingsModal !== 'undefined' && !settingsModal.classList.contains('hidden')) ||
-        (typeof evolutionModal !== 'undefined' && !evolutionModal.classList.contains('hidden'))) {
-        
+    // --- EASY WIN: UNIVERSAL GUARD: BLOCK MOVEMENT IF MENUS ARE OPEN ---
+    // Replaced the massive if-statement block with a clean DOM query
+    const anyModalOpen = document.querySelector('.modal-overlay:not(.hidden)');
+    if (anyModalOpen || gameState.inventoryMode) {
         return;
     }
 
     // 1. THROTTLE CHECK & BUFFERING
     const now = Date.now();
     if (now - lastActionTime < ACTION_COOLDOWN) {
-        // Only buffer movement keys to prevent menu weirdness
-        const moveKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'];
+        // Buffer movement keys (including numpad) to prevent menu weirdness
+        const moveKeys = [
+            'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 
+            'w', 'a', 's', 'd', 'W', 'A', 'S', 'D',
+            '1', '2', '3', '4', '6', '7', '8', '9',
+            'Home', 'End', 'PageUp', 'PageDown'
+        ];
 
         if (moveKeys.includes(key)) {
             inputBuffer = key; // Store the intent
@@ -248,21 +220,29 @@ function handleInput(key) {
     let newX = gameState.player.x;
     let newY = gameState.player.y;
     let moved = false;
-    let acted = false; // Track if we actually did something
 
+    // --- EASY WIN: NUMPAD & DIAGONAL SUPPORT ---
     switch (key) {
-        case 'ArrowUp': case 'w': case 'W': newY--; moved = true; acted = true; break;
-        case 'ArrowDown': case 's': case 'S': newY++; moved = true; acted = true; break;
-        case 'ArrowLeft': case 'a': case 'A': newX--; moved = true; acted = true; break;
-        case 'ArrowRight': case 'd': case 'D': newX++; moved = true; acted = true; break;
+        // Cardinals
+        case 'ArrowUp': case 'w': case 'W': case '8': newY--; moved = true; break;
+        case 'ArrowDown': case 's': case 'S': case '2': newY++; moved = true; break;
+        case 'ArrowLeft': case 'a': case 'A': case '4': newX--; moved = true; break;
+        case 'ArrowRight': case 'd': case 'D': case '6': newX++; moved = true; break;
+        
+        // Diagonals (Numpad)
+        case '7': case 'Home': newX--; newY--; moved = true; break; // NW
+        case '9': case 'PageUp': newX++; newY--; moved = true; break; // NE
+        case '1': case 'End': newX--; newY++; moved = true; break; // SW
+        case '3': case 'PageDown': newX++; newY++; moved = true; break; // SE
+
         case 'r': case 'R':
             restPlayer();
-            lastActionTime = now; // Update timer
+            lastActionTime = now; 
             return;
-        case ' ': // Spacebar to skip turn / wait
+        case ' ': case '5': case '.': // Spacebar or Numpad center/dot to skip turn
             logMessage("You wait a moment.");
             endPlayerTurn();
-            lastActionTime = now; // Update timer
+            lastActionTime = now; 
             return;
     }
 
@@ -278,8 +258,11 @@ document.addEventListener('keydown', (event) => {
     if (document.activeElement === chatInput) return;
 
     // 2. Prevent default scrolling for game keys
-    // This tells the browser: "Don't scroll if I press these keys"
-    const keysToBlock = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', ' '];
+    // Added numpad and auxiliary keys to prevent page jumping
+    const keysToBlock = [
+        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', ' ',
+        'Home', 'End', 'PageUp', 'PageDown'
+    ];
 
     if (keysToBlock.includes(event.key)) {
         event.preventDefault();
@@ -292,6 +275,3 @@ document.addEventListener('keydown', (event) => {
 // DEBOUNCE RESIZE: Only resize once the user STOPS dragging the window (saves CPU)
 let resizeTimer;
 window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resizeCanvas, 100); });
-
-// PREVENT SCROLLING: Stop arrow keys and spacebar from scrolling the browser window
-window.addEventListener('keydown', e => { if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault(); }, false);
