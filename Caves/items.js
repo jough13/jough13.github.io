@@ -959,14 +959,10 @@ function handleSellItem(itemIndex) {
         return;
     }
 
-    // Find the item's base price in the shop.
+// Find the item's base price in the shop.
     const shopItem = activeShopInventory.find(i => i.name === itemToSell.name);
-        if (shopItem) {
-            // Never allow selling for more than 75% of base buy price, regardless of modifiers
-            const maxSell = Math.floor(shopItem.price * 0.75);
-            calculatedSellPrice = Math.min(calculatedSellPrice, maxSell);
-        }
-
+    
+    // 1. Establish the Base Price
     let basePrice = 2; // Default
     if (shopItem) {
         basePrice = shopItem.price;
@@ -979,21 +975,23 @@ function handleSellItem(itemIndex) {
         else if (itemToSell.name === 'Alpha Pelt') basePrice = 60;
     }
 
+    // 2. Calculate Modifiers
     const regionMult = getRegionalPriceMultiplier(itemToSell.type, itemToSell.name);
-
     const sellBonusPercent = player.charisma * 0.005;
     const finalSellBonus = Math.min(sellBonusPercent, 0.25);
 
-    // --- Economy Cap ---
-    // Calculate raw sell price
+    // 3. Calculate Raw Sell Price
     let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
 
-    // Cap the sell price at 80% of the base price to prevent infinite money loops
-    // (e.g. buying for 90g and selling for 100g)
-    const maxSellPrice = Math.floor(basePrice * 0.8);
+    // 4. --- Economy Caps ---
+    // Cap 1: Never allow selling for more than 75% of shop price (if it's a shop item)
+    if (shopItem) {
+        const absoluteMaxSell = Math.floor(shopItem.price * 0.75);
+        calculatedSellPrice = Math.min(calculatedSellPrice, absoluteMaxSell);
+    }
 
-    // If the item is a rare relic (not sold in shops), we don't need to cap it strictly
-    // against a shop price, but for general goods, we apply the cap.
+    // Cap 2: General 80% cap to prevent infinite money loops
+    const maxSellPrice = Math.floor(basePrice * 0.8);
     const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
 
     if (regionMult > 1.0) logMessage(`Market demand is high here! (x${regionMult})`);
