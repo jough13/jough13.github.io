@@ -2840,6 +2840,10 @@ function endPlayerTurn() {
         const hasArmor = player.equipment.armor && player.equipment.armor.name.includes('Dragonscale');
         const hasPotion = player.fireResistTurns > 0;
 
+        if (!hasArmor && !hasPotion && !gameState.godMode) { 
+            logMessage("The lava burns you! (2 Dmg)");
+            player.health -= 2;
+
         if (!hasArmor && !hasPotion) {
             logMessage("The lava burns you! (2 Dmg)");
             player.health -= 2;
@@ -2855,6 +2859,11 @@ function endPlayerTurn() {
     if (currentTile === '~') {
         const hasGills = player.waterBreathingTurns > 0;
         const isBoating = player.isBoating;
+
+        if (!hasGills && !isBoating && !gameState.godMode) {
+            if (player.waterBreathingTurns === 0 && updates.waterBreathingTurns === 0) {
+                logMessage("Your magical gills fade away...");
+            }
 
         if (!hasGills && !isBoating) {
             if (player.waterBreathingTurns === 0 && updates.waterBreathingTurns === 0) {
