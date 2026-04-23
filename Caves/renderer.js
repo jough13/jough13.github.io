@@ -1,3 +1,5 @@
+const TWO_PI = Math.PI * 2; // EASY WIN: Cache this constant for drawing circles (saves CPU cycles)
+
 function updateThemeColors() {
     const style = getComputedStyle(document.documentElement);
     cachedThemeColors = {
@@ -33,13 +35,16 @@ const ParticleSystem = {
         
         if (type === 'text') {
             p.vx = 0; 
-            p.vy = -0.07; 
+            // EASY WIN: Slower float speed and slower fade for better readability
+            p.vy = -0.04; 
             p.size = 14;
             p.gravity = 0;
+            p.lifeFade = 0.035; 
         } else {
             p.vx = (Math.random() - 0.5) * 0.2;
             p.vy = (Math.random() - 0.5) * 0.2;
             p.gravity = 0.01;
+            p.lifeFade = 0.05 + Math.random() * 0.05;
         }
         this.activeParticles.push(p);
     },
@@ -49,7 +54,7 @@ const ParticleSystem = {
     },
 
     createFloatingText: function(x, y, text, color) {
-        // Add a slight random offset so simultaneous numbers (like attack + poison + procs) don't overlap perfectly
+        // Add a slight random offset so simultaneous numbers don't overlap perfectly
         const offsetX = (Math.random() - 0.5) * 0.7;
         const offsetY = (Math.random() - 0.5) * 0.7;
         
@@ -66,7 +71,8 @@ const ParticleSystem = {
             const p = this.activeParticles[i];
             p.x += p.vx; 
             p.y += p.vy;
-            p.life -= 0.07;
+            p.life -= p.lifeFade; // Use dynamic fade rate
+            
             if(p.gravity) p.vy += p.gravity;
 
             if (p.life <= 0) {
@@ -101,6 +107,8 @@ const ParticleSystem = {
                 ctx.font = `bold ${p.size * scale}px monospace`;
                 ctx.strokeStyle = 'black';
                 ctx.lineWidth = 3;
+                
+                // Draw text
                 ctx.strokeText(p.text, screenX, screenY);
                 ctx.fillText(p.text, screenX, screenY);
             } else {
@@ -113,7 +121,6 @@ const ParticleSystem = {
 };
 
 ParticleSystem.init();
-
 
 const TileRenderer = {
     // Helper: Deterministic random based on WORLD coordinates
@@ -149,7 +156,7 @@ const TileRenderer = {
         ctx.beginPath(); ctx.moveTo(tx + 10, ty + 16); ctx.lineTo(tx + 10, ty + 8); ctx.stroke();
         // Petals (Color based on world coord, not screen)
         ctx.fillStyle = (seedX + seedY) % 2 === 0 ? '#f472b6' : '#facc15';
-        ctx.beginPath(); ctx.arc(tx + 10, ty + 8, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(tx + 10, ty + 8, 2.5, 0, TWO_PI); ctx.fill();
     },
 
     drawPebble: (ctx, x, y, color, seedX, seedY) => {
@@ -157,7 +164,7 @@ const TileRenderer = {
         const tx = x * TILE_SIZE + (Math.abs(seedX) * 3 % 10) + 2;
         const ty = y * TILE_SIZE + (Math.abs(seedY) * 7 % 10) + 5;
         ctx.fillStyle = color;
-        ctx.beginPath(); ctx.arc(tx, ty, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(tx, ty, 2, 0, TWO_PI); ctx.fill();
     },
 
     drawBone: (ctx, x, y) => {
@@ -193,7 +200,7 @@ const TileRenderer = {
         // Occasional bubble
         if (rand > 0.9) {
             ctx.beginPath();
-            ctx.arc((x * TILE_SIZE) + 15, (y * TILE_SIZE) + 5, 1.5, 0, Math.PI * 2);
+            ctx.arc((x * TILE_SIZE) + 15, (y * TILE_SIZE) + 5, 1.5, 0, TWO_PI);
             ctx.fill();
         }
     },
@@ -213,23 +220,26 @@ const TileRenderer = {
         const treeCount = rand > 0.7 ? 2 : 1;
 
         for (let i = 0; i < treeCount; i++) {
-            // Offset logic for multiple trees
             const offsetX = (i === 0) ? (TILE_SIZE / 2) : (TILE_SIZE / 2) + ((rand - 0.5) * 10);
             const offsetY = (i === 0) ? (TILE_SIZE) : (TILE_SIZE) - ((rand) * 5);
 
             const tx = (x * TILE_SIZE) + offsetX;
             const ty = (y * TILE_SIZE) + offsetY;
 
-            // Height variation
             const height = (TILE_SIZE * 0.8) + (rand * (TILE_SIZE * 0.4)) - (i * 5);
             const width = height * 0.6;
+
+            // EASY WIN: Draw Ground Drop Shadow for depth
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.beginPath();
+            ctx.ellipse(tx, ty, width * 0.4, width * 0.2, 0, 0, TWO_PI);
+            ctx.fill();
 
             // Trunk
             ctx.fillStyle = '#451a03'; // Dark Wood
             ctx.fillRect(tx - 2, ty - (height * 0.2), 4, height * 0.2);
 
             // Foliage (Triangle)
-            // We use two shades of green for "lighting"
             const treeColor = (mapX + mapY) % 2 === 0 ? '#166534' : '#15803d'; // Varying greens
 
             ctx.fillStyle = treeColor;
@@ -239,7 +249,7 @@ const TileRenderer = {
             ctx.lineTo(tx - (width / 2), ty - (height * 0.2)); // Bottom Left
             ctx.fill();
 
-            // Shadow (Right side of tree for 3D effect)
+            // Foliage Shadow (Right side of tree)
             ctx.fillStyle = 'rgba(0,0,0,0.2)';
             ctx.beginPath();
             ctx.moveTo(tx, ty - height);
@@ -263,25 +273,19 @@ const TileRenderer = {
         ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
 
         // --- 3. NEGATIVE SPACE (The Valley) ---
-        // 15% chance to be a flat valley tile.
-        // This breaks up the "wall" of mountains.
         if (rand > 0.85) {
-            // Draw a tiny pebble so it looks intentional, not like a glitch
             ctx.fillStyle = '#44403c'; // Dark grey pebble
             ctx.beginPath();
-            // Randomize pebble position slightly based on seed
             const pX = tx + (TILE_SIZE * 0.3) + (rand * 5);
             const pY = ty + (TILE_SIZE * 0.3) + (rand * 5);
-            ctx.arc(pX, pY, 1.5, 0, Math.PI * 2);
+            ctx.arc(pX, pY, 1.5, 0, TWO_PI);
             ctx.fill();
-            return; // Stop here! Don't draw a peak.
+            return; 
         }
 
         // --- HELPER: Draw a single peak ---
         const drawPeak = (offsetX, offsetY, scaleW, scaleH) => {
-            // Randomize peak tip slightly based on seed
             const jitterX = (rand - 0.5) * 4;
-
             const peakX = tx + (TILE_SIZE / 2) + offsetX + jitterX;
             const peakY = ty + (TILE_SIZE * 0.1) + offsetY;
 
@@ -292,7 +296,7 @@ const TileRenderer = {
             const baseRight = peakX + (width / 2);
             const baseBottom = ty + TILE_SIZE;
 
-            // Shadow Side (Right) - Warm Dark Grey
+            // Shadow Side (Right)
             ctx.fillStyle = '#44403c';
             ctx.beginPath();
             ctx.moveTo(peakX, peakY);
@@ -300,7 +304,7 @@ const TileRenderer = {
             ctx.lineTo(peakX, baseBottom);
             ctx.fill();
 
-            // Sunlit Side (Left) - Warm Medium Grey
+            // Sunlit Side (Left)
             ctx.fillStyle = '#78716c';
             ctx.beginPath();
             ctx.moveTo(peakX, peakY);
@@ -308,37 +312,26 @@ const TileRenderer = {
             ctx.lineTo(baseLeft, baseBottom);
             ctx.fill();
 
-            // Snow Cap (Only on tall peaks)
+            // Snow Cap
             if (scaleH > 0.85) {
                 const snowLine = peakY + (height * 0.25);
-                ctx.fillStyle = '#f3f4f6'; // White
+                ctx.fillStyle = '#f3f4f6'; 
                 ctx.beginPath();
                 ctx.moveTo(peakX, peakY);
                 ctx.lineTo(peakX + (width * 0.2), snowLine + 2);
-                ctx.lineTo(peakX, snowLine - 1); // Slight jagged dip
+                ctx.lineTo(peakX, snowLine - 1); 
                 ctx.lineTo(peakX - (width * 0.2), snowLine + 2);
                 ctx.fill();
             }
         };
 
-        // --- 4. CHOOSE PEAK VARIATION ---
-        // Adjusted probabilities since top 15% is now Valley
-
-        if (rand < 0.45) {
-            // VARIATION A: The Titan (45% Chance)
-            // One large, dominant peak.
-            drawPeak(0, 0, 1.2, 1.0);
-        }
+        if (rand < 0.45) { drawPeak(0, 0, 1.2, 1.0); }
         else if (rand < 0.75) {
-            // VARIATION B: The Ridge (30% Chance)
-            // One main peak with a small "shoulder" peak attached.
             const side = (rand < 0.60) ? -1 : 1;
             drawPeak(side * 5, 4, 0.7, 0.6);
             drawPeak(0, 0, 1.1, 1.0);
         }
         else {
-            // VARIATION C: Twin Peaks (10% Chance)
-            // Two distinct peaks.
             drawPeak(-3, 3, 0.7, 0.8);
             drawPeak(4, 5, 0.6, 0.6);
         }
@@ -350,12 +343,11 @@ const TileRenderer = {
 
         const rand = TileRenderer.getPseudoRandom(mapX, mapY);
 
-        // Reduced frequencies:
-        if (rand < 0.02) { // 2% Chance for Flower (was 10%)
+        if (rand < 0.02) { 
             TileRenderer.drawFlower(ctx, x, y, mapX, mapY);
-        } else if (rand < 0.10) { // 8% Chance for Grass (was 20%)
+        } else if (rand < 0.10) {
             TileRenderer.drawGrassTuft(ctx, x, y, accentColor);
-        } else if ((mapX * 123 + mapY * 456) % 11 === 0) { // Spread out detail lines
+        } else if ((mapX * 123 + mapY * 456) % 11 === 0) { 
             ctx.strokeStyle = accentColor;
             ctx.lineWidth = 1;
             const tx = x * TILE_SIZE + TILE_SIZE / 2;
@@ -373,7 +365,7 @@ const TileRenderer = {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         const rand = TileRenderer.getPseudoRandom(mapX, mapY);
 
-        if (rand < 0.03) { // 3% Chance for Bones (was 10%)
+        if (rand < 0.03) { 
             TileRenderer.drawBone(ctx, x, y);
         } else if (rand < 0.15) {
             TileRenderer.drawPebble(ctx, x, y, '#52525b', mapX, mapY);
@@ -384,7 +376,7 @@ const TileRenderer = {
     drawDesert: (ctx, x, y, mapX, mapY, baseColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         const rand = TileRenderer.getPseudoRandom(mapX, mapY);
-        if (rand > 0.7) { // Reduced ripples
+        if (rand > 0.7) { 
             const tx = x * TILE_SIZE;
             const ty = y * TILE_SIZE;
             ctx.strokeStyle = '#d97706';
@@ -399,42 +391,68 @@ const TileRenderer = {
     // 🌊 Water (Animated - Organic Flow)
     drawWater: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
-        ctx.strokeStyle = accentColor;
-        ctx.lineWidth = 1;
+        
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
 
-        // Slower time factor (2000 instead of 1500)
-        // Mix mapX and mapY to create diagonal drift instead of vertical bouncing
         const time = Date.now() / 2000;
-        const wavePhase = time + (mapX * 0.2) + (mapY * 0.1);
+        const wavePhase1 = time + (mapX * 0.2) + (mapY * 0.1);
+        const wavePhase2 = time * 1.5 + (mapX * 0.3) - (mapY * 0.2); // Secondary phase offset
 
-        const yOffset = Math.sin(wavePhase) * 3;
-
+        ctx.strokeStyle = accentColor;
+        
+        // Primary Wave
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        // Draw a slight curve instead of a straight line
-        ctx.moveTo(tx + 2, ty + TILE_SIZE / 2 + yOffset);
+        const yOffset1 = Math.sin(wavePhase1) * 3;
+        ctx.moveTo(tx + 2, ty + TILE_SIZE / 2 + yOffset1);
         ctx.bezierCurveTo(
-            tx + 8, ty + TILE_SIZE / 2 + yOffset - 2,
-            tx + 12, ty + TILE_SIZE / 2 + yOffset + 2,
-            tx + TILE_SIZE - 2, ty + TILE_SIZE / 2 + yOffset
+            tx + 8, ty + TILE_SIZE / 2 + yOffset1 - 2,
+            tx + 12, ty + TILE_SIZE / 2 + yOffset1 + 2,
+            tx + TILE_SIZE - 2, ty + TILE_SIZE / 2 + yOffset1
         );
         ctx.stroke();
+
+        // EASY WIN: Secondary Faint Wave (Creates depth/flow)
+        ctx.save();
+        ctx.globalAlpha = 0.5; // Make secondary ripple faint
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const yOffset2 = Math.cos(wavePhase2) * 2 + 4; // Shifted down and different phase
+        ctx.moveTo(tx + 4, ty + TILE_SIZE / 2 + yOffset2);
+        ctx.bezierCurveTo(
+            tx + 10, ty + TILE_SIZE / 2 + yOffset2 + 2,
+            tx + 14, ty + TILE_SIZE / 2 + yOffset2 - 2,
+            tx + TILE_SIZE - 4, ty + TILE_SIZE / 2 + yOffset2
+        );
+        ctx.stroke();
+        ctx.restore();
     },
 
     // 🔥 Fire (Animated)
-
-    drawFire: (ctx, x, y, baseColor) => { // <-- Added baseColor parameter
-        TileRenderer.drawBase(ctx, x, y, baseColor || '#451a03'); // <-- Use it, or fallback to brown
+    drawFire: (ctx, x, y, baseColor) => { 
+        TileRenderer.drawBase(ctx, x, y, baseColor || '#451a03'); 
 
         const tx = x * TILE_SIZE + TILE_SIZE / 2;
         const ty = y * TILE_SIZE + TILE_SIZE - 2;
         const flicker = Math.sin(Date.now() / 100) * 3;
 
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath(); ctx.arc(tx, ty - 4, 4 + (flicker * 0.2), 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#facc15';
-        ctx.beginPath(); ctx.arc(tx, ty - 4, 2 + (flicker * 0.1), 0, Math.PI * 2); ctx.fill();
+        ctx.save();
+        
+        // EASY WIN: Actual Glow Effect
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#f97316'; // Orange glow
+
+        ctx.fillStyle = '#ef4444'; // Red outer flame
+        ctx.beginPath(); ctx.arc(tx, ty - 4, 4 + (flicker * 0.2), 0, TWO_PI); ctx.fill();
+        
+        // Remove shadow for the core to prevent intense brightness stacking
+        ctx.shadowBlur = 0; 
+        
+        ctx.fillStyle = '#facc15'; // Yellow hot core
+        ctx.beginPath(); ctx.arc(tx, ty - 4, 2 + (flicker * 0.1), 0, TWO_PI); ctx.fill();
+        
+        ctx.restore();
     },
 
     // Ω Void Rift (Animated)
@@ -445,11 +463,20 @@ const TileRenderer = {
         const pulse = Math.sin(Date.now() / 300);
         const size = 6 + (pulse * 2);
 
+        ctx.save();
+        
+        // EASY WIN: Purple Glow Effect
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#a855f7';
+
         ctx.strokeStyle = '#a855f7';
         ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(tx, ty, size, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(tx, ty, size, 0, TWO_PI); ctx.stroke();
+        
         ctx.fillStyle = '#581c87';
-        ctx.beginPath(); ctx.arc(tx, ty, size / 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(tx, ty, size / 2, 0, TWO_PI); ctx.fill();
+        
+        ctx.restore();
     },
 
     // 🧱 Enhanced Wall Renderer
@@ -490,7 +517,6 @@ const TileRenderer = {
         }
     },
 
-    // 1. NEW: Visual Warning Zone
     drawTelegraph: (ctx, x, y) => {
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
@@ -519,7 +545,6 @@ const TileRenderer = {
         ctx.restore();
     },
 
-    // 2. NEW: Universal Health Bar Helper
     drawHealthBar: (ctx, x, y, current, max) => {
         if (max <= 0) return;
         const percent = Math.max(0, current / max);
@@ -527,11 +552,18 @@ const TileRenderer = {
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
 
-        // Bar Container (Black background)
         const barHeight = 4;
         const yOffset = TILE_SIZE - barHeight; // Bottom of tile
 
-        ctx.fillStyle = '#1f2937'; // Dark Gray
+        ctx.save();
+
+        // EASY WIN: Tiny drop shadow so the bar stands out against same-colored sprites
+        ctx.shadowColor = "rgba(0,0,0,0.5)";
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetY = 1;
+
+        // Bar Container (Black background)
+        ctx.fillStyle = '#1f2937'; 
         ctx.fillRect(tx, ty + yOffset, TILE_SIZE, barHeight);
 
         // Health Color (Green -> Yellow -> Red)
@@ -543,8 +575,49 @@ const TileRenderer = {
         ctx.fillRect(tx, ty + yOffset, TILE_SIZE * percent, barHeight);
 
         // Border for clarity
+        ctx.shadowColor = "transparent"; // Turn off shadow for the border
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 0.5;
         ctx.strokeRect(tx, ty + yOffset, TILE_SIZE, barHeight);
+
+        ctx.restore();
     }
 };
+
+// --- HELPER: DRAW FANCY MOUNTAIN (OPTIMIZED) ---
+// Retained from previous versions just in case you use it elsewhere
+function drawMountain(ctx, x, y, size) {
+    if (!cachedThemeColors.mtnBase) updateThemeColors();
+
+    const { mtnBase, mtnShadow, mtnCap } = cachedThemeColors;
+
+    // 1. Draw the main mountain body
+    ctx.fillStyle = mtnBase;
+    ctx.beginPath();
+    ctx.moveTo(x, y + size);
+    ctx.lineTo(x + size / 2, y + size * 0.1);
+    ctx.lineTo(x + size, y + size);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Draw the shadow
+    ctx.fillStyle = mtnShadow;
+    ctx.beginPath();
+    ctx.moveTo(x + size / 2, y + size * 0.1);
+    ctx.lineTo(x + size, y + size);
+    ctx.lineTo(x + size / 2, y + size);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Draw the snow cap
+    ctx.fillStyle = mtnCap;
+    ctx.beginPath();
+    ctx.moveTo(x + size * 0.25, y + size * 0.5);
+    ctx.lineTo(x + size * 0.35, y + size * 0.4);
+    ctx.lineTo(x + size * 0.5, y + size * 0.55);
+    ctx.lineTo(x + size * 0.65, y + size * 0.4);
+    ctx.lineTo(x + size * 0.75, y + size * 0.5);
+    ctx.lineTo(x + size / 2, y + size * 0.1);
+    ctx.closePath();
+    ctx.fill();
+}
