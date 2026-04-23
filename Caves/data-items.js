@@ -976,11 +976,6 @@ window.ITEM_DATA = {
         type: 'junk',
         description: "Bloody and raw. Needs cooking."
     },
-    '🐟': {
-        name: 'Raw Fish',
-        type: 'junk',
-        description: "Freshly caught. Slimey."
-    },
     // --- COOKED FOOD ---
     '🥩': {
         name: 'Steak',
@@ -1094,19 +1089,19 @@ window.ITEM_DATA = {
             return true;
         }
     },
-    '+': {
+    '♥': {
         name: 'Healing Potion',
         type: 'consumable',
         description: "A thick red liquid. (+Health, +10 Thirst)",
         effect: (state) => {
             const oldHealth = state.player.health;
             state.player.health = Math.min(state.player.maxHealth, state.player.health + HEALING_AMOUNT);
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10); // <-- NEW: Hydration
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10); 
             if (state.player.health > oldHealth) {
                 triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
-                return true;
             }
             logMessage(`Used a Healing Potion. (+HP, +10 Thirst)`);
+            return true;
         }
     },
     '🔮': { 
@@ -1221,7 +1216,7 @@ window.ITEM_DATA = {
         type: 'spellbook',
         spellId: 'clarity'
     },
-    '🛡️': {
+    '🛡️s': { 
         name: 'Tome of Shielding',
         type: 'spellbook',
         spellId: 'arcaneShield'
@@ -1648,12 +1643,12 @@ window.ITEM_DATA = {
         inflictChance: 0.25,  // 25% chance on hit
         statBonuses: { dexterity: 1 }
     },
-    '🧪': {
+    '🧪st': {
         name: 'Potion of Strength',
         type: 'buff_potion',
         buff: 'strength',
         amount: 5,
-        duration: 5 // Lasts 5 turns
+        duration: 5 
     },
     '💀': {
         name: 'Tome: Dark Pact',
@@ -1705,19 +1700,19 @@ window.ITEM_DATA = {
         name: 'Obsidian Shard',
         type: 'junk'
     },
-    '⚔️': {
+    '⚔️o': {
         name: 'Obsidian Edge',
         type: 'weapon',
-        damage: 5, // Top tier damage (beats Steel)
+        damage: 5, 
         slot: 'weapon',
-        statBonuses: { wits: 2 } // Magical sword
+        statBonuses: { wits: 2 } 
     },
-    '🛡️': {
+    '🛡️o': {
         name: 'Obsidian Plate',
         type: 'armor',
-        defense: 5, // Top tier defense (beats Steel)
+        defense: 5,
         slot: 'armor',
-        statBonuses: { willpower: 2 } // Mental fortification
+        statBonuses: { willpower: 2 } 
     },
     '♦': {
         name: 'Heirloom',
@@ -1735,13 +1730,13 @@ window.ITEM_DATA = {
             return true;
         }
     },
-    '🧪': {
+    '🧪e': {
         name: 'Elixir of Power',
         type: 'consumable',
         effect: (state) => {
             state.player.maxMana += 5;
             state.player.mana += 5;
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); // <-- NEW
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20);
             logMessage("You drink the glowing blue liquid. (+Max Mana, +20 Thirst)");
             triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
             return true;
@@ -1749,7 +1744,7 @@ window.ITEM_DATA = {
     },
 
     // --- DRUID MAGIC ---
-    '🌿': {
+    '📜e': {
         name: 'Scroll: Entangle',
         type: 'spellbook',
         spellId: 'entangle'
@@ -1936,24 +1931,6 @@ window.ITEM_DATA = {
         name: 'Unidentified Magic Item',
         type: 'junk', // Temporary type until picked up
         description: "It hums with potential energy."
-    },
-    // --- VOID ITEMS ---
-    '🗝️v': {
-        name: 'Void Key',
-        type: 'consumable', // Used on the rift
-        tile: '🗝️',
-        description: "It vibrates violently. Unlocks a Void Rift.",
-        effect: (state) => {
-            // Logic is handled in the main useInventoryItem function
-            logMessage("Stand on a Void Rift (Ω) and use this to enter.");
-            return true;
-        }
-    },
-    'vd': {
-        name: 'Void Dust',
-        type: 'junk',
-        tile: '✨',
-        description: "Remains of a creature that shouldn't exist."
     },
 };
 
