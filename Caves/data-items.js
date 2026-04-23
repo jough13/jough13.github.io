@@ -756,6 +756,7 @@ window.ITEM_DATA = {
             waterStack.name = 'Empty Bottle';
             waterStack.tile = '🫙';
             waterStack.type = 'consumable'; // Ensure type is correct
+            waterStack.effect = ITEM_DATA['🫙'].effect;
             // Return FALSE so the engine doesn't delete the item slot
             return false; 
         } 
