@@ -89,14 +89,12 @@ const logMessage = (text) => {
         .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
 
     // --- ANTI-SPAM LOGIC ---
-    // If this message is exactly the same as the last one, just increment a counter!
     if (text === lastLogText && messageLog.firstChild) {
         lastLogCount++;
         messageLog.firstChild.innerHTML = `> ${formattedText} <span class="text-gray-500 ml-2 font-bold">(x${lastLogCount})</span>`;
-        return; // Stop here so we don't create a new line
+        return; 
     }
 
-    // Otherwise, it's a new message. Reset the tracker.
     lastLogText = text;
     lastLogCount = 1;
 
@@ -112,7 +110,6 @@ const logMessage = (text) => {
 };
 
 const renderStats = () => {
-
     renderStatusEffects();
 
     for (const statName in statDisplays) {
@@ -156,11 +153,10 @@ const renderStats = () => {
                 element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500', 'text-purple-500'); 
                 const canvasWrapper = document.getElementById('gameCanvasWrapper');
 
-                // EASY WIN: Poisoned Health Bar Tinting
                 if (gameState.player.poisonTurns > 0) {
                     element.classList.add('text-purple-500');
                     statBarElements.health.style.backgroundColor = '#a855f7'; // Sickly Purple
-                    canvasWrapper.classList.add('critical-health'); // Keep pulsing to indicate danger
+                    canvasWrapper.classList.add('critical-health'); 
                 } else {
                     if (percent > 60) {
                         element.classList.add('text-green-500');
@@ -189,7 +185,6 @@ const renderStats = () => {
                 statBarElements.stamina.style.width = `${percent}%`;
                 element.textContent = `${label}: ${Math.floor(value)}`;
 
-                // EASY WIN: Frostbite Stamina Bar Tinting
                 element.classList.remove('text-green-500', 'text-cyan-400');
                 if (gameState.player.frostbiteTurns > 0) {
                     element.classList.add('text-cyan-400');
@@ -230,7 +225,6 @@ const renderStats = () => {
         }
     }
     
-    // Update Document Title
     if (gameState.mapMode && gameState.player && gameState.player.level) {
         document.title = `HP: ${Math.ceil(gameState.player.health)}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
     }
@@ -240,7 +234,6 @@ const renderInventory = () => {
     inventoryModalList.innerHTML = '';
     const titleElement = document.querySelector('#inventoryModal h2');
 
-    // --- VISUAL STATE HANDLING ---
     if (gameState.isDroppingItem) {
         titleElement.textContent = "SELECT ITEM TO DROP";
         titleElement.classList.add('text-red-500', 'font-extrabold');
@@ -257,32 +250,25 @@ const renderInventory = () => {
         gameState.player.inventory.forEach((item, index) => {
             const itemDiv = document.createElement('div');
 
-            // --- DYNAMIC STYLING ---
             let slotClass = 'inventory-slot p-2 rounded-md cursor-pointer transition-all duration-200';
             
             if (gameState.isDroppingItem) {
-                // Red Border/Glow for Drop Mode
                 slotClass += ' border-2 border-red-500 bg-red-900 bg-opacity-20 hover:bg-opacity-40';
             } else if (item.isEquipped) {
-                // Gold Border for Equipped
                 slotClass += ' equipped';
             } else if (item.type === 'consumable') {
-                // EASY WIN: Subtle blue tint for consumables (Potions/Food)
                 slotClass += ' bg-blue-900 bg-opacity-10 hover:border-blue-500';
             } else {
-                // Standard Hover
                 slotClass += ' hover:border-blue-500';
             }
             
             itemDiv.className = slotClass;
 
-            // Click Handler: Passes input to main handler to decide Use vs Drop
             itemDiv.onclick = (e) => {
-                e.stopPropagation(); // Prevent clicking through to modal background
+                e.stopPropagation(); 
                 handleInput((index + 1).toString());
             };
 
-            // Build Tooltip
             let title = item.name;
             if (item.statBonuses) {
                 title += " (";
@@ -295,7 +281,6 @@ const renderInventory = () => {
             }
             itemDiv.title = title;
 
-            // Elements
             const itemChar = document.createElement('span');
             itemChar.className = 'item-char';
             itemChar.textContent = item.tile;
@@ -317,27 +302,21 @@ const renderInventory = () => {
 };
 
 const renderEquipment = () => {
-    // --- WEAPON & DAMAGE ---
     const player = gameState.player;
     const weapon = player.equipment.weapon || { name: 'Fists', damage: 0 };
 
-    // Calculate total damage, including the new strength buff
     const playerStrength = player.strength + (player.strengthBonus || 0); 
     const baseDamage = playerStrength;
     const weaponDamage = weapon.damage || 0;
     const totalDamage = baseDamage + weaponDamage;
 
-    // Update the display to show the buff
     let weaponString = `Weapon: ${weapon.name} (+${weaponDamage})`;
     if (player.strengthBonus > 0) { 
         weaponString += ` <span class="text-green-500">[Strong +${player.strengthBonus} (${player.strengthBonusTurns}t)]</span>`;
     }
     equippedWeaponDisplay.innerHTML = weaponString;
-
-    // Update the strength display to show the total damage
     statDisplays.strength.textContent = `Strength: ${player.strength} (Dmg: ${totalDamage})`;
 
-    // --- ARMOR & DEFENSE ---
     const armor = player.equipment.armor || { name: 'Simple Tunic', defense: 0 };
 
     const weaponIcon = document.getElementById('slotWeaponIcon');
@@ -353,26 +332,19 @@ const renderEquipment = () => {
         armorIcon.style.color = (armor.name === 'Simple Tunic' || armor.name === 'Tattered Rags') ? 'var(--text-muted)' : 'var(--text-default)';
     }
 
-    // --- ROUNDING LOGIC ---
     const baseDefense = Math.floor(player.dexterity / 3);
     const armorDefense = armor.defense || 0;
     const buffDefense = player.defenseBonus || 0;
-
-    // --- TALENT: IRON SKIN ---
     const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
-
-    // We Math.floor the Constitution bonus so it matches combat logic (0.3 becomes 0)
     const conBonus = Math.floor(player.constitution * 0.1); 
     
     const totalDefense = baseDefense + armorDefense + buffDefense + conBonus + talentDefense;
 
-    // Update the display
     let armorString = `Armor: ${armor.name} (+${armorDefense} Def)`;
     if (buffDefense > 0) {
         armorString += ` <span class="text-green-500">[Braced +${buffDefense} (${player.defenseBonusTurns}t)]</span>`;
     }
 
-    // Show Base Defense in the total
     equippedArmorDisplay.innerHTML = `${armorString} (Base: ${baseDefense}, Total: ${totalDefense} Def)`;
 };
 
@@ -383,17 +355,12 @@ function updateRegionDisplay() {
         const regionId = `${currentRegionX},${currentRegionY}`;
 
         const regionName = getRegionName(currentRegionX, currentRegionY);
+        const playerCoords = `(${gameState.player.x}, ${-gameState.player.y})`; 
+        regionDisplay.textContent = `${regionName} ${playerCoords}`; 
 
-        // --- Append coordinates ---
-        const playerCoords = `(${gameState.player.x}, ${-gameState.player.y})`; // Invert Y for display
-        regionDisplay.textContent = `${regionName} ${playerCoords}`; // Combine name and coords
-
-        // Check if the region is newly discovered
         if (!gameState.discoveredRegions.has(regionId)) {
-            logMessage(`You have entered ${regionName}.`); // Log only on discovery
+            logMessage(`You have entered ${regionName}.`); 
             gameState.discoveredRegions.add(regionId);
-            
-            // Grant XP for discovery
             grantXp(50);
         }
     } else if (gameState.mapMode === 'dungeon') {
@@ -418,16 +385,12 @@ function triggerStatAnimation(statElement, animationClass) {
     }, 600); 
 }
 
-/**
- * Updates the UI to show active buff and debuff icons.
- */
 function renderStatusEffects() {
-    if (!statusEffectsPanel) return; // Safety check
+    if (!statusEffectsPanel) return; 
 
     const player = gameState.player;
-    let icons = ''; // We'll build this up as an HTML string
+    let icons = ''; 
 
-    // Buffs
     if (player.shieldValue > 0) {
         icons += `<span title="Arcane Shield (${Math.ceil(player.shieldValue)} points, ${player.shieldTurns}t)">💠</span>`;
     }
@@ -437,8 +400,6 @@ function renderStatusEffects() {
     if (player.strengthBonusTurns > 0) {
         icons += `<span title="Strong (+${player.strengthBonus} Str, ${player.strengthBonusTurns}t)">💪</span>`;
     }
-
-    // Debuffs
     if (player.poisonTurns > 0) {
         icons += `<span title="Poisoned (${player.poisonTurns}t)">☣️</span>`;
     }
@@ -449,8 +410,70 @@ function renderStatusEffects() {
     statusEffectsPanel.innerHTML = icons;
 }
 
-// --- EASY WIN: INJECT STAT TOOLTIPS ---
-// This runs once when the file loads to give players context on what stats do!
+// --- FIX: INFINITE RESIZE LOOP ---
+function resizeCanvas() {
+    const canvasContainer = canvas.parentElement;
+    if (!canvasContainer) return;
+
+    // 1. Lock the container height so zooming doesn't stretch the page infinitely
+    if (!canvasContainer.style.height) {
+        // Give it a solid, responsive height (e.g. 60% of viewport height)
+        canvasContainer.style.height = '60vh';
+    }
+
+    // 2. Get EXACT physical size of the container now that it is locked
+    const rect = canvasContainer.getBoundingClientRect();
+    const containerWidth = rect.width;
+    const containerHeight = rect.height;
+
+    // Use a global zoom tracker
+    if (!window.currentZoom) window.currentZoom = 20;
+    TILE_SIZE = window.currentZoom;
+
+    // 3. Calculate Viewport based on exact tiles that fit, plus a 2-tile buffer for smooth panning
+    VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 2; 
+    VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 2;
+
+    const dpr = window.devicePixelRatio || 1;
+
+    // 4. Set canvas resolution to match container physical pixels perfectly
+    canvas.width = containerWidth * dpr;
+    canvas.height = containerHeight * dpr;
+
+    // 5. Force CSS to fill the container without pushing its boundaries
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+
+    // 6. Configure Main Context
+    ctx.setTransform(1, 0, 0, 1, 0, 0); 
+    ctx.scale(dpr, dpr); 
+    ctx.imageSmoothingEnabled = false; 
+    ctx.font = `${TILE_SIZE}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // 7. Resize Offscreen Canvas (Match logical padded viewport)
+    const logicalWidth = VIEWPORT_WIDTH * TILE_SIZE;
+    const logicalHeight = VIEWPORT_HEIGHT * TILE_SIZE;
+
+    terrainCanvas.width = logicalWidth * dpr;
+    terrainCanvas.height = logicalHeight * dpr;
+    
+    // 8. Configure Offscreen Context
+    terrainCtx.setTransform(1, 0, 0, 1, 0, 0); 
+    terrainCtx.scale(dpr, dpr); 
+    terrainCtx.font = `${TILE_SIZE}px monospace`;
+    terrainCtx.textAlign = 'center';
+    terrainCtx.textBaseline = 'middle';
+
+    // 9. Force Redraw
+    if (typeof gameState !== 'undefined') {
+        gameState.mapDirty = true; 
+        if (typeof render === 'function') render();
+    }
+}
+
+// INJECT STAT TOOLTIPS
 (function initStatTooltips() {
     const statDescriptions = {
         strength: "Increases Melee Damage and carry weight.",
@@ -465,13 +488,12 @@ function renderStatusEffects() {
         intuition: "Improves Nature/Druid spells and senses unseen enemies."
     };
 
-    // Delay slightly to ensure DOM is fully parsed
     setTimeout(() => {
         for (const stat in statDescriptions) {
             const displayEl = statDisplays[stat];
             if (displayEl && displayEl.parentElement) {
                 displayEl.parentElement.title = statDescriptions[stat];
-                displayEl.parentElement.classList.add('cursor-help'); // Add a little question mark cursor
+                displayEl.parentElement.classList.add('cursor-help'); 
             }
         }
     }, 500);
