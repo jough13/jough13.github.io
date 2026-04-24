@@ -123,10 +123,6 @@ const CAVE_SUFFIXES = ["Caverns", "Grotto", "Deep", "Lair", "Tunnels", "Delve", 
 const CASTLE_PREFIXES = ["Broken", "Fallen", "King's", "Shadow", "Gleaming", "Iron", "Stone", "Forgotten", "Ancient", "Last", "Crimson"];
 const CASTLE_SUFFIXES = ["Spire", "Keep", "Fortress", "Hold", "Citadel", "Bastion", "Tower", "Ruin", "Reach", "Sanctum"];
 
-// --- PERFORMANCE: OFFSCREEN CANVAS ---
-const terrainCanvas = document.createElement('canvas');
-const terrainCtx = terrainCanvas.getContext('2d');
-
 const DAY_CYCLE_STOPS = [{
     time: 0,
     color: [10, 10, 40],
@@ -968,28 +964,6 @@ authButton.addEventListener('click', async () => {
 });
 
 document.getElementById('closeMapButton').addEventListener('click', closeWorldMap);
-
-// --- MOUSE WHEEL ZOOM ---
-const canvasWrapper = document.getElementById('gameCanvasWrapper');
-if (canvasWrapper) {
-    canvasWrapper.addEventListener('wheel', (e) => {
-        // Prevent the whole webpage from scrolling when zooming the map
-        e.preventDefault(); 
-        
-        // Ensure zoom is initialized
-        if (!window.currentZoom) window.currentZoom = 20;
-
-        // Zoom In (Scroll Up) or Zoom Out (Scroll Down)
-        if (e.deltaY < 0) {
-            window.currentZoom = Math.min(40, window.currentZoom + 2); // Max zoom in
-        } else {
-            window.currentZoom = Math.max(12, window.currentZoom - 2); // Max zoom out
-        }
-        
-        // Instantly recalculate the grid and redraw!
-        resizeCanvas();
-    }, { passive: false });
-}
 
 window.addEventListener('resize', () => {
     if (!mapModal.classList.contains('hidden')) {
