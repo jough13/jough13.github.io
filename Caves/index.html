@@ -3,6 +3,15 @@
    <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      
+      <!-- EASY WIN: SEO & Mobile Polish -->
+      <meta name="description" content="Caves and Castles - A retro browser-based ASCII MMO. Explore, craft, and survive.">
+      <meta name="theme-color" content="#1f2937">
+      
+      <!-- EASY WIN: Resource Hints for faster loading -->
+      <link rel="preconnect" href="https://cdn.tailwindcss.com">
+      <link rel="preconnect" href="https://www.gstatic.com">
+      
       <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏰</text></svg>">
       <title>Caves and Castles</title>
       <script src="https://cdn.tailwindcss.com"></script>
@@ -10,54 +19,58 @@
    </head>
    <body class="flex flex-col items-center justify-center min-h-screen p-4 font-mono">
       <main class="container w-full">
-<div id="authContainer" class="themed-container mx-auto max-w-sm p-6 rounded-2xl shadow-xl border-2">
-    <h1 id="authTitle" class="text-2xl font-bold text-center mb-4">Login</h1>
-    <div class="space-y-4">
-        <input type="email" id="emailInput" placeholder="Email" class="themed-input w-full p-2 border rounded">
-        <input type="password" id="passwordInput" placeholder="Password" class="themed-input w-full p-2 border rounded">
+         
+         <!-- LOGIN SCREEN -->
+         <div id="authContainer" class="themed-container mx-auto max-w-sm p-6 rounded-2xl shadow-xl border-2">
+             <h1 id="authTitle" class="text-2xl font-bold text-center mb-4">Login</h1>
+             <div class="space-y-4">
+                 <!-- EASY WIN: Autocomplete tags for Password Managers -->
+                 <input type="email" id="emailInput" autocomplete="email" aria-label="Email Address" placeholder="Email" class="themed-input w-full p-2 border rounded">
+                 <input type="password" id="passwordInput" autocomplete="current-password" aria-label="Password" placeholder="Password" class="themed-input w-full p-2 border rounded">
 
-        <!-- Main Auth Button (Login/Sign Up) -->
-        <button id="authButton" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-all">
-            Login
-        </button>
+                 <button id="authButton" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-all">
+                     Login
+                 </button>
 
-        <div class="flex justify-between items-center text-sm">
-    <div class="flex flex-col gap-1"> <label for="rememberMe" class="flex items-center gap-2 cursor-pointer muted-text">
-            <input type="checkbox" id="rememberMe" class="form-checkbox h-4 w-4 rounded" checked>
-            Remember Me
-        </label>
-        
-        <label for="autoLoginCheck" class="flex items-center gap-2 cursor-pointer muted-text">
-            <input type="checkbox" id="autoLoginCheck" class="form-checkbox h-4 w-4 rounded" checked>
-            Auto Login
-        </label>
-    </div>
+                 <div class="flex justify-between items-center text-sm">
+                     <div class="flex flex-col gap-1"> 
+                         <label for="rememberMe" class="flex items-center gap-2 cursor-pointer muted-text">
+                             <input type="checkbox" id="rememberMe" class="form-checkbox h-4 w-4 rounded" checked>
+                             Remember Me
+                         </label>
+                         <label for="autoLoginCheck" class="flex items-center gap-2 cursor-pointer muted-text">
+                             <input type="checkbox" id="autoLoginCheck" class="form-checkbox h-4 w-4 rounded" checked>
+                             Auto Login
+                         </label>
+                     </div>
+                     <a href="#" id="authToggle" class="highlight-text hover:underline">Create Account</a>
+                 </div>
 
-    <a href="#" id="authToggle" class="highlight-text hover:underline">Create Account</a>
-</div>
-
-        <p id="authError" class="text-red-500 text-center text-sm min-h-[1rem]"></p>
-    </div>
-</div>
+                 <p id="authError" class="text-red-500 text-center text-sm min-h-[1rem]"></p>
+             </div>
+         </div>
+         
          <!-- DELETE CONFIRMATION MODAL -->
-<div id="deleteConfirmModal" class="modal-overlay hidden">
-    <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 border-red-500 text-center">
-        <h2 class="text-2xl font-bold mb-4 text-red-500">Delete Character?</h2>
-        <p class="mb-6 text-sm muted-text">
-            Are you sure you want to delete this character? <br>
-            <span class="font-bold text-red-400">This action cannot be undone.</span>
-        </p>
-        <div class="flex gap-4 justify-center">
-            <button id="cancelDeleteButton" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded w-full">
-                Cancel
-            </button>
-            <button id="confirmDeleteButton" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded w-full">
-                Delete Forever
-            </button>
-        </div>
-    </div>
-</div>
-         <div id="characterSelectModal" class="themed-container mx-auto max-w-4xl p-6 rounded-2xl shadow-xl border-2 hidden">
+         <div id="deleteConfirmModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+             <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 border-red-500 text-center">
+                 <h2 id="deleteModalTitle" class="text-2xl font-bold mb-4 text-red-500">Delete Character?</h2>
+                 <p class="mb-6 text-sm muted-text">
+                     Are you sure you want to delete this character? <br>
+                     <span class="font-bold text-red-400">This action cannot be undone.</span>
+                 </p>
+                 <div class="flex gap-4 justify-center">
+                     <button id="cancelDeleteButton" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded w-full">
+                         Cancel
+                     </button>
+                     <button id="confirmDeleteButton" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded w-full">
+                         Delete Forever
+                     </button>
+                 </div>
+             </div>
+         </div>
+
+         <!-- CHARACTER SELECT MODAL -->
+         <div id="characterSelectModal" class="themed-container mx-auto max-w-4xl p-6 rounded-2xl shadow-xl border-2 hidden" role="dialog" aria-modal="true">
             <h1 class="text-3xl font-bold text-center mb-6">Select Character</h1>
             <div id="slotsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             </div>
@@ -66,79 +79,72 @@
             </div>
          </div>
         
+         <!-- CHARACTER CREATION MODAL -->
+         <div id="charCreationModal" class="themed-container mx-auto max-w-4xl p-6 rounded-2xl shadow-xl border-2 hidden overflow-y-auto max-h-[90vh]" role="dialog" aria-modal="true">
+            <h1 class="text-3xl font-bold text-center mb-6">Create Your Character</h1>
 
-<div id="charCreationModal" class="themed-container mx-auto max-w-4xl p-6 rounded-2xl shadow-xl border-2 hidden overflow-y-auto max-h-[90vh]">
-   <h1 class="text-3xl font-bold text-center mb-6">Create Your Character</h1>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- LEFT COLUMN: Identity -->
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-bold mb-2" for="charNameInput">Name</label>
+                        <input type="text" id="charNameInput" autocomplete="off" class="themed-input w-full p-3 border-2 rounded-xl font-bold text-lg" placeholder="Enter Character Name..." maxlength="16">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2">Gender</label>
+                        <div class="flex gap-4" id="genderSelectionContainer" role="group" aria-label="Gender Selection">
+                            <div class="gender-btn" data-value="Male" role="button" tabindex="0">Male</div>
+                            <div class="gender-btn" data-value="Female" role="button" tabindex="0">Female</div>
+                            <div class="gender-btn" data-value="Non-Binary" role="button" tabindex="0">Non-Binary</div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2">Race</label>
+                        <div id="raceSelectionContainer" class="grid grid-cols-2 gap-3" role="group" aria-label="Race Selection">
+                            <!-- Javascript will populate this -->
+                        </div>
+                    </div>
+                </div>
 
-   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-       
-       <!-- LEFT COLUMN: Identity -->
-       <div class="space-y-6">
-           <!-- Name -->
-           <div>
-               <label class="block text-sm font-bold mb-2">Name</label>
-               <input type="text" id="charNameInput" class="themed-input w-full p-3 border-2 rounded-xl font-bold text-lg" placeholder="Enter Character Name..." maxlength="16">
-           </div>
+                <!-- RIGHT COLUMN: Class & Preview -->
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-bold mb-2">Background (Class)</label>
+                        <div id="classSelectionContainer" class="grid grid-cols-2 gap-3" role="group" aria-label="Class Selection">
+                             <!-- Javascript will populate this -->
+                        </div>
+                    </div>
+                    <div class="panel p-4 rounded-xl border-2 bg-black bg-opacity-5">
+                        <h3 class="font-bold border-b border-gray-400 pb-1 mb-2">Summary</h3>
+                        <div class="text-sm space-y-1" id="creationSummary">
+                            <p>Name: <span class="highlight-text">???</span></p>
+                            <p>Identity: <span class="muted-text">Unknown</span></p>
+                            <p>Stats: <span class="text-green-600">Base stats only</span></p>
+                        </div>
+                    </div>
+                    <button id="finalizeCreationBtn" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        Begin Adventure
+                    </button>
+                </div>
+            </div>
+         </div>
 
-           <!-- Gender -->
-           <div>
-               <label class="block text-sm font-bold mb-2">Gender</label>
-               <div class="flex gap-4" id="genderSelectionContainer">
-                   <div class="gender-btn" data-value="Male">Male</div>
-                   <div class="gender-btn" data-value="Female">Female</div>
-                   <div class="gender-btn" data-value="Non-Binary">Non-Binary</div>
-               </div>
-           </div>
-
-           <!-- Race -->
-           <div>
-               <label class="block text-sm font-bold mb-2">Race</label>
-               <div id="raceSelectionContainer" class="grid grid-cols-2 gap-3">
-                   <!-- Javascript will populate this -->
-               </div>
-           </div>
-       </div>
-
-       <!-- RIGHT COLUMN: Class & Preview -->
-       <div class="space-y-6">
-           <!-- Class -->
-           <div>
-               <label class="block text-sm font-bold mb-2">Background (Class)</label>
-               <div id="classSelectionContainer" class="grid grid-cols-2 gap-3">
-                    <!-- Javascript will populate this -->
-               </div>
-           </div>
-
-           <!-- Summary/Preview -->
-           <div class="panel p-4 rounded-xl border-2 bg-black bg-opacity-5">
-               <h3 class="font-bold border-b border-gray-400 pb-1 mb-2">Summary</h3>
-               <div class="text-sm space-y-1" id="creationSummary">
-                   <p>Name: <span class="highlight-text">???</span></p>
-                   <p>Identity: <span class="muted-text">Unknown</span></p>
-                   <p>Stats: <span class="text-green-600">Base stats only</span></p>
-               </div>
-           </div>
-
-           <button id="finalizeCreationBtn" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-               Begin Adventure
-           </button>
-       </div>
-   </div>
-</div>
-
+         <!-- MAIN GAME UI -->
          <div id="gameContainer" class="themed-container game-container mx-auto p-6 rounded-2xl shadow-lg border-2 hidden">
             <div id="loadingIndicator" class="absolute inset-0 flex items-center justify-center bg-[var(--bg-container)] z-50">
-               <p class="text-2xl font-bold highlight-text">Loading...</p>
+               <p class="text-2xl font-bold highlight-text" aria-live="polite">Loading...</p>
             </div>
+            
             <header class="relative">
                <h1 class="text-4xl font-bold text-center mb-4">Caves and Castles</h1>
                <nav class="absolute top-0 right-0 flex items-center gap-2">
-                  <button id="settingsButton" class="p-2 text-sm font-bold highlight-text">⚙️</button> <!-- NEW -->
+                  <button id="settingsButton" aria-label="Settings" class="p-2 text-sm font-bold highlight-text">⚙️</button>
                   <button id="helpButton" class="p-2 text-sm font-bold highlight-text">Help</button>
                   <button id="logoutButton" class="p-2 text-sm font-bold highlight-text">Logout</button>
-                  <button id="darkModeToggle" class="p-2 text-2xl" title="Toggle Dark Mode">🌙</button>
+                  <button id="darkModeToggle" class="p-2 text-2xl" aria-label="Toggle Dark Mode" title="Toggle Dark Mode">🌙</button>
                </nav>
             </header>
+            
             <div class="lg:grid lg:grid-cols-3 lg:gap-6">
                <div class="lg:col-span-2 flex flex-col gap-4">
                   <div class="flex flex-col gap-4">
@@ -147,32 +153,33 @@
                         <h2 id="regionDisplay" class="text-sm muted-text"></h2>
                      </div>
                      <div id="gameCanvasWrapper" class="relative w-full rounded-xl overflow-hidden border-2" style="border-color: var(--border-color);">
-                        <canvas id="gameCanvas" class="w-full h-full"></canvas>
+                        <canvas id="gameCanvas" class="w-full h-full" role="img" aria-label="Main Game View"></canvas>
                      </div>
-                     <div id="hotbarContainer" class="flex justify-center gap-2 mt-4 p-2 panel rounded-xl border-2 min-h-[4rem]">
+                     <div id="hotbarContainer" class="flex justify-center gap-2 mt-4 p-2 panel rounded-xl border-2 min-h-[4rem]" role="toolbar" aria-label="Ability Hotbar">
                      </div>
                   </div>
                   <div class="grid grid-cols-1 gap-4">
                      <div id="messageLogPanel" class="panel p-4 w-full rounded-2xl border-2">
                         <h2 class="text-lg font-bold mb-2">Log</h2>
-                        <div id="messageLog" class="h-24 overflow-y-auto flex flex-col-reverse text-sm pr-2"></div>
+                        <div id="messageLog" class="h-24 overflow-y-auto flex flex-col-reverse text-sm pr-2" aria-live="polite"></div>
                      </div>
                   </div>
                </div>
+               
                <div class="lg:col-span-1 flex flex-col gap-4 mt-4 lg:mt-0">
                   <div id="equipmentPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-2">
                      <h2 class="text-lg font-bold mb-2">Equipment</h2>
                      <div class="flex justify-center gap-4">
                         <!-- Main Hand -->
                         <div class="flex flex-col items-center">
-                           <div class="equipment-slot" id="slotWeaponIcon">
+                           <div class="equipment-slot" id="slotWeaponIcon" aria-label="Equipped Weapon">
                               👊
                            </div>
                            <span class="text-xs mt-1 muted-text font-bold">Main Hand</span>
                         </div>
                         <!-- Chest -->
                         <div class="flex flex-col items-center">
-                           <div class="equipment-slot" id="slotArmorIcon">
+                           <div class="equipment-slot" id="slotArmorIcon" aria-label="Equipped Armor">
                               👕
                            </div>
                            <span class="text-xs mt-1 muted-text font-bold">Body</span>
@@ -183,101 +190,89 @@
                         <p id="equippedArmorDisplay" class="highlight-text">Simple Tunic</p>
                      </div>
                   </div>
-                  <div id="statusPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-2">
+                  
+                  <div id="statusPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-2" role="region" aria-label="Player Vitals">
                      <div>
                         <span id="healthDisplay" class="font-bold">Health: 10</span>
-                        <div class="stat-bar-container">
-                           <div id="healthBar" class="stat-bar bar-health"></div>
-                        </div>
+                        <div class="stat-bar-container"><div id="healthBar" class="stat-bar bar-health"></div></div>
                      </div>
                      <div>
                         <span id="manaDisplay" class="font-bold text-blue-500">Mana: 10</span>
-                        <div class="stat-bar-container">
-                           <div id="manaBar" class="stat-bar bar-mana"></div>
-                        </div>
+                        <div class="stat-bar-container"><div id="manaBar" class="stat-bar bar-mana"></div></div>
                      </div>
                      <div>
                         <span id="staminaDisplay" class="font-bold text-green-500">Stamina: 10</span>
-                        <div class="stat-bar-container">
-                           <div id="staminaBar" class="stat-bar bar-stamina"></div>
-                        </div>
+                        <div class="stat-bar-container"><div id="staminaBar" class="stat-bar bar-stamina"></div></div>
                      </div>
                      <div>
                         <span id="psycheDisplay" class="font-bold text-indigo-500">Psyche: 10</span>
-                        <div class="stat-bar-container">
-                           <div id="psycheBar" class="stat-bar bar-psyche"></div>
-                        </div>
+                        <div class="stat-bar-container"><div id="psycheBar" class="stat-bar bar-psyche"></div></div>
                      </div>
                      <div>
                         <span id="hungerDisplay" class="font-bold text-orange-500">Hunger: 100</span>
-                        <div class="stat-bar-container">
-                           <div id="hungerBar" class="stat-bar" style="background-color: #f97316;"></div>
-                        </div>
+                        <div class="stat-bar-container"><div id="hungerBar" class="stat-bar" style="background-color: #f97316;"></div></div>
                      </div>
                      <div>
                         <span id="thirstDisplay" class="font-bold text-cyan-500">Thirst: 100</span>
-                        <div class="stat-bar-container">
-                           <div id="thirstBar" class="stat-bar" style="background-color: #06b6d4;"></div>
-                        </div>
+                        <div class="stat-bar-container"><div id="thirstBar" class="stat-bar" style="background-color: #06b6d4;"></div></div>
                      </div>
-                     <div id="statusEffectsPanel" class="flex gap-2 justify-center pt-2 min-h-[1.5rem] text-lg">
-                     </div>
+                     <div id="statusEffectsPanel" class="flex gap-2 justify-center pt-2 min-h-[1.5rem] text-lg"></div>
                      <span id="coinsDisplay" class="font-bold text-yellow-500 pt-1">Coins: 0</span>
                      <span id="levelDisplay" class="font-bold highlight-text pt-2">Level: 1</span>
                      <div>
                         <span id="xpDisplay" class="font-bold">XP: 0 / 100</span>
-                        <div class="stat-bar-container">
-                           <div id="xpBar" class="stat-bar bar-xp"></div>
-                        </div>
+                        <div class="stat-bar-container"><div id="xpBar" class="stat-bar bar-xp"></div></div>
                      </div>
                      <span id="statPointsDisplay" class="font-bold text-yellow-400 hidden"></span>
                   </div>
-                  <div id="coreStatsPanel" class="panel grid grid-cols-2 gap-x-4 w-full p-4 rounded-2xl border-2 text-xs">
+                  
+                  <div id="coreStatsPanel" class="panel grid grid-cols-2 gap-x-4 w-full p-4 rounded-2xl border-2 text-xs" role="region" aria-label="Core Attributes">
                      <span class="flex justify-between items-center">
-                     <span id="strengthDisplay" class="font-bold">Strength: 1</span>
-                     <button id="addStrBtn" class="stat-add-btn" data-stat="strength">+</button>
+                        <span id="strengthDisplay" class="font-bold">Strength: 1</span>
+                        <button id="addStrBtn" aria-label="Increase Strength" class="stat-add-btn" data-stat="strength">+</button>
                      </span>
                      <span class="flex justify-between items-center">
-                     <span id="witsDisplay" class="font-bold">Wits: 1</span>
-                     <button id="addWitsBtn" class="stat-add-btn" data-stat="wits">+</button>
+                        <span id="witsDisplay" class="font-bold">Wits: 1</span>
+                        <button id="addWitsBtn" aria-label="Increase Wits" class="stat-add-btn" data-stat="wits">+</button>
                      </span>
                      <span class="flex justify-between items-center">
-                     <span id="constitutionDisplay" class="font-bold">Constitution: 1</span>
-                     <button id="addConBtn" class="stat-add-btn" data-stat="constitution">+</button>
+                        <span id="constitutionDisplay" class="font-bold">Constitution: 1</span>
+                        <button id="addConBtn" aria-label="Increase Constitution" class="stat-add-btn" data-stat="constitution">+</button>
                      </span>
                      <span class="flex justify-between items-center">
-                     <span id="dexterityDisplay" class="font-bold">Dexterity: 1</span>
-                     <button id="addDexBtn" class="stat-add-btn" data-stat="dexterity">+</button>
+                        <span id="dexterityDisplay" class="font-bold">Dexterity: 1</span>
+                        <button id="addDexBtn" aria-label="Increase Dexterity" class="stat-add-btn" data-stat="dexterity">+</button>
                      </span>
                      <span class="flex justify-between items-center">
-                     <span id="charismaDisplay" class="font-bold">Charisma: 1</span>
-                     <button id="addChaBtn" class="stat-add-btn" data-stat="charisma">+</button>
+                        <span id="charismaDisplay" class="font-bold">Charisma: 1</span>
+                        <button id="addChaBtn" aria-label="Increase Charisma" class="stat-add-btn" data-stat="charisma">+</button>
                      </span>
                      <span class="flex justify-between items-center">
-                     <span id="luckDisplay" class="font-bold">Luck: 1</span>
-                     <button id="addLuckBtn" class="stat-add-btn" data-stat="luck">+</button>
+                        <span id="luckDisplay" class="font-bold">Luck: 1</span>
+                        <button id="addLuckBtn" aria-label="Increase Luck" class="stat-add-btn" data-stat="luck">+</button>
                      </span>
                      <span class="flex justify-between items-center">
-                     <span id="willpowerDisplay" class="font-bold">Willpower: 1</span>
-                     <button id="addWillBtn" class="stat-add-btn" data-stat="willpower">+</button>
+                        <span id="willpowerDisplay" class="font-bold">Willpower: 1</span>
+                        <button id="addWillBtn" aria-label="Increase Willpower" class="stat-add-btn" data-stat="willpower">+</button>
                      </span>
                      <span class="flex justify-between items-center">
-                     <span id="perceptionDisplay" class="font-bold">Perception: 1</span>
-                     <button id="addPercBtn" class="stat-add-btn" data-stat="perception">+</button>
+                        <span id="perceptionDisplay" class="font-bold">Perception: 1</span>
+                        <button id="addPercBtn" aria-label="Increase Perception" class="stat-add-btn" data-stat="perception">+</button>
                      </span>
                      <span class="flex justify-between items-center">
-                     <span id="enduranceDisplay" class="font-bold">Endurance: 1</span>
-                     <button id="addEndBtn" class="stat-add-btn" data-stat="endurance">+</button>
+                        <span id="enduranceDisplay" class="font-bold">Endurance: 1</span>
+                        <button id="addEndBtn" aria-label="Increase Endurance" class="stat-add-btn" data-stat="endurance">+</button>
                      </span>
                      <span class="flex justify-between items-center">
-                     <span id="intuitionDisplay" class="font-bold">Intuition: 1</span>
-                     <button id="addIntuiBtn" class="stat-add-btn" data-stat="intuition">+</button>
+                        <span id="intuitionDisplay" class="font-bold">Intuition: 1</span>
+                        <button id="addIntuiBtn" aria-label="Increase Intuition" class="stat-add-btn" data-stat="intuition">+</button>
                      </span>
                   </div>
+                  
                   <div id="chatContainer" class="panel p-4 w-full rounded-2xl border-2 flex flex-col flex-grow">
                      <h2 class="text-xl font-bold mb-2">Chat</h2>
-                     <div id="chatMessages" class="flex-grow overflow-y-auto flex flex-col-reverse"></div>
-                     <input type="text" id="chatInput" class="themed-input w-full p-2 border rounded text-sm mt-2" placeholder="Say something...">
+                     <div id="chatMessages" class="flex-grow overflow-y-auto flex flex-col-reverse" aria-live="polite"></div>
+                     <input type="text" id="chatInput" aria-label="Chat Message" class="themed-input w-full p-2 border rounded text-sm mt-2" placeholder="Say something...">
                   </div>
                </div>
             </div>
@@ -293,19 +288,21 @@
             </div>
          </div>
       </main>
-      <div id="helpModal" class="modal-overlay hidden">
+
+      <!-- VARIOUS GAME MODALS -->
+      <div id="helpModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-4">Player's Guide</h2>
             <div class="space-y-2 text-sm">
-               <p><strong class="highlight-text">Movement:</strong> Use <kbd>W, A, S, D</kbd> or <kbd>Arrow Keys</kbd>.</p>
-               <p><strong class="highlight-text">Rest:</strong> Press <kbd>R</kbd> to rest and recover 1 Health and 1 Stamina.</p>
+               <p><strong class="highlight-text">Movement:</strong> Use <kbd>W, A, S, D</kbd>, <kbd>Arrow Keys</kbd>, or <kbd>Numpad</kbd> (supports diagonals).</p>
+               <p><strong class="highlight-text">Rest:</strong> Press <kbd>R</kbd> to rest and recover Health and Stamina.</p>
                <p><strong class="highlight-text">Inventory:</strong> Press <kbd>I</kbd> to open your inventory.
                <ul class="list-disc list-inside pl-4">
                   <li>Press <kbd>1-9</kbd> to use or equip an item.</li>
                   <li>Press <kbd>D</kbd> to enter Drop mode.</li>
                </ul>
                </p>
-               <p><strong class="highlight-text">Magic:</strong> Press <kbd>M</kbd> to open your spellbook.</p>
+               <p><strong class="highlight-text">Magic:</strong> Press <kbd>B</kbd> to open your spellbook.</p>
                <p><strong class="highlight-text">Skills:</strong> Press <kbd>K</kbd> to open your skills list.</p>
                <p><strong class="highlight-text">Chat:</strong> Click the chat box and press <kbd>Enter</kbd> to send messages.</p>
                <p><strong class="highlight-text">Exploration:</strong> Look for landmarks like signposts (<span class="font-bold">☗</span>), castles (<span class="font-bold">🏰</span>), caves (<span class="font-bold">⛰</span>), and even secret passages!</p>
@@ -314,109 +311,105 @@
          </div>
       </div>
       
-      <div id="settingsModal" class="modal-overlay hidden">
-   <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-      <h2 class="text-2xl font-bold mb-4">Game Settings</h2>
-      
-      <!-- Audio Section -->
-      <div class="space-y-4">
-         <h3 class="font-bold border-b border-gray-500 pb-1">Audio</h3>
-         <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
-            <span>🔊 Master Volume</span>
-            <input type="checkbox" id="settingMaster" class="form-checkbox h-5 w-5 text-blue-600">
-         </label>
-         <div class="pl-4 space-y-2">
-            <label class="flex items-center justify-between cursor-pointer">
-               <span class="text-sm muted-text">🦶 Footsteps</span>
-               <input type="checkbox" id="settingSteps" class="form-checkbox h-4 w-4 text-blue-600">
+      <div id="settingsModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
+            <h2 class="text-2xl font-bold mb-4">Game Settings</h2>
+            
+            <div class="space-y-4">
+               <h3 class="font-bold border-b border-gray-500 pb-1">Audio</h3>
+               <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
+                  <span>🔊 Master Volume</span>
+                  <input type="checkbox" id="settingMaster" class="form-checkbox h-5 w-5 text-blue-600">
+               </label>
+               <div class="pl-4 space-y-2">
+                  <label class="flex items-center justify-between cursor-pointer">
+                     <span class="text-sm muted-text">🦶 Footsteps</span>
+                     <input type="checkbox" id="settingSteps" class="form-checkbox h-4 w-4 text-blue-600">
+                  </label>
+                  <label class="flex items-center justify-between cursor-pointer">
+                     <span class="text-sm muted-text">⚔️ Combat</span>
+                     <input type="checkbox" id="settingCombat" class="form-checkbox h-4 w-4 text-blue-600">
+                  </label>
+                  <label class="flex items-center justify-between cursor-pointer">
+                     <span class="text-sm muted-text">✨ Magic</span>
+                     <input type="checkbox" id="settingMagic" class="form-checkbox h-4 w-4 text-blue-600">
+                  </label>
+                  <label class="flex items-center justify-between cursor-pointer">
+                     <span class="text-sm muted-text">💰 Loot & UI</span>
+                     <input type="checkbox" id="settingUI" class="form-checkbox h-4 w-4 text-blue-600">
+                  </label>
+               </div>
+            </div>
+
+            <h3 class="font-bold border-b border-gray-500 pb-1 mt-4">Visuals</h3>
+            <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
+               <span>📺 CRT Scanlines</span>
+               <input type="checkbox" id="settingCRT" class="form-checkbox h-5 w-5 text-blue-600">
             </label>
-            <label class="flex items-center justify-between cursor-pointer">
-               <span class="text-sm muted-text">⚔️ Combat</span>
-               <input type="checkbox" id="settingCombat" class="form-checkbox h-4 w-4 text-blue-600">
-            </label>
-            <label class="flex items-center justify-between cursor-pointer">
-               <span class="text-sm muted-text">✨ Magic</span>
-               <input type="checkbox" id="settingMagic" class="form-checkbox h-4 w-4 text-blue-600">
-            </label>
-            <label class="flex items-center justify-between cursor-pointer">
-               <span class="text-sm muted-text">💰 Loot & UI</span>
-               <input type="checkbox" id="settingUI" class="form-checkbox h-4 w-4 text-blue-600">
-            </label>
+
+            <h3 class="font-bold border-b border-gray-500 pb-1 mt-4">Cloud Save</h3>
+            <div class="mt-2 text-center">
+               <button id="btnManualSave" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded text-lg mb-3 transition-all">
+                  💾 Save Progress
+               </button>
+               <p id="lastBackupLabel" class="text-xs text-gray-400 mb-2" aria-live="polite">Checking status...</p>
+               <div class="flex gap-2">
+                  <button id="btnBackup" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded text-sm transition-all">
+                     ☁️ Create Backup
+                  </button>
+                  <button id="btnRestore" class="flex-1 bg-red-900 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-sm transition-all">
+                     ↺ Restore
+                  </button>
+               </div>
+               <p class="text-[10px] text-gray-500 mt-1">
+                  Backups are stored securely in the cloud. <br>Restoring overwrites current progress.
+               </p>
+            </div>
+
+            <button id="closeSettingsButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
 
-      <!-- Visuals Section -->
-      <h3 class="font-bold border-b border-gray-500 pb-1 mt-4">Visuals</h3>
-      <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
-         <span>📺 CRT Scanlines</span>
-         <input type="checkbox" id="settingCRT" class="form-checkbox h-5 w-5 text-blue-600">
-      </label>
-
-      <!-- Cloud Backup Section -->
-      <h3 class="font-bold border-b border-gray-500 pb-1 mt-4">Cloud Save</h3>
-      <div class="mt-2 text-center">
-         <!-- NEW SAVE BUTTON ADDED HERE -->
-         <button id="btnManualSave" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded text-lg mb-3 transition-all">
-            💾 Save Progress
-         </button>
-
-         <p id="lastBackupLabel" class="text-xs text-gray-400 mb-2">Checking status...</p>
-         <div class="flex gap-2">
-            <button id="btnBackup" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded text-sm transition-all">
-               ☁️ Create Backup
-            </button>
-            <button id="btnRestore" class="flex-1 bg-red-900 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-sm transition-all">
-               ↺ Restore
-            </button>
-         </div>
-         <p class="text-[10px] text-gray-500 mt-1">
-            Backups are stored securely in the cloud. <br>Restoring overwrites current progress.
-         </p>
-      </div>
-
-      <button id="closeSettingsButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
-   </div>
-</div>
-      <div id="fastTravelModal" class="modal-overlay hidden">
+      <div id="fastTravelModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-4">Leyline Network</h2>
             <p class="text-sm muted-text mb-4">Travel to an attuned Waystone? (Cost: 10 Mana)</p>
-            <ul id="fastTravelList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-            </ul>
+            <ul id="fastTravelList" class="space-y-2 max-h-60 overflow-y-auto pr-2"></ul>
             <button id="closeFastTravelButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Cancel</button>
          </div>
       </div>
-      <div id="gameOverModal" class="modal-overlay hidden">
-    <!-- Added: themed-container, p-6, rounded-2xl, shadow-xl, border-2, bg-white/gray -->
-    <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 text-center bg-[var(--bg-container)]">
-        <h2 class="text-red-500 font-bold text-3xl mb-4">YOU HAVE PERISHED</h2>
-        <div class="space-y-2 mb-6">
-            <p id="finalLevelDisplay" class="text-xl font-bold">Level: 1</p>
-            <p id="finalCoinsDisplay" class="text-yellow-600">Gold lost: 0</p>
-        </div>
-        <div class="flex gap-4 mt-6">
-            <button id="restartButton" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl flex-1 shadow-lg transition-transform transform hover:scale-105">
-                Respawn at Village
-            </button>
-            <button id="mainMenuButton" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-xl flex-1 shadow-lg transition-transform transform hover:scale-105">
-                Main Menu
-            </button>
-        </div>
-    </div>
-</div>
-      <div id="loreModal" class="modal-overlay hidden">
+
+      <div id="gameOverModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 text-center bg-[var(--bg-container)]">
+             <h2 class="text-red-500 font-bold text-3xl mb-4">YOU HAVE PERISHED</h2>
+             <div class="space-y-2 mb-6">
+                 <p id="finalLevelDisplay" class="text-xl font-bold">Level: 1</p>
+                 <p id="finalCoinsDisplay" class="text-yellow-600">Gold lost: 0</p>
+             </div>
+             <div class="flex gap-4 mt-6">
+                 <button id="restartButton" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl flex-1 shadow-lg transition-transform transform hover:scale-105">
+                     Respawn at Village
+                 </button>
+                 <button id="mainMenuButton" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-xl flex-1 shadow-lg transition-transform transform hover:scale-105">
+                     Main Menu
+                 </button>
+             </div>
+         </div>
+      </div>
+
+      <div id="loreModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 id="loreTitle" class="text-2xl font-bold mb-4">Title</h2>
             <div id="loreContent" class="space-y-2 text-sm whitespace-pre-wrap mb-4"></div>
-            <!-- NEW: Riddle Input Section (Hidden by default) -->
             <div id="riddleContainer" class="hidden mb-4">
-               <input type="text" id="riddleInput" class="themed-input w-full p-2 border rounded mb-2" placeholder="Your answer...">
+               <input type="text" id="riddleInput" aria-label="Riddle Answer" class="themed-input w-full p-2 border rounded mb-2" placeholder="Your answer...">
                <button id="submitRiddle" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded w-full">Speak</button>
             </div>
             <button id="closeLoreButton" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
-      <div id="shopModal" class="modal-overlay hidden">
+
+      <div id="shopModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <div class="flex justify-between items-center mb-4">
                <h2 class="text-2xl font-bold">General Store</h2>
@@ -425,120 +418,118 @@
             <div class="grid grid-cols-2 gap-6">
                <div>
                   <h3 class="text-lg font-bold mb-2 border-b-2" style="border-color: var(--border-color);">Items for Sale</h3>
-                  <ul id="shopBuyList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                  </ul>
+                  <ul id="shopBuyList" class="space-y-2 max-h-60 overflow-y-auto pr-2"></ul>
                </div>
                <div>
                   <h3 class="text-lg font-bold mb-2 border-b-2" style="border-color: var(--border-color);">Your Inventory</h3>
-                  <ul id="shopSellList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                  </ul>
+                  <ul id="shopSellList" class="space-y-2 max-h-60 overflow-y-auto pr-2"></ul>
                </div>
             </div>
             <button id="closeShopButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave Store</button>
          </div>
       </div>
-      <div id="spellModal" class="modal-overlay hidden">
+
+      <div id="spellModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-4">Spellbook</h2>
-            <ul id="spellList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-            </ul>
+            <ul id="spellList" class="space-y-2 max-h-60 overflow-y-auto pr-2"></ul>
             <button id="closeSpellButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
-      <div id="inventoryModal" class="modal-overlay hidden">
+
+      <div id="inventoryModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-2">Inventory</h2>
-            <div id="inventoryModalList" class="flex gap-2 flex-wrap min-h-[8rem]">
-            </div>
+            <div id="inventoryModalList" class="flex gap-2 flex-wrap min-h-[8rem]"></div>
             <p class="text-sm text-center muted-text mt-4">
                Press <kbd>1-9</kbd> to use/equip. Press <kbd>D</kbd> to drop. Press <kbd>Esc</kbd> to close.
             </p>
             <button id="closeInventoryButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
-      <div id="skillModal" class="modal-overlay hidden">
+
+      <div id="skillModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-4">Skills</h2>
-            <ul id="skillList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-            </ul>
+            <ul id="skillList" class="space-y-2 max-h-60 overflow-y-auto pr-2"></ul>
             <button id="closeSkillButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
-      <div id="questModal" class="modal-overlay hidden">
+
+      <div id="questModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 max-h-[90vh] flex flex-col">
             <h2 class="text-2xl font-bold mb-4">Bounty Board</h2>
-            <div id="questList" class="space-y-4 max-h-80 overflow-y-auto pr-2">
-            </div>
+            <div id="questList" class="space-y-4 max-h-80 overflow-y-auto pr-2"></div>
             <button id="closeQuestButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave</button>
          </div>
       </div>
-      <div id="craftingModal" class="modal-overlay hidden">
+
+      <div id="craftingModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-4">Crafting Workbench</h2>
-            <ul id="craftingRecipeList" class="space-y-3 max-h-80 overflow-y-auto pr-2">
-            </ul>
+            <ul id="craftingRecipeList" class="space-y-3 max-h-80 overflow-y-auto pr-2"></ul>
             <button id="closeCraftingButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave Workbench</button>
          </div>
       </div>
-      <div id="talentModal" class="modal-overlay hidden">
+
+      <div id="talentModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <div class="flex justify-between items-center mb-4">
                <h2 class="text-2xl font-bold">Class Mastery</h2>
                <span id="talentPointsDisplay" class="font-bold highlight-text">Points: 0</span>
             </div>
             <p class="text-sm muted-text mb-4">Choose a permanent passive ability.</p>
-            <div id="talentList" class="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto pr-2">
-            </div>
+            <div id="talentList" class="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto pr-2"></div>
             <button id="closeTalentButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
-      <div id="evolutionModal" class="modal-overlay hidden">
+
+      <div id="evolutionModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 text-center">
             <h2 class="text-3xl font-bold text-yellow-500 mb-2">Class Evolution</h2>
             <p class="text-muted-text mb-6">You have reached Level 10. Choose your destiny.</p>
-            <div id="evolutionOptions" class="grid grid-cols-1 gap-4 mb-6">
-            </div>
+            <div id="evolutionOptions" class="grid grid-cols-1 gap-4 mb-6"></div>
          </div>
       </div>
-      <div id="skillTrainerModal" class="modal-overlay hidden">
+
+      <div id="skillTrainerModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <div class="flex justify-between items-center mb-4">
                <h2 class="text-2xl font-bold">Skill Trainer</h2>
                <span id="skillTrainerStatPoints" class="font-bold highlight-text">Your Stat Points: 0</span>
             </div>
             <p class="text-sm muted-text mb-4">Spend 1 Stat Point to learn a new skill or level up an existing one.</p>
-            <ul id="skillTrainerList" class="space-y-3 max-h-80 overflow-y-auto pr-2">
-            </ul>
+            <ul id="skillTrainerList" class="space-y-3 max-h-80 overflow-y-auto pr-2"></ul>
             <button id="closeSkillTrainerButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave Trainer</button>
          </div>
       </div>
-      <div id="stashModal" class="modal-overlay hidden">
+
+      <div id="stashModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-4">Storage Stash</h2>
             <div class="grid grid-cols-2 gap-6">
                <div>
                   <h3 class="text-lg font-bold mb-2 border-b-2" style="border-color: var(--border-color);">Your Inventory</h3>
-                  <ul id="stashPlayerList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                  </ul>
+                  <ul id="stashPlayerList" class="space-y-2 max-h-60 overflow-y-auto pr-2"></ul>
                </div>
                <div>
                   <h3 class="text-lg font-bold mb-2 border-b-2" style="border-color: var(--border-color);">Stash Contents</h3>
-                  <ul id="stashBankList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                  </ul>
+                  <ul id="stashBankList" class="space-y-2 max-h-60 overflow-y-auto pr-2"></ul>
                </div>
             </div>
             <button id="closeStashButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close Stash</button>
          </div>
       </div>
-      <div id="mapModal" class="modal-overlay hidden">
+
+      <div id="mapModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="World Map">
          <div class="modal-content themed-container p-4 rounded-2xl shadow-xl border-2 flex flex-col h-[80vh] w-[90vw] max-w-4xl">
             <div class="flex justify-between items-center mb-4">
                <h2 class="text-2xl font-bold">World Map</h2>
                <span class="text-xs muted-text">Only explored lands appear here.</span>
-               <button id="closeMapButton" class="text-red-500 font-bold hover:text-red-700">X</button>
+               <button id="closeMapButton" aria-label="Close Map" class="text-red-500 font-bold hover:text-red-700">X</button>
             </div>
             <div class="flex-grow w-full h-full border-2 border-gray-700 bg-black rounded relative overflow-hidden" style="cursor: grab;">
-               <canvas id="worldMapCanvas" class="block"></canvas>
+               <canvas id="worldMapCanvas" class="block" role="img" aria-label="Interactive World Map"></canvas>
             </div>
             <div class="mt-4 text-center text-sm muted-text">
                <span style="color:#22c55e">■ Plains</span> 
@@ -550,7 +541,8 @@
             </div>
          </div>
       </div>
-      <div id="collectionsModal" class="modal-overlay hidden">
+
+      <div id="collectionsModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center mb-4">
                <h2 class="text-2xl font-bold">Collections</h2>
@@ -559,17 +551,17 @@
                   <button id="tabLibrary" class="text-sm font-bold text-gray-500 pb-1">Library</button>
                </div>
             </div>
-            <div id="bestiaryView" class="overflow-y-auto pr-2 flex-grow space-y-2">
-            </div>
-            <div id="libraryView" class="overflow-y-auto pr-2 flex-grow space-y-2 hidden">
-            </div>
+            <div id="bestiaryView" class="overflow-y-auto pr-2 flex-grow space-y-2"></div>
+            <div id="libraryView" class="overflow-y-auto pr-2 flex-grow space-y-2 hidden"></div>
             <button id="closeCollectionsButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
+
       <footer class="text-center text-xs muted-text mt-4">
-          <!-- Devlog Link Added Here -->
           <p><a href="devlog.html" class="hover:underline">Devlog</a> | Version 0.2.2 | Last Updated: March 15th, 2026</p>
       </footer>
+
+      <!-- FIREBASE SDK -->
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -577,52 +569,43 @@
       
       <!-- DATA MODULES -->
       <script defer src="utils.js"></script>   
-
       <script defer src="renderer.js"></script>
-      
       <script defer src="data-maps.js"></script>
       <script defer src="data-items.js"></script>
       <script defer src="data-entities.js"></script>
-
       <script defer src="data-lore.js"></script>
-
       <script defer src="state.js"></script>
       <script defer src="config-firebase.js"></script>
-
       <script defer src="world.js"></script>
-
       <script defer src="ui.js"></script>
-
       <script defer src="audio.js"></script> 
-
       <script defer src="input.js"></script>
-
       <script defer src="combat.js"></script>
       <script defer src="magic.js"></script>
       <script defer src="items.js"></script>
-
       <script defer src="worldmap.js"></script>
       <script defer src="settings-backup.js"></script>
       <script defer src="fast-travel.js"></script>
       <script defer src="character-setup.js"></script>
       
       <!-- MAIN GAME LOGIC -->
-      <script defer src="script.js?v=5"></script> <!-- Increment version to bust cache -->
+      <script defer src="script.js?v=6"></script> 
       
-      <div id="mobileControls" class="mobile-controls lg:hidden">
+      <!-- MOBILE CONTROLS -->
+      <div id="mobileControls" class="mobile-controls lg:hidden" aria-hidden="true">
          <div class="d-pad-container">
-            <button data-key="ArrowUp" class="d-pad-btn up">⬆️</button>
-            <button data-key="ArrowLeft" class="d-pad-btn left">⬅️</button>
-            <button data-key="r" class="d-pad-btn center">💤</button> 
-            <button data-key="ArrowRight" class="d-pad-btn right">➡️</button>
-            <button data-key="ArrowDown" class="d-pad-btn down">⬇️</button>
+            <button data-key="ArrowUp" aria-label="Move Up" class="d-pad-btn up">⬆️</button>
+            <button data-key="ArrowLeft" aria-label="Move Left" class="d-pad-btn left">⬅️</button>
+            <button data-key="r" aria-label="Wait or Rest" class="d-pad-btn center">💤</button> 
+            <button data-key="ArrowRight" aria-label="Move Right" class="d-pad-btn right">➡️</button>
+            <button data-key="ArrowDown" aria-label="Move Down" class="d-pad-btn down">⬇️</button>
          </div>
          <div class="action-buttons-container">
-            <button data-key="i" class="action-btn">🎒</button> 
-            <button data-key="m" class="action-btn">🔮</button> 
-            <button data-key="k" class="action-btn">⚔️</button> 
-            <button data-key="q" class="action-btn blue">💧</button>
-            <button data-key="Escape" class="action-btn red">❌</button> 
+            <button data-key="i" aria-label="Inventory" class="action-btn">🎒</button> 
+            <button data-key="b" aria-label="Spellbook" class="action-btn">🔮</button> 
+            <button data-key="k" aria-label="Skills" class="action-btn">⚔️</button> 
+            <button data-key="q" aria-label="Drink" class="action-btn blue">💧</button>
+            <button data-key="Escape" aria-label="Escape/Cancel" class="action-btn red">❌</button> 
          </div>
       </div>
    </body>
