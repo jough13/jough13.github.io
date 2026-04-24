@@ -451,26 +451,22 @@ function resizeCanvas() {
     const canvasContainer = canvas.parentElement;
     if (!canvasContainer) return;
 
-    // 1. DECOUPLE CANVAS FROM DOM FLOW
-    // If the canvas dictates its own size in the flow, scaling it will stretch the container.
-    // By locking the container's size and making the canvas absolute, we break the loop!
-    if (!canvasContainer.dataset.rigid) {
-        // Lock the parent container to a responsive but firm height (e.g. 60% of screen)
+    // 1. Lock the container height so zooming doesn't stretch the page vertically
+    if (!canvasContainer.style.height) {
         canvasContainer.style.height = '60vh';
         canvasContainer.style.minHeight = '350px'; 
-        canvasContainer.style.width = '100%'; // Width is controlled by CSS Grid safely
-        
-        // Remove canvas from normal document flow
-        canvas.style.position = 'absolute';
-        canvas.style.top = '0';
-        canvas.style.left = '0';
-        
-        canvasContainer.dataset.rigid = 'true';
     }
 
-    // 2. Read the RIGID container's exact physical dimensions
+    // 2. THE MAGIC FIX: Hide the canvas for 1 millisecond.
+    // This stops the canvas from physically pushing the grid walls outward,
+    // allowing us to measure the TRUE natural width of the column!
+    canvas.style.display = 'none';
+    
     const containerWidth = canvasContainer.clientWidth;
     const containerHeight = canvasContainer.clientHeight;
+    
+    // Bring it back immediately
+    canvas.style.display = 'block';
 
     // 3. Update the global zoom tracker
     if (!window.currentZoom) window.currentZoom = 20;
@@ -482,13 +478,13 @@ function resizeCanvas() {
 
     const dpr = window.devicePixelRatio || 1;
 
-    // 5. Set HTML5 Canvas back-buffer resolution to match physical pixels perfectly
+    // 5. Set HTML5 Canvas back-buffer resolution to match physical pixels
     canvas.width = containerWidth * dpr;
     canvas.height = containerHeight * dpr;
 
-    // 6. Force CSS element to match exactly
-    canvas.style.width = `${containerWidth}px`;
-    canvas.style.height = `${containerHeight}px`;
+    // 6. Force CSS to 100% so it perfectly fits the container without stretching it
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
 
     // 7. Configure Main Context
     ctx.setTransform(1, 0, 0, 1, 0, 0); 
@@ -563,5 +559,5 @@ if (canvasWrapper) {
         
         // Instantly recalculate the grid and redraw!
         resizeCanvas();
-    }, { passive: false });``
+    }, { passive: false });
 }
