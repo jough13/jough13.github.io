@@ -155,7 +155,7 @@ const renderStats = () => {
 
                 if (gameState.player.poisonTurns > 0) {
                     element.classList.add('text-purple-500');
-                    statBarElements.health.style.backgroundColor = '#a855f7'; // Sickly Purple
+                    statBarElements.health.style.backgroundColor = '#a855f7'; 
                     canvasWrapper.classList.add('critical-health'); 
                 } else {
                     if (percent > 60) {
@@ -188,10 +188,10 @@ const renderStats = () => {
                 element.classList.remove('text-green-500', 'text-cyan-400');
                 if (gameState.player.frostbiteTurns > 0) {
                     element.classList.add('text-cyan-400');
-                    statBarElements.stamina.style.backgroundColor = '#38bdf8'; // Icy Blue
+                    statBarElements.stamina.style.backgroundColor = '#38bdf8'; 
                 } else {
                     element.classList.add('text-green-500');
-                    statBarElements.stamina.style.backgroundColor = '#16a34a'; // Normal Green
+                    statBarElements.stamina.style.backgroundColor = '#16a34a'; 
                 }
 
             } else if (statName === 'wits') {
@@ -410,41 +410,51 @@ function renderStatusEffects() {
     statusEffectsPanel.innerHTML = icons;
 }
 
-// --- FIX: INFINITE RESIZE LOOP ---
+// --- FIX: INFINITE RESIZE LOOP & OVERSTRETCHING ---
 function resizeCanvas() {
     const canvasContainer = canvas.parentElement;
     if (!canvasContainer) return;
 
-    // 1. Lock the container height so zooming doesn't stretch the page infinitely
-    if (!canvasContainer.style.height) {
-        // Give it a solid, responsive height (e.g. 60% of viewport height)
+    // 1. DECOUPLE CANVAS FROM DOM FLOW
+    // If the canvas dictates its own size in the flow, scaling it will stretch the container.
+    // By locking the container's size and making the canvas absolute, we break the loop!
+    if (!canvasContainer.dataset.rigid) {
+        // Lock the parent container to a responsive but firm height (e.g. 60% of screen)
         canvasContainer.style.height = '60vh';
+        canvasContainer.style.minHeight = '350px'; 
+        canvasContainer.style.width = '100%'; // Width is controlled by CSS Grid safely
+        
+        // Remove canvas from normal document flow
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        
+        canvasContainer.dataset.rigid = 'true';
     }
 
-    // 2. Get EXACT physical size of the container now that it is locked
-    const rect = canvasContainer.getBoundingClientRect();
-    const containerWidth = rect.width;
-    const containerHeight = rect.height;
+    // 2. Read the RIGID container's exact physical dimensions
+    const containerWidth = canvasContainer.clientWidth;
+    const containerHeight = canvasContainer.clientHeight;
 
-    // Use a global zoom tracker
+    // 3. Update the global zoom tracker
     if (!window.currentZoom) window.currentZoom = 20;
     TILE_SIZE = window.currentZoom;
 
-    // 3. Calculate Viewport based on exact tiles that fit, plus a 2-tile buffer for smooth panning
+    // 4. Calculate Logical Viewport (Tiles that fit + 2 buffer tiles for smooth sliding)
     VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 2; 
     VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 2;
 
     const dpr = window.devicePixelRatio || 1;
 
-    // 4. Set canvas resolution to match container physical pixels perfectly
+    // 5. Set HTML5 Canvas back-buffer resolution to match physical pixels perfectly
     canvas.width = containerWidth * dpr;
     canvas.height = containerHeight * dpr;
 
-    // 5. Force CSS to fill the container without pushing its boundaries
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
+    // 6. Force CSS element to match exactly
+    canvas.style.width = `${containerWidth}px`;
+    canvas.style.height = `${containerHeight}px`;
 
-    // 6. Configure Main Context
+    // 7. Configure Main Context
     ctx.setTransform(1, 0, 0, 1, 0, 0); 
     ctx.scale(dpr, dpr); 
     ctx.imageSmoothingEnabled = false; 
@@ -452,21 +462,21 @@ function resizeCanvas() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 7. Resize Offscreen Canvas (Match logical padded viewport)
+    // 8. Resize Offscreen Canvas (Matches the logical padded viewport)
     const logicalWidth = VIEWPORT_WIDTH * TILE_SIZE;
     const logicalHeight = VIEWPORT_HEIGHT * TILE_SIZE;
 
     terrainCanvas.width = logicalWidth * dpr;
     terrainCanvas.height = logicalHeight * dpr;
     
-    // 8. Configure Offscreen Context
+    // 9. Configure Offscreen Context
     terrainCtx.setTransform(1, 0, 0, 1, 0, 0); 
     terrainCtx.scale(dpr, dpr); 
     terrainCtx.font = `${TILE_SIZE}px monospace`;
     terrainCtx.textAlign = 'center';
     terrainCtx.textBaseline = 'middle';
 
-    // 9. Force Redraw
+    // 10. Force Redraw
     if (typeof gameState !== 'undefined') {
         gameState.mapDirty = true; 
         if (typeof render === 'function') render();
@@ -498,3 +508,24 @@ function resizeCanvas() {
         }
     }, 500);
 })();
+
+// --- ZOOM EVENT LISTENER ---
+const canvasWrapper = document.getElementById('gameCanvasWrapper');
+if (canvasWrapper) {
+    canvasWrapper.addEventListener('wheel', (e) => {
+        // Prevent the whole webpage from scrolling when zooming the map
+        e.preventDefault(); 
+        
+        if (!window.currentZoom) window.currentZoom = 20;
+
+        // Tweak numbers to control zoom speed and limits
+        if (e.deltaY < 0) {
+            window.currentZoom = Math.min(40, window.currentZoom + 2); // Max zoom in
+        } else {
+            window.currentZoom = Math.max(12, window.currentZoom - 2); // Max zoom out
+        }
+        
+        // Instantly recalculate the grid and redraw!
+        resizeCanvas();
+    }, { passive: false });
+}
