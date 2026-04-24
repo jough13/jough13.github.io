@@ -1,45 +1,6 @@
-/* Character Creation Styles */
-.creation-option {
-    border: 2px solid var(--border-color);
-    background-color: var(--bg-panel);
-    cursor: pointer;
-    transition: all 0.2s;
-    opacity: 0.7;
-}
-
-.creation-option:hover {
-    transform: translateY(-2px);
-    opacity: 1.0;
-    border-color: #9ca3af;
-}
-
-.creation-option.selected {
-    border-color: var(--text-highlight); /* Blue/Yellow depending on theme */
-    background-color: rgba(59, 130, 246, 0.1); /* Faint blue tint */
-    opacity: 1.0;
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
-    transform: scale(1.02);
-}
-
-.gender-btn {
-    padding: 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-    flex: 1;
-    text-align: center;
-    transition: all 0.2s;
-}
-
-.gender-btn.selected {
-    background-color: var(--text-highlight);
-    color: var(--bg-page);
-    border-color: transparent;
-}
-
+/* --- THEME VARIABLES --- */
 :root {
-	/* MODIFIED: Brighter, more saturated light-theme colors */
+	/* Brighter, more saturated light-theme colors */
 	--bg-page: #f9fafb;
 	--bg-container: #ffffff;
 	--bg-panel: #f3f4f6;
@@ -50,7 +11,6 @@
 	--canvas-bg: #ffffff;
 	--canvas-border: #9ca3af;
 	--player-color: #1e40af;
-	/* MODIFIED: Darker Blue */
 	--terrain-color: #374151;
 
 	--mtn-base: #57534e;   /* Warm grey */
@@ -59,7 +19,7 @@
 }
 
 [data-theme="dark"] {
-	/* MODIFIED: Brighter, more saturated dark-theme colors */
+	/* Brighter, more saturated dark-theme colors */
 	--bg-page: #111827;
 	--bg-container: #1f2937;
 	--bg-panel: #374151;
@@ -70,23 +30,44 @@
 	--canvas-bg: #000000;
 	--canvas-border: #9ca3af;
 	--player-color: #3b82f6;
-	/* MODIFIED: Darker, richer blue for dark mode */
 	--terrain-color: #d1d5db;
 
 	--pattern-color: rgba(255, 255, 255, 0.05);
         
-        /* Dark Mode: Make them glow slightly */
-        --vine-dark:  rgba(22, 163, 74, 0.15); 
-        --vine-light: rgba(74, 222, 128, 0.15); 
-        
-        --rock-dark:  rgba(28, 25, 23, 0.4); 
-        --rock-light: rgba(87, 83, 78, 0.2); 
+    /* Dark Mode: Make them glow slightly */
+    --vine-dark:  rgba(22, 163, 74, 0.15); 
+    --vine-light: rgba(74, 222, 128, 0.15); 
+    
+    --rock-dark:  rgba(28, 25, 23, 0.4); 
+    --rock-light: rgba(87, 83, 78, 0.2); 
 }
 
+/* --- EASY WIN: CUSTOM SCROLLBARS --- */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-panel);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* --- GLOBAL STYLES --- */
 body {
     font-family: 'Courier New', Courier, monospace;
     background-color: var(--bg-page);
     color: var(--text-default);
+    
+    /* EASY WIN: Crisper font rendering for ASCII art */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 
     /* Layout Logic (Keeps the game centered) */
     display: flex;
@@ -96,6 +77,14 @@ body {
     min-height: 100vh;
     padding: 1rem;
     margin: 0;
+}
+
+/* EASY WIN: Universal tactile button clicks */
+button {
+    transition: transform 0.1s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+button:active:not(:disabled) {
+    transform: scale(0.95);
 }
 
 .game-container {
@@ -126,8 +115,6 @@ canvas {
     -webkit-user-select: none;
 }
 
-/* This prevents the inventory from collapsing before JS loads */ 
-
 #inventoryPanel {
 	min-height: 8rem;
 }
@@ -156,6 +143,7 @@ canvas {
 	border-color: transparent;
 }
 
+/* --- INVENTORY STYLES --- */
 #inventoryList {
 	flex-wrap: wrap;
 }
@@ -171,16 +159,12 @@ canvas {
 	border: 1px solid var(--border-color);
 	background-color: var(--bg-page);
 	border-radius: 8px;
-	/* Softer corners */
 	transition: all 0.2s ease-in-out;
-	/* Smooth transition for hover */
 }
 
 .inventory-slot:hover {
 	transform: translateY(-2px);
-	/* Lifts the slot on hover */
 	border-color: var(--text-highlight);
-	/* Highlights on hover */
 }
 
 .inventory-slot.equipped {
@@ -206,6 +190,7 @@ canvas {
 	font-weight: bold;
 }
 
+/* --- MODAL STYLES --- */
 .modal-overlay {
 	position: fixed;
 	top: 0;
@@ -213,6 +198,9 @@ canvas {
 	width: 100%;
 	height: 100%;
 	background-color: rgba(0, 0, 0, 0.6);
+    /* EASY WIN: Cinematic background blur when opening menus */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -235,154 +223,95 @@ kbd {
 	font-size: 0.8rem;
 }
 
-@keyframes flash-green {
-	from {
-		background-color: rgba(74, 222, 128, 0.5);
-	}
-
-	to {
-		background-color: transparent;
-	}
+/* --- CHARACTER CREATION --- */
+.creation-option {
+    border: 2px solid var(--border-color);
+    background-color: var(--bg-panel);
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 0.7;
 }
 
-@keyframes flash-red {
-	from {
-		background-color: rgba(239, 68, 68, 0.5);
-	}
-
-	to {
-		background-color: transparent;
-	}
+.creation-option:hover {
+    transform: translateY(-2px);
+    opacity: 1.0;
+    border-color: var(--text-muted);
 }
 
-.stat-flash-green {
-	animation: flash-green 0.5s ease-out;
+.creation-option.selected {
+    border-color: var(--text-highlight); 
+    background-color: rgba(59, 130, 246, 0.1); 
+    opacity: 1.0;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    transform: scale(1.02);
 }
 
-.stat-flash-red {
-	animation: flash-red 0.5s ease-out;
+.gender-btn {
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    flex: 1;
+    text-align: center;
+    transition: all 0.2s;
 }
+
+.gender-btn.selected {
+    background-color: var(--text-highlight);
+    color: var(--bg-page);
+    border-color: transparent;
+}
+
+/* --- ANIMATIONS --- */
+@keyframes flash-green { from { background-color: rgba(74, 222, 128, 0.5); } to { background-color: transparent; } }
+@keyframes flash-red { from { background-color: rgba(239, 68, 68, 0.5); } to { background-color: transparent; } }
+.stat-flash-green { animation: flash-green 0.5s ease-out; }
+.stat-flash-red { animation: flash-red 0.5s ease-out; }
 
 @keyframes pulse-blue {
-	0% {
-		transform: scale(1);
-		box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-	}
-
-	50% {
-		transform: scale(1.05);
-		box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-	}
-
-	100% {
-		transform: scale(1);
-		box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-	}
+	0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+	50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+	100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
 }
-
-.stat-pulse-blue {
-	animation: pulse-blue 0.6s ease-out;
-}
+.stat-pulse-blue { animation: pulse-blue 0.6s ease-out; }
 
 @keyframes pulse-purple {
-	0% {
-		transform: scale(1);
-		box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7);
-	}
-
-	50% {
-		transform: scale(1.05);
-		box-shadow: 0 0 0 10px rgba(139, 92, 246, 0);
-	}
-
-	100% {
-		transform: scale(1);
-		box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
-	}
+	0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7); }
+	50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+	100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
 }
-
-.stat-pulse-purple {
-	animation: pulse-purple 0.6s ease-out;
-}
+.stat-pulse-purple { animation: pulse-purple 0.6s ease-out; }
 
 @keyframes pulse-green {
-	0% {
-		transform: scale(1);
-		box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
-	}
-
-	50% {
-		transform: scale(1.05);
-		box-shadow: 0 0 0 10px rgba(74, 222, 128, 0);
-	}
-
-	100% {
-		transform: scale(1);
-		box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
-	}
+	0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+	50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
+	100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
 }
-
-.stat-pulse-green {
-	animation: pulse-green 0.6s ease-out;
-}
+.stat-pulse-green { animation: pulse-green 0.6s ease-out; }
 
 @keyframes pulse-red {
-	0% {
-		transform: scale(1);
-		box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-	}
-
-	50% {
-		transform: scale(1.05);
-		box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-	}
-
-	100% {
-		transform: scale(1);
-		box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-	}
+	0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+	50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+	100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
-
-.stat-pulse-red {
-	animation: pulse-red 0.6s ease-out;
-}
-
-@keyframes pop-in {
-	from {
-		opacity: 0;
-		transform: scale(0.95);
-	}
-	to {
-		opacity: 1;
-		transform: scale(1);
-	}
-}
+.stat-pulse-red { animation: pulse-red 0.6s ease-out; }
 
 @keyframes pulse-yellow {
-	0% {
-		transform: scale(1);
-		box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7);
-	}
+	0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); }
+	50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
+	100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+}
+.stat-pulse-yellow { animation: pulse-yellow 0.6s ease-out; }
 
-	/* Using a yellow color for stamina */
-	50% {
-		transform: scale(1.05);
-		box-shadow: 0 0 0 10px rgba(234, 179, 8, 0);
-	}
-
-	100% {
-		transform: scale(1);
-		box-shadow: 0 0 0 0 rgba(234, 179, 8, 0);
-	}
+@keyframes pop-in {
+	from { opacity: 0; transform: scale(0.95); }
+	to { opacity: 1; transform: scale(1); }
 }
 
-.stat-pulse-yellow {
-	animation: pulse-yellow 0.6s ease-out;
-}
-
+/* --- STAT BARS --- */
 .stat-add-btn {
 	display: none;
-	/* Hidden by default */
 	font-weight: bold;
 	color: var(--text-highlight);
 	background-color: var(--bg-panel);
@@ -401,7 +330,6 @@ kbd {
 	background-color: var(--bg-page);
 }
 
-/* This class will be added by JS */
 .show-stat-buttons .stat-add-btn {
 	display: block;
 }
@@ -409,101 +337,27 @@ kbd {
 .stat-bar-container {
 	width: 100%;
 	height: 8px;
-	/* Sets the thickness of the bar */
 	background-color: var(--bg-page);
-	/* The "empty" part of the bar */
 	border-radius: 4px;
 	overflow: hidden;
-	/* Ensures the bar stays inside the rounded corners */
 	border: 1px solid var(--border-color);
 }
 
 .stat-bar {
 	height: 100%;
 	width: 100%;
-	/* Default to full */
-	transition: width 0.3s ease-out;
-	/* Smooth animation when value changes */
+	transition: width 0.3s ease-out, background-color 0.3s ease;
 }
 
-/* --- Bar Specific Colors --- */
+.bar-health { background-color: #22c55e; }
+.bar-mana { background-color: #3b82f6; }
+.bar-stamina { background-color: #16a34a; }
+.bar-psyche { background-color: #6366f1; }
+.bar-xp { background-color: #facc15; }
 
-.bar-health {
-	background-color: #22c55e;
-	/* Green */
-}
 
-/* We'll add dynamic colors for health later in JS */
-
-.bar-mana {
-	background-color: #3b82f6;
-	/* Blue */
-}
-
-.bar-stamina {
-	background-color: #16a34a;
-	/* Darker Green */
-}
-
-.bar-psyche {
-	background-color: #6366f1;
-	/* Indigo */
-}
-
-.bar-xp {
-	background-color: #facc15;
-	/* Your theme's yellow highlight color */
-}
-
-/* --- Shop Modal Styles --- */
-
-.shop-item {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 8px;
-	background-color: var(--bg-page);
-	border-radius: 6px;
-	border: 1px solid var(--border-color);
-}
-
-.shop-item-name {
-	font-weight: bold;
-	font-size: 1rem;
-}
-
-.shop-item-details {
-	font-size: 0.8rem;
-	color: var(--text-muted);
-}
-
-.shop-item-actions button {
-	background-color: var(--bg-panel);
-	border: 1px solid var(--border-color);
-	border-radius: 4px;
-	padding: 4px 8px;
-	font-size: 0.8rem;
-	font-weight: bold;
-	cursor: pointer;
-	transition: all 0.2s;
-}
-
-.shop-item-actions button:hover {
-	transform: scale(1.05);
-	border-color: var(--text-highlight);
-	color: var(--text-highlight);
-}
-
-.shop-item-actions button:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-	transform: none;
-	border-color: var(--border-color);
-	color: var(--text-muted);
-}
-
-/* --- Spellbook Modal Styles --- */
-.spell-item {
+/* --- LIST ITEMS (Shops, Spells, Skills, Quests) --- */
+.shop-item, .spell-item, .skill-item, .quest-item, .crafting-item {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -511,118 +365,34 @@ kbd {
 	background-color: var(--bg-page);
 	border-radius: 6px;
 	border: 1px solid var(--border-color);
-	cursor: pointer;
 	transition: all 0.2s;
 }
 
-.spell-item:hover {
+.spell-item:hover, .skill-item:hover {
+    cursor: pointer;
 	transform: scale(1.02);
 	border-color: var(--text-highlight);
 	color: var(--text-highlight);
 }
 
-.spell-item-name {
+.shop-item-name, .spell-item-name, .skill-item-name, .quest-title, .crafting-item-name {
 	font-weight: bold;
 	font-size: 1.1rem;
+    color: var(--text-default);
 }
+.quest-title, .crafting-item-name { color: var(--text-highlight); }
 
-.spell-item-details {
+.shop-item-details, .spell-item-details, .quest-description {
 	font-size: 0.9rem;
 	color: var(--text-muted);
+    display: block;
 }
-
-/* --- Skillbook Modal Styles --- */
-.skill-item {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 12px;
-	background-color: var(--bg-page);
-	border-radius: 6px;
-	border: 1px solid var(--border-color);
-	cursor: pointer;
-	transition: all 0.2s;
-}
-
-.skill-item:hover {
-	transform: scale(1.02);
-	border-color: var(--text-highlight);
-	color: var(--text-highlight);
-}
-
-.skill-item-name {
-	font-weight: bold;
-	font-size: 1.1rem;
-}
-
-.skill-item-details {
-	font-size: 0.9rem;
-	color: var(--text-muted);
-}
-
-/* --- Quest Modal Styles --- */
-.quest-item {
-    padding: 12px;
-    background-color: var(--bg-page);
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-}
-
-.quest-title {
-    font-weight: bold;
-    font-size: 1.1rem;
-    color: var(--text-highlight);
-}
-
-.quest-description {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    margin-top: 4px;
-    margin-bottom: 12px;
-}
+.quest-description { margin: 4px 0 12px 0; }
 
 .quest-progress {
     font-size: 0.9rem;
     font-weight: bold;
     margin-bottom: 12px;
-}
-
-.quest-actions button {
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 6px 12px;
-    font-size: 0.9rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.quest-actions button:hover {
-    transform: scale(1.05);
-    border-color: var(--text-highlight);
-    color: var(--text-highlight);
-}
-
-.quest-actions button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-/* --- Crafting Modal Styles --- */
-.crafting-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background-color: var(--bg-page);
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-}
-
-.crafting-item-name {
-    font-weight: bold;
-    font-size: 1.1rem;
-    color: var(--text-highlight);
 }
 
 .crafting-item-materials {
@@ -633,32 +403,30 @@ kbd {
     padding-left: 8px;
 }
 
-.crafting-item-actions button {
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 6px 12px;
-    font-size: 0.9rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
+.shop-item-actions button, .quest-actions button, .crafting-item-actions button {
+	background-color: var(--bg-panel);
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+	padding: 6px 12px;
+	font-size: 0.9rem;
+	font-weight: bold;
+	cursor: pointer;
 }
 
-.crafting-item-actions button:hover {
-    transform: scale(1.05);
-    border-color: var(--text-highlight);
-    color: var(--text-highlight);
+.shop-item-actions button:hover, .quest-actions button:hover, .crafting-item-actions button:hover {
+	border-color: var(--text-highlight);
+	color: var(--text-highlight);
 }
 
-.crafting-item-actions button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
+.shop-item-actions button:disabled, .quest-actions button:disabled, .crafting-item-actions button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
     border-color: var(--border-color);
     color: var(--text-muted);
 }
 
-/* --- Mobile Controls --- */
+
+/* --- MOBILE CONTROLS --- */
 .mobile-controls {
     position: fixed;
     bottom: env(safe-area-inset-bottom, 20px);
@@ -673,12 +441,6 @@ kbd {
     z-index: 50;
 }
 
-.action-btn.blue {
-    background-color: rgba(59, 130, 246, 0.9); /* Bright Blue */
-    color: white;
-}
-
-/* Hide on large screens */
 @media (min-width: 1024px) {
     .mobile-controls {
         display: none !important;
@@ -687,11 +449,10 @@ kbd {
 
 .d-pad-container, .action-buttons-container {
     touch-action: manipulation; 
+    pointer-events: auto;
 }
 
-
 .d-pad-container {
-    pointer-events: auto;
     display: grid;
     grid-template-columns: 60px 60px 60px;
     grid-template-rows: 60px 60px 60px;
@@ -710,31 +471,27 @@ kbd {
     justify-content: center;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     user-select: none;
-    transition: transform 0.1s; /* Smooth click animation */
+    /* EASY WIN: Blur the mobile controls so you can see the map behind them! */
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }
 
-/* This creates the "press down" effect when clicked/tapped */
-.d-pad-btn:active, 
-.action-btn:active {
-    transform: scale(0.95);
+.d-pad-btn:active, .action-btn:active {
     background-color: rgba(200, 200, 200, 0.9);
 }
 
-[data-theme="dark"] .d-pad-btn, 
-[data-theme="dark"] .action-btn {
-    background-color: rgba(55, 65, 81, 0.9);
+[data-theme="dark"] .d-pad-btn, [data-theme="dark"] .action-btn {
+    background-color: rgba(55, 65, 81, 0.8);
     color: white;
 }
 
-/* Grid Positioning for D-Pad */
 .d-pad-btn.up { grid-column: 2; grid-row: 1; }
 .d-pad-btn.left { grid-column: 1; grid-row: 2; }
-.d-pad-btn.center { grid-column: 2; grid-row: 2; font-size: 1.2rem; background-color: rgba(200, 200, 255, 0.9);}
+.d-pad-btn.center { grid-column: 2; grid-row: 2; font-size: 1.2rem; background-color: rgba(200, 200, 255, 0.8);}
 .d-pad-btn.right { grid-column: 3; grid-row: 2; }
 .d-pad-btn.down { grid-column: 2; grid-row: 3; }
 
 .action-buttons-container {
-    pointer-events: auto;
     display: grid;
     grid-template-columns: 50px 50px;
     gap: 10px;
@@ -749,13 +506,15 @@ kbd {
     border-radius: 50%;
     font-size: 1.2rem;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }
 
-.action-btn.red {
-    background-color: rgba(239, 68, 68, 0.9);
-    color: white;
-}
+.action-btn.red { background-color: rgba(239, 68, 68, 0.9); color: white; }
+.action-btn.blue { background-color: rgba(59, 130, 246, 0.9); color: white; }
 
+
+/* --- COLLECTIONS & BESTIARY --- */
 .bestiary-entry {
     background-color: var(--bg-page);
     border: 1px solid var(--border-color);
@@ -801,42 +560,47 @@ kbd {
     border-color: var(--text-highlight);
 }
 
+
+/* --- GAME CANVAS & VISUAL EFFECTS --- */
 #gameCanvasWrapper {
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); 
 }
 
-/* CRT Effect Overlay - Only active when .crt class is present on the wrapper */
+/* EASY WIN: Animated CRT Scanlines */
+@keyframes scanline-scroll {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 8px; }
+}
+
 #gameCanvasWrapper.crt::after {
     content: " ";
     display: block;
     position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
+    top: 0; left: 0; bottom: 0; right: 0;
     background: linear-gradient(
         to bottom,
         rgba(18, 16, 16, 0) 50%,
-        rgba(0, 0, 0, 0.15) 50% /* Increased opacity slightly for visibility on map */
+        rgba(0, 0, 0, 0.15) 50% 
     );
     background-size: 100% 4px;
     z-index: 10;
-    pointer-events: none; /* Ensures clicks pass through to the canvas */
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.5); /* Adds a nice vignette inside the frame */
+    pointer-events: none; 
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5); 
+    animation: scanline-scroll 4s linear infinite;
 }
 
 /* Equipment Slot Styling */
 .equipment-slot {
     width: 60px;
     height: 60px;
-    background-color: var(--bg-page); /* Adapts to theme */
+    background-color: var(--bg-page); 
     border: 2px solid var(--border-color);
-    border-radius: 12px; /* Smoother corners */
+    border-radius: 12px; 
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2rem; /* Larger icons */
-    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.1); /* "Inset" look */
+    font-size: 2rem; 
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.1); 
     color: var(--text-default);
     transition: all 0.2s ease;
 }
@@ -856,7 +620,9 @@ kbd {
 
 .critical-health {
     animation: heartbeat 1.5s infinite ease-in-out;
-    border: 2px solid rgba(220, 38, 38, 0.5); /* Red border */
+    border: 2px solid rgba(220, 38, 38, 0.5); 
+    /* Hardware acceleration for the pulse */
+    will-change: box-shadow;
 }
 
 @keyframes screen-blood {
