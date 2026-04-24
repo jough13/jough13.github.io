@@ -705,40 +705,6 @@ window.learnTalent = function (talentId) {
 
 closeTalentButton.addEventListener('click', () => talentModal.classList.add('hidden'));
 
-const statDisplays = {
-    health: document.getElementById('healthDisplay'),
-    mana: document.getElementById('manaDisplay'),
-    stamina: document.getElementById('staminaDisplay'),
-    psyche: document.getElementById('psycheDisplay'),
-    hunger: document.getElementById('hungerDisplay'),
-    thirst: document.getElementById('thirstDisplay'),
-    strength: document.getElementById('strengthDisplay'),
-    wits: document.getElementById('witsDisplay'),
-    constitution: document.getElementById('constitutionDisplay'),
-    dexterity: document.getElementById('dexterityDisplay'),
-    charisma: document.getElementById('charismaDisplay'),
-    luck: document.getElementById('luckDisplay'),
-    willpower: document.getElementById('willpowerDisplay'),
-    perception: document.getElementById('perceptionDisplay'),
-    endurance: document.getElementById('enduranceDisplay'),
-    intuition: document.getElementById('intuitionDisplay'),
-    coins: document.getElementById('coinsDisplay'),
-
-    level: document.getElementById('levelDisplay'),
-    xp: document.getElementById('xpDisplay'),
-    statPoints: document.getElementById('statPointsDisplay')
-};
-
-const statBarElements = {
-    health: document.getElementById('healthBar'),
-    mana: document.getElementById('manaBar'),
-    stamina: document.getElementById('staminaBar'),
-    psyche: document.getElementById('psycheBar'),
-    hunger: document.getElementById('hungerBar'),
-    thirst: document.getElementById('thirstBar'),
-    xp: document.getElementById('xpBar')
-};
-
 ctx.font = `${TILE_SIZE}px monospace`;
 ctx.textAlign = 'center';
 ctx.textBaseline = 'middle';
