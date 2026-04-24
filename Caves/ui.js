@@ -9,6 +9,9 @@ const timeDisplay = document.getElementById('timeDisplay');
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+const terrainCanvas = document.createElement('canvas');
+const terrainCtx = terrainCanvas.getContext('2d');
+
 const darkModeToggle = document.getElementById('darkModeToggle');
 const messageLog = document.getElementById('messageLog');
 const inventoryList = document.getElementById('inventoryList');
@@ -527,5 +530,5 @@ if (canvasWrapper) {
         
         // Instantly recalculate the grid and redraw!
         resizeCanvas();
-    }, { passive: false });
+    }, { passive: false });``
 }
