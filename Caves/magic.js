@@ -1,4 +1,3 @@
-
 /**
  * Handles all skill logic based on SKILL_DATA
  * and the player's skillbook.
@@ -7,7 +6,7 @@
 
 function useSkill(skillId) {
     const player = gameState.player;
-    const skillData = SKILL_DATA[skillId]; // Get data from our new constant
+    const skillData = SKILL_DATA[skillId]; 
 
     if (!skillData) {
         logMessage("Unknown skill. (No skill data found)");
@@ -19,7 +18,7 @@ function useSkill(skillId) {
         return;
     }
 
-    const skillLevel = player.skillbook[skillId] || 0; // Get the player's level for this skill
+    const skillLevel = player.skillbook[skillId] || 0; 
 
     if (skillLevel === 0) {
         logMessage("You don't know that skill.");
@@ -34,11 +33,11 @@ function useSkill(skillId) {
 
     // --- 2. Check Resource Cost ---
     const cost = skillData.cost;
-    const costType = skillData.costType; // 'stamina'
+    const costType = skillData.costType; 
 
     if (player[costType] < cost) {
         logMessage(`You don't have enough ${costType} to use that.`);
-        return; // Do not close modal, do not end turn
+        return; 
     }
 
     // --- 3. Handle Targeting ---
@@ -46,15 +45,14 @@ function useSkill(skillId) {
         // --- Aimed Skills (e.g., Lunge) ---
         // Cost is checked, but *not* deducted. executeLunge will deduct it.
         gameState.isAiming = true;
-        gameState.abilityToAim = skillId; // Store the skillId (e.g., "lunge")
+        gameState.abilityToAim = skillId; 
         skillModal.classList.add('hidden');
         logMessage(`${skillData.name}: Press an arrow key or WASD to use. (Esc) to cancel.`);
-        return; // We don't end the turn until they fire
+        return; 
 
     } else if (skillData.target === 'self') {
         // --- Self-Cast Skills (e.g., Brace) ---
-        // Cast immediately.
-        player[costType] -= cost; // Deduct the resource cost
+        player[costType] -= cost; 
         let skillUsedSuccessfully = false;
 
         // --- 4. Execute Skill Effect ---
@@ -64,7 +62,6 @@ function useSkill(skillId) {
                     logMessage("You are already bracing!");
                     break;
                 }
-                // Formula: defense = base + (Constitution * 0.5 * level)
                 const defenseBonus = Math.floor(skillData.baseDefense + (player.constitution * 0.5 * skillLevel));
                 player.defenseBonus = defenseBonus;
                 player.defenseBonusTurns = skillData.duration;
@@ -105,29 +102,23 @@ function useSkill(skillId) {
             case 'whirlwind':
                 logMessage("You spin in a deadly vortex!");
                 let hitCount = 0;
-                // Stronger scaling: Str + Dex
                 const baseDmg = (player.strength + player.dexterity) * skillLevel;
 
-                // Attack all adjacent tiles (-1 to 1)
                 for (let y = -1; y <= 1; y++) {
                     for (let x = -1; x <= 1; x++) {
-                        if (x === 0 && y === 0) continue; // Skip self
+                        if (x === 0 && y === 0) continue; 
                         const tx = player.x + x;
                         const ty = player.y + y;
 
-                        // --- Handle Overworld vs Instanced ---
                         if (gameState.mapMode === 'overworld') {
                             const tile = chunkManager.getTile(tx, ty);
                             const enemyData = ENEMY_DATA[tile];
                             if (enemyData) {
-                                // Calculate damage (simplified for AoE)
                                 const finalDmg = Math.max(1, baseDmg - (enemyData.defense || 0));
-                                // Call the async handler (fire and forget)
                                 handleOverworldCombat(tx, ty, enemyData, tile, finalDmg);
                                 hitCount++;
                             }
                         } else {
-                            // Existing Instanced Logic
                             let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
                             if (enemy) {
                                 enemy.health -= baseDmg;
@@ -139,7 +130,6 @@ function useSkill(skillId) {
                                     registerKill(enemy);
                                     gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
 
-                                    // Update persistent dungeon state
                                     if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
                                         chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
                                     }
@@ -157,12 +147,15 @@ function useSkill(skillId) {
 
         // --- 5. Finalize Self-Cast Turn ---
         if (skillUsedSuccessfully) {
-            playerRef.update({ [costType]: player[costType] }); // Save the new stamina
-            triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
+            playerRef.update({ [costType]: player[costType] }); 
+            triggerStatFlash(statDisplays.stamina, false); 
             skillModal.classList.add('hidden');
             triggerAbilityCooldown(skillId);
             endPlayerTurn();
-            renderEquipment(); // Update UI to show buff
+            renderEquipment(); 
+        } else {
+            // EASY WIN: Refund stamina if skill failed (e.g. already bracing)
+            player[costType] += cost;
         }
     }
 }
@@ -207,7 +200,6 @@ function castSpell(spellId) {
 
     // --- COST CHECK ---
     if (costType === 'health') {
-        // Special check for health: must have MORE than the cost
         if (player[costType] <= cost) {
             logMessage("You are too weak to sacrifice your life-force.");
             return;
@@ -219,7 +211,6 @@ function castSpell(spellId) {
 
     // --- 2. Handle Targeting ---
     if (spellData.target === 'aimed') {
-        // (This block is unchanged)
         gameState.isAiming = true;
         gameState.abilityToAim = spellId;
         spellModal.classList.add('hidden');
@@ -228,21 +219,20 @@ function castSpell(spellId) {
 
     } else if (spellData.target === 'self') {
         // --- Self-Cast Spells ---
-        player[costType] -= cost; // Deduct the resource cost
+        player[costType] -= cost; 
         let spellCastSuccessfully = false;
-        let updates = {}; // --- Object to batch database updates ---
+        let updates = {}; 
 
         // --- 3. Execute Spell Effect ---
         switch (spellId) {
 
             case 'stoneSkin':
-                // Grants high defense for a short time
                 const skinBonus = 3 + Math.floor(player.constitution * 0.2);
                 player.defenseBonus = (player.defenseBonus || 0) + skinBonus;
                 player.defenseBonusTurns = spellData.duration;
 
                 logMessage(`Your skin turns to granite! (+${skinBonus} Defense)`);
-                triggerStatAnimation(statDisplays.health, 'stat-pulse-gray'); // Gray for stone!
+                triggerStatAnimation(statDisplays.health, 'stat-pulse-gray'); 
 
                 updates.defenseBonus = player.defenseBonus;
                 updates.defenseBonusTurns = player.defenseBonusTurns;
@@ -269,7 +259,6 @@ function castSpell(spellId) {
 
                 player.candlelightTurns = spellData.duration;
 
-                // Visual Flair
                 triggerStatAnimation(statDisplays.mana, 'stat-pulse-yellow');
                 if (typeof ParticleSystem !== 'undefined') {
                     ParticleSystem.createFloatingText(player.x, player.y, "💡", "#facc15");
@@ -283,12 +272,12 @@ function castSpell(spellId) {
                 player.health = player.maxHealth;
                 player.poisonTurns = 0;
                 player.frostbiteTurns = 0;
-                player.madnessTurns = 0; // New status clean
+                player.madnessTurns = 0; 
                 player.rootTurns = 0;
 
                 logMessage("A holy light bathes you. You are fully restored!");
                 triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
-                ParticleSystem.createLevelUp(player.x, player.y); // Use the sparkle effect
+                ParticleSystem.createLevelUp(player.x, player.y); 
 
                 updates.health = player.health;
                 updates.poisonTurns = 0;
@@ -307,8 +296,7 @@ function castSpell(spellId) {
                 if (healedFor > 0) {
                     logMessage(`You cast Lesser Heal and recover ${healedFor} health.`);
                     triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
-
-                    ParticleSystem.createFloatingText(player.x, player.y, `+${healedFor}`, '#22c55e'); // Green text
+                    ParticleSystem.createFloatingText(player.x, player.y, `+${healedFor}`, '#22c55e'); 
 
                 } else {
                     logMessage("You cast Lesser Heal, but you're already at full health.");
@@ -372,7 +360,6 @@ function castSpell(spellId) {
                 spellCastSuccessfully = true;
                 break;
 
-            // --- ADD THIS NEW CASE ---
             case 'darkPact':
                 const manaRestored = spellData.baseRestore + (player.willpower * spellLevel);
                 const oldMana = player.mana;
@@ -381,25 +368,23 @@ function castSpell(spellId) {
 
                 if (actualRestore > 0) {
                     logMessage(`You sacrifice ${cost} health to restore ${actualRestore} mana.`);
-                    triggerStatAnimation(statDisplays.health, 'stat-pulse-red'); // Our new animation
+                    triggerStatAnimation(statDisplays.health, 'stat-pulse-red'); 
                     triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
                 } else {
                     logMessage("You cast Dark Pact, but your mana is already full.");
                 }
-                updates.health = player.health; // Add health cost to updates
-                updates.mana = player.mana;   // Add mana gain to updates
+                updates.health = player.health; 
+                updates.mana = player.mana;   
                 spellCastSuccessfully = true;
                 break;
-            // --- END ---
         }
 
         // --- 4. Finalize Self-Cast Turn ---
         if (spellCastSuccessfully) {
-
             AudioSystem.playMagic();
 
-            updates[costType] = player[costType]; // Add the resource cost (mana/psyche/health)
-            playerRef.update(updates); // Send all updates at once
+            updates[costType] = player[costType]; 
+            playerRef.update(updates); 
             spellModal.classList.add('hidden');
 
             triggerAbilityCooldown(spellId);
@@ -407,8 +392,10 @@ function castSpell(spellId) {
             endPlayerTurn();
             renderStats();
         } else {
-            // Refund the cost if the spell failed (e.g., shield already active)
+            // EASY WIN: Bug Fix! Refund the cost if the spell failed (e.g., shield already active)
             player[costType] += cost;
+            // Also flash the bar red to show it failed
+            if(statDisplays[costType]) triggerStatFlash(statDisplays[costType], false); 
         }
     }
 }
@@ -436,7 +423,6 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
     const finalDmg = Math.max(1, Math.floor(baseDmg + (player.strength * 0.5 * skillLevel)));
 
     // Target Logic
-    // Shield Bash / Cleave hit adjacent (Range 1)
     const targetX = player.x + dirX;
     const targetY = player.y + dirY;
 
@@ -444,21 +430,16 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
     // If Cleave, add side targets
     if (skillId === 'cleave') {
-        // If attacking North(0, -1), sides are (-1, -1) and (1, -1)
-        // Simple logic: add perpendicular offsets? No, cleave usually hits a wide arc in front.
-        // Let's hit the main target, plus the tiles 90 degrees to it.
-        // If attacking (1, 0) [East], hit (1, -1) [NE] and (1, 1) [SE]
-        if (dirX !== 0) { // Horizontal attack
+        if (dirX !== 0) { 
             enemiesToHit.push({ x: targetX, y: targetY - 1 });
             enemiesToHit.push({ x: targetX, y: targetY + 1 });
-        } else { // Vertical attack
+        } else { 
             enemiesToHit.push({ x: targetX - 1, y: targetY });
             enemiesToHit.push({ x: targetX + 1, y: targetY });
         }
     }
 
     for (const coords of enemiesToHit) {
-        // ... (Insert standard tile check logic here: Overworld vs Instanced) ...
         let tile;
         let map;
         if (gameState.mapMode === 'dungeon') {
@@ -481,12 +462,6 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
             }
 
             hit = true;
-
-            if (player.stealthTurns > 0) {
-                player.stealthTurns = 0;
-                logMessage("You strike from the shadows!");
-                playerRef.update({ stealthTurns: 0 });
-            }
 
             // Apply Damage
             if (gameState.mapMode === 'overworld') {
@@ -536,35 +511,29 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
  * Universal helper function to apply spell damage to a target.
  * Handles both overworld (Firebase) and instanced enemies.
  * Also handles special on-hit effects like Siphon Life.
- * @param {number} targetX - The x-coordinate of the target.
- * @param {number} targetY - The y-coordinate of the target.
- * @param {number} damage - The final calculated damage to apply.
- * @param {string} spellId - The ID of the spell being cast (e.g., "siphonLife").
  */
 async function applySpellDamage(targetX, targetY, damage, spellId) {
 
     // --- WEATHER SYNERGY ---
-    const weather = gameState.weather; // Get current weather
+    const weather = gameState.weather; 
     let finalDamage = damage;
 
-    // --- TALENT: ARCANE POTENCY ---
+    // --- EASY WIN: TALENT ARCANE POTENCY ---
+    // Was missing from logic entirely! Archmages now actually hit harder!
     if (gameState.player.talents && gameState.player.talents.includes('arcane_potency')) {
         finalDamage += 2;
     }
 
     if (gameState.mapMode === 'overworld' && weather !== 'clear') {
-
         // Rain/Storm Logic
         if (weather === 'rain' || weather === 'storm') {
             if (spellId === 'fireball' || spellId === 'meteor') {
                 finalDamage = Math.floor(damage * 0.5); // Fire fizzles in rain
-                // Visual cue (only if player is casting)
                 if (gameState.player.x !== targetX) ParticleSystem.createFloatingText(targetX, targetY, "Fizzle...", "#aaa");
             } else if (spellId === 'thunderbolt' || spellId === 'magicBolt') {
                 finalDamage = Math.floor(damage * 1.5); // Lightning conducts!
             }
         }
-
         // Snow Logic
         else if (weather === 'snow') {
             if (spellId === 'frostBolt') {
@@ -589,15 +558,12 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
     const enemyData = ENEMY_DATA[tile];
     if (!enemyData) return false; // No enemy here
 
-    let damageDealt = 0; // Track actual damage for lifesteal
+    let damageDealt = 0; 
 
     if (gameState.mapMode === 'overworld') {
         const enemyId = `overworld:${targetX},${-targetY}`;
         const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-        // --- Capture Stats Before Damage ---
-        // Just like melee, we check if we have a local visual copy of this enemy.
-        // If we do, we use its stats (Name, Elite status, Max HP) for the transaction.
         const liveEnemy = gameState.sharedEnemies[enemyId];
         const enemyInfo = liveEnemy || getScaledEnemy(enemyData, targetX, targetY);
   
@@ -606,17 +572,15 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 let enemy;
 
                 if (currentData === null) {
-                    // Use enemyInfo (the visual state) instead of generating random new stats
                     enemy = {
                         name: enemyInfo.name, 
                         health: enemyInfo.maxHealth,
                         maxHealth: enemyInfo.maxHealth,
                         attack: enemyInfo.attack,
-                        defense: enemyData.defense, // Base defense is usually fine, or use enemyInfo.defense
+                        defense: enemyData.defense, 
                         xp: enemyInfo.xp,
                         loot: enemyData.loot,
                         tile: tile,
-                        // Critical: Persist Elite status and color
                         isElite: enemyInfo.isElite || false,
                         color: enemyInfo.color || null
                     };
@@ -624,17 +588,14 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                     enemy = currentData;
                 }
 
-                // Calculate actual damage
-                damageDealt = Math.max(1, damage);
+                damageDealt = Math.max(1, finalDamage);
                 enemy.health -= damageDealt;
 
-                let color = '#3b82f6'; // Blue for magic
+                let color = '#3b82f6'; 
 
-                if (spellId === 'fireball') color = '#f97316'; // Orange for fire
-                if (spellId === 'poisonBolt') color = '#22c55e'; // Green for poison
+                if (spellId === 'fireball') color = '#f97316'; 
+                if (spellId === 'poisonBolt') color = '#22c55e'; 
 
-                // Note: Visuals inside transaction might fire multiple times on retries, 
-                // but for this game it's acceptable.
                 if (typeof ParticleSystem !== 'undefined') {
                     ParticleSystem.createExplosion(targetX, targetY, color);
                     ParticleSystem.createFloatingText(targetX, targetY, `-${damageDealt}`, color);
@@ -647,12 +608,9 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
             const finalEnemyState = transactionResult.snapshot.val();
             
             if (finalEnemyState === null) {
-                // Enemy Died
-                // Use enemyInfo for the log and XP so it matches what the player saw
                 logMessage(`The ${enemyInfo.name} was vanquished!`);
                 registerKill(enemyInfo);
 
-                // Pass Elite flag to loot generator
                 const lootData = { ...enemyData, isElite: enemyInfo.isElite };
                 const droppedLoot = generateEnemyLoot(player, lootData);
 
@@ -666,7 +624,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         // Handle Instanced Combat
         let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
         if (enemy) {
-            damageDealt = Math.max(1, damage);
+            damageDealt = Math.max(1, finalDamage);
             enemy.health -= damageDealt;
             logMessage(`You hit the ${enemy.name} for ${damageDealt} magic damage!`);
 
@@ -703,38 +661,33 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
     }
 
     else if (damageDealt > 0 && spellData.inflicts && Math.random() < spellData.inflictChance) {
-
-        // This only applies to instanced enemies for now
         if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
             let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
 
             if (enemy && spellData.inflicts === 'frostbite' && enemy.frostbiteTurns <= 0) {
                 logMessage(`The ${enemy.name} is afflicted with Frostbite!`);
-                enemy.frostbiteTurns = 5; // Lasts 5 turns
+                enemy.frostbiteTurns = 5; 
             }
 
             else if (enemy && spellData.inflicts === 'poison' && enemy.poisonTurns <= 0) {
                 logMessage(`The ${enemy.name} is afflicted with Poison!`);
-                enemy.poisonTurns = 3; // Poison lasts 3 turns
+                enemy.poisonTurns = 3; 
             }
 
             else if (enemy && spellData.inflicts === 'root' && enemy.rootTurns <= 0) {
                 logMessage(`Roots burst from the ground, trapping the ${enemy.name}!`);
-                enemy.rootTurns = 3; // Root lasts 3 turns
+                enemy.rootTurns = 3; 
             }
         }
     }
 
-    return damageDealt > 0; // Return true if we hit something
+    return damageDealt > 0; 
 }
 
 
 /**
  * Executes an aimed spell (Magic Bolt, Fireball, Siphon Life)
  * after the player chooses a direction.
- * @param {string} spellId - The ID of the spell to execute.
- * @param {number} dirX - The x-direction of the aim.
- * @param {number} dirY - The y-direction of the aim.
  */
 
 async function executeAimedSpell(spellId, dirX, dirY) {
@@ -743,11 +696,6 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     const spellLevel = player.spellbook[spellId] || 1;
 
     // --- 1. Deduct Cost ---
-
-    // The cost was already checked in castSpell. Now we deduct it.
-
-    // --- ARCHMAGE: MANA FLOW ---
-
     let cost = spellData.cost;
     if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
         cost = Math.floor(cost * 0.8);
@@ -757,10 +705,12 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     AudioSystem.playMagic();
 
     let hitSomething = false;
+    let finalTargetX = player.x;
+    let finalTargetY = player.y;
 
     // --- CALCULATE DAMAGE WITH BONUS ---
     const effectiveWits = player.wits + (player.witsBonus || 0);
-    const effectiveWill = player.willpower; // Add willpowerBonus here if you ever add that stat!
+    const effectiveWill = player.willpower; 
 
     // --- 2. Execute Spell Logic ---
     switch (spellId) {
@@ -770,7 +720,6 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             logMessage("Vines burst from the ground!");
             const entangleDmg = spellData.baseDamage + (player.intuition * spellLevel); 
 
-            // Entangle hits a specific spot or the first thing in line
             for (let i = 1; i <= 3; i++) {
                 const tx = player.x + (dirX * i);
                 const ty = player.y + (dirY * i);
@@ -782,6 +731,8 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     }
                     break;
                 }
+                finalTargetX = tx;
+                finalTargetY = ty;
             }
             break;
         }
@@ -792,7 +743,6 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         case 'psychicBlast':
         case 'frostBolt':
         case 'poisonBolt': {
-            // Determine which stat scales damage based on the specific spell ID
             const damageStat = (spellId === 'siphonLife' || spellId === 'psychicBlast' || spellId === 'poisonBolt') 
                 ? effectiveWill 
                 : effectiveWits;
@@ -808,15 +758,16 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             
             logMessage(logMsg);
 
-            // Projectile travel logic (Range 1-3)
             for (let i = 1; i <= 3; i++) {
                 const targetX = player.x + (dirX * i);
                 const targetY = player.y + (dirY * i);
                 
                 if (await applySpellDamage(targetX, targetY, spellDamage, spellId)) {
                     hitSomething = true;
-                    break; // Stop, we hit a target
+                    break; 
                 }
+                finalTargetX = targetX;
+                finalTargetY = targetY;
             }
             break;
         }
@@ -825,7 +776,6 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         case 'thunderbolt': {
             const thunderDmg = spellData.baseDamage + (player.wits * spellLevel);
             logMessage("CRACK! Lightning strikes!");
-            // Thunderbolt is instant hit, range 4
             for (let i = 1; i <= 4; i++) {
                 const tx = player.x + (dirX * i);
                 const ty = player.y + (dirY * i);
@@ -834,12 +784,13 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     hitSomething = true;
                     break;
                 }
+                finalTargetX = tx;
+                finalTargetY = ty;
             }
             break;
         }
 
         case 'meteor': {
-            // Huge AoE (radius 2)
             const meteorDmg = spellData.baseDamage + (player.wits * spellLevel);
             const mx = player.x + (dirX * 3);
             const my = player.y + (dirY * 3);
@@ -857,12 +808,9 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         }
 
         case 'raiseDead': {
-            // (Keep existing raiseDead logic...)
-            // 1. Calculate target coordinates
             const targetX = player.x + dirX;
             const targetY = player.y + dirY;
 
-            // 2. Determine what is on that tile
             let tileType;
             if (gameState.mapMode === 'overworld') {
                 tileType = chunkManager.getTile(targetX, targetY);
@@ -878,11 +826,9 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 } else {
                     logMessage("You chant the words of unlife... A Skeleton rises to serve you!");
 
-                    // Consume the bones/grave
                     if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(targetX, targetY, '.');
                     else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
 
-                    // Create the companion
                     gameState.player.companion = {
                         name: "Risen Skeleton",
                         tile: "s",
@@ -906,7 +852,6 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         }
 
         case 'chainLightning': {
-            // (Keep existing chainLightning logic...)
             const lightningDmg = spellData.baseDamage + (player.wits * spellLevel);
             const targetX = player.x + (dirX * 3);
             const targetY = player.y + (dirY * 3);
@@ -958,7 +903,6 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         }
 
         case 'fireball': {
-            // (Keep existing fireball logic...)
             const fbDamage = spellData.baseDamage + (player.wits * spellLevel);
             const radius = spellData.radius; 
             const targetX = player.x + (dirX * 3);
@@ -999,8 +943,12 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         }
     }
 
-    if (!hitSomething && (spellId === 'magicBolt' || spellId === 'siphonLife')) {
+    // EASY WIN: Visual feedback if a projectile spell hits nothing!
+    if (!hitSomething && (spellId === 'magicBolt' || spellId === 'siphonLife' || spellId === 'poisonBolt' || spellId === 'frostBolt')) {
         logMessage("Your spell flies harmlessly into the distance.");
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Fizzle...", "#9ca3af");
+        }
     }
 
     // --- 3. Finalize Turn ---
@@ -1008,7 +956,6 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         [spellData.costType]: player[spellData.costType] // Update mana or psyche
     });
 
-    // Trigger the correct stat animation
     if (spellData.costType === 'mana') {
         triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
     } else if (spellData.costType === 'psyche') {
@@ -1444,13 +1391,26 @@ function triggerAbilityCooldown(abilityId) {
         // Initialize object if it doesn't exist
         if (!gameState.player.cooldowns) gameState.player.cooldowns = {};
 
+        let cd = data.cooldown;
+
+        // --- EASY WIN: Class specific Cooldown Reduction! ---
+        if (gameState.player.talents) {
+            // Rogues with Evasion recover movement skills faster
+            if (data.type === 'movement' && gameState.player.talents.includes('evasion')) {
+                cd = Math.max(1, cd - 1);
+            }
+            // Archmages recover spells faster
+            if (data.costType === 'mana' && gameState.player.talents.includes('mana_flow')) {
+                cd = Math.max(1, cd - 1);
+            }
+        }
+
         // Set the turns
-        gameState.player.cooldowns[abilityId] = data.cooldown;
+        gameState.player.cooldowns[abilityId] = cd;
 
         // Update Database
         playerRef.update({ cooldowns: gameState.player.cooldowns });
 
-        // Update UI (Safeguard in case you haven't added the Hotbar UI yet)
         if (typeof renderHotbar === 'function') renderHotbar();
     }
 }
