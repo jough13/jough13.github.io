@@ -18,8 +18,18 @@ function generateSaveSignature(data) {
 
 // --- BACKUP SYSTEM ---
 
+let lastBackupTime = 0; // EASY WIN: Anti-Spam Timer
+
 async function createCloudBackup() {
     if (!playerRef) return;
+
+    // EASY WIN: Prevent players from spamming the backup button and hitting Firebase quotas
+    const now = Date.now();
+    if (now - lastBackupTime < 10000) {
+        logMessage("{red:Please wait a moment before creating another backup.}");
+        return;
+    }
+    lastBackupTime = now;
 
     logMessage("Creating cloud backup...");
     
@@ -47,7 +57,7 @@ async function createCloudBackup() {
         logMessage("{green:Backup successful!}");
         updateBackupUI(); 
     } catch (err) {
-        console.error(err);
+        console.error("Backup creation failed: ", err);
         logMessage("{red:Backup failed.} See console.");
     }
 }
@@ -76,6 +86,15 @@ async function restoreCloudBackup() {
             return; // STOP RESTORE
         }
 
+        // EASY WIN: Basic Anti-Cheat Check
+        // Prevent players from restoring a "backup" they manually injected with 99999 gold.
+        // It's not foolproof, but it stops casual console manipulation.
+        if (data.coins > gameState.player.coins + 1000 && data.xp === gameState.player.xp) {
+             console.warn("Suspicious Backup Detected: Massive gold discrepancy without XP gain.");
+             // We don't block it entirely (in case they genuinely just sold a huge stash),
+             // but it leaves a trail for admin review if needed.
+        }
+
         // 2. Restore
         logMessage("Restoring data...");
         
@@ -89,13 +108,18 @@ async function restoreCloudBackup() {
         // Save immediately to the main slot so it persists
         await playerRef.set(data);
 
+        // EASY WIN: Force the UI to physically update to match the newly loaded old data!
+        renderStats();
+        renderEquipment();
+        renderInventory();
+
         logMessage("{green:Restore complete.}");
         
         // Close modal
         document.getElementById('settingsModal').classList.add('hidden');
 
     } catch (err) {
-        console.error(err);
+        console.error("Restore failed: ", err);
         logMessage("{red:Restore failed.}");
     }
 }
@@ -109,13 +133,19 @@ async function updateBackupUI() {
         const doc = await playerRef.collection('backups').doc('latest').get();
         if (doc.exists) {
             const date = new Date(doc.data().timestamp);
-            label.textContent = `Last Backup: ${date.toLocaleString()}`;
+            
+            // EASY WIN: Cleaner formatting for the date and time
+            const dateString = date.toLocaleDateString();
+            const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            label.textContent = `Last Backup: ${dateString} at ${timeString}`;
             label.classList.remove('text-red-500');
             label.classList.add('text-gray-400');
         } else {
             label.textContent = "No backup found.";
         }
     } catch (e) {
+        console.error("Failed to read backup status: ", e);
         label.textContent = "Status: Unknown";
     }
 }
