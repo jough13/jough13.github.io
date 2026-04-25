@@ -22,11 +22,22 @@ const auth = firebase.auth();
 const rtdb = firebase.database();
 
 // Apply settings only if not already configured to avoid "Overriding host" error
-// We wrap this in a try-catch because checking 'settings' directly is difficult in v8
 try {
     db.settings({
         cacheSizeBytes: 10485760 // 10 MB
     });
+
+    // EASY WIN: Enable Offline Persistence! 
+    // If the player's connection drops briefly, their inventory/stat changes 
+    // are saved locally and synced automatically when they reconnect.
+    db.enablePersistence()
+        .catch((err) => {
+            if (err.code === 'failed-precondition') {
+                console.warn("Multiple tabs open. Offline persistence enabled in the first tab only.");
+            } else if (err.code === 'unimplemented') {
+                console.warn("Browser does not support offline persistence.");
+            }
+        });
 } catch (e) {
     console.log("Firestore settings already applied, skipping.");
 }
@@ -47,12 +58,21 @@ function handleAuthError(error) {
         case 'auth/weak-password':
             friendlyMessage = 'Password must be at least 6 characters long.';
             break;
+        // EASY WIN: Handle brute-force lockout gracefully
+        case 'auth/too-many-requests':
+            friendlyMessage = 'Too many failed login attempts. Please try again later.';
+            break;
         default:
             friendlyMessage = 'An unexpected error occurred. Please try again.';
             break;
     }
-    authError.textContent = friendlyMessage;
-    console.error("Authentication Error:", error); // Keep the detailed log for yourself
+    
+    const authErrorElement = document.getElementById('authError');
+    if (authErrorElement) {
+        authErrorElement.textContent = friendlyMessage;
+    }
+    
+    console.error("Authentication Error:", error); // Keep detailed log for debugging
 }
 
 /**
@@ -61,7 +81,6 @@ function handleAuthError(error) {
  * @param {object} obj The object to clean.
  * @returns {object} A new object, safe to send to Firestore.
  */
-
 function sanitizeForFirebase(obj) {
     // 1. Convert undefined to null immediately
     if (obj === undefined) return null; 
