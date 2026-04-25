@@ -25,8 +25,14 @@ window.LORE_STONE_MESSAGES = [
     "Iron rots, but obsidian remembers.",
     "Do not trust the water in the deep grotto.",
     "The King was not the first to fall to the shadow.",
-    "Magic requires sacrifice. Always."
+    "Magic requires sacrifice. Always.",
+    "The dragons did not flee. They were driven out by something worse.",
+    "If the stone weeps, the Void is near.",
+    "The Elves knew the truth, and so they burned their own cities.",
+    "Do not dig too deep. The earth is a cage, not a mother."
 ];
+
+// --- BIOME SPECIFIC FLAVOR TEXT (Triggered by '#' Waystones) ---
 
 window.LORE_PLAINS = [
     "The wind whispers of the Old King's return.",
@@ -37,7 +43,12 @@ window.LORE_PLAINS = [
     "A broken cart lies here, its wheel rotted away.",
     "The horizon feels endless here. You feel small.",
     "Wildflowers grow in a perfect circle here. Strange.",
-    "You find a stone marker with a name you cannot read."
+    "You find a stone marker with a name you cannot read.",
+    "A rusted helmet is staked on a spear. A warning?",
+    "The clouds above seem to circle this exact spot.",
+    "You hear the distant sound of marching boots, but see no one.",
+    "A single, massive footprint is pressed into the mud.",
+    "The wildflowers here smell faintly of copper and blood."
 ];
 
 window.LORE_FOREST = [
@@ -54,7 +65,10 @@ window.LORE_FOREST = [
     "Do not whisper your true name to the Elder Trees.",
     "The squirrels here watch with too much intelligence.",
     "Moss only grows on the side of the trees facing the Fortress.",
-    "You find a circle of mushrooms where the birds refuse to sing."
+    "You find a circle of mushrooms where the birds refuse to sing.",
+    "A deer skeleton hangs perfectly balanced in the upper branches.",
+    "The sap oozing from these pines is black and smells of sulfur.",
+    "You swear you just saw the trees physically shift closer together."
 ];
 
 window.LORE_MOUNTAIN = [
@@ -66,7 +80,11 @@ window.LORE_MOUNTAIN = [
     "The air is thin and cold. Every breath is a struggle.",
     "You see a cave entrance that looks like a screaming mouth.",
     "Avalanches are common this time of year.",
-    "The echo of your footsteps sounds like someone following you."
+    "The echo of your footsteps sounds like someone following you.",
+    "A massive, frozen waterfall dominates the cliff face.",
+    "You find a camp that was abandoned in a horrific hurry.",
+    "The rock here has been melted and fused into glass. Dragonfire.",
+    "A sheer drop leads into an abyss of absolute darkness."
 ];
 
 window.LORE_SWAMP = [
@@ -77,7 +95,11 @@ window.LORE_SWAMP = [
     "A sunken city lies beneath the muck. You can see the spires.",
     "Bubbles rise from the bog, smelling of sulfur.",
     "The mud sucks at your boots, trying to pull you down.",
-    "Leeches the size of your arm swim in the murky pools."
+    "Leeches the size of your arm swim in the murky pools.",
+    "A rotting wooden boat is tied to a dead, sunken tree.",
+    "You hear a low, rhythmic drumming from beneath the water.",
+    "The fog is so thick you can taste the decay on your tongue.",
+    "A stone gargoyle is sinking slowly into the mud, its hands raised in despair."
 ];
 
 window.VILLAGER_RUMORS = [
@@ -98,23 +120,11 @@ window.VILLAGER_RUMORS = [
     "The Historian says he'll trade XP for those creepy Memory Shards. I'd rather keep my memories, thanks.",
     "I heard the Bandit Chief has a Steel Sword. I bet it’s sharp enough to shave a ghost.",
     "If you see a statue with red eyes, it wants an answer. If you're wrong, it wants your blood.",
-    "They say the Old King's crown was shattered into five pieces. I found a bit of gold once, but it was just a button."
-];
-
-window.VISIONS_OF_THE_PAST = [ // For the new Obelisks
-    "A VISION: You see a golden king standing atop the fortress. He raises a hand, and the mountain splits. A shadow rises from the fissure, swallowing the sun.",
-    "A VISION: Five knights kneel before a dark altar. They drink from a chalice of black ichor, and their eyes turn to blue ice.",
-    "A VISION: The sky burns. Not with fire, but with arcane light. The mages scream as their tower collapses, shattering into dust.",
-    "A VISION: A lone figure seals the crypt doors. He is weeping. 'Sleep well, my brothers,' he whispers. 'Sleep until the world breaks.'",
-    "A VISION: The blacksmith hammers a blade of black glass. 'It drinks the light,' he mutters. 'It drinks the soul.'",
-    "A VISION: A star falls from the heavens, crashing into the plains. The crater glows with a purple light that does not fade.",
-    "A VISION: The woods were not always trees. Once, they were tall spires of bone, reaching for a moon that wasn't there.",
-    "A VISION: The King sits upon his throne, but his face is blank. A shadow whispers in his ear, and the King nods slowly.",
-    "A VISION: You see the world from high above. Great purple veins are pulsing beneath the crust of the earth, converging on the Grand Fortress.",
-    "A VISION: A council of mages stands around a table. They are arguing about a 'star' that fell in the desert. One mage is bleeding from his eyes.",
-    "A VISION: The King is weeping. He is trying to wash black ink off his hands, but the harder he scrubs, the further it spreads up his arms.",
-    "A VISION: You see yourself, standing exactly where you are now, but the world is made of white light and the silence is absolute.",
-    "A VISION: A giant shadow, larger than a mountain, leans down and blows out the sun like a candle."
+    "They say the Old King's crown was shattered into five pieces. I found a bit of gold once, but it was just a button.",
+    "A wandering merchant sold me 'Dragon Repellent'. It was just garlic water. He went south.",
+    "The mages in the tower used to turn lead into gold. Now they just turn men into monsters.",
+    "Never camp near a circle of mushrooms. The Fae will steal your boots.",
+    "If you find an Obsidian Shard, keep it hidden. The shadow acolytes can smell them."
 ];
 
 window.RANDOM_JOURNAL_PAGES = [
@@ -136,7 +146,11 @@ window.RANDOM_JOURNAL_PAGES = [
     "If you find my shield, give it to my son. Tell him I died defending the pass, not fleeing from the shadows. Lie to him if you have to.",
     "The Sage says the stars are actually eyes. I told him he’s had too much Bluecap stew, but last night... I saw one blink.",
     "Final Note: The Shadowed Hand offered us immortality. They didn't mention that we'd have to forget our names to keep it.",
-    "The First King wasn't a man. The tapestries in the Grand Fortress show him arriving in a vessel made of fallen stars."
+    "The First King wasn't a man. The tapestries in the Grand Fortress show him arriving in a vessel made of fallen stars.",
+    "I watched the bandit chief cleave an oak tree in half. If you face him, do not let him swing.",
+    "The skeletons are stupid, but they never tire. A spear is useless against them; you need something heavy to crush the bones.",
+    "I found an intricate golden pocket watch inside a mimic's stomach. Why was it still ticking?",
+    "Do not trust the Rainbow Shells. The merchants pay well for them, but they whisper when you sleep."
 ];
 
 // Read when interacting with '|' (Obelisk)
@@ -184,6 +198,27 @@ window.RIDDLE_DATA = [
         answers: ["silence"],
         reward: "dexterity", // Grants +1 Dex (Stealth theme)
         message: "The world goes quiet. You feel lighter."
+    },
+    {
+        id: "coin",
+        question: "I have a head and a tail, but no body. What am I?",
+        answers: ["coin", "a coin", "gold coin"],
+        reward: "charisma", // Grants +1 Charisma
+        message: "The statue nods slowly. You feel more persuasive."
+    },
+    {
+        id: "mountain",
+        question: "What has roots as nobody sees, Is taller than trees, Up, up it goes, And yet never grows?",
+        answers: ["mountain", "a mountain", "mountains"],
+        reward: "constitution", // Grants +1 Constitution
+        message: "The stone beneath your feet trembles. You feel unyielding."
+    },
+    {
+        id: "river",
+        question: "I can run but never walk, have a mouth but never talk, have a head but never weep, have a bed but never sleep. What am I?",
+        answers: ["river", "a river", "water", "stream"],
+        reward: "endurance", // Grants +1 Endurance
+        message: "A rush of cool air washes over you. Your breath comes easier."
     }
 ];
 
@@ -194,5 +229,8 @@ window.LORE_FRAGMENTS = [
     "They are coming from the mountain. They don't look like men anymore.",
     "Day 4: I ran out of water. I see the oasis, but I know it's a mirage. Or a trap.",
     "Mom, Dad, I'm going to the safe haven. I promise I'll write when I get there.",
-    "Recipe: Two parts Bluecap, one part Void Dust... (The handwriting becomes frantic scribbles)."
+    "Recipe: Two parts Bluecap, one part Void Dust... (The handwriting becomes frantic scribbles).",
+    "If you are reading this, I did not survive the poison. Tell my brother not to seek revenge.",
+    "The bandits took everything but this journal. They laughed when I asked for my map back.",
+    "I found an obsidian arrowhead lodged in the doorframe. The elves are watching us."
 ];
