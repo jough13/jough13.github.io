@@ -1031,63 +1031,6 @@ function grantXp(amount) {
     renderStats();
 }
 
-function resizeCanvas() {
-    const canvasContainer = canvas.parentElement;
-    if (!canvasContainer) return;
-
-    // 1. Get Container Dimensions
-    const containerWidth = canvasContainer.clientWidth;
-    const containerHeight = canvasContainer.clientHeight;
-
-    // Use a global zoom tracker, default to 20 if it doesn't exist yet
-    if (!window.currentZoom) window.currentZoom = 20;
-    TILE_SIZE = window.currentZoom;
-
-    // 2. Calculate Viewport (Round UP to ensure full coverage, +3 for buffer)
-    VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 3; // +3 gives a wide buffer
-    VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 3;
-
-    const dpr = window.devicePixelRatio || 1;
-
-    // 3. Resize Main Canvas (SNAP TO GRID)
-    // We set the canvas size to match the TILES, not the container pixels.
-    // This prevents stretching/blurring.
-    const logicalWidth = VIEWPORT_WIDTH * TILE_SIZE;
-    const logicalHeight = VIEWPORT_HEIGHT * TILE_SIZE;
-
-    canvas.width = logicalWidth * dpr;
-    canvas.height = logicalHeight * dpr;
-
-    // Force CSS to match logical size to prevent scrollbars or stretching
-    canvas.style.width = `${logicalWidth}px`;
-    canvas.style.height = `${logicalHeight}px`;
-
-    // 4. Configure Main Context
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
-    ctx.scale(dpr, dpr); // Apply DPI scale
-    ctx.imageSmoothingEnabled = false; // Forces crisp pixel/text edges
-    ctx.font = `${TILE_SIZE}px monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    // 5. Resize Offscreen Canvas (Match Main Canvas Exactly)
-    terrainCanvas.width = canvas.width + (2 * TILE_SIZE * dpr);
-    terrainCanvas.height = canvas.height + (2 * TILE_SIZE * dpr);
-    
-    // 6. Configure Offscreen Context
-    terrainCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
-    terrainCtx.scale(dpr, dpr); // Apply DPI scale
-    terrainCtx.font = `${TILE_SIZE}px monospace`;
-    terrainCtx.textAlign = 'center';
-    terrainCtx.textBaseline = 'middle';
-
-    // 7. Force Redraw
-    if (typeof gameState !== 'undefined') {
-        gameState.mapDirty = true; 
-        render();
-    }
-}
-
 function initMobileControls() {
     const mobileContainer = document.getElementById('mobileControls');
     if (!mobileContainer) return; // Safety check
