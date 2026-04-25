@@ -113,6 +113,8 @@ const statBarElements = {
 };
 
 const logMessage = (text) => {
+    if (!text || !messageLog) return; // Safeguard against null messages crashing the UI
+
     // 1. SANITIZE: Turn "<script>" into "&lt;script&gt;"
     let safeText = escapeHtml(text);
 
@@ -329,6 +331,14 @@ const renderInventory = () => {
             slotNumber.className = 'absolute top-0 left-1 text-xs highlight-text font-bold';
             if (index < 9) slotNumber.textContent = index + 1;
 
+            // Better indicator for equipped gear
+            if (item.isEquipped) {
+                const equipBadge = document.createElement('span');
+                equipBadge.className = 'absolute top-0 right-0 bg-yellow-500 text-black text-[9px] px-1 font-bold rounded-bl-md rounded-tr-md';
+                equipBadge.textContent = 'EQP';
+                itemDiv.appendChild(equipBadge);
+            }
+
             itemDiv.appendChild(slotNumber);
             itemDiv.appendChild(itemChar);
             itemDiv.appendChild(itemQuantity);
@@ -368,11 +378,12 @@ const renderEquipment = () => {
         armorIcon.style.color = (armor.name === 'Simple Tunic' || armor.name === 'Tattered Rags') ? 'var(--text-muted)' : 'var(--text-default)';
     }
 
-    const baseDefense = Math.floor(player.dexterity / 3);
+    // Defensive Math Safeties applied here
+    const baseDefense = Math.floor((player.dexterity || 1) / 3);
     const armorDefense = armor.defense || 0;
     const buffDefense = player.defenseBonus || 0;
     const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
-    const conBonus = Math.floor(player.constitution * 0.1); 
+    const conBonus = Math.floor((player.constitution || 1) * 0.1); 
     
     const totalDefense = baseDefense + armorDefense + buffDefense + conBonus + talentDefense;
 
@@ -408,17 +419,26 @@ function updateRegionDisplay() {
 
 function triggerStatFlash(statElement, positive = true) {
     const animationClass = positive ? 'stat-flash-green' : 'stat-flash-red';
+    
+    // Remove class and force a DOM reflow so rapid triggers restart the animation correctly
+    statElement.classList.remove(animationClass);
+    void statElement.offsetWidth; 
     statElement.classList.add(animationClass);
-    setTimeout(() => {
+    
+    // Use animationend rather than timeout to prevent sticky UI bugs
+    statElement.onanimationend = () => {
         statElement.classList.remove(animationClass);
-    }, 500);
+    };
 }
 
 function triggerStatAnimation(statElement, animationClass) {
+    statElement.classList.remove(animationClass);
+    void statElement.offsetWidth; 
     statElement.classList.add(animationClass);
-    setTimeout(() => {
+    
+    statElement.onanimationend = () => {
         statElement.classList.remove(animationClass);
-    }, 600); 
+    };
 }
 
 function renderStatusEffects() {
@@ -446,17 +466,19 @@ function renderStatusEffects() {
     statusEffectsPanel.innerHTML = icons;
 }
 
+// --- FIX: INFINITE RESIZE LOOP & OVERSTRETCHING ---
 function resizeCanvas() {
     const canvasContainer = canvas.parentElement;
     if (!canvasContainer) return;
 
-    // 1. Hide the canvas for 1 millisecond.
+    // 1. THE MAGIC FIX: Hide the canvas for 1 millisecond.
     // This stops the canvas from physically pushing the grid walls outward,
     // allowing us to measure the TRUE natural width of the column!
     canvas.style.display = 'none';
     
-    const containerWidth = canvasContainer.clientWidth;
-    const containerHeight = canvasContainer.clientHeight;
+    // Safety check fallback to prevent 0 pixel crashes on hidden windows
+    const containerWidth = canvasContainer.clientWidth || 350;
+    const containerHeight = canvasContainer.clientHeight || 350;
     
     // Bring it back immediately
     canvas.style.display = 'block';
@@ -543,10 +565,13 @@ if (canvasWrapper) {
         
         if (!window.currentZoom) window.currentZoom = 20;
 
-        // Tweak numbers to control zoom speed and limits
-        if (e.deltaY < 0) {
+        // Tweak numbers to control zoom speed and limits.
+        // Using Math.sign limits trackpad hyper-scrolling speeds
+        const zoomDirection = Math.sign(e.deltaY);
+        
+        if (zoomDirection < 0) {
             window.currentZoom = Math.min(40, window.currentZoom + 2); // Max zoom in
-        } else {
+        } else if (zoomDirection > 0) {
             window.currentZoom = Math.max(12, window.currentZoom - 2); // Max zoom out
         }
         
