@@ -112,6 +112,58 @@
         <p class="date">Caves and Castles</p>
 
         <!-- NEW CONTENT ADDED HERE -->
+        <h2>Devlog #3: The "Juice & Polish" Mega-Update</h2>
+        <p class="date">April 26th, 2026</p>
+
+        <p>
+            It has been an incredibly busy few months in the world of Caves & Castles! We’ve ripped out the floorboards, optimized the rendering engine, completely overhauled the UI, and added a massive coat of "juice" to make combat and exploration feel fantastic. This is our biggest update yet.
+        </p>
+
+        <h3>🗺️ World, Maps, and Engine</h3>
+        <ul>
+            <li><strong>250x Minimap Performance:</strong> The World Map now uses an offscreen caching system. Panning around the map is now buttery smooth, even on low-end devices!</li>
+            <li><strong>Map Zooming:</strong> You can now use your mouse wheel (or trackpad) to zoom the World Map in and out! Added full mobile touch-drag support as well.</li>
+            <li><strong>The Village Revamp:</strong> The Safe Haven village has been completely redesigned. It now features protective stone walls, cobblestone paths, a central fountain, and dedicated shops for the Healer, Historian, and Merchant.</li>
+            <li><strong>Grand Fortress Expansion:</strong> The Grand Fortress is no longer just a generic castle. It is a sprawling, terrifying labyrinth with a massive central courtyard and boss rooms.</li>
+            <li><strong>New Dungeon Rooms:</strong> Procedural caves can now spawn unique set-pieces: <em>The Spider's Nest</em>, <em>The Cultist Summoning Circle</em>, and <em>The Dragon's Hoard</em>.</li>
+            <li><strong>Weather Logic Fixes:</strong> It no longer rains or snows while you are deep underground inside a cave! We also reduced overworld rain frequency by 10x—storms are now rare, atmospheric events rather than a constant nuisance.</li>
+            <li><strong>Massive Lore Expansion:</strong> Tripled the amount of discoverable lore across all biomes, added new riddles to the whispering statues, and gave villagers a lot more gossip.</li>
+        </ul>
+
+        <h3>⚔️ Combat & Magic Feel</h3>
+        <ul>
+            <li><strong>Overworld Armor Parity:</strong> Finally! Enemies in the overworld now properly respect your armor, dodge chance, arcane shields, and thorns!</li>
+            <li><strong>Dexterity Scaling:</strong> Daggers and bows now correctly scale their damage off your Dexterity stat instead of Strength.</li>
+            <li><strong>Boss Immunities:</strong> Bosses are no longer pushovers. They have a high chance to shrug off being rooted, poisoned, or driven mad by spells.</li>
+            <li><strong>Visual Danger:</strong> Monsters now have a vibrant red "danger outline" to make them pop against dark cave floors, while still keeping their unique entity colors!</li>
+            <li><strong>Spell Fizzles:</strong> Throwing a spell at an empty tile now displays a "Fizzle..." effect so you know exactly where your aim landed.</li>
+            <li><strong>Companion Upgrades:</strong> Tamed beasts and mercenaries now have their own visual particle effects and floating damage numbers when they attack enemies.</li>
+            <li><strong>Organic Enemy HP:</strong> Enemy packs now spawn with a +/- 10% variance in Max Health, making fights feel much more natural.</li>
+        </ul>
+
+        <h3>✨ UI, UX, & Audio Polish</h3>
+        <ul>
+            <li><strong>Dynamic Status Bars:</strong> Your health bar now turns sickly purple when poisoned, and your stamina bar turns icy blue when frostbitten.</li>
+            <li><strong>Stat Tooltips:</strong> Hover over any stat (Strength, Wits, etc.) in the UI to see exactly what it does!</li>
+            <li><strong>Animated CRT:</strong> The retro CRT scanlines now slowly scroll downward, humming with nostalgic energy.</li>
+            <li><strong>Audio Overhaul:</strong> Sound effects (footsteps, attacks, magic) now have slight pitch and speed randomization to prevent "machine-gun" ear fatigue. Added a triumphant arpeggio jingle for leveling up!</li>
+            <li><strong>Smart Fast Travel:</strong> The Leyline fast travel menu now calculates the exact distance to every unlocked Waystone and sorts the closest locations to the top of the list!</li>
+            <li><strong>Character Creation Tools:</strong> Added a Random Name Generator (🎲) to the creation screen, and fixed a bug where Max HP/Mana wasn't applying race bonuses correctly at level 1.</li>
+        </ul>
+
+        <h3>🐛 Crucial Bug Squashing</h3>
+        <ul>
+            <li><strong>The "Void Loot" Bug:</strong> Fixed a heartbreaking issue where turning in a quest or unearthing a relic with a full inventory permanently deleted the item. Items now safely drop on the ground beneath you!</li>
+            <li><strong>Infinite Water Exploit:</strong> Fixed a logic error where dirty/clean water wasn't consuming properly and was flooding players' inventories with duplicate empty bottle stacks.</li>
+            <li><strong>God Mode Actually Works:</strong> The <code>/god</code> command now correctly protects you from lava, drowning, and all enemy attacks.</li>
+            <li><strong>Memory Leaks Plugged:</strong> Fixed several runaway Firebase listeners that were causing the game to lag if you logged out and back in multiple times.</li>
+        </ul>
+        
+        <p>The foundation is incredibly solid now. Next up: we start looking at archery, expanded crafting, and maybe even some multiplayer dungeon raiding! Stay tuned.</p>
+
+
+        <hr style="border-color: var(--border-color); margin: 2rem 0;">
+
         <h2>Devlog #2: The Persistence & Housekeeping Update</h2>
         <p class="date">February 8th, 2026</p>
 
@@ -141,11 +193,10 @@
             Thank you for your patience as we ironed out these critical issues. The foundation is now stronger than ever, and we can get back to building more exciting content for you to explore!
         </p>
 
-        <!-- ORIGINAL CONTENT REMAINS BELOW -->
 
         <hr style="border-color: var(--border-color); margin: 2rem 0;">
 
-        <h1>Devlog #1: The Scholar's Update</h1>
+        <h2>Devlog #1: The Scholar's Update</h2>
         <p class="date">February 1st, 2026</p>
 
         <p>Hello Adventurers!</p>
@@ -153,7 +204,7 @@
             Welcome to the first official development diary for <strong>Caves and Castles</strong>! This update is a big one, split into two major parts: shoring up the foundations of the game engine and adding a brand new system designed to reward exploration and storytelling: <strong>The Codex</strong>.
         </p>
 
-        <h2>The Codex: A New Lore System</h2>
+        <h3>The Codex: A New Lore System</h3>
         <p>
             Finding scattered pages and journals is cool, but we wanted to make it a core part of your progression. The new Codex system transforms lore from simple flavor text into a rewarding gameplay loop.
         </p>
@@ -169,7 +220,7 @@
             </li>
         </ul>
 
-        <h2>Engine Hardening & Bug Fixes</h2>
+        <h3>Engine Hardening & Bug Fixes</h3>
         <p>
             Before building new stories, we had to make sure the foundation was solid rock. This part of the update focused on fixing critical background issues to ensure a smoother, more stable experience for everyone.
         </p>
@@ -181,10 +232,6 @@
             <li><strong>Mobile UX Polish:</strong> Tapping on the game canvas on a mobile device will no longer accidentally zoom or pan the webpage, preventing interruptions during gameplay.</li>
         </ul>
 
-        <h2>What's Next?</h2>
-        <p>
-            With a stable engine and the new Codex system in place, our next focus is to build upon it. We're now free to design the main questline, add dozens of new lore sets to discover, and create unique rewards that tie directly into the history of the world. Expect more reasons to explore, more secrets to uncover, and more stories to piece together!
-        </p>
         <p>
             Happy adventuring!
         </p>
