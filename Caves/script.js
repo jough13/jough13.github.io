@@ -758,12 +758,13 @@ function updateWeather() {
 
     let localForecast = 'clear';
     // Overworld only
-    if (gameState.mapMode === 'overworld') {
-        if (humid > 0.6) {
+        if (gameState.mapMode === 'overworld') {
+        // Pushed thresholds extremely high so rain is very rare
+        if (humid > 0.92) { 
             if (temp < 0.3) localForecast = 'snow';
-            else if (humid > 0.8) localForecast = 'storm';
+            else if (humid > 0.96) localForecast = 'storm'; 
             else localForecast = 'rain';
-        } else if (humid > 0.4 && temp < 0.4) {
+        } else if (humid > 0.85 && temp < 0.35) { 
             localForecast = 'fog';
         }
     }
@@ -2365,7 +2366,15 @@ const render = () => {
         }
 
         ctx.fillStyle = entity.color || '#ef4444';
-        ctx.font = isWide ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
+                ctx.font = isWide ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
+        
+        // 1. Draw the bright red outline/stroke FIRST (so it sits behind the text)
+        ctx.strokeStyle = '#ef4444'; // Bright Red
+        ctx.lineWidth = 2; // Thickness of the outline
+        ctx.strokeText(char, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+        
+        // 2. Draw the actual colored entity ON TOP of the outline
+        ctx.fillStyle = entity.color || '#ef4444';
         ctx.fillText(char, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
         
         // Reset transparency for the next item
@@ -2534,7 +2543,7 @@ const render = () => {
     }
 
     const intensity = gameState.player.weatherIntensity || 0;
-    if (intensity > 0 && gameState.weather !== 'clear') {
+        if (intensity > 0 && gameState.weather !== 'clear' && gameState.mapMode === 'overworld') {
         ctx.save();
         ctx.globalAlpha = intensity;
         if (gameState.weather === 'rain') {
