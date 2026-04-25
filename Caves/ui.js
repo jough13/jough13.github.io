@@ -446,18 +446,11 @@ function renderStatusEffects() {
     statusEffectsPanel.innerHTML = icons;
 }
 
-// --- FIX: INFINITE RESIZE LOOP & OVERSTRETCHING ---
 function resizeCanvas() {
     const canvasContainer = canvas.parentElement;
     if (!canvasContainer) return;
 
-    // 1. Lock the container height so zooming doesn't stretch the page vertically
-    if (!canvasContainer.style.height) {
-        canvasContainer.style.height = '60vh';
-        canvasContainer.style.minHeight = '350px'; 
-    }
-
-    // 2. THE MAGIC FIX: Hide the canvas for 1 millisecond.
+    // 1. Hide the canvas for 1 millisecond.
     // This stops the canvas from physically pushing the grid walls outward,
     // allowing us to measure the TRUE natural width of the column!
     canvas.style.display = 'none';
@@ -468,25 +461,25 @@ function resizeCanvas() {
     // Bring it back immediately
     canvas.style.display = 'block';
 
-    // 3. Update the global zoom tracker
+    // 2. Update the global zoom tracker
     if (!window.currentZoom) window.currentZoom = 20;
     TILE_SIZE = window.currentZoom;
 
-    // 4. Calculate Logical Viewport (Tiles that fit + 2 buffer tiles for smooth sliding)
+    // 3. Calculate Logical Viewport (Tiles that fit + 2 buffer tiles for smooth sliding)
     VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 2; 
     VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 2;
 
     const dpr = window.devicePixelRatio || 1;
 
-    // 5. Set HTML5 Canvas back-buffer resolution to match physical pixels
+    // 4. Set HTML5 Canvas back-buffer resolution to match physical pixels
     canvas.width = containerWidth * dpr;
     canvas.height = containerHeight * dpr;
 
-    // 6. Force CSS to 100% so it perfectly fits the container without stretching it
+    // 5. Force CSS to 100% so it perfectly fits the container without stretching it
     canvas.style.width = '100%';
     canvas.style.height = '100%';
 
-    // 7. Configure Main Context
+    // 6. Configure Main Context
     ctx.setTransform(1, 0, 0, 1, 0, 0); 
     ctx.scale(dpr, dpr); 
     ctx.imageSmoothingEnabled = false; 
@@ -494,21 +487,21 @@ function resizeCanvas() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 8. Resize Offscreen Canvas (Matches the logical padded viewport)
+    // 7. Resize Offscreen Canvas (Matches the logical padded viewport)
     const logicalWidth = VIEWPORT_WIDTH * TILE_SIZE;
     const logicalHeight = VIEWPORT_HEIGHT * TILE_SIZE;
 
     terrainCanvas.width = logicalWidth * dpr;
     terrainCanvas.height = logicalHeight * dpr;
     
-    // 9. Configure Offscreen Context
+    // 8. Configure Offscreen Context
     terrainCtx.setTransform(1, 0, 0, 1, 0, 0); 
     terrainCtx.scale(dpr, dpr); 
     terrainCtx.font = `${TILE_SIZE}px monospace`;
     terrainCtx.textAlign = 'center';
     terrainCtx.textBaseline = 'middle';
 
-    // 10. Force Redraw
+    // 9. Force Redraw
     if (typeof gameState !== 'undefined') {
         gameState.mapDirty = true; 
         if (typeof render === 'function') render();
