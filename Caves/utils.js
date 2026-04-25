@@ -92,14 +92,17 @@ const Perlin = {
 // --- OPTIMIZATION: Cache Emoji Checks ---
 const charWidthCache = {};
 
-// PRE-FILL CACHE: Mark standard ASCII as "not wide" to skip regex
-const ascii = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{};':\",./<>?`~|\\ ";
-for (let i = 0; i < ascii.length; i++) {
-    charWidthCache[ascii[i]] = false;
+// EASY WIN: Pre-fill cache with the entire standard ASCII and Extended Latin blocks
+// This ensures the slow Regex is never called for letters, numbers, or standard map tiles!
+for (let i = 0; i <= 255; i++) {
+    const char = String.fromCharCode(i);
+    charWidthCache[char] = false;
 }
 
 const isWideChar = (char) => {
     if (charWidthCache[char] !== undefined) return charWidthCache[char];
+    
+    // If it wasn't in the cache, it's likely a complex emoji. Run the slow check.
     const isWide = /\p{Extended_Pictographic}/u.test(char); 
     charWidthCache[char] = isWide;
     return isWide;
@@ -173,30 +176,4 @@ function generateUUID() {
         var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     });
-}
-
-function sanitizeForFirestore(obj) {
-    if (obj === undefined) return null;
-    if (obj === null) return null;
-    
-    // If it's an array, map it
-    if (Array.isArray(obj)) {
-        return obj.map(item => sanitizeForFirestore(item));
-    }
-    
-    // If it's an object, strictly copy keys and replace undefined with null
-    if (typeof obj === 'object') {
-        const newObj = {};
-        Object.keys(obj).forEach(key => {
-            const val = obj[key];
-            if (val === undefined) {
-                newObj[key] = null; // THE FIX: Undefined becomes null
-            } else {
-                newObj[key] = sanitizeForFirestore(val);
-            }
-        });
-        return newObj;
-    }
-    
-    return obj;
 }
