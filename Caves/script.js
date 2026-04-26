@@ -2488,7 +2488,7 @@ const render = () => {
         ctx.fillText(gameState.player.chatBubble, pScreenX, pScreenY - TILE_SIZE - 4);
     }
 
-    // --- 5. FAST BLOCKY RETRO LIGHTING OVERLAY (OPTIMIZED) ---
+    // --- 5. BANDED RETRO LIGHTING OVERLAY (MAX PERFORMANCE) ---
     
     // Determine how dark the areas outside your light radius should be
     let outerDarkness = 1.0; 
@@ -2500,16 +2500,10 @@ const render = () => {
 
     if (outerDarkness > 0.0) {
         
-        // 1. Pre-calculate squared radii to avoid heavy Math.sqrt() in the loop
-        // We use 3 distinct "steps" to create that retro color banding
-        const r1Sq = Math.pow(lightRadius * 0.4, 2); // Inner core
-        const r2Sq = Math.pow(lightRadius * 0.7, 2); // Mid band
-        const r3Sq = Math.pow(lightRadius, 2);       // Outer edge
+        // 1. Base Tint Colors (Warm Fire Yellow/Orange)
+        let r = 250, g = 180, b = 50; 
         
-        // 2. Base Tint Colors (Warm Fire Orange)
-        let r = 255, g = 120, b = 0; 
-        
-        // Override for special zones (Ice caves, Void, Storms)
+        // Override for special zones
         if (gameState.mapMode === 'dungeon') {
             const themeName = chunkManager.caveThemes[gameState.currentCaveId];
             if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
@@ -2518,42 +2512,42 @@ const render = () => {
             r = 100; g = 100; b = 150;
         }
 
-        // 3. Pre-cache the color strings so the browser doesn't have to generate
-        // them 1,000 times per frame (This prevents the stuttering/lag!)
-        const colorBands = [
-            `rgba(${r}, ${g}, ${b}, 0.15)`,                                      // Tier 0: Bright Inner Glow
-            `rgba(${r * 0.6}, ${g * 0.6}, ${b * 0.6}, ${0.5 * outerDarkness})`,  // Tier 1: Darker Orange Shadow
-            `rgba(0, 0, 0, ${0.85 * outerDarkness})`,                            // Tier 2: Near Black Edge
-            `rgba(0, 0, 0, ${1.0 * outerDarkness})`                              // Tier 3: Pitch Black
-        ];
+        // 2. Lock the light source to the GRID, not the smooth camera
+        // This makes the light "chunk" tile-by-tile, giving a retro feel 
+        // while the player sprite glides smoothly!
+        const snappedScreenX = (p.x - startX) * TILE_SIZE + TILE_SIZE / 2;
+        const snappedScreenY = (p.y - startY) * TILE_SIZE + TILE_SIZE / 2;
+        const lightPxRadius = lightRadius * TILE_SIZE;
 
-        // 4. Execute the loop (Now blazingly fast due to pixel-snapping)
-        for (let y = -1; y <= VIEWPORT_HEIGHT + 1; y++) {
-            for (let x = -1; x <= VIEWPORT_WIDTH + 1; x++) {
-                // mapX/mapY ensures the light blocks snap perfectly to the world tiles!
-                const mapX = startX + x;
-                const mapY = startY + y;
-                
-                // Calculate distance from the player's logical grid position
-                const dx = mapX - p.x;
-                const dy = mapY - p.y;
-                const distSq = dx * dx + dy * dy;
-                
-                // Determine which blocky light band this tile falls into
-                let tier = 3; 
-                if (distSq <= r1Sq) tier = 0;
-                else if (distSq <= r2Sq) tier = 1;
-                else if (distSq <= r3Sq) tier = 2;
-                
-                // OPTIMIZATION: If it's daytime and we are fully lit, skip drawing entirely
-                if (tier > 0 || ambientLight > 0.3 || gameState.mapMode === 'dungeon') {
-                    ctx.fillStyle = colorBands[tier];
-                    // Draw the block. Because we fixed the camera translate math earlier, 
-                    // this will no longer bleed grid lines!
-                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                }
-            }
-        }
+        // 3. Create the Gradient (One single GPU draw call!)
+        const darknessGradient = ctx.createRadialGradient(
+            snappedScreenX, snappedScreenY, 0,
+            snappedScreenX, snappedScreenY, lightPxRadius
+        );
+
+        // 4. Create "Hard Stops" for an 8-bit banding effect
+        // By putting two stops almost exactly on top of each other (0.4 and 0.41),
+        // we eliminate the smooth fade and create sharp, distinct rings.
+
+        // Inner Core: Fully lit, slight warm tint
+        darknessGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.1)`);
+        darknessGradient.addColorStop(0.4, `rgba(${r}, ${g}, ${b}, 0.1)`);
+        
+        // Mid Band: Darker, heavily tinted orange/yellow
+        darknessGradient.addColorStop(0.41, `rgba(${Math.floor(r*0.4)}, ${Math.floor(g*0.4)}, ${Math.floor(b*0.4)}, ${0.6 * outerDarkness})`);
+        darknessGradient.addColorStop(0.7, `rgba(${Math.floor(r*0.4)}, ${Math.floor(g*0.4)}, ${Math.floor(b*0.4)}, ${0.6 * outerDarkness})`);
+        
+        // Outer Band: Very dark, losing color
+        darknessGradient.addColorStop(0.71, `rgba(0, 0, 0, ${0.85 * outerDarkness})`);
+        darknessGradient.addColorStop(0.9, `rgba(0, 0, 0, ${0.85 * outerDarkness})`);
+        
+        // Pitch Black Edge
+        darknessGradient.addColorStop(0.91, `rgba(0, 0, 0, ${outerDarkness})`);
+        darknessGradient.addColorStop(1, `rgba(0, 0, 0, ${outerDarkness})`);
+
+        // 5. Draw one massive rectangle covering the screen
+        ctx.fillStyle = darknessGradient;
+        ctx.fillRect(-TILE_SIZE * 2, -TILE_SIZE * 2, (VIEWPORT_WIDTH + 4) * TILE_SIZE, (VIEWPORT_HEIGHT + 4) * TILE_SIZE);
     }
 
     const intensity = gameState.player.weatherIntensity || 0;
