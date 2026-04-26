@@ -333,28 +333,30 @@ async function finalizeCharacterCreation() {
         player[stat] = (player[stat] || 1) + raceData.stats[stat];
     }
 
-    // EASY WIN: Bug Fix - Correctly calculate Max HP based on the total final Constitution!
-    player.maxHealth = 10 + (player.constitution * 5);
+    player.maxHealth = 5 + (player.constitution * 5);
     player.health = player.maxHealth;
     
-    player.maxMana = 10 + (player.wits * 5);
+    player.maxMana = 5 + (player.wits * 5);
     player.mana = player.maxMana;
     
-    player.maxStamina = 10 + (player.endurance * 5);
+    player.maxStamina = 5 + (player.endurance * 5);
     player.stamina = player.maxStamina;
 
-    // 5. Apply Inventory (Class Kit)
+    player.maxPsyche = 7 + (player.willpower * 3);
+    player.psyche = player.maxPsyche;
+
+    // 4. Apply Inventory (Class Kit)
     bgData.items.forEach(newItem => {
         player.inventory.push(newItem);
     });
 
-    // 6. Auto-Equip
+    // 5. Auto-Equip
     const weapon = player.inventory.find(i => i.type === 'weapon');
     const armor = player.inventory.find(i => i.type === 'armor');
     if (weapon) { player.equipment.weapon = weapon; weapon.isEquipped = true; }
     if (armor) { player.equipment.armor = armor; armor.isEquipped = true; }
 
-    // 7. Save and Start
+    // 6. Save and Start
     await playerRef.set(sanitizeForFirebase(player));
 
     charCreationModal.classList.add('hidden');
