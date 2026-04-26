@@ -280,6 +280,35 @@ async function processOverworldEnemyTurns() {
 
         if (distSq > searchDistSq) continue;
 
+        // --- OVERWORLD TELEGRAPH EXECUTION ---
+        if (enemy.pendingAttacks && enemy.pendingAttacks.length > 0) {
+            let hitPlayer = false;
+
+            enemy.pendingAttacks.forEach(tile => {
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tile.x, tile.y, '#ef4444', 8);
+
+                if (tile.x === playerX && tile.y === playerY) {
+                    if (gameState.godMode) return;
+                    const dmg = Math.floor(enemy.attack * 1.5); 
+                    gameState.player.health -= dmg;
+                    gameState.screenShake = 15;
+                    triggerStatFlash(statDisplays.health, false);
+                    logMessage(`You are caught in the ${enemy.name}'s blast! (-${dmg} HP)`);
+                    hitPlayer = true;
+                }
+            });
+
+            if (!hitPlayer) logMessage(`The ${enemy.name}'s attack strikes the ground!`);
+
+            enemy.pendingAttacks = null;
+            multiPathUpdate[`worldEnemies/${enemyId}/pendingAttacks`] = null; // Sync clear to Firebase
+            movesQueued = true;
+            processedIdsThisFrame.add(enemyId);
+            
+            if (gameState.player.health <= 0) handlePlayerDeath();
+            continue; // Skip the rest of this turn
+        }
+
         // --- AI LOGIC ---
         let chaseChance = 0.20;
         if (distSq < 400) chaseChance = 0.85; // Close range
