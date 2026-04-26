@@ -4,25 +4,36 @@
  */
 
 function getScaledEnemy(enemyTemplate, x, y) {
+    // 1. Calculate Distance & Zone
     const dist = Math.sqrt(x * x + y * y);
     const zoneLevel = Math.floor(dist / 150);
 
+    // 2. Clone the template
     let enemy = { ...enemyTemplate };
 
+    // 3. Apply Base Scaling (10% stats per zone level)
     const multiplier = 1 + (zoneLevel * 0.10);
+
+    // EASY WIN: Add a +/- 10% variance to health so packs of enemies don't all have identical HP!
     const variance = 0.9 + (Math.random() * 0.2); 
     
     enemy.maxHealth = Math.max(1, Math.floor(enemy.maxHealth * multiplier * variance));
     enemy.attack = Math.floor(enemy.attack * multiplier) + Math.floor(zoneLevel / 3);
     enemy.xp = Math.floor(enemy.xp * multiplier);
 
+    // --- SAFE ZONE NERF ---
+    // If within 100 tiles of spawn, weaken enemies significantly
     if (dist < 100) {
+        // Reduce Attack by 1 (Min 1). This turns 2 dmg rats into 1 dmg rats.
         enemy.attack = Math.max(1, enemy.attack - 1); 
+        // Reduce HP by 20% so they die faster
         enemy.maxHealth = Math.ceil(enemy.maxHealth * 0.8); 
     }
+    // -------------------------------------
 
+    // 4. Apply Zone Name (Cosmetic)
     if (zoneLevel === 0) {
-        // No prefix
+        // No prefix for zone 0
     } else if (zoneLevel >= 2 && zoneLevel < 5) {
         enemy.name = `Feral ${enemy.name}`;
     } else if (zoneLevel >= 5 && zoneLevel < 10) {
@@ -31,8 +42,12 @@ function getScaledEnemy(enemyTemplate, x, y) {
         enemy.name = `Ancient ${enemy.name}`;
     }
 
+    // --- 5. Elite Affix Roll ---
     const eliteChance = 0.05 + (zoneLevel * 0.01);
 
+    // --- DISABLE ELITES NEAR SPAWN ---
+    // Elites can only spawn if distance > 150. 
+    // No more "Savage Rats" killing you at level 1.
     if (dist > 150 && !enemy.isBoss && Math.random() < eliteChance) {
         const prefixKeys = Object.keys(ENEMY_PREFIXES);
         const prefixKey = prefixKeys[Math.floor(Math.random() * prefixKeys.length)];
@@ -59,17 +74,23 @@ function getScaledEnemy(enemyTemplate, x, y) {
         enemy.xp = Math.floor(enemy.xp * affix.xpMult);
     }
 
+    // Reset current health to new max
     enemy.health = enemy.maxHealth;
+
     return enemy;
 }
 
 async function wakeUpNearbyEnemies() {
     if (gameState.mapMode !== 'overworld') return;
 
+    // Determine player location
     const player = gameState.player;
     if (!player) return;
 
-    const WAKE_RADIUS = 14; 
+    const WAKE_RADIUS = 14; // Increased slightly to ensure they spawn before you see them
+
+    // Use a batch update for map tiles to prevent excessive rendering/saving
+    let mapUpdates = {}; 
     let spawnUpdates = {};
     let enemiesSpawnedCount = 0;
     let visualUpdateNeeded = false;
@@ -77,31 +98,42 @@ async function wakeUpNearbyEnemies() {
     for (let y = player.y - WAKE_RADIUS; y <= player.y + WAKE_RADIUS; y++) {
         for (let x = player.x - WAKE_RADIUS; x <= player.x + WAKE_RADIUS; x++) {
             
+            // 1. Check the static map tile
             const tile = chunkManager.getTile(x, y);
             
+            // Optimization: Only check logic if it looks like an enemy tile
             if (tile === '.' || tile === 'F' || tile === 'd' || tile === 'D' || tile === '^' || tile === '~' || tile === '≈') continue;
 
             const enemyData = ENEMY_DATA[tile];
 
+            // 2. If it's a valid enemy tile, we "Wake" it
             if (enemyData) {
                 const enemyId = `overworld:${x},${-y}`;
 
+                // Only spawn if it doesn't already exist in the live world
                 if (!gameState.sharedEnemies[enemyId] && !pendingSpawnData[enemyId]) {
                     
+                    // A. Create the Live Entity
                     const scaledStats = getScaledEnemy(enemyData, x, y);
                     const newEnemy = {
                         ...scaledStats,
-                        tile: tile, 
+                        tile: tile, // Keep visual ref
                         x: x,
                         y: y,
                         spawnTime: Date.now()
                     };
 
+                    // B. Queue for Firebase (The Source of Truth)
                     spawnUpdates[`worldEnemies/${enemyId}`] = newEnemy;
+                    
+                    // C. Add to local pending (Immediate Visual Feedback)
                     pendingSpawnData[enemyId] = newEnemy;
                     gameState.sharedEnemies[enemyId] = newEnemy; 
                     
+                    // D. Update Spatial Map immediately so AI knows it exists
                     updateSpatialMap(enemyId, null, null, x, y);
+
+                    // E. CONSUME THE MAP TILE
                     chunkManager.setWorldTile(x, y, '.'); 
                     
                     enemiesSpawnedCount++;
@@ -111,22 +143,31 @@ async function wakeUpNearbyEnemies() {
         }
     }
 
+    // 3. Send Batch to Firebase (Atomic Operation)
     if (enemiesSpawnedCount > 0) {
-        rtdb.ref().update(spawnUpdates).catch(err => console.error("Mass Spawn Error:", err));
+        rtdb.ref().update(spawnUpdates).catch(err => {
+            console.error("Mass Spawn Error:", err);
+        });
     }
 
+    // 4. Force Render if we changed anything
     if (visualUpdateNeeded) {
         gameState.mapDirty = true; 
         render(); 
     }
 }
 
+/**
+ * Asynchronously runs the AI turns for shared maps.
+ * Uses a Firebase RTDB Transaction to ensure only ONE client
+ * runs the AI per interval. Includes logic to break stale locks.
+ */
 async function runSharedAiTurns() {
     if (gameState.mapMode !== 'overworld') return; 
 
     const now = Date.now();
-    const AI_INTERVAL = 150; 
-    const STALE_TIMEOUT = 5000; 
+    const AI_INTERVAL = 150; // Match action cooldown
+    const STALE_TIMEOUT = 5000; // 5 seconds - if heartbeat is older than this, steal it
 
     const heartbeatRef = rtdb.ref('worldState/aiHeartbeat');
 
@@ -140,6 +181,8 @@ async function runSharedAiTurns() {
 
         if (result.committed) {
             const nearestEnemyDir = await processOverworldEnemyTurns();
+
+            // Client-side intuition feedback
             if (nearestEnemyDir) {
                 const player = gameState.player;
                 const intuitChance = Math.min(player.intuition * 0.005, 0.5);
@@ -169,6 +212,7 @@ async function processOverworldEnemyTurns() {
     let movesQueued = false;
     const processedIdsThisFrame = new Set();
 
+    // 1. Gather candidates from local buckets
     const activeEnemyIds = [];
     const pChunkX = Math.floor(playerX / SPATIAL_CHUNK_SIZE);
     const pChunkY = Math.floor(playerY / SPATIAL_CHUNK_SIZE);
@@ -182,6 +226,7 @@ async function processOverworldEnemyTurns() {
         }
     }
 
+    // Helper: Valid path check for overworld
     const isValidMove = (tx, ty, enemyType) => {
         const t = chunkManager.getTile(tx, ty);
         if (t === '~') return false; 
@@ -198,18 +243,43 @@ async function processOverworldEnemyTurns() {
 
         const enemy = gameState.sharedEnemies[enemyId];
         
+        // --- SAFETY CHECK ---
         if (!enemy || typeof enemy.x !== 'number' || typeof enemy.y !== 'number') {
             continue;
         }
 
         const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
+        
+        // --- VILLAGE GUARD SNIPER SYSTEM (Anti-Trolling/Anti-Ghost) ---
+        // If a dangerous enemy (XP > 25) gets within 30 tiles of (0,0), delete it.
+        // This ensures old database entries and dragged bosses can't spawn-camp newbies!
+        const distToSpawnSq = (enemy.x * enemy.x) + (enemy.y * enemy.y);
+        if (distToSpawnSq < 900 && enemy.xp > 25) { 
+            // If the player is close enough to see it, log the flavor text
+            if (distSq < 400) {
+                logMessage(`🏹 A village guard snipes the trespassing ${enemy.name} from the walls!`);
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(enemy.x, enemy.y, '#ef4444', 8);
+            }
+            
+            // Queue removal from Firebase
+            multiPathUpdate[`worldEnemies/${enemyId}`] = null;
+            
+            // Clean up local arrays
+            delete gameState.sharedEnemies[enemyId];
+            updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
+            processedIdsThisFrame.add(enemyId);
+            movesQueued = true;
+            continue; // Skip the rest of this enemy's turn
+        }
+
         if (distSq > searchDistSq) continue;
 
+        // --- AI LOGIC ---
         let chaseChance = 0.20;
-        if (distSq < 400) chaseChance = 0.85; 
-        if (distSq < 100) chaseChance = 1.00; 
+        if (distSq < 400) chaseChance = 0.85; // Close range
+        if (distSq < 100) chaseChance = 1.00; // Aggressive
 
-        if (Math.random() < 0.80) { 
+        if (Math.random() < 0.80) { // 80% chance to act per turn
             let dirX = 0, dirY = 0;
             let isChasing = false;
 
@@ -228,9 +298,12 @@ async function processOverworldEnemyTurns() {
             let finalY = enemy.y + dirY;
             let canMove = false;
 
+            // Simple collision check with world terrain
             if (isValidMove(finalX, finalY, enemy.tile)) {
                 canMove = true;
-            } else if (isChasing) {
+            } 
+            // Pathfinding "slide" (if diagonal blocked, try cardinal)
+            else if (isChasing) {
                 if (dirX !== 0 && isValidMove(enemy.x + dirX, enemy.y, enemy.tile)) {
                     finalX = enemy.x + dirX; finalY = enemy.y; canMove = true;
                 } else if (dirY !== 0 && isValidMove(enemy.x, enemy.y + dirY, enemy.tile)) {
@@ -239,9 +312,11 @@ async function processOverworldEnemyTurns() {
             }
 
             if (canMove) {
+                // Combat Check
                 if (finalX === playerX && finalY === playerY) {
                     if (gameState.godMode) continue; 
                     
+                    // Calculate Total Defense & Dodge
                     const armorDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
                     const baseDefense = Math.floor(gameState.player.dexterity / 3);
                     const buffDefense = gameState.player.defenseBonus || 0;
@@ -261,8 +336,10 @@ async function processOverworldEnemyTurns() {
                         continue;
                     }
 
+                    // Apply unified damage calc
                     let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
 
+                    // Shield Absorb
                     if (gameState.player.shieldValue > 0) {
                         const absorb = Math.min(gameState.player.shieldValue, dmg);
                         gameState.player.shieldValue -= absorb;
@@ -278,7 +355,7 @@ async function processOverworldEnemyTurns() {
                         const wrapper = document.getElementById('gameCanvasWrapper');
                         if (wrapper) {
                             wrapper.classList.remove('damage-flash'); 
-                            void wrapper.offsetWidth; 
+                            void wrapper.offsetWidth; // Trigger reflow
                             wrapper.classList.add('damage-flash');
                         }
 
@@ -289,6 +366,7 @@ async function processOverworldEnemyTurns() {
                         if (gameState.player.health <= 0) handlePlayerDeath();
                     }
 
+                    // Overworld Thorns logic
                     if (gameState.player.thornsValue > 0) {
                         handleOverworldCombat(enemy.x, enemy.y, ENEMY_DATA[enemy.tile], enemy.tile, gameState.player.thornsValue);
                         logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} thorn damage!`);
@@ -298,6 +376,7 @@ async function processOverworldEnemyTurns() {
                     continue; 
                 }
 
+                // --- PERCEPTION HINT ---
                 const oldDist = Math.sqrt(Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2));
                 const newDist = Math.sqrt(Math.pow(playerX - finalX, 2) + Math.pow(playerY - finalY, 2));
                 
@@ -309,6 +388,7 @@ async function processOverworldEnemyTurns() {
                     }
                 }
 
+                // --- EXECUTE MOVE & SYNC BUCKETS ---
                 const newId = `overworld:${finalX},${-finalY}`;
                 
                 if (gameState.sharedEnemies[newId] || multiPathUpdate[`worldEnemies/${newId}`]) continue;
@@ -433,8 +513,6 @@ function processEnemyTurns() {
         if (dist > 25) return;
 
         if (enemy.isBoss) {
-            // Boss Immunity - Handled dynamically in applySpellDamage now for better feedback,
-            // but we keep this here in case effects bypass the damage function
             if ((enemy.poisonTurns > 0 || enemy.rootTurns > 0) && Math.random() < 0.5) {
                 enemy.poisonTurns = 0; enemy.rootTurns = 0;
                 logMessage(`The ${enemy.name} shrugs off your magic!`);
@@ -1010,15 +1088,9 @@ function getPlayerDamageModifier(baseDamage) {
     const player = gameState.player;
     let finalDamage = baseDamage;
 
-    // EASY WIN: Proper Weapon Scaling!
-    // Daggers, Bows, etc. should scale with Dexterity instead of Strength.
-    // We detect this by checking if the weapon gives a Dexterity bonus.
     if (player.equipment.weapon && player.equipment.weapon.statBonuses && player.equipment.weapon.statBonuses.dexterity) {
-        // Swap out the Strength calculation for Dexterity
         const strContribution = player.strength + (player.strengthBonus || 0);
         const dexContribution = player.dexterity;
-        
-        // Remove strength, add dex
         finalDamage = (finalDamage - strContribution) + dexContribution;
     }
 
