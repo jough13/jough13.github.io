@@ -276,8 +276,6 @@ const chunkManager = {
 
                 const scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
 
-                map[randY][randX] = enemyTile;
-
                 this.caveEnemies[caveId].push({
                     id: `${caveId}:${randX},${randY}`,
                     x: randX,
