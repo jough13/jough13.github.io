@@ -2488,7 +2488,7 @@ const render = () => {
         ctx.fillText(gameState.player.chatBubble, pScreenX, pScreenY - TILE_SIZE - 4);
     }
 
-    // --- 5. BLOCKY RETRO LIGHTING OVERLAY ---
+    // --- 5. FAST BLOCKY RETRO LIGHTING OVERLAY ---
     
     // Determine how dark the areas outside your light radius should be
     let outerDarkness = 1.0; 
@@ -2499,52 +2499,67 @@ const render = () => {
     }
 
     if (outerDarkness > 0.0) {
-        // Notice we do NOT reset the transform! 
-        // This keeps the blocks locked to the map tiles as you walk.
         
+        // --- OPTIMIZATION 1: Pre-calculate squared radii to avoid Math.sqrt() ---
+        const r1Sq = Math.pow(lightRadius * 0.3, 2);
+        const r2Sq = Math.pow(lightRadius * 0.6, 2);
+        const r3Sq = Math.pow(lightRadius, 2);
+
+        // --- OPTIMIZATION 2: Pre-build the exact RGBA strings to stop Garbage Collection stutter ---
+        const darkColors = {
+            1.0: `rgba(0, 0, 0, 0)`, // Fully lit (we will just skip drawing this)
+            0.7: `rgba(0, 0, 0, ${0.3 * outerDarkness})`,
+            0.3: `rgba(0, 0, 0, ${0.7 * outerDarkness})`,
+            0.0: `rgba(0, 0, 0, ${1.0 * outerDarkness})`
+        };
+
+        // Pre-build the tint color strings
+        let r = 255, g = 140, b = 0; 
+        let drawTint = false;
+        
+        if (ambientLight > 0.3 || gameState.mapMode === 'dungeon') {
+            drawTint = true;
+            if (gameState.mapMode === 'dungeon') {
+                const themeName = chunkManager.caveThemes[gameState.currentCaveId];
+                if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
+                if (themeName === 'FIRE') { r = 255; g = 80; b = 20; }
+            } else if (gameState.mapMode === 'overworld') {
+                if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
+            }
+        }
+
+        const tintColors = {
+            1.0: `rgba(${r}, ${g}, ${b}, 0.25)`,
+            0.7: `rgba(${r}, ${g}, ${b}, 0.175)`,
+            0.3: `rgba(${r}, ${g}, ${b}, 0.075)`
+        };
+
+        // --- OPTIMIZED RENDER LOOP ---
         for (let y = -1; y <= VIEWPORT_HEIGHT; y++) {
             for (let x = -1; x <= VIEWPORT_WIDTH; x++) {
                 const mapX = startX + x;
                 const mapY = startY + y;
                 
-                // Calculate distance to the player
-                const dist = Math.sqrt(Math.pow(mapX - p.x, 2) + Math.pow(mapY - p.y, 2));
+                // Use squared distance! Extremely fast math.
+                const dx = mapX - p.x;
+                const dy = mapY - p.y;
+                const distSq = dx * dx + dy * dy;
                 
-                // Create a stepped "blocky" light falloff
-                let lightLevel = 0;
-                if (dist <= lightRadius * 0.3) {
-                    lightLevel = 1.0; // Fully lit core
-                } else if (dist <= lightRadius * 0.6) {
-                    lightLevel = 0.7; // Mid-tier light
-                } else if (dist <= lightRadius) {
-                    lightLevel = 0.3; // Dim edge
-                }
+                // Determine light tier
+                let lightLevel = 0.0;
+                if (distSq <= r1Sq) lightLevel = 1.0;
+                else if (distSq <= r2Sq) lightLevel = 0.7;
+                else if (distSq <= r3Sq) lightLevel = 0.3;
                 
-                // Calculate darkness for this specific tile
-                const tileDarkness = (1.0 - lightLevel) * outerDarkness;
-
-                // Draw Darkness Overlay
-                if (tileDarkness > 0) {
-                    ctx.fillStyle = `rgba(0, 0, 0, ${tileDarkness})`;
+                // Draw Darkness Overlay (Skip entirely if fully lit)
+                if (lightLevel < 1.0) {
+                    ctx.fillStyle = darkColors[lightLevel];
                     ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
 
-                // Draw Warm Orange Glow (if the tile is lit)
-                if (lightLevel > 0 && (ambientLight > 0.3 || gameState.mapMode === 'dungeon')) {
-                    // Warmer, richer Amber/Orange color
-                    let r = 255, g = 140, b = 0; 
-                    
-                    if (gameState.mapMode === 'dungeon') {
-                        const themeName = chunkManager.caveThemes[gameState.currentCaveId];
-                        if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
-                        if (themeName === 'FIRE') { r = 255; g = 80; b = 20; }
-                    } else if (gameState.mapMode === 'overworld') {
-                        if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
-                    }
-
-                    // Boost opacity for a stronger color, scaled by how close to center
-                    const tintStrength = lightLevel * 0.25; 
-                    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${tintStrength})`;
+                // Draw Warm Glow (Skip entirely if pitch black or no tint needed)
+                if (drawTint && lightLevel > 0.0) {
+                    ctx.fillStyle = tintColors[lightLevel];
                     ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
             }
