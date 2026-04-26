@@ -2083,8 +2083,8 @@ function renderTerrainCache(startX, startY) {
     terrainCtx.translate(TILE_SIZE, TILE_SIZE);
 
     // Loop through the Viewport (START AT -1 FOR THE BUFFER)
-    for (let y = -1; y <= VIEWPORT_HEIGHT; y++) {
-        for (let x = -1; x <= VIEWPORT_WIDTH; x++) {
+    for (let y = -1; y <= VIEWPORT_HEIGHT + 1; y++) {
+        for (let x = -1; x <= VIEWPORT_WIDTH + 1; x++) {
             const mapX = startX + x;
             const mapY = startY + y;
 
@@ -2219,11 +2219,10 @@ const render = () => {
     const viewportCenterX = Math.floor(VIEWPORT_WIDTH / 2);
     const viewportCenterY = Math.floor(VIEWPORT_HEIGHT / 2);
     
-    // We round the visual position to determine the cache grid
-    const startX = Math.round(visX) - viewportCenterX;
-    const startY = Math.round(visY) - viewportCenterY;
+    // Use Math.floor instead of Math.round to prevent non-linear jumps
+    const startX = Math.floor(visX) - viewportCenterX;
+    const startY = Math.floor(visY) - viewportCenterY;
 
-    // If the grid shifts while sliding, force the cache to redraw! (This stops the shake!)
     if (gameState.lastStartX !== startX || gameState.lastStartY !== startY) {
         gameState.mapDirty = true;
         gameState.lastStartX = startX;
@@ -2231,11 +2230,11 @@ const render = () => {
     }
 
     // Sub-tile offset for ultra-smooth camera panning
-    const offsetX = (visX - Math.round(visX)) * TILE_SIZE;
-    const offsetY = (visY - Math.round(visY)) * TILE_SIZE;
+    const offsetX = (visX - Math.floor(visX)) * TILE_SIZE;
+    const offsetY = (visY - Math.floor(visY)) * TILE_SIZE;
     
-    // Apply both Screen Shake and Smooth Panning
-    ctx.translate(shakeX - offsetX, shakeY - offsetY);
+    // Math.round() the translate so the canvas doesn't bleed sub-pixels (Removes Grid Lines)
+    ctx.translate(Math.round(shakeX - offsetX), Math.round(shakeY - offsetY));
 
     // --- 2. UPDATE TERRAIN CACHE ---
     if (gameState.mapDirty) {
@@ -2489,7 +2488,7 @@ const render = () => {
         ctx.fillText(gameState.player.chatBubble, pScreenX, pScreenY - TILE_SIZE - 4);
     }
 
-    // --- 5. FAST BLOCKY RETRO LIGHTING OVERLAY ---
+    // --- 5. SMOOTH GRADIENT LIGHTING OVERLAY ---
     
     // Determine how dark the areas outside your light radius should be
     let outerDarkness = 1.0; 
@@ -2501,20 +2500,25 @@ const render = () => {
 
     if (outerDarkness > 0.0) {
         
-        // --- OPTIMIZATION 1: Pre-calculate squared radii to avoid Math.sqrt() ---
-        const r1Sq = Math.pow(lightRadius * 0.3, 2);
-        const r2Sq = Math.pow(lightRadius * 0.6, 2);
-        const r3Sq = Math.pow(lightRadius, 2);
+        // 1. Draw the primary Darkness Layer using a Radial Gradient
+        const lightPxRadius = lightRadius * TILE_SIZE;
+        
+        // Create a gradient centered exactly on the player's visual screen position
+        const darknessGradient = ctx.createRadialGradient(
+            pScreenX, pScreenY, lightPxRadius * 0.25, // Inner bright core
+            pScreenX, pScreenY, lightPxRadius         // Outer edge fading into darkness
+        );
 
-        // --- OPTIMIZATION 2: Pre-build the exact RGBA strings to stop Garbage Collection stutter ---
-        const darkColors = {
-            1.0: `rgba(0, 0, 0, 0)`, // Fully lit (we will just skip drawing this)
-            0.7: `rgba(0, 0, 0, ${0.3 * outerDarkness})`,
-            0.3: `rgba(0, 0, 0, ${0.7 * outerDarkness})`,
-            0.0: `rgba(0, 0, 0, ${1.0 * outerDarkness})`
-        };
+        darknessGradient.addColorStop(0, `rgba(0, 0, 0, 0)`); // Clear at center
+        darknessGradient.addColorStop(0.6, `rgba(0, 0, 0, ${outerDarkness * 0.6})`); // Mid shadow
+        darknessGradient.addColorStop(1, `rgba(0, 0, 0, ${outerDarkness})`); // Pitch black at edges
 
-        // Pre-build the tint color strings
+        ctx.fillStyle = darknessGradient;
+        
+        // Fill a single rectangle large enough to cover the screen (Massive FPS boost!)
+        ctx.fillRect(-TILE_SIZE * 2, -TILE_SIZE * 2, (VIEWPORT_WIDTH + 4) * TILE_SIZE, (VIEWPORT_HEIGHT + 4) * TILE_SIZE);
+
+        // 2. Draw the Warm Glow / Tint
         let r = 255, g = 140, b = 0; 
         let drawTint = false;
         
@@ -2529,41 +2533,19 @@ const render = () => {
             }
         }
 
-        const tintColors = {
-            1.0: `rgba(${r}, ${g}, ${b}, 0.25)`,
-            0.7: `rgba(${r}, ${g}, ${b}, 0.175)`,
-            0.3: `rgba(${r}, ${g}, ${b}, 0.075)`
-        };
-
-        // --- OPTIMIZED RENDER LOOP ---
-        for (let y = -1; y <= VIEWPORT_HEIGHT; y++) {
-            for (let x = -1; x <= VIEWPORT_WIDTH; x++) {
-                const mapX = startX + x;
-                const mapY = startY + y;
-                
-                // Use squared distance! Extremely fast math.
-                const dx = mapX - p.x;
-                const dy = mapY - p.y;
-                const distSq = dx * dx + dy * dy;
-                
-                // Determine light tier
-                let lightLevel = 0.0;
-                if (distSq <= r1Sq) lightLevel = 1.0;
-                else if (distSq <= r2Sq) lightLevel = 0.7;
-                else if (distSq <= r3Sq) lightLevel = 0.3;
-                
-                // Draw Darkness Overlay (Skip entirely if fully lit)
-                if (lightLevel < 1.0) {
-                    ctx.fillStyle = darkColors[lightLevel];
-                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                }
-
-                // Draw Warm Glow (Skip entirely if pitch black or no tint needed)
-                if (drawTint && lightLevel > 0.0) {
-                    ctx.fillStyle = tintColors[lightLevel];
-                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                }
-            }
+        if (drawTint) {
+            const tintGradient = ctx.createRadialGradient(
+                pScreenX, pScreenY, 0,
+                pScreenX, pScreenY, lightPxRadius * 0.8
+            );
+            // Subtle colored glow at the center fading out
+            tintGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.25)`);
+            tintGradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+            
+            ctx.fillStyle = tintGradient;
+            ctx.beginPath();
+            ctx.arc(pScreenX, pScreenY, lightPxRadius * 0.8, 0, Math.PI * 2);
+            ctx.fill();
         }
     }
 
