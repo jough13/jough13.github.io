@@ -78,75 +78,87 @@ const chunkManager = {
             this.caveEnemies[caveId] = [];
         }
 
-        const roomTemplates = Object.values(CAVE_ROOM_TEMPLATES);
+        // Safety fallback in case CAVE_ROOM_TEMPLATES isn't fully loaded
+        const roomTemplates = Object.values(typeof CAVE_ROOM_TEMPLATES !== 'undefined' ? CAVE_ROOM_TEMPLATES : {});
         const roomAttempts = 5; // Try to place 5 rooms
 
-        for (let i = 0; i < roomAttempts; i++) {
-            // Pick a random room template
-            const room = roomTemplates[Math.floor(random() * roomTemplates.length)];
+        // Only attempt to stamp if we actually have templates!
+        if (roomTemplates.length > 0) {
+            for (let i = 0; i < roomAttempts; i++) {
+                // Pick a random room template
+                const room = roomTemplates[Math.floor(random() * roomTemplates.length)];
 
-            // Pick a random top-left corner for the room
-            const roomX = Math.floor(random() * (CAVE_WIDTH - room.width - 2)) + 1;
-            const roomY = Math.floor(random() * (CAVE_HEIGHT - room.height - 2)) + 1;
+                // SAFETY CHECK 1: Ensure the room is valid and actually contains a map
+                if (!room || !room.map || !room.width || !room.height) continue;
 
-            // Stamp the room
-            for (let ry = 0; ry < room.height; ry++) {
-                for (let rx = 0; rx < room.width; rx++) {
+                // Pick a random top-left corner for the room
+                const roomX = Math.floor(random() * (CAVE_WIDTH - room.width - 2)) + 1;
+                const roomY = Math.floor(random() * (CAVE_HEIGHT - room.height - 2)) + 1;
 
-                    const mapX = roomX + rx;
-                    const mapY = roomY + ry;
-                    const templateTile = room.map[ry][rx];
+                // Stamp the room
+                for (let ry = 0; ry < room.height; ry++) {
+                    
+                    // SAFETY CHECK 2: Ensure this specific row exists before reading tiles!
+                    // (This fixes the "reading '0'" crash)
+                    if (room.map[ry] === undefined) continue;
 
-                    if (templateTile === ' ') continue; // Skip empty spaces
+                    for (let rx = 0; rx < room.width; rx++) {
 
-                    let tileToPlace = null;
+                        const mapX = roomX + rx;
+                        const mapY = roomY + ry;
+                        const templateTile = room.map[ry][rx];
 
-                    if (templateTile === 'W') {
-                        tileToPlace = theme.wall;
-                    } else if (templateTile === 'F') {
-                        tileToPlace = theme.floor;
-                    } else {
-                        tileToPlace = templateTile; // It's an item or enemy
-                    }
+                        // Skip empty spaces or undefined tiles
+                        if (!templateTile || templateTile === ' ') continue; 
 
-                    // --- FIX: GHOST TILE LOGIC ---
-                    if (ENEMY_DATA[tileToPlace]) {
-                        // 1. If it's an enemy, set the underlying map tile to FLOOR
-                        // This prevents the "White C" ghost under the "Red C" enemy
-                        map[mapY][mapX] = theme.floor;
+                        let tileToPlace = null;
 
-                        // 2. Create the Entity
-                        const enemyTemplate = ENEMY_DATA[tileToPlace];
-                        
-                        // Generate scaled stats based on cave coordinates
-                        const scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+                        if (templateTile === 'W') {
+                            tileToPlace = theme.wall;
+                        } else if (templateTile === 'F') {
+                            tileToPlace = theme.floor;
+                        } else {
+                            tileToPlace = templateTile; // It's an item or enemy
+                        }
 
-                        this.caveEnemies[caveId].push({
-                            id: `${caveId}:${mapX},${mapY}`,
-                            x: mapX,
-                            y: mapY,
-                            tile: tileToPlace,
-                            name: scaledStats.name,
-                            isElite: scaledStats.isElite || false,
-                            color: scaledStats.color || null,
-                            health: scaledStats.maxHealth,
-                            maxHealth: scaledStats.maxHealth,
-                            attack: scaledStats.attack,
-                            defense: enemyTemplate.defense,
-                            xp: scaledStats.xp,
-                            loot: enemyTemplate.loot,
-                            caster: enemyTemplate.caster || false,
-                            castRange: enemyTemplate.castRange || 0,
-                            spellDamage: Math.floor((enemyTemplate.spellDamage || 0) * (1 + (Math.floor(dist / 50) * 0.1))),
-                            inflicts: enemyTemplate.inflicts || null,
-                            madnessTurns: 0,
-                            frostbiteTurns: 0,
-                            poisonTurns: 0,
-                            rootTurns: 0
-                        });
-                    } else {
-                        // Not an enemy? Stamp the tile normally (Walls, Items, Floor)
-                        map[mapY][mapX] = tileToPlace;
+                        // --- FIX: GHOST TILE LOGIC ---
+                        if (ENEMY_DATA[tileToPlace]) {
+                            // 1. If it's an enemy, set the underlying map tile to FLOOR
+                            map[mapY][mapX] = theme.floor;
+
+                            // 2. Create the Entity
+                            const enemyTemplate = ENEMY_DATA[tileToPlace];
+                            
+                            // Generate scaled stats based on cave coordinates
+                            const scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+
+                            this.caveEnemies[caveId].push({
+                                id: `${caveId}:${mapX},${mapY}`,
+                                x: mapX,
+                                y: mapY,
+                                tile: tileToPlace,
+                                name: scaledStats.name,
+                                isElite: scaledStats.isElite || false,
+                                color: scaledStats.color || null,
+                                health: scaledStats.maxHealth,
+                                maxHealth: scaledStats.maxHealth,
+                                attack: scaledStats.attack,
+                                defense: enemyTemplate.defense,
+                                xp: scaledStats.xp,
+                                loot: enemyTemplate.loot,
+                                caster: enemyTemplate.caster || false,
+                                castRange: enemyTemplate.castRange || 0,
+                                spellDamage: Math.floor((enemyTemplate.spellDamage || 0) * (1 + (Math.floor(dist / 50) * 0.1))),
+                                inflicts: enemyTemplate.inflicts || null,
+                                madnessTurns: 0,
+                                frostbiteTurns: 0,
+                                poisonTurns: 0,
+                                rootTurns: 0
+                            });
+                        } else {
+                            // Not an enemy? Stamp the tile normally (Walls, Items, Floor)
+                            map[mapY][mapX] = tileToPlace;
+                        }
                     }
                 }
             }
