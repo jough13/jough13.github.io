@@ -2486,66 +2486,67 @@ const render = () => {
         ctx.fillText(gameState.player.chatBubble, pScreenX, pScreenY - TILE_SIZE - 4);
     }
 
-    // --- 5. GPU ACCELERATED LIGHTING OVERLAY ---
+    // --- 5. BLOCKY RETRO LIGHTING OVERLAY ---
     
     // Determine how dark the areas outside your light radius should be
-    let outerDarkness = 1.0; // Pitch black for Dungeons
+    let outerDarkness = 1.0; 
     if (gameState.mapMode === 'overworld') {
-        outerDarkness = ambientLight; // Uses day/night cycle
+        outerDarkness = ambientLight; 
     } else if (gameState.mapMode === 'castle') {
-        outerDarkness = 0.8; // Dimly lit
+        outerDarkness = 0.8; 
     }
 
     if (outerDarkness > 0.0) {
-        ctx.save();
+        // Notice we do NOT reset the transform! 
+        // This keeps the blocks locked to the map tiles as you walk.
         
-        // Reset transform to draw in absolute screen coordinates
-        ctx.setTransform(1, 0, 0, 1, 0, 0); 
-        
-        const playerScreenX = (viewportCenterX * TILE_SIZE + TILE_SIZE / 2) * dpr;
-        const playerScreenY = (viewportCenterY * TILE_SIZE + TILE_SIZE / 2) * dpr;
-        const radiusInPixels = lightRadius * TILE_SIZE * dpr;
+        for (let y = -1; y <= VIEWPORT_HEIGHT; y++) {
+            for (let x = -1; x <= VIEWPORT_WIDTH; x++) {
+                const mapX = startX + x;
+                const mapY = startY + y;
+                
+                // Calculate distance to the player
+                const dist = Math.sqrt(Math.pow(mapX - p.x, 2) + Math.pow(mapY - p.y, 2));
+                
+                // Create a stepped "blocky" light falloff
+                let lightLevel = 0;
+                if (dist <= lightRadius * 0.3) {
+                    lightLevel = 1.0; // Fully lit core
+                } else if (dist <= lightRadius * 0.6) {
+                    lightLevel = 0.7; // Mid-tier light
+                } else if (dist <= lightRadius) {
+                    lightLevel = 0.3; // Dim edge
+                }
+                
+                // Calculate darkness for this specific tile
+                const tileDarkness = (1.0 - lightLevel) * outerDarkness;
 
-        // 1. Create a gradient that is completely clear in the center, and fades to black
-        const gradient = ctx.createRadialGradient(
-            playerScreenX, playerScreenY, radiusInPixels * 0.4, // Inner clear area
-            playerScreenX, playerScreenY, radiusInPixels        // Outer fading edge
-        );
-        
-        gradient.addColorStop(0, 'rgba(0, 0, 0, 0)'); // Center: Transparent (we see the player)
-        gradient.addColorStop(1, `rgba(0, 0, 0, ${outerDarkness})`); // Edge: Dark
-        
-        // 2. Fill the screen. The gradient automatically fills the infinite area 
-        // outside of its radius with the color of its final stop (solid darkness).
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // Draw Darkness Overlay
+                if (tileDarkness > 0) {
+                    ctx.fillStyle = `rgba(0, 0, 0, ${tileDarkness})`;
+                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
 
-        // 3. Add biome tinting back in (Ice is blue, Fire is orange)
-        if (ambientLight > 0.3 || gameState.mapMode === 'dungeon') {
-            let r = 255, g = 180, b = 100; // Warm default
-            
-            if (gameState.mapMode === 'dungeon') {
-                const themeName = chunkManager.caveThemes[gameState.currentCaveId];
-                if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
-                if (themeName === 'FIRE') { r = 255; g = 100; b = 50; }
-            } else if (gameState.mapMode === 'overworld') {
-                if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
+                // Draw Warm Orange Glow (if the tile is lit)
+                if (lightLevel > 0 && (ambientLight > 0.3 || gameState.mapMode === 'dungeon')) {
+                    // Warmer, richer Amber/Orange color
+                    let r = 255, g = 140, b = 0; 
+                    
+                    if (gameState.mapMode === 'dungeon') {
+                        const themeName = chunkManager.caveThemes[gameState.currentCaveId];
+                        if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
+                        if (themeName === 'FIRE') { r = 255; g = 80; b = 20; }
+                    } else if (gameState.mapMode === 'overworld') {
+                        if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
+                    }
+
+                    // Boost opacity for a stronger color, scaled by how close to center
+                    const tintStrength = lightLevel * 0.25; 
+                    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${tintStrength})`;
+                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
             }
-
-            // Draw a very faint colored circle over the player
-            const tintGrad = ctx.createRadialGradient(
-                playerScreenX, playerScreenY, 0,
-                playerScreenX, playerScreenY, radiusInPixels
-            );
-            tintGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.15)`);
-            tintGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
-            
-            ctx.fillStyle = tintGrad;
-            ctx.fillRect(0, 0, canvas.width, canvas.height); 
         }
-
-        ctx.restore();
     }
 
     const intensity = gameState.player.weatherIntensity || 0;
