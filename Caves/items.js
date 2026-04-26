@@ -1574,6 +1574,13 @@ window.handleStashTransfer = function (action, index) {
 
     if (action === 'deposit') {
         const item = player.inventory[index];
+
+        // --- PREVENT DEPOSITING EQUIPPED GEAR ---
+        if (item.isEquipped) {
+            logMessage("You must unequip that item before stashing it.");
+            return;
+        }
+
         // Check if item exists in bank
         const bankItem = player.bank.find(i => i.name === item.name);
         if (bankItem) {
