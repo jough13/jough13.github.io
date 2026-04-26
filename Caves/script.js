@@ -2260,13 +2260,10 @@ const render = () => {
 
     // Determine ambient light and base radius
     if (gameState.mapMode === 'dungeon') {
-        ambientLight = 0.6;
+        ambientLight = 0.85; // Dungeons are permanently dark
         baseRadius = 6 + Math.floor(gameState.player.perception / 2) + torchBonus + candleBonus;
-    } else if (gameState.mapMode === 'castle') {
-        ambientLight = 0.2;
-        baseRadius = 12 + torchBonus + candleBonus;
-    } else {
-        // Calculate exact minute of the day (0 to 1440)
+    } else { 
+        // Overworld AND Castles use the Day/Night Cycle!
         const timeInMinutes = (gameState.time.hour * 60) + gameState.time.minute;
         
         // Creates a perfectly smooth wave: 0.0 at noon, 1.0 at midnight
@@ -2490,13 +2487,10 @@ const render = () => {
 
     // --- 5. EFFICIENT SMOOTH LIGHTING OVERLAY ---
     
-    let outerDarkness = 1.0; 
-    if (gameState.mapMode === 'overworld') {
-        outerDarkness = ambientLight; 
-    } else if (gameState.mapMode === 'castle') {
-        outerDarkness = 0.8; 
-    }
+    // Unify darkness variable since we calculated it properly for all zones above!
+    const outerDarkness = ambientLight; 
 
+    // If it's daytime (outerDarkness is 0), this skips drawing the shadow entirely!
     if (outerDarkness > 0.0) {
         // Base Tint Color: Warm Orange
         let r = 255, g = 140, b = 0; 
