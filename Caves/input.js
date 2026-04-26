@@ -20,8 +20,10 @@ function handleInput(key) {
     }
 
     // --- EASY WIN: UNIVERSAL ESCAPE KEY / MODAL CLOSER ---
-    // Instead of hardcoding 12 different modal checks, we dynamically find the open one!
     if (key === 'Escape') {
+        // JUICE/FIX: Clear the queue instantly to stop runaway movement!
+        if (typeof inputQueue !== 'undefined') inputQueue.length = 0; 
+
         if (gameState.isAiming) {
             gameState.isAiming = false;
             gameState.abilityToAim = null;
@@ -50,7 +52,6 @@ function handleInput(key) {
     }
 
     // 4. Dead Check
-    // Now that we've handled system keys (Escape), we block gameplay inputs if dead.
     if (gameState.player.health <= 0) return;
 
     if (key.toLowerCase() === 'q') {
@@ -81,10 +82,12 @@ function handleInput(key) {
         else if (key === '3' || key === 'PageDown') { dirX = 1; dirY = 1; }
 
         if (dirX !== 0 || dirY !== 0) {
+            lastActionTime = Date.now(); // FIX: Update global cooldown to prevent rapid-fire aiming exploit
             const abilityId = gameState.abilityToAim;
+            
             // Route abilities
             if (abilityId === 'lunge') executeLunge(dirX, dirY);
-            else if (abilityId === 'shieldBash' || abilityId === 'cleave' || abilityId === 'kick' || abilityId === 'crush') executeMeleeSkill(abilityId, dirX, dirY);
+            else if (['shieldBash', 'cleave', 'kick', 'crush'].includes(abilityId)) executeMeleeSkill(abilityId, dirX, dirY);
             else if (abilityId === 'quickstep') executeQuickstep(dirX, dirY);
             else if (SPELL_DATA[abilityId]) executeAimedSpell(abilityId, dirX, dirY);
             else if (abilityId === 'pacify') executePacify(dirX, dirY);
@@ -128,7 +131,7 @@ function handleInput(key) {
         
         // Priority 1: Drop Mode active?
         if (gameState.isDroppingItem) {
-            handleItemDrop(key); // Use the string key "1", "2", etc.
+            handleItemDrop(key); 
             return;
         }
 
@@ -139,7 +142,6 @@ function handleInput(key) {
         }
 
         // Priority 3: Normal Hotbar usage
-        // Note: Only 1-5 usually used for hotbar, but we check range 1-9 to be safe
         if (keyNum <= 5) {
             useHotbarSlot(keyNum - 1);
             return;
@@ -170,8 +172,9 @@ function handleInput(key) {
     }
 
     // --- EASY WIN: MENU TOGGLES ---
-    // Instead of just opening, pressing the key again closes the menu!
     const toggleModal = (modalEl, openFunc, closeFunc) => {
+        if (typeof inputQueue !== 'undefined') inputQueue.length = 0; // Prevent runaway buffering
+        
         if (!modalEl.classList.contains('hidden')) {
             if (closeFunc) closeFunc();
             else modalEl.classList.add('hidden');
@@ -190,32 +193,13 @@ function handleInput(key) {
     // Auto-focus chat on Enter
     if (key === 'Enter') { document.getElementById('chatInput').focus(); return; }
 
-    // --- EASY WIN: UNIVERSAL GUARD: BLOCK MOVEMENT IF MENUS ARE OPEN ---
-    // Replaced the massive if-statement block with a clean DOM query
     const anyModalOpen = document.querySelector('.modal-overlay:not(.hidden)');
     if (anyModalOpen || gameState.inventoryMode) {
         return;
     }
 
-    // 1. THROTTLE CHECK & BUFFERING
-    const now = Date.now();
-    if (now - lastActionTime < ACTION_COOLDOWN) {
-        // Buffer movement keys (including numpad) to prevent menu weirdness
-        const moveKeys = [
-            'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 
-            'w', 'a', 's', 'd', 'W', 'A', 'S', 'D',
-            '1', '2', '3', '4', '6', '7', '8', '9',
-            'Home', 'End', 'PageUp', 'PageDown'
-        ];
-
-        if (moveKeys.includes(key)) {
-            inputBuffer = key; // Store the intent
-        }
-        return;
-    }
-
-    // If we are executing a move, clear the buffer so we don't double-move later
-    inputBuffer = null;
+    // NOTE: The massive local cooldown inputBuffer block was completely 
+    // removed from here because the GameLoop handles throttling the queue now!
 
     let newX = gameState.player.x;
     let newY = gameState.player.y;
@@ -237,17 +221,21 @@ function handleInput(key) {
 
         case 'r': case 'R':
             restPlayer();
-            lastActionTime = now; 
+            lastActionTime = Date.now(); 
             return;
         case ' ': case '5': case '.': // Spacebar or Numpad center/dot to skip turn
             logMessage("You wait a moment.");
             endPlayerTurn();
-            lastActionTime = now; 
+            lastActionTime = Date.now(); 
             return;
     }
 
     if (moved) {
-        lastActionTime = now; // Update timer only if we actually move
+        // JUICE: Store facing direction for rendering (e.g. flipping sprites or aiming slashes)
+        if (newX > gameState.player.x) gameState.player.facing = 'right';
+        else if (newX < gameState.player.x) gameState.player.facing = 'left';
+
+        lastActionTime = Date.now(); // Update timer
         attemptMovePlayer(newX, newY);
     }
 }
@@ -268,8 +256,22 @@ document.addEventListener('keydown', (event) => {
         event.preventDefault();
     }
 
-    // 3. Pass the input to the game logic
-    handleInput(event.key);
+    // --- THE INPUT QUEUE ROUTER ---
+    // UI, Drop Mode, and Escaping menus should happen INSTANTLY for good UX
+    const instantKeys = ['Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'I', 'M', 'B', 'K', 'C', 'P', 'd', 'D', 'g', 'G', 'q', 'Q'];
+    const anyModalOpen = document.querySelector('.modal-overlay:not(.hidden)');
+    
+    if (anyModalOpen || instantKeys.includes(event.key) || gameState.isDroppingItem || gameState.inventoryMode) {
+        handleInput(event.key); // Execute instantly
+    } else {
+        // Gameplay actions (Movement, Combat, Aiming) queue up seamlessly!
+        if (typeof inputQueue !== 'undefined' && inputQueue.length < 3) {
+            inputQueue.push(event.key);
+        } else if (typeof inputQueue === 'undefined') {
+            // Fallback safe-guard
+            handleInput(event.key);
+        }
+    }
 });
 
 // DEBOUNCE RESIZE: Only resize once the user STOPS dragging the window (saves CPU)
