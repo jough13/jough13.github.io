@@ -125,6 +125,11 @@ window.TILE_DATA = {
         type: 'npc_guard',
         title: 'Castle Guard'
     },
+    '🎖️': {
+        type: 'npc_captain',
+        title: 'Captain of the Guard',
+        flavor: "A grizzled veteran missing an eye."
+    },
     'O': {
         type: 'npc_sage',
         title: 'Sage'
@@ -191,14 +196,11 @@ window.TILE_DATA = {
         name: 'Loose Soil',
         flavor: "The earth here looks disturbed recently..."
     },
-    'T': {
-        type: 'decoration', // Dead Tree
-    },
     '⚰️': {
         type: 'loot_container', 
         name: 'Ancient Grave',
         flavor: "You disturb the resting place of a forgotten warrior...",
-        lootTable: ['(', '(', '†', '👢', '🛡️w', '💀']
+        lootTable: ['(', '(', '†', '👢', '🛡️w', '💀', ' ancient_coin']
     },
     '🗿': {
         type: 'lore_statue',
@@ -398,7 +400,7 @@ window.CASTLE_LAYOUTS = {
             '▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓',
             '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓',
             '▓...............................................................................▓',
-            '▓...............T.....................................................G.........▓',
+            '▓...............T.....................................................🎖️.........▓',
             '▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
             '▓....X..........................................................................▓',
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
@@ -449,7 +451,7 @@ window.CASTLE_LAYOUTS = {
             '▓...▓.......▓...▓.......▓...▓...==..$...$...▓...▓.......▓...▓.......▓...▓...▓',
             '▓...▓.......▓...▓.......▓...▓...==..$.......▓...▓.......▓...▓.......▓...▓...▓',
             '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓==▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓...▓',
-            '▓...............................==...............G...G..........................▓',
+            '▓...............................==...............🎖️...G..........................▓',
             '▓...............T...............==....................................G.........▓',
             '▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓.▓▓▓▓▓▓▓▓▓▓▓==▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
             '▓....X..........................==..............................................▓', 
@@ -527,13 +529,13 @@ window.CAVE_THEMES = {
         wall: '▓', secretWall: '▒', floor: '.', 
         colors: { wall: '#450a0a', floor: '#ef4444' },
         decorations: ['♥', '$', '🔥', 'J'],
-        enemies: ['b', 'C', 'o', 'm', '👺', 'f']
+        enemies: ['b', 'C', 'o', 'm', 'f']
     },
     CRYPT: {
         name: 'A Musty Crypt',
         wall: '▓', floor: '.', secretWall: '▒',
         colors: { wall: '#374151', floor: '#4b5563' },
-        decorations: ['♥', '$', '(', '†', '🌀', '😱', '💀', '🕸'],
+        decorations: ['♥', '$', '(', '†', '🌀', '😱', '💀', '🕸', '⚰️'],
         enemies: ['s', 'Z', 'a']
     },
     CRYSTAL: {
@@ -541,7 +543,7 @@ window.CAVE_THEMES = {
         wall: '▒', secretWall: '▓', floor: '.',
         colors: { wall: '#67e8f9', floor: '#22d3ee' },
         decorations: ['💜', '🔮', '$', 'K'],
-        enemies: ['g']
+        enemies: ['g', '🧌']
     },
     VOID: {
         name: 'The Void Sanctum',
@@ -555,14 +557,14 @@ window.CAVE_THEMES = {
         wall: '▓', floor: '.', secretWall: '▒',
         colors: { wall: '#0f0f0f', floor: '#331133' },
         decorations: ['💀', '🕸️', '🔥', 'Ω', '💎', '🕸'],
-        enemies: ['o', 'm', 'Z', 'g', '🐺', '🦂', 'a'] 
+        enemies: ['o', 'm', 'Z', 'g', '🐺', '🦂', 'a', '👾'] 
     },
     SUNKEN: {
         name: 'The Sunken Temple',
         wall: '🧱', floor: '.', secretWall: '▒',
         colors: { wall: '#0e7490', floor: '#1e3a8a' },
-        decorations: ['🐟', '🌿', '🗿', '🦀'],
-        enemies: ['🐸', '🐍', 'l', '🦑']
+        decorations: ['🐟', '🌿', '🗿'],
+        enemies: ['🐸', '🐍', 'l', '🐉h']
     },
     GROTTO: {
         name: 'A Sunken Grotto',
@@ -616,7 +618,7 @@ window.CAVE_ROOM_TEMPLATES = {
             ' WWWWWWW ',
             'WW.....WW',
             'W...s...W',
-            'W..s†s..W', 
+            'W..s⚰️s..W', 
             'W...s...W',
             'WW.....WW',
             ' WWWWWWW '
@@ -703,7 +705,6 @@ window.CAVE_ROOM_TEMPLATES = {
             ' WWWWW '
         ]
     },
-    // --- EASY WIN: NEW ROOM TEMPLATES ---
     "The Spider's Nest": {
         width: 7,
         height: 7,
@@ -741,6 +742,57 @@ window.CAVE_ROOM_TEMPLATES = {
             'W.......W', 
             ' WWWWWWW '
         ]
+    },
+    // --- NEW TEMPLATES ---
+    "Forgotten Armory": {
+        width: 7,
+        height: 5,
+        map: [
+            ' WWWWW ',
+            'W.....W',
+            'W.⚔️.🛡️.W', 
+            'W.....W',
+            ' WWWWW '
+        ]
+    },
+    "Torture Chamber": {
+        width: 7,
+        height: 7,
+        map: [
+            ' WWWWW ',
+            'W.⛓️.⛓️.W',
+            'W..s..W',
+            'W.Z.Z.W',
+            'W..s..W',
+            'W.⛓️.⛓️.W',
+            ' WWWWW '
+        ]
+    },
+    "Ritual Dais": {
+        width: 9,
+        height: 7,
+        map: [
+            ' WWWWWWW ',
+            'WW.....WW',
+            'W..🔥.🔥..W',
+            'W...a...W',
+            'W..🔥.🔥..W',
+            'WW.....WW',
+            ' WWWWWWW '
+        ]
+    },
+    "Mushroom Grotto": {
+        width: 7,
+        height: 7,
+        map: [
+            ' WWWWW ',
+            'W.🍄.🍄.W',
+            'W.....W',
+            'W🍄.🌿.🍄W',
+            'W.....W',
+            'W.🍄.🍄.W',
+            ' WWWWW '
+        ]
     }
 };
 
@@ -750,46 +802,58 @@ window.ATMOSPHERE_TEXT = {
         "A distant wolf howl shivers through the air.",
         "The darkness feels heavy, like a physical weight.",
         "You hear something chittering in the dark.",
-        "The moon casts long, twisted shadows."
+        "The moon casts long, twisted shadows.",
+        "A sudden drop in temperature makes you shiver.",
+        "Something large moves just beyond the edge of your vision."
     ],
     DAWN: [
         "The first light of dawn paints the horizon gold.",
         "Dew glistens on the ground.",
         "The world wakes up. Birds begin to sing.",
-        "A cold morning mist clings to the ground."
+        "A cold morning mist clings to the ground.",
+        "The shadows retreat as the sun begins its climb."
     ],
     STORM: [
         "Thunder rattles your teeth.",
         "The wind screams like a banshee.",
         "Lightning illuminates the landscape in a stark flash.",
-        "The rain is torrential. It's hard to see."
+        "The rain is torrential. It's hard to see.",
+        "The smell of ozone is thick in the air."
     ],
     FOREST: [
         "The trees seem to lean in as you pass.",
         "You spot scratch marks on a trunk. Too big for a bear.",
         "The smell of pine and rotting leaves is thick.",
         "Was that a face in the bark? No, just a knot.",
-        "A sudden rustle in the bushes makes you freeze." // New
+        "A sudden rustle in the bushes makes you freeze.",
+        "Sunlight filters through the canopy in dusty shafts.",
+        "You step on a dry branch. It sounds as loud as a thunderclap."
     ],
     DESERT: [
         "The heat rising from the sand distorts the air.",
         "Your throat feels dry just looking at the dunes.",
         "The wind shifts the sand, erasing your footprints.",
         "Bleached bones poke out from a dune.",
-        "You spot a shimmering mirage on the horizon." // New
+        "You spot a shimmering mirage on the horizon.",
+        "The silence of the desert is absolute.",
+        "A scuttling sound comes from beneath the sand."
     ],
     MOUNTAIN: [
         "The air is thin and sharp here.",
         "Loose gravel clatters down the cliffside.",
         "You feel vertiginous looking down.",
         "The wind howls through the crags.",
-        "You find a massive, three-toed footprint in the snow." // New
+        "You find a massive, three-toed footprint in the snow.",
+        "Clouds obscure the peaks above you.",
+        "A distant rumble warns of falling rock."
     ],
     SWAMP: [
         "Bubbles rise from the muck with a foul smell.",
         "Insects swarm around your head.",
         "The ground feels spongy and unstable.",
         "You see ripples in the water. Something is moving.",
-        "A strange, glowing light bobs over the water nearby." // New
+        "A strange, glowing light bobs over the water nearby.",
+        "The trees here are draped in grey, weeping moss.",
+        "You pull your boot out of the mud with a loud squelch."
     ]
 };
