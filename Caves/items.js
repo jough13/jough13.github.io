@@ -107,7 +107,17 @@ function generateEnemyLoot(player, enemy) {
     }
 
     // --- 2. Calculate Distance for Scaling ---
-    const dist = Math.sqrt(player.x * player.x + player.y * player.y);
+    let dist;
+    if (gameState.mapMode === 'overworld') {
+        dist = Math.sqrt(player.x * player.x + player.y * player.y);
+    } else {
+        // Extract the world coordinates from the dungeon/castle ID
+        const instanceId = gameState.currentCaveId || gameState.currentCastleId || "";
+        const parts = instanceId.split('_');
+        const wX = parseInt(parts[1]) || 0;
+        const wY = parseInt(parts[2]) || 0;
+        dist = Math.sqrt(wX * wX + wY * wY);
+    }
 
     // --- 3. Determine Drop Tables ---
     const JUNK_DROP_CHANCE = Math.max(0.05, 0.25 - (player.luck * 0.001));
@@ -1695,7 +1705,6 @@ function applyStatBonuses(item, operation) {
                 if (player.psyche > player.maxPsyche) player.psyche = player.maxPsyche;
             }
 
-            // (Keep your existing log/flash logic here)
             if (operation === 1) {
                 logMessage(`You feel ${stat} increase! (+${amount})`);
                 triggerStatFlash(statDisplays[stat], true);
