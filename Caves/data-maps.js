@@ -719,7 +719,7 @@ window.CAVE_ROOM_TEMPLATES = {
     },
     "Cultist Summoning Circle": {
         width: 9,
-        height: 9,
+        height: 7,
         map: [
             ' WWWWWWW ',
             'W.......W',
@@ -732,13 +732,13 @@ window.CAVE_ROOM_TEMPLATES = {
     },
     "The Dragon's Hoard": {
         width: 9,
-        height: 7,
+        height: 6,
         map: [
             ' WWWWWWW ',
-            'W.$$$.$W',
-            'W$🐲$📦$W',
-            'W.$$$.$W', 
-            'W......W',
+            'W.$$$$.$W', 
+            'W$🐲$$📦$W',
+            'W.$$$$.$W',
+            'W.......W', 
             ' WWWWWWW '
         ]
     }
