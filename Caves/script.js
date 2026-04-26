@@ -2340,8 +2340,9 @@ const render = () => {
     // --- ENTITIES & PLAYERS ---
     
     // Attack Telegraphs
-    if (gameState.instancedEnemies) {
-        gameState.instancedEnemies.forEach(enemy => {
+    const allEnemies = gameState.mapMode === 'overworld' ? Object.values(gameState.sharedEnemies) : gameState.instancedEnemies;
+    if (allEnemies) {
+        allEnemies.forEach(enemy => {
             if (enemy.pendingAttacks) {
                 enemy.pendingAttacks.forEach(t => {
                     const screenX = t.x - startX;
@@ -4016,8 +4017,11 @@ async function attemptMovePlayer(newX, newY) {
             }
 
             isProcessingMove = true;
-
             await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
+            
+            isProcessingMove = false;
+            endPlayerTurn();
+            render();
             return;
         }
     }
@@ -5358,7 +5362,7 @@ async function attemptMovePlayer(newX, newY) {
             return;
         }
 
-        if (newTile === 'G') {
+        if (newTile === '🎖️') {
             const questId = "banditChief";
             const playerQuest = gameState.player.quests[questId];
 
