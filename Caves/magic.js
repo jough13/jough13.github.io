@@ -447,7 +447,10 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
             map = chunkManager.castleMaps[gameState.currentCastleId];
             tile = (map && map[coords.y]) ? map[coords.y][coords.x] : ' ';
         } else {
-            tile = chunkManager.getTile(coords.x, coords.y);
+            // --- Check for LIVE moving enemies first! ---
+            const enemyId = `overworld:${coords.x},${-coords.y}`;
+            const liveEnemy = gameState.sharedEnemies[enemyId];
+            tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(coords.x, coords.y);
         }
 
         const enemyData = ENEMY_DATA[tile];
@@ -552,7 +555,10 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
     // Determine the tile and enemy data
     let tile;
     if (gameState.mapMode === 'overworld') {
-        tile = chunkManager.getTile(targetX, targetY);
+        // --- Check for LIVE moving enemies first! ---
+        const enemyId = `overworld:${targetX},${-targetY}`;
+        const liveEnemy = gameState.sharedEnemies[enemyId];
+        tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
     } else {
         const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
         tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
@@ -1041,7 +1047,10 @@ async function executeLunge(dirX, dirY) {
             const map = chunkManager.castleMaps[gameState.currentCastleId];
             tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
         } else {
-            tile = chunkManager.getTile(targetX, targetY);
+            // --- Check for LIVE moving enemies first! ---
+            const enemyId = `overworld:${targetX},${-targetY}`;
+            const liveEnemy = gameState.sharedEnemies[enemyId];
+            tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
         }
 
         const enemyData = ENEMY_DATA[tile];
