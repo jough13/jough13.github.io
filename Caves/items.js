@@ -1440,7 +1440,7 @@ if (isMasterwork) {
 }
 
 function openCraftingModal(mode = 'workbench') {
-    inputQueue = [];
+    if (typeof inputQueue !== 'undefined') inputQueue.length = 0; 
     gameState.currentCraftingMode = mode;
 
     // Update Title based on mode
@@ -1649,7 +1649,7 @@ function renderStash() {
 }
 
 function openStashModal() {
-    inputQueue = [];
+    if (typeof inputQueue !== 'undefined') inputQueue.length = 0; 
     
     renderStash();
     stashModal.classList.remove('hidden');
