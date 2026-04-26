@@ -9,14 +9,20 @@ let pendingSaveData = null; // Add this to your globals at the top
 
 function triggerDebouncedSave(updates) {
     if (saveTimeout) clearTimeout(saveTimeout);
-    pendingSaveData = updates; // Store it globally
+    pendingSaveData = updates; 
     
+    // Show a saving icon in the UI
+    document.getElementById('saveIndicator').classList.remove('hidden'); 
+
     saveTimeout = setTimeout(() => {
         if (playerRef && pendingSaveData) {
             playerRef.update(pendingSaveData).catch(err => console.error(err));
         }
         saveTimeout = null;
         pendingSaveData = null;
+        
+        // Hide the icon once complete
+        document.getElementById('saveIndicator').classList.add('hidden'); 
     }, 2000); 
 }
 
@@ -5929,6 +5935,17 @@ async function attemptMovePlayer(newX, newY) {
 
     gameState.player.x = newX;
     gameState.player.y = newY;
+
+    if (gameState.mapMode === 'overworld') {
+        const lastDist = Math.sqrt(prevX * prevX + prevY * prevY);
+        const currentDist = Math.sqrt(newX * newX + newY * newY);
+        
+        if (lastDist < 500 && currentDist >= 500) {
+            logMessage("{red:Here, the wilderness becomes untamed and deadly.}");
+        } else if (lastDist >= 500 && currentDist < 500) {
+            logMessage("{green:This looks familiar. You feel a bit safer.}");
+        }
+    }
 
     gameState.mapDirty = true;
 
