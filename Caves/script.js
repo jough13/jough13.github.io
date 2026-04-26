@@ -2488,9 +2488,8 @@ const render = () => {
         ctx.fillText(gameState.player.chatBubble, pScreenX, pScreenY - TILE_SIZE - 4);
     }
 
-    // --- 5. BANDED RETRO LIGHTING OVERLAY (MAX PERFORMANCE) ---
+    // --- 5. JAGGED BLOCKY LIGHTING OVERLAY (ULTRA PERFORMANCE) ---
     
-    // Determine how dark the areas outside your light radius should be
     let outerDarkness = 1.0; 
     if (gameState.mapMode === 'overworld') {
         outerDarkness = ambientLight; 
@@ -2503,7 +2502,6 @@ const render = () => {
         // 1. Base Tint Colors (Warm Fire Yellow/Orange)
         let r = 250, g = 180, b = 50; 
         
-        // Override for special zones
         if (gameState.mapMode === 'dungeon') {
             const themeName = chunkManager.caveThemes[gameState.currentCaveId];
             if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
@@ -2512,42 +2510,87 @@ const render = () => {
             r = 100; g = 100; b = 150;
         }
 
-        // 2. Lock the light source to the GRID, not the smooth camera
-        // This makes the light "chunk" tile-by-tile, giving a retro feel 
-        // while the player sprite glides smoothly!
-        const snappedScreenX = (p.x - startX) * TILE_SIZE + TILE_SIZE / 2;
-        const snappedScreenY = (p.y - startY) * TILE_SIZE + TILE_SIZE / 2;
-        const lightPxRadius = lightRadius * TILE_SIZE;
+        // 2. Prepare the tiny low-res offscreen canvas
+        if (!window.lightMaskCanvas) {
+            window.lightMaskCanvas = document.createElement('canvas');
+            window.lightMaskCtx = window.lightMaskCanvas.getContext('2d');
+        }
 
-        // 3. Create the Gradient (One single GPU draw call!)
-        const darknessGradient = ctx.createRadialGradient(
-            snappedScreenX, snappedScreenY, 0,
-            snappedScreenX, snappedScreenY, lightPxRadius
+        // Exact number of tiles visible on screen plus padding
+        const cols = VIEWPORT_WIDTH + 4; 
+        const rows = VIEWPORT_HEIGHT + 4;
+        
+        if (window.lightMaskCanvas.width !== cols) window.lightMaskCanvas.width = cols;
+        if (window.lightMaskCanvas.height !== rows) window.lightMaskCanvas.height = rows;
+
+        // Manipulating raw image data in JS is thousands of times faster than drawing shapes!
+        const imgData = window.lightMaskCtx.createImageData(cols, rows);
+        const data = imgData.data;
+
+        // Player's exact grid coordinate relative to the buffer
+        const cx = p.x - startX + 1; 
+        const cy = p.y - startY + 1;
+
+        const flicker = Math.sin(Date.now() / 150) * 0.5;
+        const currentRadius = lightRadius + flicker;
+
+        const r1Sq = Math.pow(currentRadius * 0.35, 2);
+        const r2Sq = Math.pow(currentRadius * 0.7, 2);
+        const r3Sq = Math.pow(currentRadius, 2);
+
+        // Pre-calculate Alpha values based on ambient darkness
+        const a0 = 38; // Bright inner glow (alpha 0-255)
+        const a1 = Math.floor(153 * outerDarkness); // Mid shadow
+        const a2 = Math.floor(216 * outerDarkness); // Deep shadow
+        const a3 = Math.floor(255 * outerDarkness); // Pitch black
+
+        // Pre-calculate darker RGB for the mid-band
+        const r1 = Math.floor(r * 0.4), g1 = Math.floor(g * 0.4), b1 = Math.floor(b * 0.4);
+
+        // 3. Raw Pixel Loop
+        for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+                const dx = x - cx;
+                const dy = y - cy;
+                
+                // Calculate world coordinates for static noise
+                const worldX = startX + x - 1;
+                const worldY = startY + y - 1;
+                
+                // MAGIC SAUCE: Deterministic noise based on world position
+                // This makes the light jagged and uneven, but it locks to the terrain so it doesn't spin wildly!
+                const noise = (Math.sin(worldX * 12.9898 + worldY * 78.233) * 43758.5453) % 1; 
+                
+                // Distort the distance check with the noise
+                const jaggedDistSq = (dx * dx + dy * dy) + (noise * currentRadius * 1.5);
+
+                const index = (y * cols + x) * 4;
+
+                // Assign pixel colors (R, G, B, Alpha)
+                if (jaggedDistSq <= r1Sq) {
+                    data[index] = r; data[index+1] = g; data[index+2] = b; data[index+3] = a0;
+                } else if (jaggedDistSq <= r2Sq) {
+                    data[index] = r1; data[index+1] = g1; data[index+2] = b1; data[index+3] = a1;
+                } else if (jaggedDistSq <= r3Sq) {
+                    data[index] = 0; data[index+1] = 0; data[index+2] = 0; data[index+3] = a2;
+                } else {
+                    data[index] = 0; data[index+1] = 0; data[index+2] = 0; data[index+3] = a3;
+                }
+            }
+        }
+
+        // Apply the pixels to the tiny canvas
+        window.lightMaskCtx.putImageData(imgData, 0, 0);
+
+        // 4. Draw the tiny canvas scaled up to the main screen
+        ctx.save();
+        ctx.imageSmoothingEnabled = false; // CRITICAL: This forces the hardware to draw perfect, hard-edged blocks!
+        ctx.drawImage(
+            window.lightMaskCanvas, 
+            -TILE_SIZE, -TILE_SIZE, 
+            cols * TILE_SIZE, rows * TILE_SIZE
         );
-
-        // 4. Create "Hard Stops" for an 8-bit banding effect
-        // By putting two stops almost exactly on top of each other (0.4 and 0.41),
-        // we eliminate the smooth fade and create sharp, distinct rings.
-
-        // Inner Core: Fully lit, slight warm tint
-        darknessGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.1)`);
-        darknessGradient.addColorStop(0.4, `rgba(${r}, ${g}, ${b}, 0.1)`);
-        
-        // Mid Band: Darker, heavily tinted orange/yellow
-        darknessGradient.addColorStop(0.41, `rgba(${Math.floor(r*0.4)}, ${Math.floor(g*0.4)}, ${Math.floor(b*0.4)}, ${0.6 * outerDarkness})`);
-        darknessGradient.addColorStop(0.7, `rgba(${Math.floor(r*0.4)}, ${Math.floor(g*0.4)}, ${Math.floor(b*0.4)}, ${0.6 * outerDarkness})`);
-        
-        // Outer Band: Very dark, losing color
-        darknessGradient.addColorStop(0.71, `rgba(0, 0, 0, ${0.85 * outerDarkness})`);
-        darknessGradient.addColorStop(0.9, `rgba(0, 0, 0, ${0.85 * outerDarkness})`);
-        
-        // Pitch Black Edge
-        darknessGradient.addColorStop(0.91, `rgba(0, 0, 0, ${outerDarkness})`);
-        darknessGradient.addColorStop(1, `rgba(0, 0, 0, ${outerDarkness})`);
-
-        // 5. Draw one massive rectangle covering the screen
-        ctx.fillStyle = darknessGradient;
-        ctx.fillRect(-TILE_SIZE * 2, -TILE_SIZE * 2, (VIEWPORT_WIDTH + 4) * TILE_SIZE, (VIEWPORT_HEIGHT + 4) * TILE_SIZE);
+        ctx.restore();
     }
 
     const intensity = gameState.player.weatherIntensity || 0;
