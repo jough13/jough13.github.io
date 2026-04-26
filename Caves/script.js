@@ -100,7 +100,7 @@ async function manualSaveGame() {
 // --- INPUT THROTTLE ---
 let lastActionTime = 0;
 const ACTION_COOLDOWN = 150; // ms (limits speed to ~6 moves per second)
-let inputBuffer = null;
+let inputQueue = [];
 
 const SELL_MODIFIER = 0.5; // Players sell items for 50% of their base price
 
@@ -2862,6 +2862,33 @@ function endPlayerTurn() {
 
     gameState.playerTurnCount++;
     updateWeather();
+
+    // --- DISTRIBUTED ENEMY GARBAGE COLLECTION ---
+    // Every 50 turns, have this client sweep the area to delete abandoned enemies
+    if (gameState.mapMode === 'overworld' && gameState.playerTurnCount % 50 === 0) {
+        Object.entries(gameState.sharedEnemies).forEach(([enemyId, enemy]) => {
+            let isNearAnyone = false;
+            
+            // 1. Is it near YOU? (Within 100 tiles)
+            if (Math.abs(enemy.x - gameState.player.x) < 100 && Math.abs(enemy.y - gameState.player.y) < 100) {
+                isNearAnyone = true;
+            }
+            
+            // 2. Is it near any OTHER online player?
+            for (const pid in otherPlayers) {
+                const op = otherPlayers[pid];
+                if (op.mapMode === 'overworld' && Math.abs(enemy.x - op.x) < 100 && Math.abs(enemy.y - op.y) < 100) {
+                    isNearAnyone = true;
+                }
+            }
+
+            // 3. If no one is around, delete it from Firebase to save database quotas!
+            if (!isNearAnyone) {
+                rtdb.ref(`worldEnemies/${enemyId}`).remove();
+                delete gameState.sharedEnemies[enemyId];
+            }
+        });
+    }
 
     // --- STORM LIGHTNING STRIKES ---
     if (gameState.mapMode === 'overworld' && gameState.weather === 'storm') {
@@ -6701,13 +6728,28 @@ auth.onAuthStateChanged((user) => {
 
 let lastFrameTime = 0;
 
+let lastFrameTime = 0;
+let timeSinceLastDraw = 0;
+const FPS_CAP = 1000 / 60; // 16.6ms per frame (60 FPS)
+
 function gameLoop(timestamp) {
     if (!lastFrameTime) lastFrameTime = timestamp;
-    const dt = (timestamp - lastFrameTime) / 1000; // Time in seconds
+    const rawDt = timestamp - lastFrameTime;
     lastFrameTime = timestamp;
+    
+    timeSinceLastDraw += rawDt;
+
+    // --- THROTTLE TO 60 FPS TO SAVE CPU/BATTERY ---
+    if (timeSinceLastDraw < FPS_CAP) {
+        requestAnimationFrame(gameLoop);
+        return; // Skip drawing this frame
+    }
+    
+    const dt = timeSinceLastDraw / 1000;
 
     // Cap delta-time so the game doesn't jump wildly if you switch browser tabs
     const safeDt = Math.min(dt, 0.1);
+    timeSinceLastDraw = 0; // Reset accumulator
 
     // --- 1. LERP (SMOOTH GLIDE) THE PLAYER CAMERA ---
     const p = gameState.player;
@@ -6729,10 +6771,9 @@ function gameLoop(timestamp) {
     // 2. Update Particles smoothly
     if (typeof ParticleSystem !== 'undefined') ParticleSystem.update();
 
-    // 3. Process Input Buffer
-    if (inputBuffer && Date.now() - lastActionTime >= ACTION_COOLDOWN) {
-        const key = inputBuffer;
-        inputBuffer = null; 
+    // 3. Process Input Queue
+    if (inputQueue.length > 0 && Date.now() - lastActionTime >= ACTION_COOLDOWN) {
+        const key = inputQueue.shift(); // Pulls the oldest key pressed
         handleInput(key);
     }
 
