@@ -11,8 +11,9 @@ function triggerDebouncedSave(updates) {
     if (saveTimeout) clearTimeout(saveTimeout);
     pendingSaveData = updates; 
     
-    // Show a saving icon in the UI
-    document.getElementById('saveIndicator').classList.remove('hidden'); 
+    // Safety check: Only manipulate the indicator if it exists!
+    const saveIcon = document.getElementById('saveIndicator');
+    if (saveIcon) saveIcon.classList.remove('hidden'); 
 
     saveTimeout = setTimeout(() => {
         if (playerRef && pendingSaveData) {
@@ -22,7 +23,7 @@ function triggerDebouncedSave(updates) {
         pendingSaveData = null;
         
         // Hide the icon once complete
-        document.getElementById('saveIndicator').classList.add('hidden'); 
+        if (saveIcon) saveIcon.classList.add('hidden'); 
     }, 2000); 
 }
 
