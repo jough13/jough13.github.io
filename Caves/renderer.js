@@ -106,10 +106,14 @@ const ParticleSystem = {
                 const scale = 1 + (Math.sin(p.life * Math.PI) * 0.5);
                 ctx.font = `bold ${p.size * scale}px monospace`;
                 ctx.strokeStyle = 'black';
-                ctx.lineWidth = 3;
                 
-                // Draw text
+                // EASY WIN: Draw stroke FIRST (behind the text) for thicker, cleaner outlines
+                // Increased line width for better contrast against dark backgrounds
+                ctx.lineWidth = 4;
+                ctx.lineJoin = 'round';
                 ctx.strokeText(p.text, screenX, screenY);
+                
+                // Draw text fill on top
                 ctx.fillText(p.text, screenX, screenY);
             } else {
                 ctx.fillStyle = p.color;
@@ -396,8 +400,12 @@ const TileRenderer = {
         const ty = y * TILE_SIZE;
 
         const time = Date.now() / 2000;
-        const wavePhase1 = time + (mapX * 0.2) + (mapY * 0.1);
-        const wavePhase2 = time * 1.5 + (mapX * 0.3) - (mapY * 0.2); // Secondary phase offset
+        
+        // EASY WIN: Smoother Water Math
+        // We use Math.sin for X ripple and Math.cos for Y ripple to create a circular, swirling motion
+        // rather than a diagonal diagonal drift
+        const wavePhase1 = time + (Math.sin(mapX * 0.2) + Math.cos(mapY * 0.2));
+        const wavePhase2 = time * 1.5 + (Math.sin(mapX * 0.3) - Math.cos(mapY * 0.3)); 
 
         ctx.strokeStyle = accentColor;
         
@@ -413,12 +421,12 @@ const TileRenderer = {
         );
         ctx.stroke();
 
-        // EASY WIN: Secondary Faint Wave (Creates depth/flow)
+        // Secondary Faint Wave (Creates depth/flow)
         ctx.save();
-        ctx.globalAlpha = 0.5; // Make secondary ripple faint
+        ctx.globalAlpha = 0.5; 
         ctx.lineWidth = 1;
         ctx.beginPath();
-        const yOffset2 = Math.cos(wavePhase2) * 2 + 4; // Shifted down and different phase
+        const yOffset2 = Math.cos(wavePhase2) * 2 + 4; 
         ctx.moveTo(tx + 4, ty + TILE_SIZE / 2 + yOffset2);
         ctx.bezierCurveTo(
             tx + 10, ty + TILE_SIZE / 2 + yOffset2 + 2,
@@ -439,7 +447,7 @@ const TileRenderer = {
 
         ctx.save();
         
-        // EASY WIN: Actual Glow Effect
+        // Actual Glow Effect
         ctx.shadowBlur = 10;
         ctx.shadowColor = '#f97316'; // Orange glow
 
@@ -465,7 +473,7 @@ const TileRenderer = {
 
         ctx.save();
         
-        // EASY WIN: Purple Glow Effect
+        // Purple Glow Effect
         ctx.shadowBlur = 15;
         ctx.shadowColor = '#a855f7';
 
@@ -557,7 +565,7 @@ const TileRenderer = {
 
         ctx.save();
 
-        // EASY WIN: Tiny drop shadow so the bar stands out against same-colored sprites
+        // Tiny drop shadow so the bar stands out against same-colored sprites
         ctx.shadowColor = "rgba(0,0,0,0.5)";
         ctx.shadowBlur = 2;
         ctx.shadowOffsetY = 1;
@@ -585,7 +593,6 @@ const TileRenderer = {
 };
 
 // --- HELPER: DRAW FANCY MOUNTAIN (OPTIMIZED) ---
-// Retained from previous versions just in case you use it elsewhere
 function drawMountain(ctx, x, y, size) {
     if (!cachedThemeColors.mtnBase) updateThemeColors();
 
