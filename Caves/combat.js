@@ -309,6 +309,54 @@ async function processOverworldEnemyTurns() {
             continue; // Skip the rest of this turn
         }
 
+        // --- OVERWORLD DIRECT SPELLCASTING ---
+        const castRangeSq = Math.pow(enemy.castRange || 6, 2);
+        if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20) {
+            if (gameState.godMode) continue;
+
+            const spellDmg = Math.max(1, Math.floor(enemy.spellDamage || 1));
+            let spellName = "spell";
+            if (enemy.tile === 'm') spellName = "Arcane Bolt";
+            if (enemy.tile === 'Z') spellName = "Frost Shard";
+            if (enemy.tile === '@') spellName = "Poison Spit";
+
+            let dodgeChance = Math.min(gameState.player.luck * 0.002, 0.25);
+            if (gameState.player.talents && gameState.player.talents.includes('evasion')) dodgeChance += 0.10;
+
+            if (Math.random() < dodgeChance) {
+                logMessage(`The ${enemy.name} fires a ${spellName}, but you dodge!`);
+            } else {
+                let dmg = spellDmg;
+                if (gameState.player.shieldValue > 0) {
+                    const absorb = Math.min(gameState.player.shieldValue, dmg);
+                    gameState.player.shieldValue -= absorb;
+                    dmg -= absorb;
+                    logMessage(`Shield absorbs ${absorb} magic damage!`);
+                }
+                if (dmg > 0) {
+                    gameState.player.health -= dmg;
+                    gameState.screenShake = 10; 
+                    
+                    const wrapper = document.getElementById('gameCanvasWrapper');
+                    if (wrapper) {
+                        wrapper.classList.remove('damage-flash'); 
+                        void wrapper.offsetWidth; 
+                        wrapper.classList.add('damage-flash');
+                    }
+
+                    triggerStatFlash(statDisplays.health, false);
+                    logMessage(`The ${enemy.name} casts ${spellName} for {red:${dmg}} damage!`);
+
+                    if (enemy.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
+                    if (enemy.inflicts === 'poison') gameState.player.poisonTurns = 5;
+
+                    if (gameState.player.health <= 0) handlePlayerDeath();
+                }
+            }
+            processedIdsThisFrame.add(enemyId);
+            continue; // Skip movement if they casted a spell
+        }
+
         // --- AI LOGIC ---
         let chaseChance = 0.20;
         if (distSq < 400) chaseChance = 0.85; // Close range
