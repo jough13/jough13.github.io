@@ -6728,8 +6728,6 @@ auth.onAuthStateChanged((user) => {
 });
 
 let lastFrameTime = 0;
-
-let lastFrameTime = 0;
 let timeSinceLastDraw = 0;
 const FPS_CAP = 1000 / 60; // 16.6ms per frame (60 FPS)
 
