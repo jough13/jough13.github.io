@@ -14,7 +14,7 @@ function getScaledEnemy(enemyTemplate, x, y) {
     // 3. Apply Base Scaling (10% stats per zone level)
     const multiplier = 1 + (zoneLevel * 0.10);
 
-    // EASY WIN: Add a +/- 10% variance to health so packs of enemies don't all have identical HP!
+    // Add a +/- 10% variance to health so packs of enemies don't all have identical HP!
     const variance = 0.9 + (Math.random() * 0.2); 
     
     enemy.maxHealth = Math.max(1, Math.floor(enemy.maxHealth * multiplier * variance));
@@ -22,12 +22,20 @@ function getScaledEnemy(enemyTemplate, x, y) {
     enemy.xp = Math.floor(enemy.xp * multiplier);
 
     // --- SAFE ZONE NERF ---
-    // If within 100 tiles of spawn, weaken enemies significantly
-    if (dist < 100) {
-        // Reduce Attack by 1 (Min 1). This turns 2 dmg rats into 1 dmg rats.
-        enemy.attack = Math.max(1, enemy.attack - 1); 
-        // Reduce HP by 20% so they die faster
-        enemy.maxHealth = Math.ceil(enemy.maxHealth * 0.8); 
+    // EASY WIN: Expanded safe zone from 100 to 500 tiles!
+    if (dist < 500) {
+        // Reduce Attack by 2 (Min 1). 
+        enemy.attack = Math.max(1, enemy.attack - 2); 
+        // Reduce HP by 40% so they die much faster
+        enemy.maxHealth = Math.ceil(enemy.maxHealth * 0.6); 
+    }
+    
+    // --- NEWBIE GRACE PERIOD ---
+    // EASY WIN: If the player is level 3 or under, forcibly cap enemy stats within the first 1000 tiles.
+    // This prevents a stray Yeti or Ogre in a dungeon from one-shotting a new player.
+    if (gameState && gameState.player && gameState.player.level <= 3 && dist < 1000) {
+        enemy.attack = Math.min(enemy.attack, 3); // Max 3 damage
+        enemy.maxHealth = Math.min(enemy.maxHealth, 15); // Max 15 HP
     }
     // -------------------------------------
 
@@ -47,7 +55,6 @@ function getScaledEnemy(enemyTemplate, x, y) {
 
     // --- DISABLE ELITES NEAR SPAWN ---
     // Elites can only spawn if distance > 150. 
-    // No more "Savage Rats" killing you at level 1.
     if (dist > 150 && !enemy.isBoss && Math.random() < eliteChance) {
         const prefixKeys = Object.keys(ENEMY_PREFIXES);
         const prefixKey = prefixKeys[Math.floor(Math.random() * prefixKeys.length)];
@@ -251,10 +258,9 @@ async function processOverworldEnemyTurns() {
         const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
         
         // --- VILLAGE GUARD SNIPER SYSTEM (Anti-Trolling/Anti-Ghost) ---
-        // If a dangerous enemy (XP > 25) gets within 30 tiles of (0,0), delete it.
-        // This ensures old database entries and dragged bosses can't spawn-camp newbies!
+        // EASY WIN: Expanded guard range to 100 tiles (10000 sq) and shoot anything > 15 XP
         const distToSpawnSq = (enemy.x * enemy.x) + (enemy.y * enemy.y);
-        if (distToSpawnSq < 900 && enemy.xp > 25) { 
+        if (distToSpawnSq < 10000 && enemy.xp > 15) { 
             // If the player is close enough to see it, log the flavor text
             if (distSq < 400) {
                 logMessage(`🏹 A village guard snipes the trespassing ${enemy.name} from the walls!`);
