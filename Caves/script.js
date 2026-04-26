@@ -643,7 +643,7 @@ const talentListDiv = document.getElementById('talentList');
 const talentPointsDisplay = document.getElementById('talentPointsDisplay');
 
 function openTalentModal() {
-    inputBuffer = null;
+    inputQueue = [];
     renderTalentTree();
     talentModal.classList.remove('hidden');
 }
@@ -1207,7 +1207,7 @@ function assignToHotbar(abilityId) {
 }
 
 function openInventoryModal() {
-    inputBuffer = null; // <--- Stop pending moves
+    inputQueue = [];
     if (gameState.player.inventory.length === 0) {
         logMessage("Your inventory is empty.");
         return;
@@ -1260,8 +1260,9 @@ function initInventoryListeners() {
  * Dynamically renders the list of skills the player knows
  * based on their skillbook and the SKILL_DATA.
  */
+
 function openSkillbook() {
-    inputBuffer = null;
+    inputQueue = [];
     skillList.innerHTML = ''; // Clear the list
     const player = gameState.player;
     const playerSkills = player.skillbook || {};
@@ -1397,7 +1398,7 @@ function selectEvolution(evoData) {
 }
 
 function openBountyBoard() {
-    inputBuffer = null; 
+    inputQueue = [];
     renderBountyBoard();
     questModal.classList.remove('hidden');
 }
@@ -1670,7 +1671,7 @@ const tabBestiary = document.getElementById('tabBestiary');
 const tabLibrary = document.getElementById('tabLibrary');
 
 function openCollections() {
-    inputBuffer = null; 
+    inputQueue = [];
     renderBestiary();
     renderLibrary();
     collectionsModal.classList.remove('hidden');
@@ -1949,7 +1950,7 @@ function openSkillTrainerModal() {
  */
 
 function openSpellbook() {
-    inputBuffer = null; 
+    inputQueue = [];
     spellList.innerHTML = ''; // Clear the list
     const player = gameState.player;
     const playerSpells = player.spellbook || {};
