@@ -750,32 +750,32 @@ function triggerAtmosphericFlavor(tile) {
 function updateWeather() {
     const player = gameState.player;
 
-    // 1. Initialize State if missing (Safety check for existing saves)
+    // 1. Initialize State if missing
     if (typeof player.weatherIntensity === 'undefined') player.weatherIntensity = 0;
-    if (typeof player.weatherState === 'undefined') player.weatherState = 'calm'; // calm, building, active, fading
+    if (typeof player.weatherState === 'undefined') player.weatherState = 'calm'; 
     if (typeof player.weatherDuration === 'undefined') player.weatherDuration = 0;
 
-    // 2. Determine Local Forecast (Where we are now)
-    // We expanded the noise scale to 300 so weather zones are larger/longer
-    const x = player.x;
-    const y = player.y;
-    const temp = elevationNoise.noise(x / 300, y / 300);
-    const humid = moistureNoise.noise(x / 300 + 100, y / 300 + 100);
-
+    // OPTIMIZATION: Only sample the heavy Perlin noise once every 20 turns
     let localForecast = 'clear';
-    // Overworld only
-        if (gameState.mapMode === 'overworld') {
-        // Pushed thresholds extremely high so rain is very rare
-        if (humid > 0.92) { 
-            if (temp < 0.3) localForecast = 'snow';
-            else if (humid > 0.96) localForecast = 'storm'; 
-            else localForecast = 'rain';
-        } else if (humid > 0.85 && temp < 0.35) { 
-            localForecast = 'fog';
+    if (gameState.mapMode === 'overworld') {
+        if (gameState.playerTurnCount % 20 === 0 || !gameState.currentForecast) {
+            const temp = elevationNoise.noise(player.x / 300, player.y / 300);
+            const humid = moistureNoise.noise(player.x / 300 + 100, player.y / 300 + 100);
+            
+            if (humid > 0.92) { 
+                if (temp < 0.3) gameState.currentForecast = 'snow';
+                else if (humid > 0.96) gameState.currentForecast = 'storm'; 
+                else gameState.currentForecast = 'rain';
+            } else if (humid > 0.85 && temp < 0.35) { 
+                gameState.currentForecast = 'fog';
+            } else {
+                gameState.currentForecast = 'clear';
+            }
         }
+        localForecast = gameState.currentForecast || 'clear';
     }
 
-    // 3. Weather State Machine
+    // 2. Weather State Machine
     const TRANSITION_SPEED = 0.1; // Takes 10 turns to fade in/out fully
 
     switch (player.weatherState) {
@@ -3043,12 +3043,12 @@ function endPlayerTurn() {
     runCompanionTurn();
     runSharedAiTurns();
 
-    processEnemyTurns(); // <--- This activates dungeon/castle enemies!
+    processEnemyTurns();
 
     // We merge the specific status updates (poison, buffs) with the core stats.
     // This ensures XP, Quests, and Health are saved together, preventing the reset bug.
  const finalUpdates = {
-        ...updates, // Include specific status changes calculated above
+        ...updates, 
 
         // Core Vitals
         health: gameState.player.health,
@@ -3058,7 +3058,7 @@ function endPlayerTurn() {
         hunger: gameState.player.hunger,
         thirst: gameState.player.thirst,
 
-        // Progression (XP IS SAVED HERE)
+        // Progression 
         xp: gameState.player.xp,
         level: gameState.player.level,
         statPoints: gameState.player.statPoints,
@@ -3070,38 +3070,30 @@ function endPlayerTurn() {
         x: gameState.player.x,
         y: gameState.player.y,
         activeTreasure: gameState.activeTreasure || null,
-        weather: gameState.weather || 'clear',
-        
-        // Exploration Data (Crucial for the "Region Discovery" bug)
-        discoveredRegions: Array.from(gameState.discoveredRegions),
-        exploredChunks: Array.from(gameState.exploredChunks),
-        lootedTiles: Array.from(gameState.lootedTiles)
+        weather: gameState.weather || 'clear'
     };
 
-    // --- 7. SAVE LOGIC ---
+    // OPTIMIZATION: Only serialize massive sets if they were flagged as changed in attemptMovePlayer
+    if (updates.exploredChunks) finalUpdates.exploredChunks = updates.exploredChunks;
+    if (updates.lootedTiles) finalUpdates.lootedTiles = updates.lootedTiles;
+    if (updates.discoveredRegions) finalUpdates.discoveredRegions = updates.discoveredRegions;
+
+    // --- 7. SAVE LOGIC (OPTIMIZED) ---
     if (gameState.mapMode === 'overworld') {
         const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
         const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
         const currentChunkId = `${currentChunkX},${currentChunkY}`;
 
-        // A. IMMEDIATE SAVE ON CHUNK CHANGE
         if (lastPlayerChunkId !== currentChunkId) {
-            console.log(`Chunk changed from ${lastPlayerChunkId} to ${currentChunkId}. Forcing immediate save.`);
-            flushPendingSave(finalUpdates); // Save any lingering changes from the last chunk
-            if (playerRef) {
-                 playerRef.update(sanitizeForFirebase(finalUpdates)).catch(err => {
-                    console.error("Chunk-change auto-save failed:", err);
-                });
-            }
-            lastPlayerChunkId = currentChunkId; // Update tracker
+            flushPendingSave(finalUpdates); 
+            if (playerRef) playerRef.update(sanitizeForFirebase(finalUpdates)).catch(console.error);
+            lastPlayerChunkId = currentChunkId; 
         } else {
-             // B. DEBOUNCED SAVE FOR LOCAL MOVEMENT
             triggerDebouncedSave(finalUpdates);
         }
     } else {
-        // In Dungeons/Castles, save immediately on every turn
-        if (saveTimeout) clearTimeout(saveTimeout); 
-        playerRef.update(sanitizeForFirebase(finalUpdates));
+        // Use debounced saving for instances too to prevent Firebase throttling
+        triggerDebouncedSave(finalUpdates);
     }
 
     // --- 8. PASSIVE TALENTS ---
