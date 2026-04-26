@@ -34,6 +34,9 @@ const wokenEnemyTiles = new Set(); // Global set to track processed tiles this s
 // ============================================================================
 // MASTER GAME STATE
 // ============================================================================
+// NOTE: Explicitly defining all properties here ensures the V8 Javascript Engine
+// creates a single, highly-optimized memory shape for the game state, preventing 
+// micro-stutters that occur when properties are dynamically added later!
 
 const gameState = {
     // --- System & Engine State ---
@@ -43,6 +46,7 @@ const gameState = {
     inventoryMode: false,
     isDroppingItem: false,
     isAiming: false,
+    isAimingRanged: false,    // PREP: For upcoming Archery system
     abilityToAim: null,
     currentCraftingMode: 'workbench',
     godMode: false,           // Toggled via /god command
@@ -52,8 +56,16 @@ const gameState = {
         // Identity & Positioning
         x: 0,
         y: 0,
+        visualX: 0,           // Camera smoothing X
+        visualY: 0,           // Camera smoothing Y
         character: '@',
         color: 'blue',
+        
+        // Multiplayer UI
+        chatBubble: null,     // Floating text above head
+        chatTimer: 0,
+        partyId: null,        // PREP: For upcoming party system
+        tradeRequests: [],    // PREP: Pending player trades
         
         // Progression
         level: 1,
@@ -105,19 +117,26 @@ const gameState = {
         frostbiteTurns: 0,
         poisonTurns: 0,
         rootTurns: 0,
+        madnessTurns: 0,      // Caused by Eldritch/Void enemies
+        stunTurns: 0,         // Prevents movement
         candlelightTurns: 0,
         stealthTurns: 0,
         
         // Environment Protection
         fireResistTurns: 0,
         waterBreathingTurns: 0,
+        weatherState: 'calm',
+        weatherIntensity: 0,
+        weatherDuration: 0,
 
         // Storage & Items
         inventory: [],
         bank: [],             // Stash items
         equipment: {
             weapon: null,
-            armor: null
+            armor: null,
+            accessory: null,  // PREP: Rings and Amulets
+            ammo: null        // PREP: Quivers for Archery
         },
         hotbar: [null, null, null, null, null],
 
@@ -129,6 +148,7 @@ const gameState = {
 
         // Systems Tracking
         quests: {},
+        relicQuestStage: 0,    // Tracks the Historian's main quest line
         killCounts: {},
         completedLoreSets: [], // Tracks finished codex pages
         obeliskProgress: [],   // Tracks Ancient Key puzzle
@@ -150,6 +170,7 @@ const gameState = {
     discoveredRegions: new Set(),
     exploredChunks: new Set(),
     foundLore: new Set(),
+    foundCodexEntries: new Set(),
     shopStates: {},           // Persistent merchant inventories
 
     flags: {
@@ -159,6 +180,7 @@ const gameState = {
 
     // Weather & Time
     weather: 'clear',
+    currentForecast: 'clear', // Background forecast for weather transitions
     playerTurnCount: 0,
     time: {
         day: 1,
