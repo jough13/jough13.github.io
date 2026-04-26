@@ -392,7 +392,7 @@ function castSpell(spellId) {
             endPlayerTurn();
             renderStats();
         } else {
-            // EASY WIN: Bug Fix! Refund the cost if the spell failed (e.g., shield already active)
+            // Refund the cost if the spell failed (e.g., shield already active)
             player[costType] += cost;
             // Also flash the bar red to show it failed
             if(statDisplays[costType]) triggerStatFlash(statDisplays[costType], false); 
@@ -400,13 +400,11 @@ function castSpell(spellId) {
     }
 }
 
-
 async function executeMeleeSkill(skillId, dirX, dirY) {
     const player = gameState.player;
     const skillData = SKILL_DATA[skillId];
     const skillLevel = player.skillbook[skillId] || 1;
 
-    player[skillData.costType] -= skillData.cost;
     let hit = false;
 
     // Calculate Damage
@@ -499,27 +497,31 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
         }
     }
 
-    if (!hit) logMessage("You swing at empty air.");
+if (!hit) {
+        logMessage("You swing at empty air.");
+    } else {
+        // Only deduct stamina if a target was actually engaged
+        player[skillData.costType] -= skillData.cost;
+    }
 
     triggerAbilityCooldown(skillId);
     endPlayerTurn();
     render();
 }
 
-
 /**
  * Universal helper function to apply spell damage to a target.
  * Handles both overworld (Firebase) and instanced enemies.
  * Also handles special on-hit effects like Siphon Life.
  */
+
 async function applySpellDamage(targetX, targetY, damage, spellId) {
 
     // --- WEATHER SYNERGY ---
     const weather = gameState.weather; 
     let finalDamage = damage;
 
-    // --- EASY WIN: TALENT ARCANE POTENCY ---
-    // Was missing from logic entirely! Archmages now actually hit harder!
+    // --- TALENT ARCANE POTENCY ---
     if (gameState.player.talents && gameState.player.talents.includes('arcane_potency')) {
         finalDamage += 2;
     }
@@ -695,12 +697,11 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     const spellData = SPELL_DATA[spellId];
     const spellLevel = player.spellbook[spellId] || 1;
 
-    // --- 1. Deduct Cost ---
+    // --- 1. Calculate Cost ---
     let cost = spellData.cost;
     if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
         cost = Math.floor(cost * 0.8);
     }
-    player[spellData.costType] -= cost;
 
     AudioSystem.playMagic();
 
@@ -943,12 +944,15 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         }
     }
 
-    // EASY WIN: Visual feedback if a projectile spell hits nothing!
+    // Visual feedback if a projectile spell hits nothing!
     if (!hitSomething && (spellId === 'magicBolt' || spellId === 'siphonLife' || spellId === 'poisonBolt' || spellId === 'frostBolt')) {
         logMessage("Your spell flies harmlessly into the distance.");
         if (typeof ParticleSystem !== 'undefined') {
             ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Fizzle...", "#9ca3af");
         }
+    } else {
+        // Only deduct the cost if the spell actually hit a target or fired successfully!
+        player[spellData.costType] -= cost;
     }
 
     // --- 3. Finalize Turn ---
@@ -956,10 +960,13 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         [spellData.costType]: player[spellData.costType] // Update mana or psyche
     });
 
-    if (spellData.costType === 'mana') {
-        triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
-    } else if (spellData.costType === 'psyche') {
-        triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+    // Only pulse the UI bar if resources were actually spent
+    if (hitSomething) {
+        if (spellData.costType === 'mana') {
+            triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+        } else if (spellData.costType === 'psyche') {
+            triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+        }
     }
 
     triggerAbilityCooldown(spellId);
@@ -967,7 +974,6 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     endPlayerTurn();
     render();
 }
-
 
 function executeQuickstep(dirX, dirY) {
     const player = gameState.player;
@@ -1173,6 +1179,9 @@ function executePacify(dirX, dirY) {
             if (Math.random() < successChance) {
                 // --- SUCCESS ---
                 logMessage(`You calm the ${enemy.name}! It becomes passive.`);
+                
+                // Reward the player for dealing with the encounter!
+                grantXp(Math.floor(enemy.xp * 0.8));
 
                 // Remove it from the enemy list
                 gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
@@ -1393,7 +1402,7 @@ function triggerAbilityCooldown(abilityId) {
 
         let cd = data.cooldown;
 
-        // --- EASY WIN: Class specific Cooldown Reduction! ---
+        // --- Class specific Cooldown Reduction! ---
         if (gameState.player.talents) {
             // Rogues with Evasion recover movement skills faster
             if (data.type === 'movement' && gameState.player.talents.includes('evasion')) {
