@@ -3555,10 +3555,10 @@ function recalculateDerivedStats() {
     // If you separate base stats from spent points later, update this.
     
     // 2. Base Formulas
-    let calculatedMaxHealth = 10 + (player.constitution * 5);
-    let calculatedMaxMana = 10 + (player.wits * 5);
-    let calculatedMaxStamina = 10 + (player.endurance * 5);
-    let calculatedMaxPsyche = 10 + (player.willpower * 3);
+    let calculatedMaxHealth = 5 + (player.constitution * 5);
+    let calculatedMaxMana = 5 + (player.wits * 5);
+    let calculatedMaxStamina = 5 + (player.endurance * 5);
+    let calculatedMaxPsyche = 7 + (player.willpower * 3);
 
     if (player.completedLoreSets) {
         // Void Research: +10 Max Mana
