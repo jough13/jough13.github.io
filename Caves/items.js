@@ -1440,7 +1440,7 @@ if (isMasterwork) {
 }
 
 function openCraftingModal(mode = 'workbench') {
-    inputBuffer = null; 
+    inputQueue = [];
     gameState.currentCraftingMode = mode;
 
     // Update Title based on mode
@@ -1649,12 +1649,11 @@ function renderStash() {
 }
 
 function openStashModal() {
-    inputBuffer = null; 
+    inputQueue = [];
     
     renderStash();
     stashModal.classList.remove('hidden');
 }
-
 
 /**
  * Adds or subtracts an item's stat bonuses from the player.
@@ -1705,6 +1704,7 @@ function applyStatBonuses(item, operation) {
                 if (player.psyche > player.maxPsyche) player.psyche = player.maxPsyche;
             }
 
+            // (Keep your existing log/flash logic here)
             if (operation === 1) {
                 logMessage(`You feel ${stat} increase! (+${amount})`);
                 triggerStatFlash(statDisplays[stat], true);
