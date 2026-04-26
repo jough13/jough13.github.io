@@ -898,10 +898,15 @@ async function runCompanionTurn() {
 
                 attacked = true;
 
-                if (enemy.health <= 0) {
+                                if (enemy.health <= 0) {
                     logMessage(`Your companion killed the ${enemy.name}!`);
                     grantXp(Math.floor(enemy.xp / 2)); 
                     gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                    
+                    // Clear the dead enemy's tile to prevent ghost walls!
+                    let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
+                    const droppedLoot = generateEnemyLoot(gameState.player, enemy);
+                    map[ty][tx] = droppedLoot || '.';
                 }
             }
         }
@@ -1037,13 +1042,9 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             render();
         }
 
-    } catch (error) {
+        } catch (error) {
         console.error("Combat Error:", error);
         logMessage(`Error: ${error.message || "Network Sync Failed"}`);
-    } finally {
-        endPlayerTurn(); 
-        render();
-        isProcessingMove = false;
     }
 }
 
