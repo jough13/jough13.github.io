@@ -2078,6 +2078,9 @@ function renderTerrainCache(startX, startY) {
     terrainCtx.fillStyle = canvasBg;
     terrainCtx.fillRect(0, 0, terrainCanvas.width, terrainCanvas.height);
 
+    // --- Reset the animated tile tracker! ---
+    gameState.visibleAnimatedTiles =[];
+
     // --- OVERDRAW BUFFER: Shift canvas so x=-1 and y=-1 don't get clipped off ---
     terrainCtx.save();
     terrainCtx.translate(TILE_SIZE, TILE_SIZE);
@@ -2137,15 +2140,16 @@ function renderTerrainCache(startX, startY) {
 
                 TileRenderer.drawBase(terrainCtx, x, y, bgColor);
 
-                // --- STATIC DRAWING ---
-                // Note: We skip animated tiles (~, 🔥, Ω) here. They are drawn in the main loop.
-                if (tile !== '~' && tile !== '≈' && tile !== '🔥' && tile !== 'D' && tile !== 'Ω') {
+                // --- STATIC DRAWING & ANIMATION SORTING ---
+                // Note: We skip animated tiles here, but save them to an array so the main loop can draw them fast!
+                if (tile === '~' || tile === '≈' || tile === '🔥' || tile === 'Ω' || tile === '👻k' || (tile === 'D' && gameState.currentCaveTheme === 'FIRE')) {
+                    gameState.visibleAnimatedTiles.push({ screenX: x, screenY: y, mapX: mapX, mapY: mapY, tile: tile });
+                } else {
                     switch (tile) {
                         case '.': TileRenderer.drawPlains(terrainCtx, x, y, mapX, mapY, bgColor, '#15803d'); break;
                         case 'F': TileRenderer.drawForest(terrainCtx, x, y, mapX, mapY, bgColor); break;
                         case '^': TileRenderer.drawMountain(terrainCtx, x, y, mapX, mapY, bgColor); break;
                         case 'd': TileRenderer.drawDeadlands(terrainCtx, x, y, mapX, mapY, bgColor, '#444'); break;
-                        // For Desert, structures, etc., we treat them as chars or specific renders
                         case 'D': TileRenderer.drawDesert(terrainCtx, x, y, mapX, mapY, bgColor); break;
                         case '🧱': TileRenderer.drawWall(terrainCtx, x, y, '#78716c', '#57534e'); break;
                         case '=': TileRenderer.drawBase(terrainCtx, x, y, '#78350f'); break;
@@ -2153,7 +2157,6 @@ function renderTerrainCache(startX, startY) {
                         case '/': fgChar = '/'; fgColor = '#000'; break;
                         default:
                             fgChar = tile;
-                            // Make sure isWideChar fallback exists
                             const isWideCharCheck = typeof isWideChar === 'function' ? isWideChar : (c) => /\p{Extended_Pictographic}/u.test(c);
                             if (ENEMY_DATA[tile]) fgColor = ENEMY_DATA[tile].color || '#ef4444';
                             break;
@@ -2280,57 +2283,44 @@ const render = () => {
     const torchFlicker = (Math.sin(now / 1000) * 0.2) + (Math.cos(now / 2500) * 0.1);
     const lightRadius = baseRadius + torchFlicker;
 
-    // --- ONLY LOOP FOR ANIMATED TILES (No heavy math here anymore!) ---
-    for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
-        for (let x = 0; x < VIEWPORT_WIDTH; x++) {
-            const mapX = startX + x;
-            const mapY = startY + y;
-
-            let tile = null;
-            if (gameState.mapMode === 'overworld') tile = chunkManager.getTile(mapX, mapY);
-            else if (gameState.mapMode === 'dungeon') {
-                const map = chunkManager.caveMaps[gameState.currentCaveId];
-                tile = (map && map[mapY]) ? map[mapY][mapX] : null;
-            }
+    // --- EFFICIENT ANIMATED TILE LOOP ---
+    // We only loop over the ~15 tiles that actually move, skipping the 1,000+ static ones!
+    if (gameState.visibleAnimatedTiles) {
+        gameState.visibleAnimatedTiles.forEach(anim => {
+            const { screenX: x, screenY: y, mapX, mapY, tile } = anim;
 
             // Draw Spirit Ghost
             if (tile === '👻k') {
-                if (!hasLens) {
-                    tile = '.'; // Visually replace ghost with floor
-                } else {
-                    ctx.fillStyle = 'rgba(168, 85, 247, 0.6)'; // Ghostly Purple, transparent
+                if (hasLens) {
+                    ctx.fillStyle = 'rgba(168, 85, 247, 0.6)'; 
                     ctx.font = `bold ${TILE_SIZE}px monospace`;
                     ctx.fillText('👻', x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
-                    continue; 
                 }
-            }
-
+            } 
             // Draw Animated Terrain
-            if (tile) {
-                if (tile === '~') {
-                    const waveVal = (now / 1500) + (mapX * 0.3) + (mapY * 0.2) + Math.sin(mapY * 0.5);
-                    let fgChar = Math.sin(waveVal) > 0 ? '~' : '≈';
-                    ctx.fillStyle = '#3b82f6';
-                    ctx.font = `bold ${TILE_SIZE}px monospace`;
-                    ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
-                } else if (tile === '🔥' || tile === 'D') {
-                    const flicker = Math.floor(now / 100) % 3;
-                    let fgColor = flicker === 0 ? '#ef4444' : (flicker === 1 ? '#f97316' : '#facc15');
-                    if (tile === '🔥') {
-                        TileRenderer.drawFire(ctx, x, y);
-                    } else if (tile === 'D' && gameState.currentCaveTheme === 'FIRE') {
-                        ctx.fillStyle = fgColor;
-                        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                    }
-                } else if (tile === 'Ω') {
-                    const spin = Math.floor(now / 150) % 4;
-                    const chars = ['Ω', 'C', 'U', '∩'];
-                    ctx.fillStyle = '#a855f7';
-                    ctx.font = `bold ${TILE_SIZE}px monospace`;
-                    ctx.fillText(chars[spin], x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+            else if (tile === '~') {
+                const waveVal = (now / 1500) + (mapX * 0.3) + (mapY * 0.2) + Math.sin(mapY * 0.5);
+                let fgChar = Math.sin(waveVal) > 0 ? '~' : '≈';
+                ctx.fillStyle = '#3b82f6';
+                ctx.font = `bold ${TILE_SIZE}px monospace`;
+                ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+            } else if (tile === '🔥' || tile === 'D') {
+                const flicker = Math.floor(now / 100) % 3;
+                let fgColor = flicker === 0 ? '#ef4444' : (flicker === 1 ? '#f97316' : '#facc15');
+                if (tile === '🔥') {
+                    TileRenderer.drawFire(ctx, x, y);
+                } else {
+                    ctx.fillStyle = fgColor;
+                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
+            } else if (tile === 'Ω') {
+                const spin = Math.floor(now / 150) % 4;
+                const chars =['Ω', 'C', 'U', '∩'];
+                ctx.fillStyle = '#a855f7';
+                ctx.font = `bold ${TILE_SIZE}px monospace`;
+                ctx.fillText(chars[spin], x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
             }
-        }
+        });
     }
 
     // --- ENTITIES & PLAYERS ---
@@ -2521,6 +2511,29 @@ const render = () => {
         // Draw one single massive rectangle over the whole screen (Max Performance)
         ctx.fillStyle = darknessGradient;
         ctx.fillRect(-TILE_SIZE * 2, -TILE_SIZE * 2, (VIEWPORT_WIDTH + 4) * TILE_SIZE, (VIEWPORT_HEIGHT + 4) * TILE_SIZE);
+    }
+
+    // --- Nighttime Fireflies ---
+    // If it's dark, and we are in a forest, spawn ambient fireflies!
+    if (outerDarkness > 0.4 && gameState.mapMode === 'overworld') {
+        const centerTile = chunkManager.getTile(p.x, p.y);
+        if (centerTile === 'F' || centerTile === '🌳e') {
+            // 5% chance per frame to spawn a firefly
+            if (Math.random() < 0.05 && typeof ParticleSystem !== 'undefined') {
+                const fx = p.x + (Math.random() * VIEWPORT_WIDTH) - (VIEWPORT_WIDTH / 2);
+                const fy = p.y + (Math.random() * VIEWPORT_HEIGHT) - (VIEWPORT_HEIGHT / 2);
+                ParticleSystem.spawn(fx, fy, '#86efac', 'dust', '', 2); // Glowing green
+                
+                // Hack: Override the standard gravity so fireflies float UP and drift
+                const activeBug = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
+                if (activeBug) {
+                    activeBug.vy = -0.02 - (Math.random() * 0.02);
+                    activeBug.vx = (Math.random() - 0.5) * 0.05;
+                    activeBug.gravity = 0;
+                    activeBug.lifeFade = 0.01; // Fade out very slowly
+                }
+            }
+        }
     }
 
     const intensity = gameState.player.weatherIntensity || 0;
