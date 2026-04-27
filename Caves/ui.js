@@ -472,8 +472,6 @@ function resizeCanvas() {
     if (!canvasContainer) return;
 
     // 1. THE MAGIC FIX: Hide the canvas for 1 millisecond.
-    // This stops the canvas from physically pushing the grid walls outward,
-    // allowing us to measure the TRUE natural width of the column!
     canvas.style.display = 'none';
     
     // Safety check fallback to prevent 0 pixel crashes on hidden windows
@@ -487,17 +485,17 @@ function resizeCanvas() {
     if (!window.currentZoom) window.currentZoom = 20;
     TILE_SIZE = window.currentZoom;
 
-    // 3. Calculate Logical Viewport (Tiles that fit + 2 buffer tiles for smooth sliding)
+    // 3. Calculate Logical Viewport
     VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 2; 
     VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 2;
 
     const dpr = window.devicePixelRatio || 1;
 
-    // 4. Set HTML5 Canvas back-buffer resolution to match physical pixels
+    // 4. Set HTML5 Canvas back-buffer resolution
     canvas.width = containerWidth * dpr;
     canvas.height = containerHeight * dpr;
 
-    // 5. Force CSS to 100% so it perfectly fits the container without stretching it
+    // 5. Force CSS to 100% 
     canvas.style.width = '100%';
     canvas.style.height = '100%';
 
@@ -509,7 +507,7 @@ function resizeCanvas() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 7. Resize Offscreen Canvas (Matches the logical padded viewport)
+    // 7. Resize Offscreen Canvas
     const logicalWidth = VIEWPORT_WIDTH * TILE_SIZE;
     const logicalHeight = VIEWPORT_HEIGHT * TILE_SIZE;
 
@@ -560,13 +558,10 @@ function resizeCanvas() {
 const canvasWrapper = document.getElementById('gameCanvasWrapper');
 if (canvasWrapper) {
     canvasWrapper.addEventListener('wheel', (e) => {
-        // Prevent the whole webpage from scrolling when zooming the map
         e.preventDefault(); 
         
         if (!window.currentZoom) window.currentZoom = 20;
 
-        // Tweak numbers to control zoom speed and limits.
-        // Using Math.sign limits trackpad hyper-scrolling speeds
         const zoomDirection = Math.sign(e.deltaY);
         
         if (zoomDirection < 0) {
@@ -575,7 +570,48 @@ if (canvasWrapper) {
             window.currentZoom = Math.max(12, window.currentZoom - 2); // Max zoom out
         }
         
-        // Instantly recalculate the grid and redraw!
         resizeCanvas();
     }, { passive: false });
 }
+
+// --- FIX: Add return focus to Canvas after closing modals ---
+function returnFocusToCanvas() {
+    // Only focus if the canvas is actually visible
+    if (!gameContainer.classList.contains('hidden')) {
+        // Technically canvas isn't focusable by default unless it has a tabindex,
+        // but this ensures the document body gets focus back so keydown events work!
+        document.activeElement.blur(); 
+    }
+}
+
+// Wrap all existing close buttons
+const attachCloseFocus = (btn) => {
+    if (btn) btn.addEventListener('click', returnFocusToCanvas);
+};
+
+attachCloseFocus(closeInventoryButton);
+attachCloseFocus(closeSpellButton);
+attachCloseFocus(closeSkillButton);
+attachCloseFocus(closeQuestButton);
+attachCloseFocus(closeShopButton);
+attachCloseFocus(closeCraftingButton);
+attachCloseFocus(closeSkillTrainerButton);
+attachCloseFocus(document.getElementById('closeStashButton'));
+attachCloseFocus(document.getElementById('closeCollectionsButton'));
+attachCloseFocus(closeLoreButton);
+attachCloseFocus(document.getElementById('closeMapButton'));
+attachCloseFocus(document.getElementById('closeFastTravelButton'));
+attachCloseFocus(closeHelpButton);
+
+// Update Modal toggler from input.js to also call this
+const originalToggleModal = window.toggleModal;
+window.toggleModal = (modalEl, openFunc, closeFunc) => {
+    if (typeof inputQueue !== 'undefined') inputQueue.length = 0; 
+    if (!modalEl.classList.contains('hidden')) {
+        if (closeFunc) closeFunc();
+        else modalEl.classList.add('hidden');
+        returnFocusToCanvas(); // Ensure focus returns!
+    } else {
+        openFunc();
+    }
+};
