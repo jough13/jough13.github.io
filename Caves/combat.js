@@ -169,11 +169,17 @@ async function wakeUpNearbyEnemies() {
  * Uses a Firebase RTDB Transaction to ensure only ONE client
  * runs the AI per interval. Includes logic to break stale locks.
  */
+
 async function runSharedAiTurns() {
     if (gameState.mapMode !== 'overworld') return; 
 
     const now = Date.now();
-    const AI_INTERVAL = 150; // Match action cooldown
+
+    // --- OPTIMIZATION: Increased from 150ms to 300ms ---
+    // Enemies move slightly slower than the player, acting more deliberately.
+    // This saves massive amounts of Firebase RTDB bandwidth!
+
+    const AI_INTERVAL = 300; 
     const STALE_TIMEOUT = 5000; // 5 seconds - if heartbeat is older than this, steal it
 
     const heartbeatRef = rtdb.ref('worldState/aiHeartbeat');
