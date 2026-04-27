@@ -20,7 +20,8 @@ function useSkill(skillId) {
 
     const skillLevel = player.skillbook[skillId] || 0; 
 
-    if (skillLevel === 0) {
+    // Ranged attack is an innate skill granted by equipping a bow, no level needed
+    if (skillLevel === 0 && skillId !== 'ranged_attack') {
         logMessage("You don't know that skill.");
         return;
     }
@@ -43,7 +44,7 @@ function useSkill(skillId) {
     // --- 3. Handle Targeting ---
     if (skillData.target === 'aimed') {
         // --- Aimed Skills (e.g., Lunge) ---
-        // Cost is checked, but *not* deducted. executeLunge will deduct it.
+        // Cost is checked, but *not* deducted. execute functions will deduct it.
         gameState.isAiming = true;
         gameState.abilityToAim = skillId; 
         skillModal.classList.add('hidden');
@@ -90,11 +91,26 @@ function useSkill(skillId) {
                 skillUsedSuccessfully = true;
                 break;
 
-            // STEALTH ---
+            case 'vanish':
+                player.stealthTurns = skillData.duration;
+                logMessage("You throw a smoke bomb and vanish from sight!");
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 15);
+                playerRef.update({ stealthTurns: player.stealthTurns });
+                skillUsedSuccessfully = true;
+                break;
+
             case 'stealth':
                 player.stealthTurns = skillData.duration;
                 logMessage("You fade into the shadows... (Invisible)");
                 playerRef.update({ stealthTurns: player.stealthTurns });
+                skillUsedSuccessfully = true;
+                break;
+                
+            case 'adrenaline':
+                const stamGain = 10;
+                player.stamina = Math.min(player.maxStamina, player.stamina + stamGain);
+                logMessage("You push past the pain! (+10 Stamina)");
+                triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
                 skillUsedSuccessfully = true;
                 break;
 
@@ -111,7 +127,10 @@ function useSkill(skillId) {
                         const ty = player.y + y;
 
                         if (gameState.mapMode === 'overworld') {
-                            const tile = chunkManager.getTile(tx, ty);
+                            const enemyId = `overworld:${tx},${-ty}`;
+                            const liveEnemy = gameState.sharedEnemies[enemyId];
+                            const tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(tx, ty);
+                            
                             const enemyData = ENEMY_DATA[tile];
                             if (enemyData) {
                                 const finalDmg = Math.max(1, baseDmg - (enemyData.defense || 0));
@@ -121,15 +140,21 @@ function useSkill(skillId) {
                         } else {
                             let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
                             if (enemy) {
-                                enemy.health -= baseDmg;
-                                logMessage(`Whirlwind hits ${enemy.name} for ${baseDmg}!`);
+                                const finalDmg = Math.max(1, baseDmg - (enemy.defense || 0));
+                                enemy.health -= finalDmg;
+                                logMessage(`Whirlwind hits ${enemy.name} for ${finalDmg}!`);
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#fff', 3);
                                 hitCount++;
 
                                 if (enemy.health <= 0) {
                                     logMessage(`${enemy.name} is slain!`);
                                     registerKill(enemy);
+                                    
+                                    const droppedLoot = generateEnemyLoot(gameState.player, enemy);
+                                    let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
+                                    map[ty][tx] = droppedLoot || '.';
+                                    
                                     gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-
                                     if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
                                         chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
                                     }
@@ -154,7 +179,7 @@ function useSkill(skillId) {
             endPlayerTurn();
             renderEquipment(); 
         } else {
-            // EASY WIN: Refund stamina if skill failed (e.g. already bracing)
+            // Refund stamina if skill failed 
             player[costType] += cost;
         }
     }
@@ -472,7 +497,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                 if (enemy) {
                     enemy.health -= finalDmg;
                     logMessage(`You hit ${enemy.name} for ${finalDmg}!`);
-                    ParticleSystem.createExplosion(coords.x, coords.y, '#fff');
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(coords.x, coords.y, '#fff', 3);
 
                     // APPLY STUN (Shield Bash OR Crush)
                     if (skillId === 'shieldBash' || skillId === 'crush') {
@@ -493,18 +518,19 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
                         }
 
-                        if (map) map[coords.y][coords.x] = droppedLoot;
+                        if (map) map[coords.y][coords.x] = droppedLoot || '.';
                     }
                 }
             }
         }
     }
 
-if (!hit) {
+    if (!hit) {
         logMessage("You swing at empty air.");
     } else {
         // Only deduct stamina if a target was actually engaged
         player[skillData.costType] -= skillData.cost;
+        AudioSystem.playAttack();
     }
 
     triggerAbilityCooldown(skillId);
@@ -622,7 +648,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 const lootData = { ...enemyData, isElite: enemyInfo.isElite };
                 const droppedLoot = generateEnemyLoot(player, lootData);
 
-                chunkManager.setWorldTile(targetX, targetY, droppedLoot);
+                chunkManager.setWorldTile(targetX, targetY, droppedLoot || '.');
             }
         } catch (error) {
             console.error("Spell damage transaction failed: ", error);
@@ -635,6 +661,11 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
             damageDealt = Math.max(1, finalDamage);
             enemy.health -= damageDealt;
             logMessage(`You hit the ${enemy.name} for ${damageDealt} magic damage!`);
+            
+            let color = '#3b82f6'; 
+            if (spellId === 'fireball') color = '#f97316'; 
+            if (spellId === 'poisonBolt') color = '#22c55e'; 
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, color, 4);
 
             if (enemy.health <= 0) {
                 logMessage(`You defeated the ${enemy.name}!`);
@@ -646,9 +677,9 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
                     chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
                 }
-                if (gameState.mapMode === 'dungeon') {
-                    chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
-                }
+                
+                let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
+                map[targetY][targetX] = droppedLoot || '.';
             }
         }
     }
@@ -1068,12 +1099,6 @@ async function executeLunge(dirX, dirY) {
             logMessage(`You lunge and attack the ${enemyData.name}!`);
             hit = true;
 
-            if (player.stealthTurns > 0) {
-                player.stealthTurns = 0;
-                logMessage("You strike from the shadows!");
-                playerRef.update({ stealthTurns: 0 });
-            }
-
             // --- 3. Calculate Final Damage ---
             // Formula: ( (PlayerBaseDmg - EnemyDef) * Multiplier ) + (Strength * Level)
             const baseLungeDamage = (playerBaseDamage - (enemyData.defense || 0)) * skillData.baseDamageMultiplier;
@@ -1083,7 +1108,6 @@ async function executeLunge(dirX, dirY) {
 
             if (gameState.mapMode === 'overworld') {
                 // Handle Overworld Combat
-                // We now pass our calculated skill damage!
                 await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
 
             } else {
@@ -1093,6 +1117,7 @@ async function executeLunge(dirX, dirY) {
                     // We apply our new calculated damage!
                     enemy.health -= totalLungeDamage;
                     logMessage(`You hit the ${enemy.name} for ${totalLungeDamage} damage!`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#fff', 3);
 
                     if (enemy.health <= 0) {
                         logMessage(`You defeated the ${enemy.name}!`);
@@ -1107,7 +1132,7 @@ async function executeLunge(dirX, dirY) {
                         }
 
                         if (gameState.mapMode === 'dungeon') {
-                            chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
+                            chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot || '.';
                         }
                     }
                 }
@@ -1118,6 +1143,8 @@ async function executeLunge(dirX, dirY) {
 
     if (!hit) {
         logMessage("You lunge... and hit nothing.");
+    } else {
+        AudioSystem.playAttack();
     }
 
     // --- 4. Finalize Turn ---
@@ -1283,6 +1310,15 @@ function executeTame(dirX, dirY) {
 
                 // Remove enemy
                 gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                
+                // Clear the map tile so it doesn't leave a ghost sprite
+                let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
+                let validFloor = '.';
+                if (gameState.mapMode === 'dungeon' && CAVE_THEMES[gameState.currentCaveTheme]) {
+                    validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+                }
+                map[targetY][targetX] = validFloor;
+                
                 playerRef.update({ companion: player.companion });
 
             } else {
@@ -1381,6 +1417,135 @@ function executeInflictMadness(dirX, dirY) {
     triggerAbilityCooldown('inflictMadness');
     endPlayerTurn();
     render();
+}
+
+/**
+ * Prepares and executes a ranged attack using an equipped bow
+ */
+async function executeRangedAttack(dirX, dirY) {
+    const player = gameState.player;
+    const skillData = SKILL_DATA['ranged_attack'];
+    
+    // --- 1. Deduct Cost ---
+    player.stamina -= skillData.cost;
+    let hitSomething = false;
+    let finalTargetX = player.x;
+    let finalTargetY = player.y;
+
+    // --- 2. Calculate Base Damage ---
+    const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
+    
+    // Ranged attacks scale primarily off Dexterity, not Strength!
+    let rawPower = player.dexterity + weaponDamage;
+
+    // TALENT: Eagle Eye (+50% Ranged Damage)
+    if (player.talents && player.talents.includes('eagle_eye')) {
+        rawPower = Math.floor(rawPower * 1.5);
+    }
+    
+    // Break Stealth
+    if (player.stealthTurns > 0) {
+        player.stealthTurns = 0;
+        logMessage("You fire from the shadows!");
+        playerRef.update({ stealthTurns: 0 });
+        
+        // TALENT: Shadow Strike applies to ranged attacks from stealth too!
+        if (player.talents && player.talents.includes('shadow_strike')) {
+            rawPower = Math.floor(rawPower * 4);
+            logMessage("Shadow Strike! (4x Damage)");
+        }
+    }
+
+    const totalDamage = Math.max(1, rawPower);
+
+    // --- 3. Projectile Loop (Range 4) ---
+    logMessage("You loose an arrow!");
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Sounds like a string twang
+    
+    for (let i = 1; i <= 4; i++) {
+        const targetX = player.x + (dirX * i);
+        const targetY = player.y + (dirY * i);
+
+        let tile;
+        let isSolid = false;
+
+        if (gameState.mapMode === 'overworld') {
+            const enemyId = `overworld:${targetX},${-targetY}`;
+            const liveEnemy = gameState.sharedEnemies[enemyId];
+            tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
+            
+            // Check if arrow hit a wall/mountain/tree
+            if (['^', 'F', '🧱'].includes(tile) && !liveEnemy) isSolid = true;
+            
+        } else {
+            const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
+            tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+            
+            const theme = CAVE_THEMES[gameState.currentCaveTheme];
+            const wallTile = theme ? theme.wall : '▓';
+            
+            if (tile === wallTile || tile === '▒') isSolid = true;
+        }
+        
+        // Stop the arrow if it hits a wall
+        if (isSolid) {
+            logMessage("Your arrow strikes a solid object.");
+            break;
+        }
+
+        const enemyData = ENEMY_DATA[tile];
+
+        if (enemyData) {
+            hitSomething = true;
+            
+            // Handle Damage Application
+            if (gameState.mapMode === 'overworld') {
+                const finalDmg = Math.max(1, totalDamage - (enemyData.defense || 0));
+                await handleOverworldCombat(targetX, targetY, enemyData, tile, finalDmg);
+            } else {
+                let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+                if (enemy) {
+                    const finalDmg = Math.max(1, totalDamage - (enemy.defense || 0));
+                    enemy.health -= finalDmg;
+                    logMessage(`You shoot ${enemy.name} for ${finalDmg} damage!`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#fff', 3);
+
+                    if (enemy.health <= 0) {
+                        logMessage(`You defeated ${enemy.name}!`);
+                        registerKill(enemy);
+
+                        const droppedLoot = generateEnemyLoot(player, enemy);
+                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+
+                        if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+                        }
+
+                        let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
+                        map[targetY][targetX] = droppedLoot || '.';
+                    }
+                }
+            }
+            break; // Stop the arrow!
+        }
+        
+        finalTargetX = targetX;
+        finalTargetY = targetY;
+    }
+
+    if (!hitSomething) {
+        logMessage("Your arrow flies off into the distance.");
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Miss", "#9ca3af");
+    }
+
+    // --- 4. Finalize Turn ---
+    playerRef.update({
+        stamina: player.stamina
+    });
+    triggerStatFlash(statDisplays.stamina, false); 
+    
+    endPlayerTurn(); 
+    render(); 
 }
 
 function initSkillbookListeners() {
