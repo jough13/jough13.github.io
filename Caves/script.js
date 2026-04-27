@@ -4959,14 +4959,28 @@ async function attemptMovePlayer(newX, newY) {
             gameState.player.stamina = gameState.player.maxStamina;
             gameState.player.mana = gameState.player.maxMana;
             gameState.player.psyche = gameState.player.maxPsyche;
+            
             triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
             triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
-            logMessage("The fire warms your bones. You feel fully restored.");
+            
+            // EXPLORATION REWARD: Campsites now give the Well Rested Buff!
+            if (gameState.player.strengthBonusTurns < 10) {
+                gameState.player.strengthBonus = 2;
+                gameState.player.strengthBonusTurns = 50;
+                logMessage("{gold:The fire warms your bones. You feel Well Rested! (+2 Str for 50 turns)}");
+                triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
+                renderEquipment();
+            } else {
+                logMessage("The fire warms your bones. You feel fully restored.");
+            }
+
             playerRef.update({
                 health: gameState.player.health,
                 stamina: gameState.player.stamina,
                 mana: gameState.player.mana,
-                psyche: gameState.player.psyche
+                psyche: gameState.player.psyche,
+                strengthBonus: gameState.player.strengthBonus,
+                strengthBonusTurns: gameState.player.strengthBonusTurns
             });
         }
 
