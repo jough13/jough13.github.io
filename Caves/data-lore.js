@@ -6,6 +6,12 @@ window.LORE_SETS = {
         // These IDs must match items in ITEM_DATA
         items: ["📜1", "📜2", "📜3", "📜4", "📜5"] 
     },
+    "beastmaster_guide": {
+        name: "The Beastmaster's Guide",
+        description: "A tattered guide to the creatures of this world.",
+        bonus: "Tracker: +1 Base Perception.",
+        items:["🐾1", "🐾2", "🐾3"] 
+    },
     "void_research": {
         name: "Notes from the Void",
         description: "Research notes left by the First Mage.",
