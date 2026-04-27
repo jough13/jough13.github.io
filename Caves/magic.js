@@ -799,6 +799,14 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             for (let i = 1; i <= 3; i++) {
                 const targetX = player.x + (dirX * i);
                 const targetY = player.y + (dirY * i);
+
+                // --- Animated Arrow Trail ---
+                if (typeof ParticleSystem !== 'undefined') {
+                    // Stagger the particle spawning by 50ms per tile to create a "flying" effect
+                    setTimeout(() => {
+                        ParticleSystem.spawn(targetX, targetY, '#d4d4d8', 'dust', '', 3);
+                    }, i * 40); 
+                }
                 
                 if (await applySpellDamage(targetX, targetY, spellDamage, spellId)) {
                     hitSomething = true;
