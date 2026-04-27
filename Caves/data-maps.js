@@ -1,5 +1,10 @@
 window.TILE_DATA = {
 
+    '🏕️': {
+        type: 'ambush_camp',
+        flavor: "You stumble into a hidden encampment. It's an ambush!"
+    },
+
     '👻k': {
         type: 'spirit_npc',
         name: 'Echo of the King',
