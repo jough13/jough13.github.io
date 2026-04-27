@@ -4823,6 +4823,40 @@ async function attemptMovePlayer(newX, newY) {
             return;
         }
 
+        if (tileData.type === 'ambush_camp') {
+            logMessage("{red:AMBUSH!} " + tileData.flavor);
+            gameState.screenShake = 15;
+            AudioSystem.playHit();
+
+            // Spawn 3 Bandits and 1 Chief in a ring around the player
+            const spawnSpots = [[-1, -1],[1, -1], [-1, 1], [1, 1]];
+            const enemiesToSpawn =['b', 'b', 'b', 'C']; // 3 grunts, 1 chief
+
+            for (let i = 0; i < 4; i++) {
+                const ex = newX + spawnSpots[i][0];
+                const ey = newY + spawnSpots[i][1];
+                
+                // Only spawn if tile is walkable
+                const t = chunkManager.getTile(ex, ey);
+                if (['.', 'F', 'd', 'D'].includes(t)) {
+                    const eType = enemiesToSpawn[i];
+                    const enemyData = ENEMY_DATA[eType];
+                    const enemyId = `overworld:${ex},${-ey}`;
+                    
+                    const scaledStats = getScaledEnemy(enemyData, ex, ey);
+                    const newEnemy = { ...scaledStats, tile: eType, x: ex, y: ey, spawnTime: Date.now() };
+                    
+                    rtdb.ref(`worldEnemies/${enemyId}`).set(newEnemy);
+                }
+            }
+
+            // Replace the camp tile with a Loot Chest!
+            chunkManager.setWorldTile(newX, newY, '📦');
+            gameState.mapDirty = true;
+            render();
+            return; // End the move immediately so they have to deal with the ambush
+        }
+
         if (tileData.type === 'barrel') {
             logMessage("You smash the barrel open!");
             if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '.');
