@@ -99,7 +99,6 @@ const chunkManager = {
                 for (let ry = 0; ry < room.height; ry++) {
                     
                     // SAFETY CHECK 2: Ensure this specific row exists before reading tiles!
-                    // (This fixes the "reading '0'" crash)
                     if (room.map[ry] === undefined) continue;
 
                     for (let rx = 0; rx < room.width; rx++) {
@@ -113,15 +112,16 @@ const chunkManager = {
 
                         let tileToPlace = null;
 
+                        // FIX: Ensure floors inherit the biome theme!
                         if (templateTile === 'W') {
                             tileToPlace = theme.wall;
-                        } else if (templateTile === 'F') {
+                        } else if (templateTile === 'F' || templateTile === '.') {
                             tileToPlace = theme.floor;
                         } else {
                             tileToPlace = templateTile; // It's an item or enemy
                         }
 
-                        // --- FIX: GHOST TILE LOGIC ---
+                        // --- GHOST TILE LOGIC ---
                         if (ENEMY_DATA[tileToPlace]) {
                             // 1. If it's an enemy, set the underlying map tile to FLOOR
                             map[mapY][mapX] = theme.floor;
@@ -265,14 +265,10 @@ const chunkManager = {
         // --- 5. Place procedural enemies ---
         let enemyTypes = theme.enemies || Object.keys(ENEMY_DATA);
 
-        // --- FIX: SAFE ZONE CAVE NERF ---
-        // If within 250 tiles of spawn, remove "Hard" enemies from the spawn pool
+        // --- SAFE ZONE CAVE NERF ---
         if (dist < 250) {
-            // Filter out Chiefs (C), Mages (m), Orcs (o), Ogres (Ø), Yetis (Y), Demons (D), etc.
             const hardEnemies = ['C', 'm', 'o', 'Ø', 'Y', 'D', '🐲', '🧙', 'v', 'f'];
             enemyTypes = enemyTypes.filter(e => !hardEnemies.includes(e));
-            
-            // Safety fallback: If we filtered everything out, add basics
             if (enemyTypes.length === 0) enemyTypes = ['r', 'b', 'g'];
         }
         // --------------------------------
@@ -380,30 +376,16 @@ const chunkManager = {
                     const bossTile = '🧙';
                     const bossTemplate = ENEMY_DATA[bossTile];
 
-                    // Place on map
                     map[by][bx] = bossTile;
 
-                    // Add to enemy list
                     this.caveEnemies[caveId].push({
                         id: `${caveId}:BOSS`, // Unique ID
-                        x: bx,
-                        y: by,
-                        tile: bossTile,
+                        x: bx, y: by, tile: bossTile,
                         name: bossTemplate.name,
-                        health: bossTemplate.maxHealth,
-                        maxHealth: bossTemplate.maxHealth,
-                        attack: bossTemplate.attack,
-                        defense: bossTemplate.defense,
-                        xp: bossTemplate.xp,
-                        loot: bossTemplate.loot,
-                        caster: true,
-                        castRange: bossTemplate.castRange,
-                        spellDamage: bossTemplate.spellDamage,
-                        isBoss: true, // Important flag
-                        madnessTurns: 0,
-                        frostbiteTurns: 0,
-                        poisonTurns: 0,
-                        rootTurns: 0
+                        health: bossTemplate.maxHealth, maxHealth: bossTemplate.maxHealth,
+                        attack: bossTemplate.attack, defense: bossTemplate.defense, xp: bossTemplate.xp,
+                        loot: bossTemplate.loot, caster: true, castRange: bossTemplate.castRange, spellDamage: bossTemplate.spellDamage,
+                        isBoss: true, madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
                     });
                     bossPlaced = true;
                 }
@@ -412,41 +394,28 @@ const chunkManager = {
 
             if (!bossPlaced) {
                 console.warn("⚠️ Boss placement RNG failed. Forcing spawn at center.");
-
-                // Pick the dead center of the map
                 const bx = Math.floor(CAVE_WIDTH / 2);
                 const by = Math.floor(CAVE_HEIGHT / 2);
 
-                // Force the terrain to be a floor (in case it was a wall)
-                map[by][bx] = theme.floor;
+                // FIX: Carve an arena so the boss doesn't spawn entombed in walls!
+                for(let oy=-1; oy<=1; oy++) {
+                    for(let ox=-1; ox<=1; ox++) {
+                        map[by+oy][bx+ox] = theme.floor;
+                    }
+                }
 
-                // Place the Boss Tile
                 const bossTile = '🧙';
                 map[by][bx] = bossTile;
-
                 const bossTemplate = ENEMY_DATA[bossTile];
 
-                // Add to enemy list manually
                 this.caveEnemies[caveId].push({
                     id: `${caveId}:BOSS`,
-                    x: bx,
-                    y: by,
-                    tile: bossTile,
+                    x: bx, y: by, tile: bossTile,
                     name: bossTemplate.name,
-                    health: bossTemplate.maxHealth,
-                    maxHealth: bossTemplate.maxHealth,
-                    attack: bossTemplate.attack,
-                    defense: bossTemplate.defense,
-                    xp: bossTemplate.xp,
-                    loot: bossTemplate.loot,
-                    caster: true,
-                    castRange: bossTemplate.castRange,
-                    spellDamage: bossTemplate.spellDamage,
-                    isBoss: true,
-                    madnessTurns: 0,
-                    frostbiteTurns: 0,
-                    poisonTurns: 0,
-                    rootTurns: 0
+                    health: bossTemplate.maxHealth, maxHealth: bossTemplate.maxHealth,
+                    attack: bossTemplate.attack, defense: bossTemplate.defense, xp: bossTemplate.xp,
+                    loot: bossTemplate.loot, caster: true, castRange: bossTemplate.castRange, spellDamage: bossTemplate.spellDamage,
+                    isBoss: true, madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
                 });
             }
         }
@@ -474,12 +443,11 @@ const chunkManager = {
 
         // 2. Get the base map and spawn point from the chosen layout
         const baseMap = layout.map;
-        // Store the spawn point so the movement handler can use it
+        
         this.castleSpawnPoints = this.castleSpawnPoints || {};
         this.castleSpawnPoints[castleId] = layout.spawn;
 
         const map = baseMap.map(row => [...row]);
-
         const random = Alea(stringToSeed(castleId)); 
 
         // Calculate the maximum width of any row
@@ -491,23 +459,30 @@ const chunkManager = {
         // Pad shorter rows with walls ('▓') or void (' ') to match maxWidth
         for (let y = 0; y < map.length; y++) {
             while (map[y].length < maxWidth) {
-                map[y].push('▓'); // Fill gaps on the right side with Wall
+                map[y].push('▓'); 
             }
         }
 
-        const npcTypesToSpawn = ['N', 'N', '§', 'H']; // 2 Villagers, 1 Shop, 1 Healer
-        let spawnAttempts = 50; // Try 50 times to place them
+        // --- FIX: SMART NPC SPAWNING ---
+        // Don't spawn procedural merchants if the layout already has them!
+        const npcTypesToSpawn = ['N', 'N']; // Always spawn some random villagers
+        
+        let hasShop = baseMap.some(row => row.includes('§'));
+        let hasHealer = baseMap.some(row => row.includes('H'));
+        
+        if (!hasShop) npcTypesToSpawn.push('§');
+        if (!hasHealer) npcTypesToSpawn.push('H');
+        
+        let spawnAttempts = 50;
 
         for (const npcTile of npcTypesToSpawn) {
             let placed = false;
             for (let i = 0; i < spawnAttempts && !placed; i++) {
-                // Find a random x, y
                 const randY = Math.floor(random() * (map.length - 2)) + 1;
                 const randX = Math.floor(random() * (map[0].length - 2)) + 1;
 
-                // Check if it's a floor tile
                 if (map[randY][randX] === '.') {
-                    map[randY][randX] = npcTile; // Place the NPC
+                    map[randY][randX] = npcTile; 
                     placed = true;
                 }
             }
@@ -518,10 +493,10 @@ const chunkManager = {
         const spawnY = layout.spawn.y;
 
         const adjacentCoords = [
-            [spawnY - 1, spawnX], // North
-            [spawnY + 1, spawnX], // South
-            [spawnY, spawnX - 1], // West
-            [spawnY, spawnX + 1]  // East
+            [spawnY - 1, spawnX], 
+            [spawnY + 1, spawnX], 
+            [spawnY, spawnX - 1], 
+            [spawnY, spawnX + 1]  
         ];
 
         // These tiles should NOT be overwritten
@@ -540,7 +515,6 @@ const chunkManager = {
             map[spawnY][spawnX] = '.';
         } else {
             console.error(`CRITICAL: Spawn point {x:${spawnX}, y:${spawnY}} is out of bounds for layout!`);
-            // Fallback: Force spawn to 1,1 to prevent crash
             if(map[1] && map[1][1]) map[1][1] = '.';
         }
 
@@ -595,7 +569,7 @@ const chunkManager = {
             // If this is the first time data arrived, fire the callback
             if (onInitialLoad) {
                 onInitialLoad();
-                onInitialLoad = null; // Ensure it only runs once
+                onInitialLoad = null; 
             }
 
             render();
@@ -624,78 +598,32 @@ const chunkManager = {
         });
     },
 
-    // Helper: Determine enemy spawn based on Biome and Distance
     getEnemySpawn(biome, dist, random) {
         const TIER_THRESHOLDS = [500, 1500, 3000, 6000];
 
-        // 1. Calculate Tier dynamically
         let tier = 0;
         for (let i = 0; i < TIER_THRESHOLDS.length; i++) {
-            if (dist > TIER_THRESHOLDS[i]) {
-                tier = i + 1;
-            } else {
-                break;
-            }
+            if (dist > TIER_THRESHOLDS[i]) tier = i + 1;
+            else break;
         }
 
-        // 2. Define Spawn Tables
         const spawns = {
-            '.': { // Plains
-                0: ['r', 'r', 'b'], 
-                1: ['b', 'w', 'o'], 
-                2: ['o', 'C', '🐺'], 
-                3: ['o', '🐺', 'Ø'], 
-                4: ['Ø', '🦖', '🤖'] 
-            },
-            'F': { // Forest
-                0: ['🐍', '🦌', '🐗'], 
-                1: ['w', '🐗', '🐻'], 
-                2: ['🐻', '🐺', '🕸'], 
-                3: ['🐺', '🐻', '🌲'], 
-                4: ['🌲', '🧛', '👾'] 
-            },
-            '^': { // Mountain
-                0: ['🦇', 'g', 'R'], 
-                1: ['g', 's', '🦅'], 
-                2: ['s', '🧌', 'Y'], 
-                3: ['Y', '🧌', '🐲'], 
-                4: ['🐲', '🦖', '🤖'] 
-            },
-            '≈': { // Swamp
-                0: ['🦟', '🐸', '🐍'], 
-                1: ['🐍', 'l', 'Z'], 
-                2: ['Z', 'l', 'a'], 
-                3: ['Z', 'a', '🐉h'], 
-                4: ['🐉h', '👾', '🧛'] 
-            },
-            'D': { // Desert
-                0: ['🦂s', '🐍', '🌵'], 
-                1: ['🦂', '🐍c', '🌵'], 
-                2: ['🦂', 'm', 'a'], 
-                3: ['m', 'a', '🔥e'], 
-                4: ['🔥e', '🦖', '🤖'] 
-            },
-            'd': { // Deadlands
-                0: ['s', 'b', 'R'], 
-                1: ['s', 'Z', 'a'], 
-                2: ['Z', 'a', '😈d'], 
-                3: ['😈d', 'v', '🧙'], 
-                4: ['🧙', '👾', '🧛'] 
-            }
+            '.': { 0: ['r', 'r', 'b'], 1: ['b', 'w', 'o'], 2: ['o', 'C', '🐺'], 3: ['o', '🐺', 'Ø'], 4: ['Ø', '🦖', '🤖'] },
+            'F': { 0: ['🐍', '🦌', '🐗'], 1: ['w', '🐗', '🐻'], 2: ['🐻', '🐺', '🕸'], 3: ['🐺', '🐻', '🌲'], 4: ['🌲', '🧛', '👾'] },
+            '^': { 0: ['🦇', 'g', 'R'], 1: ['g', 's', '🦅'], 2: ['s', '🧌', 'Y'], 3: ['Y', '🧌', '🐲'], 4: ['🐲', '🦖', '🤖'] },
+            '≈': { 0: ['🦟', '🐸', '🐍'], 1: ['🐍', 'l', 'Z'], 2: ['Z', 'l', 'a'], 3: ['Z', 'a', '🐉h'], 4: ['🐉h', '👾', '🧛'] },
+            'D': { 0: ['🦂s', '🐍', '🌵'], 1: ['🦂', '🐍c', '🌵'], 2: ['🦂', 'm', 'a'], 3: ['m', 'a', '🔥e'], 4: ['🔥e', '🦖', '🤖'] },
+            'd': { 0: ['s', 'b', 'R'], 1: ['s', 'Z', 'a'], 2: ['Z', 'a', '😈d'], 3: ['😈d', 'v', '🧙'], 4: ['🧙', '👾', '🧛'] }
         };
 
-        // 3. Select Enemy
         const table = spawns[biome];
         if (!table) return null;
 
-        // Cap the tier at the maximum defined for this biome
         const maxDefinedTier = Math.max(...Object.keys(table).map(Number));
         const safeTier = Math.min(tier, maxDefinedTier);
-
         const tierList = table[safeTier];
         if (!tierList) return null;
 
-        // Weighted Random Selection (60% Common, 30% Uncommon, 10% Rare)
         const roll = random();
         if (roll < 0.60) return tierList[0];
         if (roll < 0.90) return tierList[1];
@@ -708,13 +636,8 @@ const chunkManager = {
 
         let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE));
 
-        // --- EASY WIN: Fast Deterministic Spawn Dictionary ---
         const DETERMINISTIC_SPAWNS = {
-            "0,-50": "⬆️",
-            "50,0": "➡️",
-            "-50,0": "⬅️",
-            "0,50": "⬇️",
-            "35,35": "🚪" 
+            "0,-50": "⬆️", "50,0": "➡️", "-50,0": "⬅️", "0,50": "⬇️", "35,35": "🚪" 
         };
 
         for (let y = 0; y < this.CHUNK_SIZE; y++) {
@@ -722,15 +645,13 @@ const chunkManager = {
                 const worldX = chunkX * this.CHUNK_SIZE + x;
                 const worldY = chunkY * this.CHUNK_SIZE + y;
 
-                // --- 1. CHECK DETERMINISTIC SPAWNS FIRST ---
+                // --- 1. DETERMINISTIC SPAWNS ---
                 const dSpawn = DETERMINISTIC_SPAWNS[`${worldX},${worldY}`];
                 if (dSpawn) {
-                    this.setWorldTile(worldX, worldY, dSpawn);
                     chunkData[y][x] = dSpawn;
                     continue; 
                 }
 
-                // Calculate Distance
                 const dist = Math.sqrt(worldX * worldX + worldY * worldY);
 
                 // --- BIOME GENERATION ---
@@ -745,75 +666,65 @@ const chunkManager = {
                 else if (moist < 0.15) tile = 'D';
                 else if (moist > 0.55) tile = 'F';
 
-                // --- SAFETY OVERRIDE: SPAWN IS ALWAYS SAFE ---
-                if (Math.abs(worldX) < 3 && Math.abs(worldY) < 3) {
+                // --- FIX: EXPANDED SAFETY OVERRIDE ---
+                if (Math.abs(worldX) <= 6 && Math.abs(worldY) <= 6) {
                     tile = '.';
                 }
 
                 const featureRoll = random();
 
+                // 🚨 OPTIMIZATION NOTICE 🚨
+                // We NO LONGER call this.setWorldTile() during procedural generation!
+                // The client will render these from chunkData automatically. 
+                // This saves literally 99% of your Firebase database write quotas!
+
                 // --- 1. LEGENDARY LANDMARKS (Unique, Very Rare) ---
                 if (tile === '.' && featureRoll < 0.0000005) { 
-                    this.setWorldTile(worldX, worldY, '♛');
                     chunkData[y][x] = '♛';
                 }
                 else if ((tile === 'd' || tile === '^') && featureRoll < 0.000001) {
-                    this.setWorldTile(worldX, worldY, '🕳️');
                     chunkData[y][x] = '🕳️';
                 }
                 // --- 2. BIOME ANOMALIES (Very Rare) ---
                 else if (tile === 'F' && featureRoll < 0.0001) {
-                    this.setWorldTile(worldX, worldY, '🌳e');
                     chunkData[y][x] = '🌳e';
                 }
                 else if (tile === '^' && featureRoll < 0.0001) {
-                    this.setWorldTile(worldX, worldY, '🗿k');
                     chunkData[y][x] = '🗿k';
                 }
                 else if (tile === 'D' && featureRoll < 0.0001) {
-                    this.setWorldTile(worldX, worldY, '🦴d');
                     chunkData[y][x] = '🦴d';
                 }
                 // --- 3. RARE STRUCTURES (Scaled by Distance) ---
                 else if (tile === '.' && featureRoll < 0.000005) { // Safe Haven
-                    this.setWorldTile(worldX, worldY, 'V');
                     chunkData[y][x] = 'V';
                 }
                 else if (tile === '.' && featureRoll < 0.00003) { // Shrine
-                    this.setWorldTile(worldX, worldY, '⛩️');
                     chunkData[y][x] = '⛩️';
                 }
                 else if (tile === '.' && featureRoll < 0.0003) { // Forgotten Letter (Lore)
-                    this.setWorldTile(worldX, worldY, '📜l');
                     chunkData[y][x] = '📜l';
                 }
                 else if (tile === '.' && featureRoll < 0.00004) { // Obelisk
-                    this.setWorldTile(worldX, worldY, '|');
                     chunkData[y][x] = '|';
                 }
                 else if (tile === '.' && featureRoll < 0.00005) { // Wishing Well
-                    this.setWorldTile(worldX, worldY, '⛲');
                     chunkData[y][x] = '⛲';
                 }
                 else if ((tile === 'd' || tile === 'D') && featureRoll < 0.000005) { // Void Rift
-                    this.setWorldTile(worldX, worldY, 'Ω');
                     chunkData[y][x] = 'Ω';
                 }
                 // --- 4. MAJOR STRUCTURES (Explicit Spawn Rates) ---
                 else if (tile === '^' && featureRoll < 0.008) {
-                    this.setWorldTile(worldX, worldY, '⛰');
                     chunkData[y][x] = '⛰';
                 }
                 else if (tile === 'd' && featureRoll < 0.004) {
-                    this.setWorldTile(worldX, worldY, '⛰');
                     chunkData[y][x] = '⛰';
                 }
                 else if ((tile === '.' || tile === 'F') && featureRoll > 0.0005 && featureRoll < 0.0015) {
-                    this.setWorldTile(worldX, worldY, '🏰');
                     chunkData[y][x] = '🏰';
                 }
                 else if ((tile === '.' || tile === 'F') && featureRoll > 0.0015 && featureRoll < 0.0020) {
-                    this.setWorldTile(worldX, worldY, '⛰');
                     chunkData[y][x] = '⛰';
                 }
                 // --- 5. COMMON FEATURES ---
@@ -827,27 +738,22 @@ const chunkManager = {
 
                     if (features.length > 0) {
                         const featureTile = features[Math.floor(random() * features.length)];
-                        this.setWorldTile(worldX, worldY, featureTile);
                         chunkData[y][x] = featureTile;
                     }
                 }
                 // --- 6. RIDDLE STATUES ---
                 else if (tile === '.' && featureRoll < 0.00008) {
-                    this.setWorldTile(worldX, worldY, '?');
                     chunkData[y][x] = '?';
                 }
                 // --- 7. GENERIC STRUCTURES ---
                 else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0001) {
-                    this.setWorldTile(worldX, worldY, '🏛️');
                     chunkData[y][x] = '🏛️';
                 }
                 else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0002) {
-                    this.setWorldTile(worldX, worldY, '⛺');
                     chunkData[y][x] = '⛺';
                 }
                 // --- 8. ARCHAEOLOGY SPOTS ---
                 else if (['.', 'd', 'D', 'F'].includes(tile) && featureRoll < (tile === 'd' || tile === 'D' ? 0.0015 : 0.0005)) {
-                    this.setWorldTile(worldX, worldY, '∴');
                     chunkData[y][x] = '∴';
                 }
                 else {
@@ -865,20 +771,15 @@ const chunkManager = {
 
                         if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
                             chunkData[y][x] = enemyTile;
-                            if (TILE_DATA[enemyTile]) {
-                                this.setWorldTile(worldX, worldY, enemyTile);
-                            }
                         } else {
                             chunkData[y][x] = tile;
                         }
                     }
                     // --- 10. RESOURCE FALLBACKS ---
                     else if (tile === '^' && hostileRoll < 0.03) {
-                        this.setWorldTile(worldX, worldY, '🏚');
                         chunkData[y][x] = '🏚';
                     }
                     else if (tile === 'F' && hostileRoll < 0.03) {
-                        this.setWorldTile(worldX, worldY, '🌳');
                         chunkData[y][x] = '🌳';
                     }
                     else {
@@ -888,7 +789,7 @@ const chunkManager = {
             }
         }
 
-        // --- EASY WIN: ZERO-ALLOCATION SMOOTHING PASS ---
+        // --- ZERO-ALLOCATION SMOOTHING PASS ---
         const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈'];
         
         for (let y = 1; y < this.CHUNK_SIZE - 1; y++) {
@@ -926,6 +827,7 @@ const chunkManager = {
         const localY = (worldY % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
         const tileKey = `${localX},${localY}`;
         
+        // Always check WorldState first (Diff overrides procedural)
         if (this.worldState[chunkId] && this.worldState[chunkId][tileKey] !== undefined) {
             return this.worldState[chunkId][tileKey];
         }
