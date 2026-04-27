@@ -181,6 +181,29 @@ function renderWorldMap() {
         });
     }
 
+    // --- Render Active Treasure (X Marks the Spot) ---
+    if (gameState.activeTreasure) {
+        const tx = (gameState.activeTreasure.x - mapCamera.x) * currentMapScale + centerX;
+        const ty = (gameState.activeTreasure.y - mapCamera.y) * currentMapScale + centerY;
+        
+        if (tx >= 0 && tx <= worldMapCanvas.width && ty >= 0 && ty <= worldMapCanvas.height) {
+            // Draw the X
+            worldMapCtx.fillStyle = '#ef4444'; 
+            worldMapCtx.font = `bold ${Math.max(12, currentMapScale * 2)}px monospace`;
+            worldMapCtx.textAlign = 'center';
+            worldMapCtx.textBaseline = 'middle';
+            worldMapCtx.fillText('❌', tx + currentMapScale/2, ty + currentMapScale/2);
+            
+            // Draw an expanding pulse ring to make it obvious
+            const pulse = (Math.sin(Date.now() / 200) + 1) / 2;
+            worldMapCtx.strokeStyle = `rgba(239, 68, 68, ${1 - pulse})`;
+            worldMapCtx.lineWidth = 2;
+            worldMapCtx.beginPath();
+            worldMapCtx.arc(tx + currentMapScale/2, ty + currentMapScale/2, currentMapScale * 2 + (pulse * 15), 0, Math.PI * 2);
+            worldMapCtx.stroke();
+        }
+    }
+
     // Render Player Marker (Pulsing)
     const playerScreenX = (gameState.player.x - mapCamera.x) * currentMapScale + centerX;
     const playerScreenY = (gameState.player.y - mapCamera.y) * currentMapScale + centerY;
