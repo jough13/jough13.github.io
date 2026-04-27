@@ -258,27 +258,101 @@ async function processOverworldEnemyTurns() {
         const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
         
         // --- VILLAGE GUARD SNIPER SYSTEM (Anti-Trolling/Anti-Ghost) ---
-        // EASY WIN: Expanded guard range to 100 tiles (10000 sq) and shoot anything > 15 XP
         const distToSpawnSq = (enemy.x * enemy.x) + (enemy.y * enemy.y);
         if (distToSpawnSq < 10000 && enemy.xp > 15) { 
-            // If the player is close enough to see it, log the flavor text
             if (distSq < 400) {
                 logMessage(`🏹 A village guard snipes the trespassing ${enemy.name} from the walls!`);
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(enemy.x, enemy.y, '#ef4444', 8);
             }
-            
-            // Queue removal from Firebase
             multiPathUpdate[`worldEnemies/${enemyId}`] = null;
-            
-            // Clean up local arrays
             delete gameState.sharedEnemies[enemyId];
             updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
             processedIdsThisFrame.add(enemyId);
             movesQueued = true;
-            continue; // Skip the rest of this enemy's turn
+            continue; 
         }
 
         if (distSq > searchDistSq) continue;
+
+        // ==========================================
+        // FIX: OVERWORLD STATUS EFFECTS
+        // ==========================================
+        let skipTurn = false;
+        let statusChanged = false;
+
+        if (enemy.rootTurns > 0) { 
+            enemy.rootTurns--; 
+            skipTurn = true; 
+            statusChanged = true; 
+        }
+        if (enemy.stunTurns > 0) { 
+            enemy.stunTurns--; 
+            skipTurn = true; 
+            statusChanged = true; 
+        }
+        if (enemy.frostbiteTurns > 0) { 
+            enemy.frostbiteTurns--; 
+            statusChanged = true; 
+            if (Math.random() < 0.25) skipTurn = true; 
+        }
+        if (enemy.poisonTurns > 0) {
+            enemy.poisonTurns--;
+            enemy.health -= 1;
+            statusChanged = true;
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-1", "#22c55e");
+            
+            if (enemy.health <= 0) {
+                logMessage(`The ${enemy.name} succumbs to poison!`);
+                registerKill(enemy); // Grant XP/loot
+                multiPathUpdate[`worldEnemies/${enemyId}`] = null;
+                delete gameState.sharedEnemies[enemyId];
+                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
+                
+                const droppedLoot = generateEnemyLoot(gameState.player, enemy);
+                chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot);
+                
+                processedIdsThisFrame.add(enemyId);
+                movesQueued = true;
+                continue; // Enemy is dead, skip the rest of its turn
+            }
+        }
+
+        let isMad = false;
+        if (enemy.madnessTurns > 0) {
+            enemy.madnessTurns--;
+            statusChanged = true;
+            isMad = true; // Overrides movement logic to force flee
+        }
+
+        // ==========================================
+        // FIX: OVERWORLD TELEGRAPH GENERATION
+        // ==========================================
+        const canTelegraph = enemy.isBoss || enemy.tile === 'm' || enemy.tile === '😈d' || enemy.tile === '🐲';
+
+        if (!skipTurn && canTelegraph && distSq < 36 && Math.random() < 0.20) {
+            enemy.pendingAttacks = [];
+
+            if (enemy.tile === 'm' || enemy.tile === '😈d') {
+                logMessage(`The ${enemy.name} gathers dark energy...`);
+                enemy.pendingAttacks.push({ x: playerX, y: playerY });
+                enemy.pendingAttacks.push({ x: playerX + 1, y: playerY });
+                enemy.pendingAttacks.push({ x: playerX - 1, y: playerY });
+                enemy.pendingAttacks.push({ x: playerX, y: playerY + 1 });
+                enemy.pendingAttacks.push({ x: playerX, y: playerY - 1 });
+            } else {
+                logMessage(`The ${enemy.name} takes a deep breath!`);
+                for (let ty = -1; ty <= 1; ty++) {
+                    for (let tx = -1; tx <= 1; tx++) {
+                        enemy.pendingAttacks.push({ x: playerX + tx, y: playerY + ty });
+                    }
+                }
+            }
+            
+            multiPathUpdate[`worldEnemies/${enemyId}`] = enemy;
+            processedIdsThisFrame.add(enemyId);
+            movesQueued = true;
+            continue; // Skip movement since they are channeling
+        }
 
         // --- OVERWORLD TELEGRAPH EXECUTION ---
         if (enemy.pendingAttacks && enemy.pendingAttacks.length > 0) {
@@ -307,6 +381,14 @@ async function processOverworldEnemyTurns() {
             
             if (gameState.player.health <= 0) handlePlayerDeath();
             continue; // Skip the rest of this turn
+        }
+
+        // If skipped turn due to stun/root, make sure we save the updated status effect timers
+        if (skipTurn) {
+            multiPathUpdate[`worldEnemies/${enemyId}`] = enemy;
+            processedIdsThisFrame.add(enemyId);
+            movesQueued = true;
+            continue;
         }
 
         // --- OVERWORLD DIRECT SPELLCASTING ---
@@ -353,11 +435,16 @@ async function processOverworldEnemyTurns() {
                     if (gameState.player.health <= 0) handlePlayerDeath();
                 }
             }
+            
+            // Still sync if they had status effects tick down but chose to cast instead of moving
+            if (statusChanged) multiPathUpdate[`worldEnemies/${enemyId}`] = enemy;
+            
             processedIdsThisFrame.add(enemyId);
+            movesQueued = true;
             continue; // Skip movement if they casted a spell
         }
 
-        // --- AI LOGIC ---
+        // --- AI LOGIC (MOVEMENT & MELEE) ---
         let chaseChance = 0.20;
         if (distSq < 400) chaseChance = 0.85; // Close range
         if (distSq < 100) chaseChance = 1.00; // Aggressive
@@ -366,7 +453,14 @@ async function processOverworldEnemyTurns() {
             let dirX = 0, dirY = 0;
             let isChasing = false;
 
-            if (Math.random() < chaseChance) {
+            if (isMad) {
+                // Flee from player
+                dirX = -Math.sign(playerX - enemy.x);
+                dirY = -Math.sign(playerY - enemy.y);
+                if (dirX === 0) dirX = Math.random() < 0.5 ? 1 : -1;
+                if (dirY === 0) dirY = Math.random() < 0.5 ? 1 : -1;
+            }
+            else if (Math.random() < chaseChance) {
                 dirX = Math.sign(playerX - enemy.x);
                 dirY = Math.sign(playerY - enemy.y);
                 isChasing = true;
@@ -415,46 +509,67 @@ async function processOverworldEnemyTurns() {
                     if (Math.random() < dodgeChance) {
                         logMessage(`The ${enemy.name} attacks, but you dodge!`);
                         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, "Dodge!", "#3b82f6");
-                        processedIdsThisFrame.add(enemyId);
-                        continue;
-                    }
+                    } else {
+                        // Apply unified damage calc
+                        let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
 
-                    // Apply unified damage calc
-                    let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
-
-                    // Shield Absorb
-                    if (gameState.player.shieldValue > 0) {
-                        const absorb = Math.min(gameState.player.shieldValue, dmg);
-                        gameState.player.shieldValue -= absorb;
-                        dmg -= absorb;
-                        logMessage(`Shield absorbs ${absorb} damage!`);
-                        if (gameState.player.shieldValue === 0) logMessage("Your Arcane Shield shatters!");
-                    }
-
-                    if (dmg > 0) {
-                        gameState.player.health -= dmg;
-                        gameState.screenShake = 10;
-
-                        const wrapper = document.getElementById('gameCanvasWrapper');
-                        if (wrapper) {
-                            wrapper.classList.remove('damage-flash'); 
-                            void wrapper.offsetWidth; // Trigger reflow
-                            wrapper.classList.add('damage-flash');
+                        // Shield Absorb
+                        if (gameState.player.shieldValue > 0) {
+                            const absorb = Math.min(gameState.player.shieldValue, dmg);
+                            gameState.player.shieldValue -= absorb;
+                            dmg -= absorb;
+                            logMessage(`Shield absorbs ${absorb} damage!`);
+                            if (gameState.player.shieldValue === 0) logMessage("Your Arcane Shield shatters!");
                         }
 
-                        logMessage(`A ${enemy.name} attacks you for {red:${dmg}} damage!`);
-                        triggerStatFlash(statDisplays.health, false);
-                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
-                        
-                        if (gameState.player.health <= 0) handlePlayerDeath();
+                        if (dmg > 0) {
+                            gameState.player.health -= dmg;
+                            gameState.screenShake = 10;
+
+                            const wrapper = document.getElementById('gameCanvasWrapper');
+                            if (wrapper) {
+                                wrapper.classList.remove('damage-flash'); 
+                                void wrapper.offsetWidth; // Trigger reflow
+                                wrapper.classList.add('damage-flash');
+                            }
+
+                            logMessage(`A ${enemy.name} attacks you for {red:${dmg}} damage!`);
+                            triggerStatFlash(statDisplays.health, false);
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
+                            
+                            if (gameState.player.health <= 0) handlePlayerDeath();
+                        }
+
+                        // --- FIX: OVERWORLD THORNS ---
+                        if (gameState.player.thornsValue > 0) {
+                            enemy.health -= gameState.player.thornsValue;
+                            logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} thorn damage!`);
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, `-${gameState.player.thornsValue}`, '#22c55e');
+                            
+                            if (enemy.health <= 0) {
+                                registerKill(enemy);
+                                multiPathUpdate[`worldEnemies/${enemyId}`] = null;
+                                delete gameState.sharedEnemies[enemyId];
+                                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
+                                
+                                const droppedLoot = generateEnemyLoot(gameState.player, enemy);
+                                chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot);
+                                
+                                processedIdsThisFrame.add(enemyId);
+                                movesQueued = true;
+                                continue; // Die and skip sync
+                            } else {
+                                statusChanged = true; // Health changed, ensure we sync below
+                            }
+                        }
                     }
 
-                    // Overworld Thorns logic
-                    if (gameState.player.thornsValue > 0) {
-                        handleOverworldCombat(enemy.x, enemy.y, ENEMY_DATA[enemy.tile], enemy.tile, gameState.player.thornsValue);
-                        logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} thorn damage!`);
+                    // Even if it hit/dodged, if status effects changed on it, we must sync
+                    if (statusChanged) {
+                        multiPathUpdate[`worldEnemies/${enemyId}`] = enemy;
+                        movesQueued = true;
                     }
-
+                    
                     processedIdsThisFrame.add(enemyId);
                     continue; 
                 }
@@ -495,6 +610,10 @@ async function processOverworldEnemyTurns() {
                     minDist = distSq;
                     nearestEnemyDir = { x: Math.sign(finalX - playerX), y: Math.sign(finalY - playerY) };
                 }
+            } else if (statusChanged) {
+                // If it couldn't move, but it took poison damage or had a timer tick down, save it!
+                multiPathUpdate[`worldEnemies/${enemyId}`] = enemy;
+                movesQueued = true;
             }
         }
     }
@@ -575,6 +694,8 @@ function processEnemyTurns() {
             enemy.poisonTurns--;
             enemy.health -= 1;
             logMessage(`The ${enemy.name} takes poison damage.`);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-1", "#22c55e");
+            
             if (enemy.health <= 0) {
                 logMessage(`The ${enemy.name} succumbs to poison!`);
                 registerKill(enemy);
@@ -789,9 +910,12 @@ function processEnemyTurns() {
                     if (handlePlayerDeath()) return;
                 }
                 
+                // --- FIX: INSTANCED THORNS JUICE ---
                 if (player.thornsValue > 0) {
                     enemy.health -= player.thornsValue;
                     logMessage(`The ${enemy.name} takes ${player.thornsValue} thorn damage!`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, `-${player.thornsValue}`, '#22c55e');
+
                     if (enemy.health <= 0) {
                         registerKill(enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
@@ -975,15 +1099,19 @@ async function runCompanionTurn() {
 
                 attacked = true;
 
-                                if (enemy.health <= 0) {
+                if (enemy.health <= 0) {
                     logMessage(`Your companion killed the ${enemy.name}!`);
                     grantXp(Math.floor(enemy.xp / 2)); 
                     gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                     
-                    // Clear the dead enemy's tile to prevent ghost walls!
+                    // --- FIX: CLEAR DUNGEON TILE ---
                     let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
+                    let validFloor = '.';
+                    if (gameState.mapMode === 'dungeon' && CAVE_THEMES[gameState.currentCaveTheme]) {
+                        validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+                    }
                     const droppedLoot = generateEnemyLoot(gameState.player, enemy);
-                    map[ty][tx] = droppedLoot || '.';
+                    map[ty][tx] = droppedLoot || validFloor;
                 }
             }
         }
@@ -1023,9 +1151,11 @@ async function runCompanionTurn() {
                             if (!snapshot.exists()) {
                                 logMessage(`Your ${companion.name} vanquished the ${enemyData.name}!`);
                                 grantXp(Math.floor(enemyData.xp / 2));
-                                chunkManager.setWorldTile(tx, ty, '.');
                                 
-                                // EASY WIN: Clear local overworld state properly to prevent ghosts
+                                // --- FIX: DROP LOOT IN OVERWORLD ---
+                                const droppedLoot = generateEnemyLoot(gameState.player, enemyData); 
+                                chunkManager.setWorldTile(tx, ty, droppedLoot || '.');
+                                
                                 if (gameState.sharedEnemies[enemyId]) {
                                     delete gameState.sharedEnemies[enemyId];
                                 }
@@ -1055,7 +1185,6 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             gameState.mapDirty = true;
             render();
         }
-        isProcessingMove = false;
         return;
     }
 
@@ -1116,10 +1245,9 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             logMessage("You swing at empty air... the enemy is already dead.");
             chunkManager.setWorldTile(newX, newY, '.');
             if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
-            render();
         }
 
-        } catch (error) {
+    } catch (error) {
         console.error("Combat Error:", error);
         logMessage(`Error: ${error.message || "Network Sync Failed"}`);
     }
@@ -1222,6 +1350,13 @@ function handlePlayerDeath() {
     const deathY = player.y;
     const pendingUpdates = {};
 
+    // --- FIX: USE BIOME FLOOR FOR DEATH DROPS ---
+    let validFloor = '.';
+    if (gameState.mapMode === 'dungeon') {
+        const theme = CAVE_THEMES[gameState.currentCaveTheme];
+        if (theme) validFloor = theme.floor;
+    }
+
     for (let i = player.inventory.length - 1; i >= 0; i--) {
         const item = player.inventory[i];
         let placed = false;
@@ -1237,7 +1372,8 @@ function handlePlayerDeath() {
                     else if (gameState.mapMode === 'dungeon') tile = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
                     else tile = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
-                    if (tile === '.') {
+                    // Check both generic plains floor and specific dungeon floor
+                    if (tile === validFloor || tile === '.') {
                         const dropIcon = item.tile || item.templateId || '🎒';
 
                         if (gameState.mapMode === 'overworld') {
