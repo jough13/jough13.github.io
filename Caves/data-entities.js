@@ -219,7 +219,7 @@ window.ENEMY_DATA = {
         name: 'Giant Rat',
         maxHealth: 3, attack: 1, defense: 0, xp: 4,
         loot: '🐀', 
-        color: '#a8a29e', // EASY WIN: Grey
+        color: '#a8a29e', // Grey
         flavor: "It hisses and bares yellow teeth."
     },
     '🦇': {
@@ -242,6 +242,7 @@ window.ENEMY_DATA = {
         maxHealth: 5, attack: 2, defense: 0, xp: 10,
         loot: '🧣', 
         color: '#fca5a5', // Light red
+        excludeFromLoot: true, // Prevent them dropping Tier 4 gear in deep wilds
         flavor: "He looks nervous, holding his dagger with shaking hands."
     },
 
@@ -475,7 +476,7 @@ window.ENEMY_DATA = {
         color: '#000000', // Pure Black
         caster: true, castRange: 7, spellDamage: 8,
         isBoss: true,
-        flavor: "He wears a crown of bone and commands the armies of the dead."
+        flavor: "He wears a crown of bone and commands the armies of the dead. Do not let him cast."
     },
     'c': {
         name: 'Cultist Initiate',
@@ -602,7 +603,7 @@ window.PLAYER_BACKGROUNDS = {
     'wretch': {
         name: 'The Wretch',
         description: 'Naked, afraid, and penniless. A true challenge.',
-        stats: {},
+        stats: { luck: 2, endurance: 2 }, // Giving them a tiny bit more survivability
         items: [
             { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor' },
             { templateId: '4', name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap' }
@@ -625,7 +626,7 @@ window.EVOLUTION_DATA = {
             name: 'Paladin',
             icon: '🛡️',
             description: "Immune to Poison/Disease. Heals allies nearby.",
-            stats: { constitution: 4, willpower: 2 },
+            stats: { constitution: 3, willpower: 2, charisma: 2 },
             talent: 'holy_aura'
         }
     ],
@@ -642,9 +643,9 @@ window.EVOLUTION_DATA = {
             id: 'ranger',
             name: 'Ranger',
             icon: '🏹',
-            description: "Can move through Forests without stamina cost.",
+            description: "Master of the bow. Ranged attacks deal +50% damage.", // Prep for Archery!
             stats: { dexterity: 3, perception: 3 },
-            talent: 'pathfinder'
+            talent: 'eagle_eye'
         }
     ],
     'mage': [
@@ -850,11 +851,23 @@ window.TALENT_DATA = {
         description: "Foraging (Wildberries/Herbs) restores double HP/Mana.",
         class: "general",
         icon: "🌿"
+    },
+    "pathfinder": {
+        name: "Pathfinder",
+        description: "Move through forests and brush without losing stamina.",
+        class: "ranger",
+        icon: "🌲"
+    },
+    "eagle_eye": {
+        name: "Eagle Eye",
+        description: "Ranged attacks deal +50% Damage.",
+        class: "ranger",
+        icon: "👁️"
     }
 };
 
-// EASY WIN: Added scalingStat to all skills
 window.SKILL_DATA = {
+    // --- BASIC TECHNIQUES ---
     "kick": {
         name: "Kick",
         description: "Stun an enemy for 2 turns. Deals low damage.",
@@ -945,4 +958,11 @@ window.SKILL_DATA = {
         description: "Focus your energy to restore Mana. (Staff only)",
         cost: 0, costType: "stamina", requiredLevel: 1, target: "self", cooldown: 10
     },
+    // --- PREP FOR ARCHERY ---
+    "ranged_attack": {
+        name: "Shoot",
+        description: "Fire an arrow at a distant target. Scales with Dexterity.",
+        scalingStat: "dexterity",
+        cost: 4, costType: "stamina", requiredLevel: 1, target: "aimed", baseDamageMultiplier: 1.0, cooldown: 0 
+    }
 };
