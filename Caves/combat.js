@@ -1209,18 +1209,25 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             
             // If null, the server cache dropped it. Rebuild a clean object!
             if (enemy === null) {
-                enemy = JSON.parse(JSON.stringify({
+                enemy = {
                     ...enemyInfo,
                     tile: newTile,
                     x: newX,
                     y: newY
-                }));
+                };
             }
             
-            if (isNaN(enemy.health)) enemy.health = enemy.maxHealth;
+            // Force health to be a clean Number to prevent NaN DB corruption
+            enemy.health = Number(enemy.health);
+            if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
             
             enemy.health -= safeDamage;
-            return enemy.health <= 0 ? null : enemy;
+            
+            // If dead, return null to delete from Firebase
+            if (enemy.health <= 0) return null;
+            
+            // Vaporize ALL undefined values before sending to Firebase!
+            return JSON.parse(JSON.stringify(enemy));
         });
 
         if (transactionResult.committed) {
