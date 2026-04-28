@@ -300,6 +300,19 @@ window.ITEM_DATA = {
         description: "It smells strongly of garlic and snake oil. It definitely does not work."
     },
 
+    '🐾1': { 
+        name: 'Beastmaster Vol I', type: 'journal', title: 'On Wolves and Bears', 
+        content: "To tame a beast, one must first break its spirit, but not its body. Bring a wolf or bear to the brink of death (under 30% Health), and it may respect your dominance if you have enough Charisma." 
+    },
+    '🐾2': { 
+        name: 'Beastmaster Vol II', type: 'journal', title: 'The Crawling Terrors', 
+        content: "Spiders and Scorpions cannot be reasoned with. Their minds are alien. Do not attempt to tame them, for they will only see you as food. Fire is your only friend." 
+    },
+    '🐾3': { 
+        name: 'Beastmaster Vol III', type: 'journal', title: 'The Drake', 
+        content: "I saw a Young Drake today. It breathed fire that melted stone. I dare not approach it. Legend says dragons hoard gold because it is the only metal that doesn't melt when they sleep on it." 
+    },
+
     '🍲m': { 
         name: 'Monster Stew', 
         type: 'consumable', 
