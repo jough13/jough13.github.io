@@ -586,6 +586,10 @@ const chunkManager = {
     setWorldTile(worldX, worldY, newTile) {
         const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
         const chunkY = Math.floor(worldY / this.CHUNK_SIZE);
+        
+        // --- Prevent Firebase Permission Errors from glitchy coordinates ---
+        if (isNaN(chunkX) || isNaN(chunkY)) return;
+        
         const chunkId = `${chunkX},${chunkY}`;
         
         const localX = (worldX % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
