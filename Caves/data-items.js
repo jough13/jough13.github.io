@@ -1150,10 +1150,10 @@ window.ITEM_DATA = {
         tile: '🧱',
         description: "A solid wall to keep enemies out."
     },
-    '=': { // Using equals sign for wood floor planks
+    '▤': { 
         name: 'Wood Floor',
         type: 'constructible',
-        tile: '=',
+        tile: '▤',
         description: "Smooth wooden planks. Safe to walk on."
     },
     '+': {
