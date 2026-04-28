@@ -5850,6 +5850,35 @@ async function attemptMovePlayer(newX, newY) {
             case 'castle_exit':
                 exitToOverworld("You leave the castle.");
                 return;
+            case 'dark_castle_entrance':
+                if (!gameState.foundLore) gameState.foundLore = new Set();
+                if (!gameState.foundLore.has(tileId)) {
+                    logMessage("You've discovered a ruined fortress. Evil stirs within... +25 XP");
+                    grantXp(25);
+                    gameState.foundLore.add(tileId);
+                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                }
+                gameState.mapMode = 'castle';
+                gameState.currentCastleId = tileData.getCastleId(newX, newY);
+                gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                
+                chunkManager.generateCastle(gameState.currentCastleId);
+                const darkSpawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
+                gameState.player.x = darkSpawn.x;
+                gameState.player.y = darkSpawn.y;
+                
+                // NO GUARDS OR MERCHANTS
+                gameState.friendlyNpcs =[];
+                // LOAD MONSTERS
+                const baseDarkEnemies = chunkManager.castleEnemies[gameState.currentCastleId] ||[];
+                gameState.instancedEnemies = JSON.parse(JSON.stringify(baseDarkEnemies));
+                
+                logMessage("You enter the dark fortress. Weapons drawn.");
+                updateRegionDisplay();
+                gameState.mapDirty = true;
+                render();
+                syncPlayerState();
+                return;
             case 'lore':
                 if (!gameState.foundLore) gameState.foundLore = new Set();
                 if (!gameState.foundLore.has(tileId)) {
