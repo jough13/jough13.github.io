@@ -377,6 +377,13 @@ function grantLoreDiscovery(itemId) {
             if (setKey === 'void_research') {
                 player.maxMana += 10;
                 player.mana += 10;
+            } else if (setKey === 'deep_delver') {
+                player.maxStamina += 5;
+                player.stamina += 5;
+                triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
+            } else if (setKey === 'beastmaster_guide') {
+                player.perception += 1;
+                triggerStatAnimation(statDisplays.perception, 'stat-pulse-green');
             }
             // (Other bonuses like price reduction are checked dynamically in their respective functions)
             
