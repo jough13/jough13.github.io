@@ -266,13 +266,15 @@ const chunkManager = {
         let enemyTypes = theme.enemies || Object.keys(ENEMY_DATA);
 
         // --- SAFE ZONE CAVE NERF ---
+        // If within 250 tiles of spawn, remove "Hard" enemies from the spawn pool
         if (dist < 250) {
-            const hardEnemies = ['C', 'm', 'o', 'Ø', 'Y', 'D', '🐲', '🧙', 'v', 'f'];
+            // Added Golems (🧌), Draugr (Z), Scorpions (🦂), and Spiders (@) to the ban list!
+            const hardEnemies =['C', 'm', 'o', 'Ø', 'Y', 'D', '🐲', '🧙', 'v', 'f', '🧌', 'Z', '🦂', '@'];
             enemyTypes = enemyTypes.filter(e => !hardEnemies.includes(e));
+            
+            // Safety fallback: If we filtered everything out, add basics
             if (enemyTypes.length === 0) enemyTypes = ['r', 'b', 'g'];
         }
-        // --------------------------------
-
         for (let i = 0; i < enemyCount; i++) {
 
             const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
@@ -429,26 +431,29 @@ const chunkManager = {
     generateCastle(castleId, forcedLayoutKey = null) { 
         if (this.castleMaps[castleId]) return this.castleMaps[castleId];
 
-        // 1. Use the castleId to pick a layout
+        const isDark = castleId.includes('landmark') || castleId.includes('darkcastle');
+        const random = Alea(stringToSeed(castleId)); 
+
+        // 1. Layout Selection: Dark castles get Fortresses, Safe castles get civilian layouts
         let chosenLayoutKey;
         if (forcedLayoutKey && CASTLE_LAYOUTS[forcedLayoutKey]) {
-            chosenLayoutKey = forcedLayoutKey; // Use the forced layout
+            chosenLayoutKey = forcedLayoutKey; 
         } else {
-            // Pick a random one
-            const randomLayout = Alea(stringToSeed(castleId + ':layout'));
-            const layoutKeys = Object.keys(CASTLE_LAYOUTS);
-            chosenLayoutKey = layoutKeys[Math.floor(randomLayout() * layoutKeys.length)];
+            if (isDark) {
+                chosenLayoutKey = 'FORTRESS'; 
+            } else {
+                const safeLayouts = ['COURTYARD', 'LIBRARY_WING', 'TOWER'];
+                chosenLayoutKey = safeLayouts[Math.floor(random() * safeLayouts.length)];
+            }
         }
+        
         const layout = CASTLE_LAYOUTS[chosenLayoutKey];
-
-        // 2. Get the base map and spawn point from the chosen layout
         const baseMap = layout.map;
         
         this.castleSpawnPoints = this.castleSpawnPoints || {};
         this.castleSpawnPoints[castleId] = layout.spawn;
 
         const map = baseMap.map(row => [...row]);
-        const random = Alea(stringToSeed(castleId)); 
 
         // Calculate the maximum width of any row
         let maxWidth = 0;
@@ -456,34 +461,29 @@ const chunkManager = {
             if (r.length > maxWidth) maxWidth = r.length;
         }
 
-        // Pad shorter rows with walls ('▓') or void (' ') to match maxWidth
+        // Pad shorter rows with walls ('▓')
         for (let y = 0; y < map.length; y++) {
-            while (map[y].length < maxWidth) {
-                map[y].push('▓'); 
-            }
+            while (map[y].length < maxWidth) map[y].push('▓'); 
         }
 
-        // --- FIX: SMART NPC SPAWNING ---
-        // Don't spawn procedural merchants if the layout already has them!
-        const npcTypesToSpawn = ['N', 'N']; // Always spawn some random villagers
-        
-        let hasShop = baseMap.some(row => row.includes('§'));
-        let hasHealer = baseMap.some(row => row.includes('H'));
-        
-        if (!hasShop) npcTypesToSpawn.push('§');
-        if (!hasHealer) npcTypesToSpawn.push('H');
-        
-        let spawnAttempts = 50;
-
-        for (const npcTile of npcTypesToSpawn) {
-            let placed = false;
-            for (let i = 0; i < spawnAttempts && !placed; i++) {
-                const randY = Math.floor(random() * (map.length - 2)) + 1;
-                const randX = Math.floor(random() * (map[0].length - 2)) + 1;
-
-                if (map[randY][randX] === '.') {
-                    map[randY][randX] = npcTile; 
-                    placed = true;
+        // --- NEW: ONLY SPAWN MERCHANTS/VILLAGERS IN SAFE CASTLES ---
+        if (!isDark) {
+            const npcTypesToSpawn = ['N', 'N']; 
+            let hasShop = baseMap.some(row => row.includes('§'));
+            let hasHealer = baseMap.some(row => row.includes('H'));
+            
+            if (!hasShop) npcTypesToSpawn.push('§');
+            if (!hasHealer) npcTypesToSpawn.push('H');
+            
+            for (const npcTile of npcTypesToSpawn) {
+                let placed = false;
+                for (let i = 0; i < 50 && !placed; i++) {
+                    const randY = Math.floor(random() * (map.length - 2)) + 1;
+                    const randX = Math.floor(random() * (map[0].length - 2)) + 1;
+                    if (map[randY][randX] === '.') {
+                        map[randY][randX] = npcTile; 
+                        placed = true;
+                    }
                 }
             }
         }
@@ -491,74 +491,63 @@ const chunkManager = {
         // Ensure the tiles adjacent to spawn are walkable
         const spawnX = layout.spawn.x;
         const spawnY = layout.spawn.y;
-
-        const adjacentCoords = [
-            [spawnY - 1, spawnX], 
-            [spawnY + 1, spawnX], 
-            [spawnY, spawnX - 1], 
-            [spawnY, spawnX + 1]  
-        ];
-
-        // These tiles should NOT be overwritten
+        const adjacentCoords = [[spawnY - 1, spawnX], [spawnY + 1, spawnX], [spawnY, spawnX - 1],[spawnY, spawnX + 1]];
         const protectedTiles = ['▓', 'X', 'B', '📖'];
 
-        for (const [y, x] of adjacentCoords) {
+        for (const[y, x] of adjacentCoords) {
             if (map[y] && map[y][x]) {
                 const originalTile = (baseMap[y] && baseMap[y][x]) ? baseMap[y][x] : '▓';
-                if (!protectedTiles.includes(originalTile)) {
-                    map[y][x] = '.';
-                }
+                if (!protectedTiles.includes(originalTile)) map[y][x] = '.';
             }
         }
+        if (map[spawnY] && map[spawnY][spawnX] !== undefined) map[spawnY][spawnX] = '.';
 
-        if (map[spawnY] && map[spawnY][spawnX] !== undefined) {
-            map[spawnY][spawnX] = '.';
-        } else {
-            console.error(`CRITICAL: Spawn point {x:${spawnX}, y:${spawnY}} is out of bounds for layout!`);
-            if(map[1] && map[1][1]) map[1][1] = '.';
-        }
-
-        // Extract Guards and Enemies to Entities (Living World)
+        // Extract Guards and Enemies to Entities
         this.friendlyNpcs = this.friendlyNpcs || {};
         this.friendlyNpcs[castleId] =[];
         
         this.castleEnemies = this.castleEnemies || {};
         this.castleEnemies[castleId] =[];
 
-        // Parse coordinates for enemy scaling
         const parts = castleId.split('_');
         const cX = parseInt(parts[parts.length - 2]) || 0;
         const cY = parseInt(parts[parts.length - 1]) || 0;
 
+        // --- NEW: LIGHT VS DARK FILTERING ---
         for (let y = 0; y < map.length; y++) {
             for (let x = 0; x < map[0].length; x++) {
                 const tile = map[y][x];
 
-                if (tile === 'G') {
-                    map[y][x] = '.'; // Clear static tile
-                    this.friendlyNpcs[castleId].push({
-                        id: `guard_${x}_${y}`, x: x, y: y, name: "Castle Guard", tile: 'G', role: 'guard',
-                        dialogue:["The night shift is quiet.", "Keep your weapons sheathed.", "Nothing to report."]
-                    });
+                if (tile === 'G' || tile === '🎖️') {
+                    map[y][x] = '.'; // Always clear the static tile
+                    if (!isDark) {
+                        // Only add guards to safe castles
+                        this.friendlyNpcs[castleId].push({
+                            id: `guard_${x}_${y}`, x: x, y: y, name: tile === '🎖️' ? "Captain" : "Castle Guard", tile: tile, role: 'guard',
+                            dialogue:["The night shift is quiet.", "Keep your weapons sheathed.", "Nothing to report."]
+                        });
+                    }
                 } 
                 else if (ENEMY_DATA[tile]) {
-                    const enemyTemplate = ENEMY_DATA[tile];
-                    map[y][x] = '.'; // Turn to floor so it becomes a moving entity
-                    
-                    const scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
-                    
-                    this.castleEnemies[castleId].push({
-                        id: `${castleId}:enemy_${x}_${y}`,
-                        x: x, y: y, tile: tile,
-                        name: scaledStats.name,
-                        health: scaledStats.maxHealth, maxHealth: scaledStats.maxHealth,
-                        attack: scaledStats.attack, defense: enemyTemplate.defense,
-                        xp: scaledStats.xp, loot: enemyTemplate.loot,
-                        caster: enemyTemplate.caster || false, castRange: enemyTemplate.castRange || 0,
-                        spellDamage: enemyTemplate.spellDamage || 0, inflicts: enemyTemplate.inflicts || null,
-                        isBoss: enemyTemplate.isBoss || false,
-                        madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
-                    });
+                    map[y][x] = '.'; // Always clear the static tile
+                    if (isDark) {
+                        // Only spawn monsters in Dark Castles!
+                        const enemyTemplate = ENEMY_DATA[tile];
+                        const scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+                        
+                        this.castleEnemies[castleId].push({
+                            id: `${castleId}:enemy_${x}_${y}`,
+                            x: x, y: y, tile: tile,
+                            name: scaledStats.name,
+                            health: scaledStats.maxHealth, maxHealth: scaledStats.maxHealth,
+                            attack: scaledStats.attack, defense: enemyTemplate.defense,
+                            xp: scaledStats.xp, loot: enemyTemplate.loot,
+                            caster: enemyTemplate.caster || false, castRange: enemyTemplate.castRange || 0,
+                            spellDamage: enemyTemplate.spellDamage || 0, inflicts: enemyTemplate.inflicts || null,
+                            isBoss: enemyTemplate.isBoss || false,
+                            madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
+                        });
+                    }
                 }
             }
         }
@@ -697,7 +686,8 @@ const chunkManager = {
                 // This saves literally 99% of your Firebase database write quotas!
 
                 // --- 1. LEGENDARY LANDMARKS (Unique, Very Rare) ---
-                if (tile === '.' && featureRoll < 0.0000005) { 
+                // Force the Grand Fortress to spawn far away from the village (dist > 1500)
+                if (tile === '.' && featureRoll < 0.000001 && dist > 1500) { 
                     chunkData[y][x] = '♛';
                 }
                 else if ((tile === 'd' || tile === '^') && featureRoll < 0.000001) {
@@ -740,7 +730,12 @@ const chunkManager = {
                     chunkData[y][x] = '⛰';
                 }
                 else if ((tile === '.' || tile === 'F') && featureRoll > 0.0005 && featureRoll < 0.0015) {
-                    chunkData[y][x] = '🏰';
+                    // 50% chance for a castle to be Dark/Ruined if you are far from home!
+                    if (dist > 800 && random() < 0.5) {
+                        chunkData[y][x] = '🕍'; // Dark Castle
+                    } else {
+                        chunkData[y][x] = '🏰'; // Safe Castle
+                    }
                 }
                 else if ((tile === '.' || tile === 'F') && featureRoll > 0.0015 && featureRoll < 0.0020) {
                     chunkData[y][x] = '⛰';
