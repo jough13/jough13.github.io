@@ -54,6 +54,7 @@ function getTileColorForMap(worldX, worldY) {
 
     // Landmarks & Structures (Pop out on the map)
     if (['V', '🏰', '♛', '🏛️', '🚪', '🎓'].includes(tile)) return '#f8fafc'; // White
+    if (tile === '🕍') return '#991b1b'; // Dark Red (Dangerous Ruins)
     if (['⛰', '🕳️', '🧊', '♣', '🏝️'].includes(tile)) return '#0f172a'; // Deep dark blue/black (Caves)
     if (['#', '|', '⛩️', '⛲', '✨'].includes(tile)) return '#a855f7'; // Magic Purple
     if (['🧱', '▤', '=', '+', '☒', '⛺'].includes(tile)) return '#9ca3af'; // Player Built / Camp
