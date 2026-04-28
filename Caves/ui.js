@@ -406,13 +406,17 @@ function updateRegionDisplay() {
         regionDisplay.textContent = `${regionName} ${playerCoords}`; 
 
         if (!gameState.discoveredRegions.has(regionId)) {
-            //Huge fanfare for finding a new area!
             logMessage(`{gold:Discovered: ${regionName}!}`); 
             gameState.discoveredRegions.add(regionId);
             grantXp(50);
             
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#facc15', 30);
+            // Safely check if the function exists (bypasses browser cache issues!)
+            if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playLevelUp === 'function') {
+                AudioSystem.playLevelUp();
+            }
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#facc15', 30);
+            }
         }
     } else if (gameState.mapMode === 'dungeon') {
         regionDisplay.textContent = getCaveName(gameState.currentCaveId); 
