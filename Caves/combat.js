@@ -131,7 +131,8 @@ async function wakeUpNearbyEnemies() {
                     };
 
                     // B. Queue for Firebase (The Source of Truth)
-                    spawnUpdates[`worldEnemies/${enemyId}`] = newEnemy;
+                    // CRITICAL FIX: Parse/Stringify removes 'undefined' keys from ENEMY_DATA so Firebase doesn't crash
+                    spawnUpdates[`worldEnemies/${enemyId}`] = JSON.parse(JSON.stringify(newEnemy));
                     
                     // C. Add to local pending (Immediate Visual Feedback)
                     pendingSpawnData[enemyId] = newEnemy;
@@ -169,17 +170,11 @@ async function wakeUpNearbyEnemies() {
  * Uses a Firebase RTDB Transaction to ensure only ONE client
  * runs the AI per interval. Includes logic to break stale locks.
  */
-
 async function runSharedAiTurns() {
     if (gameState.mapMode !== 'overworld') return; 
 
     const now = Date.now();
-
-    // --- OPTIMIZATION: Increased from 150ms to 300ms ---
-    // Enemies move slightly slower than the player, acting more deliberately.
-    // This saves massive amounts of Firebase RTDB bandwidth!
-
-    const AI_INTERVAL = 300; 
+    const AI_INTERVAL = 200; 
     const STALE_TIMEOUT = 5000; // 5 seconds - if heartbeat is older than this, steal it
 
     const heartbeatRef = rtdb.ref('worldState/aiHeartbeat');
@@ -226,7 +221,7 @@ async function processOverworldEnemyTurns() {
     const processedIdsThisFrame = new Set();
 
     // 1. Gather candidates from local buckets
-    const activeEnemyIds = [];
+    const activeEnemyIds =[];
     const pChunkX = Math.floor(playerX / SPATIAL_CHUNK_SIZE);
     const pChunkY = Math.floor(playerY / SPATIAL_CHUNK_SIZE);
 
@@ -245,7 +240,7 @@ async function processOverworldEnemyTurns() {
         if (t === '~') return false; 
         if (['.', 'F', 'd', 'D', '≈'].includes(t)) return true;
         if (t === '^') {
-            const climbers = ['Y', '🐲', 'Ø', 'g', 'o', '🦇', '🦅'];
+            const climbers =['Y', '🐲', 'Ø', 'g', 'o', '🦇', '🦅'];
             return climbers.includes(enemyType);
         }
         return false;
@@ -264,13 +259,17 @@ async function processOverworldEnemyTurns() {
         const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
         
         // --- VILLAGE GUARD SNIPER SYSTEM (Anti-Trolling/Anti-Ghost) ---
+        // Expanded guard range to 100 tiles (10000 sq) and shoot anything > 15 XP
         const distToSpawnSq = (enemy.x * enemy.x) + (enemy.y * enemy.y);
         if (distToSpawnSq < 10000 && enemy.xp > 15) { 
             if (distSq < 400) {
                 logMessage(`🏹 A village guard snipes the trespassing ${enemy.name} from the walls!`);
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(enemy.x, enemy.y, '#ef4444', 8);
             }
+            
+            // Queue removal from Firebase
             multiPathUpdate[`worldEnemies/${enemyId}`] = null;
+            
             delete gameState.sharedEnemies[enemyId];
             updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
             processedIdsThisFrame.add(enemyId);
@@ -281,7 +280,7 @@ async function processOverworldEnemyTurns() {
         if (distSq > searchDistSq) continue;
 
         // ==========================================
-        // FIX: OVERWORLD STATUS EFFECTS
+        // OVERWORLD STATUS EFFECTS
         // ==========================================
         let skipTurn = false;
         let statusChanged = false;
@@ -309,7 +308,7 @@ async function processOverworldEnemyTurns() {
             
             if (enemy.health <= 0) {
                 logMessage(`The ${enemy.name} succumbs to poison!`);
-                registerKill(enemy); // Grant XP/loot
+                registerKill(enemy); 
                 multiPathUpdate[`worldEnemies/${enemyId}`] = null;
                 delete gameState.sharedEnemies[enemyId];
                 updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
@@ -327,16 +326,16 @@ async function processOverworldEnemyTurns() {
         if (enemy.madnessTurns > 0) {
             enemy.madnessTurns--;
             statusChanged = true;
-            isMad = true; // Overrides movement logic to force flee
+            isMad = true; 
         }
 
         // ==========================================
-        // FIX: OVERWORLD TELEGRAPH GENERATION
+        // OVERWORLD TELEGRAPH GENERATION
         // ==========================================
         const canTelegraph = enemy.isBoss || enemy.tile === 'm' || enemy.tile === '😈d' || enemy.tile === '🐲';
 
         if (!skipTurn && canTelegraph && distSq < 36 && Math.random() < 0.20) {
-            enemy.pendingAttacks = [];
+            enemy.pendingAttacks =[];
 
             if (enemy.tile === 'm' || enemy.tile === '😈d') {
                 logMessage(`The ${enemy.name} gathers dark energy...`);
@@ -354,10 +353,11 @@ async function processOverworldEnemyTurns() {
                 }
             }
             
-            multiPathUpdate[`worldEnemies/${enemyId}`] = enemy;
+            // CRITICAL FIX: Sanitize the object before appending to update list
+            multiPathUpdate[`worldEnemies/${enemyId}`] = JSON.parse(JSON.stringify(enemy));
             processedIdsThisFrame.add(enemyId);
             movesQueued = true;
-            continue; // Skip movement since they are channeling
+            continue; 
         }
 
         // --- OVERWORLD TELEGRAPH EXECUTION ---
@@ -391,7 +391,7 @@ async function processOverworldEnemyTurns() {
 
         // If skipped turn due to stun/root, make sure we save the updated status effect timers
         if (skipTurn) {
-            multiPathUpdate[`worldEnemies/${enemyId}`] = enemy;
+            multiPathUpdate[`worldEnemies/${enemyId}`] = JSON.parse(JSON.stringify(enemy));
             processedIdsThisFrame.add(enemyId);
             movesQueued = true;
             continue;
@@ -443,7 +443,7 @@ async function processOverworldEnemyTurns() {
             }
             
             // Still sync if they had status effects tick down but chose to cast instead of moving
-            if (statusChanged) multiPathUpdate[`worldEnemies/${enemyId}`] = enemy;
+            if (statusChanged) multiPathUpdate[`worldEnemies/${enemyId}`] = JSON.parse(JSON.stringify(enemy));
             
             processedIdsThisFrame.add(enemyId);
             movesQueued = true;
@@ -572,7 +572,7 @@ async function processOverworldEnemyTurns() {
 
                     // Even if it hit/dodged, if status effects changed on it, we must sync
                     if (statusChanged) {
-                        multiPathUpdate[`worldEnemies/${enemyId}`] = enemy;
+                        multiPathUpdate[`worldEnemies/${enemyId}`] = JSON.parse(JSON.stringify(enemy));
                         movesQueued = true;
                     }
                     
@@ -600,7 +600,8 @@ async function processOverworldEnemyTurns() {
                 const updatedEnemy = { ...enemy, x: finalX, y: finalY };
                 if (updatedEnemy._processedThisTurn) delete updatedEnemy._processedThisTurn;
 
-                multiPathUpdate[`worldEnemies/${newId}`] = updatedEnemy;
+                // CRITICAL FIX: Sanitize the object to prevent Firebase maxretry errors
+                multiPathUpdate[`worldEnemies/${newId}`] = JSON.parse(JSON.stringify(updatedEnemy));
                 multiPathUpdate[`worldEnemies/${enemyId}`] = null;
 
                 delete gameState.sharedEnemies[enemyId];
@@ -618,7 +619,7 @@ async function processOverworldEnemyTurns() {
                 }
             } else if (statusChanged) {
                 // If it couldn't move, but it took poison damage or had a timer tick down, save it!
-                multiPathUpdate[`worldEnemies/${enemyId}`] = enemy;
+                multiPathUpdate[`worldEnemies/${enemyId}`] = JSON.parse(JSON.stringify(enemy));
                 movesQueued = true;
             }
         }
@@ -735,7 +736,7 @@ function processEnemyTurns() {
                     logMessage(`The ${enemy.name} screams! "ARISE, MY SERVANTS!"`);
                     gameState.screenShake = 20;
 
-                    const offsets = [[-1, -1], [1, -1], [0, 1], [-1, 1], [1, 1]];
+                    const offsets = [[-1, -1], [1, -1], [0, 1], [-1, 1],[1, 1]];
                     let spawned = 0;
                     for (let ofs of offsets) {
                         if (spawned >= 3) break;
@@ -784,7 +785,7 @@ function processEnemyTurns() {
             }
 
             if (dist < 10 && Math.random() < 0.20) {
-                const offsets = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+                const offsets = [[-1, 0],[1, 0], [0, -1], [0, 1]];
                 for (let ofs of offsets) {
                     const sx = enemy.x + ofs[0];
                     const sy = enemy.y + ofs[1];
@@ -860,7 +861,7 @@ function processEnemyTurns() {
         const canTelegraph = enemy.isBoss || enemy.tile === 'm' || enemy.tile === '😈d' || enemy.tile === '🐲';
 
         if (canTelegraph && dist < 6 && Math.random() < 0.20) {
-            enemy.pendingAttacks = [];
+            enemy.pendingAttacks =[];
 
             if (enemy.tile === 'm' || enemy.tile === '😈d') {
                 logMessage(`The ${enemy.name} gathers dark energy...`);
@@ -916,7 +917,6 @@ function processEnemyTurns() {
                     if (handlePlayerDeath()) return;
                 }
                 
-                // --- FIX: INSTANCED THORNS JUICE ---
                 if (player.thornsValue > 0) {
                     enemy.health -= player.thornsValue;
                     logMessage(`The ${enemy.name} takes ${player.thornsValue} thorn damage!`);
@@ -984,7 +984,7 @@ function processEnemyTurns() {
             if (Math.random() < chaseChance) moveType = 'chase';
         }
 
-        const isFearless = ['s', 'Z', 'D', 'v', 'a', 'm'].includes(enemy.tile) || enemy.isBoss;
+        const isFearless =['s', 'Z', 'D', 'v', 'a', 'm'].includes(enemy.tile) || enemy.isBoss;
         if (!isFearless && (enemy.health < enemy.maxHealth * 0.25)) moveType = 'flee';
 
         if (moveType === 'idle') return; 
@@ -1110,7 +1110,6 @@ async function runCompanionTurn() {
                     grantXp(Math.floor(enemy.xp / 2)); 
                     gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                     
-                    // --- FIX: CLEAR DUNGEON TILE ---
                     let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
                     let validFloor = '.';
                     if (gameState.mapMode === 'dungeon' && CAVE_THEMES[gameState.currentCaveTheme]) {
@@ -1138,8 +1137,14 @@ async function runCompanionTurn() {
 
                         if (enemy === null) {
                             if (!enemyData) return null;
-                            const scaledStats = getScaledEnemy(enemyData, tx, ty);
-                            enemy = { ...scaledStats, tile: tile };
+                            
+                            // CRITICAL FIX: Safe deep clone to prevent RTDB undefined errors
+                            enemy = JSON.parse(JSON.stringify({
+                                ...getScaledEnemy(enemyData, tx, ty),
+                                tile: tile,
+                                x: tx,
+                                y: ty
+                            }));
                         }
 
                         const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
@@ -1158,7 +1163,6 @@ async function runCompanionTurn() {
                                 logMessage(`Your ${companion.name} vanquished the ${enemyData.name}!`);
                                 grantXp(Math.floor(enemyData.xp / 2));
                                 
-                                // --- FIX: DROP LOOT IN OVERWORLD ---
                                 const droppedLoot = generateEnemyLoot(gameState.player, enemyData); 
                                 chunkManager.setWorldTile(tx, ty, droppedLoot || '.');
                                 
@@ -1196,12 +1200,27 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
     const liveEnemy = gameState.sharedEnemies[enemyId];
     const enemyInfo = liveEnemy || getScaledEnemy(enemyData, newX, newY);
+    
+    // Ensure damage is a valid number to prevent NaN database corruption
+    const safeDamage = (typeof playerDamage === 'number' && !isNaN(playerDamage)) ? playerDamage : 1;
 
     try {
         const transactionResult = await enemyRef.transaction(currentData => {
-            if (currentData === null) return; 
-            const enemy = currentData;
-            enemy.health -= playerDamage;
+            let enemy = currentData;
+            
+            // If null, the server cache dropped it. Rebuild a clean object!
+            if (enemy === null) {
+                enemy = JSON.parse(JSON.stringify({
+                    ...enemyInfo,
+                    tile: newTile,
+                    x: newX,
+                    y: newY
+                }));
+            }
+            
+            if (isNaN(enemy.health)) enemy.health = enemy.maxHealth;
+            
+            enemy.health -= safeDamage;
             return enemy.health <= 0 ? null : enemy;
         });
 
@@ -1210,7 +1229,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createExplosion(newX, newY, '#ef4444');
-                ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
+                ParticleSystem.createFloatingText(newX, newY, `-${safeDamage}`, '#fff');
             }
 
             if (finalEnemyState === null) {
@@ -1236,7 +1255,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                     const lootData = { ...enemyData, isElite: enemyInfo.isElite };
                     const droppedLoot = generateEnemyLoot(player, lootData);
                     const currentTerrain = chunkManager.getTile(newX, newY);
-                    const passableTerrain = ['.', 'd', 'D', 'F', '≈']; 
+                    const passableTerrain =['.', 'd', 'D', 'F', '≈']; 
                     
                     if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
                         chunkManager.setWorldTile(newX, newY, droppedLoot);
@@ -1356,7 +1375,6 @@ function handlePlayerDeath() {
     const deathY = player.y;
     const pendingUpdates = {};
 
-    // --- FIX: USE BIOME FLOOR FOR DEATH DROPS ---
     let validFloor = '.';
     if (gameState.mapMode === 'dungeon') {
         const theme = CAVE_THEMES[gameState.currentCaveTheme];
