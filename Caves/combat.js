@@ -31,13 +31,12 @@ function getScaledEnemy(enemyTemplate, x, y) {
     }
     
     // --- NEWBIE GRACE PERIOD ---
-    // EASY WIN: If the player is level 3 or under, forcibly cap enemy stats within the first 1000 tiles.
-    // This prevents a stray Yeti or Ogre in a dungeon from one-shotting a new player.
+    // If the player is level 3 or under, forcibly cap enemy stats within the first 1000 tiles.
     if (gameState && gameState.player && gameState.player.level <= 3 && dist < 1000) {
         enemy.attack = Math.min(enemy.attack, 3); // Max 3 damage
         enemy.maxHealth = Math.min(enemy.maxHealth, 15); // Max 15 HP
+        enemy.defense = Math.min(enemy.defense || 0, 1); // Max 1 Defense so newbies can actually hurt them!
     }
-    // -------------------------------------
 
     // 4. Apply Zone Name (Cosmetic)
     if (zoneLevel === 0) {
@@ -174,7 +173,7 @@ async function runSharedAiTurns() {
     if (gameState.mapMode !== 'overworld') return; 
 
     const now = Date.now();
-    const AI_INTERVAL = 200; 
+    const AI_INTERVAL = 300; 
     const STALE_TIMEOUT = 5000; // 5 seconds - if heartbeat is older than this, steal it
 
     const heartbeatRef = rtdb.ref('worldState/aiHeartbeat');
