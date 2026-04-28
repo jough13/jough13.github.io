@@ -5791,21 +5791,22 @@ async function attemptMovePlayer(newX, newY) {
                     logMessage("You've discovered the FORGOTTEN FORTRESS! +100 XP");
                     grantXp(100);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({
-                        foundLore: Array.from(gameState.foundLore)
-                    });
+                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
                 }
                 gameState.mapMode = 'castle';
                 gameState.currentCastleId = tileData.getCastleId(newX, newY);
-                gameState.overworldExit = {
-                    x: gameState.player.x,
-                    y: gameState.player.y
-                };
+                gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
                 chunkManager.generateCastle(gameState.currentCastleId, 'GRAND_FORTRESS');
+                
                 const landmarkSpawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
                 gameState.player.x = landmarkSpawn.x;
                 gameState.player.y = landmarkSpawn.y;
-                gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
+                gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] ||[]));
+                
+                // --- LOAD CASTLE ENEMIES (Like the Necromancer Lord) ---
+                const baseLandmarkEnemies = chunkManager.castleEnemies[gameState.currentCastleId] ||[];
+                gameState.instancedEnemies = JSON.parse(JSON.stringify(baseLandmarkEnemies));
+                
                 logMessage("You enter the imposing fortress...");
                 updateRegionDisplay();
                 render();
@@ -5832,7 +5833,11 @@ async function attemptMovePlayer(newX, newY) {
                 const spawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
                 gameState.player.x = spawn.x;
                 gameState.player.y = spawn.y;
-                gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
+                gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] ||[]));
+                
+                // --- LOAD CASTLE ENEMIES ---
+                const baseCastleEnemies = chunkManager.castleEnemies[gameState.currentCastleId] ||[];
+                gameState.instancedEnemies = JSON.parse(JSON.stringify(baseCastleEnemies));
                 logMessage("You enter the castle grounds.");
                 updateRegionDisplay();
 
