@@ -553,6 +553,9 @@ const chunkManager = {
     },
 
     listenToChunkState(chunkX, chunkY, onInitialLoad = null) { 
+        // --- Block NaN chunk requests to fix the Permissions Error! ---
+        if (isNaN(chunkX) || isNaN(chunkY)) return; 
+        
         const chunkId = `${chunkX},${chunkY}`;
 
         // If we are already listening, just fire the callback immediately
