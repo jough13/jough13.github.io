@@ -518,31 +518,46 @@ const chunkManager = {
             if(map[1] && map[1][1]) map[1][1] = '.';
         }
 
-        // Extract Guards to Entities (Living World)
+        // Extract Guards and Enemies to Entities (Living World)
         this.friendlyNpcs = this.friendlyNpcs || {};
-        this.friendlyNpcs[castleId] = [];
+        this.friendlyNpcs[castleId] =[];
+        
+        this.castleEnemies = this.castleEnemies || {};
+        this.castleEnemies[castleId] =[];
+
+        // Parse coordinates for enemy scaling
+        const parts = castleId.split('_');
+        const cX = parseInt(parts[parts.length - 2]) || 0;
+        const cY = parseInt(parts[parts.length - 1]) || 0;
 
         for (let y = 0; y < map.length; y++) {
             for (let x = 0; x < map[0].length; x++) {
-                if (map[y][x] === 'G') {
-                    // Found a static guard tile. Remove it.
-                    map[y][x] = '.';
+                const tile = map[y][x];
 
-                    // Create a mobile guard entity
+                if (tile === 'G') {
+                    map[y][x] = '.'; // Clear static tile
                     this.friendlyNpcs[castleId].push({
-                        id: `guard_${x}_${y}`,
-                        x: x,
-                        y: y,
-                        name: "Castle Guard",
-                        tile: 'G',
-                        role: 'guard',
-                        dialogue: [
-                            "The night shift is quiet. Just how I like it.",
-                            "Keep your weapons sheathed in the village.",
-                            "I heard wolves howling to the east.",
-                            "Patrolling makes my feet ache.",
-                            "Nothing to report."
-                        ]
+                        id: `guard_${x}_${y}`, x: x, y: y, name: "Castle Guard", tile: 'G', role: 'guard',
+                        dialogue:["The night shift is quiet.", "Keep your weapons sheathed.", "Nothing to report."]
+                    });
+                } 
+                else if (ENEMY_DATA[tile]) {
+                    const enemyTemplate = ENEMY_DATA[tile];
+                    map[y][x] = '.'; // Turn to floor so it becomes a moving entity
+                    
+                    const scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+                    
+                    this.castleEnemies[castleId].push({
+                        id: `${castleId}:enemy_${x}_${y}`,
+                        x: x, y: y, tile: tile,
+                        name: scaledStats.name,
+                        health: scaledStats.maxHealth, maxHealth: scaledStats.maxHealth,
+                        attack: scaledStats.attack, defense: enemyTemplate.defense,
+                        xp: scaledStats.xp, loot: enemyTemplate.loot,
+                        caster: enemyTemplate.caster || false, castRange: enemyTemplate.castRange || 0,
+                        spellDamage: enemyTemplate.spellDamage || 0, inflicts: enemyTemplate.inflicts || null,
+                        isBoss: enemyTemplate.isBoss || false,
+                        madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
                     });
                 }
             }
