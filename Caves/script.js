@@ -2159,6 +2159,7 @@ function renderTerrainCache(startX, startY) {
                         case 'd': TileRenderer.drawDeadlands(terrainCtx, x, y, mapX, mapY, bgColor, '#444'); break;
                         case 'D': TileRenderer.drawDesert(terrainCtx, x, y, mapX, mapY, bgColor); break;
                         case '🧱': TileRenderer.drawWall(terrainCtx, x, y, '#78716c', '#57534e'); break;
+                        case '▤': 
                         case '=': TileRenderer.drawBase(terrainCtx, x, y, '#78350f'); break;
                         case '+': fgChar = '+'; fgColor = '#fbbf24'; break;
                         case '/': fgChar = '/'; fgColor = '#000'; break;
