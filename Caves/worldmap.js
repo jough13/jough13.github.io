@@ -56,7 +56,7 @@ function getTileColorForMap(worldX, worldY) {
     if (['V', '🏰', '♛', '🏛️', '🚪', '🎓'].includes(tile)) return '#f8fafc'; // White
     if (['⛰', '🕳️', '🧊', '♣', '🏝️'].includes(tile)) return '#0f172a'; // Deep dark blue/black (Caves)
     if (['#', '|', '⛩️', '⛲', '✨'].includes(tile)) return '#a855f7'; // Magic Purple
-    if (['🧱', '=', '+', '☒', '⛺'].includes(tile)) return '#9ca3af'; // Player Built / Camp
+    if (['🧱', '▤', '=', '+', '☒', '⛺'].includes(tile)) return '#9ca3af'; // Player Built / Camp
     if (tile === 'c') return '#ef4444'; // Canoe
     if (tile === '∴') return '#854d0e'; // Dig Spot
     if (tile === '~') return '#1e3a8a'; // Deep Water
