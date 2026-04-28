@@ -957,6 +957,15 @@ function updateExploration() {
     // Only track exploration in the Overworld
     if (gameState.mapMode !== 'overworld') return false;
 
+    // Calculate Chunk ID
+    const chunkX = Math.floor(gameState.player.x / MAP_CHUNK_SIZE);
+    const chunkY = Math.floor(gameState.player.y / MAP_CHUNK_SIZE);
+    
+    // --- Prevent saving corrupted NaN chunk IDs ---
+    if (isNaN(chunkX) || isNaN(chunkY)) return false;
+    
+    const chunkId = `${chunkX},${chunkY}`;
+
     // If the Set doesn't exist yet, create it.
     if (!gameState.exploredChunks) {
         // Try to recover data from the player object if it exists there
