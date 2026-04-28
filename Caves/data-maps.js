@@ -98,6 +98,11 @@ window.TILE_DATA = {
         type: 'castle_entrance',
         getCastleId: (x, y) => `castle_${x}_${y}`
     },
+    '🕍': {
+        type: 'dark_castle_entrance',
+        flavor: "An abandoned fortress, overrun by darkness.",
+        getCastleId: (x, y) => `darkcastle_${x}_${y}`
+    },
     'X': {
         type: 'castle_exit'
     },
