@@ -410,7 +410,22 @@ function updateRegionDisplay() {
             gameState.discoveredRegions.add(regionId);
             grantXp(50);
             
-            // Safely check if the function exists (bypasses browser cache issues!)
+            // NEW: Check if there is a major landmark here to pin on the map
+            const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
+            if (['V', '🏰', '♛', '⛰', '🕍'].includes(currentTile)) {
+                if (!gameState.player.discoveredPOIs) gameState.player.discoveredPOIs = [];
+                
+                gameState.player.discoveredPOIs.push({
+                    x: gameState.player.x, 
+                    y: gameState.player.y, 
+                    icon: currentTile, 
+                    name: regionName
+                });
+                
+                playerRef.update({ discoveredPOIs: gameState.player.discoveredPOIs });
+                logMessage(`{blue:Point of Interest added to your map.}`);
+            }
+            
             if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playLevelUp === 'function') {
                 AudioSystem.playLevelUp();
             }
