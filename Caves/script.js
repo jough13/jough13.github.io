@@ -2802,7 +2802,9 @@ function endPlayerTurn(turnUpdates = {}) {
                             spawnTime: Date.now() 
                         };
 
-                        rtdb.ref(`worldEnemies/${enemyId}`).set(newEnemy);
+                        if (typeof EnemyNetworkManager !== 'undefined') {
+                            rtdb.ref(EnemyNetworkManager.getPath(tx, ty, enemyId)).set(newEnemy);
+                        }
                         
                         if (typeof ParticleSystem !== 'undefined') {
                             ParticleSystem.createExplosion(tx, ty, '#ef4444');
@@ -2837,7 +2839,9 @@ function endPlayerTurn(turnUpdates = {}) {
 
             // 3. If no one is around, delete it from Firebase to save database quotas!
             if (!isNearAnyone) {
-                rtdb.ref(`worldEnemies/${enemyId}`).remove();
+                if (typeof EnemyNetworkManager !== 'undefined') {
+                    rtdb.ref(EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)).remove();
+                }
                 delete gameState.sharedEnemies[enemyId];
             }
         });
@@ -4751,7 +4755,9 @@ async function attemptMovePlayer(newX, newY) {
                     const scaledStats = getScaledEnemy(enemyData, ex, ey);
                     const newEnemy = { ...scaledStats, tile: eType, x: ex, y: ey, spawnTime: Date.now() };
                     
-                    rtdb.ref(`worldEnemies/${enemyId}`).set(newEnemy);
+                    if (typeof EnemyNetworkManager !== 'undefined') {
+                        rtdb.ref(EnemyNetworkManager.getPath(ex, ey, enemyId)).set(newEnemy);
+                    }
                 }
             }
 
@@ -6571,20 +6577,9 @@ async function enterGame(playerData) {
     });
 
     const waitForEnemies = new Promise((resolve) => {
-        if (gameState.mapMode === 'overworld') {
-            rtdb.ref('worldEnemies').once('value').then(snapshot => {
-                const enemies = snapshot.val() || {};
-                Object.entries(enemies).forEach(([key, val]) => {
-                    if (val && val.health > 0) {
-                        gameState.sharedEnemies[key] = val;
-                        updateSpatialMap(key, null, null, val.x, val.y);
-                    }
-                });
-                resolve();
-            });
-        } else {
-            resolve();
-        }
+        // EnemyNetworkManager already fetches chunk data instantly via .on('child_added')
+        // We just resolve immediately so the game can start.
+        resolve();
     });
 
     Promise.all([waitForWorldData, waitForEnemies]).then(() => {
