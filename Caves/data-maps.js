@@ -273,17 +273,75 @@ window.TILE_DATA = {
     '🌳e': {
         type: 'anomaly',
         name: 'Elder Tree',
-        flavor: "A massive tree with silver bark. It hums with life."
+        flavor: "A massive tree with silver bark. It hums with life.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (!state.lootedTiles.has(tileId)) {
+                logMessage("You touch the Elder Tree. Warmth flows into you.");
+                logMessage("{green:Permanent Effect: +2 Max Health.}");
+                state.player.maxHealth += 2;
+                state.player.health = state.player.maxHealth; 
+
+                triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(x, y); 
+
+                state.lootedTiles.add(tileId);
+                return { maxHealth: state.player.maxHealth, health: state.player.health };
+            } else {
+                logMessage("The Elder Tree stands silent and majestic.");
+                return null;
+            }
+        }
     },
     '🗿k': {
         type: 'anomaly',
         name: 'Petrified Giant',
-        flavor: "A boulder shaped like a weeping giant. Moss covers its eyes."
+        flavor: "A boulder shaped like a weeping giant. Moss covers its eyes.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (!state.lootedTiles.has(tileId)) {
+                logMessage("You clear the moss from the Giant's eyes.");
+                if (!state.player.talents) state.player.talents = [];
+                if (!state.player.talents.includes('iron_skin')) {
+                    state.player.talents.push('iron_skin');
+                    logMessage("{green:You gained the Iron Skin talent! (+1 Defense)}");
+                } else {
+                    logMessage("You feel a kinship with the stone. (+500 XP)");
+                    grantXp(500);
+                }
+                state.lootedTiles.add(tileId);
+                return { talents: state.player.talents };
+            } else {
+                logMessage("The Giant sleeps.");
+                return null;
+            }
+        }
     },
     '🦴d': { 
         type: 'anomaly',
         name: 'Dragon Skeleton',
-        flavor: "The bleached ribs of a colossal beast rise from the sand."
+        flavor: "The bleached ribs of a colossal beast rise from the sand.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (!state.lootedTiles.has(tileId)) {
+                logMessage("You search the Dragon's ribs...");
+                if (state.player.inventory.length < 9) { // MAX_INVENTORY_SLOTS
+                    const loot = generateMagicItem(4); 
+                    state.player.inventory.push(loot);
+                    logMessage(`You found a ${loot.name} buried in the sand!`);
+                    
+                    state.lootedTiles.add(tileId);
+                    renderInventory();
+                    return { inventory: getSanitizedInventory() };
+                } else {
+                    logMessage("You found treasure, but your inventory is full!");
+                    return null;
+                }
+            } else {
+                logMessage("Only bleached bones remain.");
+                return null;
+            }
+        }
     },
 };
 
