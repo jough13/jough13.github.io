@@ -491,7 +491,7 @@ async function processOverworldEnemyTurns() {
             if (!hitPlayer) logMessage(`The ${enemy.name}'s attack strikes the ground!`);
 
             enemy.pendingAttacks = null;
-            multiPathUpdate[`worldEnemies/${enemyId}/pendingAttacks`] = null; // Sync clear to Firebase
+            multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId) + '/pendingAttacks'] = null; // Sync clear to Firebase
             movesQueued = true;
             processedIdsThisFrame.add(enemyId);
             
