@@ -356,7 +356,13 @@ const renderEquipment = () => {
     const weaponDamage = weapon.damage || 0;
     const totalDamage = baseDamage + weaponDamage;
 
+    // --- Show Weapon Stat Bonuses ---
     let weaponString = `Weapon: ${weapon.name} (+${weaponDamage})`;
+    if (weapon.statBonuses) {
+        const bonusArr = Object.entries(weapon.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
+        if (bonusArr.length > 0) weaponString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
+    }
+    
     if (player.strengthBonus > 0) { 
         weaponString += ` <span class="text-green-500">[Strong +${player.strengthBonus} (${player.strengthBonusTurns}t)]</span>`;
     }
@@ -369,16 +375,16 @@ const renderEquipment = () => {
     const armorIcon = document.getElementById('slotArmorIcon');
 
     if (weaponIcon) {
-        weaponIcon.textContent = weapon.tile || '👊';
+        // Strip out any trailing letters from compound emoji keys for a clean display
+        weaponIcon.textContent = (weapon.tile || '👊').replace(/[a-zA-Z]/g, '');
         weaponIcon.style.color = (weapon.name === 'Fists') ? 'var(--text-muted)' : 'var(--text-default)';
     }
 
     if (armorIcon) {
-        armorIcon.textContent = armor.tile || '👕';
+        armorIcon.textContent = (armor.tile || '👕').replace(/[a-zA-Z]/g, '');
         armorIcon.style.color = (armor.name === 'Simple Tunic' || armor.name === 'Tattered Rags') ? 'var(--text-muted)' : 'var(--text-default)';
     }
 
-    // Defensive Math Safeties applied here
     const baseDefense = Math.floor((player.dexterity || 1) / 3);
     const armorDefense = armor.defense || 0;
     const buffDefense = player.defenseBonus || 0;
@@ -387,12 +393,18 @@ const renderEquipment = () => {
     
     const totalDefense = baseDefense + armorDefense + buffDefense + conBonus + talentDefense;
 
+    // --- Show Armor Stat Bonuses ---
     let armorString = `Armor: ${armor.name} (+${armorDefense} Def)`;
+    if (armor.statBonuses) {
+        const bonusArr = Object.entries(armor.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
+        if (bonusArr.length > 0) armorString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
+    }
+
     if (buffDefense > 0) {
         armorString += ` <span class="text-green-500">[Braced +${buffDefense} (${player.defenseBonusTurns}t)]</span>`;
     }
 
-    equippedArmorDisplay.innerHTML = `${armorString} (Base: ${baseDefense}, Total: ${totalDefense} Def)`;
+    equippedArmorDisplay.innerHTML = `${armorString} <br><span class="text-gray-500">(Base: ${baseDefense}, Total: ${totalDefense} Def)</span>`;
 };
 
 function updateRegionDisplay() {
