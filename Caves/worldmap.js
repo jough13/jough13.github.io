@@ -151,7 +151,6 @@ function renderWorldMap() {
         const screenX = Math.floor((chunkWorldX - mapCamera.x) * currentMapScale + centerX);
         const screenY = Math.floor((chunkWorldY - mapCamera.y) * currentMapScale + centerY);
 
-        // Frustum Culling (Don't draw if off-screen)
         if (screenX + chunkSizeOnScreen < 0 || screenX > worldMapCanvas.width ||
             screenY + chunkSizeOnScreen < 0 || screenY > worldMapCanvas.height) {
             return;
@@ -160,13 +159,12 @@ function renderWorldMap() {
         const chunkCanvas = getCachedMapChunk(cx, cy);
         worldMapCtx.drawImage(chunkCanvas, screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
 
-        // Juice: Faint Grid Lines per chunk for that cartography feel
         worldMapCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
         worldMapCtx.lineWidth = 1;
         worldMapCtx.strokeRect(screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
     });
 
-    // Render Unlocked Waystones (Pulsing Beacons)
+    // Render Unlocked Waystones
     if (gameState.player.unlockedWaypoints) {
         const wpPulse = (Math.sin(Date.now() / 200) + 1) / 2; 
         gameState.player.unlockedWaypoints.forEach(wp => {
@@ -182,20 +180,42 @@ function renderWorldMap() {
         });
     }
 
-    // --- Render Active Treasure (X Marks the Spot) ---
+    // NEW: Render Discovered Points of Interest (POIs)
+    if (gameState.player.discoveredPOIs) {
+        worldMapCtx.font = `bold ${Math.max(10, currentMapScale * 1.5)}px monospace`;
+        worldMapCtx.textAlign = 'center';
+        worldMapCtx.textBaseline = 'middle';
+
+        gameState.player.discoveredPOIs.forEach(poi => {
+            const screenX = (poi.x - mapCamera.x) * currentMapScale + centerX;
+            const screenY = (poi.y - mapCamera.y) * currentMapScale + centerY;
+            
+            if (screenX >= 0 && screenX <= worldMapCanvas.width && screenY >= 0 && screenY <= worldMapCanvas.height) {
+                // Background circle for visibility
+                worldMapCtx.fillStyle = 'rgba(0,0,0,0.5)';
+                worldMapCtx.beginPath();
+                worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2, currentMapScale, 0, Math.PI * 2);
+                worldMapCtx.fill();
+                
+                // Draw the icon
+                worldMapCtx.fillStyle = '#ffffff';
+                worldMapCtx.fillText(poi.icon, screenX + currentMapScale/2, screenY + currentMapScale/2);
+            }
+        });
+    }
+
+    // Render Active Treasure
     if (gameState.activeTreasure) {
         const tx = (gameState.activeTreasure.x - mapCamera.x) * currentMapScale + centerX;
         const ty = (gameState.activeTreasure.y - mapCamera.y) * currentMapScale + centerY;
         
         if (tx >= 0 && tx <= worldMapCanvas.width && ty >= 0 && ty <= worldMapCanvas.height) {
-            // Draw the X
             worldMapCtx.fillStyle = '#ef4444'; 
             worldMapCtx.font = `bold ${Math.max(12, currentMapScale * 2)}px monospace`;
             worldMapCtx.textAlign = 'center';
             worldMapCtx.textBaseline = 'middle';
             worldMapCtx.fillText('❌', tx + currentMapScale/2, ty + currentMapScale/2);
             
-            // Draw an expanding pulse ring to make it obvious
             const pulse = (Math.sin(Date.now() / 200) + 1) / 2;
             worldMapCtx.strokeStyle = `rgba(239, 68, 68, ${1 - pulse})`;
             worldMapCtx.lineWidth = 2;
@@ -205,7 +225,7 @@ function renderWorldMap() {
         }
     }
 
-    // Render Player Marker (Pulsing)
+    // Render Player Marker
     const playerScreenX = (gameState.player.x - mapCamera.x) * currentMapScale + centerX;
     const playerScreenY = (gameState.player.y - mapCamera.y) * currentMapScale + centerY;
     const playerPulse = (Math.sin(Date.now() / 150) + 1) / 2;
