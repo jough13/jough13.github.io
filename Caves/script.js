@@ -6077,6 +6077,8 @@ async function attemptMovePlayer(newX, newY) {
         }
 
         chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
+
+        if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.syncChunks(gameState.player.x, gameState.player.y);
     }
 
     if (gameState.player.health <= 0) {
@@ -6182,9 +6184,8 @@ function clearSessionState() {
     chunkManager.castleSpawnPoints = {};
 
     // --- LISTENER CLEANUP ---
-    if (sharedEnemiesListener) {
-        sharedEnemiesListener(); // Execute the cleanup wrapper!
-        sharedEnemiesListener = null;
+        if (typeof EnemyNetworkManager !== 'undefined') {
+        EnemyNetworkManager.clearAll();
     }
     if (chatListener) { // If you saved the chat listener reference
         rtdb.ref('chat').off('child_added', chatListener);
@@ -6481,61 +6482,10 @@ async function enterGame(playerData) {
         render();
     });
 
-    // --- ENEMY LISTENER ---
-    const sharedEnemiesRef = rtdb.ref('worldEnemies');
-    
-    const onChildAdded = sharedEnemiesRef.on('child_added', (snapshot) => {
-        const key = snapshot.key;
-        const val = snapshot.val();
-        if (val) {
-            if (val.health <= 0) { rtdb.ref(`worldEnemies/${key}`).remove(); return; }
-            if (val._processedThisTurn) delete val._processedThisTurn;
-            gameState.sharedEnemies[key] = val;
-            updateSpatialMap(key, null, null, val.x, val.y);
-            if (pendingSpawnData[key]) delete pendingSpawnData[key];
-            render();
-        }
-    });
-
-    const onChildChanged = sharedEnemiesRef.on('child_changed', (snapshot) => {
-        const key = snapshot.key;
-        const val = snapshot.val();
-        if (val) {
-            if (val._processedThisTurn) delete val._processedThisTurn;
-            const oldEnemy = gameState.sharedEnemies[key];
-
-            // Floating Combat Text for OTHER players hits
-            if (oldEnemy && val.health < oldEnemy.health) {
-                const damageDiff = oldEnemy.health - val.health;
-                if (damageDiff > 0 && typeof ParticleSystem !== 'undefined') {
-                    ParticleSystem.createFloatingText(val.x, val.y, `-${damageDiff}`, '#cbd5e1'); 
-                    ParticleSystem.createExplosion(val.x, val.y, '#ef4444', 3);
-                }
-            }
-
-            const oldX = oldEnemy ? oldEnemy.x : null;
-            const oldY = oldEnemy ? oldEnemy.y : null;
-            gameState.sharedEnemies[key] = val;
-            updateSpatialMap(key, oldX, oldY, val.x, val.y);
-            render();
-        }
-    });
-
-    const onChildRemoved = sharedEnemiesRef.on('child_removed', (snapshot) => {
-        const key = snapshot.key;
-        if (gameState.sharedEnemies[key]) {
-            const enemy = gameState.sharedEnemies[key];
-            updateSpatialMap(key, enemy.x, enemy.y, null, null);
-            delete gameState.sharedEnemies[key];
-            render();
-        }
-    });
-
-    sharedEnemiesListener = () => {
-        sharedEnemiesRef.off('child_added', onChildAdded);
-        sharedEnemiesRef.off('child_changed', onChildChanged);
-        sharedEnemiesRef.off('child_removed', onChildRemoved);
-    };
+    // --- START ENEMY CHUNK LISTENER ---
+    if (gameState.mapMode === 'overworld' && typeof EnemyNetworkManager !== 'undefined') {
+        EnemyNetworkManager.syncChunks(gameState.player.x, gameState.player.y);
+    }
 
     gameState.initialEnemiesLoaded = true;
 
