@@ -1109,6 +1109,7 @@ window.ITEM_DATA = {
         name: 'Shattered Crown',
         type: 'armor', // Changed from 'junk' to 'armor' so you can wear it!
         tile: '👑',
+        excludeFromLoot: true, 
         defense: 0,    // It offers no physical protection
         slot: 'armor', // Occupies your equipment slot
         statBonuses: { 
@@ -1351,6 +1352,7 @@ window.ITEM_DATA = {
         name: 'Blade of the Fallen King',
         type: 'weapon',
         tile: '⚔️',
+        excludeFromLoot: true, 
         damage: 10,
         slot: 'weapon',
         statBonuses: { strength: 5, luck: 5 }, // Massive stats
@@ -1360,6 +1362,7 @@ window.ITEM_DATA = {
         name: 'Aegis of the Ancients',
         type: 'armor',
         tile: '🛡️',
+        excludeFromLoot: true,
         defense: 8,
         slot: 'armor',
         blockChance: 0.50, // 50% Block Chance!
@@ -1380,6 +1383,7 @@ window.ITEM_DATA = {
         name: 'Crown of the Void',
         type: 'armor',
         tile: '👑',
+        excludeFromLoot: true, 
         defense: 3,
         slot: 'armor',
         statBonuses: { wits: 10, maxMana: 50 },
@@ -1792,6 +1796,7 @@ window.ITEM_DATA = {
     '⚔️o': {
         name: 'Obsidian Edge',
         type: 'weapon',
+        tile: '🗡️',
         damage: 5, 
         slot: 'weapon',
         statBonuses: { wits: 2 } 
@@ -1799,6 +1804,7 @@ window.ITEM_DATA = {
     '🛡️o': {
         name: 'Obsidian Plate',
         type: 'armor',
+        tile: '🛡️', 
         defense: 5,
         slot: 'armor',
         statBonuses: { willpower: 2 } 
