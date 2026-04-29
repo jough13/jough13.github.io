@@ -229,14 +229,38 @@ function generateEnemyLoot(player, enemy) {
 
 
 function generateMagicItem(tier) {
-    // 1. Pick a random base item (Weapons or Armor)
+    // 1. Pick a base item (Weapons or Armor)
     const baseKeys = Object.keys(ITEM_DATA).filter(k =>
         ITEM_DATA[k].type === 'weapon' || ITEM_DATA[k].type === 'armor'
     );
-    // Filter out items explicitly marked to be excluded
-    const validBaseKeys = baseKeys.filter(k => !ITEM_DATA[k].excludeFromLoot);
+    
+    // --- FIX: Strict Tier Filtering! ---
+    const validBaseKeys = baseKeys.filter(k => {
+        const item = ITEM_DATA[k];
+        if (item.excludeFromLoot) return false;
+        
+        // Approximate the item's tier based on its raw power
+        const power = Math.max(item.damage || 0, item.defense || 0);
+        
+        // Tier 1: Power 0-2 (Rags, Clubs, Daggers)
+        // Tier 2: Power 2-3 (Iron)
+        // Tier 3: Power 3-5 (Steel, Plate)
+        // Tier 4: Power 5-7 (Dragon, Mithril)
+        // Tier 5: Power 7+ (Void, Obsidian)
+        
+        if (tier === 1 && power > 2) return false;
+        if (tier === 2 && (power < 2 || power > 3)) return false;
+        if (tier === 3 && (power < 3 || power > 5)) return false;
+        if (tier === 4 && (power < 5 || power > 7)) return false;
+        if (tier >= 5 && power < 7) return false;
+        
+        return true;
+    });
 
-    const baseKey = validBaseKeys[Math.floor(Math.random() * validBaseKeys.length)];
+    // Fallback just in case the filter is too strict for a specific roll
+    const finalKeys = validBaseKeys.length > 0 ? validBaseKeys : baseKeys.filter(k => !ITEM_DATA[k].excludeFromLoot);
+
+    const baseKey = finalKeys[Math.floor(Math.random() * finalKeys.length)];
     const template = ITEM_DATA[baseKey];
 
     // Clone the item
@@ -245,7 +269,7 @@ function generateMagicItem(tier) {
         name: template.name,
         type: template.type,
         quantity: 1,
-        tile: baseKey,
+        tile: template.tile || baseKey, // Always prefer explicit tile over key
         damage: template.damage || 0,
         defense: template.defense || 0,
         slot: template.slot,
@@ -256,13 +280,11 @@ function generateMagicItem(tier) {
     if (Math.random() < 0.5 + (tier * 0.1)) {
         const validPrefixes = Object.keys(LOOT_PREFIXES).filter(p => LOOT_PREFIXES[p].type === newItem.type);
         if (validPrefixes.length > 0) {
-            // Pick based on tier (approximate logic: higher tier = better chance for good prefix)
             const prefixName = validPrefixes[Math.floor(Math.random() * validPrefixes.length)];
             const prefixData = LOOT_PREFIXES[prefixName];
 
             newItem.name = `${prefixName} ${newItem.name}`;
 
-            // Apply bonuses
             for (const stat in prefixData.bonus) {
                 if (stat === 'damage') newItem.damage += prefixData.bonus[stat];
                 else if (stat === 'defense') newItem.defense += prefixData.bonus[stat];
@@ -279,7 +301,6 @@ function generateMagicItem(tier) {
 
         newItem.name = `${newItem.name} ${suffixName}`;
 
-        // Apply bonuses
         for (const stat in suffixData.bonus) {
             if (stat === 'damage') newItem.damage += suffixData.bonus[stat];
             else if (stat === 'defense') newItem.defense += suffixData.bonus[stat];
@@ -287,15 +308,14 @@ function generateMagicItem(tier) {
         }
     }
 
-    // 4. Scale base stats slightly by tier (The "+1 to +4" logic)
-    // If it didn't get a prefix, force a small buff based on tier
+    // 4. Scale base stats slightly by tier
     const tierBuff = Math.floor(Math.random() * tier) + 1;
     if (newItem.type === 'weapon') newItem.damage += tierBuff;
     if (newItem.type === 'armor') newItem.defense += tierBuff;
 
     // Ensure "Magic" status visually
     if (newItem.name === template.name) {
-        newItem.name = `Reinforced ${newItem.name}`; // Fallback name
+        newItem.name = `Reinforced ${newItem.name}`;
     }
 
     return newItem;
