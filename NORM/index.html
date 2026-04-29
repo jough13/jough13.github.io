@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NORM ShipAssist: DoN/AlOx Media</title>
+    <style>
+        :root {
+            --bg-color: #f8fafc; --surface: #ffffff; --primary: #059669; --secondary: #2563eb;
+            --navy: #1e3a8a; --text-main: #0f172a; --text-muted: #475569; --border: #cbd5e1;
+            --alert: #dc2626; --warning: #ea580c; --california: #8b5cf6; --washington: #0ea5e9; --texas: #d97706; --maine: #14b8a6; --tsca: #db2777; --btn-text: #ffffff;
+            --modal-overlay: rgba(15, 23, 42, 0.7); --context-bg: #eff6ff;
+        }
+        [data-theme="dark"] {
+            --bg-color: #0f172a; --surface: #1e293b; --primary: #10b981; --secondary: #3b82f6;
+            --navy: #60a5fa; --text-main: #f8fafc; --text-muted: #94a3b8; --border: #334155;
+            --alert: #ef4444; --warning: #f97316; --california: #a78bfa; --washington: #38bdf8; --texas: #f59e0b; --maine: #2dd4bf; --tsca: #f472b6; --btn-text: #0f172a;
+            --modal-overlay: rgba(0, 0, 0, 0.8); --context-bg: #1e3a8a;
+        }
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 2rem 1rem; display: flex; justify-content: center; transition: all 0.3s ease; }
+        .container { max-width: 1300px; width: 100%; }
+        header { border-bottom: 3px solid var(--navy); margin-bottom: 2rem; padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;}
+        .header-titles h1 { margin: 0; color: var(--navy); font-size: 2.2rem; }
+        .header-titles p { color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 500; }
+        .header-actions { display: flex; gap: 0.75rem; flex-wrap: wrap;}
+        button { cursor: pointer; font-family: inherit; transition: all 0.2s; border-radius: 6px; border: none; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem; font-weight: bold; display: flex; align-items: center; gap: 0.4rem;}
+        .btn-outline:hover { background: var(--surface); border-color: var(--text-muted); }
+        .btn-wizard { background: var(--navy); color: #fff; padding: 0.5rem 1.25rem; font-weight: bold; }
+        .card { background: var(--surface); padding: 2rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border); transition: all 0.3s; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;}
+        h2 { margin: 0; color: var(--secondary); font-size: 1.25rem; display: flex; align-items: center; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+        .grid-rad-complex { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem; padding: 0.4rem; border-radius: 4px; transition: background 0.3s;}
+        .grid-rad-complex:nth-child(even) { background: rgba(0,0,0,0.02); }
+        .rad-label-header { font-weight: 700; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; text-align: center;}
+        .metals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+        @media (max-width: 768px) { .grid-2, .grid-3, .grid-4, .grid-rad-complex { grid-template-columns: 1fr; } .rad-label-header { display: none; } }
+        .form-group { display: flex; flex-direction: column; }
+        label { margin-bottom: 0.4rem; font-weight: 600; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center;}
+        input, select { padding: 0.6rem; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-color); color: var(--text-main); font-size: 0.9rem; width: 100%; box-sizing: border-box;}
+        .input-group { display: flex; gap: 0.5rem; }
+        .tooltip { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--secondary); color: white; font-size: 0.65rem; font-weight: bold; cursor: help; margin-left: 0.4rem; position: relative; }
+        .tooltip:hover::after { content: attr(data-tip); position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); background: var(--text-main); color: var(--bg-color); padding: 0.75rem; border-radius: 6px; font-size: 0.75rem; width: max-content; max-width: 250px; z-index: 100; white-space: normal; text-transform: none; text-align: left; box-shadow: 0 4px 6px rgba(0,0,0,0.1); line-height: 1.4;}
+        
+        /* Updated State Metal Classes */
+        .state-metal { display: none; } 
+        .state-active .state-metal { display: flex; }
+        
+        .wa-box { display: none; background: var(--bg-color); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-top: 1.5rem; border-left: 4px solid var(--washington);}
+        .wa-active .wa-box { display: flex; justify-content: space-between; align-items: center; }
+        .btn-primary { background: var(--primary); color: #fff; padding: 0.8rem 2.5rem; font-weight: bold; font-size: 1rem; margin: 1.5rem auto; text-transform: uppercase; display: block; border-radius: 6px; cursor: pointer; transition: opacity 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); letter-spacing: 0.05em;}
+        .btn-primary:hover { opacity: 0.9; }
+        .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;}
+        .btn-print, .btn-email, .btn-csv { padding: 0.75rem; font-weight: bold; border-radius: 6px; color: #fff; border: none; font-size: 0.95rem;}
+        .btn-print { background: var(--navy); } .btn-csv { background: var(--primary); } .btn-email { background: var(--secondary); }
+        .btn-print:hover, .btn-email:hover, .btn-csv:hover { opacity: 0.9; }
+        .results-panel { background: var(--surface); border: 1px solid var(--border); padding: 2rem; margin-top: 2rem; border-radius: 8px; display: none; position: relative;}
+        .status-banner { padding: 1rem; border-radius: 6px; font-weight: bold; margin-bottom: 1.5rem; text-align: center; font-size: 1.1rem;}
+        .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .result-section h4 { margin-top: 0; color: var(--text-muted); text-transform: uppercase; font-size: 0.85rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+        .result-list { margin: 0; padding-left: 1.2rem; font-size: 0.95rem; line-height: 1.6;}
+        .milspec-panel { grid-column: 1 / -1; background: var(--bg-color); padding: 1.25rem; border-radius: 6px; border-left: 4px solid var(--navy); margin-bottom: -0.5rem; }
+        .threat-container { background: var(--bg-color); border-radius: 6px; border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 2rem; }
+        .threat-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.5rem; }
+        .threat-title { font-weight: bold; color: var(--navy); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.85rem; }
+        .threat-status { font-weight: 800; font-size: 1.2rem; }
+        .threat-bar { height: 16px; background: var(--border); border-radius: 8px; overflow: hidden; position: relative; }
+        .threat-fill { height: 100%; width: 0%; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1), background-color 1s ease; border-radius: 8px; }
+        .data-echo-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
+        .data-echo-table th, .data-echo-table td { border: 1px solid var(--border); padding: 0.5rem; text-align: left; }
+        .data-echo-table th { background: var(--bg-color); color: var(--text-muted); }
+        @media print {
+            body { background: #fff; padding: 0; margin: 0; color: #000; }
+            .header-actions, .btn-primary, .action-grid, .card, .modal-overlay { display: none !important; }
+            .results-panel { display: block !important; border: none; padding: 0; margin-top: 0; }
+            .status-banner { border: 2px solid #000 !important; background: #f0f0f0 !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .milspec-panel { border-left: 4px solid #000; background: #fff; }
+            #print-header { display: block !important; margin-bottom: 2rem; border-bottom: 2px solid #000; padding-bottom: 1rem;}
+            .print-row { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.95rem; }
+            .print-row span { font-weight: bold; }
+            #print-data-echo { display: block !important; margin-top: 2rem; border-top: 2px solid #000; padding-top: 1rem;}
+            .threat-container { border: 2px solid #000; }
+            #print-expiration { font-size: 1.2rem; color: #dc2626 !important; font-weight: 900; border: 3px solid #dc2626; padding: 0.5rem; display: inline-block; transform: rotate(-5deg); margin-bottom: 1rem; -webkit-print-color-adjust: exact; print-color-adjust: exact;}
+        }
+        #print-header, #print-data-echo, #print-expiration { display: none; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-overlay.active { display: flex; }
+        .modal-card { background: var(--surface); padding: 2.5rem; border-radius: 12px; width: 90%; max-width: 650px; max-height: 90vh; overflow-y: auto; position: relative; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-close { position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; }
+        .wizard-icon { font-size: 3.5rem; margin-bottom: 1rem; text-align: center; display: block; }
+        .wizard-title { font-size: 1.7rem; font-weight: bold; text-align: center; margin-bottom: 0.5rem; color: var(--navy); }
+        .wizard-desc { text-align: center; color: var(--text-main); font-weight: 500; font-size: 1.1rem; margin-bottom: 1.5rem; line-height: 1.5; }
+        .wizard-context { background: var(--context-bg); border-left: 4px solid var(--secondary); padding: 1.25rem; margin-bottom: 2rem; border-radius: 0 6px 6px 0; font-size: 0.95rem; line-height: 1.5; }
+        .wizard-context strong { color: var(--secondary); display: block; margin-bottom: 0.25rem; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; }
+        .wizard-buttons { display: flex; gap: 1rem; flex-direction: column; }
+        .wizard-buttons button { padding: 1rem; font-size: 1rem; border-radius: 6px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+        .btn-yes { background: var(--secondary); color: #fff; border: none; }
+        .btn-no { background: transparent; color: var(--text-main); border: 2px solid var(--border); }
+        .btn-log { background: var(--text-main); color: var(--bg-color); border: none; margin-top: 1rem; font-size: 0.9rem;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="header-titles">
+            <h1>NORM ShipAssist</h1>
+            <p>DoN/AlOx Blast Media Compliance & Routing Profile</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-outline" onclick="loadDemoData()">🎲 Randomize Demo Data</button>
+            <button class="btn-outline" onclick="saveDraft()">💾 Save</button>
+            <button class="btn-outline" onclick="document.getElementById('file-upload').click()">📂 Load</button>
+            <input type="file" id="file-upload" style="display:none;" accept=".json" onchange="loadDraft(event)">
+            <button class="btn-outline" onclick="triggerReset()" style="color: var(--alert); border-color: var(--alert);">🗑️ Reset</button>
+            <button class="btn-wizard" onclick="openWizard()">🧭 Setup Wizard</button>
+            <button class="btn-outline" onclick="toggleTheme()" id="theme-text">Dark Mode</button>
+        </div>
+    </header>
+
+    <div class="card">
+        <div class="section-header">
+            <h2>1. Identification & Logistics</h2>
+        </div>
+        <div class="grid-3" style="margin-bottom: 1.5rem;">
+            <div class="form-group">
+                <label style="color: var(--secondary);">Generator State <span class="tooltip" data-tip="The state where the waste is generated. Cradle-to-Grave laws apply at the point of origin.">?</span></label>
+                <select id="gen-state" onchange="toggleStates()" style="font-weight: bold; border-color: var(--secondary);">
+                    <option value="federal">Federal Baseline (EPA/DOT)</option>
+                    <option value="ca">California (Title 22)</option>
+                    <option value="wa">Washington (WAC 173-303)</option>
+                    <option value="tx">Texas (TCEQ Class 1)</option>
+                    <option value="me">Maine (DEP Special Waste)</option>
+                    <option value="va">Virginia (VDEQ)</option>
+                    <option value="hi">Hawaii (HDOH)</option>
+                    <option value="ut">Utah (UDEQ)</option>
+                    <option value="id">Idaho (IDEQ)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="color: var(--secondary);">Destination State / Regulator <span class="tooltip" data-tip="The state where the disposal facility is located. Also triggers state-specific limits for facility acceptance.">?</span></label>
+                <select id="dest-state" onchange="toggleStates()" style="font-weight: bold; border-color: var(--secondary);">
+                    <option value="federal">Federal Baseline (EPA/DOT)</option>
+                    <option value="ca">California (Title 22)</option>
+                    <option value="wa">Washington (WAC 173-303)</option>
+                    <option value="tx">Texas (TCEQ Class 1)</option>
+                    <option value="ut">Utah (UDEQ / EnergySolutions)</option>
+                    <option value="id">Idaho (IDEQ / Republic Services)</option>
+                    <option value="me">Maine (DEP Special Waste)</option>
+                    <option value="va">Virginia (VDEQ)</option>
+                    <option value="hi">Hawaii (HDOH)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="color: var(--warning);">Date of Lab Analysis <span class="tooltip" data-tip="Used to determine Profile Expiration Date. Profiles generally expire exactly 1 year from the analysis date.">?</span></label>
+                <input type="date" id="lab-date" style="border-color: var(--warning);">
+            </div>
+        </div>
+        <div class="grid-4" style="margin-bottom: 1.5rem;">
+            <div class="form-group"><label>Command Name</label><input type="text" id="cmd-name" placeholder="e.g., PSNS & IMF"></div>
+            <div class="form-group"><label>UIC</label><input type="text" id="cmd-uic" placeholder="e.g., N00251"></div>
+            <div class="form-group"><label>EPA ID Number</label><input type="text" id="epa-id" placeholder="e.g., WA9876543210"></div>
+            <div class="form-group"><label>Local POC</label><input type="text" id="cmd-poc" placeholder="Name & Title/Rank"></div>
+        </div>
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Estimated Quantity</label>
+                <div class="input-group">
+                    <input type="number" id="waste-qty" placeholder="Amount" min="0">
+                    <select id="waste-unit"><option>Tons</option><option>Lbs</option><option>Cubic Yards</option><option>Drums</option><option>Supersacks</option></select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Intended Packaging</label>
+                <select id="pkg-type">
+                    <option value="drum">55-Gallon Drums</option>
+                    <option value="supersack">Super Sacks (FIBCs)</option>
+                    <option value="bulk">Bulk Roll-off Bin</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-header">
+            <h2>2. Isotopic Profile <span class="tooltip" data-tip="Input values exactly as they appear on your lab report. The tool handles background subtraction and DOT fractional math automatically.">?</span></h2>
+            <div class="form-group" style="width: 150px;">
+                <label style="color: var(--secondary);">Lab Report Units</label>
+                <select id="rad-unit" onchange="runCalcs()" style="font-weight: bold; border-color: var(--secondary);">
+                    <option value="pci">pCi/g</option>
+                    <option value="bq">Bq/g</option>
+                </select>
+            </div>
+        </div>
+        
+        <h4 style="margin-top: 0; color: var(--navy); border-bottom: 1px solid var(--border); padding-bottom: 0.4rem;">Gamma Emitters (EPA 901.1)</h4>
+        <div class="grid-rad-complex" style="border-bottom: 2px solid var(--navy); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+            <div class="rad-label-header" style="text-align: left;">Nuclide</div>
+            <div class="rad-label-header">Gross Result</div>
+            <div class="rad-label-header">Error (2σ)</div>
+            <div class="rad-label-header">MDC</div>
+            <div class="rad-label-header">Background</div>
+            <div class="rad-label-header" style="color: var(--secondary);">Net Result</div>
+        </div>
+        <div id="gamma-rows-container"></div>
+        
+        <h4 style="margin-top: 2rem; color: var(--navy); border-bottom: 1px solid var(--border); padding-bottom: 0.4rem;">Hard-To-Detect (HTD) Alpha/Beta Emitters <span class="tooltip" data-tip="Optional. Only required if historical operations (like reactor servicing) indicate these specific isotopes may be present.">?</span></h4>
+        <div class="grid-rad-complex" style="border-bottom: 2px solid var(--navy); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+            <div class="rad-label-header" style="text-align: left;">Nuclide</div>
+            <div class="rad-label-header">Gross Result</div>
+            <div class="rad-label-header">Error (2σ)</div>
+            <div class="rad-label-header">MDC</div>
+            <div class="rad-label-header">Background</div>
+            <div class="rad-label-header" style="color: var(--secondary);">Net Result</div>
+        </div>
+        <div id="htd-rows-container"></div>
+        
+        <div style="background: var(--bg-color); padding: 1.25rem; border-radius: 6px; margin-top: 1rem; font-size: 0.9rem; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.5rem;">
+            <div style="display: flex; justify-content: space-between;">
+                <strong>Derived Parent Activity:</strong>
+                <span id="derived-readout">Waiting for input...</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 0.5rem;">
+                <span><strong>Gross Gamma Total (MILSPEC):</strong> <span id="gross-gamma">0.00</span> pCi/g</span>
+                <span><strong>DOT Sum of Fractions:</strong> <span id="dot-sof">0.00</span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="metals-card-wrapper">
+        <div class="section-header"><h2>3. Chemical / RCRA / TSCA Profile</h2></div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: -1rem; margin-bottom: 1.5rem;">Select Total (mg/kg) or Leachable (mg/L). Tool applies Federal Rule of 20, CA Rule of 10, and WA Book Designation Equivalency (EC%) formulas based on origin/destination.</p>
+        
+        <div class="metals-grid" id="metals-container"></div>
+        
+        <div class="wa-box" id="wa-readout-box">
+            <div><strong>WAC 173-303-090 Toxicity Equivalent Concentration (EC%):</strong> <span class="tooltip" data-tip="Washington uses a complex formula evaluating total metal percentages to designate waste as WT01 or WT02.">?</span></div>
+            <div style="font-size: 1.1rem; font-weight: bold; color: var(--washington);"><span id="wa-ec-val">0.00000</span>%</div>
+        </div>
+        
+        <div style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+            <h3 style="margin-top: 0; color: var(--tsca); font-size: 1.1rem;">TSCA / Organics</h3>
+            <div class="form-group" style="max-width: 400px;">
+                <label>Total PCBs <span class="tooltip" data-tip="Polychlorinated Biphenyls. Often found in legacy marine coatings. Levels ≥ 50 ppm trigger strict federal TSCA rules.">?</span></label>
+                <div class="input-group">
+                    <input type="number" id="tsca-pcb" placeholder="Result" step="0.1">
+                    <select disabled style="background: var(--surface);"><option>mg/kg (ppm)</option></select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-primary" onclick="analyzeMaterial()">Generate Official Compliance Report</button>
+
+    <div class="results-panel" id="classification-results">
+        
+        <div class="threat-container">
+            <div class="threat-header">
+                <div class="threat-title">Cumulative Profile Threat Level</div>
+                <div class="threat-status" id="threat-text">CLEAN</div>
+            </div>
+            <div class="threat-bar">
+                <div class="threat-fill" id="threat-fill"></div>
+            </div>
+        </div>
+
+        <div id="print-header">
+            <h2>Waste Characterization Profile</h2>
+            <div id="print-expiration"></div>
+            <p id="print-date" style="margin-top: -0.5rem; color: #555; font-size: 0.9rem; margin-bottom: 1.5rem;"></p>
+            <div class="print-row"><span>Command / UIC:</span> <span id="print-cmd" style="font-weight: normal;"></span></div>
+            <div class="print-row"><span>EPA ID:</span> <span id="print-epa" style="font-weight: normal;"></span></div>
+            <div class="print-row"><span>Quantity:</span> <span id="print-qty" style="font-weight: normal;"></span></div>
+            <div class="print-row"><span>Generator State:</span> <span id="print-gen" style="font-weight: normal;"></span></div>
+            <div class="print-row"><span>Destination State:</span> <span id="print-dest" style="font-weight: normal;"></span></div>
+            <div class="print-row"><span>Local POC:</span> <span id="print-poc" style="font-weight: normal;"></span></div>
+            <div class="print-row" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed #ccc;">
+                <span>Authorized RSO Signature:</span> <span style="width: 300px; border-bottom: 1px solid #000;"></span>
+            </div>
+        </div>
+
+        <div id="status-banner" class="status-banner"></div>
+        <div class="results-grid">
+            <div class="milspec-panel"><p id="milspec-status" style="margin: 0;"></p><p id="uqsm-status" style="margin: 0.5rem 0 0 0;"></p></div>
+            
+            <div class="result-section">
+                <h4>DOT / NRC Classification</h4>
+                <p id="dot-class" style="font-weight: 500; font-size: 1.1rem; margin-bottom: 0.5rem;"></p>
+                <p id="raso-status" style="color: var(--alert); font-weight: bold; margin-top: 0;"></p>
+            </div>
+            <div class="result-section">
+                <h4>Waste Classification (EPA/State)</h4>
+                <p id="rcra-status" style="font-weight: 500; font-size: 1.1rem; margin-bottom: 0.5rem;"></p>
+                <ul id="rcra-alerts" class="result-list"></ul>
+            </div>
+            
+            <div class="result-section">
+                <h4>Isotopic Analysis</h4>
+                <ul id="rad-summary-list" class="result-list"></ul>
+            </div>
+            <div class="result-section">
+                <h4>Paperwork Required</h4>
+                <ul id="form-requirements" class="result-list"></ul>
+            </div>
+            <div class="result-section">
+                <h4>Routing Instructions</h4>
+                <ul id="action-items" class="result-list"></ul>
+            </div>
+        </div>
+        
+        <div id="print-data-echo">
+            <h3>Submitted Laboratory Data</h3>
+            <div id="echo-table-container"></div>
+        </div>
+
+        <div class="action-grid">
+            <button class="btn-email" onclick="draftEmail()">✉️ Draft Email to RASO</button>
+            <button class="btn-csv" onclick="exportCSV()">📊 Export Data (CSV)</button>
+            <button class="btn-print" onclick="window.print()">🖨️ Print / Save to PDF</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="wizard-modal"><div class="modal-card"><button class="modal-close" onclick="closeWizard()">&times;</button><div id="wizard-content"></div></div></div>
+
+<div class="modal-overlay" id="custom-dialog-overlay">
+    <div class="modal-card" style="max-width: 450px; text-align: center; padding: 2rem;">
+        <div id="dialog-icon" style="font-size: 3.5rem; margin-bottom: 1rem;">⚠️</div>
+        <h3 id="dialog-title" style="margin-top: 0; color: var(--navy); font-size: 1.5rem; font-weight: bold;"></h3>
+        <p id="dialog-message" style="color: var(--text-main); font-size: 1.05rem; line-height: 1.5; margin-bottom: 2rem;"></p>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button id="dialog-btn-cancel" class="btn-no" style="flex: 1; padding: 0.8rem; font-weight: bold; border-radius: 6px; cursor: pointer;" onclick="closeDialog()">Cancel</button>
+            <button id="dialog-btn-confirm" class="btn-yes" style="flex: 1; padding: 0.8rem; font-weight: bold; border-radius: 6px; cursor: pointer; border: none; color: #fff;">Proceed</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Custom Modal System
+    function closeDialog() { document.getElementById('custom-dialog-overlay').classList.remove('active'); }
+    function showConfirm(title, message, icon, onConfirm) {
+        document.getElementById('dialog-title').innerText = title; document.getElementById('dialog-message').innerText = message; document.getElementById('dialog-icon').innerText = icon || "⚠️";
+        const btnCancel = document.getElementById('dialog-btn-cancel'); const btnConfirm = document.getElementById('dialog-btn-confirm');
+        btnCancel.style.display = 'block'; btnCancel.innerText = 'Cancel'; btnConfirm.innerText = 'Proceed'; btnConfirm.style.background = "var(--secondary)";
+        const newConfirm = btnConfirm.cloneNode(true); btnConfirm.parentNode.replaceChild(newConfirm, btnConfirm);
+        newConfirm.onclick = function() { closeDialog(); if(onConfirm) onConfirm(); };
+        document.getElementById('custom-dialog-overlay').classList.add('active');
+    }
+    function showAlert(title, message, icon) {
+        document.getElementById('dialog-title').innerText = title; document.getElementById('dialog-message').innerText = message; document.getElementById('dialog-icon').innerText = icon || "🛑";
+        const btnCancel = document.getElementById('dialog-btn-cancel'); const btnConfirm = document.getElementById('dialog-btn-confirm');
+        btnCancel.style.display = 'none'; btnConfirm.innerText = 'OK'; btnConfirm.style.background = "var(--navy)";
+        const newConfirm = btnConfirm.cloneNode(true); btnConfirm.parentNode.replaceChild(newConfirm, btnConfirm);
+        newConfirm.onclick = closeDialog;
+        document.getElementById('custom-dialog-overlay').classList.add('active');
+    }
+
+    // Storage Functions
+    function saveDraft() {
+        const inputs = document.querySelectorAll('input, select'); const state = {}; inputs.forEach(i => state[i.id] = i.type === 'checkbox' ? i.checked : i.value);
+        const blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `NORM_Profile_${new Date().toISOString().split('T')[0]}.json`; a.click();
+    }
+    
+    function loadDraft(event) {
+        const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const state = JSON.parse(e.target.result);
+                for (const id in state) { const el = document.getElementById(id); if (el) { if(el.type === 'checkbox') el.checked = state[id]; else el.value = state[id]; } }
+                toggleStates(); runCalcs(); runChemCalcs();
+            } catch (err) { showAlert("File Error", "There was an error reading the JSON draft file.", "📂"); }
+        }; reader.readAsText(file);
+    }
+
+    function clearAllInputs() {
+        document.querySelectorAll('input').forEach(i => { if(i.type === 'checkbox') i.checked = false; else i.value = ''; });
+        document.getElementById('gen-state').value = 'federal'; document.getElementById('dest-state').value = 'federal'; document.getElementById('rad-unit').value = 'pci';
+        document.getElementById('classification-results').style.display = 'none'; document.querySelectorAll('.grid-rad-complex').forEach(el => el.style.background = '');
+        document.querySelectorAll('[id$="-net"]').forEach(el => el.innerText = '--');
+    }
+
+    function triggerReset() {
+        showConfirm("Reset Form", "Are you sure you want to clear all inputs and start a new profile?", "🗑️", () => {
+            clearAllInputs();
+            toggleStates(); runCalcs(); runChemCalcs();
+        });
+    }
+    
+    function loadDemoData() {
+        showConfirm("Randomize Demo Data", "This will overwrite your inputs with a randomly selected demo profile. Proceed?", "🎲", () => {
+            clearAllInputs();
+            
+            const scenarios = [
+                {
+                    name: "Nightmare Scenario (Mixed Waste + Traps)",
+                    cmd: "Naval Base San Diego", uic: "N00245", epa: "CA1234567890", qty: "12", gen: "ca", dest: "ut",
+                    rads: { 'bi214': {g: 6.5, m: 0.5, e: 0.8, b: 1.1}, 'ra226': {g: 8.2, m: 6.0, e: 9.5, b: 0}, 'co60': {g: 0.85, m: 0.1, e: 0.15, b: 0.05} },
+                    metals: { 'pb': {v: 150, u: 'total'}, 'cr': {v: 2.1, u: 'leachable'} }
+                },
+                {
+                    name: "Moderate Headache (State NORM + Wa EC%)",
+                    cmd: "PSNS & IMF", uic: "N00251", epa: "WA9876543210", qty: "40", gen: "wa", dest: "id",
+                    rads: { 'bi214': {g: 8.5, m: 0.5, e: 1.2, b: 1.5}, 'k40': {g: 15.0, m: 1.0, e: 2.0, b: 12.0} },
+                    metals: { 'cu': {v: 2500, u: 'total'}, 'zn': {v: 3000, u: 'total'} }
+                },
+                {
+                    name: "Clean Sweep (Exempt / Non-Hazardous)",
+                    cmd: "Norfolk Naval Shipyard", uic: "N00181", epa: "VA0000000000", qty: "120", gen: "va", dest: "federal",
+                    rads: { 'bi214': {g: 1.2, m: 0.5, e: 0.3, b: 1.5}, 'ra226': {g: 1.1, m: 0.6, e: 0.3, b: 1.4} },
+                    metals: { 'pb': {v: 15, u: 'total'}, 'cr': {v: 10, u: 'total'} }
+                }
+            ];
+
+            const pick = scenarios[Math.floor(Math.random() * scenarios.length)];
+            
+            let demoDate = new Date(); demoDate.setMonth(demoDate.getMonth() - 1);
+            document.getElementById('lab-date').value = demoDate.toISOString().split('T')[0];
+            document.getElementById('cmd-name').value = pick.cmd; document.getElementById('cmd-uic').value = pick.uic;
+            document.getElementById('epa-id').value = pick.epa; document.getElementById('cmd-poc').value = "Jane Doe, Env Tech";
+            document.getElementById('waste-qty').value = pick.qty;
+            document.getElementById('gen-state').value = pick.gen; document.getElementById('dest-state').value = pick.dest;
+            toggleStates();
+            
+            for (const [id, vals] of Object.entries(pick.rads)) {
+                document.getElementById(`rad-${id}-g`).value = vals.g; document.getElementById(`rad-${id}-m`).value = vals.m;
+                document.getElementById(`rad-${id}-e`).value = vals.e; document.getElementById(`rad-${id}-b`).value = vals.b;
+            }
+            for (const [id, vals] of Object.entries(pick.metals)) {
+                document.getElementById(`metal-val-${id}`).value = vals.v; document.getElementById(`metal-unit-${id}`).value = vals.u;
+            }
+            
+            runCalcs(); runChemCalcs();
+        });
+    }
+
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+    function toggleTheme() {
+        const root = document.documentElement;
+        if (root.getAttribute('data-theme') === 'dark') { root.removeAttribute('data-theme'); document.getElementById('theme-text').innerText = "Dark Mode"; } 
+        else { root.setAttribute('data-theme', 'dark'); document.getElementById('theme-text').innerText = "Light Mode"; }
+    }
+    if (prefersDark.matches) toggleTheme();
+
+    function toggleStates() {
+        const dest = document.getElementById('dest-state').value;
+        const gen = document.getElementById('gen-state').value;
+        const wrapper = document.getElementById('metals-card-wrapper');
+        
+        // Ensure state-metals class activates for any strict state
+        const isStateRegulated = ['ca', 'wa', 'tx', 'me'].includes(dest) || ['ca', 'wa', 'tx', 'me'].includes(gen);
+        wrapper.classList.toggle('state-active', isStateRegulated);
+        
+        wrapper.classList.toggle('wa-active', dest === 'wa' || gen === 'wa');
+        runChemCalcs();
+    }
+
+    const gammaLines = [
+        { id: 'ac228', name: 'Actinium-228', dot: 270, tip: "Progeny surrogate used to estimate Radium-228 parent activity." }, 
+        { id: 'bi212', name: 'Bismuth-212', dot: 270, tip: "Thorium decay series." },
+        { id: 'bi214', name: 'Bismuth-214', dot: 270, tip: "Progeny surrogate used to estimate Radium-226 parent activity to avoid 186 keV interference." }, 
+        { id: 'cs137', name: 'Cesium-137', dot: 270, tip: "Fission product. Presence indicates anthropogenic contamination." },
+        { id: 'cs134', name: 'Cesium-134', dot: 27, tip: "Fission product." }, 
+        { id: 'co60', name: 'Cobalt-60', dot: 270, tip: "Activation product commonly found in nuclear shipyard environments." },
+        { id: 'pb210', name: 'Lead-210', dot: 27, tip: "Uranium decay series." }, 
+        { id: 'pb212', name: 'Lead-212', dot: 270, tip: "Thorium decay series." },
+        { id: 'pb214', name: 'Lead-214', dot: 270, tip: "Uranium decay series." }, 
+        { id: 'k40', name: 'Potassium-40', dot: 2700, tip: "Naturally occurring ubiquitous isotope." },
+        { id: 'ra226', name: 'Ra-226 (186 keV)', dot: 270, tip: "Direct measurement. Often suffers interference from U-235. Check Bi-214 surrogate if uncertain." }, 
+        { id: 'tl208', name: 'Thallium-208', dot: 270, tip: "Thorium decay series." },
+        { id: 'th234', name: 'Thorium-234', dot: 27, tip: "Progeny surrogate used to estimate Uranium-238 parent activity." }, 
+        { id: 'u235', name: 'Uranium-235', dot: 270, tip: "Naturally occurring, but can interfere with Ra-226 at 186 keV." }
+    ];
+    const htdLines = [
+        { id: 'sr90', name: 'Strontium-90 (Beta)', dot: 2700, tip: "Fission product. Requires specialized liquid scintillation or proportional counting." },
+        { id: 'am241', name: 'Americium-241 (Alpha)', dot: 27, tip: "Transuranic alpha emitter." },
+        { id: 'pu239', name: 'Plutonium-239 (Alpha)', dot: 27, tip: "Transuranic alpha emitter." },
+        { id: 'h3', name: 'Tritium / H-3 (Beta)', dot: 27000000, tip: "Low energy beta. Very high DOT exemption limit." }
+    ];
+
+    function buildRadRows(targetId, array) {
+        const container = document.getElementById(targetId);
+        array.forEach(l => {
+            container.innerHTML += `<div class="grid-rad-complex" id="row-${l.id}">
+                <div style="font-size: 0.85rem; font-weight: 500;">${l.name} <span class="tooltip" data-tip="${l.tip}">?</span></div>
+                <input type="number" id="rad-${l.id}-g" placeholder="0.00" oninput="runCalcs()">
+                <input type="number" id="rad-${l.id}-e" placeholder="±" oninput="runCalcs()">
+                <input type="number" id="rad-${l.id}-m" placeholder="MDC" oninput="runCalcs()">
+                <input type="number" id="rad-${l.id}-b" placeholder="0.00" oninput="runCalcs()">
+                <div id="rad-${l.id}-net" style="font-weight: bold; color: var(--secondary); text-align: center;">--</div>
+            </div>`;
+        });
+    }
+    buildRadRows('gamma-rows-container', gammaLines); buildRadRows('htd-rows-container', htdLines);
+
+    const metalLimits = [
+        { id: 'as', name: 'Arsenic', isRcra: true, tclp: 5.0, stlc: 5.0, ttlc: 500, waCat: 'A' },
+        { id: 'ba', name: 'Barium', isRcra: true, tclp: 100.0, stlc: 100.0, ttlc: 10000, waCat: 'C' },
+        { id: 'cd', name: 'Cadmium', isRcra: true, tclp: 1.0, stlc: 1.0, ttlc: 100, waCat: 'A' },
+        { id: 'cr', name: 'Chromium', isRcra: true, tclp: 5.0, stlc: 5.0, ttlc: 2500, waCat: 'B' },
+        { id: 'pb', name: 'Lead', isRcra: true, tclp: 5.0, stlc: 5.0, ttlc: 1000, waCat: 'B' },
+        { id: 'hg', name: 'Mercury', isRcra: true, tclp: 0.2, stlc: 0.2, ttlc: 20, waCat: 'A' },
+        { id: 'se', name: 'Selenium', isRcra: true, tclp: 1.0, stlc: 1.0, ttlc: 100, waCat: 'B' },
+        { id: 'ag', name: 'Silver', isRcra: true, tclp: 5.0, stlc: 5.0, ttlc: 500, waCat: 'B' },
+        { id: 'zn', name: 'Zinc (State)', isRcra: false, tclp: null, stlc: 250.0, ttlc: 5000, waCat: 'B' },
+        { id: 'cu', name: 'Copper (State)', isRcra: false, tclp: null, stlc: 25.0, ttlc: 2500, waCat: 'B' },
+        { id: 'ni', name: 'Nickel (State)', isRcra: false, tclp: null, stlc: 20.0, ttlc: 2000, waCat: 'C' }
+    ];
+    const mContainer = document.getElementById('metals-container');
+    metalLimits.forEach(m => {
+        mContainer.innerHTML += `<div class="form-group ${!m.isRcra ? 'state-metal' : ''}">
+            <label>${m.name}</label><div class="input-group">
+            <input type="number" id="metal-val-${m.id}" placeholder="Result" oninput="runChemCalcs()">
+            <select id="metal-unit-${m.id}" onchange="runChemCalcs()"><option value="total">mg/kg</option><option value="leachable">mg/L</option></select>
+            </div></div>`;
+    });
+
+    let wizardLog = [];
+
+    const wizardTree = {
+        start: { icon: "⚓", title: "Navy/USMC Affiliation", desc: "Is the generating facility a U.S. Navy/USMC command?", context: "Enforces NAVSEA rules.", btnYes: "Yes", nextYes: "q_dest", btnNo: "No", nextNo: "end_out_of_scope" },
+        q_dest: { icon: "🗺️", title: "Destination Routing", desc: "Select your destination state (CA, WA, TX, UT, ID, ME) from the dropdown.", context: "Different states have varying hazardous waste limits and TSDF acceptance criteria. Maine triggers Special Waste rules.", btnYes: "Understood", nextYes: "q_lab" },
+        q_lab: { icon: "🧪", title: "Analytical Lab Results", desc: "Do you have formal lab results?", context: "Process knowledge is generally not sufficient.", btnYes: "Yes", nextYes: "q_bkg", btnNo: "No", nextNo: "end_no_lab" },
+        q_bkg: { icon: "🏞️", title: "Radiological Background", desc: "Are levels statistically elevated above native background?", context: "If it matches native dirt, it's standard waste.", btnYes: "Yes", nextYes: "q_raso", btnNo: "No", nextNo: "q_state_loc" },
+        q_raso: { icon: "📞", title: "RASO Notification", desc: "Have you formally notified NAVSEA RASO?", context: "ANY material exhibiting radioactivity above background requires RASO determination.", btnYes: "Yes", nextYes: "q_milspec", btnNo: "No", nextNo: "end_raso" },
+        q_milspec: { icon: "📋", title: "Historic MILSPEC Check", desc: "Does Gross Gamma Activity exceed 20.0 pCi/g?", context: "Historically, MIL-A-22262B provided guidance limiting blast media to 20 pCi/g.", btnYes: "Yes, >20", nextYes: "q_state_strict", btnNo: "No, <20", nextNo: "q_state_strict" },
+        q_state_strict: { icon: "🗺️", title: "Strict State NORM (>5 pCi/g)", desc: "Does Net Radium exceed 5 pCi/g?", context: "Triggers regulated NORM disposal in strict states.", btnYes: "Yes", nextYes: "q_state_std", btnNo: "No", nextNo: "q_state_loc" },
+        q_state_std: { icon: "🗺️", title: "Standard State NORM (>30 pCi/g)", desc: "Does Net Radium exceed 30 pCi/g?", context: "Universally regulated as radioactive waste.", btnYes: "Yes", nextYes: "q_uqsm", btnNo: "No", nextNo: "q_state_loc" },
+        q_uqsm: { icon: "⚖️", title: "Source Material (UQSM)", desc: "Does the combination of Uranium and Thorium exceed 0.05% by weight?", context: "Crossing these limits voids NRC 10 CFR 40.13 exemption.", btnYes: "Yes", nextYes: "q_dot", btnNo: "No", nextNo: "q_dot" },
+        q_dot: { icon: "🚛", title: "Federal Transport (DOT)", desc: "Does Sum of Fractions exceed 1.0?", context: "Makes shipment DOT Class 7 (LSA-I).", btnYes: "Yes", nextYes: "q_state_loc", btnNo: "No", nextNo: "q_state_loc" },
+        q_state_loc: { icon: "📍", title: "State Chemical Rules", desc: "Generated or Disposing in CA, WA, TX, or ME?", context: "Generator laws apply cradle-to-grave. Destination rules apply for TSDF acceptance.", btnYes: "Yes", nextYes: "q_state_metals", btnNo: "No", nextNo: "q_rcra" },
+        q_state_metals: { icon: "🧪", title: "State Metals Check", desc: "Fail Federal TCLP or State-specific limits?", context: "Failing creates State-Regulated Waste.", btnYes: "Yes", nextYes: "q_tsca", btnNo: "No", nextNo: "q_tsca" },
+        q_rcra: { icon: "🛢️", title: "Federal Metals Check", desc: "Fail TCLP limits for RCRA 8 Heavy Metals?", context: "Must manifest as RCRA Hazardous.", btnYes: "Yes", nextYes: "q_tsca", btnNo: "No", nextNo: "q_tsca" },
+        q_tsca: { icon: "☢️", title: "TSCA / Organics Check", desc: "Total PCBs ≥ 50 mg/kg?", context: "Triggers federal TSCA manifesting.", btnYes: "Yes", nextYes: "end_eval", btnNo: "No", nextNo: "end_eval" },
+        end_out_of_scope: { isEnd: true, isKickout: true, icon: "🏢", title: "Out of Scope", desc: "Consult respective EHS office." },
+        end_no_lab: { isEnd: true, isKickout: true, icon: "🛑", title: "Stop: Testing Required", desc: "Cannot legally classify without data." },
+        end_raso: { isEnd: true, isKickout: true, icon: "⚠️", title: "Action Required", desc: "Contact NAVSEA RASO before moving DoN radiological material." },
+        end_eval: { isEnd: true, isKickout: false, icon: "📊", title: "Proceed to Evaluation", desc: "Enter your precise numbers into the form." }
+    };
+
+    let currentWizStep = 'start';
+
+    function openWizard() { 
+        wizardLog = []; 
+        document.getElementById('wizard-modal').classList.add('active'); 
+        renderWizardStep('start'); 
+    }
+    function closeWizard() { document.getElementById('wizard-modal').classList.remove('active'); }
+    
+    function renderWizardStep(stepId, prevAnswer) {
+        if(prevAnswer) {
+            wizardLog.push({ q: wizardTree[currentWizStep].title + " - " + wizardTree[currentWizStep].desc, a: prevAnswer });
+        }
+        currentWizStep = stepId;
+        const step = wizardTree[stepId];
+        
+        let html = `<div class="wizard-icon">${step.icon||'🧭'}</div><div class="wizard-title">${step.title}</div>${step.desc?`<div class="wizard-desc">${step.desc}</div>`:''}${step.context?`<div class="wizard-context"><strong>Context:</strong> ${step.context}</div>`:''}`;
+        
+        if (step.isEnd) {
+            html += `<div class="wizard-buttons"><button class="btn-yes" onclick="closeWizard()">Return to Form</button>`;
+            if (step.isKickout) {
+                html += `<button class="btn-log" onclick="exportWizardLog()">📄 Export Wizard Log (.txt)</button>`;
+            }
+            html += `</div>`;
+        } else {
+            html += `<div class="wizard-buttons">
+                        <button class="btn-yes" onclick="renderWizardStep('${step.nextYes}', '${step.btnYes}')">${step.btnYes}</button>
+                        ${step.btnNo?`<button class="btn-no" onclick="renderWizardStep('${step.nextNo}', '${step.btnNo}')">${step.btnNo}</button>`:''}
+                     </div>`;
+        }
+        document.getElementById('wizard-content').innerHTML = html;
+    }
+
+    function exportWizardLog() {
+        let logContent = "NORM ShipAssist - Wizard Decision Log\nGenerated: " + new Date().toLocaleString() + "\n\n";
+        wizardLog.forEach((entry, i) => { logContent += `Q${i+1}: ${entry.q}\nAnswer: ${entry.a}\n\n`; });
+        logContent += `FINAL OUTCOME: ${wizardTree[currentWizStep].title}\n`;
+        const blob = new Blob([logContent], {type: 'text/plain'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `Wizard_Log_${new Date().toISOString().split('T')[0]}.txt`; a.click();
+    }
+
+    function runChemCalcs() {
+        const dest = document.getElementById('dest-state').value;
+        const gen = document.getElementById('gen-state').value;
+        if (dest !== 'wa' && gen !== 'wa') return;
+        let ec = 0;
+        metalLimits.forEach(m => {
+            const v = parseFloat(document.getElementById(`metal-val-${m.id}`).value); const u = document.getElementById(`metal-unit-${m.id}`).value;
+            if (isNaN(v) || u !== 'total') return;
+            const pct = v / 10000; const div = m.waCat==='A'?10 : m.waCat==='B'?100 : m.waCat==='C'?1000 : m.waCat==='D'?10000 : 1;
+            ec += (pct / div);
+        });
+        document.getElementById('wa-ec-val').innerText = ec.toFixed(5);
+        document.getElementById('wa-ec-val').style.color = ec >= 0.001 ? "var(--alert)" : "var(--washington)";
+    }
+
+    function runCalcs() {
+        let grossGamma = 0; let sof = 0; let detectedAny = false;
+        let ra226_derived = 0; let ra228_derived = 0; let u238_derived = 0; let th232_derived = 0; let radHTML = "";
+        
+        const uMult = document.getElementById('rad-unit').value === 'bq' ? 27.027 : 1;
+        const uLbl = document.getElementById('rad-unit').value === 'bq' ? 'Bq/g' : 'pCi/g';
+        const allLines = gammaLines.concat(htdLines);
+
+        allLines.forEach(l => {
+            const g_raw = parseFloat(document.getElementById(`rad-${l.id}-g`).value); const e_raw = parseFloat(document.getElementById(`rad-${l.id}-e`).value) || 0;
+            const m_raw = parseFloat(document.getElementById(`rad-${l.id}-m`).value) || 0; const b_raw = parseFloat(document.getElementById(`rad-${l.id}-b`).value) || 0;
+            
+            const rowEl = document.getElementById(`row-${l.id}`);
+            const netEl = document.getElementById(`rad-${l.id}-net`);
+            
+            if (isNaN(g_raw)) {
+                if (rowEl) rowEl.style.background = '';
+                if (netEl) netEl.innerText = '--';
+                return;
+            }
+
+            const g = g_raw * uMult; const e = e_raw * uMult; const m = m_raw * uMult; const b = b_raw * uMult;
+
+            if (gammaLines.some(gl => gl.id === l.id)) grossGamma += g;
+
+            let sTxt = "⚪ Below MDC"; let sCol = "var(--text-muted)"; let net = 0;
+            let displayNet = "ND";
+
+            if (g > m) {
+                net = Math.max(0, g - b); 
+                sof += (net / l.dot);
+                displayNet = net.toFixed(2);
+                if (net > 0) detectedAny = true;
+                
+                if (e >= g) { 
+                    sTxt = "⚠️ HIGH UNCERTAINTY"; sCol = "var(--warning)"; 
+                    if (rowEl) rowEl.style.background = 'rgba(234, 88, 12, 0.1)'; 
+                } else { 
+                    sTxt = "✅ Detected"; sCol = "var(--primary)"; 
+                    if (rowEl) rowEl.style.background = 'rgba(5, 150, 105, 0.1)'; 
+                }
+                
+                if (l.id === 'bi214') ra226_derived = net; 
+                if (l.id === 'ac228') ra228_derived = net; 
+                if (l.id === 'th234') u238_derived = net;
+                if (l.id === 'th232') th232_derived = net; 
+            } else {
+                if (rowEl) rowEl.style.background = '';
+            }
+            
+            if (netEl) {
+                netEl.innerText = displayNet;
+                netEl.style.color = (displayNet === "ND") ? "var(--text-muted)" : "var(--secondary)";
+            }
+
+            let mdcTrapHtml = "";
+            if (l.id === 'ra226' && m > 5.0) {
+                mdcTrapHtml = `<br><span style="color: var(--alert); font-weight: bold; font-size: 0.8rem;">🛑 MDC TRAP: Lab MDC (${m.toFixed(2)}) is too high to legally prove compliance with strict state NORM limits (<5.0 pCi/g).</span>`;
+            }
+
+            radHTML += `<li><strong>${l.name}:</strong> ${g_raw.toFixed(2)} ± ${e_raw.toFixed(2)} ${uLbl} <span style="color: ${sCol}; font-size: 0.85rem; font-weight: bold;">(${sTxt})</span>${mdcTrapHtml}</li>`;
+        });
+        
+        if (radHTML === "") radHTML = "<li>No radiological data entered.</li>";
+        
+        document.getElementById('gross-gamma').innerText = grossGamma.toFixed(2); document.getElementById('dot-sof').innerText = sof.toFixed(3);
+        document.getElementById('dot-sof').style.color = sof >= 1 ? 'var(--alert)' : 'inherit';
+        document.getElementById('derived-readout').innerText = `Ra-226: ${ra226_derived.toFixed(2)} pCi/g | Ra-228: ${ra228_derived.toFixed(2)} pCi/g | U-238: ${u238_derived.toFixed(2)} pCi/g`;
+        return { grossGamma, sof, detectedAny, ra226_derived, ra228_derived, u238_derived, th232_derived, radHTML };
+    }
+
+    let emailProfile = { status: "", uic: "", dotClass: "", rcraStatus: "" };
+
+    function analyzeMaterial() {
+        const d = runCalcs(); runChemCalcs();
+        const cmdName = document.getElementById('cmd-name').value.trim() || "Not Provided";
+        const uic = document.getElementById('cmd-uic').value.trim();
+        const epaId = document.getElementById('epa-id').value.trim();
+        const pkgType = document.getElementById('pkg-type'); const pkgText = pkgType.options[pkgType.selectedIndex].text;
+        const qty = document.getElementById('waste-qty').value.trim() || "0"; const unit = document.getElementById('waste-unit').value;
+        const poc = document.getElementById('cmd-poc').value.trim() || "Not Provided";
+        const pcb = parseFloat(document.getElementById('tsca-pcb').value) || 0;
+        const labDateVal = document.getElementById('lab-date').value;
+        
+        const isDoD = uic.length > 0; const dest = document.getElementById('dest-state').value;
+        const gen = document.getElementById('gen-state').value;
+        const isCa = dest === 'ca' || gen === 'ca'; 
+        const isWa = dest === 'wa' || gen === 'wa'; 
+        const isMe = dest === 'me' || gen === 'me';
+        const isTx = dest === 'tx' || gen === 'tx';
+        emailProfile.uic = uic;
+
+        document.getElementById('print-expiration').style.display = 'none';
+        let dateHtml = `Generated on ${new Date().toLocaleDateString()}`;
+        if (labDateVal) {
+            let exp = new Date(labDateVal); exp.setFullYear(exp.getFullYear() + 1);
+            let expStr = exp.toLocaleDateString();
+            dateHtml += `<br><strong style="color:var(--alert)">PROFILE EXPIRES ON: ${expStr}</strong>`;
+            document.getElementById('print-expiration').innerText = `EXPIRES: ${expStr}`;
+            document.getElementById('print-expiration').style.display = 'inline-block';
+        } else {
+            dateHtml += `<br><strong style="color:var(--warning)">⚠️ WARNING: No Lab Analysis Date Provided. Profile validity unverified.</strong>`;
+        }
+
+        document.getElementById('print-date').innerHTML = dateHtml;
+        document.getElementById('print-cmd').innerText = `${cmdName} ${isDoD ? '('+uic+')' : ''}`;
+        document.getElementById('print-epa').innerText = epaId || "Pending / Not Provided";
+        document.getElementById('print-qty').innerText = `${qty} ${unit} via ${pkgText}`;
+        document.getElementById('print-gen').innerText = document.getElementById('gen-state').options[document.getElementById('gen-state').selectedIndex].text;
+        document.getElementById('print-dest').innerText = document.getElementById('dest-state').options[document.getElementById('dest-state').selectedIndex].text;
+        document.getElementById('print-poc').innerText = poc;
+        document.getElementById('rad-summary-list').innerHTML = d.radHTML;
+
+        let echoHTML = `<table class="data-echo-table"><tr><th>Analyte / Isotope</th><th>Result</th><th>Units / Status</th></tr>`;
+        const allLines = gammaLines.concat(htdLines);
+        allLines.forEach(l => {
+            const g = document.getElementById(`rad-${l.id}-g`).value;
+            if(g) echoHTML += `<tr><td>${l.name}</td><td>${g} ± ${document.getElementById(`rad-${l.id}-e`).value}</td><td>${document.getElementById('rad-unit').value === 'bq' ? 'Bq/g' : 'pCi/g'} (MDC: ${document.getElementById(`rad-${l.id}-m`).value})</td></tr>`;
+        });
+        metalLimits.forEach(m => {
+            const val = document.getElementById(`metal-val-${m.id}`).value;
+            if(val) echoHTML += `<tr><td>${m.name}</td><td>${val}</td><td>${document.getElementById(`metal-unit-${m.id}`).value === 'total' ? 'mg/kg' : 'mg/L'}</td></tr>`;
+        });
+        if(pcb) echoHTML += `<tr><td>Total PCBs</td><td>${pcb}</td><td>mg/kg</td></tr>`;
+        echoHTML += `</table>`;
+        document.getElementById('echo-table-container').innerHTML = echoHTML;
+
+        const milspecEl = document.getElementById('milspec-status');
+        if (d.grossGamma > 20.0) milspecEl.innerHTML = `⚠️ <span style="color: var(--warning);"><strong>ELEVATED NORM:</strong></span> Gross Gamma (${d.grossGamma.toFixed(2)} pCi/g) exceeds historic MILSPEC guidance.`;
+        else milspecEl.innerHTML = `✅ <span style="color: var(--primary);"><strong>BASELINE:</strong></span> Gross Gamma is consistent with historic MILSPEC guidance.`;
+
+        const uqsmEl = document.getElementById('uqsm-status');
+        const uqsmRatio = (d.u238_derived / 166.5) + (d.th232_derived / 54.5);
+        if (uqsmRatio > 1.0) { 
+            uqsmEl.innerHTML = `❌ <span style="color: var(--alert);"><strong>SOURCE MATERIAL:</strong></span> U/Th combined fraction (${uqsmRatio.toFixed(2)}) exceeds 0.05% weight limit. NOT EXEMPT.`;
+        } else {
+            uqsmEl.innerHTML = `✅ <span style="color: var(--primary);"><strong>EXEMPT:</strong></span> Source material combination remains below 0.05% weight limit.`;
+        }
+
+        let dotClass = "Non-Regulated for Transport (DOT Exemption)";
+        let isRadioactive = false; let requiresRaso = false; let forms = ["Standard Bill of Lading", "Weigh Ticket"]; let actions = [];
+
+        if (isDoD && d.detectedAny) { requiresRaso = true; actions.unshift("MANDATORY: Submit lab results to NAVSEA RASO for formal determination prior to movement."); }
+
+        const totalRadium = d.ra226_derived + d.ra228_derived;
+        if (d.sof >= 1.0) {
+            dotClass = `UN2912 - Radioactive Material, LSA-I (SOF: ${d.sof.toFixed(2)})`; isRadioactive = true;
+            forms.push("NRC Form 540/541", "DOT Hazmat Shipping Papers", "Emergency Response Guide (ERG) 162");
+            actions.push("Ensure driver holds Hazmat endorsement", "Vehicle must be placarded 'RADIOACTIVE'", "Ensure radioactivity is 'essentially uniformly distributed' as required for LSA-I (49 CFR 173.403).");
+            if (pkgType.value === 'supersack') { actions.push("LSA-I in Supersacks MUST be shipped as 'Exclusive Use' (49 CFR 173.427)."); forms.push("Exclusive Use Instructions to Driver"); }
+        } else if (totalRadium >= 30) { dotClass = "State-Regulated NORM (>30 pCi/g)"; isRadioactive = true; actions.push("Check destination state NORM threshold limits (universally regulated at this level).");
+        } else if (totalRadium >= 5) { dotClass = "State-Regulated NORM (5 - 30 pCi/g)"; isRadioactive = true; actions.push("Check destination state NORM limits (regulated in strict states)."); }
+
+        let rcraFails = []; let caFails = []; let warnings = []; let waFails = []; let uhcList = [];
+        let isRcraHaz = false; let isCaHaz = false; let isWaHaz = false; let isMeHaz = false; let isTsca = false; let hasAnyMetals = false; let isTxClass1 = false;
+        let pendingTCLP = false;
+        
+        let ecPercent = parseFloat(document.getElementById('wa-ec-val').innerText) || 0;
+        if (isWa && ecPercent >= 0.001) { isWaHaz = true; waFails.push(`WA Book Designation FAIL - Calculated EC: ${ecPercent.toFixed(5)}% (≥ 0.001% limit). Assign Code: ${ecPercent >= 1.0 ? "WT01" : "WT02"}.`); }
+
+        metalLimits.forEach(metal => {
+            if (!isCa && !isWa && !isTx && !metal.isRcra) return; 
+
+            const val = parseFloat(document.getElementById(`metal-val-${metal.id}`).value); const unit = document.getElementById(`metal-unit-${metal.id}`).value;
+            if (isNaN(val)) return;
+            if (val > 0) hasAnyMetals = true;
+
+            if (unit === 'leachable') {
+                if (metal.isRcra && val >= metal.tclp) { rcraFails.push(`RCRA FAIL - ${metal.name}: ${val} mg/L`); isRcraHaz = true; } 
+                else if (isCa && val >= metal.stlc) { caFails.push(`CA STLC FAIL - ${metal.name}: ${val} mg/L`); isCaHaz = true; }
+                else if (!metal.isRcra && val > 0) { uhcList.push(metal.name); } 
+            } else if (unit === 'total') {
+                if (metal.isRcra && val >= (metal.tclp * 20)) { 
+                    warnings.push(`🛑 RULE OF 20 BREACH - Total ${metal.name} (${val} mg/kg) exceeds 20x TCLP limit. TCLP Leachable analysis is legally required to verify non-hazardous status.`); 
+                    pendingTCLP = true;
+                }
+                if (isCa) {
+                    if (val >= metal.ttlc) { caFails.push(`CA TTLC FAIL - ${metal.name}: ${val} mg/kg`); isCaHaz = true; } 
+                    else if (val >= (metal.stlc * 10)) { warnings.push(`CA WARN - ${metal.name} exceeds Rule of 10.`); }
+                }
+                if (!metal.isRcra && val > 0) { uhcList.push(metal.name); } 
+                if (isTx && val > 0) isTxClass1 = true; 
+            }
+        });
+
+        let rcraStatus = "Non-Hazardous Solid Waste"; let alertsHTML = "";
+
+        if (pcb >= 50) {
+            isTsca = true; rcraStatus = "TSCA Regulated Waste (Polychlorinated Biphenyls)"; forms.push("EPA Form 8700-22 (Uniform HazWaste Manifest)");
+            alertsHTML += `<li style="color: var(--tsca); font-weight: bold;">☢️ TSCA FAIL - PCBs: ${pcb} mg/kg (Limit: 50)</li>`;
+        } else if (pcb > 0) { hasAnyMetals = true; } 
+
+        if (isMe && !isRcraHaz && !pendingTCLP && hasAnyMetals) { isMeHaz = true; } 
+
+        if (isRcraHaz || isCaHaz || isWaHaz || isMeHaz || isTsca) {
+            if (!epaId) alertsHTML += `<li style="color: var(--alert); font-weight: bold;">🛑 MISSING EPA ID: Cannot ship hazardous/TSCA/Special waste without valid EPA ID.</li>`;
+        }
+
+        if (pendingTCLP) {
+            rcraStatus = "🛑 PENDING TCLP ANALYSIS (RULE OF 20 BREACH)";
+            alertsHTML += `<li style="color: var(--alert); font-weight: bold;">PROFILE LOCKED: Waste cannot be classified as non-hazardous until leachable (TCLP) data is provided for the breached metals.</li>`;
+            actions.unshift("MANDATORY: Return to laboratory and request TCLP extraction for breached RCRA 8 metals.");
+        } else if (isRcraHaz) {
+            rcraStatus = "Characteristic Hazardous Waste (Federal RCRA)";
+            forms.push("EPA Form 8700-22 (Uniform HazWaste Manifest)", "LDR Notification");
+            if (!dotClass.includes("UN")) { dotClass += " & UN3077 Environmentally Hazardous Substance"; forms.push("DOT Hazmat Shipping Papers"); }
+            alertsHTML += rcraFails.map(f => `<li style="color: var(--alert);">🛑 ${f}</li>`).join('');
+            alertsHTML += caFails.map(f => `<li style="color: var(--california);">🐻 ${f}</li>`).join('');
+            alertsHTML += waFails.map(f => `<li style="color: var(--washington);">🌲 ${f}</li>`).join('');
+            if (uhcList.length > 0) alertsHTML += `<li style="color: var(--warning); font-weight: bold; background: #fffbeb; padding: 0.5rem; border-radius: 4px; border-left: 3px solid var(--warning); margin-top: 0.5rem;">⚠️ RCRA UHC RISK: Co-mingled non-RCRA metals (${uhcList.join(', ')}) detected. These may trigger Universal Treatment Standard (UTS) surcharges under Land Disposal Restrictions (LDR).</li>`;
+        } else if (isCaHaz) {
+            if(!isTsca) rcraStatus = "Non-RCRA Hazardous Waste (California Regulated)";
+            forms.push("California Uniform HazWaste Manifest"); actions.push("Assign CA State Waste Code (e.g., 181 for inorganic solids).");
+            alertsHTML += caFails.map(f => `<li style="color: var(--california);">🐻 ${f}</li>`).join('');
+        } else if (isWaHaz) {
+            if(!isTsca) rcraStatus = "State Regulated Waste (Washington WAC 173-303)";
+            forms.push("Washington State Dangerous Waste Manifest");
+            alertsHTML += waFails.map(f => `<li style="color: var(--washington);">🌲 ${f}</li>`).join('');
+        } else if (isMeHaz && !isTsca) {
+            rcraStatus = "Maine Special Waste (06-096 CMR Ch. 850)"; forms.push("Maine Uniform Hazardous Waste Manifest"); actions.push("Profile as Special Waste. Verify specific TSDF heavy metal and PCB limits.");
+        } else if (isTxClass1 && !isRcraHaz && !isTsca) {
+            rcraStatus = "Texas Class 1 Industrial Waste"; forms.push("TCEQ Manifest"); actions.push("Assign 8-digit TCEQ Waste Code.");
+        }
+        
+        alertsHTML += warnings.map(w => `<li style="color: var(--warning);">⚠️ ${w}</li>`).join('');
+
+        if ((dest === 'ut' || dest === 'id') && (isRadioactive || requiresRaso || isRcraHaz || isTsca || pendingTCLP)) {
+            const fac = dest === 'ut' ? "EnergySolutions (Clive)" : "Republic Services / US Ecology (Grand View)";
+            actions.push(`⚠️ DESTINATION WAC: Verify profile against ${fac} Waste Acceptance Criteria.`);
+        }
+
+        document.getElementById('dot-class').innerText = dotClass; document.getElementById('raso-status').innerText = requiresRaso ? "⚠ NAVSEA RASO CLEARANCE REQUIRED" : ""; document.getElementById('rcra-status').innerText = rcraStatus;
+        if(pendingTCLP) document.getElementById('rcra-status').style.color = "var(--alert)"; else document.getElementById('rcra-status').style.color = "inherit";
+        
+        emailProfile.dotClass = dotClass; emailProfile.rcraStatus = rcraStatus;
+        
+        document.getElementById('rcra-alerts').innerHTML = alertsHTML || "<li>All chemical limits passed.</li>"; document.getElementById('form-requirements').innerHTML = [...new Set(forms)].map(f => `<li>${f}</li>`).join(''); document.getElementById('action-items').innerHTML = actions.map(a => `<li>${a}</li>`).join('');
+
+        const banner = document.getElementById('status-banner');
+        let threatScore = 0; let threatColor = "var(--primary)"; let threatText = "CLEAN / EXEMPT";
+
+        if (pendingTCLP) {
+            banner.style.background = "var(--alert)"; banner.style.color = "white"; banner.innerHTML = "🛑 PROFILE LOCKED - PENDING LEACHABLE (TCLP) ANALYSIS"; emailProfile.status = "Pending Lab Data (TCLP)";
+            threatScore = 80; threatColor = "var(--alert)"; threatText = "ACTION REQUIRED: TCLP FAILURE";
+        } else if (requiresRaso && (isRcraHaz || isCaHaz || isWaHaz || isMeHaz || isTsca)) { 
+            banner.style.background = "var(--alert)"; banner.style.color = "white"; banner.innerHTML = "🛑 MIXED WASTE (CHEM/TSCA + RAD) - DO NOT MOVE WITHOUT RASO & BASE ENV APPROVAL"; emailProfile.status = "Mixed Waste (Haz + Rad)"; 
+            threatScore = 100; threatColor = "var(--alert)"; threatText = "CRITICAL: MIXED WASTE";
+        } else if (isRcraHaz || isTsca) { 
+            banner.style.background = "var(--alert)"; banner.style.color = "white"; banner.innerHTML = "🛑 HAZARDOUS / TSCA WASTE - Federal transport & disposal rules apply."; emailProfile.status = "RCRA/TSCA Hazardous Waste"; 
+            threatScore = 75; threatColor = "var(--alert)"; threatText = "FEDERAL HAZARDOUS / TSCA";
+        } else if (isCaHaz) { 
+            banner.style.background = "var(--california)"; banner.style.color = "white"; banner.innerHTML = "🐻 CALIFORNIA HAZARDOUS WASTE - Title 22 transport & disposal rules apply."; emailProfile.status = "California Hazardous Waste"; 
+            threatScore = 50; threatColor = "var(--california)"; threatText = "STATE REGULATED (CALIFORNIA)";
+        } else if (isWaHaz) { 
+            banner.style.background = "var(--washington)"; banner.style.color = "white"; banner.innerHTML = "🌲 WASHINGTON DANGEROUS WASTE - WAC 173-303 rules apply."; emailProfile.status = "Washington Dangerous Waste"; 
+            threatScore = 50; threatColor = "var(--washington)"; threatText = "STATE REGULATED (WASHINGTON)";
+        } else if (isMeHaz) { 
+            banner.style.background = "var(--maine)"; banner.style.color = "white"; banner.innerHTML = "🦞 MAINE SPECIAL WASTE - 06-096 CMR Ch. 850 rules apply."; emailProfile.status = "Maine Special Waste"; 
+            threatScore = 50; threatColor = "var(--maine)"; threatText = "STATE REGULATED (MAINE)";
+        } else if (requiresRaso || isRadioactive || warnings.length > 0 || ( (isRcraHaz || isCaHaz || isWaHaz || isMeHaz) && !epaId )) { 
+            banner.style.background = "var(--warning)"; banner.style.color = "white"; banner.innerHTML = "⚠️ REGULATED MATERIAL / PENDING REVIEW - See specifics below."; emailProfile.status = "Elevated Material / Pending Review"; 
+            threatScore = 35; threatColor = "var(--warning)"; threatText = "ELEVATED NORM / WARNINGS";
+        } else { 
+            banner.style.background = "var(--primary)"; banner.style.color = "white"; banner.innerHTML = "✅ EXEMPT / NON-HAZARDOUS - Cleared for disposal."; emailProfile.status = "Non-Hazardous Solid Waste"; 
+            threatScore = 5; threatColor = "var(--primary)"; threatText = "CLEAN / EXEMPT";
+        }
+
+        document.getElementById('threat-fill').style.width = threatScore + '%';
+        document.getElementById('threat-fill').style.backgroundColor = threatColor;
+        document.getElementById('threat-text').innerText = threatText;
+        document.getElementById('threat-text').style.color = threatColor;
+
+        document.getElementById('classification-results').style.display = 'block';
+    }
+
+    function exportCSV() {
+        let csv = "NORM Waste Characterization Profile\nGenerated," + new Date().toLocaleString() + "\n\n";
+        csv += `Command,${document.getElementById('cmd-name').value}\nUIC,${document.getElementById('cmd-uic').value}\nEPA ID,${document.getElementById('epa-id').value}\nPOC,${document.getElementById('cmd-poc').value}\n`;
+        csv += `Generator State,${document.getElementById('gen-state').options[document.getElementById('gen-state').selectedIndex].text}\n`;
+        csv += `Destination State,${document.getElementById('dest-state').options[document.getElementById('dest-state').selectedIndex].text}\n\n`;
+        csv += `FINAL STATUS,${emailProfile.status}\nDOT Class,${emailProfile.dotClass}\nRCRA/Chem Status,${emailProfile.rcraStatus}\n\n`;
+        csv += "RADIOLOGICAL DATA\nIsotope,Gross,Error,MDC,Bkg\n";
+        const allLines = gammaLines.concat(htdLines);
+        allLines.forEach(l => { const g = document.getElementById(`rad-${l.id}-g`).value; if(g) csv += `${l.name},${g},${document.getElementById(`rad-${l.id}-e`).value},${document.getElementById(`rad-${l.id}-m`).value},${document.getElementById(`rad-${l.id}-b`).value}\n`; });
+        csv += "\nCHEMICAL DATA\nAnalyte,Result,Unit\n";
+        metalLimits.forEach(m => { const val = document.getElementById(`metal-val-${m.id}`).value; if(val) csv += `${m.name},${val},${document.getElementById(`metal-unit-${m.id}`).value}\n`; });
+        const pcb = document.getElementById('tsca-pcb').value; if(pcb) csv += `Total PCBs,${pcb},mg/kg\n`;
+
+        const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `Waste_Profile_${document.getElementById('cmd-uic').value || 'Draft'}.csv`; a.click();
+    }
+
+    function draftEmail() { const uic = emailProfile.uic || "Unknown_UIC"; window.location.href = `mailto:navsea_raso@navy.mil?subject=${encodeURIComponent(`Waste Profile Review Request - UIC: ${uic} - AlOx Media`)}&body=${encodeURIComponent(`RASO Team,\n\nWe are submitting a characterization profile for spent AlOx blast media for your review.\n\nCurrent Indicated Status: ${emailProfile.status}\n\nPlease find the generated profile PDF and supporting laboratory analytical data attached to this email.\n\nV/R,\n[Your Name/Title]`)}`; }
+</script>
+
+</body>
+</html>
