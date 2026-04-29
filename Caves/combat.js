@@ -1,3 +1,114 @@
+// --- ENEMY NETWORK MANAGER (SPATIAL HASHING) ---
+const EnemyNetworkManager = {
+    listeners: {},
+    
+    // Helper to get chunk ID from world coordinates
+    getChunkId: (x, y) => `${Math.floor(x / 16)},${Math.floor(y / 16)}`,
+    
+    // Helper to get exact Firebase path for an enemy
+    getPath: (x, y, enemyId) => `worldEnemies/${Math.floor(x / 16)},${Math.floor(y / 16)}/${enemyId}`,
+    
+    syncChunks: function(playerX, playerY) {
+        if (gameState.mapMode !== 'overworld') return;
+        
+        const pChunkX = Math.floor(playerX / 16);
+        const pChunkY = Math.floor(playerY / 16);
+        const VIEW_RADIUS = 2; // Listens to a 5x5 chunk grid around player
+        const visibleChunks = new Set();
+        
+        // 1. Attach new listeners
+        for(let y = -VIEW_RADIUS; y <= VIEW_RADIUS; y++) {
+            for(let x = -VIEW_RADIUS; x <= VIEW_RADIUS; x++) {
+                const chunkId = `${pChunkX + x},${pChunkY + y}`;
+                visibleChunks.add(chunkId);
+                
+                if (!this.listeners[chunkId]) {
+                    this.listenToChunk(chunkId);
+                }
+            }
+        }
+        
+        // 2. Detach old listeners that are now out of range
+        for(const chunkId in this.listeners) {
+            if (!visibleChunks.has(chunkId)) {
+                this.unloadChunk(chunkId);
+            }
+        }
+    },
+    
+    listenToChunk: function(chunkId) {
+        const ref = rtdb.ref(`worldEnemies/${chunkId}`);
+        
+        const onAdded = ref.on('child_added', (snapshot) => {
+            const key = snapshot.key;
+            const val = snapshot.val();
+            if (val && val.health > 0) {
+                gameState.sharedEnemies[key] = val;
+                updateSpatialMap(key, null, null, val.x, val.y);
+                if (pendingSpawnData && pendingSpawnData[key]) delete pendingSpawnData[key];
+                gameState.mapDirty = true;
+            }
+        });
+        
+        const onChanged = ref.on('child_changed', (snapshot) => {
+            const key = snapshot.key;
+            const val = snapshot.val();
+            if (val) {
+                const oldEnemy = gameState.sharedEnemies[key];
+                if (oldEnemy && val.health < oldEnemy.health) {
+                    const damageDiff = oldEnemy.health - val.health;
+                    if (damageDiff > 0 && typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createFloatingText(val.x, val.y, `-${damageDiff}`, '#cbd5e1'); 
+                        ParticleSystem.createExplosion(val.x, val.y, '#ef4444', 3);
+                    }
+                }
+                const oldX = oldEnemy ? oldEnemy.x : null;
+                const oldY = oldEnemy ? oldEnemy.y : null;
+                gameState.sharedEnemies[key] = val;
+                updateSpatialMap(key, oldX, oldY, val.x, val.y);
+                gameState.mapDirty = true;
+            }
+        });
+        
+        const onRemoved = ref.on('child_removed', (snapshot) => {
+            const key = snapshot.key;
+            if (gameState.sharedEnemies[key]) {
+                const enemy = gameState.sharedEnemies[key];
+                updateSpatialMap(key, enemy.x, enemy.y, null, null);
+                delete gameState.sharedEnemies[key];
+                gameState.mapDirty = true;
+            }
+        });
+        
+        this.listeners[chunkId] = { ref, onAdded, onChanged, onRemoved };
+    },
+    
+    unloadChunk: function(chunkId) {
+        const listener = this.listeners[chunkId];
+        if (listener) {
+            listener.ref.off('child_added', listener.onAdded);
+            listener.ref.off('child_changed', listener.onChanged);
+            listener.ref.off('child_removed', listener.onRemoved);
+            delete this.listeners[chunkId];
+        }
+        
+        Object.entries(gameState.sharedEnemies).forEach(([eId, enemy]) => {
+            const eChunk = this.getChunkId(enemy.x, enemy.y);
+            if (eChunk === chunkId) {
+                updateSpatialMap(eId, enemy.x, enemy.y, null, null);
+                delete gameState.sharedEnemies[eId];
+            }
+        });
+        gameState.mapDirty = true;
+    },
+    
+    clearAll: function() {
+        for(const chunkId in this.listeners) {
+            this.unloadChunk(chunkId);
+        }
+    }
+};
+
 /**
  * Scales an enemy based on distance from the center of the world.
  * Adds prefixes (Weak, Feral, Ancient) and buffs stats.
@@ -130,8 +241,8 @@ async function wakeUpNearbyEnemies() {
                     };
 
                     // B. Queue for Firebase (The Source of Truth)
-                    // CRITICAL FIX: Parse/Stringify removes 'undefined' keys from ENEMY_DATA so Firebase doesn't crash
-                    spawnUpdates[`worldEnemies/${enemyId}`] = JSON.parse(JSON.stringify(newEnemy));
+                    // Parse/Stringify removes 'undefined' keys from ENEMY_DATA so Firebase doesn't crash
+                    spawnUpdates[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = JSON.parse(JSON.stringify(newEnemy));
                     
                     // C. Add to local pending (Immediate Visual Feedback)
                     pendingSpawnData[enemyId] = newEnemy;
@@ -267,7 +378,7 @@ async function processOverworldEnemyTurns() {
             }
             
             // Queue removal from Firebase
-            multiPathUpdate[`worldEnemies/${enemyId}`] = null;
+            multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
             
             delete gameState.sharedEnemies[enemyId];
             updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
@@ -308,7 +419,7 @@ async function processOverworldEnemyTurns() {
             if (enemy.health <= 0) {
                 logMessage(`The ${enemy.name} succumbs to poison!`);
                 registerKill(enemy); 
-                multiPathUpdate[`worldEnemies/${enemyId}`] = null;
+                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
                 delete gameState.sharedEnemies[enemyId];
                 updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
                 
@@ -353,7 +464,7 @@ async function processOverworldEnemyTurns() {
             }
             
             // CRITICAL FIX: Sanitize the object before appending to update list
-            multiPathUpdate[`worldEnemies/${enemyId}`] = JSON.parse(JSON.stringify(enemy));
+            multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = JSON.parse(JSON.stringify(enemy));
             processedIdsThisFrame.add(enemyId);
             movesQueued = true;
             continue; 
@@ -390,7 +501,7 @@ async function processOverworldEnemyTurns() {
 
         // If skipped turn due to stun/root, make sure we save the updated status effect timers
         if (skipTurn) {
-            multiPathUpdate[`worldEnemies/${enemyId}`] = JSON.parse(JSON.stringify(enemy));
+            multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = JSON.parse(JSON.stringify(enemy));
             processedIdsThisFrame.add(enemyId);
             movesQueued = true;
             continue;
@@ -442,7 +553,7 @@ async function processOverworldEnemyTurns() {
             }
             
             // Still sync if they had status effects tick down but chose to cast instead of moving
-            if (statusChanged) multiPathUpdate[`worldEnemies/${enemyId}`] = JSON.parse(JSON.stringify(enemy));
+            if (statusChanged) multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = JSON.parse(JSON.stringify(enemy));
             
             processedIdsThisFrame.add(enemyId);
             movesQueued = true;
@@ -553,7 +664,7 @@ async function processOverworldEnemyTurns() {
                             
                             if (enemy.health <= 0) {
                                 registerKill(enemy);
-                                multiPathUpdate[`worldEnemies/${enemyId}`] = null;
+                                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
                                 delete gameState.sharedEnemies[enemyId];
                                 updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
                                 
@@ -571,7 +682,7 @@ async function processOverworldEnemyTurns() {
 
                     // Even if it hit/dodged, if status effects changed on it, we must sync
                     if (statusChanged) {
-                        multiPathUpdate[`worldEnemies/${enemyId}`] = JSON.parse(JSON.stringify(enemy));
+                        multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = JSON.parse(JSON.stringify(enemy));
                         movesQueued = true;
                     }
                     
@@ -601,7 +712,7 @@ async function processOverworldEnemyTurns() {
 
                 // CRITICAL FIX: Sanitize the object to prevent Firebase maxretry errors
                 multiPathUpdate[`worldEnemies/${newId}`] = JSON.parse(JSON.stringify(updatedEnemy));
-                multiPathUpdate[`worldEnemies/${enemyId}`] = null;
+                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
 
                 delete gameState.sharedEnemies[enemyId];
                 gameState.sharedEnemies[newId] = updatedEnemy;
@@ -618,7 +729,7 @@ async function processOverworldEnemyTurns() {
                 }
             } else if (statusChanged) {
                 // If it couldn't move, but it took poison damage or had a timer tick down, save it!
-                multiPathUpdate[`worldEnemies/${enemyId}`] = JSON.parse(JSON.stringify(enemy));
+                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = JSON.parse(JSON.stringify(enemy));
                 movesQueued = true;
             }
         }
@@ -1126,7 +1237,7 @@ async function runCompanionTurn() {
             if (enemyData && enemyData.maxHealth) {
                 attacked = true;
                 const enemyId = `overworld:${tx},${-ty}`;
-                const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
+                const enemyRef = rtdb.ref(EnemyNetworkManager.getPath(tx, ty, enemyId));
 
                 const visualDmg = Math.max(1, companion.attack - (enemyData.defense || 0));
 
@@ -1185,7 +1296,7 @@ async function runCompanionTurn() {
 async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage) { 
     const player = gameState.player;
     const enemyId = `overworld:${newX},${-newY}`; 
-    const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
+    const enemyRef = rtdb.ref(EnemyNetworkManager.getPath(newX, newY, enemyId));
 
     if (!gameState.sharedEnemies[enemyId]) {
         logMessage("That enemy is already gone.");
