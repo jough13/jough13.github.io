@@ -239,45 +239,33 @@ function createDefaultPlayerState() {
         character: '@',
         color: '#3b82f6',
         coins: 0,
-        health: 10,
-        maxHealth: 10,
-        mana: 10,
-        maxMana: 10,
-        stamina: 10,
-        maxStamina: 10,
-        psyche: 10,
-        maxPsyche: 10,
+        health: 5, // FIXED: Matches your recalculate Derived Stats logic
+        maxHealth: 5,
+        mana: 5,
+        maxMana: 5,
+        stamina: 5,
+        maxStamina: 5,
+        psyche: 7,
+        maxPsyche: 7,
 
         // --- LIGHT SURVIVAL STATS ---
-        hunger: 50, // Start at half (Neutral)
+        hunger: 50,
         maxHunger: 100,
         thirst: 50,
         maxThirst: 100,
 
-        unlockedWaypoints: [], // Stores objects: { x, y, name }
+        unlockedWaypoints: [], 
+        discoveredPOIs: [], // NEW: Tracks landmarks for the Map
 
-        obeliskProgress: [], // Tracks the order: ['north', 'east'] etc.
+        obeliskProgress: [], 
 
-        strength: 1,
-        wits: 1,
-        luck: 1,
-        constitution: 1,
-        dexterity: 1,
-        charisma: 1,
-        willpower: 1,
-        perception: 1,
-        endurance: 1,
-        intuition: 1,
+        strength: 1, wits: 1, luck: 1, constitution: 1,
+        dexterity: 1, charisma: 1, willpower: 1, perception: 1,
+        endurance: 1, intuition: 1,
 
         equipment: {
-            weapon: {
-                name: 'Fists',
-                damage: 0
-            },
-            armor: {
-                name: 'Simple Tunic',
-                defense: 0
-            }
+            weapon: { name: 'Fists', damage: 0 },
+            armor: { name: 'Simple Tunic', defense: 0 }
         },
 
         inventory: [
@@ -285,64 +273,29 @@ function createDefaultPlayerState() {
             { templateId: '💧f', name: 'Flask of Water', type: 'consumable', quantity: 2, tile: '💧' }
         ],
 
-        bank: [], // Persistent storage
-
-        talents: [], // Array of strings (e.g. ['bloodlust', 'scholar'])
+        bank: [], 
+        talents: [], 
         talentPoints: 0,
+        killCounts: {}, 
 
-        killCounts: {}, // Tracks { "Goblin": 5, "Wolf": 12 }
+        spellbook: { "lesserHeal": 1, "magicBolt": 1 },
+        skillbook: { "brace": 1, "lunge": 1 },
 
-        spellbook: {
-            "lesserHeal": 1, // Key is the spellID, value is the spell's level
-            "magicBolt": 1
-        },
+        level: 1, xp: 0, xpToNextLevel: 100, statPoints: 0,
+        foundLore: [], 
 
-        skillbook: {
-            "brace": 1, // Key is the skillID, value is the skill's level
-            "lunge": 1
-        },
+        defenseBonus: 0, defenseBonusTurns: 0,
+        shieldValue: 0, shieldTurns: 0,
+        strengthBonus: 0, strengthBonusTurns: 0,
+        witsBonus: 0, witsBonusTurns: 0,
 
-        level: 1,
-        xp: 0,
-        xpToNextLevel: 100,
-        statPoints: 0,
-        foundLore: [], // Used to track lore/journals for XP
+        frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0,
+        candlelightTurns: 0, isBoating: false, activeTreasure: null,
+        exploredChunks: [], quests: {},
+        hotbar: [null, null, null, null, null], 
+        cooldowns: {}, stealthTurns: 0, companion: null, 
 
-        defenseBonus: 0,
-        defenseBonusTurns: 0,
-
-        shieldValue: 0,
-        shieldTurns: 0,
-
-        strengthBonus: 0,
-        strengthBonusTurns: 0,
-
-        witsBonus: 0,
-        witsBonusTurns: 0,
-
-        frostbiteTurns: 0,
-        poisonTurns: 0,
-        rootTurns: 0,
-
-        candlelightTurns: 0,
-
-        isBoating: false,
-
-        activeTreasure: null,
-
-        exploredChunks: [],
-
-        quests: {},
-
-        hotbar: [null, null, null, null, null], // 5 slots
-        cooldowns: {}, // Tracks turns remaining: { 'lunge': 2 }
-        stealthTurns: 0, // For the new Stealth skill
-
-        companion: null, // Will store { name: "Wolf", tile: "w", type: "beast", hp: 10, maxHp: 10, atk: 2 }
-
-        craftingLevel: 1,
-        craftingXp: 0,
-        craftingXpToNext: 50,
+        craftingLevel: 1, craftingXp: 0, craftingXpToNext: 50,
     };
 }
 
@@ -481,14 +434,14 @@ async function finalizeCharacterCreation() {
     }
 
     // 4. Recalculate Derived Vitals (Health/Mana) based on TOTAL Constitution/Wits
-    // (Default is 10, plus bonuses)
-    player.maxHealth = 10 + (player.constitution * 5);
+    // (Default is 5, plus bonuses)
+    player.maxHealth = 5 + (player.constitution * 5);
     player.health = player.maxHealth;
     
-    player.maxMana = 10 + (player.wits * 5);
+    player.maxMana = 5 + (player.wits * 5);
     player.mana = player.maxMana;
     
-    player.maxStamina = 10 + (player.endurance * 5);
+    player.maxStamina = 5 + (player.endurance * 5);
     player.stamina = player.maxStamina;
 
     // 5. Apply Inventory (Class Kit)
@@ -975,11 +928,6 @@ function updateExploration() {
             gameState.exploredChunks = new Set();
         }
     }
-
-    // Calculate Chunk ID
-    const chunkX = Math.floor(gameState.player.x / MAP_CHUNK_SIZE);
-    const chunkY = Math.floor(gameState.player.y / MAP_CHUNK_SIZE);
-    const chunkId = `${chunkX},${chunkY}`;
 
     // Add to Set if new
     if (!gameState.exploredChunks.has(chunkId)) {
@@ -2694,9 +2642,10 @@ function getBaseTerrain(worldX, worldY) {
     return '.'; // Plains
 }
 
-function endPlayerTurn() {
+function endPlayerTurn(turnUpdates = {}) {
     
-    let updates = {}; // Defined at the top to catch status changes
+    // Inherit any updates passed in from movement/interactions!
+    let updates = { ...turnUpdates }; 
 
     // --- LIGHT SURVIVAL MECHANICS ---
     const player = gameState.player;
@@ -4012,82 +3961,21 @@ async function attemptMovePlayer(newX, newY) {
         }
     }
 
-    // --- ANOMALY INTERACTIONS ---
-    if (newTile === '🌳e') {
-        const tileId = `${newX},${-newY}`;
-        if (!gameState.lootedTiles.has(tileId)) {
-            logMessage("You touch the Elder Tree. Warmth flows into you.");
-            logMessage("Permanent Effect: +2 Max Health.");
-            gameState.player.maxHealth += 2;
-            gameState.player.health = gameState.player.maxHealth; // Full heal
-
-            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
-            ParticleSystem.createLevelUp(newX, newY); // Confetti!
-
-            gameState.lootedTiles.add(tileId);
-            playerRef.update({
-                maxHealth: gameState.player.maxHealth,
-                health: gameState.player.health,
-                lootedTiles: Array.from(gameState.lootedTiles)
-            });
+    // --- DATA-DRIVEN INTERACTION CHECK ---
+    // This dynamically handles anomalies, puzzles, and interactive objects directly from TILE_DATA!
+    if (tileData && typeof tileData.onInteract === 'function') {
+        const updatesToSave = tileData.onInteract(gameState, newX, newY);
+        
+        // If the interaction caused a change we need to save, trigger a save
+        if (updatesToSave) {
+            updatesToSave.lootedTiles = Array.from(gameState.lootedTiles); // Always sync looted state
+            playerRef.update(updatesToSave);
             renderStats();
-        } else {
-            logMessage("The Elder Tree stands silent and majestic.");
         }
-        return;
-    }
-
-    if (newTile === '🗿k') {
-        const tileId = `${newX},${-newY}`;
-        if (!gameState.lootedTiles.has(tileId)) {
-            logMessage("You clear the moss from the Giant's eyes.");
-            logMessage("You feel heavier, sturdier. (Permanent +1 Defense)");
-
-            // We don't have a base defense stat, so we give a permanent passive trait
-            if (!gameState.player.talents) gameState.player.talents = [];
-            if (!gameState.player.talents.includes('iron_skin')) {
-                gameState.player.talents.push('iron_skin');
-                logMessage("You gained the Iron Skin talent!");
-            } else {
-                logMessage("You feel a kinship with the stone. (+500 XP)");
-                grantXp(500);
-            }
-
-            gameState.lootedTiles.add(tileId);
-            playerRef.update({
-                talents: gameState.player.talents,
-                lootedTiles: Array.from(gameState.lootedTiles)
-            });
-        } else {
-            logMessage("The Giant sleeps.");
-        }
-        return;
-    }
-
-    if (newTile === '🦴d') {
-        const tileId = `${newX},${-newY}`;
-        if (!gameState.lootedTiles.has(tileId)) {
-            logMessage("You search the Dragon's ribs...");
-            // High tier loot
-            if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                const loot = generateMagicItem(4); // Tier 4 Item!
-                gameState.player.inventory.push(loot);
-                logMessage(`You found a ${loot.name} buried in the sand!`);
-            } else {
-                logMessage("You found treasure, but your inventory is full!");
-                return;
-            }
-
-            gameState.lootedTiles.add(tileId);
-            playerRef.update({
-                inventory: getSanitizedInventory(),
-                lootedTiles: Array.from(gameState.lootedTiles)
-            });
-            renderInventory();
-        } else {
-            logMessage("Only bleached bones remain.");
-        }
-        return;
+        
+        // Always end turn on interaction
+        endPlayerTurn(); 
+        return; 
     }
 
     // --- ARCHAEOLOGY LOGIC ---
@@ -6200,7 +6088,8 @@ async function attemptMovePlayer(newX, newY) {
         gameOverModal.classList.remove('hidden');
     }
 
-    endPlayerTurn();
+    // Pass the updates object in so Firebase actually saves your loot/exploration!
+    endPlayerTurn(updates); 
 }
 
 const applyTheme = (theme) => {
@@ -6669,7 +6558,8 @@ async function enterGame(playerData) {
     });
 
     const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(100);
-    chatRef.on('child_added', (snapshot) => {
+    // Assign it to the global variable so it can be cleaned up on logout!
+    chatListener = chatRef.on('child_added', (snapshot) => {
         const message = snapshot.val();
 
         // --- FLOATING CHAT BUBBLE ---
