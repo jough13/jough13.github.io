@@ -139,6 +139,13 @@
         .settings-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
         .settings-row:last-child { margin-bottom: 0; }
         .settings-row span { font-weight: bold; color: var(--text-main); }
+
+        /* Instantly hide the entire install row when running as an installed App */
+        @media (display-mode: standalone), (display-mode: window-controls-overlay) {
+            #install-row {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -447,25 +454,53 @@
 <script>
     // Settings Modal Logic
     function openSettings() {
-        // Smart Check: Hide install button inside modal if app is already running standalone
-        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+        // Smart Check: Hide the entire install row if already installed
+        if (window.matchMedia('(display-mode: standalone)').matches || 
+            window.navigator.standalone === true || 
+            localStorage.getItem('shipAssistInstalled') === 'true') {
             document.getElementById('install-row').style.display = 'none';
         }
         document.getElementById('settings-modal').classList.add('active');
     }
+
     function closeSettings() { document.getElementById('settings-modal').classList.remove('active'); }
 
-    // Progressive Web App (PWA) Install Logic
+    // --- Progressive Web App (PWA) Install Logic ---
     let deferredPrompt;
-    const installBtn = document.getElementById('btn-install');
 
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(err => console.log("SW Registration failed:", err));
     }
 
     window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent the mini-infobar from appearing automatically
         e.preventDefault();
+        // Stash the event so it can be triggered by our settings button
         deferredPrompt = e;
+    });
+
+    function installApp() {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    document.getElementById('install-row').style.display = 'none';
+                    localStorage.setItem('shipAssistInstalled', 'true');
+                }
+                deferredPrompt = null;
+                closeSettings();
+            });
+        } else {
+            // Smart Fallback for iOS/Safari where native prompts don't fire
+            closeSettings();
+            showAlert("App Installation", "To install this app on your device, use your browser's menu (⋮ or ⇪ Share) and select 'Add to Home Screen' or 'Install App'.", "📱");
+        }
+    }
+
+    window.addEventListener('appinstalled', (evt) => {
+        document.getElementById('install-row').style.display = 'none';
+        localStorage.setItem('shipAssistInstalled', 'true');
+        deferredPrompt = null;
     });
 
     function installApp() {
