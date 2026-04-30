@@ -2080,13 +2080,25 @@ function renderTerrainCache(startX, startY) {
             else if (gameState.mapMode === 'castle') {
                 const map = chunkManager.castleMaps[gameState.currentCastleId];
                 tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
-                bgColor = '#a16207';
+                
+                // Base cobblestone/dark stone floor color
+                bgColor = '#44403c'; 
 
                 if (tile === '▓' || tile === '▒') {
                     TileRenderer.drawWall(terrainCtx, x, y, '#78350f', '#451a03', 'brick');
+                } else if (tile === 'F') {
+                    // Render castle courtyard gardens
+                    TileRenderer.drawForest(terrainCtx, x, y, mapX, mapY, '#14532d');
+                } else if (tile === '=') {
+                    // Render wooden bridges/paths
+                    TileRenderer.drawBase(terrainCtx, x, y, '#78350f'); 
+                } else if (tile === '.') {
+                    // Render standard cobblestone floor
+                    TileRenderer.drawBase(terrainCtx, x, y, bgColor);
                 } else {
-                    TileRenderer.drawBase(terrainCtx, x, y, '#a16207');
-                    fgChar = tile;
+                    // Everything else (NPCs, Exits, Items)
+                    TileRenderer.drawBase(terrainCtx, x, y, bgColor);
+                    if (tile !== ' ') fgChar = tile;
                 }
             } 
             else { // Overworld
