@@ -9,6 +9,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚓</text></svg>">
     
     <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
 
     <style>
         :root {
@@ -28,13 +29,25 @@
         header { border-bottom: 3px solid var(--navy); margin-bottom: 2rem; padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;}
         .header-titles h1 { margin: 0; color: var(--navy); font-size: 2.2rem; }
         .header-titles p { color: var(--text-muted); margin: 0.25rem 0 0 0; font-weight: 500; }
-        .header-actions { display: flex; gap: 0.75rem; flex-wrap: wrap;}
-        button { cursor: pointer; font-family: inherit; transition: all 0.2s; border-radius: 6px; border: none; }
-        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem; font-weight: bold; display: flex; align-items: center; gap: 0.4rem;}
-        .btn-outline:hover { background: var(--surface); border-color: var(--text-muted); }
-        .btn-wizard { background: var(--navy); color: #fff; padding: 0.5rem 1.25rem; font-weight: bold; }
+        .header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;}
         
-        #btn-install { display: none; align-items: center; gap: 0.4rem; background: var(--primary); color: #fff; padding: 0.5rem 1rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; transition: opacity 0.2s; }
+        button { cursor: pointer; font-family: inherit; transition: all 0.2s; border-radius: 6px; border: none; }
+        
+        /* SHRUNK BUTTON PADDING TO FIX LAYOUT WRAP */
+        .btn-outline, .btn-wizard, #btn-install { 
+            padding: 0.4rem 0.8rem; 
+            font-size: 0.85rem; 
+            font-weight: bold; 
+            display: flex; 
+            align-items: center; 
+            gap: 0.4rem;
+        }
+        
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-outline:hover { background: var(--surface); border-color: var(--text-muted); }
+        .btn-wizard { background: var(--navy); color: #fff; }
+        
+        #btn-install { display: none; background: var(--primary); color: #fff; }
         #btn-install:hover { opacity: 0.9; }
         
         .card { background: var(--surface); padding: 2rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border); transition: all 0.3s; }
@@ -134,7 +147,7 @@
         </div>
         <div class="header-actions">
             <button id="btn-install" onclick="installApp()">⬇️ Install App</button>
-            <button class="btn-outline" onclick="loadDemoData()">🎲 Randomize Demo Data</button>
+            <button class="btn-outline" onclick="loadDemoData()">🎲 Demo Data</button>
             <button class="btn-outline" onclick="saveDraft()">💾 Save</button>
             <button class="btn-outline" onclick="document.getElementById('file-upload').click()">📂 Load</button>
             <input type="file" id="file-upload" style="display:none;" accept=".json" onchange="loadDraft(event)">
@@ -405,38 +418,43 @@
     let deferredPrompt;
     const installBtn = document.getElementById('btn-install');
 
-    // Register the actual Service Worker file hosted on GitHub
+    // Register the Service Worker (Crucial for Chrome to allow installation)
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(err => console.log("SW Registration failed:", err));
     }
 
+    // Check if app is ALREADY installed and running in standalone mode
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+        installBtn.style.display = 'none';
+    }
+
     // Catch the browser's native install prompt
     window.addEventListener('beforeinstallprompt', (e) => {
-        // Prevent Chrome from automatically showing the prompt
+        // Prevent Chrome from automatically showing the prompt (we handle it via the button)
         e.preventDefault();
         // Stash the event so it can be triggered later
         deferredPrompt = e;
-        // Un-hide the install button now that we know the browser supports it
-        installBtn.style.display = 'flex'; 
+        installBtn.style.display = 'flex';
     });
 
     function installApp() {
         if (deferredPrompt) {
             // Show the native browser install prompt
             deferredPrompt.prompt();
-            // Wait for the user to respond to the prompt
+            // Wait for the user to respond
             deferredPrompt.userChoice.then((choiceResult) => {
                 if (choiceResult.outcome === 'accepted') {
-                    installBtn.style.display = 'none'; // Hide button after install
+                    installBtn.style.display = 'none'; // Hide button after successful install
                 }
                 deferredPrompt = null;
             });
         } else {
-            // Smart Fallback for iOS/Safari where native prompts don't always fire
-            showAlert("App Installation", "To install this app, tap your browser's menu (⋮ or ⇪) and select 'Add to Home Screen' or 'Install App'.", "📱");
+            // Smart Fallback: iOS/Safari or desktop browsers where event didn't fire
+            showAlert("App Installation", "To install this app on your device, use your browser's menu (⋮ or ⇪ Share) and select 'Add to Home Screen' or 'Install App'.", "📱");
         }
     }
 
+    // Listen for successful installation to clean up UI
     window.addEventListener('appinstalled', (evt) => {
         installBtn.style.display = 'none';
         deferredPrompt = null;
