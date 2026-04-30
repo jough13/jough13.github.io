@@ -990,7 +990,6 @@
         const isTx = dest === 'tx' || gen === 'tx';
         emailProfile.uic = uic;
 
-        document.getElementById('print-expiration').style.display = 'none';
         let dateHtml = `Generated on ${new Date().toLocaleDateString()}`;
         if (labDateVal) {
             let exp = new Date(labDateVal); exp.setFullYear(exp.getFullYear() + 1);
