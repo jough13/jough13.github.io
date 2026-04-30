@@ -347,7 +347,7 @@ window.TILE_DATA = {
 
 window.CASTLE_LAYOUTS = {
     LIBRARY_WING: {
-        spawn: { x: 10, y: 11 },
+        spawn: { x: 10, y: 10 },
         map: [
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
             '▓.........B.........▓',
@@ -365,7 +365,7 @@ window.CASTLE_LAYOUTS = {
         ]
     },
     COURTYARD: {
-        spawn: { x: 34, y: 34 }, 
+        spawn: { x: 35, y: 33 },
         map: [
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
             '▓F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F▓',
@@ -406,7 +406,7 @@ window.CASTLE_LAYOUTS = {
     },
 
     TOWER: {
-        spawn: { x: 10, y: 17 },
+        spawn: { x: 10, y: 14 }, 
         map: [
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
             '▓......▓▓▓▓▓▓▓......▓',
@@ -430,7 +430,7 @@ window.CASTLE_LAYOUTS = {
     },
 
     FORTRESS: {
-        spawn: { x: 4, y: 38 }, 
+        spawn: { x: 15, y: 38 },
         map: [
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
             '▓...............................................................................▓',
@@ -482,7 +482,7 @@ window.CASTLE_LAYOUTS = {
     },
 
     GRAND_FORTRESS: {
-        spawn: { x: 4, y: 38 }, 
+        spawn: { x: 15, y: 38 },  
         map: [
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
             '▓...............................................................................▓',
@@ -535,7 +535,7 @@ window.CASTLE_LAYOUTS = {
     },
 
     SAFE_HAVEN: {
-        spawn: { x: 13, y: 13 },
+        spawn: { x: 13, y: 11 },
         map: [
             'FFFFFFFFFFFFFFFFFFFFFFFFFFF',
             'FFFFFFFFFFFFFFFFFFFFFFFFFFF',
