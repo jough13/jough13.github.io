@@ -4,11 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1e3a8a">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1e3a8a">
     <title>NORM ShipAssist</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚓</text></svg>">
     
-    <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiTk9STSBTaGlwQXNzaXN0Iiwic2hvcnRfbmFtZSI6IlNoaXBBc3Npc3QiLCJkZXNjcmlwdGlvbiI6IkRvTiBBbE94IEJsYXN0IE1lZGlhIENvbXBsaWFuY2UgVG9vbCIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwic3RhcnRfdXJsIjoiLiIsImJhY2tncm91bmRfY29sb3IiOiIjZjhmYWZjIiwidGhlbWVfY29sb3IiOiIjMWUzYThhIiwiaWNvbnMiOlt7InNyYyI6ImRhdGE6aW1hZ2Uvc3ZnK3htbCwlM0NzdmcgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJyB2aWV3Qm94PScwIDAgMTAwIDEwMCclM0UlM0N0ZXh0IHk9Jy45ZW0nIGZvbnQtc2l6ZT0nOTAnJTNFJUUyJTkmJTkzJTNDL3RleHQlM0UlM0Mvc3ZnJTNFIiwic2l6ZXMiOiI1MTJ4NTEyIiwidHlwZSI6ImltYWdlL3N2Zyt4bWwifV19">
+    <link rel="manifest" href="manifest.json">
 
     <style>
         :root {
@@ -34,7 +38,7 @@
         .btn-outline:hover { background: var(--surface); border-color: var(--text-muted); }
         .btn-wizard { background: var(--navy); color: #fff; padding: 0.5rem 1.25rem; font-weight: bold; }
         
-        #btn-install { background: var(--primary); color: #fff; padding: 0.5rem 1.25rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; transition: opacity 0.2s; }
+        #btn-install { display: none; background: var(--primary); color: #fff; padding: 0.5rem 1.25rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; transition: opacity 0.2s; }
         #btn-install:hover { opacity: 0.9; }
         
         .card { background: var(--surface); padding: 2rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border); transition: all 0.3s; }
