@@ -750,13 +750,17 @@ const chunkManager = {
                     features = features.filter(f => {
                         const data = TILE_DATA[f];
                         const allowedTypes = ['lore', 'lore_statue', 'loot_container', 'campsite', 'decoration'];
-                        return allowedTypes.includes(data.type);
+                        // EXCLUDE the shipwreck from dry land spawns!
+                        return allowedTypes.includes(data.type) && f !== '🚢'; 
                     });
 
                     if (features.length > 0) {
                         const featureTile = features[Math.floor(random() * features.length)];
                         chunkData[y][x] = featureTile;
                     }
+                }
+                else if ((tile === '~' || tile === '≈') && featureRoll < 0.0005) {
+                    chunkData[y][x] = '🚢'; // Shipwrecks only spawn in water/swamps!
                 }
                 // --- 6. RIDDLE STATUES ---
                 else if (tile === '.' && featureRoll < 0.00008) {
