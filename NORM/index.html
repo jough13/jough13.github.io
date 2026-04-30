@@ -10,6 +10,7 @@
     
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
 
     <style>
         :root {
@@ -33,10 +34,9 @@
         
         button { cursor: pointer; font-family: inherit; transition: all 0.2s; border-radius: 6px; border: none; }
         
-        /* SHRUNK BUTTON PADDING TO FIX LAYOUT WRAP */
-        .btn-outline, .btn-wizard, #btn-install { 
-            padding: 0.4rem 0.8rem; 
-            font-size: 0.85rem; 
+        .btn-outline, .btn-wizard { 
+            padding: 0.5rem 1rem; 
+            font-size: 0.95rem; 
             font-weight: bold; 
             display: flex; 
             align-items: center; 
@@ -46,9 +46,6 @@
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
         .btn-outline:hover { background: var(--surface); border-color: var(--text-muted); }
         .btn-wizard { background: var(--navy); color: #fff; }
-        
-        #btn-install { display: none; background: var(--primary); color: #fff; }
-        #btn-install:hover { opacity: 0.9; }
         
         .card { background: var(--surface); padding: 2rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border); transition: all 0.3s; }
         .section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;}
@@ -135,6 +132,13 @@
         .wizard-buttons button { padding: 1rem; font-size: 1rem; border-radius: 6px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
         .btn-yes { background: var(--secondary); color: #fff; border: none; }
         .btn-no { background: transparent; color: var(--text-main); border: 2px solid var(--border); }
+        .btn-log { background: var(--text-main); color: var(--bg-color); border: none; margin-top: 1rem; font-size: 0.9rem;}
+        
+        .settings-group { border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 1.5rem; }
+        .settings-group h4 { margin-top: 0; color: var(--text-muted); text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; margin-bottom: 1rem; }
+        .settings-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .settings-row:last-child { margin-bottom: 0; }
+        .settings-row span { font-weight: bold; color: var(--text-main); }
     </style>
 </head>
 <body>
@@ -146,14 +150,8 @@
             <p>DoN/AlOx Blast Media Compliance & Routing Profile</p>
         </div>
         <div class="header-actions">
-            <button id="btn-install" onclick="installApp()">⬇️ Install App</button>
-            <button class="btn-outline" onclick="loadDemoData()">🎲 Demo Data</button>
-            <button class="btn-outline" onclick="saveDraft()">💾 Save</button>
-            <button class="btn-outline" onclick="document.getElementById('file-upload').click()">📂 Load</button>
-            <input type="file" id="file-upload" style="display:none;" accept=".json" onchange="loadDraft(event)">
-            <button class="btn-outline" onclick="triggerReset()" style="color: var(--alert); border-color: var(--alert);">🗑️ Reset</button>
             <button class="btn-wizard" onclick="openWizard()">🧭 Setup Wizard</button>
-            <button class="btn-outline" onclick="toggleTheme()" id="theme-text">Dark Mode</button>
+            <button class="btn-outline" onclick="openSettings()">⚙️ Settings</button>
         </div>
     </header>
 
@@ -253,13 +251,6 @@
     <div class="card">
         <div class="section-header">
             <h2>2. Isotopic Profile <span class="tooltip" data-tip="Input values exactly as they appear on your lab report. The tool handles background subtraction and DOT fractional math automatically.">?</span></h2>
-            <div class="form-group" style="width: 150px;">
-                <label style="color: var(--secondary);">Lab Report Units</label>
-                <select id="rad-unit" class="auto-save" onchange="runCalcs()" style="font-weight: bold; border-color: var(--secondary);">
-                    <option value="pci">pCi/g</option>
-                    <option value="bq">Bq/g</option>
-                </select>
-            </div>
         </div>
         
         <h4 style="margin-top: 0; color: var(--navy); border-bottom: 1px solid var(--border); padding-bottom: 0.4rem;">Gamma Emitters (EPA 901.1)</h4>
@@ -399,6 +390,46 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="settings-modal">
+    <div class="modal-card" style="max-width: 500px;">
+        <button class="modal-close" onclick="closeSettings()">&times;</button>
+        <div class="wizard-icon" style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚙️</div>
+        <div class="wizard-title" style="font-size: 1.5rem;">Settings & Actions</div>
+        
+        <div style="margin-top: 1.5rem;">
+            <div class="settings-group">
+                <h4>App Preferences</h4>
+                <div class="settings-row">
+                    <span>Color Theme</span>
+                    <button class="btn-outline" onclick="toggleTheme()" id="theme-text">Dark Mode</button>
+                </div>
+                <div class="settings-row">
+                    <span>Lab Report Units</span>
+                    <select id="rad-unit" class="auto-save" onchange="runCalcs()" style="width: 150px; font-weight: bold; border-color: var(--secondary);">
+                        <option value="pci">pCi/g</option>
+                        <option value="bq">Bq/g</option>
+                    </select>
+                </div>
+                <div class="settings-row" id="install-row">
+                    <span>Install Application</span>
+                    <button id="btn-install" onclick="installApp()" style="background: var(--primary); color: #fff; padding: 0.5rem 1rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer;">⬇️ Install</button>
+                </div>
+            </div>
+
+            <div class="settings-group" style="border: none; padding: 0;">
+                <h4>Data Management</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                    <button class="btn-outline" style="justify-content: center;" onclick="saveDraft(); closeSettings();">💾 Save Draft</button>
+                    <button class="btn-outline" style="justify-content: center;" onclick="document.getElementById('file-upload').click(); closeSettings();">📂 Load Draft</button>
+                    <input type="file" id="file-upload" style="display:none;" accept=".json" onchange="loadDraft(event)">
+                    <button class="btn-outline" style="justify-content: center;" onclick="loadDemoData(); closeSettings();">🎲 Demo Data</button>
+                    <button class="btn-outline" style="justify-content: center; color: var(--alert); border-color: var(--alert);" onclick="triggerReset(); closeSettings();">🗑️ Reset Form</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="wizard-modal"><div class="modal-card"><button class="modal-close" onclick="closeWizard()">&times;</button><div id="wizard-content"></div></div></div>
 
 <div class="modal-overlay" id="custom-dialog-overlay">
@@ -414,52 +445,49 @@
 </div>
 
 <script>
-    // --- Progressive Web App (PWA) Install Logic ---
+    // Settings Modal Logic
+    function openSettings() {
+        // Smart Check: Hide install button inside modal if app is already running standalone
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            document.getElementById('install-row').style.display = 'none';
+        }
+        document.getElementById('settings-modal').classList.add('active');
+    }
+    function closeSettings() { document.getElementById('settings-modal').classList.remove('active'); }
+
+    // Progressive Web App (PWA) Install Logic
     let deferredPrompt;
     const installBtn = document.getElementById('btn-install');
 
-    // Register the Service Worker (Crucial for Chrome to allow installation)
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(err => console.log("SW Registration failed:", err));
     }
 
-    // Check if app is ALREADY installed and running in standalone mode
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-        installBtn.style.display = 'none';
-    }
-
-    // Catch the browser's native install prompt
     window.addEventListener('beforeinstallprompt', (e) => {
-        // Prevent Chrome from automatically showing the prompt (we handle it via the button)
         e.preventDefault();
-        // Stash the event so it can be triggered later
         deferredPrompt = e;
-        installBtn.style.display = 'flex';
     });
 
     function installApp() {
         if (deferredPrompt) {
-            // Show the native browser install prompt
             deferredPrompt.prompt();
-            // Wait for the user to respond
             deferredPrompt.userChoice.then((choiceResult) => {
                 if (choiceResult.outcome === 'accepted') {
-                    installBtn.style.display = 'none'; // Hide button after successful install
+                    document.getElementById('install-row').style.display = 'none';
                 }
                 deferredPrompt = null;
+                closeSettings();
             });
         } else {
-            // Smart Fallback: iOS/Safari or desktop browsers where event didn't fire
+            closeSettings();
             showAlert("App Installation", "To install this app on your device, use your browser's menu (⋮ or ⇪ Share) and select 'Add to Home Screen' or 'Install App'.", "📱");
         }
     }
 
-    // Listen for successful installation to clean up UI
     window.addEventListener('appinstalled', (evt) => {
-        installBtn.style.display = 'none';
+        document.getElementById('install-row').style.display = 'none';
         deferredPrompt = null;
     });
-    // -----------------------------------------------
 
     // Precision Float Rounding Helper
     const precisionRound = (num, decimals) => Math.round((num + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
