@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1e3a8a">
-    <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#1e3a8a">
     <title>NORM ShipAssist</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚓</text></svg>">
@@ -38,7 +34,7 @@
         .btn-outline:hover { background: var(--surface); border-color: var(--text-muted); }
         .btn-wizard { background: var(--navy); color: #fff; padding: 0.5rem 1.25rem; font-weight: bold; }
         
-        #btn-install { display: none; background: var(--primary); color: #fff; padding: 0.5rem 1.25rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; transition: opacity 0.2s; }
+        #btn-install { display: none; align-items: center; gap: 0.4rem; background: var(--primary); color: #fff; padding: 0.5rem 1rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; transition: opacity 0.2s; }
         #btn-install:hover { opacity: 0.9; }
         
         .card { background: var(--surface); padding: 2rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border); transition: all 0.3s; }
@@ -416,13 +412,19 @@
 
     // Catch the browser's native install prompt
     window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent Chrome from automatically showing the prompt
         e.preventDefault();
+        // Stash the event so it can be triggered later
         deferredPrompt = e;
+        // Un-hide the install button now that we know the browser supports it
+        installBtn.style.display = 'flex'; 
     });
 
     function installApp() {
         if (deferredPrompt) {
+            // Show the native browser install prompt
             deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
             deferredPrompt.userChoice.then((choiceResult) => {
                 if (choiceResult.outcome === 'accepted') {
                     installBtn.style.display = 'none'; // Hide button after install
@@ -430,7 +432,7 @@
                 deferredPrompt = null;
             });
         } else {
-            // Smart Fallback: If the user is on an iPhone/Safari where native prompts don't always fire
+            // Smart Fallback for iOS/Safari where native prompts don't always fire
             showAlert("App Installation", "To install this app, tap your browser's menu (⋮ or ⇪) and select 'Add to Home Screen' or 'Install App'.", "📱");
         }
     }
@@ -439,6 +441,7 @@
         installBtn.style.display = 'none';
         deferredPrompt = null;
     });
+    // -----------------------------------------------
 
     // Precision Float Rounding Helper
     const precisionRound = (num, decimals) => Math.round((num + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
@@ -874,6 +877,7 @@
         const isTx = dest === 'tx' || gen === 'tx';
         emailProfile.uic = uic;
 
+        document.getElementById('print-expiration').style.display = 'none';
         let dateHtml = `Generated on ${new Date().toLocaleDateString()}`;
         if (labDateVal) {
             let exp = new Date(labDateVal); exp.setFullYear(exp.getFullYear() + 1);
