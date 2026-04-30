@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NPS LINAC Survey - Smart Field Data Form</title>
     <style>
+        /* Global box-sizing fixes padding/width overflow issues on print */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             background-color: #f1f5f9;
@@ -27,21 +32,52 @@
             padding-bottom: 4px;
         }
         
+        /* Print-Safe Flexbox Structure */
         .header-info {
             display: flex;
             justify-content: space-between;
             margin-bottom: 15px;
             font-weight: bold;
-            gap: 20px;
         }
-        .header-block-left { flex-grow: 1; }
-        .header-block-right { width: 380px; }
-        .header-row { display: flex; align-items: center; margin-bottom: 6px; }
-        .header-row span { width: 80px; }
-        .header-split { display: flex; gap: 15px; }
-        .header-split-item { display: flex; align-items: center; flex: 1; }
-        .header-split-item span { width: 80px; text-align: right; padding-right: 10px; }
-        .header-split-item.left span { text-align: left; padding-right: 0; }
+        .header-block-left { 
+            flex: 1.5; 
+            margin-right: 60px; /* Increased to separate surveyor lines from time blocks */
+        }
+        .header-block-right { 
+            flex: 1; 
+        }
+        .header-row { 
+            display: flex; 
+            align-items: center; 
+            margin-bottom: 6px; 
+        }
+        .header-row span { 
+            width: 100px; 
+            flex-shrink: 0;
+        }
+        .header-split { 
+            display: flex; 
+            justify-content: space-between; 
+        }
+        .header-split-item { 
+            display: flex; 
+            align-items: center; 
+            flex: 1; 
+        }
+        .header-split-item.left {
+            margin-right: 15px;
+        }
+        .header-split-item span { 
+            width: 80px; 
+            text-align: right; 
+            padding-right: 10px; 
+            flex-shrink: 0;
+        }
+        .header-split-item.left span { 
+            width: 100px;
+            text-align: left; 
+            padding-right: 0; 
+        }
 
         .table-container {
             margin-bottom: 25px;
@@ -122,13 +158,13 @@
 
         input[type="text"] {
             width: 100%;
+            min-width: 0; /* Prevents inputs from expanding past flex container */
             border: 1px solid transparent;
             background: transparent;
             font-family: inherit;
             font-size: inherit;
             text-align: center;
             padding: 4px;
-            box-sizing: border-box;
             border-bottom: 1px solid #cbd5e1;
             transition: background 0.2s;
         }
@@ -147,7 +183,6 @@
             border: 1px solid #cbd5e1;
             border-radius: 4px;
             padding: 10px;
-            box-sizing: border-box; 
             font-family: inherit;
             font-size: 13px;
             outline: none;
@@ -171,7 +206,6 @@
             justify-content: space-between; 
             margin-top: 60px; 
             font-weight: bold;
-            gap: 20px;
         }
         .sig-block {
             flex: 1; 
@@ -179,16 +213,22 @@
             padding-top: 5px;
             text-align: center;
         }
+        .sig-block:first-child {
+            margin-right: 40px;
+        }
 
         /* ----- MOBILE RESPONSIVE STYLES ----- */
         @media (max-width: 768px) {
             body { padding: 10px; }
             .page-container { padding: 20px 15px; margin-bottom: 15px; }
             
-            .header-info { flex-direction: column; gap: 10px; margin-bottom: 20px; }
-            .header-block-left, .header-block-right { width: 100% !important; margin-right: 0 !important; }
+            .header-info { flex-direction: column; margin-bottom: 20px; }
+            .header-block-left { margin-right: 0 !important; margin-bottom: 10px; }
             .header-split { flex-direction: column; gap: 10px; }
-            .header-split-item span { text-align: left; padding-right: 0; }
+            .header-split-item.left { margin-right: 0; }
+            .header-split-item span { text-align: left; padding-right: 0; width: 100px; }
+            
+            .sig-block:first-child { margin-right: 0; margin-bottom: 40px; }
             
             input[type="text"] { padding: 8px 4px; font-size: 16px; }
             td, th { padding: 10px 6px; font-size: 14px; }
@@ -197,7 +237,7 @@
             .toolbar button { flex: 1 1 calc(50% - 10px); padding: 12px 8px; font-size: 14px; justify-content: center; }
             .autosave-status { width: 100%; text-align: center; margin: 0; }
             
-            .sig-container { flex-direction: column; gap: 40px; margin-top: 40px; }
+            .sig-container { flex-direction: column; margin-top: 40px; }
             .sketch-area { height: 400px; }
         }
 
@@ -218,7 +258,12 @@
             .no-break { page-break-inside: avoid !important; break-inside: avoid !important; }
             tr { page-break-inside: avoid !important; }
             .header-info { flex-direction: row !important; } 
+            
+            /* Shrink font size for inputs only when printing to ensure fit */
+            .header-info input { font-size: 12px !important; }
+            
             .sig-container { flex-direction: row !important; }
+            .sig-block:first-child { margin-right: 40px !important; margin-bottom: 0 !important; }
         }
     </style>
 </head>
@@ -253,7 +298,7 @@
             </div>
             <div class="header-block-right">
                 <div class="header-row">
-                    <span>Date:</span> 
+                    <span style="width: 80px;">Date:</span> 
                     <input type="text" id="form-date" class="saveable-input calc-trigger" style="flex-grow: 1;">
                 </div>
                 <div class="header-split">
@@ -308,14 +353,15 @@
                 </table>
             </div>
 
-            <div class="header-info" style="font-size: 13px; font-weight: bold; margin-bottom: 10px;">
-                <div style="flex-grow: 1; display: flex; align-items: center; gap: 10px;">
-                    <span style="white-space: nowrap;">Check Source ID (Co-60):</span> 
-                    <input type="text" class="left-align saveable-input calc-trigger" id="demo-src" style="max-width: 200px;">
+            <!-- Print-Safe Check Source & Background Row with min-width: 0 logic applied -->
+            <div class="header-info" style="font-size: 13px; align-items: center; margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; margin-right: 15px;">
+                    <span style="white-space: nowrap; margin-right: 10px;">Check Source ID (Co-60):</span> 
+                    <input type="text" class="left-align saveable-input calc-trigger" id="demo-src" style="width: 140px; flex-shrink: 0;">
                 </div>
-                <div style="flex-grow: 1; display: flex; align-items: center; gap: 10px;">
-                    <span style="white-space: nowrap;">Background Location:</span> 
-                    <input type="text" class="left-align saveable-input calc-trigger" id="demo-bg-loc">
+                <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                    <span style="white-space: nowrap; margin-right: 10px;">Background Location:</span> 
+                    <input type="text" class="left-align saveable-input calc-trigger" id="demo-bg-loc" style="width: 100%;">
                 </div>
             </div>
 
@@ -573,13 +619,13 @@
             <div class="page-container">
                 <h3>Appendix A: Field Sketch / Map Reference (Page ${p} of 2)</h3>
                 <div class="header-info" style="margin-top: 15px;">
-                    <div style="flex-grow:1; margin-right:20px; display:flex; align-items:center; gap:10px;">
-                        <span style="white-space:nowrap;">Sketch Subject:</span> 
-                        <input type="text" class="left-align saveable-input calc-trigger">
+                    <div style="display:flex; align-items:center; flex:1; margin-right:30px;">
+                        <span style="white-space:nowrap; margin-right:10px;">Sketch Subject:</span> 
+                        <input type="text" class="left-align saveable-input calc-trigger" style="width:100%;">
                     </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="white-space:nowrap;">Drawn By:</span> 
-                        <input type="text" class="saveable-input calc-trigger" style="width:120px;">
+                    <div style="display:flex; align-items:center;">
+                        <span style="white-space:nowrap; margin-right:10px;">Drawn By:</span> 
+                        <input type="text" class="saveable-input calc-trigger" style="width:120px; flex-shrink:0;">
                     </div>
                 </div>
                 <div class="sketch-area"></div>
@@ -724,19 +770,17 @@
             updateSummaryRow('s-sd', calcDescriptive(getVals('.surv-dr')));
             updateSummaryRow('s-sc', calcDescriptive(getVals('.surv-gc')));
 
-            // Fire Auto-Save silently in the background
             cacheData();
         };
 
-        // Attach main listener to trigger calculations and auto-save on any change
         document.querySelectorAll('.calc-trigger').forEach(el => {
             el.addEventListener('input', updateAll);
-            if(el.tagName === 'DIV') { // For contenteditable divs
+            if(el.tagName === 'DIV') { 
                 el.addEventListener('blur', updateAll);
             }
         });
 
-        /* --- NEW SAVE / LOAD ARCHITECTURE --- */
+        /* --- SAVE / LOAD ARCHITECTURE --- */
         
         const gatherData = () => {
             const data = {};
@@ -752,7 +796,6 @@
             updateAll();
         };
 
-        // 1. Continuous Cache Auto-Save
         let autoSaveTimer;
         function cacheData() {
             clearTimeout(autoSaveTimer);
@@ -761,41 +804,41 @@
                 let now = new Date();
                 let timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 document.getElementById('autosave-indicator').innerHTML = `🟢 Auto-saved ${timeStr}`;
-            }, 1000); // Wait 1 second after typing stops to save
+            }, 1000); 
         }
 
-        // On Page Load: Check for Cache
         window.addEventListener('DOMContentLoaded', () => {
             const cachedData = localStorage.getItem('LINAC_Survey_Cache');
-            // If cache exists and has actual data (more than just the default surveyor names)
             if(cachedData && cachedData.length > 200) {
                 if(confirm("Found an auto-saved survey from a previous session. Would you like to restore it?")) {
                     applyData(JSON.parse(cachedData));
                     document.getElementById('autosave-indicator').innerHTML = `🟢 Restored from cache`;
                 } else {
-                    // They declined, clear the cache so it doesn't bother them again
                     localStorage.removeItem('LINAC_Survey_Cache');
                 }
             }
         });
 
-        // 2. Export to JSON File
         function exportToFile() {
             const data = gatherData();
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
             
-            // Build a dynamic filename
             let dateVal = document.getElementById('form-date').value.replace(/\//g, '-').trim();
-            let fileName = dateVal ? `LINAC_Survey_${dateVal}.json` : `LINAC_Survey_Data.json`;
+            let now = new Date();
+            let hours = String(now.getHours()).padStart(2, '0');
+            let minutes = String(now.getMinutes()).padStart(2, '0');
+            let seconds = String(now.getSeconds()).padStart(2, '0');
+            let timeString = `${hours}${minutes}${seconds}`;
+            
+            let baseName = dateVal ? `LINAC_Survey_${dateVal}` : `LINAC_Survey_Data`;
+            let fileName = `${baseName}_${timeString}.json`;
 
             const dlAnchorElem = document.createElement('a');
             dlAnchorElem.setAttribute("href", dataStr);
             dlAnchorElem.setAttribute("download", fileName);
             dlAnchorElem.click();
-            alert(`File saved to your device as: \n${fileName}`);
         }
 
-        // 3. Import from JSON File
         function importFromFile(event) {
             const file = event.target.files[0];
             if(!file) return;
@@ -809,13 +852,11 @@
                 } catch (err) {
                     alert("Error loading file. Make sure it is a valid survey .json file.");
                 }
-                // Clear the file input so the same file can be loaded again if needed
                 event.target.value = '';
             };
             reader.readAsText(file);
         }
 
-        // Reset
         function resetData() {
             if(confirm('WARNING: This will clear all data on the screen AND delete your Auto-Save backup. Proceed?')) {
                 document.querySelectorAll('.saveable-input').forEach(el => {
