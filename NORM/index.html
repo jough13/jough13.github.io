@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NORM ShipAssist: DoN/AlOx Media</title>
+    <meta name="theme-color" content="#1e3a8a">
+    <title>NORM ShipAssist</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚓</text></svg>">
+    
+    <link rel="manifest" href='data:application/manifest+json,{"name":"NORM ShipAssist","short_name":"ShipAssist","description":"DoN AlOx Blast Media Compliance Tool","display":"standalone","start_url":".","background_color":"#f8fafc","theme_color":"#1e3a8a","icons":[{"src":"data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚓</text></svg>","sizes":"512x512","type":"image/svg+xml"}]}'>
+
     <style>
         :root {
             --bg-color: #f8fafc; --surface: #ffffff; --primary: #059669; --secondary: #2563eb;
@@ -27,6 +33,8 @@
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem; font-weight: bold; display: flex; align-items: center; gap: 0.4rem;}
         .btn-outline:hover { background: var(--surface); border-color: var(--text-muted); }
         .btn-wizard { background: var(--navy); color: #fff; padding: 0.5rem 1.25rem; font-weight: bold; }
+        #btn-install { display: none; background: var(--primary); color: #fff; padding: 0.5rem 1.25rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; transition: opacity 0.2s; }
+        #btn-install:hover { opacity: 0.9; }
         .card { background: var(--surface); padding: 2rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border); transition: all 0.3s; }
         .section-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;}
         h2 { margin: 0; color: var(--secondary); font-size: 1.25rem; display: flex; align-items: center; }
@@ -40,15 +48,13 @@
         @media (max-width: 768px) { .grid-2, .grid-3, .grid-4, .grid-rad-complex { grid-template-columns: 1fr; } .rad-label-header { display: none; } }
         .form-group { display: flex; flex-direction: column; }
         label { margin-bottom: 0.4rem; font-weight: 600; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center;}
-        input, select { padding: 0.6rem; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-color); color: var(--text-main); font-size: 0.9rem; width: 100%; box-sizing: border-box;}
-        .input-group { display: flex; gap: 0.5rem; }
+        input, select, textarea { padding: 0.6rem; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-color); color: var(--text-main); font-size: 0.9rem; width: 100%; box-sizing: border-box; font-family: inherit;}
+        .input-group { display: flex; gap: 0.5rem; align-items: flex-start; }
+        .input-group > * { flex: 1; }
         .tooltip { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--secondary); color: white; font-size: 0.65rem; font-weight: bold; cursor: help; margin-left: 0.4rem; position: relative; }
         .tooltip:hover::after { content: attr(data-tip); position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); background: var(--text-main); color: var(--bg-color); padding: 0.75rem; border-radius: 6px; font-size: 0.75rem; width: max-content; max-width: 250px; z-index: 100; white-space: normal; text-transform: none; text-align: left; box-shadow: 0 4px 6px rgba(0,0,0,0.1); line-height: 1.4;}
-        
-        /* Updated State Metal Classes */
         .state-metal { display: none; } 
         .state-active .state-metal { display: flex; }
-        
         .wa-box { display: none; background: var(--bg-color); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-top: 1.5rem; border-left: 4px solid var(--washington);}
         .wa-active .wa-box { display: flex; justify-content: space-between; align-items: center; }
         .btn-primary { background: var(--primary); color: #fff; padding: 0.8rem 2.5rem; font-weight: bold; font-size: 1rem; margin: 1.5rem auto; text-transform: uppercase; display: block; border-radius: 6px; cursor: pointer; transition: opacity 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); letter-spacing: 0.05em;}
@@ -72,6 +78,14 @@
         .data-echo-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
         .data-echo-table th, .data-echo-table td { border: 1px solid var(--border); padding: 0.5rem; text-align: left; }
         .data-echo-table th { background: var(--bg-color); color: var(--text-muted); }
+        
+        .photo-gallery { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .photo-wrapper { position: relative; display: inline-block; }
+        .photo-thumbnail { width: 120px; height: 120px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .btn-remove-photo { position: absolute; top: -5px; right: -5px; background: var(--alert); color: #fff; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);}
+        .file-upload-btn { background: var(--context-bg); color: var(--secondary); border: 1px dashed var(--secondary); padding: 0.6rem 1rem; border-radius: 4px; cursor: pointer; display: inline-block; font-weight: bold; font-size: 0.85rem;}
+        .file-upload-btn:hover { background: var(--surface); }
+
         @media print {
             body { background: #fff; padding: 0; margin: 0; color: #000; }
             .header-actions, .btn-primary, .action-grid, .card, .modal-overlay { display: none !important; }
@@ -83,9 +97,16 @@
             .print-row span { font-weight: bold; }
             #print-data-echo { display: block !important; margin-top: 2rem; border-top: 2px solid #000; padding-top: 1rem;}
             .threat-container { border: 2px solid #000; }
-            #print-expiration { font-size: 1.2rem; color: #dc2626 !important; font-weight: 900; border: 3px solid #dc2626; padding: 0.5rem; display: inline-block; transform: rotate(-5deg); margin-bottom: 1rem; -webkit-print-color-adjust: exact; print-color-adjust: exact;}
+            
+            #print-extras { display: block !important; margin-top: 2rem; page-break-inside: avoid;}
+            .print-comment-box { padding: 1rem; border-left: 4px solid #000; background: #f9f9f9; font-style: italic; margin-bottom: 1.5rem; }
+            .print-photo-grid { display: flex; flex-wrap: wrap; gap: 15px; }
+            .print-photo-grid img { max-width: 45%; max-height: 250px; object-fit: contain; border: 1px solid #ccc; }
+            
+            #print-traceability-footer { display: block !important; position: fixed; bottom: 0; left: 0; width: 100%; text-align: center; font-size: 0.75rem; color: #666; padding-top: 10px; border-top: 1px solid #ccc; }
         }
-        #print-header, #print-data-echo, #print-expiration { display: none; }
+        #print-header, #print-data-echo, #print-extras, #print-traceability-footer { display: none; }
+        
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 1000; }
         .modal-overlay.active { display: flex; }
         .modal-card { background: var(--surface); padding: 2.5rem; border-radius: 12px; width: 90%; max-width: 650px; max-height: 90vh; overflow-y: auto; position: relative; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
@@ -99,7 +120,6 @@
         .wizard-buttons button { padding: 1rem; font-size: 1rem; border-radius: 6px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
         .btn-yes { background: var(--secondary); color: #fff; border: none; }
         .btn-no { background: transparent; color: var(--text-main); border: 2px solid var(--border); }
-        .btn-log { background: var(--text-main); color: var(--bg-color); border: none; margin-top: 1rem; font-size: 0.9rem;}
     </style>
 </head>
 <body>
@@ -111,6 +131,7 @@
             <p>DoN/AlOx Blast Media Compliance & Routing Profile</p>
         </div>
         <div class="header-actions">
+            <button id="btn-install" onclick="installApp()">⬇️ Install App</button>
             <button class="btn-outline" onclick="loadDemoData()">🎲 Randomize Demo Data</button>
             <button class="btn-outline" onclick="saveDraft()">💾 Save</button>
             <button class="btn-outline" onclick="document.getElementById('file-upload').click()">📂 Load</button>
@@ -128,7 +149,7 @@
         <div class="grid-3" style="margin-bottom: 1.5rem;">
             <div class="form-group">
                 <label style="color: var(--secondary);">Generator State <span class="tooltip" data-tip="The state where the waste is generated. Cradle-to-Grave laws apply at the point of origin.">?</span></label>
-                <select id="gen-state" onchange="toggleStates()" style="font-weight: bold; border-color: var(--secondary);">
+                <select id="gen-state" class="auto-save" onchange="toggleStates()" style="font-weight: bold; border-color: var(--secondary);">
                     <option value="federal">Federal Baseline (EPA/DOT)</option>
                     <option value="ca">California (Title 22)</option>
                     <option value="wa">Washington (WAC 173-303)</option>
@@ -142,7 +163,7 @@
             </div>
             <div class="form-group">
                 <label style="color: var(--secondary);">Destination State / Regulator <span class="tooltip" data-tip="The state where the disposal facility is located. Also triggers state-specific limits for facility acceptance.">?</span></label>
-                <select id="dest-state" onchange="toggleStates()" style="font-weight: bold; border-color: var(--secondary);">
+                <select id="dest-state" class="auto-save" onchange="toggleStates()" style="font-weight: bold; border-color: var(--secondary);">
                     <option value="federal">Federal Baseline (EPA/DOT)</option>
                     <option value="ca">California (Title 22)</option>
                     <option value="wa">Washington (WAC 173-303)</option>
@@ -156,30 +177,60 @@
             </div>
             <div class="form-group">
                 <label style="color: var(--warning);">Date of Lab Analysis <span class="tooltip" data-tip="Used to determine Profile Expiration Date. Profiles generally expire exactly 1 year from the analysis date.">?</span></label>
-                <input type="date" id="lab-date" style="border-color: var(--warning);">
+                <input type="date" id="lab-date" class="auto-save" style="border-color: var(--warning);">
             </div>
         </div>
         <div class="grid-4" style="margin-bottom: 1.5rem;">
-            <div class="form-group"><label>Command Name</label><input type="text" id="cmd-name" placeholder="e.g., PSNS & IMF"></div>
-            <div class="form-group"><label>UIC</label><input type="text" id="cmd-uic" placeholder="e.g., N00251"></div>
-            <div class="form-group"><label>EPA ID Number</label><input type="text" id="epa-id" placeholder="e.g., WA9876543210"></div>
-            <div class="form-group"><label>Local POC</label><input type="text" id="cmd-poc" placeholder="Name & Title/Rank"></div>
+            <div class="form-group"><label>Command Name</label><input type="text" id="cmd-name" class="auto-save" placeholder="e.g., PSNS & IMF"></div>
+            <div class="form-group"><label>UIC</label><input type="text" id="cmd-uic" class="auto-save" placeholder="e.g., N00251"></div>
+            <div class="form-group"><label>EPA ID Number</label><input type="text" id="epa-id" class="auto-save" placeholder="e.g., WA9876543210"></div>
+            <div class="form-group"><label>Local POC</label><input type="text" id="cmd-poc" class="auto-save" placeholder="Name & Title/Rank"></div>
         </div>
         <div class="grid-2">
             <div class="form-group">
                 <label>Estimated Quantity</label>
-                <div class="input-group">
-                    <input type="number" id="waste-qty" placeholder="Amount" min="0">
-                    <select id="waste-unit"><option>Tons</option><option>Lbs</option><option>Cubic Yards</option><option>Drums</option><option>Supersacks</option></select>
+                <div class="input-group" style="flex-direction: column;">
+                    <div style="display:flex; gap:0.5rem; width:100%;">
+                        <input type="number" id="waste-qty" class="auto-save" placeholder="Amount" min="0">
+                        <select id="waste-unit" class="auto-save" onchange="toggleOtherInput('waste-unit', 'waste-unit-other')">
+                            <option value="Tons">Tons</option><option value="Lbs">Lbs</option><option value="Cubic Yards">Cubic Yards</option><option value="Drums">Drums</option><option value="Supersacks">Supersacks</option>
+                            <option value="other">Other (Specify)</option>
+                        </select>
+                    </div>
+                    <input type="text" id="waste-unit-other" class="auto-save" placeholder="Specify unit..." style="display:none; margin-top:0.5rem;">
                 </div>
             </div>
             <div class="form-group">
                 <label>Intended Packaging</label>
-                <select id="pkg-type">
-                    <option value="drum">55-Gallon Drums</option>
-                    <option value="supersack">Super Sacks (FIBCs)</option>
-                    <option value="bulk">Bulk Roll-off Bin</option>
-                </select>
+                <div class="input-group" style="flex-direction: column;">
+                    <select id="pkg-type" class="auto-save" style="width:100%;" onchange="toggleOtherInput('pkg-type', 'pkg-type-other')">
+                        <option value="55-Gallon Drums">55-Gallon Drums</option>
+                        <option value="Super Sacks (FIBCs)">Super Sacks (FIBCs)</option>
+                        <option value="Bulk Roll-off Bin">Bulk Roll-off Bin</option>
+                        <option value="other">Other (Specify)</option>
+                    </select>
+                    <input type="text" id="pkg-type-other" class="auto-save" placeholder="Specify packaging..." style="display:none; margin-top:0.5rem;">
+                </div>
+            </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--border); margin-top: 1.5rem; padding-top: 1.5rem;">
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Operational Notes / Comments</label>
+                    <textarea id="profile-comments" class="auto-save" rows="4" placeholder="Enter context, physical description, anomalies, or staging location..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Photographic Evidence</label>
+                    <div style="margin-bottom: 0.5rem;">
+                        <label class="file-upload-btn">
+                            📷 Select Photos
+                            <input type="file" id="photo-upload" accept="image/*" multiple style="display: none;" onchange="handlePhotoUpload(event)">
+                        </label>
+                        <span style="font-size:0.8rem; color:var(--text-muted); margin-left:0.5rem;">Images automatically compressed.</span>
+                    </div>
+                    <div id="photo-gallery" class="photo-gallery"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -189,7 +240,7 @@
             <h2>2. Isotopic Profile <span class="tooltip" data-tip="Input values exactly as they appear on your lab report. The tool handles background subtraction and DOT fractional math automatically.">?</span></h2>
             <div class="form-group" style="width: 150px;">
                 <label style="color: var(--secondary);">Lab Report Units</label>
-                <select id="rad-unit" onchange="runCalcs()" style="font-weight: bold; border-color: var(--secondary);">
+                <select id="rad-unit" class="auto-save" onchange="runCalcs()" style="font-weight: bold; border-color: var(--secondary);">
                     <option value="pci">pCi/g</option>
                     <option value="bq">Bq/g</option>
                 </select>
@@ -199,10 +250,10 @@
         <h4 style="margin-top: 0; color: var(--navy); border-bottom: 1px solid var(--border); padding-bottom: 0.4rem;">Gamma Emitters (EPA 901.1)</h4>
         <div class="grid-rad-complex" style="border-bottom: 2px solid var(--navy); padding-bottom: 0.5rem; margin-bottom: 1rem;">
             <div class="rad-label-header" style="text-align: left;">Nuclide</div>
-            <div class="rad-label-header">Gross Result</div>
-            <div class="rad-label-header">Error (2σ)</div>
+            <div class="rad-label-header">Reported Result</div>
+            <div class="rad-label-header">Error <span style="text-transform: none;">(2&sigma;)</span></div>
             <div class="rad-label-header">MDC</div>
-            <div class="rad-label-header">Background</div>
+            <div class="rad-label-header">Bkgd (Opt.)</div>
             <div class="rad-label-header" style="color: var(--secondary);">Net Result</div>
         </div>
         <div id="gamma-rows-container"></div>
@@ -210,10 +261,10 @@
         <h4 style="margin-top: 2rem; color: var(--navy); border-bottom: 1px solid var(--border); padding-bottom: 0.4rem;">Hard-To-Detect (HTD) Alpha/Beta Emitters <span class="tooltip" data-tip="Optional. Only required if historical operations (like reactor servicing) indicate these specific isotopes may be present.">?</span></h4>
         <div class="grid-rad-complex" style="border-bottom: 2px solid var(--navy); padding-bottom: 0.5rem; margin-bottom: 1rem;">
             <div class="rad-label-header" style="text-align: left;">Nuclide</div>
-            <div class="rad-label-header">Gross Result</div>
-            <div class="rad-label-header">Error (2σ)</div>
+            <div class="rad-label-header">Reported Result</div>
+            <div class="rad-label-header">Error <span style="text-transform: none;">(2&sigma;)</span></div>
             <div class="rad-label-header">MDC</div>
-            <div class="rad-label-header">Background</div>
+            <div class="rad-label-header">Bkgd (Opt.)</div>
             <div class="rad-label-header" style="color: var(--secondary);">Net Result</div>
         </div>
         <div id="htd-rows-container"></div>
@@ -224,7 +275,7 @@
                 <span id="derived-readout">Waiting for input...</span>
             </div>
             <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 0.5rem;">
-                <span><strong>Gross Gamma Total (MILSPEC):</strong> <span id="gross-gamma">0.00</span> pCi/g</span>
+                <span><strong>Total Gamma Activity (MILSPEC):</strong> <span id="gross-gamma">0.00</span> pCi/g</span>
                 <span><strong>DOT Sum of Fractions:</strong> <span id="dot-sof">0.00</span></span>
             </div>
         </div>
@@ -246,7 +297,7 @@
             <div class="form-group" style="max-width: 400px;">
                 <label>Total PCBs <span class="tooltip" data-tip="Polychlorinated Biphenyls. Often found in legacy marine coatings. Levels ≥ 50 ppm trigger strict federal TSCA rules.">?</span></label>
                 <div class="input-group">
-                    <input type="number" id="tsca-pcb" placeholder="Result" step="0.1">
+                    <input type="number" id="tsca-pcb" class="auto-save" placeholder="Result" step="0.1">
                     <select disabled style="background: var(--surface);"><option>mg/kg (ppm)</option></select>
                 </div>
             </div>
@@ -269,7 +320,6 @@
 
         <div id="print-header">
             <h2>Waste Characterization Profile</h2>
-            <div id="print-expiration"></div>
             <p id="print-date" style="margin-top: -0.5rem; color: #555; font-size: 0.9rem; margin-bottom: 1.5rem;"></p>
             <div class="print-row"><span>Command / UIC:</span> <span id="print-cmd" style="font-weight: normal;"></span></div>
             <div class="print-row"><span>EPA ID:</span> <span id="print-epa" style="font-weight: normal;"></span></div>
@@ -278,7 +328,7 @@
             <div class="print-row"><span>Destination State:</span> <span id="print-dest" style="font-weight: normal;"></span></div>
             <div class="print-row"><span>Local POC:</span> <span id="print-poc" style="font-weight: normal;"></span></div>
             <div class="print-row" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed #ccc;">
-                <span>Authorized RSO Signature:</span> <span style="width: 300px; border-bottom: 1px solid #000;"></span>
+                <span>Authorized Env/RSO Signature:</span> <span style="width: 300px; border-bottom: 1px solid #000;"></span>
             </div>
         </div>
 
@@ -315,6 +365,16 @@
             <h3>Submitted Laboratory Data</h3>
             <div id="echo-table-container"></div>
         </div>
+        
+        <div id="print-extras">
+            <h3>Additional Operational Context</h3>
+            <div id="print-comment-target" class="print-comment-box"></div>
+            <div id="print-photo-target" class="print-photo-grid"></div>
+        </div>
+        
+        <div id="print-traceability-footer">
+            Official Characterization Generated via NORM ShipAssist v1.0 | DoN AlOx Media
+        </div>
 
         <div class="action-grid">
             <button class="btn-email" onclick="draftEmail()">✉️ Draft Email to RASO</button>
@@ -339,7 +399,46 @@
 </div>
 
 <script>
-    // Custom Modal System
+    // --- Progressive Web App (PWA) Install Logic ---
+    let deferredPrompt;
+    const installBtn = document.getElementById('btn-install');
+
+    // Inline Service Worker registration trick to satisfy PWA requirements
+    if ('serviceWorker' in navigator) {
+        const swCode = "self.addEventListener('fetch', function(event) {});";
+        const blob = new Blob([swCode], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(swUrl).catch(() => console.log("SW bypass limited in this environment."));
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.style.display = 'block';
+    });
+
+    function installApp() {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    installBtn.style.display = 'none';
+                }
+                deferredPrompt = null;
+            });
+        }
+    }
+
+    window.addEventListener('appinstalled', (evt) => {
+        installBtn.style.display = 'none';
+        deferredPrompt = null;
+    });
+    // -----------------------------------------------
+
+    // Precision Float Rounding Helper
+    const precisionRound = (num, decimals) => Math.round((num + Number.EPSILON) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+
+    // Dialogs
     function closeDialog() { document.getElementById('custom-dialog-overlay').classList.remove('active'); }
     function showConfirm(title, message, icon, onConfirm) {
         document.getElementById('dialog-title').innerText = title; document.getElementById('dialog-message').innerText = message; document.getElementById('dialog-icon').innerText = icon || "⚠️";
@@ -358,10 +457,78 @@
         document.getElementById('custom-dialog-overlay').classList.add('active');
     }
 
-    // Storage Functions
+    // Auto-Save Engine (Anti-Ragequit)
+    function autoSaveLocal() {
+        const inputs = document.querySelectorAll('.auto-save'); 
+        const state = { photos: photoArray }; 
+        inputs.forEach(i => state[i.id] = i.type === 'checkbox' ? i.checked : i.value);
+        localStorage.setItem('normShipAssistDraft', JSON.stringify(state));
+    }
+    
+    document.addEventListener('input', function(e) {
+        if(e.target.classList.contains('auto-save')) { autoSaveLocal(); }
+    });
+
+    window.addEventListener('load', function() {
+        const data = localStorage.getItem('normShipAssistDraft');
+        if(data) {
+            try {
+                const state = JSON.parse(data);
+                for (const id in state) { 
+                    if(id === 'photos') { photoArray = state.photos || []; renderPhotos(); continue; }
+                    const el = document.getElementById(id); 
+                    if (el) { if(el.type === 'checkbox') el.checked = state[id]; else el.value = state[id]; }
+                }
+                toggleOtherInput('waste-unit', 'waste-unit-other'); toggleOtherInput('pkg-type', 'pkg-type-other');
+                toggleStates(); runCalcs(); runChemCalcs();
+            } catch (err) { console.error("Error loading auto-save data."); }
+        }
+    });
+
+    function toggleOtherInput(selectId, otherId) {
+        const sel = document.getElementById(selectId);
+        const other = document.getElementById(otherId);
+        if(sel.value === 'other') { other.style.display = 'block'; other.focus(); } else { other.style.display = 'none'; }
+    }
+
+    let photoArray = [];
+    function handlePhotoUpload(event) {
+        const files = event.target.files;
+        if (!files) return;
+        for(let file of files) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800; let scaleSize = 1;
+                    if(img.width > MAX_WIDTH) { scaleSize = MAX_WIDTH / img.width; }
+                    canvas.width = img.width * scaleSize; canvas.height = img.height * scaleSize;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    photoArray.push(dataUrl); renderPhotos(); autoSaveLocal();
+                }
+                img.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+        event.target.value = '';
+    }
+    
+    function renderPhotos() {
+        const gal = document.getElementById('photo-gallery'); gal.innerHTML = '';
+        photoArray.forEach((src, idx) => {
+            gal.innerHTML += `<div class="photo-wrapper"><img src="${src}" class="photo-thumbnail"><button class="btn-remove-photo" onclick="removePhoto(${idx})" title="Remove Photo">&times;</button></div>`;
+        });
+    }
+    
+    function removePhoto(idx) { photoArray.splice(idx, 1); renderPhotos(); autoSaveLocal(); }
+
     function saveDraft() {
-        const inputs = document.querySelectorAll('input, select'); const state = {}; inputs.forEach(i => state[i.id] = i.type === 'checkbox' ? i.checked : i.value);
-        const blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        const inputs = document.querySelectorAll('.auto-save'); const state = { photos: photoArray }; 
+        inputs.forEach(i => state[i.id] = i.type === 'checkbox' ? i.checked : i.value);
+        const blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'}); 
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
         a.download = `NORM_Profile_${new Date().toISOString().split('T')[0]}.json`; a.click();
     }
     
@@ -370,47 +537,60 @@
         reader.onload = function(e) {
             try {
                 const state = JSON.parse(e.target.result);
-                for (const id in state) { const el = document.getElementById(id); if (el) { if(el.type === 'checkbox') el.checked = state[id]; else el.value = state[id]; } }
-                toggleStates(); runCalcs(); runChemCalcs();
-            } catch (err) { showAlert("File Error", "There was an error reading the JSON draft file.", "📂"); }
-        }; reader.readAsText(file);
+                for (const id in state) { 
+                    if(id === 'photos') { photoArray = state.photos || []; renderPhotos(); continue; }
+                    const el = document.getElementById(id); 
+                    if (el) { if(el.type === 'checkbox') el.checked = state[id]; else el.value = state[id]; }
+                }
+                toggleOtherInput('waste-unit', 'waste-unit-other'); toggleOtherInput('pkg-type', 'pkg-type-other');
+                toggleStates(); runCalcs(); runChemCalcs(); autoSaveLocal();
+            } catch (err) { showAlert("File Error", "There was an error reading the JSON draft file. It may be corrupted or incorrectly formatted.", "📂"); }
+        }; reader.readAsText(file); event.target.value = '';
     }
 
     function clearAllInputs() {
-        document.querySelectorAll('input').forEach(i => { if(i.type === 'checkbox') i.checked = false; else i.value = ''; });
+        document.querySelectorAll('input:not([type="file"]), textarea').forEach(i => { if(i.type === 'checkbox') i.checked = false; else i.value = ''; });
         document.getElementById('gen-state').value = 'federal'; document.getElementById('dest-state').value = 'federal'; document.getElementById('rad-unit').value = 'pci';
-        document.getElementById('classification-results').style.display = 'none'; document.querySelectorAll('.grid-rad-complex').forEach(el => el.style.background = '');
+        document.getElementById('waste-unit').value = 'Tons'; document.getElementById('pkg-type').value = '55-Gallon Drums';
+        toggleOtherInput('waste-unit', 'waste-unit-other'); toggleOtherInput('pkg-type', 'pkg-type-other');
+        
+        photoArray = []; renderPhotos();
+        document.getElementById('classification-results').style.display = 'none'; 
+        document.querySelectorAll('.grid-rad-complex').forEach(el => el.style.background = '');
         document.querySelectorAll('[id$="-net"]').forEach(el => el.innerText = '--');
+        
+        localStorage.removeItem('normShipAssistDraft');
     }
 
     function triggerReset() {
-        showConfirm("Reset Form", "Are you sure you want to clear all inputs and start a new profile?", "🗑️", () => {
-            clearAllInputs();
-            toggleStates(); runCalcs(); runChemCalcs();
+        showConfirm("Reset Form", "Are you sure you want to clear all inputs, photos, and start a new profile?", "🗑️", () => {
+            clearAllInputs(); toggleStates(); runCalcs(); runChemCalcs();
         });
     }
     
     function loadDemoData() {
         showConfirm("Randomize Demo Data", "This will overwrite your inputs with a randomly selected demo profile. Proceed?", "🎲", () => {
             clearAllInputs();
-            
             const scenarios = [
                 {
                     name: "Nightmare Scenario (Mixed Waste + Traps)",
-                    cmd: "Naval Base San Diego", uic: "N00245", epa: "CA1234567890", qty: "12", gen: "ca", dest: "ut",
+                    cmd: "Naval Base San Diego", uic: "N00245", epa: "CA1234567890", qty: "12", unit: "Drums", pkg: "55-Gallon Drums", gen: "ca", dest: "ut",
+                    note: "Drums were staged outside for 3 months. Suspect Radon outgassing due to degraded seals.",
                     rads: { 'bi214': {g: 6.5, m: 0.5, e: 0.8, b: 1.1}, 'ra226': {g: 8.2, m: 6.0, e: 9.5, b: 0}, 'co60': {g: 0.85, m: 0.1, e: 0.15, b: 0.05} },
                     metals: { 'pb': {v: 150, u: 'total'}, 'cr': {v: 2.1, u: 'leachable'} }
                 },
                 {
                     name: "Moderate Headache (State NORM + Wa EC%)",
-                    cmd: "PSNS & IMF", uic: "N00251", epa: "WA9876543210", qty: "40", gen: "wa", dest: "id",
-                    rads: { 'bi214': {g: 8.5, m: 0.5, e: 1.2, b: 1.5}, 'k40': {g: 15.0, m: 1.0, e: 2.0, b: 12.0} },
+                    cmd: "PSNS & IMF", uic: "N00251", epa: "WA9876543210", qty: "40", unit: "Tons", pkg: "Bulk Roll-off Bin", gen: "wa", dest: "id",
+                    note: "Abrasive blast media from drydock 4. Heavy metal grit observed.",
+                    rads: { 'bi214': {g: 8.5, m: 0.5, e: 1.2, b: 1.5}, 'pb214': {g: 3.5, m: 0.5, e: 0.5, b: 0.5}, 'k40': {g: 15.0, m: 1.0, e: 2.0, b: 12.0} }, 
                     metals: { 'cu': {v: 2500, u: 'total'}, 'zn': {v: 3000, u: 'total'} }
                 },
                 {
                     name: "Clean Sweep (Exempt / Non-Hazardous)",
-                    cmd: "Norfolk Naval Shipyard", uic: "N00181", epa: "VA0000000000", qty: "120", gen: "va", dest: "federal",
-                    rads: { 'bi214': {g: 1.2, m: 0.5, e: 0.3, b: 1.5}, 'ra226': {g: 1.1, m: 0.6, e: 0.3, b: 1.4} },
+                    cmd: "Norfolk Naval Shipyard", uic: "N00181", epa: "VA0000000000", qty: "120", unit: "Supersacks", pkg: "Super Sacks (FIBCs)", gen: "va", dest: "federal",
+                    note: "Clean blast media. No anomalies.",
+                    rads: { 'bi214': {g: 1.2, m: 0.5, e: 0.3, b: 1.5}, 'ra226': {g: 1.1, m: 0.6, e: 0.3, b: 1.4}, 'th234': {g: -0.15, m: 0.5, e: 0.4, b: 0} }, 
                     metals: { 'pb': {v: 15, u: 'total'}, 'cr': {v: 10, u: 'total'} }
                 }
             ];
@@ -422,6 +602,8 @@
             document.getElementById('cmd-name').value = pick.cmd; document.getElementById('cmd-uic').value = pick.uic;
             document.getElementById('epa-id').value = pick.epa; document.getElementById('cmd-poc').value = "Jane Doe, Env Tech";
             document.getElementById('waste-qty').value = pick.qty;
+            document.getElementById('waste-unit').value = pick.unit; document.getElementById('pkg-type').value = pick.pkg;
+            document.getElementById('profile-comments').value = pick.note;
             document.getElementById('gen-state').value = pick.gen; document.getElementById('dest-state').value = pick.dest;
             toggleStates();
             
@@ -433,7 +615,7 @@
                 document.getElementById(`metal-val-${id}`).value = vals.v; document.getElementById(`metal-unit-${id}`).value = vals.u;
             }
             
-            runCalcs(); runChemCalcs();
+            runCalcs(); runChemCalcs(); autoSaveLocal();
         });
     }
 
@@ -446,14 +628,10 @@
     if (prefersDark.matches) toggleTheme();
 
     function toggleStates() {
-        const dest = document.getElementById('dest-state').value;
-        const gen = document.getElementById('gen-state').value;
+        const dest = document.getElementById('dest-state').value; const gen = document.getElementById('gen-state').value;
         const wrapper = document.getElementById('metals-card-wrapper');
-        
-        // Ensure state-metals class activates for any strict state
         const isStateRegulated = ['ca', 'wa', 'tx', 'me'].includes(dest) || ['ca', 'wa', 'tx', 'me'].includes(gen);
         wrapper.classList.toggle('state-active', isStateRegulated);
-        
         wrapper.classList.toggle('wa-active', dest === 'wa' || gen === 'wa');
         runChemCalcs();
     }
@@ -486,10 +664,10 @@
         array.forEach(l => {
             container.innerHTML += `<div class="grid-rad-complex" id="row-${l.id}">
                 <div style="font-size: 0.85rem; font-weight: 500;">${l.name} <span class="tooltip" data-tip="${l.tip}">?</span></div>
-                <input type="number" id="rad-${l.id}-g" placeholder="0.00" oninput="runCalcs()">
-                <input type="number" id="rad-${l.id}-e" placeholder="±" oninput="runCalcs()">
-                <input type="number" id="rad-${l.id}-m" placeholder="MDC" oninput="runCalcs()">
-                <input type="number" id="rad-${l.id}-b" placeholder="0.00" oninput="runCalcs()">
+                <input type="number" id="rad-${l.id}-g" class="auto-save" placeholder="0.00" oninput="runCalcs()">
+                <input type="number" id="rad-${l.id}-e" class="auto-save" placeholder="±" oninput="runCalcs()">
+                <input type="number" id="rad-${l.id}-m" class="auto-save" placeholder="MDC" oninput="runCalcs()">
+                <input type="number" id="rad-${l.id}-b" class="auto-save" placeholder="0.00" oninput="runCalcs()">
                 <div id="rad-${l.id}-net" style="font-weight: bold; color: var(--secondary); text-align: center;">--</div>
             </div>`;
         });
@@ -513,8 +691,8 @@
     metalLimits.forEach(m => {
         mContainer.innerHTML += `<div class="form-group ${!m.isRcra ? 'state-metal' : ''}">
             <label>${m.name}</label><div class="input-group">
-            <input type="number" id="metal-val-${m.id}" placeholder="Result" oninput="runChemCalcs()">
-            <select id="metal-unit-${m.id}" onchange="runChemCalcs()"><option value="total">mg/kg</option><option value="leachable">mg/L</option></select>
+            <input type="number" id="metal-val-${m.id}" class="auto-save" placeholder="Result" oninput="runChemCalcs()">
+            <select id="metal-unit-${m.id}" class="auto-save" onchange="runChemCalcs()"><option value="total">mg/kg</option><option value="leachable">mg/L</option></select>
             </div></div>`;
     });
 
@@ -526,7 +704,7 @@
         q_lab: { icon: "🧪", title: "Analytical Lab Results", desc: "Do you have formal lab results?", context: "Process knowledge is generally not sufficient.", btnYes: "Yes", nextYes: "q_bkg", btnNo: "No", nextNo: "end_no_lab" },
         q_bkg: { icon: "🏞️", title: "Radiological Background", desc: "Are levels statistically elevated above native background?", context: "If it matches native dirt, it's standard waste.", btnYes: "Yes", nextYes: "q_raso", btnNo: "No", nextNo: "q_state_loc" },
         q_raso: { icon: "📞", title: "RASO Notification", desc: "Have you formally notified NAVSEA RASO?", context: "ANY material exhibiting radioactivity above background requires RASO determination.", btnYes: "Yes", nextYes: "q_milspec", btnNo: "No", nextNo: "end_raso" },
-        q_milspec: { icon: "📋", title: "Historic MILSPEC Check", desc: "Does Gross Gamma Activity exceed 20.0 pCi/g?", context: "Historically, MIL-A-22262B provided guidance limiting blast media to 20 pCi/g.", btnYes: "Yes, >20", nextYes: "q_state_strict", btnNo: "No, <20", nextNo: "q_state_strict" },
+        q_milspec: { icon: "📋", title: "Historic MILSPEC Check", desc: "Does Total Gamma Activity exceed 20.0 pCi/g?", context: "Historically, MIL-A-22262B provided guidance limiting blast media to 20 pCi/g.", btnYes: "Yes, >20", nextYes: "q_state_strict", btnNo: "No, <20", nextNo: "q_state_strict" },
         q_state_strict: { icon: "🗺️", title: "Strict State NORM (>5 pCi/g)", desc: "Does Net Radium exceed 5 pCi/g?", context: "Triggers regulated NORM disposal in strict states.", btnYes: "Yes", nextYes: "q_state_std", btnNo: "No", nextNo: "q_state_loc" },
         q_state_std: { icon: "🗺️", title: "Standard State NORM (>30 pCi/g)", desc: "Does Net Radium exceed 30 pCi/g?", context: "Universally regulated as radioactive waste.", btnYes: "Yes", nextYes: "q_uqsm", btnNo: "No", nextNo: "q_state_loc" },
         q_uqsm: { icon: "⚖️", title: "Source Material (UQSM)", desc: "Does the combination of Uranium and Thorium exceed 0.05% by weight?", context: "Crossing these limits voids NRC 10 CFR 40.13 exemption.", btnYes: "Yes", nextYes: "q_dot", btnNo: "No", nextNo: "q_dot" },
@@ -543,27 +721,18 @@
 
     let currentWizStep = 'start';
 
-    function openWizard() { 
-        wizardLog = []; 
-        document.getElementById('wizard-modal').classList.add('active'); 
-        renderWizardStep('start'); 
-    }
+    function openWizard() { wizardLog = []; document.getElementById('wizard-modal').classList.add('active'); renderWizardStep('start'); }
     function closeWizard() { document.getElementById('wizard-modal').classList.remove('active'); }
     
     function renderWizardStep(stepId, prevAnswer) {
-        if(prevAnswer) {
-            wizardLog.push({ q: wizardTree[currentWizStep].title + " - " + wizardTree[currentWizStep].desc, a: prevAnswer });
-        }
-        currentWizStep = stepId;
-        const step = wizardTree[stepId];
+        if(prevAnswer) { wizardLog.push({ q: wizardTree[currentWizStep].title + " - " + wizardTree[currentWizStep].desc, a: prevAnswer }); }
+        currentWizStep = stepId; const step = wizardTree[stepId];
         
         let html = `<div class="wizard-icon">${step.icon||'🧭'}</div><div class="wizard-title">${step.title}</div>${step.desc?`<div class="wizard-desc">${step.desc}</div>`:''}${step.context?`<div class="wizard-context"><strong>Context:</strong> ${step.context}</div>`:''}`;
         
         if (step.isEnd) {
             html += `<div class="wizard-buttons"><button class="btn-yes" onclick="closeWizard()">Return to Form</button>`;
-            if (step.isKickout) {
-                html += `<button class="btn-log" onclick="exportWizardLog()">📄 Export Wizard Log (.txt)</button>`;
-            }
+            if (step.isKickout) { html += `<button class="btn-log" onclick="exportWizardLog()">📄 Export Wizard Log (.txt)</button>`; }
             html += `</div>`;
         } else {
             html += `<div class="wizard-buttons">
@@ -584,8 +753,7 @@
     }
 
     function runChemCalcs() {
-        const dest = document.getElementById('dest-state').value;
-        const gen = document.getElementById('gen-state').value;
+        const dest = document.getElementById('dest-state').value; const gen = document.getElementById('gen-state').value;
         if (dest !== 'wa' && gen !== 'wa') return;
         let ec = 0;
         metalLimits.forEach(m => {
@@ -600,7 +768,9 @@
 
     function runCalcs() {
         let grossGamma = 0; let sof = 0; let detectedAny = false;
-        let ra226_derived = 0; let ra228_derived = 0; let u238_derived = 0; let th232_derived = 0; let radHTML = "";
+        let ra226_derived = 0; let ra228_derived = 0; let u238_derived = 0; let th232_derived = 0; 
+        let pb214_net = 0; let bi214_net = 0;
+        let radHTML = ""; let backendWarnings = [];
         
         const uMult = document.getElementById('rad-unit').value === 'bq' ? 27.027 : 1;
         const uLbl = document.getElementById('rad-unit').value === 'bq' ? 'Bq/g' : 'pCi/g';
@@ -610,25 +780,28 @@
             const g_raw = parseFloat(document.getElementById(`rad-${l.id}-g`).value); const e_raw = parseFloat(document.getElementById(`rad-${l.id}-e`).value) || 0;
             const m_raw = parseFloat(document.getElementById(`rad-${l.id}-m`).value) || 0; const b_raw = parseFloat(document.getElementById(`rad-${l.id}-b`).value) || 0;
             
-            const rowEl = document.getElementById(`row-${l.id}`);
-            const netEl = document.getElementById(`rad-${l.id}-net`);
+            const rowEl = document.getElementById(`row-${l.id}`); const netEl = document.getElementById(`rad-${l.id}-net`);
             
             if (isNaN(g_raw)) {
-                if (rowEl) rowEl.style.background = '';
-                if (netEl) netEl.innerText = '--';
+                if (rowEl) rowEl.style.background = ''; if (netEl) netEl.innerText = '--';
                 return;
             }
 
             const g = g_raw * uMult; const e = e_raw * uMult; const m = m_raw * uMult; const b = b_raw * uMult;
 
-            if (gammaLines.some(gl => gl.id === l.id)) grossGamma += g;
+            if (l.id === 'k40' && b > (g * 1.5) && g > 0) {
+                backendWarnings.push(`⚠️ MATRIX WARNING: K-40 Background is significantly higher than Reported Result. Ensure the lab utilized a background matrix with a density matching the abrasive media.`);
+            }
+
+            // Anti-Negative Math Clamp
+            if (gammaLines.some(gl => gl.id === l.id)) grossGamma += Math.max(0, g);
 
             let sTxt = "⚪ Below MDC"; let sCol = "var(--text-muted)"; let net = 0;
             let displayNet = "ND";
 
             if (g > m) {
                 net = Math.max(0, g - b); 
-                sof += (net / l.dot);
+                sof += precisionRound((net / l.dot), 6);
                 displayNet = net.toFixed(2);
                 if (net > 0) detectedAny = true;
                 
@@ -640,7 +813,8 @@
                     if (rowEl) rowEl.style.background = 'rgba(5, 150, 105, 0.1)'; 
                 }
                 
-                if (l.id === 'bi214') ra226_derived = net; 
+                if (l.id === 'bi214') { ra226_derived = net; bi214_net = net; }
+                if (l.id === 'pb214') { pb214_net = net; }
                 if (l.id === 'ac228') ra228_derived = net; 
                 if (l.id === 'th234') u238_derived = net;
                 if (l.id === 'th232') th232_derived = net; 
@@ -648,25 +822,25 @@
                 if (rowEl) rowEl.style.background = '';
             }
             
-            if (netEl) {
-                netEl.innerText = displayNet;
-                netEl.style.color = (displayNet === "ND") ? "var(--text-muted)" : "var(--secondary)";
-            }
+            if (netEl) { netEl.innerText = displayNet; netEl.style.color = (displayNet === "ND") ? "var(--text-muted)" : "var(--secondary)"; }
 
             let mdcTrapHtml = "";
-            if (l.id === 'ra226' && m > 5.0) {
-                mdcTrapHtml = `<br><span style="color: var(--alert); font-weight: bold; font-size: 0.8rem;">🛑 MDC TRAP: Lab MDC (${m.toFixed(2)}) is too high to legally prove compliance with strict state NORM limits (<5.0 pCi/g).</span>`;
-            }
+            if (l.id === 'ra226' && m > 5.0) { mdcTrapHtml = `<br><span style="color: var(--alert); font-weight: bold; font-size: 0.8rem;">🛑 MDC TRAP: Lab MDC (${m.toFixed(2)}) is too high to legally prove compliance with strict state NORM limits (<5.0 pCi/g).</span>`; }
 
             radHTML += `<li><strong>${l.name}:</strong> ${g_raw.toFixed(2)} ± ${e_raw.toFixed(2)} ${uLbl} <span style="color: ${sCol}; font-size: 0.85rem; font-weight: bold;">(${sTxt})</span>${mdcTrapHtml}</li>`;
         });
         
+        if (pb214_net > 0 && bi214_net > 0) {
+            const eqRatio = Math.abs(pb214_net - bi214_net) / Math.max(pb214_net, bi214_net);
+            if (eqRatio > 0.25) { backendWarnings.push(`⚠️ EQUILIBRIUM WARNING: Pb-214 and Bi-214 differ by >25%. Radon-222 outgassing likely occurred during storage. Ra-226 surrogate estimate may be biased.`); }
+        }
+
         if (radHTML === "") radHTML = "<li>No radiological data entered.</li>";
         
-        document.getElementById('gross-gamma').innerText = grossGamma.toFixed(2); document.getElementById('dot-sof').innerText = sof.toFixed(3);
+        document.getElementById('gross-gamma').innerText = grossGamma.toFixed(2); document.getElementById('dot-sof').innerText = precisionRound(sof, 3).toFixed(3);
         document.getElementById('dot-sof').style.color = sof >= 1 ? 'var(--alert)' : 'inherit';
         document.getElementById('derived-readout').innerText = `Ra-226: ${ra226_derived.toFixed(2)} pCi/g | Ra-228: ${ra228_derived.toFixed(2)} pCi/g | U-238: ${u238_derived.toFixed(2)} pCi/g`;
-        return { grossGamma, sof, detectedAny, ra226_derived, ra228_derived, u238_derived, th232_derived, radHTML };
+        return { grossGamma, sof, detectedAny, ra226_derived, ra228_derived, u238_derived, th232_derived, radHTML, backendWarnings };
     }
 
     let emailProfile = { status: "", uic: "", dotClass: "", rcraStatus: "" };
@@ -676,11 +850,16 @@
         const cmdName = document.getElementById('cmd-name').value.trim() || "Not Provided";
         const uic = document.getElementById('cmd-uic').value.trim();
         const epaId = document.getElementById('epa-id').value.trim();
-        const pkgType = document.getElementById('pkg-type'); const pkgText = pkgType.options[pkgType.selectedIndex].text;
-        const qty = document.getElementById('waste-qty').value.trim() || "0"; const unit = document.getElementById('waste-unit').value;
+        const qty = document.getElementById('waste-qty').value.trim() || "0";
         const poc = document.getElementById('cmd-poc').value.trim() || "Not Provided";
         const pcb = parseFloat(document.getElementById('tsca-pcb').value) || 0;
         const labDateVal = document.getElementById('lab-date').value;
+        const comments = document.getElementById('profile-comments').value.trim();
+        
+        const unitSel = document.getElementById('waste-unit');
+        const unit = unitSel.value === 'other' ? (document.getElementById('waste-unit-other').value || 'Unknown Unit') : unitSel.value;
+        const pkgSel = document.getElementById('pkg-type');
+        const pkgText = pkgSel.value === 'other' ? (document.getElementById('pkg-type-other').value || 'Unknown Packaging') : pkgSel.options[pkgSel.selectedIndex].text;
         
         const isDoD = uic.length > 0; const dest = document.getElementById('dest-state').value;
         const gen = document.getElementById('gen-state').value;
@@ -690,14 +869,11 @@
         const isTx = dest === 'tx' || gen === 'tx';
         emailProfile.uic = uic;
 
-        document.getElementById('print-expiration').style.display = 'none';
         let dateHtml = `Generated on ${new Date().toLocaleDateString()}`;
         if (labDateVal) {
             let exp = new Date(labDateVal); exp.setFullYear(exp.getFullYear() + 1);
             let expStr = exp.toLocaleDateString();
             dateHtml += `<br><strong style="color:var(--alert)">PROFILE EXPIRES ON: ${expStr}</strong>`;
-            document.getElementById('print-expiration').innerText = `EXPIRES: ${expStr}`;
-            document.getElementById('print-expiration').style.display = 'inline-block';
         } else {
             dateHtml += `<br><strong style="color:var(--warning)">⚠️ WARNING: No Lab Analysis Date Provided. Profile validity unverified.</strong>`;
         }
@@ -724,10 +900,19 @@
         if(pcb) echoHTML += `<tr><td>Total PCBs</td><td>${pcb}</td><td>mg/kg</td></tr>`;
         echoHTML += `</table>`;
         document.getElementById('echo-table-container').innerHTML = echoHTML;
+        
+        const extrasSection = document.getElementById('print-extras');
+        if (comments || photoArray.length > 0) {
+            extrasSection.style.display = 'block';
+            document.getElementById('print-comment-target').innerHTML = comments ? `<strong>Operational Notes:</strong><br>${comments.replace(/\n/g, '<br>')}` : '<em>No operational notes provided.</em>';
+            
+            const pGrid = document.getElementById('print-photo-target'); pGrid.innerHTML = '';
+            if(photoArray.length > 0) { photoArray.forEach(src => { pGrid.innerHTML += `<img src="${src}" alt="Operational Photo">`; }); }
+        } else { extrasSection.style.display = 'none'; }
 
         const milspecEl = document.getElementById('milspec-status');
-        if (d.grossGamma > 20.0) milspecEl.innerHTML = `⚠️ <span style="color: var(--warning);"><strong>ELEVATED NORM:</strong></span> Gross Gamma (${d.grossGamma.toFixed(2)} pCi/g) exceeds historic MILSPEC guidance.`;
-        else milspecEl.innerHTML = `✅ <span style="color: var(--primary);"><strong>BASELINE:</strong></span> Gross Gamma is consistent with historic MILSPEC guidance.`;
+        if (d.grossGamma > 20.0) milspecEl.innerHTML = `⚠️ <span style="color: var(--warning);"><strong>ELEVATED NORM:</strong></span> Total Gamma (${d.grossGamma.toFixed(2)} pCi/g) exceeds historic MILSPEC guidance.`;
+        else milspecEl.innerHTML = `✅ <span style="color: var(--primary);"><strong>BASELINE:</strong></span> Total Gamma is consistent with historic MILSPEC guidance.`;
 
         const uqsmEl = document.getElementById('uqsm-status');
         const uqsmRatio = (d.u238_derived / 166.5) + (d.th232_derived / 54.5);
@@ -747,7 +932,7 @@
             dotClass = `UN2912 - Radioactive Material, LSA-I (SOF: ${d.sof.toFixed(2)})`; isRadioactive = true;
             forms.push("NRC Form 540/541", "DOT Hazmat Shipping Papers", "Emergency Response Guide (ERG) 162");
             actions.push("Ensure driver holds Hazmat endorsement", "Vehicle must be placarded 'RADIOACTIVE'", "Ensure radioactivity is 'essentially uniformly distributed' as required for LSA-I (49 CFR 173.403).");
-            if (pkgType.value === 'supersack') { actions.push("LSA-I in Supersacks MUST be shipped as 'Exclusive Use' (49 CFR 173.427)."); forms.push("Exclusive Use Instructions to Driver"); }
+            if (pkgSel.value === 'supersack' || pkgText.toLowerCase().includes('sack')) { actions.push("LSA-I in Supersacks MUST be shipped as 'Exclusive Use' (49 CFR 173.427)."); forms.push("Exclusive Use Instructions to Driver"); }
         } else if (totalRadium >= 30) { dotClass = "State-Regulated NORM (>30 pCi/g)"; isRadioactive = true; actions.push("Check destination state NORM threshold limits (universally regulated at this level).");
         } else if (totalRadium >= 5) { dotClass = "State-Regulated NORM (5 - 30 pCi/g)"; isRadioactive = true; actions.push("Check destination state NORM limits (regulated in strict states)."); }
 
@@ -757,6 +942,8 @@
         
         let ecPercent = parseFloat(document.getElementById('wa-ec-val').innerText) || 0;
         if (isWa && ecPercent >= 0.001) { isWaHaz = true; waFails.push(`WA Book Designation FAIL - Calculated EC: ${ecPercent.toFixed(5)}% (≥ 0.001% limit). Assign Code: ${ecPercent >= 1.0 ? "WT01" : "WT02"}.`); }
+
+        warnings.push(...d.backendWarnings);
 
         metalLimits.forEach(metal => {
             if (!isCa && !isWa && !isTx && !metal.isRcra) return; 
@@ -829,6 +1016,12 @@
             actions.push(`⚠️ DESTINATION WAC: Verify profile against ${fac} Waste Acceptance Criteria.`);
         }
 
+        if (actions.length === 0) {
+            actions.push("✅ CLEAR FOR STANDARD DISPOSAL: Profile indicates Exempt / Non-Hazardous Solid Waste.");
+            actions.push("Dispose of via standard industrial or municipal solid waste streams in accordance with local facility policy.");
+            actions.push("Retain a copy of this characterization profile and supporting laboratory data in environmental records.");
+        }
+
         document.getElementById('dot-class').innerText = dotClass; document.getElementById('raso-status').innerText = requiresRaso ? "⚠ NAVSEA RASO CLEARANCE REQUIRED" : ""; document.getElementById('rcra-status').innerText = rcraStatus;
         if(pendingTCLP) document.getElementById('rcra-status').style.color = "var(--alert)"; else document.getElementById('rcra-status').style.color = "inherit";
         
@@ -879,7 +1072,7 @@
         csv += `Generator State,${document.getElementById('gen-state').options[document.getElementById('gen-state').selectedIndex].text}\n`;
         csv += `Destination State,${document.getElementById('dest-state').options[document.getElementById('dest-state').selectedIndex].text}\n\n`;
         csv += `FINAL STATUS,${emailProfile.status}\nDOT Class,${emailProfile.dotClass}\nRCRA/Chem Status,${emailProfile.rcraStatus}\n\n`;
-        csv += "RADIOLOGICAL DATA\nIsotope,Gross,Error,MDC,Bkg\n";
+        csv += "RADIOLOGICAL DATA\nIsotope,Reported Result,Error,MDC,Bkg\n";
         const allLines = gammaLines.concat(htdLines);
         allLines.forEach(l => { const g = document.getElementById(`rad-${l.id}-g`).value; if(g) csv += `${l.name},${g},${document.getElementById(`rad-${l.id}-e`).value},${document.getElementById(`rad-${l.id}-m`).value},${document.getElementById(`rad-${l.id}-b`).value}\n`; });
         csv += "\nCHEMICAL DATA\nAnalyte,Result,Unit\n";
