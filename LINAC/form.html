@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NPS LINAC Survey - Smart Field Data Form</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #f1f5f9;
+            margin: 0;
+            padding: 20px;
+            color: #333333;
+        }
+        .page-container {
+            background-color: #ffffff;
+            max-width: 900px;
+            margin: 0 auto 20px auto;
+            padding: 40px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        h2, h3 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 4px;
+        }
+        
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-weight: bold;
+            gap: 20px;
+        }
+        .header-block-left { flex-grow: 1; }
+        .header-block-right { width: 380px; }
+        .header-row { display: flex; align-items: center; margin-bottom: 6px; }
+        .header-row span { width: 80px; }
+        .header-split { display: flex; gap: 15px; }
+        .header-split-item { display: flex; align-items: center; flex: 1; }
+        .header-split-item span { width: 80px; text-align: right; padding-right: 10px; }
+        .header-split-item.left span { text-align: left; padding-right: 0; }
+
+        .table-container {
+            margin-bottom: 25px;
+            border-radius: 6px;
+            overflow-x: auto; 
+            -webkit-overflow-scrolling: touch;
+            border: 1px solid #9ca3af;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 650px; 
+        }
+        th {
+            background-color: #2c3e50 !important;
+            color: #ffffff !important;
+            text-align: center;
+            font-weight: 600;
+            padding: 10px;
+            font-size: 13px;
+        }
+        td {
+            padding: 6px 8px; 
+            border-bottom: 1px solid #9ca3af;
+            border-right: 1px solid #9ca3af;
+            font-size: 13px;
+            text-align: center;
+        }
+        td:last-child { border-right: none; }
+        td.left-align { text-align: left; }
+        
+        tr:nth-of-type(even) { background-color: #f8f9fa !important; }
+        .highlight-row { background-color: #fffbdd !important; }
+        .summary-row { background-color: #e2e8f0 !important; font-weight: bold; }
+        
+        .toolbar {
+            position: sticky;
+            top: 10px;
+            background: #1e293b;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            margin: 0 auto 20px auto;
+            max-width: 900px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            z-index: 1000;
+        }
+        .toolbar button {
+            background: #ffffff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #1e293b;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .toolbar button:hover { background: #cbd5e1; }
+        .toolbar button.danger { background: #fee2e2; color: #991b1b; }
+        .toolbar button.danger:hover { background: #fca5a5; }
+        .toolbar button.demo { background: #fef08a; color: #854d0e; }
+        .toolbar button.demo:hover { background: #fde047; }
+        
+        .autosave-status {
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+            min-width: 130px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            border: 1px solid transparent;
+            background: transparent;
+            font-family: inherit;
+            font-size: inherit;
+            text-align: center;
+            padding: 4px;
+            box-sizing: border-box;
+            border-bottom: 1px solid #cbd5e1;
+            transition: background 0.2s;
+        }
+        input.left-align { text-align: left; }
+        input:focus {
+            background-color: #dcfce7;
+            border-bottom: 2px solid #16a34a;
+            outline: none;
+        }
+        .readonly-calc { font-weight: bold; color: #0284c7; }
+        .pass-text { color: #16a34a !important; font-weight: bold; }
+        .fail-text { color: #dc2626 !important; font-weight: bold; }
+
+        .field-notes-box, .remarks-box {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 10px;
+            box-sizing: border-box; 
+            font-family: inherit;
+            font-size: 13px;
+            outline: none;
+            background: transparent;
+        }
+        .field-notes-box { min-height: 80px; margin-bottom: 20px; }
+        .remarks-box { min-height: 120px; margin-top: 10px; }
+        .field-notes-box:focus, .remarks-box:focus { background-color: #f8fafc; border-color: #16a34a; }
+        
+        .sketch-area {
+            height: 700px;
+            border: 2px solid #94a3b8;
+            border-radius: 6px;
+            background-color: #ffffff !important;
+            background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 20 0 L 0 0 0 20' fill='none' stroke='%23e2e8f0' stroke-width='1'/%3E%3C/svg%3E") !important;
+            margin-top: 15px;
+        }
+
+        .sig-container {
+            display: flex; 
+            justify-content: space-between; 
+            margin-top: 60px; 
+            font-weight: bold;
+            gap: 20px;
+        }
+        .sig-block {
+            flex: 1; 
+            border-top: 1px solid #333; 
+            padding-top: 5px;
+            text-align: center;
+        }
+
+        /* ----- MOBILE RESPONSIVE STYLES ----- */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .page-container { padding: 20px 15px; margin-bottom: 15px; }
+            
+            .header-info { flex-direction: column; gap: 10px; margin-bottom: 20px; }
+            .header-block-left, .header-block-right { width: 100% !important; margin-right: 0 !important; }
+            .header-split { flex-direction: column; gap: 10px; }
+            .header-split-item span { text-align: left; padding-right: 0; }
+            
+            input[type="text"] { padding: 8px 4px; font-size: 16px; }
+            td, th { padding: 10px 6px; font-size: 14px; }
+            
+            .toolbar { padding: 10px; top: 0; border-radius: 4px; justify-content: space-between; }
+            .toolbar button { flex: 1 1 calc(50% - 10px); padding: 12px 8px; font-size: 14px; justify-content: center; }
+            .autosave-status { width: 100%; text-align: center; margin: 0; }
+            
+            .sig-container { flex-direction: column; gap: 40px; margin-top: 40px; }
+            .sketch-area { height: 400px; }
+        }
+
+        /* ----- PRINT STYLES ----- */
+        @media print {
+            body { background-color: #ffffff; padding: 0; }
+            .no-print { display: none !important; }
+            .page-container { box-shadow: none; padding: 0; margin: 0; max-width: 100%; page-break-after: always; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+            .table-container { border: 1.5px solid #333333 !important; overflow: visible !important; }
+            table { min-width: 100% !important; }
+            td, th { border-bottom: 1px solid #333333 !important; border-right: 1px solid #333333 !important; }
+            input { border-bottom: 1px solid #333 !important; }
+            input::placeholder { color: transparent !important; } 
+            .field-notes-box, .remarks-box { border: 1px solid #333333 !important; }
+            .readonly-calc { color: #000 !important; }
+            .fail-text { color: #dc2626 !important; }
+            .no-break { page-break-inside: avoid !important; break-inside: avoid !important; }
+            tr { page-break-inside: avoid !important; }
+            .header-info { flex-direction: row !important; } 
+            .sig-container { flex-direction: row !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toolbar no-print">
+        <button onclick="exportToFile()">⬇️ Save to File</button>
+        <button onclick="document.getElementById('file-upload').click()">⬆️ Load from File</button>
+        <input type="file" id="file-upload" accept=".json" style="display:none" onchange="importFromFile(event)">
+        
+        <button class="demo" onclick="populateDemoData()">🎲 Demo Data</button>
+        <button class="danger" onclick="resetData()">⚠️ Clear Form</button>
+        <div class="autosave-status" id="autosave-indicator">Waiting...</div>
+    </div>
+
+    <div class="page-container">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="border: none; margin: 0;">NPS LINAC PRIMARY CLEARANCE SURVEY</h2>
+            <div style="font-size: 14px; color: #64748b;">Automated Field Data Log</div>
+        </div>
+
+        <div class="header-info">
+            <div class="header-block-left">
+                <div class="header-row">
+                    <span>Surveyor(s):</span>
+                    <input type="text" class="left-align saveable-input" value="Joseph Donakowski, CHP" style="flex-grow: 1;">
+                </div>
+                <div class="header-row">
+                    <span></span>
+                    <input type="text" class="left-align saveable-input" value="Asfaw Fenta" placeholder="Additional Surveyor" style="flex-grow: 1;">
+                </div>
+            </div>
+            <div class="header-block-right">
+                <div class="header-row">
+                    <span>Date:</span> 
+                    <input type="text" id="form-date" class="saveable-input calc-trigger" style="flex-grow: 1;">
+                </div>
+                <div class="header-split">
+                    <div class="header-split-item left">
+                        <span>Start Time:</span> 
+                        <input type="text" id="form-start" class="saveable-input" style="flex-grow: 1;">
+                    </div>
+                    <div class="header-split-item">
+                        <span>End Time:</span> 
+                        <input type="text" id="form-end" class="saveable-input" style="flex-grow: 1;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="no-break">
+            <h3>1. Setup & Instrumentation</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Instrument Type</th>
+                            <th>Model / Serial #</th>
+                            <th>Probe Model / Serial #</th>
+                            <th>Cal Due Date</th>
+                            <th>Daily Src Check Pass?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Gross Gamma</td>
+                            <td><input type="text" class="saveable-input demo-inst-m" placeholder="Ludlum 2350-1 /"></td>
+                            <td><input type="text" class="saveable-input demo-inst-p" placeholder="Ludlum 44-10 /"></td>
+                            <td><input type="text" class="saveable-input demo-inst-cal"></td>
+                            <td><input type="text" placeholder="Y / N" class="saveable-input demo-inst-src calc-trigger"></td>
+                        </tr>
+                        <tr>
+                            <td>Ambient Dose Rate</td>
+                            <td><input type="text" class="saveable-input demo-inst-m" placeholder="RadEye G20 /"></td>
+                            <td>N/A</td>
+                            <td><input type="text" class="saveable-input demo-inst-cal"></td>
+                            <td><input type="text" placeholder="Y / N" class="saveable-input demo-inst-src calc-trigger"></td>
+                        </tr>
+                        <tr>
+                            <td>Spectrometer</td>
+                            <td><input type="text" class="saveable-input demo-inst-m" placeholder="IdentiFINDER /"></td>
+                            <td>N/A</td>
+                            <td><input type="text" class="saveable-input demo-inst-cal"></td>
+                            <td><input type="text" placeholder="Y / N" class="saveable-input demo-inst-src calc-trigger"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="header-info" style="font-size: 13px; font-weight: bold; margin-bottom: 10px;">
+                <div style="flex-grow: 1; display: flex; align-items: center; gap: 10px;">
+                    <span style="white-space: nowrap;">Check Source ID (Co-60):</span> 
+                    <input type="text" class="left-align saveable-input calc-trigger" id="demo-src" style="max-width: 200px;">
+                </div>
+                <div style="flex-grow: 1; display: flex; align-items: center; gap: 10px;">
+                    <span style="white-space: nowrap;">Background Location:</span> 
+                    <input type="text" class="left-align saveable-input calc-trigger" id="demo-bg-loc">
+                </div>
+            </div>
+
+            <h3 style="margin-top: 15px;">Field Notes</h3>
+            <div class="field-notes-box saveable-ce calc-trigger" id="demo-notes" contenteditable="true" placeholder="Initial observations, site conditions, etc."></div>
+        </div>
+
+        <div class="no-break">
+            <h3>2. Reference Background Establishment</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="10%">Pt #</th>
+                            <th width="22%">Dose Rate<br>(µR/hr)</th>
+                            <th width="22%">Gross Count<br>(cpm)</th>
+                            <th width="22%">Duplicate<br>(cpm)</th>
+                            <th width="24%">Z-Score (&le; 1.96)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <script>
+                            for(let i=1; i<=10; i++) {
+                                document.write(`<tr>
+                                    <td>${i}</td>
+                                    <td><input type="text" inputmode="decimal" class="bg-dr calc-trigger saveable-input num-input"></td>
+                                    <td><input type="text" inputmode="decimal" class="bg-gc calc-trigger saveable-input num-input"></td>
+                                    <td><input type="text" inputmode="decimal" class="bg-dup calc-trigger saveable-input num-input"></td>
+                                    <td class="bg-zscore readonly-calc">-</td>
+                                </tr>`);
+                            }
+                        </script>
+                        <tr class="summary-row">
+                            <td colspan="2" style="text-align: right; padding-right: 15px;">Calculated Mean (x̄):</td>
+                            <td class="readonly-calc" id="bg-mean-display">- cpm</td>
+                            <td colspan="2"></td>
+                        </tr>
+                        <tr class="summary-row">
+                            <td colspan="2" style="text-align: right; padding-right: 15px;">Standard Deviation (s<sub>B</sub>):</td>
+                            <td class="readonly-calc" id="bg-std-display">-</td>
+                            <td colspan="2"></td>
+                        </tr>
+                        <tr class="summary-row" style="background-color: #dbeafe !important;">
+                            <td colspan="2" style="text-align: right; padding-right: 15px;">Critical Level (B<sub>ref</sub>):</td>
+                            <td colspan="3" style="text-align: left; padding-left: 15px;" class="readonly-calc"><span id="bg-bref-display">-</span> cpm</td>
+                        </tr>
+                        <tr class="summary-row" style="background-color: #fef08a !important; font-size: 15px;">
+                            <td colspan="2" style="text-align: right; padding-right: 15px;">INVESTIGATION LEVEL (IL):</td>
+                            <td colspan="3" style="text-align: left; padding-left: 15px;" class="readonly-calc"><span id="bg-il-display">-</span> cpm <span style="font-size: 11px; font-weight: normal; color: #555;">(B<sub>ref</sub> + 1,290)</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-container">
+        <h3>3. Systematic Static Counts</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th width="6%">Pt #</th>
+                        <th width="32%">Component Location</th>
+                        <th width="14%">Dose Rate<br>(µR/hr @ 30cm)</th>
+                        <th width="14%">Gross Count<br>(cpm @ Contact)</th>
+                        <th width="14%">Duplicate<br>(cpm)</th>
+                        <th width="10%">Z-Score</th>
+                        <th width="10%">&lt; IL?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <script>
+                        for(let i=1; i<=20; i++) {
+                            document.write(`<tr>
+                                <td>${i}</td>
+                                <td><input type="text" class="left-align saveable-input surv-loc calc-trigger"></td>
+                                <td><input type="text" inputmode="decimal" class="surv-dr calc-trigger saveable-input num-input"></td>
+                                <td><input type="text" inputmode="decimal" class="surv-gc calc-trigger saveable-input num-input"></td>
+                                <td><input type="text" inputmode="decimal" class="surv-dup calc-trigger saveable-input num-input"></td>
+                                <td class="surv-zscore readonly-calc">-</td>
+                                <td class="surv-pass readonly-calc">-</td>
+                            </tr>`);
+                        }
+                    </script>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="page-container">
+        <div class="table-container" style="margin-bottom: 5px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th width="6%">Pt #</th>
+                        <th width="32%">Component Location</th>
+                        <th width="14%">Dose Rate<br>(µR/hr @ 30cm)</th>
+                        <th width="14%">Gross Count<br>(cpm @ Contact)</th>
+                        <th width="14%">Duplicate<br>(cpm)</th>
+                        <th width="10%">Z-Score</th>
+                        <th width="10%">&lt; IL?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <script>
+                        for(let i=21; i<=30; i++) {
+                            document.write(`<tr>
+                                <td>${i}</td>
+                                <td><input type="text" class="left-align saveable-input surv-loc calc-trigger"></td>
+                                <td><input type="text" inputmode="decimal" class="surv-dr calc-trigger saveable-input num-input"></td>
+                                <td><input type="text" inputmode="decimal" class="surv-gc calc-trigger saveable-input num-input"></td>
+                                <td><input type="text" inputmode="decimal" class="surv-dup calc-trigger saveable-input num-input"></td>
+                                <td class="surv-zscore readonly-calc">-</td>
+                                <td class="surv-pass readonly-calc">-</td>
+                            </tr>`);
+                        }
+                    </script>
+                    <tr><td colspan="7" style="background-color: #2c3e50 !important; color: #ffffff !important; text-align: center; font-weight: bold; font-size: 12px; padding: 4px;">ADDITIONAL / BIASED MEASUREMENTS</td></tr>
+                    <script>
+                        for(let i=31; i<=35; i++) {
+                            document.write(`<tr>
+                                <td style="font-style: italic; color: #94a3b8;">Ex</td>
+                                <td><input type="text" class="left-align saveable-input surv-loc calc-trigger"></td>
+                                <td><input type="text" inputmode="decimal" class="surv-dr calc-trigger saveable-input num-input"></td>
+                                <td><input type="text" inputmode="decimal" class="surv-gc calc-trigger saveable-input num-input"></td>
+                                <td><input type="text" inputmode="decimal" class="surv-dup calc-trigger saveable-input num-input"></td>
+                                <td class="surv-zscore readonly-calc">-</td>
+                                <td class="surv-pass readonly-calc">-</td>
+                            </tr>`);
+                        }
+                    </script>
+                </tbody>
+            </table>
+        </div>
+        <div style="font-size: 11px; color: #64748b; font-style: italic; margin-bottom: 25px; text-align: center;">
+            * QA/QC Note: FSSP Section 7.2 requires a 10% duplicate rate. Ensure at least three (3) systematic static counts include a duplicate.
+        </div>
+
+        <div class="no-break">
+            <h3>4. Biased In-Situ Spectroscopy (IdentiFINDER)</h3>
+            <div class="table-container" style="margin-bottom: 0;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="8%">Spec #</th>
+                            <th width="32%">Targeted Component (Contact Geo)</th>
+                            <th width="15%">Acq. Time (s)</th>
+                            <th width="15%"><sup>60</sup>Co Det?</th>
+                            <th width="15%"><sup>152</sup>Eu Det?</th>
+                            <th width="15%">Pass?</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>GS-1</td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger" placeholder="Steering Magnet"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input" placeholder="300"></td>
+                            <td><input type="text" class="saveable-input spec-co calc-trigger" placeholder="Y/N"></td>
+                            <td><input type="text" class="saveable-input spec-eu calc-trigger" placeholder="Y/N"></td>
+                            <td class="spec-pass readonly-calc">-</td>
+                        </tr>
+                        <tr>
+                            <td>GS-2</td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger" placeholder="Waveguide Junction"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input" placeholder="300"></td>
+                            <td><input type="text" class="saveable-input spec-co calc-trigger" placeholder="Y/N"></td>
+                            <td><input type="text" class="saveable-input spec-eu calc-trigger" placeholder="Y/N"></td>
+                            <td class="spec-pass readonly-calc">-</td>
+                        </tr>
+                        <tr>
+                            <td>GS-3</td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger" placeholder="Target Rm Angled Baffle"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input" placeholder="300"></td>
+                            <td><input type="text" class="saveable-input spec-co calc-trigger" placeholder="Y/N"></td>
+                            <td><input type="text" class="saveable-input spec-eu calc-trigger" placeholder="Y/N"></td>
+                            <td class="spec-pass readonly-calc">-</td>
+                        </tr>
+                        <tr>
+                            <td>GS-4</td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger" placeholder="Target Rm Vert Wall"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input" placeholder="300"></td>
+                            <td><input type="text" class="saveable-input spec-co calc-trigger" placeholder="Y/N"></td>
+                            <td><input type="text" class="saveable-input spec-eu calc-trigger" placeholder="Y/N"></td>
+                            <td class="spec-pass readonly-calc">-</td>
+                        </tr>
+                        <tr>
+                            <td>GS-5</td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger" placeholder="Target Rm Far-Left Backstop"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input" placeholder="300"></td>
+                            <td><input type="text" class="saveable-input spec-co calc-trigger" placeholder="Y/N"></td>
+                            <td><input type="text" class="saveable-input spec-eu calc-trigger" placeholder="Y/N"></td>
+                            <td class="spec-pass readonly-calc">-</td>
+                        </tr>
+                        <tr><td colspan="6" style="background-color: #2c3e50 !important; color: #ffffff !important; text-align: center; font-weight: bold; font-size: 12px; padding: 4px;">CONTINGENCY MEASUREMENTS</td></tr>
+                        <tr>
+                            <td style="color: #94a3b8;">GS-___</td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input"></td>
+                            <td><input type="text" class="saveable-input spec-co calc-trigger"></td>
+                            <td><input type="text" class="saveable-input spec-eu calc-trigger"></td>
+                            <td class="spec-pass readonly-calc">-</td>
+                        </tr>
+                        <tr>
+                            <td style="color: #94a3b8;">GS-___</td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input"></td>
+                            <td><input type="text" class="saveable-input spec-co calc-trigger"></td>
+                            <td><input type="text" class="saveable-input spec-eu calc-trigger"></td>
+                            <td class="spec-pass readonly-calc">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-container">
+        <h3>5. Auto-Calculated Summary Statistics</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th width="25%">Parameter</th>
+                        <th width="15%">Min</th>
+                        <th width="15%">Mean (x̄)</th>
+                        <th width="15%">Median</th>
+                        <th width="15%">Max</th>
+                        <th width="15%">Std Dev (s)</th>
+                    </tr>
+                </thead>
+                <tbody id="stats-body">
+                    <tr><td class="left-align font-weight-bold">Background Dose Rate (µR/hr)</td><td id="s-bd-min">-</td><td id="s-bd-mean">-</td><td id="s-bd-med">-</td><td id="s-bd-max">-</td><td id="s-bd-std">-</td></tr>
+                    <tr><td class="left-align font-weight-bold">Background Gross Count (cpm)</td><td id="s-bc-min">-</td><td id="s-bc-mean">-</td><td id="s-bc-med">-</td><td id="s-bc-max">-</td><td id="s-bc-std">-</td></tr>
+                    <tr><td class="left-align font-weight-bold">Survey Dose Rate (µR/hr)</td><td id="s-sd-min">-</td><td id="s-sd-mean">-</td><td id="s-sd-med">-</td><td id="s-sd-max">-</td><td id="s-sd-std">-</td></tr>
+                    <tr><td class="left-align font-weight-bold">Survey Gross Count (cpm)</td><td id="s-sc-min">-</td><td id="s-sc-mean">-</td><td id="s-sc-med">-</td><td id="s-sc-max">-</td><td id="s-sc-std">-</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="no-break">
+            <h3>6. Remarks / Field Notes</h3>
+            <div class="remarks-box saveable-ce calc-trigger" id="demo-remarks" contenteditable="true"></div>
+            
+            <div class="sig-container">
+                <div class="sig-block">Field Lead Signature (J. Donakowski)</div>
+                <div class="sig-block">Oversight Signature (A. Fenta)</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        for(let p=1; p<=2; p++){
+            document.write(`
+            <div class="page-container">
+                <h3>Appendix A: Field Sketch / Map Reference (Page ${p} of 2)</h3>
+                <div class="header-info" style="margin-top: 15px;">
+                    <div style="flex-grow:1; margin-right:20px; display:flex; align-items:center; gap:10px;">
+                        <span style="white-space:nowrap;">Sketch Subject:</span> 
+                        <input type="text" class="left-align saveable-input calc-trigger">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="white-space:nowrap;">Drawn By:</span> 
+                        <input type="text" class="saveable-input calc-trigger" style="width:120px;">
+                    </div>
+                </div>
+                <div class="sketch-area"></div>
+            </div>
+            `);
+        }
+    </script>
+
+    <script>
+        /* Commas & Number Formatting Logic */
+        const formatInput = (el) => {
+            let val = el.value.replace(/,/g, '').trim();
+            if(val === '' || isNaN(val)) return;
+            let parts = val.split('.');
+            if(parts[0] === '' || parts[0] === '-') parts[0] += '0'; 
+            let intNum = parseInt(parts[0], 10);
+            parts[0] = intNum.toLocaleString('en-US');
+            el.value = parts.join('.');
+        };
+
+        const unformatInput = (el) => { el.value = el.value.replace(/,/g, ''); };
+
+        document.querySelectorAll('.num-input').forEach(el => {
+            el.addEventListener('blur', () => formatInput(el));
+            el.addEventListener('focus', () => unformatInput(el));
+        });
+
+        const parseNum = (val) => {
+            if(val === null || val === undefined || val === '') return NaN;
+            return parseFloat(val.toString().replace(/,/g, ''));
+        };
+
+        const getVals = (selector) => Array.from(document.querySelectorAll(selector)).map(el => parseNum(el.value)).filter(val => !isNaN(val));
+
+        const fmtStr = (num, minDec=0, maxDec=2) => {
+            if(isNaN(num) || num === '-' || num === null) return '-';
+            return Number(num).toLocaleString('en-US', { minimumFractionDigits: minDec, maximumFractionDigits: maxDec });
+        };
+        
+        const calcZ = (c1, c2) => {
+            if(isNaN(c1) || isNaN(c2) || (c1+c2) === 0) return { text: '-', fail: false };
+            let z = Math.abs(c1 - c2) / Math.sqrt(c1 + c2);
+            return { text: z.toFixed(2), fail: z > 1.96 };
+        };
+
+        const calcDescriptive = (arr) => {
+            if(arr.length === 0) return {min: '-', max: '-', mean: '-', med: '-', std: '-'};
+            const min = Math.min(...arr);
+            const max = Math.max(...arr);
+            const sum = arr.reduce((a,b) => a+b, 0);
+            const mean = sum / arr.length;
+            const sorted = [...arr].sort((a,b) => a-b);
+            const mid = Math.floor(sorted.length / 2);
+            const med = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid-1] + sorted[mid])/2;
+            let std = 0;
+            if(arr.length > 1) {
+                const sqDiffs = arr.map(v => Math.pow(v - mean, 2));
+                std = Math.sqrt(sqDiffs.reduce((a,b) => a+b, 0) / (arr.length - 1));
+            }
+            return {
+                min: fmtStr(min, min % 1 === 0 ? 0 : 2), 
+                max: fmtStr(max, max % 1 === 0 ? 0 : 2), 
+                mean: fmtStr(mean, 1, 1), 
+                med: fmtStr(med, med % 1 === 0 ? 0 : 1), 
+                std: fmtStr(std, 2, 2)
+            };
+        };
+
+        /* UPDATE & AUTO-SAVE LOGIC */
+        const updateAll = () => {
+            const bgCounts = getVals('.bg-gc');
+            const bgStats = calcDescriptive(bgCounts);
+            document.getElementById('bg-mean-display').innerText = bgStats.mean !== '-' ? bgStats.mean + ' cpm' : '- cpm';
+            document.getElementById('bg-std-display').innerText = bgStats.std;
+            
+            let IL = null;
+            if(bgStats.mean !== '-' && bgStats.std !== '-') {
+                const parsedMean = parseNum(bgStats.mean);
+                const parsedStd = parseNum(bgStats.std);
+                const Bref = parsedMean + (1.645 * parsedStd);
+                IL = Math.ceil(Bref + 1290);
+                document.getElementById('bg-bref-display').innerText = fmtStr(Bref, 1, 1);
+                document.getElementById('bg-il-display').innerText = fmtStr(IL, 0, 0);
+            }
+
+            document.querySelectorAll('.bg-gc').forEach((input, index) => {
+                const c1 = parseNum(input.value);
+                const c2 = parseNum(document.querySelectorAll('.bg-dup')[index].value);
+                const zCell = document.querySelectorAll('.bg-zscore')[index];
+                let zObj = calcZ(c1, c2);
+                zCell.innerText = zObj.text;
+                zCell.className = zObj.fail ? 'bg-zscore readonly-calc fail-text' : 'bg-zscore readonly-calc';
+            });
+
+            document.querySelectorAll('.surv-gc').forEach((input, index) => {
+                const c1 = parseNum(input.value);
+                const c2 = parseNum(document.querySelectorAll('.surv-dup')[index].value);
+                const zCell = document.querySelectorAll('.surv-zscore')[index];
+                const pCell = document.querySelectorAll('.surv-pass')[index];
+                
+                let zObj = calcZ(c1, c2);
+                zCell.innerText = zObj.text;
+                zCell.className = zObj.fail ? 'surv-zscore readonly-calc fail-text' : 'surv-zscore readonly-calc';
+
+                if(!isNaN(c1) && IL !== null) {
+                    pCell.innerText = c1 <= IL ? 'PASS' : 'FAIL';
+                    pCell.className = c1 <= IL ? 'surv-pass readonly-calc pass-text' : 'surv-pass readonly-calc fail-text';
+                } else {
+                    pCell.innerText = '-';
+                    pCell.className = 'surv-pass readonly-calc';
+                }
+            });
+
+            document.querySelectorAll('.spec-co').forEach((coInput, index) => {
+                let euInput = document.querySelectorAll('.spec-eu')[index];
+                let passCell = document.querySelectorAll('.spec-pass')[index];
+                let coVal = coInput.value.toUpperCase().trim();
+                let euVal = euInput.value.toUpperCase().trim();
+                
+                if(coVal === 'Y' || euVal === 'Y' || coVal === 'YES' || euVal === 'YES') {
+                    passCell.innerText = 'FAIL';
+                    passCell.className = 'spec-pass readonly-calc fail-text';
+                } else if (coVal === 'N' && euVal === 'N') {
+                    passCell.innerText = 'PASS';
+                    passCell.className = 'spec-pass readonly-calc pass-text';
+                } else {
+                    passCell.innerText = '-';
+                    passCell.className = 'spec-pass readonly-calc';
+                }
+            });
+
+            const updateSummaryRow = (prefix, statsObj) => {
+                document.getElementById(prefix + '-min').innerText = statsObj.min;
+                document.getElementById(prefix + '-mean').innerText = statsObj.mean;
+                document.getElementById(prefix + '-med').innerText = statsObj.med;
+                document.getElementById(prefix + '-max').innerText = statsObj.max;
+                document.getElementById(prefix + '-std').innerText = statsObj.std;
+            };
+
+            updateSummaryRow('s-bd', calcDescriptive(getVals('.bg-dr')));
+            updateSummaryRow('s-bc', bgStats);
+            updateSummaryRow('s-sd', calcDescriptive(getVals('.surv-dr')));
+            updateSummaryRow('s-sc', calcDescriptive(getVals('.surv-gc')));
+
+            // Fire Auto-Save silently in the background
+            cacheData();
+        };
+
+        // Attach main listener to trigger calculations and auto-save on any change
+        document.querySelectorAll('.calc-trigger').forEach(el => {
+            el.addEventListener('input', updateAll);
+            if(el.tagName === 'DIV') { // For contenteditable divs
+                el.addEventListener('blur', updateAll);
+            }
+        });
+
+        /* --- NEW SAVE / LOAD ARCHITECTURE --- */
+        
+        const gatherData = () => {
+            const data = {};
+            document.querySelectorAll('.saveable-input').forEach((el, i) => data['input_' + i] = el.value);
+            document.querySelectorAll('.saveable-ce').forEach((el, i) => data['ce_' + i] = el.innerHTML);
+            return data;
+        };
+
+        const applyData = (data) => {
+            document.querySelectorAll('.saveable-input').forEach((el, i) => el.value = data['input_' + i] || '');
+            document.querySelectorAll('.saveable-ce').forEach((el, i) => el.innerHTML = data['ce_' + i] || '');
+            document.querySelectorAll('.num-input').forEach(formatInput);
+            updateAll();
+        };
+
+        // 1. Continuous Cache Auto-Save
+        let autoSaveTimer;
+        function cacheData() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => {
+                localStorage.setItem('LINAC_Survey_Cache', JSON.stringify(gatherData()));
+                let now = new Date();
+                let timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                document.getElementById('autosave-indicator').innerHTML = `🟢 Auto-saved ${timeStr}`;
+            }, 1000); // Wait 1 second after typing stops to save
+        }
+
+        // On Page Load: Check for Cache
+        window.addEventListener('DOMContentLoaded', () => {
+            const cachedData = localStorage.getItem('LINAC_Survey_Cache');
+            // If cache exists and has actual data (more than just the default surveyor names)
+            if(cachedData && cachedData.length > 200) {
+                if(confirm("Found an auto-saved survey from a previous session. Would you like to restore it?")) {
+                    applyData(JSON.parse(cachedData));
+                    document.getElementById('autosave-indicator').innerHTML = `🟢 Restored from cache`;
+                } else {
+                    // They declined, clear the cache so it doesn't bother them again
+                    localStorage.removeItem('LINAC_Survey_Cache');
+                }
+            }
+        });
+
+        // 2. Export to JSON File
+        function exportToFile() {
+            const data = gatherData();
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+            
+            // Build a dynamic filename
+            let dateVal = document.getElementById('form-date').value.replace(/\//g, '-').trim();
+            let fileName = dateVal ? `LINAC_Survey_${dateVal}.json` : `LINAC_Survey_Data.json`;
+
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", fileName);
+            dlAnchorElem.click();
+            alert(`File saved to your device as: \n${fileName}`);
+        }
+
+        // 3. Import from JSON File
+        function importFromFile(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    applyData(data);
+                    alert("Survey data loaded successfully!");
+                } catch (err) {
+                    alert("Error loading file. Make sure it is a valid survey .json file.");
+                }
+                // Clear the file input so the same file can be loaded again if needed
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // Reset
+        function resetData() {
+            if(confirm('WARNING: This will clear all data on the screen AND delete your Auto-Save backup. Proceed?')) {
+                document.querySelectorAll('.saveable-input').forEach(el => {
+                    if(el.value !== "Joseph Donakowski, CHP" && el.value !== "Asfaw Fenta") el.value = '';
+                });
+                document.querySelectorAll('.saveable-ce').forEach(el => el.innerHTML = '');
+                localStorage.removeItem('LINAC_Survey_Cache');
+                document.getElementById('autosave-indicator').innerHTML = `Waiting...`;
+                updateAll();
+            }
+        }
+
+        /* Demo Data Generator */
+        function populateDemoData() {
+            if(!confirm("Overwrite current data with a randomized demo dataset?")) return;
+
+            const rand = (min, max) => Math.random() * (max - min) + min;
+            const randInt = (min, max) => Math.floor(rand(min, max));
+
+            let today = new Date();
+            document.getElementById('form-date').value = today.toLocaleDateString();
+            document.getElementById('form-start').value = "08:00 AM";
+            document.getElementById('form-end').value = "14:30 PM";
+
+            document.querySelectorAll('.demo-inst-m').forEach(el => el.value = el.placeholder.replace(' /', ' / SN' + randInt(1000, 9999)));
+            document.querySelectorAll('.demo-inst-p').forEach((el, i) => { if(i===0) el.value = "Ludlum 44-10 / PR" + randInt(10000, 99999); });
+            document.querySelectorAll('.demo-inst-cal').forEach(el => { 
+                let d = new Date(today); d.setMonth(d.getMonth() + randInt(3, 11)); 
+                el.value = d.toLocaleDateString(); 
+            });
+            document.querySelectorAll('.demo-inst-src').forEach(el => el.value = "Y");
+            document.getElementById('demo-src').value = "Co-60 Button #C" + randInt(10, 99);
+            document.getElementById('demo-bg-loc').value = "Halligan Basement Corridor (Unimpacted)";
+            document.getElementById('demo-notes').innerHTML = "Access granted by NPS RSO at 0745. Setup in corridor to establish background. Vault conditions stable, no structural hazards noted.";
+
+            let bgDrs = document.querySelectorAll('.bg-dr'), bgGcs = document.querySelectorAll('.bg-gc'), bgDups = document.querySelectorAll('.bg-dup');
+            let roomBaseGc = randInt(4500, 5500); 
+            
+            for(let i=0; i<10; i++) {
+                bgDrs[i].value = rand(4.0, 6.0).toFixed(1); 
+                let baseGc = roomBaseGc + randInt(-150, 150); 
+                bgGcs[i].value = baseGc;
+                if(i === 4) bgDups[i].value = baseGc + randInt(-100, 100); 
+                else bgDups[i].value = '';
+            }
+
+            let survLocs = document.querySelectorAll('.surv-loc');
+            let survDrs = document.querySelectorAll('.surv-dr'), survGcs = document.querySelectorAll('.surv-gc'), survDups = document.querySelectorAll('.surv-dup');
+            let locNames = ["Cu Waveguide Sec 1", "Cu Waveguide Sec 2", "Steering Magnet #1", "Steering Magnet #2", "Lead Brick Shielding", "Concrete Vault Wall", "S-Band Klystron", "Beam Dump Housing", "Collimator Slit", "Target Chamber Window"];
+            
+            let dupIndices = [];
+            while(dupIndices.length < 3) {
+                let r = randInt(0, 30);
+                if(!dupIndices.includes(r)) dupIndices.push(r);
+            }
+
+            let anomalyIndex = randInt(0, 15); 
+
+            for(let i=0; i<35; i++) {
+                if (i < 30) survLocs[i].value = locNames[randInt(0, locNames.length)];
+                else survLocs[i].value = ""; 
+
+                if (survLocs[i].value) {
+                    let dr = rand(4.0, 6.0);
+                    let gc = roomBaseGc + randInt(-200, 250);
+
+                    if(i === anomalyIndex) {
+                        survLocs[i].value = "Target Chamber Window (ANOMALY)";
+                        dr = rand(9.0, 15.0); 
+                        gc = roomBaseGc + randInt(1800, 2500); 
+                    }
+
+                    survDrs[i].value = dr.toFixed(1);
+                    survGcs[i].value = gc;
+                    if(dupIndices.includes(i)) survDups[i].value = gc + randInt(-120, 120);
+                    else survDups[i].value = '';
+                } else {
+                    survDrs[i].value = ''; survGcs[i].value = ''; survDups[i].value = '';
+                }
+            }
+
+            let specLocs = document.querySelectorAll('.spec-loc'), specTimes = document.querySelectorAll('.spec-time'), specCo = document.querySelectorAll('.spec-co'), specEu = document.querySelectorAll('.spec-eu');
+            let defaultLocs = ["Steering Magnet", "Downstream Waveguide", "Target Rm Angled Baffle", "Target Rm Vert Wall", "Target Rm Far-Left Backstop"];
+            for(let i=0; i<5; i++) {
+                specLocs[i].value = defaultLocs[i];
+                specTimes[i].value = "300";
+                
+                if(i === 0 && anomalyIndex !== -1) {
+                    specLocs[i].value = "Target Chamber Window";
+                    specCo[i].value = "Y"; 
+                    specEu[i].value = "N";
+                } else {
+                    specCo[i].value = "N";
+                    specEu[i].value = "N";
+                }
+            }
+            
+            document.getElementById('demo-remarks').innerHTML = "Anomaly detected on Target Chamber Window during static counts (Pt #"+(anomalyIndex+1)+"). Contingency spectroscopy performed immediately (GS-1), resulting in positive detection of Co-60 photopeak. Component segregated and flagged for active disposal rather than release.";
+
+            document.querySelectorAll('.num-input').forEach(formatInput);
+            updateAll();
+        }
+    </script>
+</body>
+</html>
