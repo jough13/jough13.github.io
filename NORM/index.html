@@ -34,7 +34,7 @@
         .btn-outline:hover { background: var(--surface); border-color: var(--text-muted); }
         .btn-wizard { background: var(--navy); color: #fff; padding: 0.5rem 1.25rem; font-weight: bold; }
         
-        #btn-install { display: none; background: var(--primary); color: #fff; padding: 0.5rem 1.25rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; transition: opacity 0.2s; }
+        #btn-install { background: var(--primary); color: #fff; padding: 0.5rem 1.25rem; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; transition: opacity 0.2s; }
         #btn-install:hover { opacity: 0.9; }
         
         .card { background: var(--surface); padding: 2rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--border); transition: all 0.3s; }
@@ -405,30 +405,29 @@
     let deferredPrompt;
     const installBtn = document.getElementById('btn-install');
 
-    // Inline Service Worker registration trick
+    // Register the actual Service Worker file hosted on GitHub
     if ('serviceWorker' in navigator) {
-        const swCode = "self.addEventListener('fetch', function(event) {});";
-        const blob = new Blob([swCode], { type: 'application/javascript' });
-        const swUrl = URL.createObjectURL(blob);
-        navigator.serviceWorker.register(swUrl).catch(() => console.log("SW bypass limited in this environment."));
+        navigator.serviceWorker.register('sw.js').catch(err => console.log("SW Registration failed:", err));
     }
 
+    // Catch the browser's native install prompt
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        installBtn.style.display = 'block'; // Show if browser natively permits
     });
 
     function installApp() {
         if (deferredPrompt) {
             deferredPrompt.prompt();
             deferredPrompt.userChoice.then((choiceResult) => {
-                if (choiceResult.outcome === 'accepted') { installBtn.style.display = 'none'; }
+                if (choiceResult.outcome === 'accepted') {
+                    installBtn.style.display = 'none'; // Hide button after install
+                }
                 deferredPrompt = null;
             });
         } else {
-            // Fallback for when PWA install isn't strictly available but button is clicked
-            showAlert("App Installation", "To install this app on your device, use your browser's menu (⋮) and select 'Install' or 'Add to Home Screen'.", "📱");
+            // Smart Fallback: If the user is on an iPhone/Safari where native prompts don't always fire
+            showAlert("App Installation", "To install this app, tap your browser's menu (⋮ or ⇪) and select 'Add to Home Screen' or 'Install App'.", "📱");
         }
     }
 
