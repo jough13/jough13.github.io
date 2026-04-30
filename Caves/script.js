@@ -2132,8 +2132,12 @@ function renderTerrainCache(startX, startY) {
             // Draw Static Character (Items, Objects)
             if (fgChar) {
                 if (fgChar === '^' || fgChar === '⛰') {
-                    TileRenderer.drawMountain(terrainCtx, x, y, mapX, mapY, bgColor || '#22c55e');
-                    if (fgChar === '⛰') {
+                    const isCave = (fgChar === '⛰');
+                    
+                    // Pass the isCave boolean so it forces a mountain peak to render!
+                    TileRenderer.drawMountain(terrainCtx, x, y, mapX, mapY, bgColor || '#22c55e', isCave);
+                    
+                    if (isCave) {
                         terrainCtx.fillStyle = '#1f2937';
                         terrainCtx.fillRect((x * TILE_SIZE) + (TILE_SIZE * 0.4), (y * TILE_SIZE) + (TILE_SIZE * 0.7), TILE_SIZE * 0.2, TILE_SIZE * 0.3);
                     }
