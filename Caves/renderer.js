@@ -262,7 +262,7 @@ const TileRenderer = {
         }
     },
 
-    drawMountain: (ctx, x, y, mapX, mapY, baseColor, isCave = false) => {
+     drawMountain: (ctx, x, y, mapX, mapY, baseColor, isCave = false) => {
         // 1. Deterministic Random Seed
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
         const rand = seed - Math.floor(seed); // 0.0 to 1.0
