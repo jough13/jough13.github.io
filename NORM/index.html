@@ -967,14 +967,28 @@
     let emailProfile = { status: "", uic: "", dotClass: "", rcraStatus: "" };
 
     function analyzeMaterial() {
+
+        const rawCmd = document.getElementById('cmd-name').value.trim();
+        const rawUic = document.getElementById('cmd-uic').value.trim();
+        const rawQty = document.getElementById('waste-qty').value.trim();
+        const rawDate = document.getElementById('lab-date').value;
+
+        if (!rawCmd || !rawUic || !rawQty || !rawDate) {
+            showAlert("Missing Information", "Please complete all essential Logistics fields (Command Name, UIC, Estimated Quantity, and Date of Lab Analysis) before generating an official profile.", "📝");
+            return; // Instantly stops the engine from generating a blank report
+        }
+        
         const d = runCalcs(); runChemCalcs();
-        const cmdName = document.getElementById('cmd-name').value.trim() || "Not Provided";
-        const uic = document.getElementById('cmd-uic').value.trim();
+        
+        // Pass the validated raw data into the standard variables
+        const cmdName = rawCmd;
+        const uic = rawUic;
+        const qty = rawQty;
+        const labDateVal = rawDate;
+        
         const epaId = document.getElementById('epa-id').value.trim();
-        const qty = document.getElementById('waste-qty').value.trim() || "0";
         const poc = document.getElementById('cmd-poc').value.trim() || "Not Provided";
         const pcb = parseFloat(document.getElementById('tsca-pcb').value) || 0;
-        const labDateVal = document.getElementById('lab-date').value;
         const comments = document.getElementById('profile-comments').value.trim();
         
         const unitSel = document.getElementById('waste-unit');
