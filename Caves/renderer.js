@@ -262,8 +262,7 @@ const TileRenderer = {
         }
     },
 
-    // ⛰ Improved "Low Poly" Mountains with Valleys
-    drawMountain: (ctx, x, y, mapX, mapY, baseColor) => {
+    drawMountain: (ctx, x, y, mapX, mapY, baseColor, isCave = false) => {
         // 1. Deterministic Random Seed
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
         const rand = seed - Math.floor(seed); // 0.0 to 1.0
@@ -276,7 +275,7 @@ const TileRenderer = {
         ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
 
         // --- 3. NEGATIVE SPACE (The Valley) ---
-        if (rand > 0.85) {
+        if (rand > 0.85 && !isCave) {
             ctx.fillStyle = '#44403c'; // Dark grey pebble
             ctx.beginPath();
             const pX = tx + (TILE_SIZE * 0.3) + (rand * 5);
