@@ -110,6 +110,12 @@
             .print-row span { font-weight: bold; }
             #print-data-echo { display: block !important; margin-top: 2rem; border-top: 2px solid #000; padding-top: 1rem;}
             .threat-container { border: 2px solid #000; }
+
+            /* Prevent the PDF generator from cutting grids/tables/photos in half across pages */
+            .card, .result-section, .print-photo-grid img, table, tr, .settings-group {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
             
             #print-extras { display: block !important; margin-top: 2rem; page-break-inside: avoid;}
             .print-comment-box { padding: 1rem; border-left: 4px solid #000; background: #f9f9f9; font-style: italic; margin-bottom: 1.5rem; }
@@ -547,16 +553,41 @@
         document.getElementById('custom-dialog-overlay').classList.add('active');
     }
 
-    // Auto-Save Engine (Anti-Ragequit)
+    // Auto-Save Engine (Anti-Ragequit + Quota Protection)
     function autoSaveLocal() {
         const inputs = document.querySelectorAll('.auto-save'); 
         const state = { photos: photoArray }; 
         inputs.forEach(i => state[i.id] = i.type === 'checkbox' ? i.checked : i.value);
-        localStorage.setItem('normShipAssistDraft', JSON.stringify(state));
+        
+        try {
+            localStorage.setItem('normShipAssistDraft', JSON.stringify(state));
+        } catch (e) {
+            if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                console.warn("Local storage full. Evicting photos to save text data.");
+                // Purge photos from the save state to free up memory for text
+                state.photos = [];
+                localStorage.setItem('normShipAssistDraft', JSON.stringify(state));
+                showAlert("Device Memory Full", "You have attached too many photos for the browser's background auto-save. Your text data is still safely auto-saving, but please click '💾 Save' to download a manual backup of your images.", "💾");
+            }
+        }
     }
     
+    // Debounce Helper Function
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    // Wrap the auto-save in the debounce (waits 500ms after they stop typing)
+    const debouncedSave = debounce(autoSaveLocal, 500);
+    
     document.addEventListener('input', function(e) {
-        if(e.target.classList.contains('auto-save')) { autoSaveLocal(); }
+        if(e.target.classList.contains('auto-save')) { 
+            debouncedSave(); 
+        }
     });
 
     window.addEventListener('load', function() {
