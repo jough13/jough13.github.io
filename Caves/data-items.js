@@ -386,7 +386,8 @@ window.ITEM_DATA = {
 },
 '👓s': {
     name: 'Spirit Lens',
-    type: 'tool', // Passive effect when in inventory
+    slot: 'accessory',
+    type: 'armor',
     tile: '👓',
     description: "Looking through it reveals the echoes of the dead.",
     excludeFromLoot: true // Unique item found via puzzle/quest
@@ -428,7 +429,7 @@ window.ITEM_DATA = {
     // --- STORY-RICH ARTIFACTS ---
     '💍k': {
         name: 'The Queen\'s Promise',
-        type: 'armor',
+        type: 'accessory',
         defense: 0,
         slot: 'armor',
         statBonuses: { charisma: 4, luck: 2 },
@@ -471,7 +472,7 @@ window.ITEM_DATA = {
     },
     '🌑': {
         name: 'Void-Touched Ring',
-        type: 'armor',
+        type: 'accessory',
         defense: 0,
         slot: 'armor',
         statBonuses: { willpower: 6, constitution: -2 }, // High power, low health
@@ -516,7 +517,9 @@ window.ITEM_DATA = {
         name: 'Wooden Arrow',
         type: 'ammo',
         tile: '➹',
-        description: "Ammunition for bows."
+        slot: 'ammo',
+        damage: 1,
+        description: "Ammunition for bows. {red:+1 Dmg}"
     },
     '🎣': {
         name: 'Fishing Rod',
@@ -1450,10 +1453,10 @@ window.ITEM_DATA = {
         description: "{blue:+7 Def}, {green:+4 Str}, {red:-2 Con}. Fused with the horns of a Void Demon."
     },
 
-    // --- ACCESSORIES (New Slot Concept: Equips to Armor slot for now) ---
+    // --- ACCESSORIES  ---
     '💍r': {
         name: 'Ring of Regeneration',
-        type: 'armor',
+        type: 'accessory',
         tile: '💍',
         defense: 0,
         slot: 'armor',
@@ -1462,7 +1465,7 @@ window.ITEM_DATA = {
     },
     '🧿': {
         name: 'Amulet of the Magi',
-        type: 'armor',
+        type: 'accessory',
         tile: '🧿',
         defense: 1,
         slot: 'armor',
@@ -2020,9 +2023,9 @@ window.ITEM_DATA = {
     },
     '👓': {
         name: 'Scholar\'s Spectacles',
-        type: 'armor', // Accessory slot really
+        type: 'armor',
         defense: 1,
-        slot: 'armor', // Takes armor slot for now
+        slot: 'accessory',
         statBonuses: { wits: 3, intuition: 2 },
         description: "{purple:+3 Wits, +2 Int}. Relic of a master historian."
     },
