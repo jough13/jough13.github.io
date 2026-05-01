@@ -366,7 +366,10 @@ function getSanitizedEquipment() {
 
     return {
         weapon: weapon,
-        armor: armor
+        armor: armor,
+        offhand: sanitize(equip.offhand, 'offhand'),
+        accessory: sanitize(equip.accessory, 'accessory'),
+        ammo: sanitize(equip.ammo, 'ammo')
     };
 }
 
@@ -685,73 +688,64 @@ function useInventoryItem(itemIndex) {
         }
     }
 
-    // --- WEAPONS ---
-    else if (itemToUse.type === 'weapon') {
-        const currentWeapon = gameState.player.inventory.find(i => i.type === 'weapon' && i.isEquipped);
-
-        // Helper to map weapon icons/names to skills
-        const getWeaponSkill = (item) => {
-            if (!item) return null;
-            if (item.name.includes("Hammer") || item.name.includes("Club") || item.tile === '🔨' || item.tile === '🏏') return 'crush';
-            if (item.name.includes("Dagger") || item.tile === '†' || item.tile === '🗡️') return 'quickstep';
-            if (item.name.includes("Sword") || item.name.includes("Blade") || item.tile === '⚔️' || item.tile === '!') return 'deflect';
-            if (item.name.includes("Staff") || item.tile === 'Ψ' || item.tile === '🦯') return 'channel';
-            return null;
-        };
+    // --- UNIVERSAL EQUIPMENT LOGIC ---
+    else if (['weapon', 'armor', 'offhand', 'accessory', 'ammo'].includes(itemToUse.slot)) {
+        const slot = itemToUse.slot;
+        const currentEquipped = gameState.player.equipment[slot];
 
         // 1. Unequip Current
-        if (currentWeapon) {
-            applyStatBonuses(currentWeapon, -1);
-            currentWeapon.isEquipped = false;
+        if (currentEquipped) {
+            applyStatBonuses(currentEquipped, -1);
+            currentEquipped.isEquipped = false;
 
-            // Remove old skill
-            const oldSkill = getWeaponSkill(currentWeapon);
-            if (oldSkill && gameState.player.skillbook[oldSkill]) {
-                delete gameState.player.skillbook[oldSkill];
-                logMessage(`You unlearned ${SKILL_DATA[oldSkill].name}.`);
+            // Remove old weapon skill if it was a weapon
+            if (slot === 'weapon') {
+                const getWeaponSkill = (item) => {
+                    if (item.name.includes("Hammer") || item.name.includes("Club") || item.tile === '🔨' || item.tile === '🏏') return 'crush';
+                    if (item.name.includes("Dagger") || item.tile === '†' || item.tile === '🗡️') return 'quickstep';
+                    if (item.name.includes("Sword") || item.name.includes("Blade") || item.tile === '⚔️' || item.tile === '!') return 'deflect';
+                    if (item.name.includes("Staff") || item.tile === 'Ψ' || item.tile === '🦯') return 'channel';
+                    return null;
+                };
+                const oldSkill = getWeaponSkill(currentEquipped);
+                if (oldSkill && gameState.player.skillbook[oldSkill]) {
+                    delete gameState.player.skillbook[oldSkill];
+                    logMessage(`You unlearned ${SKILL_DATA[oldSkill].name}.`);
+                }
             }
         }
 
-        // 2. Equip New (if different)
-        if (currentWeapon === itemToUse) {
-            gameState.player.equipment.weapon = { name: 'Fists', damage: 0 };
+        // 2. Equip New (If you didn't just click to unequip)
+        if (currentEquipped === itemToUse) {
+            // Revert to defaults if weapon or armor, else leave null
+            gameState.player.equipment[slot] = (slot === 'weapon') ? { name: 'Fists', damage: 0 } : (slot === 'armor' ? { name: 'Tattered Rags', defense: 0 } : null);
             logMessage(`You unequip the ${itemToUse.name}.`);
         } else {
             itemToUse.isEquipped = true;
-            gameState.player.equipment.weapon = itemToUse;
+            gameState.player.equipment[slot] = itemToUse;
             applyStatBonuses(itemToUse, 1);
             logMessage(`You equip the ${itemToUse.name}.`);
 
-            // Grant new skill
-            const newSkill = getWeaponSkill(itemToUse);
-            if (newSkill) {
-                gameState.player.skillbook[newSkill] = 1; // Level 1 mastery
-                logMessage(`Weapon Technique: You learned ${SKILL_DATA[newSkill].name}!`);
-                // Auto-assign to hotbar slot 1 for convenience if empty
-                if (!gameState.player.hotbar[0]) gameState.player.hotbar[0] = newSkill;
+            // Grant new weapon skill
+            if (slot === 'weapon') {
+                const getWeaponSkill = (item) => {
+                    if (item.name.includes("Hammer") || item.name.includes("Club") || item.tile === '🔨' || item.tile === '🏏') return 'crush';
+                    if (item.name.includes("Dagger") || item.tile === '†' || item.tile === '🗡️') return 'quickstep';
+                    if (item.name.includes("Sword") || item.name.includes("Blade") || item.tile === '⚔️' || item.tile === '!') return 'deflect';
+                    if (item.name.includes("Staff") || item.tile === 'Ψ' || item.tile === '🦯') return 'channel';
+                    return null;
+                };
+                const newSkill = getWeaponSkill(itemToUse);
+                if (newSkill) {
+                    gameState.player.skillbook[newSkill] = 1; 
+                    logMessage(`Weapon Technique: You learned ${SKILL_DATA[newSkill].name}!`);
+                    if (!gameState.player.hotbar[0]) gameState.player.hotbar[0] = newSkill;
+                }
             }
         }
         itemUsed = true;
 
-        // --- ARMOR ---
-    } else if (itemToUse.type === 'armor') {
-        const currentArmor = gameState.player.inventory.find(i => i.type === 'armor' && i.isEquipped);
-        if (currentArmor) {
-            applyStatBonuses(currentArmor, -1);
-            currentArmor.isEquipped = false;
-        }
-        if (currentArmor === itemToUse) {
-            gameState.player.equipment.armor = { name: 'Simple Tunic', defense: 0 };
-            logMessage(`You unequip the ${itemToUse.name}.`);
-        } else {
-            itemToUse.isEquipped = true;
-            gameState.player.equipment.armor = itemToUse;
-            applyStatBonuses(itemToUse, 1);
-            logMessage(`You equip the ${itemToUse.name}.`);
-        }
-        itemUsed = true;
-
-        // --- SPELLBOOKS, SKILLBOOKS, TOOLS ---
+    // --- SPELLBOOKS, SKILLBOOKS, TOOLS ---
     } else if (itemToUse.type === 'spellbook' || itemToUse.type === 'skillbook' || itemToUse.type === 'tool') {
         const player = gameState.player;
         let data = null;
