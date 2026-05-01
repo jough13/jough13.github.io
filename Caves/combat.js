@@ -1372,9 +1372,16 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                     const lootData = { ...enemyData, isElite: enemyInfo.isElite };
                     const droppedLoot = generateEnemyLoot(player, lootData);
                     const currentTerrain = chunkManager.getTile(newX, newY);
+
+                    
                     const passableTerrain =['.', 'd', 'D', 'F', '≈']; 
                     
                     if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
+                        chunkManager.setWorldTile(newX, newY, droppedLoot);
+                        gameState.mapDirty = true;
+                    }
+                    //Drop loot everywhere EXCEPT deep water (so it doesn't sink!)
+                    if (currentTerrain !== '~') {
                         chunkManager.setWorldTile(newX, newY, droppedLoot);
                         gameState.mapDirty = true;
                     }
