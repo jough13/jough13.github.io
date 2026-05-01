@@ -265,7 +265,10 @@ function createDefaultPlayerState() {
 
         equipment: {
             weapon: { name: 'Fists', damage: 0 },
-            armor: { name: 'Simple Tunic', defense: 0 }
+            armor: { name: 'Simple Tunic', defense: 0 },
+            offhand: null,
+            accessory: null,
+            ammo: null
         },
 
         inventory: [
