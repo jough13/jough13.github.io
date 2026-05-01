@@ -172,25 +172,39 @@
                <div class="lg:col-span-1 flex flex-col gap-4 mt-4 lg:mt-0">
                   <div id="equipmentPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-2">
                      <h2 class="text-lg font-bold mb-2">Equipment</h2>
+                     <!-- TOP ROW: Weapon, Armor, Offhand -->
                      <div class="flex justify-center gap-4">
-                        <!-- Main Hand -->
                         <div class="flex flex-col items-center">
-                           <div class="equipment-slot" id="slotWeaponIcon" aria-label="Equipped Weapon">
-                              👊
-                           </div>
-                           <span class="text-xs mt-1 muted-text font-bold">Main Hand</span>
+                           <div class="equipment-slot text-3xl" id="slotWeaponIcon" aria-label="Equipped Weapon">👊</div>
+                           <span class="text-[10px] mt-1 muted-text font-bold uppercase">Main</span>
                         </div>
-                        <!-- Chest -->
                         <div class="flex flex-col items-center">
-                           <div class="equipment-slot" id="slotArmorIcon" aria-label="Equipped Armor">
-                              👕
-                           </div>
-                           <span class="text-xs mt-1 muted-text font-bold">Body</span>
+                           <div class="equipment-slot text-3xl" id="slotArmorIcon" aria-label="Equipped Armor">👕</div>
+                           <span class="text-[10px] mt-1 muted-text font-bold uppercase">Body</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                           <div class="equipment-slot text-3xl" id="slotOffhandIcon" aria-label="Equipped Offhand">🛡️</div>
+                           <span class="text-[10px] mt-1 muted-text font-bold uppercase">Off-Hand</span>
                         </div>
                      </div>
-                     <div class="text-xs text-center mt-2">
+                     <!-- BOTTOM ROW: Accessory, Ammo -->
+                     <div class="flex justify-center gap-4 mt-2">
+                        <div class="flex flex-col items-center">
+                           <div class="equipment-slot text-3xl" id="slotAccessoryIcon" aria-label="Equipped Accessory">💍</div>
+                           <span class="text-[10px] mt-1 muted-text font-bold uppercase">Accessory</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                           <div class="equipment-slot text-3xl relative" id="slotAmmoIcon" aria-label="Equipped Ammo">
+                               ➹
+                               <span id="ammoCountDisplay" class="absolute bottom-0 right-0 text-[10px] font-bold bg-black bg-opacity-75 text-white px-1 rounded-tl-md">0</span>
+                           </div>
+                           <span class="text-[10px] mt-1 muted-text font-bold uppercase">Ammo</span>
+                        </div>
+                     </div>
+                     <div class="text-xs text-center mt-3 border-t border-gray-600 pt-2 space-y-1">
                         <p id="equippedWeaponDisplay" class="highlight-text">Fists</p>
                         <p id="equippedArmorDisplay" class="highlight-text">Simple Tunic</p>
+                        <p id="equippedMiscDisplay" class="text-gray-400 text-[10px]"></p>
                      </div>
                   </div>
                   
