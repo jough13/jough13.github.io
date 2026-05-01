@@ -349,62 +349,89 @@ const renderInventory = () => {
 
 const renderEquipment = () => {
     const player = gameState.player;
-    const weapon = player.equipment.weapon || { name: 'Fists', damage: 0 };
+    const equip = player.equipment;
 
+    const weapon = equip.weapon || { name: 'Fists', damage: 0 };
+    const armor = equip.armor || { name: 'Tattered Rags', defense: 0 };
+    const offhand = equip.offhand;
+    const acc = equip.accessory;
+    const ammo = equip.ammo;
+
+    // --- DAMAGE CALCULATION ---
     const playerStrength = player.strength + (player.strengthBonus || 0); 
-    const baseDamage = playerStrength;
     const weaponDamage = weapon.damage || 0;
-    const totalDamage = baseDamage + weaponDamage;
+    const ammoDamage = ammo ? (ammo.damage || 0) : 0;
+    const totalDamage = playerStrength + weaponDamage + ammoDamage;
 
-    // --- Show Weapon Stat Bonuses ---
-    let weaponString = `Weapon: ${weapon.name} (+${weaponDamage})`;
+    let weaponString = `Wpn: ${weapon.name} (+${weaponDamage})`;
     if (weapon.statBonuses) {
         const bonusArr = Object.entries(weapon.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
         if (bonusArr.length > 0) weaponString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
     }
-    
     if (player.strengthBonus > 0) { 
-        weaponString += ` <span class="text-green-500">[Strong +${player.strengthBonus} (${player.strengthBonusTurns}t)]</span>`;
+        weaponString += ` <span class="text-green-500">[+${player.strengthBonus} Str (${player.strengthBonusTurns}t)]</span>`;
     }
     equippedWeaponDisplay.innerHTML = weaponString;
     statDisplays.strength.textContent = `Strength: ${player.strength} (Dmg: ${totalDamage})`;
 
-    const armor = player.equipment.armor || { name: 'Simple Tunic', defense: 0 };
-
-    const weaponIcon = document.getElementById('slotWeaponIcon');
-    const armorIcon = document.getElementById('slotArmorIcon');
-
-    if (weaponIcon) {
-        // Strip out any trailing letters from compound emoji keys for a clean display
-        weaponIcon.textContent = (weapon.tile || '👊').replace(/[a-zA-Z]/g, '');
-        weaponIcon.style.color = (weapon.name === 'Fists') ? 'var(--text-muted)' : 'var(--text-default)';
-    }
-
-    if (armorIcon) {
-        armorIcon.textContent = (armor.tile || '👕').replace(/[a-zA-Z]/g, '');
-        armorIcon.style.color = (armor.name === 'Simple Tunic' || armor.name === 'Tattered Rags') ? 'var(--text-muted)' : 'var(--text-default)';
-    }
-
+    // --- DEFENSE CALCULATION ---
     const baseDefense = Math.floor((player.dexterity || 1) / 3);
     const armorDefense = armor.defense || 0;
+    const offhandDefense = offhand ? (offhand.defense || 0) : 0;
+    const accDefense = acc ? (acc.defense || 0) : 0;
     const buffDefense = player.defenseBonus || 0;
     const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
     const conBonus = Math.floor((player.constitution || 1) * 0.1); 
     
-    const totalDefense = baseDefense + armorDefense + buffDefense + conBonus + talentDefense;
+    const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
 
-    // --- Show Armor Stat Bonuses ---
-    let armorString = `Armor: ${armor.name} (+${armorDefense} Def)`;
+    let armorString = `Body: ${armor.name} (+${armorDefense})`;
     if (armor.statBonuses) {
         const bonusArr = Object.entries(armor.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
         if (bonusArr.length > 0) armorString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
     }
-
     if (buffDefense > 0) {
-        armorString += ` <span class="text-green-500">[Braced +${buffDefense} (${player.defenseBonusTurns}t)]</span>`;
+        armorString += ` <span class="text-green-500">[+${buffDefense} Def (${player.defenseBonusTurns}t)]</span>`;
     }
+    equippedArmorDisplay.innerHTML = `${armorString} <br><span class="text-gray-500">(Total: ${totalDefense} Def)</span>`;
 
-    equippedArmorDisplay.innerHTML = `${armorString} <br><span class="text-gray-500">(Base: ${baseDefense}, Total: ${totalDefense} Def)</span>`;
+    // --- MISC / ACC DISPLAY ---
+    let miscString = "";
+    if (offhand) miscString += `Off: ${offhand.name} | `;
+    if (acc) miscString += `Acc: ${acc.name}`;
+    if (!offhand && !acc) miscString = "Off-Hand & Accessory Empty";
+    document.getElementById('equippedMiscDisplay').textContent = miscString;
+
+    // --- UPDATE ICONS ---
+    const wIcon = document.getElementById('slotWeaponIcon');
+    const aIcon = document.getElementById('slotArmorIcon');
+    const oIcon = document.getElementById('slotOffhandIcon');
+    const cIcon = document.getElementById('slotAccessoryIcon');
+    const mIcon = document.getElementById('slotAmmoIcon');
+    const ammoCount = document.getElementById('ammoCountDisplay');
+
+    if (wIcon) {
+        wIcon.textContent = (weapon.tile || '👊').replace(/[a-zA-Z]/g, '');
+        wIcon.style.opacity = (weapon.name === 'Fists') ? '0.3' : '1';
+    }
+    if (aIcon) {
+        aIcon.textContent = (armor.tile || '👕').replace(/[a-zA-Z]/g, '');
+        aIcon.style.opacity = (armor.name === 'Simple Tunic' || armor.name === 'Tattered Rags') ? '0.3' : '1';
+    }
+    if (oIcon) {
+        oIcon.textContent = offhand ? offhand.tile.replace(/[a-zA-Z]/g, '') : '🛡️';
+        oIcon.style.opacity = offhand ? '1' : '0.3';
+    }
+    if (cIcon) {
+        cIcon.textContent = acc ? acc.tile.replace(/[a-zA-Z]/g, '') : '💍';
+        cIcon.style.opacity = acc ? '1' : '0.3';
+    }
+    if (mIcon && ammoCount) {
+        mIcon.childNodes[0].nodeValue = ammo ? ammo.tile.replace(/[a-zA-Z]/g, '') : '➹';
+        mIcon.style.opacity = ammo ? '1' : '0.3';
+        ammoCount.textContent = ammo ? ammo.quantity : '';
+        ammoCount.style.display = ammo ? 'block' : 'none';
+    }
 };
 
 function updateRegionDisplay() {
