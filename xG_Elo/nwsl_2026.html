@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NWSL Hybrid xG-Elo Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background-color:#f4f4f9;color:#333;max-width:800px;margin:0 auto;padding:20px}
+.header{text-align:center;margin-bottom:20px;position:relative}
+h1{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;margin-top:0}
+.info-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;background-color:#00285e;color:white;border-radius:50%;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.2);transition:0.2s}
+.info-btn:hover{background-color:#e31837}
+.as-of-date{display:block;width:fit-content;margin:0 auto 20px auto;background-color:#e31837;color:white;padding:5px 12px;border-radius:15px;font-size:0.9em;font-weight:bold}
+.upload-section{background:#fff;padding:20px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);text-align:center;margin-top:40px;margin-bottom:30px;border-top:4px solid #00285e}
+input[type="file"]{margin-top:10px}
+table{width:100%;border-collapse:collapse;background:#fff;box-shadow:0 4px 6px rgba(0,0,0,0.1);border-radius:8px;overflow:hidden}
+th,td{padding:12px 15px;text-align:center;border-bottom:1px solid #ddd}
+th{background-color:#00285e;color:#fff;font-weight:bold}
+tr:hover{background-color:#f1f1f1}
+.rank-col{font-weight:bold;color:#e31837;font-size:1.1em}
+.rank-up{color:#27ae60;font-size:0.7em;margin-left:4px;vertical-align:middle;font-weight:bold}
+.rank-down{color:#c0392b;font-size:0.7em;margin-left:4px;vertical-align:middle;font-weight:bold}
+.rank-same{color:#7f8c8d;font-size:0.7em;margin-left:4px;vertical-align:middle;font-weight:bold}
+.c-pos{color:#27ae60;font-size:0.85em;font-weight:bold;margin-left:6px}
+.c-neg{color:#c0392b;font-size:0.85em;font-weight:bold;margin-left:6px}
+.c-neu{color:#7f8c8d;font-size:0.85em;font-weight:bold;margin-left:6px}
+.team-name{cursor:pointer;color:#00285e;border-bottom:1px dashed #00285e;transition:0.2s}
+.team-name:hover{color:#e31837;border-bottom:1px solid #e31837}
+.f-cont{display:flex;gap:4px;justify-content:center}
+.f-badge{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:bold;border-radius:3px;cursor:help}
+.f-w{background-color:#27ae60}
+.f-d{background-color:#7f8c8d}
+.f-l{background-color:#c0392b}
+.status-msg{text-align:center;font-style:italic;margin-top:15px;color:#555;font-size:1.1em}
+.modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgba(0,0,0,0.6)}
+.modal-content{background-color:#fff;margin:5% auto;padding:30px;border-radius:8px;width:90%;max-width:750px;line-height:1.6}
+.modal-content h2{margin-top:0;color:#00285e;border-bottom:2px solid #eee;padding-bottom:10px}
+.modal-content h3{color:#e31837;margin-top:25px;margin-bottom:10px}
+.close-btn{color:#aaa;float:right;font-size:28px;font-weight:bold;cursor:pointer;margin-top:-10px}
+.close-btn:hover{color:#e31837}
+.formula-box{background-color:#f4f4f9;border-left:4px solid #00285e;padding:15px;font-family:monospace;font-size:0.95em;margin-bottom:15px;border-radius:0 4px 4px 0}
+.example-box{background-color:#eef2f5;padding:15px;border-radius:6px;font-size:0.95em;border:1px solid #dcdcdc}
+#formTable th{background-color:#e31837}
+#formTable td,#formTable th{padding:8px 10px;font-size:0.9em}
+</style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>⚽ NWSL Hybrid xG-Elo <span id="infoButton" class="info-btn" title="How does this work?">?</span></h1>
+        <div class="as-of-date" id="dateBadge">Fetching Data...</div>
+        <p>A blended power ranking system weighting actual match results (70%) and expected goals share (30%).<br><em>Hover over the form badges, or click a team name for deep dive details!</em></p>
+    </div>
+
+    <div id="methodologyModal" class="modal">
+        <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
+            <span class="close-btn" id="closeModal">&times;</span>
+            <h2>How the Hybrid Engine Works</h2>
+            <p>Traditional Elo systems only look at wins and losses, ignoring the chaotic nature of soccer where the better team frequently loses to a lucky bounce. Pure Expected Goals (xG) models ignore the fact that actually finishing chances matters.</p>
+            <p>This <strong>Hybrid xG-Elo</strong> system solves this by blending the two. Every NWSL match from the 2026 season is calculated to establish this power ranking.</p>
+            
+            <h3>The Philosophy: Why These Specific Weights?</h3>
+            <p><strong>1. The 70/30 Split (Result vs. xG)</strong><br>
+            Every match is graded on a blended performance score. 70% of the grade is based purely on the final result (Win, Lose, or Draw). The remaining 30% is based on the team's share of the total Expected Goals (xG) created in the match. <br>
+            <em>Why?</em> It respects the scoreboard as the ultimate truth, but acts as a "justice system" for variance. If a team dominates 3.5 xG to 0.2 xG but draws 1-1 because the opposing goalkeeper stood on his head, the model won't punish them as harshly as a traditional system would. They are rewarded for creating high-quality chances.</p>
+
+            <p><strong>2. The NWSL "Travel Tax" (+25 Home Advantage)</strong><br>
+            Before the math even begins, the Home team receives a temporary +25 point boost to their Elo rating for that specific match. <br>
+            <em>Why?</em> NWSL has an intense home-field advantage due to massive travel distances, shifting time zones, and different climates. Mathematically, a +25 bump shifts the expected win probability just enough to account for this historical reality.</p>
+
+            <p><strong>3. The K-Factor (32)</strong><br>
+            The K-Factor dictates the maximum number of points a team can realistically swing in a standard match. <br>
+            <em>Why 32?</em> It is the standard sweet-spot used in many international ranking systems (like FIFA). If the number is too low, the rankings feel sluggish and unresponsive to hot streaks. If it's too high, the model suffers from recency bias.</p>
+
+            <p><strong>4. The Blowout Multiplier</strong><br>
+            If a team wins by 3 or more goals, a small multiplier is applied to their rating gain. <br>
+            <em>Why?</em> Utterly dismantling an opponent signifies a true gap in quality. This ensures teams are slightly rewarded for keeping their foot on the gas.</p>
+
+            <h3>The Formulas</h3>
+            <div class="formula-box">
+                <strong>1. Expected Performance (E):</strong><br>
+                E = 1 / (1 + 10^((Rating_Away - (Rating_Home + 25)) / 400))<br>
+                <br>
+                <strong>2. Blended Actual Performance (A):</strong><br>
+                A = (0.70 * Match_Result) + (0.30 * xG_Share)<br>
+                <em>*Match Result = 1 (Win), 0.5 (Draw), 0 (Loss)</em><br>
+                <br>
+                <strong>3. Rating Update:</strong><br>
+                New_Rating = Old_Rating + [32 * Blowout_Multiplier * (A - E)]
+            </div>
+
+            <h3>Example Calculation</h3>
+            <div class="example-box">
+                <strong>The Scenario:</strong> Two evenly matched teams (both rated 1500) play. The Home Team wins <strong>2-0</strong> and dominates the chances, posting <strong>2.0 xG</strong> to the Away Team's <strong>0.5 xG</strong>.<br><br>
+                <strong>Step 1: Expectations</strong><br>
+                Because of the +25 Home Field Advantage boost, the model expects the Home Team to control the game slightly, giving them an Expected Performance <strong>(E) of 0.536</strong>.<br><br>
+                <strong>Step 2: Actual Performance</strong><br>
+                The Home Team won the game, earning a Match Result of 1.0. They also generated 80% of the total xG (2.0 out of 2.5).<br>
+                Blended Performance <strong>(A)</strong> = (0.70 * 1.0) + (0.30 * 0.80) = <strong>0.94</strong><br><br>
+                <strong>Step 3: The Rating Change</strong><br>
+                Because the Goal Differential was less than 3, the Blowout Multiplier is 1.0.<br>
+                Point Change = 32 * 1.0 * (0.94 - 0.536) = <strong>+12.9 points</strong>.<br><br>
+                <em>Result: The Home Team rises to 1512.9, and the Away Team drops to 1487.1.</em>
+            </div>
+        </div>
+    </div>
+
+    <div id="teamFormModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeFormModal">&times;</span>
+            <div id="teamFormContent"></div>
+        </div>
+    </div>
+
+    <div id="statusMessage" class="status-msg">
+        <strong>Loading:</strong> Crunching the 2026 NWSL season data in real-time...
+    </div>
+
+    <div id="tableContainer"></div>
+
+    <div class="upload-section">
+        <h3>Update the Standings manually (Optional)</h3>
+        <p>This page automatically loads the latest data from the server, but you can upload a newer <strong>ASA Match Logs CSV</strong> to instantly override it below!</p>
+        <input type="file" id="csvFileInput" accept=".csv" />
+    </div>
+
+    <script>
+        // Start completely empty! 
+        window.teamForm = {};
+        window.teamEloHistory = {}; 
+        window.ratings = {}; // Global scoped for Modal access
+        let teamChartInstance = null; 
+
+        var methModal = document.getElementById("methodologyModal");
+        var formModal = document.getElementById("teamFormModal");
+        document.getElementById("infoButton").onclick = () => methModal.style.display = "block";
+        document.getElementById("closeModal").onclick = () => methModal.style.display = "none";
+        document.getElementById("closeFormModal").onclick = () => formModal.style.display = "none";
+        window.onclick = function(e) {
+            if (e.target == methModal) methModal.style.display = "none";
+            if (e.target == formModal) formModal.style.display = "none";
+        }
+
+        function showTeamForm(team) {
+            const fullHistory = window.teamEloHistory[team] || [];
+            const last5 = (window.teamForm[team] || []).slice(-5).reverse(); 
+            
+            // Safely fetch current Elo to prevent crashes if history is empty
+            const currentRating = (window.ratings && window.ratings[team]) ? window.ratings[team] : 0;
+            
+            let maxElo = -Infinity, minElo = Infinity;
+            let maxDate = "N/A", minDate = "N/A";
+            
+            if (fullHistory.length > 0) {
+                fullHistory.forEach(h => {
+                    if (h.elo > maxElo) { maxElo = h.elo; maxDate = h.d; }
+                    if (h.elo < minElo) { minElo = h.elo; minDate = h.d; }
+                });
+            } else {
+                maxElo = currentRating;
+                minElo = currentRating;
+            }
+
+            let html = `<h2>${team} - Form & Elo Trend</h2>`;
+            
+            // Inject the High/Low/Current mini-dashboard
+            html += `<div style="display: flex; justify-content: space-around; background: #f4f4f9; padding: 15px; border-radius: 6px; border: 1px solid #dcdcdc; margin-bottom: 20px;">
+                        <div style="text-align: center;">
+                            <span style="font-size: 0.85em; color: #555; text-transform: uppercase; font-weight: bold;">Season High</span><br>
+                            <strong style="color: #27ae60; font-size: 1.4em;">${maxElo.toFixed(1)}</strong> <br>
+                            <span style="font-size: 0.8em; color: #777;">${maxDate}</span>
+                        </div>
+                        <div style="text-align: center;">
+                            <span style="font-size: 0.85em; color: #555; text-transform: uppercase; font-weight: bold;">Current Elo</span><br>
+                            <strong style="color: #00285e; font-size: 1.4em;">${currentRating.toFixed(1)}</strong>
+                        </div>
+                        <div style="text-align: center;">
+                            <span style="font-size: 0.85em; color: #555; text-transform: uppercase; font-weight: bold;">Season Low</span><br>
+                            <strong style="color: #c0392b; font-size: 1.4em;">${minElo.toFixed(1)}</strong> <br>
+                            <span style="font-size: 0.8em; color: #777;">${minDate}</span>
+                        </div>
+                     </div>`;
+
+            html += `<table id="formTable"><tr><th>Date</th><th>Opponent</th><th>Result</th><th>Score</th><th>xG</th><th>Elo Change</th></tr>`;
+            
+            if (last5.length === 0) {
+                html += `<tr><td colspan="6">No recent match data.</td></tr>`;
+            } else {
+                last5.forEach(m => {
+                    const oppStr = m.h ? `vs ${m.o}` : `@ ${m.o}`;
+                    let res = 'D', resClass = 'c-neu';
+                    if (m.gf > m.ga) { res = 'W'; resClass = 'c-pos'; }
+                    else if (m.gf < m.ga) { res = 'L'; resClass = 'c-neg'; }
+                    let chgStr = m.c > 0 ? `+${m.c.toFixed(1)}` : m.c.toFixed(1);
+                    let chgClass = m.c > 0 ? 'c-pos' : (m.c < 0 ? 'c-neg' : 'c-neu');
+                    html += `<tr><td>${m.d}</td><td>${oppStr}</td><td><strong class="${resClass}">${res}</strong></td>
+                             <td>${m.gf} - ${m.ga}</td><td>${m.xf.toFixed(2)} - ${m.xa.toFixed(2)}</td><td class="${chgClass}">${chgStr}</td></tr>`;
+                });
+            }
+            html += `</table>`;
+
+            // Inject the Canvas for the Chart
+            html += `<div style="position: relative; height: 250px; margin-top: 25px;">
+                        <canvas id="teamChart"></canvas>
+                     </div>`;
+
+            document.getElementById('teamFormContent').innerHTML = html;
+            formModal.style.display = "block";
+
+            // Draw the Chart!
+            const historyData = (window.teamEloHistory[team] || []).slice(-34); // ~1 full season
+            const labels = historyData.map(h => h.d);
+            const dataPts = historyData.map(h => h.elo);
+
+            const ctx = document.getElementById('teamChart').getContext('2d');
+            if (teamChartInstance) {
+                teamChartInstance.destroy(); // Destroy old chart so they don't overlap
+            }
+            
+            teamChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: team + ' Elo Rating',
+                        data: dataPts,
+                        borderColor: '#00285e',
+                        backgroundColor: 'rgba(0, 40, 94, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 2,
+                        fill: true,
+                        tension: 0.2 // slight curve
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { maxTicksLimit: 8 } }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: 'Elo Progression (2026 Season)', padding: {bottom: 10} }
+                    }
+                }
+            });
+        }
+
+        // --- AUTOMATIC FETCH ON PAGE LOAD ---
+        window.onload = function() {
+            const cacheBuster = "?v=" + new Date().getTime(); // Bust the cache
+            Papa.parse("nwsl_2026_data.csv" + cacheBuster, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    processData(results.data);
+                },
+                error: function(err) {
+                    document.getElementById('statusMessage').innerHTML = "<span style='color:#c0392b;'><strong>Error loading nwsl_2026_data.csv</strong><br>Make sure the CSV file is named 'nwsl_2026_data.csv' and is in the same folder as this webpage.</span>";
+                }
+            });
+        };
+
+        // --- MANUAL UPLOAD FALLBACK ---
+        document.getElementById('csvFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            document.getElementById('statusMessage').style.display = "block";
+            document.getElementById('statusMessage').innerHTML = "<strong>Loading:</strong> Crunching the 2026 data...";
+            Papa.parse(file, { header: true, skipEmptyLines: true, complete: function(r) { processData(r.data); } });
+        });
+
+        function processData(data) {
+            let validData = data.filter(row => row.Date && row.Home && row.Away);
+            validData.forEach(row => {
+                row.parsedDate = new Date(row.Date + 'T12:00:00');
+            });
+            
+            // STRICT FILTER: Only keep matches from 2026
+            validData = validData.filter(row => row.parsedDate.getFullYear() === 2026);
+            
+            validData.sort((a, b) => a.parsedDate - b.parsedDate);
+
+            if (validData.length === 0) {
+                document.getElementById('statusMessage').innerHTML = "<span style='color:red;'>Error: No valid 2026 data found in CSV.</span>";
+                return;
+            }
+
+            const latestDate = validData[validData.length - 1].parsedDate;
+            const fDate = latestDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+            const keys = Object.keys(validData[0]);
+            const hgKey = keys.find(k => k === 'HG' || k.includes('HGGoals')) || 'HG';
+            const agKey = keys.find(k => k === 'AG' || k.includes('AGGoals')) || 'AG';
+            const hXgKey = keys.find(k => k === 'HxGt' || k.includes('HxGtTeam')) || 'HxGt';
+            const aXgKey = keys.find(k => k === 'AxGt' || k.includes('AxGtTeam')) || 'AxGt';
+            const gdKey = keys.find(k => k === 'GD' || k.includes('GDGoal Difference')) || 'GD';
+
+            let ratings = {}; let lastChange = {}; let activeTeams = new Set();
+            window.teamForm = {};
+            window.teamEloHistory = {};
+
+            validData.forEach(row => {
+                const home = row['Home'], away = row['Away'];
+                activeTeams.add(home); 
+                activeTeams.add(away); 
+                
+                if (!ratings[home]) ratings[home] = 1500.0;
+                if (!ratings[away]) ratings[away] = 1500.0;
+                
+                if (!window.teamForm[home]) window.teamForm[home] = [];
+                if (!window.teamForm[away]) window.teamForm[away] = [];
+                
+                if (!window.teamEloHistory[home]) window.teamEloHistory[home] = [];
+                if (!window.teamEloHistory[away]) window.teamEloHistory[away] = [];
+
+                const r_home_old = ratings[home], r_away_old = ratings[away];
+                const e_home = 1 / (1 + Math.pow(10, (r_away_old - (r_home_old + 25)) / 400));
+
+                const xg_home = parseFloat(row[hXgKey]), xg_away = parseFloat(row[aXgKey]);
+                let xg_share = 0.5;
+                if (!isNaN(xg_home) && !isNaN(xg_away) && (xg_home + xg_away) > 0) xg_share = xg_home / (xg_home + xg_away);
+
+                const hg = parseFloat(row[hgKey]), ag = parseFloat(row[agKey]);
+                let s_home = 0.5;
+                if (!isNaN(hg) && !isNaN(ag)) { if (hg > ag) s_home = 1.0; else if (hg < ag) s_home = 0.0; }
+
+                const a_home = (0.7 * s_home) + (0.3 * xg_share);
+
+                const gd = parseFloat(row[gdKey]);
+                let b_mult = 1.0;
+                if (!isNaN(gd) && Math.abs(gd) >= 3) b_mult = 1 + (Math.abs(gd) * 0.02);
+
+                const r_home_change = 32 * b_mult * (a_home - e_home);
+                const r_away_change = -r_home_change;
+
+                ratings[home] += r_home_change; ratings[away] += r_away_change;
+                lastChange[home] = r_home_change; lastChange[away] = r_away_change;
+                
+                const dStr = row.parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+                
+                window.teamForm[home].push({ d: dStr, o: away, h: 1, gf: isNaN(hg)?0:hg, ga: isNaN(ag)?0:ag, xf: isNaN(xg_home)?0:xg_home, xa: isNaN(xg_away)?0:xg_away, c: r_home_change });
+                window.teamForm[away].push({ d: dStr, o: home, h: 0, gf: isNaN(ag)?0:ag, ga: isNaN(hg)?0:hg, xf: isNaN(xg_away)?0:xg_away, xa: isNaN(xg_home)?0:xg_home, c: r_away_change });
+                
+                window.teamEloHistory[home].push({ d: dStr, elo: ratings[home] });
+                window.teamEloHistory[away].push({ d: dStr, elo: ratings[away] });
+            });
+
+            window.ratings = ratings;
+
+            let prevStandings = [];
+            for (let team in ratings) {
+                if (activeTeams.has(team)) {
+                    let c = lastChange[team] || 0;
+                    prevStandings.push({ team: team, prev_elo: ratings[team] - c });
+                }
+            }
+            prevStandings.sort((a, b) => b.prev_elo - a.prev_elo);
+            let prevRanks = {};
+            prevStandings.forEach((item, idx) => { prevRanks[item.team] = idx + 1; });
+
+            let finalStandings = [];
+            for (let team in ratings) {
+                if (activeTeams.has(team)) {
+                    finalStandings.push({ team: team, elo: ratings[team], change: lastChange[team] || 0 });
+                }
+            }
+            finalStandings.sort((a, b) => b.elo - a.elo);
+            
+            finalStandings.forEach((item, idx) => {
+                let currentRank = idx + 1;
+                item.rank_change = prevRanks[item.team] - currentRank;
+            });
+            
+            renderTable(finalStandings);
+            document.getElementById('dateBadge').innerText = "Current as of " + fDate;
+            
+            document.getElementById('statusMessage').style.display = "none";
+        }
+
+        function renderTable(standings) {
+            let html = '<table><tr><th style="min-width:70px;">Rank</th><th>Team</th><th>Hybrid Elo Rating</th><th>Recent Form</th></tr>';
+            standings.forEach((item, index) => {
+                let cInd = '';
+                if (item.change > 0.05) cInd = `<span class="c-pos">(+${item.change.toFixed(1)})</span>`;
+                else if (item.change < -0.05) cInd = `<span class="c-neg">(${item.change.toFixed(1)})</span>`;
+                else cInd = `<span class="c-neu">(0.0)</span>`;
+                
+                let rankHtml = `<span class="rank-col">${index + 1}</span>`;
+                if (item.rank_change > 0) {
+                    rankHtml += `<span class="rank-up" title="Up ${item.rank_change} spots">▲${item.rank_change}</span>`;
+                } else if (item.rank_change < 0) {
+                    rankHtml += `<span class="rank-down" title="Down ${Math.abs(item.rank_change)} spots">▼${Math.abs(item.rank_change)}</span>`;
+                } else {
+                    rankHtml += `<span class="rank-same" title="No change in rank">-</span>`;
+                }
+
+                let formHtml = '<div class="f-cont">';
+                if (window.teamForm && window.teamForm[item.team]) {
+                    const last5 = window.teamForm[item.team].slice(-5);
+                    last5.forEach(m => {
+                        let res = 'D', fClass = 'f-d';
+                        if (m.gf > m.ga) { res = 'W'; fClass = 'f-w'; }
+                        else if (m.gf < m.ga) { res = 'L'; fClass = 'f-l'; }
+                        const oppStr = m.h ? `vs ${m.o}` : `@ ${m.o}`;
+                        formHtml += `<span class="f-badge ${fClass}" title="${m.d}: ${oppStr} (${m.gf}-${m.ga})">${res}</span>`;
+                    });
+                }
+                formHtml += '</div>';
+
+                let safeTeamName = item.team.replace(/'/g, "\\'");
+
+                html += `<tr><td>${rankHtml}</td>
+                         <td><span class="team-name" onclick="showTeamForm('${safeTeamName}')"><strong>${item.team}</strong></span></td>
+                         <td>${item.elo.toFixed(1)} ${cInd}</td><td>${formHtml}</td></tr>`;
+            });
+            html += '</table>';
+            document.getElementById('tableContainer').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
