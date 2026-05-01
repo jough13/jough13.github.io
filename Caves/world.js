@@ -750,7 +750,7 @@ const chunkManager = {
                     features = features.filter(f => {
                         const data = TILE_DATA[f];
                         const allowedTypes = ['lore', 'lore_statue', 'loot_container', 'campsite', 'decoration'];
-                        // EXCLUDE the shipwreck from dry land spawns!
+                        // EXCLUDE the shipwreck from generic dry land spawns
                         return allowedTypes.includes(data.type) && f !== '🚢'; 
                     });
 
@@ -759,8 +759,33 @@ const chunkManager = {
                         chunkData[y][x] = featureTile;
                     }
                 }
-                else if ((tile === '~' || tile === '≈') && featureRoll < 0.0005) {
-                    chunkData[y][x] = '🚢'; // Shipwrecks only spawn in water/swamps!
+                // --- ADD THIS: SHIPWRECKS (Water & Shorelines) ---
+                else if (featureRoll > 0.0020 && featureRoll < 0.0024) {
+                    let isShipwreckSpot = false;
+                    
+                    // 1. Valid if it's already in the water
+                    if (tile === '~' || tile === '≈') {
+                        isShipwreckSpot = true; 
+                    } 
+                    // 2. If it's on land, check if it's on a beach/shoreline
+                    else if (['.', 'D', 'd', 'F'].includes(tile)) {
+                        // Check the elevation noise 1 tile in every direction to see if it drops below sea level (< 0.35)
+                        const eN = elevationNoise.noise(worldX / 70, (worldY - 1) / 70);
+                        const eS = elevationNoise.noise(worldX / 70, (worldY + 1) / 70);
+                        const eE = elevationNoise.noise((worldX + 1) / 70, worldY / 70);
+                        const eW = elevationNoise.noise((worldX - 1) / 70, worldY / 70);
+                        
+                        if (eN < 0.35 || eS < 0.35 || eE < 0.35 || eW < 0.35) {
+                            isShipwreckSpot = true; // It's a shore!
+                        }
+                    }
+
+                    if (isShipwreckSpot) {
+                        chunkData[y][x] = '🚢';
+                    } else {
+                        // It rolled the number but wasn't near water, just leave the terrain alone
+                        chunkData[y][x] = tile; 
+                    }
                 }
                 // --- 6. RIDDLE STATUES ---
                 else if (tile === '.' && featureRoll < 0.00008) {
