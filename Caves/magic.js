@@ -1434,6 +1434,14 @@ async function executeRangedAttack(dirX, dirY) {
     const player = gameState.player;
     const skillData = SKILL_DATA['ranged_attack'];
     
+    // --- NEW: AMMO CHECK ---
+    const ammo = player.equipment.ammo;
+    if (!ammo || ammo.quantity <= 0) {
+        logMessage("{red:You need to equip arrows to shoot!}");
+        gameState.isAiming = false;
+        return;
+    }
+
     // --- 1. Deduct Cost ---
     player.stamina -= skillData.cost;
     let hitSomething = false;
@@ -1442,22 +1450,20 @@ async function executeRangedAttack(dirX, dirY) {
 
     // --- 2. Calculate Base Damage ---
     const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
+    const ammoDamage = ammo.damage || 0;
     
-    // Ranged attacks scale primarily off Dexterity, not Strength!
-    let rawPower = player.dexterity + weaponDamage;
+    // Ranged attacks scale off Dexterity + Bow Dmg + Arrow Dmg
+    let rawPower = player.dexterity + weaponDamage + ammoDamage;
 
-    // TALENT: Eagle Eye (+50% Ranged Damage)
     if (player.talents && player.talents.includes('eagle_eye')) {
         rawPower = Math.floor(rawPower * 1.5);
     }
     
-    // Break Stealth
     if (player.stealthTurns > 0) {
         player.stealthTurns = 0;
         logMessage("You fire from the shadows!");
         playerRef.update({ stealthTurns: 0 });
         
-        // TALENT: Shadow Strike applies to ranged attacks from stealth too!
         if (player.talents && player.talents.includes('shadow_strike')) {
             rawPower = Math.floor(rawPower * 4);
             logMessage("Shadow Strike! (4x Damage)");
@@ -1466,9 +1472,19 @@ async function executeRangedAttack(dirX, dirY) {
 
     const totalDamage = Math.max(1, rawPower);
 
+    // --- NEW: CONSUME AMMO ---
+    ammo.quantity--;
+    if (ammo.quantity <= 0) {
+        logMessage("You fired your last arrow!");
+        // Find it in inventory and remove it
+        const invIndex = player.inventory.findIndex(i => i.isEquipped && i.slot === 'ammo');
+        if (invIndex > -1) player.inventory.splice(invIndex, 1);
+        player.equipment.ammo = null;
+    }
+
     // --- 3. Projectile Loop (Range 4) ---
     logMessage("You loose an arrow!");
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Sounds like a string twang
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); 
     
     for (let i = 1; i <= 4; i++) {
         const targetX = player.x + (dirX * i);
@@ -1481,21 +1497,15 @@ async function executeRangedAttack(dirX, dirY) {
             const enemyId = `overworld:${targetX},${-targetY}`;
             const liveEnemy = gameState.sharedEnemies[enemyId];
             tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
-            
-            // Check if arrow hit a wall/mountain/tree
             if (['^', 'F', '🧱'].includes(tile) && !liveEnemy) isSolid = true;
-            
         } else {
             const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
             tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
-            
             const theme = CAVE_THEMES[gameState.currentCaveTheme];
             const wallTile = theme ? theme.wall : '▓';
-            
             if (tile === wallTile || tile === '▒') isSolid = true;
         }
         
-        // Stop the arrow if it hits a wall
         if (isSolid) {
             logMessage("Your arrow strikes a solid object.");
             break;
@@ -1506,7 +1516,6 @@ async function executeRangedAttack(dirX, dirY) {
         if (enemyData) {
             hitSomething = true;
             
-            // Handle Damage Application
             if (gameState.mapMode === 'overworld') {
                 const finalDmg = Math.max(1, totalDamage - (enemyData.defense || 0));
                 await handleOverworldCombat(targetX, targetY, enemyData, tile, finalDmg);
@@ -1521,20 +1530,14 @@ async function executeRangedAttack(dirX, dirY) {
                     if (enemy.health <= 0) {
                         logMessage(`You defeated ${enemy.name}!`);
                         registerKill(enemy);
-
                         const droppedLoot = generateEnemyLoot(player, enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-
-                        if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
-                        }
-
                         let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
                         map[targetY][targetX] = droppedLoot || '.';
                     }
                 }
             }
-            break; // Stop the arrow!
+            break; 
         }
         
         finalTargetX = targetX;
@@ -1548,11 +1551,13 @@ async function executeRangedAttack(dirX, dirY) {
 
     // --- 4. Finalize Turn ---
     playerRef.update({
-        stamina: player.stamina
+        stamina: player.stamina,
+        inventory: getSanitizedInventory() // Sync ammo removal
     });
     triggerStatFlash(statDisplays.stamina, false); 
     
     endPlayerTurn(); 
+    renderEquipment(); // Refresh UI ammo count
     render(); 
 }
 
