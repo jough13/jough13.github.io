@@ -267,6 +267,7 @@ function updateMapUI() {
             } else if (tile === 'V') tileName = "Safe Haven Village";
             else if (tile === '🏰') tileName = "Castle Ruins";
             else if (tile === '♛') tileName = "Grand Fortress";
+            else if (tile === '🛕') tileName = "Sunken Temple"; 
             else if (tile === '⛰') tileName = "Cave Entrance";
             else if (tile === 'F') tileName = "Forest";
             else if (tile === 'D') tileName = "Desert";
