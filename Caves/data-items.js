@@ -329,7 +329,14 @@ window.ITEM_DATA = {
             return true; 
         } 
     },
-        
+    '⚓': {
+        name: 'Rusted Anchor',
+        type: 'trade',
+        char: '⚓',
+        description: "Heavy and encrusted with barnacles. A collector's item.",
+        value: 75
+    },
+
     'bone': {
         name: "Fossilized Bone",
         type: "trade",
@@ -884,18 +891,20 @@ window.ITEM_DATA = {
             } 
             // Case 3: We have multiple waters, so we need a new inventory slot for the bottle.
             else {
-                if (state.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    state.player.inventory.push({ 
-                        name: 'Empty Bottle', 
-                        type: 'consumable', 
-                        quantity: 1, 
-                        tile: '🫙',
-                        effect: ITEM_DATA['🫙'].effect
-                    });
-                } else {
-                    logMessage("No room for the Empty Bottle! It falls to the ground.");
+                // Verify inventory isn't full BEFORE letting them drink!
+                if (state.player.inventory.length >= 9) { // MAX_INVENTORY_SLOTS
+                    logMessage("You must clear an inventory slot for the empty bottle before drinking.");
+                    return false; // Block the drink!
                 }
-                return true; // Consume 1 water
+                
+                state.player.inventory.push({ 
+                    name: 'Empty Bottle', 
+                    type: 'consumable', 
+                    quantity: 1, 
+                    tile: '🫙',
+                    effect: ITEM_DATA['🫙'].effect
+                });
+                return true; 
             }
         }
     },
@@ -909,7 +918,20 @@ window.ITEM_DATA = {
                 logMessage("You are not thirsty right now.");
                 return false;
             }
+
+            // PRE-CHECK: Prevent inventory overflow if we need a new slot for the bottle
+            const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle');
+            const waterStack = state.player.inventory.find(i => i.name === 'Dirty Water');
             
+            // If we don't have a bottle stack, and this isn't our last water, we need a new slot.
+            if (!existingBottle && waterStack && waterStack.quantity > 1) {
+                if (state.player.inventory.length >= 9) { // MAX_INVENTORY_SLOTS
+                    logMessage("You must clear an inventory slot for the empty bottle before drinking.");
+                    return false; // Block the drink!
+                }
+            }
+            
+            // --- Apply the Drink Effects ---
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 15);
             logMessage("You choke it down. {blue:(+15 Thirst)}");
             
@@ -919,14 +941,13 @@ window.ITEM_DATA = {
                 state.player.poisonTurns = 3;
             }
 
-            const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle');
-            const waterStack = state.player.inventory.find(i => i.name === 'Dirty Water');
-
-            // Apply the exact same logic as Clean Water
+            // --- Inventory Management ---
+            // Case 1: We already have a stack of Empty Bottles. Add to it.
             if (existingBottle) {
                 existingBottle.quantity++;
                 return true; 
             } 
+            // Case 2: No bottle stack, and this is our LAST water. Morph it in-place.
             else if (waterStack && waterStack.quantity === 1) {
                 waterStack.name = 'Empty Bottle';
                 waterStack.tile = '🫙';
@@ -934,18 +955,15 @@ window.ITEM_DATA = {
                 waterStack.effect = ITEM_DATA['🫙'].effect; 
                 return false; 
             } 
+            // Case 3: We have multiple waters, and we already confirmed we have space above.
             else {
-                if (state.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    state.player.inventory.push({ 
-                        name: 'Empty Bottle', 
-                        type: 'consumable', 
-                        quantity: 1, 
-                        tile: '🫙',
-                        effect: ITEM_DATA['🫙'].effect
-                    });
-                } else {
-                    logMessage("No room for the Empty Bottle! It falls to the ground.");
-                }
+                state.player.inventory.push({ 
+                    name: 'Empty Bottle', 
+                    type: 'consumable', 
+                    quantity: 1, 
+                    tile: '🫙',
+                    effect: ITEM_DATA['🫙'].effect
+                });
                 return true; 
             }
         }
