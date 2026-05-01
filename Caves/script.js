@@ -6435,8 +6435,7 @@ async function enterGame(playerData) {
     gameState.foundLore = new Set(playerData.foundLore || []);
     gameState.lootedTiles = new Set(playerData.lootedTiles || []);
     gameState.exploredChunks = new Set(playerData.exploredChunks || []);
-    // Re-bind Codex (optional visual data not critical for engine but good for logs)
-    // foundCodexEntries logic is handled via foundLore sets in this version
+    gameState.shopStates = playerData.shopStates || {};
 
     if (!playerData.background) {
         loadingIndicator.classList.add('hidden');
