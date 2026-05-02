@@ -423,290 +423,304 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     const spellData = SPELL_DATA[spellId];
     const spellLevel = player.spellbook[spellId] || 1;
 
-    // --- 1. Calculate Cost ---
-    let cost = spellData.cost;
-    if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
-        cost = Math.floor(cost * 0.8);
-    }
+    // --- 🚨 LOCK THE ENGINE ---
+    isProcessingMove = true;
 
-    AudioSystem.playMagic();
-
-    let hitSomething = false;
-    let finalTargetX = player.x;
-    let finalTargetY = player.y;
-
-    // --- CALCULATE DAMAGE WITH BONUS ---
-    const effectiveWits = player.wits + (player.witsBonus || 0);
-    const effectiveWill = player.willpower; 
-
-    // --- 2. Execute Spell Logic ---
-    switch (spellId) {
-
-        // --- 1. ENTANGLE (Unique Logic) ---
-        case 'entangle': {
-            logMessage("Vines burst from the ground!");
-            const entangleDmg = spellData.baseDamage + (player.intuition * spellLevel); 
-
-            for (let i = 1; i <= 3; i++) {
-                const tx = player.x + (dirX * i);
-                const ty = player.y + (dirY * i);
-
-                if (await applySpellDamage(tx, ty, entangleDmg, spellId)) {
-                    hitSomething = true;
-                    if (typeof ParticleSystem !== 'undefined') {
-                        ParticleSystem.createFloatingText(tx, ty, "ROOTED", "#22c55e");
-                    }
-                    break;
-                }
-                finalTargetX = tx;
-                finalTargetY = ty;
-            }
-            break;
+    try {
+        // --- 1. Calculate Cost ---
+        let cost = spellData.cost;
+        if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
+            cost = Math.floor(cost * 0.8);
         }
 
-        // --- 2. STANDARD PROJECTILES (Shared Logic) ---
-        case 'magicBolt':
-        case 'siphonLife':
-        case 'psychicBlast':
-        case 'frostBolt':
-        case 'poisonBolt': {
-            const damageStat = (spellId === 'siphonLife' || spellId === 'psychicBlast' || spellId === 'poisonBolt') 
-                ? effectiveWill 
-                : effectiveWits;
+        AudioSystem.playMagic();
 
-            const spellDamage = spellData.baseDamage + (damageStat * spellLevel);
+        let hitSomething = false;
+        let finalTargetX = player.x;
+        let finalTargetY = player.y;
 
-            let logMsg = "You cast your spell!";
-            if (spellId === 'magicBolt') logMsg = "You hurl a bolt of energy!";
-            else if (spellId === 'siphonLife') logMsg = "You cast Siphon Life!";
-            else if (spellId === 'psychicBlast') logMsg = "You unleash a blast of mental energy!";
-            else if (spellId === 'frostBolt') logMsg = "You launch a shard of ice!";
-            else if (spellId === 'poisonBolt') logMsg = "You hurl a bolt of acid!";
-            
-            logMessage(logMsg);
+        // --- CALCULATE DAMAGE WITH BONUS ---
+        const effectiveWits = player.wits + (player.witsBonus || 0);
+        const effectiveWill = player.willpower; 
 
-            for (let i = 1; i <= 3; i++) {
-                const targetX = player.x + (dirX * i);
-                const targetY = player.y + (dirY * i);
+        // --- 2. Execute Spell Logic ---
+        switch (spellId) {
 
-                // --- Animated Arrow Trail ---
-                if (typeof ParticleSystem !== 'undefined') {
-                    // Stagger the particle spawning by 50ms per tile to create a "flying" effect
-                    setTimeout(() => {
-                        ParticleSystem.spawn(targetX, targetY, '#d4d4d8', 'dust', '', 3);
-                    }, i * 40); 
-                }
-                
-                if (await applySpellDamage(targetX, targetY, spellDamage, spellId)) {
-                    hitSomething = true;
-                    break; 
-                }
-                finalTargetX = targetX;
-                finalTargetY = targetY;
-            }
-            break;
-        }
+            // --- 1. ENTANGLE (Unique Logic) ---
+            case 'entangle': {
+                logMessage("Vines burst from the ground!");
+                const entangleDmg = spellData.baseDamage + (player.intuition * spellLevel); 
 
-        // --- 3. OTHER SPELLS (Keep existing logic) ---
-        case 'thunderbolt': {
-            const thunderDmg = spellData.baseDamage + (player.wits * spellLevel);
-            logMessage("CRACK! Lightning strikes!");
-            for (let i = 1; i <= 4; i++) {
-                const tx = player.x + (dirX * i);
-                const ty = player.y + (dirY * i);
-                if (await applySpellDamage(tx, ty, thunderDmg, spellId)) {
-                    ParticleSystem.createExplosion(tx, ty, '#facc15');
-                    hitSomething = true;
-                    break;
-                }
-                finalTargetX = tx;
-                finalTargetY = ty;
-            }
-            break;
-        }
+                for (let i = 1; i <= 3; i++) {
+                    const tx = player.x + (dirX * i);
+                    const ty = player.y + (dirY * i);
 
-        case 'meteor': {
-            const meteorDmg = spellData.baseDamage + (player.wits * spellLevel);
-            const mx = player.x + (dirX * 3);
-            const my = player.y + (dirY * 3);
-            logMessage("A meteor crashes down!");
-
-            for (let y = my - spellData.radius; y <= my + spellData.radius; y++) {
-                for (let x = mx - spellData.radius; x <= mx + spellData.radius; x++) {
-                    applySpellDamage(x, y, meteorDmg, spellId).then(hit => {
-                        if (hit) ParticleSystem.createExplosion(x, y, '#f97316');
-                    });
-                }
-            }
-            hitSomething = true;
-            break;
-        }
-
-        case 'raiseDead': {
-            const targetX = player.x + dirX;
-            const targetY = player.y + dirY;
-
-            let tileType;
-            if (gameState.mapMode === 'overworld') {
-                tileType = chunkManager.getTile(targetX, targetY);
-            } else if (gameState.mapMode === 'dungeon') {
-                tileType = chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX];
-            } else {
-                tileType = chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX];
-            }
-
-            if (tileType === '(' || tileType === '⚰️') {
-                if (gameState.player.companion) {
-                    logMessage("You already have a companion! Dismiss them first.");
-                } else {
-                    logMessage("You chant the words of unlife... A Skeleton rises to serve you!");
-
-                    if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(targetX, targetY, '.');
-                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
-
-                    gameState.player.companion = {
-                        name: "Risen Skeleton",
-                        tile: "s",
-                        type: "undead",
-                        hp: 15 + (player.willpower * 5),
-                        maxHp: 15 + (player.willpower * 5),
-                        attack: 3 + Math.floor(player.wits / 2),
-                        defense: 1,
-                        x: targetX,
-                        y: targetY
-                    };
-
-                    playerRef.update({ companion: gameState.player.companion });
-                    hitSomething = true;
-                    render();
-                }
-            } else {
-                logMessage("You need a pile of bones '(' or a grave '⚰️' to raise the dead.");
-            }
-            break;
-        }
-
-        case 'chainLightning': {
-            const lightningDmg = spellData.baseDamage + (player.wits * spellLevel);
-            const targetX = player.x + (dirX * 3);
-            const targetY = player.y + (dirY * 3);
-
-            logMessage("A bolt of lightning arcs from your hands!");
-
-            const hitPrimary = await applySpellDamage(targetX, targetY, lightningDmg, spellId);
-
-            if (hitPrimary) {
-                hitSomething = true;
-                ParticleSystem.createExplosion(targetX, targetY, '#facc15');
-            }
-
-            const jumpRadius = 3; 
-            let potentialJumpTargets = [];
-
-            for (let y = targetY - jumpRadius; y <= targetY + jumpRadius; y++) {
-                for (let x = targetX - jumpRadius; x <= targetX + jumpRadius; x++) {
-                    if (x === targetX && y === targetY) continue;
-
-                    let hasEnemy = false;
-                    if (gameState.mapMode === 'overworld') {
-                        const tile = chunkManager.getTile(x, y);
-                        if (ENEMY_DATA[tile]) hasEnemy = true;
-                    } else {
-                        if (gameState.instancedEnemies.some(e => e.x === x && e.y === y)) hasEnemy = true;
-                    }
-
-                    if (hasEnemy) potentialJumpTargets.push({ x, y });
-                }
-            }
-
-            const maxJumps = 2 + Math.floor(spellLevel / 2);
-            potentialJumpTargets.sort(() => Math.random() - 0.5);
-            const jumpsToMake = Math.min(potentialJumpTargets.length, maxJumps);
-
-            if (jumpsToMake > 0) {
-                setTimeout(() => logMessage(`The lightning arcs to ${jumpsToMake} nearby enemies!`), 200);
-            }
-
-            for (let i = 0; i < jumpsToMake; i++) {
-                const jumpTgt = potentialJumpTargets[i];
-                const jumpDmg = Math.max(1, Math.floor(lightningDmg * 0.75));
-                applySpellDamage(jumpTgt.x, jumpTgt.y, jumpDmg, spellId).then(hit => {
-                    if (hit) ParticleSystem.createExplosion(jumpTgt.x, jumpTgt.y, '#93c5fd');
-                });
-            }
-            break;
-        }
-
-        case 'fireball': {
-            const fbDamage = spellData.baseDamage + (player.wits * spellLevel);
-            const radius = spellData.radius; 
-            const targetX = player.x + (dirX * 3);
-            const targetY = player.y + (dirY * 3);
-            logMessage("A fireball erupts in the distance!");
-
-            for (let y = targetY - radius; y <= targetY + radius; y++) {
-                for (let x = targetX - radius; x <= targetX + radius; x++) {
-                    let tileAt;
-                    if (gameState.mapMode === 'overworld') tileAt = chunkManager.getTile(x, y);
-                    else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[y]?.[x];
-                    else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[y]?.[x];
-
-                    if (tileAt === '🛢') {
-                        logMessage("BOOM! An Oil Barrel explodes!");
-                        ParticleSystem.createExplosion(x, y, '#f97316', 12);
-                        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '.');
-                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][y][x] = '.';
-                        else chunkManager.castleMaps[gameState.currentCastleId][y][x] = '.';
-                        applySpellDamage(x, y, 15, 'fireball');
-                    }
-
-                    if (gameState.mapMode === 'dungeon' && tileAt === '🕸') {
-                        const map = chunkManager.caveMaps[gameState.currentCaveId];
-                        const theme = CAVE_THEMES[gameState.currentCaveTheme];
-                        if (map && map[y]) {
-                            map[y][x] = theme.floor;
-                            logMessage("The web catches fire and burns away!");
+                    if (await applySpellDamage(tx, ty, entangleDmg, spellId)) {
+                        hitSomething = true;
+                        if (typeof ParticleSystem !== 'undefined') {
+                            ParticleSystem.createFloatingText(tx, ty, "ROOTED", "#22c55e");
                         }
+                        break;
                     }
+                    finalTargetX = tx;
+                    finalTargetY = ty;
+                }
+                break;
+            }
 
-                    applySpellDamage(x, y, fbDamage, spellId).then(hit => {
-                        if (hit) hitSomething = true;
+            // --- 2. STANDARD PROJECTILES (Shared Logic) ---
+            case 'magicBolt':
+            case 'siphonLife':
+            case 'psychicBlast':
+            case 'frostBolt':
+            case 'poisonBolt': {
+                const damageStat = (spellId === 'siphonLife' || spellId === 'psychicBlast' || spellId === 'poisonBolt') 
+                    ? effectiveWill 
+                    : effectiveWits;
+
+                const spellDamage = spellData.baseDamage + (damageStat * spellLevel);
+
+                let logMsg = "You cast your spell!";
+                if (spellId === 'magicBolt') logMsg = "You hurl a bolt of energy!";
+                else if (spellId === 'siphonLife') logMsg = "You cast Siphon Life!";
+                else if (spellId === 'psychicBlast') logMsg = "You unleash a blast of mental energy!";
+                else if (spellId === 'frostBolt') logMsg = "You launch a shard of ice!";
+                else if (spellId === 'poisonBolt') logMsg = "You hurl a bolt of acid!";
+                
+                logMessage(logMsg);
+
+                // FIX: Increased range from 3 to 5 tiles!
+                for (let i = 1; i <= 5; i++) {
+                    const targetX = player.x + (dirX * i);
+                    const targetY = player.y + (dirY * i);
+
+                    // --- Animated Arrow Trail ---
+                    if (typeof ParticleSystem !== 'undefined') {
+                        // Stagger the particle spawning by 40ms per tile to create a "flying" effect
+                        setTimeout(() => {
+                            ParticleSystem.spawn(targetX, targetY, '#d4d4d8', 'dust', '', 3);
+                        }, i * 40); 
+                    }
+                    
+                    if (await applySpellDamage(targetX, targetY, spellDamage, spellId)) {
+                        hitSomething = true;
+                        break; 
+                    }
+                    finalTargetX = targetX;
+                    finalTargetY = targetY;
+                }
+                break;
+            }
+
+            // --- 3. OTHER SPELLS ---
+            case 'thunderbolt': {
+                const thunderDmg = spellData.baseDamage + (player.wits * spellLevel);
+                logMessage("CRACK! Lightning strikes!");
+                // FIX: Increased Thunderbolt range from 4 to 6!
+                for (let i = 1; i <= 6; i++) {
+                    const tx = player.x + (dirX * i);
+                    const ty = player.y + (dirY * i);
+                    if (await applySpellDamage(tx, ty, thunderDmg, spellId)) {
+                        ParticleSystem.createExplosion(tx, ty, '#facc15');
+                        hitSomething = true;
+                        break;
+                    }
+                    finalTargetX = tx;
+                    finalTargetY = ty;
+                }
+                break;
+            }
+
+            case 'meteor': {
+                const meteorDmg = spellData.baseDamage + (player.wits * spellLevel);
+                // FIX: Increased Meteor cast distance from 3 to 5
+                const mx = player.x + (dirX * 5);
+                const my = player.y + (dirY * 5);
+                logMessage("A meteor crashes down!");
+
+                for (let y = my - spellData.radius; y <= my + spellData.radius; y++) {
+                    for (let x = mx - spellData.radius; x <= mx + spellData.radius; x++) {
+                        applySpellDamage(x, y, meteorDmg, spellId).then(hit => {
+                            if (hit) ParticleSystem.createExplosion(x, y, '#f97316');
+                        });
+                    }
+                }
+                hitSomething = true;
+                break;
+            }
+
+            case 'raiseDead': {
+                const targetX = player.x + dirX;
+                const targetY = player.y + dirY;
+
+                let tileType;
+                if (gameState.mapMode === 'overworld') {
+                    tileType = chunkManager.getTile(targetX, targetY);
+                } else if (gameState.mapMode === 'dungeon') {
+                    tileType = chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX];
+                } else {
+                    tileType = chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX];
+                }
+
+                if (tileType === '(' || tileType === '⚰️') {
+                    if (gameState.player.companion) {
+                        logMessage("You already have a companion! Dismiss them first.");
+                    } else {
+                        logMessage("You chant the words of unlife... A Skeleton rises to serve you!");
+
+                        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(targetX, targetY, '.');
+                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
+
+                        gameState.player.companion = {
+                            name: "Risen Skeleton",
+                            tile: "s",
+                            type: "undead",
+                            hp: 15 + (player.willpower * 5),
+                            maxHp: 15 + (player.willpower * 5),
+                            attack: 3 + Math.floor(player.wits / 2),
+                            defense: 1,
+                            x: targetX,
+                            y: targetY
+                        };
+
+                        playerRef.update({ companion: gameState.player.companion });
+                        hitSomething = true;
+                        render();
+                    }
+                } else {
+                    logMessage("You need a pile of bones '(' or a grave '⚰️' to raise the dead.");
+                }
+                break;
+            }
+
+            case 'chainLightning': {
+                const lightningDmg = spellData.baseDamage + (player.wits * spellLevel);
+                // Increased Chain Lightning cast distance from 3 to 5
+                const targetX = player.x + (dirX * 5);
+                const targetY = player.y + (dirY * 5);
+
+                logMessage("A bolt of lightning arcs from your hands!");
+
+                const hitPrimary = await applySpellDamage(targetX, targetY, lightningDmg, spellId);
+
+                if (hitPrimary) {
+                    hitSomething = true;
+                    ParticleSystem.createExplosion(targetX, targetY, '#facc15');
+                }
+
+                const jumpRadius = 3; 
+                let potentialJumpTargets = [];
+
+                for (let y = targetY - jumpRadius; y <= targetY + jumpRadius; y++) {
+                    for (let x = targetX - jumpRadius; x <= targetX + jumpRadius; x++) {
+                        if (x === targetX && y === targetY) continue;
+
+                        let hasEnemy = false;
+                        if (gameState.mapMode === 'overworld') {
+                            const tile = chunkManager.getTile(x, y);
+                            if (ENEMY_DATA[tile]) hasEnemy = true;
+                        } else {
+                            if (gameState.instancedEnemies.some(e => e.x === x && e.y === y)) hasEnemy = true;
+                        }
+
+                        if (hasEnemy) potentialJumpTargets.push({ x, y });
+                    }
+                }
+
+                const maxJumps = 2 + Math.floor(spellLevel / 2);
+                potentialJumpTargets.sort(() => Math.random() - 0.5);
+                const jumpsToMake = Math.min(potentialJumpTargets.length, maxJumps);
+
+                if (jumpsToMake > 0) {
+                    setTimeout(() => logMessage(`The lightning arcs to ${jumpsToMake} nearby enemies!`), 200);
+                }
+
+                for (let i = 0; i < jumpsToMake; i++) {
+                    const jumpTgt = potentialJumpTargets[i];
+                    const jumpDmg = Math.max(1, Math.floor(lightningDmg * 0.75));
+                    applySpellDamage(jumpTgt.x, jumpTgt.y, jumpDmg, spellId).then(hit => {
+                        if (hit) ParticleSystem.createExplosion(jumpTgt.x, jumpTgt.y, '#93c5fd');
                     });
                 }
+                break;
             }
-            break;
+
+            case 'fireball': {
+                const fbDamage = spellData.baseDamage + (player.wits * spellLevel);
+                const radius = spellData.radius; 
+                // Increased Fireball cast distance from 3 to 5
+                const targetX = player.x + (dirX * 5);
+                const targetY = player.y + (dirY * 5);
+                logMessage("A fireball erupts in the distance!");
+
+                for (let y = targetY - radius; y <= targetY + radius; y++) {
+                    for (let x = targetX - radius; x <= targetX + radius; x++) {
+                        let tileAt;
+                        if (gameState.mapMode === 'overworld') tileAt = chunkManager.getTile(x, y);
+                        else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[y]?.[x];
+                        else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[y]?.[x];
+
+                        if (tileAt === '🛢') {
+                            logMessage("BOOM! An Oil Barrel explodes!");
+                            ParticleSystem.createExplosion(x, y, '#f97316', 12);
+                            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '.');
+                            else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][y][x] = '.';
+                            else chunkManager.castleMaps[gameState.currentCastleId][y][x] = '.';
+                            applySpellDamage(x, y, 15, 'fireball');
+                        }
+
+                        if (gameState.mapMode === 'dungeon' && tileAt === '🕸') {
+                            const map = chunkManager.caveMaps[gameState.currentCaveId];
+                            const theme = CAVE_THEMES[gameState.currentCaveTheme];
+                            if (map && map[y]) {
+                                map[y][x] = theme.floor;
+                                logMessage("The web catches fire and burns away!");
+                            }
+                        }
+
+                        applySpellDamage(x, y, fbDamage, spellId).then(hit => {
+                            if (hit) hitSomething = true;
+                        });
+                    }
+                }
+                break;
+            }
         }
-    }
 
-    // Visual feedback if a projectile spell hits nothing!
-    if (!hitSomething && (spellId === 'magicBolt' || spellId === 'siphonLife' || spellId === 'poisonBolt' || spellId === 'frostBolt')) {
-        logMessage("Your spell flies harmlessly into the distance.");
-        if (typeof ParticleSystem !== 'undefined') {
-            ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Fizzle...", "#9ca3af");
+        // Visual feedback if a projectile spell hits nothing!
+        if (!hitSomething && (spellId === 'magicBolt' || spellId === 'siphonLife' || spellId === 'poisonBolt' || spellId === 'frostBolt')) {
+            logMessage("Your spell flies harmlessly into the distance.");
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Fizzle...", "#9ca3af");
+            }
+        } else {
+            // Only deduct the cost if the spell actually hit a target or fired successfully!
+            player[spellData.costType] -= cost;
         }
-    } else {
-        // Only deduct the cost if the spell actually hit a target or fired successfully!
-        player[spellData.costType] -= cost;
-    }
 
-    // --- 3. Finalize Turn ---
-    playerRef.update({
-        [spellData.costType]: player[spellData.costType] // Update mana or psyche
-    });
+        // --- 3. Finalize Turn ---
+        playerRef.update({
+            [spellData.costType]: player[spellData.costType] // Update mana or psyche
+        });
 
-    // Only pulse the UI bar if resources were actually spent
-    if (hitSomething) {
-        if (spellData.costType === 'mana') {
-            triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
-        } else if (spellData.costType === 'psyche') {
-            triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+        // Only pulse the UI bar if resources were actually spent
+        if (hitSomething) {
+            if (spellData.costType === 'mana') {
+                triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+            } else if (spellData.costType === 'psyche') {
+                triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+            }
         }
+
+        triggerAbilityCooldown(spellId);
+
+        endPlayerTurn();
+        render();
+
+    } finally {
+        // --- 🚨 UNLOCK THE ENGINE ---
+        isProcessingMove = false;
     }
-
-    triggerAbilityCooldown(spellId);
-
-    endPlayerTurn();
-    render();
 }
 
 /**
