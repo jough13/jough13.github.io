@@ -473,7 +473,16 @@ function updateRegionDisplay() {
             }
         }
     } else if (gameState.mapMode === 'dungeon') {
-        regionDisplay.textContent = getCaveName(gameState.currentCaveId); 
+        let displayName = getCaveName(gameState.currentCaveId);
+        
+        // Extract Z-depth from ID (cave_X_Y_Z)
+        const parts = gameState.currentCaveId.split('_');
+        if (parts.length > 3) {
+            const floorZ = parts[3];
+            displayName += ` (Floor ${floorZ})`;
+        }
+        
+        regionDisplay.textContent = displayName;
     } else if (gameState.mapMode === 'castle') {
         regionDisplay.textContent = getCastleName(gameState.currentCastleId); 
     }
