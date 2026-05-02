@@ -418,17 +418,8 @@ async function processOverworldEnemyTurns() {
             
             if (enemy.health <= 0) {
                 logMessage(`The ${enemy.name} succumbs to poison!`);
-                registerKill(enemy); 
-                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
-                delete gameState.sharedEnemies[enemyId];
-                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
-                
-                const droppedLoot = generateEnemyLoot(gameState.player, enemy);
-                chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot);
-                
-                processedIdsThisFrame.add(enemyId);
-                movesQueued = true;
-                continue; // Enemy is dead, skip the rest of its turn
+                handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
+                return;
             }
         }
 
@@ -656,25 +647,16 @@ async function processOverworldEnemyTurns() {
                             if (gameState.player.health <= 0) handlePlayerDeath();
                         }
 
-                        // --- FIX: OVERWORLD THORNS ---
+                        // --- OVERWORLD THORNS ---
                         if (gameState.player.thornsValue > 0) {
                             enemy.health -= gameState.player.thornsValue;
                             logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} thorn damage!`);
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, `-${gameState.player.thornsValue}`, '#22c55e');
                             
                             if (enemy.health <= 0) {
-                                registerKill(enemy);
-                                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
-                                delete gameState.sharedEnemies[enemyId];
-                                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
-                                
-                                const droppedLoot = generateEnemyLoot(gameState.player, enemy);
-                                chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot);
-                                
-                                processedIdsThisFrame.add(enemyId);
-                                movesQueued = true;
-                                continue; // Die and skip sync
-                            } else {
+                        logMessage(`The ${enemy.name} dies upon your thorns!`);
+                        handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
+                        } else {
                                 statusChanged = true; // Health changed, ensure we sync below
                             }
                         }
@@ -1217,16 +1199,7 @@ async function runCompanionTurn() {
 
                 if (enemy.health <= 0) {
                     logMessage(`Your companion killed the ${enemy.name}!`);
-                    grantXp(Math.floor(enemy.xp / 2)); 
-                    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                    
-                    let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
-                    let validFloor = '.';
-                    if (gameState.mapMode === 'dungeon' && CAVE_THEMES[gameState.currentCaveTheme]) {
-                        validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
-                    }
-                    const droppedLoot = generateEnemyLoot(gameState.player, enemy);
-                    map[ty][tx] = droppedLoot || validFloor;
+                    handleInstancedEnemyDeath(enemy, tx, ty);
                 }
             }
         }
