@@ -2648,7 +2648,12 @@ function syncPlayerState() {
  * Calculates the natural terrain for a specific coordinate
  * based on the world seed noises.
  */
+
 function getBaseTerrain(worldX, worldY) {
+    if (Math.abs(worldX) <= 6 && Math.abs(worldY) <= 6) {
+        return '.'; // Force Plains background in the spawn area
+    }
+
     // Recalculate noise values for this specific spot
     const elev = elevationNoise.noise(worldX / 70, worldY / 70);
     const moist = moistureNoise.noise(worldX / 50, worldY / 50);
