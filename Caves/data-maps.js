@@ -1,5 +1,38 @@
 window.TILE_DATA = {
 
+    '🌀': {
+        type: 'dungeon_entrance',
+        flavor: "A massive, swirling whirlpool! The current drags you down...",
+        // Forces the engine to generate a SUNKEN themed dungeon!
+        getCaveId: (x, y) => `sunken_whirlpool_${x}_${y}`
+    },
+    '🌴': {
+        type: 'anomaly',
+        name: 'Palm Tree',
+        flavor: "A tall tree swaying in the coastal breeze.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (!state.lootedTiles.has(tileId)) {
+                logMessage("You shake the palm tree...");
+                if (state.player.inventory.length < 9) { // MAX_INVENTORY_SLOTS
+                    state.player.inventory.push({
+                        name: 'Coconut', type: 'consumable', quantity: 1, tile: '🥥', effect: ITEM_DATA['🥥'].effect
+                    });
+                    logMessage("A Coconut falls to the ground! You catch it.");
+                    state.lootedTiles.add(tileId);
+                    if (typeof renderInventory === 'function') renderInventory();
+                    return { inventory: getSanitizedInventory() };
+                } else {
+                    logMessage("A Coconut falls, but your inventory is full!");
+                    return null;
+                }
+            } else {
+                logMessage("There are no more coconuts on this tree.");
+                return null;
+            }
+        }
+    },
+
     '🏕️': {
         type: 'ambush_camp',
         flavor: "You stumble into a hidden encampment. It's an ambush!"
