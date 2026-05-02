@@ -4717,6 +4717,49 @@ async function attemptMovePlayer(newX, newY) {
         // Just walk through
     }
 
+    // --- STAIRS LOGIC (Z-AXIS) ---
+    if (newTile === '<') {
+        if (gameState.mapMode !== 'dungeon') return;
+        
+        // 1. Parse current floor
+        const parts = gameState.currentCaveId.split('_');
+        const cX = parts[1] || 0;
+        const cY = parts[2] || 0;
+        const currentZ = parts.length > 3 ? parseInt(parts[3]) : 1;
+        
+        const nextZ = currentZ + 1;
+        const nextCaveId = `cave_${cX}_${cY}_${nextZ}`;
+        
+        logMessage(`{purple:You descend deeper into the darkness... (Floor ${nextZ})}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#a855f7', 20);
+
+        // 2. Generate and Load the next floor
+        gameState.currentCaveId = nextCaveId;
+        const caveMap = chunkManager.generateCave(gameState.currentCaveId);
+        gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId];
+        
+        // 3. Find the entrance (>) to spawn the player on
+        for (let y = 0; y < caveMap.length; y++) {
+            const x = caveMap[y].indexOf('>');
+            if (x !== -1) {
+                gameState.player.x = x;
+                gameState.player.y = y;
+                break;
+            }
+        }
+        
+        // 4. Load enemies for the new floor
+        const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
+        gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+        
+        gameState.mapDirty = true;
+        updateRegionDisplay();
+        render();
+        syncPlayerState();
+        return;
+    }
+
     // --- STASH LOGIC ---
     if (newTile === '☒') {
         logMessage("You open your Stash Box.");
