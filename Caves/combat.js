@@ -242,7 +242,7 @@ async function wakeUpNearbyEnemies() {
 
                     // B. Queue for Firebase (The Source of Truth)
                     // Parse/Stringify removes 'undefined' keys from ENEMY_DATA so Firebase doesn't crash
-                    spawnUpdates[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = JSON.parse(JSON.stringify(newEnemy));
+                    spawnUpdates[EnemyNetworkManager.getPath(x, y, enemyId)] = JSON.parse(JSON.stringify(newEnemy));
                     
                     // C. Add to local pending (Immediate Visual Feedback)
                     pendingSpawnData[enemyId] = newEnemy;
