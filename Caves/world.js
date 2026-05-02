@@ -10,32 +10,59 @@ const chunkManager = {
     generateCave(caveId) {
         if (this.caveMaps[caveId]) return this.caveMaps[caveId];
 
-        // --- 1. Setup Variables (Dynamic Scaling) ---
+        // --- 1. Setup Variables (Dynamic Scaling & Z-Axis) ---
         let chosenThemeKey;
-        let CAVE_WIDTH = 70;
-        let CAVE_HEIGHT = 70;
-        let enemyCount = 20;
-
-        // Calculate cave location from ID (format: cave_X_Y)
+        
+        // Bulletproof Coordinate & Floor Depth Extraction
         const parts = caveId.split('_');
-        const cX = parts.length > 2 ? parseInt(parts[1]) : 0;
-        const cY = parts.length > 2 ? parseInt(parts[2]) : 0;
+        let floorZ = 1;
+        let cX = 0, cY = 0;
+        
+        const lastPart = parts[parts.length - 1];
+        const secondToLast = parts[parts.length - 2];
+        const thirdToLast = parts[parts.length - 3];
+        
+        if (!isNaN(parseInt(thirdToLast)) && !isNaN(parseInt(secondToLast)) && !isNaN(parseInt(lastPart))) {
+            // It has X, Y, Z (e.g. cave_10_20_2)
+            cX = parseInt(thirdToLast);
+            cY = parseInt(secondToLast);
+            floorZ = parseInt(lastPart);
+        } else if (!isNaN(parseInt(secondToLast)) && !isNaN(parseInt(lastPart))) {
+            // It has X, Y (e.g. sunken_whirlpool_10_20)
+            cX = parseInt(secondToLast);
+            cY = parseInt(lastPart);
+            floorZ = 1;
+        }
+
         const dist = Math.sqrt(cX * cX + cY * cY);
 
+        // JUICE: Randomize cave aspect ratio so they aren't perfect squares!
+        // Min size 90, Max size 150
+        const randomSize = Alea(stringToSeed(caveId + ':size'));
+        let CAVE_WIDTH = 90 + Math.floor(randomSize() * 60);
+        let CAVE_HEIGHT = 90 + Math.floor(randomSize() * 60);
+        
+        // Deeper floors = More enemies
+        let enemyCount = 30 + (floorZ * 10); 
+
         // Safe Zone Density Nerf (Fewer enemies near spawn)
-        if (dist < 150) { 
+        if (dist < 150 && floorZ === 1) { 
             enemyCount = 10; 
+            CAVE_WIDTH = 70; CAVE_HEIGHT = 70; // Keep newbie caves small
         }
 
         // --- THEME SELECTION LOGIC ---
-        if (caveId === 'cave_landmark') {
-            chosenThemeKey = 'ABYSS'; // Force the Epic Theme
-            CAVE_WIDTH = 100;  // Huge map
-            CAVE_HEIGHT = 100; // Huge map
-            enemyCount = 60;   // Triple the enemies
+        if (caveId === 'cave_landmark' || floorZ >= 5) {
+            chosenThemeKey = 'ABYSS'; // Floor 5+ is always the Abyss
+            CAVE_WIDTH = 150;  // Huge map
+            CAVE_HEIGHT = 150; // Huge map
+            enemyCount = 80;   // Triple the enemies
         } else if (caveId.startsWith('void_')) {
             chosenThemeKey = 'VOID'; // Force Void Theme
-            enemyCount = 25;   
+            enemyCount = Math.max(enemyCount, 25);   
+        } else if (caveId.startsWith('sunken_')) {
+            chosenThemeKey = 'SUNKEN'; // Force Sunken Theme
+            enemyCount = Math.max(enemyCount, 25);   
         } else {
             // Normal procedural cave
             const randomTheme = Alea(stringToSeed(caveId + ':theme'));
@@ -61,7 +88,9 @@ const chunkManager = {
             x,
             y
         };
-        let steps = 2000;
+        
+        // Bigger maps need more carving steps
+        let steps = Math.floor((CAVE_WIDTH * CAVE_HEIGHT) * 0.4);
         while (steps > 0) {
             map[y][x] = theme.floor; // Use theme's floor
             const direction = Math.floor(random() * 4);
@@ -80,7 +109,7 @@ const chunkManager = {
 
         // Safety fallback in case CAVE_ROOM_TEMPLATES isn't fully loaded
         const roomTemplates = Object.values(typeof CAVE_ROOM_TEMPLATES !== 'undefined' ? CAVE_ROOM_TEMPLATES : {});
-        const roomAttempts = 5; // Try to place 5 rooms
+        const roomAttempts = 8; // Increased attempts for bigger maps
 
         // Only attempt to stamp if we actually have templates!
         if (roomTemplates.length > 0) {
@@ -130,7 +159,15 @@ const chunkManager = {
                             const enemyTemplate = ENEMY_DATA[tileToPlace];
                             
                             // Generate scaled stats based on cave coordinates
-                            const scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+                            let scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+                            
+                            // Boost stats based on Floor Depth!
+                            if (floorZ > 1) {
+                                scaledStats.maxHealth = Math.floor(scaledStats.maxHealth * (1 + (floorZ * 0.2)));
+                                scaledStats.attack += floorZ;
+                                scaledStats.xp = Math.floor(scaledStats.xp * (1 + (floorZ * 0.5)));
+                                scaledStats.name = `Deep ${scaledStats.name}`; // Prefix for deep enemies
+                            }
 
                             this.caveEnemies[caveId].push({
                                 id: `${caveId}:${mapX},${mapY}`,
@@ -212,7 +249,7 @@ const chunkManager = {
         // --- 4. Place procedural loot and decorations ---
 
         const CAVE_LOOT_TABLE = ['♥', '🔮', '💜', 'S', '$', '📄', '🍄', '🏺', '⚰️'];
-        const lootQuantity = Math.floor(random() * 4);
+        const lootQuantity = Math.floor(random() * 6) + 2; // More loot in bigger caves
         
         for (let i = 0; i < lootQuantity; i++) {
             const itemToPlace = CAVE_LOOT_TABLE[Math.floor(random() * CAVE_LOOT_TABLE.length)];
@@ -267,7 +304,7 @@ const chunkManager = {
 
         // --- SAFE ZONE CAVE NERF ---
         // If within 250 tiles of spawn, remove "Hard" enemies from the spawn pool
-        if (dist < 250) {
+        if (dist < 250 && floorZ === 1) {
             // Added Golems (🧌), Draugr (Z), Scorpions (🦂), and Spiders (@) to the ban list!
             const hardEnemies =['C', 'm', 'o', 'Ø', 'Y', 'D', '🐲', '🧙', 'v', 'f', '🧌', 'Z', '🦂', '@'];
             enemyTypes = enemyTypes.filter(e => !hardEnemies.includes(e));
@@ -284,7 +321,15 @@ const chunkManager = {
                 const enemyTile = enemyTypes[Math.floor(random() * enemyTypes.length)];
                 const enemyTemplate = ENEMY_DATA[enemyTile];
 
-                const scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+                let scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+                
+                // Boost stats based on Floor Depth!
+                if (floorZ > 1) {
+                    scaledStats.maxHealth = Math.floor(scaledStats.maxHealth * (1 + (floorZ * 0.2)));
+                    scaledStats.attack += floorZ;
+                    scaledStats.xp = Math.floor(scaledStats.xp * (1 + (floorZ * 0.5)));
+                    scaledStats.name = `Deep ${scaledStats.name}`; // Prefix for deep enemies
+                }
 
                 this.caveEnemies[caveId].push({
                     id: `${caveId}:${randX},${randY}`,
@@ -317,6 +362,22 @@ const chunkManager = {
 
         // --- 6. Place the Exit ---
         map[startPos.y][startPos.x] = '>';
+
+        // NEW: Place Stairs Down (<) far away from the start
+        let stairsPlaced = false;
+        let stairsAttempts = 0;
+        while (!stairsPlaced && stairsAttempts < 1000) {
+            const sx = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
+            const sy = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
+            const distFromStart = Math.sqrt(Math.pow(sx - startPos.x, 2) + Math.pow(sy - startPos.y, 2));
+
+            // Place stairs if it's an open floor and at least 30 tiles away
+            if (map[sy][sx] === theme.floor && distFromStart > 30) {
+                map[sy][sx] = '<';
+                stairsPlaced = true;
+            }
+            stairsAttempts++;
+        }
 
         // --- 7. Secret Wall Generation ---
         const secretWallTile = theme.secretWall;
