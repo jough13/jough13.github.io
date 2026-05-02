@@ -281,6 +281,32 @@ window.ENEMY_DATA = {
         flavor: "An annoying, high-pitched whine follows it."
     },
 
+    // --- AQUATIC WILDLIFE ---
+    '🦈': {
+        name: 'Great Shark',
+        maxHealth: 25, attack: 6, defense: 1, xp: 35,
+        loot: '🐟', 
+        color: '#94a3b8', // Slate Gray
+        flavor: "A massive dorsal fin slices through the water towards your canoe."
+    },
+    '🦀': {
+        name: 'Giant Crab',
+        maxHealth: 18, attack: 4, defense: 5, xp: 25,
+        loot: '🍖',
+        color: '#ea580c', // Orange
+        flavor: "Its claws are easily strong enough to snap an oar in half."
+    },
+    '🦑': {
+        name: 'Kraken',
+        maxHealth: 200, attack: 12, defense: 4, xp: 800,
+        loot: '🐙', 
+        color: '#7c3aed', // Purple
+        isBoss: true,
+        inflicts: 'root', inflictChance: 0.5,
+        caster: true, castRange: 4, spellDamage: 8,
+        flavor: "Massive, writhing tentacles burst from the deep ocean!"
+    },
+
     // --- FOREST WILDLIFE ---
     '🐻': {
         name: 'Cave Bear',
