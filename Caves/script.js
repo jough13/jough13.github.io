@@ -2625,6 +2625,23 @@ function endPlayerTurn(turnUpdates = {}) {
         regenBonus = true;
     }
 
+    // Mages & Necromancers (and their evolutions) regenerate mana every 3 turns. Others every 5 turns.
+    const isMage = ['mage', 'necromancer'].includes(player.background);
+    const manaRegenRate = isMage ? 3 : 5; 
+
+    // Regenerate if they aren't starving/dehydrated and aren't at max mana
+    if (player.hunger > 0 && player.thirst > 0 && player.mana < player.maxMana && gameState.playerTurnCount % manaRegenRate === 0) {
+        player.mana++;
+        
+        // We only log it occasionally to prevent spamming the chat box, but the UI bar flashes every time!
+        if (gameState.playerTurnCount % (manaRegenRate * 3) === 0) {
+            logMessage("Your magic reserves slowly replenish. (+1 Mana)");
+        }
+        
+        triggerStatFlash(statDisplays.mana, true);
+        regenBonus = true;
+    }
+
     // --- 2. THE PENALTIES (Weakness) ---
     if (player.hunger <= 0 && gameState.playerTurnCount % 10 === 0) {
         logMessage("Your stomach growls. You feel weak. (No HP Regen)");
