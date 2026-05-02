@@ -6474,39 +6474,55 @@ async function enterGame(playerData) {
 
     // --- FINAL RENDER & INIT ---
 
-    // Pre-warm data loading
+    // --- Pre-warm data loading (Load ALL 3x3 chunks, not just the center!) ---
     const waitForWorldData = new Promise((resolve) => {
         if (gameState.mapMode === 'overworld') {
             const cX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
             const cY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
-            for(let y=-1; y<=1; y++) {
-                for(let x=-1; x<=1; x++) {
-                    chunkManager.getTile((cX+x)*chunkManager.CHUNK_SIZE, (cY+y)*chunkManager.CHUNK_SIZE);
+            
+            let chunksLoaded = 0;
+            const totalChunks = 9;
+
+            for(let y = -1; y <= 1; y++) {
+                for(let x = -1; x <= 1; x++) {
+                    const targetX = cX + x;
+                    const targetY = cY + y;
+                    
+                    // 1. Force procedural generation in local memory
+                    chunkManager.getTile(targetX * chunkManager.CHUNK_SIZE, targetY * chunkManager.CHUNK_SIZE);
+                    
+                    // 2. Attach Firebase listener and wait for ALL 9 to return their initial snapshot
+                    chunkManager.listenToChunkState(targetX, targetY, () => {
+                        chunksLoaded++;
+                        if (chunksLoaded === totalChunks) resolve();
+                    });
                 }
             }
-            chunkManager.listenToChunkState(cX, cY, () => resolve());
         } else {
-            resolve();
+            resolve(); // Instanced maps (Dungeons/Castles) load instantly locally
         }
     });
 
     const waitForEnemies = new Promise((resolve) => {
-        // Wait for the player's current chunk to download from RTDB so enemies don't pop in!
         if (gameState.mapMode === 'overworld' && typeof EnemyNetworkManager !== 'undefined') {
-            const chunkId = EnemyNetworkManager.getChunkId(gameState.player.x, gameState.player.y);
-            rtdb.ref(`worldEnemies/${chunkId}`).once('value').then(() => {
-                resolve();
-            });
+            // Initiate the wide-net chunk sync right now instead of waiting for the first move
+            EnemyNetworkManager.syncChunks(gameState.player.x, gameState.player.y);
+            
+            // Because RTDB `.on()` listeners don't have a clean "all done" callback like Firestore,
+            // we give the Realtime Database a flat 400ms to download the surrounding enemies.
+            setTimeout(resolve, 400); 
         } else {
             resolve();
         }
     });
 
+    // Wait for BOTH the map modifications and the enemies to finish downloading
     Promise.all([waitForWorldData, waitForEnemies]).then(() => {
         if (gameState.mapMode === 'overworld') {
             wakeUpNearbyEnemies(); 
         }
 
+        // Final tiny buffer to ensure the DOM has processed the new data
         setTimeout(() => {
             // Force updates
             renderStats();
@@ -6515,6 +6531,9 @@ async function enterGame(playerData) {
             resizeCanvas();
             renderHotbar();
             renderInventory(); // Renders rehydrated items
+            
+            // Force a clean cache render BEFORE showing the canvas
+            gameState.mapDirty = true; 
             render();
             
             canvas.style.visibility = 'visible';
@@ -6523,6 +6542,8 @@ async function enterGame(playerData) {
             logMessage(`Welcome back, ${playerData.background} of level ${gameState.player.level}.`);
             updateRegionDisplay();
             updateExploration();
+            
+            // Drop the loading curtain!
             loadingIndicator.classList.add('hidden');
 
             if (!areGlobalListenersInitialized) {
