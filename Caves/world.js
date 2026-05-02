@@ -745,14 +745,17 @@ const chunkManager = {
                 else if (moist < 0.15) tile = 'D';
                 else if (moist > 0.55) tile = 'F';
 
-                // --- FIX: EXPANDED SAFETY OVERRIDE ---
-                if (Math.abs(worldX) <= 6 && Math.abs(worldY) <= 6) {
-                    tile = '.';
+                // --- NATURAL SPAWN SAFETY OVERRIDE ---
+                const distSq = (worldX * worldX) + (worldY * worldY);
+                if (distSq <= 100) { 
+                    if (['^', '~', '≈', 'd'].includes(tile)) {
+                        tile = moist > 0.5 ? 'F' : '.'; 
+                    }
                 }
 
                 const featureRoll = random();
 
-                // 🚨 OPTIMIZATION NOTICE 🚨
+                // OPTIMIZATION NOTICE
                 // We NO LONGER call this.setWorldTile() during procedural generation!
                 // The client will render these from chunkData automatically. 
                 // This saves literally 99% of your Firebase database write quotas!
