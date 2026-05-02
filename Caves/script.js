@@ -6633,9 +6633,15 @@ async function enterGame(playerData) {
     });
 
     const waitForEnemies = new Promise((resolve) => {
-        // EnemyNetworkManager already fetches chunk data instantly via .on('child_added')
-        // We just resolve immediately so the game can start.
-        resolve();
+        // Wait for the player's current chunk to download from RTDB so enemies don't pop in!
+        if (gameState.mapMode === 'overworld' && typeof EnemyNetworkManager !== 'undefined') {
+            const chunkId = EnemyNetworkManager.getChunkId(gameState.player.x, gameState.player.y);
+            rtdb.ref(`worldEnemies/${chunkId}`).once('value').then(() => {
+                resolve();
+            });
+        } else {
+            resolve();
+        }
     });
 
     Promise.all([waitForWorldData, waitForEnemies]).then(() => {
