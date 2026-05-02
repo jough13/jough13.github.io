@@ -624,7 +624,8 @@ const chunkManager = {
             '^': { 0: ['🦇', 'g', 'R'], 1: ['g', 's', '🦅'], 2: ['s', '🧌', 'Y'], 3: ['Y', '🧌', '🐲'], 4: ['🐲', '🦖', '🤖'] },
             '≈': { 0: ['🦟', '🐸', '🐍'], 1: ['🐍', 'l', 'Z'], 2: ['Z', 'l', 'a'], 3: ['Z', 'a', '🐉h'], 4: ['🐉h', '👾', '🧛'] },
             'D': { 0: ['🦂s', '🐍', '🌵'], 1: ['🦂', '🐍c', '🌵'], 2: ['🦂', 'm', 'a'], 3: ['m', 'a', '🔥e'], 4: ['🔥e', '🦖', '🤖'] },
-            'd': { 0: ['s', 'b', 'R'], 1: ['s', 'Z', 'a'], 2: ['Z', 'a', '😈d'], 3: ['😈d', 'v', '🧙'], 4: ['🧙', '👾', '🧛'] }
+            'd': { 0: ['s', 'b', 'R'], 1: ['s', 'Z', 'a'], 2: ['Z', 'a', '😈d'], 3: ['😈d', 'v', '🧙'], 4: ['🧙', '👾', '🧛'] },
+            '~': { 0: ['🐸', '🦈'], 1: ['🦈', 'l'], 2: ['🦈', '🐉h', '🦑'], 3: ['🐉h', '🦑'], 4: ['🦑', '👾'] }
         };
 
         const table = spawns[biome];
@@ -710,6 +711,9 @@ const chunkManager = {
                 // --- 3. RARE STRUCTURES (Scaled by Distance) ---
                 else if (tile === '.' && featureRoll < 0.000005) { // Safe Haven
                     chunkData[y][x] = 'V';
+                }
+                else if (tile === '~' && featureRoll < 0.00005) { // Whirlpool in deep ocean
+                    chunkData[y][x] = '🌀';
                 }
                 else if (tile === '.' && featureRoll < 0.00003) { // Shrine
                     chunkData[y][x] = '⛩️';
@@ -801,6 +805,9 @@ const chunkManager = {
                 // --- 8. ARCHAEOLOGY SPOTS ---
                 else if (['.', 'd', 'D', 'F'].includes(tile) && featureRoll < (tile === 'd' || tile === 'D' ? 0.0015 : 0.0005)) {
                     chunkData[y][x] = '∴';
+                }
+                else if (tile === 'D' && featureRoll < 0.008) {
+                    chunkData[y][x] = '🌴';
                 }
                 else {
                     // --- 9. ENEMY & RESOURCE SPAWNING ---
