@@ -185,7 +185,6 @@ function useSkill(skillId) {
     }
 }
 
-
 async function executeMeleeSkill(skillId, dirX, dirY) {
     const player = gameState.player;
     const skillData = SKILL_DATA[skillId];
@@ -193,99 +192,262 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
     let hit = false;
 
-    // Calculate Damage
-    const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
-    const playerStrength = player.strength + (player.strengthBonus || 0);
+    // --- 🚨 LOCK THE ENGINE ---
+    isProcessingMove = true;
 
-    let rawPower = playerStrength + weaponDamage;
+    try {
+        // Calculate Damage
+        const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
+        const playerStrength = player.strength + (player.strengthBonus || 0);
 
-    // --- APPLY PASSIVE MODIFIERS (Blood Rage) ---
-    rawPower = getPlayerDamageModifier(rawPower);
+        let rawPower = playerStrength + weaponDamage;
 
-    const baseDmg = rawPower * skillData.baseDamageMultiplier;
+        // --- APPLY PASSIVE MODIFIERS (Blood Rage) ---
+        rawPower = getPlayerDamageModifier(rawPower);
 
-    const finalDmg = Math.max(1, Math.floor(baseDmg + (player.strength * 0.5 * skillLevel)));
+        const baseDmg = rawPower * skillData.baseDamageMultiplier;
+        const finalDmg = Math.max(1, Math.floor(baseDmg + (player.strength * 0.5 * skillLevel)));
 
-    // Target Logic
-    const targetX = player.x + dirX;
-    const targetY = player.y + dirY;
+        // Target Logic
+        const targetX = player.x + dirX;
+        const targetY = player.y + dirY;
 
-    let enemiesToHit = [{ x: targetX, y: targetY }];
+        let enemiesToHit = [{ x: targetX, y: targetY }];
 
-    // If Cleave, add side targets
-    if (skillId === 'cleave') {
-        if (dirX !== 0) { 
-            enemiesToHit.push({ x: targetX, y: targetY - 1 });
-            enemiesToHit.push({ x: targetX, y: targetY + 1 });
-        } else { 
-            enemiesToHit.push({ x: targetX - 1, y: targetY });
-            enemiesToHit.push({ x: targetX + 1, y: targetY });
-        }
-    }
-
-    for (const coords of enemiesToHit) {
-        let tile;
-        let map;
-        if (gameState.mapMode === 'dungeon') {
-            map = chunkManager.caveMaps[gameState.currentCaveId];
-            tile = (map && map[coords.y]) ? map[coords.y][coords.x] : ' ';
-        } else if (gameState.mapMode === 'castle') {
-            map = chunkManager.castleMaps[gameState.currentCastleId];
-            tile = (map && map[coords.y]) ? map[coords.y][coords.x] : ' ';
-        } else {
-            // --- Check for LIVE moving enemies first! ---
-            const enemyId = `overworld:${coords.x},${-coords.y}`;
-            const liveEnemy = gameState.sharedEnemies[enemyId];
-            tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(coords.x, coords.y);
+        // If Cleave, add side targets
+        if (skillId === 'cleave') {
+            if (dirX !== 0) { 
+                enemiesToHit.push({ x: targetX, y: targetY - 1 });
+                enemiesToHit.push({ x: targetX, y: targetY + 1 });
+            } else { 
+                enemiesToHit.push({ x: targetX - 1, y: targetY });
+                enemiesToHit.push({ x: targetX + 1, y: targetY });
+            }
         }
 
-        const enemyData = ENEMY_DATA[tile];
-        if (enemyData) {
-
-            if (player.stealthTurns > 0) {
-                player.stealthTurns = 0;
-                logMessage("You emerge from the shadows!");
-                playerRef.update({ stealthTurns: 0 });
+        for (const coords of enemiesToHit) {
+            let tile;
+            let map;
+            if (gameState.mapMode === 'dungeon') {
+                map = chunkManager.caveMaps[gameState.currentCaveId];
+                tile = (map && map[coords.y]) ? map[coords.y][coords.x] : ' ';
+            } else if (gameState.mapMode === 'castle') {
+                map = chunkManager.castleMaps[gameState.currentCastleId];
+                tile = (map && map[coords.y]) ? map[coords.y][coords.x] : ' ';
+            } else {
+                // --- Check for LIVE moving enemies first! ---
+                const enemyId = `overworld:${coords.x},${-coords.y}`;
+                const liveEnemy = gameState.sharedEnemies[enemyId];
+                tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(coords.x, coords.y);
             }
 
-            hit = true;
+            const enemyData = ENEMY_DATA[tile];
+            if (enemyData) {
 
-            // Apply Damage
-            if (gameState.mapMode === 'overworld') {
-                await handleOverworldCombat(coords.x, coords.y, enemyData, tile, finalDmg);
-            } else {
-                let enemy = gameState.instancedEnemies.find(e => e.x === coords.x && e.y === coords.y);
-                if (enemy) {
-                    enemy.health -= finalDmg;
-                    logMessage(`You hit ${enemy.name} for ${finalDmg}!`);
-                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(coords.x, coords.y, '#fff', 3);
+                if (player.stealthTurns > 0) {
+                    player.stealthTurns = 0;
+                    logMessage("You emerge from the shadows!");
+                    playerRef.update({ stealthTurns: 0 });
+                }
 
-                    // APPLY STUN (Shield Bash OR Crush)
-                    if (skillId === 'shieldBash' || skillId === 'crush') {
-                        enemy.stunTurns = 3;
-                        logMessage(`${enemy.name} is stunned!`);
-                    }
+                hit = true;
 
-                    if (enemy.health <= 0) {
-                        logMessage(`You defeated ${enemy.name}!`);
-                        handleInstancedEnemyDeath(enemy, coords.x, coords.y);
+                // Apply Damage
+                if (gameState.mapMode === 'overworld') {
+                    await handleOverworldCombat(coords.x, coords.y, enemyData, tile, finalDmg);
+                } else {
+                    let enemy = gameState.instancedEnemies.find(e => e.x === coords.x && e.y === coords.y);
+                    if (enemy) {
+                        enemy.health -= finalDmg;
+                        logMessage(`You hit ${enemy.name} for ${finalDmg}!`);
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(coords.x, coords.y, '#fff', 3);
+
+                        // APPLY STUN (Shield Bash OR Crush)
+                        if (skillId === 'shieldBash' || skillId === 'crush') {
+                            enemy.stunTurns = 3;
+                            logMessage(`${enemy.name} is stunned!`);
+                        }
+
+                        if (enemy.health <= 0) {
+                            logMessage(`You defeated ${enemy.name}!`);
+                            handleInstancedEnemyDeath(enemy, coords.x, coords.y);
+                        }
                     }
                 }
             }
         }
+
+        if (!hit) {
+            logMessage("You swing at empty air.");
+        } else {
+            // Only deduct stamina if a target was actually engaged
+            player[skillData.costType] -= skillData.cost;
+            AudioSystem.playAttack();
+        }
+
+        triggerAbilityCooldown(skillId);
+        endPlayerTurn();
+        render();
+
+    } finally {
+        // --- 🚨 UNLOCK THE ENGINE ---
+        isProcessingMove = false;
+    }
+}
+
+/**
+ * Prepares and executes a ranged attack using an equipped bow
+ */
+
+async function executeRangedAttack(dirX, dirY) {
+    const player = gameState.player;
+    const skillData = SKILL_DATA['ranged_attack'];
+    
+    // --- AMMO CHECK ---
+    const ammo = player.equipment.ammo;
+    if (!ammo || ammo.quantity <= 0) {
+        logMessage("{red:You need to equip arrows to shoot!}");
+        gameState.isAiming = false;
+        return;
     }
 
-    if (!hit) {
-        logMessage("You swing at empty air.");
-    } else {
-        // Only deduct stamina if a target was actually engaged
-        player[skillData.costType] -= skillData.cost;
-        AudioSystem.playAttack();
-    }
+    // --- 🚨 LOCK THE ENGINE ---
+    isProcessingMove = true;
 
-    triggerAbilityCooldown(skillId);
-    endPlayerTurn();
-    render();
+    try {
+        // --- 1. Deduct Cost ---
+        player.stamina -= skillData.cost;
+        let hitSomething = false;
+        let finalTargetX = player.x;
+        let finalTargetY = player.y;
+
+        // --- 2. Calculate Base Damage ---
+        const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
+        const ammoDamage = ammo.damage || 0;
+        
+        // Ranged attacks scale off Dexterity + Bow Dmg + Arrow Dmg
+        let rawPower = player.dexterity + weaponDamage + ammoDamage;
+
+        if (player.talents && player.talents.includes('eagle_eye')) {
+            rawPower = Math.floor(rawPower * 1.5);
+        }
+        
+        if (player.stealthTurns > 0) {
+            player.stealthTurns = 0;
+            logMessage("You fire from the shadows!");
+            playerRef.update({ stealthTurns: 0 });
+            
+            if (player.talents && player.talents.includes('shadow_strike')) {
+                rawPower = Math.floor(rawPower * 4);
+                logMessage("Shadow Strike! (4x Damage)");
+            }
+        }
+
+        const totalDamage = Math.max(1, rawPower);
+
+        // --- CONSUME AMMO ---
+        ammo.quantity--;
+        if (ammo.quantity <= 0) {
+            logMessage("You fired your last arrow!");
+            // Find it in inventory and remove it
+            const invIndex = player.inventory.findIndex(i => i.isEquipped && i.slot === 'ammo');
+            if (invIndex > -1) player.inventory.splice(invIndex, 1);
+            player.equipment.ammo = null;
+        }
+
+        // --- 3. Projectile Loop (Range 4) ---
+        logMessage("You loose an arrow!");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); 
+        
+        for (let i = 1; i <= 4; i++) {
+            const targetX = player.x + (dirX * i);
+            const targetY = player.y + (dirY * i);
+
+            let tile;
+            let isSolid = false;
+
+            if (gameState.mapMode === 'overworld') {
+                const enemyId = `overworld:${targetX},${-targetY}`;
+                const liveEnemy = gameState.sharedEnemies[enemyId];
+                tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
+                if (['^', 'F', '🧱'].includes(tile) && !liveEnemy) isSolid = true;
+            } else {
+                const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
+                tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+                const theme = CAVE_THEMES[gameState.currentCaveTheme];
+                const wallTile = theme ? theme.wall : '▓';
+                if (tile === wallTile || tile === '▒') isSolid = true;
+            }
+            
+            if (isSolid) {
+                logMessage("Your arrow strikes a solid object.");
+                break;
+            }
+
+            const enemyData = ENEMY_DATA[tile];
+
+            if (enemyData) {
+                hitSomething = true;
+                
+                if (gameState.mapMode === 'overworld') {
+                    const finalDmg = Math.max(1, totalDamage - (enemyData.defense || 0));
+                    await handleOverworldCombat(targetX, targetY, enemyData, tile, finalDmg);
+                } else {
+                    let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+                    if (enemy) {
+                        const finalDmg = Math.max(1, totalDamage - (enemy.defense || 0));
+                        enemy.health -= finalDmg;
+                        logMessage(`You shoot ${enemy.name} for ${finalDmg} damage!`);
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#fff', 3);
+
+                        if (enemy.health <= 0) {
+                            logMessage(`You defeated ${enemy.name}!`);
+                            handleInstancedEnemyDeath(enemy, targetX, targetY);
+                        }
+                    }
+                }
+                break; 
+            }
+            
+            finalTargetX = targetX;
+            finalTargetY = targetY;
+        }
+
+        if (!hitSomething) {
+            logMessage("Your arrow flies off into the distance.");
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Miss", "#9ca3af");
+        }
+
+        // --- 4. Finalize Turn ---
+        playerRef.update({
+            stamina: player.stamina,
+            inventory: getSanitizedInventory() // Sync ammo removal
+        });
+        triggerStatFlash(statDisplays.stamina, false); 
+        
+        endPlayerTurn(); 
+        renderEquipment(); // Refresh UI ammo count
+        render(); 
+
+    } finally {
+        // --- 🚨 UNLOCK THE ENGINE ---
+        isProcessingMove = false;
+    }
+}
+
+function initSkillbookListeners() {
+    closeSkillButton.addEventListener('click', () => {
+        skillModal.classList.add('hidden');
+    });
+
+    // Calls our new, unified useSkill function
+    skillList.addEventListener('click', (e) => {
+        const skillItem = e.target.closest('.skill-item');
+        if (skillItem && skillItem.dataset.skill) {
+            // Pass the skill's ID (e.g., "brace")
+            useSkill(skillItem.dataset.skill);
+        }
+    });
 }
 
 async function executeLunge(dirX, dirY) {
@@ -294,101 +456,106 @@ async function executeLunge(dirX, dirY) {
     const skillData = SKILL_DATA[skillId];
     const skillLevel = player.skillbook[skillId] || 1;
 
-    // --- 1. Deduct Cost ---
-    // Cost was checked in useSkill, but we deduct it here upon firing.
-    player.stamina -= skillData.cost;
-    let hit = false;
+    // --- 🚨 LOCK THE ENGINE ---
+    isProcessingMove = true;
 
-    // --- 2. Calculate Base Damage ---
+    try {
+        // --- 1. Deduct Cost ---
+        // Cost was checked in useSkill, but we deduct it here upon firing.
+        player.stamina -= skillData.cost;
+        let hit = false;
 
-    const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
-    const playerStrength = player.strength + (player.strengthBonus || 0);
+        // --- 2. Calculate Base Damage ---
+        const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
+        const playerStrength = player.strength + (player.strengthBonus || 0);
 
-    let rawPower = playerStrength + weaponDamage;
+        let rawPower = playerStrength + weaponDamage;
 
-    // --- APPLY PASSIVE MODIFIERS (Blood Rage) ---
-    rawPower = getPlayerDamageModifier(rawPower);
+        // --- APPLY PASSIVE MODIFIERS (Blood Rage) ---
+        rawPower = getPlayerDamageModifier(rawPower);
+        const playerBaseDamage = rawPower;
 
-    const playerBaseDamage = rawPower;
+        // Loop 2 and 3 tiles away
+        for (let i = 2; i <= 3; i++) {
+            const targetX = player.x + (dirX * i);
+            const targetY = player.y + (dirY * i);
 
-    // Loop 2 and 3 tiles away
-    for (let i = 2; i <= 3; i++) {
-        const targetX = player.x + (dirX * i);
-        const targetY = player.y + (dirY * i);
-
-        let tile;
-        if (gameState.mapMode === 'dungeon') {
-            const map = chunkManager.caveMaps[gameState.currentCaveId];
-            tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
-        } else if (gameState.mapMode === 'castle') {
-            const map = chunkManager.castleMaps[gameState.currentCastleId];
-            tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
-        } else {
-            // --- Check for LIVE moving enemies first! ---
-            const enemyId = `overworld:${targetX},${-targetY}`;
-            const liveEnemy = gameState.sharedEnemies[enemyId];
-            tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
-        }
-
-        const enemyData = ENEMY_DATA[tile];
-
-        if (enemyData) {
-
-            // Found a target!
-
-            if (player.stealthTurns > 0) {
-                player.stealthTurns = 0;
-                logMessage("You strike from the shadows!");
-                playerRef.update({ stealthTurns: 0 });
+            let tile;
+            if (gameState.mapMode === 'dungeon') {
+                const map = chunkManager.caveMaps[gameState.currentCaveId];
+                tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+            } else if (gameState.mapMode === 'castle') {
+                const map = chunkManager.castleMaps[gameState.currentCastleId];
+                tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+            } else {
+                // --- Check for LIVE moving enemies first! ---
+                const enemyId = `overworld:${targetX},${-targetY}`;
+                const liveEnemy = gameState.sharedEnemies[enemyId];
+                tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
             }
 
-            logMessage(`You lunge and attack the ${enemyData.name}!`);
-            hit = true;
+            const enemyData = ENEMY_DATA[tile];
 
-            // --- 3. Calculate Final Damage ---
-            // Formula: ( (PlayerBaseDmg - EnemyDef) * Multiplier ) + (Strength * Level)
-            const baseLungeDamage = (playerBaseDamage - (enemyData.defense || 0)) * skillData.baseDamageMultiplier;
-            const scalingDamage = (player.strength * skillLevel);
-            const totalLungeDamage = Math.max(1, Math.floor(baseLungeDamage + scalingDamage));
-            // --- End Damage Calc ---
+            if (enemyData) {
+                // Found a target!
+                if (player.stealthTurns > 0) {
+                    player.stealthTurns = 0;
+                    logMessage("You strike from the shadows!");
+                    playerRef.update({ stealthTurns: 0 });
+                }
 
-            if (gameState.mapMode === 'overworld') {
-                // Handle Overworld Combat
-                await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
+                logMessage(`You lunge and attack the ${enemyData.name}!`);
+                hit = true;
 
-            } else {
-                // Handle Instanced Combat
-                let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
-                if (enemy) {
-                    // We apply our new calculated damage!
-                    enemy.health -= totalLungeDamage;
-                    logMessage(`You hit the ${enemy.name} for ${totalLungeDamage} damage!`);
-                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#fff', 3);
+                // --- 3. Calculate Final Damage ---
+                // Formula: ( (PlayerBaseDmg - EnemyDef) * Multiplier ) + (Strength * Level)
+                const baseLungeDamage = (playerBaseDamage - (enemyData.defense || 0)) * skillData.baseDamageMultiplier;
+                const scalingDamage = (player.strength * skillLevel);
+                const totalLungeDamage = Math.max(1, Math.floor(baseLungeDamage + scalingDamage));
+                // --- End Damage Calc ---
 
-                    if (enemy.health <= 0) {
-                        logMessage(`You defeated the ${enemy.name}!`);
-                        handleInstancedEnemyDeath(enemy, targetX, targetY);
+                if (gameState.mapMode === 'overworld') {
+                    // Handle Overworld Combat
+                    await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
+
+                } else {
+                    // Handle Instanced Combat
+                    let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+                    if (enemy) {
+                        // We apply our new calculated damage!
+                        enemy.health -= totalLungeDamage;
+                        logMessage(`You hit the ${enemy.name} for ${totalLungeDamage} damage!`);
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#fff', 3);
+
+                        if (enemy.health <= 0) {
+                            logMessage(`You defeated the ${enemy.name}!`);
+                            handleInstancedEnemyDeath(enemy, targetX, targetY);
+                        }
                     }
                 }
+                break; // Stop looping, we hit our target
             }
-            break; // Stop looping, we hit our target
         }
-    }
 
-    if (!hit) {
-        logMessage("You lunge... and hit nothing.");
-    } else {
-        AudioSystem.playAttack();
-    }
+        if (!hit) {
+            logMessage("You lunge... and hit nothing.");
+        } else {
+            AudioSystem.playAttack();
+        }
 
-    // --- 4. Finalize Turn ---
-    playerRef.update({
-        stamina: player.stamina
-    });
-    triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
-    triggerAbilityCooldown('lunge');
-    endPlayerTurn(); // Always end turn, even if you miss
-    render(); // Re-render to show enemy health change
+        // --- 4. Finalize Turn ---
+        playerRef.update({
+            stamina: player.stamina
+        });
+        triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
+        triggerAbilityCooldown('lunge');
+        endPlayerTurn(); // Always end turn, even if you miss
+        render(); // Re-render to show enemy health change
+
+    } finally {
+        // --- 🚨 UNLOCK THE ENGINE ---
+        isProcessingMove = false;
+    }
 }
 
 function executeQuickstep(dirX, dirY) {
