@@ -1071,39 +1071,6 @@ function closeInventoryModal() {
     gameState.inventoryMode = false; // Exit inventory mode
 }
 
-function initInventoryListeners() {
-    const btn = document.getElementById('closeInventoryButton');
-    const modal = document.getElementById('inventoryModal');
-
-    // 1. Button Logic (Force override to ensure it works)
-    if (btn) {
-        btn.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeInventoryModal();
-        };
-        // Add touch support for mobile responsiveness
-        btn.ontouchend = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeInventoryModal();
-        };
-    } else {
-        console.error("Error: closeInventoryButton not found in DOM.");
-    }
-
-    // 2. Click Outside to Close (Backup UX)
-    if (modal) {
-        modal.onclick = (e) => {
-            // If the user clicks the dark background (the modal itself), close it.
-            // (e.target is the element actually clicked, 'modal' is the container)
-            if (e.target === modal) {
-                closeInventoryModal();
-            }
-        };
-    }
-}
-
 /**
  * Opens the skillbook modal.
  * Dynamically renders the list of skills the player knows
@@ -2528,23 +2495,35 @@ function syncPlayerState() {
  * based on the world seed noises.
  */
 
-function getBaseTerrain(worldX, worldY) {
-    if (Math.abs(worldX) <= 6 && Math.abs(worldY) <= 6) {
-        return '.'; // Force Plains background in the spawn area
-    }
+/**
+ * Calculates the natural terrain for a specific coordinate
+ * based on the world seed noises.
+ */
 
-    // Recalculate noise values for this specific spot
+function getBaseTerrain(worldX, worldY) {
     const elev = elevationNoise.noise(worldX / 70, worldY / 70);
     const moist = moistureNoise.noise(worldX / 50, worldY / 50);
 
-    // Return the correct biome character
-    if (elev < 0.35) return '~'; // Water
-    if (elev < 0.4 && moist > 0.7) return '≈'; // Swamp
-    if (elev > 0.8) return '^'; // Mountain
-    if (elev > 0.6 && moist < 0.3) return 'd'; // Deadlands
-    if (moist < 0.15) return 'D'; // Desert
-    if (moist > 0.55) return 'F'; // Forest
-    return '.'; // Plains
+    let tile = '.';
+    if (elev < 0.35) tile = '~'; // Water
+    else if (elev < 0.4 && moist > 0.7) tile = '≈'; // Swamp
+    else if (elev > 0.8) tile = '^'; // Mountain
+    else if (elev > 0.6 && moist < 0.3) tile = 'd'; // Deadlands
+    else if (moist < 0.15) tile = 'D'; // Desert
+    else if (moist > 0.55) tile = 'F'; // Forest
+
+    // --- NATURAL SPAWN SAFETY OVERRIDE ---
+    // Instead of a hard square, use a circular radius (Distance Squared)
+    const distSq = (worldX * worldX) + (worldY * worldY);
+    if (distSq <= 100) { // Radius of 10 tiles from spawn
+        // Only override blocking or dangerous terrain, let natural forests/deserts stay!
+        if (['^', '~', '≈', 'd'].includes(tile)) {
+            // Downgrade dangerous tiles to Forest or Plains depending on how wet the area is
+            tile = moist > 0.5 ? 'F' : '.'; 
+        }
+    }
+
+    return tile;
 }
 
 function endPlayerTurn(turnUpdates = {}) {
