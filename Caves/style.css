@@ -400,9 +400,9 @@ kbd {
 
 .spell-item:hover, .skill-item:hover {
     cursor: pointer;
-	transform: scale(1.02);
-	border-color: var(--text-highlight);
-	color: var(--text-highlight);
+    transform: translateY(-2px); 
+    border-color: var(--text-highlight);
+    color: var(--text-highlight);
     box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
 
