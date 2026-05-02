@@ -91,22 +91,33 @@ async function initCharacterSelect(user) {
     renderSlots();
 }
 
+let isEnteringGame = false; // Add global lock
+
 window.selectSlot = async function (slotId) {
+    // 🚨 Prevent Double Clicks!
+    if (isEnteringGame) return; 
+    isEnteringGame = true;
+
     loadingIndicator.classList.remove('hidden');
 
     player_id = currentUser.uid; 
     playerRef = db.collection('players').doc(player_id).collection('characters').doc(slotId);
 
-    const doc = await playerRef.get();
+    try {
+        const doc = await playerRef.get();
 
-    characterSelectModal.classList.add('hidden');
+        characterSelectModal.classList.add('hidden');
 
-    if (doc.exists) {
-        enterGame(doc.data());
-    } else {
-        const defaultState = createDefaultPlayerState();
-        Object.assign(gameState.player, defaultState);
-        initCreationUI(); 
+        if (doc.exists) {
+            enterGame(doc.data());
+        } else {
+            const defaultState = createDefaultPlayerState();
+            Object.assign(gameState.player, defaultState);
+            initCreationUI(); 
+        }
+    } finally {
+        // Unlock after a short delay to ensure modal hides safely
+        setTimeout(() => { isEnteringGame = false; }, 1000);
     }
 };
 
