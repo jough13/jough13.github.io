@@ -3925,19 +3925,7 @@ async function attemptMovePlayer(newX, newY) {
                 // Enemy Death Logic
                 if (enemy.health <= 0) {
                     logMessage(`You defeated the ${enemy.name}!`);
-                    registerKill(enemy);
-
-                    const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
-                    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
-
-                    if (gameState.mapMode === 'dungeon') {
-                        if (chunkManager.caveEnemies[gameState.currentCaveId]) {
-                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemyId);
-                        }
-                        chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
-
-                        gameState.mapDirty = true;
-                    }
+                    handleInstancedEnemyDeath(enemy, newX, newY);
                 }
 
                 // FINALIZE TURN - No counter-attack here! 
