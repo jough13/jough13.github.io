@@ -377,6 +377,27 @@ window.ITEM_DATA = {
         description: "A fragment of a spell: '...the void requires a tether...'",
         value: 50
     },
+    '🐙': {
+        name: 'Kraken Ink Sac',
+        type: 'trade',
+        char: '🐙',
+        description: "Pitch black and heavy. Alchemists pay a fortune for this.",
+        value: 150
+    },
+    '🥥': {
+        name: 'Coconut',
+        type: 'consumable',
+        tile: '🥥',
+        description: "Hard to open, but refreshing. {yellow:+15 Hunger}, {blue:+20 Thirst}",
+        effect: (state) => {
+            if (state.player.hunger >= state.player.maxHunger && state.player.thirst >= state.player.maxThirst) return false;
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 15);
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); 
+            logMessage('You crack open the coconut. {yellow:(+15 Hunger)}, {blue:(+20 Thirst)}');
+            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+            return true;
+        }
+    },
     // --- NEW ARTIFACTS & PUZZLE ITEMS ---
     '📜l': {
     name: 'Forgotten Letter',
