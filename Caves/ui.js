@@ -494,7 +494,7 @@ function updateRegionDisplay() {
             gameState.discoveredRegions.add(regionId);
             grantXp(50);
             
-            // NEW: Check if there is a major landmark here to pin on the map
+            // Check if there is a major landmark here to pin on the map
             const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
             if (['V', '🏰', '♛', '⛰', '🕍'].includes(currentTile)) {
                 if (!gameState.player.discoveredPOIs) gameState.player.discoveredPOIs = [];
@@ -505,9 +505,18 @@ function updateRegionDisplay() {
                     icon: currentTile, 
                     name: regionName
                 });
-                
-                playerRef.update({ discoveredPOIs: gameState.player.discoveredPOIs });
                 logMessage(`{blue:Point of Interest added to your map.}`);
+            }
+
+            // --- SAVE DISCOVERY & XP IMMEDIATELY ---
+            if (playerRef) {
+                playerRef.update({ 
+                    discoveredRegions: Array.from(gameState.discoveredRegions),
+                    discoveredPOIs: gameState.player.discoveredPOIs || [],
+                    xp: gameState.player.xp,
+                    level: gameState.player.level,
+                    statPoints: gameState.player.statPoints
+                });
             }
             
             if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playLevelUp === 'function') {
