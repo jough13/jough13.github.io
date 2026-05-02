@@ -347,6 +347,51 @@ const renderInventory = () => {
     }
 };
 
+function initInventoryListeners() {
+    const btn = document.getElementById('closeInventoryButton');
+    const modal = document.getElementById('inventoryModal');
+
+    // 1. Button Logic
+    if (btn) {
+        btn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Use our new global toggler to ensure focus is returned cleanly
+            if (typeof window.toggleModal === 'function') {
+                window.toggleModal(inventoryModal, openInventoryModal, closeInventoryModal);
+            } else {
+                closeInventoryModal();
+            }
+        };
+        // Add touch support for mobile responsiveness
+        btn.ontouchend = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof window.toggleModal === 'function') {
+                window.toggleModal(inventoryModal, openInventoryModal, closeInventoryModal);
+            } else {
+                closeInventoryModal();
+            }
+        };
+    } else {
+        console.error("Error: closeInventoryButton not found in DOM.");
+    }
+
+    // 2. Click Outside to Close (Backup UX)
+    if (modal) {
+        modal.onclick = (e) => {
+            // If the user clicks the dark background (the modal itself), close it.
+            if (e.target === modal) {
+                if (typeof window.toggleModal === 'function') {
+                    window.toggleModal(inventoryModal, openInventoryModal, closeInventoryModal);
+                } else {
+                    closeInventoryModal();
+                }
+            }
+        };
+    }
+}
+
 const renderEquipment = () => {
     const player = gameState.player;
     const equip = player.equipment;
