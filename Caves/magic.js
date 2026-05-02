@@ -507,18 +507,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
                     if (enemy.health <= 0) {
                         logMessage(`You defeated ${enemy.name}!`);
-
-                        registerKill(enemy);
-
-                        const droppedLoot = generateEnemyLoot(player, enemy);
-                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-
-                        if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
-
-                        }
-
-                        if (map) map[coords.y][coords.x] = droppedLoot || '.';
+                        handleInstancedEnemyDeath(enemy, coords.x, coords.y);
                     }
                 }
             }
@@ -669,17 +658,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
             if (enemy.health <= 0) {
                 logMessage(`You defeated the ${enemy.name}!`);
-
-                registerKill(enemy);
-
-                const droppedLoot = generateEnemyLoot(player, enemy);
-                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-                    chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
-                }
-                
-                let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
-                map[targetY][targetX] = droppedLoot || '.';
+                handleInstancedEnemyDeath(enemy, targetX, targetY);
             }
         }
     }
@@ -1129,19 +1108,7 @@ async function executeLunge(dirX, dirY) {
 
                     if (enemy.health <= 0) {
                         logMessage(`You defeated the ${enemy.name}!`);
-
-                        registerKill(enemy);
-
-                        const droppedLoot = generateEnemyLoot(player, enemy);
-                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-
-                        if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
-                        }
-
-                        if (gameState.mapMode === 'dungeon') {
-                            chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot || '.';
-                        }
+                        handleInstancedEnemyDeath(enemy, targetX, targetY);
                     }
                 }
             }
@@ -1529,11 +1496,7 @@ async function executeRangedAttack(dirX, dirY) {
 
                     if (enemy.health <= 0) {
                         logMessage(`You defeated ${enemy.name}!`);
-                        registerKill(enemy);
-                        const droppedLoot = generateEnemyLoot(player, enemy);
-                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                        let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
-                        map[targetY][targetX] = droppedLoot || '.';
+                        handleInstancedEnemyDeath(enemy, targetX, targetY);
                     }
                 }
             }
