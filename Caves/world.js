@@ -640,7 +640,10 @@ const chunkManager = {
                 onInitialLoad = null; 
             }
 
-            render();
+            // Tell the rendering engine the background has changed!
+            if (typeof gameState !== 'undefined') gameState.mapDirty = true;
+            
+            if (typeof render === 'function') render();
         });
     },
 
@@ -660,6 +663,9 @@ const chunkManager = {
         const tileKey = `${localX},${localY}`;
         
         this.worldState[chunkId][tileKey] = newTile;
+
+        // Tell the rendering engine the background has changed locally!
+        if (typeof gameState !== 'undefined') gameState.mapDirty = true;
 
         const safeData = sanitizeForFirebase(this.worldState[chunkId]);
 
