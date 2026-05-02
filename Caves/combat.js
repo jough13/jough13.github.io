@@ -1563,3 +1563,36 @@ function handlePlayerDeath() {
 
     return true;
 }
+
+// Add this to the bottom of combat.js!
+function handleInstancedEnemyDeath(enemy, x, y) {
+    registerKill(enemy);
+
+    const droppedLoot = generateEnemyLoot(gameState.player, enemy);
+    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+
+    let mapId = null;
+    let mapArray = null;
+    let validFloor = '.';
+
+    if (gameState.mapMode === 'dungeon') {
+        mapId = gameState.currentCaveId;
+        mapArray = chunkManager.caveMaps[mapId];
+        if (CAVE_THEMES[gameState.currentCaveTheme]) {
+            validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+        }
+        if (chunkManager.caveEnemies[mapId]) {
+            chunkManager.caveEnemies[mapId] = chunkManager.caveEnemies[mapId].filter(e => e.id !== enemy.id);
+        }
+    } else if (gameState.mapMode === 'castle') {
+        mapId = gameState.currentCastleId;
+        mapArray = chunkManager.castleMaps[mapId];
+    }
+
+    if (mapArray && mapArray[y]) {
+        mapArray[y][x] = droppedLoot || validFloor;
+        // THE FIX: Clear the cache so the player can pick up the new drop!
+        gameState.lootedTiles.delete(`${mapId}:${x},${-y}`); 
+    }
+    gameState.mapDirty = true;
+}
