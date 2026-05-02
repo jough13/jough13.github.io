@@ -17,10 +17,10 @@ window.selectBackground = async function (bgKey) {
     }
     
     // EASY WIN: Proper recalculation so we don't desync Health/Mana
-    player.maxHealth = 10 + (player.constitution * 5);
+    player.maxHealth = 5 + (player.constitution * 5);
     player.health = player.maxHealth;
     
-    player.maxMana = 10 + (player.wits * 5);
+    player.maxMana = 5 + (player.wits * 5);
     player.mana = player.maxMana;
 
     // 2. Apply Inventory
@@ -176,7 +176,7 @@ function updateCreationSummary() {
     const summaryDiv = document.getElementById('creationSummary');
     const nameInput = document.getElementById('charNameInput');
     
-    // EASY WIN: Clean the input to prevent weird spacing or hidden HTML tags
+    // Clean the input to prevent weird spacing or hidden HTML tags
     creationState.name = nameInput.value.replace(/[^a-zA-Z0-9 ]/g, '').trim();
 
     const raceName = creationState.race ? PLAYER_RACES[creationState.race].name : "???";
@@ -202,30 +202,35 @@ function updateCreationSummary() {
 
     const btn = document.getElementById('finalizeCreationBtn');
     
-    // EASY WIN: Dynamic button text tells the player exactly what is missing!
+    // Dynamic button text tells the player exactly what is missing!
     if (creationState.name.length === 0) {
         btn.textContent = "Enter a Name...";
         btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
+        btn.classList.remove('bg-green-600', 'hover:bg-green-500');
     } else if (!creationState.race) {
         btn.textContent = "Select a Race...";
         btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
+        btn.classList.remove('bg-green-600', 'hover:bg-green-500');
     } else if (!creationState.background) {
         btn.textContent = "Select a Class...";
         btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
+        btn.classList.remove('bg-green-600', 'hover:bg-green-500');
     } else {
-        btn.textContent = "Begin Adventure";
+        btn.textContent = "Begin Adventure!";
         btn.disabled = false;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
+        btn.classList.add('bg-green-600', 'hover:bg-green-500');
     }
 }
 
+// Attach listeners
 document.getElementById('charNameInput').addEventListener('input', updateCreationSummary);
 document.getElementById('finalizeCreationBtn').addEventListener('click', finalizeCharacterCreation);
 
-// EASY WIN: Random Name Generator helper
+// Random Name Generator helper
 window.generateRandomName = function() {
     const prefixes = ["Thor", "Garr", "El", "Fae", "Kael", "Mor", "Vex", "Zar", "Brim", "Nyx"];
     const suffixes = ["in", "ick", "ara", "en", "is", "os", "ia", "on", "us", "th"];
@@ -233,7 +238,7 @@ window.generateRandomName = function() {
     const s = suffixes[Math.floor(Math.random() * suffixes.length)];
     
     document.getElementById('charNameInput').value = p + s;
-    updateCreationSummary();
+    updateCreationSummary(); // Force UI to update immediately
 };
 
 function initCreationUI() {
