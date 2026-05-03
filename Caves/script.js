@@ -6382,18 +6382,9 @@ async function enterGame(playerData) {
             };
             onlinePlayerRef.set(stateToSet);
 
-            onlinePlayerRef.onDisconnect().remove().then(() => {
-                const finalState = {
-                    ...gameState.player,
-                    lootedTiles: Array.from(gameState.lootedTiles),
-                    exploredChunks: Array.from(gameState.exploredChunks)
-                };
-                if (finalState.inventory) finalState.inventory = getSanitizedInventory();
-                
-                delete finalState.color;
-                delete finalState.character;
-                playerRef.set(sanitizeForFirebase(finalState), { merge: true });
-            });
+            // We ONLY want to remove the player from the online list when they disconnect.
+            // Do NOT append a .then() here, as it will execute immediately on the client and wipe data!
+            onlinePlayerRef.onDisconnect().remove();
         }
     });
 
