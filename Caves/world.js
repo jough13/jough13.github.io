@@ -632,48 +632,75 @@ const chunkManager = {
         const docRef = db.collection('worldState').doc(chunkId);
 
         worldStateListeners[chunkId] = docRef.onSnapshot(doc => {
-            this.worldState[chunkId] = doc.exists ? doc.data() : {};
+            if (doc.exists) {
+                const data = doc.data();
+                let needsCleanup = false;
+                const cleanupUpdates = {};
+                const now = Date.now();
 
-            // If this is the first time data arrived, fire the callback
+                // --- NEW: Decentralized Garbage Collection ---
+                for (const key in data) {
+                    const val = data[key];
+                    if (typeof val === 'object' && val !== null && val.expires) {
+                        if (now > val.expires) {
+                            needsCleanup = true;
+                            cleanupUpdates[key] = firebase.firestore.FieldValue.delete();
+                            delete data[key]; // Erase locally
+                        }
+                    }
+                }
+
+                this.worldState[chunkId] = data;
+
+                // If this client found expired items, tell Firebase to delete them for everyone!
+                if (needsCleanup) {
+                    docRef.update(cleanupUpdates).catch(console.error);
+                }
+            } else {
+                this.worldState[chunkId] = {};
+            }
+
             if (onInitialLoad) {
                 onInitialLoad();
                 onInitialLoad = null; 
             }
 
-            // Tell the rendering engine the background has changed!
             if (typeof gameState !== 'undefined') gameState.mapDirty = true;
-            
             if (typeof render === 'function') render();
         });
     },
 
-    setWorldTile(worldX, worldY, newTile) {
+    setWorldTile(worldX, worldY, newTile, ttlHours = 0) {
         const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
         const chunkY = Math.floor(worldY / this.CHUNK_SIZE);
         
-        // --- Prevent Firebase Permission Errors from glitchy coordinates ---
         if (isNaN(chunkX) || isNaN(chunkY)) return;
         
         const chunkId = `${chunkX},${chunkY}`;
-        
         const localX = (worldX % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
         const localY = (worldY % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
-        
-        if (!this.worldState[chunkId]) this.worldState[chunkId] = {};
         const tileKey = `${localX},${localY}`;
         
-        this.worldState[chunkId][tileKey] = newTile;
+        if (!this.worldState[chunkId]) this.worldState[chunkId] = {};
+        
+        // --- NEW: Time-To-Live (TTL) Logic ---
+        let tileData = newTile;
+        if (ttlHours > 0) {
+            // Save as an object with an expiration timestamp
+            tileData = { t: newTile, expires: Date.now() + (ttlHours * 60 * 60 * 1000) };
+        }
+        
+        this.worldState[chunkId][tileKey] = tileData;
 
-        // Tell the rendering engine the background has changed locally!
         if (typeof gameState !== 'undefined') gameState.mapDirty = true;
 
-        const safeData = sanitizeForFirebase(this.worldState[chunkId]);
+        // OPTIMIZATION: Only send the specific tile that changed, not the whole chunk!
+        const updateObj = {};
+        updateObj[tileKey] = tileData;
 
-        db.collection('worldState').doc(chunkId).set(safeData, {
+        db.collection('worldState').doc(chunkId).set(updateObj, {
             merge: true
-        }).catch(err => {
-            console.error("Map update failed (visual only):", err);
-        });
+        }).catch(err => console.error("Map update failed:", err));
     },
 
     getEnemySpawn(biome, dist, random) {
@@ -952,7 +979,9 @@ const chunkManager = {
         
         // Always check WorldState first (Diff overrides procedural)
         if (this.worldState[chunkId] && this.worldState[chunkId][tileKey] !== undefined) {
-            return this.worldState[chunkId][tileKey];
+            const val = this.worldState[chunkId][tileKey];
+            // If it's a TTL object, return the 't' (tile) property. Otherwise, return the string.
+            return (typeof val === 'object' && val !== null) ? val.t : val;
         }
         if (!this.loadedChunks[chunkId]) {
             this.generateChunk(chunkX, chunkY);
