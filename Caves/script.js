@@ -71,7 +71,7 @@ async function manualSaveGame() {
             ...gameState.player,
             inventory: getSanitizedInventory(),
             equipment: getSanitizedEquipment(),
-            lootedTiles: Array.from(gameState.lootedTiles),
+            lootedTiles: Object.fromEntries(gameState.lootedTiles),
             discoveredRegions: Array.from(gameState.discoveredRegions),
             exploredChunks: Array.from(gameState.exploredChunks),
             foundLore: Array.from(gameState.foundLore || []),
@@ -4248,7 +4248,7 @@ async function attemptMovePlayer(newX, newY) {
                 // Mark solved
                 gameState.lootedTiles.add(tileId);
                 playerRef.update({
-                    lootedTiles: Array.from(gameState.lootedTiles),
+                    lootedTiles: Object.fromEntries(gameState.lootedTiles),
                     [riddle.reward]: gameState.player[riddle.reward]
                 });
 
@@ -4333,7 +4333,7 @@ async function attemptMovePlayer(newX, newY) {
 
             if (shrineUsed) gameState.lootedTiles.add(tileId);
             playerRef.update({
-                lootedTiles: Array.from(gameState.lootedTiles)
+                lootedTiles: Object.fromEntries(gameState.lootedTiles)
             });
             loreModal.classList.add('hidden');
         }, {
@@ -4354,7 +4354,7 @@ async function attemptMovePlayer(newX, newY) {
             shrineUsed = true;
             if (shrineUsed) gameState.lootedTiles.add(tileId);
             playerRef.update({
-                lootedTiles: Array.from(gameState.lootedTiles)
+                lootedTiles: Object.fromEntries(gameState.lootedTiles)
             });
             loreModal.classList.add('hidden');
         }, {
@@ -4482,7 +4482,7 @@ async function attemptMovePlayer(newX, newY) {
                 logMessage("You spot a spike trap and deftly avoid it, disarming it!");
                 gameState.lootedTiles.add(tileId);
                 playerRef.update({
-                    lootedTiles: Array.from(gameState.lootedTiles)
+                    lootedTiles: Object.fromEntries(gameState.lootedTiles)
                 });
                 return;
             } else {
@@ -4918,7 +4918,7 @@ async function attemptMovePlayer(newX, newY) {
             }
             gameState.lootedTiles.add(tileId);
             playerRef.update({
-                lootedTiles: Array.from(gameState.lootedTiles),
+                lootedTiles: Object.fromEntries(gameState.lootedTiles),
                 inventory: gameState.player.inventory
             });
             renderInventory();
@@ -5834,7 +5834,7 @@ async function attemptMovePlayer(newX, newY) {
                     // FORCE SAVE IMMEDIATELY to secure the loot
                     flushPendingSave({
                         inventory: getSanitizedInventory(),
-                        lootedTiles: Array.from(gameState.lootedTiles)
+                        lootedTiles: Object.fromEntries(gameState.lootedTiles)
                     });
 
                 } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
@@ -5863,7 +5863,7 @@ async function attemptMovePlayer(newX, newY) {
                     // FORCE SAVE IMMEDIATELY to secure the loot
                     flushPendingSave({
                         inventory: getSanitizedInventory(),
-                        lootedTiles: Array.from(gameState.lootedTiles)
+                        lootedTiles: Object.fromEntries(gameState.lootedTiles)
                     });
 
                 } else {
@@ -6162,7 +6162,7 @@ logoutButton.addEventListener('click', () => {
     if (playerRef) {
         const finalState = {
             ...gameState.player,
-            lootedTiles: Array.from(gameState.lootedTiles)
+            lootedTiles: Object.fromEntries(gameState.lootedTiles)
         };
 
         // Create a clean version of the inventory before saving
@@ -6366,6 +6366,27 @@ async function enterGame(playerData) {
     gameState.lootedTiles = new Set(playerData.lootedTiles || []);
     gameState.exploredChunks = new Set(playerData.exploredChunks || []);
     gameState.shopStates = playerData.shopStates || {};
+
+    gameState.lootedTiles = new Map();
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    if (playerData.lootedTiles) {
+        if (Array.isArray(playerData.lootedTiles)) {
+            // Legacy Migration: Convert old arrays to timestamped map
+            playerData.lootedTiles.forEach(id => gameState.lootedTiles.set(id, now));
+        } else {
+            // Normal Load: Filter out any tiles looted more than 24 hours ago
+            for (const [id, timestamp] of Object.entries(playerData.lootedTiles)) {
+                if (now - timestamp < TWENTY_FOUR_HOURS) {
+                    gameState.lootedTiles.set(id, timestamp);
+                }
+            }
+        }
+    }
+    
+    // Polyfill .add() so we don't break existing game logic!
+    gameState.lootedTiles.add = function(key) { this.set(key, Date.now()); };
 
     if (!playerData.background) {
         loadingIndicator.classList.add('hidden');
