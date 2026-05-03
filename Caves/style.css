@@ -740,28 +740,37 @@ body:has(#authContainer:not(.hidden)) {
     background-image: var(--asset-input-bg);
     background-size: 100% 100%; 
     background-repeat: no-repeat;
-    padding: 16px 24px;
+    
+    /* ADJUST PADDING HERE: Top Right Bottom Left */
+    /* This pushes the text down and inward to fit inside your drawn box! */
+    padding: 28px 32px 20px 32px; 
+    
     margin-bottom: 12px;
     image-rendering: pixelated;
     display: flex;
     align-items: center;
 }
 
-/* Force the text inside the inputs to be green and chunky */
+/* Force the text inside the inputs to match the light background */
 .ui-input-asset input {
     background-color: transparent !important;
     border: none !important;
     outline: none !important;
-    color: #4ade80 !important; /* Terminal Green */
+    
+    /* Changed to dark text so it's readable on the light asset background */
+    color: #111827 !important; 
     font-family: 'Courier New', Courier, monospace !important;
     font-size: 1.4rem !important;
     font-weight: bold !important;
-    text-shadow: 0 0 5px rgba(74, 222, 128, 0.8);
+    text-shadow: none !important; /* Removed the neon glow */
+    
     width: 100%;
+    transform: translateY(2px); /* Nudges text down slightly for perfect vertical centering */
 }
+
 .ui-input-asset input::placeholder { 
-    color: #4ade80 !important; 
-    opacity: 0.5;
+    color: #4b5563 !important; /* Dark grey placeholder */
+    opacity: 0.7;
 }
 
 /* 5. The Login Button */
@@ -817,14 +826,6 @@ body:has(#authContainer:not(.hidden)) {
     color: #9ca3af;
 }
 
-.retro-checkbox + .custom-check::before {
-    content: "[ ]";
-}
-
-.retro-checkbox:checked + .custom-check::before {
-    content: "[x]";
-}
-
 .retro-checkbox:checked + .custom-check {
     color: #4ade80; /* Glow green when checked! */
     text-shadow: 0 0 5px rgba(74, 222, 128, 0.5);
@@ -861,15 +862,19 @@ input[type="checkbox"].hidden {
     background-repeat: no-repeat;
     image-rendering: pixelated;
     
-    animation: torch-sprite 0.6s steps(4) infinite; /* Using steps(4) for proper sprite animation */
-}
-
-.pixel-torch[style*="background-image"], 
-.pixel-torch:has-background { 
+    /* Bulletproof Sprite Animation */
+    animation: torch-sprite 0.6s linear infinite;
+    
+    /* Hides any leftover text/emojis just in case */
     color: transparent; 
+    text-indent: -9999px;
+    overflow: hidden;
 }
 
+/* Explicit keyframes guarantee the sprite snaps perfectly on every browser */
 @keyframes torch-sprite {
-    from { background-position: 0px 0px; }
-    to { background-position: -192px 0px; } /* -48px * 4 frames */
+    0%, 24.9% { background-position: 0% 0; }
+    25%, 49.9% { background-position: 33.333% 0; }
+    50%, 74.9% { background-position: 66.666% 0; }
+    75%, 100% { background-position: 100% 0; }
 }
