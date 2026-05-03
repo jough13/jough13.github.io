@@ -64,17 +64,31 @@ async function manualSaveGame() {
     // Force any pending debounced saves to happen first
     flushPendingSave(); 
     
-    // Gather the complete, sanitized state for a robust save
-    const finalState = {
-        ...gameState.player,
-        inventory: getSanitizedInventory(),
-        equipment: getSanitizedEquipment(),
-        lootedTiles: Array.from(gameState.lootedTiles),
-        discoveredRegions: Array.from(gameState.discoveredRegions),
-        exploredChunks: Array.from(gameState.exploredChunks),
-        shopStates: gameState.shopStates || {},
-        activeTreasure: gameState.activeTreasure || null,
-    };
+    // Only attempt to save if we have a valid database reference
+    if (playerRef) {
+        // Explicitly gather ALL engine state so we don't lose map memory on logout!
+        const finalState = {
+            ...gameState.player,
+            inventory: getSanitizedInventory(),
+            equipment: getSanitizedEquipment(),
+            lootedTiles: Array.from(gameState.lootedTiles),
+            discoveredRegions: Array.from(gameState.discoveredRegions),
+            exploredChunks: Array.from(gameState.exploredChunks),
+            foundLore: Array.from(gameState.foundLore || []),
+            foundCodexEntries: Array.from(gameState.foundCodexEntries || []),
+            shopStates: gameState.shopStates || {},
+            activeTreasure: gameState.activeTreasure || null,
+        };
+
+        // Remove ephemeral visual properties
+        delete finalState.color;
+        delete finalState.character;
+
+        // Save to Firestore
+        playerRef.set(sanitizeForFirebase(finalState), { merge: true }).catch(err => {
+            console.error("Error saving on logout:", err);
+        });
+    }
 
     try {
         // Use set with merge to ensure a clean overwrite with the current state
@@ -6708,7 +6722,7 @@ restartButton.onclick = () => {
     gameState.currentCastleId = null;
 
     // 5. Save "Alive" State to DB
-    playerRef.set(sanitizeForFirebase(player));
+    playerRef.set(sanitizeForFirebase(player), { merge: true });
 
     // 6. UI Cleanup
     gameOverModal.classList.add('hidden');
