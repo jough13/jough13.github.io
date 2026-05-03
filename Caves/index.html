@@ -4,13 +4,17 @@
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       
-      <!-- EASY WIN: SEO & Mobile Polish -->
+      <!-- SEO & Mobile Polish -->
       <meta name="description" content="Caves and Castles - A retro browser-based ASCII MMO. Explore, craft, and survive.">
       <meta name="theme-color" content="#1f2937">
       
-      <!-- EASY WIN: Resource Hints for faster loading -->
+      <!-- Resource Hints for faster loading -->
       <link rel="preconnect" href="https://cdn.tailwindcss.com">
       <link rel="preconnect" href="https://www.gstatic.com">
+
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Uncial+Antiqua&display=swap" rel="stylesheet">
       
       <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏰</text></svg>">
       <title>Caves and Castles</title>
@@ -18,35 +22,65 @@
       <link rel="stylesheet" href="style.css">
    </head>
    <body class="flex flex-col items-center justify-center min-h-screen p-4 font-mono">
+
       <main class="container w-full">
          
          <!-- LOGIN SCREEN -->
-         <div id="authContainer" class="themed-container mx-auto max-w-sm p-6 rounded-2xl shadow-xl border-2">
-             <h1 id="authTitle" class="text-2xl font-bold text-center mb-4">Login</h1>
-             <div class="space-y-4">
-                 <!-- EASY WIN: Autocomplete tags for Password Managers -->
-                 <input type="email" id="emailInput" autocomplete="email" aria-label="Email Address" placeholder="Email" class="themed-input w-full p-2 border rounded">
-                 <input type="password" id="passwordInput" autocomplete="current-password" aria-label="Password" placeholder="Password" class="themed-input w-full p-2 border rounded">
+         <div id="authContainer" class="login-wrapper mx-auto max-w-md relative z-10">
+             
+             <!-- Asset-Ready Outer Frame -->
+             <div class="ui-frame-asset">
+                 
+                 <!-- Asset-Ready Inner Parchment -->
+                 <div class="ui-parchment-asset flex flex-col items-center p-6 pb-4">
+                     
+                     <!-- Title -->
+                     <h1 id="authTitle" class="gothic-title text-5xl text-center mb-6 flex items-center justify-center gap-4 text-black">
+                         Login <div class="pixel-torch" title="Torch">🔥</div>
+                     </h1>
+                     
+                     <div class="w-full space-y-4 px-4">
+                         <!-- Asset-Ready Inputs -->
+                         <div class="ui-input-asset">
+                             <input type="email" id="emailInput" autocomplete="email" aria-label="Email Address" placeholder="Email" class="w-full bg-transparent outline-none terminal-text">
+                         </div>
+                         <div class="ui-input-asset">
+                             <input type="password" id="passwordInput" autocomplete="current-password" aria-label="Password" placeholder="Password" class="w-full bg-transparent outline-none terminal-text">
+                         </div>
 
-                 <button id="authButton" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-all">
-                     Login
-                 </button>
+                         <!-- Asset-Ready Button -->
+                         <div class="pt-2">
+                             <button id="authButton" class="ui-btn-asset w-full text-2xl tracking-widest transition-transform">
+                                 LOGIN
+                             </button>
+                         </div>
 
-                 <div class="flex justify-between items-center text-sm">
-                     <div class="flex flex-col gap-1"> 
-                         <label for="rememberMe" class="flex items-center gap-2 cursor-pointer muted-text">
-                             <input type="checkbox" id="rememberMe" class="form-checkbox h-4 w-4 rounded" checked>
-                             Remember Me
-                         </label>
-                         <label for="autoLoginCheck" class="flex items-center gap-2 cursor-pointer muted-text">
-                             <input type="checkbox" id="autoLoginCheck" class="form-checkbox h-4 w-4 rounded" checked>
-                             Auto Login
-                         </label>
+                         <!-- Asset-Ready Toggles -->
+                         <div class="flex justify-between items-end text-sm pt-2 pixel-text text-black">
+                             <div class="flex flex-col gap-2"> 
+                                 <!-- We hide the real checkbox and style a fake one (ui-checkbox-asset) -->
+                                 <label for="rememberMe" class="cursor-pointer flex items-center gap-2">
+                                     <input type="checkbox" id="rememberMe" class="hidden peer" checked>
+                                     <span class="ui-checkbox-asset"></span>
+                                     Remember Me
+                                 </label>
+                                 <label for="autoLoginCheck" class="cursor-pointer flex items-center gap-2">
+                                     <input type="checkbox" id="autoLoginCheck" class="hidden peer" checked>
+                                     <span class="ui-checkbox-asset"></span>
+                                     Auto Login
+                                 </label>
+                             </div>
+                             <a href="#" id="authToggle" class="hover:text-blue-700 underline underline-offset-2">Create Account</a>
+                         </div>
+
+                         <p id="authError" class="text-red-600 text-center text-sm min-h-[1.5rem] pixel-text font-bold"></p>
                      </div>
-                     <a href="#" id="authToggle" class="highlight-text hover:underline">Create Account</a>
-                 </div>
 
-                 <p id="authError" class="text-red-500 text-center text-sm min-h-[1rem]"></p>
+                     <div class="mt-8 pt-2 border-t-2 border-dashed border-gray-400 w-full text-center text-xs pixel-text text-gray-700">
+                         <a href="devlog.html" class="hover:text-black">Devlog</a> | Version 0.3 | Last Updated: May 3rd, 2026
+                     </div>
+
+                 </div>
              </div>
          </div>
          
@@ -575,7 +609,7 @@
       </div>
 
       <footer class="text-center text-xs muted-text mt-4">
-          <p><a href="devlog.html" class="hover:underline">Devlog</a> | Version 0.2.2 | Last Updated: March 15th, 2026</p>
+          <p><a href="devlog.html" class="hover:underline">Devlog</a> | Version 0.2.3 | Last Updated: May 3rd, 2026</p>
       </footer>
 
       <!-- FIREBASE SDK -->
