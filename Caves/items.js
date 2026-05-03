@@ -548,7 +548,7 @@ function handleItemDrop(key) {
     // Update DB
     playerRef.update({ 
         inventory: getSanitizedInventory(),
-        lootedTiles: Array.from(gameState.lootedTiles)
+        lootedTiles: Object.fromEntries(gameState.lootedTiles)
     });
     
     // Refresh the UI immediately so the item disappears or count decreases
