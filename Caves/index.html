@@ -12,9 +12,10 @@
       <link rel="preconnect" href="https://cdn.tailwindcss.com">
       <link rel="preconnect" href="https://www.gstatic.com">
 
+      <!-- Retro Fonts for Login Screen -->
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Uncial+Antiqua&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=VT323&display=swap" rel="stylesheet">
       
       <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏰</text></svg>">
       <title>Caves and Castles</title>
@@ -35,7 +36,7 @@
                  <div class="ui-parchment-asset flex flex-col items-center p-6 pb-4">
                      
                      <!-- Title -->
-                     <h1 id="authTitle" class="gothic-title text-5xl text-center mb-6 flex items-center justify-center gap-4 text-black">
+                     <h1 id="authTitle" class="gothic-title text-5xl text-center mb-6 flex items-center justify-center gap-4 text-white">
                          Login <div class="pixel-torch" title="Torch">🔥</div>
                      </h1>
                      
@@ -56,7 +57,7 @@
                          </div>
 
                          <!-- Retro Text Toggles -->
-                         <div class="flex justify-between items-end text-sm pt-2 pixel-text text-black">
+                         <div class="flex justify-between items-end text-sm pt-4 pixel-text">
                              <div class="flex flex-col gap-2"> 
                                  <label for="rememberMe" class="retro-checkbox-label cursor-pointer flex items-center">
                                      <input type="checkbox" id="rememberMe" class="retro-checkbox hidden" checked>
@@ -67,11 +68,16 @@
                                      <span class="custom-check mr-2"></span> Auto Login
                                  </label>
                              </div>
-                             <a href="#" id="authToggle" class="hover:text-blue-700 underline underline-offset-2 mb-1">Create Account</a>
+                             <a href="#" id="authToggle" class="hover:text-green-400 underline underline-offset-4 mb-1 transition-colors">Create Account</a>
                          </div>
 
-                         <p id="authError" class="text-red-600 text-center text-sm min-h-[1.5rem] pixel-text font-bold"></p>
+                         <p id="authError" class="text-red-500 text-center text-sm min-h-[1.5rem] pixel-text font-bold"></p>
                      </div>
+
+                     <div class="mt-8 pt-2 border-t-2 border-dashed border-gray-600 w-full text-center text-xs pixel-text text-gray-400">
+                         <a href="devlog.html" class="hover:text-white">Devlog</a> | Version 0.2.3 | Last Updated: May 3rd, 2026
+                     </div>
+
                  </div>
              </div>
          </div>
@@ -310,12 +316,6 @@
                         <span id="intuitionDisplay" class="font-bold">Intuition: 1</span>
                         <button id="addIntuiBtn" aria-label="Increase Intuition" class="stat-add-btn" data-stat="intuition">+</button>
                      </span>
-                  </div>
-                  
-                  <div id="chatContainer" class="panel p-4 w-full rounded-2xl border-2 flex flex-col flex-grow">
-                     <h2 class="text-xl font-bold mb-2">Chat</h2>
-                     <div id="chatMessages" class="flex-grow overflow-y-auto flex flex-col-reverse" aria-live="polite"></div>
-                     <input type="text" id="chatInput" aria-label="Chat Message" class="themed-input w-full p-2 border rounded text-sm mt-2" placeholder="Say something...">
                   </div>
                </div>
             </div>
