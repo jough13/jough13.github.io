@@ -166,7 +166,7 @@ const gameState = {
     activeTreasure: null,     // Current treasure map target {x, y}
     
     // Exploration Tracking
-    lootedTiles: new Set(),
+    lootedTiles: new Map(),
     discoveredRegions: new Set(),
     exploredChunks: new Set(),
     foundLore: new Set(),
