@@ -1532,7 +1532,7 @@ function handlePlayerDeath() {
     player.inventory = []; 
     player.equipment = { weapon: { name: 'Fists', damage: 0 }, armor: { name: 'Simple Tunic', defense: 0 } };
 
-    playerRef.set(sanitizeForFirebase(player)).catch(console.error);
+    playerRef.set(sanitizeForFirebase(player), { merge: true }).catch(console.error);
 
     return true;
 }
