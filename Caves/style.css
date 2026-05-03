@@ -17,20 +17,15 @@
     --mtn-shadow: #44403c; /* Darker grey for depth */
     --mtn-cap: #f9fafb;    /* Bright snow */
 
-    /* ASSET DICTIONARY FOR LOGIN SCREEN:
-     * When you generate your pixel art, replace these fallback colors 
-     * with your image paths! Example: url('assets/bg_stone.png') 
-     */
-    --asset-bg-stone: none; 
-    --asset-frame-border: none; 
-    --asset-parchment: #e5e0cc; 
-    --asset-input-bg: #111827; 
-    --asset-btn-normal: #65a34e; 
-    --asset-btn-hover: #78c25d; 
-    --asset-btn-pressed: #52853f; 
-    --asset-checkbox-off: #4b5563; 
-    --asset-checkbox-on: #16a34a; 
-    --asset-torch-anim: none; 
+    --asset-bg-stone: url('assets/bg_stone.png'); 
+    --asset-frame-border: url('assets/frame_outer.png'); 
+    --asset-parchment: #2a2a2a; /* A dark grey to match the new stone assets */
+    --asset-input-bg: url('assets/input_bg.png');
+    --asset-btn-normal: url('assets/btn_normal.png'); 
+    --asset-btn-pressed: url('assets/btn_pressed.png'); 
+    --asset-checkbox-off: url('assets/check_off.png'); 
+    --asset-checkbox-on: url('assets/check_on.png'); 
+    --asset-torch-anim: url('assets/torch.png');
 }
 
 [data-theme="dark"] {
@@ -712,152 +707,142 @@ kbd {
 
 /* 1. Global Background */
 body:has(#authContainer:not(.hidden)) {
-    background-color: #a3a3a3; /* Fallback */
+    background-color: #111; 
     background-image: var(--asset-bg-stone);
+    background-size: 256px 256px; /* Scales the wall texture down nicely */
     background-repeat: repeat;
-    /* Optional: Keep this for that moody CRT vignette overlay */
-    box-shadow: inset 0 0 150px rgba(0,0,0,0.8);
+    box-shadow: inset 0 0 150px rgba(0,0,0,0.9); /* Moody Vignette */
+    image-rendering: pixelated;
 }
 
-/* 2. Outer Frame (Ready for 9-Slice Scaling) */
+/* 2. Outer Frame (9-Slice Scaling) */
 .ui-frame-asset {
-    background-color: #8c8c8c; /* Fallback */
-    border: 4px solid #1a1a1a; /* Fallback */
+    /* Set the physical thickness of the frame on screen */
+    border: 48px solid transparent; 
     
-    /* 
-     * HOW TO APPLY YOUR FRAME ASSET LATER:
-     * 1. Change --asset-frame-border in :root to your image URL.
-     * 2. Uncomment the 3 lines below.
-     * 3. Adjust 'border-image-slice' to the pixel thickness of your corners.
-     */
+    /* Load your beautiful ornate frame */
+    border-image-source: var(--asset-frame-border); 
     
-    /* border-image-source: var(--asset-frame-border); */
-    /* border-image-slice: 16; */ 
-    /* border-image-repeat: repeat; */
+    /* Tell CSS that the corners take up about 25% of the original image */
+    border-image-slice: 28%; 
+    border-image-repeat: repeat;
+    
+    image-rendering: pixelated;
+    filter: drop-shadow(10px 10px 0px rgba(0,0,0,0.6)); /* Heavy drop shadow */
 }
 
-/* 3. Inner Parchment */
+/* 3. Inner Background (Inside the frame) */
 .ui-parchment-asset {
     background-color: var(--asset-parchment);
-    background-image: var(--asset-parchment);
-    background-size: cover;
-    background-position: center;
-    /* Fallback border */
-    outline: 2px solid #1a1a1a; 
+    /* Push content inward so it doesn't overlap the chunky frame borders */
+    padding: 1rem;
+    margin: -16px; 
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.5); /* Inner shadow for depth */
 }
 
-/* 4. Inputs */
+/* 4. Inputs (Using your mossy stone boxes) */
 .ui-input-asset {
-    background-color: var(--asset-input-bg);
     background-image: var(--asset-input-bg);
-    background-size: 100% 100%; /* Stretches the image to fit the input */
+    background-size: 100% 100%; /* Stretches to fit */
+    background-repeat: no-repeat;
     
-    border: 4px solid #374151; /* Fallback */
-    padding: 8px 12px;
+    padding: 16px 24px;
+    margin-bottom: 12px;
+    image-rendering: pixelated;
 }
 
 .terminal-text {
-    color: #4ade80; 
+    color: #4ade80; /* Bright terminal green */
     font-family: 'VT323', monospace;
-    font-size: 1.5rem;
-    text-shadow: 0 0 5px rgba(74, 222, 128, 0.5);
+    font-size: 1.8rem;
+    text-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
 }
 .terminal-text::placeholder { color: #064e3b; }
 
-/* 5. Button */
+/* 5. The Login Button */
 .ui-btn-asset {
-    background-color: var(--asset-btn-normal);
     background-image: var(--asset-btn-normal);
     background-size: 100% 100%;
     background-repeat: no-repeat;
     
     font-family: 'VT323', monospace;
+    font-size: 2rem;
     font-weight: bold;
-    color: #000;
+    color: #ffffff; /* White text looks great on the green */
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.8); /* Heavy black drop shadow on text */
     
-    border: 4px solid #1a1a1a; /* Fallback */
-    padding: 12px;
+    padding: 18px;
+    image-rendering: pixelated;
+    transition: filter 0.1s;
 }
 
 .ui-btn-asset:hover {
-    background-color: var(--asset-btn-hover);
-    background-image: var(--asset-btn-hover);
+    filter: brightness(1.15); /* Slightly brighten on hover */
 }
 
 .ui-btn-asset:active {
-    background-color: var(--asset-btn-pressed);
     background-image: var(--asset-btn-pressed);
-    transform: translateY(4px); /* Physical push effect */
+    color: #cccccc; /* Dim text on press */
+    transform: translateY(4px); /* Physically push down */
 }
 
-/* 6. Retro Text Checkboxes */
-.retro-checkbox-label {
-    font-family: 'VT323', monospace;
-    font-size: 1.2rem;
-    user-select: none;
-}
-
-.custom-check {
+/* 6. The Image Checkboxes */
+.ui-checkbox-asset {
     display: inline-block;
-    width: 2.5ch; /* Match character width */
+    width: 32px;  /* Size on screen */
+    height: 32px; 
+    
+    background-image: var(--asset-checkbox-off);
+    background-size: 100% 100%;
+    image-rendering: pixelated; 
+    border-radius: 4px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
 
-/* When unchecked */
-.retro-checkbox + .custom-check::before {
-    content: "[ ]";
-    color: #4b5563; /* Gray out when off */
-}
-
-/* When checked */
-.retro-checkbox:checked + .custom-check::before {
-    content: "[x]";
-    color: #000;
-    font-weight: bold;
-}
-
-/* Tailwind's 'peer:checked' detects when the hidden input is checked */
+/* Detects when the hidden input is checked */
 input:checked ~ .ui-checkbox-asset {
-    background-color: var(--asset-checkbox-on);
     background-image: var(--asset-checkbox-on);
 }
 
 /* 7. Typography & Decor */
 .gothic-title {
     font-family: 'UnifrakturMaguntia', cursive;
-    text-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+    text-shadow: 3px 3px 0px rgba(0,0,0,0.6);
+    color: #f3f4f6; /* White text for the dark background */
 }
 
 .pixel-text {
     font-family: 'VT323', monospace;
     font-size: 1.2rem;
     letter-spacing: 0.5px;
+    color: #d1d5db; /* Light grey text */
 }
 
-/* Animated Torch Placeholder */
+/* Animated Sprite Sheet Torch */
 .pixel-torch {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    font-size: 2.5rem;
+    display: block;
+    width: 48px;  
+    height: 96px; /* Torch is taller than it is wide */
+    
     background-image: var(--asset-torch-anim);
-    background-size: contain;
+    background-size: 400% 100%; /* Squeezes all 4 frames in horizontally */
     background-repeat: no-repeat;
-    background-position: center;
     image-rendering: pixelated;
     
-    /* Fallback emoji animation */
-    animation: torch-flicker 0.2s infinite alternate;
+    /* Play the animation below! */
+    animation: torch-sprite 0.6s infinite;
 }
 
-/* Once you add a background-image URL, this hides the fallback emoji text */
+/* Hide fallback text if image is loaded */
 .pixel-torch[style*="background-image"], 
 .pixel-torch:has-background { 
     color: transparent; 
 }
 
-@keyframes torch-flicker {
-    from { transform: scale(1) rotate(-2deg); }
-    to { transform: scale(1.05) rotate(2deg); }
+/* Foolproof CSS Sprite Animation */
+@keyframes torch-sprite {
+    0%, 24.9% { background-position: 0% 0; }
+    25%, 49.9% { background-position: 33.333% 0; }
+    50%, 74.9% { background-position: 66.666% 0; }
+    75%, 100% { background-position: 100% 0; }
 }
