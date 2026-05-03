@@ -27,7 +27,8 @@
       <main class="container w-full">
          
          <!-- LOGIN SCREEN -->
-         <div id="authContainer" class="login-wrapper mx-auto max-w-md relative z-10">
+         <!-- LOGIN SCREEN (Now acts as the full-screen background!) -->
+         <div id="authContainer" class="fixed inset-0 flex items-center justify-center z-50 login-bg">
              
              <!-- Asset-Ready Outer Frame -->
              <div class="ui-frame-asset">
@@ -59,14 +60,19 @@
                          <!-- Retro Text Toggles -->
                          <div class="flex justify-between items-end text-sm pt-4 pixel-text">
                              <div class="flex flex-col gap-2"> 
-                                 <label for="rememberMe" class="retro-checkbox-label cursor-pointer flex items-center">
-                                     <input type="checkbox" id="rememberMe" class="retro-checkbox hidden" checked>
-                                     <span class="custom-check mr-2"></span> Remember Me
-                                 </label>
-                                 <label for="autoLoginCheck" class="retro-checkbox-label cursor-pointer flex items-center">
-                                     <input type="checkbox" id="autoLoginCheck" class="retro-checkbox hidden" checked>
-                                     <span class="custom-check mr-2"></span> Auto Login
-                                 </label>
+                                 <!-- Fixed structure so CSS can read the checkbox state -->
+                                 <div class="flex items-center">
+                                     <input type="checkbox" id="rememberMe" class="retro-checkbox sr-only" checked>
+                                     <label for="rememberMe" class="retro-checkbox-label cursor-pointer flex items-center m-0">
+                                         <span class="custom-check mr-2"></span> Remember Me
+                                     </label>
+                                 </div>
+                                 <div class="flex items-center">
+                                     <input type="checkbox" id="autoLoginCheck" class="retro-checkbox sr-only" checked>
+                                     <label for="autoLoginCheck" class="retro-checkbox-label cursor-pointer flex items-center m-0">
+                                         <span class="custom-check mr-2"></span> Auto Login
+                                     </label>
+                                 </div>
                              </div>
                              <a href="#" id="authToggle" class="hover:text-green-400 underline underline-offset-4 mb-1 transition-colors">Create Account</a>
                          </div>
