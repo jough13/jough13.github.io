@@ -55,22 +55,19 @@
                              </button>
                          </div>
 
-                         <!-- Asset-Ready Toggles -->
+                         <!-- Retro Text Toggles -->
                          <div class="flex justify-between items-end text-sm pt-2 pixel-text text-black">
                              <div class="flex flex-col gap-2"> 
-                                 <!-- We hide the real checkbox and style a fake one (ui-checkbox-asset) -->
-                                 <label for="rememberMe" class="cursor-pointer flex items-center gap-2">
-                                     <input type="checkbox" id="rememberMe" class="hidden peer" checked>
-                                     <span class="ui-checkbox-asset"></span>
-                                     Remember Me
+                                 <label for="rememberMe" class="retro-checkbox-label cursor-pointer flex items-center">
+                                     <input type="checkbox" id="rememberMe" class="retro-checkbox hidden" checked>
+                                     <span class="custom-check mr-2"></span> Remember Me
                                  </label>
-                                 <label for="autoLoginCheck" class="cursor-pointer flex items-center gap-2">
-                                     <input type="checkbox" id="autoLoginCheck" class="hidden peer" checked>
-                                     <span class="ui-checkbox-asset"></span>
-                                     Auto Login
+                                 <label for="autoLoginCheck" class="retro-checkbox-label cursor-pointer flex items-center">
+                                     <input type="checkbox" id="autoLoginCheck" class="retro-checkbox hidden" checked>
+                                     <span class="custom-check mr-2"></span> Auto Login
                                  </label>
                              </div>
-                             <a href="#" id="authToggle" class="hover:text-blue-700 underline underline-offset-2">Create Account</a>
+                             <a href="#" id="authToggle" class="hover:text-blue-700 underline underline-offset-2 mb-1">Create Account</a>
                          </div>
 
                          <p id="authError" class="text-red-600 text-center text-sm min-h-[1.5rem] pixel-text font-bold"></p>
