@@ -17,15 +17,14 @@
     --mtn-shadow: #44403c; /* Darker grey for depth */
     --mtn-cap: #f9fafb;    /* Bright snow */
 
-    --asset-bg-stone: url('assets/bg_stone.png'); 
+    /* POINT THESE TO YOUR NEW ASSETS! */
+    --asset-bg-stone: url('assets/bg_castle.png'); 
     --asset-frame-border: url('assets/frame_outer.png'); 
-    --asset-parchment: #2a2a2a; /* A dark grey to match the new stone assets */
-    --asset-input-bg: url('assets/input_bg.png');
+    --asset-parchment: #262626; 
+    --asset-input-bg: url('assets/input_bg.png'); 
     --asset-btn-normal: url('assets/btn_normal.png'); 
     --asset-btn-pressed: url('assets/btn_pressed.png'); 
-    --asset-checkbox-off: url('assets/check_off.png'); 
-    --asset-checkbox-on: url('assets/check_on.png'); 
-    --asset-torch-anim: url('assets/torch.png');
+    --asset-torch-anim: url('assets/torch.png'); 
 }
 
 [data-theme="dark"] {
@@ -705,144 +704,172 @@ kbd {
    ASSET-READY LOGIN SCREEN STYLES
    ========================================================================== */
 
-/* 1. Global Background */
+/* 1. Global Background (Single Image) */
 body:has(#authContainer:not(.hidden)) {
-    background-color: #111; 
-    background-image: var(--asset-bg-stone);
-    background-size: 256px 256px; /* Scales the wall texture down nicely */
-    background-repeat: repeat;
-    box-shadow: inset 0 0 150px rgba(0,0,0,0.9); /* Moody Vignette */
-    image-rendering: pixelated;
-}
-
-/* 2. Outer Frame (9-Slice Scaling) */
-.ui-frame-asset {
-    /* Set the physical thickness of the frame on screen */
-    border: 48px solid transparent; 
-    
-    /* Load your beautiful ornate frame */
-    border-image-source: var(--asset-frame-border); 
-    
-    /* Tell CSS that the corners take up about 25% of the original image */
-    border-image-slice: 28%; 
-    border-image-repeat: repeat;
-    
-    image-rendering: pixelated;
-    filter: drop-shadow(10px 10px 0px rgba(0,0,0,0.6)); /* Heavy drop shadow */
-}
-
-/* 3. Inner Background (Inside the frame) */
-.ui-parchment-asset {
-    background-color: var(--asset-parchment);
-    /* Push content inward so it doesn't overlap the chunky frame borders */
-    padding: 1rem;
-    margin: -16px; 
-    box-shadow: inset 0 0 50px rgba(0,0,0,0.5); /* Inner shadow for depth */
-}
-
-/* 4. Inputs (Using your mossy stone boxes) */
-.ui-input-asset {
-    background-image: var(--asset-input-bg);
-    background-size: 100% 100%; /* Stretches to fit */
+    background-color: #000; 
+    background-image: var(--asset-bg-stone); 
+    background-size: cover; 
+    background-position: center bottom;
     background-repeat: no-repeat;
     
+    /* Adds a dark, moody shadow around the edges of the screen */
+    box-shadow: inset 0 0 200px rgba(0,0,0,0.9); 
+    image-rendering: pixelated;
+}
+
+/* 2. Outer Frame */
+.ui-frame-asset {
+    border: 48px solid transparent; 
+    border-image-source: var(--asset-frame-border); 
+    border-image-slice: 28%; 
+    border-image-repeat: repeat;
+    image-rendering: pixelated;
+    filter: drop-shadow(15px 15px 0px rgba(0,0,0,0.6)); 
+}
+
+/* 3. Inner Parchment / Fill */
+.ui-parchment-asset {
+    /* If your frame PNG has a transparent center, this color fills it! */
+    background-color: var(--asset-parchment); 
+    padding: 1rem 2rem 2rem 2rem;
+    margin: -24px; /* Pulls the background slightly under the frame */
+}
+
+/* 4. Inputs */
+.ui-input-asset {
+    background-image: var(--asset-input-bg);
+    background-size: 100% 100%; 
+    background-repeat: no-repeat;
     padding: 16px 24px;
     margin-bottom: 12px;
     image-rendering: pixelated;
+    display: flex;
+    align-items: center;
 }
 
-.terminal-text {
-    color: #4ade80; /* Bright terminal green */
-    font-family: 'VT323', monospace;
-    font-size: 1.8rem;
-    text-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+/* Force the text inside the inputs to be green and chunky */
+.ui-input-asset input {
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    color: #4ade80 !important; /* Terminal Green */
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 1.4rem !important;
+    font-weight: bold !important;
+    text-shadow: 0 0 5px rgba(74, 222, 128, 0.8);
+    width: 100%;
 }
-.terminal-text::placeholder { color: #064e3b; }
+.ui-input-asset input::placeholder { 
+    color: #4ade80 !important; 
+    opacity: 0.5;
+}
 
 /* 5. The Login Button */
 .ui-btn-asset {
+    background-color: transparent;
     background-image: var(--asset-btn-normal);
     background-size: 100% 100%;
     background-repeat: no-repeat;
     
-    font-family: 'VT323', monospace;
+    font-family: 'Courier New', Courier, monospace;
     font-size: 2rem;
     font-weight: bold;
-    color: #ffffff; /* White text looks great on the green */
-    text-shadow: 2px 2px 0px rgba(0,0,0,0.8); /* Heavy black drop shadow on text */
+    color: #ffffff; 
+    text-shadow: 2px 2px 0px rgba(0,0,0,1); /* Heavy black drop shadow */
     
-    padding: 18px;
+    padding: 20px;
+    margin-top: 10px;
+    width: 100%;
     image-rendering: pixelated;
-    transition: filter 0.1s;
+    transition: filter 0.1s, transform 0.1s;
+    
+    /* Centers the text perfectly */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
 }
 
 .ui-btn-asset:hover {
-    filter: brightness(1.15); /* Slightly brighten on hover */
+    filter: brightness(1.15); 
 }
 
 .ui-btn-asset:active {
     background-image: var(--asset-btn-pressed);
-    color: #cccccc; /* Dim text on press */
-    transform: translateY(4px); /* Physically push down */
+    color: #cccccc; 
+    transform: translateY(4px); 
 }
 
-/* 6. The Image Checkboxes */
-.ui-checkbox-asset {
+/* 6. Retro Text Checkboxes */
+.retro-checkbox-label {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #d1d5db;
+    user-select: none;
+    margin-bottom: 6px;
+}
+
+.custom-check {
     display: inline-block;
-    width: 32px;  /* Size on screen */
-    height: 32px; 
-    
-    background-image: var(--asset-checkbox-off);
-    background-size: 100% 100%;
-    image-rendering: pixelated; 
-    border-radius: 4px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    width: 3ch; 
+    color: #9ca3af;
 }
 
-/* Detects when the hidden input is checked */
-input:checked ~ .ui-checkbox-asset {
-    background-image: var(--asset-checkbox-on);
+.retro-checkbox + .custom-check::before {
+    content: "[ ]";
+}
+
+.retro-checkbox:checked + .custom-check::before {
+    content: "[x]";
+}
+
+.retro-checkbox:checked + .custom-check {
+    color: #4ade80; /* Glow green when checked! */
+    text-shadow: 0 0 5px rgba(74, 222, 128, 0.5);
+}
+
+input[type="checkbox"].hidden {
+    display: none;
 }
 
 /* 7. Typography & Decor */
 .gothic-title {
-    font-family: 'UnifrakturMaguntia', cursive;
-    text-shadow: 3px 3px 0px rgba(0,0,0,0.6);
-    color: #f3f4f6; /* White text for the dark background */
+    font-family: 'Uncial Antiqua', 'UnifrakturMaguntia', cursive; /* Using a cleaner retro font */
+    font-size: 4rem;
+    text-shadow: 4px 4px 0px rgba(0,0,0,0.8);
+    color: #f3f4f6; 
+    margin-bottom: 1.5rem;
 }
 
 .pixel-text {
-    font-family: 'VT323', monospace;
-    font-size: 1.2rem;
-    letter-spacing: 0.5px;
-    color: #d1d5db; /* Light grey text */
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 1rem;
+    color: #9ca3af; 
 }
 
 /* Animated Sprite Sheet Torch */
 .pixel-torch {
     display: block;
     width: 48px;  
-    height: 96px; /* Torch is taller than it is wide */
+    height: 96px; 
     
     background-image: var(--asset-torch-anim);
-    background-size: 400% 100%; /* Squeezes all 4 frames in horizontally */
+    background-size: 400% 100%; 
     background-repeat: no-repeat;
     image-rendering: pixelated;
     
-    /* Play the animation below! */
-    animation: torch-sprite 0.6s infinite;
+    animation: torch-sprite 0.6s steps(4) infinite; /* Using steps(4) for proper sprite animation */
 }
 
-/* Hide fallback text if image is loaded */
 .pixel-torch[style*="background-image"], 
 .pixel-torch:has-background { 
     color: transparent; 
 }
 
-/* Foolproof CSS Sprite Animation */
 @keyframes torch-sprite {
-    0%, 24.9% { background-position: 0% 0; }
-    25%, 49.9% { background-position: 33.333% 0; }
-    50%, 74.9% { background-position: 66.666% 0; }
-    75%, 100% { background-position: 100% 0; }
+    from { background-position: 0px 0px; }
+    to { background-position: -192px 0px; } /* -48px * 4 frames */
 }
