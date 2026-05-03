@@ -6721,8 +6721,22 @@ restartButton.onclick = () => {
     gameState.currentCaveId = null;
     gameState.currentCastleId = null;
 
-    // 5. Save "Alive" State to DB
-    playerRef.set(sanitizeForFirebase(player), { merge: true });
+    // Clear local memory so they can earn XP and loot chests again!
+    gameState.discoveredRegions.clear();
+    gameState.exploredChunks.clear();
+    gameState.lootedTiles.clear(); 
+    player.discoveredPOIs = [];
+
+    // 5. Save "Alive" State & Wiped Map to DB (Using merge to protect Lore/Bestiary/Stash!)
+    const resetState = {
+        ...player,
+        discoveredRegions: [],
+        exploredChunks: [],
+        lootedTiles: [],
+        discoveredPOIs: []
+    };
+    
+    playerRef.set(sanitizeForFirebase(resetState), { merge: true });
 
     // 6. UI Cleanup
     gameOverModal.classList.add('hidden');
