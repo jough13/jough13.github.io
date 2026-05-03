@@ -17,20 +17,28 @@
     --mtn-shadow: #44403c; /* Darker grey for depth */
     --mtn-cap: #f9fafb;    /* Bright snow */
 
-    /* ASSET DICTIONARY FOR LOGIN SCREEN:
-     * When you generate your pixel art, replace these fallback colors 
-     * with your image paths! Example: url('assets/bg_stone.png') 
+    /* 
+     * GENERATED SVG PIXEL ART ASSETS! 
+     * These render instantly without needing external .png files.
      */
-    --asset-bg-stone: none; 
-    --asset-frame-border: none; 
-    --asset-parchment: #e5e0cc; 
-    --asset-input-bg: #111827; 
-    --asset-btn-normal: #65a34e; 
-    --asset-btn-hover: #78c25d; 
-    --asset-btn-pressed: #52853f; 
-    --asset-checkbox-off: #4b5563; 
-    --asset-checkbox-on: #16a34a; 
-    --asset-torch-anim: none; 
+     
+    /* A cracked, repeating stone wall */
+    --asset-bg-stone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23c0c0c0'/%3E%3Cpath d='M0 32h64M32 0v32M16 32v32' stroke='%239ca3af' stroke-width='4' fill='none'/%3E%3Cpath d='M4 32v4M24 32v4M40 0v4M56 0v4M10 10l5 5M45 45l-5 5' stroke='%234b5563' stroke-width='2' fill='none'/%3E%3C/svg%3E"); 
+    
+    /* Parchment color matching the mockup */
+    --asset-parchment: #d8d3c5; 
+    
+    /* Dark terminal input box with green moss dripping from the top */
+    --asset-input-bg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='40' preserveAspectRatio='none'%3E%3Crect width='100' height='40' fill='%230f172a'/%3E%3Crect width='100' height='40' fill='none' stroke='%23374151' stroke-width='8'/%3E%3Crect x='10' y='0' width='8' height='10' fill='%234ade80'/%3E%3Crect x='14' y='10' width='4' height='4' fill='%2322c55e'/%3E%3Crect x='80' y='0' width='12' height='8' fill='%234ade80'/%3E%3Crect x='76' y='0' width='4' height='4' fill='%2322c55e'/%3E%3C/svg%3E"); 
+    
+    /* Green stone button with top-left highlight and bottom-right shadow */
+    --asset-btn-normal: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='40' preserveAspectRatio='none'%3E%3Crect width='100' height='40' fill='%2365a34e'/%3E%3Cpath d='M0 0h100v4H0zM0 0v40h4V0z' fill='%2386efac'/%3E%3Cpath d='M0 36h100v4H0zM96 0v40h4V0z' fill='%2314532d'/%3E%3Crect width='100' height='40' fill='none' stroke='%23111827' stroke-width='6'/%3E%3C/svg%3E"); 
+    
+    /* Pressed button (inverted shadows and darker green) */
+    --asset-btn-pressed: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='40' preserveAspectRatio='none'%3E%3Crect width='100' height='40' fill='%2352853f'/%3E%3Cpath d='M0 0h100v4H0zM0 0v40h4V0z' fill='%2314532d'/%3E%3Cpath d='M0 36h100v4H0zM96 0v40h4V0z' fill='%2386efac'/%3E%3Crect width='100' height='40' fill='none' stroke='%23111827' stroke-width='6'/%3E%3C/svg%3E"); 
+    
+    /* A little pixel art torch! */
+    --asset-torch-anim: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='7' y='9' width='2' height='7' fill='%2378350f'/%3E%3Crect x='6' y='6' width='4' height='4' fill='%23ea580c'/%3E%3Crect x='7' y='4' width='2' height='4' fill='%23facc15'/%3E%3Crect x='6' y='8' width='4' height='2' fill='%23ef4444'/%3E%3C/svg%3E"); 
 }
 
 [data-theme="dark"] {
@@ -415,7 +423,7 @@ kbd {
 
 .spell-item:hover, .skill-item:hover {
     cursor: pointer;
-    transform: translateY(-2px); 
+    transform: translateY(-2px); /* Prevents scrollbar jumping */
     border-color: var(--text-highlight);
     color: var(--text-highlight);
     box-shadow: 0 4px 6px rgba(0,0,0,0.05);
@@ -719,54 +727,61 @@ body:has(#authContainer:not(.hidden)) {
     box-shadow: inset 0 0 150px rgba(0,0,0,0.8);
 }
 
-/* 2. Outer Frame (Ready for 9-Slice Scaling) */
+/* 2. Outer Frame (Pure CSS Replica of Mockup Frame) */
 .ui-frame-asset {
-    background-color: #8c8c8c; /* Fallback */
-    border: 4px solid #1a1a1a; /* Fallback */
+    background-color: #b3b3b3; /* The chunky grey stone fill */
+    padding: 14px; /* The thickness of the stone frame */
     
-    /* 
-     * HOW TO APPLY YOUR FRAME ASSET LATER:
-     * 1. Change --asset-frame-border in :root to your image URL.
-     * 2. Uncomment the 3 lines below.
-     * 3. Adjust 'border-image-slice' to the pixel thickness of your corners.
-     */
-    
-    /* border-image-source: var(--asset-frame-border); */
-    /* border-image-slice: 16; */ 
-    /* border-image-repeat: repeat; */
+    /* Replicates the ornate double-line pixel border from the mockup */
+    border: 2px solid #000;
+    outline: 2px solid #fff;
+    box-shadow: 
+        0 0 0 4px #000, 
+        inset 0 0 0 2px rgba(0,0,0,0.5), /* Inner shadow against parchment */
+        10px 10px 0px rgba(0,0,0,0.5);   /* Heavy outer drop shadow */
+        
+    /* Adds the little corner rivet dots */
+    position: relative;
 }
+
+.ui-frame-asset::before, .ui-frame-asset::after {
+    content: "";
+    position: absolute;
+    width: 6px; height: 6px;
+    background-color: #404040;
+    border: 1px solid #000;
+}
+.ui-frame-asset::before { top: 4px; left: 4px; box-shadow: calc(100% - 12px) 0 0 #404040; }
+.ui-frame-asset::after { bottom: 4px; left: 4px; box-shadow: calc(100% - 12px) 0 0 #404040; }
+
 
 /* 3. Inner Parchment */
 .ui-parchment-asset {
     background-color: var(--asset-parchment);
-    background-image: var(--asset-parchment);
     background-size: cover;
     background-position: center;
-    /* Fallback border */
-    outline: 2px solid #1a1a1a; 
+    border: 2px solid #1a1a1a; 
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.1); /* Grungy vignette */
 }
 
 /* 4. Inputs */
 .ui-input-asset {
-    background-color: var(--asset-input-bg);
     background-image: var(--asset-input-bg);
-    background-size: 100% 100%; /* Stretches the image to fit the input */
-    
-    border: 4px solid #374151; /* Fallback */
-    padding: 8px 12px;
+    background-size: 100% 100%; /* Stretches the SVG to fit the input */
+    padding: 12px 14px;
+    margin-bottom: 12px;
 }
 
 .terminal-text {
     color: #4ade80; 
     font-family: 'VT323', monospace;
-    font-size: 1.5rem;
+    font-size: 1.6rem;
     text-shadow: 0 0 5px rgba(74, 222, 128, 0.5);
 }
 .terminal-text::placeholder { color: #064e3b; }
 
 /* 5. Button */
 .ui-btn-asset {
-    background-color: var(--asset-btn-normal);
     background-image: var(--asset-btn-normal);
     background-size: 100% 100%;
     background-repeat: no-repeat;
@@ -774,18 +789,16 @@ body:has(#authContainer:not(.hidden)) {
     font-family: 'VT323', monospace;
     font-weight: bold;
     color: #000;
+    text-shadow: 1px 1px 0px rgba(255,255,255,0.4);
     
-    border: 4px solid #1a1a1a; /* Fallback */
     padding: 12px;
 }
 
 .ui-btn-asset:hover {
-    background-color: var(--asset-btn-hover);
-    background-image: var(--asset-btn-hover);
+    filter: brightness(1.1);
 }
 
 .ui-btn-asset:active {
-    background-color: var(--asset-btn-pressed);
     background-image: var(--asset-btn-pressed);
     transform: translateY(4px); /* Physical push effect */
 }
@@ -813,51 +826,4 @@ body:has(#authContainer:not(.hidden)) {
     content: "[x]";
     color: #000;
     font-weight: bold;
-}
-
-/* Tailwind's 'peer:checked' detects when the hidden input is checked */
-input:checked ~ .ui-checkbox-asset {
-    background-color: var(--asset-checkbox-on);
-    background-image: var(--asset-checkbox-on);
-}
-
-/* 7. Typography & Decor */
-.gothic-title {
-    font-family: 'UnifrakturMaguntia', cursive;
-    text-shadow: 2px 2px 0px rgba(0,0,0,0.2);
-}
-
-.pixel-text {
-    font-family: 'VT323', monospace;
-    font-size: 1.2rem;
-    letter-spacing: 0.5px;
-}
-
-/* Animated Torch Placeholder */
-.pixel-torch {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    font-size: 2.5rem;
-    background-image: var(--asset-torch-anim);
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    image-rendering: pixelated;
-    
-    /* Fallback emoji animation */
-    animation: torch-flicker 0.2s infinite alternate;
-}
-
-/* Once you add a background-image URL, this hides the fallback emoji text */
-.pixel-torch[style*="background-image"], 
-.pixel-torch:has-background { 
-    color: transparent; 
-}
-
-@keyframes torch-flicker {
-    from { transform: scale(1) rotate(-2deg); }
-    to { transform: scale(1.05) rotate(2deg); }
 }
