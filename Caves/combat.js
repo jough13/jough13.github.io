@@ -1350,12 +1350,12 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                     const passableTerrain =['.', 'd', 'D', 'F', '≈']; 
                     
                     if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
-                        chunkManager.setWorldTile(newX, newY, droppedLoot);
+                        // Enemy loot despawns after 2 hours!
+                        chunkManager.setWorldTile(newX, newY, droppedLoot, 2);
                         gameState.mapDirty = true;
                     }
-                    //Drop loot everywhere EXCEPT deep water (so it doesn't sink!)
                     if (currentTerrain !== '~') {
-                        chunkManager.setWorldTile(newX, newY, droppedLoot);
+                        chunkManager.setWorldTile(newX, newY, droppedLoot, 2);
                         gameState.mapDirty = true;
                     }
                 } catch (lootErr) {
@@ -1506,7 +1506,13 @@ function handlePlayerDeath() {
                             const lKey = `${lX},${lY}`;
                             
                             if (!pendingUpdates[cId]) pendingUpdates[cId] = {};
-                            pendingUpdates[cId][lKey] = dropIcon; 
+                            
+                            // Player Corpse Loot lasts a full 24 hours so they can recover it!
+                            const expireTime = Date.now() + (24 * 60 * 60 * 1000);
+                            pendingUpdates[cId][lKey] = { t: dropIcon, expires: expireTime }; 
+                            
+                            chunkManager.worldState[cId] = chunkManager.worldState[cId] || {};
+                            chunkManager.worldState[cId][lKey] = dropIcon;
                         } else if (gameState.mapMode === 'dungeon') {
                             chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = dropIcon;
                         } else {
