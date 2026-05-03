@@ -767,6 +767,19 @@ kbd {
     opacity: 0.7;
 }
 
+/* Defeat Chrome/Edge Auto-fill styling */
+.ui-input-asset input:-webkit-autofill,
+.ui-input-asset input:-webkit-autofill:hover, 
+.ui-input-asset input:-webkit-autofill:focus, 
+.ui-input-asset input:-webkit-autofill:active{
+    /* Use a heavy inset shadow that matches the light blue of your input image! */
+    -webkit-box-shadow: 0 0 0 30px #e6f0fa inset !important;
+    /* Force the text color to stay dark ink */
+    -webkit-text-fill-color: #111827 !important;
+    /* Disable the browser's default transition animation */
+    transition: background-color 5000s ease-in-out 0s;
+}
+
 /* Force the text inside the inputs to match the light background */
 .ui-input-asset input {
     background-color: transparent !important;
@@ -869,22 +882,52 @@ input[type="checkbox"].hidden {
 
 /* Animated Sprite Sheet Torch */
 .pixel-torch {
-    display: block;
-    width: 48px;  
-    height: 96px; 
+    /* 
+     * 1. Set the physical size of ONE frame of your torch on the screen.
+     * Assuming your sprite sheet is 4 frames wide, and you want it to look 
+     * about 64px wide and 128px tall.
+     */
+    width: 64px;  
+    height: 128px; 
     
     background-image: var(--asset-torch-anim);
-    background-size: 400% 100%; 
+    
+    /* 
+     * 2. The Math! 
+     * If one frame is 64px wide, and there are 4 frames, the total image width 
+     * must be set to 256px (64 * 4). The height stays 128px.
+     */
+    background-size: 256px 128px; 
+    
     background-repeat: no-repeat;
     image-rendering: pixelated;
     
-    /* Bulletproof Sprite Animation */
-    animation: torch-sprite 0.6s linear infinite;
+    /* 
+     * 3. The Animation!
+     * Use steps(4) to snap between the 4 frames perfectly. 
+     */
+    animation: torch-sprite 0.6s steps(4) infinite;
+    position: relative;
     
-    /* Hides any leftover text/emojis just in case */
+    /* Hide the text/emoji inside the div */
     color: transparent; 
-    text-indent: -9999px;
-    overflow: hidden;
+}
+
+/* 4. The Keyframes */
+@keyframes torch-sprite {
+    from { background-position: 0px 0; }
+    /* Slide the image exactly its total width to the left (-256px) */
+    to { background-position: -256px 0; }
+}
+
+/* Fallback Emoji (Only shows if the image fails to load) */
+.pixel-torch::after {
+    content: "🔥";
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2.5rem;
+    z-index: -1; 
 }
 
 /* Explicit keyframes guarantee the sprite snaps perfectly on every browser */
