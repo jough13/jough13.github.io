@@ -704,15 +704,13 @@ kbd {
    ASSET-READY LOGIN SCREEN STYLES
    ========================================================================== */
 
-/* 1. Global Background (Single Image) */
-body:has(#authContainer:not(.hidden)) {
+/* 1. Global Background Fix! */
+.login-bg {
     background-color: #000; 
     background-image: var(--asset-bg-stone); 
     background-size: cover; 
     background-position: center bottom;
     background-repeat: no-repeat;
-    
-    /* Adds a dark, moody shadow around the edges of the screen */
     box-shadow: inset 0 0 200px rgba(0,0,0,0.9); 
     image-rendering: pixelated;
 }
@@ -741,14 +739,32 @@ body:has(#authContainer:not(.hidden)) {
     background-size: 100% 100%; 
     background-repeat: no-repeat;
     
-    /* ADJUST PADDING HERE: Top Right Bottom Left */
-    /* This pushes the text down and inward to fit inside your drawn box! */
+    /* PADDING HACK: Top, Right, Bottom, Left */
+    /* This physically pushes the text inward so it fits inside your drawn box! */
     padding: 28px 32px 20px 32px; 
     
     margin-bottom: 12px;
     image-rendering: pixelated;
     display: flex;
     align-items: center;
+}
+
+.ui-input-asset input {
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    color: #111827 !important; /* Dark ink color so it reads on the light background */
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 1.4rem !important;
+    font-weight: bold !important;
+    text-shadow: none !important; 
+    width: 100%;
+    transform: translateY(2px); /* Centers text vertically */
+}
+
+.ui-input-asset input::placeholder { 
+    color: #4b5563 !important; 
+    opacity: 0.7;
 }
 
 /* Force the text inside the inputs to match the light background */
@@ -810,25 +826,25 @@ body:has(#authContainer:not(.hidden)) {
     transform: translateY(4px); 
 }
 
-/* 6. Retro Text Checkboxes */
+/* 6. Retro Text Checkboxes (Bulletproof Layout) */
 .retro-checkbox-label {
     font-family: 'Courier New', Courier, monospace;
     font-weight: bold;
     font-size: 1.1rem;
     color: #d1d5db;
     user-select: none;
-    margin-bottom: 6px;
 }
 
-.custom-check {
-    display: inline-block;
-    width: 3ch; 
-    color: #9ca3af;
+.custom-check::before { 
+    content: "[ ]"; 
+    color: #9ca3af; 
 }
 
-.retro-checkbox:checked + .custom-check {
-    color: #4ade80; /* Glow green when checked! */
-    text-shadow: 0 0 5px rgba(74, 222, 128, 0.5);
+/* Reads the sr-only input, targets the label, then the span inside it */
+.retro-checkbox:checked + label .custom-check::before { 
+    content: "[x]"; 
+    color: #4ade80; 
+    text-shadow: 0 0 5px rgba(74, 222, 128, 0.5); 
 }
 
 input[type="checkbox"].hidden {
