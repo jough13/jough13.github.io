@@ -505,11 +505,12 @@ function updateRegionDisplay() {
                     icon: currentTile, 
                     name: regionName
                 });
+                
                 logMessage(`{blue:Point of Interest added to your map.}`);
             }
 
-            // --- SAVE DISCOVERY & XP IMMEDIATELY ---
-            if (playerRef) {
+            // Save XP, level, and Map data instantly!
+            if (typeof playerRef !== 'undefined' && playerRef) {
                 playerRef.update({ 
                     discoveredRegions: Array.from(gameState.discoveredRegions),
                     discoveredPOIs: gameState.player.discoveredPOIs || [],
