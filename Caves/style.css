@@ -790,17 +790,29 @@ body:has(#authContainer:not(.hidden)) {
     transform: translateY(4px); /* Physical push effect */
 }
 
-/* 6. Checkboxes */
-.ui-checkbox-asset {
+/* 6. Retro Text Checkboxes */
+.retro-checkbox-label {
+    font-family: 'VT323', monospace;
+    font-size: 1.2rem;
+    user-select: none;
+}
+
+.custom-check {
     display: inline-block;
-    width: 24px;  /* Size of your checkbox asset */
-    height: 24px; 
-    
-    background-color: var(--asset-checkbox-off);
-    background-image: var(--asset-checkbox-off);
-    background-size: cover;
-    border: 2px solid #1a1a1a; /* Fallback */
-    image-rendering: pixelated; /* Keeps pixel art crisp */
+    width: 2.5ch; /* Match character width */
+}
+
+/* When unchecked */
+.retro-checkbox + .custom-check::before {
+    content: "[ ]";
+    color: #4b5563; /* Gray out when off */
+}
+
+/* When checked */
+.retro-checkbox:checked + .custom-check::before {
+    content: "[x]";
+    color: #000;
+    font-weight: bold;
 }
 
 /* Tailwind's 'peer:checked' detects when the hidden input is checked */
