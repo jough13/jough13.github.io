@@ -767,16 +767,23 @@ kbd {
     opacity: 0.7;
 }
 
-/* Defeat Chrome/Edge Auto-fill styling */
+/* Brutal override for Chrome/Edge Autofill */
 .ui-input-asset input:-webkit-autofill,
 .ui-input-asset input:-webkit-autofill:hover, 
 .ui-input-asset input:-webkit-autofill:focus, 
-.ui-input-asset input:-webkit-autofill:active{
-    /* Use a heavy inset shadow that matches the light blue of your input image! */
-    -webkit-box-shadow: 0 0 0 30px #e6f0fa inset !important;
-    /* Force the text color to stay dark ink */
+.ui-input-asset input:-webkit-autofill:active {
+    /* 1. Cast a massive inner shadow to mimic your input's grey/blue background color */
+    -webkit-box-shadow: 0 0 0 50px #e2e8f0 inset !important; 
+    
+    /* 2. Force the text color to dark ink */
     -webkit-text-fill-color: #111827 !important;
-    /* Disable the browser's default transition animation */
+    
+    /* 3. Force the retro font */
+    font-family: 'Courier New', Courier, monospace !important;
+    font-weight: bold !important;
+    font-size: 1.4rem !important;
+    
+    /* 4. Disable Chrome's background transition animation */
     transition: background-color 5000s ease-in-out 0s;
 }
 
@@ -882,35 +889,36 @@ input[type="checkbox"].hidden {
 
 /* Animated Sprite Sheet Torch */
 .pixel-torch {
-    /* 
-     * 1. Set the physical size of ONE frame of your torch on the screen.
-     * Assuming your sprite sheet is 4 frames wide, and you want it to look 
-     * about 64px wide and 128px tall.
-     */
+    position: relative;
+    display: block;
     width: 64px;  
     height: 128px; 
     
+    /* Load the image */
     background-image: var(--asset-torch-anim);
     
-    /* 
-     * 2. The Math! 
-     * If one frame is 64px wide, and there are 4 frames, the total image width 
-     * must be set to 256px (64 * 4). The height stays 128px.
-     */
+    /* Math: 64px width * 4 frames = 256px total width */
     background-size: 256px 128px; 
-    
     background-repeat: no-repeat;
     image-rendering: pixelated;
     
-    /* 
-     * 3. The Animation!
-     * Use steps(4) to snap between the 4 frames perfectly. 
-     */
+    /* Snap between the 4 frames */
     animation: torch-sprite 0.6s steps(4) infinite;
-    position: relative;
-    
-    /* Hide the text/emoji inside the div */
-    color: transparent; 
+}
+
+/* Fallback Emoji: Sits behind the image. If the image path is broken, you see this! */
+.pixel-torch::before {
+    content: "🔥";
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+    z-index: -1; 
+}
+
+@keyframes torch-sprite {
+    from { background-position: 0px 0; }
+    to { background-position: -256px 0; }
 }
 
 /* 4. The Keyframes */
