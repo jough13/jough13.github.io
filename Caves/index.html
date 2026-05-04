@@ -738,5 +738,32 @@
             <button data-key="Escape" aria-label="Escape/Cancel" class="action-btn red">❌</button> 
          </div>
       </div>
+   <!-- AUTOFILL OVERLAY SYNC -->
+      <script>
+          const emailIn = document.getElementById('emailInput');
+          const emailOut = document.getElementById('emailOverlay');
+          const passIn = document.getElementById('passwordInput');
+          const passOut = document.getElementById('passwordOverlay');
+
+          function syncInputs() {
+              // Show email text normally
+              if (emailIn && emailOut) {
+                  emailOut.textContent = emailIn.value || (emailIn.matches(':placeholder-shown') ? '' : emailIn.value);
+              }
+              // Hide password text as bullet points
+              if (passIn && passOut) {
+                  passOut.textContent = '•'.repeat(passIn.value.length);
+              }
+          }
+
+          // Sync when user types manually
+          if (emailIn) emailIn.addEventListener('input', syncInputs);
+          if (passIn) passIn.addEventListener('input', syncInputs);
+          
+          // Sync on Autofill (Chrome sometimes delays autofill by a split second, so we check a few times on load)
+          setTimeout(syncInputs, 100);
+          setTimeout(syncInputs, 500);
+          setTimeout(syncInputs, 1000);
+      </script>
    </body>
 </html>
