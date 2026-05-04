@@ -204,7 +204,6 @@
                         <h2 class="text-lg font-bold mb-2">Log</h2>
                         <div id="messageLog" class="h-24 overflow-y-auto flex flex-col-reverse text-sm pr-2" aria-live="polite"></div>
                      </div>
-                  </div>
                </div>
                
                <div class="lg:col-span-1 flex flex-col gap-4 mt-4 lg:mt-0">
@@ -322,6 +321,11 @@
                         <span id="intuitionDisplay" class="font-bold">Intuition: 1</span>
                         <button id="addIntuiBtn" aria-label="Increase Intuition" class="stat-add-btn" data-stat="intuition">+</button>
                      </span>
+                  </div>
+                  <div id="chatContainer" class="panel p-4 w-full rounded-2xl border-2 flex flex-col flex-grow">
+                     <h2 class="text-xl font-bold mb-2">Chat</h2>
+                     <div id="chatMessages" class="flex-grow overflow-y-auto flex flex-col-reverse" aria-live="polite"></div>
+                     <input type="text" id="chatInput" aria-label="Chat Message" class="themed-input w-full p-2 border rounded text-sm mt-2" placeholder="Say something...">
                   </div>
                </div>
             </div>
