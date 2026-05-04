@@ -757,11 +757,11 @@ authToggle.addEventListener('click', (e) => {
 
     if (isLoginMode) {
         authTitle.textContent = 'Login';
-        authButton.textContent = 'Login';
+        authButton.textContent = 'LOGIN';
         authToggle.textContent = 'Create Account';
     } else {
         authTitle.textContent = 'Create Account';
-        authButton.textContent = 'Sign Up';
+        authButton.textContent = 'SIGN UP';
         authToggle.textContent = 'Back to Login';
     }
     authError.textContent = '';
