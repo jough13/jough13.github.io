@@ -24,10 +24,45 @@
    </head>
    <body class="flex flex-col items-center justify-center min-h-screen p-4 font-mono">
 
+      <!-- ========================================== -->
+      <!-- TRUE LOADING SCREEN (Prevents Font Flash)  -->
+      <!-- ========================================== -->
+      <style>
+          /* Hide the login screen by default */
+          #authContainer { opacity: 0; visibility: hidden; transition: opacity 0.8s ease-in; }
+          /* Class applied via JS once fully loaded */
+          body.is-loaded #authContainer { opacity: 1; visibility: visible; }
+      </style>
+
+      <div id="trueBootLoader" style="position: fixed; inset: 0; background-color: #111827; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.5s ease;">
+          <h1 style="color: #4ade80; font-family: 'Courier New', monospace; font-size: 2rem; letter-spacing: 2px;">Loading...</h1>
+      </div>
+
+      <script>
+          // Wait for Fonts + Window Load + Minimum 500ms delay to guarantee rendering
+          Promise.all([
+              document.fonts.ready,
+              new Promise(res => window.addEventListener('load', res)),
+              new Promise(res => setTimeout(res, 500)) 
+          ]).then(() => {
+              // Fade out the loader
+              const loader = document.getElementById('trueBootLoader');
+              loader.style.opacity = '0';
+              
+              // Fade in the game/login screen
+              document.body.classList.add('is-loaded');
+              
+              // Remove loader from DOM entirely after fade finishes
+              setTimeout(() => loader.remove(), 500);
+          });
+      </script>
+      <!-- ========================================== -->
+
+      <main class="container w-full">
+
       <main class="container w-full">
          
          <!-- LOGIN SCREEN -->
-         <!-- LOGIN SCREEN (Now acts as the full-screen background!) -->
          <div id="authContainer" class="fixed inset-0 flex items-center justify-center z-50 login-bg">
              
              <!-- Asset-Ready Outer Frame -->
