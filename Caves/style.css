@@ -859,36 +859,3 @@ input[type="checkbox"].hidden {
     font-size: 1rem;
     color: #9ca3af; 
 }
-
-/* Animated Sprite Sheet Torch */
-.pixel-torch {
-    position: relative;
-    width: 48px;
-    height: 110px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 3rem; /* Size of the fallback emoji */
-    overflow: hidden; /* Ensures sprite doesn't bleed out */
-}
-
-/* The actual animated sprite overlay */
-.pixel-torch::after {
-    content: "";
-    position: absolute;
-    inset: 0; /* Stretches overlay to fill the box */
-    
-    background-image: var(--asset-torch-anim);
-    background-size: 400% 100%;
-    background-repeat: no-repeat;
-    image-rendering: pixelated;
-    
-    animation: torch-sprite 0.6s infinite;
-}
-
-@keyframes torch-sprite {
-    0%, 24.99%   { background-position: 0% 0; }
-    25%, 49.99%  { background-position: 33.333% 0; }
-    50%, 74.99%  { background-position: 66.666% 0; }
-    75%, 100%    { background-position: 100% 0; }
-}
