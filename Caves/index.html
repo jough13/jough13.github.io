@@ -101,14 +101,19 @@
                  <!-- Asset-Ready Inner Parchment -->
                  <div class="ui-parchment-asset flex flex-col items-center p-6 pb-4">
                      
-                     <!-- Title -->
-                     <h1 id="authTitle" class="gothic-title text-5xl text-center mb-6 flex items-center justify-center gap-4 text-white">
-                        <!-- Wrap the text in a span so JS doesn't delete the torch! -->
-                        <span id="authTitleText">Login</span> 
+                     <!-- Wrapper holds them side-by-side safely -->
+                     <div class="flex items-center justify-center gap-4 mb-6">
                         
-                        <!-- Put the emoji inside so it acts as a permanent placeholder -->
+                        <!-- JS only touches this H1 now! -->
+                        <h1 id="authTitle" class="gothic-title text-5xl text-white m-0 border-none pb-0">Login</h1>
+                        
+                        <!-- IF USING A GIF: (Delete the div below and use this) -->
+                        <!-- <img src="assets/torch.gif" alt="Torch" class="w-12 h-auto" style="image-rendering: pixelated;"> -->
+
+                        <!-- IF USING THE PNG SPRITE SHEET: -->
                         <div class="pixel-torch" title="Torch">🔥</div>
-                     </h1>
+                        
+                     </div>
                      
                      <div class="w-full space-y-4 px-4">
                          <!-- Asset-Ready Inputs -->
