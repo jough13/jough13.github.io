@@ -772,36 +772,33 @@ kbd {
 .ui-input-asset input:-webkit-autofill:hover, 
 .ui-input-asset input:-webkit-autofill:focus, 
 .ui-input-asset input:-webkit-autofill:active {
-    /* 1. Cast a massive inner shadow to mimic your input's grey/blue background color */
-    -webkit-box-shadow: 0 0 0 50px #e2e8f0 inset !important; 
+    /* Hack: Delays the browser's blue background from applying for 5000 seconds */
+    transition: background-color 5000s ease-in-out 0s !important;
     
-    /* 2. Force the text color to dark ink */
-    -webkit-text-fill-color: #111827 !important;
+    /* Force the text color to retro green */
+    -webkit-text-fill-color: #4ade80 !important;
     
-    /* 3. Force the retro font */
+    /* Force the retro font */
     font-family: 'Courier New', Courier, monospace !important;
     font-weight: bold !important;
     font-size: 1.4rem !important;
-    
-    /* 4. Disable Chrome's background transition animation */
-    transition: background-color 5000s ease-in-out 0s;
 }
 
-/* Force the text inside the inputs to match the light background */
+/* Force the normal text inside the inputs to match the retro aesthetic */
 .ui-input-asset input {
     background-color: transparent !important;
     border: none !important;
     outline: none !important;
     
-    /* Changed to dark text so it's readable on the light asset background */
-    color: #111827 !important; 
+    /* Changed from dark ink to retro green */
+    color: #4ade80 !important; 
     font-family: 'Courier New', Courier, monospace !important;
     font-size: 1.4rem !important;
     font-weight: bold !important;
-    text-shadow: none !important; /* Removed the neon glow */
+    text-shadow: none !important; 
     
     width: 100%;
-    transform: translateY(2px); /* Nudges text down slightly for perfect vertical centering */
+    transform: translateY(2px);
 }
 
 .ui-input-asset input::placeholder { 
