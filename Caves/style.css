@@ -738,44 +738,46 @@ kbd {
     background-image: var(--asset-input-bg);
     background-size: 100% 100%; 
     background-repeat: no-repeat;
-    
-    /* PADDING HACK: Top, Right, Bottom, Left */
-    /* This physically pushes the text inward so it fits inside your drawn box! */
+    /* PADDING HACK: Top, Right, Bottom, Left pushes text inside the drawn box */
     padding: 28px 32px 20px 32px; 
-    
     margin-bottom: 12px;
     image-rendering: pixelated;
     display: flex;
     align-items: center;
 }
 
-/* 1. Base input styling using the 'font' shorthand */
+/* Base input styling using the 'font' shorthand for autofill inheritance */
 .ui-input-asset input {
     background-color: transparent !important;
     border: none !important;
     outline: none !important;
     
-    color: #4ade80 !important; 
+    color: #4ade80 !important; /* Retro Green */
     /* Shorthand: style weight size/line-height family */
     font: normal bold 1.4rem/1.5 'Courier New', Courier, monospace !important; 
     text-shadow: none !important; 
     
     width: 100%;
-    transform: translateY(2px);
+    transform: translateY(2px); /* Centers text vertically */
 }
 
-/* 2. Brutal override for Chrome/Edge Autofill */
+.ui-input-asset input::placeholder { 
+    color: #4b5563 !important; /* Dark grey placeholder */
+    opacity: 0.7;
+}
+
+/* Brutal override for Chrome/Edge Autofill */
 .ui-input-asset input:-webkit-autofill,
 .ui-input-asset input:-webkit-autofill:hover, 
 .ui-input-asset input:-webkit-autofill:focus, 
 .ui-input-asset input:-webkit-autofill:active {
-    /* Delay the background color change forever */
+    /* Delay the browser's blue background forever */
     transition: background-color 5000s ease-in-out 0s !important;
     
     /* Force text color */
     -webkit-text-fill-color: #4ade80 !important;
     
-    /* MAGIC TRICK: Force Chrome to inherit the shorthand font rule from above */
+    /* Force Chrome to inherit the shorthand font rule from above */
     font: inherit !important; 
 }
 
