@@ -749,61 +749,34 @@ kbd {
     align-items: center;
 }
 
-.ui-input-asset input {
-    background-color: transparent !important;
-    border: none !important;
-    outline: none !important;
-    color: #111827 !important; /* Dark ink color so it reads on the light background */
-    font-family: 'Courier New', Courier, monospace !important;
-    font-size: 1.4rem !important;
-    font-weight: bold !important;
-    text-shadow: none !important; 
-    width: 100%;
-    transform: translateY(2px); /* Centers text vertically */
-}
-
-.ui-input-asset input::placeholder { 
-    color: #4b5563 !important; 
-    opacity: 0.7;
-}
-
-/* Brutal override for Chrome/Edge Autofill */
-.ui-input-asset input:-webkit-autofill,
-.ui-input-asset input:-webkit-autofill:hover, 
-.ui-input-asset input:-webkit-autofill:focus, 
-.ui-input-asset input:-webkit-autofill:active {
-    /* Hack: Delays the browser's blue background from applying for 5000 seconds */
-    transition: background-color 5000s ease-in-out 0s !important;
-    
-    /* Force the text color to retro green */
-    -webkit-text-fill-color: #4ade80 !important;
-    
-    /* Force the retro font */
-    font-family: 'Courier New', Courier, monospace !important;
-    font-weight: bold !important;
-    font-size: 1.4rem !important;
-}
-
-/* Force the normal text inside the inputs to match the retro aesthetic */
+/* 1. Base input styling using the 'font' shorthand */
 .ui-input-asset input {
     background-color: transparent !important;
     border: none !important;
     outline: none !important;
     
-    /* Changed from dark ink to retro green */
     color: #4ade80 !important; 
-    font-family: 'Courier New', Courier, monospace !important;
-    font-size: 1.4rem !important;
-    font-weight: bold !important;
+    /* Shorthand: style weight size/line-height family */
+    font: normal bold 1.4rem/1.5 'Courier New', Courier, monospace !important; 
     text-shadow: none !important; 
     
     width: 100%;
     transform: translateY(2px);
 }
 
-.ui-input-asset input::placeholder { 
-    color: #4b5563 !important; /* Dark grey placeholder */
-    opacity: 0.7;
+/* 2. Brutal override for Chrome/Edge Autofill */
+.ui-input-asset input:-webkit-autofill,
+.ui-input-asset input:-webkit-autofill:hover, 
+.ui-input-asset input:-webkit-autofill:focus, 
+.ui-input-asset input:-webkit-autofill:active {
+    /* Delay the background color change forever */
+    transition: background-color 5000s ease-in-out 0s !important;
+    
+    /* Force text color */
+    -webkit-text-fill-color: #4ade80 !important;
+    
+    /* MAGIC TRICK: Force Chrome to inherit the shorthand font rule from above */
+    font: inherit !important; 
 }
 
 /* 5. The Login Button */
