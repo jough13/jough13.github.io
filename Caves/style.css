@@ -888,22 +888,22 @@ input[type="checkbox"].hidden {
 .pixel-torch {
     position: relative;
     display: block;
-    width: 64px;  
-    height: 128px; 
+    width: 48px;   /* Adjusted to match the aspect ratio of your art */
+    height: 110px; 
     
-    /* Load the image */
     background-image: var(--asset-torch-anim);
     
-    /* Math: 64px width * 4 frames = 256px total width */
-    background-size: 256px 128px; 
+    /* MAGIC TRICK: 400% width makes your 4-frame image exactly 4x wider 
+       than this box, meaning exactly 1 frame fits perfectly inside! */
+    background-size: 400% 100%; 
     background-repeat: no-repeat;
     image-rendering: pixelated;
     
-    /* Snap between the 4 frames */
-    animation: torch-sprite 0.6s steps(4) infinite;
+    /* Notice we removed 'steps()'. The keyframes below will handle the snapping. */
+    animation: torch-sprite 0.6s infinite;
 }
 
-/* Fallback Emoji: Sits behind the image. If the image path is broken, you see this! */
+/* Fallback Emoji: Sits behind the image. If your image path breaks, you see this! */
 .pixel-torch::before {
     content: "🔥";
     position: absolute;
@@ -913,32 +913,14 @@ input[type="checkbox"].hidden {
     z-index: -1; 
 }
 
+/* 
+  Bulletproof Sprite Snapping:
+  Because there are 4 frames, there are 3 "jumps" to get to the end.
+  0% is Frame 1. 33.3% is Frame 2. 66.6% is Frame 3. 100% is Frame 4.
+*/
 @keyframes torch-sprite {
-    from { background-position: 0px 0; }
-    to { background-position: -256px 0; }
-}
-
-/* 4. The Keyframes */
-@keyframes torch-sprite {
-    from { background-position: 0px 0; }
-    /* Slide the image exactly its total width to the left (-256px) */
-    to { background-position: -256px 0; }
-}
-
-/* Fallback Emoji (Only shows if the image fails to load) */
-.pixel-torch::after {
-    content: "🔥";
-    position: absolute;
-    left: 50%; top: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 2.5rem;
-    z-index: -1; 
-}
-
-/* Explicit keyframes guarantee the sprite snaps perfectly on every browser */
-@keyframes torch-sprite {
-    0%, 24.9% { background-position: 0% 0; }
-    25%, 49.9% { background-position: 33.333% 0; }
-    50%, 74.9% { background-position: 66.666% 0; }
-    75%, 100% { background-position: 100% 0; }
+    0%, 24.99%   { background-position: 0% 0; }
+    25%, 49.99%  { background-position: 33.333% 0; }
+    50%, 74.99%  { background-position: 66.666% 0; }
+    75%, 100%    { background-position: 100% 0; }
 }
