@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Instrument QC Control Chart (Net Counts)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Base / Light Mode Variables */
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --header-border: #00205b;
+            --header-text: #00205b;
+            --panel-bg: #faf8f5;
+            --input-bg: #ffffff;
+            --input-border: #cccccc;
+            --table-border: #aaaaaa;
+            --th-bg: #f0f0f0;
+            --net-val-color: #00205b;
+            --modal-bg: #ffffff;
+            --muted-text: #666666;
+        }
+
+        /* Dark Mode Variables */
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --header-border: #82aaff;
+            --header-text: #82aaff;
+            --panel-bg: #1e1e1e;
+            --input-bg: #2c2c2c;
+            --input-border: #555555;
+            --table-border: #444444;
+            --th-bg: #222222;
+            --net-val-color: #82aaff;
+            --modal-bg: #1e1e1e;
+            --muted-text: #999999;
+        }
+
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 20px; color: var(--text-color); background-color: var(--bg-color); transition: all 0.3s ease; }
+        h2 { border-bottom: 2px solid var(--header-border); padding-bottom: 5px; color: var(--header-text); }
+        .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .header-item { display: flex; flex-direction: column; width: 30%; }
+        .header-item input { padding: 8px; font-size: 14px; border: 1px solid var(--input-border); border-radius: 4px; background-color: var(--input-bg); color: var(--text-color); }
+        .header-item label { font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        .container { display: flex; gap: 15px; margin-bottom: 20px; }
+        .column { flex: 1; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 13px; }
+        th, td { border: 1px solid var(--table-border); padding: 4px; text-align: center; vertical-align: middle; }
+        th { background-color: var(--th-bg); }
+        input[type="number"], input[type="date"] { width: 90%; padding: 4px; border: 1px solid var(--input-border); background-color: var(--input-bg); color: var(--text-color); text-align: center; border-radius: 3px; }
+        .stats-panel { background: var(--panel-bg); padding: 15px; border: 1px solid var(--input-border); border-radius: 5px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 14px; }
+        .stats-item { font-weight: bold; }
+        .chart-container { width: 100%; height: 400px; margin-top: 30px; }
+        .button-group { float: right; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+        .btn { padding: 10px 15px; font-size: 14px; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .print-btn { background-color: #00205b; }
+        .dummy-btn { background-color: #28a745; }
+        .clear-btn { background-color: #dc3545; }
+        .csv-btn { background-color: #17a2b8; }
+        .import-btn { background-color: #ffc107; color: #333; }
+        .dark-btn { background-color: #607d8b; }
+        .net-val { font-weight: bold; color: var(--net-val-color); }
+        
+        /* Modal Styles */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: var(--modal-bg); padding: 25px 35px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: center; max-width: 400px; border: 1px solid var(--input-border); }
+        .modal-content h3 { margin-top: 0; color: #dc3545; }
+        .modal-buttons { margin-top: 20px; display: flex; justify-content: center; gap: 15px; }
+        .warn-msg { display: block; color: #dc3545; font-size: 10px; font-weight: bold; margin-top: 2px; }
+        .subtext { font-size: 12px; color: var(--muted-text); margin-top: 5px; }
+
+        @media print {
+            .button-group { display: none; }
+            body { margin: 0; font-size: 11px; background-color: white !important; color: black !important; }
+            .chart-container { height: 350px; }
+            input[type="number"], input[type="date"], .header-item input { border: none; border-bottom: 1px solid #ccc; background: transparent !important; color: black !important; padding: 2px; }
+            th { background-color: #f0f0f0 !important; color: black !important; }
+            td, th { border: 1px solid #aaa !important; }
+            .stats-panel { background: #faf8f5 !important; border: 1px solid #ccc !important; }
+            h2, .net-val { color: #00205b !important; border-bottom-color: #00205b !important; }
+            .warn-msg { font-size: 9px; }
+        }
+    </style>
+</head>
+<body>
+    
+    <div id="clear-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Clear All Data?</h3>
+            <p>Are you sure you want to erase all baseline and daily checks? This action cannot be undone unless you have exported a CSV backup.</p>
+            <div class="modal-buttons">
+                <button class="btn clear-btn" onclick="confirmClear()">Yes, Delete Data</button>
+                <button class="btn" style="background-color: #6c757d;" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="button-group">
+        <button class="btn dark-btn" onclick="toggleDarkMode()" id="dark-toggle">🌙 Dark Mode</button>
+        <input type="file" id="csv-file" accept=".csv" style="display:none">
+        <button class="btn import-btn" onclick="triggerImport()">Import CSV</button>
+        <button class="btn csv-btn" onclick="exportCSV()">Export CSV</button>
+        <button class="btn clear-btn" onclick="requestClear()">Clear Data</button>
+        <button class="btn dummy-btn" onclick="loadDummyData()">Load Dummy Data</button>
+        <button class="btn print-btn" onclick="window.print()">Print Form</button>
+    </div>
+    
+    <h2>Instrument Quality Control Form</h2>
+    <div class="header">
+        <div class="header-item"><label>Instrument ID:</label><input type="text" id="inst-id" placeholder="e.g., Ludlum 2350-1"></div>
+        <div class="header-item"><label>Probe ID:</label><input type="text" id="probe-id" placeholder="e.g., 44-10 NaI"></div>
+        <div class="header-item"><label>Check Source ID (Co-60):</label><input type="text" id="source-id" placeholder="Enter Serial/ID"></div>
+    </div>
+
+    <div class="container">
+        <div class="column">
+            <h3>1. Baseline Counts (N=20)</h3>
+            <table id="baseline-table">
+                <tr>
+                    <th>#</th>
+                    <th style="width: 25%;">Date</th>
+                    <th>Bkg (cpm)</th>
+                    <th>Gross (cpm)</th>
+                    <th>Net (cpm)</th>
+                </tr>
+            </table>
+            <div class="stats-panel">
+                <div class="stats-item">Mean (x̄): <span id="stat-mean">-</span></div>
+                <div class="stats-item">Std Dev (σ): <span id="stat-std">-</span></div>
+                <div class="stats-item" style="color: #ff8c00;">+2σ (Warning): <span id="stat-p2">-</span></div>
+                <div class="stats-item" style="color: #ff8c00;">-2σ (Warning): <span id="stat-m2">-</span></div>
+                <div class="stats-item" style="color: #ff0000;">+3σ (Control): <span id="stat-p3">-</span></div>
+                <div class="stats-item" style="color: #ff0000;">-3σ (Control): <span id="stat-m3">-</span></div>
+            </div>
+            <p class="subtext">* Statistics and chart are calculated using Net counts.</p>
+        </div>
+        <div class="column">
+            <h3>2. Daily Source Checks</h3>
+            <table id="daily-table">
+                <tr>
+                    <th>Day</th>
+                    <th style="width: 25%;">Date</th>
+                    <th>Bkg (cpm)</th>
+                    <th>Gross (cpm)</th>
+                    <th>Net (cpm)</th>
+                    <th>Z-Score</th>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="qcChart"></canvas>
+    </div>
+
+    <script>
+        const baselineTable = document.getElementById('baseline-table');
+        const dailyTable = document.getElementById('daily-table');
+        const numRows = 20;
+        let isDarkMode = false;
+
+        // Build Tables
+        for(let i=1; i<=numRows; i++){
+            let trB = document.createElement('tr');
+            trB.innerHTML = `
+                <td>${i}</td>
+                <td><input type="date" class="base-date" data-idx="${i}"></td>
+                <td><input type="number" class="base-bkg" data-idx="${i}"></td>
+                <td><input type="number" class="base-gross" data-idx="${i}"></td>
+                <td class="net-val" id="base-net-${i}">-</td>
+            `;
+            baselineTable.appendChild(trB);
+
+            let trD = document.createElement('tr');
+            trD.innerHTML = `
+                <td>${i}</td>
+                <td>
+                    <input type="date" class="daily-date" data-idx="${i}">
+                    <span class="warn-msg" id="date-warn-${i}"></span>
+                </td>
+                <td><input type="number" class="daily-bkg" data-idx="${i}"></td>
+                <td><input type="number" class="daily-gross" data-idx="${i}"></td>
+                <td class="net-val" id="daily-net-${i}">-</td>
+                <td id="zscore-${i}" style="font-weight:bold;">-</td>
+            `;
+            dailyTable.appendChild(trD);
+        }
+
+        // Add Listeners
+        document.querySelectorAll('input').forEach(el => el.addEventListener('input', updateAll));
+
+        let qcChart;
+        const ctx = document.getElementById('qcChart').getContext('2d');
+
+        function toggleDarkMode() {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-mode');
+            document.getElementById('dark-toggle').innerText = isDarkMode ? "☀️ Light Mode" : "🌙 Dark Mode";
+            updateAll(); // Force re-render of chart to update colors
+        }
+
+        function formatNum(num, decimals = 0) {
+            if (num === null || isNaN(num)) return '-';
+            return parseFloat(num).toLocaleString('en-US', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+        }
+
+        // Modal Logic
+        function requestClear() { document.getElementById('clear-modal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('clear-modal').style.display = 'none'; }
+        function confirmClear() {
+            document.querySelectorAll('input').forEach(el => {
+                if(el.type === 'number' || el.type === 'date' || el.type === 'text') el.value = '';
+            });
+            closeModal();
+            updateAll();
+        }
+
+        function loadDummyData() {
+            let today = new Date();
+            let todayStr = today.toISOString().split('T')[0];
+            
+            for(let i=1; i<=20; i++){
+                document.querySelector(`.base-date[data-idx="${i}"]`).value = todayStr;
+                document.querySelector(`.base-bkg[data-idx="${i}"]`).value = Math.floor(Math.random() * (8000 - 6000 + 1)) + 6000;
+                document.querySelector(`.base-gross[data-idx="${i}"]`).value = Math.floor(Math.random() * (16000 - 10000 + 1)) + 10000;
+            }
+            
+            for(let i=1; i<=10; i++){
+                let current = new Date();
+                if (i === 10) current.setDate(today.getDate() + 185); 
+                else current.setDate(today.getDate() + i);
+                
+                document.querySelector(`.daily-date[data-idx="${i}"]`).value = current.toISOString().split('T')[0];
+                document.querySelector(`.daily-bkg[data-idx="${i}"]`).value = Math.floor(Math.random() * (8000 - 6000 + 1)) + 6000;
+                document.querySelector(`.daily-gross[data-idx="${i}"]`).value = Math.floor(Math.random() * (16000 - 10000 + 1)) + 10000;
+            }
+            updateAll();
+        }
+
+        // CSV Logic
+        function exportCSV() {
+            let csvContent = "";
+            let instId = document.getElementById('inst-id').value || 'N/A';
+            let probeId = document.getElementById('probe-id').value || 'N/A';
+            let sourceId = document.getElementById('source-id').value || 'N/A';
+            
+            csvContent += `Instrument ID,${instId},Probe ID,${probeId},Source ID,${sourceId}\n\n`;
+            csvContent += "--- BASELINE COUNTS ---\nCount #,Date,Bkg (cpm),Gross (cpm),Net (cpm)\n";
+            for(let i=1; i<=20; i++){
+                let dt = document.querySelector(`.base-date[data-idx="${i}"]`).value;
+                let bkg = document.querySelector(`.base-bkg[data-idx="${i}"]`).value;
+                let gross = document.querySelector(`.base-gross[data-idx="${i}"]`).value;
+                let net = document.getElementById(`base-net-${i}`).innerText.replace(/,/g, '');
+                if(net === '-') net = '';
+                csvContent += `${i},${dt},${bkg},${gross},${net}\n`;
+            }
+            
+            csvContent += "\n--- DAILY CHECKS ---\nDay,Date,Bkg (cpm),Gross (cpm),Net (cpm),Z-Score\n";
+            for(let i=1; i<=20; i++){
+                let dt = document.querySelector(`.daily-date[data-idx="${i}"]`).value;
+                let bkg = document.querySelector(`.daily-bkg[data-idx="${i}"]`).value;
+                let gross = document.querySelector(`.daily-gross[data-idx="${i}"]`).value;
+                let net = document.getElementById(`daily-net-${i}`).innerText.replace(/,/g, '');
+                let z = document.getElementById(`zscore-${i}`).innerText;
+                if(net === '-') net = '';
+                if(z === '-') z = '';
+                csvContent += `${i},${dt},${bkg},${gross},${net},${z}\n`;
+            }
+            
+            let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "QC_Control_Chart_Data.csv";
+            link.click();
+        }
+
+        function triggerImport() { document.getElementById('csv-file').click(); }
+        document.getElementById('csv-file').addEventListener('change', function(e) {
+            let file = e.target.files[0];
+            if (!file) return;
+            let reader = new FileReader();
+            reader.onload = function(evt) {
+                parseCSV(evt.target.result);
+                document.getElementById('csv-file').value = ""; 
+            };
+            reader.readAsText(file);
+        });
+
+        function parseCSV(text) {
+            let lines = text.split('\n').map(l => l.trim());
+            document.querySelectorAll('input').forEach(el => {
+                if(el.type === 'number' || el.type === 'date' || el.type === 'text') el.value = '';
+            });
+            let phase = 0; 
+            
+            for(let line of lines) {
+                if(!line) continue;
+                let cols = line.split(',');
+                
+                if (cols[0] === 'Instrument ID') {
+                    if(cols[1] && cols[1] !== 'N/A') document.getElementById('inst-id').value = cols[1];
+                    if(cols[3] && cols[3] !== 'N/A') document.getElementById('probe-id').value = cols[3];
+                    if(cols[5] && cols[5] !== 'N/A') document.getElementById('source-id').value = cols[5];
+                    continue;
+                }
+                
+                if (line.includes('--- BASELINE COUNTS ---')) { phase = 1; continue; }
+                if (line.includes('--- DAILY CHECKS ---')) { phase = 2; continue; }
+                if (cols[0] === 'Count #' || cols[0] === 'Day') continue; 
+                
+                let idx = parseInt(cols[0]);
+                if (isNaN(idx) || idx < 1 || idx > 20) continue;
+                
+                if (phase === 1) {
+                    if(cols[1]) document.querySelector(`.base-date[data-idx="${idx}"]`).value = cols[1];
+                    if(cols[2]) document.querySelector(`.base-bkg[data-idx="${idx}"]`).value = cols[2];
+                    if(cols[3]) document.querySelector(`.base-gross[data-idx="${idx}"]`).value = cols[3];
+                } else if (phase === 2) {
+                    if(cols[1]) document.querySelector(`.daily-date[data-idx="${idx}"]`).value = cols[1];
+                    if(cols[2]) document.querySelector(`.daily-bkg[data-idx="${idx}"]`).value = cols[2];
+                    if(cols[3]) document.querySelector(`.daily-gross[data-idx="${idx}"]`).value = cols[3];
+                }
+            }
+            updateAll();
+        }
+
+        function updateAll() {
+            let baseVals = [];
+            let validBaseDates = [];
+            
+            for(let i=1; i<=numRows; i++){
+                let dtStr = document.querySelector(`.base-date[data-idx="${i}"]`).value;
+                if(dtStr) validBaseDates.push(new Date(dtStr));
+
+                let bkg = parseFloat(document.querySelector(`.base-bkg[data-idx="${i}"]`).value);
+                let gross = parseFloat(document.querySelector(`.base-gross[data-idx="${i}"]`).value);
+                let netCell = document.getElementById(`base-net-${i}`);
+                
+                if(!isNaN(bkg) && !isNaN(gross)) {
+                    let net = gross - bkg;
+                    netCell.textContent = formatNum(net, 0);
+                    baseVals.push(net);
+                } else {
+                    netCell.textContent = '-';
+                }
+            }
+
+            let maxBaseDate = validBaseDates.length > 0 ? new Date(Math.max(...validBaseDates)) : null;
+
+            let mean = null, std = null;
+            if(baseVals.length > 0) mean = baseVals.reduce((a,b) => a+b, 0) / baseVals.length;
+            if(baseVals.length > 1) {
+                let sumSq = baseVals.reduce((a,b) => a + Math.pow(b - mean, 2), 0);
+                std = Math.sqrt(sumSq / (baseVals.length - 1));
+            }
+
+            document.getElementById('stat-mean').textContent = formatNum(mean, 1);
+            document.getElementById('stat-std').textContent = formatNum(std, 2);
+            document.getElementById('stat-p2').textContent = formatNum(mean + 2*std, 1);
+            document.getElementById('stat-p3').textContent = formatNum(mean + 3*std, 1);
+            document.getElementById('stat-m2').textContent = formatNum(mean - 2*std, 1);
+            document.getElementById('stat-m3').textContent = formatNum(mean - 3*std, 1);
+
+            let dailyData = [];
+            let labels = [];
+            
+            for(let i=1; i<=numRows; i++){
+                labels.push(i);
+                let dtInput = document.querySelector(`.daily-date[data-idx="${i}"]`);
+                let warnEl = document.getElementById(`date-warn-${i}`);
+                let dtStr = dtInput.value;
+                
+                if (maxBaseDate && dtStr) {
+                    let currentDt = new Date(dtStr);
+                    let diffDays = (currentDt - maxBaseDate) / (1000 * 60 * 60 * 24);
+                    if (diffDays > 180) {
+                        dtInput.style.border = "2px solid #dc3545";
+                        warnEl.innerHTML = "⚠ >180 Days (Expired)";
+                    } else {
+                        dtInput.style.border = `1px solid ${isDarkMode ? '#555' : '#ddd'}`;
+                        warnEl.innerHTML = "";
+                    }
+                } else {
+                    dtInput.style.border = `1px solid ${isDarkMode ? '#555' : '#ddd'}`;
+                    warnEl.innerHTML = "";
+                }
+
+                let bkg = parseFloat(document.querySelector(`.daily-bkg[data-idx="${i}"]`).value);
+                let gross = parseFloat(document.querySelector(`.daily-gross[data-idx="${i}"]`).value);
+                let netCell = document.getElementById(`daily-net-${i}`);
+                let zCell = document.getElementById(`zscore-${i}`);
+                
+                if(!isNaN(bkg) && !isNaN(gross)) {
+                    let net = gross - bkg;
+                    netCell.textContent = formatNum(net, 0);
+                    dailyData.push(net);
+                    
+                    if(std > 0) {
+                        let z = (net - mean) / std;
+                        zCell.textContent = z.toFixed(2);
+                        if (Math.abs(z) > 3) zCell.style.color = '#ff4444';
+                        else if (Math.abs(z) > 2) zCell.style.color = '#ffb84d';
+                        else zCell.style.color = isDarkMode ? '#4caf50' : 'green';
+                    } else {
+                        zCell.textContent = '-';
+                        zCell.style.color = isDarkMode ? '#e0e0e0' : 'black';
+                    }
+                } else {
+                    netCell.textContent = '-';
+                    dailyData.push(null);
+                    zCell.textContent = '-';
+                    zCell.style.color = isDarkMode ? '#e0e0e0' : 'black';
+                }
+            }
+
+            updateChart(mean, std, dailyData, labels);
+        }
+
+        function updateChart(mean, std, dailyData, labels) {
+            let meanData = labels.map(() => mean);
+            let p2Data = labels.map(() => std ? mean + 2*std : null);
+            let m2Data = labels.map(() => std ? mean - 2*std : null);
+            let p3Data = labels.map(() => std ? mean + 3*std : null);
+            let m3Data = labels.map(() => std ? mean - 3*std : null);
+
+            let textColor = isDarkMode ? '#e0e0e0' : '#666';
+            let gridColor = isDarkMode ? '#444' : '#ddd';
+            let lineColor = isDarkMode ? '#82aaff' : '#00205b';
+            let meanLineColor = isDarkMode ? '#888' : 'gray';
+
+            if(qcChart) qcChart.destroy();
+            qcChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Daily Net Check (cpm)', data: dailyData, borderColor: lineColor, backgroundColor: lineColor, fill: false, tension: 0.1, pointRadius: 4 },
+                        { label: 'Mean', data: meanData, borderColor: meanLineColor, borderDash: [], pointRadius: 0, fill: false, borderWidth: 2 },
+                        { label: '+2σ Warning', data: p2Data, borderColor: 'orange', borderDash: [5,5], pointRadius: 0, fill: false, borderWidth: 1.5 },
+                        { label: '-2σ Warning', data: m2Data, borderColor: 'orange', borderDash: [5,5], pointRadius: 0, fill: false, borderWidth: 1.5 },
+                        { label: '+3σ Control', data: p3Data, borderColor: 'red', borderDash: [10,5], pointRadius: 0, fill: false, borderWidth: 1.5 },
+                        { label: '-3σ Control', data: m3Data, borderColor: 'red', borderDash: [10,5], pointRadius: 0, fill: false, borderWidth: 1.5 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 0 },
+                    scales: { 
+                        y: { 
+                            suggestedMin: std ? mean - 4*std : 0, 
+                            suggestedMax: std ? mean + 4*std : 100,
+                            title: { display: true, text: 'Net Counts per Minute (cpm)', color: textColor },
+                            ticks: { color: textColor, callback: function(value) { return value.toLocaleString('en-US'); } },
+                            grid: { color: gridColor }
+                        },
+                        x: { 
+                            title: { display: true, text: 'Check Number (Day)', color: textColor },
+                            ticks: { color: textColor },
+                            grid: { color: gridColor }
+                        }
+                    },
+                    plugins: { 
+                        legend: { 
+                            position: 'top',
+                            labels: { color: textColor }
+                        } 
+                    }
+                }
+            });
+        }
+
+        updateAll();
+    </script>
+</body>
+</html>
