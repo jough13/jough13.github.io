@@ -744,7 +744,23 @@ function handleStatAllocation(event) {
 coreStatsPanel.addEventListener('click', handleStatAllocation);
 
 // --- AUTH UI ELEMENTS ---
-const authTitle = document.getElementById('authTitle');
+const authTitleText = document.getElementById('authTitleText'); // Target the new span
+
+authToggle.addEventListener('click', (e) => {
+    e.preventDefault();
+    isLoginMode = !isLoginMode;
+
+    if (isLoginMode) {
+        if (authTitleText) authTitleText.textContent = 'Login';
+        authButton.textContent = 'LOGIN';
+        authToggle.textContent = 'Create Account';
+    } else {
+        if (authTitleText) authTitleText.textContent = 'Create Account';
+        authButton.textContent = 'SIGN UP';
+        authToggle.textContent = 'Back to Login';
+    }
+    authError.textContent = '';
+});
 const authButton = document.getElementById('authButton');
 const rememberMe = document.getElementById('rememberMe');
 const authToggle = document.getElementById('authToggle');
