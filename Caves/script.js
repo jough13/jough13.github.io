@@ -767,28 +767,6 @@ authToggle.addEventListener('click', (e) => {
     authError.textContent = '';
 });
 
-const authButton = document.getElementById('authButton');
-const rememberMe = document.getElementById('rememberMe');
-const authToggle = document.getElementById('authToggle');
-let isLoginMode = true;
-
-// --- AUTH TOGGLE HANDLER ---
-authToggle.addEventListener('click', (e) => {
-    e.preventDefault();
-    isLoginMode = !isLoginMode;
-
-    if (isLoginMode) {
-        authTitle.textContent = 'Login';
-        authButton.textContent = 'LOGIN';
-        authToggle.textContent = 'Create Account';
-    } else {
-        authTitle.textContent = 'Create Account';
-        authButton.textContent = 'SIGN UP';
-        authToggle.textContent = 'Back to Login';
-    }
-    authError.textContent = '';
-});
-
 // --- UNIFIED AUTH BUTTON HANDLER ---
 authButton.addEventListener('click', async () => {
     const email = emailInput.value;
