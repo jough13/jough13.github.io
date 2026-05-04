@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Instrument QC Control Chart (Net Counts)</title>
+    <title>Instrument QC Control Chart</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Base / Light Mode Variables */
@@ -51,7 +51,11 @@
         input[type="number"], input[type="date"] { width: 90%; padding: 4px; border: 1px solid var(--input-border); background-color: var(--input-bg); color: var(--text-color); text-align: center; border-radius: 3px; }
         .stats-panel { background: var(--panel-bg); padding: 15px; border: 1px solid var(--input-border); border-radius: 5px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 14px; }
         .stats-item { font-weight: bold; }
-        .chart-container { width: 100%; height: 400px; margin-top: 30px; }
+        
+        .chart-section { display: flex; flex-direction: column; gap: 60px; margin-top: 30px; }
+        .chart-container { width: 100%; height: 320px; }
+        .chart-title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 5px; color: var(--header-text); }
+        
         .button-group { float: right; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
         .btn { padding: 10px 15px; font-size: 14px; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
         .print-btn { background-color: #00205b; }
@@ -70,16 +74,40 @@
         .warn-msg { display: block; color: #dc3545; font-size: 10px; font-weight: bold; margin-top: 2px; }
         .subtext { font-size: 12px; color: var(--muted-text); margin-top: 5px; }
 
+        /* --- PRINT OPTIMIZATIONS --- */
         @media print {
+            /* Force Landscape Orientation */
+            @page { size: landscape; margin: 0.5in; }
+            
             .button-group { display: none; }
             body { margin: 0; font-size: 11px; background-color: white !important; color: black !important; }
-            .chart-container { height: 350px; }
-            input[type="number"], input[type="date"], .header-item input { border: none; border-bottom: 1px solid #ccc; background: transparent !important; color: black !important; padding: 2px; }
+            
+            /* Remove forced widths and native browser icons that break table layouts */
+            input[type="number"], input[type="date"] { 
+                width: 100%; 
+                box-sizing: border-box; 
+                min-width: 0; 
+                padding: 2px;
+            }
+            input[type="date"]::-webkit-calendar-picker-indicator,
+            input[type="number"]::-webkit-inner-spin-button, 
+            input[type="number"]::-webkit-outer-spin-button {
+                display: none;
+                -webkit-appearance: none;
+            }
+            
+            input[type="number"], input[type="date"], .header-item input { border: none; border-bottom: 1px solid #ccc; background: transparent !important; color: black !important; }
+            
             th { background-color: #f0f0f0 !important; color: black !important; }
-            td, th { border: 1px solid #aaa !important; }
+            td, th { border: 1px solid #aaa !important; padding: 4px; }
+            
             .stats-panel { background: #faf8f5 !important; border: 1px solid #ccc !important; }
-            h2, .net-val { color: #00205b !important; border-bottom-color: #00205b !important; }
+            h2, .net-val, .chart-title { color: #00205b !important; border-bottom-color: #00205b !important; }
             .warn-msg { font-size: 9px; }
+
+            /* Push charts cleanly to Page 2 */
+            .chart-section { gap: 40px; margin-top: 0; display: block; page-break-before: always; }
+            .chart-container { height: 280px; page-break-inside: avoid; margin-bottom: 40px; }
         }
     </style>
 </head>
@@ -126,14 +154,14 @@
                 </tr>
             </table>
             <div class="stats-panel">
-                <div class="stats-item">Mean (x̄): <span id="stat-mean">-</span></div>
-                <div class="stats-item">Std Dev (σ): <span id="stat-std">-</span></div>
+                <div class="stats-item">Net Mean (x̄): <span id="stat-mean">-</span></div>
+                <div class="stats-item">Net Std Dev (σ): <span id="stat-std">-</span></div>
                 <div class="stats-item" style="color: #ff8c00;">+2σ (Warning): <span id="stat-p2">-</span></div>
                 <div class="stats-item" style="color: #ff8c00;">-2σ (Warning): <span id="stat-m2">-</span></div>
                 <div class="stats-item" style="color: #ff0000;">+3σ (Control): <span id="stat-p3">-</span></div>
                 <div class="stats-item" style="color: #ff0000;">-3σ (Control): <span id="stat-m3">-</span></div>
             </div>
-            <p class="subtext">* Statistics and chart are calculated using Net counts.</p>
+            <p class="subtext">* Displayed statistics are for Net Source counts. Background statistics are calculated independently for the Background chart.</p>
         </div>
         <div class="column">
             <h3>2. Daily Source Checks</h3>
@@ -144,14 +172,21 @@
                     <th>Bkg (cpm)</th>
                     <th>Gross (cpm)</th>
                     <th>Net (cpm)</th>
-                    <th>Z-Score</th>
+                    <th>Net Z-Score</th>
                 </tr>
             </table>
         </div>
     </div>
 
-    <div class="chart-container">
-        <canvas id="qcChart"></canvas>
+    <div class="chart-section">
+        <div class="chart-container">
+            <div class="chart-title">Net Source Checks Tracking</div>
+            <canvas id="netChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <div class="chart-title">Background Variation Tracking</div>
+            <canvas id="bkgChart"></canvas>
+        </div>
     </div>
 
     <script>
@@ -160,7 +195,6 @@
         const numRows = 20;
         let isDarkMode = false;
 
-        // Build Tables
         for(let i=1; i<=numRows; i++){
             let trB = document.createElement('tr');
             trB.innerHTML = `
@@ -187,17 +221,17 @@
             dailyTable.appendChild(trD);
         }
 
-        // Add Listeners
         document.querySelectorAll('input').forEach(el => el.addEventListener('input', updateAll));
 
-        let qcChart;
-        const ctx = document.getElementById('qcChart').getContext('2d');
+        let netChart, bkgChart;
+        const ctxNet = document.getElementById('netChart').getContext('2d');
+        const ctxBkg = document.getElementById('bkgChart').getContext('2d');
 
         function toggleDarkMode() {
             isDarkMode = !isDarkMode;
             document.body.classList.toggle('dark-mode');
             document.getElementById('dark-toggle').innerText = isDarkMode ? "☀️ Light Mode" : "🌙 Dark Mode";
-            updateAll(); // Force re-render of chart to update colors
+            updateAll();
         }
 
         function formatNum(num, decimals = 0) {
@@ -205,7 +239,6 @@
             return parseFloat(num).toLocaleString('en-US', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
         }
 
-        // Modal Logic
         function requestClear() { document.getElementById('clear-modal').style.display = 'flex'; }
         function closeModal() { document.getElementById('clear-modal').style.display = 'none'; }
         function confirmClear() {
@@ -238,7 +271,6 @@
             updateAll();
         }
 
-        // CSV Logic
         function exportCSV() {
             let csvContent = "";
             let instId = document.getElementById('inst-id').value || 'N/A';
@@ -256,7 +288,7 @@
                 csvContent += `${i},${dt},${bkg},${gross},${net}\n`;
             }
             
-            csvContent += "\n--- DAILY CHECKS ---\nDay,Date,Bkg (cpm),Gross (cpm),Net (cpm),Z-Score\n";
+            csvContent += "\n--- DAILY CHECKS ---\nDay,Date,Bkg (cpm),Gross (cpm),Net (cpm),Net Z-Score\n";
             for(let i=1; i<=20; i++){
                 let dt = document.querySelector(`.daily-date[data-idx="${i}"]`).value;
                 let bkg = document.querySelector(`.daily-bkg[data-idx="${i}"]`).value;
@@ -325,8 +357,18 @@
             updateAll();
         }
 
+        function getStats(arr) {
+            if(arr.length === 0) return { mean: null, std: null };
+            let mean = arr.reduce((a,b) => a+b, 0) / arr.length;
+            if(arr.length === 1) return { mean: mean, std: 0 };
+            let sumSq = arr.reduce((a,b) => a + Math.pow(b - mean, 2), 0);
+            let std = Math.sqrt(sumSq / (arr.length - 1));
+            return { mean, std };
+        }
+
         function updateAll() {
-            let baseVals = [];
+            let baseNetVals = [];
+            let baseBkgVals = [];
             let validBaseDates = [];
             
             for(let i=1; i<=numRows; i++){
@@ -337,10 +379,12 @@
                 let gross = parseFloat(document.querySelector(`.base-gross[data-idx="${i}"]`).value);
                 let netCell = document.getElementById(`base-net-${i}`);
                 
+                if(!isNaN(bkg)) baseBkgVals.push(bkg);
+
                 if(!isNaN(bkg) && !isNaN(gross)) {
                     let net = gross - bkg;
                     netCell.textContent = formatNum(net, 0);
-                    baseVals.push(net);
+                    baseNetVals.push(net);
                 } else {
                     netCell.textContent = '-';
                 }
@@ -348,21 +392,18 @@
 
             let maxBaseDate = validBaseDates.length > 0 ? new Date(Math.max(...validBaseDates)) : null;
 
-            let mean = null, std = null;
-            if(baseVals.length > 0) mean = baseVals.reduce((a,b) => a+b, 0) / baseVals.length;
-            if(baseVals.length > 1) {
-                let sumSq = baseVals.reduce((a,b) => a + Math.pow(b - mean, 2), 0);
-                std = Math.sqrt(sumSq / (baseVals.length - 1));
-            }
+            let netStats = getStats(baseNetVals);
+            let bkgStats = getStats(baseBkgVals);
 
-            document.getElementById('stat-mean').textContent = formatNum(mean, 1);
-            document.getElementById('stat-std').textContent = formatNum(std, 2);
-            document.getElementById('stat-p2').textContent = formatNum(mean + 2*std, 1);
-            document.getElementById('stat-p3').textContent = formatNum(mean + 3*std, 1);
-            document.getElementById('stat-m2').textContent = formatNum(mean - 2*std, 1);
-            document.getElementById('stat-m3').textContent = formatNum(mean - 3*std, 1);
+            document.getElementById('stat-mean').textContent = formatNum(netStats.mean, 1);
+            document.getElementById('stat-std').textContent = formatNum(netStats.std, 2);
+            document.getElementById('stat-p2').textContent = netStats.std !== null ? formatNum(netStats.mean + 2*netStats.std, 1) : '-';
+            document.getElementById('stat-p3').textContent = netStats.std !== null ? formatNum(netStats.mean + 3*netStats.std, 1) : '-';
+            document.getElementById('stat-m2').textContent = netStats.std !== null ? formatNum(netStats.mean - 2*netStats.std, 1) : '-';
+            document.getElementById('stat-m3').textContent = netStats.std !== null ? formatNum(netStats.mean - 3*netStats.std, 1) : '-';
 
-            let dailyData = [];
+            let dailyNetData = [];
+            let dailyBkgData = [];
             let labels = [];
             
             for(let i=1; i<=numRows; i++){
@@ -391,13 +432,19 @@
                 let netCell = document.getElementById(`daily-net-${i}`);
                 let zCell = document.getElementById(`zscore-${i}`);
                 
+                if(!isNaN(bkg)) {
+                    dailyBkgData.push(bkg);
+                } else {
+                    dailyBkgData.push(null);
+                }
+
                 if(!isNaN(bkg) && !isNaN(gross)) {
                     let net = gross - bkg;
                     netCell.textContent = formatNum(net, 0);
-                    dailyData.push(net);
+                    dailyNetData.push(net);
                     
-                    if(std > 0) {
-                        let z = (net - mean) / std;
+                    if(netStats.std > 0) {
+                        let z = (net - netStats.mean) / netStats.std;
                         zCell.textContent = z.toFixed(2);
                         if (Math.abs(z) > 3) zCell.style.color = '#ff4444';
                         else if (Math.abs(z) > 2) zCell.style.color = '#ffb84d';
@@ -408,34 +455,32 @@
                     }
                 } else {
                     netCell.textContent = '-';
-                    dailyData.push(null);
+                    dailyNetData.push(null);
                     zCell.textContent = '-';
                     zCell.style.color = isDarkMode ? '#e0e0e0' : 'black';
                 }
             }
 
-            updateChart(mean, std, dailyData, labels);
+            renderCharts(netStats, bkgStats, dailyNetData, dailyBkgData, labels);
         }
 
-        function updateChart(mean, std, dailyData, labels) {
-            let meanData = labels.map(() => mean);
-            let p2Data = labels.map(() => std ? mean + 2*std : null);
-            let m2Data = labels.map(() => std ? mean - 2*std : null);
-            let p3Data = labels.map(() => std ? mean + 3*std : null);
-            let m3Data = labels.map(() => std ? mean - 3*std : null);
-
+        function createChartConfig(title, yLabel, data, stats, labels, isDarkMode, lineColor) {
             let textColor = isDarkMode ? '#e0e0e0' : '#666';
             let gridColor = isDarkMode ? '#444' : '#ddd';
-            let lineColor = isDarkMode ? '#82aaff' : '#00205b';
             let meanLineColor = isDarkMode ? '#888' : 'gray';
 
-            if(qcChart) qcChart.destroy();
-            qcChart = new Chart(ctx, {
+            let meanData = labels.map(() => stats.mean);
+            let p2Data = labels.map(() => stats.std ? stats.mean + 2*stats.std : null);
+            let m2Data = labels.map(() => stats.std ? stats.mean - 2*stats.std : null);
+            let p3Data = labels.map(() => stats.std ? stats.mean + 3*stats.std : null);
+            let m3Data = labels.map(() => stats.std ? stats.mean - 3*stats.std : null);
+
+            return {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [
-                        { label: 'Daily Net Check (cpm)', data: dailyData, borderColor: lineColor, backgroundColor: lineColor, fill: false, tension: 0.1, pointRadius: 4 },
+                        { label: title, data: data, borderColor: lineColor, backgroundColor: lineColor, fill: false, tension: 0.1, pointRadius: 4 },
                         { label: 'Mean', data: meanData, borderColor: meanLineColor, borderDash: [], pointRadius: 0, fill: false, borderWidth: 2 },
                         { label: '+2σ Warning', data: p2Data, borderColor: 'orange', borderDash: [5,5], pointRadius: 0, fill: false, borderWidth: 1.5 },
                         { label: '-2σ Warning', data: m2Data, borderColor: 'orange', borderDash: [5,5], pointRadius: 0, fill: false, borderWidth: 1.5 },
@@ -449,9 +494,9 @@
                     animation: { duration: 0 },
                     scales: { 
                         y: { 
-                            suggestedMin: std ? mean - 4*std : 0, 
-                            suggestedMax: std ? mean + 4*std : 100,
-                            title: { display: true, text: 'Net Counts per Minute (cpm)', color: textColor },
+                            suggestedMin: stats.std ? stats.mean - 4*stats.std : 0, 
+                            suggestedMax: stats.std ? stats.mean + 4*stats.std : 100,
+                            title: { display: true, text: yLabel, color: textColor },
                             ticks: { color: textColor, callback: function(value) { return value.toLocaleString('en-US'); } },
                             grid: { color: gridColor }
                         },
@@ -462,13 +507,21 @@
                         }
                     },
                     plugins: { 
-                        legend: { 
-                            position: 'top',
-                            labels: { color: textColor }
-                        } 
+                        legend: { position: 'top', labels: { color: textColor } } 
                     }
                 }
-            });
+            };
+        }
+
+        function renderCharts(netStats, bkgStats, dailyNetData, dailyBkgData, labels) {
+            let netLineColor = isDarkMode ? '#82aaff' : '#00205b';
+            let bkgLineColor = isDarkMode ? '#bb86fc' : '#5b0042';
+
+            if(netChart) netChart.destroy();
+            netChart = new Chart(ctxNet, createChartConfig('Daily Net Check (cpm)', 'Net Counts per Minute (cpm)', dailyNetData, netStats, labels, isDarkMode, netLineColor));
+
+            if(bkgChart) bkgChart.destroy();
+            bkgChart = new Chart(ctxBkg, createChartConfig('Daily Background (cpm)', 'Background per Minute (cpm)', dailyBkgData, bkgStats, labels, isDarkMode, bkgLineColor));
         }
 
         updateAll();
