@@ -52,6 +52,7 @@
         .stats-panel { background: var(--panel-bg); padding: 15px; border: 1px solid var(--input-border); border-radius: 5px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 14px; }
         .stats-item { font-weight: bold; }
         
+        /* Adjusted gap for web view */
         .chart-section { display: flex; flex-direction: column; gap: 60px; margin-top: 30px; }
         .chart-container { width: 100%; height: 320px; }
         .chart-title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 5px; color: var(--header-text); }
@@ -76,13 +77,11 @@
 
         /* --- PRINT OPTIMIZATIONS --- */
         @media print {
-            /* Force Landscape Orientation */
             @page { size: landscape; margin: 0.5in; }
             
             .button-group { display: none; }
             body { margin: 0; font-size: 11px; background-color: white !important; color: black !important; }
             
-            /* Remove forced widths and native browser icons that break table layouts */
             input[type="number"], input[type="date"] { 
                 width: 100%; 
                 box-sizing: border-box; 
@@ -105,9 +104,15 @@
             h2, .net-val, .chart-title { color: #00205b !important; border-bottom-color: #00205b !important; }
             .warn-msg { font-size: 9px; }
 
-            /* Push charts cleanly to Page 2 */
-            .chart-section { gap: 40px; margin-top: 0; display: block; page-break-before: always; }
-            .chart-container { height: 280px; page-break-inside: avoid; margin-bottom: 40px; }
+            /* Hard margins for print spacing */
+            .chart-section { display: block; page-break-before: always; margin-top: 0; }
+            
+            /* ADDED: Explicit bottom margin to force space between charts */
+            .chart-container { 
+                height: 280px; 
+                page-break-inside: avoid; 
+                margin-bottom: 60px !important; /* Forces physical space between the graphs */
+            }
         }
     </style>
 </head>
