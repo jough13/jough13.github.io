@@ -50,6 +50,31 @@
           <div id="loaderBar" style="color: #4ade80; font-family: 'Courier New', monospace; font-size: 2.5rem; font-weight: bold; letter-spacing: 2px; margin-top: 1rem; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);">[..........]</div>
       </div>
 
+      <!-- ========================================== -->
+      <!-- TITLE SCREEN (Click to Start)              -->
+      <!-- ========================================== -->
+      <div id="titleScreen" class="fixed inset-0 z-[9000] login-bg flex flex-col items-center justify-center cursor-pointer transition-opacity duration-700" style="display: none; opacity: 0;">
+          <h1 class="gothic-title text-white text-center drop-shadow-2xl" style="font-size: 6rem; line-height: 1.1; margin-bottom: 3rem;">Caves<br>& Castles</h1>
+          <p class="text-green-400 font-mono text-2xl font-bold tracking-widest" style="text-shadow: 0 0 10px rgba(74, 222, 128, 0.8); animation: pulse 1.5s infinite;">- CLICK TO START -</p>
+      </div>
+
+      <script>
+          // Link the Bootloader to the Title Screen
+          const bootLoader = document.getElementById('retroBootLoader');
+          const titleScreen = document.getElementById('titleScreen');
+          const authContainer = document.getElementById('authContainer');
+
+          // When the Title Screen is clicked, fade it out and reveal the Login box
+          titleScreen.addEventListener('click', () => {
+              titleScreen.style.opacity = '0';
+              setTimeout(() => {
+                  titleScreen.remove();
+                  authContainer.style.opacity = '1';
+                  authContainer.style.visibility = 'visible';
+              }, 700);
+          });
+      </script>
+
       <script>
           const barEl = document.getElementById('loaderBar');
           const textEl = document.getElementById('loaderText');
@@ -108,13 +133,12 @@
                      
                      <!-- Wrapper holds them side-by-side safely -->
                      <div class="flex items-center justify-center gap-4 mb-6">
-                        
                         <!-- JS only touches this H1 now! -->
                         <h1 id="authTitle" class="gothic-title text-5xl text-white m-0 border-none pb-0">Login</h1>
                         
-                        <!-- Our beautiful, hassle-free GIF! -->
-                        <img src="assets/torch.gif" alt="Torch" class="w-16 h-auto" style="image-rendering: pixelated; filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.5));">
-                        
+                        <!-- Torch GIF: Notice the 'transform: translateY(-8px)' -->
+                        <!-- You can change -8px to -12px, or 5px, to nudge it exactly where you want it! -->
+                        <img src="assets/torch.gif" alt="Torch" class="w-16 h-auto" style="image-rendering: pixelated; filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.5)); transform: translateY(-8px);">
                      </div>
                      
                      <div class="w-full space-y-4 px-4">
@@ -740,32 +764,5 @@
             <button data-key="Escape" aria-label="Escape/Cancel" class="action-btn red">❌</button> 
          </div>
       </div>
-   <!-- AUTOFILL OVERLAY SYNC -->
-      <script>
-          const emailIn = document.getElementById('emailInput');
-          const emailOut = document.getElementById('emailOverlay');
-          const passIn = document.getElementById('passwordInput');
-          const passOut = document.getElementById('passwordOverlay');
-
-          function syncInputs() {
-              // Show email text normally
-              if (emailIn && emailOut) {
-                  emailOut.textContent = emailIn.value || (emailIn.matches(':placeholder-shown') ? '' : emailIn.value);
-              }
-              // Hide password text as bullet points
-              if (passIn && passOut) {
-                  passOut.textContent = '•'.repeat(passIn.value.length);
-              }
-          }
-
-          // Sync when user types manually
-          if (emailIn) emailIn.addEventListener('input', syncInputs);
-          if (passIn) passIn.addEventListener('input', syncInputs);
-          
-          // Sync on Autofill (Chrome sometimes delays autofill by a split second, so we check a few times on load)
-          setTimeout(syncInputs, 100);
-          setTimeout(syncInputs, 500);
-          setTimeout(syncInputs, 1000);
-      </script>
    </body>
 </html>
