@@ -766,30 +766,21 @@ kbd {
     opacity: 0.7;
 }
 
-/* 1. Delay the blue background and force the inner text color to transparent */
+/* Delay the blue background and force the green text color */
 .ui-input-asset input:-webkit-autofill,
 .ui-input-asset input:-webkit-autofill:hover, 
 .ui-input-asset input:-webkit-autofill:focus, 
 .ui-input-asset input:-webkit-autofill:active {
     transition: background-color 5000s ease-in-out 0s !important;
-    -webkit-text-fill-color: transparent !important;
+    -webkit-text-fill-color: #4ade80 !important;
 }
 
-/* 2. Styling for our fake autofill overlay */
-.overlay-text {
-    color: #4ade80; /* Retro Green */
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 1.4rem;
-    font-weight: bold;
-    white-space: pre; /* Preserves spaces */
-}
-
-/* 3. Hide placeholder text when autofill is active to prevent overlapping */
+/* Hide placeholder text when autofill is active to prevent overlapping */
 .ui-input-asset input:-webkit-autofill::placeholder {
     color: transparent !important;
 }
 
-/* 4. The Login Button */
+/* 3. The Login Button */
 .ui-btn-asset {
     background-color: transparent;
     background-image: var(--asset-btn-normal);
