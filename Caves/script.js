@@ -206,22 +206,17 @@ async function renderSlots() {
             slotDiv.innerHTML = `
                 <div class="text-center w-full pt-2">
                     <h3 class="text-3xl font-bold text-white mb-2" style="font-family: 'Uncial Antiqua', cursive; text-shadow: 2px 2px 0 #000;">${data.name || 'Unnamed'}</h3>
-                    
-                    <!-- Adjusted the icon size from text-6xl down to text-4xl -->
                     <div class="text-4xl my-3 text-[#4ade80]" style="text-shadow: 0 0 10px rgba(74, 222, 128, 0.4);">${data.isBoating ? 'c' : (data.character || '@')}</div>
-                    
                     <p class="font-bold text-yellow-400 text-lg uppercase tracking-widest">${bg.name}</p>
                     <p class="text-sm text-gray-300 font-bold mt-1">Level ${data.level || 1}</p>
                     <p class="text-xs text-gray-400 mt-3 h-8 leading-tight">${getRegionName(Math.floor((data.x || 0) / 160), Math.floor((data.y || 0) / 160))}</p>
                 </div>
                 
-                <!-- Fixed Button Layout -->
                 <div class="flex gap-2 w-full mt-4 items-stretch h-12">
-                    <!-- The Play Button takes up the remaining space -->
                     <button onclick="selectSlot('${slotId}')" class="ui-btn-asset flex-grow !text-2xl !p-0 !mt-0">PLAY</button>
                     
-                    <!-- The Delete Button is now a fixed-width red square to contrast the green -->
-                    <button onclick="deleteSlot('${slotId}')" class="w-12 bg-red-900 border-2 border-red-700 hover:bg-red-600 hover:border-red-400 text-white font-bold text-xl transition-colors shadow-lg" title="Delete">X</button>
+                    <!-- THE FIX: A faux-3D pixel art button using CSS inset shadows! -->
+                    <button onclick="deleteSlot('${slotId}')" class="w-12 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-2xl" style="border: 2px solid #000; box-shadow: inset -3px -3px 0px rgba(0,0,0,0.4), inset 2px 2px 0px rgba(255,255,255,0.3); text-shadow: 2px 2px 0px #000;" title="Delete">X</button>
                 </div>
             `;
         } else {
@@ -239,7 +234,6 @@ async function renderSlots() {
                     <p class="text-gray-500 font-bold tracking-widest uppercase">Empty</p>
                 </div>
                 
-                <!-- Adjusted Create button to perfectly match Play button height -->
                 <div class="w-full mt-4 h-12">
                     <button onclick="event.stopPropagation(); selectSlot('${slotId}')" class="ui-btn-asset w-full h-full !text-2xl !p-0 !mt-0 !text-gray-200">CREATE</button>
                 </div>
