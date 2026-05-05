@@ -71,14 +71,12 @@
                      </div>
                      
                      <div class="w-full space-y-4 px-4">
-                        <!-- Asset-Ready Inputs WITH OVERLAY HACK -->
-                        <div class="ui-input-asset relative">
-                           <input type="email" id="emailInput" autocomplete="email" aria-label="Email Address" placeholder="Email" class="w-full bg-transparent outline-none z-10 relative" style="color: transparent !important; text-shadow: none !important; caret-color: #4ade80;">
-                           <span id="emailOverlay" class="overlay-text absolute left-[32px] top-[28px] pointer-events-none z-0"></span>
+                        <!-- Asset-Ready Inputs -->
+                        <div class="ui-input-asset">
+                           <input type="email" id="emailInput" autocomplete="email" aria-label="Email Address" placeholder="Email" class="w-full bg-transparent outline-none terminal-text">
                         </div>
-                        <div class="ui-input-asset relative">
-                           <input type="password" id="passwordInput" autocomplete="current-password" aria-label="Password" placeholder="Password" class="w-full bg-transparent outline-none z-10 relative" style="color: transparent !important; text-shadow: none !important; caret-color: #4ade80;">
-                           <span id="passwordOverlay" class="overlay-text absolute left-[32px] top-[28px] pointer-events-none z-0"></span>
+                        <div class="ui-input-asset">
+                           <input type="password" id="passwordInput" autocomplete="current-password" aria-label="Password" placeholder="Password" class="w-full bg-transparent outline-none terminal-text">
                         </div>
 
                          <!-- Asset-Ready Button -->
@@ -754,34 +752,6 @@
                   document.body.classList.add('is-loaded');
               }, 700);
           });
-      </script>
-
-      <!-- AUTOFILL OVERLAY SYNC -->
-      <script>
-          const emailIn = document.getElementById('emailInput');
-          const emailOut = document.getElementById('emailOverlay');
-          const passIn = document.getElementById('passwordInput');
-          const passOut = document.getElementById('passwordOverlay');
-
-          function syncInputs() {
-              // Show email text normally
-              if (emailIn && emailOut) {
-                  emailOut.textContent = emailIn.value || (emailIn.matches(':placeholder-shown') ? '' : emailIn.value);
-              }
-              // Hide password text as bullet points
-              if (passIn && passOut) {
-                  passOut.textContent = '•'.repeat(passIn.value.length);
-              }
-          }
-
-          // Sync when user types manually
-          if (emailIn) emailIn.addEventListener('input', syncInputs);
-          if (passIn) passIn.addEventListener('input', syncInputs);
-          
-          // Sync on Autofill (Chrome sometimes delays autofill by a split second, so we check a few times on load)
-          setTimeout(syncInputs, 100);
-          setTimeout(syncInputs, 500);
-          setTimeout(syncInputs, 1000);
       </script>
    </body>
 </html>
