@@ -48,68 +48,6 @@
           <p class="text-green-400 font-mono text-2xl font-bold tracking-widest" style="text-shadow: 0 0 10px rgba(74, 222, 128, 0.8); animation: pulse 1.5s infinite;">- CLICK TO START -</p>
       </div>
 
-      <!-- THE MASTER APP FLOW SCRIPT -->
-      <script>
-          const barEl = document.getElementById('loaderBar');
-          const textEl = document.getElementById('loaderText');
-          const titleScreenEl = document.getElementById('titleScreen');
-          const authBoxEl = document.getElementById('authContainer');
-          const loaderEl = document.getElementById('retroBootLoader');
-          
-          let currentBlocks = 0;
-          const statusTexts = ["Loading Assets...", "Summoning Monsters...", "Generating Terrain...", "Ready."];
-          
-          // Phase 1: The Bootloader Animation
-          const barAnimationComplete = new Promise((resolve) => {
-              const loadInterval = setInterval(() => {
-                  currentBlocks++;
-                  const filled = '█'.repeat(currentBlocks);
-                  const empty = '.'.repeat(10 - currentBlocks);
-                  barEl.textContent = `[${filled}${empty}]`;
-                  
-                  if (currentBlocks === 3) textEl.textContent = statusTexts[1];
-                  if (currentBlocks === 6) textEl.textContent = statusTexts[2];
-                  if (currentBlocks === 10) {
-                      textEl.textContent = statusTexts[3];
-                      clearInterval(loadInterval);
-                      setTimeout(resolve, 300); // Pause for dramatic effect
-                  }
-              }, 200); 
-          });
-
-          // Phase 2: Reveal the Title Screen
-          Promise.all([
-              document.fonts.ready,
-              new Promise(res => window.addEventListener('load', res)),
-              barAnimationComplete 
-          ]).then(() => {
-              // Fade in Title Screen
-              titleScreenEl.style.visibility = 'visible';
-              titleScreenEl.style.opacity = '1';
-              
-              // Fade out and destroy Bootloader
-              loaderEl.style.opacity = '0'; 
-              setTimeout(() => loaderEl.remove(), 400); 
-          });
-
-          // Phase 3: Click to Start
-          titleScreenEl.addEventListener('click', () => {
-              // Fade out Title Screen
-              titleScreenEl.style.opacity = '0';
-              
-              setTimeout(() => {
-                  titleScreenEl.remove();
-                  
-                  // Fade in Login Box
-                  authBoxEl.style.visibility = 'visible';
-                  authBoxEl.style.opacity = '1';
-                  
-                  // Reveal the rest of the HTML body (Footer)
-                  document.body.classList.add('is-loaded');
-              }, 700);
-          });
-      </script>
-
       <main class="container w-full">
          
          <!-- LOGIN SCREEN -->
@@ -133,12 +71,14 @@
                      </div>
                      
                      <div class="w-full space-y-4 px-4">
-                        <!-- Asset-Ready Inputs -->
-                        <div class="ui-input-asset">
-                           <input type="email" id="emailInput" autocomplete="email" aria-label="Email Address" placeholder="Email" class="w-full bg-transparent outline-none terminal-text">
+                        <!-- Asset-Ready Inputs WITH OVERLAY HACK -->
+                        <div class="ui-input-asset relative">
+                           <input type="email" id="emailInput" autocomplete="email" aria-label="Email Address" placeholder="Email" class="w-full bg-transparent outline-none z-10 relative" style="color: transparent !important; text-shadow: none !important; caret-color: #4ade80;">
+                           <span id="emailOverlay" class="overlay-text absolute left-[32px] top-[28px] pointer-events-none z-0"></span>
                         </div>
-                        <div class="ui-input-asset">
-                           <input type="password" id="passwordInput" autocomplete="current-password" aria-label="Password" placeholder="Password" class="w-full bg-transparent outline-none terminal-text">
+                        <div class="ui-input-asset relative">
+                           <input type="password" id="passwordInput" autocomplete="current-password" aria-label="Password" placeholder="Password" class="w-full bg-transparent outline-none z-10 relative" style="color: transparent !important; text-shadow: none !important; caret-color: #4ade80;">
+                           <span id="passwordOverlay" class="overlay-text absolute left-[32px] top-[28px] pointer-events-none z-0"></span>
                         </div>
 
                          <!-- Asset-Ready Button -->
@@ -753,5 +693,95 @@
             <button data-key="Escape" aria-label="Escape/Cancel" class="action-btn red">❌</button> 
          </div>
       </div>
+
+      <!-- THE MASTER APP FLOW SCRIPT -->
+      <script>
+          const barEl = document.getElementById('loaderBar');
+          const textEl = document.getElementById('loaderText');
+          const titleScreenEl = document.getElementById('titleScreen');
+          const authBoxEl = document.getElementById('authContainer');
+          const loaderEl = document.getElementById('retroBootLoader');
+          
+          let currentBlocks = 0;
+          const statusTexts = ["Loading Assets...", "Summoning Monsters...", "Generating Terrain...", "Ready."];
+          
+          // Phase 1: The Bootloader Animation
+          const barAnimationComplete = new Promise((resolve) => {
+              const loadInterval = setInterval(() => {
+                  currentBlocks++;
+                  const filled = '█'.repeat(currentBlocks);
+                  const empty = '.'.repeat(10 - currentBlocks);
+                  barEl.textContent = `[${filled}${empty}]`;
+                  
+                  if (currentBlocks === 3) textEl.textContent = statusTexts[1];
+                  if (currentBlocks === 6) textEl.textContent = statusTexts[2];
+                  if (currentBlocks === 10) {
+                      textEl.textContent = statusTexts[3];
+                      clearInterval(loadInterval);
+                      setTimeout(resolve, 300); // Pause for dramatic effect
+                  }
+              }, 200); 
+          });
+
+          // Phase 2: Reveal the Title Screen
+          Promise.all([
+              document.fonts.ready,
+              new Promise(res => window.addEventListener('load', res)),
+              barAnimationComplete 
+          ]).then(() => {
+              // Fade in Title Screen
+              titleScreenEl.style.visibility = 'visible';
+              titleScreenEl.style.opacity = '1';
+              
+              // Fade out and destroy Bootloader
+              loaderEl.style.opacity = '0'; 
+              setTimeout(() => loaderEl.remove(), 400); 
+          });
+
+          // Phase 3: Click to Start
+          titleScreenEl.addEventListener('click', () => {
+              // Fade out Title Screen
+              titleScreenEl.style.opacity = '0';
+              
+              setTimeout(() => {
+                  titleScreenEl.remove();
+                  
+                  // Fade in Login Box
+                  authBoxEl.style.visibility = 'visible';
+                  authBoxEl.style.opacity = '1';
+                  
+                  // Reveal the rest of the HTML body (Footer)
+                  document.body.classList.add('is-loaded');
+              }, 700);
+          });
+      </script>
+
+      <!-- AUTOFILL OVERLAY SYNC -->
+      <script>
+          const emailIn = document.getElementById('emailInput');
+          const emailOut = document.getElementById('emailOverlay');
+          const passIn = document.getElementById('passwordInput');
+          const passOut = document.getElementById('passwordOverlay');
+
+          function syncInputs() {
+              // Show email text normally
+              if (emailIn && emailOut) {
+                  emailOut.textContent = emailIn.value || (emailIn.matches(':placeholder-shown') ? '' : emailIn.value);
+              }
+              // Hide password text as bullet points
+              if (passIn && passOut) {
+                  passOut.textContent = '•'.repeat(passIn.value.length);
+              }
+          }
+
+          // Sync when user types manually
+          if (emailIn) emailIn.addEventListener('input', syncInputs);
+          if (passIn) passIn.addEventListener('input', syncInputs);
+          
+          // Sync on Autofill (Chrome sometimes delays autofill by a split second, so we check a few times on load)
+          setTimeout(syncInputs, 100);
+          setTimeout(syncInputs, 500);
+          setTimeout(syncInputs, 1000);
+      </script>
    </body>
 </html>
