@@ -140,18 +140,36 @@
          </div>
 
          <!-- CHARACTER SELECT MODAL -->
-         <div id="characterSelectModal" class="themed-container mx-auto max-w-4xl p-6 rounded-2xl shadow-xl border-2 hidden" role="dialog" aria-modal="true">
-            <h1 class="text-3xl font-bold text-center mb-6">Select Character</h1>
-            <div id="slotsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            </div>
-            <div class="text-center">
-               <button id="logoutFromSelectButton" class="text-sm text-red-500 hover:underline">Logout</button>
-            </div>
+         <div id="characterSelectModal" class="fixed inset-0 flex items-center justify-center z-[100] login-bg hidden" role="dialog" aria-modal="true">
+             
+             <div class="ui-frame-asset max-w-5xl w-full mx-4">
+                 <div class="ui-parchment-asset flex flex-col items-center p-6 pb-4">
+                     
+                     <h1 class="gothic-title text-5xl text-white m-0 border-none pb-6 text-center">Select Character</h1>
+                     
+                     <!-- The JavaScript will inject the 3 boxes into here! -->
+                     <div id="slotsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mb-6">
+                     </div>
+                     
+                     <div class="text-center mt-4 w-full border-t-2 border-dashed border-gray-600 pt-4">
+                        <button id="logoutFromSelectButton" class="text-sm text-red-400 hover:text-red-300 font-bold tracking-widest uppercase transition-colors">← Return to Login</button>
+                     </div>
+
+                 </div>
+             </div>
+             
          </div>
         
          <!-- CHARACTER CREATION MODAL -->
-         <div id="charCreationModal" class="themed-container mx-auto max-w-4xl p-6 rounded-2xl shadow-xl border-2 hidden overflow-y-auto max-h-[90vh]" role="dialog" aria-modal="true">
-            <h1 class="text-3xl font-bold text-center mb-6">Create Your Character</h1>
+         <div id="charCreationModal" class="fixed inset-0 flex items-center justify-center z-[100] login-bg hidden" role="dialog" aria-modal="true">
+            
+            <!-- Stone Frame (limits width so it doesn't stretch too far, allows scrolling if screen is small) -->
+            <div class="ui-frame-asset max-w-4xl w-full mx-4 max-h-[95vh] flex flex-col">
+        
+        <!-- Parchment Background -->
+        <div class="ui-parchment-asset flex flex-col p-6 overflow-y-auto custom-scrollbar">
+            
+            <h1 class="gothic-title text-4xl text-white text-center border-none m-0 pb-6">Create Your Character</h1>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <!-- LEFT COLUMN: Identity -->
