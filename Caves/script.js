@@ -212,12 +212,11 @@ async function renderSlots() {
                     <p class="text-xs text-gray-400 mt-3 h-8 leading-tight">${getRegionName(Math.floor((data.x || 0) / 160), Math.floor((data.y || 0) / 160))}</p>
                 </div>
                 
-                <!-- items-center instead of items-stretch so the buttons can be different heights -->
-                 <div class="flex gap-2 w-full mt-4 items-center h-12">
+                <div class="flex gap-2 w-full mt-4 items-center h-12">
                     <button onclick="selectSlot('${slotId}')" class="ui-btn-asset flex-grow h-full !text-2xl !p-0 !mt-0">PLAY</button>
                     
-                    <!-- Scaled down to w-12 / h-8, font size reduced to text-xl -->
-                    <button onclick="deleteSlot('${slotId}')" class="w-12 h-8 flex-none bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-xl flex items-center justify-center transition-transform active:scale-95" style="border: 2px solid #000; box-shadow: inset -2px -2px 0px rgba(0,0,0,0.4), inset 2px 2px 0px rgba(255,255,255,0.3); text-shadow: 2px 2px 0px #000;" title="Delete">X</button>
+                    <!-- ADDED: relative top-[4px] right-[4px] -->
+                    <button onclick="deleteSlot('${slotId}')" class="relative top-[4px] right-[4px] w-12 h-8 flex-none bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-xl flex items-center justify-center transition-transform active:scale-95" style="border: 2px solid #000; box-shadow: inset -2px -2px 0px rgba(0,0,0,0.4), inset 2px 2px 0px rgba(255,255,255,0.3); text-shadow: 2px 2px 0px #000;" title="Delete">X</button>
                 </div>
             `;
         } else {
