@@ -51,8 +51,8 @@
       <main class="container w-full">
          
          <!-- LOGIN SCREEN -->
-         <!-- Added the opacity/visibility styles so it hides behind the Title Screen -->
-         <div id="authContainer" class="fixed inset-0 flex items-center justify-center z-50 login-bg" style="opacity: 0; visibility: hidden; transition: opacity 0.8s ease;">
+
+         <div id="authContainer" class="fixed inset-0 flex items-center justify-center z-50 login-bg">
              
              <!-- Asset-Ready Outer Frame -->
              <div class="ui-frame-asset">
@@ -738,15 +738,11 @@
 
           // Phase 3: Click to Start
           titleScreenEl.addEventListener('click', () => {
-              // Fade out Title Screen
+              // Fade out Title Screen like a curtain revealing the Login box underneath
               titleScreenEl.style.opacity = '0';
               
               setTimeout(() => {
                   titleScreenEl.remove();
-                  
-                  // Fade in Login Box
-                  authBoxEl.style.visibility = 'visible';
-                  authBoxEl.style.opacity = '1';
                   
                   // Reveal the rest of the HTML body (Footer)
                   document.body.classList.add('is-loaded');
