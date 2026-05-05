@@ -746,33 +746,48 @@ kbd {
     align-items: center;
 }
 
-/* Base input styling using the 'font' shorthand for autofill inheritance */
+/* Base input styling */
 .ui-input-asset input {
     background-color: transparent !important;
     border: none !important;
     outline: none !important;
-    
-    color: #4ade80 !important; /* Retro Green */
-    /* Shorthand: style weight size/line-height family */
+    color: #4ade80 !important; 
     font: normal bold 1.4rem/1.5 'Courier New', Courier, monospace !important; 
     text-shadow: none !important; 
-    
     width: 100%;
-    transform: translateY(2px); /* Centers text vertically */
+    transform: translateY(2px); 
 }
 
 .ui-input-asset input::placeholder { 
-    color: #4b5563 !important; /* Dark grey placeholder */
+    color: #4b5563 !important; 
     opacity: 0.7;
 }
 
-/* Delay the blue background and force the green text color */
+/* THE MAGIC BULLET FOR CHROME AUTOFILL */
 .ui-input-asset input:-webkit-autofill,
 .ui-input-asset input:-webkit-autofill:hover, 
 .ui-input-asset input:-webkit-autofill:focus, 
 .ui-input-asset input:-webkit-autofill:active {
-    transition: background-color 5000s ease-in-out 0s !important;
+    /* Force the text to be green */
     -webkit-text-fill-color: #4ade80 !important;
+    
+    /* MAGIC: Clips the ugly white/blue background so it only covers the text, making the rest of the box transparent! */
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    
+    /* Strip OS styling */
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    
+    /* Transition delay fallback */
+    transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* Force the font size inside the Chrome shadow DOM */
+.ui-input-asset input:-webkit-autofill::first-line {
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 1.4rem !important;
+    font-weight: bold !important;
 }
 
 /* Hide placeholder text when autofill is active to prevent overlapping */
