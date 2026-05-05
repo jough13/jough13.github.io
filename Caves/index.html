@@ -39,15 +39,15 @@
           }
       </style>
 
-      <!-- 1. The Bootloader -->
-      <div id="retroBootLoader" style="position: fixed; inset: 0; background-color: #111827; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.4s ease;">
-          <div id="loaderText" style="color: #4ade80; font-family: 'Courier New', monospace; font-size: 1.5rem; font-weight: bold; text-transform: uppercase;">Initializing...</div>
-          <div id="loaderBar" style="color: #4ade80; font-family: 'Courier New', monospace; font-size: 2.5rem; font-weight: bold; letter-spacing: 2px; margin-top: 1rem; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);">[..........]</div>
+      <!-- 1. The Bootloader (Dark Beige + Black Ink) -->
+      <div id="retroBootLoader" style="position: fixed; inset: 0; background-color: #8b7e66; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; transition: opacity 1s ease;">
+          <div id="loaderText" style="color: #111827; font-family: 'Courier New', monospace; font-size: 1.5rem; font-weight: bold; text-transform: uppercase;">Initializing...</div>
+          <div id="loaderBar" style="color: #111827; font-family: 'Courier New', monospace; font-size: 2.5rem; font-weight: bold; letter-spacing: 2px; margin-top: 1rem;">[..........]</div>
       </div>
 
       <!-- 2. The Title Screen -->
-      <!-- Removed 'display: none' so it can actually fade in! -->
-      <div id="titleScreen" class="fixed inset-0 z-[9000] login-bg flex flex-col items-center justify-center cursor-pointer transition-opacity duration-700" style="visibility: hidden; opacity: 0;">
+      <!-- Added a 1-second fade transition -->
+      <div id="titleScreen" class="fixed inset-0 z-[9000] login-bg flex flex-col items-center justify-center cursor-pointer" style="visibility: hidden; opacity: 0; transition: opacity 1s ease;">
           <h1 class="gothic-title text-white text-center drop-shadow-2xl" style="font-size: 6rem; line-height: 1.1; margin-bottom: 3rem;">Caves<br>& Castles</h1>
           <p class="text-green-400 font-mono text-2xl font-bold tracking-widest" style="text-shadow: 0 0 10px rgba(74, 222, 128, 0.8); animation: pulse 1.5s infinite;">- CLICK TO START -</p>
       </div>
@@ -55,8 +55,8 @@
       <main class="container w-full">
          
          <!-- LOGIN SCREEN -->
-
-         <div id="authContainer" class="fixed inset-0 flex items-center justify-center z-50 login-bg">
+         <!-- Re-added opacity: 0 and visibility: hidden so it can fade in properly later! -->
+         <div id="authContainer" class="fixed inset-0 flex items-center justify-center z-50 login-bg" style="opacity: 0; visibility: hidden; transition: opacity 1s ease;">
              
              <!-- Asset-Ready Outer Frame -->
              <div class="ui-frame-asset">
@@ -69,13 +69,12 @@
                         <!-- JS only touches this H1 now! -->
                         <h1 id="authTitle" class="gothic-title text-5xl text-white m-0 border-none pb-0">Login</h1>
                         
-                        <!-- Torch GIF: Notice the 'transform: translateY(-8px)' -->
-                        <!-- You can change -8px to -12px, or 5px, to nudge it exactly where you want it! -->
+                        <!-- Torch GIF -->
                         <img src="assets/torch.gif" alt="Torch" class="w-16 h-auto" style="image-rendering: pixelated; filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.5)); transform: translateY(-8px);">
                      </div>
                      
                      <div class="w-full space-y-4 px-4">
-                        <!-- Asset-Ready Inputs -->
+                        <!-- Clean, pure inputs! No hacky overlays! -->
                         <div class="ui-input-asset">
                            <input type="email" id="emailInput" autocomplete="email" aria-label="Email Address" placeholder="Email" class="w-full bg-transparent outline-none terminal-text">
                         </div>
@@ -720,7 +719,7 @@
                   if (currentBlocks === 10) {
                       textEl.textContent = statusTexts[3];
                       clearInterval(loadInterval);
-                      setTimeout(resolve, 300); // Pause for dramatic effect
+                      setTimeout(resolve, 400); // Hold on "Ready" briefly
                   }
               }, 200); 
           });
@@ -731,27 +730,37 @@
               new Promise(res => window.addEventListener('load', res)),
               barAnimationComplete 
           ]).then(() => {
-              // Fade in Title Screen
-              titleScreenEl.style.visibility = 'visible';
-              titleScreenEl.style.opacity = '1';
-              
-              // Fade out and destroy Bootloader
+              // Fade out the beige loader FIRST
               loaderEl.style.opacity = '0'; 
-              setTimeout(() => loaderEl.remove(), 400); 
+              
+              // Wait 1 second for it to disappear, THEN fade in Title Screen
+              setTimeout(() => {
+                  loaderEl.remove();
+                  titleScreenEl.style.visibility = 'visible';
+                  
+                  // A tiny delay forces the browser to apply the visibility before animating opacity
+                  setTimeout(() => titleScreenEl.style.opacity = '1', 50);
+              }, 1000); 
           });
 
           // Phase 3: Click to Start
           titleScreenEl.addEventListener('click', () => {
-              // Fade out Title Screen like a curtain revealing the Login box underneath
+              // Fade out Title Screen to pure beige
               titleScreenEl.style.opacity = '0';
               
+              // Wait 1 second for it to disappear, THEN fade in Login Box
               setTimeout(() => {
                   titleScreenEl.remove();
                   
                   // Reveal the rest of the HTML body (Footer)
                   document.body.classList.add('is-loaded');
-              }, 700);
+
+                  // Fade in Login Box
+                  authBoxEl.style.visibility = 'visible';
+                  setTimeout(() => authBoxEl.style.opacity = '1', 50);
+              }, 1000);
           });
       </script>
+
    </body>
 </html>
