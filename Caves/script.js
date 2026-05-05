@@ -190,49 +190,49 @@ async function renderSlots() {
     slotsContainer.innerHTML = '';
     const charsRef = db.collection('players').doc(currentUser.uid).collection('characters');
 
-    // Define our 3 slots
     const slotIds = ['slot1', 'slot2', 'slot3'];
 
     for (const slotId of slotIds) {
         const doc = await charsRef.doc(slotId).get();
         const slotDiv = document.createElement('div');
-        slotDiv.className = "panel p-4 rounded-xl border-2 flex flex-col items-center justify-between min-h-[200px] transition-all";
+        
+        // MAGIC: Use the stone border box from the login screen!
+        slotDiv.className = "ui-input-asset flex-col justify-between transition-transform cursor-pointer hover:scale-[1.02] min-h-[320px] w-full !p-6";
 
         if (doc.exists) {
             const data = doc.data();
             const bg = PLAYER_BACKGROUNDS[data.background] || { name: 'Unknown' };
 
             // --- OCCUPIED SLOT UI ---
-            slotDiv.classList.add('hover:border-blue-500');
             slotDiv.innerHTML = `
-        <div class="text-center w-full">
-            <h3 class="text-xl font-bold mb-1">${data.name || 'Unnamed'}</h3>
-            <div class="text-4xl mb-2">${data.isBoating ? 'c' : (data.character || '@')}</div>
-            <p class="font-bold highlight-text">${bg.name}</p>
-            <p class="text-sm muted-text">Level ${data.level || 1}</p>
-            <p class="text-xs muted-text mt-2">${getRegionName(Math.floor((data.x || 0) / 160), Math.floor((data.y || 0) / 160))}</p>
-        </div>
-        <div class="flex gap-2 w-full mt-4">
-            <button onclick="selectSlot('${slotId}')" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Play</button>
-            <button onclick="deleteSlot('${slotId}')" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">🗑️</button>
-        </div>
-    `;
+                <div class="text-center w-full pt-2">
+                    <h3 class="text-3xl font-bold text-white mb-2" style="font-family: 'Uncial Antiqua', cursive; text-shadow: 2px 2px 0 #000;">${data.name || 'Unnamed'}</h3>
+                    <div class="text-6xl my-4 text-[#4ade80]" style="text-shadow: 0 0 10px rgba(74, 222, 128, 0.4);">${data.isBoating ? 'c' : (data.character || '@')}</div>
+                    <p class="font-bold text-yellow-400 text-lg uppercase tracking-widest">${bg.name}</p>
+                    <p class="text-sm text-gray-300 font-bold mt-1">Level ${data.level || 1}</p>
+                    <p class="text-xs text-gray-400 mt-3 h-8 leading-tight">${getRegionName(Math.floor((data.x || 0) / 160), Math.floor((data.y || 0) / 160))}</p>
+                </div>
+                <div class="flex gap-3 w-full mt-4">
+                    <!-- We use !text-xl and !p-2 to force the retro buttons to shrink and fit inside the boxes! -->
+                    <button onclick="selectSlot('${slotId}')" class="ui-btn-asset flex-1 !text-xl !p-2 !mt-0">PLAY</button>
+                    <button onclick="deleteSlot('${slotId}')" class="ui-btn-asset flex-none !text-xl !p-2 !mt-0 !text-red-400" title="Delete">X</button>
+                </div>
+            `;
         } else {
             // --- EMPTY SLOT UI ---
-            slotDiv.classList.add('opacity-75', 'hover:opacity-100', 'hover:border-green-500', 'cursor-pointer');
+            slotDiv.classList.add('opacity-80', 'hover:opacity-100');
 
             slotDiv.onclick = (e) => {
-                // If they click the box background or the big +, select the slot
                 if (e.target === slotDiv || e.target.closest('.empty-slot-content')) selectSlot(slotId);
             };
 
             slotDiv.innerHTML = `
-                <div class="text-center w-full empty-slot-content">
-                    <h3 class="text-xl font-bold mb-4">Slot ${slotId.replace('slot', '')}</h3>
-                    <div class="text-4xl mb-4 text-gray-600">+</div>
-                    <p class="muted-text">Empty</p>
+                <div class="text-center w-full empty-slot-content pt-6 flex-grow flex flex-col justify-center">
+                    <h3 class="text-2xl font-bold mb-4 text-gray-400" style="font-family: 'Uncial Antiqua', cursive;">Slot ${slotId.replace('slot', '')}</h3>
+                    <div class="text-5xl mb-4 text-gray-600">+</div>
+                    <p class="text-gray-500 font-bold tracking-widest uppercase">Empty</p>
                 </div>
-                <button onclick="event.stopPropagation(); selectSlot('${slotId}')" class="w-full mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">Create New</button>
+                <button onclick="event.stopPropagation(); selectSlot('${slotId}')" class="ui-btn-asset w-full !text-xl !p-2 !mt-0 !text-gray-300">CREATE</button>
             `;
         }
         slotsContainer.appendChild(slotDiv);
