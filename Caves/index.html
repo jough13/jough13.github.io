@@ -59,20 +59,20 @@
       </div>
 
       <script>
-          // Link the Bootloader to the Title Screen
-          const bootLoader = document.getElementById('retroBootLoader');
-          const titleScreen = document.getElementById('titleScreen');
-          const authContainer = document.getElementById('authContainer');
+          { // <-- The curly braces keep these variables trapped inside this script!
+              const titleScreenEl = document.getElementById('titleScreen');
+              const authBoxEl = document.getElementById('authContainer');
 
-          // When the Title Screen is clicked, fade it out and reveal the Login box
-          titleScreen.addEventListener('click', () => {
-              titleScreen.style.opacity = '0';
-              setTimeout(() => {
-                  titleScreen.remove();
-                  authContainer.style.opacity = '1';
-                  authContainer.style.visibility = 'visible';
-              }, 700);
-          });
+              // When the Title Screen is clicked, fade it out and reveal the Login box
+              titleScreenEl.addEventListener('click', () => {
+                  titleScreenEl.style.opacity = '0';
+                  setTimeout(() => {
+                      titleScreenEl.remove();
+                      authBoxEl.style.opacity = '1';
+                      authBoxEl.style.visibility = 'visible';
+                  }, 700);
+              });
+          }
       </script>
 
       <script>
@@ -123,7 +123,8 @@
       <main class="container w-full">
          
          <!-- LOGIN SCREEN -->
-         <div id="authContainer" class="fixed inset-0 flex items-center justify-center z-50 login-bg">
+         <!-- Added the opacity/visibility styles so it hides behind the Title Screen -->
+         <div id="authContainer" class="fixed inset-0 flex items-center justify-center z-50 login-bg" style="opacity: 0; visibility: hidden; transition: opacity 0.8s ease;">
              
              <!-- Asset-Ready Outer Frame -->
              <div class="ui-frame-asset">
