@@ -39,17 +39,18 @@
           }
       </style>
 
-      <!-- 1. The Bootloader (Dark Beige + Black Ink) -->
-      <div id="retroBootLoader" style="position: fixed; inset: 0; background-color: #8b7e66; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; transition: opacity 1s ease;">
-          <div id="loaderText" style="color: #111827; font-family: 'Courier New', monospace; font-size: 1.5rem; font-weight: bold; text-transform: uppercase;">Initializing...</div>
-          <div id="loaderBar" style="color: #111827; font-family: 'Courier New', monospace; font-size: 2.5rem; font-weight: bold; letter-spacing: 2px; margin-top: 1rem;">[..........]</div>
+      <!-- 1. The Bootloader (Now White with Black Strokes) -->
+      <div id="retroBootLoader" style="position: fixed; inset: 0; background-color: #8b7e66; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.4s ease;">
+          <div id="loaderText" style="color: #ffffff; font-family: 'Courier New', monospace; font-size: 1.5rem; font-weight: bold; text-transform: uppercase; -webkit-text-stroke: 1px black; text-shadow: 2px 2px 0 #000;">Initializing...</div>
+          <div id="loaderBar" style="color: #ffffff; font-family: 'Courier New', monospace; font-size: 2.5rem; font-weight: bold; letter-spacing: 2px; margin-top: 1rem; -webkit-text-stroke: 1px black; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(255,255,255,0.2);">[..........]</div>
       </div>
 
       <!-- 2. The Title Screen -->
-      <!-- Added a 1-second fade transition -->
-      <div id="titleScreen" class="fixed inset-0 z-[9000] login-bg flex flex-col items-center justify-center cursor-pointer" style="visibility: hidden; opacity: 0; transition: opacity 1s ease;">
+      <div id="titleScreen" class="fixed inset-0 z-[9000] login-bg flex flex-col items-center justify-center cursor-pointer transition-opacity duration-700" style="visibility: hidden; opacity: 0;">
           <h1 class="gothic-title text-white text-center drop-shadow-2xl" style="font-size: 6rem; line-height: 1.1; margin-bottom: 3rem;">Caves<br>& Castles</h1>
-          <p class="text-green-400 font-mono text-2xl font-bold tracking-widest" style="text-shadow: 0 0 10px rgba(74, 222, 128, 0.8); animation: pulse 1.5s infinite;">- CLICK TO START -</p>
+          
+          <!-- Click to start now has a black stroke AND the green neon glow! -->
+          <p class="text-green-400 font-mono text-2xl font-bold tracking-widest" style="-webkit-text-stroke: 1px black; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(74, 222, 128, 0.8); animation: pulse 1.5s infinite;">- CLICK TO START -</p>
       </div>
 
       <main class="container w-full">
