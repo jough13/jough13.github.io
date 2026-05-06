@@ -17,10 +17,10 @@ window.selectBackground = async function (bgKey) {
     }
     
     // EASY WIN: Proper recalculation so we don't desync Health/Mana
-    player.maxHealth = 5 + (player.constitution * 5);
+    player.maxHealth = 10 + (player.constitution * 5);
     player.health = player.maxHealth;
     
-    player.maxMana = 5 + (player.wits * 5);
+    player.maxMana = 10 + (player.wits * 5);
     player.mana = player.maxMana;
 
     // 2. Apply Inventory
@@ -91,10 +91,7 @@ async function initCharacterSelect(user) {
     renderSlots();
 }
 
-let isEnteringGame = false; // Add global lock
-
 window.selectSlot = async function (slotId) {
-    // 🚨 Prevent Double Clicks!
     if (isEnteringGame) return; 
     isEnteringGame = true;
 
@@ -108,15 +105,17 @@ window.selectSlot = async function (slotId) {
 
         characterSelectModal.classList.add('hidden');
 
-        if (doc.exists) {
+        // Ensure the doc exists AND it has a background (meaning creation finished)
+        if (doc.exists && doc.data().background) {
             enterGame(doc.data());
         } else {
+            // If the doc doesn't exist, OR it's a half-created character, 
+            // force them into the creation UI.
             const defaultState = createDefaultPlayerState();
             Object.assign(gameState.player, defaultState);
             initCreationUI(); 
         }
     } finally {
-        // Unlock after a short delay to ensure modal hides safely
         setTimeout(() => { isEnteringGame = false; }, 1000);
     }
 };
@@ -187,7 +186,7 @@ function updateCreationSummary() {
     const summaryDiv = document.getElementById('creationSummary');
     const nameInput = document.getElementById('charNameInput');
     
-    // Clean the input to prevent weird spacing or hidden HTML tags
+    // EASY WIN: Clean the input to prevent weird spacing or hidden HTML tags
     creationState.name = nameInput.value.replace(/[^a-zA-Z0-9 ]/g, '').trim();
 
     const raceName = creationState.race ? PLAYER_RACES[creationState.race].name : "???";
@@ -213,35 +212,30 @@ function updateCreationSummary() {
 
     const btn = document.getElementById('finalizeCreationBtn');
     
-    // Dynamic button text tells the player exactly what is missing!
+    // EASY WIN: Dynamic button text tells the player exactly what is missing!
     if (creationState.name.length === 0) {
         btn.textContent = "Enter a Name...";
         btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
-        btn.classList.remove('bg-green-600', 'hover:bg-green-500');
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
     } else if (!creationState.race) {
         btn.textContent = "Select a Race...";
         btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
-        btn.classList.remove('bg-green-600', 'hover:bg-green-500');
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
     } else if (!creationState.background) {
         btn.textContent = "Select a Class...";
         btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
-        btn.classList.remove('bg-green-600', 'hover:bg-green-500');
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
     } else {
-        btn.textContent = "Begin Adventure!";
+        btn.textContent = "Begin Adventure";
         btn.disabled = false;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
-        btn.classList.add('bg-green-600', 'hover:bg-green-500');
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
 }
 
-// Attach listeners
 document.getElementById('charNameInput').addEventListener('input', updateCreationSummary);
 document.getElementById('finalizeCreationBtn').addEventListener('click', finalizeCharacterCreation);
 
-// Random Name Generator helper
+// EASY WIN: Random Name Generator helper
 window.generateRandomName = function() {
     const prefixes = ["Thor", "Garr", "El", "Fae", "Kael", "Mor", "Vex", "Zar", "Brim", "Nyx"];
     const suffixes = ["in", "ick", "ara", "en", "is", "os", "ia", "on", "us", "th"];
@@ -249,7 +243,7 @@ window.generateRandomName = function() {
     const s = suffixes[Math.floor(Math.random() * suffixes.length)];
     
     document.getElementById('charNameInput').value = p + s;
-    updateCreationSummary(); // Force UI to update immediately
+    updateCreationSummary();
 };
 
 function initCreationUI() {
@@ -349,30 +343,28 @@ async function finalizeCharacterCreation() {
         player[stat] = (player[stat] || 1) + raceData.stats[stat];
     }
 
-    player.maxHealth = 5 + (player.constitution * 5);
+    // EASY WIN: Bug Fix - Correctly calculate Max HP based on the total final Constitution!
+    player.maxHealth = 10 + (player.constitution * 5);
     player.health = player.maxHealth;
     
-    player.maxMana = 5 + (player.wits * 5);
+    player.maxMana = 10 + (player.wits * 5);
     player.mana = player.maxMana;
     
-    player.maxStamina = 5 + (player.endurance * 5);
+    player.maxStamina = 10 + (player.endurance * 5);
     player.stamina = player.maxStamina;
 
-    player.maxPsyche = 7 + (player.willpower * 3);
-    player.psyche = player.maxPsyche;
-
-    // 4. Apply Inventory (Class Kit)
+    // 5. Apply Inventory (Class Kit)
     bgData.items.forEach(newItem => {
         player.inventory.push(newItem);
     });
 
-    // 5. Auto-Equip
+    // 6. Auto-Equip
     const weapon = player.inventory.find(i => i.type === 'weapon');
     const armor = player.inventory.find(i => i.type === 'armor');
     if (weapon) { player.equipment.weapon = weapon; weapon.isEquipped = true; }
     if (armor) { player.equipment.armor = armor; armor.isEquipped = true; }
 
-    // 6. Save and Start
+    // 7. Save and Start
     await playerRef.set(sanitizeForFirebase(player));
 
     charCreationModal.classList.add('hidden');
