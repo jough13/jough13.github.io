@@ -3873,18 +3873,15 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     // --- DATA-DRIVEN INTERACTION CHECK ---
-    // This dynamically handles anomalies, puzzles, and interactive objects directly from TILE_DATA!
     if (tileData && typeof tileData.onInteract === 'function') {
         const updatesToSave = tileData.onInteract(gameState, newX, newY);
         
-        // If the interaction caused a change we need to save, trigger a save
         if (updatesToSave) {
-            updatesToSave.lootedTiles = Array.from(gameState.lootedTiles); // Always sync looted state
+            updatesToSave.lootedTiles = Object.fromEntries(gameState.lootedTiles);
             playerRef.update(updatesToSave);
             renderStats();
         }
         
-        // Always end turn on interaction
         endPlayerTurn(); 
         return; 
     }
@@ -6017,7 +6014,7 @@ async function attemptMovePlayer(newX, newY) {
 
     if (inventoryWasUpdated) {
         updates.inventory = getSanitizedInventory();
-        updates.lootedTiles = Array.from(gameState.lootedTiles);
+        updates.lootedTiles = Object.fromEntries(gameState.lootedTiles);
         renderInventory();
     }
 
@@ -6367,7 +6364,7 @@ async function enterGame(playerData) {
     // --- RESTORE SETS ---
     gameState.discoveredRegions = new Set(playerData.discoveredRegions || []);
     gameState.foundLore = new Set(playerData.foundLore || []);
-    gameState.lootedTiles = new Set(playerData.lootedTiles || []);
+
     gameState.exploredChunks = new Set(playerData.exploredChunks || []);
     gameState.shopStates = playerData.shopStates || {};
 
