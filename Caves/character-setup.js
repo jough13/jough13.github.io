@@ -92,31 +92,21 @@ async function initCharacterSelect(user) {
 }
 
 window.selectSlot = async function (slotId) {
-    if (isEnteringGame) return; 
-    isEnteringGame = true;
-
     loadingIndicator.classList.remove('hidden');
 
     player_id = currentUser.uid; 
     playerRef = db.collection('players').doc(player_id).collection('characters').doc(slotId);
 
-    try {
-        const doc = await playerRef.get();
+    const doc = await playerRef.get();
 
-        characterSelectModal.classList.add('hidden');
+    characterSelectModal.classList.add('hidden');
 
-        // Ensure the doc exists AND it has a background (meaning creation finished)
-        if (doc.exists && doc.data().background) {
-            enterGame(doc.data());
-        } else {
-            // If the doc doesn't exist, OR it's a half-created character, 
-            // force them into the creation UI.
-            const defaultState = createDefaultPlayerState();
-            Object.assign(gameState.player, defaultState);
-            initCreationUI(); 
-        }
-    } finally {
-        setTimeout(() => { isEnteringGame = false; }, 1000);
+    if (doc.exists) {
+        enterGame(doc.data());
+    } else {
+        const defaultState = createDefaultPlayerState();
+        Object.assign(gameState.player, defaultState);
+        initCreationUI(); 
     }
 };
 
