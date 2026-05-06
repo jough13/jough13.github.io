@@ -24,6 +24,14 @@
    </head>
    <body class="flex flex-col items-center justify-center min-h-screen p-4 font-mono login-bg">
 
+      <!-- GLOBAL INTERIM LOADING SCREEN -->
+      <div id="loadingIndicator" class="fixed inset-0 z-[9999] hidden" style="background-color: #8b7e66;">
+          <div class="w-full h-full flex flex-col items-center justify-center">
+              <div id="loadingFlavorText" style="color: #ffffff; font-family: 'Courier New', monospace; font-size: 1.5rem; font-weight: bold; text-transform: uppercase; -webkit-text-stroke: 1px black; text-shadow: 2px 2px 0 #000; text-align: center; padding: 0 1rem;">Loading...</div>
+              <div class="animate-pulse" style="color: #ffffff; font-family: 'Courier New', monospace; font-size: 2.5rem; font-weight: bold; letter-spacing: 2px; margin-top: 1rem; -webkit-text-stroke: 1px black; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(255,255,255,0.2);">[..........]</div>
+          </div>
+      </div>
+
       <!-- ========================================== -->
       <!-- RETRO LOADING SCREEN (Blocks all flashing) -->
       <!-- ========================================== -->
@@ -223,10 +231,7 @@
          <!-- MAIN GAME UI -->
          <div id="gameContainer" class="ui-frame-asset w-full max-w-[1400px] mx-auto hidden mt-4 mb-8">
             <div class="ui-parchment-asset relative">
-            <div id="loadingIndicator" class="absolute inset-0 flex items-center justify-center bg-[var(--bg-container)] z-50 rounded-lg">
-               <p class="text-2xl font-bold highlight-text" aria-live="polite">Loading...</p>
-            </div>
-            
+                        
             <header class="relative">
                <h1 class="text-4xl font-bold text-center mb-4">Caves and Castles</h1>
                <nav class="absolute top-0 right-0 flex items-center gap-2">
@@ -783,6 +788,42 @@
                   authBoxEl.style.visibility = 'visible';
                   setTimeout(() => authBoxEl.style.opacity = '1', 50);
               }, 1000);
+          });
+      </script>
+
+   <!-- FLAVOR TEXT RANDOMIZER -->
+      <script>
+          document.addEventListener("DOMContentLoaded", () => {
+              const flavorTexts = [
+                  "Reticulating splines...",
+                  "Polishing the Ancient Crown...",
+                  "Feeding the Giant Rats...",
+                  "Consulting the Royal Historian...",
+                  "Sharpening rusty swords...",
+                  "Counting gold coins...",
+                  "Summoning Eldritch Horrors...",
+                  "Hiding the Mimics...",
+                  "Brewing questionable potions...",
+                  "Scrubbing the dungeon floors...",
+                  "Arguing with the shopkeeper...",
+                  "Untangling spider webs..."
+              ];
+              
+              const loader = document.getElementById('loadingIndicator');
+              const textEl = document.getElementById('loadingFlavorText');
+              
+              if (loader && textEl) {
+                  // This Observer watches for the JS to remove the 'hidden' class
+                  const observer = new MutationObserver((mutations) => {
+                      mutations.forEach((mutation) => {
+                          if (mutation.attributeName === 'class' && !loader.classList.contains('hidden')) {
+                              // Pick a random text every time the loader appears!
+                              textEl.textContent = flavorTexts[Math.floor(Math.random() * flavorTexts.length)];
+                          }
+                      });
+                  });
+                  observer.observe(loader, { attributes: true });
+              }
           });
       </script>
 
