@@ -791,7 +791,7 @@
           });
       </script>
 
-   <!-- FLAVOR TEXT RANDOMIZER -->
+   <!-- FLAVOR TEXT RANDOMIZER & ANIMATED BAR -->
       <script>
           document.addEventListener("DOMContentLoaded", () => {
               const flavorTexts = [
@@ -811,14 +811,40 @@
               
               const loader = document.getElementById('loadingIndicator');
               const textEl = document.getElementById('loadingFlavorText');
+              // Grab the loading bar element
+              const barEl = loader ? loader.querySelector('.animate-pulse') : null;
+              let interimInterval;
               
-              if (loader && textEl) {
-                  // This Observer watches for the JS to remove the 'hidden' class
+              if (loader && textEl && barEl) {
                   const observer = new MutationObserver((mutations) => {
                       mutations.forEach((mutation) => {
-                          if (mutation.attributeName === 'class' && !loader.classList.contains('hidden')) {
-                              // Pick a random text every time the loader appears!
-                              textEl.textContent = flavorTexts[Math.floor(Math.random() * flavorTexts.length)];
+                          if (mutation.attributeName === 'class') {
+                              
+                              if (!loader.classList.contains('hidden')) {
+                                  // 1. Set random text
+                                  textEl.textContent = flavorTexts[Math.floor(Math.random() * flavorTexts.length)];
+                                  
+                                  // 2. Start filling the bar rapidly
+                                  let blocks = 0;
+                                  clearInterval(interimInterval);
+                                  
+                                  interimInterval = setInterval(() => {
+                                      if (blocks < 10) blocks++;
+                                      const filled = '█'.repeat(blocks);
+                                      const empty = '.'.repeat(10 - blocks);
+                                      barEl.textContent = `[${filled}${empty}]`;
+                                      
+                                      // CRITICAL: Stop the interval once it hits 100% so it stays full!
+                                      if (blocks >= 10) {
+                                          clearInterval(interimInterval);
+                                      }
+                                  }, 80); 
+                                  
+                              } else {
+                                  // 3. Reset the bar quietly in the background when the loading screen hides
+                                  clearInterval(interimInterval);
+                                  barEl.textContent = `[..........]`;
+                              }
                           }
                       });
                   });
