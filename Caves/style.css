@@ -643,13 +643,15 @@ kbd {
     background: linear-gradient(
         to bottom,
         rgba(18, 16, 16, 0) 50%,
-        rgba(0, 0, 0, 0.07) 50% /* Much softer lines! */
+        rgba(0, 0, 0, 0.05) 50% /* REDUCED: Much softer lines (was 0.15) */
     );
     background-size: 100% 4px;
     z-index: 10;
     pointer-events: none; 
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.3); /* Softer vignette edge */
-    animation: scanline-scroll 4s linear infinite;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.2); /* REDUCED: Softer dark edge (was 0.5) */
+    
+    /* SLOWED DOWN: Changed from 4s to 10s so they slowly drift */
+    animation: scanline-scroll 10s linear infinite; 
 }
 
 /* Equipment Slot Styling */
