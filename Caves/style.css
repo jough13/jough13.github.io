@@ -22,6 +22,8 @@
     --title-color: #1c1917;
     --title-shadow: 2px 2px 0px rgba(255,255,255,0.8);
 
+    --title-stroke: 1px #6b7280;
+
     --asset-bg-stone: url('assets/bg_castle.png'); 
     --asset-frame-border: url('assets/frame_outer.png'); 
     --asset-input-bg: url('assets/input_bg.png'); 
@@ -57,6 +59,8 @@
     --asset-parchment: #262626; 
     --title-color: #f3f4f6;
     --title-shadow: 4px 4px 0px rgba(0,0,0,0.8);
+
+    --title-stroke: 1px #000000; 
 }
 
 /* --- EASY WIN: CUSTOM SCROLLBARS --- */
@@ -874,6 +878,8 @@ input[type="checkbox"].hidden {
     color: var(--title-color); /* Updated */
     text-shadow: var(--title-shadow); /* Updated */
     margin-bottom: 1.5rem;
+
+    -webkit-text-stroke: var(--title-stroke); 
 }
 
 /* Update the small bottom text */
