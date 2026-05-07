@@ -303,6 +303,152 @@ window.TILE_DATA = {
         tool: 'Machete',
         flavor: "A dense wall of thorny vines."
     },
+    
+    // --- 1. THE CARTOGRAPHER'S GUILD ---
+    '🗺️': {
+        type: 'anomaly', 
+        name: 'Guild Cartographer',
+        flavor: "A scholar buried under piles of parchment.",
+        onInteract: (state, x, y) => {
+            // 1. Calculate how many chunks the player has explored
+            const explored = state.exploredChunks ? state.exploredChunks.size : 0;
+            // 2. See how many rewards they've already claimed
+            const claimed = state.player.cartographerProgress || 0;
+            
+            // 3. Reward them once for every 50 chunks explored
+            const pendingRewards = Math.floor(explored / 50) - claimed;
+            
+            loreTitle.textContent = "The Cartographer's Guild";
+            
+            if (pendingRewards > 0) {
+                loreContent.innerHTML = `
+                    <p>"Incredible! You've mapped ${explored} regions! The Guild owes you handsomely for this data."</p>
+                    <button id="claimMapReward" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded w-full">Claim Reward (${pendingRewards} available)</button>`;
+                loreModal.classList.remove('hidden');
+                
+                // Bind the claim button
+                setTimeout(() => {
+                    document.getElementById('claimMapReward').onclick = () => {
+                        state.player.cartographerProgress = (state.player.cartographerProgress || 0) + 1;
+                        state.player.coins += 100;
+                        if (typeof grantXp === 'function') grantXp(150);
+                        
+                        logMessage("{gold:The Cartographer pays you 100 gold and shares worldly secrets! (+150 XP)}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+                        
+                        loreModal.classList.add('hidden');
+                        
+                        // Save directly to Firebase
+                        if (typeof playerRef !== 'undefined') {
+                            playerRef.update({ 
+                                cartographerProgress: state.player.cartographerProgress,
+                                coins: state.player.coins
+                            });
+                        }
+                        if (typeof renderStats === 'function') renderStats();
+                    };
+                }, 0);
+            } else {
+                const nextGoal = (claimed + 1) * 50;
+                loreContent.innerHTML = `
+                    <p>"You have mapped ${explored} regions so far. Outstanding work! Return to me when you've mapped ${nextGoal} regions for your next payment."</p>
+                    <button id="closeMapReward" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded w-full">"I'll keep exploring."</button>`;
+                loreModal.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    document.getElementById('closeMapReward').onclick = () => loreModal.classList.add('hidden');
+                }, 0);
+            }
+            return null; // Firebase update is handled by the button click
+        }
+    },
+
+    // --- 2. NIGHT-TIME EXCLUSIVES ---
+    '🌺': {
+        type: 'anomaly',
+        name: 'Moonbloom',
+        flavor: "A strange, luminescent plant.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("Only the plucked stem of the Moonbloom remains.");
+                return null;
+            }
+            
+            const hour = state.time.hour;
+            const isNight = hour >= 20 || hour < 5;
+            
+            if (!isNight) {
+                logMessage("The flower's petals are shut tight like stone. It seems to wait for the moon.");
+                return null;
+            }
+
+            logMessage("The Moonbloom is open, bathing the area in pale light! You carefully harvest it.");
+            if (state.player.inventory.length < 9) { // Max Slots
+                state.player.inventory.push({
+                    name: 'Moonbloom Petal', type: 'consumable', quantity: 1, tile: '🌸',
+                    effect: ITEM_DATA['🌸'].effect
+                });
+                state.lootedTiles.add(tileId);
+                if (typeof renderInventory === 'function') renderInventory();
+                return { inventory: getSanitizedInventory(), lootedTiles: Object.fromEntries(state.lootedTiles) };
+            } else {
+                logMessage("Your inventory is full!");
+                return null;
+            }
+        }
+    },
+
+    '☄️': {
+        type: 'anomaly',
+        name: 'Star-Metal Node',
+        flavor: "A chunk of fallen star. It is completely inert during the day.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("You've already chipped away the valuable ore.");
+                return null;
+            }
+
+            const hour = state.time.hour;
+            const isNight = hour >= 20 || hour < 5;
+            
+            if (!isNight) {
+                logMessage("The rock is dull and harder than diamond. You can't even scratch it.");
+                return null;
+            }
+
+            const hasPickaxe = state.player.inventory.some(i => i.name === 'Pickaxe' || i.name === 'Diamond Tipped Pickaxe');
+            if (!hasPickaxe) {
+                logMessage("The rock is glowing under the starlight! But you need a Pickaxe to mine it.");
+                return null;
+            }
+
+            logMessage("The starlight softens the rock! You mine a chunk of Star-Metal.");
+            
+            // Add a stamina cost to mining it
+            state.player.stamina = Math.max(0, state.player.stamina - 3);
+            if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('staminaDisplay'), false);
+
+            if (state.player.inventory.length < 9) {
+                state.player.inventory.push({
+                    name: 'Star-Metal Ore', type: 'junk', quantity: 1, tile: '☄️'
+                });
+                state.lootedTiles.add(tileId);
+                if (typeof grantXp === 'function') grantXp(50);
+                if (typeof renderInventory === 'function') renderInventory();
+                return { 
+                    inventory: getSanitizedInventory(), 
+                    lootedTiles: Object.fromEntries(state.lootedTiles),
+                    stamina: state.player.stamina
+                };
+            } else {
+                logMessage("Your inventory is full!");
+                return null;
+            }
+        }
+    },
+
     '🌳e': {
         type: 'anomaly',
         name: 'Elder Tree',
@@ -375,7 +521,7 @@ window.TILE_DATA = {
                 return null;
             }
         }
-    },
+    }
 };
 
 window.CASTLE_LAYOUTS = {
