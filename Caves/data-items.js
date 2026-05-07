@@ -2136,7 +2136,9 @@ window.CASTLE_SHOP_INVENTORY =[
     { name: 'Silk Cowl', price: 200, stock: 1 },
     { name: 'Bag of Flour', price: 5, stock: 20 },
     { name: 'Bird Egg', price: 3, stock: 10 },
-    { name: 'Jar of Honey', price: 10, stock: 5 }
+    { name: 'Jar of Honey', price: 10, stock: 5 },
+    { name: 'Star-Metal Ore', price: 150, stock: 0 },
+    { name: 'Moonbloom Petal', price: 60, stock: 0 }
 ];
 
 window.TRADER_INVENTORY =[
