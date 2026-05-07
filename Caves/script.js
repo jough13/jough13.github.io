@@ -17,7 +17,7 @@ function triggerDebouncedSave(updates) {
 
     saveTimeout = setTimeout(() => {
         if (playerRef && pendingSaveData) {
-            playerRef.update(pendingSaveData).catch(err => console.error(err));
+            playerRef.update(sanitizeForFirebase(pendingSaveData)).catch(err => console.error(err));
         }
         saveTimeout = null;
         pendingSaveData = null;
