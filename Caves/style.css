@@ -17,10 +17,13 @@
     --mtn-shadow: #44403c; /* Darker grey for depth */
     --mtn-cap: #f9fafb;    /* Bright snow */
 
-    /* POINT THESE TO YOUR NEW ASSETS! */
+    /* LIGHT MODE PARCHMENT: */
+    --asset-parchment: #e7e5e4; 
+    --title-color: #1c1917;
+    --title-shadow: 2px 2px 0px rgba(255,255,255,0.8);
+
     --asset-bg-stone: url('assets/bg_castle.png'); 
     --asset-frame-border: url('assets/frame_outer.png'); 
-    --asset-parchment: #262626; 
     --asset-input-bg: url('assets/input_bg.png'); 
     --asset-btn-normal: url('assets/btn_normal.png'); 
     --asset-btn-pressed: url('assets/btn_pressed.png'); 
@@ -48,7 +51,12 @@
     --vine-light: rgba(74, 222, 128, 0.15); 
     
     --rock-dark:  rgba(28, 25, 23, 0.4); 
-    --rock-light: rgba(87, 83, 78, 0.2); 
+    --rock-light: rgba(87, 83, 78, 0.2);
+
+        /* DARK MODE PARCHMENT: */
+    --asset-parchment: #262626; 
+    --title-color: #f3f4f6;
+    --title-shadow: 4px 4px 0px rgba(0,0,0,0.8);
 }
 
 /* --- EASY WIN: CUSTOM SCROLLBARS --- */
@@ -859,16 +867,31 @@ input[type="checkbox"].hidden {
 
 /* 7. Typography & Decor */
 .gothic-title {
-    font-family: 'Uncial Antiqua', 'UnifrakturMaguntia', cursive; /* Using a cleaner retro font */
+    font-family: 'Uncial Antiqua', 'UnifrakturMaguntia', cursive; 
     font-size: 4rem;
-    text-shadow: 4px 4px 0px rgba(0,0,0,0.8);
-    color: #f3f4f6; 
+    color: var(--title-color); /* Updated */
+    text-shadow: var(--title-shadow); /* Updated */
     margin-bottom: 1.5rem;
 }
 
+/* Update the small bottom text */
 .pixel-text {
     font-family: 'Courier New', Courier, monospace;
     font-weight: bold;
     font-size: 1rem;
-    color: #9ca3af; 
+    color: var(--text-muted); /* Updated */
+}
+
+/* Update the Remember Me checkboxes */
+.retro-checkbox-label {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: var(--text-default); /* Updated */
+    user-select: none;
+}
+
+.custom-check::before { 
+    content: "[ ]"; 
+    color: var(--text-muted); /* Updated */
 }
