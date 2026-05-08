@@ -281,6 +281,32 @@ window.CRAFTING_RECIPES = {
         materials: { "Wood Log": 4, "Iron Ore": 1 },
         xp: 50, level: 2
     },
+    '⛵': {
+        name: 'Sailing Ship',
+        type: 'consumable',
+        tile: '⛵',
+        description: "A sturdy vessel for crossing Deep Water. Use while standing next to the ocean to deploy.",
+        effect: (state) => {
+            // Find adjacent water
+            const dirs = [[0,-1], [0,1], [-1,0], [1,0]];
+            for(let [dx, dy] of dirs) {
+                const tx = state.player.x + dx;
+                const ty = state.player.y + dy;
+                const t = chunkManager.getTile(tx, ty);
+                
+                // Can only deploy in Deep Water or Swamps
+                if (t === '~' || t === '≈') {
+                    chunkManager.setWorldTile(tx, ty, '⛵');
+                    logMessage("You deploy the Sailing Ship into the water!");
+                    gameState.mapDirty = true;
+                    if (typeof render === 'function') render();
+                    return true; // Consume the item from inventory
+                }
+            }
+            logMessage("You must be standing directly next to Deep Water or a Swamp to deploy the ship.");
+            return false; // Don't consume it
+        }
+    },
     // --- SURVIVAL GEAR ---
     "Campfire Kit": {
         materials: { "Wood Log": 3, "Stone": 4 },
@@ -1227,6 +1253,10 @@ window.ITEM_DATA = {
         type: 'constructible',
         tile: '+',
         description: "A door with a simple latch."
+    },
+    "Sailing Ship": {
+        materials: { "Wood Log": 20, "Spool of Silk": 5, "Iron Ore": 5 },
+        xp: 200, level: 4 
     },
     '☒': {
         name: 'Stash Box',
