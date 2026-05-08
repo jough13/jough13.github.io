@@ -119,6 +119,12 @@ window.TILE_DATA = {
         flavor: "You search the rotting hull for salvaged goods...",
         lootTable: ['$', '🐚', '💎b', '⚓', '🐟'] 
     },
+    '🛟': {
+        type: 'loot_container',
+        name: 'Ocean Flotsam',
+        flavor: "Debris from a sunken ship bobs in the waves. You haul it aboard.",
+        lootTable: ['🪵', '🪵', '🧵', 'ancient_coin', '♥', '⚓', '🐟']
+    },
     '🧙‍♂️': {
         type: 'lore_statue', 
         message: [
