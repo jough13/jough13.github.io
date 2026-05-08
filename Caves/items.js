@@ -572,7 +572,7 @@ function useInventoryItem(itemIndex) {
 
         // Check if standing on water (Deep Water or Swamp)
         if (currentTile !== '~' && currentTile !== '≈') {
-            logMessage("You need to be standing in water to fish.");
+            logMessage("You need to be standing in water or sailing to fish.");
             return;
         }
 
@@ -582,12 +582,15 @@ function useInventoryItem(itemIndex) {
             return;
         }
         gameState.player.stamina -= 2;
+        triggerStatFlash(statDisplays.stamina, false);
 
+        const isDeepSea = gameState.player.isSailing;
+        
         // 2. Calculate Success
-        // Base 40% + 2% per Dexterity + 2% per Luck
-        const chance = 0.40 + (gameState.player.dexterity * 0.02) + (gameState.player.luck * 0.02);
+        // Base 40% + 2% per Dex + 2% per Luck. Deep sea adds 20% bonus because fish are plentiful!
+        const chance = 0.40 + (gameState.player.dexterity * 0.02) + (gameState.player.luck * 0.02) + (isDeepSea ? 0.20 : 0);
 
-        logMessage("You cast your line...");
+        logMessage(isDeepSea ? "You cast your heavy line into the dark abyss..." : "You cast your line...");
 
         if (Math.random() < chance) {
             // 3. Loot Table
@@ -595,44 +598,58 @@ function useInventoryItem(itemIndex) {
             let catchName = 'Raw Fish';
             let catchTile = '🐟';
 
-            // Rare Treasures (5%)
-            if (roll > 0.95) {
-                const treasures = [
-                    { n: 'Ring of Regeneration', t: '💍r' },
-                    { n: 'Ancient Coin', t: '🪙' },
-                    { n: 'Empty Bottle', t: '🫙' }
-                ];
-                const t = treasures[Math.floor(Math.random() * treasures.length)];
-                catchName = t.n;
-                catchTile = t.t;
-                logMessage(`You pull up something heavy... It's a ${catchName}!`);
-                grantXp(20);
-            }
-            // Junk (15%)
-            else if (roll < 0.15) {
-                catchName = 'Soggy Boot';
-                catchTile = '👢s';
-                logMessage("Ugh, just an old boot.");
-            }
-            // Fish (80%)
-            else {
-                logMessage("You caught a fish!");
-                grantXp(5);
+            if (isDeepSea) {
+                // --- DEEP SEA LOOT ---
+                if (roll > 0.90) { // 10% chance for Abyssal Treasure
+                    const treasures = [
+                        { n: 'Kraken Ink Sac', t: '🐙' },
+                        { n: 'Black Pearl', t: '💎b' },
+                        { n: 'Rainbow Shell', t: '🐚' }
+                    ];
+                    const t = treasures[Math.floor(Math.random() * treasures.length)];
+                    catchName = t.n;
+                    catchTile = t.t;
+                    logMessage(`{gold:A massive tug! You hauled up a ${catchName}!}`);
+                    grantXp(50);
+                } else if (roll < 0.15) {
+                    catchName = 'Rusted Anchor';
+                    catchTile = '⚓';
+                    logMessage("You snagged something heavy... a Rusted Anchor.");
+                } else {
+                    logMessage("You caught a plump ocean fish!");
+                    grantXp(10);
+                }
+            } else {
+                // --- SHALLOW WATER LOOT ---
+                if (roll > 0.95) {
+                    const treasures = [
+                        { n: 'Ring of Regeneration', t: '💍r' },
+                        { n: 'Ancient Coin', t: '🪙' },
+                        { n: 'Empty Bottle', t: '🫙' }
+                    ];
+                    const t = treasures[Math.floor(Math.random() * treasures.length)];
+                    catchName = t.n; catchTile = t.t;
+                    logMessage(`You pull up something heavy... It's a ${catchName}!`);
+                    grantXp(20);
+                } else if (roll < 0.15) {
+                    catchName = 'Soggy Boot'; catchTile = '👢s';
+                    logMessage("Ugh, just an old boot.");
+                } else {
+                    logMessage("You caught a fish!");
+                    grantXp(5);
+                }
             }
 
             // Add to Inventory
             if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                // Find template to get full data
                 const template = Object.values(ITEM_DATA).find(i => i.name === catchName);
                 gameState.player.inventory.push({
                     name: catchName,
                     type: template ? (template.type || 'junk') : 'junk',
                     quantity: 1,
                     tile: catchTile,
-                    // Copy stats if it's equipment
                     defense: template ? template.defense : null,
                     statBonuses: template ? template.statBonuses : null,
-
                     effect: template ? template.effect : null
                 });
             } else {
@@ -642,7 +659,6 @@ function useInventoryItem(itemIndex) {
             logMessage("...not even a nibble.");
         }
 
-        // Fishing always consumes a turn/stamina, so we mark it used to trigger updates
         itemUsed = true;
     }
 
