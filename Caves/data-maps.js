@@ -1,5 +1,19 @@
 window.TILE_DATA = {
-
+    '⛵': {
+        type: 'sailing_ship',
+        title: 'Sailing Ship',
+        flavor: "A sturdy wooden ship with silk sails."
+    },
+    '🌋': {
+        type: 'dungeon_entrance',
+        flavor: "A volcanic island rises from the sea. Heat radiates from the crater.",
+        getCaveId: (x, y) => `volcano_${x}_${y}`
+    },
+    '🛕': {
+        type: 'dungeon_entrance',
+        flavor: "The spires of an ancient, flooded temple pierce the ocean surface.",
+        getCaveId: (x, y) => `sunken_${x}_${y}`
+    },
     '🌀': {
         type: 'dungeon_entrance',
         flavor: "A massive, swirling whirlpool! The current drags you down...",
