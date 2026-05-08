@@ -298,7 +298,6 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 /**
  * Prepares and executes a ranged attack using an equipped bow
  */
-
 async function executeRangedAttack(dirX, dirY) {
     const player = gameState.player;
     const skillData = SKILL_DATA['ranged_attack'];
@@ -321,9 +320,16 @@ async function executeRangedAttack(dirX, dirY) {
         let finalTargetX = player.x;
         let finalTargetY = player.y;
 
-        // --- 2. Calculate Base Damage ---
+        // --- 2. Calculate Base Damage & Elements ---
         const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
         const ammoDamage = ammo.damage || 0;
+        
+        const isFire = ammo.name.includes('Fire');
+        const isPoison = ammo.name.includes('Poison');
+
+        let arrowColor = '#d4d4d8'; // Default grey
+        if (isFire) arrowColor = '#f97316';   // Orange
+        if (isPoison) arrowColor = '#22c55e'; // Green
         
         // Ranged attacks scale off Dexterity + Bow Dmg + Arrow Dmg
         let rawPower = player.dexterity + weaponDamage + ammoDamage;
@@ -363,6 +369,13 @@ async function executeRangedAttack(dirX, dirY) {
             const targetX = player.x + (dirX * i);
             const targetY = player.y + (dirY * i);
 
+            // --- ANIMATED ARROW TRAIL ---
+            if (typeof ParticleSystem !== 'undefined') {
+                setTimeout(() => {
+                    ParticleSystem.spawn(targetX, targetY, arrowColor, 'dust', '', 3);
+                }, i * 40); 
+            }
+
             let tile;
             let isSolid = false;
 
@@ -379,6 +392,37 @@ async function executeRangedAttack(dirX, dirY) {
                 if (tile === wallTile || tile === '▒') isSolid = true;
             }
             
+            // --- ENVIRONMENTAL INTERACTIONS (FIRE ARROWS) ---
+            if (isFire && tile === '🛢') {
+                logMessage("BOOM! Your Fire Arrow ignited an Oil Barrel!");
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#f97316', 15);
+                
+                if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(targetX, targetY, '.');
+                else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
+                else chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] = '.';
+                
+                // Splash damage to adjacent tiles!
+                for (let ey = -1; ey <= 1; ey++) {
+                    for (let ex = -1; ex <= 1; ex++) {
+                        applySpellDamage(targetX + ex, targetY + ey, 15, 'fireball');
+                    }
+                }
+                hitSomething = true;
+                break;
+            }
+            
+            if (isFire && gameState.mapMode === 'dungeon' && tile === '🕸') {
+                const map = chunkManager.caveMaps[gameState.currentCaveId];
+                const theme = CAVE_THEMES[gameState.currentCaveTheme];
+                if (map && map[targetY]) {
+                    map[targetY][targetX] = theme.floor;
+                    logMessage("Your Fire Arrow burns away the spider web!");
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#f97316', 3);
+                    hitSomething = true;
+                    break;
+                }
+            }
+
             if (isSolid) {
                 logMessage("Your arrow strikes a solid object.");
                 break;
@@ -398,7 +442,16 @@ async function executeRangedAttack(dirX, dirY) {
                         const finalDmg = Math.max(1, totalDamage - (enemy.defense || 0));
                         enemy.health -= finalDmg;
                         logMessage(`You shoot ${enemy.name} for ${finalDmg} damage!`);
-                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#fff', 3);
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, arrowColor, 3);
+
+                        // --- ELEMENTAL STATUS EFFECTS ---
+                        if (isFire) {
+                            logMessage(`The ${enemy.name} is scorched by the flames!`);
+                        }
+                        if (isPoison && enemy.poisonTurns <= 0) {
+                            enemy.poisonTurns = 3;
+                            logMessage(`The ${enemy.name} is poisoned!`);
+                        }
 
                         if (enemy.health <= 0) {
                             logMessage(`You defeated ${enemy.name}!`);
@@ -420,8 +473,8 @@ async function executeRangedAttack(dirX, dirY) {
             }
             
             // --- NEW: RECOVERABLE AMMO ---
-            // 50% chance the arrow survives and sticks in the ground
-            if (Math.random() < 0.50) {
+            // 50% chance the arrow survives... ONLY IF IT'S A WOODEN ARROW! (Fire burns, poison dissipates)
+            if (ammo.name === 'Wooden Arrow' && Math.random() < 0.50) {
                 let validFloor = true;
                 let dropTile;
                 
@@ -459,35 +512,20 @@ async function executeRangedAttack(dirX, dirY) {
     }
 }
 
-function initSkillbookListeners() {
-    closeSkillButton.addEventListener('click', () => {
-        skillModal.classList.add('hidden');
-    });
-
-    // Calls our new, unified useSkill function
-    skillList.addEventListener('click', (e) => {
-        const skillItem = e.target.closest('.skill-item');
-        if (skillItem && skillItem.dataset.skill) {
-            // Pass the skill's ID (e.g., "brace")
-            useSkill(skillItem.dataset.skill);
-        }
-    });
-}
-
 async function executeLunge(dirX, dirY) {
     const player = gameState.player;
-    const skillId = "lunge"; // This function is only for Lunge
+    const skillId = "lunge"; 
     const skillData = SKILL_DATA[skillId];
     const skillLevel = player.skillbook[skillId] || 1;
+
+    let hit = false;
 
     // --- 🚨 LOCK THE ENGINE ---
     isProcessingMove = true;
 
     try {
         // --- 1. Deduct Cost ---
-        // Cost was checked in useSkill, but we deduct it here upon firing.
         player.stamina -= skillData.cost;
-        let hit = false;
 
         // --- 2. Calculate Base Damage ---
         const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
@@ -546,7 +584,6 @@ async function executeLunge(dirX, dirY) {
                     // Handle Instanced Combat
                     let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
                     if (enemy) {
-                        // We apply our new calculated damage!
                         enemy.health -= totalLungeDamage;
                         logMessage(`You hit the ${enemy.name} for ${totalLungeDamage} damage!`);
                         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#fff', 3);
@@ -573,8 +610,8 @@ async function executeLunge(dirX, dirY) {
         });
         triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
         triggerAbilityCooldown('lunge');
-        endPlayerTurn(); // Always end turn, even if you miss
-        render(); // Re-render to show enemy health change
+        endPlayerTurn(); 
+        render(); 
 
     } finally {
         // --- 🚨 UNLOCK THE ENGINE ---
@@ -590,13 +627,16 @@ function executeQuickstep(dirX, dirY) {
 
     // Check collision
     let tile = chunkManager.getTile(targetX, targetY);
-    // (Simple check, you can expand to dungeon maps if needed)
+    
     if (gameState.mapMode === 'dungeon') {
         const map = chunkManager.caveMaps[gameState.currentCaveId];
         tile = map[targetY][targetX];
+    } else if (gameState.mapMode === 'castle') {
+        const map = chunkManager.castleMaps[gameState.currentCastleId];
+        tile = map[targetY][targetX];
     }
 
-    if (['.', 'F', 'd', 'D'].includes(tile)) {
+    if (['.', 'F', 'd', 'D'].includes(tile) || (gameState.mapMode === 'dungeon' && tile !== '▓' && tile !== '▒')) {
         player.x = targetX;
         player.y = targetY;
         player.stamina -= SKILL_DATA['quickstep'].cost;
@@ -609,5 +649,286 @@ function executeQuickstep(dirX, dirY) {
     } else {
         logMessage("Path blocked.");
         gameState.isAiming = false; // Reset aiming
+    }
+}
+
+function executePacify(dirX, dirY) {
+    const player = gameState.player;
+    const skillData = SKILL_DATA["pacify"];
+
+    // --- 1. Deduct Cost ---
+    player.psyche -= skillData.cost;
+    let hit = false;
+
+    // Loop 1 to 3 tiles away
+    for (let i = 1; i <= 3; i++) {
+        const targetX = player.x + (dirX * i);
+        const targetY = player.y + (dirY * i);
+
+        // This skill only works in instanced maps
+        if (gameState.mapMode === 'overworld') {
+            logMessage("This skill only works in dungeons and castles.");
+            hit = true; // Prevents the "miss" message
+            break;
+        }
+
+        let map;
+        let theme;
+        if (gameState.mapMode === 'dungeon') {
+            map = chunkManager.caveMaps[gameState.currentCaveId];
+            theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+        } else {
+            map = chunkManager.castleMaps[gameState.currentCastleId];
+            theme = { floor: '.' };
+        }
+
+        const tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+        const enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+
+        if (enemy) {
+
+            if (enemy.isBoss) {
+                logMessage(`The ${enemy.name} is immune to your charms!`);
+                hit = true;
+                break;
+            }
+
+            // Found a target!
+            hit = true;
+
+            // --- 3. Calculate Success Chance ---
+            // 5% chance per Charisma point, capped at 75%
+            const successChance = Math.min(0.75, player.charisma * 0.05);
+
+            if (Math.random() < successChance) {
+                // --- SUCCESS ---
+                logMessage(`You calm the ${enemy.name}! It becomes passive.`);
+                
+                // Reward the player for dealing with the encounter!
+                grantXp(Math.floor(enemy.xp * 0.8));
+
+                // Remove it from the enemy list
+                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+
+                // Set its tile to a floor
+                map[targetY][targetX] = theme.floor;
+
+            } else {
+                // --- FAILURE ---
+                logMessage(`Your attempt to pacify the ${enemy.name} fails!`);
+            }
+            break; // Stop looping, we found our target
+        } else if (tile !== theme.floor) {
+            // Hit a wall, stop the loop
+            break;
+        }
+    }
+
+    if (!hit) {
+        logMessage("You attempt to calm... nothing.");
+    }
+
+    // --- 4. Finalize Turn ---
+    playerRef.update({
+        psyche: player.psyche
+    });
+    triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+    triggerAbilityCooldown('pacify');
+    endPlayerTurn();
+    render();
+}
+
+function executeTame(dirX, dirY) {
+    const player = gameState.player;
+    const skillData = SKILL_DATA["tame"];
+
+    // 1. Deduct Cost
+    player.psyche -= skillData.cost;
+    let hit = false;
+
+    // Range: 1-2 tiles
+    for (let i = 1; i <= 2; i++) {
+        const targetX = player.x + (dirX * i);
+        const targetY = player.y + (dirY * i);
+
+        // Check for instanced enemies (Dungeon/Castle)
+        if (gameState.mapMode === 'overworld') {
+            logMessage("The beast is too wild here. Drive it into a cave first.");
+            hit = true;
+            break;
+        }
+
+        let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+
+        if (enemy) {
+            hit = true;
+
+            // Check beast types
+            const beastTiles = ['w', '@', '🦂', '🐺'];
+            if (!beastTiles.includes(enemy.tile)) {
+                logMessage("You can only tame beasts!");
+                break;
+            }
+
+            // Check HP Threshold (30%)
+            const hpPercent = enemy.health / enemy.maxHealth;
+            if (hpPercent > 0.30) {
+                logMessage(`The ${enemy.name} is too healthy to tame! Weaken it first.`);
+                break;
+            }
+
+            // Success Roll
+            const tameChance = 0.3 + (player.charisma * 0.05); // Base 30% + 5% per Charisma
+            if (Math.random() < tameChance) {
+                logMessage(`You calm the ${enemy.name}... It accepts you as its master!`);
+
+                // Create Companion
+                player.companion = {
+                    name: `Tamed ${enemy.name}`,
+                    tile: enemy.tile,
+                    type: "beast",
+                    hp: enemy.maxHealth, // Heals up when tamed
+                    maxHp: enemy.maxHealth,
+                    attack: enemy.attack,
+                    defense: enemy.defense || 0,
+                    x: player.x, // Temp position
+                    y: player.y
+                };
+
+                // Remove enemy
+                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                
+                // Clear the map tile so it doesn't leave a ghost sprite
+                let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
+                let validFloor = '.';
+                if (gameState.mapMode === 'dungeon' && CAVE_THEMES[gameState.currentCaveTheme]) {
+                    validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+                }
+                map[targetY][targetX] = validFloor;
+                
+                playerRef.update({ companion: player.companion });
+
+            } else {
+                logMessage(`The ${enemy.name} resists your call and snaps at you!`);
+            }
+            break;
+        }
+    }
+
+    if (!hit) logMessage("You try to tame the empty air.");
+
+    playerRef.update({ psyche: player.psyche });
+    triggerAbilityCooldown('tame');
+    endPlayerTurn();
+    render();
+}
+
+function executeInflictMadness(dirX, dirY) {
+    const player = gameState.player;
+    const skillData = SKILL_DATA["inflictMadness"];
+
+    // --- 1. Deduct Cost ---
+    player.psyche -= skillData.cost;
+    let hit = false;
+
+    // Loop 1 to 3 tiles away
+    for (let i = 1; i <= 3; i++) {
+        const targetX = player.x + (dirX * i);
+        const targetY = player.y + (dirY * i);
+
+        if (gameState.mapMode === 'overworld') {
+            logMessage("This skill only works in dungeons and castles.");
+            hit = true;
+            break;
+        }
+
+        let map;
+        let theme;
+        if (gameState.mapMode === 'dungeon') {
+            map = chunkManager.caveMaps[gameState.currentCaveId];
+            theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+        } else {
+            map = chunkManager.castleMaps[gameState.currentCastleId];
+            theme = { floor: '.' };
+        }
+
+        const tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+        const enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+
+        if (enemy) {
+
+            if (enemy.isBoss) {
+                logMessage(`The ${enemy.name}'s mind is too strong to break!`);
+                hit = true;
+                break;
+            }
+
+            // Found a target!
+            hit = true;
+
+            // --- 3. Calculate Success Chance ---
+            const successChance = Math.min(0.75, player.charisma * 0.05); // Scales with Charisma
+
+            if (Math.random() < successChance) {
+                // --- SUCCESS ---
+                logMessage(`You assault the ${enemy.name}'s mind! It goes mad!`);
+                enemy.madnessTurns = 5; // Set status for 5 turns
+
+            } else {
+                // --- FAILURE ---
+                logMessage(`The ${enemy.name} resists your mental assault!`);
+            }
+            break; // Stop looping, we found our target
+        } else if (tile !== theme.floor) {
+            // Hit a wall, stop the loop
+            break;
+        }
+    }
+
+    if (!hit) {
+        logMessage("You assault the minds of... nothing.");
+    }
+
+    // --- 4. Finalize Turn ---
+    playerRef.update({
+        psyche: player.psyche
+    });
+    triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+    triggerAbilityCooldown('inflictMadness');
+    endPlayerTurn();
+    render();
+}
+
+/**
+ * Sets the cooldown for a skill or spell and updates the DB/UI.
+ */
+function triggerAbilityCooldown(abilityId) {
+    const data = SKILL_DATA[abilityId] || SPELL_DATA[abilityId];
+
+    if (data && data.cooldown) {
+        // Initialize object if it doesn't exist
+        if (!gameState.player.cooldowns) gameState.player.cooldowns = {};
+
+        let cd = data.cooldown;
+
+        // --- Class specific Cooldown Reduction! ---
+        if (gameState.player.talents) {
+            // Rogues with Evasion recover movement skills faster
+            if (data.type === 'movement' && gameState.player.talents.includes('evasion')) {
+                cd = Math.max(1, cd - 1);
+            }
+            // Archmages recover spells faster
+            if (data.costType === 'mana' && gameState.player.talents.includes('mana_flow')) {
+                cd = Math.max(1, cd - 1);
+            }
+        }
+
+        // Set the turns
+        gameState.player.cooldowns[abilityId] = cd;
+
+        // Update Database
+        playerRef.update({ cooldowns: gameState.player.cooldowns });
+
+        if (typeof renderHotbar === 'function') renderHotbar();
     }
 }
