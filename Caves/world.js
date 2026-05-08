@@ -828,6 +828,17 @@ const chunkManager = {
                 else if (tile === 'D' && featureRoll < 0.0001) {
                     chunkData[y][x] = '🦴d';
                 }
+                // --- NIGHT-TIME ANOMALIES ---
+                else if (tile === 'F' && featureRoll > 0.0001 && featureRoll < 0.0003) {
+                    chunkData[y][x] = '🌺'; // Moonblooms in forests
+                }
+                else if (tile === '^' && featureRoll > 0.0001 && featureRoll < 0.0003) {
+                    chunkData[y][x] = '☄️'; // Star-metal in mountains
+                }
+                // --- END NEW ANOMALIES ---
+                else if ((tile === 'd' || tile === 'D') && featureRoll < 0.000005) { // Void Rift
+                    chunkData[y][x] = 'Ω';
+                }
                 // --- 3. RARE STRUCTURES (Scaled by Distance) ---
                 else if (tile === '.' && featureRoll < 0.000005) { // Safe Haven
                     chunkData[y][x] = 'V';
