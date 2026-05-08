@@ -734,6 +734,7 @@ function useInventoryItem(itemIndex) {
                     if (item.name.includes("Dagger") || item.tile === '†' || item.tile === '🗡️') return 'quickstep';
                     if (item.name.includes("Sword") || item.name.includes("Blade") || item.tile === '⚔️' || item.tile === '!') return 'deflect';
                     if (item.name.includes("Staff") || item.tile === 'Ψ' || item.tile === '🦯') return 'channel';
+                    if (item.name.includes("Bow") || item.tile === '🏹') return 'ranged_attack';
                     return null;
                 };
                 const newSkill = getWeaponSkill(itemToUse);
