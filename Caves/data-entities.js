@@ -306,7 +306,23 @@ window.ENEMY_DATA = {
         caster: true, castRange: 4, spellDamage: 8,
         flavor: "Massive, writhing tentacles burst from the deep ocean!"
     },
-
+    '🧜‍♀️': {
+        name: 'Siren',
+        maxHealth: 30, attack: 5, defense: 1, xp: 80,
+        loot: '🐚', 
+        color: '#38bdf8', // Cyan
+        caster: true, castRange: 4, spellDamage: 6,
+        inflicts: 'madness', inflictChance: 0.3,
+        flavor: "Her song is beautiful, but her eyes are pitch black."
+    },
+    '🦕': {
+        name: 'Abyssal Leviathan',
+        maxHealth: 300, attack: 15, defense: 5, xp: 1500,
+        loot: '💎b', // Drops Black Pearls!
+        color: '#0284c7', // Deep Blue
+        isBoss: true,
+        flavor: "A prehistoric terror of the deep. Its jaws can snap a ship in half."
+    },
     // --- FOREST WILDLIFE ---
     '🐻': {
         name: 'Cave Bear',
