@@ -82,7 +82,7 @@ window.CRAFTING_RECIPES = {
     },
     "Wooden Arrow": { 
         materials: { "Stick": 1, "Bone Shard": 1 },
-        xp: 15, level: 1, yield: 5 
+        xp: 15, level: 1, yield: 10
     },
     
     // --- TIER 1 (Basic Survival) ---
