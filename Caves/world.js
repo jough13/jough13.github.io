@@ -55,10 +55,11 @@ const chunkManager = {
 
         // --- THEME SELECTION LOGIC ---
         if (caveId === 'cave_landmark' || floorZ >= 5) {
-            chosenThemeKey = 'ABYSS'; // Floor 5+ is always the Abyss
-            CAVE_WIDTH = 150;  // Huge map
-            CAVE_HEIGHT = 150; // Huge map
-            enemyCount = 80;   // Triple the enemies
+            chosenThemeKey = 'ABYSS'; 
+            CAVE_WIDTH = 150; CAVE_HEIGHT = 150; enemyCount = 80;   
+        } else if (caveId.startsWith('volcano_')) {
+            chosenThemeKey = 'FIRE'; // Force Fire Theme
+            enemyCount = Math.max(enemyCount, 40); // Volcanoes are highly populated!
         } else if (caveId.startsWith('void_')) {
             chosenThemeKey = 'VOID'; // Force Void Theme
             enemyCount = Math.max(enemyCount, 25);   
@@ -862,6 +863,11 @@ const chunkManager = {
                     chunkData[y][x] = 'Ω';
                 }
                 // --- 4. MAJOR STRUCTURES (Explicit Spawn Rates) ---
+                else if (tile === '~' && featureRoll < 0.0005 && distSq > 4000000) {
+                    // Far out in the ocean (> 2000 tiles from spawn)
+                    if (random() < 0.5) chunkData[y][x] = '🌋'; // Volcano Island
+                    else chunkData[y][x] = '🛕'; // Abyssal Temple
+                }
                 else if (tile === '^' && featureRoll < 0.008) {
                     chunkData[y][x] = '⛰';
                 }
