@@ -415,7 +415,31 @@ async function executeRangedAttack(dirX, dirY) {
 
         if (!hitSomething) {
             logMessage("Your arrow flies off into the distance.");
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Miss", "#9ca3af");
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Miss", "#9ca3af");
+            }
+            
+            // --- NEW: RECOVERABLE AMMO ---
+            // 50% chance the arrow survives and sticks in the ground
+            if (Math.random() < 0.50) {
+                let validFloor = true;
+                let dropTile;
+                
+                if (gameState.mapMode === 'overworld') dropTile = chunkManager.getTile(finalTargetX, finalTargetY);
+                else {
+                    const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
+                    dropTile = (map && map[finalTargetY] && map[finalTargetY][finalTargetX]) ? map[finalTargetY][finalTargetX] : ' ';
+                }
+
+                // If it hits deep water or lava, it's gone. Otherwise, it sticks in the ground/wall!
+                if (['~', '≈', ' '].includes(dropTile)) validFloor = false; 
+
+                if (validFloor) {
+                    chunkManager.setWorldTile(finalTargetX, finalTargetY, '➹', 2); // Drops for 2 hours
+                    gameState.mapDirty = true;
+                    logMessage("{gray:You see your arrow sticking out of the ground nearby.}");
+                }
+            }
         }
 
         // --- 4. Finalize Turn ---
