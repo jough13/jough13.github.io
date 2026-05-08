@@ -932,3 +932,28 @@ function triggerAbilityCooldown(abilityId) {
         if (typeof renderHotbar === 'function') renderHotbar();
     }
 }
+
+// --- UI LISTENERS FOR SKILLS ---
+function initSkillbookListeners() {
+    const closeSkillBtn = document.getElementById('closeSkillButton');
+    const skillListEl = document.getElementById('skillList');
+    const skillModalEl = document.getElementById('skillModal');
+
+    if (closeSkillBtn) {
+        closeSkillBtn.addEventListener('click', () => {
+            if (skillModalEl) skillModalEl.classList.add('hidden');
+            // Return focus to the game so you can keep walking immediately
+            if (document.activeElement) document.activeElement.blur(); 
+        });
+    }
+
+    if (skillListEl) {
+        skillListEl.addEventListener('click', (e) => {
+            const skillItem = e.target.closest('.skill-item');
+            if (skillItem && skillItem.dataset.skill) {
+                // Pass the skill's ID to your routing function
+                useSkill(skillItem.dataset.skill);
+            }
+        });
+    }
+}
