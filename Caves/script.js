@@ -2301,7 +2301,7 @@ const render = () => {
     }
 
     // Draw the Player (Smoothly!)
-    const playerChar = gameState.player.isBoating ? 'c' : gameState.player.character;
+    const playerChar = gameState.player.isSailing ? '⛵' : (gameState.player.isBoating ? 'c' : gameState.player.character);
     ctx.font = `bold ${TILE_SIZE}px monospace`;
     
     // Draw based on visual offset relative to startX/startY
@@ -3455,22 +3455,6 @@ function recalculateDerivedStats() {
     player.psyche = Math.min(player.psyche, player.maxPsyche);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 async function attemptMovePlayer(newX, newY) {
     // 1. Unlock input if we are just waiting (Safety fallback)
     if (newX === gameState.player.x && newY === gameState.player.y) {
@@ -4519,13 +4503,27 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     let isDisembarking = false;
+    let isShipDisembarking = false;
+
     if (gameState.player.isBoating) {
         if (newTile === '~') {
+            logMessage("{red:The canoe cannot survive the deep ocean waves! Turn back!}");
+            return; // Block canoe from deep water!
+        } else if (newTile === '≈') {
             moveCost = 1;
         } else if (moveCost !== Infinity) {
             isDisembarking = true;
         } else {
             logMessage("You can't beach the canoe here.");
+            return;
+        }
+    } else if (gameState.player.isSailing) {
+        if (newTile === '~' || newTile === '≈') {
+            moveCost = 0; // Ships move effortlessly on water
+        } else if (moveCost !== Infinity) {
+            isShipDisembarking = true;
+        } else {
+            logMessage("You can't dock the ship here.");
             return;
         }
     } else {
@@ -4582,10 +4580,15 @@ async function attemptMovePlayer(newX, newY) {
     if (isDisembarking) {
         gameState.player.isBoating = false;
         logMessage("You beach the canoe and step onto the shore.");
-        chunkManager.setWorldTile(gameState.player.x, gameState.player.y, 'c');
-        playerRef.update({
-            isBoating: false
-        });
+        chunkManager.setWorldTile(prevX, prevY, 'c'); // Drop on PREVIOUS tile (water)
+        playerRef.update({ isBoating: false });
+    }
+    // --- SHIP DISEMBARKING ---
+    if (isShipDisembarking) {
+        gameState.player.isSailing = false;
+        logMessage("You drop anchor and step ashore.");
+        chunkManager.setWorldTile(prevX, prevY, '⛵'); // Drop on PREVIOUS tile (water)
+        playerRef.update({ isSailing: false });
     }
 
     // --- DOOR LOGIC ---
@@ -5581,20 +5584,21 @@ async function attemptMovePlayer(newX, newY) {
                     logMessage("You found a canoe! +10 XP");
                     grantXp(10);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({
-                        foundLore: Array.from(gameState.foundLore)
-                    });
+                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
                 }
                 gameState.player.isBoating = true;
                 logMessage("You get in the canoe.");
-                gameState.flags.canoeEmbarkCount++;
-                const count = gameState.flags.canoeEmbarkCount;
-                if (count === 1 || count === 3 || count === 7) logMessage("Be warned: Rowing the canoe will cost stamina!");
                 chunkManager.setWorldTile(newX, newY, '.');
-                playerRef.update({
-                    isBoating: true
-                });
-                break;
+                playerRef.update({ isBoating: true });
+                break; // <-- Make sure Canoe breaks here!
+                
+            // --- SHIP EMBARKING ---
+            case 'sailing_ship':
+                gameState.player.isSailing = true;
+                logMessage("{blue:You board the ship. The ocean is yours to conquer.}");
+                chunkManager.setWorldTile(newX, newY, '.'); // Remove from map
+                playerRef.update({ isSailing: true });
+                return; // Stop processing, we embarked
             case 'dungeon_entrance':
                 // --- Ensure Set exists ---
                 if (!gameState.foundLore) gameState.foundLore = new Set();
@@ -6046,6 +6050,14 @@ async function attemptMovePlayer(newX, newY) {
     // Pass the updates object in so Firebase actually saves your loot/exploration!
     endPlayerTurn(updates); 
 }
+
+
+
+
+
+
+
+
 
 const applyTheme = (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
