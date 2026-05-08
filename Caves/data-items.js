@@ -84,7 +84,14 @@ window.CRAFTING_RECIPES = {
         materials: { "Stick": 1, "Bone Shard": 1 },
         xp: 15, level: 1, yield: 10
     },
-    
+    "Fire Arrow": { 
+        materials: { "Wooden Arrow": 5, "Arcane Dust": 1 }, 
+        xp: 25, level: 3, yield: 5 
+    },
+    "Poison Arrow": { 
+        materials: { "Wooden Arrow": 5, "Snake Fang": 1 }, 
+        xp: 25, level: 2, yield: 5 
+    },    
     // --- TIER 1 (Basic Survival) ---
     "Leather Tunic": {
         materials: { "Wolf Pelt": 3 },
@@ -541,6 +548,22 @@ window.ITEM_DATA = {
         slot: 'ammo',
         damage: 1,
         description: "Ammunition for bows. {red:+1 Dmg}"
+    },
+    '➹f': {
+        name: 'Fire Arrow',
+        type: 'ammo',
+        tile: '➹',
+        slot: 'ammo',
+        damage: 3, // Higher base damage
+        description: "{red:+3 Dmg}. Wrapped in pitch and arcane fire. Ignites webs and oil barrels."
+    },
+    '➹p': {
+        name: 'Poison Arrow',
+        type: 'ammo',
+        tile: '➹',
+        slot: 'ammo',
+        damage: 1, // Base damage, but applies DoT
+        description: "{red:+1 Dmg}. Dipped in potent venom. {green:(Poisons target)}"
     },
     '🎣': {
         name: 'Fishing Rod',
