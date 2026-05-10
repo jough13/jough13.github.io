@@ -647,9 +647,57 @@ const chunkManager = {
             }
         }
 
+        // --- PROCEDURAL ENEMY SPAWNING FOR DARK CASTLES ---
+        if (isDark) {
+            // Pool of monsters suited for a ruined/dark castle
+            const darkEnemies = ['s', 'Z', 'a', 'c', 'b', '🦇', 'v', 'M', 'C'];
+            
+            // Spawn ~40 to 60 enemies depending on the random seed
+            const enemyCount = 40 + Math.floor(random() * 20); 
+            
+            for (let i = 0; i < enemyCount; i++) {
+                const randY = Math.floor(random() * (map.length - 2)) + 1;
+                const randX = Math.floor(random() * (map[0].length - 2)) + 1;
+
+                // Ensure it's a floor tile, and keep a safe radius of 3 tiles around the spawn point!
+                if (map[randY][randX] === '.' && (Math.abs(randX - spawnX) > 3 || Math.abs(randY - spawnY) > 3)) {
+                    
+                    const enemyTile = darkEnemies[Math.floor(random() * darkEnemies.length)];
+                    const enemyTemplate = ENEMY_DATA[enemyTile];
+
+                    // Scale them up based on the distance from the center of the world
+                    const scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+
+                    this.castleEnemies[castleId].push({
+                        id: `${castleId}:proc_enemy_${randX}_${randY}_${i}`, // Unique ID
+                        x: randX, 
+                        y: randY, 
+                        tile: enemyTile,
+                        name: scaledStats.name,
+                        health: scaledStats.maxHealth, 
+                        maxHealth: scaledStats.maxHealth,
+                        attack: scaledStats.attack, 
+                        defense: enemyTemplate.defense || 0,
+                        xp: scaledStats.xp, 
+                        loot: enemyTemplate.loot,
+                        caster: enemyTemplate.caster || false, 
+                        castRange: enemyTemplate.castRange || 0,
+                        spellDamage: enemyTemplate.spellDamage || 0, 
+                        inflicts: enemyTemplate.inflicts || null,
+                        isBoss: enemyTemplate.isBoss || false,
+                        isElite: scaledStats.isElite || false,
+                        color: scaledStats.color || null,
+                        madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
+                    });
+                }
+            }
+        }
+
         this.castleMaps[castleId] = map;
         return map;
     },
+
+    
 
     listenToChunkState(chunkX, chunkY, onInitialLoad = null) { 
         // --- Block NaN chunk requests to fix the Permissions Error! ---
