@@ -1,4 +1,10 @@
 window.LORE_SETS = {
+    "wanderers_almanac": {
+        name: "The Wanderer's Almanac",
+        description: "Scattered pages from a master cartographer.",
+        bonus: "Eagle-Eyed: +1 Base Perception.",
+        items: ["📄", "📜r", "📜m"] // Scattered Page, Royal Decree, Merchant Ledger
+    },
     "king_fall": {
         name: "The Fall of Alaric",
         description: "The firsthand account of the King's descent into madness.",
