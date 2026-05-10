@@ -376,6 +376,15 @@ window.ENEMY_DATA = {
         isRanged: true, range: 5,
         flavor: "It draws back a crudely strung shortbow."
     },
+    '👺m': {
+        name: 'Goblin Shaman',
+        maxHealth: 8, attack: 1, defense: 0, xp: 25,
+        loot: '🔮', // Drops Mana Orbs!
+        color: '#4ade80', // Bright Green
+        caster: true, castRange: 4, spellDamage: 4,
+        inflicts: 'root', inflictChance: 0.3,
+        flavor: "It wears a skull mask and chants in a guttural tongue."
+    },
     '💀a': {
         name: 'Skeleton Archer',
         maxHealth: 8, attack: 4, defense: 1, xp: 20,
