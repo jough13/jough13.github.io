@@ -881,6 +881,9 @@ const chunkManager = {
                 else if (tile === 'F' && featureRoll < 0.0001) {
                     chunkData[y][x] = '🌳e';
                 }
+                else if (tile === 'F' && featureRoll > 0.0001 && featureRoll < 0.00015) {
+                    chunkData[y][x] = '🍄r';
+                }
                 else if (tile === '^' && featureRoll < 0.0001) {
                     chunkData[y][x] = '🗿k';
                 }
