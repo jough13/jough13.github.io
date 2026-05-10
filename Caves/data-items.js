@@ -759,18 +759,20 @@ window.ITEM_DATA = {
         type: 'weapon',
         tile: '🔨',
         damage: 5, // High damage
+        isTwoHanded: true,
         slot: 'weapon',
         statBonuses: { dexterity: -1 }, // Heavy!
-        description: "{red:+5 Dmg}, {gray:-1 Dex}. Crushes armor and bone alike."
+        description: "{red:+5 Dmg}, {gray:-1 Dex}. Crushes armor and bone alike. (Two-Handed)"
     },
     '🪓': {
         name: 'Greataxe',
         type: 'weapon',
         tile: '🪓',
         damage: 6, // Tier 4
+        isTwoHanded: true,
         slot: 'weapon',
         statBonuses: { strength: 1, dexterity: -2 }, // Very heavy
-        description: "{red:+6 Dmg}, {green:+1 Str}, {gray:-2 Dex}. Requires two hands and a lot of rage."
+        description: "{red:+6 Dmg}, {green:+1 Str}, {gray:-2 Dex}. Devastating but slow. (Two-Handed)"
     },
     '🏏': {
         name: 'Wooden Club',
@@ -794,10 +796,36 @@ window.ITEM_DATA = {
         type: 'weapon',
         tile: '🏹',
         damage: 2,
+        range: 4, // Default range
+        isTwoHanded: true,
         slot: 'weapon',
         skillId: 'ranged_attack', 
         statBonuses: { dexterity: 1 },
-        description: "{red:+2 Dmg}, {green:+1 Dex}. Simple wood and string. Requires Wooden Arrows."
+        description: "{red:+2 Dmg}, {green:+1 Dex}. Simple wood and string. Requires Arrows."
+    },
+    '🏹l': {
+        name: 'Longbow',
+        type: 'weapon',
+        tile: '🏹',
+        damage: 4,
+        range: 6, // Sniping range!
+        isTwoHanded: true,
+        slot: 'weapon',
+        skillId: 'ranged_attack', 
+        statBonuses: { dexterity: 2 },
+        description: "{red:+4 Dmg}, {green:+2 Dex}. Superior range. Requires Arrows."
+    },
+    '🏹c': {
+        name: 'Heavy Crossbow',
+        type: 'weapon',
+        tile: '🏹',
+        damage: 6,
+        range: 5,
+        isTwoHanded: true,
+        slot: 'weapon',
+        skillId: 'ranged_attack', 
+        statBonuses: { strength: 1 }, // Crossbows use strength to draw!
+        description: "{red:+6 Dmg}, {green:+1 Str}. Powerful but slow. Requires Arrows."
     },
 
     // --- CULINARY EXPANSION ---
@@ -1124,9 +1152,10 @@ window.ITEM_DATA = {
         type: 'weapon',
         tile: '🔨',
         damage: 7, // Very High Damage
+        isTwoHanded: true,
         slot: 'weapon',
         statBonuses: { dexterity: -3 }, // Makes you clumsy
-        description: "{red:+7 Dmg}, {gray:-3 Dex}. A heavy iron ball on a chain. Devastating but unwieldy."
+        description: "{red:+7 Dmg}, {gray:-3 Dex}. A heavy iron ball on a chain. Devastating but unwieldy. (Two-Handed)"
     },
     '🗡️d': {
         name: 'Dragonbone Dagger',
