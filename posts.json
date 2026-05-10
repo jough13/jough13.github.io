@@ -1,5 +1,13 @@
 [
   {
+    "title": "Engaging Post Title Goes Here!",
+    "date": "2026-05-10",
+    "file": "thoughts/first-human-post.md",
+    "summary": "In which I explain what this is, what it is not, and so on.",
+    "category": "ideas",
+    "tags": ["blog", "human", "AI"]
+  },
+  {
     "title": "Kurczak w Sosie Koperkowym (Polish Chicken in Dill Sauce)",
     "date": "2026-05-10",
     "file": "recipes/polish-chicken-dill.md",
