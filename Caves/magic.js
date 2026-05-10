@@ -533,18 +533,21 @@ async function executeAimedSpell(spellId, dirX, dirY) {
 
             case 'meteor': {
                 const meteorDmg = spellData.baseDamage + (player.wits * spellLevel);
-                // FIX: Increased Meteor cast distance from 3 to 5
                 const mx = player.x + (dirX * 5);
                 const my = player.y + (dirY * 5);
                 logMessage("A meteor crashes down!");
 
+                const meteorPromises = []; // Hold the promises
                 for (let y = my - spellData.radius; y <= my + spellData.radius; y++) {
                     for (let x = mx - spellData.radius; x <= mx + spellData.radius; x++) {
-                        applySpellDamage(x, y, meteorDmg, spellId).then(hit => {
-                            if (hit) ParticleSystem.createExplosion(x, y, '#f97316');
-                        });
+                        meteorPromises.push(
+                            applySpellDamage(x, y, meteorDmg, spellId).then(hit => {
+                                if (hit) ParticleSystem.createExplosion(x, y, '#f97316');
+                            })
+                        );
                     }
                 }
+                await Promise.all(meteorPromises); // WAIT for all impacts to finish
                 hitSomething = true;
                 break;
             }
@@ -635,24 +638,28 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     setTimeout(() => logMessage(`The lightning arcs to ${jumpsToMake} nearby enemies!`), 200);
                 }
 
+                const lightningPromises = []; // Hold the promises
                 for (let i = 0; i < jumpsToMake; i++) {
                     const jumpTgt = potentialJumpTargets[i];
                     const jumpDmg = Math.max(1, Math.floor(lightningDmg * 0.75));
-                    applySpellDamage(jumpTgt.x, jumpTgt.y, jumpDmg, spellId).then(hit => {
-                        if (hit) ParticleSystem.createExplosion(jumpTgt.x, jumpTgt.y, '#93c5fd');
-                    });
+                    lightningPromises.push(
+                        applySpellDamage(jumpTgt.x, jumpTgt.y, jumpDmg, spellId).then(hit => {
+                            if (hit) ParticleSystem.createExplosion(jumpTgt.x, jumpTgt.y, '#93c5fd');
+                        })
+                    );
                 }
+                await Promise.all(lightningPromises); // WAIT for all jumps to finish
                 break;
             }
 
             case 'fireball': {
                 const fbDamage = spellData.baseDamage + (player.wits * spellLevel);
                 const radius = spellData.radius; 
-                // Increased Fireball cast distance from 3 to 5
                 const targetX = player.x + (dirX * 5);
                 const targetY = player.y + (dirY * 5);
                 logMessage("A fireball erupts in the distance!");
 
+                const fbPromises = []; // Hold the promises
                 for (let y = targetY - radius; y <= targetY + radius; y++) {
                     for (let x = targetX - radius; x <= targetX + radius; x++) {
                         let tileAt;
@@ -666,7 +673,8 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                             if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '.');
                             else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][y][x] = '.';
                             else chunkManager.castleMaps[gameState.currentCastleId][y][x] = '.';
-                            applySpellDamage(x, y, 15, 'fireball');
+                            
+                            fbPromises.push(applySpellDamage(x, y, 15, 'fireball'));
                         }
 
                         if (gameState.mapMode === 'dungeon' && tileAt === '🕸') {
@@ -678,11 +686,14 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                             }
                         }
 
-                        applySpellDamage(x, y, fbDamage, spellId).then(hit => {
-                            if (hit) hitSomething = true;
-                        });
+                        fbPromises.push(
+                            applySpellDamage(x, y, fbDamage, spellId).then(hit => {
+                                if (hit) hitSomething = true;
+                            })
+                        );
                     }
                 }
+                await Promise.all(fbPromises); // WAIT for all fire damage to process
                 break;
             }
         }
