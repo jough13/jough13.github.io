@@ -1,0 +1,8 @@
+{
+    "title": "Your Engaging Post Title Goes Here",
+    "date": "YYYY-MM-DD",
+    "file": "category/your-post-filename.md",
+    "summary": "A concise, one-or-two sentence hook that will appear on the main feed and tag pages. Keep it punchy.",
+    "category": "ideas",
+    "tags": ["tag1", "tag2", "tag3"]
+  },
