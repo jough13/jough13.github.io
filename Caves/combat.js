@@ -601,12 +601,16 @@ async function processOverworldEnemyTurns() {
                     if (gameState.godMode) continue; 
                     
                     // Calculate Total Defense & Dodge
-                    const armorDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
+                    const armorDefense = gameState.player.equipment.armor ? (gameState.player.equipment.armor.defense || 0) : 0;
+                    const offhandDefense = gameState.player.equipment.offhand ? (gameState.player.equipment.offhand.defense || 0) : 0;
+                    const accDefense = gameState.player.equipment.accessory ? (gameState.player.equipment.accessory.defense || 0) : 0;
+
                     const baseDefense = Math.floor(gameState.player.dexterity / 3);
                     const buffDefense = gameState.player.defenseBonus || 0;
                     const talentDefense = (gameState.player.talents && gameState.player.talents.includes('iron_skin')) ? 1 : 0;
                     const conBonus = Math.floor(gameState.player.constitution * 0.1);
-                    const totalDefense = baseDefense + armorDefense + buffDefense + conBonus + talentDefense;
+                    
+                    const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
 
                     let dodgeChance = Math.min(gameState.player.luck * 0.002, 0.25);
                     if (gameState.player.talents && gameState.player.talents.includes('evasion')) {
@@ -976,12 +980,16 @@ function processEnemyTurns() {
         if (distSq <= 2) {
             if (gameState.godMode) return;
 
-            const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
+            const armorDefense = player.equipment.armor ? (player.equipment.armor.defense || 0) : 0;
+            const offhandDefense = player.equipment.offhand ? (player.equipment.offhand.defense || 0) : 0;
+            const accDefense = player.equipment.accessory ? (player.equipment.accessory.defense || 0) : 0;
+
             const baseDefense = Math.floor(player.dexterity / 3);
             const buffDefense = player.defenseBonus || 0;
             const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
             const conBonus = Math.floor(player.constitution * 0.1);
-            const totalDefense = baseDefense + armorDefense + buffDefense + conBonus + talentDefense;
+            
+            const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
 
             let dodgeChance = Math.min(player.luck * 0.002, 0.25);
             if (player.talents && player.talents.includes('evasion')) dodgeChance += 0.10;
