@@ -234,7 +234,18 @@ const FISHING_LOOT = {
 // --- 3. MAIN FISHING EXECUTION ---
 function executeFishing() {
     const player = gameState.player;
-    const currentTile = chunkManager.getTile(player.x, player.y);
+    
+    // Context-aware tile fetching!
+    let currentTile;
+    if (gameState.mapMode === 'overworld') {
+        currentTile = chunkManager.getTile(player.x, player.y);
+    } else if (gameState.mapMode === 'dungeon') {
+        const map = chunkManager.caveMaps[gameState.currentCaveId];
+        currentTile = (map && map[player.y] && map[player.y][player.x]) ? map[player.y][player.x] : ' ';
+    } else if (gameState.mapMode === 'castle') {
+        const map = chunkManager.castleMaps[gameState.currentCastleId];
+        currentTile = (map && map[player.y] && map[player.y][player.x]) ? map[player.y][player.x] : ' ';
+    }
 
     const hasObsidianRod = player.inventory.some(i => i.name === 'Obsidian Fishing Rod' && !i.isEquipped);
     const isLava = (currentTile === '~' && gameState.mapMode === 'dungeon' && gameState.currentCaveTheme === 'FIRE');
