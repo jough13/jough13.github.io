@@ -361,11 +361,14 @@ async function executeRangedAttack(dirX, dirY) {
             player.equipment.ammo = null;
         }
 
-        // --- 3. Projectile Loop (Range 4) ---
+        // --- 3. Projectile Loop (Dynamic Range) ---
         logMessage("You loose an arrow!");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); 
         
-        for (let i = 1; i <= 4; i++) {
+        // NEW: Pull range from the equipped weapon, fallback to 4
+        const maxRange = player.equipment.weapon.range || 4;
+
+        for (let i = 1; i <= maxRange; i++) {
             const targetX = player.x + (dirX * i);
             const targetY = player.y + (dirY * i);
 
@@ -383,13 +386,14 @@ async function executeRangedAttack(dirX, dirY) {
                 const enemyId = `overworld:${targetX},${-targetY}`;
                 const liveEnemy = gameState.sharedEnemies[enemyId];
                 tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
-                if (['^', 'F', '🧱'].includes(tile) && !liveEnemy) isSolid = true;
+                // FIX: Added closed doors '+' and stash boxes '☒' to arrow blockers
+                if (['^', 'F', '🧱', '+', '☒'].includes(tile) && !liveEnemy) isSolid = true;
             } else {
                 const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
                 tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
                 const theme = CAVE_THEMES[gameState.currentCaveTheme];
                 const wallTile = theme ? theme.wall : '▓';
-                if (tile === wallTile || tile === '▒') isSolid = true;
+                if (tile === wallTile || tile === '▒' || tile === '+') isSolid = true;
             }
             
             // --- ENVIRONMENTAL INTERACTIONS (FIRE ARROWS) ---
