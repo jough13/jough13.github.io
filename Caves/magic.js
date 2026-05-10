@@ -295,7 +295,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
     if (gameState.mapMode === 'overworld') {
         const enemyId = `overworld:${targetX},${-targetY}`;
-        const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
+        const enemyRef = rtdb.ref(EnemyNetworkManager.getPath(targetX, targetY, enemyId));
 
         const liveEnemy = gameState.sharedEnemies[enemyId];
         const enemyInfo = liveEnemy || getScaledEnemy(enemyData, targetX, targetY);
