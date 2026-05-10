@@ -551,6 +551,67 @@ async function processOverworldEnemyTurns() {
             continue; // Skip movement if they casted a spell
         }
 
+        // --- OVERWORLD ENEMY ARCHERY ---
+        const shootRangeSq = Math.pow(enemy.range || 5, 2);
+        if (enemy.isRanged && distSq <= shootRangeSq && Math.random() < 0.35) {
+            if (gameState.godMode) continue;
+
+            let dodgeChance = Math.min(gameState.player.luck * 0.002, 0.25);
+            if (gameState.player.talents && gameState.player.talents.includes('evasion')) dodgeChance += 0.10;
+
+            if (typeof ParticleSystem !== 'undefined') {
+                // Shoot a gray arrow particle at the player
+                ParticleSystem.spawn(playerX, playerY, '#d4d4d8', 'dust', '', 4);
+            }
+
+            if (Math.random() < dodgeChance) {
+                logMessage(`The ${enemy.name} shoots an arrow, but you dodge!`);
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, "Dodge!", "#3b82f6");
+            } else {
+                // Use physical defense calculation (including shields!)
+                const armorDefense = gameState.player.equipment.armor ? (gameState.player.equipment.armor.defense || 0) : 0;
+                const offhandDefense = gameState.player.equipment.offhand ? (gameState.player.equipment.offhand.defense || 0) : 0;
+                const accDefense = gameState.player.equipment.accessory ? (gameState.player.equipment.accessory.defense || 0) : 0;
+                const baseDefense = Math.floor(gameState.player.dexterity / 3);
+                const buffDefense = gameState.player.defenseBonus || 0;
+                const talentDefense = (gameState.player.talents && gameState.player.talents.includes('iron_skin')) ? 1 : 0;
+                const conBonus = Math.floor(gameState.player.constitution * 0.1);
+                
+                const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
+
+                let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
+                
+                if (gameState.player.shieldValue > 0) {
+                    const absorb = Math.min(gameState.player.shieldValue, dmg);
+                    gameState.player.shieldValue -= absorb;
+                    dmg -= absorb;
+                    logMessage(`Shield absorbs ${absorb} ranged damage!`);
+                }
+                
+                if (dmg > 0) {
+                    gameState.player.health -= dmg;
+                    gameState.screenShake = 10;
+                    
+                    const wrapper = document.getElementById('gameCanvasWrapper');
+                    if (wrapper) {
+                        wrapper.classList.remove('damage-flash'); 
+                        void wrapper.offsetWidth; 
+                        wrapper.classList.add('damage-flash');
+                    }
+                    
+                    triggerStatFlash(statDisplays.health, false);
+                    logMessage(`The ${enemy.name} shoots you for {red:${dmg}} damage!`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
+                    
+                    if (gameState.player.health <= 0) handlePlayerDeath();
+                }
+            }
+            
+            processedIdsThisFrame.add(enemyId);
+            movesQueued = true;
+            continue; // Skip movement if they shot an arrow
+        }
+
         // --- AI LOGIC (MOVEMENT & MELEE) ---
         let chaseChance = 0.20;
         if (distSq < 400) chaseChance = 0.85; // Close range
@@ -1068,6 +1129,62 @@ function processEnemyTurns() {
                 }
             }
             return;
+        }
+
+        // --- DUNGEON ENEMY ARCHERY ---
+        const shootRangeSq = Math.pow(enemy.range || 5, 2);
+        if (enemy.isRanged && distSq <= shootRangeSq && Math.random() < 0.35) {
+            if (gameState.godMode) return;
+
+            let dodgeChance = Math.min(player.luck * 0.002, 0.25);
+            if (player.talents && player.talents.includes('evasion')) dodgeChance += 0.10;
+
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.spawn(player.x, player.y, '#d4d4d8', 'dust', '', 4);
+            }
+
+            if (Math.random() < dodgeChance) {
+                logMessage(`The ${enemy.name} shoots an arrow, but you dodge!`);
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "Dodge!", "#3b82f6");
+            } else {
+                const armorDefense = player.equipment.armor ? (player.equipment.armor.defense || 0) : 0;
+                const offhandDefense = player.equipment.offhand ? (player.equipment.offhand.defense || 0) : 0;
+                const accDefense = player.equipment.accessory ? (player.equipment.accessory.defense || 0) : 0;
+                const baseDefense = Math.floor(player.dexterity / 3);
+                const buffDefense = player.defenseBonus || 0;
+                const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
+                const conBonus = Math.floor(player.constitution * 0.1);
+                
+                const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
+
+                let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
+                
+                if (player.shieldValue > 0) {
+                    const absorb = Math.min(player.shieldValue, dmg);
+                    player.shieldValue -= absorb;
+                    dmg -= absorb;
+                    logMessage(`Shield absorbs ${absorb} ranged damage!`);
+                }
+                
+                if (dmg > 0) {
+                    player.health -= dmg;
+                    gameState.screenShake = 10;
+                    
+                    const wrapper = document.getElementById('gameCanvasWrapper');
+                    if (wrapper) {
+                        wrapper.classList.remove('damage-flash'); 
+                        void wrapper.offsetWidth; 
+                        wrapper.classList.add('damage-flash');
+                    }
+                    
+                    triggerStatFlash(statDisplays.health, false);
+                    logMessage(`The ${enemy.name} shoots you for {red:${dmg}} damage!`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
+                    
+                    if (player.health <= 0) handlePlayerDeath();
+                }
+            }
+            return; // End this enemy's turn
         }
 
         let desiredX = 0, desiredY = 0, moveType = 'wander';
