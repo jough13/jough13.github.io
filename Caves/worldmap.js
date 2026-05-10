@@ -1,4 +1,7 @@
-// --- WORLD MAP SYSTEM ---
+// ==========================================
+// WORLD MAP SYSTEM & SETTINGS
+// ==========================================
+
 const mapModal = document.getElementById('mapModal');
 const worldMapCanvas = document.getElementById('worldMapCanvas');
 const worldMapCtx = worldMapCanvas.getContext('2d');
@@ -19,48 +22,90 @@ let hoverWorldX = null;
 let hoverWorldY = null;
 let mapAnimFrame = null;
 
-// --- MINIMAP CACHE ---
+// --- MINIMAP CACHE (With Memory Leak Protection) ---
 const mapChunkCache = new Map();
+const MAX_CACHED_CHUNKS = 300; 
 
 function getCachedMapChunk(cx, cy) {
     const key = `${cx},${cy}`;
     if (mapChunkCache.has(key)) return mapChunkCache.get(key);
+
+    // Memory Leak Protection: Clear oldest chunks if we exceed the limit
+    if (mapChunkCache.size > MAX_CACHED_CHUNKS) {
+        const oldestKey = mapChunkCache.keys().next().value;
+        mapChunkCache.delete(oldestKey);
+    }
 
     const c = document.createElement('canvas');
     c.width = MAP_CHUNK_SIZE;
     c.height = MAP_CHUNK_SIZE;
     const ctx = c.getContext('2d');
 
+    // PERFORMANCE UPGRADE: ImageData Buffer (10x-50x faster than fillRect)
+    const imgData = ctx.createImageData(MAP_CHUNK_SIZE, MAP_CHUNK_SIZE);
+    const data = imgData.data;
+
     for (let y = 0; y < MAP_CHUNK_SIZE; y++) {
         for (let x = 0; x < MAP_CHUNK_SIZE; x++) {
             const worldX = cx * MAP_CHUNK_SIZE + x;
             const worldY = cy * MAP_CHUNK_SIZE + y;
-            ctx.fillStyle = getTileColorForMap(worldX, worldY);
-            ctx.fillRect(x, y, 1, 1); 
+            const colorHex = getTileColorForMap(worldX, worldY);
+            
+            const index = (y * MAP_CHUNK_SIZE + x) * 4;
+            
+            if (colorHex === 'rgba(0,0,0,0)') {
+                data[index + 3] = 0; // Alpha 0
+            } else {
+                // Parse Hex to RGB
+                const cleanHex = colorHex.replace('#', '');
+                let r, g, b;
+                
+                if (cleanHex.length === 3) {
+                    r = parseInt(cleanHex[0] + cleanHex[0], 16);
+                    g = parseInt(cleanHex[1] + cleanHex[1], 16);
+                    b = parseInt(cleanHex[2] + cleanHex[2], 16);
+                } else {
+                    r = parseInt(cleanHex.substring(0, 2), 16);
+                    g = parseInt(cleanHex.substring(2, 4), 16);
+                    b = parseInt(cleanHex.substring(4, 6), 16);
+                }
+
+                data[index] = r;
+                data[index + 1] = g;
+                data[index + 2] = b;
+                data[index + 3] = 255; // Alpha 255
+            }
         }
     }
 
+    ctx.putImageData(imgData, 0, 0);
     mapChunkCache.set(key, c);
     return c;
 }
 
-// Determines accurate colors including structures, buildings, and landmarks
+// Determines accurate colors including new Nautical & Night items!
 function getTileColorForMap(worldX, worldY) {
-    // Only query chunkManager if the chunk is explored (prevents generating unseen terrain)
     const chunkId = `${Math.floor(worldX / MAP_CHUNK_SIZE)},${Math.floor(worldY / MAP_CHUNK_SIZE)}`;
     if (!gameState.exploredChunks.has(chunkId)) return 'rgba(0,0,0,0)'; 
 
     const tile = chunkManager.getTile(worldX, worldY); 
 
-    // Landmarks & Structures (Pop out on the map)
+    // Landmarks & Structures
     if (['V', '🏰', '♛', '🏛️', '🚪', '🎓'].includes(tile)) return '#f8fafc'; // White
     if (tile === '🕍') return '#991b1b'; // Dark Red (Dangerous Ruins)
     if (['⛰', '🕳️', '🧊', '♣', '🏝️'].includes(tile)) return '#0f172a'; // Deep dark blue/black (Caves)
     if (['#', '|', '⛩️', '⛲', '✨'].includes(tile)) return '#a855f7'; // Magic Purple
     if (['🧱', '▤', '=', '+', '☒', '⛺'].includes(tile)) return '#9ca3af'; // Player Built / Camp
-    if (tile === 'c') return '#ef4444'; // Canoe
+    if (tile === 'c' || tile === '⛵') return '#ef4444'; // Canoe / Ship
     if (tile === '∴') return '#854d0e'; // Dig Spot
     if (tile === '~') return '#1e3a8a'; // Deep Water
+    
+    // New Anomalies
+    if (tile === '🌋') return '#ea580c'; // Volcano Orange
+    if (tile === '🛕') return '#0284c7'; // Abyssal Temple Blue
+    if (tile === '🛟') return '#facc15'; // Flotsam Yellow
+    if (tile === '🌺') return '#f472b6'; // Moonbloom Pink
+    if (tile === '☄️') return '#38bdf8'; // Star-Metal Cyan
 
     // Natural Biomes (Fallback)
     const elev = elevationNoise.noise(worldX / 70, worldY / 70);
@@ -76,24 +121,19 @@ function getTileColorForMap(worldX, worldY) {
 }
 
 function openWorldMap() {
-    // Clear cache so any new walls/digs instantly show up
     mapChunkCache.clear(); 
-    
     mapModal.classList.remove('hidden');
     
-    // Snap camera to player
     mapCamera.x = gameState.player.x;
     mapCamera.y = gameState.player.y;
     targetMapCamera.x = gameState.player.x;
     targetMapCamera.y = gameState.player.y;
     targetMapScale = currentMapScale;
     
-    updateExploration();
+    if (typeof updateExploration === 'function') updateExploration();
     fitMapCanvasToContainer();
     
     if (!mapAnimFrame) mapLoop();
-    
-    // Juice: UI Open Sound
     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
 }
 
@@ -159,10 +199,32 @@ function renderWorldMap() {
         const chunkCanvas = getCachedMapChunk(cx, cy);
         worldMapCtx.drawImage(chunkCanvas, screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
 
+        // Chunk Grid Lines
         worldMapCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
         worldMapCtx.lineWidth = 1;
         worldMapCtx.strokeRect(screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
     });
+
+    // --- Render Custom Player Pins (NEW!) ---
+    if (gameState.player.customPins) {
+        worldMapCtx.font = `bold ${Math.max(14, currentMapScale * 2)}px monospace`;
+        worldMapCtx.textAlign = 'center';
+        worldMapCtx.textBaseline = 'middle';
+
+        gameState.player.customPins.forEach(pin => {
+            const screenX = (pin.x - mapCamera.x) * currentMapScale + centerX;
+            const screenY = (pin.y - mapCamera.y) * currentMapScale + centerY;
+            
+            if (screenX >= 0 && screenX <= worldMapCanvas.width && screenY >= 0 && screenY <= worldMapCanvas.height) {
+                // Drop shadow
+                worldMapCtx.fillStyle = 'rgba(0,0,0,0.8)';
+                worldMapCtx.fillText('📌', screenX + currentMapScale/2, (screenY + currentMapScale/2) + 2);
+                // Icon
+                worldMapCtx.fillStyle = '#ffffff';
+                worldMapCtx.fillText('📌', screenX + currentMapScale/2, screenY + currentMapScale/2);
+            }
+        });
+    }
 
     // Render Unlocked Waystones
     if (gameState.player.unlockedWaypoints) {
@@ -180,7 +242,7 @@ function renderWorldMap() {
         });
     }
 
-    // NEW: Render Discovered Points of Interest (POIs)
+    // Render Discovered Points of Interest (POIs)
     if (gameState.player.discoveredPOIs) {
         worldMapCtx.font = `bold ${Math.max(10, currentMapScale * 1.5)}px monospace`;
         worldMapCtx.textAlign = 'center';
@@ -191,13 +253,11 @@ function renderWorldMap() {
             const screenY = (poi.y - mapCamera.y) * currentMapScale + centerY;
             
             if (screenX >= 0 && screenX <= worldMapCanvas.width && screenY >= 0 && screenY <= worldMapCanvas.height) {
-                // Background circle for visibility
                 worldMapCtx.fillStyle = 'rgba(0,0,0,0.5)';
                 worldMapCtx.beginPath();
                 worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2, currentMapScale, 0, Math.PI * 2);
                 worldMapCtx.fill();
                 
-                // Draw the icon
                 worldMapCtx.fillStyle = '#ffffff';
                 worldMapCtx.fillText(poi.icon, screenX + currentMapScale/2, screenY + currentMapScale/2);
             }
@@ -250,11 +310,19 @@ function renderWorldMap() {
         worldMapCtx.strokeRect(hScreenX, hScreenY, currentMapScale, currentMapScale);
     }
 
+    // Map Vignette Shadow
+    const grad = worldMapCtx.createRadialGradient(centerX, centerY, centerY * 0.5, centerX, centerY, centerY * 1.2);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.8)');
+    worldMapCtx.fillStyle = grad;
+    worldMapCtx.fillRect(0, 0, worldMapCanvas.width, worldMapCanvas.height);
+
     updateMapUI();
 }
 
 function updateMapUI() {
     let hoverText = '';
+    let pinHint = ' | <span class="text-gray-500">Right-Click to Pin</span>';
     
     if (hoverWorldX !== null && hoverWorldY !== null) {
         const chunkId = `${Math.floor(hoverWorldX / MAP_CHUNK_SIZE)},${Math.floor(hoverWorldY / MAP_CHUNK_SIZE)}`;
@@ -268,6 +336,7 @@ function updateMapUI() {
             else if (tile === '🏰') tileName = "Castle Ruins";
             else if (tile === '♛') tileName = "Grand Fortress";
             else if (tile === '🛕') tileName = "Sunken Temple"; 
+            else if (tile === '🌋') tileName = "Volcanic Island"; 
             else if (tile === '⛰') tileName = "Cave Entrance";
             else if (tile === 'F') tileName = "Forest";
             else if (tile === 'D') tileName = "Desert";
@@ -277,6 +346,7 @@ function updateMapUI() {
             else if (tile === '≈') tileName = "Swamp";
             else if (tile === '.') tileName = "Plains";
             else if (tile === '#') tileName = "Waystone";
+            else if (tile === '🗺️') tileName = "Cartographer's Guild";
             else if (['🧱', '=', '+', '☒'].includes(tile)) tileName = "Built Structure";
             else tileName = "Unknown Area";
         }
@@ -284,7 +354,7 @@ function updateMapUI() {
         hoverText = ` | Hover: <span class="text-yellow-400 font-bold">${tileName}</span> (${hoverWorldX}, ${-hoverWorldY})`;
     }
     
-    mapCoordsDisplay.innerHTML = `Player: (${gameState.player.x}, ${-gameState.player.y})${hoverText}`;
+    mapCoordsDisplay.innerHTML = `Player: (${gameState.player.x}, ${-gameState.player.y})${hoverText}${pinHint}`;
 }
 
 // --- INPUT EVENTS ---
@@ -300,7 +370,6 @@ function doMapDrag(clientX, clientY) {
     const dx = clientX - lastMouseX;
     const dy = clientY - lastMouseY;
     
-    // Apply instantly for dragging responsiveness
     targetMapCamera.x -= dx / currentMapScale;
     targetMapCamera.y -= dy / currentMapScale;
     mapCamera.x = targetMapCamera.x;
@@ -312,16 +381,19 @@ function doMapDrag(clientX, clientY) {
 
 function stopMapDrag() {
     isDraggingMap = false;
-    worldMapCanvas.style.cursor = 'grab';
+    worldMapCanvas.style.cursor = 'crosshair';
 }
 
-worldMapCanvas.addEventListener('mousedown', (e) => startMapDrag(e.clientX, e.clientY));
+worldMapCanvas.addEventListener('mousedown', (e) => {
+    // Only drag on left click (button 0)
+    if (e.button === 0) startMapDrag(e.clientX, e.clientY);
+});
 window.addEventListener('mouseup', stopMapDrag);
 
 worldMapCanvas.addEventListener('mousemove', (e) => {
     if (isDraggingMap) {
         doMapDrag(e.clientX, e.clientY);
-        hoverWorldX = null; // Disable hover text while panning
+        hoverWorldX = null; 
     } else {
         const rect = worldMapCanvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -335,16 +407,67 @@ worldMapCanvas.addEventListener('mousemove', (e) => {
     }
 });
 
-// Juice: Double click to center camera on player
+// Double click to center camera on player
 worldMapCanvas.addEventListener('dblclick', () => {
     targetMapCamera.x = gameState.player.x;
     targetMapCamera.y = gameState.player.y;
     if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
 });
 
+// --- NEW: CUSTOM MAP PINS (Right-Click) ---
+worldMapCanvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault(); // Stop normal right click menu
+    
+    if (hoverWorldX === null || hoverWorldY === null) return;
+    
+    if (!gameState.player.customPins) gameState.player.customPins = [];
+    
+    // Check if clicking near an existing pin to remove it
+    const existingIdx = gameState.player.customPins.findIndex(p => Math.abs(p.x - hoverWorldX) < 2 && Math.abs(p.y - hoverWorldY) < 2);
+    
+    if (existingIdx > -1) {
+        gameState.player.customPins.splice(existingIdx, 1);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+    } else {
+        gameState.player.customPins.push({ x: hoverWorldX, y: hoverWorldY });
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+    }
+    
+    // Save to Firebase immediately
+    if (typeof playerRef !== 'undefined' && playerRef) {
+        playerRef.update({ customPins: gameState.player.customPins });
+    }
+});
+
 worldMapCanvas.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) startMapDrag(e.touches[0].clientX, e.touches[0].clientY);
-    hoverWorldX = null; // Disable hover for touch devices
+    
+    // Handle Two-Finger Tap to place a map pin on mobile
+    if (e.touches.length === 2) {
+        const rect = worldMapCanvas.getBoundingClientRect();
+        const touch = e.touches[0]; // Just use the first finger's position
+        const mouseX = touch.clientX - rect.left;
+        const mouseY = touch.clientY - rect.top;
+        const centerX = Math.floor(worldMapCanvas.width / 2);
+        const centerY = Math.floor(worldMapCanvas.height / 2);
+        
+        const pinX = Math.floor((mouseX - centerX) / currentMapScale + mapCamera.x);
+        const pinY = Math.floor((mouseY - centerY) / currentMapScale + mapCamera.y);
+        
+        if (!gameState.player.customPins) gameState.player.customPins = [];
+        
+        const existingIdx = gameState.player.customPins.findIndex(p => Math.abs(p.x - pinX) < 3 && Math.abs(p.y - pinY) < 3);
+        if (existingIdx > -1) {
+            gameState.player.customPins.splice(existingIdx, 1);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        } else {
+            gameState.player.customPins.push({ x: pinX, y: pinY });
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+        }
+        if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ customPins: gameState.player.customPins });
+    }
+    
+    hoverWorldX = null; 
 }, { passive: false });
 
 worldMapCanvas.addEventListener('touchmove', (e) => {
