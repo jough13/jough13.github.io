@@ -1,3 +1,6 @@
+// Cache room templates globally to prevent expensive object parsing during cave generation
+window.CACHED_ROOM_TEMPLATES = null;
+
 const chunkManager = {
     CHUNK_SIZE: 16,
     loadedChunks: {},
@@ -34,7 +37,9 @@ const chunkManager = {
             floorZ = 1;
         }
 
-        const dist = Math.sqrt(cX * cX + cY * cY);
+        // PERFORMANCE: Use Squared Distance to avoid Math.sqrt() costs
+        const distSq = (cX * cX) + (cY * cY);
+        const SAFE_ZONE_SQ = 150 * 150; // 22500
 
         // JUICE: Randomize cave aspect ratio so they aren't perfect squares!
         // Min size 90, Max size 150
@@ -46,7 +51,7 @@ const chunkManager = {
         let enemyCount = 30 + (floorZ * 10); 
 
         // Safe Zone Density Nerf (Fewer enemies near spawn)
-        if (dist < 150 && floorZ === 1) { 
+        if (distSq < SAFE_ZONE_SQ && floorZ === 1) { 
             enemyCount = 10; 
             CAVE_WIDTH = 70; CAVE_HEIGHT = 70; // Keep newbie caves small
         }
@@ -110,8 +115,11 @@ const chunkManager = {
             this.caveEnemies[caveId] = [];
         }
 
-        // Safety fallback in case CAVE_ROOM_TEMPLATES isn't fully loaded
-        const roomTemplates = Object.values(typeof CAVE_ROOM_TEMPLATES !== 'undefined' ? CAVE_ROOM_TEMPLATES : {});
+        // PERFORMANCE: Cache room templates
+        if (!window.CACHED_ROOM_TEMPLATES) {
+            window.CACHED_ROOM_TEMPLATES = Object.values(typeof CAVE_ROOM_TEMPLATES !== 'undefined' ? CAVE_ROOM_TEMPLATES : {});
+        }
+        const roomTemplates = window.CACHED_ROOM_TEMPLATES;
         const roomAttempts = 8; // Increased attempts for bigger maps
 
         // Only attempt to stamp if we actually have templates!
@@ -188,7 +196,7 @@ const chunkManager = {
                                 loot: enemyTemplate.loot,
                                 caster: enemyTemplate.caster || false,
                                 castRange: enemyTemplate.castRange || 0,
-                                spellDamage: Math.floor((enemyTemplate.spellDamage || 0) * (1 + (Math.floor(dist / 50) * 0.1))),
+                                spellDamage: Math.floor((enemyTemplate.spellDamage || 0) * (1 + (Math.floor(Math.sqrt(distSq) / 50) * 0.1))),
                                 inflicts: enemyTemplate.inflicts || null,
                                 madnessTurns: 0,
                                 frostbiteTurns: 0,
@@ -307,7 +315,7 @@ const chunkManager = {
 
         // --- SAFE ZONE CAVE NERF ---
         // If within 250 tiles of spawn, remove "Hard" enemies from the spawn pool
-        if (dist < 250 && floorZ === 1) {
+        if (distSq < SAFE_ZONE_SQ && floorZ === 1) {
             // Added Golems (🧌), Draugr (Z), Scorpions (🦂), and Spiders (@) to the ban list!
             const hardEnemies =['C', 'm', 'o', 'Ø', 'Y', 'D', '🐲', '🧙', 'v', 'f', '🧌', 'Z', '🦂', '@'];
             enemyTypes = enemyTypes.filter(e => !hardEnemies.includes(e));
@@ -339,14 +347,15 @@ const chunkManager = {
                     x: randX,
                     y: randY,
                     tile: enemyTile,
-                    name: scaledStats.name, 
-                    health: scaledStats.maxHealth, 
+                    name: scaledStats.name,
+                    isElite: scaledStats.isElite || false,
+                    color: scaledStats.color || null,
+                    health: scaledStats.maxHealth,
                     maxHealth: scaledStats.maxHealth,
                     attack: scaledStats.attack,
                     defense: enemyTemplate.defense,
                     xp: scaledStats.xp,
                     loot: enemyTemplate.loot,
-                    teleporter: enemyTemplate.teleporter || false,
                     caster: enemyTemplate.caster || false,
                     castRange: enemyTemplate.castRange || 0,
                     spellDamage: enemyTemplate.spellDamage || 0,
@@ -366,20 +375,35 @@ const chunkManager = {
         // --- 6. Place the Exit ---
         map[startPos.y][startPos.x] = '>';
 
-        // NEW: Place Stairs Down (<) far away from the start
+        // PERFORMANCE FIX: Dungeon Stairs Fallback
+        // Guaranteed to find a spot for stairs, preventing unbeatable dungeons.
         let stairsPlaced = false;
         let stairsAttempts = 0;
+        let minStairsDistSq = 30 * 30; // Starts requiring distance > 30 tiles
+
         while (!stairsPlaced && stairsAttempts < 1000) {
             const sx = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
             const sy = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
-            const distFromStart = Math.sqrt(Math.pow(sx - startPos.x, 2) + Math.pow(sy - startPos.y, 2));
+            
+            const dx = sx - startPos.x;
+            const dy = sy - startPos.y;
+            const distFromStartSq = (dx * dx) + (dy * dy);
 
-            // Place stairs if it's an open floor and at least 30 tiles away
-            if (map[sy][sx] === theme.floor && distFromStart > 30) {
+            // Place stairs if it's an open floor and meets distance criteria
+            if (map[sy][sx] === theme.floor && distFromStartSq >= minStairsDistSq) {
                 map[sy][sx] = '<';
                 stairsPlaced = true;
             }
             stairsAttempts++;
+
+            // Gradually relax constraints if the map is too tight to prevent infinite lock
+            if (stairsAttempts > 500) minStairsDistSq = 15 * 15;
+            if (stairsAttempts > 800) minStairsDistSq = 0;
+        }
+        
+        // Final ultimate failsafe
+        if (!stairsPlaced) {
+            map[startPos.y + 1][startPos.x] = '<';
         }
 
         // --- 7. Secret Wall Generation ---
@@ -430,15 +454,18 @@ const chunkManager = {
         if (caveId === 'cave_landmark') {
             let bossPlaced = false;
             let attempts = 0;
+            let minBossDistSq = 30 * 30;
+
             while (!bossPlaced && attempts < 1000) {
                 // Pick a random spot
                 const bx = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
                 const by = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
 
-                // Must be floor, and far from entrance (distance > 30)
-                const distFromStart = Math.sqrt(Math.pow(bx - startPos.x, 2) + Math.pow(by - startPos.y, 2));
+                const dx = bx - startPos.x;
+                const dy = by - startPos.y;
+                const distFromStartSq = (dx * dx) + (dy * dy);
 
-                if (map[by][bx] === theme.floor && distFromStart > 30) {
+                if (map[by][bx] === theme.floor && distFromStartSq >= minBossDistSq) {
                     const bossTile = '🧙';
                     const bossTemplate = ENEMY_DATA[bossTile];
 
@@ -456,6 +483,10 @@ const chunkManager = {
                     bossPlaced = true;
                 }
                 attempts++;
+                
+                // Relax constraints
+                if (attempts > 500) minBossDistSq = 15 * 15;
+                if (attempts > 800) minBossDistSq = 0;
             }
 
             if (!bossPlaced) {
@@ -464,8 +495,8 @@ const chunkManager = {
                 const by = Math.floor(CAVE_HEIGHT / 2);
 
                 // FIX: Carve an arena so the boss doesn't spawn entombed in walls!
-                for(let oy=-1; oy<=1; oy++) {
-                    for(let ox=-1; ox<=1; ox++) {
+                for(let oy=-2; oy<=2; oy++) {
+                    for(let ox=-2; ox<=2; ox++) {
                         map[by+oy][bx+ox] = theme.floor;
                     }
                 }
@@ -519,15 +550,15 @@ const chunkManager = {
 
         const map = baseMap.map(row => [...row]);
 
-        // Calculate the maximum width of any row
-        let maxWidth = 0;
-        for (let r of map) {
-            if (r.length > maxWidth) maxWidth = r.length;
-        }
-
-        // Pad shorter rows with walls ('▓')
+        // PERFORMANCE: Optimized Array Padding (V8 Memory Friendly)
+        const maxWidth = Math.max(...map.map(r => r.length));
         for (let y = 0; y < map.length; y++) {
-            while (map[y].length < maxWidth) map[y].push('▓'); 
+            const diff = maxWidth - map[y].length;
+            if (diff > 0) {
+                for (let i = 0; i < diff; i++) {
+                    map[y].push('▓');
+                }
+            }
         }
 
         // --- NEW: ONLY SPAWN MERCHANTS/VILLAGERS IN SAFE CASTLES ---
@@ -706,12 +737,13 @@ const chunkManager = {
         }).catch(err => console.error("Map update failed:", err));
     },
 
-    getEnemySpawn(biome, dist, random) {
-        const TIER_THRESHOLDS = [500, 1500, 3000, 6000];
+    getEnemySpawn(biome, distSq, random) {
+        // PERFORMANCE: Using pre-squared thresholds (500^2, 1500^2, etc.)
+        const TIER_THRESHOLDS_SQ = [250000, 2250000, 9000000, 36000000];
 
         let tier = 0;
-        for (let i = 0; i < TIER_THRESHOLDS.length; i++) {
-            if (dist > TIER_THRESHOLDS[i]) tier = i + 1;
+        for (let i = 0; i < TIER_THRESHOLDS_SQ.length; i++) {
+            if (distSq > TIER_THRESHOLDS_SQ[i]) tier = i + 1;
             else break;
         }
 
@@ -761,7 +793,7 @@ const chunkManager = {
                     continue; 
                 }
 
-                const dist = Math.sqrt(worldX * worldX + worldY * worldY);
+                const distSq = (worldX * worldX) + (worldY * worldY);
 
                 // --- BIOME GENERATION ---
                 const elev = elevationNoise.noise(worldX / 70, worldY / 70);
@@ -776,7 +808,6 @@ const chunkManager = {
                 else if (moist > 0.55) tile = 'F';
 
                 // --- NATURAL SPAWN SAFETY OVERRIDE ---
-                const distSq = (worldX * worldX) + (worldY * worldY);
                 if (distSq <= 100) { 
                     if (['^', '~', '≈', 'd'].includes(tile)) {
                         tile = moist > 0.5 ? 'F' : '.'; 
@@ -792,7 +823,7 @@ const chunkManager = {
 
                 // --- 1. LEGENDARY LANDMARKS (Unique, Very Rare) ---
                 // Force the Grand Fortress to spawn far away from the village (dist > 1500)
-                if (tile === '.' && featureRoll < 0.000001 && dist > 1500) { 
+                if (tile === '.' && featureRoll < 0.000001 && distSq > 2250000) { 
                     chunkData[y][x] = '♛';
                 }
                 else if ((tile === 'd' || tile === '^') && featureRoll < 0.000001) {
@@ -845,7 +876,8 @@ const chunkManager = {
                     chunkData[y][x] = 'Ω';
                 }
                 // --- 4. MAJOR STRUCTURES (Explicit Spawn Rates) ---
-                else if (tile === '~' && featureRoll < 0.0005 && dist > 2000) {
+                else if (tile === '~' && featureRoll < 0.0005 && distSq > 4000000) {
+                    // Far out in the ocean (> 2000 tiles from spawn)
                     if (random() < 0.5) chunkData[y][x] = '🌋'; // Volcano Island
                     else chunkData[y][x] = '🛕'; // Abyssal Temple
                 }
@@ -857,7 +889,7 @@ const chunkManager = {
                 }
                 else if ((tile === '.' || tile === 'F') && featureRoll > 0.0005 && featureRoll < 0.0015) {
                     // 50% chance for a castle to be Dark/Ruined if you are far from home!
-                    if (dist > 800 && random() < 0.5) {
+                    if (distSq > 640000 && random() < 0.5) { // dist > 800
                         chunkData[y][x] = '🕍'; // Dark Castle
                     } else {
                         chunkData[y][x] = '🏰'; // Safe Castle
@@ -938,8 +970,8 @@ const chunkManager = {
                     if (tile === '~') spawnChance = 0.0015; // Sea monsters spawn rate
 
                     if (hostileRoll < spawnChance) {
-                        const effectiveDist = (dist < 200) ? 0 : dist;
-                        const enemyTile = this.getEnemySpawn(tile, effectiveDist, random);
+                        const effectiveDistSq = (distSq < 40000) ? 0 : distSq; // safe zone dist < 200
+                        const enemyTile = this.getEnemySpawn(tile, effectiveDistSq, random);
 
                         if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
                             chunkData[y][x] = enemyTile;
