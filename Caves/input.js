@@ -71,15 +71,15 @@ function handleInput(key) {
         let dirX = 0, dirY = 0;
         
         // Include numpad for aiming too!
-        if (key === 'ArrowUp' || key.toLowerCase() === 'w' || key === '8') dirY = -1;
-        else if (key === 'ArrowDown' || key.toLowerCase() === 's' || key === '2') dirY = 1;
-        else if (key === 'ArrowLeft' || key.toLowerCase() === 'a' || key === '4') dirX = -1;
-        else if (key === 'ArrowRight' || key.toLowerCase() === 'd' || key === '6') dirX = 1;
+        if (key === 'ArrowUp' || key.toLowerCase() === 'w' || key === '8' || key === 'Numpad8') dirY = -1;
+        else if (key === 'ArrowDown' || key.toLowerCase() === 's' || key === '2' || key === 'Numpad2') dirY = 1;
+        else if (key === 'ArrowLeft' || key.toLowerCase() === 'a' || key === '4' || key === 'Numpad4') dirX = -1;
+        else if (key === 'ArrowRight' || key.toLowerCase() === 'd' || key === '6' || key === 'Numpad6') dirX = 1;
         // Diagonals for aiming
-        else if (key === '7' || key === 'Home') { dirX = -1; dirY = -1; }
-        else if (key === '9' || key === 'PageUp') { dirX = 1; dirY = -1; }
-        else if (key === '1' || key === 'End') { dirX = -1; dirY = 1; }
-        else if (key === '3' || key === 'PageDown') { dirX = 1; dirY = 1; }
+        else if (key === '7' || key === 'Numpad7' || key === 'Home') { dirX = -1; dirY = -1; }
+        else if (key === '9' || key === 'Numpad9' || key === 'PageUp') { dirX = 1; dirY = -1; }
+        else if (key === '1' || key === 'Numpad1' || key === 'End') { dirX = -1; dirY = 1; }
+        else if (key === '3' || key === 'Numpad3' || key === 'PageDown') { dirX = 1; dirY = 1; }
 
         if (dirX !== 0 || dirY !== 0) {
             lastActionTime = Date.now(); 
@@ -206,25 +206,25 @@ function handleInput(key) {
     let newY = gameState.player.y;
     let moved = false;
 
-    // --- EASY WIN: NUMPAD & DIAGONAL SUPPORT ---
+    // --- NUMPAD & DIAGONAL SUPPORT ---
     switch (key) {
         // Cardinals
-        case 'ArrowUp': case 'w': case 'W': case '8': newY--; moved = true; break;
-        case 'ArrowDown': case 's': case 'S': case '2': newY++; moved = true; break;
-        case 'ArrowLeft': case 'a': case 'A': case '4': newX--; moved = true; break;
-        case 'ArrowRight': case 'd': case 'D': case '6': newX++; moved = true; break;
+        case 'ArrowUp': case 'w': case 'W': case '8': case 'Numpad8': newY--; moved = true; break;
+        case 'ArrowDown': case 's': case 'S': case '2': case 'Numpad2': newY++; moved = true; break;
+        case 'ArrowLeft': case 'a': case 'A': case '4': case 'Numpad4': newX--; moved = true; break;
+        case 'ArrowRight': case 'd': case 'D': case '6': case 'Numpad6': newX++; moved = true; break;
         
         // Diagonals (Numpad)
-        case '7': case 'Home': newX--; newY--; moved = true; break; // NW
-        case '9': case 'PageUp': newX++; newY--; moved = true; break; // NE
-        case '1': case 'End': newX--; newY++; moved = true; break; // SW
-        case '3': case 'PageDown': newX++; newY++; moved = true; break; // SE
+        case '7': case 'Numpad7': case 'Home': newX--; newY--; moved = true; break; // NW
+        case '9': case 'Numpad9': case 'PageUp': newX++; newY--; moved = true; break; // NE
+        case '1': case 'Numpad1': case 'End': newX--; newY++; moved = true; break; // SW
+        case '3': case 'Numpad3': case 'PageDown': newX++; newY++; moved = true; break; // SE
 
         case 'r': case 'R':
             restPlayer();
             lastActionTime = Date.now(); 
             return;
-        case ' ': case '5': case '.': // Spacebar or Numpad center/dot to skip turn
+        case ' ': case '5': case 'Numpad5': case '.': // Spacebar or Numpad center/dot to skip turn
             logMessage("You wait a moment.");
             endPlayerTurn();
             lastActionTime = Date.now(); 
@@ -257,20 +257,25 @@ document.addEventListener('keydown', (event) => {
         event.preventDefault();
     }
 
+    // --- Differentiate Numpad from Top Row ---
+    let inputStr = event.key;
+    if (event.code && event.code.startsWith('Numpad') && !isNaN(parseInt(event.key))) {
+        inputStr = 'Numpad' + event.key;
+    }
+
     // --- THE INPUT QUEUE ROUTER ---
-    // UI, Drop Mode, and Escaping menus should happen INSTANTLY for good UX
     const instantKeys = ['Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'I', 'M', 'B', 'K', 'C', 'P', 'd', 'D', 'g', 'G', 'q', 'Q'];
     const anyModalOpen = document.querySelector('.modal-overlay:not(.hidden)');
     
     if (anyModalOpen || instantKeys.includes(event.key) || gameState.isDroppingItem || gameState.inventoryMode) {
-        handleInput(event.key); // Execute instantly
+        handleInput(inputStr); // Execute instantly
     } else {
         // Gameplay actions (Movement, Combat, Aiming) queue up seamlessly!
         if (typeof inputQueue !== 'undefined' && inputQueue.length < 3) {
-            inputQueue.push(event.key);
+            inputQueue.push(inputStr);
         } else if (typeof inputQueue === 'undefined') {
             // Fallback safe-guard
-            handleInput(event.key);
+            handleInput(inputStr);
         }
     }
 });
