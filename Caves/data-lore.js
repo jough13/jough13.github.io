@@ -1,3 +1,5 @@
+--- START OF FILE data-lore.js ---
+
 window.LORE_SETS = {
     "wanderers_almanac": {
         name: "The Wanderer's Almanac",
@@ -30,7 +32,6 @@ window.LORE_SETS = {
         bonus: "Hardy: Hunger/Thirst drain 10% slower.",
         items: ["1", "2", "q"] // Conscript Orders, Thief Map, Bandit Note
     },
-    // EASY WIN: New Lore Set utilizing the previously un-grouped journals!
     "deep_delver": {
         name: "The Deep Delver",
         description: "Accounts from the most dangerous corners of the world.",
@@ -48,7 +49,10 @@ window.LORE_STONE_MESSAGES = [
     "The dragons did not flee. They were driven out by something worse.",
     "If the stone weeps, the Void is near.",
     "The Elves knew the truth, and so they burned their own cities.",
-    "Do not dig too deep. The earth is a cage, not a mother."
+    "Do not dig too deep. The earth is a cage, not a mother.",
+    "The phase walls of the Void Sanctum cannot be broken, only walked through.",
+    "A true master of the blade deflects the blow before it falls.",
+    "Seek the Fairy Rings in the forest. They offer a gamble with the Fae."
 ];
 
 // --- BIOME SPECIFIC FLAVOR TEXT (Triggered by '#' Waystones) ---
@@ -67,7 +71,11 @@ window.LORE_PLAINS = [
     "The clouds above seem to circle this exact spot.",
     "You hear the distant sound of marching boots, but see no one.",
     "A single, massive footprint is pressed into the mud.",
-    "The wildflowers here smell faintly of copper and blood."
+    "The wildflowers here smell faintly of copper and blood.",
+    "A scarecrow stands here, wearing tattered Bandit Garb.",
+    "You find a patch of four-leaf clovers. You feel slightly luckier.",
+    "A perfectly circular burn mark mars the grass. A lightning strike?",
+    "The wind carries the faint scent of baking bread from a distant village."
 ];
 
 window.LORE_FOREST = [
@@ -87,7 +95,9 @@ window.LORE_FOREST = [
     "You find a circle of mushrooms where the birds refuse to sing.",
     "A deer skeleton hangs perfectly balanced in the upper branches.",
     "The sap oozing from these pines is black and smells of sulfur.",
-    "You swear you just saw the trees physically shift closer together."
+    "You swear you just saw the trees physically shift closer together.",
+    "The trees are growing around a massive rusted sword plunged into the earth.",
+    "You hear the sound of chopping wood, but it stops the moment you stop walking."
 ];
 
 window.LORE_MOUNTAIN = [
@@ -103,7 +113,10 @@ window.LORE_MOUNTAIN = [
     "A massive, frozen waterfall dominates the cliff face.",
     "You find a camp that was abandoned in a horrific hurry.",
     "The rock here has been melted and fused into glass. Dragonfire.",
-    "A sheer drop leads into an abyss of absolute darkness."
+    "A sheer drop leads into an abyss of absolute darkness.",
+    "A frozen campfire. The wood is untouched by the flame.",
+    "You find a perfectly preserved dwarven pickaxe embedded deeply in the stone.",
+    "The wind howling through the crags sounds exactly like your name."
 ];
 
 window.LORE_SWAMP = [
@@ -118,7 +131,10 @@ window.LORE_SWAMP = [
     "A rotting wooden boat is tied to a dead, sunken tree.",
     "You hear a low, rhythmic drumming from beneath the water.",
     "The fog is so thick you can taste the decay on your tongue.",
-    "A stone gargoyle is sinking slowly into the mud, its hands raised in despair."
+    "A stone gargoyle is sinking slowly into the mud, its hands raised in despair.",
+    "A perfectly clean, white lily grows in the center of a foul mud pool.",
+    "You step on something soft beneath the water that immediately squirms away.",
+    "The croaking of frogs stops instantly as you take a step."
 ];
 
 // EASY WIN: Applied color tags to important gameplay hints so the player learns mechanics organically!
@@ -145,8 +161,14 @@ window.VILLAGER_RUMORS = [
     "The mages in the tower used to turn lead into gold. Now they just turn men into monsters.",
     "Never camp near a circle of mushrooms. The Fae will steal your boots.",
     "If you find an {gray:Obsidian Shard}, keep it hidden. The shadow acolytes can smell them.",
-    "I watched a Ranger take down a Drake before it even got close. A good bow relies entirely on your {green:Dexterity}.", // Ranged combat hint
-    "If a wild beast is badly wounded, try talking to it. You might just make a friend. Takes a lot of {gold:Charisma}, though." // Taming hint
+    "I watched a Ranger take down a Drake before it even got close. A good bow relies entirely on your {green:Dexterity}.",
+    "If a wild beast is badly wounded, try talking to it. You might just make a friend. Takes a lot of {gold:Charisma}, though.",
+    "If you want the best gear, you gotta make it yourself. Highly skilled crafters can make {gold:Masterwork} weapons that hit harder.",
+    "A {gray:Greataxe} is devastating, but it requires two hands. You'll have to put your shield away.",
+    "If you see a ring of {purple:purple mushrooms}, step inside! The Fae might restore your magic... or they might teleport you across the world.",
+    "A Canoe is fine for the swamps, but if you want to brave the deep ocean, you need to build a {blue:Sailing Ship}.",
+    "Want to catch a Leviathan? You need an {red:Obsidian Rod} to fish in the volcano, but the deep sea just needs good bait and a lot of stamina.",
+    "Wooden arrows are fine, but {orange:Fire Arrows} can detonate oil barrels from a distance! Perfect for clearing out nests."
 ];
 
 window.RANDOM_JOURNAL_PAGES = [
@@ -173,7 +195,10 @@ window.RANDOM_JOURNAL_PAGES = [
     "The skeletons are stupid, but they never tire. A spear is useless against them; you need something heavy to {gold:crush} the bones.",
     "I found an intricate golden pocket watch inside a mimic's stomach. Why was it still ticking?",
     "Do not trust the Rainbow Shells. The merchants pay well for them, but they whisper when you sleep.",
-    "My magic shield shattered in a single hit! The brute hit me for 15 damage, but the shield only absorbed 5. Note to self: {blue:Arcane Shield} has a limit." // Mechanic hint
+    "My magic shield shattered in a single hit! The brute hit me for 15 damage, but the shield only absorbed 5. Note to self: {blue:Arcane Shield} has a limit.",
+    "Note to self: Don't cast Fireball near an Oil Barrel. Lost my eyebrows.",
+    "The Obsidian Rod is the only thing that won't melt in the volcano. I just hope the Magma Carps are biting.",
+    "We found a Fairy Ring today. Elara stepped inside and vanished. I'm going in after her."
 ];
 
 // Read when interacting with '|' (Obelisk)
@@ -190,7 +215,9 @@ window.VISIONS_OF_THE_PAST = [
     "A VISION: A council of mages stands around a table. They are arguing about a 'star' that fell in the desert. One mage is bleeding from his eyes.",
     "A VISION: The King is weeping. He is trying to wash black ink off his hands, but the harder he scrubs, the further it spreads up his arms.",
     "A VISION: You see yourself, standing exactly where you are now, but the world is made of white light and the silence is absolute.",
-    "A VISION: A giant shadow, larger than a mountain, leans down and blows out the sun like a candle."
+    "A VISION: A giant shadow, larger than a mountain, leans down and blows out the sun like a candle.",
+    "A VISION: The oceans boil. A gargantuan serpent rises from the deep, its scales reflecting a burning sky. It speaks a single word, and the mountains shatter.",
+    "A VISION: You see the Cartographer's Guild before the fall. Hundreds of scholars mapping the stars, unaware of the darkness growing beneath their feet."
 ];
 
 window.RIDDLE_DATA = [
@@ -211,14 +238,14 @@ window.RIDDLE_DATA = [
     {
         id: "echo",
         question: "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?",
-        answers: ["echo"],
+        answers: ["echo", "an echo"],
         reward: "psyche", // Grants +1 Psyche
         message: "A whisper surrounds you. Your will is strengthened."
     },
     {
         id: "silence",
         question: "I am so fragile that if you say my name, you break me. What am I?",
-        answers: ["silence"],
+        answers: ["silence", "a secret", "secret"],
         reward: "dexterity", // Grants +1 Dex (Stealth theme)
         message: "The world goes quiet. You feel lighter and faster."
     },
@@ -243,7 +270,6 @@ window.RIDDLE_DATA = [
         reward: "endurance", // Grants +1 Endurance
         message: "A rush of cool air washes over you. Your breath comes easier."
     },
-    // --- NEW RIDDLES ---
     {
         id: "map",
         question: "I have cities, but no houses. I have mountains, but no trees. I have water, but no fish. What am I?",
@@ -264,6 +290,48 @@ window.RIDDLE_DATA = [
         answers: ["footsteps", "steps", "foot step", "step"],
         reward: "intuition", // Grants +1 Intuition
         message: "The dust settles around the statue's base. Your instincts sharpen."
+    },
+    {
+        id: "few",
+        question: "I am a word of letters three, add two and fewer there will be. What am I?",
+        answers: ["few"],
+        reward: "wits", 
+        message: "The statue seems to smile. Your mind expands."
+    },
+    {
+        id: "volcano",
+        question: "I wear a stone coat and have a fiery heart. When I wake, the world trembles. What am I?",
+        answers: ["volcano", "a volcano", "mountain"],
+        reward: "constitution", 
+        message: "Heat radiates from the stone. You feel an inner fire ignite."
+    },
+    {
+        id: "frost",
+        question: "I build bridges of silver and crowns of ice. I halt the fastest river. What am I?",
+        answers: ["cold", "frost", "winter", "ice", "freezing"],
+        reward: "willpower", 
+        message: "A chill runs down your spine. Your resolve hardens like ice."
+    },
+    {
+        id: "wind",
+        question: "I bite without teeth, I strike without hands, I howl without a voice. What am I?",
+        answers: ["wind", "the wind", "a storm", "storm"],
+        reward: "dexterity", 
+        message: "A gust of wind pushes you forward. You feel incredibly agile."
+    },
+    {
+        id: "gold",
+        question: "I have no sword, but I conquer kings. I have no voice, but I command armies. What am I?",
+        answers: ["gold", "money", "coin", "wealth"],
+        reward: "charisma", 
+        message: "The statue bows slightly. You feel a commanding presence within."
+    },
+    {
+        id: "rain",
+        question: "I fall from the sky but never break. I weep constantly, though I have no eyes. What am I?",
+        answers: ["rain", "the rain", "water", "a raindrop"],
+        reward: "endurance", 
+        message: "A single drop of water falls on your brow. You feel refreshed and tireless."
     }
 ];
 
