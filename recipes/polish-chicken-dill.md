@@ -1,6 +1,10 @@
+So for the record this is mostly AI slop but the recipe turned out great (and the photo is real, it has the correct number of fingers and everything!) and we're definitely going to add it to our routine and tinker with it more.
+
+![A bowl of Kurczak w Sosie Koperkowym (Polish Chicken in Dill Sauce)](/recipes/photos/PXL_20260506_211620664~2.jpg)
+
 It's easy to fall into a routine of heavy spices and complex marinades—a slow-cooked Thai red coconut curry here, some deeply seasoned Indian chicken there—but sometimes you just want something incredibly simple. If you want to skip the breading and the hot oil, Kurczak w Sosie Koperkowym (Polish Chicken in Dill Sauce) is exactly what you need.
 
-Dill is a massive staple in Polish cuisine, and this dish is incredibly comforting. Instead of frying, the chicken is gently simmered in a rich, creamy, herb-packed broth. It’s light, fast, and takes about 20 minutes.
+Dill is a staple in Polish cuisine, and this dish is incredibly comforting. Instead of frying, the chicken is gently simmered in a rich, creamy, herb-packed broth. It’s not too heavy, fairly easy to make, and takes about 20 minutes.
 
 ### Ingredients
 
