@@ -384,6 +384,37 @@ window.TILE_DATA = {
     },
 
     // --- 2. NIGHT-TIME EXCLUSIVES ---
+    '🍄r': {
+        name: 'Fairy Ring',
+        type: 'anomaly',
+        flavor: "A perfect circle of glowing purple mushrooms.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("The mushrooms have lost their glow.");
+                return null;
+            }
+
+            logMessage("{purple:You step into the ring. Ethereal music fills your mind!}");
+            
+            // Restore Magic
+            state.player.mana = state.player.maxMana;
+            state.player.psyche = state.player.maxPsyche;
+            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
+            triggerStatAnimation(document.getElementById('psycheDisplay'), 'stat-pulse-purple');
+            
+            // 10% Trickster Teleport
+            if (Math.random() < 0.10) {
+                logMessage("{red:The Fae play a trick on you! You are swept away through the leylines!}");
+                state.player.x += (Math.floor(Math.random() * 100) - 50);
+                state.player.y += (Math.floor(Math.random() * 100) - 50);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            }
+
+            state.lootedTiles.add(tileId);
+            return { mana: state.player.mana, psyche: state.player.psyche, x: state.player.x, y: state.player.y };
+        }
+    },
     '🌺': {
         type: 'anomaly',
         name: 'Moonbloom',
