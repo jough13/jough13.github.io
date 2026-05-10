@@ -2586,12 +2586,11 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     if (gameState.player.health <= 0) {
-        gameState.player.health = 0;
-        logMessage("You have perished!");
-        syncPlayerState();
-        document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
-        document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
-        gameOverModal.classList.remove('hidden');
+        // Call the unified death handler (drops corpse, clears inventory, shows UI)
+        if (handlePlayerDeath()) {
+            syncPlayerState(); // Update multiplayer server so others see you vanish
+            return; // STOP! Do not run endPlayerTurn or it will overwrite the death state!
+        }
     }
 
     // Pass the updates object in so Firebase actually saves your loot/exploration!
