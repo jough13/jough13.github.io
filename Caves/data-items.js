@@ -292,11 +292,25 @@ window.CRAFTING_RECIPES = {
             for(let [dx, dy] of dirs) {
                 const tx = state.player.x + dx;
                 const ty = state.player.y + dy;
-                const t = chunkManager.getTile(tx, ty);
+                
+                // Context-aware tile fetching!
+                let t;
+                if (state.mapMode === 'overworld') {
+                    t = chunkManager.getTile(tx, ty);
+                } else if (state.mapMode === 'dungeon') {
+                    const map = chunkManager.caveMaps[state.currentCaveId];
+                    t = (map && map[ty] && map[ty][tx]) ? map[ty][tx] : ' ';
+                } else if (state.mapMode === 'castle') {
+                    const map = chunkManager.castleMaps[state.currentCastleId];
+                    t = (map && map[ty] && map[ty][tx]) ? map[ty][tx] : ' ';
+                }
                 
                 // Can only deploy in Deep Water or Swamps
                 if (t === '~' || t === '≈') {
-                    chunkManager.setWorldTile(tx, ty, '⛵');
+                    if (state.mapMode === 'overworld') chunkManager.setWorldTile(tx, ty, '⛵');
+                    else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][ty][tx] = '⛵';
+                    else chunkManager.castleMaps[state.currentCastleId][ty][tx] = '⛵';
+                    
                     logMessage("You deploy the Sailing Ship into the water!");
                     gameState.mapDirty = true;
                     if (typeof render === 'function') render();
@@ -665,7 +679,17 @@ window.ITEM_DATA = {
         tile: '🔥',
         description: "Creates a cooking fire on open ground.",
         effect: (state) => {
-            const currentTile = chunkManager.getTile(state.player.x, state.player.y);
+            // Context-aware tile fetching!
+            let currentTile;
+            if (state.mapMode === 'overworld') {
+                currentTile = chunkManager.getTile(state.player.x, state.player.y);
+            } else if (state.mapMode === 'dungeon') {
+                const map = chunkManager.caveMaps[state.currentCaveId];
+                currentTile = (map && map[state.player.y] && map[state.player.y][state.player.x]) ? map[state.player.y][state.player.x] : ' ';
+            } else if (state.mapMode === 'castle') {
+                const map = chunkManager.castleMaps[state.currentCastleId];
+                currentTile = (map && map[state.player.y] && map[state.player.y][state.player.x]) ? map[state.player.y][state.player.x] : ' ';
+            }
 
             let valid = false;
             if (state.mapMode === 'overworld' && (currentTile === '.' || currentTile === 'd' || currentTile === 'D')) valid = true;
@@ -909,7 +933,17 @@ window.ITEM_DATA = {
         description: "Use on water (~/≈) to fill.",
         tile: '🫙',
         effect: (state) => {
-            const currentTile = chunkManager.getTile(state.player.x, state.player.y);
+            // Context-aware tile fetching!
+            let currentTile;
+            if (state.mapMode === 'overworld') {
+                currentTile = chunkManager.getTile(state.player.x, state.player.y);
+            } else if (state.mapMode === 'dungeon') {
+                const map = chunkManager.caveMaps[state.currentCaveId];
+                currentTile = (map && map[state.player.y] && map[state.player.y][state.player.x]) ? map[state.player.y][state.player.x] : ' ';
+            } else if (state.mapMode === 'castle') {
+                const map = chunkManager.castleMaps[state.currentCastleId];
+                currentTile = (map && map[state.player.y] && map[state.player.y][state.player.x]) ? map[state.player.y][state.player.x] : ' ';
+            }
 
             if (currentTile === '~' || currentTile === '≈' || currentTile === '⛲') {
                 logMessage("You fill the bottle.");
