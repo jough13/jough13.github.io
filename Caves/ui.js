@@ -1,3 +1,7 @@
+// ==========================================
+// USER INTERFACE & DOM MANAGEMENT
+// ==========================================
+
 // DOM Element Selectors
 const characterSelectModal = document.getElementById('characterSelectModal');
 const slotsContainer = document.getElementById('slotsContainer');
@@ -112,8 +116,9 @@ const statBarElements = {
     xp: document.getElementById('xpBar')
 };
 
+// --- CHAT & MESSAGE LOG SYSTEM ---
 const logMessage = (text) => {
-    if (!text || !messageLog) return; // Safeguard against null messages crashing the UI
+    if (!text || !messageLog) return; 
 
     // 1. SANITIZE: Turn "<script>" into "&lt;script&gt;"
     let safeText = escapeHtml(text);
@@ -124,12 +129,18 @@ const logMessage = (text) => {
         .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
         .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
         .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
+        .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
+        .replace(/{orange:(.*?)}/g, '<span class="text-orange-400 font-bold">$1</span>')
         .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
 
     // --- ANTI-SPAM LOGIC ---
     if (text === lastLogText && messageLog.firstChild) {
         lastLogCount++;
         messageLog.firstChild.innerHTML = `> ${formattedText} <span class="text-gray-500 ml-2 font-bold">(x${lastLogCount})</span>`;
+        // JUICE: Small bump animation to show it updated
+        messageLog.firstChild.style.animation = 'none';
+        void messageLog.firstChild.offsetWidth; 
+        messageLog.firstChild.style.animation = 'pop-in 0.1s ease-out';
         return; 
     }
 
@@ -139,6 +150,11 @@ const logMessage = (text) => {
     // 3. CREATE & APPEND NEW MESSAGE
     const messageElement = document.createElement('p');
     messageElement.innerHTML = `> ${formattedText}`;
+    
+    // JUICE: Slide down / fade in animation for new log messages
+    messageElement.style.animation = 'fade-in 0.2s ease-out';
+    messageElement.style.transformOrigin = 'top center';
+    
     messageLog.prepend(messageElement);
 
     if (messageLog.children.length > 50) {
@@ -147,6 +163,7 @@ const logMessage = (text) => {
     messageLog.scrollTop = 0;
 };
 
+// --- CORE STAT RENDERING ---
 const renderStats = () => {
     renderStatusEffects();
 
@@ -194,20 +211,20 @@ const renderStats = () => {
                 if (gameState.player.poisonTurns > 0) {
                     element.classList.add('text-purple-500');
                     statBarElements.health.style.backgroundColor = '#a855f7'; 
-                    canvasWrapper.classList.add('critical-health'); 
+                    if(canvasWrapper) canvasWrapper.classList.add('critical-health'); 
                 } else {
                     if (percent > 60) {
                         element.classList.add('text-green-500');
                         statBarElements.health.style.backgroundColor = '#22c55e'; 
-                        canvasWrapper.classList.remove('critical-health'); 
+                        if(canvasWrapper) canvasWrapper.classList.remove('critical-health'); 
                     } else if (percent > 25) {
                         element.classList.add('text-yellow-500');
                         statBarElements.health.style.backgroundColor = '#eab308'; 
-                        canvasWrapper.classList.remove('critical-health'); 
+                        if(canvasWrapper) canvasWrapper.classList.remove('critical-health'); 
                     } else {
                         element.classList.add('text-red-500');
                         statBarElements.health.style.backgroundColor = '#ef4444'; 
-                        canvasWrapper.classList.add('critical-health'); 
+                        if(canvasWrapper) canvasWrapper.classList.add('critical-health'); 
                     }
                 }
 
@@ -268,23 +285,92 @@ const renderStats = () => {
     }
 };
 
+// --- INVENTORY SORTING MECHANIC ---
+window.sortInventory = function() {
+    if (!gameState.player.inventory) return;
+
+    // 1. Consolidate stacks (Merge partial stacks of arrows, meat, logs, etc)
+    const consolidated = [];
+    gameState.player.inventory.forEach(item => {
+        // Can only stack unequipped items of certain types
+        const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(item.type);
+        
+        const existing = consolidated.find(i => 
+            i.name === item.name && 
+            !i.isEquipped && 
+            !item.isEquipped && 
+            isStackable
+        );
+        
+        if (existing) {
+            existing.quantity += item.quantity;
+        } else {
+            consolidated.push({...item}); 
+        }
+    });
+
+    // 2. Sort by Type, then Name
+    const typeWeights = { 
+        'weapon': 1, 'armor': 2, 'accessory': 3, 'ammo': 4, 
+        'consumable': 5, 'tool': 6, 'spellbook': 7, 'quest': 8, 'junk': 9 
+    };
+    
+    consolidated.sort((a, b) => {
+        // Equipped gear ALWAYS floats to the top
+        if (a.isEquipped !== b.isEquipped) return a.isEquipped ? -1 : 1; 
+        
+        const wA = typeWeights[a.type] || 10;
+        const wB = typeWeights[b.type] || 10;
+        
+        if (wA !== wB) return wA - wB; // Sort by category
+        return a.name.localeCompare(b.name); // Alphabetical within category
+    });
+
+    gameState.player.inventory = consolidated;
+
+    // Save and re-render
+    if (typeof playerRef !== 'undefined' && playerRef) {
+        playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : consolidated });
+    }
+    renderInventory();
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Feedback sound
+};
+
+// --- INVENTORY RENDERING (Optimized with DocumentFragment) ---
 const renderInventory = () => {
     inventoryModalList.innerHTML = '';
     const titleElement = document.querySelector('#inventoryModal h2');
 
-    if (gameState.isDroppingItem) {
-        titleElement.textContent = "SELECT ITEM TO DROP";
-        titleElement.classList.add('text-red-500', 'font-extrabold');
-        titleElement.classList.remove('text-default'); 
-    } else {
-        titleElement.textContent = "Inventory";
-        titleElement.classList.remove('text-red-500', 'font-extrabold');
-        titleElement.classList.add('text-default');
+    // Dynamically inject the Auto-Sort button into the header if missing
+    if (titleElement) {
+        if (!titleElement.querySelector('#sortInvBtn')) {
+            const titleText = titleElement.textContent;
+            titleElement.innerHTML = `
+                <div class="flex justify-between items-center w-full">
+                    <span id="invTitleText">${titleText}</span>
+                    <button id="sortInvBtn" onclick="sortInventory()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95">Auto-Sort</button>
+                </div>
+            `;
+        }
+        
+        const titleSpan = document.getElementById('invTitleText');
+        if (gameState.isDroppingItem) {
+            titleSpan.textContent = "SELECT ITEM TO DROP";
+            titleSpan.classList.add('text-red-500', 'font-extrabold');
+            titleSpan.classList.remove('text-default'); 
+        } else {
+            titleSpan.textContent = "Inventory";
+            titleSpan.classList.remove('text-red-500', 'font-extrabold');
+            titleSpan.classList.add('text-default');
+        }
     }
 
     if (!gameState.player.inventory || gameState.player.inventory.length === 0) {
         inventoryModalList.innerHTML = '<span class="muted-text italic px-2">Inventory is empty.</span>';
     } else {
+        // PERFORMANCE: Batch DOM updates using DocumentFragment
+        const fragment = document.createDocumentFragment();
+
         gameState.player.inventory.forEach((item, index) => {
             const itemDiv = document.createElement('div');
 
@@ -304,7 +390,7 @@ const renderInventory = () => {
 
             itemDiv.onclick = (e) => {
                 e.stopPropagation(); 
-                handleInput((index + 1).toString());
+                if (typeof handleInput === 'function') handleInput((index + 1).toString());
             };
 
             let title = item.name;
@@ -331,7 +417,6 @@ const renderInventory = () => {
             slotNumber.className = 'absolute top-0 left-1 text-xs highlight-text font-bold';
             if (index < 9) slotNumber.textContent = index + 1;
 
-            // Better indicator for equipped gear
             if (item.isEquipped) {
                 const equipBadge = document.createElement('span');
                 equipBadge.className = 'absolute top-0 right-0 bg-yellow-500 text-black text-[9px] px-1 font-bold rounded-bl-md rounded-tr-md';
@@ -342,8 +427,10 @@ const renderInventory = () => {
             itemDiv.appendChild(slotNumber);
             itemDiv.appendChild(itemChar);
             itemDiv.appendChild(itemQuantity);
-            inventoryModalList.appendChild(itemDiv);
+            fragment.appendChild(itemDiv);
         });
+        
+        inventoryModalList.appendChild(fragment); // Single paint!
     }
 };
 
@@ -351,19 +438,16 @@ function initInventoryListeners() {
     const btn = document.getElementById('closeInventoryButton');
     const modal = document.getElementById('inventoryModal');
 
-    // 1. Button Logic
     if (btn) {
         btn.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            // Use our new global toggler to ensure focus is returned cleanly
             if (typeof window.toggleModal === 'function') {
                 window.toggleModal(inventoryModal, openInventoryModal, closeInventoryModal);
             } else {
                 closeInventoryModal();
             }
         };
-        // Add touch support for mobile responsiveness
         btn.ontouchend = (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -373,14 +457,10 @@ function initInventoryListeners() {
                 closeInventoryModal();
             }
         };
-    } else {
-        console.error("Error: closeInventoryButton not found in DOM.");
     }
 
-    // 2. Click Outside to Close (Backup UX)
     if (modal) {
         modal.onclick = (e) => {
-            // If the user clicks the dark background (the modal itself), close it.
             if (e.target === modal) {
                 if (typeof window.toggleModal === 'function') {
                     window.toggleModal(inventoryModal, openInventoryModal, closeInventoryModal);
@@ -392,6 +472,7 @@ function initInventoryListeners() {
     }
 }
 
+// --- EQUIPMENT RENDERING & TOOLTIPS ---
 const renderEquipment = () => {
     const player = gameState.player;
     const equip = player.equipment;
@@ -409,9 +490,13 @@ const renderEquipment = () => {
     const totalDamage = playerStrength + weaponDamage + ammoDamage;
 
     let weaponString = `Wpn: ${weapon.name} (+${weaponDamage})`;
+    let weaponTooltip = `${weapon.name}\nDamage: +${weaponDamage}`;
     if (weapon.statBonuses) {
         const bonusArr = Object.entries(weapon.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
-        if (bonusArr.length > 0) weaponString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
+        if (bonusArr.length > 0) {
+            weaponString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
+            weaponTooltip += `\nBonuses: ${Object.entries(weapon.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
+        }
     }
     if (player.strengthBonus > 0) { 
         weaponString += ` <span class="text-green-500">[+${player.strengthBonus} Str (${player.strengthBonusTurns}t)]</span>`;
@@ -431,9 +516,13 @@ const renderEquipment = () => {
     const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
 
     let armorString = `Body: ${armor.name} (+${armorDefense})`;
+    let armorTooltip = `${armor.name}\nDefense: +${armorDefense}`;
     if (armor.statBonuses) {
         const bonusArr = Object.entries(armor.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
-        if (bonusArr.length > 0) armorString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
+        if (bonusArr.length > 0) {
+            armorString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
+            armorTooltip += `\nBonuses: ${Object.entries(armor.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
+        }
     }
     if (buffDefense > 0) {
         armorString += ` <span class="text-green-500">[+${buffDefense} Def (${player.defenseBonusTurns}t)]</span>`;
@@ -447,7 +536,7 @@ const renderEquipment = () => {
     if (!offhand && !acc) miscString = "Off-Hand & Accessory Empty";
     document.getElementById('equippedMiscDisplay').textContent = miscString;
 
-    // --- UPDATE ICONS ---
+    // --- UPDATE ICONS & HOVER TOOLTIPS ---
     const wIcon = document.getElementById('slotWeaponIcon');
     const aIcon = document.getElementById('slotArmorIcon');
     const oIcon = document.getElementById('slotOffhandIcon');
@@ -458,22 +547,30 @@ const renderEquipment = () => {
     if (wIcon) {
         wIcon.textContent = (weapon.tile || '👊').replace(/[a-zA-Z]/g, '');
         wIcon.style.opacity = (weapon.name === 'Fists') ? '0.3' : '1';
+        wIcon.title = weaponTooltip; // Add juice tooltip
     }
     if (aIcon) {
         aIcon.textContent = (armor.tile || '👕').replace(/[a-zA-Z]/g, '');
         aIcon.style.opacity = (armor.name === 'Simple Tunic' || armor.name === 'Tattered Rags') ? '0.3' : '1';
+        aIcon.title = armorTooltip;
     }
     if (oIcon) {
         oIcon.textContent = offhand ? offhand.tile.replace(/[a-zA-Z]/g, '') : '🛡️';
         oIcon.style.opacity = offhand ? '1' : '0.3';
+        oIcon.title = offhand ? `${offhand.name}\nDefense: +${offhand.defense || 0}` : 'Empty Off-Hand';
     }
     if (cIcon) {
         cIcon.textContent = acc ? acc.tile.replace(/[a-zA-Z]/g, '') : '💍';
         cIcon.style.opacity = acc ? '1' : '0.3';
+        let accTooltip = acc ? acc.name : 'Empty Accessory';
+        if (acc && acc.statBonuses) accTooltip += `\nBonuses: ${Object.entries(acc.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
+        cIcon.title = accTooltip;
     }
     if (mIcon && ammoCount) {
         mIcon.childNodes[0].nodeValue = ammo ? ammo.tile.replace(/[a-zA-Z]/g, '') : '➹';
         mIcon.style.opacity = ammo ? '1' : '0.3';
+        mIcon.title = ammo ? `${ammo.name}\nDamage: +${ammo.damage || 0}\nRemaining: ${ammo.quantity}` : 'No Ammo Equipped';
+        
         ammoCount.textContent = ammo ? ammo.quantity : '';
         ammoCount.style.display = ammo ? 'block' : 'none';
     }
@@ -485,18 +582,18 @@ function updateRegionDisplay() {
         const currentRegionY = Math.floor(gameState.player.y / REGION_SIZE);
         const regionId = `${currentRegionX},${currentRegionY}`;
 
-        const regionName = getRegionName(currentRegionX, currentRegionY);
+        const regionName = typeof getRegionName === 'function' ? getRegionName(currentRegionX, currentRegionY) : 'Wilderness';
         const playerCoords = `(${gameState.player.x}, ${-gameState.player.y})`; 
         regionDisplay.textContent = `${regionName} ${playerCoords}`; 
 
         if (!gameState.discoveredRegions.has(regionId)) {
             logMessage(`{gold:Discovered: ${regionName}!}`); 
             gameState.discoveredRegions.add(regionId);
-            grantXp(50);
+            if(typeof grantXp === 'function') grantXp(50);
             
             // Check if there is a major landmark here to pin on the map
-            const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
-            if (['V', '🏰', '♛', '⛰', '🕍'].includes(currentTile)) {
+            const currentTile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(gameState.player.x, gameState.player.y) : '.';
+            if (['V', '🏰', '♛', '⛰', '🕍', '🌋', '🛕'].includes(currentTile)) {
                 if (!gameState.player.discoveredPOIs) gameState.player.discoveredPOIs = [];
                 
                 gameState.player.discoveredPOIs.push({
@@ -528,22 +625,23 @@ function updateRegionDisplay() {
             }
         }
     } else if (gameState.mapMode === 'dungeon') {
-        let displayName = getCaveName(gameState.currentCaveId);
+        let displayName = typeof getCaveName === 'function' ? getCaveName(gameState.currentCaveId) : 'Dark Cave';
         
         // Extract Z-depth from ID (cave_X_Y_Z)
-        const parts = gameState.currentCaveId.split('_');
-        if (parts.length > 3) {
+        const parts = gameState.currentCaveId ? gameState.currentCaveId.split('_') : [];
+        if (parts.length > 3 && !isNaN(parts[3])) {
             const floorZ = parts[3];
             displayName += ` (Floor ${floorZ})`;
         }
         
         regionDisplay.textContent = displayName;
     } else if (gameState.mapMode === 'castle') {
-        regionDisplay.textContent = getCastleName(gameState.currentCastleId); 
+        regionDisplay.textContent = typeof getCastleName === 'function' ? getCastleName(gameState.currentCastleId) : 'Castle Ruins'; 
     }
 }
 
 function triggerStatFlash(statElement, positive = true) {
+    if (!statElement) return;
     const animationClass = positive ? 'stat-flash-green' : 'stat-flash-red';
     
     // Remove class and force a DOM reflow so rapid triggers restart the animation correctly
@@ -558,6 +656,7 @@ function triggerStatFlash(statElement, positive = true) {
 }
 
 function triggerStatAnimation(statElement, animationClass) {
+    if (!statElement) return;
     statElement.classList.remove(animationClass);
     void statElement.offsetWidth; 
     statElement.classList.add(animationClass);
@@ -609,11 +708,12 @@ function resizeCanvas() {
 
     // 2. Update the global zoom tracker
     if (!window.currentZoom) window.currentZoom = 20;
-    TILE_SIZE = window.currentZoom;
+    // Allow globals to be set for the engine
+    window.TILE_SIZE = window.currentZoom;
 
     // 3. Calculate Logical Viewport
-    VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 2; 
-    VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 2;
+    window.VIEWPORT_WIDTH = Math.ceil(containerWidth / window.TILE_SIZE) + 2; 
+    window.VIEWPORT_HEIGHT = Math.ceil(containerHeight / window.TILE_SIZE) + 2;
 
     const dpr = window.devicePixelRatio || 1;
 
@@ -629,13 +729,13 @@ function resizeCanvas() {
     ctx.setTransform(1, 0, 0, 1, 0, 0); 
     ctx.scale(dpr, dpr); 
     ctx.imageSmoothingEnabled = false; 
-    ctx.font = `${TILE_SIZE}px monospace`;
+    ctx.font = `${window.TILE_SIZE}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
     // 7. Resize Offscreen Canvas
-    const logicalWidth = VIEWPORT_WIDTH * TILE_SIZE;
-    const logicalHeight = VIEWPORT_HEIGHT * TILE_SIZE;
+    const logicalWidth = window.VIEWPORT_WIDTH * window.TILE_SIZE;
+    const logicalHeight = window.VIEWPORT_HEIGHT * window.TILE_SIZE;
 
     terrainCanvas.width = logicalWidth * dpr;
     terrainCanvas.height = logicalHeight * dpr;
@@ -643,7 +743,7 @@ function resizeCanvas() {
     // 8. Configure Offscreen Context
     terrainCtx.setTransform(1, 0, 0, 1, 0, 0); 
     terrainCtx.scale(dpr, dpr); 
-    terrainCtx.font = `${TILE_SIZE}px monospace`;
+    terrainCtx.font = `${window.TILE_SIZE}px monospace`;
     terrainCtx.textAlign = 'center';
     terrainCtx.textBaseline = 'middle';
 
@@ -706,7 +806,7 @@ function returnFocusToCanvas() {
     if (!gameContainer.classList.contains('hidden')) {
         // Technically canvas isn't focusable by default unless it has a tabindex,
         // but this ensures the document body gets focus back so keydown events work!
-        document.activeElement.blur(); 
+        if (document.activeElement) document.activeElement.blur(); 
     }
 }
 
