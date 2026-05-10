@@ -1127,14 +1127,22 @@ async function attemptMovePlayer(newX, newY) {
     if (isDisembarking) {
         gameState.player.isBoating = false;
         logMessage("You beach the canoe and step onto the shore.");
-        chunkManager.setWorldTile(prevX, prevY, 'c'); // Drop on PREVIOUS tile (water)
+        
+        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(prevX, prevY, 'c');
+        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][prevY][prevX] = 'c';
+        else chunkManager.castleMaps[gameState.currentCastleId][prevY][prevX] = 'c';
+        
         playerRef.update({ isBoating: false });
     }
     // --- SHIP DISEMBARKING ---
     if (isShipDisembarking) {
         gameState.player.isSailing = false;
         logMessage("You drop anchor and step ashore.");
-        chunkManager.setWorldTile(prevX, prevY, '⛵'); // Drop on PREVIOUS tile (water)
+        
+        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(prevX, prevY, '⛵');
+        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][prevY][prevX] = '⛵';
+        else chunkManager.castleMaps[gameState.currentCastleId][prevY][prevX] = '⛵';
+        
         playerRef.update({ isSailing: false });
     }
 
