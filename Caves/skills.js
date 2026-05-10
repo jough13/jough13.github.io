@@ -310,6 +310,14 @@ async function executeRangedAttack(dirX, dirY) {
         return;
     }
 
+    // --- WEAPON CHECK ---
+    const weapon = player.equipment.weapon;
+    if (!weapon || !weapon.name.includes("bow") && !weapon.name.includes("Bow")) {
+        logMessage("{red:You must have a bow equipped to shoot!}");
+        gameState.isAiming = false;
+        return;
+    }
+
     // --- 🚨 LOCK THE ENGINE ---
     isProcessingMove = true;
 
@@ -490,6 +498,17 @@ async function executeRangedAttack(dirX, dirY) {
 
                 // If it hits deep water or lava, it's gone. Otherwise, it sticks in the ground/wall!
                 if (['~', '≈', ' '].includes(dropTile)) validFloor = false; 
+
+                // --- Prevent arrows from overwriting items already on the ground! ---
+                if (ITEM_DATA[dropTile] || ['📦', '⚰️', '🏺', '🚪', '🔼'].includes(dropTile)) {
+                    validFloor = false; 
+                }
+
+                if (validFloor) {
+                    chunkManager.setWorldTile(finalTargetX, finalTargetY, '➹', 2); // Drops for 2 hours
+                    gameState.mapDirty = true;
+                    logMessage("{gray:You see your arrow sticking out of the ground nearby.}");
+                }
 
                 if (validFloor) {
                     chunkManager.setWorldTile(finalTargetX, finalTargetY, '➹', 2); // Drops for 2 hours
