@@ -107,6 +107,18 @@ window.CRAFTING_RECIPES = {
     },
 
     // --- TIER 2 (Apprentice) ---
+    "Antidote": {
+        materials: { "Medicinal Herb": 1, "Clean Water": 1, "Bone Shard": 1 },
+        xp: 20, level: 2
+    },
+    "Iron Arrow": { 
+        materials: { "Stick": 1, "Iron Ore": 1 },
+        xp: 25, level: 3, yield: 5 
+    },
+    "Steel Arrow": { 
+        materials: { "Stick": 1, "Iron Ore": 2, "Dragon Scale": 1 },
+        xp: 50, level: 4, yield: 5 
+    },
     "Bandit Garb": {
         materials: { "Bandit's Insignia": 3, "Leather Tunic": 1 },
         xp: 25, level: 2
@@ -359,7 +371,38 @@ window.ITEM_DATA = {
         name: 'Beastmaster Vol III', type: 'journal', title: 'The Drake', 
         content: "I saw a Young Drake today. It breathed fire that melted stone. I dare not approach it. Legend says dragons hoard gold because it is the only metal that doesn't melt when they sleep on it." 
     },
-
+    '🧪a': {
+        name: 'Antidote',
+        type: 'consumable',
+        tile: '🧪',
+        description: "A foul-tasting chalky liquid. {green:Cures Poison instantly.}",
+        effect: (state) => {
+            if (state.player.poisonTurns <= 0) {
+                logMessage("You aren't poisoned.");
+                return false;
+            }
+            state.player.poisonTurns = 0;
+            logMessage("{green:The poison is flushed from your veins!}");
+            triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+            return true;
+        }
+    },
+    '➹i': {
+        name: 'Iron Arrow',
+        type: 'ammo',
+        tile: '➹',
+        slot: 'ammo',
+        damage: 3,
+        description: "Heavy, armor-piercing arrows. {red:+3 Dmg}"
+    },
+    '➹s': {
+        name: 'Steel Arrow',
+        type: 'ammo',
+        tile: '➹',
+        slot: 'ammo',
+        damage: 6,
+        description: "Flawless, razor-sharp steel. {red:+6 Dmg}"
+    },
     '🍲m': { 
         name: 'Monster Stew', 
         type: 'consumable', 
@@ -1682,14 +1725,14 @@ window.ITEM_DATA = {
     '†': { // Dagger symbol
         name: 'Bone Dagger',
         type: 'weapon',
-        damage: 2, // Same as Rusty Sword (Tier 2)
+        damage: 2, // Same as Rusty Sword
         slot: 'weapon',
         description: "{red:+2 Dmg}. Carved from a single femur."
     },
     '¶': { // Pilcrow (paragraph) symbol
         name: 'Bandit Garb',
         type: 'armor',
-        defense: 2, // Same as Studded Armor (Tier 2)
+        defense: 2, // Same as Studded Armor
         slot: 'armor',
         description: "{blue:+2 Def}. Dark grey fabric designed to blend into shadows."
     },
@@ -1743,13 +1786,13 @@ window.ITEM_DATA = {
     '❄️b': {
         name: 'Cryo Blade',
         type: 'weapon',
-        damage: 3, // Tier 2.5 (better than Rusty Sword)
+        damage: 3, // (better than Rusty Sword)
         slot: 'weapon'
     },
     '❄️m': {
         name: 'Frozen Mail',
         type: 'armor',
-        defense: 3, // Tier 2.5 (better than Studded Armor)
+        defense: 3, // (better than Studded Armor)
         slot: 'armor'
     },
     '-': {
@@ -1763,14 +1806,14 @@ window.ITEM_DATA = {
     '★': {
         name: 'Sword of Strength',
         type: 'weapon',
-        damage: 3, // A solid Tier 2.5 weapon
+        damage: 3, // A solid weapon
         slot: 'weapon',
         statBonuses: { strength: 2 }
     },
     '☆': {
         name: 'Robe of Wits',
         type: 'armor',
-        defense: 2, // A solid Tier 2.5 armor
+        defense: 2, // A solid armor
         slot: 'armor',
         statBonuses: { wits: 2 }
     },
