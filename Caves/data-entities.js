@@ -368,6 +368,22 @@ window.ENEMY_DATA = {
         color: '#ef4444', // Red
         flavor: "Desperate men driven to crime by a dying world."
     },
+    '👺': {
+        name: 'Goblin Archer',
+        maxHealth: 5, attack: 3, defense: 0, xp: 15,
+        loot: '➹', // Drops wooden arrows!
+        color: '#16a34a',
+        isRanged: true, range: 5,
+        flavor: "It draws back a crudely strung shortbow."
+    },
+    '💀a': {
+        name: 'Skeleton Archer',
+        maxHealth: 8, attack: 4, defense: 1, xp: 20,
+        loot: '➹', 
+        color: '#e5e7eb',
+        isRanged: true, range: 6,
+        flavor: "Its aim is supernaturally steady, unaffected by breath or heartbeat."
+    },
     'k': {
         name: 'Kobold',
         maxHealth: 6, attack: 2, defense: 0, xp: 10,
