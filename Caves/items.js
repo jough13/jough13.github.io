@@ -983,7 +983,7 @@ function handleSellAllItems() {
 
         // 2. Filter: Only sell 'junk' (Loot) and 'consumable' (Food/Potions)
         // We skip 'weapon', 'armor', 'tool', 'spellbook', etc. to be safe.
-        if (item.type === 'junk') {
+        if (item.type === 'junk' || item.type === 'consumable') {
 
             // --- Price Calculation Logic (Matches handleSellItem) ---
             // 1. Try exact match
