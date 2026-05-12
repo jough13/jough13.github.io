@@ -168,17 +168,12 @@
             outline: none;
             background: transparent;
         }
-        /* CHANGE 1 LOCATION: Adjust Page 1 Field Notes Height Here */
         .field-notes-box { min-height: 380px; margin-bottom: 20px; }
-        
-        /* CHANGE 2 LOCATION: Adjust Page 6 Remarks Box Height Here */
-        .remarks-box { min-height: 680px; margin-top: 10px; }
-        
+        .remarks-box { min-height: 150px; margin-top: 10px; }
         .field-notes-box:focus, .remarks-box:focus { background-color: #f8fafc; border-color: #16a34a; }
         
-        /* CHANGE 3 LOCATION: Adjust Graph Paper Height Here */
         .sketch-area {
-            height: 880px;
+            height: 900px;
             border: 2px solid #94a3b8;
             border-radius: 6px;
             background-color: #ffffff !important;
@@ -240,7 +235,8 @@
             .field-notes-box, .remarks-box { border: 1px solid #333333 !important; }
             .readonly-calc { color: #000 !important; }
             .fail-text { color: #dc2626 !important; }
-            .no-break { page-break-inside: avoid !important; break-inside: avoid !important; }
+            
+            .no-break { page-break-inside: avoid !important; break-inside: avoid !important; display: inline-block; width: 100%; }
             tr { page-break-inside: avoid !important; }
             .header-info { flex-direction: row !important; } 
             
@@ -248,11 +244,9 @@
             .header-info input { font-size: 12px !important; }
             .table-container td, .table-container th { padding: 4px 6px !important; font-size: 12px !important; }
             .table-container td input { font-size: 11px !important; }
-
-            .sketch-area {
-                height: 8.25in !important; 
-            }
             
+            .sketch-area { height: 9.5in !important; }
+
             .sig-container { flex-direction: row !important; }
             .sig-block:first-child { margin-right: 40px !important; margin-bottom: 0 !important; }
 
@@ -294,7 +288,7 @@
             <div class="header-block-right">
                 <div class="header-row right">
                     <span>Date:</span> 
-                    <input type="text" id="form-date" class="saveable-input" style="flex-grow: 1;">
+                    <input type="text" id="form-date" class="saveable-input calc-trigger" style="flex-grow: 1;">
                 </div>
                 <div class="header-row right">
                     <span>Start Time:</span> 
@@ -307,59 +301,57 @@
             </div>
         </div>
 
-        <div class="no-break">
-            <h3>1. Setup & Instrumentation</h3>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Instrument Type</th>
-                            <th>Model / Serial #</th>
-                            <th>Probe Model / Serial #</th>
-                            <th>Cal Due Date</th>
-                            <th>Daily Src Check Pass?</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Gross Gamma</td>
-                            <td><input type="text" class="saveable-input demo-inst-m" placeholder="Ludlum 2350-1 /"></td>
-                            <td><input type="text" class="saveable-input demo-inst-p" placeholder="Ludlum 44-10 /"></td>
-                            <td><input type="text" class="saveable-input demo-inst-cal"></td>
-                            <td><input type="text" placeholder="Y / N" class="saveable-input demo-inst-src"></td>
-                        </tr>
-                        <tr>
-                            <td>Ambient Dose Rate</td>
-                            <td><input type="text" class="saveable-input demo-inst-m" placeholder="RadEye G20 /"></td>
-                            <td>N/A</td>
-                            <td><input type="text" class="saveable-input demo-inst-cal"></td>
-                            <td><input type="text" placeholder="Y / N" class="saveable-input demo-inst-src"></td>
-                        </tr>
-                        <tr>
-                            <td>Spectrometer</td>
-                            <td><input type="text" class="saveable-input demo-inst-m" placeholder="IdentiFINDER /"></td>
-                            <td>N/A</td>
-                            <td><input type="text" class="saveable-input demo-inst-cal"></td>
-                            <td><input type="text" placeholder="Y / N" class="saveable-input demo-inst-src"></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="header-info" style="font-size: 13px; align-items: center; margin-bottom: 10px;">
-                <div style="display: flex; align-items: center; flex: 0 0 45%; padding-right: 40px;">
-                    <span style="white-space: nowrap; margin-right: 10px;">Check Source ID (Co-60):</span> 
-                    <input type="text" class="left-align saveable-input" id="demo-src" style="flex-grow: 1;">
-                </div>
-                <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
-                    <span style="white-space: nowrap; margin-right: 10px;">Background Location:</span> 
-                    <input type="text" class="left-align saveable-input" id="demo-bg-loc" style="width: 100%;">
-                </div>
-            </div>
-
-            <h3 style="margin-top: 15px;">Field Notes</h3>
-            <div class="field-notes-box saveable-ce" id="demo-notes" contenteditable="true" placeholder="Initial observations, site conditions, etc."></div>
+        <h3>1. Setup & Instrumentation</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Instrument Type</th>
+                        <th>Model / Serial #</th>
+                        <th>Probe Model / Serial #</th>
+                        <th>Cal Due Date</th>
+                        <th>Daily Src Check Pass?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Gross Gamma</td>
+                        <td><input type="text" class="saveable-input demo-inst-m" placeholder="Ludlum 2350-1 /"></td>
+                        <td><input type="text" class="saveable-input demo-inst-p" placeholder="Ludlum 44-10 /"></td>
+                        <td><input type="text" class="saveable-input demo-inst-cal"></td>
+                        <td><input type="text" placeholder="Y / N" class="saveable-input demo-inst-src calc-trigger"></td>
+                    </tr>
+                    <tr>
+                        <td>Ambient Dose Rate</td>
+                        <td><input type="text" class="saveable-input demo-inst-m" placeholder="RadEye G20 /"></td>
+                        <td>N/A</td>
+                        <td><input type="text" class="saveable-input demo-inst-cal"></td>
+                        <td><input type="text" placeholder="Y / N" class="saveable-input demo-inst-src calc-trigger"></td>
+                    </tr>
+                    <tr>
+                        <td>Spectrometer</td>
+                        <td><input type="text" class="saveable-input demo-inst-m" placeholder="IdentiFINDER /"></td>
+                        <td>N/A</td>
+                        <td><input type="text" class="saveable-input demo-inst-cal"></td>
+                        <td><input type="text" placeholder="Y / N" class="saveable-input demo-inst-src calc-trigger"></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
+
+        <div class="header-info" style="font-size: 13px; align-items: center; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; flex: 0 0 45%; padding-right: 40px;">
+                <span style="white-space: nowrap; margin-right: 10px;">Check Source ID (Co-60):</span> 
+                <input type="text" class="left-align saveable-input calc-trigger" id="demo-src" style="flex-grow: 1;">
+            </div>
+            <div style="display: flex; align-items: center; flex: 1; min-width: 0;">
+                <span style="white-space: nowrap; margin-right: 10px;">Background Location:</span> 
+                <input type="text" class="left-align saveable-input calc-trigger" id="demo-bg-loc" style="width: 100%;">
+            </div>
+        </div>
+
+        <h3 style="margin-top: 15px;">Field Notes</h3>
+        <div class="field-notes-box saveable-ce calc-trigger" id="demo-notes" contenteditable="true" placeholder="Initial observations, site conditions, etc."></div>
 
         <div class="no-break">
             <h3>2. Reference Background Establishment</h3>
@@ -386,25 +378,25 @@
                                 </tr>`);
                             }
                         </script>
-                        <tr class="summary-row">
-                            <td colspan="2" style="text-align: right; padding-right: 15px;">Calculated Mean (x̄):</td>
-                            <td class="readonly-calc" id="bg-mean-display" style="text-align: center;">- cpm</td>
-                            <td colspan="2"></td>
+                        <tr>
+                            <td colspan="2" class="summary-row" style="text-align: right; padding-right: 15px;">Calculated Mean (x̄):</td>
+                            <td class="summary-row readonly-calc" style="text-align: center;"><span id="bg-mean-display">-</span><span class="no-print"> cpm</span></td>
+                            <td colspan="2" style="background-color: #ffffff !important;"></td>
                         </tr>
-                        <tr class="summary-row">
-                            <td colspan="2" style="text-align: right; padding-right: 15px;">Standard Deviation (s<sub>B</sub>):</td>
-                            <td class="readonly-calc" id="bg-std-display" style="text-align: center;">-</td>
-                            <td colspan="2"></td>
+                        <tr>
+                            <td colspan="2" class="summary-row" style="text-align: right; padding-right: 15px;">Standard Deviation (s<sub>B</sub>):</td>
+                            <td class="summary-row readonly-calc" style="text-align: center;" id="bg-std-display">-</td>
+                            <td colspan="2" style="background-color: #ffffff !important;"></td>
                         </tr>
-                        <tr class="summary-row" style="background-color: #dbeafe !important;">
-                            <td colspan="2" style="text-align: right; padding-right: 15px;">Critical Level (B<sub>ref</sub>):</td>
-                            <td style="text-align: center;" class="readonly-calc"><span id="bg-bref-display">-</span><span class="no-print"> cpm</span></td>
-                            <td colspan="2"></td>
+                        <tr>
+                            <td colspan="2" class="summary-row" style="text-align: right; padding-right: 15px; background-color: #dbeafe !important;">Critical Level (B<sub>ref</sub>):</td>
+                            <td class="summary-row readonly-calc" style="text-align: center; background-color: #dbeafe !important;"><span id="bg-bref-display">-</span><span class="no-print"> cpm</span></td>
+                            <td colspan="2" style="background-color: #ffffff !important;"></td>
                         </tr>
-                        <tr class="summary-row" style="background-color: #fef08a !important; font-size: 15px;">
-                            <td colspan="2" style="text-align: right; padding-right: 15px;">INVESTIGATION LEVEL (IL):</td>
-                            <td style="text-align: center;" class="readonly-calc"><span id="bg-il-display">-</span><span class="no-print"> cpm <span style="font-size: 11px; font-weight: normal; color: #555;">(B<sub>ref</sub> + 1,290)</span></span></td>
-                            <td colspan="2"></td>
+                        <tr style="font-size: 15px;">
+                            <td colspan="2" class="summary-row" style="text-align: right; padding-right: 15px; background-color: #fef08a !important;">INVESTIGATION LEVEL (IL):</td>
+                            <td class="summary-row readonly-calc" style="text-align: center; background-color: #fef08a !important;"><span id="bg-il-display">-</span><span class="no-print"> cpm <span style="font-size: 11px; font-weight: normal; color: #555;">(B<sub>ref</sub> + 1,290)</span></span></td>
+                            <td colspan="2" style="background-color: #ffffff !important;"></td>
                         </tr>
                     </tbody>
                 </table>
@@ -432,7 +424,7 @@
                         for(let i=1; i<=20; i++) {
                             document.write(`<tr>
                                 <td>${i}</td>
-                                <td><input type="text" class="left-align saveable-input surv-loc"></td>
+                                <td><input type="text" class="left-align saveable-input surv-loc calc-trigger"></td>
                                 <td><input type="text" inputmode="decimal" class="surv-dr calc-trigger saveable-input num-input"></td>
                                 <td><input type="text" inputmode="decimal" class="surv-gc calc-trigger saveable-input num-input"></td>
                                 <td><input type="text" inputmode="decimal" class="surv-dup calc-trigger saveable-input num-input"></td>
@@ -465,7 +457,7 @@
                         for(let i=21; i<=30; i++) {
                             document.write(`<tr>
                                 <td>${i}</td>
-                                <td><input type="text" class="left-align saveable-input surv-loc"></td>
+                                <td><input type="text" class="left-align saveable-input surv-loc calc-trigger"></td>
                                 <td><input type="text" inputmode="decimal" class="surv-dr calc-trigger saveable-input num-input"></td>
                                 <td><input type="text" inputmode="decimal" class="surv-gc calc-trigger saveable-input num-input"></td>
                                 <td><input type="text" inputmode="decimal" class="surv-dup calc-trigger saveable-input num-input"></td>
@@ -479,7 +471,7 @@
                         for(let i=31; i<=35; i++) {
                             document.write(`<tr>
                                 <td style="font-style: italic; color: #94a3b8;">Ex</td>
-                                <td><input type="text" class="left-align saveable-input surv-loc"></td>
+                                <td><input type="text" class="left-align saveable-input surv-loc calc-trigger"></td>
                                 <td><input type="text" inputmode="decimal" class="surv-dr calc-trigger saveable-input num-input"></td>
                                 <td><input type="text" inputmode="decimal" class="surv-gc calc-trigger saveable-input num-input"></td>
                                 <td><input type="text" inputmode="decimal" class="surv-dup calc-trigger saveable-input num-input"></td>
@@ -495,7 +487,7 @@
             * QA/QC Note: FSSP Section 7.2 requires a 10% duplicate rate. Ensure at least three (3) systematic static counts include a duplicate.
         </div>
 
-        <div class="no-break">
+        <div class="no-break" style="display: inline-block; width: 100%;">
             <h3>4. Biased In-Situ Spectroscopy (IdentiFINDER)</h3>
             <div class="table-container" style="margin-bottom: 0;">
                 <table>
@@ -512,57 +504,57 @@
                     <tbody>
                         <tr>
                             <td>GS-1</td>
-                            <td><input type="text" class="left-align saveable-input spec-loc" placeholder="Steering Magnet"></td>
-                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time num-input" placeholder="300"></td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger" placeholder="Steering Magnet"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input" placeholder="300"></td>
                             <td><input type="text" class="saveable-input spec-co calc-trigger" placeholder="Y/N"></td>
                             <td><input type="text" class="saveable-input spec-eu calc-trigger" placeholder="Y/N"></td>
                             <td class="spec-pass readonly-calc">-</td>
                         </tr>
                         <tr>
                             <td>GS-2</td>
-                            <td><input type="text" class="left-align saveable-input spec-loc" placeholder="Waveguide Junction"></td>
-                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time num-input" placeholder="300"></td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger" placeholder="Waveguide Junction"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input" placeholder="300"></td>
                             <td><input type="text" class="saveable-input spec-co calc-trigger" placeholder="Y/N"></td>
                             <td><input type="text" class="saveable-input spec-eu calc-trigger" placeholder="Y/N"></td>
                             <td class="spec-pass readonly-calc">-</td>
                         </tr>
                         <tr>
                             <td>GS-3</td>
-                            <td><input type="text" class="left-align saveable-input spec-loc" placeholder="Target Rm Angled Baffle"></td>
-                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time num-input" placeholder="300"></td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger" placeholder="Target Rm Angled Baffle"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input" placeholder="300"></td>
                             <td><input type="text" class="saveable-input spec-co calc-trigger" placeholder="Y/N"></td>
                             <td><input type="text" class="saveable-input spec-eu calc-trigger" placeholder="Y/N"></td>
                             <td class="spec-pass readonly-calc">-</td>
                         </tr>
                         <tr>
                             <td>GS-4</td>
-                            <td><input type="text" class="left-align saveable-input spec-loc" placeholder="Target Rm Vert Wall"></td>
-                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time num-input" placeholder="300"></td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger" placeholder="Target Rm Vert Wall"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input" placeholder="300"></td>
                             <td><input type="text" class="saveable-input spec-co calc-trigger" placeholder="Y/N"></td>
                             <td><input type="text" class="saveable-input spec-eu calc-trigger" placeholder="Y/N"></td>
                             <td class="spec-pass readonly-calc">-</td>
                         </tr>
                         <tr>
                             <td>GS-5</td>
-                            <td><input type="text" class="left-align saveable-input spec-loc" placeholder="Target Rm Far-Left Backstop"></td>
-                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time num-input" placeholder="300"></td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger" placeholder="Target Rm Far-Left Backstop"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input" placeholder="300"></td>
                             <td><input type="text" class="saveable-input spec-co calc-trigger" placeholder="Y/N"></td>
                             <td><input type="text" class="saveable-input spec-eu calc-trigger" placeholder="Y/N"></td>
                             <td class="spec-pass readonly-calc">-</td>
                         </tr>
                         <tr><td colspan="6" style="background-color: #2c3e50 !important; color: #ffffff !important; text-align: center; font-weight: bold; font-size: 12px; padding: 4px;">CONTINGENCY MEASUREMENTS</td></tr>
                         <tr>
-                            <td style="color: #94a3b8;">GS-___</td>
-                            <td><input type="text" class="left-align saveable-input spec-loc"></td>
-                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time num-input"></td>
+                            <td><input type="text" class="saveable-input" placeholder="GS-___"></td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input"></td>
                             <td><input type="text" class="saveable-input spec-co calc-trigger"></td>
                             <td><input type="text" class="saveable-input spec-eu calc-trigger"></td>
                             <td class="spec-pass readonly-calc">-</td>
                         </tr>
                         <tr>
-                            <td style="color: #94a3b8;">GS-___</td>
-                            <td><input type="text" class="left-align saveable-input spec-loc"></td>
-                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time num-input"></td>
+                            <td><input type="text" class="saveable-input" placeholder="GS-___"></td>
+                            <td><input type="text" class="left-align saveable-input spec-loc calc-trigger"></td>
+                            <td><input type="text" inputmode="decimal" class="saveable-input spec-time calc-trigger num-input"></td>
                             <td><input type="text" class="saveable-input spec-co calc-trigger"></td>
                             <td><input type="text" class="saveable-input spec-eu calc-trigger"></td>
                             <td class="spec-pass readonly-calc">-</td>
@@ -575,28 +567,31 @@
         <div class="no-break" style="display: inline-block; width: 100%; margin-top: 20px;">
             <h3>5. Auto-Calculated Summary Statistics</h3>
             <div class="table-container" style="margin-bottom: 0;">
-            <table>
-                <thead>
-                    <tr>
-                        <th width="25%">Parameter</th>
-                        <th width="15%">Min</th>
-                        <th width="15%">Mean (x̄)</th>
-                        <th width="15%">Median</th>
-                        <th width="15%">Max</th>
-                        <th width="15%">Std Dev (s)</th>
-                    </tr>
-                </thead>
-                <tbody id="stats-body">
-                    <tr><td class="left-align font-weight-bold">Background Dose Rate (µR/hr)</td><td id="s-bd-min">-</td><td id="s-bd-mean">-</td><td id="s-bd-med">-</td><td id="s-bd-max">-</td><td id="s-bd-std">-</td></tr>
-                    <tr><td class="left-align font-weight-bold">Background Gross Count (cpm)</td><td id="s-bc-min">-</td><td id="s-bc-mean">-</td><td id="s-bc-med">-</td><td id="s-bc-max">-</td><td id="s-bc-std">-</td></tr>
-                    <tr><td class="left-align font-weight-bold">Survey Dose Rate (µR/hr)</td><td id="s-sd-min">-</td><td id="s-sd-mean">-</td><td id="s-sd-med">-</td><td id="s-sd-max">-</td><td id="s-sd-std">-</td></tr>
-                    <tr><td class="left-align font-weight-bold">Survey Gross Count (cpm)</td><td id="s-sc-min">-</td><td id="s-sc-mean">-</td><td id="s-sc-med">-</td><td id="s-sc-max">-</td><td id="s-sc-std">-</td></tr>
-                </tbody>
-            </table>
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="25%">Parameter</th>
+                            <th width="15%">Min</th>
+                            <th width="15%">Mean (x̄)</th>
+                            <th width="15%">Median</th>
+                            <th width="15%">Max</th>
+                            <th width="15%">Std Dev (s)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stats-body">
+                        <tr><td class="left-align font-weight-bold">Background Dose Rate (µR/hr)</td><td id="s-bd-min">-</td><td id="s-bd-mean">-</td><td id="s-bd-med">-</td><td id="s-bd-max">-</td><td id="s-bd-std">-</td></tr>
+                        <tr><td class="left-align font-weight-bold">Background Gross Count (cpm)</td><td id="s-bc-min">-</td><td id="s-bc-mean">-</td><td id="s-bc-med">-</td><td id="s-bc-max">-</td><td id="s-bc-std">-</td></tr>
+                        <tr><td class="left-align font-weight-bold">Survey Dose Rate (µR/hr)</td><td id="s-sd-min">-</td><td id="s-sd-mean">-</td><td id="s-sd-med">-</td><td id="s-sd-max">-</td><td id="s-sd-std">-</td></tr>
+                        <tr><td class="left-align font-weight-bold">Survey Gross Count (cpm)</td><td id="s-sc-min">-</td><td id="s-sc-mean">-</td><td id="s-sc-med">-</td><td id="s-sc-max">-</td><td id="s-sc-std">-</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div> </div> <div class="page-container" style="display: flex; flex-direction: column; min-height: 950px;">
+    </div>
+    
+    <div class="page-container" style="display: flex; flex-direction: column; min-height: 950px;">
         <h3 style="margin-top: 0;">6. Remarks / Field Notes</h3>
-        <div class="remarks-box saveable-ce" id="demo-remarks" contenteditable="true"></div>
+        <div class="remarks-box saveable-ce calc-trigger" id="demo-remarks" contenteditable="true"></div>
         
         <div class="sig-container" style="margin-top: auto; padding-top: 40px;">
             <div class="sig-block">Field Lead Signature (J. Donakowski)</div>
@@ -612,11 +607,11 @@
                 <div class="header-info" style="margin-top: 15px;">
                     <div style="display:flex; align-items:center; flex:1; padding-right:40px;">
                         <span style="white-space:nowrap; margin-right:10px;">Sketch Subject:</span> 
-                        <input type="text" class="left-align saveable-input" style="width:100%;">
+                        <input type="text" class="left-align saveable-input calc-trigger" style="width:100%;">
                     </div>
                     <div style="display:flex; align-items:center;">
                         <span style="white-space:nowrap; margin-right:10px;">Drawn By:</span> 
-                        <input type="text" class="saveable-input" style="width:120px; flex-shrink:0;">
+                        <input type="text" class="saveable-input calc-trigger" style="width:120px; flex-shrink:0;">
                     </div>
                 </div>
                 <div class="sketch-area"></div>
