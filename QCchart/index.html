@@ -48,7 +48,9 @@
         table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 13px; }
         th, td { border: 1px solid var(--table-border); padding: 4px; text-align: center; vertical-align: middle; }
         th { background-color: var(--th-bg); }
-        input[type="number"], input[type="date"] { width: 90%; padding: 4px; border: 1px solid var(--input-border); background-color: var(--input-bg); color: var(--text-color); text-align: center; border-radius: 3px; }
+        
+        /* Updated to target the new .num-input class instead of type="number" */
+        input.num-input, input[type="date"] { width: 90%; padding: 4px; border: 1px solid var(--input-border); background-color: var(--input-bg); color: var(--text-color); text-align: center; border-radius: 3px; }
         
         .stats-panel { background: var(--panel-bg); padding: 15px; border: 1px solid var(--input-border); border-radius: 5px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 14px; }
         .stats-item { font-weight: bold; }
@@ -77,61 +79,42 @@
 
         /* --- PRINT OPTIMIZATIONS --- */
         @media print {
-            /* Tightened page margin to give more vertical room */
             @page { size: landscape; margin: 0.4in; }
-            
             .button-group { display: none; }
-            
-            /* Reduced base font size slightly to compress tables */
             body { margin: 0; font-size: 10.5px; background-color: white !important; color: black !important; }
-            
             h2 { margin-top: 0; margin-bottom: 5px; padding-bottom: 2px; }
             h3 { margin-top: 5px; margin-bottom: 5px; }
             .header { margin-bottom: 10px; }
             
-            input[type="number"], input[type="date"] { 
+            input.num-input, input[type="date"] { 
                 width: 100%; 
                 box-sizing: border-box; 
                 min-width: 0; 
-                padding: 1px; /* Tighter input padding */
+                padding: 1px; 
             }
-            input[type="date"]::-webkit-calendar-picker-indicator,
-            input[type="number"]::-webkit-inner-spin-button, 
-            input[type="number"]::-webkit-outer-spin-button {
-                display: none;
-                -webkit-appearance: none;
-            }
+            input[type="date"]::-webkit-calendar-picker-indicator { display: none; -webkit-appearance: none; }
             
-            input[type="number"], input[type="date"], .header-item input { border: none; border-bottom: 1px solid #ccc; background: transparent !important; color: black !important; font-size: 10.5px; }
+            input.num-input, input[type="date"], .header-item input { border: none; border-bottom: 1px solid #ccc; background: transparent !important; color: black !important; font-size: 10.5px; }
             
             th { background-color: #f0f0f0 !important; color: black !important; }
-            
-            /* Tighter table cell padding */
             td, th { border: 1px solid #aaa !important; padding: 2px 4px; }
             tr { page-break-inside: avoid; }
             
-            /* Squished the stats panel and forced it to stay whole */
             .stats-panel { 
                 background: #faf8f5 !important; 
                 border: 1px solid #ccc !important; 
-                padding: 8px; /* Reduced padding */
-                gap: 5px; /* Tighter grid */
-                font-size: 10px; /* Slightly smaller text */
-                page-break-inside: avoid !important; /* Force it to stay on Page 1 */
+                padding: 8px; 
+                gap: 5px; 
+                font-size: 10px; 
+                page-break-inside: avoid !important; 
                 break-inside: avoid !important;
             }
             
             h2, .net-val, .chart-title { color: #00205b !important; border-bottom-color: #00205b !important; }
             .warn-msg { font-size: 8px; }
             .subtext { font-size: 9px; margin-top: 2px; }
-
             .chart-section { display: block; page-break-before: always; margin-top: 0; }
-            
-            .chart-container { 
-                height: 280px; 
-                page-break-inside: avoid; 
-                margin-bottom: 60px !important; 
-            }
+            .chart-container { height: 280px; page-break-inside: avoid; margin-bottom: 60px !important; }
         }
     </style>
 </head>
@@ -231,13 +214,14 @@
         const numRows = 20;
         let isDarkMode = false;
 
+        /* Changed inputs from type="number" to type="text" with inputmode="numeric" to allow commas */
         for(let i=1; i<=numRows; i++){
             let trB = document.createElement('tr');
             trB.innerHTML = `
                 <td>${i}</td>
                 <td><input type="date" class="base-date" data-idx="${i}"></td>
-                <td><input type="number" class="base-bkg" data-idx="${i}"></td>
-                <td><input type="number" class="base-gross" data-idx="${i}"></td>
+                <td><input type="text" inputmode="numeric" class="base-bkg num-input" data-idx="${i}"></td>
+                <td><input type="text" inputmode="numeric" class="base-gross num-input" data-idx="${i}"></td>
                 <td class="net-val" id="base-net-${i}">-</td>
             `;
             baselineTable.appendChild(trB);
@@ -249,15 +233,39 @@
                     <input type="date" class="daily-date" data-idx="${i}">
                     <span class="warn-msg" id="date-warn-${i}"></span>
                 </td>
-                <td><input type="number" class="daily-bkg" data-idx="${i}"></td>
-                <td><input type="number" class="daily-gross" data-idx="${i}"></td>
+                <td><input type="text" inputmode="numeric" class="daily-bkg num-input" data-idx="${i}"></td>
+                <td><input type="text" inputmode="numeric" class="daily-gross num-input" data-idx="${i}"></td>
                 <td class="net-val" id="daily-net-${i}">-</td>
                 <td id="zscore-${i}" style="font-weight:bold;">-</td>
             `;
             dailyTable.appendChild(trD);
         }
 
-        document.querySelectorAll('input').forEach(el => el.addEventListener('input', updateAll));
+        /* --- COMMA FORMATTING LOGIC --- */
+        const formatInput = (el) => {
+            let val = el.value.replace(/,/g, '').trim();
+            if(val === '' || isNaN(val)) return;
+            let parts = val.split('.');
+            if(parts[0] === '' || parts[0] === '-') parts[0] += '0'; 
+            let intNum = parseInt(parts[0], 10);
+            parts[0] = intNum.toLocaleString('en-US');
+            el.value = parts.join('.');
+        };
+
+        const unformatInput = (el) => { el.value = el.value.replace(/,/g, ''); };
+
+        const parseNum = (val) => {
+            if(val === null || val === undefined || val === '') return NaN;
+            return parseFloat(val.toString().replace(/,/g, ''));
+        };
+
+        // Attach formatters and standard updaters
+        document.querySelectorAll('input:not(.num-input)').forEach(el => el.addEventListener('input', updateAll));
+        document.querySelectorAll('.num-input').forEach(el => {
+            el.addEventListener('blur', () => { formatInput(el); updateAll(); cacheData(); });
+            el.addEventListener('focus', () => unformatInput(el));
+            el.addEventListener('input', () => { updateAll(); cacheData(); });
+        });
 
         let netChart, bkgChart;
         const ctxNet = document.getElementById('netChart').getContext('2d');
@@ -279,9 +287,7 @@
         function closeModal() { document.getElementById('clear-modal').style.display = 'none'; }
         
         function confirmClear() {
-            document.querySelectorAll('input').forEach(el => {
-                if(el.type === 'number' || el.type === 'date' || el.type === 'text') el.value = '';
-            });
+            document.querySelectorAll('input').forEach(el => el.value = '');
             localStorage.removeItem('QC_Chart_Cache');
             document.getElementById('autosave-indicator').innerText = '';
             closeModal();
@@ -307,6 +313,7 @@
                 document.querySelector(`.daily-bkg[data-idx="${i}"]`).value = Math.floor(Math.random() * (8000 - 6000 + 1)) + 6000;
                 document.querySelector(`.daily-gross[data-idx="${i}"]`).value = Math.floor(Math.random() * (16000 - 10000 + 1)) + 10000;
             }
+            document.querySelectorAll('.num-input').forEach(formatInput);
             updateAll();
         }
 
@@ -320,8 +327,8 @@
             csvContent += "--- BASELINE COUNTS ---\nCount #,Date,Bkg (cpm),Gross (cpm),Net (cpm)\n";
             for(let i=1; i<=20; i++){
                 let dt = document.querySelector(`.base-date[data-idx="${i}"]`).value;
-                let bkg = document.querySelector(`.base-bkg[data-idx="${i}"]`).value;
-                let gross = document.querySelector(`.base-gross[data-idx="${i}"]`).value;
+                let bkg = document.querySelector(`.base-bkg[data-idx="${i}"]`).value.replace(/,/g, '');
+                let gross = document.querySelector(`.base-gross[data-idx="${i}"]`).value.replace(/,/g, '');
                 let net = document.getElementById(`base-net-${i}`).innerText.replace(/,/g, '');
                 if(net === '-') net = '';
                 csvContent += `${i},${dt},${bkg},${gross},${net}\n`;
@@ -330,8 +337,8 @@
             csvContent += "\n--- DAILY CHECKS ---\nDay,Date,Bkg (cpm),Gross (cpm),Net (cpm),Net Z-Score\n";
             for(let i=1; i<=20; i++){
                 let dt = document.querySelector(`.daily-date[data-idx="${i}"]`).value;
-                let bkg = document.querySelector(`.daily-bkg[data-idx="${i}"]`).value;
-                let gross = document.querySelector(`.daily-gross[data-idx="${i}"]`).value;
+                let bkg = document.querySelector(`.daily-bkg[data-idx="${i}"]`).value.replace(/,/g, '');
+                let gross = document.querySelector(`.daily-gross[data-idx="${i}"]`).value.replace(/,/g, '');
                 let net = document.getElementById(`daily-net-${i}`).innerText.replace(/,/g, '');
                 let z = document.getElementById(`zscore-${i}`).innerText;
                 if(net === '-') net = '';
@@ -360,9 +367,7 @@
 
         function parseCSV(text) {
             let lines = text.split('\n').map(l => l.trim());
-            document.querySelectorAll('input').forEach(el => {
-                if(el.type === 'number' || el.type === 'date' || el.type === 'text') el.value = '';
-            });
+            document.querySelectorAll('input').forEach(el => el.value = '');
             let phase = 0; 
             
             for(let line of lines) {
@@ -393,6 +398,7 @@
                     if(cols[3]) document.querySelector(`.daily-gross[data-idx="${idx}"]`).value = cols[3];
                 }
             }
+            document.querySelectorAll('.num-input').forEach(formatInput);
             updateAll();
         }
 
@@ -414,8 +420,9 @@
                 let dtStr = document.querySelector(`.base-date[data-idx="${i}"]`).value;
                 if(dtStr) validBaseDates.push(new Date(dtStr));
 
-                let bkg = parseFloat(document.querySelector(`.base-bkg[data-idx="${i}"]`).value);
-                let gross = parseFloat(document.querySelector(`.base-gross[data-idx="${i}"]`).value);
+                // Use parseNum to strip commas before doing math
+                let bkg = parseNum(document.querySelector(`.base-bkg[data-idx="${i}"]`).value);
+                let gross = parseNum(document.querySelector(`.base-gross[data-idx="${i}"]`).value);
                 let netCell = document.getElementById(`base-net-${i}`);
                 
                 if(!isNaN(bkg)) baseBkgVals.push(bkg);
@@ -448,7 +455,6 @@
             document.getElementById('stat-bkg-m2').textContent = bkgStats.std !== null ? formatNum(bkgStats.mean - 2*bkgStats.std, 1) : '-';
             document.getElementById('stat-bkg-m3').textContent = bkgStats.std !== null ? formatNum(bkgStats.mean - 3*bkgStats.std, 1) : '-';
 
-
             let dailyNetData = [];
             let dailyBkgData = [];
             let labels = [];
@@ -474,8 +480,8 @@
                     warnEl.innerHTML = "";
                 }
 
-                let bkg = parseFloat(document.querySelector(`.daily-bkg[data-idx="${i}"]`).value);
-                let gross = parseFloat(document.querySelector(`.daily-gross[data-idx="${i}"]`).value);
+                let bkg = parseNum(document.querySelector(`.daily-bkg[data-idx="${i}"]`).value);
+                let gross = parseNum(document.querySelector(`.daily-gross[data-idx="${i}"]`).value);
                 let netCell = document.getElementById(`daily-net-${i}`);
                 let zCell = document.getElementById(`zscore-${i}`);
                 
@@ -509,7 +515,6 @@
             }
 
             renderCharts(netStats, bkgStats, dailyNetData, dailyBkgData, labels);
-            cacheData();
         }
 
         function createChartConfig(title, yLabel, data, stats, labels, isDarkMode, lineColor) {
@@ -644,6 +649,7 @@
 
         // Initialize by loading cached data
         loadFromLocal();
+        document.querySelectorAll('.num-input').forEach(formatInput);
         updateAll();
     </script>
 </body>
