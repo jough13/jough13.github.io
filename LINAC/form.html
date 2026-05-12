@@ -692,7 +692,7 @@
                 const parsedMean = parseNum(bgStats.mean);
                 const parsedStd = parseNum(bgStats.std);
                 const Bref = parsedMean + (1.645 * parsedStd);
-                IL = Math.ceil(Bref + 1290);
+                IL = Math.round(Bref + 1290);
                 document.getElementById('bg-bref-display').innerText = fmtStr(Bref, 1, 1);
                 document.getElementById('bg-il-display').innerText = fmtStr(IL, 0, 0);
             } else {
