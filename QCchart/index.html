@@ -49,10 +49,10 @@
         th, td { border: 1px solid var(--table-border); padding: 4px; text-align: center; vertical-align: middle; }
         th { background-color: var(--th-bg); }
         input[type="number"], input[type="date"] { width: 90%; padding: 4px; border: 1px solid var(--input-border); background-color: var(--input-bg); color: var(--text-color); text-align: center; border-radius: 3px; }
+        
         .stats-panel { background: var(--panel-bg); padding: 15px; border: 1px solid var(--input-border); border-radius: 5px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; font-size: 14px; }
         .stats-item { font-weight: bold; }
         
-        /* Adjusted gap for web view */
         .chart-section { display: flex; flex-direction: column; gap: 60px; margin-top: 30px; }
         .chart-container { width: 100%; height: 320px; }
         .chart-title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 5px; color: var(--header-text); }
@@ -104,14 +104,12 @@
             h2, .net-val, .chart-title { color: #00205b !important; border-bottom-color: #00205b !important; }
             .warn-msg { font-size: 9px; }
 
-            /* Hard margins for print spacing */
             .chart-section { display: block; page-break-before: always; margin-top: 0; }
             
-            /* ADDED: Explicit bottom margin to force space between charts */
             .chart-container { 
                 height: 280px; 
                 page-break-inside: avoid; 
-                margin-bottom: 60px !important; /* Forces physical space between the graphs */
+                margin-bottom: 60px !important; 
             }
         }
     </style>
@@ -130,6 +128,7 @@
     </div>
 
     <div class="button-group">
+        <div class="autosave-status" id="autosave-indicator" style="align-self: center; font-size: 12px; font-weight: bold; color: var(--muted-text); margin-right: 15px;"></div>
         <button class="btn dark-btn" onclick="toggleDarkMode()" id="dark-toggle">🌙 Dark Mode</button>
         <input type="file" id="csv-file" accept=".csv" style="display:none">
         <button class="btn import-btn" onclick="triggerImport()">Import CSV</button>
@@ -159,14 +158,25 @@
                 </tr>
             </table>
             <div class="stats-panel">
+                <div class="stats-item">Bkg Mean (x̄): <span id="stat-bkg-mean">-</span></div>
                 <div class="stats-item">Net Mean (x̄): <span id="stat-mean">-</span></div>
+                
+                <div class="stats-item">Bkg Std Dev (σ): <span id="stat-bkg-std">-</span></div>
                 <div class="stats-item">Net Std Dev (σ): <span id="stat-std">-</span></div>
-                <div class="stats-item" style="color: #ff8c00;">+2σ (Warning): <span id="stat-p2">-</span></div>
-                <div class="stats-item" style="color: #ff8c00;">-2σ (Warning): <span id="stat-m2">-</span></div>
-                <div class="stats-item" style="color: #ff0000;">+3σ (Control): <span id="stat-p3">-</span></div>
-                <div class="stats-item" style="color: #ff0000;">-3σ (Control): <span id="stat-m3">-</span></div>
+                
+                <div class="stats-item" style="color: #ff8c00;">Bkg +2σ (Warn): <span id="stat-bkg-p2">-</span></div>
+                <div class="stats-item" style="color: #ff8c00;">Net +2σ (Warn): <span id="stat-p2">-</span></div>
+                
+                <div class="stats-item" style="color: #ff8c00;">Bkg -2σ (Warn): <span id="stat-bkg-m2">-</span></div>
+                <div class="stats-item" style="color: #ff8c00;">Net -2σ (Warn): <span id="stat-m2">-</span></div>
+                
+                <div class="stats-item" style="color: #ff0000;">Bkg +3σ (Ctrl): <span id="stat-bkg-p3">-</span></div>
+                <div class="stats-item" style="color: #ff0000;">Net +3σ (Ctrl): <span id="stat-p3">-</span></div>
+                
+                <div class="stats-item" style="color: #ff0000;">Bkg -3σ (Ctrl): <span id="stat-bkg-m3">-</span></div>
+                <div class="stats-item" style="color: #ff0000;">Net -3σ (Ctrl): <span id="stat-m3">-</span></div>
             </div>
-            <p class="subtext">* Displayed statistics are for Net Source counts. Background statistics are calculated independently for the Background chart.</p>
+            <p class="subtext">* Both Net Source and Background statistics are calculated independently based on the 20 baseline measurements.</p>
         </div>
         <div class="column">
             <h3>2. Daily Source Checks</h3>
@@ -185,12 +195,12 @@
 
     <div class="chart-section">
         <div class="chart-container">
-            <div class="chart-title">Net Source Checks Tracking</div>
-            <canvas id="netChart"></canvas>
-        </div>
-        <div class="chart-container">
             <div class="chart-title">Background Variation Tracking</div>
             <canvas id="bkgChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <div class="chart-title">Net Source Checks Tracking</div>
+            <canvas id="netChart"></canvas>
         </div>
     </div>
 
@@ -246,10 +256,13 @@
 
         function requestClear() { document.getElementById('clear-modal').style.display = 'flex'; }
         function closeModal() { document.getElementById('clear-modal').style.display = 'none'; }
+        
         function confirmClear() {
             document.querySelectorAll('input').forEach(el => {
                 if(el.type === 'number' || el.type === 'date' || el.type === 'text') el.value = '';
             });
+            localStorage.removeItem('QC_Chart_Cache');
+            document.getElementById('autosave-indicator').innerText = '';
             closeModal();
             updateAll();
         }
@@ -407,6 +420,14 @@
             document.getElementById('stat-m2').textContent = netStats.std !== null ? formatNum(netStats.mean - 2*netStats.std, 1) : '-';
             document.getElementById('stat-m3').textContent = netStats.std !== null ? formatNum(netStats.mean - 3*netStats.std, 1) : '-';
 
+            document.getElementById('stat-bkg-mean').textContent = formatNum(bkgStats.mean, 1);
+            document.getElementById('stat-bkg-std').textContent = formatNum(bkgStats.std, 2);
+            document.getElementById('stat-bkg-p2').textContent = bkgStats.std !== null ? formatNum(bkgStats.mean + 2*bkgStats.std, 1) : '-';
+            document.getElementById('stat-bkg-p3').textContent = bkgStats.std !== null ? formatNum(bkgStats.mean + 3*bkgStats.std, 1) : '-';
+            document.getElementById('stat-bkg-m2').textContent = bkgStats.std !== null ? formatNum(bkgStats.mean - 2*bkgStats.std, 1) : '-';
+            document.getElementById('stat-bkg-m3').textContent = bkgStats.std !== null ? formatNum(bkgStats.mean - 3*bkgStats.std, 1) : '-';
+
+
             let dailyNetData = [];
             let dailyBkgData = [];
             let labels = [];
@@ -467,6 +488,7 @@
             }
 
             renderCharts(netStats, bkgStats, dailyNetData, dailyBkgData, labels);
+            cacheData();
         }
 
         function createChartConfig(title, yLabel, data, stats, labels, isDarkMode, lineColor) {
@@ -522,13 +544,85 @@
             let netLineColor = isDarkMode ? '#82aaff' : '#00205b';
             let bkgLineColor = isDarkMode ? '#bb86fc' : '#5b0042';
 
-            if(netChart) netChart.destroy();
-            netChart = new Chart(ctxNet, createChartConfig('Daily Net Check (cpm)', 'Net Counts per Minute (cpm)', dailyNetData, netStats, labels, isDarkMode, netLineColor));
-
             if(bkgChart) bkgChart.destroy();
             bkgChart = new Chart(ctxBkg, createChartConfig('Daily Background (cpm)', 'Background per Minute (cpm)', dailyBkgData, bkgStats, labels, isDarkMode, bkgLineColor));
+            
+            if(netChart) netChart.destroy();
+            netChart = new Chart(ctxNet, createChartConfig('Daily Net Check (cpm)', 'Net Counts per Minute (cpm)', dailyNetData, netStats, labels, isDarkMode, netLineColor));
         }
 
+        /* --- LOCAL STORAGE AUTO-SAVE LOGIC --- */
+        function saveToLocal() {
+            const data = {
+                instId: document.getElementById('inst-id').value,
+                probeId: document.getElementById('probe-id').value,
+                sourceId: document.getElementById('source-id').value,
+                isDarkMode: isDarkMode,
+                base: [],
+                daily: []
+            };
+
+            for(let i=1; i<=numRows; i++){
+                data.base.push({
+                    date: document.querySelector(`.base-date[data-idx="${i}"]`).value,
+                    bkg: document.querySelector(`.base-bkg[data-idx="${i}"]`).value,
+                    gross: document.querySelector(`.base-gross[data-idx="${i}"]`).value
+                });
+                data.daily.push({
+                    date: document.querySelector(`.daily-date[data-idx="${i}"]`).value,
+                    bkg: document.querySelector(`.daily-bkg[data-idx="${i}"]`).value,
+                    gross: document.querySelector(`.daily-gross[data-idx="${i}"]`).value
+                });
+            }
+            localStorage.setItem('QC_Chart_Cache', JSON.stringify(data));
+        }
+
+        let autoSaveTimer;
+        function cacheData() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(() => {
+                saveToLocal();
+                let now = new Date();
+                let timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                document.getElementById('autosave-indicator').innerText = `🟢 Auto-saved ${timeStr}`;
+            }, 1000); 
+        }
+
+        function loadFromLocal() {
+            const stored = localStorage.getItem('QC_Chart_Cache');
+            if (stored) {
+                try {
+                    const data = JSON.parse(stored);
+                    document.getElementById('inst-id').value = data.instId || '';
+                    document.getElementById('probe-id').value = data.probeId || '';
+                    document.getElementById('source-id').value = data.sourceId || '';
+                    
+                    if (data.isDarkMode && !isDarkMode) {
+                        isDarkMode = true;
+                        document.body.classList.add('dark-mode');
+                        document.getElementById('dark-toggle').innerText = "☀️ Light Mode";
+                    }
+
+                    for(let i=1; i<=numRows; i++){
+                        if (data.base && data.base[i-1]) {
+                            document.querySelector(`.base-date[data-idx="${i}"]`).value = data.base[i-1].date || '';
+                            document.querySelector(`.base-bkg[data-idx="${i}"]`).value = data.base[i-1].bkg || '';
+                            document.querySelector(`.base-gross[data-idx="${i}"]`).value = data.base[i-1].gross || '';
+                        }
+                        if (data.daily && data.daily[i-1]) {
+                            document.querySelector(`.daily-date[data-idx="${i}"]`).value = data.daily[i-1].date || '';
+                            document.querySelector(`.daily-bkg[data-idx="${i}"]`).value = data.daily[i-1].bkg || '';
+                            document.querySelector(`.daily-gross[data-idx="${i}"]`).value = data.daily[i-1].gross || '';
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error loading cache", e);
+                }
+            }
+        }
+
+        // Initialize by loading cached data
+        loadFromLocal();
         updateAll();
     </script>
 </body>
