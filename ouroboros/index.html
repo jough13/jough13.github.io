@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ouroboros: Ascension</title>
+    <style>
+        :root {
+            --bg-void: #010103;
+            --matter: #00e5ff;
+            --antimatter: #ff0055;
+            --stellar: #ffaa00;
+            --macro: #7000ff;
+            --panel-bg: rgba(8, 10, 15, 0.85);
+            --text: #e0eaff;
+            --success: #00ff88;
+        }
+
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: var(--bg-void); 
+            color: var(--text); 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            overflow: hidden; 
+            user-select: none; 
+        }
+
+        #gameCanvas { 
+            display: block; 
+            width: 100%; 
+            height: 100%; 
+            cursor: crosshair; 
+        }
+
+        /* --- UI PANELS --- */
+        #hud {
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            width: 340px;
+            background: var(--panel-bg); 
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; 
+            padding: 20px; 
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.9); 
+            pointer-events: none; 
+            z-index: 10;
+        }
+
+        h1 { 
+            margin: 0 0 2px 0; 
+            font-size: 1.6rem; 
+            text-transform: uppercase; 
+            letter-spacing: 3px; 
+            font-weight: 900; 
+            background: linear-gradient(90deg, var(--matter), var(--macro)); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+        }
+        
+        .subtitle { 
+            font-size: 0.75rem; 
+            color: #888; 
+            margin-bottom: 20px; 
+            text-transform: uppercase; 
+            letter-spacing: 2px; 
+        }
+
+        /* --- DIRECTIVE (QUEST) PANEL --- */
+        #directive-panel {
+            position: absolute; 
+            top: 20px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); 
+            border: 1px solid var(--stellar);
+            border-radius: 8px; 
+            padding: 15px 30px; 
+            text-align: center;
+            box-shadow: 0 0 20px rgba(255, 170, 0, 0.2); 
+            pointer-events: none; 
+            z-index: 10;
+            min-width: 300px;
+        }
+
+        #directive-title { 
+            font-size: 0.7rem; 
+            color: var(--stellar); 
+            text-transform: uppercase; 
+            letter-spacing: 2px; 
+            font-weight: bold; 
+            margin-bottom: 5px; 
+        }
+
+        #directive-text { 
+            font-size: 1.1rem; 
+            color: #fff; 
+            font-weight: bold; 
+        }
+
+        #directive-progress { 
+            font-size: 0.9rem; 
+            color: #aaa; 
+            margin-top: 5px; 
+            font-family: monospace; 
+        }
+
+        /* --- AETHER RESOURCE BAR --- */
+        #aether-container { 
+            margin-top: 15px; 
+            margin-bottom: 15px; 
+        }
+
+        #aether-header { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 0.8rem; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            margin-bottom: 5px; 
+            color: var(--success); 
+        }
+
+        #aether-bar-bg { 
+            width: 100%; 
+            height: 10px; 
+            background: rgba(255,255,255,0.1); 
+            border-radius: 5px; 
+            overflow: hidden; 
+        }
+
+        #aether-bar-fill { 
+            width: 50%; 
+            height: 100%; 
+            background: var(--success); 
+            box-shadow: 0 0 10px var(--success); 
+            transition: width 0.2s; 
+        }
+
+        /* --- SCALE & POWER STATUS --- */
+        #scale-status { 
+            padding: 10px; 
+            border-radius: 6px; 
+            margin-bottom: 15px; 
+            background: rgba(0,0,0,0.5); 
+            border-left: 4px solid #fff; 
+            transition: all 0.3s ease; 
+        }
+
+        #scale-name { 
+            font-size: 1.1rem; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            margin-bottom: 4px; 
+        }
+
+        #scale-power { 
+            font-size: 0.8rem; 
+            color: #aaa; 
+        }
+
+        .locked-power { 
+            color: #ff0055 !important; 
+            font-weight: bold; 
+        }
+
+        /* --- TRACKING BUTTON --- */
+        #btn-track {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            cursor: pointer;
+            pointer-events: auto; /* Allow clicking */
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
+        }
+
+        #btn-track:hover {
+            background: rgba(0, 255, 136, 0.3);
+        }
+
+        /* --- STATS GRID --- */
+        .stat-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 10px; 
+            margin-bottom: 15px; 
+        }
+
+        .stat-box { 
+            background: rgba(0,0,0,0.5); 
+            padding: 10px; 
+            border-radius: 6px; 
+            border: 1px solid rgba(255,255,255,0.02); 
+        }
+
+        .stat-label { 
+            font-size: 0.65rem; 
+            color: #888; 
+            text-transform: uppercase; 
+            font-weight: bold; 
+        }
+
+        .stat-value { 
+            font-size: 1.2rem; 
+            font-family: monospace; 
+            font-weight: bold; 
+        }
+
+        /* --- CONTROLS INFO --- */
+        .controls { 
+            font-size: 0.8rem; 
+            color: #aaa; 
+            line-height: 1.8; 
+            background: rgba(0,0,0,0.3); 
+            padding: 12px; 
+            border-radius: 6px; 
+        }
+
+        .controls span { 
+            color: #fff; 
+            font-weight: bold; 
+            background: #222; 
+            padding: 2px 6px; 
+            border-radius: 4px; 
+            border: 1px solid #444; 
+            margin-right: 5px;
+        }
+
+        /* --- VERTICAL SCALE METER --- */
+        #scale-meter { 
+            position: absolute; 
+            right: 30px; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            height: 500px; 
+            width: 6px; 
+            background: rgba(255,255,255,0.1); 
+            border-radius: 3px; 
+            pointer-events: none; 
+            z-index: 10; 
+        }
+
+        .scale-tick { 
+            position: absolute; 
+            right: 15px; 
+            font-size: 0.6rem; 
+            color: #666; 
+            text-transform: uppercase; 
+            transform: translateY(-50%); 
+            letter-spacing: 1px; 
+            font-weight: bold;
+        }
+
+        #indicator { 
+            position: absolute; 
+            left: -6px; 
+            width: 18px; 
+            height: 18px; 
+            background: #fff; 
+            border-radius: 50%; 
+            box-shadow: 0 0 15px #fff; 
+            transform: translateY(-50%); 
+            transition: top 0.1s ease-out; 
+        }
+
+        .c-mat { color: var(--matter); text-shadow: 0 0 8px var(--matter); }
+        .c-anti { color: var(--antimatter); text-shadow: 0 0 8px var(--antimatter); }
+        .c-stel { color: var(--stellar); text-shadow: 0 0 8px var(--stellar); }
+        .c-mac { color: var(--macro); text-shadow: 0 0 8px var(--macro); }
+    </style>
+</head>
+<body>
+
+    <div id="directive-panel">
+        <div id="directive-title">Current Directive</div>
+        <div id="directive-text">Form a Proto-Star</div>
+        <div id="directive-progress">0 / 100 Mass</div>
+    </div>
+
+    <div id="hud">
+        <h1>Ouroboros</h1>
+        <div class="subtitle">Global Cosmic Simulation</div>
+
+        <div id="btn-track">◈ Find & Track Largest</div>
+        
+        <div id="aether-container">
+            <div id="aether-header">
+                <span>Aether (Energy)</span> 
+                <span id="aether-val">500 / 1000</span>
+            </div>
+            <div id="aether-bar-bg">
+                <div id="aether-bar-fill"></div>
+            </div>
+        </div>
+
+        <div id="scale-status">
+            <div id="scale-name">Micro Scale</div>
+            <div id="scale-power">Power: Inject Matter (Cost: 5)</div>
+        </div>
+        
+        <div class="stat-grid">
+            <div class="stat-box">
+                <div class="stat-label">Cosmic Dust</div>
+                <div class="stat-value c-mat" id="s-mat">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Stars</div>
+                <div class="stat-value c-stel" id="s-stel">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Singularities</div>
+                <div class="stat-value c-mac" id="s-mac">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Universe Mass</div>
+                <div class="stat-value" id="s-mass">0</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div><span>W A S D</span> Pan Camera</div>
+            <div><span>Q / E</span> Traverse Dimensions</div>
+            <div><span>F</span> Quick Track</div>
+            <div><span>Click</span> Use Scale Power</div>
+        </div>
+    </div>
+
+    <div id="scale-meter">
+        <div class="scale-tick" style="top: 10%; color: var(--macro)">Macro</div>
+        <div class="scale-tick" style="top: 50%; color: var(--stellar)">Stellar</div>
+        <div class="scale-tick" style="top: 90%; color: var(--matter)">Micro</div>
+        <div id="indicator" style="top: 90%;"></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        let width, height;
+
+        const COLORS = { 
+            matter: '#00e5ff', 
+            antimatter: '#ff0055', 
+            stellar: '#ffaa00', 
+            macro: '#7000ff' 
+        };
+        
+        // --- PHYSICS & BALANCE CONSTANTS ---
+        const WORLD = { 
+            size: 30000, 
+            friction: 0.999,
+            G: 2.5,          // Increased gravity to help clumps form faster early on
+            swirl: 0.65,
+            
+            // Progression Milestones
+            protoLimit: 100,
+            novaLimit: 1000,   
+            hyperLimit: 5000  
+        };
+
+        // --- GAMEPLAY STATE (The Player) ---
+        const Player = {
+            aether: 500,
+            maxAether: 2000,
+            stage: 1, // 1: Proto-Star, 2: Black Hole, 3: Hypernova, 4: Sandbox
+            highestMass: 0,
+            
+            unlockedStellar: false,
+            unlockedMacro: false,
+
+            addAether(amount, x = null, y = null) {
+                this.aether = Math.min(this.maxAether, this.aether + amount);
+                
+                // Spawn floating text if coordinates are provided
+                if (x !== null && y !== null) {
+                    FloatingTexts.push({ 
+                        x: x, 
+                        y: y, 
+                        text: `+${Math.floor(amount)} AETHER`, 
+                        life: 1.5, 
+                        color: '#00ff88' 
+                    });
+                }
+            },
+
+            spendAether(amount) {
+                if (this.aether >= amount) {
+                    this.aether -= amount;
+                    return true;
+                }
+                return false;
+            },
+
+            checkProgression() {
+                const title = document.getElementById('directive-text');
+                const prog = document.getElementById('directive-progress');
+                const panel = document.getElementById('directive-panel');
+
+                if (this.stage === 1) {
+                    prog.innerText = `${Math.floor(this.highestMass)} / ${WORLD.protoLimit} Mass`;
+                    if (this.highestMass >= WORLD.protoLimit) {
+                        this.stage = 2;
+                        this.maxAether = 5000;
+                        this.addAether(1000);
+                        title.innerText = "Ignite a True Star";
+                        panel.style.borderColor = COLORS.stellar;
+                        Camera.updateUI();
+                    }
+                } 
+                else if (this.stage === 2) {
+                    prog.innerText = `${Math.floor(this.highestMass)} / ${WORLD.novaLimit} Mass`;
+                    if (this.highestMass >= WORLD.novaLimit) {
+                        this.stage = 3;
+                        this.unlockedStellar = true;
+                        this.addAether(2000);
+                        title.innerText = "Collapse a Singularity";
+                        panel.style.borderColor = COLORS.macro;
+                        Camera.updateUI();
+                        
+                        // Screen flash effect
+                        ctx.fillStyle = 'white'; 
+                        ctx.fillRect(0, 0, width, height);
+                    }
+                } 
+                else if (this.stage === 3) {
+                    prog.innerText = `${Math.floor(this.highestMass)} / ${WORLD.hyperLimit} Mass`;
+                    if (this.highestMass >= WORLD.hyperLimit) {
+                        this.stage = 4;
+                        this.unlockedMacro = true;
+                        this.maxAether = 10000;
+                        this.addAether(5000);
+                        title.innerText = "Trigger a Hypernova";
+                        panel.style.borderColor = '#fff';
+                        Camera.updateUI();
+                        
+                        ctx.fillStyle = 'white'; 
+                        ctx.fillRect(0, 0, width, height);
+                    }
+                } 
+                else if (this.stage === 4) {
+                    // Hypernova logic in physics loop will set this to stage 5
+                    prog.innerText = `Awaiting Critical Mass...`;
+                } 
+                else if (this.stage === 5) {
+                    title.innerText = "Sandbox Mode";
+                    prog.innerText = "Infinite Possibilities";
+                    panel.style.borderColor = '#555';
+                }
+
+                // Update UI Bar
+                document.getElementById('aether-val').innerText = `${Math.floor(this.aether)} / ${this.maxAether}`;
+                document.getElementById('aether-bar-fill').style.width = `${(this.aether / this.maxAether) * 100}%`;
+            }
+        };
+
+        const FloatingTexts = []; 
+
+        // --- INPUT STATE ---
+        const Keys = { w: false, a: false, s: false, d: false, q: false, e: false };
+        const Input = { left: false, right: false, mouseX: 0, mouseY: 0, lastX: 0, lastY: 0 };
+
+        window.addEventListener('keydown', e => { 
+            let k = e.key.toLowerCase(); 
+            if (Keys.hasOwnProperty(k)) {
+                Keys[k] = true; 
+            }
+            if (k === 'f') {
+                Camera.cycleFocus();
+            }
+        });
+
+        window.addEventListener('keyup', e => { 
+            let k = e.key.toLowerCase(); 
+            if (Keys.hasOwnProperty(k)) {
+                Keys[k] = false; 
+            }
+        });
+        
+        window.addEventListener('mousedown', e => { 
+            if (e.button === 0) {
+                Input.left = true; 
+            }
+            if (e.button === 2) { 
+                Input.right = true; 
+                Input.lastX = e.clientX; 
+                Input.lastY = e.clientY; 
+                Camera.breakLock(); 
+            }
+        });
+
+        window.addEventListener('mouseup', e => { 
+            if (e.button === 0) Input.left = false; 
+            if (e.button === 2) Input.right = false; 
+        });
+        
+        window.addEventListener('mousemove', e => {
+            Input.mouseX = e.clientX; 
+            Input.mouseY = e.clientY;
+            
+            if (Input.right) { 
+                Camera.x -= (e.clientX - Input.lastX) / Camera.zoom; 
+                Camera.y -= (e.clientY - Input.lastY) / Camera.zoom; 
+                Input.lastX = e.clientX; 
+                Input.lastY = e.clientY; 
+            }
+        });
+
+        window.addEventListener('wheel', e => {
+            let z = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+            Camera.targetZoom = Math.max(0.01, Math.min(Camera.targetZoom * z, 4.0));
+        });
+
+        // UI Button Event Listener
+        document.getElementById('btn-track').addEventListener('mousedown', (e) => {
+            e.stopPropagation(); // Prevent firing the canvas mousedown
+            Camera.cycleFocus();
+        });
+
+        // --- CAMERA SYSTEM ---
+        const Camera = {
+            x: WORLD.size / 2, 
+            y: WORLD.size / 2,
+            zoom: 2.0, 
+            targetZoom: 2.0, 
+            mode: 'micro', 
+            target: null,
+            
+            screenToWorld(sx, sy) { 
+                return { 
+                    x: (sx - width / 2) / this.zoom + this.x, 
+                    y: (sy - height / 2) / this.zoom + this.y 
+                }; 
+            },
+
+            breakLock() {
+                this.target = null;
+                document.getElementById('btn-track').innerText = "◈ Find & Track Largest";
+                document.getElementById('btn-track').style.borderColor = "#00ff88"; // Fixed the unquoted variable bug here!
+                document.getElementById('btn-track').style.color = "#00ff88";
+            },
+
+            cycleFocus() {
+                // Find the absolute largest mass in the universe
+                let tops = Entities.slice().sort((a, b) => b.mass - a.mass);
+                
+                if (tops.length > 0) {
+                    this.target = tops[0];
+                    document.getElementById('btn-track').innerText = `◈ Tracking Target (Mass: ${Math.floor(this.target.mass)})`;
+                    document.getElementById('btn-track').style.borderColor = "#ffffff";
+                    document.getElementById('btn-track').style.color = "#ffffff";
+                }
+            },
+
+            update() {
+                if (Keys.q) this.targetZoom /= 1.05; 
+                if (Keys.e) this.targetZoom *= 1.05;
+                
+                this.targetZoom = Math.max(0.01, Math.min(this.targetZoom, 4.0));
+                this.zoom += (this.targetZoom - this.zoom) * 0.15;
+                
+                let panSpeed = 25 / this.zoom; 
+                let panning = false;
+                
+                if (Keys.w) { this.y -= panSpeed; panning = true; }
+                if (Keys.s) { this.y += panSpeed; panning = true; }
+                if (Keys.a) { this.x -= panSpeed; panning = true; }
+                if (Keys.d) { this.x += panSpeed; panning = true; } 
+                
+                // Break tracking lock if user manually pans the camera
+                if (panning) {
+                    this.breakLock();
+                }
+
+                // Hard lock tracking onto target
+                if (this.target) {
+                    if (this.target.mass <= 0) {
+                        this.breakLock();
+                    } else {
+                        // 1-to-1 strict lock so it never drifts
+                        this.x = this.target.x;
+                        this.y = this.target.y;
+                    }
+                }
+
+                let prevMode = this.mode;
+                if (this.zoom > 1.0) {
+                    this.mode = 'micro'; 
+                } else if (this.zoom > 0.08) {
+                    this.mode = 'stellar'; 
+                } else {
+                    this.mode = 'macro';
+                }
+
+                if (prevMode !== this.mode) {
+                    this.updateUI();
+                }
+
+                let logMin = Math.log10(0.01);
+                let logMax = Math.log10(4.0);
+                let percent = ((Math.log10(this.zoom) - logMin) / (logMax - logMin)) * 100;
+                document.getElementById('indicator').style.top = `${100 - Math.max(0, Math.min(100, percent))}%`;
+            },
+
+            updateUI() {
+                const status = document.getElementById('scale-status');
+                const name = document.getElementById('scale-name');
+                const pwr = document.getElementById('scale-power');
+                
+                if (this.mode === 'micro') { 
+                    status.style.borderLeftColor = 'var(--matter)'; 
+                    name.innerText = 'Micro (Quantum)'; 
+                    name.className = 'c-mat'; 
+                    pwr.innerText = 'Power: Inject Matter (Cost: 5 Aether)'; 
+                } 
+                else if (this.mode === 'stellar') { 
+                    status.style.borderLeftColor = 'var(--stellar)'; 
+                    name.innerText = 'Stellar (Celestial)'; 
+                    name.className = 'c-stel'; 
+                    
+                    if (Player.unlockedStellar) {
+                        pwr.innerText = 'Power: Solar Wind (Cost: 2 Aether/tick)'; 
+                    } else {
+                        pwr.innerHTML = '<span class="locked-power">LOCKED: Complete Directive</span>';
+                    }
+                } 
+                else { 
+                    status.style.borderLeftColor = 'var(--macro)'; 
+                    name.innerText = 'Macro (Galactic)'; 
+                    name.className = 'c-mac'; 
+                    
+                    if (Player.unlockedMacro) {
+                        pwr.innerText = 'Power: Gravity Well (Cost: 10 Aether/tick)'; 
+                    } else {
+                        pwr.innerHTML = '<span class="locked-power">LOCKED: Complete Directive</span>';
+                    }
+                }
+            }
+        };
+
+        function resize() { 
+            width = window.innerWidth; 
+            height = window.innerHeight; 
+            canvas.width = width; 
+            canvas.height = height; 
+        }
+        window.addEventListener('resize', resize); 
+        resize();
+        
+        // Prevent default context menu to allow right-click dragging
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        // --- SPATIAL HASHING ---
+        const Grid = {
+            cellSize: 400, 
+            cols: 0, 
+            rows: 0, 
+            cells: [],
+            
+            init() { 
+                this.cols = Math.ceil(WORLD.size / this.cellSize); 
+                this.rows = Math.ceil(WORLD.size / this.cellSize); 
+                let total = this.cols * this.rows; 
+                this.cells = new Array(total);
+                for(let i = 0; i < total; i++) {
+                    this.cells[i] = []; 
+                }
+            },
+            
+            clear() { 
+                for(let i = 0; i < this.cells.length; i++) {
+                    if (this.cells[i]) {
+                        this.cells[i].length = 0; 
+                    }
+                }
+            },
+            
+            insert(e) { 
+                let cx = Math.floor(e.x / this.cellSize);
+                let cy = Math.floor(e.y / this.cellSize); 
+                
+                if (cx >= 0 && cx < this.cols && cy >= 0 && cy < this.rows) { 
+                    let idx = cx + cy * this.cols; 
+                    if (this.cells[idx]) {
+                        this.cells[idx].push(e); 
+                    }
+                } 
+            },
+            
+            query(x, y, radius, cb) {
+                let rCells = Math.ceil(radius / this.cellSize);
+                let cx = Math.floor(x / this.cellSize);
+                let cy = Math.floor(y / this.cellSize);
+                
+                for(let i = -rCells; i <= rCells; i++) {
+                    for(let j = -rCells; j <= rCells; j++) {
+                        let nx = cx + i;
+                        let ny = cy + j;
+                        
+                        if (nx >= 0 && nx < this.cols && ny >= 0 && ny < this.rows) {
+                            let cell = this.cells[nx + ny * this.cols];
+                            if (!cell) continue;
+                            
+                            for(let k = 0; k < cell.length; k++) { 
+                                let dx = cell[k].x - x;
+                                let dy = cell[k].y - y; 
+                                let distSq = dx * dx + dy * dy; 
+                                
+                                if (distSq <= radius * radius) {
+                                    cb(cell[k], dx, dy, distSq); 
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // --- VFX POOLS ---
+        class Pool {
+            constructor(factory, size) { 
+                this.items = []; 
+                for(let n = 0; n < size; n++) {
+                    this.items.push(factory());
+                }
+                this.active = []; 
+            }
+            
+            spawn(setup) { 
+                let item = this.items.pop() || {x:0, y:0}; 
+                setup(item); 
+                this.active.push(item); 
+                return item; 
+            }
+            
+            free(idx) { 
+                this.items.push(this.active[idx]); 
+                this.active[idx] = this.active[this.active.length - 1]; 
+                this.active.pop(); 
+            }
+        }
+        
+        const Particles = new Pool(() => ({x:0, y:0, vx:0, vy:0, life:0, decay:0, color:'', size:0}), 6000);
+        const Shockwaves = new Pool(() => ({x:0, y:0, r:0, maxR:0, speed:0, color:'', width:0}), 300);
+
+        function explode(x, y, power, color1, color2) {
+            Shockwaves.spawn(s => { 
+                s.x = x; 
+                s.y = y; 
+                s.r = 1; 
+                s.maxR = power * 15; 
+                s.speed = power * 2; 
+                s.color = color1; 
+                s.width = power * 0.8; 
+            });
+            
+            let count = Math.min(power, 60);
+            for(let i = 0; i < count; i++) {
+                Particles.spawn(p => {
+                    p.x = x; 
+                    p.y = y; 
+                    p.color = (i % 2 === 0) ? color1 : color2;
+                    let a = Math.random() * Math.PI * 2;
+                    let v = Math.random() * power * 6;
+                    p.vx = Math.cos(a) * v; 
+                    p.vy = Math.sin(a) * v; 
+                    p.life = 1; 
+                    p.decay = 0.01 + Math.random() * 0.02; 
+                    p.size = Math.max(1, power * 0.1);
+                });
+            }
+        }
+
+        const Entities = []; 
+        let Singularities = [];
+
+        // --- MAIN ENTITY CLASS ---
+        class Particle {
+            constructor(x, y, mass, charge) {
+                this.x = x; 
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 150; 
+                this.vy = (Math.random() - 0.5) * 150; 
+                this.mass = mass; 
+                this.charge = charge; 
+                this.id = Math.random();
+                this.radiationTimer = 0; 
+                this.isSingularity = mass >= WORLD.hyperLimit;
+            }
+
+            update(dt) {
+                if (isNaN(this.mass) || this.mass <= 0) { 
+                    this.mass = 0; 
+                    return; 
+                }
+
+                // Track highest mass for progression tracking
+                if (this.mass > Player.highestMass) {
+                    Player.highestMass = this.mass;
+                }
+
+                let localDt = dt; 
+                let nearestSingularityDistSq = Infinity;
+                
+                // Gravity & Swirl calculations
+                for (let S of Singularities) {
+                    if (S.id === this.id) continue;
+                    
+                    let dx = S.x - this.x;
+                    let dy = S.y - this.y;
+                    let distSq = Math.max(dx * dx + dy * dy, 100); 
+                    
+                    if (distSq < nearestSingularityDistSq) {
+                        nearestSingularityDistSq = distSq;
+                    }
+
+                    let dist = Math.sqrt(distSq);
+                    let force = (WORLD.G * S.mass) / distSq;
+                    
+                    // Direct gravitational pull
+                    this.vx += (dx / dist) * force * dt * 60;
+                    this.vy += (dy / dist) * force * dt * 60;
+                    
+                    // Tangential swirl (creates galaxies)
+                    if (!this.isSingularity) { 
+                        this.vx -= (dy / dist) * force * WORLD.swirl * dt * 60;
+                        this.vy += (dx / dist) * force * WORLD.swirl * dt * 60;
+                    }
+                }
+
+                // Time Dilation near Black Holes
+                if (nearestSingularityDistSq < 100000) {
+                    localDt *= Math.max(0.05, nearestSingularityDistSq / 100000);
+                }
+
+                this.x += this.vx * localDt * 60; 
+                this.y += this.vy * localDt * 60;
+                
+                this.vx *= WORLD.friction; 
+                this.vy *= WORLD.friction;
+
+                // Edge Bouncing
+                if(this.x < 10) { 
+                    this.x = 10; 
+                    this.vx *= -0.8; 
+                } else if(this.x > WORLD.size - 10) { 
+                    this.x = WORLD.size - 10; 
+                    this.vx *= -0.8; 
+                }
+                
+                if(this.y < 10) { 
+                    this.y = 10; 
+                    this.vy *= -0.8; 
+                } else if(this.y > WORLD.size - 10) { 
+                    this.y = WORLD.size - 10; 
+                    this.vy *= -0.8; 
+                }
+
+                let radius = Math.sqrt(this.mass) * 2; 
+                let senseRadius = radius * 8;
+
+                // --- HYPERNOVA TRIGGER ---
+                if (this.mass >= WORLD.hyperLimit * 2.0) { 
+                    let totalMass = this.mass;
+                    this.mass = 0; 
+                    
+                    explode(this.x, this.y, 600, COLORS.macro, '#fff');
+                    Player.addAether(5000, this.x, this.y);
+
+                    if (Player.stage === 4) {
+                        Player.stage = 5; 
+                        Player.maxAether = 99999;
+                        
+                        ctx.fillStyle = 'white'; 
+                        ctx.fillRect(0, 0, width, height);
+                    }
+                    
+                    let numStars = 80;
+                    for(let i = 0; i < numStars; i++) {
+                        let a = Math.random() * Math.PI * 2;
+                        let p = new Particle(this.x + Math.cos(a)*100, this.y + Math.sin(a)*100, (totalMass*0.6)/numStars, 1);
+                        p.vx = Math.cos(a) * 1000; 
+                        p.vy = Math.sin(a) * 1000;
+                        Entities.push(p);
+                    }
+                    return;
+                }
+
+                // --- COLLAPSE TO SINGULARITY ---
+                if (this.mass > WORLD.novaLimit && !this.isSingularity) {
+                    this.isSingularity = true;
+                    Player.addAether(500, this.x, this.y);
+                    
+                    let shedMass = this.mass * 0.2; 
+                    this.mass -= shedMass; 
+                    
+                    explode(this.x, this.y, 300, '#ffffff', COLORS.stellar);
+                    
+                    for(let i = 0; i < 60; i++) {
+                        let a = Math.random() * Math.PI * 2;
+                        let p = new Particle(this.x + Math.cos(a)*(radius+20), this.y + Math.sin(a)*(radius+20), shedMass/60, Math.random()>0.5?1:-1);
+                        p.vx = Math.cos(a) * 800; 
+                        p.vy = Math.sin(a) * 800;
+                        Entities.push(p);
+                    }
+                }
+
+                // Local Collisions
+                Grid.query(this.x, this.y, senseRadius, (n, dx, dy, distSq) => {
+                    if (n.id === this.id || this.mass <= 0 || n.mass <= 0) return;
+                    
+                    distSq = Math.max(distSq, 1); 
+                    let dist = Math.sqrt(distSq);
+                    
+                    if (dist < radius + Math.sqrt(n.mass) * 2) {
+                        if (this.mass >= n.mass) {
+                            if (this.mass < 100 && n.mass < 100 && this.charge !== n.charge) {
+                                // Micro Annihilation
+                                explode(this.x, this.y, this.mass + n.mass, COLORS.matter, COLORS.antimatter);
+                                Player.addAether(2); // Tiny reward for micro actions
+                                this.mass = 0; 
+                                n.mass = 0; 
+                            } else {
+                                // Fusion
+                                if (this.isSingularity && n.mass < WORLD.novaLimit) {
+                                    Particles.spawn(p => { 
+                                        p.x = n.x; p.y = n.y; p.color = '#fff'; 
+                                        p.vx = n.vx; p.vy = n.vy; p.life = 1; 
+                                        p.decay = 0.08; p.size = 8; 
+                                    });
+                                }
+                                this.vx = (this.vx * this.mass + n.vx * n.mass) / (this.mass + n.mass);
+                                this.vy = (this.vy * this.mass + n.vy * n.mass) / (this.mass + n.mass);
+                                this.mass += n.mass; 
+                                n.mass = 0; 
+                            }
+                        }
+                    } else {
+                        // Gravity pull for stars
+                        if (this.mass >= 100 && this.mass < WORLD.hyperLimit && n.mass < 100) {
+                            let force = (WORLD.G * this.mass) / distSq;
+                            n.vx -= (dx / dist) * force * localDt * 60; 
+                            n.vy -= (dy / dist) * force * localDt * 60;
+                            
+                            n.vx += (dy / dist) * force * WORLD.swirl * localDt * 60;
+                            n.vy -= (dx / dist) * force * WORLD.swirl * localDt * 60;
+                        }
+                    }
+                });
+
+                // Quasar Jets
+                if (this.isSingularity) {
+                    this.radiationTimer += localDt;
+                    if (this.radiationTimer > 0.05) { 
+                        this.radiationTimer = 0; 
+                        this.mass -= 5;
+                        
+                        if (this.mass < 1) {
+                            this.mass = 0; 
+                        }
+                        
+                        if (this.mass > 0) {
+                            let jetAngle = (this.id * Math.PI * 2) + (Math.random() - 0.5) * 0.1; 
+                            let a = jetAngle + ((Math.random() > 0.5 ? 1 : -1) === 1 ? 0 : Math.PI);
+                            let eX = this.x + Math.cos(a) * (radius + 15);
+                            let eY = this.y + Math.sin(a) * (radius + 15);
+                            
+                            let p = new Particle(eX, eY, 5, Math.random() > 0.5 ? 1 : -1); 
+                            p.vx = this.vx + Math.cos(a) * 1500; 
+                            p.vy = this.vy + Math.sin(a) * 1500; 
+                            Entities.push(p);
+
+                            Particles.spawn(v => { 
+                                v.x = eX; 
+                                v.y = eY; 
+                                v.color = COLORS.macro; 
+                                v.vx = p.vx * 0.3; 
+                                v.vy = p.vy * 0.3; 
+                                v.life = 1; 
+                                v.decay = 0.08; 
+                                v.size = 4; 
+                            });
+                        }
+                    }
+                }
+
+                // Speed Limit
+                let speedSq = this.vx * this.vx + this.vy * this.vy;
+                if (speedSq > 1440000) { 
+                    let speed = Math.sqrt(speedSq); 
+                    this.vx = (this.vx / speed) * 1200; 
+                    this.vy = (this.vy / speed) * 1200; 
+                }
+            }
+
+            draw() {
+                let radius = Math.sqrt(Math.max(0, this.mass)) * 2;
+                let sx = (this.x - Camera.x) * Camera.zoom + width / 2;
+                let sy = (this.y - Camera.y) * Camera.zoom + height / 2;
+                let sr = radius * Camera.zoom;
+                
+                // Frustum culling
+                if (sx < -sr || sx > width + sr || sy < -sr || sy > height + sr) return;
+
+                // Nebula rendering (optimization for zoomed out dust)
+                if (this.mass < 100 && sr < 1.0) {
+                    ctx.globalAlpha = 0.6; 
+                    ctx.fillStyle = this.charge === 1 ? COLORS.matter : COLORS.antimatter;
+                    ctx.fillRect(this.x, this.y, 4 / Camera.zoom, 4 / Camera.zoom); 
+                    ctx.globalAlpha = 1.0; 
+                    return;
+                }
+
+                ctx.beginPath();
+                
+                if (this.mass < 100) {
+                    // Dust
+                    ctx.arc(this.x, this.y, radius, 0, Math.PI * 2); 
+                    ctx.fillStyle = this.charge === 1 ? COLORS.matter : COLORS.antimatter; 
+                    ctx.fill();
+                } 
+                else if (!this.isSingularity) {
+                    // Star
+                    let glow = ctx.createRadialGradient(this.x, this.y, radius * 0.2, this.x, this.y, radius * 2.0);
+                    glow.addColorStop(0, '#fff'); 
+                    glow.addColorStop(0.3, COLORS.stellar); 
+                    glow.addColorStop(1, 'rgba(255,170,0,0)');
+                    
+                    ctx.arc(this.x, this.y, radius * 2.0, 0, Math.PI * 2); 
+                    ctx.fillStyle = glow; 
+                    ctx.fill();
+                } 
+                else {
+                    // Black Hole
+                    ctx.arc(this.x, this.y, radius, 0, Math.PI * 2); 
+                    ctx.fillStyle = '#000'; 
+                    ctx.fill();
+                    
+                    ctx.lineWidth = radius * 0.1; 
+                    ctx.strokeStyle = COLORS.macro; 
+                    ctx.stroke();
+                    
+                    if (Camera.zoom < 0.5) {
+                        ctx.beginPath(); 
+                        ctx.ellipse(this.x, this.y, radius * 3.5, radius * 1.2, this.id, 0, Math.PI * 2);
+                        let lens = ctx.createRadialGradient(this.x, this.y, radius, this.x, this.y, radius * 3.5);
+                        lens.addColorStop(0, 'rgba(112, 0, 255, 0.9)'); 
+                        lens.addColorStop(1, 'rgba(112, 0, 255, 0)');
+                        ctx.strokeStyle = lens; 
+                        ctx.lineWidth = radius * 0.4; 
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function drawGrid() {
+            let spacing = 100; 
+            if (Camera.zoom < 0.1) {
+                spacing = 5000; 
+            } else if (Camera.zoom < 0.5) {
+                spacing = 1000;
+            }
+            
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.05 * Camera.zoom})`; 
+            ctx.lineWidth = 1 / Camera.zoom;
+            
+            let startX = Math.floor((Camera.x - width / 2 / Camera.zoom) / spacing) * spacing;
+            let startY = Math.floor((Camera.y - height / 2 / Camera.zoom) / spacing) * spacing;
+            let endX = startX + width / Camera.zoom + spacing * 2;
+            let endY = startY + height / Camera.zoom + spacing * 2;
+            
+            ctx.beginPath();
+            for(let x = startX; x < endX; x += spacing) { 
+                ctx.moveTo(x, startY); 
+                ctx.lineTo(x, endY); 
+            }
+            for(let y = startY; y < endY; y += spacing) { 
+                ctx.moveTo(startX, y); 
+                ctx.lineTo(endX, y); 
+            }
+            ctx.stroke();
+        }
+
+        // --- INIT ---
+        Grid.init(); 
+        let lastTime = performance.now();
+        
+        // Start very minimal. Player must use powers to seed it!
+        for(let i = 0; i < 300; i++) {
+            let x = WORLD.size / 2 + (Math.random() - 0.5) * 2000;
+            let y = WORLD.size / 2 + (Math.random() - 0.5) * 2000;
+            Entities.push(new Particle(x, y, Math.random() * 4 + 1, 1));
+        }
+        
+        Camera.updateUI();
+
+        // --- MAIN LOOP ---
+        function gameLoop(time) {
+            let dt = Math.min((time - lastTime) / 1000, 0.05); 
+            lastTime = time;
+            
+            Camera.update();
+            Player.checkProgression();
+
+            ctx.setTransform(1, 0, 0, 1, 0, 0); 
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = `rgba(1, 1, 3, 0.6)`; 
+            ctx.fillRect(0, 0, width, height); 
+            
+            ctx.translate(width / 2, height / 2); 
+            ctx.scale(Camera.zoom, Camera.zoom); 
+            ctx.translate(-Camera.x, -Camera.y);
+
+            ctx.globalCompositeOperation = 'lighter'; 
+            drawGrid();
+
+            // Passive Aether Regen
+            Player.addAether(15 * dt);
+
+            // --- GOD POWERS (COST AETHER) ---
+            let wPos = Camera.screenToWorld(Input.mouseX, Input.mouseY);
+            
+            if (Input.left) {
+                if (Camera.mode === 'micro') {
+                    if (Player.spendAether(5)) {
+                        // High density matter injection
+                        for(let i = 0; i < 10; i++) { 
+                            let px = wPos.x + (Math.random() - 0.5) * 150;
+                            let py = wPos.y + (Math.random() - 0.5) * 150;
+                            let p = new Particle(px, py, 6, 1); 
+                            p.vx += (Math.random() - 0.5) * 200; 
+                            p.vy += (Math.random() - 0.5) * 200;
+                            Entities.push(p);
+                        }
+                    }
+                } 
+                else if (Camera.mode === 'stellar' && Player.unlockedStellar) {
+                    if (Player.spendAether(2)) {
+                        ctx.beginPath(); 
+                        ctx.arc(wPos.x, wPos.y, 1000, 0, Math.PI * 2); 
+                        ctx.fillStyle = 'rgba(255,170,0,0.08)'; 
+                        ctx.fill();
+                        
+                        for(let e of Entities) { 
+                            let dx = e.x - wPos.x;
+                            let dy = e.y - wPos.y;
+                            let distSq = Math.max(dx * dx + dy * dy, 10);
+                            
+                            if (distSq < 2000000) { 
+                                e.vx += (dx / distSq) * 30000; 
+                                e.vy += (dy / distSq) * 30000; 
+                            } 
+                        }
+                    }
+                } 
+                else if (Camera.mode === 'macro' && Player.unlockedMacro) {
+                    if (Player.spendAether(10)) {
+                        ctx.beginPath(); 
+                        ctx.arc(wPos.x, wPos.y, 5000, 0, Math.PI * 2); 
+                        ctx.strokeStyle = 'rgba(112,0,255,0.3)'; 
+                        ctx.lineWidth = 80 / Camera.zoom; 
+                        ctx.stroke();
+                        
+                        for(let e of Entities) { 
+                            let dx = wPos.x - e.x;
+                            let dy = wPos.y - e.y;
+                            let distSq = Math.max(dx * dx + dy * dy, 10);
+                            
+                            if (distSq < 25000000) { 
+                                e.vx += (dx / distSq) * 120000; 
+                                e.vy += (dy / distSq) * 120000; 
+                            } 
+                        }
+                    }
+                }
+            }
+
+            Grid.clear(); 
+            Singularities = []; 
+            let stats = { foam: 0, star: 0, black: 0, tMass: 0 };
+            
+            for (let e of Entities) { 
+                Grid.insert(e); 
+                stats.tMass += e.mass; 
+                
+                if (e.mass < WORLD.protoLimit) {
+                    stats.foam++; 
+                } else if (!e.isSingularity) {
+                    stats.star++; 
+                } else { 
+                    stats.black++; 
+                    Singularities.push(e); 
+                } 
+            }
+            
+            // Generate Aether based on universe state
+            Player.addAether((stats.star * 1.5 + stats.black * 10) * dt);
+
+            for (let i = Entities.length - 1; i >= 0; i--) { 
+                let e = Entities[i]; 
+                e.update(dt); 
+                e.draw(); 
+                if (e.mass <= 0) {
+                    Entities.splice(i, 1); 
+                }
+            }
+
+            // Render Particles
+            for(let i = Particles.active.length - 1; i >= 0; i--) {
+                let p = Particles.active[i]; 
+                p.x += p.vx * dt; 
+                p.y += p.vy * dt; 
+                p.life -= p.decay;
+                
+                if(p.life > 0) { 
+                    ctx.globalAlpha = p.life; 
+                    ctx.fillStyle = p.color; 
+                    ctx.beginPath(); 
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); 
+                    ctx.fill(); 
+                } else {
+                    Particles.free(i);
+                }
+            }
+            ctx.globalAlpha = 1.0;
+            
+            // Render Shockwaves
+            for(let i = Shockwaves.active.length - 1; i >= 0; i--) {
+                let s = Shockwaves.active[i]; 
+                ctx.beginPath(); 
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); 
+                ctx.strokeStyle = s.color; 
+                ctx.lineWidth = Math.max(1, s.width * (1 - s.r / s.maxR)); 
+                ctx.stroke();
+                
+                s.r += s.speed * dt * 60; 
+                if(s.r >= s.maxR) {
+                    Shockwaves.free(i);
+                }
+            }
+
+            // Render Floating Texts
+            for(let i = FloatingTexts.length - 1; i >= 0; i--) {
+                let f = FloatingTexts[i];
+                f.y -= 50 * dt; 
+                f.life -= dt;
+                
+                if (f.life <= 0) { 
+                    FloatingTexts.splice(i, 1); 
+                    continue; 
+                }
+                
+                let sx = (f.x - Camera.x) * Camera.zoom + width / 2;
+                let sy = (f.y - Camera.y) * Camera.zoom + height / 2;
+                
+                ctx.setTransform(1, 0, 0, 1, 0, 0); 
+                ctx.font = "bold 16px monospace"; 
+                ctx.fillStyle = f.color; 
+                ctx.globalAlpha = f.life;
+                ctx.fillText(f.text, sx, sy);
+                ctx.globalAlpha = 1.0;
+                
+                // Restore transform
+                ctx.translate(width / 2, height / 2); 
+                ctx.scale(Camera.zoom, Camera.zoom); 
+                ctx.translate(-Camera.x, -Camera.y); 
+            }
+
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+            // UI Throttling
+            if(Math.random() < 0.1) {
+                document.getElementById('s-mat').innerText = stats.foam; 
+                document.getElementById('s-stel').innerText = stats.star;
+                document.getElementById('s-mac').innerText = stats.black; 
+                document.getElementById('s-mass').innerText = Math.floor(stats.tMass);
+                
+                // Keep the button text completely up-to-date with target mass if locked
+                if (Camera.target) {
+                    document.getElementById('btn-track').innerText = `◈ Tracking Target (Mass: ${Math.floor(Camera.target.mass)})`;
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+        
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
