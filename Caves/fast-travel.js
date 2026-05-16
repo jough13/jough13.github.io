@@ -5,7 +5,7 @@ const closeFastTravelButton = document.getElementById('closeFastTravelButton');
 function openFastTravelModal() {
     renderFastTravelList();
     
-    // EASY WIN: Dynamic UI text that respects the Archmage 'mana_flow' talent!
+    // Dynamic UI text that respects the Archmage 'mana_flow' talent!
     const player = gameState.player;
     const travelCost = (player.talents && player.talents.includes('mana_flow')) ? 8 : 10;
     
@@ -30,7 +30,7 @@ function renderFastTravelList() {
         return;
     }
 
-    // EASY WIN: Calculate distances and sort the list so closest waystones are at the top!
+    // Calculate distances and sort the list so closest waystones are at the top!
     const availableWaypoints = waypoints
         .filter(wp => wp.x !== playerX || wp.y !== playerY) // Filter out current spot
         .map(wp => {
