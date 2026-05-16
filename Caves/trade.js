@@ -124,15 +124,25 @@ function handleSellItem(itemIndex) {
     let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
 
     // 4. --- Economy Caps ---
-    // Cap 1: Never allow selling for more than 75% of shop price (if it's a shop item)
     if (shopItem) {
-        const absoluteMaxSell = Math.floor(shopItem.price * 0.75);
+        // Calculate what the player would currently BUY this for
+        let discountPercent = player.charisma * 0.005;
+        if (player.completedLoreSets && player.completedLoreSets.includes('king_fall')) {
+            discountPercent += 0.10;
+        }
+        const finalDiscount = Math.min(discountPercent, 0.50);
+        const currentBuyPrice = Math.floor(shopItem.price * (1.0 - finalDiscount));
+
+        // CAP: You can never sell an item for more than 80% of your current BUY price
+        const absoluteMaxSell = Math.max(1, Math.floor(currentBuyPrice * 0.80));
         calculatedSellPrice = Math.min(calculatedSellPrice, absoluteMaxSell);
+    } else {
+        // General cap for non-shop items
+        const maxSellPrice = Math.floor(basePrice * 0.8);
+        calculatedSellPrice = Math.min(calculatedSellPrice, maxSellPrice);
     }
 
-    // Cap 2: General 80% cap to prevent infinite money loops
-    const maxSellPrice = Math.floor(basePrice * 0.8);
-    const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
+    const sellPrice = calculatedSellPrice;
 
     if (regionMult > 1.0) logMessage(`Market demand is high here! (x${regionMult})`);
     else if (regionMult < 1.0) logMessage(`Market flooded. Low demand. (x${regionMult})`);
@@ -212,9 +222,19 @@ function handleSellAllItems() {
             let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
 
             // Economy Cap logic
-            const maxSellPrice = Math.floor(basePrice * 0.8);
-            const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
-            // -------------------------------------------------------
+            if (shopItem) {
+                let discountPercent = player.charisma * 0.005;
+                if (player.completedLoreSets && player.completedLoreSets.includes('king_fall')) discountPercent += 0.10;
+                const finalDiscount = Math.min(discountPercent, 0.50);
+                const currentBuyPrice = Math.floor(shopItem.price * (1.0 - finalDiscount));
+
+                const absoluteMaxSell = Math.max(1, Math.floor(currentBuyPrice * 0.80));
+                calculatedSellPrice = Math.min(calculatedSellPrice, absoluteMaxSell);
+            } else {
+                const maxSellPrice = Math.floor(basePrice * 0.8);
+                calculatedSellPrice = Math.min(calculatedSellPrice, maxSellPrice);
+            }
+            const sellPrice = calculatedSellPrice;
 
             // 3. Execute Sale
             const totalValue = sellPrice * item.quantity;
