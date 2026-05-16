@@ -82,12 +82,23 @@ window.handleFastTravel = function (targetX, targetY) {
     // Deduct Cost
     player.mana -= TRAVEL_COST;
     
-    // EASY WIN: Failsafe State Override. Ensures that if a player somehow glitches 
-    // the menu open in a dungeon, teleporting forces them safely back into the overworld.
+    // Failsafe State Override.
     gameState.mapMode = 'overworld';
     gameState.currentCaveId = null;
     gameState.currentCastleId = null;
     gameState.instancedEnemies = [];
+
+    // --- FORCE DISEMBARK BEFORE TELEPORT ---
+    if (player.isBoating) {
+        player.isBoating = false;
+        chunkManager.setWorldTile(player.x, player.y, 'c'); // Drop canoe in the water here
+        logMessage("You leave your canoe behind to travel the leylines.");
+    }
+    if (player.isSailing) {
+        player.isSailing = false;
+        chunkManager.setWorldTile(player.x, player.y, '⛵'); // Drop ship in the water here
+        logMessage("You drop anchor and leave your ship behind to travel the leylines.");
+    }
     
     // Move Player
     player.x = targetX;
