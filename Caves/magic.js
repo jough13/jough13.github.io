@@ -533,11 +533,34 @@ async function executeAimedSpell(spellId, dirX, dirY) {
 
             case 'meteor': {
                 const meteorDmg = spellData.baseDamage + (player.wits * spellLevel);
-                const mx = player.x + (dirX * 5);
-                const my = player.y + (dirY * 5);
+                let mx = player.x;
+                let my = player.y;
+
+                // Raycast up to 5 tiles to find the first target or obstacle
+                for (let i = 1; i <= 5; i++) {
+                    mx = player.x + (dirX * i);
+                    my = player.y + (dirY * i);
+                    
+                    let tileAt;
+                    if (gameState.mapMode === 'overworld') {
+                        const enemyId = `overworld:${mx},${-my}`;
+                        const liveEnemy = gameState.sharedEnemies[enemyId];
+                        tileAt = liveEnemy ? liveEnemy.tile : chunkManager.getTile(mx, my);
+                    } else if (gameState.mapMode === 'dungeon') {
+                        tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[my]?.[mx];
+                    } else {
+                        tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[my]?.[mx];
+                    }
+
+                    // Stop early if we hit a solid object, wall, or an enemy!
+                    if (ENEMY_DATA[tileAt] || ['^', '▓', '▒', '🧱'].includes(tileAt)) {
+                        break;
+                    }
+                }
+
                 logMessage("A meteor crashes down!");
 
-                const meteorPromises = []; // Hold the promises
+                const meteorPromises = []; 
                 for (let y = my - spellData.radius; y <= my + spellData.radius; y++) {
                     for (let x = mx - spellData.radius; x <= mx + spellData.radius; x++) {
                         meteorPromises.push(
@@ -547,7 +570,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         );
                     }
                 }
-                await Promise.all(meteorPromises); // WAIT for all impacts to finish
+                await Promise.all(meteorPromises); 
                 hitSomething = true;
                 break;
             }
