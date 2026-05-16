@@ -1046,13 +1046,16 @@ async function attemptMovePlayer(newX, newY) {
     let isDisembarking = false;
     let isShipDisembarking = false;
 
+    // --- SAFE DISEMBARKING CHECK ---
+    const walkableLandTiles = ['.', 'F', 'd', 'D', 'V', '🏰', '⛰', '🕍'];
+
     if (gameState.player.isBoating) {
         if (newTile === '~') {
             logMessage("{red:The canoe cannot survive the deep ocean waves! Turn back!}");
-            return; // Block canoe from deep water!
+            return; 
         } else if (newTile === '≈') {
             moveCost = 1;
-        } else if (moveCost !== Infinity) {
+        } else if (walkableLandTiles.includes(newTile)) { // NEW: Strict land check
             isDisembarking = true;
         } else {
             logMessage("You can't beach the canoe here.");
@@ -1060,8 +1063,8 @@ async function attemptMovePlayer(newX, newY) {
         }
     } else if (gameState.player.isSailing) {
         if (newTile === '~' || newTile === '≈') {
-            moveCost = 0; // Ships move effortlessly on water
-        } else if (moveCost !== Infinity) {
+            moveCost = 0; 
+        } else if (walkableLandTiles.includes(newTile)) { // NEW: Strict land check
             isShipDisembarking = true;
         } else {
             logMessage("You can't dock the ship here.");
