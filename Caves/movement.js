@@ -92,12 +92,6 @@ async function attemptMovePlayer(newX, newY) {
         tileId = `${mapId}:${newX},${-newY}`;
     }
 
-    // 3. Obstacle Check
-    if (tileData && tileData.type === 'obstacle') {
-        logMessage(`You can't go that way.`);
-        return; // Stop the move
-    }
-
     // --- OBELISK PUZZLE LOGIC ---
     if (tileData && tileData.type === 'obelisk_puzzle') {
         const dir = tileData.direction;
@@ -217,14 +211,14 @@ async function attemptMovePlayer(newX, newY) {
         return;
     }
 
-    // 4. Obsolete Tile Cleanup
+    // 3. Obsolete Tile Cleanup
     const obsoleteTiles = [];
     if (obsoleteTiles.includes(newTile)) {
         logMessage("You clear away remnants of an older age.");
         chunkManager.setWorldTile(newX, newY, '.');
     }
 
-    // 5. Overlay Collision Check
+    // 4. Overlay Collision Check
     if (gameState.mapMode === 'overworld') {
         const enemyKey = `overworld:${newX},${-newY}`;
         const overlayEnemy = gameState.sharedEnemies[enemyKey];
