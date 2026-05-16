@@ -19,7 +19,7 @@ function updateThemeColors() {
 const ParticleSystem = {
     pool: [],
     activeParticles: [],
-    MAX_PARTICLES: 300, // PERFORMANCE: Doubled capacity to support environmental effects
+    MAX_PARTICLES: 1500, // INCREASED to 1500 to support MMO chaos and massive AoE spells!
 
     // Initialize the pool
     init: function() {
