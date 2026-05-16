@@ -21,6 +21,12 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 const rtdb = firebase.database();
 
+// --- EXPANDABILITY: Global Server Time Helpers ---
+// Provides server-authoritative timestamps to prevent client-side clock manipulation/cheating
+window.getFirestoreTimestamp = () => firebase.firestore.FieldValue.serverTimestamp();
+window.getRTDBTimestamp = () => firebase.database.ServerValue.TIMESTAMP;
+window.getFirestoreDelete = () => firebase.firestore.FieldValue.delete();
+
 // Apply settings only if not already configured to avoid "Overriding host" error
 try {
     db.settings({
@@ -42,6 +48,19 @@ try {
     console.log("Firestore settings already applied, skipping.");
 }
 
+// --- CONNECTION MONITOR ---
+// Automatically monitors if the user loses internet connection and dispatches an event
+rtdb.ref('.info/connected').on('value', function(snap) {
+    const isConnected = snap.val() === true;
+    if (isConnected) {
+        console.log("🟢 Firebase: Connected to server.");
+    } else {
+        console.warn("🔴 Firebase: Disconnected (Offline / Reconnecting...).");
+    }
+    // Dispatch a custom event so UI files can eventually listen and show a "No Connection" warning
+    window.dispatchEvent(new CustomEvent('firebase-connection-changed', { detail: { connected: isConnected } }));
+});
+
 function handleAuthError(error) {
     let friendlyMessage = '';
     switch (error.code) {
@@ -58,9 +77,17 @@ function handleAuthError(error) {
         case 'auth/weak-password':
             friendlyMessage = 'Password must be at least 6 characters long.';
             break;
-        // EASY WIN: Handle brute-force lockout gracefully
         case 'auth/too-many-requests':
             friendlyMessage = 'Too many failed login attempts. Please try again later.';
+            break;
+        case 'auth/user-disabled':
+            friendlyMessage = 'This account has been disabled by an administrator.';
+            break;
+        case 'auth/network-request-failed':
+            friendlyMessage = 'Network error. Please check your internet connection.';
+            break;
+        case 'auth/popup-closed-by-user':
+            friendlyMessage = 'Login popup was closed before completion.';
             break;
         default:
             friendlyMessage = 'An unexpected error occurred. Please try again.';
@@ -76,30 +103,47 @@ function handleAuthError(error) {
 }
 
 /**
- * Recursively cleans an object to remove any keys with 'undefined' values.
- * Firestore cannot store 'undefined' and will throw an error. This prevents that.
- * @param {object} obj The object to clean.
- * @returns {object} A new object, safe to send to Firestore.
+ * High-Performance Recursive object cleaner.
+ * Strips 'undefined' and 'function' properties to prevent Firebase crashes.
+ * @param {any} obj The variable to clean.
+ * @returns {any} A sanitized clone, safe for Firebase transmission.
  */
 function sanitizeForFirebase(obj) {
     // 1. Convert undefined to null immediately
     if (obj === undefined) return null; 
     
+    // 2. Base cases: primitives, null
     if (obj === null || typeof obj !== 'object') {
         return obj;
     }
 
-    // 2. Handle Arrays (Maps them so undefined items become null)
+    // 3. SAFETY: Pass native Dates and special Firebase FieldValues straight through!
+    // Iterating over a FieldValue (like ServerValue.TIMESTAMP) destroys its functionality.
+    if (obj instanceof Date) return obj;
+    
+    // If it's a complex class instance rather than a plain Object/Array, pass it through
+    if (obj.constructor !== Object && !Array.isArray(obj)) return obj;
+
+    // 4. Handle Arrays
     if (Array.isArray(obj)) {
-        return obj.map(item => sanitizeForFirebase(item));
+        // PERFORMANCE: Pre-allocate array size for a slight speed boost on large inventories
+        const newArr = new Array(obj.length);
+        for (let i = 0; i < obj.length; i++) {
+            newArr[i] = sanitizeForFirebase(obj[i]);
+        }
+        return newArr;
     }
 
-    // 3. Handle Objects
+    // 5. Handle Plain Objects
     const newObj = {};
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            // Recursively clean every property
-            newObj[key] = sanitizeForFirebase(obj[key]);
+            const val = obj[key];
+            
+            // PERFORMANCE: Skip functions immediately so they aren't processed at all
+            if (typeof val === 'function') continue;
+            
+            newObj[key] = sanitizeForFirebase(val);
         }
     }
     return newObj;
