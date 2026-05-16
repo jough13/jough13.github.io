@@ -567,7 +567,7 @@ function useInventoryItem(itemIndex) {
     let itemUsed = false;
 
     // --- FISHING LOGIC ---
-    if (itemToUse.name === 'Fishing Rod') {
+    if (itemToUse.name === 'Fishing Rod' || itemToUse.name === 'Obsidian Fishing Rod') {
         itemUsed = executeFishing();
     }
 
