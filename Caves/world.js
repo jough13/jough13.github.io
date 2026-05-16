@@ -403,7 +403,7 @@ const chunkManager = {
         
         // Final ultimate failsafe
         if (!stairsPlaced) {
-            map[startPos.y + 1][startPos.x] = '<';
+            map[startPos.y + 1][startPos.x] = '>';
         }
 
         // --- 7. Secret Wall Generation ---
