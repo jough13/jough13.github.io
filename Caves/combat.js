@@ -1659,7 +1659,7 @@ function handlePlayerDeath() {
     if (gameState.mapMode === 'overworld') {
         for (const [cId, updates] of Object.entries(pendingUpdates)) {
             const safeUpdates = sanitizeForFirebase(updates); 
-            db.collection('worldState').doc(cId).set(safeUpdates, { merge: true })
+            rtdb.ref('worldState/' + cId).update(safeUpdates)
                 .catch(err => console.error("Failed to drop corpse loot:", err));
         }
     }
