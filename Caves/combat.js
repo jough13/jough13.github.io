@@ -280,12 +280,18 @@ async function wakeUpNearbyEnemies() {
  * Uses a Firebase RTDB Transaction to ensure only ONE client
  * runs the AI per interval. Includes logic to break stale locks.
  */
+
 async function runSharedAiTurns() {
     if (gameState.mapMode !== 'overworld') return; 
 
     const now = Date.now();
-    const AI_INTERVAL = 300; 
-    const STALE_TIMEOUT = 5000; // 5 seconds - if heartbeat is older than this, steal it
+    const AI_INTERVAL = 600; // Increased to 600ms for smoother server load
+    const STALE_TIMEOUT = 5000; 
+
+    // --- NEW: CLIENT-SIDE GATEKEEPER ---
+    // If we already attempted an AI tick locally within the interval, don't even talk to Firebase!
+    if (now - (window.lastLocalAIAttempt || 0) < AI_INTERVAL) return;
+    window.lastLocalAIAttempt = now;
 
     const heartbeatRef = rtdb.ref('worldState/aiHeartbeat');
 
@@ -294,7 +300,7 @@ async function runSharedAiTurns() {
             if (!lastHeartbeat) return now;
             if (now - lastHeartbeat > STALE_TIMEOUT) return now;
             if (now - lastHeartbeat >= AI_INTERVAL) return now;
-            return;
+            return; // Abort transaction
         });
 
         if (result.committed) {
