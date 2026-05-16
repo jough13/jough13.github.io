@@ -333,7 +333,13 @@ window.sortInventory = function() {
         playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : consolidated });
     }
     renderInventory();
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Feedback sound
+    
+    // ANTI-SPAM AUDIO
+    const now = Date.now();
+    if (!window.lastSortAudio || now - window.lastSortAudio > 300) {
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); 
+        window.lastSortAudio = now;
+    }
 };
 
 // --- INVENTORY RENDERING (Optimized with DocumentFragment) ---
