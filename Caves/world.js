@@ -697,10 +697,7 @@ const chunkManager = {
         return map;
     },
 
-    
-
     listenToChunkState(chunkX, chunkY, onInitialLoad = null) { 
-        // --- Block NaN chunk requests to fix the Permissions Error! ---
         if (isNaN(chunkX) || isNaN(chunkY)) return; 
         
         const chunkId = `${chunkX},${chunkY}`;
@@ -711,35 +708,32 @@ const chunkManager = {
             return;
         }
 
-        const docRef = db.collection('worldState').doc(chunkId);
+        // --- CHANGED: Use RTDB instead of Firestore ---
+        const ref = rtdb.ref('worldState/' + chunkId);
 
-        worldStateListeners[chunkId] = docRef.onSnapshot(doc => {
-            if (doc.exists) {
-                const data = doc.data();
-                let needsCleanup = false;
-                const cleanupUpdates = {};
-                const now = Date.now();
+        const listener = ref.on('value', snapshot => {
+            const data = snapshot.val() || {};
+            let needsCleanup = false;
+            const cleanupUpdates = {};
+            const now = Date.now();
 
-                // --- NEW: Decentralized Garbage Collection ---
-                for (const key in data) {
-                    const val = data[key];
-                    if (typeof val === 'object' && val !== null && val.expires) {
-                        if (now > val.expires) {
-                            needsCleanup = true;
-                            cleanupUpdates[key] = firebase.firestore.FieldValue.delete();
-                            delete data[key]; // Erase locally
-                        }
+            // Decentralized Garbage Collection
+            for (const key in data) {
+                const val = data[key];
+                if (typeof val === 'object' && val !== null && val.expires) {
+                    if (now > val.expires) {
+                        needsCleanup = true;
+                        cleanupUpdates[key] = null; // In RTDB, setting a key to null deletes it!
+                        delete data[key]; // Erase locally
                     }
                 }
+            }
 
-                this.worldState[chunkId] = data;
+            this.worldState[chunkId] = data;
 
-                // If this client found expired items, tell Firebase to delete them for everyone!
-                if (needsCleanup) {
-                    docRef.update(cleanupUpdates).catch(console.error);
-                }
-            } else {
-                this.worldState[chunkId] = {};
+            // If this client found expired items, tell Firebase to delete them for everyone!
+            if (needsCleanup) {
+                ref.update(cleanupUpdates).catch(console.error);
             }
 
             if (onInitialLoad) {
@@ -750,6 +744,9 @@ const chunkManager = {
             if (typeof gameState !== 'undefined') gameState.mapDirty = true;
             if (typeof render === 'function') render();
         });
+
+        // Store the unsubscribe function
+        worldStateListeners[chunkId] = () => ref.off('value', listener);
     },
 
     setWorldTile(worldX, worldY, newTile, ttlHours = 0) {
@@ -780,9 +777,8 @@ const chunkManager = {
         const updateObj = {};
         updateObj[tileKey] = tileData;
 
-        db.collection('worldState').doc(chunkId).set(updateObj, {
-            merge: true
-        }).catch(err => console.error("Map update failed:", err));
+        rtdb.ref('worldState/' + chunkId).update(updateObj)
+            .catch(err => console.error("Map update failed:", err));
     },
 
     getEnemySpawn(biome, distSq, random) {
