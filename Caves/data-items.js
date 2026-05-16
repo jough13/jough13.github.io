@@ -1652,9 +1652,10 @@ window.ITEM_DATA = {
         statBonuses: { wits: 5, maxMana: 10 },
         description: "{blue:+1 Def, +10 Max Mana}, {purple:+5 Wits}. Humming with limitless power."
     },
-    '/': {
+    '\\': { // <-- Changed from '/' to '\\' (escaped backslash)
         name: 'Stick',
         type: 'weapon', // A new type
+        tile: '\\',
         damage: 1, // It's better than Fists!
         slot: 'weapon',
         description: "{red:+1 Dmg}. A sturdy branch fallen from an oak tree.",
