@@ -1,3 +1,5 @@
+--- START OF FILE devlog.html ---
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,13 +8,14 @@
     <title>Caves & Castles - Devlog</title>
     <style>
         :root {
-            --bg-page: #f9fafb;
+            --bg-page: #f3f4f6;
             --bg-container: #ffffff;
-            --bg-panel: #f3f4f6;
+            --bg-panel: #f9fafb;
             --text-default: #111827;
             --text-muted: #4b5563;
             --text-highlight: #4f46e5;
-            --border-color: #d1d5db;
+            --border-color: #e5e7eb;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
 
         @media (prefers-color-scheme: dark) {
@@ -24,55 +27,125 @@
                 --text-muted: #9ca3af;
                 --text-highlight: #facc15;
                 --border-color: #4b5563;
+                --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
             }
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
-            font-family: Menlo, Monaco, 'Courier New', monospace;
+            font-family: 'Courier New', Courier, monospace;
             background-color: var(--bg-page);
             color: var(--text-default);
-            line-height: 1.6;
+            line-height: 1.7;
             margin: 0;
-            padding: 2rem 1rem;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Sticky Header for easy navigation */
+        header {
+            background-color: var(--bg-container);
+            border-bottom: 2px solid var(--border-color);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        header a.back-btn {
+            background-color: var(--text-highlight);
+            color: var(--bg-page);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            font-weight: bold;
+            transition: transform 0.1s, filter 0.2s;
+        }
+
+        header a.back-btn:hover {
+            filter: brightness(1.1);
+            transform: scale(1.05);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--text-default);
+            border: none;
         }
 
         main {
-            max-width: 800px;
-            margin: 0 auto;
+            max-width: 850px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        /* Card-based layout for expandability */
+        article.update-card {
             background-color: var(--bg-container);
-            border: 2px solid var(--border-color);
+            border: 1px solid var(--border-color);
             padding: 2rem 3rem;
             border-radius: 1rem;
+            margin-bottom: 3rem;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.2s ease-out;
         }
 
-        h1, h2, h3 {
-            color: var(--text-highlight);
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 0.5rem;
-            margin-top: 2rem;
-        }
-
-        h1 {
-            text-align: center;
-            border-bottom: none;
-            font-size: 2.5rem;
-            margin-top: 0;
+        article.update-card:hover {
+            transform: translateY(-2px);
         }
 
         h2 {
-            font-size: 1.8rem;
+            font-size: 2rem;
+            color: var(--text-highlight);
+            margin-top: 0;
+            margin-bottom: 0.2rem;
+        }
+
+        h3 {
+            color: var(--text-default);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 2.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .date {
-            text-align: center;
             color: var(--text-muted);
-            margin-top: -1rem;
-            margin-bottom: 2rem;
             font-style: italic;
+            font-weight: bold;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            display: inline-block;
+            background-color: var(--bg-panel);
+            padding: 0.2rem 0.8rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
         }
 
-        p {
-            margin-bottom: 1rem;
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 0.8rem;
+        }
+
+        li:hover {
+            color: var(--text-highlight);
+        }
+
+        strong {
+            color: var(--text-default);
         }
 
         code {
@@ -81,163 +154,55 @@
             border-radius: 4px;
             border: 1px solid var(--border-color);
             font-weight: bold;
-        }
-
-        ul {
-            padding-left: 20px;
-        }
-
-        li {
-            margin-bottom: 0.5rem;
-        }
-
-        strong {
             color: var(--text-highlight);
         }
 
-        a {
-            color: #3b82f6;
-            text-decoration: none;
+        /* Tag styling for skimming */
+        .tag {
+            font-size: 0.8rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 0.25rem;
             font-weight: bold;
+            margin-right: 0.5rem;
+            text-transform: uppercase;
         }
+        .tag-sys { background-color: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .tag-sec { background-color: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .tag-qol { background-color: rgba(34, 197, 94, 0.2); color: #22c55e; }
 
-        a:hover {
-            text-decoration: underline;
-        }
     </style>
 </head>
 <body>
+
+    <header>
+        <h1>Caves & Castles: Devlog</h1>
+        <a href="index.html" class="back-btn">← Back to Game</a>
+    </header>
+
     <main>
-        <h1>Devlog Updates</h1>
-        <p class="date">Caves and Castles</p>
+        <!-- DEVLOG #4 -->
+        <article class="update-card">
+            <h2>Devlog #4: The Architecture & Security Update</h2>
+            <div class="date">May 10th, 2026</div>
 
-        <!-- NEW CONTENT ADDED HERE -->
-        <h2>Devlog #3: The "Juice & Polish" Mega-Update</h2>
-        <p class="date">April 26th, 2026</p>
+            <p>
+                As our player base grows, so do the challenges of running a persistent MMO! This week, we took a brief pause from adding new content to perform a massive "under-the-hood" rewrite. We've restructured our database to prevent server-meltdowns, bolstered our anti-cheat mechanics, and added some highly requested Quality of Life (QoL) features to the Stash.
+            </p>
 
-        <p>
-            It has been an incredibly busy few months in the world of Caves & Castles! We’ve ripped out the floorboards, optimized the rendering engine, completely overhauled the UI, and added a massive coat of "juice" to make combat and exploration feel fantastic. This is our biggest update yet.
-        </p>
+            <h3><span class="tag tag-sys">Sys</span> Serverless Map Migration</h3>
+            <ul>
+                <li><strong>RTDB Integration:</strong> Dropped items, chopped trees, and broken walls are now synchronized using Firebase's Realtime Database instead of Firestore. This massively reduces database write quotas and allows changes to appear to other players with near-zero latency.</li>
+                <li><strong>AI Heartbeat Throttling:</strong> Fixed an issue where 50+ players holding the 'W' key would essentially DDOS our own servers by constantly requesting to move the AI. The client now uses a strict 600ms gatekeeper to drastically reduce network calls.</li>
+                <li><strong>Distributed Garbage Collection:</strong> The game now intelligently sweeps the map every 50 turns. If an enemy is completely abandoned and no players are within 100 tiles, it is safely de-spawned to save server memory.</li>
+            </ul>
 
-        <h3>🗺️ World, Maps, and Engine</h3>
-        <ul>
-            <li><strong>250x Minimap Performance:</strong> The World Map now uses an offscreen caching system. Panning around the map is now buttery smooth, even on low-end devices!</li>
-            <li><strong>Map Zooming:</strong> You can now use your mouse wheel (or trackpad) to zoom the World Map in and out! Added full mobile touch-drag support as well.</li>
-            <li><strong>The Village Revamp:</strong> The Safe Haven village has been completely redesigned. It now features protective stone walls, cobblestone paths, a central fountain, and dedicated shops for the Healer, Historian, and Merchant.</li>
-            <li><strong>Grand Fortress Expansion:</strong> The Grand Fortress is no longer just a generic castle. It is a sprawling, terrifying labyrinth with a massive central courtyard and boss rooms.</li>
-            <li><strong>New Dungeon Rooms:</strong> Procedural caves can now spawn unique set-pieces: <em>The Spider's Nest</em>, <em>The Cultist Summoning Circle</em>, and <em>The Dragon's Hoard</em>.</li>
-            <li><strong>Weather Logic Fixes:</strong> It no longer rains or snows while you are deep underground inside a cave! We also reduced overworld rain frequency by 10x—storms are now rare, atmospheric events rather than a constant nuisance.</li>
-            <li><strong>Massive Lore Expansion:</strong> Tripled the amount of discoverable lore across all biomes, added new riddles to the whispering statues, and gave villagers a lot more gossip.</li>
-        </ul>
+            <h3><span class="tag tag-sec">Sec</span> Anti-Cheat & Save Integrity</h3>
+            <ul>
+                <li><strong>Robust Hashing:</strong> The Cloud Backup signature system has been upgraded. It now cryptographically hashes your <code>maxHealth</code>, <code>inventory size</code>, and <code>stash size</code>. This prevents players from manually injecting hundreds of Legendary items into their JSON save file before restoring it.</li>
+                <li><strong>Legacy Support:</strong> Don't worry! If you have a backup from before this update, the game will automatically fall back to the old validation method so you don't lose your progress.</li>
+                <li><strong>Hardware Acceleration:</strong> Game IDs (UUIDs) are now generated using your device's native <code>crypto.randomUUID()</code> chip when available, making generation 10x faster and mathematically secure.</li>
+            </ul>
 
-        <h3>⚔️ Combat & Magic Feel</h3>
-        <ul>
-            <li><strong>Overworld Armor Parity:</strong> Finally! Enemies in the overworld now properly respect your armor, dodge chance, arcane shields, and thorns!</li>
-            <li><strong>Dexterity Scaling:</strong> Daggers and bows now correctly scale their damage off your Dexterity stat instead of Strength.</li>
-            <li><strong>Boss Immunities:</strong> Bosses are no longer pushovers. They have a high chance to shrug off being rooted, poisoned, or driven mad by spells.</li>
-            <li><strong>Visual Danger:</strong> Monsters now have a vibrant red "danger outline" to make them pop against dark cave floors, while still keeping their unique entity colors!</li>
-            <li><strong>Spell Fizzles:</strong> Throwing a spell at an empty tile now displays a "Fizzle..." effect so you know exactly where your aim landed.</li>
-            <li><strong>Companion Upgrades:</strong> Tamed beasts and mercenaries now have their own visual particle effects and floating damage numbers when they attack enemies.</li>
-            <li><strong>Organic Enemy HP:</strong> Enemy packs now spawn with a +/- 10% variance in Max Health, making fights feel much more natural.</li>
-        </ul>
-
-        <h3>✨ UI, UX, & Audio Polish</h3>
-        <ul>
-            <li><strong>Dynamic Status Bars:</strong> Your health bar now turns sickly purple when poisoned, and your stamina bar turns icy blue when frostbitten.</li>
-            <li><strong>Stat Tooltips:</strong> Hover over any stat (Strength, Wits, etc.) in the UI to see exactly what it does!</li>
-            <li><strong>Animated CRT:</strong> The retro CRT scanlines now slowly scroll downward, humming with nostalgic energy.</li>
-            <li><strong>Audio Overhaul:</strong> Sound effects (footsteps, attacks, magic) now have slight pitch and speed randomization to prevent "machine-gun" ear fatigue. Added a triumphant arpeggio jingle for leveling up!</li>
-            <li><strong>Smart Fast Travel:</strong> The Leyline fast travel menu now calculates the exact distance to every unlocked Waystone and sorts the closest locations to the top of the list!</li>
-            <li><strong>Character Creation Tools:</strong> Added a Random Name Generator (🎲) to the creation screen, and fixed a bug where Max HP/Mana wasn't applying race bonuses correctly at level 1.</li>
-        </ul>
-
-        <h3>🐛 Crucial Bug Squashing</h3>
-        <ul>
-            <li><strong>The "Void Loot" Bug:</strong> Fixed a heartbreaking issue where turning in a quest or unearthing a relic with a full inventory permanently deleted the item. Items now safely drop on the ground beneath you!</li>
-            <li><strong>Infinite Water Exploit:</strong> Fixed a logic error where dirty/clean water wasn't consuming properly and was flooding players' inventories with duplicate empty bottle stacks.</li>
-            <li><strong>God Mode Actually Works:</strong> The <code>/god</code> command now correctly protects you from lava, drowning, and all enemy attacks.</li>
-            <li><strong>Memory Leaks Plugged:</strong> Fixed several runaway Firebase listeners that were causing the game to lag if you logged out and back in multiple times.</li>
-        </ul>
-        
-        <p>The foundation is incredibly solid now. Next up: we start looking at archery, expanded crafting, and maybe even some multiplayer dungeon raiding! Stay tuned.</p>
-
-
-        <hr style="border-color: var(--border-color); margin: 2rem 0;">
-
-        <h2>Devlog #2: The Persistence & Housekeeping Update</h2>
-        <p class="date">February 8th, 2026</p>
-
-        <p>
-            Today was a huge day for the stability of the game! We tackled some of the most frustrating, game-breaking bugs that have been plaguing adventurers trying to get started. This update is all about making sure your hard-earned loot and gold actually stay with you.
-        </p>
-
-        <h3>Critical Bug Fixes: Gold & Inventory Persistence</h3>
-        <p>
-            We've finally squashed the infamous "ghost inventory" bug! Players were reporting that items and gold would appear in their inventory, only to vanish a few moments later. This was our highest priority.
-        </p>
-        <ul>
-            <li><strong>The "Time Travel" Bug:</strong> We identified a "race condition" in our cloud save system. In simple terms, after you picked up an item, your game would sometimes receive old data from the server (from *before* you picked up the item) and mistakenly overwrite your new loot. We've rebuilt the data listener to be much smarter, so it now knows to trust your local game and won't erase your progress.</li>
-            <li><strong>Guaranteed Saves:</strong> To add an extra layer of security, picking up an item now forces an immediate, high-priority save to the cloud. This ensures that even if you close the browser right after looting, your items will be waiting for you when you return.</li>
-            <li><strong>Item Stacking:</strong> We've also updated the logic to allow identical equipment (like multiple "Tattered Rags" or "Rusty Swords") to stack, saving precious inventory space.</li>
-        </ul>
-
-        <h3>Code Organization & Cleanup</h3>
-        <p>
-            As we add more features, our main script file (`script.js`) was becoming a giant monolith. This makes it difficult to find bugs and add new content quickly. We've performed a major "housekeeping" operation to make future development much smoother.
-        </p>
-        <ul>
-            <li><strong>Logical Separation:</strong> We've broken up the giant `script.js` into smaller, more focused files. We now have dedicated scripts for <strong>Combat</strong> (`combat.js`), <strong>Magic & Skills</strong> (`magic.js`), and <strong>Items & Crafting</strong> (`items.js`).</li>
-            <li><strong>Future-Proofing:</strong> While you won't see this change in-game, it's a massive win for development speed. This organization allows us (and our AI assistants!) to work on specific parts of the game without breaking others, meaning faster updates and fewer bugs down the road.</li>
-        </ul>
-        <p>
-            Thank you for your patience as we ironed out these critical issues. The foundation is now stronger than ever, and we can get back to building more exciting content for you to explore!
-        </p>
-
-
-        <hr style="border-color: var(--border-color); margin: 2rem 0;">
-
-        <h2>Devlog #1: The Scholar's Update</h2>
-        <p class="date">February 1st, 2026</p>
-
-        <p>Hello Adventurers!</p>
-        <p>
-            Welcome to the first official development diary for <strong>Caves and Castles</strong>! This update is a big one, split into two major parts: shoring up the foundations of the game engine and adding a brand new system designed to reward exploration and storytelling: <strong>The Codex</strong>.
-        </p>
-
-        <h3>The Codex: A New Lore System</h3>
-        <p>
-            Finding scattered pages and journals is cool, but we wanted to make it a core part of your progression. The new Codex system transforms lore from simple flavor text into a rewarding gameplay loop.
-        </p>
-        <ul>
-            <li><strong>Lore Sets:</strong> Journals and important notes are now grouped into "sets" or chapters in the Collections tab. Finding one page is just the start—now you have a reason to hunt for the rest!</li>
-            <li><strong>Permanent Bonuses:</strong> Completing a lore set grants a permanent, passive bonus to your character. This is our way of making exploration and intellectual curiosity a valid path to power.</li>
-            <li><strong>Launch Day Sets:</strong>
-                <ul>
-                    <li>📜 <strong>The Fall of Alaric:</strong> Collect the five chronicles detailing the Old King's demise to gain <strong>Authority</strong>, granting a permanent 10% discount at all shops.</li>
-                    <li>🔮 <strong>Notes from the Void:</strong> Uncover the mages' forbidden research to gain <strong>Clarity</strong>, granting a permanent +10 to your Max Mana.</li>
-                    <li>🌿 <strong>The Survivalist's Guide:</strong> Piece together tips from past adventurers to become <strong>Hardy</strong>, reducing Hunger and Thirst drain by 10%.</li>
-                </ul>
-            </li>
-        </ul>
-
-        <h3>Engine Hardening & Bug Fixes</h3>
-        <p>
-            Before building new stories, we had to make sure the foundation was solid rock. This part of the update focused on fixing critical background issues to ensure a smoother, more stable experience for everyone.
-        </p>
-        <ul>
-            <li><strong>Cloud Save Optimization:</strong> We've implemented a "debounced" save system. Instead of writing to the database every time you move in the Overworld, the game now waits for you to pause before saving. This drastically reduces network usage, makes movement feel smoother, and will lower server costs in the long run. (Don't worry, saves are still instant during turn-based dungeon combat!)</li>
-            <li><strong>Stat Desync Fix:</strong> Fixed a nasty bug where your Max Health or Mana could get "stuck" at the wrong value after equipping items or allocating stat points. The game now recalculates your vitals from the ground up, ensuring they are always accurate.</li>
-            <li><strong>"Fair-Weather Merchant" Fix:</strong> Addressed an exploit where shopkeepers would instantly restock their entire inventory if you walked away and came right back. Shops now have a persistent memory for the duration of your play session.</li>
-            <li><strong>Version Compatibility Fix:</strong> If an item is ever removed or changed in a future game update, your old save file will no longer crash. Instead, the obsolete item will safely turn into "Crumbling Ash," which you can discard.</li>
-            <li><strong>Mobile UX Polish:</strong> Tapping on the game canvas on a mobile device will no longer accidentally zoom or pan the webpage, preventing interruptions during gameplay.</li>
-        </ul>
-
-        <p>
-            Happy adventuring!
-        </p>
-        <p>- The Dev Team</p>
-        <hr style="border-color: var(--border-color); margin: 2rem 0;">
-        <p style="text-align: center;"><a href="index.html">&laquo; Back to the Game</a></p>
-    </main>
-</body>
-</html>
+            <h3><span class="tag tag-qol">QoL</span> Audio & Inventory Flow</h3>
+            <ul>
+                <li><strong>M
