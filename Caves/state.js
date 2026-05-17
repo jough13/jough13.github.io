@@ -34,7 +34,7 @@ const wokenEnemyTiles = new Set(); // Global set to track processed tiles this s
 // ============================================================================
 // MASTER GAME STATE
 // ============================================================================
-// NOTE: Explicitly defining all properties here ensures the V8 Javascript Engine
+// PERFORMANCE WIN: Explicitly defining ALL properties here ensures the V8 Javascript Engine
 // creates a single, highly-optimized memory shape for the game state, preventing 
 // micro-stutters that occur when properties are dynamically added later!
 
@@ -46,20 +46,35 @@ const gameState = {
     inventoryMode: false,
     isDroppingItem: false,
     isAiming: false,
-    isAimingRanged: false,    // PREP: For upcoming Archery system
+    isAimingRanged: false,    
     abilityToAim: null,
     currentCraftingMode: 'workbench',
     godMode: false,           // Toggled via /god command
+    lastStartX: null,         // Viewport caching (renderer.js)
+    lastStartY: null,         // Viewport caching (renderer.js)
+    visibleAnimatedTiles: [], // Highly optimized rendering array
 
     // --- Player State ---
     player: {
-        // Identity & Positioning
+        // Identity & Core Profile
+        name: "",
+        character: '@',
+        color: 'blue',
+        race: null,
+        gender: null,
+        background: null,     // Starting class
+        className: null,      // Evolved class name
+        classEvolved: false,
+        
+        // Positioning & Movement
         x: 0,
         y: 0,
         visualX: 0,           // Camera smoothing X
         visualY: 0,           // Camera smoothing Y
-        character: '@',
-        color: 'blue',
+        facing: 'right',      // Player facing direction for rendering
+        respawnPoint: { x: 0, y: 0 }, // PREP: Custom bed/waystone respawns
+        isBoating: false,     // Canoe state
+        isSailing: false,     // Deep sea ship state
         
         // Multiplayer UI
         chatBubble: null,     // Floating text above head
@@ -67,7 +82,7 @@ const gameState = {
         partyId: null,        // PREP: For upcoming party system
         tradeRequests: [],    // PREP: Pending player trades
         
-        // Progression
+        // Progression & Currency
         level: 1,
         xp: 0,
         xpToNextLevel: 100,
@@ -104,6 +119,7 @@ const gameState = {
         intuition: 1,
 
         // Modifiers & Status Effects
+        lastCombatTime: 0,    // PREP: Out-of-combat regeneration
         strengthBonus: 0,
         strengthBonusTurns: 0,
         witsBonus: 0,
@@ -135,8 +151,9 @@ const gameState = {
         equipment: {
             weapon: null,
             armor: null,
-            accessory: null,  // PREP: Rings and Amulets
-            ammo: null        // PREP: Quivers for Archery
+            offhand: null,
+            accessory: null,
+            ammo: null
         },
         hotbar: [null, null, null, null, null],
 
@@ -152,9 +169,22 @@ const gameState = {
         killCounts: {},
         completedLoreSets: [], // Tracks finished codex pages
         obeliskProgress: [],   // Tracks Ancient Key puzzle
+        cartographerProgress: 0, // Maps submitted for reward
+        
+        // Professions
+        craftingLevel: 1, 
+        craftingXp: 0, 
+        craftingXpToNext: 50,
+        fishingLevel: 1,
+        fishingXp: 0,
+        fishingRecords: {},    // Best catches weight
+
+        // Map & Exploration Data
         unlockedWaypoints: [], // Fast travel nodes { x, y, name }
+        discoveredPOIs: [],    // Landmarks for the minimap
+        customPins: [],        // Player placed map pins {x, y}
         companion: null,       // Tamed beasts / Mercenaries
-        isBoating: false,      // Canoe state
+        tutorialProgress: 0    // PREP: Onboarding system
     },
 
     // --- World & Map State ---
