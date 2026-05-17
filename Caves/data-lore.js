@@ -1,5 +1,3 @@
---- START OF FILE data-lore.js ---
-
 window.LORE_SETS = {
     "wanderers_almanac": {
         name: "The Wanderer's Almanac",
