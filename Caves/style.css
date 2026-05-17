@@ -55,7 +55,7 @@
     --rock-dark:  rgba(28, 25, 23, 0.4); 
     --rock-light: rgba(87, 83, 78, 0.2);
 
-        /* DARK MODE PARCHMENT: */
+    /* DARK MODE PARCHMENT: */
     --asset-parchment: #262626; 
     --title-color: #f3f4f6;
     --title-shadow: 4px 4px 0px rgba(0,0,0,0.8);
@@ -101,14 +101,19 @@ body {
     
     /* Prevent accidental pull-to-refresh on mobile */
     overscroll-behavior-y: none;
+    
+    /* Prevent ugly blue tap highlights on mobile */
+    -webkit-tap-highlight-color: transparent;
 }
 
-/* EASY WIN: Universal tactile button clicks */
+/* EASY WIN: Universal tactile button clicks with hardware acceleration */
 button {
     transition: transform 0.1s ease, background-color 0.2s ease, border-color 0.2s ease, filter 0.1s ease;
+    will-change: transform;
+    transform: translateZ(0); /* Force GPU layer */
 }
 button:active:not(:disabled) {
-    transform: scale(0.95);
+    transform: scale(0.95) translateZ(0);
     filter: brightness(0.9);
 }
 
@@ -179,9 +184,20 @@ canvas {
 	border-color: transparent;
 }
 
-/* --- INVENTORY STYLES --- */
+/* --- INVENTORY & HOTBAR STYLES --- */
 #inventoryList {
 	flex-wrap: wrap;
+}
+
+/* Standardize hotbar slots to match inventory juiciness */
+#hotbarContainer > div {
+    transition: all 0.2s ease-in-out;
+    transform: translateZ(0);
+}
+#hotbarContainer > div:hover:not(.opacity-50) {
+    transform: translateY(-2px);
+    border-color: var(--text-highlight);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .inventory-slot {
@@ -196,10 +212,12 @@ canvas {
 	background-color: var(--bg-page);
 	border-radius: 8px;
 	transition: all 0.2s ease-in-out;
+    will-change: transform, border-color, box-shadow;
+    transform: translateZ(0); /* Hardware accelerate */
 }
 
 .inventory-slot:hover {
-	transform: translateY(-2px);
+	transform: translateY(-2px) translateZ(0);
 	border-color: var(--text-highlight);
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
@@ -258,6 +276,7 @@ canvas {
 	animation: pop-in 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy pop-in! */
 	max-height: 90vh; /* Prevents modal from being taller than the screen */
 	overflow-y: auto; /* Adds a scrollbar ONLY if needed */
+    transform: translateZ(0); /* Hardware accelerate modal */
 }
 
 kbd {
@@ -275,6 +294,7 @@ kbd {
     cursor: pointer;
     transition: all 0.2s;
     opacity: 0.7;
+    will-change: transform, opacity;
 }
 
 .creation-option:hover {
@@ -359,6 +379,15 @@ kbd {
 	to { opacity: 1; transform: scale(1); }
 }
 
+/* EXPANDABILITY WIN: Add a Shake animation for generic UI errors */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); }
+    75% { transform: translateX(-5px); }
+}
+.shake { animation: shake 0.3s ease-in-out; }
+
 /* --- STAT BARS --- */
 .stat-add-btn {
 	display: none;
@@ -391,6 +420,7 @@ kbd {
 	border-radius: 4px;
 	overflow: hidden;
 	border: 1px solid var(--border-color);
+    transform: translateZ(0); /* Hardware accelerate container */
 }
 
 .stat-bar {
@@ -398,6 +428,7 @@ kbd {
 	width: 100%;
     /* JUICE: Cubic-bezier makes the bar 'snap' quickly then slow down, feeling very responsive! */
 	transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
+    will-change: width, background-color; /* PERFORMANCE WIN */
 }
 
 .bar-health { background-color: #22c55e; }
@@ -417,6 +448,8 @@ kbd {
 	border-radius: 6px;
 	border: 1px solid var(--border-color);
 	transition: all 0.2s;
+    transform: translateZ(0);
+    will-change: transform, border-color, box-shadow;
 }
 
 .spell-item:hover, .skill-item:hover {
@@ -525,12 +558,15 @@ kbd {
     user-select: none;
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    transition: transform 0.1s, background-color 0.1s; /* Faster response for movement */
+    transition: transform 0.1s, background-color 0.1s, box-shadow 0.1s;
+    will-change: transform; /* Hardware Acceleration */
 }
 
+/* JUICE: Add inset shadow on press so it feels like a real button */
 .d-pad-btn:active, .action-btn:active {
     background-color: rgba(200, 200, 200, 0.9);
     transform: scale(0.92); /* Tactile press effect */
+    box-shadow: inset 0 3px 5px rgba(0,0,0,0.2); 
 }
 
 [data-theme="dark"] .d-pad-btn, [data-theme="dark"] .action-btn {
@@ -540,6 +576,7 @@ kbd {
 
 [data-theme="dark"] .d-pad-btn:active, [data-theme="dark"] .action-btn:active {
     background-color: rgba(31, 41, 55, 0.9);
+    box-shadow: inset 0 3px 5px rgba(0,0,0,0.5); 
 }
 
 .d-pad-btn.up { grid-column: 2; grid-row: 1; }
@@ -566,6 +603,7 @@ kbd {
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     transition: transform 0.1s, background-color 0.1s, box-shadow 0.1s;
+    will-change: transform;
 }
 
 .action-btn.red { 
@@ -620,6 +658,7 @@ kbd {
     padding: 12px;
     cursor: pointer;
     transition: transform 0.1s;
+    will-change: transform;
 }
 .library-entry:hover {
     transform: translateX(4px);
@@ -631,19 +670,27 @@ kbd {
 #gameCanvasWrapper {
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); 
     transition: box-shadow 0.2s; /* Smooth transition for damage flash */
+    will-change: box-shadow, filter; /* PERFORMANCE WIN */
+    transform: translateZ(0); /* Hardware accelerate canvas wrapper */
 }
 
 /* Animated CRT Scanlines */
 @keyframes scanline-scroll {
-    0% { background-position: 0 0; }
-    100% { background-position: 0 8px; }
+    0% { transform: translateY(0); }
+    100% { transform: translateY(8px); }
+}
+
+#gameCanvasWrapper.crt {
+    overflow: hidden;
+    position: relative;
 }
 
 #gameCanvasWrapper.crt::after {
     content: " ";
     display: block;
     position: absolute;
-    top: 0; left: 0; bottom: 0; right: 0;
+    /* Make it slightly larger so transform doesn't tear edges */
+    top: -8px; left: 0; bottom: -8px; right: 0;
     background: linear-gradient(
         to bottom,
         rgba(18, 16, 16, 0) 50%,
@@ -652,10 +699,12 @@ kbd {
     background-size: 100% 4px;
     z-index: 10;
     pointer-events: none; 
-    box-shadow: inset 0 0 20px rgba(0,0,0,0.2); /* REDUCED: Softer dark edge (was 0.5) */
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.2); 
     
-    /* SLOWED DOWN: Changed from 4s to 10s so they slowly drift */
-    animation: scanline-scroll 10s linear infinite; 
+    /* PERFORMANCE WIN: Animate transform instead of background-position */
+    animation: scanline-scroll 2s linear infinite; 
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 /* Equipment Slot Styling */
@@ -672,6 +721,7 @@ kbd {
     box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.1); 
     color: var(--text-default);
     transition: all 0.2s ease;
+    will-change: transform, border-color, box-shadow;
 }
 
 .equipment-slot:hover {
@@ -714,6 +764,21 @@ kbd {
     animation: screen-heal 0.4s ease-out;
 }
 
+/* EXPANDABILITY WIN: Add specific flashes for Mana/Stamina restoration */
+@keyframes screen-mana {
+    0% { box-shadow: inset 0 0 0 0 rgba(59, 130, 246, 0); }
+    50% { box-shadow: inset 0 0 40px 10px rgba(59, 130, 246, 0.4); }
+    100% { box-shadow: inset 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+.mana-flash { animation: screen-mana 0.4s ease-out; }
+
+@keyframes screen-stamina {
+    0% { box-shadow: inset 0 0 0 0 rgba(234, 179, 8, 0); }
+    50% { box-shadow: inset 0 0 40px 10px rgba(234, 179, 8, 0.4); }
+    100% { box-shadow: inset 0 0 0 0 rgba(234, 179, 8, 0); }
+}
+.stamina-flash { animation: screen-stamina 0.4s ease-out; }
+
 /* ==========================================================================
    ASSET-READY LOGIN SCREEN STYLES
    ========================================================================== */
@@ -737,6 +802,7 @@ kbd {
     border-image-repeat: repeat;
     image-rendering: pixelated;
     filter: drop-shadow(15px 15px 0px rgba(0,0,0,0.6)); 
+    transform: translateZ(0);
 }
 
 /* 3. Inner Parchment / Fill */
@@ -834,6 +900,8 @@ kbd {
     justify-content: center;
     border: none;
     cursor: pointer;
+    will-change: transform, filter;
+    transform: translateZ(0);
 }
 
 .ui-btn-asset:hover {
@@ -843,7 +911,7 @@ kbd {
 .ui-btn-asset:active {
     background-image: var(--asset-btn-pressed);
     color: #cccccc; 
-    transform: translateY(4px); 
+    transform: translateY(4px) translateZ(0); 
 }
 
 /* 6. Retro Text Checkboxes (Bulletproof Layout) */
