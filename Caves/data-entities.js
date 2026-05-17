@@ -2,31 +2,31 @@ window.PLAYER_RACES = {
     'human': {
         name: 'Human',
         description: "Versatile and ambitious. They adapt to any situation.",
-        stats: { charisma: 1, luck: 1, endurance: 1 }, // Jack of all trades
+        stats: { charisma: 1, luck: 1, endurance: 1 }, 
         icon: '👨'
     },
     'elf': {
         name: 'Elf',
         description: "Ancient and keen-eyed. Magic flows through their veins.",
-        stats: { wits: 2, perception: 1 }, // Magic/Scouting focus
+        stats: { wits: 2, perception: 1 }, 
         icon: '🧝'
     },
     'dwarf': {
         name: 'Dwarf',
         description: "Stout and unyielding. Born of stone and steel.",
-        stats: { constitution: 2, strength: 1 }, // Tank focus
+        stats: { constitution: 2, strength: 1 }, 
         icon: '🧔'
     },
     'orc': {
         name: 'Orc',
         description: "Fierce and mighty. Glory is earned in blood.",
-        stats: { strength: 2, endurance: 1 }, // Melee damage focus
+        stats: { strength: 2, endurance: 1 }, 
         icon: '👹'
     },
     'halfling': {
         name: 'Halfling',
         description: "Small, quiet, and incredibly lucky.",
-        stats: { dexterity: 2, luck: 1 }, // Stealth/Crit focus
+        stats: { dexterity: 2, luck: 1 }, 
         icon: '🦶'
     }
 };
@@ -38,12 +38,7 @@ window.QUEST_DATA = {
         type: 'collect',
         itemNeeded: 'Medicinal Herb',
         needed: 5,
-        reward: {
-            xp: 200,
-            coins: 50,
-            item: 'Healing Potion', 
-            itemQty: 3
-        }
+        reward: { xp: 200, coins: 50, item: 'Healing Potion', itemQty: 3 }
     },
     "banditChief": {
         title: "Wanted: The Chief",
@@ -51,12 +46,7 @@ window.QUEST_DATA = {
         type: 'kill', 
         enemy: 'C',   
         needed: 1,
-        reward: {
-            xp: 500,
-            coins: 300,
-            item: 'Steel Sword',
-            itemQty: 1
-        }
+        reward: { xp: 500, coins: 300, item: 'Steel Sword', itemQty: 1 }
     },
     "goblinHeirloom": {
         title: "The Lost Heirloom",
@@ -65,10 +55,7 @@ window.QUEST_DATA = {
         enemy: 'g',
         itemNeeded: 'Heirloom',
         itemTile: '♦',
-        reward: {
-            xp: 150,
-            coins: 100
-        }
+        reward: { xp: 150, coins: 100 }
     },
     "goblinTrophies": {
         title: "Goblin Trophies",
@@ -76,100 +63,80 @@ window.QUEST_DATA = {
         type: 'collect',
         itemNeeded: 'Goblin Totem',
         needed: 10,
-        reward: {
-            xp: 200,
-            coins: 150
-        }
+        reward: { xp: 200, coins: 150 }
     },
     "orcHunt": {
         title: "Bounty: Orc Hunt",
         description: "The brutes are getting bold. Put them down.",
-        enemy: 'o',
-        needed: 8,
-        reward: {
-            xp: 150,
-            coins: 100
-        }
+        type: 'kill', enemy: 'o', needed: 8,
+        reward: { xp: 150, coins: 100 }
     },
     "mageMenace": {
         title: "Bounty: Mage Menace",
         description: "Apprentice mages are experimenting in the wild. Stop them before they burn something down.",
-        enemy: 'm',
-        needed: 5,
-        reward: {
-            xp: 180,
-            coins: 120
-        }
+        type: 'kill', enemy: 'm', needed: 5,
+        reward: { xp: 180, coins: 120 }
     },
     "draugrProblems": {
         title: "Bounty: Draugr Problems",
         description: "The Draugr are walking again. Send them back to their graves.",
-        enemy: 'Z',
-        needed: 5,
-        reward: {
-            xp: 200,
-            coins: 150
-        }
+        type: 'kill', enemy: 'Z', needed: 5,
+        reward: { xp: 200, coins: 150 }
     },
     "acolyteHunt": {
         title: "Bounty: Shadow Acolytes",
         description: "Strange, robed figures have been spotted in the crypts. Clear them out.",
-        enemy: 'a', 
-        needed: 10,
-        reward: {
-            xp: 150,
-            coins: 100
-        }
+        type: 'kill', enemy: 'a', needed: 10,
+        reward: { xp: 150, coins: 100 }
     },
     "spiderHunt": {
         title: "Bounty: Spider Nest",
         description: "The caves are crawling with giant spiders. Clear out the nests.",
-        enemy: '@', 
-        needed: 12,
-        reward: {
-            xp: 120,
-            coins: 80
-        }
+        type: 'kill', enemy: '@', needed: 12,
+        reward: { xp: 120, coins: 80 }
     },
     "wolfHunt": {
         title: "Bounty: Wolf Hunt",
         description: "The local shepherds are plagued by wolves. Thin their numbers.",
-        enemy: 'w', 
-        needed: 10,
-        reward: {
-            xp: 100,
-            coins: 50
-        }
+        type: 'kill', enemy: 'w', needed: 10,
+        reward: { xp: 100, coins: 50 }
     },
     "goblinHunt": {
         title: "Bounty: Goblin Hunt",
         description: "Goblins are multiplying in the nearby caves. Clear them out.",
-        enemy: 'g', 
-        needed: 15, 
-        reward: {
-            xp: 75,
-            coins: 30
-        }
+        type: 'kill', enemy: 'g', needed: 15, 
+        reward: { xp: 75, coins: 30 }
     },
     "skeletonScourge": {
         title: "Bounty: Skeleton Scourge",
         description: "Restless dead are rising. Put them back to rest.",
-        enemy: 's', 
-        needed: 10,
-        reward: {
-            xp: 100,
-            coins: 50
-        }
+        type: 'kill', enemy: 's', needed: 10,
+        reward: { xp: 100, coins: 50 }
     },
     "banditCleanup": {
         title: "Bounty: Bandit Cleanup",
         description: "Bandits have been waylaying travelers. Bring them to justice.",
-        enemy: 'b', 
-        needed: 12,
-        reward: {
-            xp: 120,
-            coins: 75
-        }
+        type: 'kill', enemy: 'b', needed: 12,
+        reward: { xp: 120, coins: 75 }
+    },
+    // NEW EXPANDABILITY QUESTS
+    "trollHunt": {
+        title: "Bounty: Ogre Sighting",
+        description: "A massive Ogre has been terrorizing the mountain pass.",
+        type: 'kill', enemy: 'Ø', needed: 1,
+        reward: { xp: 250, coins: 150, item: 'Stamina Crystal', itemQty: 2 }
+    },
+    "cultistCleanup": {
+        title: "Bounty: Dark Rituals",
+        description: "Cultists are gathering in the ruins. Break up their rituals.",
+        type: 'kill', enemy: 'c', needed: 8,
+        reward: { xp: 180, coins: 120 }
+    },
+    "golemBreaker": {
+        title: "Bounty: Stone Golems",
+        description: "The earth itself is rising against us. We need miners, or fighters.",
+        type: 'kill', enemy: '🧌', needed: 3,
+        reward: { xp: 300, coins: 200 }
     }
 };
 
@@ -178,38 +145,52 @@ window.ENEMY_PREFIXES = {
         description: "Deals extra damage.",
         statModifiers: { attack: 2 },
         xpMult: 1.2,
-        color: '#ef4444' // Red-ish
+        color: '#ef4444' 
     },
     "Armored": {
         description: "Harder to hit.",
         statModifiers: { defense: 2 },
         xpMult: 1.2,
-        color: '#9ca3af' // Grey
+        color: '#9ca3af' 
     },
     "Swift": {
         description: "Harder to hit and moves fast.",
-        statModifiers: { defense: 1 }, // Simulates dodging
+        statModifiers: { defense: 1 }, 
         xpMult: 1.1,
-        color: '#facc15' // Yellow
+        color: '#facc15' 
     },
     "Massive": {
         description: "A giant among its kind.",
         statModifiers: { maxHealth: 10, attack: 1 },
         xpMult: 1.5,
-        color: '#ea580c' // Orange
+        color: '#ea580c' 
     },
     "Plagued": {
         description: "Carries disease.",
         statModifiers: { maxHealth: 5 },
         special: 'poison',
         xpMult: 1.3,
-        color: '#22c55e' // Green
+        color: '#22c55e' 
     },
     "Spectral": {
         description: "Hard to hurt with physical weapons.",
-        statModifiers: { defense: 3, maxHealth: -5 }, // High def, low HP
+        statModifiers: { defense: 3, maxHealth: -5 }, 
         xpMult: 1.4,
-        color: '#a855f7' // Purple
+        color: '#a855f7' 
+    },
+    // NEW AFFIXES
+    "Vampiric": {
+        description: "Drains life on hit.",
+        statModifiers: { maxHealth: 5 },
+        special: 'siphon',
+        xpMult: 1.5,
+        color: '#be123c' 
+    },
+    "Frenzied": {
+        description: "Attacks wildly and without warning.",
+        statModifiers: { attack: 3, defense: -1 },
+        xpMult: 1.3,
+        color: '#f97316' 
     }
 };
 
@@ -219,21 +200,21 @@ window.ENEMY_DATA = {
         name: 'Giant Rat',
         maxHealth: 3, attack: 1, defense: 0, xp: 4,
         loot: '🐀', 
-        color: '#a8a29e', // Grey
+        color: '#a8a29e', 
         flavor: "It hisses and bares yellow teeth."
     },
     '🦇': {
         name: 'Giant Bat',
         maxHealth: 2, attack: 1, defense: 0, xp: 5,
         loot: '🦇', 
-        color: '#52525b', // Dark Grey
+        color: '#52525b', 
         flavor: "It swoops down from the darkness!"
     },
     '🐍': {
         name: 'Viper',
         maxHealth: 4, attack: 2, defense: 0, xp: 8,
         loot: '🦷', 
-        color: '#22c55e', // Green
+        color: '#22c55e', 
         inflicts: 'poison', inflictChance: 0.2,
         flavor: "Its scales blend perfectly with the undergrowth."
     },
@@ -241,8 +222,8 @@ window.ENEMY_DATA = {
         name: 'Bandit Recruit',
         maxHealth: 5, attack: 2, defense: 0, xp: 10,
         loot: '🧣', 
-        color: '#fca5a5', // Light red
-        excludeFromLoot: true, // Prevent them dropping Tier 4 gear in deep wilds
+        color: '#fca5a5', 
+        excludeFromLoot: true, 
         flavor: "He looks nervous, holding his dagger with shaking hands."
     },
 
@@ -251,7 +232,7 @@ window.ENEMY_DATA = {
         name: 'Sand Scorpion',
         maxHealth: 5, attack: 2, defense: 1, xp: 8,
         loot: '🦷',
-        color: '#d97706', // Amber
+        color: '#d97706', 
         inflicts: 'poison', inflictChance: 0.3,
         flavor: "It burrows in the sand, waiting."
     },
@@ -259,7 +240,7 @@ window.ENEMY_DATA = {
         name: 'King Cobra',
         maxHealth: 15, attack: 5, defense: 0, xp: 30,
         loot: '🦷',
-        color: '#eab308', // Yellow/Gold
+        color: '#eab308', 
         inflicts: 'poison', inflictChance: 0.5,
         flavor: "It rears up, hood flared, hissing loudly."
     },
@@ -269,15 +250,14 @@ window.ENEMY_DATA = {
         name: 'Giant Toad',
         maxHealth: 20, attack: 3, defense: 0, xp: 25,
         loot: '🍖', 
-        color: '#15803d', // Slimy dark green
+        color: '#15803d', 
         flavor: "It looks at you with unblinking, bulbous eyes."
     },
     '🦟': {
         name: 'Blood Mosquito',
-        maxHealth: 2, attack: 1, defense: 5, 
-        xp: 10,
+        maxHealth: 2, attack: 1, defense: 5, xp: 10,
         loot: 'vd',
-        color: '#be123c', // Blood red
+        color: '#be123c', 
         flavor: "An annoying, high-pitched whine follows it."
     },
 
@@ -286,21 +266,21 @@ window.ENEMY_DATA = {
         name: 'Great Shark',
         maxHealth: 25, attack: 6, defense: 1, xp: 35,
         loot: '🐟', 
-        color: '#94a3b8', // Slate Gray
+        color: '#94a3b8', 
         flavor: "A massive dorsal fin slices through the water towards your canoe."
     },
     '🦀': {
         name: 'Giant Crab',
         maxHealth: 18, attack: 4, defense: 5, xp: 25,
         loot: '🍖',
-        color: '#ea580c', // Orange
+        color: '#ea580c', 
         flavor: "Its claws are easily strong enough to snap an oar in half."
     },
     '🦑': {
         name: 'Kraken',
         maxHealth: 200, attack: 12, defense: 4, xp: 800,
         loot: '🐙', 
-        color: '#7c3aed', // Purple
+        color: '#7c3aed', 
         isBoss: true,
         inflicts: 'root', inflictChance: 0.5,
         caster: true, castRange: 4, spellDamage: 8,
@@ -310,7 +290,7 @@ window.ENEMY_DATA = {
         name: 'Siren',
         maxHealth: 30, attack: 5, defense: 1, xp: 80,
         loot: '🐚', 
-        color: '#38bdf8', // Cyan
+        color: '#38bdf8', 
         caster: true, castRange: 4, spellDamage: 6,
         inflicts: 'madness', inflictChance: 0.3,
         flavor: "Her song is beautiful, but her eyes are pitch black."
@@ -318,8 +298,8 @@ window.ENEMY_DATA = {
     '🦕': {
         name: 'Abyssal Leviathan',
         maxHealth: 300, attack: 15, defense: 5, xp: 1500,
-        loot: '💎b', // Drops Black Pearls!
-        color: '#0284c7', // Deep Blue
+        loot: '💎b', 
+        color: '#0284c7', 
         isBoss: true,
         flavor: "A prehistoric terror of the deep. Its jaws can snap a ship in half."
     },
@@ -328,14 +308,14 @@ window.ENEMY_DATA = {
         name: 'Cave Bear',
         maxHealth: 14, attack: 3, defense: 1, xp: 25, 
         loot: '❄️f', 
-        color: '#78350f', // Dark Brown
+        color: '#78350f', 
         flavor: "A large bear. It looks hungry, but not invincible."
     },
     '🦌': {
         name: 'Stag',
         maxHealth: 15, attack: 2, defense: 0, xp: 10,
         loot: '🍖',
-        color: '#b45309', // Brown
+        color: '#b45309', 
         flavor: "It watches you warily, antlers lowered."
     },
 
@@ -344,34 +324,34 @@ window.ENEMY_DATA = {
         name: 'Goblin',
         maxHealth: 6, attack: 2, defense: 0, xp: 12,
         loot: 't',
-        color: '#16a34a', // Goblin Green
+        color: '#16a34a', 
         flavor: "Scavengers who worship the scrap metal left behind by the Great Fall."
     },
     'w': {
         name: 'Wolf',
         maxHealth: 8, attack: 3, defense: 0, xp: 15,
         loot: 'p',
-        color: '#78716c', // Grey-Brown
+        color: '#78716c', 
         flavor: "A lean, hungry predator of the wilds."
     },
     's': {
         name: 'Skeleton',
         maxHealth: 10, attack: 3, defense: 1, xp: 18,
         loot: '(',
-        color: '#e5e7eb', // Bone White
+        color: '#e5e7eb', 
         flavor: "Once the King's elite guard. Even in death, they cannot break their oath of silence."
     },
     'b': {
         name: 'Bandit',
         maxHealth: 10, attack: 2, defense: 1, xp: 20,
         loot: 'i',
-        color: '#ef4444', // Red
+        color: '#ef4444', 
         flavor: "Desperate men driven to crime by a dying world."
     },
     '👺': {
         name: 'Goblin Archer',
         maxHealth: 5, attack: 3, defense: 0, xp: 15,
-        loot: '➹', // Drops wooden arrows!
+        loot: '➹', 
         color: '#16a34a',
         isRanged: true, range: 5,
         flavor: "It draws back a crudely strung shortbow."
@@ -379,8 +359,8 @@ window.ENEMY_DATA = {
     '👺m': {
         name: 'Goblin Shaman',
         maxHealth: 8, attack: 1, defense: 0, xp: 25,
-        loot: '🔮', // Drops Mana Orbs!
-        color: '#4ade80', // Bright Green
+        loot: '🔮', 
+        color: '#4ade80', 
         caster: true, castRange: 4, spellDamage: 4,
         inflicts: 'root', inflictChance: 0.3,
         flavor: "It wears a skull mask and chants in a guttural tongue."
@@ -397,21 +377,21 @@ window.ENEMY_DATA = {
         name: 'Kobold',
         maxHealth: 6, attack: 2, defense: 0, xp: 10,
         loot: '$',
-        color: '#ea580c', // Orange-ish
+        color: '#ea580c', 
         flavor: "Yip yip! A reptilian hoarder of shiny things."
     },
     '🐗': {
         name: 'Wild Boar',
         maxHealth: 12, attack: 3, defense: 0, xp: 20,
         loot: '🍖',
-        color: '#57534e', // Muddy grey
+        color: '#57534e', 
         flavor: "It scrapes its tusks against the ground, preparing to charge."
     },
     'a': {
         name: 'Shadow Acolyte',
         maxHealth: 8, attack: 1, defense: 0, xp: 15,
         loot: 'r',
-        color: '#4f46e5', // Deep Blue/Purple
+        color: '#4f46e5', 
         caster: true, castRange: 4, spellDamage: 3,
         flavor: "They whisper ancient texts that hurt your ears to hear."
     },
@@ -421,7 +401,7 @@ window.ENEMY_DATA = {
         name: 'Giant Spider',
         maxHealth: 10, attack: 4, defense: 0, xp: 25,
         loot: '"',
-        color: '#1f2937', // Near Black
+        color: '#1f2937', 
         inflicts: 'poison',
         flavor: "It moves with terrifying, silent speed."
     },
@@ -429,7 +409,7 @@ window.ENEMY_DATA = {
         name: 'Giant Scorpion',
         maxHealth: 12, attack: 4, defense: 2, xp: 30,
         loot: 'i',
-        color: '#b45309', // Dark Amber
+        color: '#b45309', 
         inflicts: 'poison',
         flavor: "Its stinger drips with venom."
     },
@@ -437,7 +417,7 @@ window.ENEMY_DATA = {
         name: 'Giant Leech',
         maxHealth: 15, attack: 2, defense: 0, xp: 20,
         loot: 'p',
-        color: '#111827', // Pitch Black
+        color: '#111827', 
         inflicts: 'poison',
         flavor: "A writhing mass of hunger from the deep swamps."
     },
@@ -445,14 +425,14 @@ window.ENEMY_DATA = {
         name: 'Orc Brute',
         maxHealth: 20, attack: 5, defense: 1, xp: 40,
         loot: 'U',
-        color: '#14532d', // Dark Forest Green
+        color: '#14532d', 
         flavor: "A towering wall of muscle and rage."
     },
     'Z': {
         name: 'Draugr',
         maxHealth: 18, attack: 4, defense: 2, xp: 35,
         loot: 'E',
-        color: '#38bdf8', // Frost Blue
+        color: '#38bdf8', 
         inflicts: 'frostbite',
         flavor: "Ancient northmen, preserved by the biting frost."
     },
@@ -462,21 +442,21 @@ window.ENEMY_DATA = {
         name: 'Dire Wolf',
         maxHealth: 25, attack: 6, defense: 1, xp: 60,
         loot: '🐺',
-        color: '#44403c', // Dark Charcoal
+        color: '#44403c', 
         flavor: "An enormous beast with eyes like burning coals."
     },
     'Ø': { 
         name: 'Ogre',
         maxHealth: 35, attack: 7, defense: 1, xp: 80,
         loot: '$',
-        color: '#84cc16', // Sickly Yellow-Green
+        color: '#84cc16', 
         flavor: "Dull-witted but incredibly destructive."
     },
     'Y': {
         name: 'Yeti',
         maxHealth: 40, attack: 6, defense: 2, xp: 90,
         loot: '❄️f',
-        color: '#f8fafc', // Pure White
+        color: '#f8fafc', 
         inflicts: 'frostbite',
         flavor: "The undisputed apex predator of the frozen peaks."
     },
@@ -484,7 +464,7 @@ window.ENEMY_DATA = {
         name: 'Arcane Mage',
         maxHealth: 15, attack: 2, defense: 0, xp: 50,
         loot: '&',
-        color: '#c084fc', // Bright Purple
+        color: '#c084fc', 
         caster: true, castRange: 6, spellDamage: 6,
         flavor: "A scholar who stared too long into the Void. Their body is now just a vessel for forbidden math."
     },
@@ -492,14 +472,14 @@ window.ENEMY_DATA = {
         name: 'Bandit Chief',
         maxHealth: 25, attack: 5, defense: 2, xp: 50,
         loot: 'i',
-        color: '#991b1b', // Dark Red
+        color: '#991b1b', 
         flavor: "A ruthless leader clad in stolen armor."
     },
     'f': {
         name: 'Fire Elemental',
         maxHealth: 20, attack: 5, defense: 3, xp: 60,
         loot: '🔥c',
-        color: '#fb923c', // Bright Orange
+        color: '#fb923c', 
         caster: true, castRange: 4, spellDamage: 5,
         inflicts: 'burn',
         flavor: "A walking inferno of pure elemental rage."
@@ -509,14 +489,14 @@ window.ENEMY_DATA = {
         type: 'spirit', 
         maxHealth: 15, attack: 3, xp: 20,
         loot: 'ectoplasm',
-        color: '#8b5cf6', // Ghostly Indigo
+        color: '#8b5cf6', 
         flavor: "It wails silently, trapped between realms."
     },
     '😈d': {
         name: 'Void Demon',
         maxHealth: 50, attack: 8, defense: 4, xp: 200,
         loot: '😈',
-        color: '#581c87', // Very Dark Purple
+        color: '#581c87', 
         teleporter: true, inflicts: 'madness',
         flavor: "A fragment of the nothingness that existed before the First Age."
     },
@@ -524,7 +504,7 @@ window.ENEMY_DATA = {
         name: 'Void Stalker',
         maxHealth: 15, attack: 6, defense: 1, xp: 55,
         loot: 'vd',
-        color: '#7c3aed', // Purple
+        color: '#7c3aed', 
         teleporter: true,
         flavor: "It phases in and out of reality, tracking your scent."
     },
@@ -532,7 +512,7 @@ window.ENEMY_DATA = {
         name: 'Mimic',
         maxHealth: 20, attack: 6, defense: 2, xp: 50,
         loot: '💍',
-        color: '#854d0e', // Chest Brown
+        color: '#854d0e', 
         inflicts: 'root',
         flavor: "A monstrous shape-shifter hoping for a greedy victim."
     },
@@ -540,7 +520,7 @@ window.ENEMY_DATA = {
         name: 'Necromancer Lord',
         maxHealth: 80, attack: 7, defense: 3, xp: 1000,
         loot: '👑',
-        color: '#000000', // Pure Black
+        color: '#000000', 
         caster: true, castRange: 7, spellDamage: 8,
         isBoss: true,
         flavor: "He wears a crown of bone and commands the armies of the dead. Do not let him cast."
@@ -549,14 +529,14 @@ window.ENEMY_DATA = {
         name: 'Cultist Initiate',
         maxHealth: 12, attack: 3, defense: 0, xp: 25,
         loot: '📜', 
-        color: '#be185d', // Rose red
+        color: '#be185d', 
         flavor: "He mutters prayers to a sleeping god."
     },
     'z': {
         name: 'Cultist Fanatic',
         maxHealth: 15, attack: 6, defense: 0, xp: 35,
         loot: '🗡️', 
-        color: '#9f1239', // Dark Rose
+        color: '#9f1239', 
         flavor: "He fights with reckless, terrifying abandon."
     },
 
@@ -565,14 +545,14 @@ window.ENEMY_DATA = {
         name: 'Stone Golem',
         maxHealth: 40, attack: 4, defense: 3, xp: 60,
         loot: '🪨', 
-        color: '#a8a29e', // Stone grey
+        color: '#a8a29e', 
         flavor: "A walking boulder. Blades skitter off its hide."
     },
     '🐲': {
         name: 'Young Drake',
         maxHealth: 50, attack: 7, defense: 2, xp: 100,
         loot: '🐉', 
-        color: '#dc2626', // Bright red
+        color: '#dc2626', 
         inflicts: 'burn', inflictChance: 0.3,
         flavor: "Smoke curls from its nostrils as it eyes you hungrily."
     },
@@ -581,14 +561,14 @@ window.ENEMY_DATA = {
         name: 'Ancient Rex',
         maxHealth: 150, attack: 12, defense: 5, xp: 500,
         loot: '🦖', 
-        color: '#14532d', // Swamp green
+        color: '#14532d', 
         flavor: "The earth shakes with every step."
     },
     '🧛': {
         name: 'Vampire Lord',
         maxHealth: 80, attack: 10, defense: 3, xp: 600,
         loot: '🩸', 
-        color: '#e11d48', // Crimson
+        color: '#e11d48', 
         caster: true, castRange: 5, spellDamage: 8,
         inflicts: 'siphon', 
         flavor: "He moves faster than your eyes can follow."
@@ -597,7 +577,7 @@ window.ENEMY_DATA = {
         name: 'Eldritch Horror',
         maxHealth: 200, attack: 15, defense: 0, xp: 800,
         loot: 'vd',
-        color: '#8b5cf6', // Violet
+        color: '#8b5cf6', 
         inflicts: 'madness', inflictChance: 0.5,
         flavor: "To look at it is to invite insanity."
     },
@@ -605,14 +585,14 @@ window.ENEMY_DATA = {
         name: 'Clockwork Guardian',
         maxHealth: 100, attack: 8, defense: 10, xp: 500,
         loot: '⚙️', 
-        color: '#d97706', // Brass/Bronze
+        color: '#d97706', 
         flavor: "A relic of a lost civilization, still relentlessly patrolling."
     },
     '🐉h': {
         name: 'Swamp Hydra',
         maxHealth: 60, attack: 6, defense: 2, xp: 150,
         loot: '🐉',
-        color: '#15803d', // Dark green
+        color: '#15803d', 
         inflicts: 'poison',
         flavor: "Multiple heads snap at you from the muck."
     },
@@ -620,7 +600,7 @@ window.ENEMY_DATA = {
         name: 'Efreet',
         maxHealth: 60, attack: 8, defense: 1, xp: 150,
         loot: '🔥c',
-        color: '#f97316', // Vivid Orange
+        color: '#f97316', 
         caster: true, castRange: 5, spellDamage: 6,
         inflicts: 'burn',
         flavor: "A spirit of smoke and flame, bound by ancient chains."
@@ -670,7 +650,7 @@ window.PLAYER_BACKGROUNDS = {
     'wretch': {
         name: 'The Wretch',
         description: 'Naked, afraid, and penniless. A true challenge.',
-        stats: { luck: 2, endurance: 2 }, // Giving them a tiny bit more survivability
+        stats: { luck: 2, endurance: 2 }, 
         items: [
             { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor' },
             { templateId: '4', name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap' }
@@ -710,7 +690,7 @@ window.EVOLUTION_DATA = {
             id: 'ranger',
             name: 'Ranger',
             icon: '🏹',
-            description: "Master of the bow. Ranged attacks deal +50% damage.", // Prep for Archery!
+            description: "Master of the bow. Ranged attacks deal +50% damage.", 
             stats: { dexterity: 3, perception: 3 },
             talent: 'eagle_eye'
         }
@@ -755,7 +735,6 @@ window.EVOLUTION_DATA = {
     ]
 };
 
-// EASY WIN: Added scalingStat to all spells for UI clarity
 window.SPELL_DATA = {
     "candlelight": {
         name: "Candlelight",
@@ -1033,3 +1012,9 @@ window.SKILL_DATA = {
         cost: 4, costType: "stamina", requiredLevel: 1, target: "aimed", baseDamageMultiplier: 1.0, cooldown: 0 
     }
 };
+
+// PERFORMANCE/EXPANDABILITY: Pre-computed reverse lookup for Enemy IDs
+window.ENEMY_NAME_TO_ID = {};
+for (const key in window.ENEMY_DATA) {
+    window.ENEMY_NAME_TO_ID[window.ENEMY_DATA[key].name] = key;
+}
