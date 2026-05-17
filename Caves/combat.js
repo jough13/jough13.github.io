@@ -758,13 +758,16 @@ async function processOverworldEnemyTurns() {
                 // --- EXECUTE MOVE & SYNC BUCKETS ---
                 const newId = `overworld:${finalX},${-finalY}`;
                 
-                if (gameState.sharedEnemies[newId] || multiPathUpdate[`worldEnemies/${newId}`]) continue;
+                // Use the correct Network Manager path generator!
+                const newEnemyPath = EnemyNetworkManager.getPath(finalX, finalY, newId);
+                
+                if (gameState.sharedEnemies[newId] || multiPathUpdate[newEnemyPath]) continue;
 
                 const updatedEnemy = { ...enemy, x: finalX, y: finalY };
                 if (updatedEnemy._processedThisTurn) delete updatedEnemy._processedThisTurn;
 
-                // CRITICAL FIX: Sanitize the object to prevent Firebase maxretry errors
-                multiPathUpdate[`worldEnemies/${newId}`] = JSON.parse(JSON.stringify(updatedEnemy));
+                // Sanitize the object and use the correct chunk path!
+                multiPathUpdate[newEnemyPath] = JSON.parse(JSON.stringify(updatedEnemy));
                 multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
 
                 delete gameState.sharedEnemies[enemyId];
