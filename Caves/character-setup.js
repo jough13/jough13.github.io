@@ -5,6 +5,7 @@ let creationState = {
     background: null
 };
 
+// Legacy fallback/quick-start function (Modern flow uses finalizeCharacterCreation)
 window.selectBackground = async function (bgKey) {
     const background = PLAYER_BACKGROUNDS[bgKey];
     if (!background) return;
@@ -17,16 +18,15 @@ window.selectBackground = async function (bgKey) {
     }
     
     // EASY WIN: Proper recalculation so we don't desync Health/Mana
-    player.maxHealth = 10 + (player.constitution * 5);
+    player.maxHealth = 5 + (player.constitution * 5);
     player.health = player.maxHealth;
     
-    player.maxMana = 10 + (player.wits * 5);
+    player.maxMana = 5 + (player.wits * 5);
     player.mana = player.maxMana;
 
-    // 2. Apply Inventory
-    // We replace the default "Fists/Simple Tunic" start with the class kit
+    // 2. Apply Inventory (CRITICAL FIX: Deep clone so we don't mutate the global template!)
     background.items.forEach(newItem => {
-        player.inventory.push(newItem);
+        player.inventory.push(JSON.parse(JSON.stringify(newItem)));
     });
 
     // 3. Auto-Equip starting gear
@@ -91,22 +91,40 @@ async function initCharacterSelect(user) {
     renderSlots();
 }
 
+let isEnteringGame = false; // Add global lock
+
 window.selectSlot = async function (slotId) {
+    // 🚨 Prevent Double Clicks and Server Hammering
+    if (isEnteringGame) return; 
+    isEnteringGame = true;
+
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+
     loadingIndicator.classList.remove('hidden');
 
     player_id = currentUser.uid; 
     playerRef = db.collection('players').doc(player_id).collection('characters').doc(slotId);
 
-    const doc = await playerRef.get();
+    try {
+        const doc = await playerRef.get();
 
-    characterSelectModal.classList.add('hidden');
+        characterSelectModal.classList.add('hidden');
 
-    if (doc.exists) {
-        enterGame(doc.data());
-    } else {
-        const defaultState = createDefaultPlayerState();
-        Object.assign(gameState.player, defaultState);
-        initCreationUI(); 
+        if (doc.exists) {
+            enterGame(doc.data());
+        } else {
+            const defaultState = createDefaultPlayerState();
+            Object.assign(gameState.player, defaultState);
+            initCreationUI(); 
+        }
+    } catch (e) {
+        console.error("Failed to load character slot:", e);
+        loadingIndicator.classList.add('hidden');
+        characterSelectModal.classList.remove('hidden');
+        alert("Network error loading character. Please try again.");
+    } finally {
+        // Unlock after a short delay to ensure modal hides safely and prevents ghost clicks
+        setTimeout(() => { isEnteringGame = false; }, 1000);
     }
 };
 
@@ -117,6 +135,7 @@ const confirmDeleteButton = document.getElementById('confirmDeleteButton');
 const cancelDeleteButton = document.getElementById('cancelDeleteButton');
 
 window.deleteSlot = function (slotId) {
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playError(); // Use error sound as warning
     slotPendingDeletion = slotId;
     deleteConfirmModal.classList.remove('hidden');
 };
@@ -148,6 +167,7 @@ if (confirmDeleteButton) {
 
 if (cancelDeleteButton) {
     cancelDeleteButton.onclick = () => {
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
         deleteConfirmModal.classList.add('hidden');
         slotPendingDeletion = null;
     };
@@ -164,6 +184,7 @@ deleteConfirmModal.addEventListener('click', (e) => {
 
 function selectCreationOption(type, key, element) {
     creationState[type] = key;
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
 
     const container = element.parentElement;
     Array.from(container.children).forEach(child => child.classList.remove('selected'));
@@ -176,21 +197,51 @@ function updateCreationSummary() {
     const summaryDiv = document.getElementById('creationSummary');
     const nameInput = document.getElementById('charNameInput');
     
-    // EASY WIN: Clean the input to prevent weird spacing or hidden HTML tags
+    // Clean the input to prevent weird spacing or hidden HTML tags
     creationState.name = nameInput.value.replace(/[^a-zA-Z0-9 ]/g, '').trim();
 
     const raceName = creationState.race ? PLAYER_RACES[creationState.race].name : "???";
     const className = creationState.background ? PLAYER_BACKGROUNDS[creationState.background].name : "???";
     
     let stats = [];
+    let calcCon = 1, calcWits = 1, calcEnd = 1, calcWill = 1;
+
     if (creationState.race) {
         const rStats = PLAYER_RACES[creationState.race].stats;
-        for(let s in rStats) stats.push(`+${rStats[s]} ${s} (Race)`);
+        for(let s in rStats) {
+            stats.push(`+${rStats[s]} ${s.charAt(0).toUpperCase() + s.slice(1)} (Race)`);
+            if (s === 'constitution') calcCon += rStats[s];
+            if (s === 'wits') calcWits += rStats[s];
+            if (s === 'endurance') calcEnd += rStats[s];
+            if (s === 'willpower') calcWill += rStats[s];
+        }
     }
     if (creationState.background) {
         const cStats = PLAYER_BACKGROUNDS[creationState.background].stats;
-        for(let s in cStats) stats.push(`+${cStats[s]} ${s} (Class)`);
+        for(let s in cStats) {
+            stats.push(`+${cStats[s]} ${s.charAt(0).toUpperCase() + s.slice(1)} (Class)`);
+            if (s === 'constitution') calcCon += cStats[s];
+            if (s === 'wits') calcWits += cStats[s];
+            if (s === 'endurance') calcEnd += cStats[s];
+            if (s === 'willpower') calcWill += cStats[s];
+        }
     }
+
+    // GAMEPLAY WIN: Projected Vitals Preview
+    // Show players exactly what their starting HP/Mana will be before they hit play!
+    const projHP = 5 + (calcCon * 5);
+    const projMana = 5 + (calcWits * 5);
+    const projStamina = 5 + (calcEnd * 5);
+    const projPsyche = 7 + (calcWill * 3);
+
+    const vitalsHtml = (creationState.race && creationState.background) ? `
+        <div class="grid grid-cols-2 gap-1 text-[11px] mt-2 bg-black bg-opacity-20 p-2 rounded">
+            <span class="text-green-400 font-bold">HP: ${projHP}</span>
+            <span class="text-blue-400 font-bold">Mana: ${projMana}</span>
+            <span class="text-yellow-400 font-bold">Stam: ${projStamina}</span>
+            <span class="text-purple-400 font-bold">Psych: ${projPsyche}</span>
+        </div>
+    ` : '';
 
     summaryDiv.innerHTML = `
         <p>Name: <span class="highlight-text font-bold">${creationState.name || "???"}</span></p>
@@ -198,42 +249,59 @@ function updateCreationSummary() {
         <div class="mt-2 text-xs border-t pt-2 border-gray-500">
             ${stats.length > 0 ? stats.join('<br>') : "Select Race & Class to see bonuses."}
         </div>
+        ${vitalsHtml}
     `;
 
     const btn = document.getElementById('finalizeCreationBtn');
     
-    // EASY WIN: Dynamic button text tells the player exactly what is missing!
+    // Dynamic button text tells the player exactly what is missing!
     if (creationState.name.length === 0) {
         btn.textContent = "Enter a Name...";
         btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
+        btn.classList.remove('bg-green-600', 'hover:bg-green-500');
     } else if (!creationState.race) {
         btn.textContent = "Select a Race...";
         btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
+        btn.classList.remove('bg-green-600', 'hover:bg-green-500');
     } else if (!creationState.background) {
         btn.textContent = "Select a Class...";
         btn.disabled = true;
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
+        btn.classList.remove('bg-green-600', 'hover:bg-green-500');
     } else {
-        btn.textContent = "Begin Adventure";
+        btn.textContent = "Begin Adventure!";
         btn.disabled = false;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
+        btn.classList.add('bg-green-600', 'hover:bg-green-500');
     }
 }
 
+// Attach listeners
 document.getElementById('charNameInput').addEventListener('input', updateCreationSummary);
 document.getElementById('finalizeCreationBtn').addEventListener('click', finalizeCharacterCreation);
 
-// EASY WIN: Random Name Generator helper
+// EXPANDABILITY WIN: Massive Name Generator Expansion
 window.generateRandomName = function() {
-    const prefixes = ["Thor", "Garr", "El", "Fae", "Kael", "Mor", "Vex", "Zar", "Brim", "Nyx"];
-    const suffixes = ["in", "ick", "ara", "en", "is", "os", "ia", "on", "us", "th"];
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+    
+    const prefixes = [
+        "Thor", "Garr", "El", "Fae", "Kael", "Mor", "Vex", "Zar", "Brim", "Nyx",
+        "Ael", "Val", "Dra", "Bael", "Xyl", "Quin", "Syl", "Or", "Ign", "Gloom",
+        "Lu", "Cor", "Ash", "Sil", "Fen", "Grim", "Mal", "Ren", "Tav", "Zeph"
+    ];
+    const suffixes = [
+        "in", "ick", "ara", "en", "is", "os", "ia", "on", "us", "th",
+        "ius", "dor", "mir", "vyn", "ryn", "las", "ric", "tar", "eth", "mont",
+        "stone", "fire", "bane", "weaver", "shade", "moon", "sun", "heart", "blood"
+    ];
+    
     const p = prefixes[Math.floor(Math.random() * prefixes.length)];
     const s = suffixes[Math.floor(Math.random() * suffixes.length)];
     
     document.getElementById('charNameInput').value = p + s;
-    updateCreationSummary();
+    updateCreationSummary(); // Force UI to update immediately
 };
 
 function initCreationUI() {
@@ -253,7 +321,7 @@ function initCreationUI() {
         
         const diceBtn = document.createElement('button');
         diceBtn.id = 'randomNameBtn';
-        diceBtn.className = "bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-xl text-xl";
+        diceBtn.className = "bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-xl text-xl transition-transform active:scale-95";
         diceBtn.title = "Generate Random Name";
         diceBtn.textContent = "🎲";
         diceBtn.onclick = generateRandomName;
@@ -292,6 +360,7 @@ function initCreationUI() {
     const genderBtns = document.querySelectorAll('.gender-btn');
     genderBtns.forEach(btn => {
         btn.onclick = () => {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             genderBtns.forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
             creationState.gender = btn.dataset.value;
@@ -312,6 +381,8 @@ async function finalizeCharacterCreation() {
     const btn = document.getElementById('finalizeCreationBtn');
     btn.disabled = true;
     btn.textContent = "Forging Destiny...";
+    
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp(); // Triumphant start sound!
 
     const player = gameState.player;
     const bgData = PLAYER_BACKGROUNDS[creationState.background];
@@ -333,19 +404,26 @@ async function finalizeCharacterCreation() {
         player[stat] = (player[stat] || 1) + raceData.stats[stat];
     }
 
-    // EASY WIN: Bug Fix - Correctly calculate Max HP based on the total final Constitution!
-    player.maxHealth = 10 + (player.constitution * 5);
+    // 4. Calculate Derived Stats
+    if (typeof recalculateDerivedStats === 'function') {
+        recalculateDerivedStats();
+    } else {
+        // Fallback if script.js hasn't loaded properly
+        player.maxHealth = 5 + (player.constitution * 5);
+        player.maxMana = 5 + (player.wits * 5);
+        player.maxStamina = 5 + (player.endurance * 5);
+        player.maxPsyche = 7 + (player.willpower * 3);
+    }
+    
     player.health = player.maxHealth;
-    
-    player.maxMana = 10 + (player.wits * 5);
     player.mana = player.maxMana;
-    
-    player.maxStamina = 10 + (player.endurance * 5);
     player.stamina = player.maxStamina;
+    player.psyche = player.maxPsyche;
 
     // 5. Apply Inventory (Class Kit)
+    // CRITICAL FIX: Deep clone items so consuming a starting potion doesn't erase it for future characters!
     bgData.items.forEach(newItem => {
-        player.inventory.push(newItem);
+        player.inventory.push(JSON.parse(JSON.stringify(newItem)));
     });
 
     // 6. Auto-Equip
@@ -355,7 +433,7 @@ async function finalizeCharacterCreation() {
     if (armor) { player.equipment.armor = armor; armor.isEquipped = true; }
 
     // 7. Save and Start
-    await playerRef.set(sanitizeForFirebase(player));
+    await playerRef.set(typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player);
 
     charCreationModal.classList.add('hidden');
     gameContainer.classList.remove('hidden');
@@ -363,7 +441,7 @@ async function finalizeCharacterCreation() {
     
     gameState.mapMode = 'overworld';
     
-    logMessage(`Welcome, ${player.name} the ${raceData.name} ${bgData.name}.`);
+    logMessage(`{green:Welcome, ${player.name} the ${raceData.name} ${bgData.name}.}`);
     
     renderStats();
     renderEquipment();
