@@ -1,3 +1,5 @@
+--- START OF FILE worldmap.js ---
+
 // ==========================================
 // WORLD MAP SYSTEM & SETTINGS
 // ==========================================
@@ -26,6 +28,32 @@ let mapAnimFrame = null;
 const mapChunkCache = new Map();
 const MAX_CACHED_CHUNKS = 300; 
 
+// PERFORMANCE WIN: Pre-compiled RGB Arrays
+// Bypasses the incredibly expensive parseInt(hex, 16) operation inside the 16x16 loop!
+const MAP_COLORS = {
+    WHITE: [248, 250, 252, 255],
+    DARK_RED: [153, 27, 27, 255],
+    CAVE: [15, 23, 42, 255],
+    MAGIC: [168, 85, 247, 255],
+    BUILT: [156, 163, 175, 255],
+    RED: [239, 68, 68, 255],
+    DIG: [133, 77, 14, 255],
+    DEEP_WATER: [30, 58, 138, 255],
+    VOLCANO: [234, 88, 12, 255],
+    TEMPLE: [2, 132, 199, 255],
+    FLOTSAM: [250, 204, 21, 255],
+    MOONBLOOM: [244, 114, 182, 255],
+    STAR: [56, 189, 248, 255],
+    SHALLOW: [59, 130, 246, 255],
+    SWAMP: [66, 32, 6, 255],
+    MOUNTAIN: [87, 83, 78, 255],
+    DEADLANDS: [45, 45, 45, 255],
+    DESERT: [253, 224, 71, 255],
+    FOREST: [20, 83, 45, 255],
+    PLAINS: [34, 197, 94, 255],
+    EMPTY: [0, 0, 0, 0]
+};
+
 function getCachedMapChunk(cx, cy) {
     const key = `${cx},${cy}`;
     if (mapChunkCache.has(key)) return mapChunkCache.get(key);
@@ -49,32 +77,13 @@ function getCachedMapChunk(cx, cy) {
         for (let x = 0; x < MAP_CHUNK_SIZE; x++) {
             const worldX = cx * MAP_CHUNK_SIZE + x;
             const worldY = cy * MAP_CHUNK_SIZE + y;
-            const colorHex = getTileColorForMap(worldX, worldY);
+            const colorRGBA = getTileColorForMap(worldX, worldY); // Now returns raw array
             
             const index = (y * MAP_CHUNK_SIZE + x) * 4;
-            
-            if (colorHex === 'rgba(0,0,0,0)') {
-                data[index + 3] = 0; // Alpha 0
-            } else {
-                // Parse Hex to RGB
-                const cleanHex = colorHex.replace('#', '');
-                let r, g, b;
-                
-                if (cleanHex.length === 3) {
-                    r = parseInt(cleanHex[0] + cleanHex[0], 16);
-                    g = parseInt(cleanHex[1] + cleanHex[1], 16);
-                    b = parseInt(cleanHex[2] + cleanHex[2], 16);
-                } else {
-                    r = parseInt(cleanHex.substring(0, 2), 16);
-                    g = parseInt(cleanHex.substring(2, 4), 16);
-                    b = parseInt(cleanHex.substring(4, 6), 16);
-                }
-
-                data[index] = r;
-                data[index + 1] = g;
-                data[index + 2] = b;
-                data[index + 3] = 255; // Alpha 255
-            }
+            data[index] = colorRGBA[0];
+            data[index + 1] = colorRGBA[1];
+            data[index + 2] = colorRGBA[2];
+            data[index + 3] = colorRGBA[3];
         }
     }
 
@@ -86,38 +95,38 @@ function getCachedMapChunk(cx, cy) {
 // Determines accurate colors including new Nautical & Night items!
 function getTileColorForMap(worldX, worldY) {
     const chunkId = `${Math.floor(worldX / MAP_CHUNK_SIZE)},${Math.floor(worldY / MAP_CHUNK_SIZE)}`;
-    if (!gameState.exploredChunks.has(chunkId)) return 'rgba(0,0,0,0)'; 
+    if (!gameState.exploredChunks.has(chunkId)) return MAP_COLORS.EMPTY; 
 
     const tile = chunkManager.getTile(worldX, worldY); 
 
     // Landmarks & Structures
-    if (['V', '🏰', '♛', '🏛️', '🚪', '🎓'].includes(tile)) return '#f8fafc'; // White
-    if (tile === '🕍') return '#991b1b'; // Dark Red (Dangerous Ruins)
-    if (['⛰', '🕳️', '🧊', '♣', '🏝️'].includes(tile)) return '#0f172a'; // Deep dark blue/black (Caves)
-    if (['#', '|', '⛩️', '⛲', '✨'].includes(tile)) return '#a855f7'; // Magic Purple
-    if (['🧱', '▤', '=', '+', '☒', '⛺'].includes(tile)) return '#9ca3af'; // Player Built / Camp
-    if (tile === 'c' || tile === '⛵') return '#ef4444'; // Canoe / Ship
-    if (tile === '∴') return '#854d0e'; // Dig Spot
-    if (tile === '~') return '#1e3a8a'; // Deep Water
+    if (['V', '🏰', '♛', '🏛️', '🚪', '🎓'].includes(tile)) return MAP_COLORS.WHITE;
+    if (tile === '🕍') return MAP_COLORS.DARK_RED; 
+    if (['⛰', '🕳️', '🧊', '♣', '🏝️'].includes(tile)) return MAP_COLORS.CAVE;
+    if (['#', '|', '⛩️', '⛲', '✨'].includes(tile)) return MAP_COLORS.MAGIC; 
+    if (['🧱', '▤', '=', '+', '☒', '⛺'].includes(tile)) return MAP_COLORS.BUILT;
+    if (tile === 'c' || tile === '⛵') return MAP_COLORS.RED;
+    if (tile === '∴') return MAP_COLORS.DIG; 
+    if (tile === '~') return MAP_COLORS.DEEP_WATER;
     
-    // New Anomalies
-    if (tile === '🌋') return '#ea580c'; // Volcano Orange
-    if (tile === '🛕') return '#0284c7'; // Abyssal Temple Blue
-    if (tile === '🛟') return '#facc15'; // Flotsam Yellow
-    if (tile === '🌺') return '#f472b6'; // Moonbloom Pink
-    if (tile === '☄️') return '#38bdf8'; // Star-Metal Cyan
+    // Anomalies
+    if (tile === '🌋') return MAP_COLORS.VOLCANO;
+    if (tile === '🛕') return MAP_COLORS.TEMPLE;
+    if (tile === '🛟') return MAP_COLORS.FLOTSAM;
+    if (tile === '🌺') return MAP_COLORS.MOONBLOOM;
+    if (tile === '☄️') return MAP_COLORS.STAR;
 
     // Natural Biomes (Fallback)
     const elev = elevationNoise.noise(worldX / 70, worldY / 70);
     const moist = moistureNoise.noise(worldX / 50, worldY / 50);
 
-    if (elev < 0.35) return '#3b82f6'; // Shallow Water
-    if (elev < 0.4 && moist > 0.7) return '#422006'; // Swamp
-    if (elev > 0.8) return '#57534e'; // Mountain
-    if (elev > 0.6 && moist < 0.3) return '#2d2d2d'; // Deadlands
-    if (moist < 0.15) return '#fde047'; // Desert
-    if (moist > 0.55) return '#14532d'; // Forest
-    return '#22c55e'; // Plains
+    if (elev < 0.35) return MAP_COLORS.SHALLOW;
+    if (elev < 0.4 && moist > 0.7) return MAP_COLORS.SWAMP;
+    if (elev > 0.8) return MAP_COLORS.MOUNTAIN;
+    if (elev > 0.6 && moist < 0.3) return MAP_COLORS.DEADLANDS;
+    if (moist < 0.15) return MAP_COLORS.DESERT;
+    if (moist > 0.55) return MAP_COLORS.FOREST;
+    return MAP_COLORS.PLAINS;
 }
 
 function openWorldMap() {
@@ -179,6 +188,7 @@ function renderWorldMap() {
     const centerX = Math.floor(worldMapCanvas.width / 2);
     const centerY = Math.floor(worldMapCanvas.height / 2);
     const chunkSizeOnScreen = MAP_CHUNK_SIZE * currentMapScale;
+    const now = Date.now(); // Calculate once per frame for all animations
 
     // Render Explored Chunks
     gameState.exploredChunks.forEach(chunkId => {
@@ -205,7 +215,7 @@ function renderWorldMap() {
         worldMapCtx.strokeRect(screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
     });
 
-    // --- Render Custom Player Pins (NEW!) ---
+    // Render Custom Player Pins
     if (gameState.player.customPins) {
         worldMapCtx.font = `bold ${Math.max(14, currentMapScale * 2)}px monospace`;
         worldMapCtx.textAlign = 'center';
@@ -216,10 +226,8 @@ function renderWorldMap() {
             const screenY = (pin.y - mapCamera.y) * currentMapScale + centerY;
             
             if (screenX >= 0 && screenX <= worldMapCanvas.width && screenY >= 0 && screenY <= worldMapCanvas.height) {
-                // Drop shadow
                 worldMapCtx.fillStyle = 'rgba(0,0,0,0.8)';
                 worldMapCtx.fillText('📌', screenX + currentMapScale/2, (screenY + currentMapScale/2) + 2);
-                // Icon
                 worldMapCtx.fillStyle = '#ffffff';
                 worldMapCtx.fillText('📌', screenX + currentMapScale/2, screenY + currentMapScale/2);
             }
@@ -228,7 +236,7 @@ function renderWorldMap() {
 
     // Render Unlocked Waystones
     if (gameState.player.unlockedWaypoints) {
-        const wpPulse = (Math.sin(Date.now() / 200) + 1) / 2; 
+        const wpPulse = (Math.sin(now / 200) + 1) / 2; 
         gameState.player.unlockedWaypoints.forEach(wp => {
             const screenX = (wp.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (wp.y - mapCamera.y) * currentMapScale + centerY;
@@ -276,7 +284,7 @@ function renderWorldMap() {
             worldMapCtx.textBaseline = 'middle';
             worldMapCtx.fillText('❌', tx + currentMapScale/2, ty + currentMapScale/2);
             
-            const pulse = (Math.sin(Date.now() / 200) + 1) / 2;
+            const pulse = (Math.sin(now / 200) + 1) / 2;
             worldMapCtx.strokeStyle = `rgba(239, 68, 68, ${1 - pulse})`;
             worldMapCtx.lineWidth = 2;
             worldMapCtx.beginPath();
@@ -285,14 +293,32 @@ function renderWorldMap() {
         }
     }
 
+    // GAMEPLAY WIN: Render Other Online Players
+    if (typeof otherPlayers !== 'undefined') {
+        Object.values(otherPlayers).forEach(op => {
+            // Only draw players in the shared overworld
+            if (op.mapMode === 'overworld' && op.x !== undefined && op.y !== undefined) {
+                const opX = (op.x - mapCamera.x) * currentMapScale + centerX;
+                const opY = (op.y - mapCamera.y) * currentMapScale + centerY;
+                
+                if (opX >= 0 && opX <= worldMapCanvas.width && opY >= 0 && opY <= worldMapCanvas.height) {
+                    worldMapCtx.fillStyle = '#f97316'; // Distinct Orange
+                    worldMapCtx.beginPath();
+                    worldMapCtx.arc(opX + currentMapScale/2, opY + currentMapScale/2, Math.max(2, currentMapScale * 0.8), 0, Math.PI * 2);
+                    worldMapCtx.fill();
+                }
+            }
+        });
+    }
+
     // Render Player Marker
     const playerScreenX = (gameState.player.x - mapCamera.x) * currentMapScale + centerX;
     const playerScreenY = (gameState.player.y - mapCamera.y) * currentMapScale + centerY;
-    const playerPulse = (Math.sin(Date.now() / 150) + 1) / 2;
+    const playerPulse = (Math.sin(now / 150) + 1) / 2;
 
     worldMapCtx.fillStyle = '#ef4444';
     worldMapCtx.beginPath();
-    worldMapCtx.arc(playerScreenX, playerScreenY, Math.max(3, currentMapScale) + (playerPulse * 2), 0, Math.PI * 2);
+    worldMapCtx.arc(playerScreenX + currentMapScale/2, playerScreenY + currentMapScale/2, Math.max(3, currentMapScale) + (playerPulse * 2), 0, Math.PI * 2);
     worldMapCtx.fill();
     worldMapCtx.strokeStyle = '#ffffff';
     worldMapCtx.lineWidth = 2;
@@ -322,7 +348,7 @@ function renderWorldMap() {
 
 function updateMapUI() {
     let hoverText = '';
-    let pinHint = ' | <span class="text-gray-500">Right-Click to Pin</span>';
+    let actionHint = ' | <span class="text-gray-500">Right-Click to Pin</span>';
     
     if (hoverWorldX !== null && hoverWorldY !== null) {
         const chunkId = `${Math.floor(hoverWorldX / MAP_CHUNK_SIZE)},${Math.floor(hoverWorldY / MAP_CHUNK_SIZE)}`;
@@ -345,7 +371,12 @@ function updateMapUI() {
             else if (tile === '~') tileName = "Deep Water";
             else if (tile === '≈') tileName = "Swamp";
             else if (tile === '.') tileName = "Plains";
-            else if (tile === '#') tileName = "Waystone";
+            else if (tile === '#') {
+                tileName = "Waystone";
+                // GAMEPLAY WIN: Quick-Travel Hint
+                const isUnlocked = gameState.player.unlockedWaypoints && gameState.player.unlockedWaypoints.some(wp => wp.x === hoverWorldX && wp.y === hoverWorldY);
+                if (isUnlocked) actionHint = ' | <span class="text-purple-400 font-bold">Double-Click to Travel</span>';
+            }
             else if (tile === '🗺️') tileName = "Cartographer's Guild";
             else if (['🧱', '=', '+', '☒'].includes(tile)) tileName = "Built Structure";
             else tileName = "Unknown Area";
@@ -354,7 +385,7 @@ function updateMapUI() {
         hoverText = ` | Hover: <span class="text-yellow-400 font-bold">${tileName}</span> (${hoverWorldX}, ${-hoverWorldY})`;
     }
     
-    mapCoordsDisplay.innerHTML = `Player: (${gameState.player.x}, ${-gameState.player.y})${hoverText}${pinHint}`;
+    mapCoordsDisplay.innerHTML = `Player: (${gameState.player.x}, ${-gameState.player.y})${hoverText}${actionHint}`;
 }
 
 // --- INPUT EVENTS ---
@@ -407,22 +438,31 @@ worldMapCanvas.addEventListener('mousemove', (e) => {
     }
 });
 
-// Double click to center camera on player
+// Double click features
 worldMapCanvas.addEventListener('dblclick', () => {
+    // GAMEPLAY WIN: Quick Fast-Travel via Map
+    if (hoverWorldX !== null && hoverWorldY !== null && gameState.player.unlockedWaypoints) {
+        const isUnlocked = gameState.player.unlockedWaypoints.some(wp => wp.x === hoverWorldX && wp.y === hoverWorldY);
+        if (isUnlocked && typeof handleFastTravel === 'function') {
+            handleFastTravel(hoverWorldX, hoverWorldY);
+            closeWorldMap();
+            return;
+        }
+    }
+
+    // Default: Center on player
     targetMapCamera.x = gameState.player.x;
     targetMapCamera.y = gameState.player.y;
     if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
 });
 
-// --- NEW: CUSTOM MAP PINS (Right-Click) ---
+// Custom Map Pins (Right-Click)
 worldMapCanvas.addEventListener('contextmenu', (e) => {
-    e.preventDefault(); // Stop normal right click menu
-    
+    e.preventDefault(); 
     if (hoverWorldX === null || hoverWorldY === null) return;
     
     if (!gameState.player.customPins) gameState.player.customPins = [];
     
-    // Check if clicking near an existing pin to remove it
     const existingIdx = gameState.player.customPins.findIndex(p => Math.abs(p.x - hoverWorldX) < 2 && Math.abs(p.y - hoverWorldY) < 2);
     
     if (existingIdx > -1) {
@@ -433,19 +473,15 @@ worldMapCanvas.addEventListener('contextmenu', (e) => {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
     }
     
-    // Save to Firebase immediately
-    if (typeof playerRef !== 'undefined' && playerRef) {
-        playerRef.update({ customPins: gameState.player.customPins });
-    }
+    if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ customPins: gameState.player.customPins });
 });
 
 worldMapCanvas.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) startMapDrag(e.touches[0].clientX, e.touches[0].clientY);
     
-    // Handle Two-Finger Tap to place a map pin on mobile
     if (e.touches.length === 2) {
         const rect = worldMapCanvas.getBoundingClientRect();
-        const touch = e.touches[0]; // Just use the first finger's position
+        const touch = e.touches[0];
         const mouseX = touch.clientX - rect.left;
         const mouseY = touch.clientY - rect.top;
         const centerX = Math.floor(worldMapCanvas.width / 2);
@@ -466,7 +502,6 @@ worldMapCanvas.addEventListener('touchstart', (e) => {
         }
         if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ customPins: gameState.player.customPins });
     }
-    
     hoverWorldX = null; 
 }, { passive: false });
 
@@ -507,7 +542,6 @@ function initSettingsListeners() {
     const cbCombat = document.getElementById('settingCombat');
     const cbMagic = document.getElementById('settingMagic');
     const cbUI = document.getElementById('settingUI');
-
     const cbCRT = document.getElementById('settingCRT');
     const btnBackup = document.getElementById('btnBackup');
     const btnRestore = document.getElementById('btnRestore');
@@ -553,9 +587,10 @@ function initSettingsListeners() {
             AudioSystem.saveSettings();
             if (key === 'master') syncUI();
 
+            // JUICE: Play sound on toggle!
             if (e.target.checked && AudioSystem.settings.master) {
                 if (key === 'steps') AudioSystem.playStep();
-                else AudioSystem.playCoin();
+                else AudioSystem.playClick();
             }
         };
     };
