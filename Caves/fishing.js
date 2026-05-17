@@ -1,6 +1,24 @@
-// ==========================================
+// ==============================================
 // THE ULTIMATE FISHING EXPANSION (MASTERPIECE++)
-// ==========================================
+// ==============================================
+
+// PERFORMANCE WIN: O(1) Item Lookup Cache
+// Prevents scanning the massive ITEM_DATA dictionary multiple times per catch
+const _itemKeyCache = {};
+function getItemKeyByName(name) {
+    if (_itemKeyCache[name]) return _itemKeyCache[name];
+    const key = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === name);
+    if (key) _itemKeyCache[name] = key;
+    return key;
+}
+
+// JUICE: Procedural Sound Effects for Fishing
+function playSplash() {
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.25, 0.05, 400);
+}
+function playLineSnap() {
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playTone(150, 'sawtooth', 0.2, 0.1, false, 50);
+}
 
 // --- 1. DYNAMIC ITEM INJECTION ---
 const NEW_FISHING_ITEMS = {
@@ -9,6 +27,8 @@ const NEW_FISHING_ITEMS = {
         name: "Angler's Logbook", type: 'consumable', tile: '📖', 
         description: "Records your fishing prowess and personal bests. Use to read.",
         effect: (state) => {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+
             const player = state.player;
             const lvl = player.fishingLevel || 1;
             const xp = player.fishingXp || 0;
@@ -33,7 +53,7 @@ const NEW_FISHING_ITEMS = {
             const caughtCount = allFish.filter(f => records[f]).length;
             const completionPercent = Math.floor((caughtCount / allFish.length) * 100);
 
-            let gridHtml = `<div class="grid grid-cols-2 gap-2 mt-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">`;
+            let gridHtml = `<div class="grid grid-cols-2 gap-2 mt-2 max-h-56 overflow-y-auto pr-2 custom-scrollbar">`;
             
             allFish.forEach(fishName => {
                 const record = records[fishName];
@@ -42,12 +62,15 @@ const NEW_FISHING_ITEMS = {
                     if (record >= 50) color = "text-blue-300";
                     if (record >= 100) color = "text-purple-400 font-bold";
                     if (record >= 200) color = "text-yellow-400 font-bold";
-                    gridHtml += `<div class="bg-gray-800 bg-opacity-50 p-2 rounded border border-green-600 border-opacity-30">
+                    
+                    gridHtml += `
+                    <div class="bg-gray-800 bg-opacity-50 p-2 rounded border border-green-600 border-opacity-30 hover:bg-gray-700 transition-colors">
                         <div class="text-xs font-bold text-green-400">${fishName}</div>
                         <div class="text-[10px] ${color}">Best: ${record} lbs</div>
                     </div>`;
                 } else {
-                    gridHtml += `<div class="bg-gray-900 bg-opacity-50 p-2 rounded border border-gray-700 border-opacity-50">
+                    gridHtml += `
+                    <div class="bg-gray-900 bg-opacity-50 p-2 rounded border border-gray-700 border-opacity-50">
                         <div class="text-xs font-bold text-gray-500">???</div>
                         <div class="text-[10px] text-gray-600">Undiscovered</div>
                     </div>`;
@@ -56,12 +79,13 @@ const NEW_FISHING_ITEMS = {
             gridHtml += `</div>`;
 
             let html = `
-            <div class="mb-4">
-                <p class="text-lg font-bold text-blue-400">Fishing Level: ${lvl}</p>
-                <p class="text-sm text-gray-400">XP: ${xp} / ${nextXp}</p>
+            <div class="mb-4 bg-black bg-opacity-20 p-3 rounded-lg border border-gray-700">
+                <p class="text-lg font-bold text-blue-400 flex justify-between"><span>Fishing Level: ${lvl}</span> <span>${caughtCount}/${allFish.length}</span></p>
+                <p class="text-xs text-gray-400 mb-2">XP: ${xp} / ${nextXp}</p>
+                <div class="stat-bar-container mb-2"><div class="stat-bar bg-blue-500" style="width: ${Math.min(100, (xp/nextXp)*100)}%"></div></div>
                 ${perksHtml}
             </div>
-            <h3 class="font-bold border-b border-gray-600 mb-2 flex justify-between">
+            <h3 class="font-bold border-b border-gray-600 mb-2 flex justify-between text-sm">
                 <span>Fish Directory</span>
                 <span class="text-yellow-500">${completionPercent}% Complete</span>
             </h3>
@@ -118,16 +142,26 @@ const NEW_FISHING_ITEMS = {
             if (Math.random() < 0.4) {
                 const lootTable = ['Black Pearl', 'Rainbow Shell', 'Brass Compass', 'Trident', 'Ancient Coin'];
                 const prize = lootTable[Math.floor(Math.random() * lootTable.length)];
+                
                 if (state.player.inventory.length < 9) { // MAX_INVENTORY_SLOTS
-                    const template = Object.values(window.ITEM_DATA).find(i => i.name === prize);
+                    const prizeKey = getItemKeyByName(prize);
+                    const template = window.ITEM_DATA[prizeKey];
                     state.player.inventory.push({
-                        templateId: Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === prize),
-                        name: prize, type: template ? (template.type || 'junk') : 'junk', quantity: 1, 
-                        tile: template ? template.tile : '💎', defense: template ? template.defense : null,
-                        damage: template ? template.damage : null, slot: template ? template.slot : null,
+                        templateId: prizeKey,
+                        name: prize, 
+                        type: template ? (template.type || 'junk') : 'junk', 
+                        quantity: 1, 
+                        tile: template ? template.tile : '💎', 
+                        defense: template ? template.defense : null,
+                        damage: template ? template.damage : null, 
+                        slot: template ? template.slot : null,
                         statBonuses: template ? template.statBonuses : null,
+                        effect: template ? template.effect : null
                     });
                     logMessage(`{purple:You also found a ${prize} hidden inside!}`);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                } else {
+                    logMessage(`{red:You found a ${prize}, but your inventory was full and it washed away!}`);
                 }
             }
             triggerStatFlash(document.getElementById('coinsDisplay'), true);
@@ -138,13 +172,18 @@ const NEW_FISHING_ITEMS = {
         name: 'Message in a Bottle', type: 'consumable', tile: '🍾',
         description: "There's a rolled up piece of parchment inside.",
         effect: (state) => {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.1, 0.1, 2000); // Smash sound
             logMessage("You smash the bottle and unroll the damp parchment...");
             
             // 25% Chance to yield an actual Treasure Map!
             if (Math.random() < 0.25 && state.player.inventory.length < 9) {
                 logMessage(`{gold:It's a Tattered Map! X marks the spot!}`);
-                const mapTemplate = Object.values(window.ITEM_DATA).find(i => i.name === 'Tattered Map');
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                
+                const mapKey = getItemKeyByName('Tattered Map');
+                const mapTemplate = window.ITEM_DATA[mapKey];
                 state.player.inventory.push({
+                    templateId: mapKey,
                     name: 'Tattered Map', type: 'treasure_map', quantity: 1, tile: '🗺️',
                     effect: mapTemplate ? mapTemplate.effect : null
                 });
@@ -188,11 +227,13 @@ if (window.CASTLE_SHOP_INVENTORY) {
 function eatFish(state, hungerAmt, hpAmt = 0) {
     if (state.player.hunger >= state.player.maxHunger && state.player.health >= state.player.maxHealth) {
         logMessage("You are completely full.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return false;
     }
     state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + hungerAmt);
     if (hpAmt > 0) state.player.health = Math.min(state.player.maxHealth, state.player.health + hpAmt);
     
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Munch sound
     logMessage(`You eat the fish. {yellow:(+${hungerAmt} Hunger)}${hpAmt > 0 ? `, {green:(+${hpAmt} HP)}` : ''}`);
     triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
     if (hpAmt > 0) triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
@@ -252,17 +293,27 @@ function executeFishing() {
     
     if (currentTile !== '~' && currentTile !== '≈') {
         logMessage("You need to be standing in water or sailing to fish.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return false;
     }
 
     if (isLava && !hasObsidianRod) {
         logMessage("{red:You cast your line into the lava... and it instantly incinerates!}");
         logMessage("You need an Obsidian Fishing Rod to fish here.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return false;
+    }
+
+    // Pre-check Inventory Space!
+    if (player.inventory.length >= 9) { // MAX_INVENTORY_SLOTS
+        logMessage("{red:Your inventory is completely full! Make space before fishing.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return false;
     }
 
     if (player.stamina < 2) {
         logMessage("You are too tired to cast your line.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return false;
     }
     
@@ -288,13 +339,14 @@ function executeFishing() {
     let usedBaitName = null;
     let baitCatchBoost = 0;
     let baitRareBoost = 0;
+    let baitWeightMult = 1.0; // GAMEPLAY WIN: Good bait catches bigger fish!
 
     const validBaits = [
-        { name: 'Kraken Ink Sac', catchBoost: 0.10, rareBoost: 0.50, zoneOnly: 'deep' }, 
-        { name: 'Fire Elemental Core', catchBoost: 0.10, rareBoost: 0.50, zoneOnly: 'lava' }, 
-        { name: 'Minnow', catchBoost: 0.15, rareBoost: 0.30 }, 
-        { name: 'Raw Meat', catchBoost: 0.25, rareBoost: 0.10 }, 
-        { name: 'Bird Egg', catchBoost: 0.10, rareBoost: 0.05 } 
+        { name: 'Kraken Ink Sac', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'deep' }, 
+        { name: 'Fire Elemental Core', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'lava' }, 
+        { name: 'Minnow', catchBoost: 0.15, rareBoost: 0.30, weightMult: 1.15 }, 
+        { name: 'Raw Meat', catchBoost: 0.25, rareBoost: 0.10, weightMult: 1.05 }, 
+        { name: 'Bird Egg', catchBoost: 0.10, rareBoost: 0.05, weightMult: 1.0 } 
     ];
 
     for (let b of validBaits) {
@@ -304,10 +356,16 @@ function executeFishing() {
             usedBaitName = b.name;
             baitCatchBoost = b.catchBoost;
             baitRareBoost = b.rareBoost;
+            baitWeightMult = b.weightMult;
             player.inventory[idx].quantity--;
             if (player.inventory[idx].quantity <= 0) player.inventory.splice(idx, 1);
             break; 
         }
+    }
+
+    // Check if player meant to use bait but ran out
+    if (!usedBaitName && player.fishingLevel > 1 && Math.random() < 0.2) {
+        logMessage("{gray:(You are fishing without bait. Catch rates are lower.)}");
     }
 
     // --- SYNERGIES: FEEDING FRENZY & NIGHT FISHING ---
@@ -317,11 +375,14 @@ function executeFishing() {
 
     // --- DANGEROUS WATERS (Hostile Hooks!) ---
     if (zone === 'deep' && Math.random() < 0.05) {
+        playSplash();
         logMessage("{red:You hooked something massive... IT'S PULLING YOU IN!}");
         const dmg = isLeviathansBane ? 5 : 10;
         logMessage(`A Kraken Tentacle breaches the surface and whips your ship! (-${dmg} HP)`);
-        if (isLeviathansBane) logMessage("{purple:Leviathan's Bane reduces the damage!}");
         
+        if (isLeviathansBane) logMessage("{purple:Leviathan's Bane reduces the damage!}");
+        playLineSnap();
+
         player.health -= dmg;
         gameState.screenShake = 15;
         triggerStatFlash(document.getElementById('healthDisplay'), false);
@@ -331,6 +392,7 @@ function executeFishing() {
     }
 
     if (zone === 'swamp' && Math.random() < 0.05) {
+        playSplash();
         logMessage("{red:You hooked something aggressive... A Giant Leech bursts from the water!}");
         if (gameState.mapMode === 'overworld') {
             const enemyId = `overworld:${player.x},${-player.y}`;
@@ -359,10 +421,12 @@ function executeFishing() {
     if (zone === 'deep') flavorText = "You drop your heavy line into the abyss...";
     if (zone === 'lava') flavorText = "You cast your obsidian line into the bubbling magma...";
     
-    if (usedBaitName) flavorText += ` (Used ${usedBaitName} as bait)`;
+    if (usedBaitName) flavorText += ` (Used ${usedBaitName})`;
     if (isNight) flavorText += " The darkness is absolute.";
     if (isFrenzy) logMessage("{blue:The water is boiling with activity! (Feeding Frenzy)}");
     logMessage(`{gray:${flavorText}}`);
+    
+    playSplash(); // Cast audio
 
     // --- ROLL FOR CATCH ---
     if (Math.random() < catchChance) {
@@ -398,7 +462,9 @@ function executeFishing() {
 
         // --- TROPHY FISH CALCULATION ---
         if (catchData.minW && catchData.maxW) {
-            const weight = Math.floor(Math.random() * (catchData.maxW - catchData.minW + 1)) + catchData.minW;
+            // Apply bait weight multiplier to upper bound
+            const effMaxW = Math.floor(catchData.maxW * baitWeightMult);
+            const weight = Math.floor(Math.random() * (effMaxW - catchData.minW + 1)) + catchData.minW;
             finalItemName = `[${weight}lb] ${baseName}`;
             isTrophy = true;
 
@@ -410,6 +476,7 @@ function executeFishing() {
                 } else {
                     logMessage("{orange:(-4 Stamina)}");
                     if (player.stamina < 4) {
+                        playLineSnap();
                         logMessage(`{red:You are too exhausted to reel it in... The line snaps!}`);
                         player.stamina = 0;
                         triggerStatFlash(document.getElementById('staminaDisplay'), false);
@@ -430,7 +497,8 @@ function executeFishing() {
             }
         }
 
-        const template = window.ITEM_DATA[Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === baseName)];
+        const baseKey = getItemKeyByName(baseName);
+        const template = window.ITEM_DATA[baseKey];
         const catchTile = template ? (template.tile || '🐟') : '🐟';
 
         // --- VISUAL CATCH JUICE ---
@@ -439,47 +507,51 @@ function executeFishing() {
             ParticleSystem.spawn(player.x, player.y - 1, '#ffffff', 'text', catchTile, 16);
         }
 
-        if (rarity === 'legendary') logMessage(`{gold:A MASSIVE TUG! You hauled up a ${finalItemName}!}`);
-        else if (rarity === 'rare') logMessage(`{purple:A strong bite! You caught a ${finalItemName}!}`);
-        else if (rarity === 'trash') logMessage(`{gray:You reeled in some trash... a ${finalItemName}.}`);
-        else if (!isTrophy) logMessage(`You caught a ${finalItemName}!`);
-
-        if (player.inventory.length < 9) { 
-            
-            const existingStack = player.inventory.find(i => i.name === finalItemName && !i.isEquipped);
-            const isStackable = template && ['junk', 'consumable'].includes(template.type) && !isTrophy;
-
-            if (existingStack && isStackable) {
-                existingStack.quantity++;
-            } else {
-                player.inventory.push({
-                    templateId: Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === baseName),
-                    name: finalItemName, 
-                    type: template ? (template.type || 'junk') : 'junk',
-                    quantity: 1,
-                    tile: catchTile,
-                    defense: template ? template.defense : null,
-                    damage: template ? template.damage : null,
-                    slot: template ? template.slot : null,
-                    statBonuses: template ? template.statBonuses : null,
-                    effect: template ? template.effect : null
-                });
-            }
-
-            player.fishingXp += xpGained;
-            const xpNeeded = player.fishingLevel * 50;
-
-            if (player.fishingXp >= xpNeeded) {
-                player.fishingXp -= xpNeeded;
-                player.fishingLevel++;
-                logMessage(`{blue:FISHING LEVEL UP! You are now a Level ${player.fishingLevel} Angler.}`);
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-            }
-
+        if (rarity === 'legendary') {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+            logMessage(`{gold:A MASSIVE TUG! You hauled up a ${finalItemName}!}`);
+        } else if (rarity === 'rare') {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+            logMessage(`{purple:A strong bite! You caught a ${finalItemName}!}`);
+        } else if (rarity === 'trash') {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            logMessage(`{gray:You reeled in some trash... a ${finalItemName}.}`);
         } else {
-            logMessage("{red:You caught something, but your pack is full! You throw it back.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            if (!isTrophy) logMessage(`You caught a ${finalItemName}!`);
         }
+            
+        const existingStack = player.inventory.find(i => i.name === finalItemName && !i.isEquipped);
+        const isStackable = template && ['junk', 'consumable', 'trade'].includes(template.type) && !isTrophy;
+
+        if (existingStack && isStackable) {
+            existingStack.quantity++;
+        } else {
+            player.inventory.push({
+                templateId: baseKey,
+                name: finalItemName, 
+                type: template ? (template.type || 'junk') : 'junk',
+                quantity: 1,
+                tile: catchTile,
+                defense: template ? template.defense : null,
+                damage: template ? template.damage : null,
+                slot: template ? template.slot : null,
+                statBonuses: template ? template.statBonuses : null,
+                effect: template ? template.effect : null
+            });
+        }
+
+        player.fishingXp += xpGained;
+        const xpNeeded = player.fishingLevel * 50;
+
+        if (player.fishingXp >= xpNeeded) {
+            player.fishingXp -= xpNeeded;
+            player.fishingLevel++;
+            logMessage(`{blue:FISHING LEVEL UP! You are now a Level ${player.fishingLevel} Angler.}`);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+        }
+
     } else {
         logMessage("{gray:...not even a nibble.}");
     }
