@@ -15,6 +15,7 @@ function useSkill(skillId) {
 
     if (player.cooldowns && player.cooldowns[skillId] > 0) {
         logMessage(`That skill is not ready yet (${player.cooldowns[skillId]} turns).`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
@@ -29,6 +30,7 @@ function useSkill(skillId) {
     // --- 1. Check Player Level Requirement ---
     if (player.level < skillData.requiredLevel) {
         logMessage(`You must be Level ${skillData.requiredLevel} to use this skill.`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
@@ -38,6 +40,7 @@ function useSkill(skillId) {
 
     if (player[costType] < cost) {
         logMessage(`You don't have enough ${costType} to use that.`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return; 
     }
 
@@ -49,6 +52,7 @@ function useSkill(skillId) {
         gameState.abilityToAim = skillId; 
         skillModal.classList.add('hidden');
         logMessage(`${skillData.name}: Press an arrow key or WASD to use. (Esc) to cancel.`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
         return; 
 
     } else if (skillData.target === 'self') {
@@ -81,6 +85,7 @@ function useSkill(skillId) {
                 player.mana = Math.min(player.maxMana, player.mana + manaGain);
                 logMessage(`You channel energy... +${manaGain} Mana.`);
                 triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                 skillUsedSuccessfully = true;
                 break;
 
@@ -88,6 +93,7 @@ function useSkill(skillId) {
                 player.thornsValue = 100; // Reflect huge damage
                 player.thornsTurns = 1;   // Only for the very next turn/hit
                 logMessage("You raise your blade, ready to deflect the next blow.");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
                 skillUsedSuccessfully = true;
                 break;
 
@@ -95,6 +101,7 @@ function useSkill(skillId) {
                 player.stealthTurns = skillData.duration;
                 logMessage("You throw a smoke bomb and vanish from sight!");
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 15);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 800);
                 playerRef.update({ stealthTurns: player.stealthTurns });
                 skillUsedSuccessfully = true;
                 break;
@@ -102,6 +109,7 @@ function useSkill(skillId) {
             case 'stealth':
                 player.stealthTurns = skillData.duration;
                 logMessage("You fade into the shadows... (Invisible)");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.1, 0.05, 400);
                 playerRef.update({ stealthTurns: player.stealthTurns });
                 skillUsedSuccessfully = true;
                 break;
@@ -111,14 +119,19 @@ function useSkill(skillId) {
                 player.stamina = Math.min(player.maxStamina, player.stamina + stamGain);
                 logMessage("You push past the pain! (+10 Stamina)");
                 triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal(); // Re-using heal sound for buff
                 skillUsedSuccessfully = true;
                 break;
 
-            // WHIRLWIND ---
+            // PERFORMANCE & ROBUSTNESS WIN: Multi-Target RTDB Combat Wrapper
             case 'whirlwind':
-                logMessage("You spin in a deadly vortex!");
-                let hitCount = 0;
+                logMessage("{red:You spin in a deadly vortex!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy');
+                
                 const baseDmg = (player.strength + player.dexterity) * skillLevel;
+
+                // Create an array to hold all the async combat promises
+                const whirlwindPromises = [];
 
                 for (let y = -1; y <= 1; y++) {
                     for (let x = -1; x <= 1; x++) {
@@ -134,8 +147,8 @@ function useSkill(skillId) {
                             const enemyData = ENEMY_DATA[tile];
                             if (enemyData) {
                                 const finalDmg = Math.max(1, baseDmg - (enemyData.defense || 0));
-                                handleOverworldCombat(tx, ty, enemyData, tile, finalDmg);
-                                hitCount++;
+                                // Push to array so we can await them all at once later
+                                whirlwindPromises.push(handleOverworldCombat(tx, ty, enemyData, tile, finalDmg));
                             }
                         } else {
                             let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
@@ -144,28 +157,25 @@ function useSkill(skillId) {
                                 enemy.health -= finalDmg;
                                 logMessage(`Whirlwind hits ${enemy.name} for ${finalDmg}!`);
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#fff', 3);
-                                hitCount++;
 
                                 if (enemy.health <= 0) {
-                                    logMessage(`${enemy.name} is slain!`);
-                                    registerKill(enemy);
-                                    
-                                    const droppedLoot = generateEnemyLoot(gameState.player, enemy);
-                                    let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
-                                    map[ty][tx] = droppedLoot || '.';
-                                    
-                                    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                                    if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-                                        chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
-                                    }
+                                    logMessage(`You defeated ${enemy.name}!`);
+                                    handleInstancedEnemyDeath(enemy, tx, ty);
                                 }
                             }
                         }
-
                     }
                 }
 
-                if (hitCount === 0) logMessage("You whirl through empty air.");
+                if (whirlwindPromises.length > 0) {
+                    // We must NOT freeze the engine waiting for 8 network requests sequentially.
+                    // Promise.all fires them off concurrently!
+                    Promise.all(whirlwindPromises).catch(e => console.error("Whirlwind Sync Error:", e));
+                } else if (gameState.mapMode === 'overworld') {
+                    // Only say missed if no promises were queued in overworld
+                    logMessage("You whirl through empty air.");
+                }
+
                 skillUsedSuccessfully = true;
                 break;
         }
@@ -225,6 +235,8 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
             }
         }
 
+        const combatPromises = [];
+
         for (const coords of enemiesToHit) {
             let tile;
             let map;
@@ -254,7 +266,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
                 // Apply Damage
                 if (gameState.mapMode === 'overworld') {
-                    await handleOverworldCombat(coords.x, coords.y, enemyData, tile, finalDmg);
+                    combatPromises.push(handleOverworldCombat(coords.x, coords.y, enemyData, tile, finalDmg));
                 } else {
                     let enemy = gameState.instancedEnemies.find(e => e.x === coords.x && e.y === coords.y);
                     if (enemy) {
@@ -264,8 +276,12 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
                         // APPLY STUN (Shield Bash OR Crush)
                         if (skillId === 'shieldBash' || skillId === 'crush') {
-                            enemy.stunTurns = 3;
-                            logMessage(`${enemy.name} is stunned!`);
+                            if (!enemy.isBoss) {
+                                enemy.stunTurns = 3;
+                                logMessage(`{yellow:${enemy.name} is stunned!}`);
+                            } else {
+                                logMessage(`{gray:The boss shrugs off your stun attempt!}`);
+                            }
                         }
 
                         if (enemy.health <= 0) {
@@ -277,12 +293,21 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
             }
         }
 
+        // Await all overworld combats concurrently
+        if (combatPromises.length > 0) {
+            await Promise.all(combatPromises);
+        }
+
         if (!hit) {
             logMessage("You swing at empty air.");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
         } else {
             // Only deduct stamina if a target was actually engaged
             player[skillData.costType] -= skillData.cost;
-            AudioSystem.playAttack();
+            if (typeof AudioSystem !== 'undefined') {
+                if (skillId === 'crush' || skillId === 'shieldBash') AudioSystem.playAttack('heavy');
+                else AudioSystem.playAttack('normal');
+            }
         }
 
         triggerAbilityCooldown(skillId);
@@ -307,6 +332,7 @@ async function executeRangedAttack(dirX, dirY) {
     if (!ammo || ammo.quantity <= 0) {
         logMessage("{red:You need to equip arrows to shoot!}");
         gameState.isAiming = false;
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
@@ -315,6 +341,7 @@ async function executeRangedAttack(dirX, dirY) {
     if (!weapon || !weapon.name.includes("bow") && !weapon.name.includes("Bow")) {
         logMessage("{red:You must have a bow equipped to shoot!}");
         gameState.isAiming = false;
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
@@ -353,7 +380,7 @@ async function executeRangedAttack(dirX, dirY) {
             
             if (player.talents && player.talents.includes('shadow_strike')) {
                 rawPower = Math.floor(rawPower * 4);
-                logMessage("Shadow Strike! (4x Damage)");
+                logMessage("{purple:Shadow Strike! (4x Damage)}");
             }
         }
 
@@ -362,7 +389,7 @@ async function executeRangedAttack(dirX, dirY) {
         // --- CONSUME AMMO ---
         ammo.quantity--;
         if (ammo.quantity <= 0) {
-            logMessage("You fired your last arrow!");
+            logMessage("{red:You fired your last arrow!}");
             // Find it in inventory and remove it
             const invIndex = player.inventory.findIndex(i => i.isEquipped && i.slot === 'ammo');
             if (invIndex > -1) player.inventory.splice(invIndex, 1);
@@ -371,9 +398,9 @@ async function executeRangedAttack(dirX, dirY) {
 
         // --- 3. Projectile Loop (Dynamic Range) ---
         logMessage("You loose an arrow!");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); 
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playBow(); 
         
-        // NEW: Pull range from the equipped weapon, fallback to 4
+        // Pull range from the equipped weapon, fallback to 4
         const maxRange = player.equipment.weapon.range || 4;
 
         for (let i = 1; i <= maxRange; i++) {
@@ -394,7 +421,7 @@ async function executeRangedAttack(dirX, dirY) {
                 const enemyId = `overworld:${targetX},${-targetY}`;
                 const liveEnemy = gameState.sharedEnemies[enemyId];
                 tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
-                // FIX: Added closed doors '+' and stash boxes '☒' to arrow blockers
+                // Added closed doors '+' and stash boxes '☒' to arrow blockers
                 if (['^', 'F', '🧱', '+', '☒'].includes(tile) && !liveEnemy) isSolid = true;
             } else {
                 const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
@@ -406,8 +433,9 @@ async function executeRangedAttack(dirX, dirY) {
             
             // --- ENVIRONMENTAL INTERACTIONS (FIRE ARROWS) ---
             if (isFire && tile === '🛢') {
-                logMessage("BOOM! Your Fire Arrow ignited an Oil Barrel!");
+                logMessage("{orange:BOOM! Your Fire Arrow ignited an Oil Barrel!}");
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#f97316', 15);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.4, 0.2, 200);
                 
                 if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(targetX, targetY, '.');
                 else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
@@ -455,14 +483,15 @@ async function executeRangedAttack(dirX, dirY) {
                         enemy.health -= finalDmg;
                         logMessage(`You shoot ${enemy.name} for ${finalDmg} damage!`);
                         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, arrowColor, 3);
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
 
                         // --- ELEMENTAL STATUS EFFECTS ---
                         if (isFire) {
-                            logMessage(`The ${enemy.name} is scorched by the flames!`);
+                            logMessage(`{orange:The ${enemy.name} is scorched by the flames!}`);
                         }
                         if (isPoison && enemy.poisonTurns <= 0) {
                             enemy.poisonTurns = 3;
-                            logMessage(`The ${enemy.name} is poisoned!`);
+                            logMessage(`{green:The ${enemy.name} is poisoned!}`);
                         }
 
                         if (enemy.health <= 0) {
@@ -502,12 +531,6 @@ async function executeRangedAttack(dirX, dirY) {
                 // --- Prevent arrows from overwriting items already on the ground! ---
                 if (ITEM_DATA[dropTile] || ['📦', '⚰️', '🏺', '🚪', '🔼'].includes(dropTile)) {
                     validFloor = false; 
-                }
-
-                if (validFloor) {
-                    chunkManager.setWorldTile(finalTargetX, finalTargetY, '➹', 2); // Drops for 2 hours
-                    gameState.mapDirty = true;
-                    logMessage("{gray:You see your arrow sticking out of the ground nearby.}");
                 }
 
                 if (validFloor) {
@@ -623,8 +646,9 @@ async function executeLunge(dirX, dirY) {
 
         if (!hit) {
             logMessage("You lunge... and hit nothing.");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
         } else {
-            AudioSystem.playAttack();
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('normal');
         }
 
         // --- 4. Finalize Turn ---
@@ -665,12 +689,14 @@ function executeQuickstep(dirX, dirY) {
         player.stamina -= SKILL_DATA['quickstep'].cost;
         logMessage("You dash forward with blinding speed!");
         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#fff', 5);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
 
         triggerAbilityCooldown('quickstep');
         endPlayerTurn();
         render();
     } else {
         logMessage("Path blocked.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         gameState.isAiming = false; // Reset aiming
     }
 }
@@ -691,6 +717,7 @@ function executePacify(dirX, dirY) {
         // This skill only works in instanced maps
         if (gameState.mapMode === 'overworld') {
             logMessage("This skill only works in dungeons and castles.");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             hit = true; // Prevents the "miss" message
             break;
         }
@@ -712,6 +739,7 @@ function executePacify(dirX, dirY) {
 
             if (enemy.isBoss) {
                 logMessage(`The ${enemy.name} is immune to your charms!`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 hit = true;
                 break;
             }
@@ -725,7 +753,8 @@ function executePacify(dirX, dirY) {
 
             if (Math.random() < successChance) {
                 // --- SUCCESS ---
-                logMessage(`You calm the ${enemy.name}! It becomes passive.`);
+                logMessage(`{green:You calm the ${enemy.name}! It becomes passive.}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                 
                 // Reward the player for dealing with the encounter!
                 grantXp(Math.floor(enemy.xp * 0.8));
@@ -738,7 +767,8 @@ function executePacify(dirX, dirY) {
 
             } else {
                 // --- FAILURE ---
-                logMessage(`Your attempt to pacify the ${enemy.name} fails!`);
+                logMessage(`{red:Your attempt to pacify the ${enemy.name} fails!}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             }
             break; // Stop looping, we found our target
         } else if (tile !== theme.floor) {
@@ -749,6 +779,7 @@ function executePacify(dirX, dirY) {
 
     if (!hit) {
         logMessage("You attempt to calm... nothing.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     }
 
     // --- 4. Finalize Turn ---
@@ -777,6 +808,7 @@ function executeTame(dirX, dirY) {
         // Check for instanced enemies (Dungeon/Castle)
         if (gameState.mapMode === 'overworld') {
             logMessage("The beast is too wild here. Drive it into a cave first.");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             hit = true;
             break;
         }
@@ -790,6 +822,7 @@ function executeTame(dirX, dirY) {
             const beastTiles = ['w', '@', '🦂', '🐺'];
             if (!beastTiles.includes(enemy.tile)) {
                 logMessage("You can only tame beasts!");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 break;
             }
 
@@ -797,13 +830,15 @@ function executeTame(dirX, dirY) {
             const hpPercent = enemy.health / enemy.maxHealth;
             if (hpPercent > 0.30) {
                 logMessage(`The ${enemy.name} is too healthy to tame! Weaken it first.`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 break;
             }
 
             // Success Roll
             const tameChance = 0.3 + (player.charisma * 0.05); // Base 30% + 5% per Charisma
             if (Math.random() < tameChance) {
-                logMessage(`You calm the ${enemy.name}... It accepts you as its master!`);
+                logMessage(`{green:You calm the ${enemy.name}... It accepts you as its master!}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
 
                 // Create Companion
                 player.companion = {
@@ -832,13 +867,17 @@ function executeTame(dirX, dirY) {
                 playerRef.update({ companion: player.companion });
 
             } else {
-                logMessage(`The ${enemy.name} resists your call and snaps at you!`);
+                logMessage(`{red:The ${enemy.name} resists your call and snaps at you!}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             }
             break;
         }
     }
 
-    if (!hit) logMessage("You try to tame the empty air.");
+    if (!hit) {
+        logMessage("You try to tame the empty air.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+    }
 
     playerRef.update({ psyche: player.psyche });
     triggerAbilityCooldown('tame');
@@ -861,6 +900,7 @@ function executeInflictMadness(dirX, dirY) {
 
         if (gameState.mapMode === 'overworld') {
             logMessage("This skill only works in dungeons and castles.");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             hit = true;
             break;
         }
@@ -882,6 +922,7 @@ function executeInflictMadness(dirX, dirY) {
 
             if (enemy.isBoss) {
                 logMessage(`The ${enemy.name}'s mind is too strong to break!`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 hit = true;
                 break;
             }
@@ -894,12 +935,14 @@ function executeInflictMadness(dirX, dirY) {
 
             if (Math.random() < successChance) {
                 // --- SUCCESS ---
-                logMessage(`You assault the ${enemy.name}'s mind! It goes mad!`);
+                logMessage(`{purple:You assault the ${enemy.name}'s mind! It goes mad!}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                 enemy.madnessTurns = 5; // Set status for 5 turns
 
             } else {
                 // --- FAILURE ---
-                logMessage(`The ${enemy.name} resists your mental assault!`);
+                logMessage(`{gray:The ${enemy.name} resists your mental assault!}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             }
             break; // Stop looping, we found our target
         } else if (tile !== theme.floor) {
@@ -910,6 +953,7 @@ function executeInflictMadness(dirX, dirY) {
 
     if (!hit) {
         logMessage("You assault the minds of... nothing.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     }
 
     // --- 4. Finalize Turn ---
@@ -950,7 +994,9 @@ function triggerAbilityCooldown(abilityId) {
         gameState.player.cooldowns[abilityId] = cd;
 
         // Update Database
-        playerRef.update({ cooldowns: gameState.player.cooldowns });
+        if (typeof playerRef !== 'undefined') {
+            playerRef.update({ cooldowns: gameState.player.cooldowns });
+        }
 
         if (typeof renderHotbar === 'function') renderHotbar();
     }
