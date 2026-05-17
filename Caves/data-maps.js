@@ -20,6 +20,39 @@ window.TILE_DATA = {
         // Forces the engine to generate a SUNKEN themed dungeon!
         getCaveId: (x, y) => `sunken_whirlpool_${x}_${y}`
     },
+
+    // GAMEPLAY WIN: Respawn Points!
+    '🛏️': {
+        type: 'anomaly',
+        name: 'Cozy Bed',
+        flavor: "A surprisingly clean and comfortable bed.",
+        onInteract: (state, x, y) => {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, "ZZZ", "#facc15");
+
+            logMessage("{green:You rest deeply. Your Respawn Point has been set here.}");
+            
+            // Full Heal
+            state.player.health = state.player.maxHealth;
+            state.player.mana = state.player.maxMana;
+            state.player.stamina = state.player.maxStamina;
+            
+            // Set Respawn
+            state.player.respawnPoint = { x: state.player.x, y: state.player.y };
+            
+            if (typeof triggerStatAnimation !== 'undefined') {
+                triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+            }
+
+            return { 
+                health: state.player.health, 
+                mana: state.player.mana,
+                stamina: state.player.stamina,
+                respawnPoint: state.player.respawnPoint 
+            };
+        }
+    },
+
     '🌴': {
         type: 'anomaly',
         name: 'Palm Tree',
@@ -28,16 +61,22 @@ window.TILE_DATA = {
             const tileId = `${x},${-y}`;
             if (!state.lootedTiles.has(tileId)) {
                 logMessage("You shake the palm tree...");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy'); // Thud sound
+                
                 if (state.player.inventory.length < 9) { // MAX_INVENTORY_SLOTS
                     state.player.inventory.push({
-                        name: 'Coconut', type: 'consumable', quantity: 1, tile: '🥥', effect: ITEM_DATA['🥥'].effect
+                        name: 'Coconut', type: 'consumable', quantity: 1, tile: '🥥', effect: window.ITEM_DATA['🥥'].effect
                     });
-                    logMessage("A Coconut falls to the ground! You catch it.");
+                    logMessage("{green:A Coconut falls to the ground! You catch it.}");
                     state.lootedTiles.add(tileId);
+                    
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "🥥", "#fff");
                     if (typeof renderInventory === 'function') renderInventory();
-                    return { inventory: getSanitizedInventory() };
+                    
+                    return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory };
                 } else {
-                    logMessage("A Coconut falls, but your inventory is full!");
+                    logMessage("{red:A Coconut falls, but your inventory is full!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                     return null;
                 }
             } else {
@@ -330,23 +369,23 @@ window.TILE_DATA = {
         name: 'Guild Cartographer',
         flavor: "A scholar buried under piles of parchment.",
         onInteract: (state, x, y) => {
-            // 1. Calculate how many chunks the player has explored
             const explored = state.exploredChunks ? state.exploredChunks.size : 0;
-            // 2. See how many rewards they've already claimed
             const claimed = state.player.cartographerProgress || 0;
-            
-            // 3. Reward them once for every 50 chunks explored
             const pendingRewards = Math.floor(explored / 50) - claimed;
             
-            loreTitle.textContent = "The Cartographer's Guild";
+            const loreTitle = document.getElementById('loreTitle');
+            const loreContent = document.getElementById('loreContent');
+            const loreModal = document.getElementById('loreModal');
+
+            if (loreTitle) loreTitle.textContent = "The Cartographer's Guild";
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             
             if (pendingRewards > 0) {
-                loreContent.innerHTML = `
+                if (loreContent) loreContent.innerHTML = `
                     <p>"Incredible! You've mapped ${explored} regions! The Guild owes you handsomely for this data."</p>
-                    <button id="claimMapReward" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded w-full">Claim Reward (${pendingRewards} available)</button>`;
-                loreModal.classList.remove('hidden');
+                    <button id="claimMapReward" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded w-full shadow transition-transform active:scale-95">Claim Reward (${pendingRewards} available)</button>`;
+                if (loreModal) loreModal.classList.remove('hidden');
                 
-                // Bind the claim button
                 setTimeout(() => {
                     document.getElementById('claimMapReward').onclick = () => {
                         state.player.cartographerProgress = (state.player.cartographerProgress || 0) + 1;
@@ -355,10 +394,10 @@ window.TILE_DATA = {
                         
                         logMessage("{gold:The Cartographer pays you 100 gold and shares worldly secrets! (+150 XP)}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, "+100g", "#facc15");
                         
-                        loreModal.classList.add('hidden');
+                        if (loreModal) loreModal.classList.add('hidden');
                         
-                        // Save directly to Firebase
                         if (typeof playerRef !== 'undefined') {
                             playerRef.update({ 
                                 cartographerProgress: state.player.cartographerProgress,
@@ -370,16 +409,19 @@ window.TILE_DATA = {
                 }, 0);
             } else {
                 const nextGoal = (claimed + 1) * 50;
-                loreContent.innerHTML = `
+                if (loreContent) loreContent.innerHTML = `
                     <p>"You have mapped ${explored} regions so far. Outstanding work! Return to me when you've mapped ${nextGoal} regions for your next payment."</p>
-                    <button id="closeMapReward" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded w-full">"I'll keep exploring."</button>`;
-                loreModal.classList.remove('hidden');
+                    <button id="closeMapReward" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded w-full shadow transition-transform active:scale-95">"I'll keep exploring."</button>`;
+                if (loreModal) loreModal.classList.remove('hidden');
                 
                 setTimeout(() => {
-                    document.getElementById('closeMapReward').onclick = () => loreModal.classList.add('hidden');
+                    document.getElementById('closeMapReward').onclick = () => {
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                        if (loreModal) loreModal.classList.add('hidden');
+                    }
                 }, 0);
             }
-            return null; // Firebase update is handled by the button click
+            return null; 
         }
     },
 
@@ -396,19 +438,23 @@ window.TILE_DATA = {
             }
 
             logMessage("{purple:You step into the ring. Ethereal music fills your mind!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#a855f7', 15);
             
             // Restore Magic
             state.player.mana = state.player.maxMana;
             state.player.psyche = state.player.maxPsyche;
-            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
-            triggerStatAnimation(document.getElementById('psycheDisplay'), 'stat-pulse-purple');
+            
+            if (typeof triggerStatAnimation !== 'undefined') {
+                triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
+                triggerStatAnimation(document.getElementById('psycheDisplay'), 'stat-pulse-purple');
+            }
             
             // 10% Trickster Teleport
             if (Math.random() < 0.10) {
                 logMessage("{red:The Fae play a trick on you! You are swept away through the leylines!}");
                 state.player.x += (Math.floor(Math.random() * 100) - 50);
                 state.player.y += (Math.floor(Math.random() * 100) - 50);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
             }
 
             state.lootedTiles.add(tileId);
@@ -434,17 +480,21 @@ window.TILE_DATA = {
                 return null;
             }
 
-            logMessage("The Moonbloom is open, bathing the area in pale light! You carefully harvest it.");
+            logMessage("{purple:The Moonbloom is open, bathing the area in pale light! You carefully harvest it.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "🌺", "#f472b6");
+
             if (state.player.inventory.length < 9) { // Max Slots
                 state.player.inventory.push({
                     name: 'Moonbloom Petal', type: 'consumable', quantity: 1, tile: '🌸',
-                    effect: ITEM_DATA['🌸'].effect
+                    effect: window.ITEM_DATA['🌸'] ? window.ITEM_DATA['🌸'].effect : null
                 });
                 state.lootedTiles.add(tileId);
                 if (typeof renderInventory === 'function') renderInventory();
-                return { inventory: getSanitizedInventory(), lootedTiles: Object.fromEntries(state.lootedTiles) };
+                return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles) };
             } else {
-                logMessage("Your inventory is full!");
+                logMessage("{red:Your inventory is full!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 return null;
             }
         }
@@ -466,16 +516,20 @@ window.TILE_DATA = {
             
             if (!isNight) {
                 logMessage("The rock is dull and harder than diamond. You can't even scratch it.");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy'); // dull thud
                 return null;
             }
 
             const hasPickaxe = state.player.inventory.some(i => i.name === 'Pickaxe' || i.name === 'Diamond Tipped Pickaxe');
             if (!hasPickaxe) {
                 logMessage("The rock is glowing under the starlight! But you need a Pickaxe to mine it.");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 return null;
             }
 
-            logMessage("The starlight softens the rock! You mine a chunk of Star-Metal.");
+            logMessage("{cyan:The starlight softens the rock! You mine a chunk of Star-Metal.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); // Sharp clink
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#38bdf8', 10);
             
             // Add a stamina cost to mining it
             state.player.stamina = Math.max(0, state.player.stamina - 3);
@@ -489,12 +543,13 @@ window.TILE_DATA = {
                 if (typeof grantXp === 'function') grantXp(50);
                 if (typeof renderInventory === 'function') renderInventory();
                 return { 
-                    inventory: getSanitizedInventory(), 
+                    inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, 
                     lootedTiles: Object.fromEntries(state.lootedTiles),
                     stamina: state.player.stamina
                 };
             } else {
-                logMessage("Your inventory is full!");
+                logMessage("{red:Your inventory is full!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 return null;
             }
         }
@@ -509,14 +564,19 @@ window.TILE_DATA = {
             if (!state.lootedTiles.has(tileId)) {
                 logMessage("You touch the Elder Tree. Warmth flows into you.");
                 logMessage("{green:Permanent Effect: +2 Max Health.}");
+                
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(x, y); 
+
                 state.player.maxHealth += 2;
                 state.player.health = state.player.maxHealth; 
 
-                triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(x, y); 
+                if (typeof triggerStatAnimation !== 'undefined') {
+                    triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+                }
 
                 state.lootedTiles.add(tileId);
-                return { maxHealth: state.player.maxHealth, health: state.player.health };
+                return { maxHealth: state.player.maxHealth, health: state.player.health, lootedTiles: Object.fromEntries(state.lootedTiles) };
             } else {
                 logMessage("The Elder Tree stands silent and majestic.");
                 return null;
@@ -531,16 +591,21 @@ window.TILE_DATA = {
             const tileId = `${x},${-y}`;
             if (!state.lootedTiles.has(tileId)) {
                 logMessage("You clear the moss from the Giant's eyes.");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+
                 if (!state.player.talents) state.player.talents = [];
                 if (!state.player.talents.includes('iron_skin')) {
                     state.player.talents.push('iron_skin');
                     logMessage("{green:You gained the Iron Skin talent! (+1 Defense)}");
                 } else {
-                    logMessage("You feel a kinship with the stone. (+500 XP)");
-                    grantXp(500);
+                    logMessage("{gold:You feel a kinship with the stone. (+500 XP)}");
+                    if (typeof grantXp === 'function') grantXp(500);
                 }
+                
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "🛡️", "#9ca3af");
+
                 state.lootedTiles.add(tileId);
-                return { talents: state.player.talents };
+                return { talents: state.player.talents, lootedTiles: Object.fromEntries(state.lootedTiles) };
             } else {
                 logMessage("The Giant sleeps.");
                 return null;
@@ -555,16 +620,21 @@ window.TILE_DATA = {
             const tileId = `${x},${-y}`;
             if (!state.lootedTiles.has(tileId)) {
                 logMessage("You search the Dragon's ribs...");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 800); // Rummage sound
+
                 if (state.player.inventory.length < 9) { // MAX_INVENTORY_SLOTS
-                    const loot = generateMagicItem(4); 
+                    const loot = typeof generateMagicItem === 'function' ? generateMagicItem(4) : { name: 'Dragonbone', type: 'junk', tile: '🦴', quantity: 1 }; 
                     state.player.inventory.push(loot);
-                    logMessage(`You found a ${loot.name} buried in the sand!`);
+                    logMessage(`{purple:You found a ${loot.name} buried in the sand!}`);
+                    
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "🦴", "#fff");
                     
                     state.lootedTiles.add(tileId);
-                    renderInventory();
-                    return { inventory: getSanitizedInventory() };
+                    if (typeof renderInventory === 'function') renderInventory();
+                    return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles) };
                 } else {
-                    logMessage("You found treasure, but your inventory is full!");
+                    logMessage("{red:You found treasure, but your inventory is full!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                     return null;
                 }
             } else {
@@ -584,7 +654,7 @@ window.CASTLE_LAYOUTS = {
             '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
             '▓.▓L▓.▓L▓.O.▓L▓.▓L▓.▓', 
             '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
-            '▓...................▓',
+            '▓.........🛏️.........▓',
             '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
             '▓.▓L▓.▓L▓.🎓.▓L▓.▓L▓.▓', 
             '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
@@ -641,7 +711,7 @@ window.CASTLE_LAYOUTS = {
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
             '▓......▓▓▓▓▓▓▓......▓',
             '▓....▓▓▓.....▓▓▓....▓',
-            '▓...▓▓.........▓▓...▓',
+            '▓...▓▓....🛏️....▓▓...▓',
             '▓..▓▓...🎓.......▓▓..▓',
             '▓.▓▓......O.......▓▓.▓',
             '▓.▓.......📖.......▓.▓',
@@ -770,7 +840,7 @@ window.CASTLE_LAYOUTS = {
             'FFFFFFFFFFFFFFFFFFFFFFFFFFF',
             'FFFFFFFFFFFFFFFFFFFFFFFFFFF',
             'FF🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱FF',
-            'FF🧱.........⛲.........🧱FF',
+            'FF🧱..🛏️....⛲.........🧱FF',
             'FF🧱.🧱🧱🧱.===.🧱🧱🧱.🧱FF',
             'FF🧱.🧱H+..===..+§🧱.🧱FF',
             'FF🧱.🧱🧱🧱.===.🧱🧱🧱.🧱FF',
@@ -870,227 +940,109 @@ window.CAVE_THEMES = {
         colors: { wall: '#14532d', floor: '#16a34a' },
         decorations: ['♥', 'S', '🔮', '☣️', '🕸'], 
         enemies: ['g', 'w', '@']
+    },
+    // --- NEW THEMES ---
+    RUIN: {
+        name: 'A Forgotten Ruin',
+        wall: '🧱', floor: '.', secretWall: '▒',
+        colors: { wall: '#44403c', floor: '#292524' },
+        decorations: ['♥', '$', '🏺', '📜l', '🕸'],
+        enemies: ['s', 'Z', 'b']
+    },
+    OVERGROWN: {
+        name: 'An Overgrown Passage',
+        wall: '▓', floor: 'F', secretWall: '▒',
+        colors: { wall: '#14532d', floor: '#166534' },
+        decorations: ['🌿', '🍄', '🌳e'],
+        enemies: ['@', '🐍', '🐸']
     }
 };
 
 window.CAVE_ROOM_TEMPLATES = {
     "The Alchemist's Lab": {
-        width: 7,
-        height: 5,
-        map: [
-            ' WWWWW ',
-            'W🧪.🧪W', 
-            'W..W..W',
-            'W.🧪.🧪W',
-            ' WWWWW '
-        ]
+        width: 7, height: 5,
+        map: [' WWWWW ', 'W🧪.🧪W', 'W..W..W', 'W.🧪.🧪W', ' WWWWW ']
     },
     "Void Observation Deck": {
-        width: 9,
-        height: 5,
-        map: [
-            ' WWWWWWW ',
-            'W.......W',
-            'W..Ω.Ω..W', 
-            'W.......W',
-            ' WWWWWWW '
-        ]
+        width: 9, height: 5,
+        map: [' WWWWWWW ', 'W.......W', 'W..Ω.Ω..W', 'W.......W', ' WWWWWWW ']
     },
     "Goblin Barracks": {
-        width: 7,
-        height: 7,
-        map: [
-            ' WWWWW ',
-            'W.....W',
-            'W.g.g.W',
-            'W..📕..W',
-            'W.g.g.W',
-            'W.....W',
-            ' WWWWW '
-        ]
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.....W', 'W.g.g.W', 'W..📕..W', 'W.g.g.W', 'W.....W', ' WWWWW ']
     },
     "Skeleton Crypt": {
-        width: 9,
-        height: 7,
-        map: [
-            ' WWWWWWW ',
-            'WW.....WW',
-            'W...s...W',
-            'W..s⚰️s..W', 
-            'W...s...W',
-            'WW.....WW',
-            ' WWWWWWW '
-        ]
+        width: 9, height: 7,
+        map: [' WWWWWWW ', 'WW.....WW', 'W...s...W', 'W..s⚰️s..W', 'W...s...W', 'WW.....WW', ' WWWWWWW ']
     },
     "Orc Stash": {
-        width: 5,
-        height: 5,
-        map: [
-            'WWWWW',
-            'W.J.W', 
-            'W.♥o.W',
-            'W.📗.W',
-            'WWWWW'
-        ]
+        width: 5, height: 5,
+        map: ['WWWWW', 'W.J.W', 'W.♥o.W', 'W.📗.W', 'WWWWW']
     },
     "Treasure Nook": {
-        width: 3,
-        height: 3,
-        map: [
-            'W★W',
-            '$ $',
-            'W☆W'
-        ]
+        width: 3, height: 3,
+        map: ['W★W', '$ $', 'W☆W']
     },
     "Flooded Grotto": {
-        width: 9,
-        height: 7,
-        map: [
-            ' WWWWWWW ',
-            'W~~~~~~~W',
-            'W~W...W~W',
-            'W~W.S.W~W', 
-            'W~W...W~W',
-            'W~~~~~~~W',
-            ' WWWWWWW '
-        ]
+        width: 9, height: 7,
+        map: [' WWWWWWW ', 'W~~~~~~~W', 'W~W...W~W', 'W~W.S.W~W', 'W~W...W~W', 'W~~~~~~~W', ' WWWWWWW ']
     },
     "Bandit Stash": {
-        width: 7,
-        height: 7,
-        map: [
-            ' WWWWW ',
-            'W.b.b.W',
-            'W.<q<.W',
-            'W..C..W', 
-            'W.$.$.W', 
-            'W.<...W',
-            ' WWWWW '
-        ]
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.b.b.W', 'W.<q<.W', 'W..C..W', 'W.$.$.W', 'W.<...W', ' WWWWW ']
     },
     "Abandoned Camp": {
-        width: 5,
-        height: 5,
-        map: [
-            'WWWWW',
-            'W...W',
-            'W.J.W', 
-            'W.+📄.W',
-            'WWWWW'
-        ]
+        width: 5, height: 5,
+        map: ['WWWWW', 'W...W', 'W.J.W', 'W.+📄.W', 'WWWWW']
     },
     "Acolyte's Nook": {
-        width: 5,
-        height: 5,
-        map: [
-            'WWWWW',
-            'W...W',
-            'W.a.W', 
-            'W.j.W', 
-            'WWWWW'
-        ]
+        width: 5, height: 5,
+        map: ['WWWWW', 'W...W', 'W.a.W', 'W.j.W', 'WWWWW']
     },
     "Champion's Crypt": {
-        width: 7,
-        height: 7,
-        map: [
-            ' WWWWW ',
-            'W.<.<.W', 
-            'W.....W',
-            'W..s..W', 
-            'W..💪..W', 
-            'W.<.<.W', 
-            ' WWWWW '
-        ]
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.<.<.W', 'W.....W', 'W..s..W', 'W..💪..W', 'W.<.<.W', ' WWWWW ']
     },
     "The Spider's Nest": {
-        width: 7,
-        height: 7,
-        map: [
-            ' WWWWW ',
-            'W.🕸️.🕸️.W',
-            'W🕸️.@.🕸️W',
-            'W..🦴..W', 
-            'W🕸️.@.🕸️W',
-            'W.🕸️.🕸️.W',
-            ' WWWWW '
-        ]
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.🕸️.🕸️.W', 'W🕸️.@.🕸️W', 'W..🦴..W', 'W🕸️.@.🕸️W', 'W.🕸️.🕸️.W', ' WWWWW ']
     },
     "Cultist Summoning Circle": {
-        width: 9,
-        height: 7,
-        map: [
-            ' WWWWWWW ',
-            'W.......W',
-            'W..c.c..W',
-            'W.c.Ω.c.W', 
-            'W...z...W', 
-            'W.......W',
-            ' WWWWWWW '
-        ]
+        width: 9, height: 7,
+        map: [' WWWWWWW ', 'W.......W', 'W..c.c..W', 'W.c.Ω.c.W', 'W...z...W', 'W.......W', ' WWWWWWW ']
     },
     "The Dragon's Hoard": {
-        width: 9,
-        height: 6,
-        map: [
-            ' WWWWWWW ',
-            'W.$$$$.$W', 
-            'W$🐲$$📦$W',
-            'W.$$$$.$W',
-            'W.......W', 
-            ' WWWWWWW '
-        ]
+        width: 9, height: 6,
+        map: [' WWWWWWW ', 'W.$$$$.$W', 'W$🐲$$📦$W', 'W.$$$$.$W', 'W.......W', ' WWWWWWW ']
     },
-    // --- NEW TEMPLATES ---
     "Forgotten Armory": {
-        width: 7,
-        height: 5,
-        map: [
-            ' WWWWW ',
-            'W.....W',
-            'W.⚔️.🛡️.W', 
-            'W.....W',
-            ' WWWWW '
-        ]
+        width: 7, height: 5,
+        map: [' WWWWW ', 'W.....W', 'W.⚔️.🛡️.W', 'W.....W', ' WWWWW ']
     },
     "Torture Chamber": {
-        width: 7,
-        height: 7,
-        map: [
-            ' WWWWW ',
-            'W.⛓️.⛓️.W',
-            'W..s..W',
-            'W.Z.Z.W',
-            'W..s..W',
-            'W.⛓️.⛓️.W',
-            ' WWWWW '
-        ]
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.⛓️.⛓️.W', 'W..s..W', 'W.Z.Z.W', 'W..s..W', 'W.⛓️.⛓️.W', ' WWWWW ']
     },
     "Ritual Dais": {
-        width: 9,
-        height: 7,
-        map: [
-            ' WWWWWWW ',
-            'WW.....WW',
-            'W..🔥.🔥..W',
-            'W...a...W',
-            'W..🔥.🔥..W',
-            'WW.....WW',
-            ' WWWWWWW '
-        ]
+        width: 9, height: 7,
+        map: [' WWWWWWW ', 'WW.....WW', 'W..🔥.🔥..W', 'W...a...W', 'W..🔥.🔥..W', 'WW.....WW', ' WWWWWWW ']
     },
     "Mushroom Grotto": {
-        width: 7,
-        height: 7,
-        map: [
-            ' WWWWW ',
-            'W.🍄.🍄.W',
-            'W.....W',
-            'W🍄.🌿.🍄W',
-            'W.....W',
-            'W.🍄.🍄.W',
-            ' WWWWW '
-        ]
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.🍄.🍄.W', 'W.....W', 'W🍄.🌿.🍄W', 'W.....W', 'W.🍄.🍄.W', ' WWWWW ']
+    },
+    // --- NEW ROOMS ---
+    "The Obelisk Chamber": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.....W', 'W..|..W', 'W.|#|.W', 'W..|..W', 'W.....W', ' WWWWW ']
+    },
+    "Miner's Folly": {
+        width: 7, height: 5,
+        map: [' WWWWW ', 'W⛏️.🦴.W', 'W.....W', 'W.⛺.K.W', ' WWWWW ']
+    },
+    "Lava Vent": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W..~..W', 'W.~~~.W', 'W~🔥~.W', 'W.~~~.W', 'W..~..W', ' WWWWW ']
     }
 };
 
@@ -1153,5 +1105,12 @@ window.ATMOSPHERE_TEXT = {
         "A strange, glowing light bobs over the water nearby.",
         "The trees here are draped in grey, weeping moss.",
         "You pull your boot out of the mud with a loud squelch."
+    ],
+    // NEW ATMOSPHERE
+    RUIN: [
+        "The stones here tell a story of violence and forgotten ages.",
+        "You hear a faint scratching sound from behind the wall.",
+        "The air smells of ancient dust and copper.",
+        "A cold draft whistles through the crumbling masonry."
     ]
 };
