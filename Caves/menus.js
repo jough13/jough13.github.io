@@ -1,5 +1,6 @@
 function openTalentModal() {
-    inputQueue = [];
+    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     renderTalentTree();
     talentModal.classList.remove('hidden');
 }
@@ -11,87 +12,101 @@ function renderTalentTree() {
 
     talentPointsDisplay.textContent = `Mastery Points: ${player.talentPoints || 0}`;
 
+    // PERFORMANCE: Use DocumentFragment
+    const fragment = document.createDocumentFragment();
+
     for (const key in TALENT_DATA) {
         const talent = TALENT_DATA[key];
         const isLearned = playerTalents.includes(key);
         const canAfford = (player.talentPoints > 0);
 
         const div = document.createElement('div');
-        div.className = `panel p-3 rounded border ${isLearned ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-gray-600'}`;
+        div.className = `panel p-3 rounded-lg border-2 transition-colors duration-200 ${isLearned ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-gray-600 hover:border-gray-500'}`;
 
         let btnHtml = '';
         if (isLearned) {
-            btnHtml = `<span class="text-green-500 font-bold text-sm">Learned</span>`;
+            btnHtml = `<span class="text-green-500 font-bold text-sm tracking-wide uppercase">Learned</span>`;
         } else if (canAfford) {
-            btnHtml = `<button onclick="learnTalent('${key}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm">Learn</button>`;
+            btnHtml = `<button onclick="learnTalent('${key}')" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold shadow-md transition-transform active:scale-95">Learn</button>`;
         } else {
-            btnHtml = `<span class="text-gray-500 text-sm">Locked</span>`;
+            btnHtml = `<span class="text-gray-500 text-sm tracking-wide uppercase font-bold">Locked</span>`;
         }
 
         div.innerHTML = `
             <div class="flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <div class="text-2xl">${talent.icon}</div>
+                <div class="flex items-center gap-4">
+                    <div class="text-3xl">${talent.icon}</div>
                     <div>
-                        <div class="font-bold">${talent.name} <span class="text-xs text-gray-400 uppercase">[${talent.class}]</span></div>
-                        <div class="text-xs text-gray-300">${talent.description}</div>
+                        <div class="font-bold text-lg">${talent.name} <span class="text-[10px] text-gray-400 uppercase tracking-widest ml-2">${talent.class}</span></div>
+                        <div class="text-xs text-gray-300 mt-1">${talent.description}</div>
                     </div>
                 </div>
                 <div>${btnHtml}</div>
             </div>
         `;
-        talentListDiv.appendChild(div);
+        fragment.appendChild(div);
     }
+    talentListDiv.appendChild(fragment);
 }
 
 
 // Global scope for HTML onclick
 window.learnTalent = function (talentId) {
     const player = gameState.player;
-    if (!player.talentPoints || player.talentPoints <= 0) return;
+    if (!player.talentPoints || player.talentPoints <= 0) {
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
+    }
     if (player.talents && player.talents.includes(talentId)) return;
 
     if (!player.talents) player.talents = [];
     player.talents.push(talentId);
     player.talentPoints--;
 
-    logMessage(`You mastered the ${TALENT_DATA[talentId].name} talent!`);
+    logMessage(`{purple:You mastered the ${TALENT_DATA[talentId].name} talent!}`);
     triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
 
-    playerRef.update({
-        talents: player.talents,
-        talentPoints: player.talentPoints
-    });
+    if (typeof playerRef !== 'undefined') {
+        playerRef.update({
+            talents: player.talents,
+            talentPoints: player.talentPoints
+        });
+    }
 
     renderTalentTree();
 };
 
 function openEvolutionModal() {
+    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    
     // 1. Get player's base class (e.g., 'warrior')
-    // We stored this in 'player.background' in your save system
     const baseClass = gameState.player.background;
     const options = EVOLUTION_DATA[baseClass];
 
     if (!options) return; // Should not happen if data is correct
 
     evolutionOptionsDiv.innerHTML = '';
+    const fragment = document.createDocumentFragment();
 
     options.forEach(evo => {
         const div = document.createElement('div');
-        div.className = "panel p-4 rounded-xl border-2 hover:border-yellow-500 cursor-pointer transition-all";
+        div.className = "panel p-5 rounded-xl border-2 border-gray-600 hover:border-yellow-500 cursor-pointer transition-all transform hover:-translate-y-1 shadow-lg";
         div.onclick = () => selectEvolution(evo);
         div.innerHTML = `
-            <div class="text-4xl mb-2">${evo.icon}</div>
-            <h3 class="text-xl font-bold text-highlight">${evo.name}</h3>
-            <p class="text-sm text-gray-500 mb-2">${evo.description}</p>
-            <div class="text-xs font-bold text-green-500">
-                ${Object.entries(evo.stats).map(([k, v]) => `+${v} ${k}`).join(', ')}
+            <div class="text-5xl mb-3">${evo.icon}</div>
+            <h3 class="text-2xl font-bold text-yellow-500 mb-1" style="font-family: 'Uncial Antiqua', cursive;">${evo.name}</h3>
+            <p class="text-sm text-gray-300 mb-4 h-10">${evo.description}</p>
+            <div class="text-xs font-bold text-green-400 bg-black bg-opacity-30 p-2 rounded">
+                ${Object.entries(evo.stats).map(([k, v]) => `+${v} ${k.substring(0,3).toUpperCase()}`).join(', ')}
             </div>
         `;
-        evolutionOptionsDiv.appendChild(div);
+        fragment.appendChild(div);
     });
 
+    evolutionOptionsDiv.appendChild(fragment);
     evolutionModal.classList.remove('hidden');
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
 }
 
 function selectEvolution(evoData) {
@@ -114,28 +129,37 @@ function selectEvolution(evoData) {
     player.talents.push(evoData.talent);
 
     // 4. Update max health/mana if constitution/wits changed
-    if (evoData.stats.constitution) player.maxHealth += (evoData.stats.constitution * 5);
-    if (evoData.stats.wits) player.maxMana += (evoData.stats.wits * 5);
-    if (evoData.stats.maxMana) player.maxMana += evoData.stats.maxMana; // Direct mana buff
+    if (typeof recalculateDerivedStats === 'function') {
+        recalculateDerivedStats();
+    } else {
+        if (evoData.stats.constitution) player.maxHealth += (evoData.stats.constitution * 5);
+        if (evoData.stats.wits) player.maxMana += (evoData.stats.wits * 5);
+        if (evoData.stats.maxMana) player.maxMana += evoData.stats.maxMana; 
+    }
 
     // 5. Full Heal on Evolve
     player.health = player.maxHealth;
     player.mana = player.maxMana;
 
     // 6. Save & Close
-    logMessage(`You have evolved into a ${evoData.name}!`);
-    playerRef.update({
-        ...player, // Saves stats, character icon, talents
-        classEvolved: true
-    });
+    logMessage(`{yellow:You have evolved into a ${evoData.name}!}`);
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+    
+    if (typeof playerRef !== 'undefined') {
+        playerRef.update({
+            ...player, 
+            classEvolved: true
+        });
+    }
 
     evolutionModal.classList.add('hidden');
     renderStats();
-    render(); // Update sprite on screen
+    if (typeof render === 'function') render(); 
 }
 
 function openBountyBoard() {
-    inputQueue = [];
+    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     renderBountyBoard();
     questModal.classList.remove('hidden');
 }
@@ -143,7 +167,8 @@ function openBountyBoard() {
 // Renders the content of the bounty board
 function renderBountyBoard() {
     questList.innerHTML = '';
-    const playerQuests = gameState.player.quests;
+    const playerQuests = gameState.player.quests || {};
+    const fragment = document.createDocumentFragment();
 
     // Loop through all defined quests
     for (const questId in QUEST_DATA) {
@@ -152,137 +177,148 @@ function renderBountyBoard() {
         if (quest.type === 'fetch' || quest.type === 'collect') continue;
 
         const playerQuest = playerQuests[questId];
-        let questHtml = '';
+        
+        const div = document.createElement('div');
+        div.className = 'quest-item p-4 mb-3 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-50';
 
         if (!playerQuest) {
             // --- Scenario 1: Quest is Available ---
-            questHtml = `
-                <div class="quest-item">
-                    <div class="quest-title">${quest.title}</div>
-                    <div class="quest-description">${quest.description} (Reward: ${quest.reward.xp} XP, ${quest.reward.coins} Gold)</div>
-                    <div class="quest-actions">
-                        <button data-quest-id="${questId}" data-action="accept">Accept</button>
-                    </div>
+            div.innerHTML = `
+                <div class="flex-grow pr-4">
+                    <div class="text-lg font-bold text-yellow-500 mb-1">${quest.title}</div>
+                    <div class="text-xs text-gray-300 mb-2">${quest.description}</div>
+                    <div class="text-[10px] font-bold text-green-400 uppercase tracking-widest">Reward: ${quest.reward.xp} XP | ${quest.reward.coins} Gold</div>
+                </div>
+                <div class="flex-none">
+                    <button data-quest-id="${questId}" data-action="accept" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold shadow transition-transform active:scale-95">Accept</button>
                 </div>`;
         } else if (playerQuest.status === 'active') {
             // --- Scenario 2: Quest is In-Progress ---
-            const progress = `(${playerQuest.kills} / ${quest.needed})`;
+            const progress = `(${playerQuest.kills || 0} / ${quest.needed})`;
             let actionButton = '';
 
             if (playerQuest.kills >= quest.needed) {
                 // --- 2a: Ready to Turn In ---
-                actionButton = `<button data-quest-id="${questId}" data-action="turnin">Turn In</button>`;
+                div.classList.add('border-green-500');
+                actionButton = `<button data-quest-id="${questId}" data-action="turnin" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-sm font-bold shadow transition-transform active:scale-95 animate-pulse">Turn In</button>`;
             } else {
                 // --- 2b: Still in progress ---
-                actionButton = `<button disabled>In Progress</button>`;
+                actionButton = `<button disabled class="bg-gray-700 text-gray-400 px-4 py-2 rounded text-sm font-bold opacity-50 cursor-not-allowed">In Progress</button>`;
             }
 
-            questHtml = `
-                <div class="quest-item">
-                    <div class="quest-title">${quest.title}</div>
-                    <div class="quest-progress">Progress: ${progress}</div>
-                    <div class="quest-actions">${actionButton}</div>
-                </div>`;
+            div.innerHTML = `
+                <div class="flex-grow pr-4">
+                    <div class="text-lg font-bold text-yellow-500 mb-1">${quest.title}</div>
+                    <div class="text-sm font-bold text-gray-300">Progress: <span class="${playerQuest.kills >= quest.needed ? 'text-green-400' : 'text-blue-400'}">${progress}</span></div>
+                </div>
+                <div class="flex-none">${actionButton}</div>`;
         } else if (playerQuest.status === 'completed') {
             // --- Scenario 3: Quest is Done ---
-            questHtml = `
-                <div class="quest-item">
-                    <div class="quest-title">${quest.title}</div>
-                    <div class="quest-description">You have already completed this bounty.</div>
-                    <div class="quest-actions"><button disabled>Completed</button></div>
+            div.classList.add('opacity-50');
+            div.innerHTML = `
+                <div class="flex-grow pr-4">
+                    <div class="text-lg font-bold text-gray-500 mb-1 line-through">${quest.title}</div>
+                    <div class="text-xs text-gray-500">Bounty collected.</div>
+                </div>
+                <div class="flex-none">
+                    <button disabled class="bg-gray-800 text-gray-600 px-4 py-2 rounded text-sm font-bold border border-gray-700 cursor-not-allowed">Completed</button>
                 </div>`;
         }
-        questList.innerHTML += questHtml;
+        fragment.appendChild(div);
     }
+    questList.appendChild(fragment);
 }
 
 function acceptQuest(questId) {
     const quest = QUEST_DATA[questId];
     if (!quest) return;
 
-    logMessage(`New Quest Accepted: ${quest.title}`);
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+    logMessage(`{yellow:New Quest Accepted: ${quest.title}}`);
+    
+    if (!gameState.player.quests) gameState.player.quests = {};
+    
     gameState.player.quests[questId] = {
         status: 'active',
         kills: 0
     };
+    
+    if (typeof playerRef !== 'undefined') {
+        playerRef.update({ quests: gameState.player.quests });
+    }
 
-    renderBountyBoard(); // Re-render the modal
+    renderBountyBoard(); 
 }
 
 function turnInQuest(questId) {
     const quest = QUEST_DATA[questId];
     const playerQuest = gameState.player.quests[questId];
 
-    // --- MODIFY THIS BLOCK ---
-    if (!quest || !playerQuest) { // <-- Simplified check
+    if (!quest || !playerQuest || playerQuest.status !== 'active') { 
         logMessage("Quest is not active.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
-    let hasRequirements = true; // Assume true
-    let itemIndex = -1; // To store the item's location
+    let hasRequirements = true; 
+    let itemIndex = -1; 
 
     if (quest.type === 'fetch') {
-        // --- Check for item ---
         itemIndex = gameState.player.inventory.findIndex(item => item.name === quest.itemNeeded && !item.isEquipped);
         if (itemIndex === -1) {
             logMessage(`You don't have the ${quest.itemNeeded}!`);
             hasRequirements = false;
         }
-
     } else if (quest.type === 'collect') {
-        // --- Check for a stack of items ---
         itemIndex = gameState.player.inventory.findIndex(item => item.name === quest.itemNeeded);
-
         if (itemIndex === -1 || gameState.player.inventory[itemIndex].quantity < quest.needed) {
             logMessage(`You don't have enough ${quest.itemNeeded}s! You need ${quest.needed}.`);
             hasRequirements = false;
         }
-
     } else {
-        // --- Check for kills ---
-        if (playerQuest.kills < quest.needed) {
+        // Checking kills
+        if ((playerQuest.kills || 0) < quest.needed) {
             logMessage("Quest is not ready to turn in.");
             hasRequirements = false;
         }
     }
 
     if (!hasRequirements) {
-        return; // Stop if they don't have the item or kills
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return; 
     }
 
     // --- Give Rewards ---
-    logMessage(`Quest Complete! You gained ${quest.reward.xp} XP and ${quest.reward.coins} Gold!`);
-    grantXp(quest.reward.xp);
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+    logMessage(`{green:Quest Complete! You gained ${quest.reward.xp} XP and ${quest.reward.coins} Gold!}`);
+    
+    if (typeof grantXp === 'function') grantXp(quest.reward.xp);
     gameState.player.coins += quest.reward.coins;
 
     if (quest.reward.item) {
-        const rewardItem = Object.values(ITEM_DATA).find(i => i.name === quest.reward.item);
-        if (rewardItem) {
-            // Check keys to find the tile char
+        const rewardItemTemplate = Object.values(ITEM_DATA).find(i => i.name === quest.reward.item);
+        if (rewardItemTemplate) {
             const rewardKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === quest.reward.item);
             const qty = quest.reward.itemQty || 1;
 
-            if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+            if (gameState.player.inventory.length < 9) { // MAX_INVENTORY_SLOTS
                 gameState.player.inventory.push({
                     templateId: rewardKey,
-                    name: rewardItem.name,
-                    type: rewardItem.type,
+                    name: rewardItemTemplate.name,
+                    type: rewardItemTemplate.type,
                     quantity: qty,
                     tile: rewardKey || '?',
-                    damage: rewardItem.damage || null,
-                    defense: rewardItem.defense || null,
-                    slot: rewardItem.slot || null,
-                    statBonuses: rewardItem.statBonuses || null,
-                    effect: rewardItem.effect // Bind effect function
+                    damage: rewardItemTemplate.damage || null,
+                    defense: rewardItemTemplate.defense || null,
+                    slot: rewardItemTemplate.slot || null,
+                    statBonuses: rewardItemTemplate.statBonuses || null,
+                    effect: rewardItemTemplate.effect 
                 });
-                logMessage(`You received: ${rewardItem.name} (x${qty})`);
+                logMessage(`{purple:You received: ${rewardItemTemplate.name} (x${qty})}`);
             } else {
-                logMessage(`Your inventory is full! The ${rewardItem.name} falls to the ground.`);
+                logMessage(`{red:Your inventory is full! The ${rewardItemTemplate.name} falls to the ground.}`);
+                const dropTile = rewardKey || '🎒'; 
                 
-                const dropTile = rewardKey || '🎒'; // Fallback to a bag icon if missing
-                
-                // Place the item on the map under the player
                 if (gameState.mapMode === 'overworld') {
                     chunkManager.setWorldTile(gameState.player.x, gameState.player.y, dropTile);
                 } else if (gameState.mapMode === 'dungeon') {
@@ -291,54 +327,50 @@ function turnInQuest(questId) {
                     chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x] = dropTile;
                 }
                 
-                // Clear the "looted" memory for this exact coordinate so it can be picked up!
+                // Clear the looted memory for this coordinate so it can be picked up
                 let tileId = (gameState.mapMode === 'overworld') 
                     ? `${gameState.player.x},${-gameState.player.y}`
                     : `${gameState.currentCaveId || gameState.currentCastleId}:${gameState.player.x},${-gameState.player.y}`;
                 gameState.lootedTiles.delete(tileId);
                 
                 gameState.mapDirty = true;
-                render(); // Force redraw so they see the item instantly
+                if (typeof render === 'function') render(); 
             }
         }
     }
 
-    // --- Mark as Completed ---
+    // --- Mark as Completed & Cleanup Items ---
     playerQuest.status = 'completed';
 
     if (quest.type === 'fetch' && itemIndex > -1) {
-    
         gameState.player.inventory.splice(itemIndex, 1);
-
     } else if (quest.type === 'collect' && itemIndex > -1) {
-        // --- Remove the required quantity from the stack ---
         const itemStack = gameState.player.inventory[itemIndex];
         itemStack.quantity -= quest.needed;
-
-        // If the stack is now empty, remove the item
         if (itemStack.quantity <= 0) {
             gameState.player.inventory.splice(itemIndex, 1);
         }
     }
 
-    // --- Update database (must include inventory!) ---
+    if (typeof playerRef !== 'undefined') {
+        playerRef.update({
+            quests: gameState.player.quests,
+            coins: gameState.player.coins,
+            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
+        });
+    }
 
-    playerRef.update({
-        quests: gameState.player.quests,
-        coins: gameState.player.coins,
-        inventory: getSanitizedInventory()
-    });
-
-    renderBountyBoard(); // Re-render the modal
-    renderStats(); // Update coins display
-    renderInventory();
+    renderBountyBoard(); 
+    if (typeof renderStats === 'function') renderStats(); 
+    if (typeof renderInventory === 'function') renderInventory();
 }
 
 
 // --- COLLECTIONS (BESTIARY & LIBRARY) ---
 
 function openCollections() {
-    inputQueue = [];
+    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     renderBestiary();
     renderLibrary();
     collectionsModal.classList.remove('hidden');
@@ -347,7 +379,13 @@ function openCollections() {
 function renderBestiary() {
     bestiaryView.innerHTML = '';
     const kills = gameState.player.killCounts || {};
-    const sortedEnemies = Object.keys(ENEMY_DATA).sort((a, b) => ENEMY_DATA[a].name.localeCompare(ENEMY_DATA[b].name));
+    
+    // Safely sort only items that exist in ENEMY_DATA
+    const sortedEnemies = Object.keys(ENEMY_DATA)
+        .filter(k => ENEMY_DATA[k] && ENEMY_DATA[k].name)
+        .sort((a, b) => ENEMY_DATA[a].name.localeCompare(ENEMY_DATA[b].name));
+
+    const fragment = document.createDocumentFragment();
 
     sortedEnemies.forEach(key => {
         const data = ENEMY_DATA[key];
@@ -358,91 +396,86 @@ function renderBestiary() {
         const unlockedStats = count >= 5;
         const unlockedLore = count >= 10;
 
+        const div = document.createElement('div');
+
         if (!unlockedName) {
-            // Show ??? entry
-            const div = document.createElement('div');
-            div.className = 'bestiary-entry opacity-50';
-            div.innerHTML = `<div class="bestiary-icon">?</div><div>Unknown Creature</div>`;
-            bestiaryView.appendChild(div);
+            div.className = 'bestiary-entry opacity-40 p-3 mb-2 border border-gray-700 rounded bg-black bg-opacity-20 flex items-center gap-4';
+            div.innerHTML = `<div class="text-3xl w-12 text-center text-gray-600">?</div><div class="font-bold text-gray-500">Unknown Creature</div>`;
+            fragment.appendChild(div);
             return;
         }
 
-        let statsHtml = `<span class="text-xs">Kills: ${count}</span>`;
+        let statsHtml = `<span class="text-[10px] uppercase font-bold tracking-widest text-gray-400">Kills: ${count}</span>`;
         if (unlockedStats) {
-            statsHtml += `<br><span class="text-green-600">HP: ${data.maxHealth}</span> | <span class="text-red-500">Atk: ${data.attack}</span> | <span class="text-blue-500">Def: ${data.defense}</span>`;
+            statsHtml += `<br><span class="text-green-500 font-bold text-xs mt-1 inline-block">HP: ${data.maxHealth}</span> <span class="text-gray-600 mx-1">|</span> <span class="text-red-500 font-bold text-xs">Atk: ${data.attack}</span> <span class="text-gray-600 mx-1">|</span> <span class="text-blue-400 font-bold text-xs">Def: ${data.defense || 0}</span>`;
         } else {
-            statsHtml += `<br><span class="text-xs italic text-gray-400">Kill 5 to reveal stats</span>`;
+            statsHtml += `<br><span class="text-[10px] italic text-gray-500 mt-1 inline-block">Defeat 5 to reveal stats</span>`;
         }
 
         let loreHtml = '';
         if (unlockedLore && data.flavor) {
-            loreHtml = `<div class="text-xs mt-1 italic text-gray-600">"${data.flavor}"</div>`;
+            loreHtml = `<div class="text-xs mt-2 italic text-gray-400 border-l-2 border-gray-600 pl-2">"${data.flavor}"</div>`;
         } else if (!unlockedLore) {
-            loreHtml = `<div class="text-xs mt-1 text-gray-300">Kill 10 to reveal lore</div>`;
+            loreHtml = `<div class="text-[10px] mt-2 italic text-gray-600">Defeat 10 to reveal lore</div>`;
         }
 
-        const div = document.createElement('div');
-        div.className = 'bestiary-entry';
+        div.className = 'bestiary-entry p-3 mb-2 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-40 transition-colors hover:border-gray-500';
         div.innerHTML = `
-            <div class="flex items-center gap-4">
-                <div class="bestiary-icon">${key}</div>
-                <div class="bestiary-info">
-                    <h4>${data.name}</h4>
+            <div class="flex items-start gap-4">
+                <div class="text-4xl w-12 text-center" style="text-shadow: 2px 2px 0 #000;">${key}</div>
+                <div class="flex-grow">
+                    <h4 class="font-bold text-lg text-yellow-500 leading-none mb-1">${data.name}</h4>
                     ${statsHtml}
                     ${loreHtml}
                 </div>
             </div>
         `;
-        bestiaryView.appendChild(div);
+        fragment.appendChild(div);
     });
+    
+    bestiaryView.appendChild(fragment);
 }
-
-
 
 function renderLibrary() {
     libraryView.innerHTML = '';
     const player = gameState.player;
-    // Ensure the set exists from previous step
     const foundEntries = new Set(player.foundCodexEntries || []);
+    const fragment = document.createDocumentFragment();
 
-    // 1. Loop through defined Sets
     for (const setKey in LORE_SETS) {
         const set = LORE_SETS[setKey];
         const isComplete = player.completedLoreSets && player.completedLoreSets.includes(setKey);
         
-        // Count progress
         const foundCount = set.items.filter(id => foundEntries.has(id)).length;
         const totalCount = set.items.length;
 
-        // Render Set Container
         const setDiv = document.createElement('div');
-        setDiv.className = `panel p-3 mb-2 rounded border-2 ${isComplete ? 'border-yellow-500 bg-yellow-900 bg-opacity-10' : 'border-gray-600'}`;
+        setDiv.className = `panel p-4 mb-3 rounded-lg border-2 transition-colors duration-200 ${isComplete ? 'border-yellow-500 bg-yellow-900 bg-opacity-10' : 'border-gray-600 hover:border-gray-500'}`;
         
         let headerHtml = `
-            <div class="flex justify-between items-center cursor-pointer" onclick="toggleSetDetails('${setKey}')">
-                <h3 class="font-bold ${isComplete ? 'text-yellow-500' : ''}">${set.name}</h3>
-                <span class="text-xs">${foundCount}/${totalCount}</span>
+            <div class="flex justify-between items-center cursor-pointer mb-1" onclick="toggleSetDetails('${setKey}')">
+                <h3 class="font-bold text-lg m-0 p-0 border-none ${isComplete ? 'text-yellow-500' : 'text-gray-200'}">${set.name}</h3>
+                <span class="text-xs font-bold bg-black bg-opacity-30 px-2 py-1 rounded">${foundCount} / ${totalCount}</span>
             </div>
-            <div class="text-xs text-gray-400 italic">${set.description}</div>
-            <div class="text-xs text-green-400 mt-1">${isComplete ? 'Bonus Active: ' + set.bonus : ''}</div>
+            <div class="text-xs text-gray-400 italic mb-2">${set.description}</div>
+            ${isComplete ? `<div class="text-[10px] uppercase tracking-widest font-bold text-green-400 mt-2 bg-green-900 bg-opacity-20 p-2 rounded border border-green-800">Bonus Active: ${set.bonus}</div>` : ''}
         `;
 
-        // Render Entries inside the set (Hidden by default or separate logic)
-        let entriesHtml = '<div class="mt-2 space-y-1 pl-2 border-l-2 border-gray-700 hidden" id="set-content-' + setKey + '">';
+        let entriesHtml = '<div class="mt-3 space-y-1 pl-3 border-l-2 border-gray-600 hidden transition-all" id="set-content-' + setKey + '">';
         
         set.items.forEach(itemId => {
-            const itemData = ITEM_DATA[itemId];
+            const itemData = ITEM_DATA[itemId] || { name: 'Unknown Fragment', title: 'Unknown' };
             const hasFound = foundEntries.has(itemId);
             
             if (hasFound) {
                 entriesHtml += `
-                    <div class="text-sm p-1 hover:bg-gray-700 cursor-pointer rounded" 
+                    <div class="text-sm p-2 hover:bg-gray-700 cursor-pointer rounded transition-colors text-blue-300 font-bold" 
                          onclick="openSpecificLore('${itemId}')">
                         📄 ${itemData.title || itemData.name}
                     </div>`;
             } else {
                 entriesHtml += `
-                    <div class="text-sm p-1 text-gray-600">
+                    <div class="text-sm p-2 text-gray-600 italic">
                         🔒 Undiscovered Entry
                     </div>`;
             }
@@ -450,20 +483,26 @@ function renderLibrary() {
         entriesHtml += '</div>';
 
         setDiv.innerHTML = headerHtml + entriesHtml;
-        libraryView.appendChild(setDiv);
+        fragment.appendChild(setDiv);
     }
+    
+    libraryView.appendChild(fragment);
 }
 
 // Global helpers for HTML onclicks
 window.toggleSetDetails = function(setKey) {
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     const el = document.getElementById('set-content-' + setKey);
     if (el) el.classList.toggle('hidden');
 };
 
 window.openSpecificLore = function(itemId) {
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     const data = ITEM_DATA[itemId];
-    loreTitle.textContent = data.title;
-    loreContent.textContent = data.content;
+    if (!data) return;
+    
+    loreTitle.textContent = data.title || data.name;
+    loreContent.textContent = data.content || data.description;
     loreModal.classList.remove('hidden');
 };
 
@@ -471,257 +510,233 @@ window.openSpecificLore = function(itemId) {
  * Opens the Skill Trainer modal.
  */
 function openSkillTrainerModal() {
-    renderSkillTrainerModal(); // Populate the list
+    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+    renderSkillTrainerModal(); 
     skillTrainerModal.classList.remove('hidden');
 }
 
 /**
- * Renders the skill trainer modal.
- * Lists all skills from SKILL_DATA and shows their learn/level-up status.
+ * Renders the skill trainer modal using DocumentFragment
  */
-
 function renderSkillTrainerModal() {
-    skillTrainerList.innerHTML = ''; // Clear the old list
+    skillTrainerList.innerHTML = ''; 
     const player = gameState.player;
-    skillTrainerStatPoints.textContent = `Your Stat Points: ${player.statPoints}`;
-    const canAfford = player.statPoints > 0;
+    skillTrainerStatPoints.textContent = `Your Stat Points: ${player.statPoints || 0}`;
+    const canAfford = (player.statPoints || 0) > 0;
+    
+    const fragment = document.createDocumentFragment();
 
     for (const skillId in SKILL_DATA) {
         const skillData = SKILL_DATA[skillId];
-        const currentLevel = player.skillbook[skillId] || 0; // 0 if not learned
+        const currentLevel = player.skillbook[skillId] || 0; 
 
         let buttonHtml = '';
         let levelText = '';
 
         if (currentLevel === 0) {
-            // Player does not know this skill
-            levelText = '<span class="skill-trainer-level text-red-500">Not Learned</span>';
+            levelText = '<span class="text-[10px] uppercase font-bold tracking-widest text-red-500">Not Learned</span>';
             if (player.level >= skillData.requiredLevel) {
-                // Player meets level requirement, show "Learn" button
-                buttonHtml = `<button data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Learn (1 SP)</button>`;
+                buttonHtml = `<button class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-xs font-bold shadow transition-transform active:scale-95 disabled:opacity-50" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Learn (1 SP)</button>`;
             } else {
-                // Player does not meet level requirement
-                buttonHtml = `<button disabled>Requires Lvl ${skillData.requiredLevel}</button>`;
+                buttonHtml = `<button class="bg-gray-700 text-gray-400 px-3 py-2 rounded text-xs font-bold opacity-50 cursor-not-allowed" disabled>Requires Lvl ${skillData.requiredLevel}</button>`;
             }
         } else {
-            // Player knows this skill
-            levelText = `<span class="skill-trainer-level">Level: ${currentLevel}</span>`;
-            // TODO: Add a max level check here later if we want one
-            buttonHtml = `<button data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Level Up (1 SP)</button>`;
+            levelText = `<span class="text-[10px] uppercase font-bold tracking-widest text-blue-400">Level: ${currentLevel}</span>`;
+            buttonHtml = `<button class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded text-xs font-bold shadow transition-transform active:scale-95 disabled:opacity-50" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Upgrade (1 SP)</button>`;
         }
 
-        // Build the full list item
         const li = document.createElement('li');
-        li.className = 'skill-trainer-item';
+        li.className = 'panel p-3 mb-2 rounded-lg border-2 border-gray-600 hover:border-gray-500 transition-colors flex justify-between items-center';
         li.innerHTML = `
-            <div>
-                <span class="skill-trainer-name">${skillData.name}</span>
-                <span class="skill-trainer-desc">${skillData.description}</span>
+            <div class="flex-grow pr-4">
+                <div class="font-bold text-lg text-yellow-500 mb-1">${skillData.name}</div>
+                <div class="text-xs text-gray-300 leading-tight">${skillData.description}</div>
             </div>
-            <div class="text-right">
+            <div class="flex-none flex flex-col items-end gap-2">
                 ${levelText}
-                <div class="skill-trainer-actions mt-1">
-                    ${buttonHtml}
-                </div>
+                ${buttonHtml}
             </div>
         `;
-        skillTrainerList.appendChild(li);
+        fragment.appendChild(li);
     }
+    
+    skillTrainerList.appendChild(fragment);
 }
 
 /**
  * Handles the logic of spending a stat point to learn or level up a skill.
- * @param {string} skillId - The ID of the skill to learn (e.g., "brace").
+ * @param {string} skillId - The ID of the skill to learn.
  */
-
 function handleLearnSkill(skillId) {
     const player = gameState.player;
     const skillData = SKILL_DATA[skillId];
 
-    // --- Final Security Checks ---
-    if (player.statPoints <= 0) {
-        logMessage("You don't have any Stat Points to spend.");
+    if ((player.statPoints || 0) <= 0) {
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
-    if (!skillData) {
-        logMessage("That skill doesn't exist.");
-        return;
-    }
+    if (!skillData) return;
 
     const currentLevel = player.skillbook[skillId] || 0;
     if (currentLevel === 0 && player.level < skillData.requiredLevel) {
-        logMessage("You are not high enough level to learn that.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
-    // --- End Checks ---
 
-    // Spend the point
     player.statPoints--;
 
     if (currentLevel === 0) {
-        // --- Learn the skill ---
         player.skillbook[skillId] = 1;
-        logMessage(`You have learned ${skillData.name} (Level 1)!`);
+        logMessage(`{green:You have learned ${skillData.name} (Level 1)!}`);
     } else {
-        // --- Level up the skill ---
         player.skillbook[skillId]++;
-        logMessage(`${skillData.name} is now Level ${player.skillbook[skillId]}!`);
+        logMessage(`{blue:${skillData.name} is now Level ${player.skillbook[skillId]}!}`);
     }
 
-    // Update database
-    playerRef.update({
-        statPoints: player.statPoints,
-        skillbook: player.skillbook
-    });
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
 
-    // Update UI
-    renderStats(); // Update the main UI stat point display
-    renderSkillTrainerModal(); // Re-render the modal to show new state
+    if (typeof playerRef !== 'undefined') {
+        playerRef.update({
+            statPoints: player.statPoints,
+            skillbook: player.skillbook
+        });
+    }
+
+    if (typeof renderStats === 'function') renderStats(); 
+    renderSkillTrainerModal(); 
 }
 
 // --- SPELLBOOK & SKILLBOOK UI ---
 
-
-/**
- * Opens the spellbook modal.
- * Dynamically renders the list of spells the player knows
- * based on their spellbook and the SPELL_DATA.
- */
-
 function openSpellbook() {
-    inputQueue = [];
-    spellList.innerHTML = ''; // Clear the list
+    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+    
+    spellList.innerHTML = ''; 
     const player = gameState.player;
     const playerSpells = player.spellbook || {};
+    const fragment = document.createDocumentFragment();
 
-    // Check if the spellbook is empty
     if (Object.keys(playerSpells).length === 0) {
-        spellList.innerHTML = '<li class="spell-item-details italic p-4">Your spellbook is empty.</li>';
+        spellList.innerHTML = '<li class="italic text-gray-500 p-4 text-center">Your spellbook is empty.</li>';
         spellModal.classList.remove('hidden');
         return;
     }
 
-    // Loop through every spell the player knows
     for (const spellId in playerSpells) {
         const spellLevel = playerSpells[spellId];
-        const spellData = SPELL_DATA[spellId]; // Get data from our new constant
+        const spellData = SPELL_DATA[spellId]; 
 
-        if (!spellData) {
-            console.warn(`Player has unknown spell in spellbook: ${spellId}`);
-            continue;
-        }
+        if (!spellData) continue;
 
         let canCast = false;
         let costString = `${spellData.cost} ${spellData.costType}`;
-        let costColorClass = ""; // CSS class for cost, e.g., text-red-500
+        let costColorClass = "text-blue-400"; 
 
-        // Check if the player has enough resources to cast
         if (spellData.costType === 'mana') {
             canCast = player.mana >= spellData.cost;
             if (!canCast) costColorClass = "text-red-500";
         } else if (spellData.costType === 'psyche') {
             canCast = player.psyche >= spellData.cost;
             if (!canCast) costColorClass = "text-red-500";
+            else costColorClass = "text-purple-400";
+        } else if (spellData.costType === 'health') {
+            canCast = player.health > spellData.cost;
+            if (!canCast) costColorClass = "text-red-500";
+            else costColorClass = "text-green-500";
         }
 
-        // Build the new list item element
         const li = document.createElement('li');
-        li.className = 'spell-item';
-        li.dataset.spell = spellId; // Use the spell's ID (e.g., "lesserHeal")
+        li.className = `spell-item p-3 mb-2 rounded-lg border-2 transition-all cursor-pointer ${canCast ? 'border-gray-600 hover:border-blue-500 hover:-translate-y-1 shadow hover:shadow-lg' : 'border-gray-800 opacity-50'}`;
+        li.dataset.spell = spellId; 
 
-        // Make the item look disabled if it can't be cast
-        if (!canCast) {
-            li.classList.add('opacity-50', 'cursor-not-allowed');
-        }
-
-        // Set the dynamic HTML for the spell
         li.innerHTML = `
-            <div>
-                <span class="spell-item-name">${spellData.name} (Lvl ${spellLevel})</span>
-                <span class="spell-item-details">${spellData.description}</span>
+            <div class="flex-grow pr-4">
+                <div class="font-bold text-lg mb-1 flex items-center gap-2">
+                    ${spellData.name} 
+                    <span class="text-[10px] bg-black bg-opacity-30 px-2 py-0.5 rounded text-gray-300">Lvl ${spellLevel}</span>
+                </div>
+                <div class="text-xs text-gray-400 leading-tight">${spellData.description}</div>
             </div>
-            <div class="flex flex-col items-end">
-                <span class="font-bold ${costColorClass}">${costString}</span>
-                <button class="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded mt-1" 
+            <div class="flex-none flex flex-col items-end gap-2">
+                <span class="text-xs font-bold uppercase tracking-widest ${costColorClass}">${costString}</span>
+                <button class="text-[10px] bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded shadow uppercase font-bold transition-transform active:scale-95" 
                     onclick="assignToHotbar('${spellId}'); event.stopPropagation();">
                     Assign
                 </button>
             </div>
         `;
 
-        spellList.appendChild(li);
+        fragment.appendChild(li);
     }
 
-    spellModal.classList.remove('hidden'); // Show the modal
+    spellList.appendChild(fragment);
+    spellModal.classList.remove('hidden'); 
 }
 
-/**
- * Opens the skillbook modal.
- * Dynamically renders the list of skills the player knows
- * based on their skillbook and the SKILL_DATA.
- */
-
 function openSkillbook() {
-    inputQueue = [];
-    skillList.innerHTML = ''; // Clear the list
+    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+    
+    skillList.innerHTML = ''; 
     const player = gameState.player;
     const playerSkills = player.skillbook || {};
+    const fragment = document.createDocumentFragment();
 
-    // Check if the skillbook is empty
     if (Object.keys(playerSkills).length === 0) {
-        skillList.innerHTML = '<li class="spell-item-details italic p-4">You have not learned any skills.</li>';
+        skillList.innerHTML = '<li class="italic text-gray-500 p-4 text-center">You have not learned any skills.</li>';
         skillModal.classList.remove('hidden');
         return;
     }
 
-    // Loop through every skill the player knows
     for (const skillId in playerSkills) {
         const skillLevel = playerSkills[skillId];
-        const skillData = SKILL_DATA[skillId]; // Get data from our new constant
+        const skillData = SKILL_DATA[skillId]; 
 
-        if (!skillData) {
-            console.warn(`Player has unknown skill in skillbook: ${skillId}`);
-            continue;
-        }
+        if (!skillData) continue;
 
         let canUse = false;
         let costString = `${skillData.cost} ${skillData.costType}`;
-        let costColorClass = ""; // CSS class for cost, e.g., text-red-500
+        let costColorClass = "text-yellow-500"; 
 
-        // Check if the player has enough resources to use
         if (skillData.costType === 'stamina') {
             canUse = player.stamina >= skillData.cost;
             if (!canUse) costColorClass = "text-red-500";
+        } else if (skillData.costType === 'psyche') {
+            canUse = player.psyche >= skillData.cost;
+            if (!canUse) costColorClass = "text-red-500";
+            else costColorClass = "text-purple-400";
+        } else if (skillData.costType === 'health') {
+            canUse = player.health > skillData.cost;
+            if (!canUse) costColorClass = "text-red-500";
+            else costColorClass = "text-green-500";
         }
-        // (We can add other cost types here later, like 'health')
 
-        // Build the new list item element
         const li = document.createElement('li');
-        li.className = 'skill-item'; // Use 'skill-item'
-        li.dataset.skill = skillId; // Use the skill's ID (e.g., "brace")
+        li.className = `skill-item p-3 mb-2 rounded-lg border-2 transition-all cursor-pointer ${canUse ? 'border-gray-600 hover:border-yellow-500 hover:-translate-y-1 shadow hover:shadow-lg' : 'border-gray-800 opacity-50'}`;
+        li.dataset.skill = skillId; 
 
-        // Make the item look disabled if it can't be used
-        if (!canUse) {
-            li.classList.add('opacity-50', 'cursor-not-allowed');
-        }
-
-        // Set the dynamic HTML for the skill
         li.innerHTML = `
-            <div>
-                <span class="skill-item-name">${skillData.name} (Lvl ${skillLevel})</span>
-                <span class="spell-item-details">${skillData.description}</span>
+            <div class="flex-grow pr-4">
+                <div class="font-bold text-lg mb-1 flex items-center gap-2">
+                    ${skillData.name} 
+                    <span class="text-[10px] bg-black bg-opacity-30 px-2 py-0.5 rounded text-gray-300">Lvl ${skillLevel}</span>
+                </div>
+                <div class="text-xs text-gray-400 leading-tight">${skillData.description}</div>
             </div>
-            <div class="flex flex-col items-end">
-                <span class="font-bold ${costColorClass}">${costString}</span>
-                <button class="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded mt-1" 
+            <div class="flex-none flex flex-col items-end gap-2">
+                <span class="text-xs font-bold uppercase tracking-widest ${costColorClass}">${costString}</span>
+                <button class="text-[10px] bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded shadow uppercase font-bold transition-transform active:scale-95" 
                     onclick="assignToHotbar('${skillId}'); event.stopPropagation();">
                     Assign
                 </button>
             </div>
         `;
 
-        skillList.appendChild(li);
+        fragment.appendChild(li);
     }
 
-    skillModal.classList.remove('hidden'); // Show the modal
+    skillList.appendChild(fragment);
+    skillModal.classList.remove('hidden'); 
 }
