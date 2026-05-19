@@ -85,27 +85,33 @@
         <meta content="width=device-width, initial-scale=1.0" name="viewport" />
         <script>
             (function() {
-            
-              // Function to apply the dark theme
-            
-              const applyTheme = () => {
-                document.documentElement.classList.add('dark');
-              };
-            
-              // Check 1: See if a theme is explicitly saved in localStorage
-            
-              const savedTheme = localStorage.getItem('theme');
-              if (savedTheme === 'dark') {
-                applyTheme();
-                return;
-              }
-            
-              // Check 2: If no saved theme, check the user's OS/browser preference
-            
-              if (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                applyTheme();
-              }
-            
+                try {
+                    // Read from the actual settings object used by state.js
+                    const savedSettingsStr = localStorage.getItem('rad_tool_settings');
+                    let activeTheme = 'system'; // Fallback default matching your React state
+
+                    if (savedSettingsStr) {
+                        const parsedSettings = JSON.parse(savedSettingsStr);
+                        if (parsedSettings && parsedSettings.theme) {
+                            activeTheme = parsedSettings.theme;
+                        }
+                    }
+
+                    // Evaluate if dark mode should be applied based on explicit setting or system preference
+                    const wantsDark = activeTheme === 'dark' || 
+                        (activeTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+                    if (wantsDark) {
+                        document.documentElement.classList.add('dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                    }
+                } catch (e) {
+                    // Graceful fallback to system preference if localStorage is blocked or corrupted
+                    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        document.documentElement.classList.add('dark');
+                    }
+                }
             })();
         </script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.min.js"></script>
