@@ -5,8 +5,6 @@
  * the previous one is cancelled and the new one takes its place.
  */
 
-let pendingSaveData = null; // Add this to your globals at the top
-
 function triggerDebouncedSave(updates) {
     if (saveTimeout) clearTimeout(saveTimeout);
     pendingSaveData = updates; 
@@ -112,12 +110,14 @@ async function manualSaveGame() {
     }
 }
 
+let pendingSaveData = null; 
+
 // --- INPUT THROTTLE ---
 let lastActionTime = 0;
-const ACTION_COOLDOWN = 150; // ms (limits speed to ~6 moves per second)
+const ACTION_COOLDOWN = 150; 
 let inputQueue = [];
 
-const SELL_MODIFIER = 0.5; // Players sell items for 50% of their base price
+const SELL_MODIFIER = 0.5; 
 
 const HEALING_AMOUNT = 3;
 const DAMAGE_AMOUNT = 2;
