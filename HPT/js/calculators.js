@@ -1765,6 +1765,13 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                 const geoEff = 0.5 * (1 - (d_cm / Math.sqrt(Math.pow(d_cm, 2) + Math.pow(r_det, 2))));
                 const A_dpm = A_Ci * 2.22e12; // 1 Ci = 2.22e12 dpm
 
+                // Establish close contact calibration geometry baseline (~0.3 cm / 1/8" contact standoff)
+                const d_contact_cm = 0.3;
+                const geoEff_contact = 0.5 * (1 - (d_contact_cm / Math.sqrt(Math.pow(d_contact_cm, 2) + Math.pow(r_det, 2))));
+                
+                // Geometry scaling factor prevents double-accounting geometry built into source calibrations
+                const geoScalingFactor = geoEff / geoEff_contact;
+
                 if (detInfo.type === 'mix' && selectedNuclide.emissionEnergies?.beta?.length > 0) {
                     const eMax = parseE(selectedNuclide.emissionEnergies.beta[0]);
 
@@ -1790,17 +1797,13 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                             attenuationMsg.push("Betas ranged out in combined shield and air.");
                         }
                     } else {
-                        // FIX: Apply empirical exponential attenuation for the beta spectrum
-                        // 1. Calculate apparent mass attenuation coefficient (cm²/g)
+                        // Apply empirical exponential attenuation for the beta spectrum
                         const mu_rho = 17 / Math.pow(eMax, 1.14);
-                        
-                        // 2. Calculate transmission factor based on total mass-thickness
                         const transmissionBeta = Math.exp(-mu_rho * total_g_cm2);
                         
-                        // 3. Apply transmission to the detector response
-                        cpmBeta = A_dpm * geoEff * (detInfo.refBetaEff || 0.2) * eff_surf * transmissionBeta;
+                        // Derived response applying the distance scaling factor to the 4pi source efficiency
+                        cpmBeta = A_dpm * (detInfo.refBetaEff || 0.2) * geoScalingFactor * eff_surf * transmissionBeta;
                         
-                        // Optional: Add a UI note showing the attenuation loss
                         if (transmissionBeta < 0.99) {
                             attenuationMsg.push(`Beta flux attenuated to ${(transmissionBeta * 100).toFixed(1)}% by mass-thickness.`);
                         }
@@ -1812,7 +1815,8 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     if (shieldMaterial !== 'None' || d_cm > 5.0) { 
                         attenuationMsg.push("Alphas blocked.");
                     } else {
-                        cpmAlpha = A_dpm * geoEff * detInfo.alphaEff * eff_surf;
+                        // Scale alpha efficiency cleanly across sub-contact gaps
+                        cpmAlpha = A_dpm * geoScalingFactor * detInfo.alphaEff * eff_surf;
                     }
                 }
             }
@@ -9340,32 +9344,40 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         const p = safeParseFloat(surveyorEff); // Surveyor Efficiency
         const total_area_cm2 = safeParseFloat(probeArea);
         const yield_pct = safeParseFloat(emissionYield);
-        
+
         if (isNaN(bkgRate) || isNaN(eff_i) || isNaN(eff_s) || isNaN(speed_cms) || isNaN(dimension_cm) || bkgRate < 0 || eff_i <= 0 || eff_s <= 0 || speed_cms <= 0 || dimension_cm <= 0) {
             throw new Error('Please enter valid, positive numbers.');
         }
         if (isNaN(total_area_cm2) || total_area_cm2 <= 0) throw new Error("Probe Area required.");
         if (isNaN(yield_pct) || yield_pct <= 0) throw new Error('Emission Yield must be greater than 0%.');
-        
+
         const Y = yield_pct / 100.0;
-        
-        // MARSSIM / NUREG-1507 Scan MDC Logic
         const residence_time_s = dimension_cm / speed_cms;
-        const b_cps = bkgRate / 60.0;
         const E_total = getTotalEfficiency(eff_i, eff_s);
-        
-        // Counts in observation interval
-        const B_i = b_cps * residence_time_s;
-        
-        // MDCR (Instrument) = d' * sqrt(b_i) * (60/i)
-        const mdcr_instrument_cpm = dp * Math.sqrt(B_i) * (60 / residence_time_s);
-        
-        // MDCR (Surveyor) = MDCR_i / sqrt(p)
-        const mdcr_surveyor_cpm = mdcr_instrument_cpm / Math.sqrt(p);
-        
-        // Scan MDC = MDCR_surv / (E_tot * Yield * Area_factor)
-        const scan_mda = mdcr_surveyor_cpm / (E_total * Y * (total_area_cm2 / 100.0));
-        
+
+        let scan_mda;
+        let mdcr_surveyor_cpm;
+
+        if (bkgRate < 5) {
+            // Low-Background Alpha Scanning (Poisson Probability Model per MARSSIM 6.7.2.2 / NUREG-1507)
+            // Assumes a 90% confidence target for registering at least one count over the source area, P(N>=1) = 0.90
+            const P_det = 0.90;
+            const source_counts_required = -Math.log(1 - P_det); // -ln(1 - 0.90) ≈ 2.303 counts
+            
+            // Required net count rate during observation window
+            mdcr_surveyor_cpm = (source_counts_required / residence_time_s) * 60;
+            
+            // Scan MDC incorporating instrument, surface, yield, and normalized active geometry factors
+            scan_mda = mdcr_surveyor_cpm / (E_total * Y * (total_area_cm2 / 100.0));
+        } else {
+            // Standard NUREG-1507 Gaussian d' Index approach
+            const b_cps = bkgRate / 60.0;
+            const B_i = b_cps * residence_time_s; // Counts in observation interval
+            const mdcr_instrument_cpm = dp * Math.sqrt(B_i) * (60 / residence_time_s);
+            mdcr_surveyor_cpm = mdcr_instrument_cpm / Math.sqrt(p);
+            scan_mda = mdcr_surveyor_cpm / (E_total * Y * (total_area_cm2 / 100.0));
+        }
+
         setResult({
             type: 'scan',
             obs_interval: residence_time_s.toPrecision(2),
