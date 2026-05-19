@@ -806,7 +806,7 @@ const StandardDecayCalculator = ({
                     timeForChart_seconds = 10 * T_half_seconds;
                 } else {
                     const bestUnit = getBestHalfLifeUnit(timeInSeconds) || 'seconds';
-                    const convertedTime = (timeInSeconds / UNIT_CONVERSIONS[bestUnit.toLowerCase()]).toPrecision(4);
+                    const convertedTime = (timeInSeconds / unitConversions[bestUnit.toLowerCase()]).toPrecision(4);
                     
                     setResult({
                         label: 'Time Elapsed',
