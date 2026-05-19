@@ -9,6 +9,10 @@ async function attemptMovePlayer(newX, newY) {
         return;
     }
 
+    // Capture previous coordinates immediately at the top of the function to prevent ReferenceErrors
+    const prevX = gameState.player.x;
+    const prevY = gameState.player.y;
+
     // --- DIAGONAL CLIPPING CHECK ---
     const dx = newX - gameState.player.x;
     const dy = newY - gameState.player.y;
@@ -112,8 +116,8 @@ async function attemptMovePlayer(newX, newY) {
                 // REWARD: Give the fragment for this specific direction
                 const fragmentName = `Tablet of the ${dir.charAt(0).toUpperCase() + dir.slice(1)}`;
                 gameState.player.inventory.push(
-                    // Lookup item from ITEM_DATA using the name map logic or hardcode keys
                     {
+                        templateId: '🧩',
                         name: fragmentName,
                         type: 'junk',
                         quantity: 1,
@@ -156,7 +160,7 @@ async function attemptMovePlayer(newX, newY) {
         const hasItem = gameState.player.inventory.some(i => i.name === requiredItem);
 
         if (!hasItem) {
-            logMessage(tileData.invisibleMessage || "You shiver.");
+            logMessage(tileData.invisibleMessage || "You walk through a patch of unnaturally cold air.");
             gameState.player.x = newX;
             gameState.player.y = newY;
             gameState.mapDirty = true;
@@ -341,7 +345,7 @@ async function attemptMovePlayer(newX, newY) {
                 // Weapon Poison Effect
                 const weapon = gameState.player.equipment.weapon;
                 if (weapon && weapon.inflicts === 'poison' && enemy.poisonTurns <= 0 && Math.random() < (weapon.inflictChance || 0.25)) {
-                    logMessage(`Your weapon poisons the ${enemy.name}!`);
+                    logMessage("Your weapon poisons the enemy!");
                     enemy.poisonTurns = 3;
                 }
 
@@ -375,7 +379,7 @@ async function attemptMovePlayer(newX, newY) {
             // Look up the live entity to get the correct name (e.g. "Spectral Giant Rat")
             // instead of the base template name ("Giant Rat").
             const enemyId = `overworld:${newX},${-newY}`;
-            const liveEnemy = gameState.sharedEnemies[enemyId];
+            const liveEnemy = gameState.sharedEnemies[enemyKey];
             const targetName = liveEnemy ? liveEnemy.name : enemyData.name;
 
             if (isCrit) {
@@ -451,6 +455,7 @@ async function attemptMovePlayer(newX, newY) {
 
                 if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                     gameState.player.inventory.push({
+                        templateId: key,
                         name: template.name,
                         type: template.type,
                         quantity: 1,
@@ -515,8 +520,6 @@ async function attemptMovePlayer(newX, newY) {
         loreTitle.textContent = "Royal Historian";
         let dialogueHtml = "";
 
-        // In script.js, inside the 'if (newTile === '🎓')' block:
-
         // --- 0. SECRET: RESTORE CROWN ---
         const crownIndex = inv.findIndex(i => i.name === 'Shattered Crown');
         if (crownIndex > -1) {
@@ -533,8 +536,9 @@ async function attemptMovePlayer(newX, newY) {
                     // Remove Old Crown
                     inv.splice(crownIndex, 1);
 
-                    // Add Restored Crown (New Item)
+                    // Add Restored Crown (New Item, uses rehydration-safe restored key ID)
                     inv.push({
+                        templateId: "👑_restored",
                         name: "Crown of the First King",
                         type: "armor",
                         tile: "👑",
@@ -550,7 +554,7 @@ async function attemptMovePlayer(newX, newY) {
                     });
 
                     logMessage("The Historian restores the crown. It shines like the sun!");
-                    triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+                    triggerStatAnimation(document.getElementById('levelDisplay'), 'stat-pulse-purple');
 
                     // Save & Close
                     playerRef.update({
@@ -597,6 +601,7 @@ async function attemptMovePlayer(newX, newY) {
                     grantXp(500);
                     const reward = ITEM_DATA['⚡']; // Stormbringer
                     inv.push({ ...reward,
+                        templateId: '⚡',
                         quantity: 1
                     });
                     dialogueHtml = `<p>"You have done it! The trinity is restored. As promised, take this... The King's own blade, <b>Stormbringer</b>."</p>`;
@@ -666,6 +671,7 @@ async function attemptMovePlayer(newX, newY) {
                                 const rndStat = stats[Math.floor(Math.random() * stats.length)];
                                 // Create a dynamic tome based on the random stat
                                 const tomeItem = {
+                                    templateId: '💪',
                                     name: `Tome of ${rndStat.charAt(0).toUpperCase() + rndStat.slice(1)}`,
                                     type: 'tome',
                                     quantity: 1,
@@ -717,6 +723,7 @@ async function attemptMovePlayer(newX, newY) {
         // Give Item
         if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
             gameState.player.inventory.push({
+                templateId: '👻s',
                 name: 'Memory Shard',
                 type: 'junk',
                 quantity: 1,
@@ -724,8 +731,6 @@ async function attemptMovePlayer(newX, newY) {
             });
         } else {
             logMessage("Your inventory is full, the shard falls to the ground.");
-            // Logic to leave it on ground is handled by not clearing tile if full? 
-            // Actually, let's just clear it and say it's lost to keep it simple, or drop it.
         }
 
         chunkManager.setWorldTile(newX, newY, '.'); // Remove ghost
@@ -902,6 +907,7 @@ async function attemptMovePlayer(newX, newY) {
             if (roll < 0.3) {
                 logMessage("...and receive a Healing Potion!");
                 gameState.player.inventory.push({
+                    templateId: '♥',
                     name: 'Healing Potion',
                     type: 'consumable',
                     quantity: 1,
@@ -941,6 +947,7 @@ async function attemptMovePlayer(newX, newY) {
 
         if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
             gameState.player.inventory.push({
+                templateId: '🍐',
                 name: 'Cactus Fruit',
                 type: 'consumable',
                 quantity: 1,
@@ -982,6 +989,7 @@ async function attemptMovePlayer(newX, newY) {
 
         if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
             gameState.player.inventory.push({
+                templateId: '🍷',
                 name: 'Elixir of Life',
                 type: 'consumable',
                 quantity: 1,
@@ -1035,7 +1043,7 @@ async function attemptMovePlayer(newX, newY) {
         if (Math.random() < 0.05) logMessage("You move swiftly through the trees.");
     }
 
-    if (['⛰', '🏰', 'V', '♛', '🕳️'].includes(newTile)) {
+    if (['⛰', '🏰', 'V', '♛', '🛕', '🌋', '🕳️'].includes(newTile)) {
         moveCost = 0;
     }
 
@@ -1293,10 +1301,14 @@ async function attemptMovePlayer(newX, newY) {
             if (hasTool) {
                 logMessage(`You use your ${toolName} to clear the ${tileData.name}.`);
                 if (tileData.name === 'Thicket' || tileData.name === 'Dead Tree') {
-                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                        const existingWood = playerInventory.find(i => i.name === 'Wood Log');
-                        if (existingWood) existingWood.quantity++;
-                        else playerInventory.push({
+                    const existingWood = playerInventory.find(i => i.name === 'Wood Log');
+                    if (existingWood) {
+                        existingWood.quantity++;
+                        logMessage("You gathered a Wood Log!");
+                        inventoryWasUpdated = true;
+                    } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        playerInventory.push({
+                            templateId: '🪵',
                             name: 'Wood Log',
                             type: 'junk',
                             quantity: 1,
@@ -1308,10 +1320,14 @@ async function attemptMovePlayer(newX, newY) {
                         logMessage("Inventory full! The wood is lost.");
                     }
                 } else if (toolName === 'Pickaxe') {
-                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                        const existingStone = playerInventory.find(i => i.name === 'Stone');
-                        if (existingStone) existingStone.quantity++;
-                        else playerInventory.push({
+                    const existingStone = playerInventory.find(i => i.name === 'Stone');
+                    if (existingStone) {
+                        existingStone.quantity++;
+                        logMessage("You gathered Stone!");
+                        inventoryWasUpdated = true;
+                    } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        playerInventory.push({
+                            templateId: '🪨',
                             name: 'Stone',
                             type: 'junk',
                             quantity: 1,
@@ -1413,6 +1429,7 @@ async function attemptMovePlayer(newX, newY) {
 
                 if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                     gameState.player.inventory.push({
+                        templateId: nextChronicleKey,
                         name: itemTemplate.name,
                         type: itemTemplate.type,
                         quantity: 1,
@@ -1429,6 +1446,7 @@ async function attemptMovePlayer(newX, newY) {
                         if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                             const reward = ITEM_DATA['👓'];
                             gameState.player.inventory.push({
+                                templateId: '👓',
                                 name: reward.name,
                                 type: reward.type,
                                 quantity: 1,
@@ -1446,8 +1464,8 @@ async function attemptMovePlayer(newX, newY) {
                             else chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '👓';
                             
                             // Un-mark the tile as looted so they can pick them up
-                            let tileId = (gameState.mapMode === 'overworld') ? `${newX},${-newY}` : `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
-                            gameState.lootedTiles.delete(tileId);
+                            let unlootTileId = (gameState.mapMode === 'overworld') ? `${newX},${-newY}` : `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
+                            gameState.lootedTiles.delete(unlootTileId);
                             
                             gameState.mapDirty = true;
                             render();
@@ -1461,6 +1479,7 @@ async function attemptMovePlayer(newX, newY) {
                 logMessage("You found an Arcane Scroll.");
                 if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                     gameState.player.inventory.push({
+                        templateId: '📜',
                         name: 'Scroll: Clarity',
                         type: 'spellbook',
                         quantity: 1,
@@ -1532,6 +1551,7 @@ async function attemptMovePlayer(newX, newY) {
                 if (itemTemplate) {
                     if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                         gameState.player.inventory.push({
+                            templateId: itemKey,
                             name: itemTemplate.name,
                             type: itemTemplate.type,
                             quantity: 1,
@@ -1609,7 +1629,6 @@ async function attemptMovePlayer(newX, newY) {
 
             // 3. Generate Lore (Keep existing flavor)
             if (!gameState.foundLore.has(tileId)) {
-                // grantXp(10); // Removed small XP, moved to Attunement above
                 gameState.foundLore.add(tileId);
                 playerRef.update({
                     foundLore: Array.from(gameState.foundLore)
@@ -1639,10 +1658,10 @@ async function attemptMovePlayer(newX, newY) {
             // 4. Show Modal with Travel Button
             loreTitle.textContent = `Waystone: ${biomeName}`;
             loreContent.innerHTML = `
-            <p class="italic text-gray-600 mb-4">"...${message}..."</p>
-            <p>The stone hums with power. It is attuned to the leylines.</p>
-            <button id="openFastTravel" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full">✨ Fast Travel (10 Mana)</button>
-        `;
+                <p class="italic text-gray-600 mb-4">"...${message}..."</p>
+                <p>The stone hums with power. It is attuned to the leylines.</p>
+                <button id="openFastTravel" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full">✨ Fast Travel (10 Mana)</button>
+            `;
             loreModal.classList.remove('hidden');
 
             // Bind the button
@@ -1666,6 +1685,7 @@ async function attemptMovePlayer(newX, newY) {
                     renderInventory();
                 } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                     gameState.player.inventory.push({
+                        templateId: '▲',
                         name: 'Obsidian Shard',
                         type: 'junk',
                         quantity: 1,
@@ -1860,7 +1880,6 @@ async function attemptMovePlayer(newX, newY) {
                 `${newX},${-newY}` :
                 `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
 
-
             if (!gameState.foundLore.has(tileId)) {
                 grantXp(15);
                 gameState.foundLore.add(tileId);
@@ -1953,22 +1972,17 @@ async function attemptMovePlayer(newX, newY) {
             }
 
             // --- NEW SHOP PERSISTENCE LOGIC ---
-
-            // 1. Generate Unique Shop ID
-            // We use the Map ID + Coordinates to ensure every specific shop node is unique
             let contextId = "overworld";
             if (gameState.mapMode === 'castle') contextId = gameState.currentCastleId;
-            // (Dungeon shops don't exist yet, but this handles them if added)
             if (gameState.mapMode === 'dungeon') contextId = gameState.currentCaveId;
 
             const shopId = `shop_${contextId}_${newX}_${newY}`;
 
-            // 2. Initialize Container if missing
+            // Initialize Container if missing
             if (!gameState.shopStates) gameState.shopStates = {};
 
-            // 3. Check if this specific shop has been visited this session
+            // Check if this specific shop has been visited this session
             if (!gameState.shopStates[shopId]) {
-                // First visit! Clone the appropriate template.
                 let template = SHOP_INVENTORY; // Default
                 if (gameState.mapMode === 'castle') template = CASTLE_SHOP_INVENTORY;
 
@@ -1976,7 +1990,7 @@ async function attemptMovePlayer(newX, newY) {
                 gameState.shopStates[shopId] = JSON.parse(JSON.stringify(template));
             }
 
-            // 4. Point active inventory to the persistent session state
+            // Point active inventory to the persistent session state
             activeShopInventory = gameState.shopStates[shopId];
 
             if (gameState.mapMode === 'castle') {
@@ -2142,7 +2156,7 @@ async function attemptMovePlayer(newX, newY) {
                 logMessage("You get in the canoe.");
                 chunkManager.setWorldTile(newX, newY, '.');
                 playerRef.update({ isBoating: true });
-                break; // <-- Make sure Canoe breaks here!
+                break;
                 
             // --- SHIP EMBARKING ---
             case 'sailing_ship':
@@ -2208,10 +2222,10 @@ async function attemptMovePlayer(newX, newY) {
                 const landmarkSpawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
                 gameState.player.x = landmarkSpawn.x;
                 gameState.player.y = landmarkSpawn.y;
-                gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] ||[]));
+                gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
                 
                 // --- LOAD CASTLE ENEMIES (Like the Necromancer Lord) ---
-                const baseLandmarkEnemies = chunkManager.castleEnemies[gameState.currentCastleId] ||[];
+                const baseLandmarkEnemies = chunkManager.castleEnemies[gameState.currentCastleId] || [];
                 gameState.instancedEnemies = JSON.parse(JSON.stringify(baseLandmarkEnemies));
                 
                 logMessage("You enter the imposing fortress...");
@@ -2240,10 +2254,10 @@ async function attemptMovePlayer(newX, newY) {
                 const spawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
                 gameState.player.x = spawn.x;
                 gameState.player.y = spawn.y;
-                gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] ||[]));
+                gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
                 
                 // --- LOAD CASTLE ENEMIES ---
-                const baseCastleEnemies = chunkManager.castleEnemies[gameState.currentCastleId] ||[];
+                const baseCastleEnemies = chunkManager.castleEnemies[gameState.currentCastleId] || [];
                 gameState.instancedEnemies = JSON.parse(JSON.stringify(baseCastleEnemies));
                 logMessage("You enter the castle grounds.");
                 updateRegionDisplay();
@@ -2274,9 +2288,9 @@ async function attemptMovePlayer(newX, newY) {
                 gameState.player.y = darkSpawn.y;
                 
                 // NO GUARDS OR MERCHANTS
-                gameState.friendlyNpcs =[];
+                gameState.friendlyNpcs = [];
                 // LOAD MONSTERS
-                const baseDarkEnemies = chunkManager.castleEnemies[gameState.currentCastleId] ||[];
+                const baseDarkEnemies = chunkManager.castleEnemies[gameState.currentCastleId] || [];
                 gameState.instancedEnemies = JSON.parse(JSON.stringify(baseDarkEnemies));
                 
                 logMessage("You enter the dark fortress. Weapons drawn.");
@@ -2284,6 +2298,9 @@ async function attemptMovePlayer(newX, newY) {
                 gameState.mapDirty = true;
                 render();
                 syncPlayerState();
+                return;
+            case 'castle_landmark':
+                // Handled above in 'landmark_castle' key but kept as safety fallback
                 return;
             case 'lore':
                 if (!gameState.foundLore) gameState.foundLore = new Set();
@@ -2398,6 +2415,7 @@ async function attemptMovePlayer(newX, newY) {
                     
                     // Create safe object for DB (Copied from existing logic)
                     const itemForDb = {
+                        templateId: newTile,
                         name: itemData.name,
                         type: itemData.type,
                         quantity: 1,
@@ -2435,12 +2453,6 @@ async function attemptMovePlayer(newX, newY) {
         logMessage("You're too tired, and pushing on would be fatal!");
         return;
     }
-
-    const prevX = gameState.player.x;
-    const prevY = gameState.player.y;
-
-    gameState.player.x = newX;
-    gameState.player.y = newY;
 
     if (gameState.mapMode === 'overworld') {
         const lastDist = Math.sqrt(prevX * prevX + prevY * prevY);
@@ -2510,6 +2522,7 @@ async function attemptMovePlayer(newX, newY) {
                         inventoryWasUpdated = true;
                     } else if (playerInventory.length < MAX_INVENTORY_SLOTS) {
                         playerInventory.push({
+                            templateId: '•',
                             name: 'Iron Ore',
                             type: 'junk',
                             quantity: 1,
@@ -2558,9 +2571,9 @@ async function attemptMovePlayer(newX, newY) {
 
         weather: gameState.weather || 'clear',
 
-        weatherState: gameState.player.weatherState || 'calm', // Default to 'calm'
-        weatherIntensity: gameState.player.weatherIntensity || 0, // Default to 0
-        weatherDuration: gameState.player.weatherDuration || 0 // Default to 0
+        weatherState: gameState.player.weatherState || 'calm', 
+        weatherIntensity: gameState.player.weatherIntensity || 0, 
+        weatherDuration: gameState.player.weatherDuration || 0 
     };
 
     // If we found a new chunk, add it to the save list
