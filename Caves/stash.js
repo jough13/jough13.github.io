@@ -49,7 +49,7 @@ window.handleStashTransfer = function (action, index) {
         const existingInvItem = isStackable ? player.inventory.find(i => i.name === item.name) : null;
 
         // Inventory Capacity Check
-        if (!existingInvItem && player.inventory.length >= MAX_INVENTORY_SLOTS) {
+        if (!existingInvItem && player.inventory.length >= window.MAX_INVENTORY_SLOTS) { 
             logMessage("Your inventory is full!");
             return;
         }
