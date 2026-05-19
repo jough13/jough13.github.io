@@ -128,8 +128,6 @@ const STAT_INCREASE_AMOUNT = 1;
 const TURN_DURATION_MINUTES = 10;
 const REGION_SIZE = 160;
 
-const MAX_INVENTORY_SLOTS = 9; // Max number of inventory stacks
-
 const DAYS_OF_WEEK = ["Sunsday", "Moonsday", "Kingsday", "Earthday", "Watersday", "Windsday", "Firesday"];
 const MONTHS_OF_YEAR = ["First Seed", "Rains Hand", "Second Seed", "Suns Height", "Last Seed", "Hearthfire", "Frostfall", "Suns Dusk", "Evening Star", "Morning Star", "Suns Dawn", "Deep Winter"];
 const DAYS_IN_MONTH = 30;
