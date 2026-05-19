@@ -4,8 +4,7 @@
 
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-        <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
-        <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
+        <meta name="theme-color" id="pwa-theme-color" content="#f8fafc">
         <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
         <link rel="manifest" href="manifest.json">
@@ -86,9 +85,8 @@
         <script>
             (function() {
                 try {
-                    // Read from the actual settings object used by state.js
                     const savedSettingsStr = localStorage.getItem('rad_tool_settings');
-                    let activeTheme = 'system'; // Fallback default matching your React state
+                    let activeTheme = 'system';
 
                     if (savedSettingsStr) {
                         const parsedSettings = JSON.parse(savedSettingsStr);
@@ -97,7 +95,6 @@
                         }
                     }
 
-                    // Evaluate if dark mode should be applied based on explicit setting or system preference
                     const wantsDark = activeTheme === 'dark' || 
                         (activeTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
@@ -106,10 +103,17 @@
                     } else {
                         document.documentElement.classList.remove('dark');
                     }
+
+                    const metaThemeColor = document.getElementById('pwa-theme-color');
+                    if (metaThemeColor) {
+                        metaThemeColor.setAttribute('content', wantsDark ? '#0f172a' : '#f8fafc');
+                    }
+                    
                 } catch (e) {
-                    // Graceful fallback to system preference if localStorage is blocked or corrupted
                     if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
                         document.documentElement.classList.add('dark');
+                        const metaThemeColor = document.getElementById('pwa-theme-color');
+                        if (metaThemeColor) metaThemeColor.setAttribute('content', '#0f172a');
                     }
                 }
             })();
