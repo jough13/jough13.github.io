@@ -1223,6 +1223,12 @@ const SHIELD_PROPS = {
         type: 'Low-Z',
         mapTo: 'Aluminum'
     },
+    'Glass': {
+        Z: 12,
+        density: 2.50,
+        type: 'Low-Z',
+        mapTo: 'Concrete' // Attenuation behavior tracks close to concrete/aluminum
+    },
     'Concrete': {
         Z: 11,
         density: 2.35,
