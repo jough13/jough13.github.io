@@ -2,6 +2,8 @@
 // GLOBAL VARIABLES & SYSTEM REFERENCES
 // ============================================================================
 
+window.MAX_INVENTORY_SLOTS = 9;
+
 // --- Networking & Authentication ---
 let player_id;
 let playerRef;
