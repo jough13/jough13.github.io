@@ -2482,6 +2482,9 @@ async function attemptMovePlayer(newX, newY) {
         gameState.player.companion.y = prevY;
     }
 
+    gameState.player.x = newX;
+    gameState.player.y = newY;
+
     if (gameState.player.stamina >= moveCost) {
         gameState.player.stamina -= moveCost;
     } else {
