@@ -1163,8 +1163,7 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     // --- STAIRS LOGIC (Z-AXIS) ---
-    if (newTile === '<') {
-        if (gameState.mapMode !== 'dungeon') return;
+    if (newTile === '<' && gameState.mapMode === 'dungeon') {
         
         // 1. Parse current floor
         const parts = gameState.currentCaveId.split('_');
