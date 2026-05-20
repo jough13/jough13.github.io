@@ -26,18 +26,26 @@ function triggerDebouncedSave(updates) {
 }
 
 function flushPendingSave(updates = null) {
+    // 1. Clear any active debounce timer safely
     if (saveTimeout) {
         clearTimeout(saveTimeout);
         saveTimeout = null;
-        
-        // Use provided updates, or fallback to the global pending data
-        const dataToSave = updates || pendingSaveData;
-        if (dataToSave && playerRef) {
-            playerRef.update(dataToSave);
-            console.log("☁️ Forced flush save.");
-        }
-        pendingSaveData = null;
     }
+    
+    // 2. Resolve data to write (preferring passed updates over pending debounced data)
+    const dataToSave = updates || pendingSaveData;
+    
+    if (dataToSave && playerRef) {
+        // Sanitize the object to remove unsupported properties (functions/undefined)
+        playerRef.update(sanitizeForFirebase(dataToSave))
+            .then(() => console.log("☁️ Forced flush save completed."))
+            .catch(err => console.error("Flush save failed:", err));
+    }
+    
+    // 3. Clear transient save indicators
+    pendingSaveData = null;
+    const saveIcon = document.getElementById('saveIndicator');
+    if (saveIcon) saveIcon.classList.add('hidden'); 
 }
 
 /**
