@@ -1077,19 +1077,6 @@ function initQuestListeners() {
     });
 }
 
-function initCraftingListeners() {
-    closeCraftingButton.addEventListener('click', () => {
-        craftingModal.classList.add('hidden');
-    });
-
-    craftingRecipeList.addEventListener('click', (e) => {
-        const button = e.target.closest('button[data-craft-item]');
-        if (button) {
-            handleCraftItem(button.dataset.craftItem);
-        }
-    });
-}
-
 const collectionsModal = document.getElementById('collectionsModal');
 const closeCollectionsButton = document.getElementById('closeCollectionsButton');
 const bestiaryView = document.getElementById('bestiaryView');
