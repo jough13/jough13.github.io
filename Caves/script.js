@@ -123,7 +123,6 @@ let pendingSaveData = null;
 // --- INPUT THROTTLE ---
 let lastActionTime = 0;
 const ACTION_COOLDOWN = 150; 
-let inputQueue = [];
 
 const SELL_MODIFIER = 0.5; 
 
@@ -1015,7 +1014,7 @@ function assignToHotbar(abilityId) {
 }
 
 function openInventoryModal() {
-    inputQueue = [];
+    if (window.inputQueue) window.inputQueue.length = 0;
     if (gameState.player.inventory.length === 0) {
         logMessage("Your inventory is empty.");
         return;
@@ -3330,8 +3329,8 @@ function gameLoop(timestamp) {
     if (typeof ParticleSystem !== 'undefined') ParticleSystem.update();
 
     // 3. Process Input Queue
-    if (inputQueue.length > 0 && Date.now() - lastActionTime >= ACTION_COOLDOWN) {
-        const key = inputQueue.shift(); // Pulls the oldest key pressed
+    if (window.inputQueue && window.inputQueue.length > 0 && Date.now() - lastActionTime >= ACTION_COOLDOWN) {
+        const key = window.inputQueue.shift(); // Pulls the oldest key pressed
         handleInput(key);
     }
 
