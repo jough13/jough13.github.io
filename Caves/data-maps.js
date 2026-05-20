@@ -302,7 +302,7 @@ window.TILE_DATA = {
         type: 'loot_container', 
         name: 'Ancient Grave',
         flavor: "You disturb the resting place of a forgotten warrior...",
-        lootTable: ['(', '(', '†', '👢', '🛡️w', '💀', ' ancient_coin']
+        lootTable: ['(', '(', '†', '👢', '🛡️w', '💀',' ancient_coin']
     },
     '🗿': {
         type: 'lore_statue',
