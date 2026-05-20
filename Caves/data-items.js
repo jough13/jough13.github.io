@@ -1316,6 +1316,20 @@ window.ITEM_DATA = {
         }, 
         description: "{gold:+5 Cha, +3 Luck}, {purple:+2 Will}. You feel kingly wearing it."
     },
+    '👑_restored': {
+        name: "Crown of the First King",
+        type: "armor",
+        tile: "👑",
+        defense: 2,
+        slot: "armor",
+        statBonuses: {
+            charisma: 10,
+            luck: 5,
+            maxMana: 20
+        },
+        description: "Restored to its former glory. You act with the authority of the Old World.",
+        excludeFromLoot: true
+    },
     '💍': {
         name: 'Signet Ring',
         type: 'junk',
