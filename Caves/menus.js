@@ -1,5 +1,5 @@
 function openTalentModal() {
-    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (window.inputQueue) window.inputQueue.length = 0;
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     renderTalentTree();
     talentModal.classList.remove('hidden');
@@ -78,7 +78,7 @@ window.learnTalent = function (talentId) {
 };
 
 function openEvolutionModal() {
-    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (window.inputQueue) window.inputQueue.length = 0;
     
     // 1. Get player's base class (e.g., 'warrior')
     const baseClass = gameState.player.background;
@@ -158,7 +158,7 @@ function selectEvolution(evoData) {
 }
 
 function openBountyBoard() {
-    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (window.inputQueue) window.inputQueue.length = 0;
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     renderBountyBoard();
     questModal.classList.remove('hidden');
@@ -369,7 +369,7 @@ function turnInQuest(questId) {
 // --- COLLECTIONS (BESTIARY & LIBRARY) ---
 
 function openCollections() {
-    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (window.inputQueue) window.inputQueue.length = 0;
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     renderBestiary();
     renderLibrary();
@@ -510,7 +510,7 @@ window.openSpecificLore = function(itemId) {
  * Opens the Skill Trainer modal.
  */
 function openSkillTrainerModal() {
-    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (window.inputQueue) window.inputQueue.length = 0;
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     renderSkillTrainerModal(); 
     skillTrainerModal.classList.remove('hidden');
@@ -610,7 +610,7 @@ function handleLearnSkill(skillId) {
 // --- SPELLBOOK & SKILLBOOK UI ---
 
 function openSpellbook() {
-    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (window.inputQueue) window.inputQueue.length = 0;
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     
     spellList.innerHTML = ''; 
@@ -676,7 +676,7 @@ function openSpellbook() {
 }
 
 function openSkillbook() {
-    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (window.inputQueue) window.inputQueue.length = 0;
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     
     skillList.innerHTML = ''; 
