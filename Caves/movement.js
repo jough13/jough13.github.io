@@ -536,27 +536,26 @@ async function attemptMovePlayer(newX, newY) {
                     // Remove Old Crown
                     inv.splice(crownIndex, 1);
 
-                    // Add Restored Crown (New Item, uses rehydration-safe restored key ID)
+                    // Add Restored Crown using the correct templateId
                     inv.push({
-                        templateId: "👑_restored",
+                        templateId: "👑_restored", // <--- Bound to correct template definition
                         name: "Crown of the First King",
                         type: "armor",
                         tile: "👑",
                         quantity: 1,
-                        defense: 2, // Now offers some protection
+                        defense: 2,
                         slot: "armor",
                         statBonuses: {
                             charisma: 10,
                             luck: 5,
                             maxMana: 20
-                        }, // GODLY STATS
+                        },
                         description: "Restored to its former glory. You act with the authority of the Old World."
                     });
 
                     logMessage("The Historian restores the crown. It shines like the sun!");
                     triggerStatAnimation(document.getElementById('levelDisplay'), 'stat-pulse-purple');
 
-                    // Save & Close
                     playerRef.update({
                         inventory: getSanitizedInventory()
                     });
