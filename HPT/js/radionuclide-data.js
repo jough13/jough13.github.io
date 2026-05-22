@@ -1406,10 +1406,9 @@ const RADIONUCLIDE_DATA = [{
       },
       halfLife: '30.08 years',
       decayConstant: '0.0230 year⁻¹',
-      gammaConstant: '0.382 R·m²/hr·Ci',
+      gammaConstant: '0.33 R·m²/hr·Ci',
       sourceRef: {
          halfLife: 'nndc',
-         gammaConstant: 'plexus_nsd'
       },
       dValue: 0.1,
       specificActivity: '3.21 x 10^12 Bq/g',
@@ -2551,10 +2550,9 @@ const RADIONUCLIDE_DATA = [{
          unit: 'TBq'
       },
       dValue: 0.2,
-      gammaConstant: '0.274984 R·m²/hr·Ci',
+      gammaConstant: '0.14 R·m²/hr·Ci',
       sourceRef: {
          halfLife: 'nndc',
-         gammaConstant: 'plexus_nsd'
       },
       dosimetry: {
          ALI: {
