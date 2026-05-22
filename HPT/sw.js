@@ -1,7 +1,6 @@
-const CACHE_NAME = 'rad-tools-v2';
+const CACHE_NAME = 'rad-tools-v4'; // <--- Increment this whenever you make major changes
 
 const urlsToCache = [
-  // --- Local App Files ---
   './',
   './index.html',
   './css/style.css',
@@ -43,40 +42,37 @@ const urlsToCache = [
   'https://unpkg.com/leaflet-geosearch@3/dist/geosearch.umd.js'
 ];
 
-// Install the Service Worker and Cache the Files
+// Install: Cache all files
 self.addEventListener('install', event => {
-  // Skip the 'waiting' lifecycle phase, to immediately activate the new service worker
-  self.skipWaiting();
+  self.skipWaiting(); // Forces the waiting service worker to become the active service worker
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
   );
 });
 
-// Activate event: Clean up old caches
+// Activate: Delete old caches
 self.addEventListener('activate', event => {
-  // Take control of all pages immediately
-  event.waitUntil(clients.claim());
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
+            console.log('Service Worker: Clearing Old Cache', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
-    })
+    }).then(() => self.clients.claim()) // Take control of pages immediately
   );
 });
 
-// Intercept network requests and serve from the Cache
+// Fetch: Serve from cache, then network
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Return the cached version if found, otherwise fetch from the network
+        // Return cached file if found, otherwise fetch from network
         return response || fetch(event.request);
       })
   );
