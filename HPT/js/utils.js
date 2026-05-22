@@ -570,8 +570,7 @@ const flattenChainForCalculator = (chain) => {
 const runBatemanWithBranching = (chain, A1_0, t_seconds) => {
    const nuclideMap = new Map();
 
-   // 1. Pre-process the chain into a graph-like map for easy lookup.
-
+   // 1. Pre-process the chain into a graph-like map
    chain.forEach(step => {
       const lambda = parseHalfLifeToSeconds(step.halfLife) === Infinity ? 0 : Math.log(2) / parseHalfLifeToSeconds(step.halfLife);
       if (!nuclideMap.has(step.nuclide)) {
@@ -579,7 +578,8 @@ const runBatemanWithBranching = (chain, A1_0, t_seconds) => {
             name: step.nuclide,
             lambda,
             parents: [],
-            solution: []
+            solution: [],
+            isRoot: false
          });
       } else {
          nuclideMap.get(step.nuclide).lambda = lambda;
@@ -589,7 +589,6 @@ const runBatemanWithBranching = (chain, A1_0, t_seconds) => {
          const decayTypes = step.decayType.split(' / ').map(s => s.trim());
          const daughters = step.daughter.split(' / ').map(s => s.trim());
          daughters.forEach((daughterName, i) => {
-            // Extract branching ratio if present, e.g., "Beta-minus (64.1%)"
             const match = decayTypes[i] ? decayTypes[i].match(/\(([\d.]+)%\)/) : null;
             const br = match ? parseFloat(match[1]) / 100.0 : 1.0;
 
@@ -598,7 +597,8 @@ const runBatemanWithBranching = (chain, A1_0, t_seconds) => {
                   name: daughterName,
                   lambda: 0,
                   parents: [],
-                  solution: []
+                  solution: [],
+                  isRoot: false
                });
             }
             nuclideMap.get(daughterName).parents.push({
@@ -609,54 +609,79 @@ const runBatemanWithBranching = (chain, A1_0, t_seconds) => {
       }
    });
 
-   // 2. Iteratively build the analytical solution for each nuclide.
+   // Restrict A1_0 initialization to the primary target only
+   if (chain.length > 0) {
+       const primaryTarget = nuclideMap.get(chain[0].nuclide);
+       if (primaryTarget) primaryTarget.isRoot = true;
+   }
 
-   for (const step of chain) {
-      const nuclideName = step.nuclide;
+   // Topological Sort (Kahn's Algorithm) to guarantee execution order
+   const inDegree = new Map();
+   for (const [name, data] of nuclideMap.entries()) {
+       inDegree.set(name, data.parents.length);
+   }
+   
+   const queue = [];
+   for (const [name, degree] of inDegree.entries()) {
+       if (degree === 0) queue.push(name);
+   }
+
+   const sortedNuclides = [];
+   while (queue.length > 0) {
+       const current = queue.shift();
+       sortedNuclides.push(current);
+       
+       for (const [name, data] of nuclideMap.entries()) {
+           const hasCurrentAsParent = data.parents.some(p => p.name === current);
+           if (hasCurrentAsParent) {
+               const newDegree = inDegree.get(name) - 1;
+               inDegree.set(name, newDegree);
+               if (newDegree === 0) queue.push(name);
+           }
+       }
+   }
+
+   // 2. Iteratively build the analytical solution in strict topological order
+   for (const nuclideName of sortedNuclides) {
       const nuclide = nuclideMap.get(nuclideName);
 
-      if (nuclide.parents.length === 0) { // This is the root parent
+      if (nuclide.parents.length === 0) {
          if (nuclide.lambda === 0) continue;
-         const N0 = A1_0 / nuclide.lambda;
-         nuclide.solution.push({
-            coeff: N0,
-            lambda: nuclide.lambda
-         });
+         const initialAct = nuclide.isRoot ? A1_0 : 0;
+         if (initialAct > 0) {
+             const N0 = initialAct / nuclide.lambda;
+             nuclide.solution.push({ coeff: N0, lambda: nuclide.lambda });
+         }
       } else {
-         const solutionMap = new Map(); // Used to consolidate terms
+         const solutionMap = new Map();
          for (const parent of nuclide.parents) {
             const parentNuclide = nuclideMap.get(parent.name);
             for (const term of parentNuclide.solution) {
                const C = parent.br * parentNuclide.lambda * term.coeff;
-               
-               // 1. Create a local copy of the lambda
                let effectiveLambda = term.lambda;
 
-               if (Math.abs(nuclide.lambda - effectiveLambda) < 1e-20) {
-                  effectiveLambda *= (1 + 1e-10); // Mutate the local copy only!
+               const epsilon = Math.max(nuclide.lambda, effectiveLambda) * 1e-7;
+               if (Math.abs(nuclide.lambda - effectiveLambda) < epsilon) {
+                  effectiveLambda += (effectiveLambda === 0 ? 1e-12 : effectiveLambda * 1e-5);
                }
 
-               const coeff = C / (nuclide.lambda - effectiveLambda);
-               
-               // 2. Use the effectiveLambda for the Map keys
-               solutionMap.set(effectiveLambda, (solutionMap.get(effectiveLambda) || 0) + coeff);
-               solutionMap.set(nuclide.lambda, (solutionMap.get(nuclide.lambda) || 0) - coeff);
+               const denom = nuclide.lambda - effectiveLambda;
+               if (Math.abs(denom) > 1e-25) { 
+                   const coeff = C / denom;
+                   solutionMap.set(effectiveLambda, (solutionMap.get(effectiveLambda) || 0) + coeff);
+                   solutionMap.set(nuclide.lambda, (solutionMap.get(nuclide.lambda) || 0) - coeff);
+               }
             }
          }
-         // Convert the map back to the solution array format
-         nuclide.solution = Array.from(solutionMap, ([lambda, coeff]) => ({
-            lambda,
-            coeff
-         }));
+         nuclide.solution = Array.from(solutionMap, ([lambda, coeff]) => ({ lambda, coeff }));
       }
    }
 
-   // 3. Calculate the final activities at the specified time.
-
+   // 3. Calculate the final activities
    const finalActivities = [];
    for (const step of chain) {
       const nuclide = nuclideMap.get(step.nuclide);
-      if (nuclide.lambda === 0) {
+      if (!nuclide || nuclide.lambda === 0) {
          finalActivities.push(0);
          continue;
       }
@@ -665,7 +690,7 @@ const runBatemanWithBranching = (chain, A1_0, t_seconds) => {
          N_t += term.coeff * Math.exp(-term.lambda * t_seconds);
       }
       const A_t = N_t * nuclide.lambda;
-      finalActivities.push(A_t > 0 ? A_t : 0); // Ensure no negative activities from floating point errors
+      finalActivities.push(A_t > 0 ? A_t : 0); 
    }
    return finalActivities;
 };
