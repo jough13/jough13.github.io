@@ -38,6 +38,7 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
             if (isNaN(A0) || isNaN(Af) || A0 <= 0 || Af <= 0) {
                 if (initialActivity && finalActivity) setError("Activities must be positive numbers.");
                 setResult(null); 
+                setChartData(null);
                 return;
             }
 
@@ -46,9 +47,9 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
             const factorF = activityFactorsBq[finalUnit];
 
             if (!factor0 || !factorF) {
-                // FIX: Explicitly catch and report unmapped units
-                setError("Unsupported unit selected. Calculation aborted.");
+                setError(`Unsupported unit selected (${!factor0 ? initialUnit : finalUnit}). Calculation aborted.`);
                 setResult(null);
+                setChartData(null);
                 return; 
             }
 
@@ -58,6 +59,7 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
             if (Af_Bq > A0_Bq) {
                 setError("Final activity must be less than initial activity.");
                 setResult(null); 
+                setChartData(null);
                 return;
             }
 
@@ -66,6 +68,7 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
             if (!T_half_seconds || T_half_seconds === Infinity) {
                 setError("Invalid half-life (Stable or Unknown).");
                 setResult(null);
+                setChartData(null);
                 return;
             }
 
@@ -75,6 +78,7 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
             if (!isFinite(time_seconds)) {
                 setError("Invalid time result. Check inputs.");
                 setResult(null);
+                setChartData(null);
                 return;
             }
 
@@ -92,9 +96,9 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
                 'megayears': 31557600 * 1e6,
                 'gigayears': 31557600 * 1e9
             };
+            
             // Ensure we match the key regardless of case (e.g. "Days" vs "days")
             const conversionFactor = unitConversions[bestUnit.toLowerCase()] || 1; 
-            
             const time_in_best_unit = time_seconds / conversionFactor;
 
             setResult({
@@ -116,6 +120,7 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
                 const t_plot_seconds = t_plot * conversionFactor;
 
                 const currentAct_Bq = A0_Bq * Math.exp(-lambda * t_plot_seconds);
+                // Plot everything relative to the initial unit so the scales match
                 const currentAct_UserUnit = currentAct_Bq / factor0;
                 const targetLimit_UserUnit = Af_Bq / factor0;
 
@@ -161,6 +166,7 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
         } catch (e) {
             setError("Calculation failed.");
             setResult(null);
+            setChartData(null);
         }
     }, [selectedNuclide, initialActivity, initialUnit, finalActivity, finalUnit, activityFactorsBq]);
 
