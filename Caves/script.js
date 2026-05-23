@@ -630,6 +630,23 @@ function updateWeather() {
             }
             break;
     }
+    
+    const hour = gameState.time.hour;
+    const isNight = hour >= 20 || hour < 5;
+
+    // 1 in 15 chance every night for a Blood Moon
+    if (isNight && !gameState.isBloodMoon && Math.random() < 0.005) { // Checked frequently, so low probability
+        gameState.isBloodMoon = true;
+        logMessage(`{red:The moon turns blood red... The monsters grow frenzied!}`);
+        
+        // 10% chance during a blood moon to spawn a raid boss near an active player
+        if (Math.random() < 0.10) {
+            triggerRaidBossSpawn(player.x, player.y);
+        }
+    } else if (!isNight && gameState.isBloodMoon) {
+        gameState.isBloodMoon = false;
+        logMessage(`The sun rises, breaking the blood moon's curse.`);
+    }
 }
 
 function handleStatAllocation(event) {
@@ -2643,11 +2660,53 @@ function restPlayer() {
         if (inSafeZone) logMessage(`You rest comfortably in the haven. (+${restAmount} HP/Stamina)`);
         else logMessage(logMsg);
     }
-
-    // 7. REMOVED: playerRef.update(...) <-- This was the cause of the bug!
     
-    // 8. End Turn (This saves Health, Stamina, AND your pending XP)
+    // 7. End Turn (This saves Health, Stamina, AND your pending XP)
     endPlayerTurn();
+}
+
+function triggerRaidBossSpawn(playerX, playerY) {
+    if (gameState.mapMode !== 'overworld') return;
+
+    // Spawn 10 to 20 tiles away from the player
+    const spawnX = playerX + (Math.random() > 0.5 ? 1 : -1) * (10 + Math.floor(Math.random() * 10));
+    const spawnY = playerY + (Math.random() > 0.5 ? 1 : -1) * (10 + Math.floor(Math.random() * 10));
+    const bossId = `overworld_raid_${Date.now()}`;
+
+    // Grab the Behemoth template (We'll add this to data-entities.js next)
+    const bossTemplate = ENEMY_DATA['👾']; 
+    if (!bossTemplate) return;
+
+    const bossEntity = {
+        name: "World Boss: " + bossTemplate.name,
+        tile: '👾',
+        x: spawnX,
+        y: spawnY,
+        health: bossTemplate.maxHealth,
+        maxHealth: bossTemplate.maxHealth,
+        attack: bossTemplate.attack,
+        defense: bossTemplate.defense,
+        xp: bossTemplate.xp,
+        loot: bossTemplate.loot,
+        isBoss: true,
+        isElite: true,
+        color: '#f43f5e', // Rose Red
+        spawnTime: Date.now()
+    };
+
+    // Save to RTDB
+    rtdb.ref(EnemyNetworkManager.getPath(spawnX, spawnY, bossId)).set(bossEntity);
+
+    // Announce to Global Chat!
+    rtdb.ref('chat').push().set({
+        senderId: 'SERVER',
+        email: 'SYSTEM',
+        message: `{red:⚠️ A Void Behemoth has ripped into reality near (${spawnX}, ${-spawnY})! Gather your allies!}`,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    gameState.screenShake = 30;
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
 }
 
 function recalculateDerivedStats() {
@@ -2916,7 +2975,7 @@ async function enterGame(playerData) {
         await playerRef.set(sanitizeForFirebase(playerData));
     }
 
-    // --- FIX: REHYDRATE ITEMS BEFORE APPLYING STATE ---
+    // --- REHYDRATE ITEMS BEFORE APPLYING STATE ---
     if (playerData.inventory) {
         playerData.inventory = rehydratePlayerState(playerData);
     }
