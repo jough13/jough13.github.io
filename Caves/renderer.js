@@ -588,3 +588,99 @@ const TileRenderer = {
         ctx.restore();
     }
 };
+
+// --- RENDER LIGHTING HELPER ---
+function drawLighting(ctx, pScreenX, pScreenY) {
+    let ambientLight = 0.0;
+    let baseRadius = 10;
+    const hasTorch = gameState.player.inventory.some(item => item.name === 'Torch');
+    const torchBonus = hasTorch ? 6 : 0;
+    const candleBonus = (gameState.player.candlelightTurns > 0) ? 8 : 0;
+
+    // Determine ambient light and base radius
+    if (gameState.mapMode === 'dungeon') {
+        ambientLight = 0.85; // Dungeons are permanently dark
+        baseRadius = 6 + Math.floor(gameState.player.perception / 2) + torchBonus + candleBonus;
+    } else { 
+        // Overworld AND Castles use the Day/Night Cycle!
+        const timeInMinutes = (gameState.time.hour * 60) + gameState.time.minute;
+        
+        // Creates a perfectly smooth wave: 0.0 at noon, 1.0 at midnight
+        const timeWave = (Math.cos((timeInMinutes / 1440) * Math.PI * 2) + 1) / 2;
+        
+        // Scale it so max darkness is 0.85 (pitch black) and noon is 0.0 (bright)
+        ambientLight = timeWave * 0.85;
+        
+        // If it's darker than 30%, shrink vision so torches matter!
+        baseRadius = (ambientLight > 0.3) ? 8 + torchBonus + candleBonus : 25;
+    }
+
+    const now = Date.now();
+    const torchFlicker = (Math.sin(now / 1000) * 0.2) + (Math.cos(now / 2500) * 0.1);
+    const lightRadius = baseRadius + torchFlicker;
+
+    // Unify darkness variable
+    const outerDarkness = ambientLight; 
+
+    // If it's daytime (outerDarkness is 0), skip drawing the shadow entirely!
+    if (outerDarkness > 0.0) {
+        // Base Tint Color: Warm Orange
+        let r = 255, g = 140, b = 0; 
+        
+        // Contextual Tints
+        if (gameState.mapMode === 'dungeon') {
+            const themeName = chunkManager.caveThemes[gameState.currentCaveId];
+            if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
+            if (themeName === 'VOID') { r = 168; g = 85; b = 247; }
+        } else if (gameState.mapMode === 'overworld') {
+            if (gameState.isBloodMoon) {
+                // BLOOD MOON TINT
+                r = 220; g = 38; b = 38; // Deep Red
+            } else if (gameState.weather === 'storm') {
+                r = 100; g = 100; b = 150;
+            }
+        }
+
+        // Hardware-Accelerated Gradient
+        const lightPxRadius = lightRadius * TILE_SIZE;
+        const darknessGradient = ctx.createRadialGradient(
+            pScreenX, pScreenY, lightPxRadius * 0.2, // Inner radius
+            pScreenX, pScreenY, lightPxRadius        // Outer edge
+        );
+
+        // Center: Bright glow
+        darknessGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.15)`);
+        // Midpoint: Fading into shadow
+        darknessGradient.addColorStop(0.5, `rgba(0, 0, 0, ${outerDarkness * 0.6})`);
+        // Edge: Pitch Black
+        darknessGradient.addColorStop(1, `rgba(0, 0, 0, ${outerDarkness})`);
+
+        // Draw one single massive rectangle over the whole screen (Max Performance)
+        ctx.fillStyle = darknessGradient;
+        ctx.fillRect(-TILE_SIZE * 2, -TILE_SIZE * 2, (VIEWPORT_WIDTH + 4) * TILE_SIZE, (VIEWPORT_HEIGHT + 4) * TILE_SIZE);
+    }
+
+    // --- Nighttime Fireflies ---
+    // If it's dark, and we are in a forest, spawn ambient fireflies!
+    if (outerDarkness > 0.4 && gameState.mapMode === 'overworld') {
+        const p = gameState.player;
+        const centerTile = chunkManager.getTile(p.x, p.y);
+        if (centerTile === 'F' || centerTile === '🌳e') {
+            // 5% chance per frame to spawn a firefly
+            if (Math.random() < 0.05 && typeof ParticleSystem !== 'undefined') {
+                const fx = p.x + (Math.random() * VIEWPORT_WIDTH) - (VIEWPORT_WIDTH / 2);
+                const fy = p.y + (Math.random() * VIEWPORT_HEIGHT) - (VIEWPORT_HEIGHT / 2);
+                ParticleSystem.spawn(fx, fy, '#86efac', 'dust', '', 2); // Glowing green
+                
+                // Hack: Override the standard gravity so fireflies float UP and drift
+                const activeBug = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
+                if (activeBug) {
+                    activeBug.vy = -0.02 - (Math.random() * 0.02);
+                    activeBug.vx = (Math.random() - 0.5) * 0.05;
+                    activeBug.gravity = 0;
+                    activeBug.lifeFade = 0.01; // Fade out very slowly
+                }
+            }
+        }
+    }
+}
