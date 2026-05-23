@@ -10,6 +10,7 @@ let currentUser = null; // Store the firebase user object
 
 const charCreationModal = document.getElementById('charCreationModal');
 const timeDisplay = document.getElementById('timeDisplay');
+const weatherDisplay = document.getElementById('weatherDisplay'); // NEW UI Hook
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -130,6 +131,7 @@ const logMessage = (text) => {
         .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
         .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
         .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
+        .replace(/{cyan:(.*?)}/g, '<span class="text-cyan-400 font-bold">$1</span>')
         .replace(/{orange:(.*?)}/g, '<span class="text-orange-400 font-bold">$1</span>')
         .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
 
@@ -166,6 +168,7 @@ const logMessage = (text) => {
 // --- CORE STAT RENDERING ---
 const renderStats = () => {
     renderStatusEffects();
+    updateWeatherUI(); // Ensure weather/events are displayed
 
     for (const statName in statDisplays) {
         const element = statDisplays[statName];
@@ -177,7 +180,7 @@ const renderStats = () => {
                 const max = gameState.player.xpToNextLevel;
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
 
-                element.textContent = `XP: ${value} / ${max}`;
+                element.innerHTML = `<span>XP</span> <span>${value} / ${max}</span>`;
                 statBarElements.xp.style.width = `${percent}%`;
 
             } else if (statName === 'statPoints') {
@@ -197,10 +200,10 @@ const renderStats = () => {
                 statBarElements.health.style.width = `${percent}%`;
                 
                 let displayHealth = Math.ceil(value); 
-                let healthString = `${label}: ${displayHealth}`;
+                let healthString = `<span>Health</span> <span>${displayHealth}/${max}</span>`;
 
                 if (gameState.player.shieldValue > 0) {
-                    healthString += ` <span class="text-blue-400">(+${Math.ceil(gameState.player.shieldValue)})</span>`;
+                    healthString += ` <span class="text-blue-400 absolute right-16">(+${Math.ceil(gameState.player.shieldValue)})</span>`;
                 }
                 
                 element.innerHTML = healthString;
@@ -232,13 +235,13 @@ const renderStats = () => {
                 const max = gameState.player.maxMana;
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
                 statBarElements.mana.style.width = `${percent}%`;
-                element.textContent = `${label}: ${Math.floor(value)}`;
+                element.innerHTML = `<span>Mana</span> <span>${Math.floor(value)}/${max}</span>`;
 
             } else if (statName === 'stamina') {
                 const max = gameState.player.maxStamina;
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
                 statBarElements.stamina.style.width = `${percent}%`;
-                element.textContent = `${label}: ${Math.floor(value)}`;
+                element.innerHTML = `<span>Stamina</span> <span>${Math.floor(value)}/${max}</span>`;
 
                 element.classList.remove('text-green-500', 'text-cyan-400');
                 if (gameState.player.frostbiteTurns > 0) {
@@ -260,19 +263,19 @@ const renderStats = () => {
                 const max = gameState.player.maxPsyche;
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
                 statBarElements.psyche.style.width = `${percent}%`;
-                element.textContent = `${label}: ${Math.floor(value)}`;
+                element.innerHTML = `<span>Psyche</span> <span>${Math.floor(value)}/${max}</span>`;
 
             } else if (statName === 'hunger') {
                 const max = gameState.player.maxHunger;
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
                 statBarElements.hunger.style.width = `${percent}%`;
-                element.textContent = `${label}: ${Math.floor(value)}`; 
+                element.innerHTML = `<span>Hunger</span> <span>${Math.floor(percent)}%</span>`; 
 
             } else if (statName === 'thirst') {
                 const max = gameState.player.maxThirst;
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
                 statBarElements.thirst.style.width = `${percent}%`;
-                element.textContent = `${label}: ${Math.floor(value)}`;
+                element.innerHTML = `<span>Thirst</span> <span>${Math.floor(percent)}%</span>`;
 
             } else {
                 element.textContent = `${label}: ${value}`;
@@ -285,14 +288,43 @@ const renderStats = () => {
     }
 };
 
+// --- DYNAMIC WEATHER & EVENT DISPLAY ---
+function updateWeatherUI() {
+    if (!weatherDisplay) return;
+
+    let displayString = '';
+    let colorClass = 'text-gray-400';
+
+    if (gameState.mapMode === 'overworld') {
+        if (gameState.isBloodMoon) {
+            displayString = '🩸 BLOOD MOON';
+            colorClass = 'text-red-500 animate-pulse';
+        } else if (gameState.weather !== 'clear') {
+            if (gameState.weather === 'rain') { displayString = '🌧️ Raining'; colorClass = 'text-blue-400'; }
+            if (gameState.weather === 'storm') { displayString = '⛈️ Thunderstorm'; colorClass = 'text-yellow-400'; }
+            if (gameState.weather === 'snow') { displayString = '❄️ Snowing'; colorClass = 'text-cyan-300'; }
+            if (gameState.weather === 'fog') { displayString = '🌫️ Foggy'; colorClass = 'text-gray-400'; }
+        }
+    }
+
+    if (displayString) {
+        weatherDisplay.innerHTML = displayString;
+        weatherDisplay.className = `text-[10px] font-bold mt-1 tracking-widest uppercase block ${colorClass}`;
+    } else {
+        weatherDisplay.classList.add('hidden');
+    }
+}
+
 // --- INVENTORY SORTING MECHANIC ---
 window.sortInventory = function() {
     if (!gameState.player.inventory) return;
 
+    const originalLength = gameState.player.inventory.length;
+    let didConsolidate = false;
+
     // 1. Consolidate stacks (Merge partial stacks of arrows, meat, logs, etc)
     const consolidated = [];
     gameState.player.inventory.forEach(item => {
-        // Can only stack unequipped items of certain types
         const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(item.type);
         
         const existing = consolidated.find(i => 
@@ -304,6 +336,7 @@ window.sortInventory = function() {
         
         if (existing) {
             existing.quantity += item.quantity;
+            didConsolidate = true;
         } else {
             consolidated.push({...item}); 
         }
@@ -312,27 +345,34 @@ window.sortInventory = function() {
     // 2. Sort by Type, then Name
     const typeWeights = { 
         'weapon': 1, 'armor': 2, 'accessory': 3, 'ammo': 4, 
-        'consumable': 5, 'tool': 6, 'spellbook': 7, 'quest': 8, 'junk': 9 
+        'consumable': 5, 'tool': 6, 'spellbook': 7, 'quest': 8, 'trade': 9, 'junk': 10 
     };
     
+    // Create a string representation of the array before sorting to check for changes
+    const preSortString = consolidated.map(i => i.name).join();
+
     consolidated.sort((a, b) => {
         // Equipped gear ALWAYS floats to the top
         if (a.isEquipped !== b.isEquipped) return a.isEquipped ? -1 : 1; 
         
-        const wA = typeWeights[a.type] || 10;
-        const wB = typeWeights[b.type] || 10;
+        const wA = typeWeights[a.type] || 20;
+        const wB = typeWeights[b.type] || 20;
         
         if (wA !== wB) return wA - wB; // Sort by category
         return a.name.localeCompare(b.name); // Alphabetical within category
     });
 
-    gameState.player.inventory = consolidated;
+    const postSortString = consolidated.map(i => i.name).join();
 
-    // Save and re-render
-    if (typeof playerRef !== 'undefined' && playerRef) {
-        playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : consolidated });
+    // PERFORMANCE: Only update DB and UI if the sort ACTUALLY changed something
+    if (didConsolidate || preSortString !== postSortString || originalLength !== consolidated.length) {
+        gameState.player.inventory = consolidated;
+
+        if (typeof playerRef !== 'undefined' && playerRef) {
+            playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : consolidated });
+        }
+        renderInventory();
     }
-    renderInventory();
     
     // ANTI-SPAM AUDIO
     const now = Date.now();
@@ -354,7 +394,7 @@ const renderInventory = () => {
             titleElement.innerHTML = `
                 <div class="flex justify-between items-center w-full">
                     <span id="invTitleText">${titleText}</span>
-                    <button id="sortInvBtn" onclick="sortInventory()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95">Auto-Sort</button>
+                    <button id="sortInvBtn" onclick="sortInventory()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded shadow transition-all active:scale-95">Auto-Sort</button>
                 </div>
             `;
         }
@@ -362,17 +402,15 @@ const renderInventory = () => {
         const titleSpan = document.getElementById('invTitleText');
         if (gameState.isDroppingItem) {
             titleSpan.textContent = "SELECT ITEM TO DROP";
-            titleSpan.classList.add('text-red-500', 'font-extrabold');
-            titleSpan.classList.remove('text-default'); 
+            titleSpan.className = 'text-red-500 font-extrabold';
         } else {
             titleSpan.textContent = "Inventory";
-            titleSpan.classList.remove('text-red-500', 'font-extrabold');
-            titleSpan.classList.add('text-default');
+            titleSpan.className = 'text-default font-bold';
         }
     }
 
     if (!gameState.player.inventory || gameState.player.inventory.length === 0) {
-        inventoryModalList.innerHTML = '<span class="muted-text italic px-2">Inventory is empty.</span>';
+        inventoryModalList.innerHTML = '<div class="w-full text-center mt-8 text-gray-500 italic">Your bag is empty.</div>';
     } else {
         // PERFORMANCE: Batch DOM updates using DocumentFragment
         const fragment = document.createDocumentFragment();
@@ -380,7 +418,7 @@ const renderInventory = () => {
         gameState.player.inventory.forEach((item, index) => {
             const itemDiv = document.createElement('div');
 
-            let slotClass = 'inventory-slot p-2 rounded-md cursor-pointer transition-all duration-200';
+            let slotClass = 'inventory-slot p-2 rounded-xl cursor-pointer transition-all duration-200';
             
             if (gameState.isDroppingItem) {
                 slotClass += ' border-2 border-red-500 bg-red-900 bg-opacity-20 hover:bg-opacity-40';
@@ -389,7 +427,7 @@ const renderInventory = () => {
             } else if (item.type === 'consumable') {
                 slotClass += ' bg-blue-900 bg-opacity-10 hover:border-blue-500';
             } else {
-                slotClass += ' hover:border-blue-500';
+                slotClass += ' hover:border-blue-500 hover:bg-gray-800';
             }
             
             itemDiv.className = slotClass;
@@ -412,20 +450,20 @@ const renderInventory = () => {
             itemDiv.title = title;
 
             const itemChar = document.createElement('span');
-            itemChar.className = 'item-char';
-            itemChar.textContent = item.tile;
+            itemChar.className = 'item-char text-3xl mb-1';
+            itemChar.textContent = item.tile || '🎒';
 
             const itemQuantity = document.createElement('span');
-            itemQuantity.className = 'item-quantity';
+            itemQuantity.className = 'item-quantity bg-black bg-opacity-60 text-white px-1 rounded';
             itemQuantity.textContent = `x${item.quantity}`;
 
             const slotNumber = document.createElement('span');
-            slotNumber.className = 'absolute top-0 left-1 text-xs highlight-text font-bold';
+            slotNumber.className = 'absolute top-1 left-1.5 text-[10px] text-gray-400 font-bold';
             if (index < 9) slotNumber.textContent = index + 1;
 
             if (item.isEquipped) {
                 const equipBadge = document.createElement('span');
-                equipBadge.className = 'absolute top-0 right-0 bg-yellow-500 text-black text-[9px] px-1 font-bold rounded-bl-md rounded-tr-md';
+                equipBadge.className = 'absolute top-0 right-0 bg-yellow-500 text-black text-[9px] px-1.5 py-0.5 font-bold rounded-bl-lg rounded-tr-xl';
                 equipBadge.textContent = 'EQP';
                 itemDiv.appendChild(equipBadge);
             }
@@ -553,7 +591,7 @@ const renderEquipment = () => {
     if (wIcon) {
         wIcon.textContent = (weapon.tile || '👊').replace(/[a-zA-Z]/g, '');
         wIcon.style.opacity = (weapon.name === 'Fists') ? '0.3' : '1';
-        wIcon.title = weaponTooltip; // Add juice tooltip
+        wIcon.title = weaponTooltip; 
     }
     if (aIcon) {
         aIcon.textContent = (armor.tile || '👕').replace(/[a-zA-Z]/g, '');
@@ -646,16 +684,15 @@ function updateRegionDisplay() {
     }
 }
 
+// JUICE: Reflow DOM to ensure rapid flashes restart their animations properly!
 function triggerStatFlash(statElement, positive = true) {
     if (!statElement) return;
     const animationClass = positive ? 'stat-flash-green' : 'stat-flash-red';
     
-    // Remove class and force a DOM reflow so rapid triggers restart the animation correctly
     statElement.classList.remove(animationClass);
     void statElement.offsetWidth; 
     statElement.classList.add(animationClass);
     
-    // Use animationend rather than timeout to prevent sticky UI bugs
     statElement.onanimationend = () => {
         statElement.classList.remove(animationClass);
     };
@@ -688,10 +725,10 @@ function renderStatusEffects() {
         icons += `<span title="Strong (+${player.strengthBonus} Str, ${player.strengthBonusTurns}t)">💪</span>`;
     }
     if (player.poisonTurns > 0) {
-        icons += `<span title="Poisoned (${player.poisonTurns}t)">☣️</span>`;
+        icons += `<span title="Poisoned (${player.poisonTurns}t)" class="text-green-500 animate-pulse">☣️</span>`;
     }
     if (player.frostbiteTurns > 0) {
-        icons += `<span title="Frostbitten (${player.frostbiteTurns}t)">❄️</span>`;
+        icons += `<span title="Frostbitten (${player.frostbiteTurns}t)" class="text-cyan-400">❄️</span>`;
     }
 
     statusEffectsPanel.innerHTML = icons;
@@ -763,16 +800,24 @@ function resizeCanvas() {
 // INJECT STAT TOOLTIPS
 (function initStatTooltips() {
     const statDescriptions = {
-        strength: "Increases Melee Damage and carry weight.",
-        wits: "Increases Max Mana, Spell Damage, and Shield strength.",
+        // Vitals
+        health: "Your life force. If it hits 0, you die and lose gold/items.",
+        mana: "Magical energy used to cast Spells and travel Leylines.",
+        stamina: "Physical energy used for Weapon Skills, running, and mining.",
+        psyche: "Mental fortitude. Used for Taming, Pacifying, and resisting madness.",
+        hunger: "If empty, you stop regenerating HP.",
+        thirst: "If empty, you stop regenerating Stamina.",
+        // Attributes
+        strength: "Increases Melee Damage, carry capacity, and mining yield.",
+        wits: "Increases Max Mana, Spell Damage, and Arcane Shield strength.",
         constitution: "Increases Max Health and Base Defense.",
-        dexterity: "Increases Dodge Chance, Stealth, and Base Defense.",
+        dexterity: "Increases Dodge Chance, Stealth, Ranged Damage, and Base Defense.",
         charisma: "Improves Shop Prices and Taming/Pacify chances.",
         luck: "Increases Critical Hit chance, Dodge chance, and rare Loot drops.",
-        willpower: "Increases Max Psyche and Dark/Frost spell damage.",
-        perception: "Increases Accuracy and chance to find Secret Doors.",
+        willpower: "Increases Max Psyche, Dark/Frost spell damage, and summon health.",
+        perception: "Increases Accuracy, Vision Radius, and chance to find Secret Doors.",
         endurance: "Increases Max Stamina and resistance to Swamp Sickness.",
-        intuition: "Improves Nature/Druid spells and senses unseen enemies."
+        intuition: "Improves Nature/Druid spells and senses unseen enemies nearby."
     };
 
     setTimeout(() => {
@@ -810,8 +855,6 @@ if (canvasWrapper) {
 function returnFocusToCanvas() {
     // Only focus if the canvas is actually visible
     if (!gameContainer.classList.contains('hidden')) {
-        // Technically canvas isn't focusable by default unless it has a tabindex,
-        // but this ensures the document body gets focus back so keydown events work!
         if (document.activeElement) document.activeElement.blur(); 
     }
 }
