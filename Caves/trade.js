@@ -1,13 +1,107 @@
+// ==========================================
+// TRADE & ECONOMY SYSTEM
+// ==========================================
+
+// --- EXPANDABILITY WIN: Centralized Value Dictionary ---
+// For items that aren't natively sold in shops but have high intrinsic value to traders.
+const BASE_ITEM_VALUES = {
+    // Relics & Artifacts
+    'Shattered Crown': 200, 'Signet Ring': 80, 'Pouch of Gold Dust': 50, 
+    'Ancient Coin': 25, 'Alpha Pelt': 60, 'Rainbow Shell': 100, 
+    'Golden Pocket Watch': 120, 'Jade Idol': 90, 'Black Pearl': 250,
+    'Heart of the Forest': 300, 'Kraken Ink Sac': 150, 'Ancient Vase': 75,
+    'Stone Head': 60, 'Fossilized Bone': 40,
+    
+    // Fish & Sea Creatures
+    'Golden Koi': 150, 'Deep Sea Cod': 10, 'Silver Tuna': 50, 
+    'Magma Carp': 60, 'Sludge Eel': 15, 'Eyeless Cave Fish': 40, 
+    'Swamp Serpent Scale': 200, 'Minnow': 1, 'River Trout': 4, 
+    'Leaping Salmon': 15, 'Mudcat': 2
+};
+
+/**
+ * High-performance helper to calculate the exact sell price of any item.
+ * Evaluates Charisma, Lore Bonuses, Regional Demand, and Economy Caps.
+ */
+function calculateItemValue(item, player) {
+    // 1. Try to find the item in the current shop to get its native buy price
+    let shopItem = activeShopInventory.find(sItem => sItem.name === item.name);
+
+    // Fallback: Check Template ID match (for modified/magic items)
+    if (!shopItem && item.templateId && ITEM_DATA[item.templateId]) {
+        const baseName = ITEM_DATA[item.templateId].name;
+        shopItem = activeShopInventory.find(sItem => sItem.name === baseName);
+    }
+
+    // Fallback: Check string suffix (e.g. "Sharp Steel Sword" -> "Steel Sword")
+    if (!shopItem) {
+        shopItem = activeShopInventory.find(sItem => item.name.endsWith(sItem.name));
+    }
+
+    // 2. Establish Base Price
+    let basePrice = 2; // Absolute lowest default
+    
+    if (shopItem) {
+        basePrice = shopItem.price;
+        // Bonus value if the item has magical affixes (Prefix/Suffix)
+        if (item.name !== shopItem.name) {
+            basePrice = Math.floor(basePrice * 1.5);
+        }
+    } else {
+        // Look up against our central dictionary
+        let lookupName = item.name;
+        if (item.templateId && ITEM_DATA[item.templateId]) {
+            lookupName = ITEM_DATA[item.templateId].name;
+        }
+        if (BASE_ITEM_VALUES[lookupName]) basePrice = BASE_ITEM_VALUES[lookupName];
+        else if (BASE_ITEM_VALUES[item.name]) basePrice = BASE_ITEM_VALUES[item.name];
+    }
+
+    // 3. Calculate Modifiers
+    const regionMult = getRegionalPriceMultiplier(item.type, item.name);
+    const sellBonusPercent = player.charisma * 0.005;
+    const finalSellBonus = Math.min(sellBonusPercent, 0.25); // Max 25% boost from Charisma
+
+    let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
+
+    // 4. Economy Caps (Prevent infinite money loops)
+    if (shopItem) {
+        // Calculate what the player would currently BUY this for right now
+        let discountPercent = player.charisma * 0.005;
+        if (player.completedLoreSets && player.completedLoreSets.includes('king_fall')) discountPercent += 0.10;
+        const finalDiscount = Math.min(discountPercent, 0.50);
+        const currentBuyPrice = Math.floor(shopItem.price * (1.0 - finalDiscount));
+
+        // CAP: You can never sell an item for more than 80% of what you can buy it for!
+        const absoluteMaxSell = Math.max(1, Math.floor(currentBuyPrice * 0.80));
+        calculatedSellPrice = Math.min(calculatedSellPrice, absoluteMaxSell);
+    } else {
+        // General cap for non-shop items
+        const maxSellPrice = Math.floor(basePrice * 0.8);
+        calculatedSellPrice = Math.min(calculatedSellPrice, maxSellPrice);
+    }
+
+    return { 
+        sellPrice: Math.max(1, calculatedSellPrice), 
+        basePrice: basePrice, 
+        regionMult: regionMult 
+    };
+}
+
+
 function handleBuyItem(itemName) {
     const player = gameState.player;
     const shopItem = activeShopInventory.find(item => item.name === itemName);
-    const itemTemplate = ITEM_DATA[Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemName)];
+    const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemName);
+    const itemTemplate = ITEM_DATA[itemKey];
 
     if (!shopItem || !itemTemplate) {
-        logMessage("Error: Item not found in shop.");
+        logMessage("{red:Error: Item not found in shop.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
-   // --- PRICING LOGIC START --- 
+    
+    // --- PRICING LOGIC START --- 
     const basePrice = shopItem.price;
     
     // 1. Charisma
@@ -22,150 +116,112 @@ function handleBuyItem(itemName) {
     const finalDiscount = Math.min(discountPercent, 0.50);
     const finalBuyPrice = Math.floor(basePrice * (1.0 - finalDiscount));
 
-    // 1. Check if player has enough gold
+    // Checks
     if (player.coins < finalBuyPrice) {
-        logMessage("You don't have enough gold for that.");
+        logMessage("{red:You don't have enough gold for that.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
     if (shopItem.stock <= 0) {
-        logMessage("The shop is out of stock!");
+        logMessage("{red:The shop is out of stock!}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
-    // 2. Check if player has inventory space
-    const existingStack = player.inventory.find(item => item.name === itemName);
-    if (!existingStack && player.inventory.length >= MAX_INVENTORY_SLOTS) {
-        logMessage("Your inventory is full!");
+    const existingStack = player.inventory.find(item => item.name === itemName && !item.isEquipped);
+    const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
+
+    if (!existingStack && player.inventory.length >= window.MAX_INVENTORY_SLOTS) {
+        logMessage("{red:Your inventory is full!}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
-    // 3. Process the transaction
+    // Process the transaction
     player.coins -= finalBuyPrice;
     shopItem.stock--;
-    logMessage(`You bought a ${itemName} for ${finalBuyPrice} gold.`); // <-- Use new variable
+    logMessage(`You bought a ${itemName} for {gold:${finalBuyPrice} gold}.`);
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
-    if (existingStack) {
-        if (existingStack.quantity >= 99) {
-            logMessage("You cannot carry any more of that item.");
-            return;
-        }
+    if (existingStack && isStackable) {
         existingStack.quantity++;
     } else {
-
-        const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemName);
-
         player.inventory.push({
-
             templateId: itemKey,
             name: itemTemplate.name,
             type: itemTemplate.type,
             quantity: 1,
-            tile: itemKey || '?',
-            effect: itemTemplate.effect || null
+            tile: itemTemplate.tile || itemKey || '?',
+            damage: itemTemplate.damage || null,
+            defense: itemTemplate.defense || null,
+            slot: itemTemplate.slot || null,
+            statBonuses: itemTemplate.statBonuses || null,
+            effect: itemTemplate.effect || null,
+            isEquipped: false
         });
     }
 
-    // 4. Update database and UI
+    // BUG FIX: Removed double-update. Update once safely.
     playerRef.update({
         coins: player.coins,
-        inventory: player.inventory
+        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
     });
 
-    playerRef.update({
-        coins: player.coins,
-        inventory: getSanitizedInventory()
-    });
-
-    renderShop(); // Re-render the shop to show new gold and inventory
-    renderInventory(); // Update the main UI inventory
-    renderStats(); // Update the main UI gold display
+    renderShop(); 
+    if (typeof renderInventory === 'function') renderInventory(); 
+    if (typeof renderStats === 'function') renderStats(); 
 }
 
-function handleSellItem(itemIndex) {
+function handleSellItem(itemIndex, amount = 1) {
     const player = gameState.player;
-        if (itemIndex < 0 || itemIndex >= player.inventory.length) return;
+    if (itemIndex < 0 || itemIndex >= player.inventory.length) return;
     
     const itemToSell = player.inventory[itemIndex];
     if (!itemToSell) return; 
 
     if (itemToSell.isEquipped) {
-        logMessage("You cannot sell an item you are wearing!");
+        logMessage("{red:You cannot sell an item you are wearing!}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
-    if (!itemToSell) {
-        logMessage("Error: Item not in inventory.");
-        return;
-    }
+    // Use our new highly optimized helper!
+    const { sellPrice, regionMult } = calculateItemValue(itemToSell, player);
 
-// Find the item's base price in the shop.
-    const shopItem = activeShopInventory.find(i => i.name === itemToSell.name);
+    if (regionMult > 1.0) logMessage(`Market demand is high here! {green:(x${regionMult})}`);
+    else if (regionMult < 1.0) logMessage(`Market flooded. Low demand. {red:(x${regionMult})}`);
+
+    // Determine quantity to sell
+    const qtyToSell = amount === 'all' ? itemToSell.quantity : 1;
+    const totalValue = sellPrice * qtyToSell;
+
+    // Process the transaction
+    player.coins += totalValue;
     
-    // 1. Establish the Base Price
-    let basePrice = 2; // Default
-    if (shopItem) {
-        basePrice = shopItem.price;
+    if (qtyToSell > 1) {
+        logMessage(`You sold a stack of ${itemToSell.name} (x${qtyToSell}) for {gold:${totalValue} gold}.`);
     } else {
-        // --- SPECIAL PRICES FOR RELICS ---
-        if (itemToSell.name === 'Shattered Crown') basePrice = 200;
-        else if (itemToSell.name === 'Signet Ring') basePrice = 80;
-        else if (itemToSell.name === 'Pouch of Gold Dust') basePrice = 50;
-        else if (itemToSell.name === 'Ancient Coin') basePrice = 25;
-        else if (itemToSell.name === 'Alpha Pelt') basePrice = 60;
+        logMessage(`You sold a ${itemToSell.name} for {gold:${totalValue} gold}.`);
     }
+    
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
-    // 2. Calculate Modifiers
-    const regionMult = getRegionalPriceMultiplier(itemToSell.type, itemToSell.name);
-    const sellBonusPercent = player.charisma * 0.005;
-    const finalSellBonus = Math.min(sellBonusPercent, 0.25);
-
-    // 3. Calculate Raw Sell Price
-    let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
-
-    // 4. --- Economy Caps ---
-    if (shopItem) {
-        // Calculate what the player would currently BUY this for
-        let discountPercent = player.charisma * 0.005;
-        if (player.completedLoreSets && player.completedLoreSets.includes('king_fall')) {
-            discountPercent += 0.10;
-        }
-        const finalDiscount = Math.min(discountPercent, 0.50);
-        const currentBuyPrice = Math.floor(shopItem.price * (1.0 - finalDiscount));
-
-        // CAP: You can never sell an item for more than 80% of your current BUY price
-        const absoluteMaxSell = Math.max(1, Math.floor(currentBuyPrice * 0.80));
-        calculatedSellPrice = Math.min(calculatedSellPrice, absoluteMaxSell);
-    } else {
-        // General cap for non-shop items
-        const maxSellPrice = Math.floor(basePrice * 0.8);
-        calculatedSellPrice = Math.min(calculatedSellPrice, maxSellPrice);
-    }
-
-    const sellPrice = calculatedSellPrice;
-
-    if (regionMult > 1.0) logMessage(`Market demand is high here! (x${regionMult})`);
-    else if (regionMult < 1.0) logMessage(`Market flooded. Low demand. (x${regionMult})`);
-
-    // 1. Process the transaction
-    player.coins += sellPrice;
-    logMessage(`You sold a ${itemToSell.name} for ${sellPrice} gold.`);
-
-    // 2. Remove one from the stack
-    itemToSell.quantity--;
+    // Remove from inventory
+    itemToSell.quantity -= qtyToSell;
     if (itemToSell.quantity <= 0) {
         player.inventory.splice(itemIndex, 1);
     }
 
-    // 3. Update database and UI
+    // Update database and UI
     playerRef.update({
         coins: player.coins,
-        inventory: getSanitizedInventory()
+        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
     });
 
     renderShop();
-    renderInventory();
-    renderStats();
+    if (typeof renderInventory === 'function') renderInventory();
+    if (typeof renderStats === 'function') renderStats();
 }
 
 function handleSellAllItems() {
@@ -180,63 +236,14 @@ function handleSellAllItems() {
         // 1. CRITICAL: Skip equipped items
         if (item.isEquipped) continue;
 
-        // 2. Filter: Only sell 'junk' (Loot) and 'consumable' (Food/Potions)
-        // We skip 'weapon', 'armor', 'tool', 'spellbook', etc. to be safe.
-        if (item.type === 'junk' || item.type === 'consumable') {
+        // 2. Filter: Only sell 'junk' (Loot/Fish) and 'trade' goods
+        // We protect 'consumable', 'weapon', 'armor', 'tool', etc. to keep the player safe.
+        if (item.type === 'junk' || item.type === 'trade') {
 
-            // --- Price Calculation Logic (Matches handleSellItem) ---
-            // 1. Try exact match
-            let shopItem = activeShopInventory.find(sItem => sItem.name === item.name);
+            // DRY OPTIMIZATION: Use our helper
+            const { sellPrice } = calculateItemValue(item, player);
 
-            // 2. Template ID Fallback
-            if (!shopItem && item.templateId && ITEM_DATA[item.templateId]) {
-                const baseName = ITEM_DATA[item.templateId].name;
-                shopItem = activeShopInventory.find(sItem => sItem.name === baseName);
-            }
-
-            // 3. String Fallback
-            if (!shopItem) {
-                shopItem = activeShopInventory.find(sItem => item.name.endsWith(sItem.name));
-            }
-            let basePrice = 2;
-
-            if (shopItem) {
-                basePrice = shopItem.price;
-                // Bonus for modified items
-                if (item.name !== shopItem.name) {
-                    basePrice = Math.floor(basePrice * 1.5);
-                }
-            } else {
-                // Relic/Special Prices
-                if (item.name === 'Shattered Crown') basePrice = 200;
-                else if (item.name === 'Signet Ring') basePrice = 80;
-                else if (item.name === 'Pouch of Gold Dust') basePrice = 50;
-                else if (item.name === 'Ancient Coin') basePrice = 25;
-                else if (item.name === 'Alpha Pelt') basePrice = 60;
-            }
-
-            const regionMult = getRegionalPriceMultiplier(item.type, item.name);
-            const sellBonusPercent = player.charisma * 0.005;
-            const finalSellBonus = Math.min(sellBonusPercent, 0.25);
-
-            let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
-
-            // Economy Cap logic
-            if (shopItem) {
-                let discountPercent = player.charisma * 0.005;
-                if (player.completedLoreSets && player.completedLoreSets.includes('king_fall')) discountPercent += 0.10;
-                const finalDiscount = Math.min(discountPercent, 0.50);
-                const currentBuyPrice = Math.floor(shopItem.price * (1.0 - finalDiscount));
-
-                const absoluteMaxSell = Math.max(1, Math.floor(currentBuyPrice * 0.80));
-                calculatedSellPrice = Math.min(calculatedSellPrice, absoluteMaxSell);
-            } else {
-                const maxSellPrice = Math.floor(basePrice * 0.8);
-                calculatedSellPrice = Math.min(calculatedSellPrice, maxSellPrice);
-            }
-            const sellPrice = calculatedSellPrice;
-
-            // 3. Execute Sale
+            // Execute Sale
             const totalValue = sellPrice * item.quantity;
             player.coins += totalValue;
             goldGained += totalValue;
@@ -248,63 +255,69 @@ function handleSellAllItems() {
     }
 
     if (itemsSold > 0) {
-        logMessage(`Sold ${itemsSold} items for ${goldGained} gold.`);
-        AudioSystem.playCoin();
+        logMessage(`Mass Sold ${itemsSold} junk items for {gold:${goldGained} gold}.`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
         // Save and Update UI
         playerRef.update({
             coins: player.coins,
-            inventory: getSanitizedInventory()
+            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
         });
+        
         renderShop();
-        renderInventory();
-        renderStats();
+        if (typeof renderInventory === 'function') renderInventory();
+        if (typeof renderStats === 'function') renderStats();
     } else {
-        logMessage("You have no unequipped junk or consumables to sell.");
+        logMessage("{gray:You have no unequipped junk or trade goods to sell.}");
     }
 }
 
 function renderShop() {
+    const shopBuyList = document.getElementById('shopBuyList');
+    const shopSellList = document.getElementById('shopSellList');
+    const shopPlayerCoins = document.getElementById('shopPlayerCoins');
+
+    if (!shopBuyList || !shopSellList || !shopPlayerCoins) return;
+
     // 1. Clear old lists
     shopBuyList.innerHTML = '';
     shopSellList.innerHTML = '';
 
     // 2. Update player's gold
-    shopPlayerCoins.textContent = `Your Gold: ${gameState.player.coins}`;
+    shopPlayerCoins.innerHTML = `Your Gold: <span class="text-yellow-400">${gameState.player.coins}</span>`;
+
+    // PERFORMANCE: Use DocumentFragments
+    const buyFrag = document.createDocumentFragment();
+    const sellFrag = document.createDocumentFragment();
 
     // 3. Populate "Buy" list
     activeShopInventory.forEach(item => {
         const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === item.name);
-
         const baseBuyPrice = item.price;
         
-        // 1. Charisma Discount (Max 25%)
+        // Discounts
         let discountPercent = gameState.player.charisma * 0.005;
-        
-        // 2. Codex Discount (+10% Flat)
         if (gameState.player.completedLoreSets && gameState.player.completedLoreSets.includes('king_fall')) {
             discountPercent += 0.10; 
         }
-
-        // Cap Total Discount (e.g., max 50% off)
         const finalDiscount = Math.min(discountPercent, 0.5);
         const finalBuyPrice = Math.floor(baseBuyPrice * (1.0 - finalDiscount));
 
         const li = document.createElement('li');
-        li.className = 'shop-item';
+        li.className = 'shop-item hover:border-green-500 transition-colors duration-150';
         li.innerHTML = `
             <div>
-                <span class="shop-item-name">${item.name} (${itemKey || '?'})</span>
-                <span class="shop-item-details">Price: ${finalBuyPrice}g</span>
+                <span class="shop-item-name">${item.name} <span class="text-xl">${ITEM_DATA[itemKey]?.tile || '?'}</span></span>
+                <span class="shop-item-details font-bold text-yellow-500">Price: ${finalBuyPrice}g <span class="text-xs text-gray-500 font-normal">(Stock: ${item.stock})</span></span>
             </div>
-              <div class="shop-item-actions">
-            <button data-buy-item="${item.name}">Buy 1</button> 
-        </div>
-    `;
-        if (gameState.player.coins < finalBuyPrice) {
+            <div class="shop-item-actions">
+                <button data-buy-item="${item.name}" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50">Buy 1</button> 
+            </div>
+        `;
+        if (gameState.player.coins < finalBuyPrice || item.stock <= 0) {
             li.querySelector('button').disabled = true;
         }
-        shopBuyList.appendChild(li);
+        buyFrag.appendChild(li);
     });
 
     // 4. Populate "Sell" list
@@ -312,60 +325,50 @@ function renderShop() {
         shopSellList.innerHTML = '<li class="shop-item-details italic">Your inventory is empty.</li>';
     } else {
         gameState.player.inventory.forEach((item, index) => {
-            const shopItem = activeShopInventory.find(sItem => sItem.name === item.name);
-
-            // 1. Determine Base Price
-            let basePrice = 2; // Default
-            if (shopItem) {
-                basePrice = shopItem.price;
-            } else {
-                // Relic Prices (Must match handleSellItem logic!)
-                if (item.name === 'Shattered Crown') basePrice = 200;
-                else if (item.name === 'Signet Ring') basePrice = 80;
-                else if (item.name === 'Pouch of Gold Dust') basePrice = 50;
-                else if (item.name === 'Ancient Coin') basePrice = 25;
-                else if (item.name === 'Alpha Pelt') basePrice = 60;
-            }
-
-            // 2. Calculate Bonuses
-            const regionMult = getRegionalPriceMultiplier(item.type, item.name);
-            const sellBonusPercent = gameState.player.charisma * 0.005;
-            const finalSellBonus = Math.min(sellBonusPercent, 0.5);
-            let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
-
-            // 3. Apply the 80% Cap
-            const maxSellPrice = Math.floor(basePrice * 0.8);
-            const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
+            // DRY OPTIMIZATION: Use our helper
+            const { sellPrice } = calculateItemValue(item, gameState.player);
 
             const li = document.createElement('li');
-            li.className = 'shop-item';
+            li.className = 'shop-item hover:border-blue-500 transition-colors duration-150';
+            
+            // UX WIN: Add a "Sell Stack" button if they have more than 1!
+            let actionsHtml = `<button data-sell-index="${index}" data-amount="1" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50" ${item.isEquipped ? 'disabled title="Unequip first"' : ''}>Sell 1</button>`;
+            
+            if (item.quantity > 1 && !item.isEquipped) {
+                actionsHtml += `<button data-sell-index="${index}" data-amount="all" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs">All (${item.quantity})</button>`;
+            } else if (item.isEquipped) {
+                actionsHtml = `<span class="text-[10px] font-bold text-yellow-500 bg-black bg-opacity-30 px-2 py-1 rounded uppercase tracking-widest">Equipped</span>`;
+            }
+
             li.innerHTML = `
                 <div>
-                    <span class="shop-item-name">${item.name} (x${item.quantity})</span>
-                    <span class="shop-item-details">Sell for: ${sellPrice}g</span>
+                    <span class="shop-item-name">${item.name} <span class="text-xs text-gray-400">x${item.quantity}</span></span>
+                    <span class="shop-item-details font-bold text-yellow-500">Sell for: ${sellPrice}g <span class="text-xs text-gray-500 font-normal">(ea)</span></span>
                 </div>
-                <div class="shop-item-actions">
-                    <button data-sell-index="${index}">Sell 1</button>
+                <div class="shop-item-actions flex items-center">
+                    ${actionsHtml}
                 </div>
             `;
-            shopSellList.appendChild(li);
+            sellFrag.appendChild(li);
         });
     }
 
-    // --- Inject Sell All Button into the Header ---
+    shopBuyList.appendChild(buyFrag);
+    shopSellList.appendChild(sellFrag);
+
+    // --- Inject Sell All Junk Button into the Header safely ---
     const sellListContainer = shopSellList.parentElement;
     const header = sellListContainer.querySelector('h3');
 
     if (header) {
-        // Only inject if we haven't already (prevents duplicates on re-render)
         if (!header.querySelector('#sellAllBtn')) {
             header.innerHTML = `
                 <div class="flex justify-between items-center w-full">
                     <span>Your Inventory</span>
-                    <button id="sellAllBtn" class="text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded transition-colors">Sell All Junk</button>
+                    <button id="sellAllBtn" class="text-[10px] uppercase font-bold tracking-widest bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95">Sell All Junk</button>
                 </div>
             `;
-            // Bind the click event
+            // Ensure we assign the handler directly 
             document.getElementById('sellAllBtn').onclick = handleSellAllItems;
         }
     }
@@ -410,13 +413,57 @@ function getRegionalPriceMultiplier(itemType, itemName) {
     if (biome === 'Forest' || biome === 'Swamp') {
         if (itemName === 'Medicinal Herb' || itemName === 'Stick') multiplier = 0.5;
         if (itemName === 'Iron Ore' || itemName === 'Steel Sword') multiplier = 1.3;
+        if (itemName === 'Antidote') multiplier = 2.0; // High demand in swamps!
     }
 
-    // 4. CASTLES: Pay extra for Luxury/Relics.
-    if (isCastle) {
-        if (itemType === 'junk' || itemType === 'quest') multiplier = 1.2; // Art/History
+    // 4. CASTLES/VILLAGES: Pay extra for Luxury, Relics, and Exotic Fish
+    if (isCastle || biome === 'Safe Haven') {
+        if (itemType === 'junk' || itemType === 'quest' || itemType === 'trade') multiplier = 1.2; 
         if (itemName === 'Shattered Crown' || itemName === 'Signet Ring') multiplier = 1.5;
+        if (['Golden Koi', 'Black Pearl', 'Rainbow Shell'].includes(itemName)) multiplier = 1.3;
     }
 
     return multiplier;
+}
+
+// --- FIX SHOP LISTENER DELEGATION ---
+// We need to intercept the newly added 'data-amount' parameter for the Sell Stack feature
+function initShopListeners() {
+    const shopBuyList = document.getElementById('shopBuyList');
+    const shopSellList = document.getElementById('shopSellList');
+    const closeShopButton = document.getElementById('closeShopButton');
+
+    if (closeShopButton) {
+        closeShopButton.addEventListener('click', () => {
+            const shopModal = document.getElementById('shopModal');
+            if (shopModal) shopModal.classList.add('hidden');
+        });
+    }
+
+    if (shopBuyList) {
+        // Remove existing listener to prevent duplicates
+        const newBuyList = shopBuyList.cloneNode(false);
+        shopBuyList.parentNode.replaceChild(newBuyList, shopBuyList);
+        
+        newBuyList.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-buy-item]');
+            if (btn) {
+                handleBuyItem(btn.dataset.buyItem);
+            }
+        });
+    }
+
+    if (shopSellList) {
+        // Remove existing listener to prevent duplicates
+        const newSellList = shopSellList.cloneNode(false);
+        shopSellList.parentNode.replaceChild(newSellList, shopSellList);
+        
+        newSellList.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-sell-index]');
+            if (btn) {
+                const amount = btn.dataset.amount || 1;
+                handleSellItem(parseInt(btn.dataset.sellIndex, 10), amount);
+            }
+        });
+    }
 }
