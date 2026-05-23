@@ -7,20 +7,23 @@
 
 function triggerDebouncedSave(updates) {
     if (saveTimeout) clearTimeout(saveTimeout);
-    pendingSaveData = updates; 
     
-    // Safety check: Only manipulate the indicator if it exists!
+    // Merge new updates into existing pending data
+    if (pendingSaveData === null) {
+        pendingSaveData = { ...updates };
+    } else {
+        pendingSaveData = { ...pendingSaveData, ...updates };
+    }
+    
     const saveIcon = document.getElementById('saveIndicator');
     if (saveIcon) saveIcon.classList.remove('hidden'); 
 
     saveTimeout = setTimeout(() => {
         if (playerRef && pendingSaveData) {
-            playerRef.update(sanitizeForFirebase(pendingSaveData)).catch(err => console.error(err));
+            playerRef.update(sanitizeForFirebase(pendingSaveData)).catch(console.error);
         }
         saveTimeout = null;
         pendingSaveData = null;
-        
-        // Hide the icon once complete
         if (saveIcon) saveIcon.classList.add('hidden'); 
     }, 2000); 
 }
@@ -2650,47 +2653,21 @@ function restPlayer() {
 function recalculateDerivedStats() {
     const player = gameState.player;
     
-    // 1. Reset to Base (Race + Background + Stat Points + Tomes)
-    // Note: We assume current player.strength/constitution includes permanent stat points
-    // If you separate base stats from spent points later, update this.
-    
-    // 2. Base Formulas
     let calculatedMaxHealth = 5 + (player.constitution * 5);
     let calculatedMaxMana = 5 + (player.wits * 5);
     let calculatedMaxStamina = 5 + (player.endurance * 5);
     let calculatedMaxPsyche = 7 + (player.willpower * 3);
 
     if (player.completedLoreSets) {
-        // Void Research: +10 Max Mana
-        if (player.completedLoreSets.includes('void_research')) {
-            calculatedMaxMana += 10;
-        }
-        
-        // Example Future Set: Titan's History (+10 Health)
-        // if (player.completedLoreSets.includes('titan_history')) calculatedMaxHealth += 10;
+        if (player.completedLoreSets.includes('void_research')) calculatedMaxMana += 10;
+        if (player.completedLoreSets.includes('deep_delver')) calculatedMaxStamina += 5;
     }
 
-    // 3. Add Equipment Bonuses
-    ['weapon', 'armor'].forEach(slot => {
-        const item = player.equipment[slot];
-        if (item && item.statBonuses) {
-            if (item.statBonuses.constitution) calculatedMaxHealth += (item.statBonuses.constitution * 5);
-            if (item.statBonuses.wits) calculatedMaxMana += (item.statBonuses.wits * 5);
-            if (item.statBonuses.endurance) calculatedMaxStamina += (item.statBonuses.endurance * 5);
-            if (item.statBonuses.willpower) calculatedMaxPsyche += (item.statBonuses.willpower * 3);
-        }
-    });
-
-    // 4. Add Permanent Anomalies (Elder Tree, etc.)
-    // You might need to store these specific permanent buffs in a separate object if they aren't just raw stat increases.
-    
-    // 5. Apply
     player.maxHealth = calculatedMaxHealth;
     player.maxMana = calculatedMaxMana;
     player.maxStamina = calculatedMaxStamina;
     player.maxPsyche = calculatedMaxPsyche;
 
-    // 6. Clamp current values (don't allow HP > MaxHP)
     player.health = Math.min(player.health, player.maxHealth);
     player.mana = Math.min(player.mana, player.maxMana);
     player.stamina = Math.min(player.stamina, player.maxStamina);
@@ -2951,14 +2928,20 @@ async function enterGame(playerData) {
     };
     Object.assign(gameState.player, fullPlayerData);
 
-    // --- FIX: RELINK EQUIPMENT ---
     // Equipment slots must point to the specific objects in the inventory array
     if (gameState.player.equipment) {
-        const invWeapon = gameState.player.inventory.find(i => i.type === 'weapon' && i.isEquipped);
-        if (invWeapon) gameState.player.equipment.weapon = invWeapon;
-        
-        const invArmor = gameState.player.inventory.find(i => i.type === 'armor' && i.isEquipped);
-        if (invArmor) gameState.player.equipment.armor = invArmor;
+        ['weapon', 'armor', 'offhand', 'accessory', 'ammo'].forEach(slot => {
+            // We match by slot and isEquipped to guarantee we get the right reference
+            const invItem = gameState.player.inventory.find(i => i.slot === slot && i.isEquipped);
+            if (invItem) {
+                gameState.player.equipment[slot] = invItem;
+            } else {
+                // Nullify if it shouldn't exist
+                if(slot === 'offhand' || slot === 'accessory' || slot === 'ammo') {
+                    gameState.player.equipment[slot] = null;
+                }
+            }
+        });
     }
 
     recalculateDerivedStats(); 
