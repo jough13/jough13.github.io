@@ -1635,8 +1635,13 @@ const render = () => {
             const themeName = chunkManager.caveThemes[gameState.currentCaveId];
             if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
             if (themeName === 'VOID') { r = 168; g = 85; b = 247; }
-        } else if (gameState.mapMode === 'overworld' && gameState.weather === 'storm') {
-            r = 100; g = 100; b = 150;
+        } else if (gameState.mapMode === 'overworld') {
+            if (gameState.isBloodMoon) {
+                // BLOOD MOON TINT
+                r = 220; g = 38; b = 38; // Deep Red
+            } else if (gameState.weather === 'storm') {
+                r = 100; g = 100; b = 150;
+            }
         }
 
         // Hardware-Accelerated Gradient
