@@ -191,6 +191,19 @@ function getScaledEnemy(enemyTemplate, x, y) {
         enemy.xp = Math.floor(enemy.xp * affix.xpMult);
     }
 
+    // --- BLOOD MOON GLOBAL EVENT ---
+    if (typeof gameState !== 'undefined' && gameState.isBloodMoon && dist > 150) {
+        enemy.maxHealth = Math.floor(enemy.maxHealth * 1.5);
+        enemy.attack += 2;
+        enemy.xp *= 2; // Double XP!
+        
+        // Give them a scary prefix if they don't have one
+        if (!enemy.isElite) {
+            enemy.name = `Blood-Crazed ${enemy.name}`;
+            enemy.color = '#ef4444'; // Force red color
+        }
+    }
+
     // Reset current health to new max
     enemy.health = enemy.maxHealth;
 
