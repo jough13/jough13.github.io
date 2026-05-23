@@ -53,7 +53,8 @@ const chunkManager = {
         // Safe Zone Density Nerf (Fewer enemies near spawn)
         if (distSq < SAFE_ZONE_SQ && floorZ === 1) { 
             enemyCount = 10; 
-            CAVE_WIDTH = 70; CAVE_HEIGHT = 70; // Keep newbie caves small
+            CAVE_WIDTH = 70; 
+            CAVE_HEIGHT = 70; // Keep newbie caves small
         }
 
         // --- THEME SELECTION LOGIC ---
@@ -84,9 +85,7 @@ const chunkManager = {
         this.caveThemes[caveId] = chosenThemeKey; // Remember the theme
 
         // 2. Generate the map layout (Random Walk)
-        const map = Array.from({
-            length: CAVE_HEIGHT
-        }, () => Array(CAVE_WIDTH).fill(theme.wall));
+        const map = Array.from({ length: CAVE_HEIGHT }, () => Array(CAVE_WIDTH).fill(theme.wall));
 
         const random = Alea(stringToSeed(caveId));
         let x = Math.floor(CAVE_WIDTH / 2);
@@ -98,14 +97,24 @@ const chunkManager = {
         };
         
         // Bigger maps need more carving steps
-        let steps = Math.floor((CAVE_WIDTH * CAVE_HEIGHT) * 0.4);
+        let steps = Math.floor((CAVE_WIDTH * CAVE_HEIGHT) * 0.45);
+        
+        // GAMEPLAY WIN: Variable brush size for more organic caves
         while (steps > 0) {
             map[y][x] = theme.floor; // Use theme's floor
+            
+            // 15% chance to carve a 2x2 room instead of a 1x1 path (makes nice caverns)
+            if (random() < 0.15 && y < CAVE_HEIGHT - 2 && x < CAVE_WIDTH - 2) {
+                map[y+1][x] = theme.floor;
+                map[y][x+1] = theme.floor;
+                map[y+1][x+1] = theme.floor;
+            }
+
             const direction = Math.floor(random() * 4);
-            if (direction === 0 && x > 1) x--;
-            else if (direction === 1 && x < CAVE_WIDTH - 2) x++;
-            else if (direction === 2 && y > 1) y--;
-            else if (direction === 3 && y < CAVE_HEIGHT - 2) y++;
+            if (direction === 0 && x > 2) x--;
+            else if (direction === 1 && x < CAVE_WIDTH - 3) x++;
+            else if (direction === 2 && y > 2) y--;
+            else if (direction === 3 && y < CAVE_HEIGHT - 3) y++;
             steps--;
         }
 
@@ -212,55 +221,47 @@ const chunkManager = {
             }
         }
 
-        // --- 3b. THEME SPECIFIC TERRAIN GENERATION ---
-
-        // VOLCANO: Generate Lava Pools (~30% of floor becomes Lava)
-        if (chosenThemeKey === 'FIRE') {
-            const lavaChance = 0.30;
-            for (let y = 1; y < CAVE_HEIGHT - 1; y++) {
-                for (let x = 1; x < CAVE_WIDTH - 1; x++) {
-                    if (map[y][x] === theme.floor && random() < lavaChance) {
-                        map[y][x] = '~'; // Turn floor into Lava
+        // --- 3b. THEME SPECIFIC TERRAIN GENERATION (LAKES & PITS) ---
+        // GAMEPLAY WIN: Sub-biomes inside caves!
+        for (let y = 1; y < CAVE_HEIGHT - 1; y++) {
+            for (let x = 1; x < CAVE_WIDTH - 1; x++) {
+                if (map[y][x] === theme.floor) {
+                    // Use perlin noise to generate organic patches of hazards
+                    const noise = elevationNoise.noise(x / 10, y / 10, floorZ); 
+                    
+                    if (chosenThemeKey === 'FIRE' && noise < 0.35) {
+                        map[y][x] = '~'; // Lava pools
+                    } 
+                    else if (chosenThemeKey === 'SUNKEN' || chosenThemeKey === 'GROTTO') {
+                        if (noise < 0.25) map[y][x] = '~'; // Deep Water
+                        else if (noise < 0.45) map[y][x] = '≈'; // Shallow Water
+                    }
+                    else if (chosenThemeKey === 'ABYSS' && noise < 0.30) {
+                        map[y][x] = '🕳️'; // Bottomless pits!
+                    }
+                    else if ((chosenThemeKey === 'ROCK' || chosenThemeKey === 'CRYSTAL') && noise < 0.25) {
+                        map[y][x] = '~'; // Underground Lakes
+                    }
+                    else if (chosenThemeKey === 'ICE' && noise < 0.30) {
+                        map[y][x] = '🧊'; // Solid Ice patches
                     }
                 }
             }
-            // Ensure Start Area is safe
-            map[startPos.y][startPos.x] = '.';
-            map[startPos.y + 1][startPos.x] = '.';
-            map[startPos.y - 1][startPos.x] = '.';
-            map[startPos.y][startPos.x + 1] = '.';
-            map[startPos.y][startPos.x - 1] = '.';
         }
-
-        // SUNKEN TEMPLE: Flood the ruins
-        if (chosenThemeKey === 'SUNKEN') {
-            const shallowChance = 0.40; // 40% Shallow Water (Drains Stamina)
-            const deepChance = 0.05;    // 5% Deep Water (Obstacle)
-
-            for (let y = 1; y < CAVE_HEIGHT - 1; y++) {
-                for (let x = 1; x < CAVE_WIDTH - 1; x++) {
-                    if (map[y][x] === theme.floor) {
-                        const roll = random();
-                        if (roll < deepChance) {
-                            map[y][x] = '~'; // Deep Water (Block)
-                        } else if (roll < shallowChance + deepChance) {
-                            map[y][x] = '≈'; // Shallow Water (Stamina Drain)
-                        }
-                    }
+        
+        // Ensure Start Area is perfectly safe from generated hazards
+        for(let sy = -2; sy <= 2; sy++) {
+            for(let sx = -2; sx <= 2; sx++) {
+                if (map[startPos.y + sy] && map[startPos.y + sy][startPos.x + sx]) {
+                    map[startPos.y + sy][startPos.x + sx] = theme.floor;
                 }
             }
-            // Ensure Start Area is safe
-            map[startPos.y][startPos.x] = '.';
-            map[startPos.y + 1][startPos.x] = '.';
-            map[startPos.y - 1][startPos.x] = '.';
-            map[startPos.y][startPos.x + 1] = '.';
-            map[startPos.y][startPos.x - 1] = '.';
         }
 
         // --- 4. Place procedural loot and decorations ---
 
         const CAVE_LOOT_TABLE = ['♥', '🔮', '💜', 'S', '$', '📄', '🍄', '🏺', '⚰️'];
-        const lootQuantity = Math.floor(random() * 6) + 2; // More loot in bigger caves
+        const lootQuantity = Math.floor(random() * 8) + 2; // More loot in bigger caves
         
         for (let i = 0; i < lootQuantity; i++) {
             const itemToPlace = CAVE_LOOT_TABLE[Math.floor(random() * CAVE_LOOT_TABLE.length)];
@@ -360,10 +361,6 @@ const chunkManager = {
                     castRange: enemyTemplate.castRange || 0,
                     spellDamage: enemyTemplate.spellDamage || 0,
                     inflicts: enemyTemplate.inflicts || null,
-
-                    isElite: scaledStats.isElite || false,
-                    color: scaledStats.color || null,
-
                     madnessTurns: 0,
                     frostbiteTurns: 0,
                     poisonTurns: 0,
@@ -403,7 +400,7 @@ const chunkManager = {
         
         // Final ultimate failsafe
         if (!stairsPlaced) {
-            map[startPos.y + 1][startPos.x] = '>';
+            map[startPos.y + 1][startPos.x] = '<';
         }
 
         // --- 7. Secret Wall Generation ---
@@ -618,7 +615,11 @@ const chunkManager = {
                     if (!isDark) {
                         // Only add guards to safe castles
                         this.friendlyNpcs[castleId].push({
-                            id: `guard_${x}_${y}`, x: x, y: y, name: tile === '🎖️' ? "Captain" : "Castle Guard", tile: tile, role: 'guard',
+                            id: `guard_${x}_${y}`, 
+                            x: x, y: y, 
+                            name: tile === '🎖️' ? "Captain" : "Castle Guard", 
+                            tile: tile, 
+                            role: 'guard',
                             dialogue:["The night shift is quiet.", "Keep your weapons sheathed.", "Nothing to report."]
                         });
                     }
@@ -691,6 +692,21 @@ const chunkManager = {
                     });
                 }
             }
+
+            // GAMEPLAY WIN: Dark Castles are now extremely rewarding to raid!
+            // Scatter 2-4 Loot Chests in the dark castle!
+            const chestCount = 2 + Math.floor(random() * 3);
+            for(let c = 0; c < chestCount; c++) {
+                let placed = false;
+                for(let attempts = 0; attempts < 50 && !placed; attempts++) {
+                    const cy = Math.floor(random() * (map.length - 2)) + 1;
+                    const cx = Math.floor(random() * (map[0].length - 2)) + 1;
+                    if (map[cy][cx] === '.' && Math.abs(cx - spawnX) > 5 && Math.abs(cy - spawnY) > 5) {
+                        map[cy][cx] = '📦';
+                        placed = true;
+                    }
+                }
+            }
         }
 
         this.castleMaps[castleId] = map;
@@ -717,7 +733,7 @@ const chunkManager = {
             const cleanupUpdates = {};
             const now = Date.now();
 
-            // Decentralized Garbage Collection
+            // PERFORMANCE WIN: Batch Garbage Collection
             for (const key in data) {
                 const val = data[key];
                 if (typeof val === 'object' && val !== null && val.expires) {
@@ -793,7 +809,7 @@ const chunkManager = {
 
         const spawns = {
             '.': { 0: ['r', 'r', 'b'], 1: ['b', 'w', '👺m'], 2: ['o', 'C', '🐺'], 3: ['o', '🐺', 'Ø'], 4: ['Ø', '🦖', '🤖'] },
-            'F': { 0: ['🐍', '🦌', '🐗'], 1: ['w', '🐗', '🐻'], 2: ['🐻', '🐺', '🕸'], 3: ['🐺', '🐻', '🌲'], 4: ['🌲', '🧛', '👾'] },
+            'F': { 0: ['🐍', '🦌', '🐗'], 1: ['w', '🐗', '🐻'], 2: ['🐻', '🐺', '@'], 3: ['🐺', '🐻', '🌲'], 4: ['🌲', '🧛', '👾'] },
             '^': { 0: ['🦇', 'g', 'R'], 1: ['g', 's', '👺m'], 2: ['s', '🧌', 'Y'], 3: ['Y', '🧌', '🐲'], 4: ['🐲', '🦖', '🤖'] },
             '≈': { 0: ['🦟', '🐸', '🐍'], 1: ['🐍', 'l', 'Z'], 2: ['Z', 'l', 'a'], 3: ['Z', 'a', '🐉h'], 4: ['🐉h', '👾', '🧛'] },
             'D': { 0: ['🦂s', '🐍', '🌵'], 1: ['🦂', '🐍c', '🌵'], 2: ['🦂', 'm', 'a'], 3: ['m', 'a', '🔥e'], 4: ['🔥e', '🦖', '🤖'] },
@@ -859,11 +875,6 @@ const chunkManager = {
                 }
 
                 const featureRoll = random();
-
-                // OPTIMIZATION NOTICE
-                // We NO LONGER call this.setWorldTile() during procedural generation!
-                // The client will render these from chunkData automatically. 
-                // This saves literally 99% of your Firebase database write quotas!
 
                 // --- 1. LEGENDARY LANDMARKS (Unique, Very Rare) ---
                 // Force the Grand Fortress to spawn far away from the village (dist > 1500)
