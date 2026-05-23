@@ -244,43 +244,19 @@ function castSpell(spellId) {
  */
 
 async function applySpellDamage(targetX, targetY, damage, spellId) {
-
-    // --- WEATHER SYNERGY ---
+    const player = gameState.player;
+    const spellData = SPELL_DATA[spellId];
     const weather = gameState.weather; 
     let finalDamage = damage;
 
     // --- TALENT ARCANE POTENCY ---
-    if (gameState.player.talents && gameState.player.talents.includes('arcane_potency')) {
+    if (player.talents && player.talents.includes('arcane_potency')) {
         finalDamage += 2;
     }
-
-    if (gameState.mapMode === 'overworld' && weather !== 'clear') {
-        // Rain/Storm Logic
-        if (weather === 'rain' || weather === 'storm') {
-            if (spellId === 'fireball' || spellId === 'meteor') {
-                finalDamage = Math.floor(damage * 0.5); // Fire fizzles in rain
-                if (gameState.player.x !== targetX) ParticleSystem.createFloatingText(targetX, targetY, "Fizzle...", "#aaa");
-            } else if (spellId === 'thunderbolt' || spellId === 'magicBolt') {
-                finalDamage = Math.floor(damage * 1.5); // Lightning conducts!
-            }
-        }
-        // Snow Logic
-        else if (weather === 'snow') {
-            if (spellId === 'frostBolt') {
-                finalDamage = Math.floor(damage * 1.5); // Ice enhanced
-            } else if (spellId === 'fireball') {
-                finalDamage = Math.floor(damage * 0.8); // Fire dampened
-            }
-        }
-    }
-
-    const player = gameState.player;
-    const spellData = SPELL_DATA[spellId];
 
     // Determine the tile and enemy data
     let tile;
     if (gameState.mapMode === 'overworld') {
-        // --- Check for LIVE moving enemies first! ---
         const enemyId = `overworld:${targetX},${-targetY}`;
         const liveEnemy = gameState.sharedEnemies[enemyId];
         tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
@@ -288,6 +264,38 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
         tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
     }
+
+    // --- ELEMENTAL SYNERGY (ENVIRONMENT) ---
+    const isTargetInWater = (tile === '~' || tile === '≈');
+    let applyLightningStun = false;
+
+    if (spellId === 'thunderbolt' || spellId === 'chainLightning') {
+        if (isTargetInWater || weather === 'rain' || weather === 'storm') {
+            finalDamage = Math.floor(finalDamage * 2.0); // 2x Damage!
+            applyLightningStun = true; // Water conducts electricity
+            logMessage(`{yellow:The electricity conducts through the water/rain! (Critical Damage)}`);
+        }
+    } else if (spellId === 'fireball' || spellId === 'meteor') {
+        if (weather === 'rain' || weather === 'storm') {
+            finalDamage = Math.floor(finalDamage * 0.5); // Fire fizzles in rain
+        } else if (tile === '≈') {
+            // Swamp Gas Explosion Synergy!
+            if (Math.random() < 0.15) {
+                logMessage(`{orange:The fire ignites a pocket of swamp gas! BOOM!}`);
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#facc15', 10);
+                finalDamage = Math.floor(finalDamage * 1.5);
+            }
+        }
+    } else if (spellId === 'frostBolt') {
+        if (weather === 'snow') finalDamage = Math.floor(finalDamage * 1.5);
+        // ICE BRIDGE SYNERGY
+        if (isTargetInWater && gameState.mapMode === 'overworld') {
+            chunkManager.setWorldTile(targetX, targetY, '❄️', 1); // Melts in 1 hour
+            logMessage(`{cyan:The water freezes into a solid path!}`);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#e0f2fe', 8);
+        }
+    }
+
     const enemyData = ENEMY_DATA[tile];
     if (!enemyData) return false; // No enemy here
 
