@@ -127,7 +127,7 @@ const NEW_FISHING_ITEMS = {
     // --- Lava Fish ---
     '🌋crp': { name: 'Magma Carp', type: 'consumable', tile: '🐟', description: "It's already cooked perfectly! {yellow:+35 Hunger}, {green:+10 HP}", effect: (s) => eatFish(s, 35, 10) },
     '🌋eel': { name: 'Obsidian Eel', type: 'weapon', tile: '🐍', damage: 6, slot: 'weapon', inflicts: 'burn', inflictChance: 0.3, description: "{red:+6 Dmg}. A living, whip-like eel that sears flesh. {orange:(Burns target)}" },
-    '🌋hrt': { name: 'Heart of the Volcano', type: 'accessory', tile: '❤️', defense: 2, slot: 'armor', statBonuses: { constitution: 5, strength: 3 }, description: "{blue:+2 Def}, {green:+5 Con, +3 Str}. It beats with volcanic fury." },
+    '🌋hrt': { name: 'Heart of the Volcano', type: 'accessory', tile: '❤️', defense: 2, slot: 'accessory', statBonuses: { constitution: 5, strength: 3 }, description: "{blue:+2 Def}, {green:+5 Con, +3 Str}. It beats with volcanic fury." },
 
     // --- Dredged Treasures ---
     '📦w': { 
@@ -143,9 +143,23 @@ const NEW_FISHING_ITEMS = {
                 const lootTable = ['Black Pearl', 'Rainbow Shell', 'Brass Compass', 'Trident', 'Ancient Coin'];
                 const prize = lootTable[Math.floor(Math.random() * lootTable.length)];
                 
-                if (state.player.inventory.length < 9) { // MAX_INVENTORY_SLOTS
-                    const prizeKey = getItemKeyByName(prize);
-                    const template = window.ITEM_DATA[prizeKey];
+                const prizeKey = getItemKeyByName(prize);
+                const template = window.ITEM_DATA[prizeKey];
+                
+                const isStackable = template && ['junk', 'consumable', 'trade'].includes(template.type);
+                const existingPrize = state.player.inventory.find(i => i.name === prize && !i.isEquipped);
+                
+                // ADVANCED LOGIC: If this chest is the LAST item in its stack, it will free up a slot as it gets consumed.
+                // We calculate this dynamically so we don't accidentally block the player's reward!
+                const chestStack = state.player.inventory.find(i => i.name === 'Waterlogged Chest' && !i.isEquipped);
+                const freesSlot = (chestStack && chestStack.quantity === 1) ? 1 : 0;
+                
+                if (existingPrize && isStackable) {
+                    existingPrize.quantity++;
+                    logMessage(`{purple:You also found a ${prize} hidden inside!}`);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                } 
+                else if (state.player.inventory.length - freesSlot < (window.MAX_INVENTORY_SLOTS || 9)) {
                     state.player.inventory.push({
                         templateId: prizeKey,
                         name: prize, 
@@ -176,17 +190,25 @@ const NEW_FISHING_ITEMS = {
             logMessage("You smash the bottle and unroll the damp parchment...");
             
             // 25% Chance to yield an actual Treasure Map!
-            if (Math.random() < 0.25 && state.player.inventory.length < 9) {
-                logMessage(`{gold:It's a Tattered Map! X marks the spot!}`);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+            if (Math.random() < 0.25) {
+                // If this bottle is the LAST item in its stack, it frees up a slot as it gets consumed!
+                const bottleStack = state.player.inventory.find(i => i.name === 'Message in a Bottle' && !i.isEquipped);
+                const freesSlot = (bottleStack && bottleStack.quantity === 1) ? 1 : 0;
                 
-                const mapKey = getItemKeyByName('Tattered Map');
-                const mapTemplate = window.ITEM_DATA[mapKey];
-                state.player.inventory.push({
-                    templateId: mapKey,
-                    name: 'Tattered Map', type: 'treasure_map', quantity: 1, tile: '🗺️',
-                    effect: mapTemplate ? mapTemplate.effect : null
-                });
+                if (state.player.inventory.length - freesSlot < (window.MAX_INVENTORY_SLOTS || 9)) {
+                    logMessage(`{gold:It's a Tattered Map! X marks the spot!}`);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                    
+                    const mapKey = getItemKeyByName('Tattered Map');
+                    const mapTemplate = window.ITEM_DATA[mapKey];
+                    state.player.inventory.push({
+                        templateId: mapKey,
+                        name: 'Tattered Map', type: 'treasure_map', quantity: 1, tile: '🗺️',
+                        effect: mapTemplate ? mapTemplate.effect : null
+                    });
+                } else {
+                    logMessage(`{red:It's a Tattered Map, but your pack is full! The wind blows it away.}`);
+                }
             } else {
                 const loreFragments = [
                     "...to whoever finds this... the treasure lies deep beneath the eastern waves...",
@@ -304,13 +326,6 @@ function executeFishing() {
         return false;
     }
 
-    // Pre-check Inventory Space!
-    if (player.inventory.length >= 9) { // MAX_INVENTORY_SLOTS
-        logMessage("{red:Your inventory is completely full! Make space before fishing.}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return false;
-    }
-
     if (player.stamina < 2) {
         logMessage("You are too tired to cast your line.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -394,15 +409,28 @@ function executeFishing() {
     if (zone === 'swamp' && Math.random() < 0.05) {
         playSplash();
         logMessage("{red:You hooked something aggressive... A Giant Leech bursts from the water!}");
+        
+        const enemyData = window.ENEMY_DATA['l'];
+        
         if (gameState.mapMode === 'overworld') {
             const enemyId = `overworld:${player.x},${-player.y}`;
-            const enemyData = window.ENEMY_DATA['l'];
             const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, player.x, player.y) : enemyData;
             gameState.sharedEnemies[enemyId] = { ...scaledStats, tile: 'l', x: player.x, y: player.y, spawnTime: Date.now() };
             
             if (typeof EnemyNetworkManager !== 'undefined') {
                 rtdb.ref(EnemyNetworkManager.getPath(player.x, player.y, enemyId)).set(gameState.sharedEnemies[enemyId]);
             }
+        } else {
+            // FIX: Instanced enemy fallback for dungeon/castle swamps!
+            const newEnemy = {
+                id: `${gameState.currentCaveId || gameState.currentCastleId}:leech_${Date.now()}`,
+                x: player.x, y: player.y, tile: 'l', name: enemyData.name,
+                health: enemyData.maxHealth, maxHealth: enemyData.maxHealth,
+                attack: enemyData.attack, defense: enemyData.defense || 0,
+                xp: enemyData.xp, loot: enemyData.loot,
+                inflicts: enemyData.inflicts, madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
+            };
+            gameState.instancedEnemies.push(newEnemy);
         }
         if (typeof render === 'function') render();
         return true; 
@@ -521,12 +549,13 @@ function executeFishing() {
             if (!isTrophy) logMessage(`You caught a ${finalItemName}!`);
         }
             
+        // THE FIX: Proper Stack & Capacity Checking!
         const existingStack = player.inventory.find(i => i.name === finalItemName && !i.isEquipped);
         const isStackable = template && ['junk', 'consumable', 'trade'].includes(template.type) && !isTrophy;
 
         if (existingStack && isStackable) {
             existingStack.quantity++;
-        } else {
+        } else if (player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
             player.inventory.push({
                 templateId: baseKey,
                 name: finalItemName, 
@@ -539,6 +568,11 @@ function executeFishing() {
                 statBonuses: template ? template.statBonuses : null,
                 effect: template ? template.effect : null
             });
+        } else {
+            // Inventory is full and the item doesn't stack!
+            logMessage(`{red:Your pack is too full to keep the ${finalItemName}. It flops back into the water!}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            // Note: XP and Records are kept intentionally because they still succeeded at the fishing mini-game mechanic.
         }
 
         player.fishingXp += xpGained;
