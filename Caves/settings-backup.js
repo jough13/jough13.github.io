@@ -1,4 +1,7 @@
-// --- BACKUP INTEGRITY UTILS ---
+// ==========================================
+// CLOUD BACKUPS & SAVE INTEGRITY
+// ==========================================
+
 const BACKUP_SALT = "kEsMaI_v1_S3cR3t_s@lt"; // Change this to something random!
 
 // Robust string hashing function (Upgraded Anti-Cheat)
@@ -39,15 +42,17 @@ let lastBackupTime = 0; // Anti-Spam Timer
 async function createCloudBackup(slotId = 'latest') {
     if (!playerRef) return;
 
+    // Use server-authoritative time if available to prevent client clock manipulation
+    const now = typeof window.getServerTime === 'function' ? window.getServerTime() : Date.now();
+    
     // Prevent players from spamming the backup button and hitting Firebase quotas
-    const now = Date.now();
     if (now - lastBackupTime < 10000) {
         logMessage("{red:Please wait a moment before creating another backup.}");
         return;
     }
     lastBackupTime = now;
 
-    logMessage("Creating cloud backup...");
+    logMessage("{gray:Creating cloud backup...}");
     
     // 1. Get clean data explicitly to prevent saving transient UI state
     const rawData = {
@@ -55,11 +60,12 @@ async function createCloudBackup(slotId = 'latest') {
         lootedTiles: Array.from(gameState.lootedTiles || []),
         exploredChunks: Array.from(gameState.exploredChunks || []),
         foundLore: Array.from(gameState.foundLore || []),
+        foundCodexEntries: Array.from(gameState.foundCodexEntries || []),
         customPins: gameState.player.customPins || [],
         bank: gameState.player.bank || [], // Explicitly grab the Stash
         inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
         equipment: typeof getSanitizedEquipment === 'function' ? getSanitizedEquipment() : gameState.player.equipment,
-        timestamp: Date.now()
+        timestamp: now // Use the validated timestamp
     };
 
     // PERFORMANCE: Use our fast sanitizer instead of the slow JSON stringify hack
@@ -74,6 +80,7 @@ async function createCloudBackup(slotId = 'latest') {
     try {
         await playerRef.collection('backups').doc(slotId).set(backupState);
         logMessage("{green:Backup successful!}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
         
         // PERFORMANCE: Update the UI directly using our local timestamp instead of fetching from Firebase
         const label = document.getElementById('lastBackupLabel');
@@ -88,6 +95,7 @@ async function createCloudBackup(slotId = 'latest') {
     } catch (err) {
         console.error("Backup creation failed: ", err);
         logMessage("{red:Backup failed.} See console.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     }
 }
 
@@ -96,13 +104,14 @@ async function restoreCloudBackup(slotId = 'latest') {
 
     if (!confirm("Are you sure? This will overwrite your current progress with the selected backup.")) return;
 
-    logMessage("Locating backup...");
+    logMessage("{gray:Locating backup...}");
 
     try {
         const doc = await playerRef.collection('backups').doc(slotId).get();
 
         if (!doc.exists) {
             logMessage("{red:No backup found.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
 
@@ -113,20 +122,35 @@ async function restoreCloudBackup(slotId = 'latest') {
         const legacySig = generateLegacySaveSignature(data);
         
         if (data.signature !== calculatedSig && data.signature !== legacySig) {
+            console.error(`Signature Mismatch! Saved: ${data.signature}, Calc: ${calculatedSig}, Legacy: ${legacySig}`);
             logMessage("{red:CORRUPT DATA.} Backup signature mismatch.");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return; // STOP RESTORE
         }
 
-        // 2. Anti-Cheat Check
-        // Actively block restores that feature massive impossible gold/xp disparities 
+        // 2. Anti-Cheat & Injection Checks
+        
+        // A. Actively block restores that feature massive impossible gold/xp disparities 
         if (data.coins > gameState.player.coins + 5000 && data.xp === gameState.player.xp) {
              console.error("Suspicious Backup Blocked: Massive gold discrepancy without XP gain.");
              logMessage("{red:Backup Validation Failed.} Anomalous data detected.");
+             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+             return;
+        }
+        
+        // B. Block structural JSON injection (e.g. modifying the save file to bypass inventory limits)
+        const invLimit = window.MAX_INVENTORY_SLOTS || 9;
+        const stashLimit = 50; // Defined in stash.js, hardcoded here as a secondary safety net
+        
+        if ((data.inventory && data.inventory.length > invLimit + 5) || (data.bank && data.bank.length > stashLimit + 5)) {
+             console.error(`Suspicious Backup Blocked: Inventory/Stash size exceeds maximum limits. (Inv: ${data.inventory?.length}, Bank: ${data.bank?.length})`);
+             logMessage("{red:Backup Validation Failed.} Invalid container size.");
+             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
              return;
         }
 
         // 3. Restore
-        logMessage("Restoring data...");
+        logMessage("{gray:Restoring data...}");
         
         // Remove the backup-specific fields before applying to game
         delete data.signature; 
@@ -140,6 +164,7 @@ async function restoreCloudBackup(slotId = 'latest') {
         }
         
         // Save immediately to the main slot so it persists
+        // Use set to ensure we don't accidentally merge corrupted fields
         await playerRef.set(data);
 
         // Force the UI to physically update to match the newly loaded old data!
@@ -148,6 +173,7 @@ async function restoreCloudBackup(slotId = 'latest') {
         if (typeof renderInventory === 'function') renderInventory();
 
         logMessage("{green:Restore complete.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
         
         // Close modal
         const settingsModal = document.getElementById('settingsModal');
@@ -155,7 +181,8 @@ async function restoreCloudBackup(slotId = 'latest') {
 
     } catch (err) {
         console.error("Restore failed: ", err);
-        logMessage("{red:Restore failed.}");
+        logMessage("{red:Restore failed.} Check console for details.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     }
 }
 
