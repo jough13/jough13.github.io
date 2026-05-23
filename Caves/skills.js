@@ -432,6 +432,7 @@ async function executeRangedAttack(dirX, dirY) {
             }
             
             // --- ENVIRONMENTAL INTERACTIONS (FIRE ARROWS) ---
+             // --- ENVIRONMENTAL INTERACTIONS (FIRE ARROWS) ---
             if (isFire && tile === '🛢') {
                 logMessage("{orange:BOOM! Your Fire Arrow ignited an Oil Barrel!}");
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#f97316', 15);
@@ -441,12 +442,19 @@ async function executeRangedAttack(dirX, dirY) {
                 else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
                 else chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] = '.';
                 
-                // Splash damage to adjacent tiles!
+                // Splash damage!
                 for (let ey = -1; ey <= 1; ey++) {
                     for (let ex = -1; ex <= 1; ex++) {
                         applySpellDamage(targetX + ex, targetY + ey, 15, 'fireball');
                     }
                 }
+                hitSomething = true;
+                break;
+            } else if (isFire && tile === '≈' && Math.random() < 0.15) {
+                // SWAMP GAS EXPLOSION
+                logMessage("{orange:The arrow ignites a pocket of swamp gas!}");
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#facc15', 10);
+                applySpellDamage(targetX, targetY, 10, 'fireball'); // AoE damage
                 hitSomething = true;
                 break;
             }
