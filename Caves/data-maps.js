@@ -20,8 +20,12 @@ window.TILE_DATA = {
         // Forces the engine to generate a SUNKEN themed dungeon!
         getCaveId: (x, y) => `sunken_whirlpool_${x}_${y}`
     },
-
-    // GAMEPLAY WIN: Respawn Points!
+        '❄️': {
+        type: 'anomaly',
+        name: 'Ice Bridge',
+        flavor: "The water has been frozen solid by magic. It won't last forever."
+    },
+    // Respawn Points!
     '🛏️': {
         type: 'anomaly',
         name: 'Cozy Bed',
