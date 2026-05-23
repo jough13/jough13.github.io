@@ -542,7 +542,7 @@ window.ITEM_DATA = {
         name: 'The Queen\'s Promise',
         type: 'accessory',
         defense: 0,
-        slot: 'armor',
+        slot: 'accessory',
         statBonuses: { charisma: 4, luck: 2 },
         description: "{gold:+4 Cha}, {green:+2 Luck}. An elegant silver ring. 'Until the stars go dark.'"
     },
@@ -575,9 +575,9 @@ window.ITEM_DATA = {
     // --- NEW ARTIFACTS ---
     '🔱o': {
         name: 'Scepter of the Tides',
-        type: 'armor', // Accessory slot
+        type: 'accessory', 
         defense: 2,
-        slot: 'armor',
+        slot: 'accessory',
         statBonuses: { intuition: 5, maxMana: 20 },
         description: "{blue:+2 Def, +20 Mana}, {gold:+5 Int}. It hums with the sound of distant waves."
     },
@@ -585,7 +585,7 @@ window.ITEM_DATA = {
         name: 'Void-Touched Ring',
         type: 'accessory',
         defense: 0,
-        slot: 'armor',
+        slot: 'accessory',
         statBonuses: { willpower: 6, constitution: -2 }, // High power, low health
         description: "{purple:+6 Will}, {red:-2 Con}. The metal feels like it's trying to merge with your finger."
     },
@@ -1653,7 +1653,7 @@ window.ITEM_DATA = {
         type: 'accessory',
         tile: '💍',
         defense: 0,
-        slot: 'armor',
+        slot: 'accessory',
         statBonuses: { constitution: 3, luck: 2 },
         description: "{green:+3 Con}, {gold:+2 Luck}. You can feel your wounds knitting together."
     },
@@ -1662,7 +1662,7 @@ window.ITEM_DATA = {
         type: 'accessory',
         tile: '🧿',
         defense: 1,
-        slot: 'armor',
+        slot: 'accessory',
         statBonuses: { wits: 5, maxMana: 10 },
         description: "{blue:+1 Def, +10 Max Mana}, {purple:+5 Wits}. Humming with limitless power."
     },
