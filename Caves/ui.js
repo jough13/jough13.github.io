@@ -739,34 +739,37 @@ function resizeCanvas() {
     const canvasContainer = canvas.parentElement;
     if (!canvasContainer) return;
 
-    // 1. THE MAGIC FIX: Hide the canvas for 1 millisecond.
+    // 1. THE MAGIC FIX: We MUST account for the padding/border of the container
+    // OffsetWidth/Height includes borders, ClientWidth/Height includes padding. 
+    // To get the pure drawing area, we measure the client dimensions.
+    
+    // We temporarily hide the canvas to prevent it from forcing the container to be larger than it should be
     canvas.style.display = 'none';
     
-    // Safety check fallback to prevent 0 pixel crashes on hidden windows
-    const containerWidth = canvasContainer.clientWidth || 350;
-    const containerHeight = canvasContainer.clientHeight || 350;
+    const containerWidth = canvasContainer.clientWidth;
+    const containerHeight = canvasContainer.clientHeight;
     
-    // Bring it back immediately
     canvas.style.display = 'block';
+
+    if (containerWidth === 0 || containerHeight === 0) return; // Prevent crashes when hidden
 
     // 2. Update the global zoom tracker
     if (!window.currentZoom) window.currentZoom = 20;
-    // Allow globals to be set for the engine
     window.TILE_SIZE = window.currentZoom;
 
-    // 3. Calculate Logical Viewport
+    // 3. Calculate Logical Viewport (The number of tiles that fit on screen)
     window.VIEWPORT_WIDTH = Math.ceil(containerWidth / window.TILE_SIZE) + 2; 
     window.VIEWPORT_HEIGHT = Math.ceil(containerHeight / window.TILE_SIZE) + 2;
 
     const dpr = window.devicePixelRatio || 1;
 
-    // 4. Set HTML5 Canvas back-buffer resolution
+    // 4. Set HTML5 Canvas back-buffer resolution (The actual pixel density)
     canvas.width = containerWidth * dpr;
     canvas.height = containerHeight * dpr;
 
-    // 5. Force CSS to 100% 
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
+    // 5. Force CSS width/height to match container exactly
+    canvas.style.width = `${containerWidth}px`;
+    canvas.style.height = `${containerHeight}px`;
 
     // 6. Configure Main Context
     ctx.setTransform(1, 0, 0, 1, 0, 0); 
@@ -776,9 +779,10 @@ function resizeCanvas() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 7. Resize Offscreen Canvas
-    const logicalWidth = window.VIEWPORT_WIDTH * window.TILE_SIZE;
-    const logicalHeight = window.VIEWPORT_HEIGHT * window.TILE_SIZE;
+    // 7. Resize Offscreen Terrain Cache Canvas
+    // THE FIX: We must account for the overdraw buffer! The loop goes from -1 to VIEWPORT_WIDTH + 1 (which is +3 tiles total)
+    const logicalWidth = (window.VIEWPORT_WIDTH + 3) * window.TILE_SIZE;
+    const logicalHeight = (window.VIEWPORT_HEIGHT + 3) * window.TILE_SIZE;
 
     terrainCanvas.width = logicalWidth * dpr;
     terrainCanvas.height = logicalHeight * dpr;
