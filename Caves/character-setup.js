@@ -1,69 +1,12 @@
+// ==========================================
+// CHARACTER CREATION & SLOT MANAGEMENT
+// ==========================================
+
 let creationState = {
     name: "",
     race: null,
     gender: null,
     background: null
-};
-
-// Legacy fallback/quick-start function (Modern flow uses finalizeCharacterCreation)
-window.selectBackground = async function (bgKey) {
-    const background = PLAYER_BACKGROUNDS[bgKey];
-    if (!background) return;
-
-    const player = gameState.player;
-
-    // 1. Apply Stats
-    for (const stat in background.stats) {
-        player[stat] += background.stats[stat];
-    }
-    
-    // EASY WIN: Proper recalculation so we don't desync Health/Mana
-    player.maxHealth = 5 + (player.constitution * 5);
-    player.health = player.maxHealth;
-    
-    player.maxMana = 5 + (player.wits * 5);
-    player.mana = player.maxMana;
-
-    // 2. Apply Inventory (CRITICAL FIX: Deep clone so we don't mutate the global template!)
-    background.items.forEach(newItem => {
-        player.inventory.push(JSON.parse(JSON.stringify(newItem)));
-    });
-
-    // 3. Auto-Equip starting gear
-    const weapon = player.inventory.find(i => i.type === 'weapon');
-    const armor = player.inventory.find(i => i.type === 'armor');
-
-    if (weapon) {
-        player.equipment.weapon = weapon;
-        weapon.isEquipped = true;
-    }
-    if (armor) {
-        player.equipment.armor = armor;
-        armor.isEquipped = true;
-    }
-
-    // 4. Save to Database
-    await playerRef.set({
-        ...player,
-        background: bgKey
-    }, { merge: true });
-
-    // 5. Start the Game UI
-    charCreationModal.classList.add('hidden'); 
-    gameContainer.classList.remove('hidden');  
-    canvas.style.visibility = 'visible';
-
-    gameState.mapMode = 'overworld';
-
-    logMessage(`You have chosen the path of the ${background.name}.`);
-
-    // Re-run init logic to ensure UI catches up
-    renderStats();
-    renderEquipment();
-    renderInventory();
-    renderTime();
-    resizeCanvas();
-    render();
 };
 
 async function initCharacterSelect(user) {
@@ -75,23 +18,29 @@ async function initCharacterSelect(user) {
     gameContainer.classList.add('hidden'); 
     charCreationModal.classList.add('hidden'); 
     characterSelectModal.classList.remove('hidden');
-    loadingIndicator.classList.remove('hidden'); 
+    
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) loadingIndicator.classList.remove('hidden'); 
 
     // 1. Legacy Migration Check
     const oldRootRef = db.collection('players').doc(user.uid);
-    const oldDoc = await oldRootRef.get();
+    try {
+        const oldDoc = await oldRootRef.get();
 
-    if (oldDoc.exists && oldDoc.data().level) {
-        console.log("Migrating legacy save to Slot 1...");
-        const legacyData = oldDoc.data();
-        await oldRootRef.collection('characters').doc('slot1').set(legacyData);
-        await oldRootRef.delete();
+        if (oldDoc.exists && oldDoc.data().level) {
+            console.log("Migrating legacy save to Slot 1...");
+            const legacyData = oldDoc.data();
+            await oldRootRef.collection('characters').doc('slot1').set(legacyData);
+            await oldRootRef.delete();
+        }
+    } catch (e) {
+        console.warn("Legacy migration check bypassed.", e);
     }
 
     renderSlots();
 }
 
-let isEnteringGame = false; // Add global lock
+let isEnteringGame = false; // Global lock to prevent double-clicks
 
 window.selectSlot = async function (slotId) {
     // 🚨 Prevent Double Clicks and Server Hammering
@@ -100,7 +49,8 @@ window.selectSlot = async function (slotId) {
 
     if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
 
-    loadingIndicator.classList.remove('hidden');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) loadingIndicator.classList.remove('hidden');
 
     player_id = currentUser.uid; 
     playerRef = db.collection('players').doc(player_id).collection('characters').doc(slotId);
@@ -110,16 +60,18 @@ window.selectSlot = async function (slotId) {
 
         characterSelectModal.classList.add('hidden');
 
-        if (doc.exists) {
+        // Robust check: doc exists AND actually has data (not an empty placeholder)
+        if (doc.exists && doc.data().level) {
             enterGame(doc.data());
         } else {
+            // It's a completely empty slot. Setup the default state.
             const defaultState = createDefaultPlayerState();
             Object.assign(gameState.player, defaultState);
             initCreationUI(); 
         }
     } catch (e) {
         console.error("Failed to load character slot:", e);
-        loadingIndicator.classList.add('hidden');
+        if (loadingIndicator) loadingIndicator.classList.add('hidden');
         characterSelectModal.classList.remove('hidden');
         alert("Network error loading character. Please try again.");
     } finally {
@@ -128,6 +80,7 @@ window.selectSlot = async function (slotId) {
     }
 };
 
+// --- SLOT DELETION LOGIC ---
 let slotPendingDeletion = null; 
 
 const deleteConfirmModal = document.getElementById('deleteConfirmModal');
@@ -137,7 +90,7 @@ const cancelDeleteButton = document.getElementById('cancelDeleteButton');
 window.deleteSlot = function (slotId) {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playError(); // Use error sound as warning
     slotPendingDeletion = slotId;
-    deleteConfirmModal.classList.remove('hidden');
+    if (deleteConfirmModal) deleteConfirmModal.classList.remove('hidden');
 };
 
 if (confirmDeleteButton) {
@@ -150,7 +103,18 @@ if (confirmDeleteButton) {
             btn.textContent = "Deleting...";
 
             try {
+                // Delete the main character document
                 await db.collection('players').doc(currentUser.uid).collection('characters').doc(slotPendingDeletion).delete();
+                
+                // PERFORMANCE/CLEANUP: Also delete any attached backups to save database space!
+                const backupsRef = db.collection('players').doc(currentUser.uid).collection('characters').doc(slotPendingDeletion).collection('backups');
+                const backups = await backupsRef.get();
+                const batch = db.batch();
+                backups.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+
                 await renderSlots(); 
             } catch (e) {
                 console.error("Error deleting slot:", e);
@@ -159,7 +123,7 @@ if (confirmDeleteButton) {
 
             btn.disabled = false;
             btn.textContent = originalText;
-            deleteConfirmModal.classList.add('hidden');
+            if (deleteConfirmModal) deleteConfirmModal.classList.add('hidden');
             slotPendingDeletion = null;
         }
     };
@@ -168,19 +132,23 @@ if (confirmDeleteButton) {
 if (cancelDeleteButton) {
     cancelDeleteButton.onclick = () => {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-        deleteConfirmModal.classList.add('hidden');
+        if (deleteConfirmModal) deleteConfirmModal.classList.add('hidden');
         slotPendingDeletion = null;
     };
 }
 
-deleteConfirmModal.addEventListener('click', (e) => {
-    if (e.target === deleteConfirmModal) {
-        deleteConfirmModal.classList.add('hidden');
-        slotPendingDeletion = null;
-    }
-});
+if (deleteConfirmModal) {
+    deleteConfirmModal.addEventListener('click', (e) => {
+        if (e.target === deleteConfirmModal) {
+            deleteConfirmModal.classList.add('hidden');
+            slotPendingDeletion = null;
+        }
+    });
+}
 
-// --- CHARACTER CREATION LOGIC ---
+// ==========================================
+// CHARACTER CREATION LOGIC
+// ==========================================
 
 function selectCreationOption(type, key, element) {
     creationState[type] = key;
@@ -198,7 +166,8 @@ function updateCreationSummary() {
     const nameInput = document.getElementById('charNameInput');
     
     // Clean the input to prevent weird spacing or hidden HTML tags
-    creationState.name = nameInput.value.replace(/[^a-zA-Z0-9 ]/g, '').trim();
+    // Allow letters, numbers, and single spaces between words. Trim outer space.
+    creationState.name = nameInput.value.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 
     const raceName = creationState.race ? PLAYER_RACES[creationState.race].name : "???";
     const className = creationState.background ? PLAYER_BACKGROUNDS[creationState.background].name : "???";
@@ -243,16 +212,19 @@ function updateCreationSummary() {
         </div>
     ` : '';
 
-    summaryDiv.innerHTML = `
-        <p>Name: <span class="highlight-text font-bold">${creationState.name || "???"}</span></p>
-        <p>Identity: ${creationState.gender || "?"} ${raceName} ${className}</p>
-        <div class="mt-2 text-xs border-t pt-2 border-gray-500">
-            ${stats.length > 0 ? stats.join('<br>') : "Select Race & Class to see bonuses."}
-        </div>
-        ${vitalsHtml}
-    `;
+    if (summaryDiv) {
+        summaryDiv.innerHTML = `
+            <p>Name: <span class="highlight-text font-bold">${creationState.name || "???"}</span></p>
+            <p>Identity: ${creationState.gender || "?"} ${raceName} ${className}</p>
+            <div class="mt-2 text-xs border-t pt-2 border-gray-500">
+                ${stats.length > 0 ? stats.join('<br>') : "Select Race & Class to see bonuses."}
+            </div>
+            ${vitalsHtml}
+        `;
+    }
 
     const btn = document.getElementById('finalizeCreationBtn');
+    if (!btn) return;
     
     // Dynamic button text tells the player exactly what is missing!
     if (creationState.name.length === 0) {
@@ -279,8 +251,11 @@ function updateCreationSummary() {
 }
 
 // Attach listeners
-document.getElementById('charNameInput').addEventListener('input', updateCreationSummary);
-document.getElementById('finalizeCreationBtn').addEventListener('click', finalizeCharacterCreation);
+const charNameInput = document.getElementById('charNameInput');
+if (charNameInput) charNameInput.addEventListener('input', updateCreationSummary);
+
+const finalizeCreationBtn = document.getElementById('finalizeCreationBtn');
+if (finalizeCreationBtn) finalizeCreationBtn.addEventListener('click', finalizeCharacterCreation);
 
 // EXPANDABILITY WIN: Massive Name Generator Expansion
 window.generateRandomName = function() {
@@ -300,18 +275,21 @@ window.generateRandomName = function() {
     const p = prefixes[Math.floor(Math.random() * prefixes.length)];
     const s = suffixes[Math.floor(Math.random() * suffixes.length)];
     
-    document.getElementById('charNameInput').value = p + s;
-    updateCreationSummary(); // Force UI to update immediately
+    const nameInput = document.getElementById('charNameInput');
+    if (nameInput) {
+        nameInput.value = p + s;
+        updateCreationSummary(); // Force UI to update immediately
+    }
 };
 
 function initCreationUI() {
     creationState = { name: "", race: null, gender: "Non-Binary", background: null };
     
     const nameInput = document.getElementById('charNameInput');
-    nameInput.value = "";
+    if (nameInput) nameInput.value = "";
     
     // EASY WIN: Inject the dice button next to the name input dynamically
-    if (!document.getElementById('randomNameBtn')) {
+    if (nameInput && !document.getElementById('randomNameBtn')) {
         const nameContainer = nameInput.parentElement;
         const wrapper = document.createElement('div');
         wrapper.className = "flex gap-2";
@@ -321,7 +299,7 @@ function initCreationUI() {
         
         const diceBtn = document.createElement('button');
         diceBtn.id = 'randomNameBtn';
-        diceBtn.className = "bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-xl text-xl transition-transform active:scale-95";
+        diceBtn.className = "bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl text-xl shadow-md transition-transform active:scale-95";
         diceBtn.title = "Generate Random Name";
         diceBtn.textContent = "🎲";
         diceBtn.onclick = generateRandomName;
@@ -329,56 +307,63 @@ function initCreationUI() {
     }
     
     const raceContainer = document.getElementById('raceSelectionContainer');
-    raceContainer.innerHTML = '';
-    
-    for (const key in PLAYER_RACES) {
-        const r = PLAYER_RACES[key];
-        const div = document.createElement('div');
-        div.className = 'creation-option p-3 rounded-lg flex items-center gap-2';
-        div.innerHTML = `<span class="text-2xl">${r.icon}</span> <span class="font-bold">${r.name}</span>`;
-        div.onclick = () => selectCreationOption('race', key, div);
-        div.dataset.key = key; 
-        raceContainer.appendChild(div);
+    if (raceContainer) {
+        raceContainer.innerHTML = '';
+        for (const key in PLAYER_RACES) {
+            const r = PLAYER_RACES[key];
+            const div = document.createElement('div');
+            div.className = 'creation-option p-3 rounded-lg flex items-center gap-2 border-gray-600 border-2';
+            div.innerHTML = `<span class="text-3xl">${r.icon}</span> <span class="font-bold text-lg">${r.name}</span>`;
+            div.onclick = () => selectCreationOption('race', key, div);
+            div.dataset.key = key; 
+            raceContainer.appendChild(div);
+        }
     }
 
     const classContainer = document.getElementById('classSelectionContainer');
-    classContainer.innerHTML = '';
-
-    for (const key in PLAYER_BACKGROUNDS) {
-        const bg = PLAYER_BACKGROUNDS[key];
-        const div = document.createElement('div');
-        div.className = 'creation-option p-3 rounded-lg';
-        div.innerHTML = `
-            <div class="font-bold text-lg">${bg.name}</div>
-            <div class="text-xs muted-text">Start: ${bg.items[0].name}</div>
-        `;
-        div.onclick = () => selectCreationOption('background', key, div);
-        div.dataset.key = key;
-        classContainer.appendChild(div);
+    if (classContainer) {
+        classContainer.innerHTML = '';
+        for (const key in PLAYER_BACKGROUNDS) {
+            const bg = PLAYER_BACKGROUNDS[key];
+            const div = document.createElement('div');
+            div.className = 'creation-option p-3 rounded-lg border-gray-600 border-2';
+            div.innerHTML = `
+                <div class="font-bold text-lg text-yellow-500" style="font-family: 'Uncial Antiqua', cursive;">${bg.name}</div>
+                <div class="text-xs text-gray-400 mt-1">Start: ${bg.items[0].name}</div>
+            `;
+            div.onclick = () => selectCreationOption('background', key, div);
+            div.dataset.key = key;
+            classContainer.appendChild(div);
+        }
     }
 
     const genderBtns = document.querySelectorAll('.gender-btn');
-    genderBtns.forEach(btn => {
-        btn.onclick = () => {
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-            genderBtns.forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            creationState.gender = btn.dataset.value;
-            updateCreationSummary();
-        };
-    });
-    
-    // Default select Non-Binary
-    genderBtns[2].click(); 
+    if (genderBtns.length > 0) {
+        genderBtns.forEach(btn => {
+            btn.onclick = () => {
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                genderBtns.forEach(b => b.classList.remove('selected', 'bg-blue-600', 'text-white'));
+                btn.classList.add('selected', 'bg-blue-600', 'text-white');
+                creationState.gender = btn.dataset.value;
+                updateCreationSummary();
+            };
+        });
+        
+        // Default select Non-Binary
+        genderBtns[2].click(); 
+    }
 
     updateCreationSummary();
     
-    charCreationModal.classList.remove('hidden');
-    loadingIndicator.classList.add('hidden');
+    if (charCreationModal) charCreationModal.classList.remove('hidden');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) loadingIndicator.classList.add('hidden');
 }
 
 async function finalizeCharacterCreation() {
     const btn = document.getElementById('finalizeCreationBtn');
+    if (!btn) return;
+    
     btn.disabled = true;
     btn.textContent = "Forging Destiny...";
     
@@ -433,20 +418,28 @@ async function finalizeCharacterCreation() {
     if (armor) { player.equipment.armor = armor; armor.isEquipped = true; }
 
     // 7. Save and Start
-    await playerRef.set(typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player);
+    try {
+        await playerRef.set(typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player);
 
-    charCreationModal.classList.add('hidden');
-    gameContainer.classList.remove('hidden');
-    canvas.style.visibility = 'visible';
-    
-    gameState.mapMode = 'overworld';
-    
-    logMessage(`{green:Welcome, ${player.name} the ${raceData.name} ${bgData.name}.}`);
-    
-    renderStats();
-    renderEquipment();
-    renderInventory();
-    renderTime();
-    resizeCanvas();
-    render();
+        if (charCreationModal) charCreationModal.classList.add('hidden');
+        if (gameContainer) gameContainer.classList.remove('hidden');
+        if (canvas) canvas.style.visibility = 'visible';
+        
+        gameState.mapMode = 'overworld';
+        
+        logMessage(`{green:Welcome, ${player.name} the ${raceData.name} ${bgData.name}.}`);
+        
+        // Force the UI to catch up with the newly created stats!
+        if (typeof renderStats === 'function') renderStats();
+        if (typeof renderEquipment === 'function') renderEquipment();
+        if (typeof renderInventory === 'function') renderInventory();
+        if (typeof renderTime === 'function') renderTime();
+        if (typeof resizeCanvas === 'function') resizeCanvas();
+        if (typeof render === 'function') render();
+    } catch (e) {
+        console.error("Failed to save new character:", e);
+        alert("Failed to finalize character creation. Check your connection.");
+        btn.disabled = false;
+        btn.textContent = "Begin Adventure!";
+    }
 }
