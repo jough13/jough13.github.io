@@ -18,6 +18,9 @@ window.MathUtils = {
     // Keeps a value within a specified range
     clamp: (val, min, max) => Math.max(min, Math.min(max, val)),
     
+    // Smooth linear interpolation for cameras and entity gliding
+    lerp: (start, end, amt) => (1 - amt) * start + amt * end,
+    
     // Returns a random integer between min and max (inclusive)
     randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
     
@@ -134,8 +137,8 @@ for (let i = 0; i <= 2047; i++) {
 const isWideChar = (char) => {
     if (charWidthCache[char] !== undefined) return charWidthCache[char];
     
-    // If it wasn't in the cache, it's likely a complex emoji. Run the slow check.
-    const isWide = /\p{Extended_Pictographic}/u.test(char); 
+    // ROBUSTNESS: Enhanced Emoji Regex to catch multi-part emojis (e.g., flags, skin tones)
+    const isWide = /[\p{Extended_Pictographic}\p{Emoji}\p{Emoji_Component}]/u.test(char); 
     charWidthCache[char] = isWide;
     return isWide;
 };
@@ -198,7 +201,7 @@ elevationNoise.init(WORLD_SEED + ':elevation');
 const moistureNoise = Object.create(Perlin);
 moistureNoise.init(WORLD_SEED + ':moisture');
 
-// PERFORMANCE WIN: Hardware-Accelerated UUIDs
+// Hardware-Accelerated UUIDs
 function generateUUID() {
     // Use native cryptography if available (10x faster and cryptographically secure)
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
