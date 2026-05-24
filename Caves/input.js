@@ -1,3 +1,7 @@
+// ==========================================
+// INPUT HANDLING & QUEUE SYSTEM
+// ==========================================
+
 // --- GLOBALS & SAFETY ---
 window.inputQueue = window.inputQueue || []; // Guarantee queue exists regardless of load order
 
@@ -26,7 +30,7 @@ function handleInput(key) {
 
     // 2. Audio Context Resume (Browser Policy)
     if (typeof AudioSystem !== 'undefined' && AudioSystem.ctx && AudioSystem.ctx.state === 'suspended') {
-        AudioSystem.ctx.resume();
+        AudioSystem.ctx.resume().catch(() => {});
     }
 
     // 3. Robust Safety Check
@@ -41,27 +45,31 @@ function handleInput(key) {
         if (gameState.isAiming) {
             gameState.isAiming = false;
             gameState.abilityToAim = null;
-            logMessage("Aiming canceled.");
+            logMessage("{gray:Aiming canceled.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            if (typeof render === 'function') render(); // Clear telegraphs instantly
             return;
         }
         
         if (gameState.isDroppingItem) {
             gameState.isDroppingItem = false;
-            logMessage("Drop canceled.");
+            logMessage("{gray:Drop canceled.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-            renderInventory(); 
+            if (typeof renderInventory === 'function') renderInventory(); 
             return;
         }
 
-        // Find any active modal
+        // Find any active modal and close it
         const activeModal = document.querySelector('.modal-overlay:not(.hidden)');
         if (activeModal) {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             
-            if (activeModal.id === 'inventoryModal') closeInventoryModal();
-            else if (activeModal.id === 'mapModal') closeWorldMap();
+            if (activeModal.id === 'inventoryModal' && typeof closeInventoryModal === 'function') closeInventoryModal();
+            else if (activeModal.id === 'mapModal' && typeof closeWorldMap === 'function') closeWorldMap();
             else activeModal.classList.add('hidden'); 
+            
+            // Return focus to game so WASD works immediately
+            if (document.activeElement) document.activeElement.blur();
             return;
         }
         
@@ -72,13 +80,13 @@ function handleInput(key) {
     if (gameState.player.health <= 0) return;
 
     if (key.toLowerCase() === 'q') {
-        drinkFromSource();
+        if (typeof drinkFromSource === 'function') drinkFromSource();
         return;
     }
 
     // --- DROP MODE ---
     if (gameState.isDroppingItem) {
-        handleItemDrop(key);
+        if (typeof handleItemDrop === 'function') handleItemDrop(key);
         return;
     }
 
@@ -99,13 +107,13 @@ function handleInput(key) {
             else if (abilityId === 'pacify') executePacify(dirX, dirY);
             else if (abilityId === 'inflictMadness') executeInflictMadness(dirX, dirY);
             else if (abilityId === 'tame') executeTame(dirX, dirY);
-            else logMessage("Unknown ability. Aiming canceled.");
+            else logMessage("{red:Unknown ability. Aiming canceled.}");
 
             gameState.isAiming = false;
             gameState.abilityToAim = null;
         } else {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-            logMessage("Invalid direction. Use Arrow keys or Numpad.");
+            logMessage("{gray:Invalid direction. Use Arrow keys or Numpad.}");
         }
         return;
     }
@@ -113,7 +121,7 @@ function handleInput(key) {
     // --- DROP MODE TOGGLE ---
     if (gameState.inventoryMode && key.toLowerCase() === 'd') {
         if (gameState.player.inventory.length === 0) {
-            logMessage("Inventory empty.");
+            logMessage("{gray:Inventory empty.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
@@ -122,12 +130,12 @@ function handleInput(key) {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
 
         if (gameState.isDroppingItem) {
-            logMessage("Drop Mode: Select an item to discard.");
+            logMessage("{red:Drop Mode: Select an item to discard.}");
         } else {
-            logMessage("Drop Mode cancelled.");
+            logMessage("{gray:Drop Mode cancelled.}");
         }
 
-        renderInventory(); 
+        if (typeof renderInventory === 'function') renderInventory(); 
         return;
     }
 
@@ -136,21 +144,23 @@ function handleInput(key) {
     if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
         
         if (gameState.isDroppingItem) {
-            handleItemDrop(key); 
+            if (typeof handleItemDrop === 'function') handleItemDrop(key); 
             return;
         }
 
         if (gameState.inventoryMode) {
-            useInventoryItem(keyNum - 1);
+            if (typeof useInventoryItem === 'function') useInventoryItem(keyNum - 1);
             return;
         }
 
+        // Outside of inventory, numbers 1-5 activate the Hotbar
         if (keyNum <= 5) {
-            useHotbarSlot(keyNum - 1);
+            if (typeof useHotbarSlot === 'function') useHotbarSlot(keyNum - 1);
             return;
         }
     }
 
+    // --- GROUND LOOTING ---
     if (key.toLowerCase() === 'g') {
         let tileId;
         if (gameState.mapMode === 'overworld') tileId = `${gameState.player.x},${-gameState.player.y}`;
@@ -160,39 +170,54 @@ function handleInput(key) {
             ? chunkManager.getTile(gameState.player.x, gameState.player.y)
             : (gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] : chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x]);
 
-        if (ITEM_DATA[currentTile]) {
+        if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[currentTile]) {
             logMessage("You scour the ground for items...");
-            attemptMovePlayer(gameState.player.x, gameState.player.y); 
+            if (typeof attemptMovePlayer === 'function') attemptMovePlayer(gameState.player.x, gameState.player.y); 
             return;
         } else {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-            logMessage("There is nothing here to pick up.");
+            logMessage("{gray:There is nothing here to pick up.}");
             return;
         }
     }
 
-    // --- MENU TOGGLES (With Audio Hooks) ---
-    const toggleModal = (modalEl, openFunc, closeFunc) => {
-        window.inputQueue.length = 0; 
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-        
-        if (!modalEl.classList.contains('hidden')) {
-            if (closeFunc) closeFunc();
-            else modalEl.classList.add('hidden');
+    // --- MENU TOGGLES (With Centralized UI Hooks) ---
+    const toggleMenu = (modalEl, openFunc, closeFunc) => {
+        if (typeof window.toggleModal === 'function') {
+            window.toggleModal(modalEl, openFunc, closeFunc);
         } else {
-            openFunc();
+            // Fallback just in case ui.js hasn't hooked up yet
+            window.inputQueue.length = 0; 
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            if (!modalEl.classList.contains('hidden')) {
+                if (closeFunc) closeFunc();
+                else modalEl.classList.add('hidden');
+            } else {
+                openFunc();
+            }
         }
     };
 
-    if (key.toLowerCase() === 'i') { toggleModal(inventoryModal, openInventoryModal, closeInventoryModal); return; }
-    if (key.toLowerCase() === 'm') { toggleModal(mapModal, openWorldMap, closeWorldMap); return; }
-    if (key.toLowerCase() === 'b') { toggleModal(spellModal, openSpellbook); return; }
-    if (key.toLowerCase() === 'k') { toggleModal(skillModal, openSkillbook); return; }
-    if (key.toLowerCase() === 'c') { toggleModal(collectionsModal, openCollections); return; }
-    if (key.toLowerCase() === 'p') { toggleModal(talentModal, openTalentModal); return; }
+    if (key.toLowerCase() === 'i') { toggleMenu(inventoryModal, openInventoryModal, closeInventoryModal); return; }
+    if (key.toLowerCase() === 'm') { toggleMenu(mapModal, openWorldMap, closeWorldMap); return; }
+    if (key.toLowerCase() === 'b') { toggleMenu(spellModal, openSpellbook, null); return; }
+    if (key.toLowerCase() === 'k') { toggleMenu(skillModal, openSkillbook, null); return; }
+    if (key.toLowerCase() === 'c') { toggleMenu(collectionsModal, openCollections, null); return; }
+    if (key.toLowerCase() === 'p') { toggleMenu(talentModal, openTalentModal, null); return; }
+    
+    // NEW: Help Hotkey
+    if (key.toLowerCase() === 'h') { 
+        toggleMenu(helpModal, () => helpModal.classList.remove('hidden'), null); 
+        return; 
+    }
 
-    if (key === 'Enter') { document.getElementById('chatInput').focus(); return; }
+    if (key === 'Enter') { 
+        const chatIn = document.getElementById('chatInput');
+        if (chatIn) chatIn.focus(); 
+        return; 
+    }
 
+    // Block gameplay inputs if any menu is open
     const anyModalOpen = document.querySelector('.modal-overlay:not(.hidden)');
     if (anyModalOpen || gameState.inventoryMode) {
         return;
@@ -211,19 +236,25 @@ function handleInput(key) {
         else if (newX < gameState.player.x) gameState.player.facing = 'left';
 
         lastActionTime = Date.now(); 
-        attemptMovePlayer(newX, newY);
+        if (typeof attemptMovePlayer === 'function') attemptMovePlayer(newX, newY);
         return;
     }
 
     if (key.toLowerCase() === 'r') {
-        restPlayer();
+        if (typeof restPlayer === 'function') restPlayer();
         lastActionTime = Date.now(); 
         return;
     }
 
-    if ([' ', '5', 'Numpad5', '.'].includes(key)) {
-        logMessage("You wait a moment.");
-        endPlayerTurn();
+    if ([' ', '5', 'Numpad5', 'Clear', '.'].includes(key)) {
+        logMessage("{gray:You wait a moment.}");
+        
+        // UX WIN: Spawn visual feedback so the player knows the turn passed
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "💤", "#9ca3af");
+        }
+        
+        if (typeof endPlayerTurn === 'function') endPlayerTurn();
         lastActionTime = Date.now(); 
         return;
     }
@@ -231,8 +262,9 @@ function handleInput(key) {
 
 // --- EVENT LISTENERS ---
 document.addEventListener('keydown', (event) => {
-    // 1. Ignore if typing in chat
-    if (document.activeElement === chatInput) return;
+    // 1. UNIVERSAL INPUT PROTECTOR (Critical Bug Fix)
+    // Ignore WASD and Hotkeys if the user is typing in ANY input field (Chat, Riddle, Character Name)
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
 
     // 2. Prevent default scrolling for game keys
     const keysToBlock = [
@@ -251,13 +283,17 @@ document.addEventListener('keydown', (event) => {
     }
 
     // --- THE INPUT QUEUE ROUTER ---
-    const instantKeys = ['Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'I', 'M', 'B', 'K', 'C', 'P', 'd', 'D', 'g', 'G', 'q', 'Q'];
+    const instantKeys = ['Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'h', 'I', 'M', 'B', 'K', 'C', 'P', 'H', 'd', 'D', 'g', 'G', 'q', 'Q'];
     const anyModalOpen = document.querySelector('.modal-overlay:not(.hidden)');
+    
+    // Dead check before queueing
+    if (gameState && gameState.player && gameState.player.health <= 0) return;
     
     if (anyModalOpen || instantKeys.includes(event.key) || gameState.isDroppingItem || gameState.inventoryMode) {
         handleInput(inputStr); // Execute instantly
     } else {
         // Gameplay actions (Movement, Combat, Aiming) queue up seamlessly!
+        // The queue is capped at 3 to prevent sliding into lava after releasing the key.
         if (window.inputQueue.length < 3) {
             window.inputQueue.push(inputStr);
         }
@@ -268,5 +304,7 @@ document.addEventListener('keydown', (event) => {
 let resizeTimer;
 window.addEventListener('resize', () => { 
     clearTimeout(resizeTimer); 
-    resizeTimer = setTimeout(resizeCanvas, 100); 
+    if (typeof resizeCanvas === 'function') {
+        resizeTimer = setTimeout(resizeCanvas, 100); 
+    }
 });
