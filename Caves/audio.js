@@ -1,4 +1,7 @@
-// --- ADVANCED AUDIO SYSTEM (OPTIMIZED) ---
+// ==========================================
+// ADVANCED PROCEDURAL AUDIO SYSTEM
+// ==========================================
+
 const AudioSystem = {
     _ctx: null, 
     noiseBuffer: null, 
@@ -20,29 +23,44 @@ const AudioSystem = {
         localStorage.setItem('audioSettings', JSON.stringify(AudioSystem.settings));
     },
 
-    getCtx: function() {
+    // --- MOBILE BROWSER COMPATIBILITY FIX ---
+    // iOS and Android Chrome strictly block AudioContext from starting unless 
+    // triggered directly by a user gesture. This wrapper guarantees it unlocks.
+    initAudioContext: function() {
         if (!this._ctx) {
             this._ctx = new (window.AudioContext || window.webkitAudioContext)();
         }
         if (this._ctx.state === 'suspended') {
-            this._ctx.resume();
+            this._ctx.resume().catch(e => console.warn("AudioContext resume failed:", e));
         }
         return this._ctx;
     },
 
+    getCtx: function() {
+        return this.initAudioContext();
+    },
+
     initNoise: function() {
         const ctx = this.getCtx();
-        const bufferSize = ctx.sampleRate * 2.0; 
+        const bufferSize = ctx.sampleRate * 2.0; // 2 seconds of noise buffer
         this.noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = this.noiseBuffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
+            data[i] = Math.random() * 2 - 1; // White noise
         }
     },
 
     // Internal Throttler
     _throttle: function(id, msCooldown) {
         const now = Date.now();
+        
+        // Clean up old throttle timestamps occasionally to prevent memory leaks
+        if (Math.random() < 0.05) {
+            for (const key in this._lastPlayed) {
+                if (now - this._lastPlayed[key] > 5000) delete this._lastPlayed[key];
+            }
+        }
+
         if (this._lastPlayed[id] && now - this._lastPlayed[id] < msCooldown) {
             return false;
         }
@@ -53,14 +71,15 @@ const AudioSystem = {
     // --- CORE GENERATORS ---
 
     playNoise: function(duration, vol = 0.1, filterFreq = 1000) {
-        if (!this.settings.master) return;
+        if (!this.settings.master || !this.getCtx()) return;
         
-        const ctx = this.getCtx();
+        const ctx = this._ctx;
         if (!this.noiseBuffer) this.initNoise();
 
         const src = ctx.createBufferSource();
         src.buffer = this.noiseBuffer; 
         
+        // Slightly random pitch for variety
         src.playbackRate.value = 0.8 + Math.random() * 0.4;
 
         const filter = ctx.createBiquadFilter();
@@ -86,9 +105,9 @@ const AudioSystem = {
     },
 
     playTone: function(freq, type, duration, vol = 0.1, pitchShift = true, slideTo = null) {
-        if (!this.settings.master) return;
+        if (!this.settings.master || !this.getCtx()) return;
         
-        const ctx = this.getCtx();
+        const ctx = this._ctx;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         
@@ -123,8 +142,9 @@ const AudioSystem = {
     // EXPANDABILITY WIN: Generic Melody Sequencer
     // Allows easy creation of custom jingles for quests, puzzles, or rare loot!
     playMelody: function(notes, type = 'sine', speed = 0.15, vol = 0.1) {
-        if (!this.settings.master || !this.settings.ui) return;
-        const ctx = this.getCtx();
+        if (!this.settings.master || !this.settings.ui || !this.getCtx()) return;
+        
+        const ctx = this._ctx;
         const now = ctx.currentTime;
         
         const osc = ctx.createOscillator();
@@ -143,7 +163,7 @@ const AudioSystem = {
                 gain.gain.linearRampToValueAtTime(vol, noteTime + 0.02);
                 gain.gain.exponentialRampToValueAtTime(0.01, noteTime + speed - 0.02);
             } else {
-                // Rest note
+                // Rest note (Silence)
                 gain.gain.setValueAtTime(0, noteTime);
             }
         });
@@ -153,7 +173,10 @@ const AudioSystem = {
         osc.start(now);
         osc.stop(now + totalDuration);
         
-        osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+        osc.onended = () => { 
+            osc.disconnect(); 
+            gain.disconnect(); 
+        };
     },
 
     // --- SPECIFIC SOUND EFFECTS ---
@@ -167,10 +190,10 @@ const AudioSystem = {
     
     // GAMEPLAY WIN: Dynamic Attack Types
     playAttack: function(type = 'normal') { 
-        if (!this.settings.master || !this.settings.combat) return;
+        if (!this.settings.master || !this.settings.combat || !this.getCtx()) return;
         if (!this._throttle('attack', 50)) return; // Prevent overlapping sweep blowouts
         
-        const ctx = this.getCtx();
+        const ctx = this._ctx;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         
@@ -249,7 +272,10 @@ const AudioSystem = {
     },
 
     playClick: function() {
-        if (this.settings.ui) this.playNoise(0.02, 0.05, 3000);
+        if (this.settings.ui) {
+            if (!this._throttle('click', 50)) return;
+            this.playNoise(0.02, 0.05, 3000);
+        }
     },
 
     playHover: function() {
@@ -259,9 +285,27 @@ const AudioSystem = {
         }
     },
     
-    // Upgraded Level Up using the new Melody Sequencer
+    // --- JUICE: SEQUENCED JINGLES ---
+    
     playLevelUp: function() {
         // C Major Arpeggio: C4, E4, G4, C5
         this.playMelody([261.63, 329.63, 392.00, 523.25], 'sine', 0.15, 0.1);
+    },
+
+    playQuestComplete: function() {
+        // Triumphant Fanfare
+        this.playMelody([392.00, 392.00, 392.00, 523.25, 0, 523.25], 'triangle', 0.12, 0.1);
+    },
+
+    playLootRare: function() {
+        // Shimmering chime
+        this.playMelody([523.25, 659.25, 783.99, 1046.50], 'sine', 0.08, 0.08);
     }
 };
+
+// Global Boot Hook
+// Forces the audio context to initialize the very first time the player clicks anywhere
+document.addEventListener('click', function unlockAudioContext() {
+    AudioSystem.initAudioContext();
+    document.removeEventListener('click', unlockAudioContext);
+}, { once: true });
