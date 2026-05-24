@@ -1,5 +1,3 @@
---- START OF FILE devlog.html ---
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -169,6 +167,7 @@
         .tag-sys { background-color: rgba(59, 130, 246, 0.2); color: #3b82f6; }
         .tag-sec { background-color: rgba(239, 68, 68, 0.2); color: #ef4444; }
         .tag-qol { background-color: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .tag-content { background-color: rgba(234, 179, 8, 0.2); color: #ca8a04; }
 
     </style>
 </head>
@@ -180,6 +179,40 @@
     </header>
 
     <main>
+
+        <!-- DEVLOG #5 -->
+        <article class="update-card">
+            <h2>Devlog #5: Blood Moons & Elemental Synergies!</h2>
+            <div class="date">May 22th, 2026</div>
+
+            <p>
+                The world of Caves & Castles just got a lot more dangerous—and a lot more tactical! This update introduces server-wide global events and completely revamps how magic and archery interact with the environment. 
+            </p>
+
+            <h3><span class="tag tag-content">Content</span> The Blood Moon Rises</h3>
+            <ul>
+                <li><strong>A Global Threat:</strong> Every night, there is now a rare chance for a <code>Blood Moon</code> to trigger. The screen will tint deep red, and a warning will broadcast across the global chat.</li>
+                <li><strong>Frenzied Monsters:</strong> During a Blood Moon, all enemies spawned in the overworld receive a massive +50% health buff, increased damage, and drop <strong>double XP</strong>!</li>
+                <li><strong>World Raid Bosses:</strong> If you're lucky (or unlucky), the Blood Moon might tear open a rift and spawn an <code>Eldritch Behemoth</code> with 10,000 HP. Its exact coordinates will be broadcasted to the server. You'll need to party up to take it down!</li>
+            </ul>
+
+            <h3><span class="tag tag-sys">Sys</span> Elemental Combat Synergies</h3>
+            <ul>
+                <li><strong>Thunder & Rain:</strong> Casting <code>Chain Lightning</code> or <code>Thunderbolt</code> while it's raining (or if the target is standing in a river) now deals <strong>double damage</strong>. Water conducts electricity!</li>
+                <li><strong>Swamp Gas Explosions:</strong> Firing a <code>Fire Arrow</code> or casting <code>Fireball</code> into swamp water (<code>≈</code>) has a 15% chance to ignite hidden pockets of swamp gas, causing a massive AoE explosion that damages everything nearby.</li>
+                <li><strong>Ice Bridges:</strong> Tired of carrying a Canoe? Casting <code>Frost Bolt</code> directly at deep water will now freeze it, creating a temporary <code>Ice Bridge</code> that you can safely walk across. It melts after 1 hour!</li>
+            </ul>
+
+            <h3><span class="tag tag-qol">QoL</span> Game Engine & UI Polish</h3>
+            <ul>
+                <li><strong>Dynamic Lighting Engine:</strong> We replaced the old tile-by-tile lighting calculator with a hardware-accelerated radial gradient. Not only does this run at 60 FPS flawlessly, but it also allows us to spawn drifting, anti-gravity <strong>fireflies</strong> in the forests at night!</li>
+                <li><strong>Smooth Interpolation:</strong> Enemies, projectiles, and multiplayer friends no longer "snap" from grid to grid. Everything now uses smooth linear interpolation (Lerping) to glide effortlessly across the screen.</li>
+                <li><strong>Multiplayer Chat Bubbles:</strong> When a player near you types a message in Global Chat, a small, semi-transparent chat bubble will now appear directly over their character's head on the game board!</li>
+                <li><strong>Unidentified Magic Items:</strong> You can now use (click) Unidentified Magic Items (<code>✨</code>) directly from your inventory to identify them! The system automatically scales the resulting loot to your current level.</li>
+                <li><strong>Sell Stack Button:</strong> Added a highly requested "Sell All" button to the merchant interface so you no longer have to manually click 50 times to sell a stack of arrows.</li>
+            </ul>
+        </article>
+
         <!-- DEVLOG #4 -->
         <article class="update-card">
             <h2>Devlog #4: The Architecture & Security Update</h2>
@@ -205,4 +238,13 @@
 
             <h3><span class="tag tag-qol">QoL</span> Audio & Inventory Flow</h3>
             <ul>
-                <li><strong>M
+                <li><strong>Mass Deposit:</strong> Added a "Deposit Mats" button to the Stash UI. With one click, it will take all unequipped crafting materials, trade goods, and junk from your inventory and safely stack them in your bank!</li>
+                <li><strong>Context-Aware Tooltips:</strong> We added a new tooltip system to the main UI. Hovering over your primary stats (like Strength, Wits, Perception) now displays exactly what mechanics they influence!</li>
+                <li><strong>Audio Context Unlocker:</strong> Fixed a major bug on Safari/iOS where all game audio was permanently muted. The engine now binds to the first tap on the title screen to force-unlock the browser's <code>AudioContext</code>.</li>
+                <li><strong>Procedural Melodies:</strong> The audio engine was upgraded with a generic melody sequencer. Leveling up now plays a satisfying C-Major Arpeggio!</li>
+            </ul>
+        </article>
+
+    </main>
+</body>
+</html>
