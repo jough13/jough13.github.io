@@ -1,3 +1,7 @@
+// ==========================================
+// CRAFTING & COOKING SYSTEM
+// ==========================================
+
 /**
  * HIGH-PERFORMANCE HELPER: Tallies unequipped materials in a single pass.
  * Prevents O(N^3) nested loops when rendering the recipe list.
@@ -5,34 +9,53 @@
 function getAvailableMaterials(inventory) {
     const matCount = {};
     for (let i = 0; i < inventory.length; i++) {
-        if (!inventory[i].isEquipped) {
-            matCount[inventory[i].name] = (matCount[inventory[i].name] || 0) + inventory[i].quantity;
+        const item = inventory[i];
+        if (!item.isEquipped) {
+            matCount[item.name] = (matCount[item.name] || 0) + item.quantity;
         }
     }
     return matCount;
 }
 
 /**
- * Calculates the maximum number of times a recipe can be crafted.
+ * Calculates the maximum number of times a recipe can be crafted,
+ * capped by both available materials AND available inventory slots.
  */
-function getMaxCraftable(recipeName, availableMats) {
+function getMaxCraftable(recipeName, availableMats, currentInventoryLength, isStackable, hasExistingStack) {
     const recipe = CRAFTING_RECIPES[recipeName] || COOKING_RECIPES[recipeName];
     if (!recipe) return 0;
     
     let max = Infinity;
+    
+    // 1. Check material bottlenecks
     for (const mat in recipe.materials) {
         const req = recipe.materials[mat];
         const has = availableMats[mat] || 0;
         if (has < req) return 0;
         max = Math.min(max, Math.floor(has / req));
     }
-    return max === Infinity ? 0 : max;
+    
+    if (max === Infinity || max <= 0) return 0;
+    
+    // 2. Check inventory constraints
+    // If it stacks and we already have a stack, we can craft infinite (up to max materials)
+    if (isStackable && hasExistingStack) return max;
+    
+    // If it stacks but we DON'T have a stack, we need exactly 1 empty slot
+    // If it DOESN'T stack (weapons/armor), we need 1 empty slot per craft
+    const emptySlots = (window.MAX_INVENTORY_SLOTS || 9) - currentInventoryLength;
+    
+    if (isStackable) {
+        return emptySlots > 0 ? max : 0;
+    } else {
+        return Math.min(max, emptySlots);
+    }
 }
 
 /**
  * Handles the logic of crafting an item.
  * @param {string} recipeName - The name of the item to craft.
- * @param {boolean} requestBatch - If true, crafts as many as possible (Stackables only).
+ * @param {boolean} requestBatch - If true, crafts as many as possible.
  */
 function handleCraftItem(recipeName, requestBatch = false) {
     const recipe = CRAFTING_RECIPES[recipeName] || COOKING_RECIPES[recipeName];
@@ -43,53 +66,43 @@ function handleCraftItem(recipeName, requestBatch = false) {
 
     // 1. Check Level Requirement
     if (CRAFTING_RECIPES[recipeName] && playerCraftLevel < recipe.level) {
-        logMessage(`You need Crafting Level ${recipe.level} to make this.`);
+        logMessage(`{red:You need Crafting Level ${recipe.level} to make this.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
-    // 2. Verify Materials efficiently
-    const availableMats = getAvailableMaterials(player.inventory);
-    const maxCraftable = getMaxCraftable(recipeName, availableMats);
-
-    if (maxCraftable <= 0) {
-        logMessage("You are missing materials (or they are currently equipped).");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    // 3. Determine Output Template
     const outputItemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === recipeName);
     const itemTemplate = ITEM_DATA[outputItemKey];
     
-    // Safety check in case recipe points to an undefined item
     if (!itemTemplate) {
         console.error(`Recipe output missing in ITEM_DATA: ${recipeName}`);
         return;
     }
 
     const isStackable = ['junk', 'consumable', 'ammo', 'ingredient', 'trade'].includes(itemTemplate.type);
-
-    // 4. Determine Batch Size
-    // Prevent batching non-stackables (weapons/armor) to avoid masterwork RNG complexitites and inventory bloat
-    const batchSize = (requestBatch && isStackable) ? maxCraftable : 1;
-
-    // 5. Inventory Space Check
     const existingStack = player.inventory.find(item => item.name === itemTemplate.name && !item.isEquipped);
-    const slotsNeeded = isStackable ? (existingStack ? 0 : 1) : batchSize;
 
-    if (player.inventory.length + slotsNeeded > MAX_INVENTORY_SLOTS) {
-        logMessage("Inventory full! Cannot craft.");
+    // 2. Verify Materials and Capacity
+    const availableMats = getAvailableMaterials(player.inventory);
+    const maxCraftable = getMaxCraftable(recipeName, availableMats, player.inventory.length, isStackable, !!existingStack);
+
+    if (maxCraftable <= 0) {
+        logMessage("{red:You are missing materials, or your inventory is full.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
-    // 6. Consume Materials (Backward loop for safe array mutation)
+    // 3. Determine Batch Size
+    const batchSize = requestBatch ? maxCraftable : 1;
+
+    // 4. Consume Materials (Backward loop for safe array mutation)
     for (const matName in recipe.materials) {
         let needed = recipe.materials[matName] * batchSize;
-        for (let i = player.inventory.length - 1; i >= 0 && needed > 0; i--) {
-            const item = player.inventory[i];
+        
+        for (let i = player.inventory.length - 1; i >= 0; i--) {
+            if (needed <= 0) break; // Optimization: Stop looping if we've taken enough
             
+            const item = player.inventory[i];
             if (item.name === matName && !item.isEquipped) {
                 const take = Math.min(item.quantity, needed);
                 item.quantity -= take;
@@ -102,8 +115,9 @@ function handleCraftItem(recipeName, requestBatch = false) {
         }
     }
 
-    // 7. Generate Items
+    // 5. Generate Items
     let masterworksCrafted = 0;
+    const isCooking = (gameState.currentCraftingMode === 'cooking');
 
     for (let i = 0; i < batchSize; i++) {
         // --- Masterwork Logic (Only for Equipment) ---
@@ -133,10 +147,11 @@ function handleCraftItem(recipeName, requestBatch = false) {
         const craftYield = (isMasterwork) ? 1 : (recipe.yield || 1); 
 
         // Add to Inventory
-        // (Re-evaluate existing stack inside the loop in case previous iterations created it)
+        // Re-evaluate existing stack inside the loop in case previous iterations created it
         const curStack = player.inventory.find(item => item.name === craftedName && !item.isEquipped);
 
-        if (curStack && isStackable && !isMasterwork) {
+        // Allow stacking of identical masterworks if the base type allows it (e.g. Masterwork Arrows)
+        if (curStack && isStackable) {
             curStack.quantity += craftYield; 
         } else {
             player.inventory.push({
@@ -155,24 +170,29 @@ function handleCraftItem(recipeName, requestBatch = false) {
         }
     }
 
-    // 8. Flavor & Juice Logging
+    // 6. Flavor & Juice Logging
+    const totalYield = batchSize * (recipe.yield || 1);
+    
     if (masterworksCrafted > 0) {
         logMessage(`{purple:Critical Success! You crafted ${masterworksCrafted}x ${itemTemplate.name}!}`);
-        triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+        if (typeof triggerStatAnimation === 'function') triggerStatAnimation(document.getElementById('levelDisplay'), 'stat-pulse-purple');
         if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
     } else {
-        const totalYield = batchSize * (recipe.yield || 1);
         const qtyStr = totalYield > 1 ? ` (x${totalYield})` : '';
-        logMessage(`You crafted/cooked: ${recipeName}${qtyStr}.`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+        logMessage(`You ${isCooking ? 'cooked' : 'crafted'}: ${recipeName}${qtyStr}.`);
+        
+        if (typeof AudioSystem !== 'undefined') {
+            if (batchSize > 1) AudioSystem.playMagic(); // Satisfying sound for big batches
+            else AudioSystem.playStep(); // Clink sound for single crafts
+        }
     }
 
-    // 9. Grant XP
+    // 7. Grant XP
     const xpGain = (recipe.xp || 10) * batchSize;
     player.craftingXp = (player.craftingXp || 0) + xpGain;
     player.craftingXpToNext = player.craftingXpToNext || 50;
 
-    logMessage(`+${xpGain} Crafting XP`);
+    logMessage(`{gray:+${xpGain} Crafting XP}`);
 
     while (player.craftingXp >= player.craftingXpToNext) {
         player.craftingXp -= player.craftingXpToNext;
@@ -180,20 +200,23 @@ function handleCraftItem(recipeName, requestBatch = false) {
         player.craftingXpToNext = Math.floor(player.craftingXpToNext * 1.5);
         
         logMessage(`{blue:CRAFTING LEVEL UP! You are now Artisan Level ${player.craftingLevel}.}`);
-        triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
+        if (typeof triggerStatAnimation === 'function') triggerStatAnimation(document.getElementById('levelDisplay'), 'stat-pulse-blue');
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
     }
 
-    // 10. Finalize & Save
-    playerRef.update({
-        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
-        craftingLevel: player.craftingLevel,
-        craftingXp: player.craftingXp,
-        craftingXpToNext: player.craftingXpToNext
-    });
+    // 8. Finalize & Save
+    if (typeof playerRef !== 'undefined' && playerRef) {
+        playerRef.update({
+            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
+            craftingLevel: player.craftingLevel,
+            craftingXp: player.craftingXp,
+            craftingXpToNext: player.craftingXpToNext
+        });
+    }
 
     renderCraftingModal();
-    renderInventory();
+    if (typeof renderInventory === 'function') renderInventory();
 }
 
 function openCraftingModal(mode = 'workbench') {
@@ -202,17 +225,23 @@ function openCraftingModal(mode = 'workbench') {
 
     const title = document.querySelector('#craftingModal h2');
     if (title) {
-        title.textContent = mode === 'cooking' ? "Cooking Pot" : "Crafting Workbench";
+        title.innerHTML = mode === 'cooking' 
+            ? "Cooking Pot <span class='text-sm text-yellow-500 block font-normal'>Combine ingredients to survive.</span>" 
+            : "Crafting Workbench <span class='text-sm text-green-500 block font-normal'>Forge weapons, armor, and tools.</span>";
     }
 
     renderCraftingModal();
-    craftingModal.classList.remove('hidden');
+    const modal = document.getElementById('craftingModal');
+    if (modal) modal.classList.remove('hidden');
 }
 
 /**
  * Renders the list of all available crafting recipes using DocumentFragment
  */
 function renderCraftingModal() {
+    const craftingRecipeList = document.getElementById('craftingRecipeList');
+    if (!craftingRecipeList) return;
+    
     craftingRecipeList.innerHTML = '';
     
     const player = gameState.player;
@@ -228,22 +257,24 @@ function renderCraftingModal() {
     for (const recipeName in activeRecipes) {
         const recipe = activeRecipes[recipeName];
         
-        const maxCraftable = getMaxCraftable(recipeName, availableMats);
-        const levelMet = playerLevel >= recipe.level;
-        const canCraft = maxCraftable > 0 && levelMet;
-
         const outputItemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === recipeName);
         const outputItemTile = outputItemKey || '?';
         const itemTemplate = ITEM_DATA[outputItemKey] || {};
         
         const isStackable = ['junk', 'consumable', 'ammo', 'ingredient', 'trade'].includes(itemTemplate.type);
+        const existingStack = player.inventory.find(item => item.name === itemTemplate.name && !item.isEquipped);
+        
+        // Use our robust new calculation
+        const maxCraftable = getMaxCraftable(recipeName, availableMats, player.inventory.length, isStackable, !!existingStack);
+        const levelMet = playerLevel >= recipe.level;
+        const canCraft = maxCraftable > 0 && levelMet;
 
         // Build Material List HTML
-        let materialsHtml = '<ul class="crafting-item-materials">';
+        let materialsHtml = '<ul class="crafting-item-materials mt-1">';
         for (const materialName in recipe.materials) {
             const requiredQuantity = recipe.materials[materialName];
             const currentQuantity = availableMats[materialName] || 0;
-            const quantityClass = currentQuantity < requiredQuantity ? 'text-red-500' : 'text-green-500';
+            const quantityClass = currentQuantity < requiredQuantity ? 'text-red-400 font-bold' : 'text-gray-400';
             materialsHtml += `<li class="text-xs ${quantityClass}">${materialName} (${currentQuantity}/${requiredQuantity})</li>`;
         }
         materialsHtml += '</ul>';
@@ -252,29 +283,35 @@ function renderCraftingModal() {
         let infoHtml = '';
         if (gameState.currentCraftingMode === 'workbench') {
             let levelClass = levelMet ? 'text-blue-400' : 'text-red-500 font-bold';
-            infoHtml = `<div class="text-[10px] uppercase font-bold mt-1 ${levelClass}">Requires Lvl ${recipe.level} | Reward: ${recipe.xp} XP</div>`;
+            infoHtml = `<div class="text-[10px] uppercase font-bold mt-2 ${levelClass} bg-black bg-opacity-20 inline-block px-2 py-1 rounded">Requires Lvl ${recipe.level} | Reward: ${recipe.xp} XP</div>`;
         } else {
-            infoHtml = `<div class="text-[10px] uppercase font-bold mt-1 text-green-500">Delicious! | Reward: ${recipe.xp} XP</div>`;
+            infoHtml = `<div class="text-[10px] uppercase font-bold mt-2 text-yellow-500 bg-black bg-opacity-20 inline-block px-2 py-1 rounded">Delicious! | Reward: ${recipe.xp} XP</div>`;
         }
 
         // Build Action Buttons
-        const actionText = gameState.currentCraftingMode === 'cooking' ? 'Cook' : 'Craft';
-        let actionHtml = `<button data-craft-item="${recipeName}" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-xs font-bold shadow transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" ${canCraft ? '' : 'disabled'}>${actionText}</button>`;
+        const actionText = gameState.currentCraftingMode === 'cooking' ? 'Cook 1' : 'Craft 1';
+        let actionHtml = `<button data-craft-item="${recipeName}" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed font-bold" ${canCraft ? '' : 'disabled'}>${actionText}</button>`;
         
         // Add "Craft All" Batch button if applicable
-        if (isStackable && maxCraftable > 1 && levelMet) {
-            actionHtml += `<button data-craft-all="${recipeName}" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded text-xs font-bold shadow transition-all active:scale-95 ml-2">All (${maxCraftable})</button>`;
+        if (maxCraftable > 1 && levelMet) {
+            actionHtml += `<button data-craft-all="${recipeName}" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded shadow transition-transform active:scale-95 ml-2 font-bold text-xs flex flex-col items-center">
+                <span>All</span>
+                <span class="text-[10px] font-normal opacity-80">(x${maxCraftable})</span>
+            </button>`;
         }
 
         const li = document.createElement('li');
-        li.className = 'crafting-item hover:border-blue-500 transition-colors duration-150';
+        li.className = 'crafting-item bg-gray-900 bg-opacity-40 border border-gray-700 p-3 rounded-lg flex justify-between items-center mb-2 hover:border-green-500 transition-colors';
         li.innerHTML = `
-            <div class="flex-grow">
-                <span class="crafting-item-name font-bold text-lg">${recipeName} <span class="text-xl ml-1">${outputItemTile}</span></span>
+            <div class="flex-grow pr-4">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-2xl">${outputItemTile}</span>
+                    <span class="crafting-item-name font-bold text-lg text-green-400" style="font-family: 'Uncial Antiqua', cursive;">${recipeName}</span>
+                </div>
                 ${materialsHtml}
                 ${infoHtml}
             </div>
-            <div class="crafting-item-actions flex items-center ml-2">
+            <div class="crafting-item-actions flex items-stretch ml-2">
                 ${actionHtml}
             </div>
         `;
@@ -289,13 +326,18 @@ function initCraftingListeners() {
     const closeBtn = document.getElementById('closeCraftingButton');
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
-            document.getElementById('craftingModal').classList.add('hidden');
+            const modal = document.getElementById('craftingModal');
+            if (modal) modal.classList.add('hidden');
         });
     }
 
     const recipeList = document.getElementById('craftingRecipeList');
     if (recipeList) {
-        recipeList.addEventListener('click', (e) => {
+        // Remove old listener to prevent duplicates on soft-reloads
+        const newList = recipeList.cloneNode(false);
+        recipeList.parentNode.replaceChild(newList, recipeList);
+
+        newList.addEventListener('click', (e) => {
             const craftBtn = e.target.closest('button[data-craft-item]');
             const batchBtn = e.target.closest('button[data-craft-all]');
             
@@ -308,7 +350,7 @@ function initCraftingListeners() {
     }
 }
 
-// Call this once on load if needed, otherwise rely on main initialization logic
+// Global UI Hook
 if (typeof areGlobalListenersInitialized !== 'undefined' && !areGlobalListenersInitialized) {
     initCraftingListeners();
 }
