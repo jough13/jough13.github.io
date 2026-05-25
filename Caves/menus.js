@@ -17,6 +17,12 @@ function renderTalentTree() {
 
     for (const key in TALENT_DATA) {
         const talent = TALENT_DATA[key];
+        
+        // Hide evolution-specific talents from the main list unless the player already owns them
+        if (talent.class !== 'general' && talent.class !== 'warrior' && talent.class !== 'mage' && talent.class !== 'rogue' && talent.class !== 'necromancer') {
+            if (!playerTalents.includes(key)) continue;
+        }
+
         const isLearned = playerTalents.includes(key);
         const canAfford = (player.talentPoints > 0);
 
@@ -90,15 +96,22 @@ function openEvolutionModal() {
     const fragment = document.createDocumentFragment();
 
     options.forEach(evo => {
+        // UX WIN: Pull the exact mechanics of the new talent so the player knows what it does!
+        const linkedTalent = TALENT_DATA[evo.talent];
+        const mechanicDesc = linkedTalent ? linkedTalent.description : evo.description;
+
         const div = document.createElement('div');
         div.className = "panel p-5 rounded-xl border-2 border-gray-600 hover:border-yellow-500 cursor-pointer transition-all transform hover:-translate-y-1 shadow-lg";
         div.onclick = () => selectEvolution(evo);
         div.innerHTML = `
             <div class="text-5xl mb-3">${evo.icon}</div>
             <h3 class="text-2xl font-bold text-yellow-500 mb-1" style="font-family: 'Uncial Antiqua', cursive;">${evo.name}</h3>
-            <p class="text-sm text-gray-300 mb-4 h-10">${evo.description}</p>
-            <div class="text-xs font-bold text-green-400 bg-black bg-opacity-30 p-2 rounded">
-                ${Object.entries(evo.stats).map(([k, v]) => `+${v} ${k.substring(0,3).toUpperCase()}`).join(', ')}
+            <p class="text-xs text-gray-400 mb-2 h-8 italic">${evo.description}</p>
+            <div class="text-sm text-blue-300 mb-4 h-10 font-bold border-l-2 border-blue-500 pl-2 py-1 bg-black bg-opacity-30">
+                ${mechanicDesc}
+            </div>
+            <div class="text-xs font-bold text-green-400 bg-black bg-opacity-30 p-2 rounded border border-gray-700">
+                ${Object.entries(evo.stats).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`).join(', ')}
             </div>
         `;
         fragment.appendChild(div);
@@ -183,11 +196,13 @@ function renderBountyBoard() {
 
         if (!playerQuest) {
             // --- Scenario 1: Quest is Available ---
+            let itemRewardStr = quest.reward.item ? `<span class="text-purple-400"> | + ${quest.reward.item}</span>` : '';
+            
             div.innerHTML = `
                 <div class="flex-grow pr-4">
                     <div class="text-lg font-bold text-yellow-500 mb-1">${quest.title}</div>
                     <div class="text-xs text-gray-300 mb-2">${quest.description}</div>
-                    <div class="text-[10px] font-bold text-green-400 uppercase tracking-widest">Reward: ${quest.reward.xp} XP | ${quest.reward.coins} Gold</div>
+                    <div class="text-[10px] font-bold text-green-400 uppercase tracking-widest">Reward: ${quest.reward.xp} XP | ${quest.reward.coins} Gold ${itemRewardStr}</div>
                 </div>
                 <div class="flex-none">
                     <button data-quest-id="${questId}" data-action="accept" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold shadow transition-transform active:scale-95">Accept</button>
@@ -266,13 +281,13 @@ function turnInQuest(questId) {
     if (quest.type === 'fetch') {
         itemIndex = gameState.player.inventory.findIndex(item => item.name === quest.itemNeeded && !item.isEquipped);
         if (itemIndex === -1) {
-            logMessage(`You don't have the ${quest.itemNeeded}!`);
+            logMessage(`{red:You don't have the ${quest.itemNeeded}!}`);
             hasRequirements = false;
         }
     } else if (quest.type === 'collect') {
         itemIndex = gameState.player.inventory.findIndex(item => item.name === quest.itemNeeded);
         if (itemIndex === -1 || gameState.player.inventory[itemIndex].quantity < quest.needed) {
-            logMessage(`You don't have enough ${quest.itemNeeded}s! You need ${quest.needed}.`);
+            logMessage(`{red:You don't have enough ${quest.itemNeeded}s! You need ${quest.needed}.}`);
             hasRequirements = false;
         }
     } else {
@@ -301,7 +316,7 @@ function turnInQuest(questId) {
             const rewardKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === quest.reward.item);
             const qty = quest.reward.itemQty || 1;
 
-            if (gameState.player.inventory.length < 9) { // MAX_INVENTORY_SLOTS
+            if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                 gameState.player.inventory.push({
                     templateId: rewardKey,
                     name: rewardItemTemplate.name,
@@ -635,7 +650,12 @@ function openSpellbook() {
         let costColorClass = "text-blue-400"; 
 
         if (spellData.costType === 'mana') {
-            canCast = player.mana >= spellData.cost;
+            // Apply Archmage discount visually here too!
+            let displayCost = spellData.cost;
+            if (player.talents && player.talents.includes('mana_flow')) displayCost = Math.floor(displayCost * 0.8);
+            
+            costString = `${displayCost} ${spellData.costType}`;
+            canCast = player.mana >= displayCost;
             if (!canCast) costColorClass = "text-red-500";
         } else if (spellData.costType === 'psyche') {
             canCast = player.psyche >= spellData.cost;
