@@ -119,7 +119,6 @@ window.QUEST_DATA = {
         type: 'kill', enemy: 'b', needed: 12,
         reward: { xp: 120, coins: 75 }
     },
-    // NEW EXPANDABILITY QUESTS
     "trollHunt": {
         title: "Bounty: Ogre Sighting",
         description: "A massive Ogre has been terrorizing the mountain pass.",
@@ -137,6 +136,12 @@ window.QUEST_DATA = {
         description: "The earth itself is rising against us. We need miners, or fighters.",
         type: 'kill', enemy: '🧌', needed: 3,
         reward: { xp: 300, coins: 200 }
+    },
+    "eldritchTerror": {
+        title: "Bounty: The Unnamable",
+        description: "A horror from beyond the stars has taken root in the deep wilds. Do not look directly at it.",
+        type: 'kill', enemy: '👾', needed: 1,
+        reward: { xp: 1500, coins: 1000, item: 'Elixir of Power', itemQty: 1 }
     }
 };
 
@@ -178,11 +183,10 @@ window.ENEMY_PREFIXES = {
         xpMult: 1.4,
         color: '#a855f7' 
     },
-    // NEW AFFIXES
     "Vampiric": {
         description: "Drains life on hit.",
         statModifiers: { maxHealth: 5 },
-        special: 'siphon',
+        special: 'poison', // Simplified combat effect mapping
         xpMult: 1.5,
         color: '#be123c' 
     },
@@ -487,7 +491,7 @@ window.ENEMY_DATA = {
     '👻': {
         name: 'Lost Soul',
         type: 'spirit', 
-        maxHealth: 15, attack: 3, xp: 20,
+        maxHealth: 15, attack: 3, defense: 0, xp: 20,
         loot: 'ectoplasm',
         color: '#8b5cf6', 
         flavor: "It wails silently, trapped between realms."
@@ -731,6 +735,14 @@ window.EVOLUTION_DATA = {
             description: "Stats +5. You survived the darkness.",
             stats: { strength: 5, dexterity: 5, wits: 5, constitution: 5 },
             talent: 'legend'
+        },
+        {
+            id: 'void_touched',
+            name: 'Void-Touched',
+            icon: '👁️',
+            description: "You stared into the abyss, and it stared back. Unmatched magical potential.",
+            stats: { willpower: 10, wits: 10, constitution: -2 },
+            talent: 'void_walker'
         }
     ]
 };
@@ -751,7 +763,7 @@ window.SPELL_DATA = {
         name: "Stone Skin",
         description: "Greatly increases Defense but lowers Dexterity. Scales with Constitution.",
         scalingStat: "constitution",
-        cost: 20, costType: "mana", requiredLevel: 3, target: "self", type: "buff",
+        cost: 20, costType: "mana", requiredLevel: 3, target: "self", type: "buff", duration: 15 // CRITICAL FIX: Added Duration!
     },
     "lesserHeal": {
         name: "Lesser Heal",
@@ -850,6 +862,7 @@ window.SPELL_DATA = {
 };
 
 window.TALENT_DATA = {
+    // --- BASE TALENTS ---
     "bloodlust": {
         name: "Bloodlust",
         description: "Heal 2 HP whenever you kill an enemy.",
@@ -908,6 +921,57 @@ window.TALENT_DATA = {
         name: "Eagle Eye",
         description: "Ranged attacks deal +50% Damage.",
         class: "ranger",
+        icon: "👁️"
+    },
+    // --- NEW: EVOLUTION TALENTS (CRITICAL BUG FIX) ---
+    // Previously, these were granted upon evolution but undefined in this list, 
+    // causing a game-breaking UI crash when attempting to view the Talent Tree!
+    "blood_rage": {
+        name: "Blood Rage",
+        description: "Deal double damage when below 50% Health.",
+        class: "berserker",
+        icon: "💢"
+    },
+    "holy_aura": {
+        name: "Holy Aura",
+        description: "Passively heals you and your companion when low on health.",
+        class: "paladin",
+        icon: "👼"
+    },
+    "shadow_strike": {
+        name: "Shadow Strike",
+        description: "Attacks from stealth deal 4x massive damage.",
+        class: "assassin",
+        icon: "🥷"
+    },
+    "mana_flow": {
+        name: "Mana Flow",
+        description: "Reduces spell Mana costs and Leyline travel costs by 20%.",
+        class: "archmage",
+        icon: "🌌"
+    },
+    "arcane_steel": {
+        name: "Arcane Steel",
+        description: "Negates the Dexterity and movement penalties of Heavy Armor.",
+        class: "battlemage",
+        icon: "🛡️"
+    },
+    "undeath": {
+        name: "Undeath",
+        description: "You no longer require food or water to survive.",
+        class: "lich",
+        icon: "🧟"
+    },
+    "legend": {
+        name: "Living Legend",
+        description: "Your mere presence inspires awe. You have survived the impossible.",
+        class: "hero",
+        icon: "👑"
+    },
+    "void_walker": { 
+        name: "Void Walker",
+        description: "Step through Phase Walls without taking damage.",
+        class: "void_touched",
         icon: "👁️"
     }
 };
@@ -1004,7 +1068,6 @@ window.SKILL_DATA = {
         description: "Focus your energy to restore Mana. (Staff only)",
         cost: 0, costType: "stamina", requiredLevel: 1, target: "self", cooldown: 10
     },
-    // --- PREP FOR ARCHERY ---
     "ranged_attack": {
         name: "Shoot",
         description: "Fire an arrow at a distant target. Scales with Dexterity.",
