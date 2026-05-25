@@ -234,7 +234,10 @@ const renderStats = () => {
             } else if (statName === 'mana') {
                 const max = gameState.player.maxMana;
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
+                
                 statBarElements.mana.style.width = `${percent}%`;
+                statBarElements.mana.style.backgroundColor = '#3b82f6';
+                
                 element.innerHTML = `<span>Mana</span> <span>${Math.floor(value)}/${max}</span>`;
 
             } else if (statName === 'stamina') {
@@ -259,11 +262,16 @@ const renderStats = () => {
                 }
                 element.innerHTML = witsText;
 
-            } else if (statName === 'psyche') {
+             } else if (statName === 'psyche') {
                 const max = gameState.player.maxPsyche;
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
+                
                 statBarElements.psyche.style.width = `${percent}%`;
+                statBarElements.psyche.style.backgroundColor = '#6366f1';
+                
                 element.innerHTML = `<span>Psyche</span> <span>${Math.floor(value)}/${max}</span>`;
+
+            }
 
             } else if (statName === 'hunger') {
                 const max = gameState.player.maxHunger;
