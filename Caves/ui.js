@@ -271,8 +271,6 @@ const renderStats = () => {
                 
                 element.innerHTML = `<span>Psyche</span> <span>${Math.floor(value)}/${max}</span>`;
 
-            }
-
             } else if (statName === 'hunger') {
                 const max = gameState.player.maxHunger;
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
