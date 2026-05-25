@@ -1,11 +1,8 @@
 // ============================================================================
-// GLOBAL CONFIGURATION CONSTANTS
-// ============================================================================
-window.MAX_INVENTORY_SLOTS = 9;
-
-// ============================================================================
 // GLOBAL VARIABLES & SYSTEM REFERENCES
 // ============================================================================
+
+window.MAX_INVENTORY_SLOTS = 9;
 
 // --- Networking & Authentication ---
 let player_id;
@@ -30,18 +27,19 @@ let areGlobalListenersInitialized = false;
 // --- Caches & Data Buffers ---
 let cachedThemeColors = {};
 const processingSpawnTiles = new Set();
-let pendingSpawns = new Set(); // Track enemies currently being spawned so they don't flicker
-let pendingSpawnData = {};
-let activeShopInventory = [];
+let pendingSpawns = new Set();     // Track enemies currently being spawned so they don't flicker
+let pendingSpawnData = {};         // Buffer for network sync
+let activeShopInventory = [];      // Currently viewed merchant inventory
 const wokenEnemyTiles = new Set(); // Global set to track processed tiles this session
 
 
 // ============================================================================
-// MASTER GAME STATE
+// MASTER GAME STATE (THE "SINGLE SOURCE OF TRUTH")
 // ============================================================================
 // PERFORMANCE WIN: Explicitly defining ALL properties here ensures the V8 Javascript Engine
-// creates a single, highly-optimized memory shape for the game state, preventing 
-// micro-stutters that occur when properties are dynamically added later!
+// creates a single, highly-optimized "hidden class" memory shape for the game state.
+// This prevents severe micro-stutters and memory fragmentation that occur when 
+// properties are dynamically added or deleted on the fly!
 
 const gameState = {
     // --- System & Engine State ---
@@ -77,15 +75,15 @@ const gameState = {
         visualX: 0,           // Camera smoothing X
         visualY: 0,           // Camera smoothing Y
         facing: 'right',      // Player facing direction for rendering
-        respawnPoint: { x: 0, y: 0 }, // PREP: Custom bed/waystone respawns
+        respawnPoint: { x: 0, y: 0 }, // Custom bed/waystone respawns
         isBoating: false,     // Canoe state
         isSailing: false,     // Deep sea ship state
         
         // Multiplayer UI
         chatBubble: null,     // Floating text above head
         chatTimer: 0,
-        partyId: null,        // PREP: For upcoming party system
-        tradeRequests: [],    // PREP: Pending player trades
+        partyId: null,        // For upcoming party system
+        tradeRequests: [],    // Pending player trades
         
         // Progression & Currency
         level: 1,
@@ -124,7 +122,7 @@ const gameState = {
         intuition: 1,
 
         // Modifiers & Status Effects
-        lastCombatTime: 0,    // PREP: Out-of-combat regeneration
+        lastCombatTime: 0,    // Out-of-combat regeneration timer
         strengthBonus: 0,
         strengthBonusTurns: 0,
         witsBonus: 0,
@@ -137,6 +135,7 @@ const gameState = {
         thornsTurns: 0,
         frostbiteTurns: 0,
         poisonTurns: 0,
+        burnTurns: 0,         // Fire DoT tracking
         rootTurns: 0,
         madnessTurns: 0,      // Caused by Eldritch/Void enemies
         stunTurns: 0,         // Prevents movement
@@ -189,7 +188,15 @@ const gameState = {
         discoveredPOIs: [],    // Landmarks for the minimap
         customPins: [],        // Player placed map pins {x, y}
         companion: null,       // Tamed beasts / Mercenaries
-        tutorialProgress: 0    // PREP: Onboarding system
+        tutorialProgress: 0,   // Onboarding system tracking
+        
+        // Lifetime Metrics (For future achievements/leaderboards)
+        metrics: {
+            totalKills: 0,
+            totalDeaths: 0,
+            stepsTaken: 0,
+            itemsCrafted: 0
+        }
     },
 
     // --- World & Map State ---
@@ -210,7 +217,8 @@ const gameState = {
 
     flags: {
         hasSeenForestWarning: false,
-        canoeEmbarkCount: 0
+        canoeEmbarkCount: 0,
+        hasSailedDeepOcean: false
     },
 
     // Weather & Time
