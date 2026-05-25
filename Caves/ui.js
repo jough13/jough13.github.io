@@ -779,10 +779,9 @@ function resizeCanvas() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 7. Resize Offscreen Terrain Cache Canvas
-    // THE FIX: We must account for the overdraw buffer! The loop goes from -1 to VIEWPORT_WIDTH + 1 (which is +3 tiles total)
-    const logicalWidth = (window.VIEWPORT_WIDTH + 3) * window.TILE_SIZE;
-    const logicalHeight = (window.VIEWPORT_HEIGHT + 3) * window.TILE_SIZE;
+    // 7. Resize Offscreen Canvas (Added +4 Buffer for camera panning)
+    const logicalWidth = (window.VIEWPORT_WIDTH + 4) * window.TILE_SIZE;
+    const logicalHeight = (window.VIEWPORT_HEIGHT + 4) * window.TILE_SIZE;
 
     terrainCanvas.width = logicalWidth * dpr;
     terrainCanvas.height = logicalHeight * dpr;
