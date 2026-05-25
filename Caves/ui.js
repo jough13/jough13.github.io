@@ -739,7 +739,7 @@ function resizeCanvas() {
     const canvasContainer = canvas.parentElement;
     if (!canvasContainer) return;
 
-    // 1. THE MAGIC FIX: We MUST account for the padding/border of the container
+    // We MUST account for the padding/border of the container
     // OffsetWidth/Height includes borders, ClientWidth/Height includes padding. 
     // To get the pure drawing area, we measure the client dimensions.
     
@@ -755,11 +755,11 @@ function resizeCanvas() {
 
     // 2. Update the global zoom tracker
     if (!window.currentZoom) window.currentZoom = 20;
-    window.TILE_SIZE = window.currentZoom;
+    TILE_SIZE = window.currentZoom; // <-- Removed window.
 
     // 3. Calculate Logical Viewport (The number of tiles that fit on screen)
-    window.VIEWPORT_WIDTH = Math.ceil(containerWidth / window.TILE_SIZE) + 2; 
-    window.VIEWPORT_HEIGHT = Math.ceil(containerHeight / window.TILE_SIZE) + 2;
+    VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 2; // <-- Removed window.
+    VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 2; // <-- Removed window.
 
     const dpr = window.devicePixelRatio || 1;
 
@@ -775,13 +775,13 @@ function resizeCanvas() {
     ctx.setTransform(1, 0, 0, 1, 0, 0); 
     ctx.scale(dpr, dpr); 
     ctx.imageSmoothingEnabled = false; 
-    ctx.font = `${window.TILE_SIZE}px monospace`;
+    ctx.font = `${TILE_SIZE}px monospace`; // <-- Removed window.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
     // 7. Resize Offscreen Canvas (Added +4 Buffer for camera panning)
-    const logicalWidth = (window.VIEWPORT_WIDTH + 4) * window.TILE_SIZE;
-    const logicalHeight = (window.VIEWPORT_HEIGHT + 4) * window.TILE_SIZE;
+    const logicalWidth = (VIEWPORT_WIDTH + 4) * TILE_SIZE; // <-- Removed window.
+    const logicalHeight = (VIEWPORT_HEIGHT + 4) * TILE_SIZE; // <-- Removed window.
 
     terrainCanvas.width = logicalWidth * dpr;
     terrainCanvas.height = logicalHeight * dpr;
@@ -789,7 +789,7 @@ function resizeCanvas() {
     // 8. Configure Offscreen Context
     terrainCtx.setTransform(1, 0, 0, 1, 0, 0); 
     terrainCtx.scale(dpr, dpr); 
-    terrainCtx.font = `${window.TILE_SIZE}px monospace`;
+    terrainCtx.font = `${TILE_SIZE}px monospace`; // <-- Removed window.
     terrainCtx.textAlign = 'center';
     terrainCtx.textBaseline = 'middle';
 
