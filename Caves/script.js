@@ -15,23 +15,35 @@ function triggerDebouncedSave(updates) {
         pendingSaveData = { ...pendingSaveData, ...updates };
     }
     
-    const saveIcon = document.getElementById('saveIndicator');
-    if (saveIcon) {
-        saveIcon.classList.remove('opacity-0');
-        saveIcon.classList.add('opacity-100');
-    }
+    // Note: We DO NOT show the icon here anymore. We are just silently queuing the data.
 
+    // Increased to 90000ms (90 seconds) for very infrequent background saving
     saveTimeout = setTimeout(() => {
         if (playerRef && pendingSaveData) {
-            playerRef.update(sanitizeForFirebase(pendingSaveData)).catch(console.error);
+            const saveIcon = document.getElementById('saveIndicator');
+            
+            // Show the icon ONLY when we actually execute the write to the database
+            if (saveIcon) {
+                saveIcon.classList.remove('opacity-0');
+                saveIcon.classList.add('opacity-100');
+            }
+            
+            playerRef.update(sanitizeForFirebase(pendingSaveData))
+                .then(() => {
+                    // Fade out after the save is successfully written
+                    setTimeout(() => {
+                        if (saveIcon) {
+                            saveIcon.classList.remove('opacity-100');
+                            saveIcon.classList.add('opacity-0');
+                        }
+                    }, 1500); // Keep it visible for 1.5s so the player sees it happened
+                })
+                .catch(console.error);
         }
+        
         saveTimeout = null;
         pendingSaveData = null;
-        if (saveIcon) {
-            saveIcon.classList.remove('opacity-100');
-            saveIcon.classList.add('opacity-0');
-        }
-    }, 2000); 
+    }, 90000); 
 }
 
 function flushPendingSave(updates = null) {
@@ -43,21 +55,37 @@ function flushPendingSave(updates = null) {
     
     // 2. Resolve data to write (preferring passed updates over pending debounced data)
     const dataToSave = updates || pendingSaveData;
+    const saveIcon = document.getElementById('saveIndicator');
     
     if (dataToSave && playerRef) {
+        // Show icon for forced saves (like crossing region borders or closing the game)
+        if (saveIcon) {
+            saveIcon.classList.remove('opacity-0');
+            saveIcon.classList.add('opacity-100');
+        }
+        
         // Sanitize the object to remove unsupported properties (functions/undefined)
         playerRef.update(sanitizeForFirebase(dataToSave))
-            .then(() => console.log("☁️ Forced flush save completed."))
-            .catch(err => console.error("Flush save failed:", err));
+            .then(() => {
+                console.log("☁️ Forced flush save completed.");
+                setTimeout(() => {
+                    if (saveIcon) {
+                        saveIcon.classList.remove('opacity-100');
+                        saveIcon.classList.add('opacity-0');
+                    }
+                }, 1500);
+            })
+            .catch(err => {
+                console.error("Flush save failed:", err);
+                if (saveIcon) {
+                    saveIcon.classList.remove('opacity-100');
+                    saveIcon.classList.add('opacity-0');
+                }
+            });
     }
     
-    // 3. Clear transient save indicators smoothly
+    // 3. Clear transient save indicators
     pendingSaveData = null;
-    const saveIcon = document.getElementById('saveIndicator');
-    if (saveIcon) {
-        saveIcon.classList.remove('opacity-100');
-        saveIcon.classList.add('opacity-0');
-    }
 }
 
 /**
