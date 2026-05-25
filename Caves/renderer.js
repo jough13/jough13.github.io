@@ -684,3 +684,141 @@ function drawLighting(ctx, pScreenX, pScreenY) {
         }
     }
 }
+
+// --- HEAVY RENDERING (Only runs when moving) ---
+function renderTerrainCache(startX, startY) {
+    // Use the new padded dimensions
+    const paddedWidth = (VIEWPORT_WIDTH + 4) * TILE_SIZE;
+    const paddedHeight = (VIEWPORT_HEIGHT + 4) * TILE_SIZE;
+
+    terrainCtx.clearRect(0, 0, paddedWidth, paddedHeight);
+
+    if (!cachedThemeColors.canvasBg) updateThemeColors();
+    const { canvasBg } = cachedThemeColors;
+
+    terrainCtx.fillStyle = canvasBg;
+    terrainCtx.fillRect(0, 0, paddedWidth, paddedHeight);
+
+    gameState.visibleAnimatedTiles = [];
+
+    terrainCtx.save();
+    // Shift down and right to allow drawing at negative coordinates
+    terrainCtx.translate(TILE_SIZE * 2, TILE_SIZE * 2);
+
+    // INCREASED loop bounds to match the new +4 buffer
+    for (let y = -2; y <= VIEWPORT_HEIGHT + 2; y++) {
+        for (let x = -2; x <= VIEWPORT_WIDTH + 2; x++) {
+            const mapX = startX + x;
+            const mapY = startY + y;
+
+            let tile;
+            let fgChar = null;
+            let fgColor = '#FFFFFF';
+            let bgColor = null;
+
+            // --- RESOLVE TILE TYPE ---
+            if (gameState.mapMode === 'dungeon') {
+                const map = chunkManager.caveMaps[gameState.currentCaveId];
+                tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
+                const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+                
+                bgColor = theme.colors.floor;
+
+                if (tile === theme.wall) {
+                    TileRenderer.drawWall(terrainCtx, x, y, theme.colors.wall, 'rgba(0,0,0,0.2)', 'rough');
+                } else if (tile === theme.floor) {
+                    TileRenderer.drawBase(terrainCtx, x, y, theme.colors.floor);
+                } else {
+                    TileRenderer.drawBase(terrainCtx, x, y, theme.colors.floor);
+                    fgChar = tile;
+                }
+            } 
+            else if (gameState.mapMode === 'castle') {
+                const map = chunkManager.castleMaps[gameState.currentCastleId];
+                tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
+                
+                // Base cobblestone/dark stone floor color
+                bgColor = '#44403c'; 
+
+                if (tile === '▓' || tile === '▒') {
+                    TileRenderer.drawWall(terrainCtx, x, y, '#78350f', '#451a03', 'brick');
+                } else if (tile === 'F') {
+                    // Render castle courtyard gardens
+                    TileRenderer.drawForest(terrainCtx, x, y, mapX, mapY, '#14532d');
+                } else if (tile === '=') {
+                    // Render wooden bridges/paths
+                    TileRenderer.drawBase(terrainCtx, x, y, '#78350f'); 
+                } else if (tile === '.') {
+                    // Render standard cobblestone floor
+                    TileRenderer.drawBase(terrainCtx, x, y, bgColor);
+                } else {
+                    // Everything else (NPCs, Exits, Items)
+                    TileRenderer.drawBase(terrainCtx, x, y, bgColor);
+                    if (tile !== ' ') fgChar = tile;
+                }
+            } 
+            else { // Overworld
+                tile = chunkManager.getTile(mapX, mapY);
+                const baseTerrain = getBaseTerrain(mapX, mapY);
+                
+                // Color Logic
+                bgColor = '#22c55e'; // Plains
+                if (baseTerrain === 'F') bgColor = '#14532d';
+                else if (baseTerrain === 'd') bgColor = '#2d2d2d';
+                else if (baseTerrain === 'D') bgColor = '#fde047';
+                else if (baseTerrain === '≈') bgColor = '#422006';
+                else if (baseTerrain === '^') bgColor = '#57534e';
+                else if (baseTerrain === '~') bgColor = '#1e3a8a';
+
+                TileRenderer.drawBase(terrainCtx, x, y, bgColor);
+
+                // --- STATIC DRAWING & ANIMATION SORTING ---
+                // Note: We skip animated tiles here, but save them to an array so the main loop can draw them fast!
+                if (tile === '~' || tile === '≈' || tile === '🔥' || tile === 'Ω' || tile === '👻k' || (tile === 'D' && gameState.currentCaveTheme === 'FIRE')) {
+                    gameState.visibleAnimatedTiles.push({ screenX: x, screenY: y, mapX: mapX, mapY: mapY, tile: tile });
+                } else {
+                    switch (tile) {
+                        case '.': TileRenderer.drawPlains(terrainCtx, x, y, mapX, mapY, bgColor, '#15803d'); break;
+                        case 'F': TileRenderer.drawForest(terrainCtx, x, y, mapX, mapY, bgColor); break;
+                        case '^': TileRenderer.drawMountain(terrainCtx, x, y, mapX, mapY, bgColor); break;
+                        case 'd': TileRenderer.drawDeadlands(terrainCtx, x, y, mapX, mapY, bgColor, '#444'); break;
+                        case 'D': TileRenderer.drawDesert(terrainCtx, x, y, mapX, mapY, bgColor); break;
+                        case '🧱': TileRenderer.drawWall(terrainCtx, x, y, '#78716c', '#57534e'); break;
+                        case '▤': 
+                        case '=': TileRenderer.drawBase(terrainCtx, x, y, '#78350f'); break;
+                        case '+': fgChar = '+'; fgColor = '#fbbf24'; break;
+                        case '/': fgChar = '/'; fgColor = '#000'; break;
+                        default:
+                            fgChar = tile;
+                            const isWideCharCheck = typeof isWideChar === 'function' ? isWideChar : (c) => /\p{Extended_Pictographic}/u.test(c);
+                            if (ENEMY_DATA[tile]) fgColor = ENEMY_DATA[tile].color || '#ef4444';
+                            break;
+                    }
+                }
+            }
+
+            // Draw Static Character (Items, Objects)
+            if (fgChar) {
+                if (fgChar === '^' || fgChar === '⛰') {
+                    const isCave = (fgChar === '⛰');
+                    
+                    // Pass the isCave boolean so it forces a mountain peak to render!
+                    TileRenderer.drawMountain(terrainCtx, x, y, mapX, mapY, bgColor || '#22c55e', isCave);
+                    
+                    if (isCave) {
+                        terrainCtx.fillStyle = '#1f2937';
+                        terrainCtx.fillRect((x * TILE_SIZE) + (TILE_SIZE * 0.4), (y * TILE_SIZE) + (TILE_SIZE * 0.7), TILE_SIZE * 0.2, TILE_SIZE * 0.3);
+                    }
+                } else {
+                    terrainCtx.fillStyle = fgColor;
+                    const isWideCharCheck = typeof isWideChar === 'function' ? isWideChar : (c) => /\p{Extended_Pictographic}/u.test(c);
+                    terrainCtx.font = isWideCharCheck(fgChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
+                    terrainCtx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                }
+            }
+        }
+    }
+
+    // --- CLEANUP: Restore the context so subsequent draws aren't permanently shifted
+    terrainCtx.restore();
+}
