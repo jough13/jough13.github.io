@@ -9,12 +9,13 @@ function useSkill(skillId) {
     const skillData = SKILL_DATA[skillId]; 
 
     if (!skillData) {
-        logMessage("Unknown skill. (No skill data found)");
+        logMessage("{red:Unknown skill. (No skill data found)}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
     if (player.cooldowns && player.cooldowns[skillId] > 0) {
-        logMessage(`That skill is not ready yet (${player.cooldowns[skillId]} turns).`);
+        logMessage(`{gray:That skill is not ready yet (${player.cooldowns[skillId]} turns).}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
@@ -23,13 +24,14 @@ function useSkill(skillId) {
 
     // Ranged attack is an innate skill granted by equipping a bow, no level needed
     if (skillLevel === 0 && skillId !== 'ranged_attack') {
-        logMessage("You don't know that skill.");
+        logMessage("{gray:You don't know that skill.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
     // --- 1. Check Player Level Requirement ---
     if (player.level < skillData.requiredLevel) {
-        logMessage(`You must be Level ${skillData.requiredLevel} to use this skill.`);
+        logMessage(`{red:You must be Level ${skillData.requiredLevel} to use this skill.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
@@ -39,7 +41,7 @@ function useSkill(skillId) {
     const costType = skillData.costType; 
 
     if (player[costType] < cost) {
-        logMessage(`You don't have enough ${costType} to use that.`);
+        logMessage(`{red:You don't have enough ${costType} to use that.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return; 
     }
@@ -51,7 +53,7 @@ function useSkill(skillId) {
         gameState.isAiming = true;
         gameState.abilityToAim = skillId; 
         skillModal.classList.add('hidden');
-        logMessage(`${skillData.name}: Press an arrow key or WASD to use. (Esc) to cancel.`);
+        logMessage(`{yellow:${skillData.name}: Press an arrow key or WASD to use. (Esc) to cancel.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
         return; 
 
@@ -64,62 +66,67 @@ function useSkill(skillId) {
         switch (skillId) {
             case 'brace':
                 if (player.defenseBonusTurns > 0) {
-                    logMessage("You are already bracing!");
+                    logMessage("{gray:You are already bracing!}");
                     break;
                 }
                 const defenseBonus = Math.floor(skillData.baseDefense + (player.constitution * 0.5 * skillLevel));
                 player.defenseBonus = defenseBonus;
                 player.defenseBonusTurns = skillData.duration;
 
-                logMessage(`You brace for impact, gaining +${defenseBonus} Defense!`);
+                logMessage(`{gray:You brace for impact, gaining +${defenseBonus} Defense!}`);
 
-                playerRef.update({
-                    defenseBonus: player.defenseBonus,
-                    defenseBonusTurns: player.defenseBonusTurns
-                });
+                if (typeof playerRef !== 'undefined') {
+                    playerRef.update({
+                        defenseBonus: player.defenseBonus,
+                        defenseBonusTurns: player.defenseBonusTurns
+                    });
+                }
                 skillUsedSuccessfully = true;
                 break;
 
             case 'channel':
                 const manaGain = 5 + (player.wits * 2);
                 player.mana = Math.min(player.maxMana, player.mana + manaGain);
-                logMessage(`You channel energy... +${manaGain} Mana.`);
+                logMessage(`{blue:You channel energy... +${manaGain} Mana.}`);
                 triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+${manaGain}`, '#3b82f6');
                 skillUsedSuccessfully = true;
                 break;
 
             case 'deflect':
                 player.thornsValue = 100; // Reflect huge damage
                 player.thornsTurns = 1;   // Only for the very next turn/hit
-                logMessage("You raise your blade, ready to deflect the next blow.");
+                logMessage("{gray:You raise your blade, ready to deflect the next blow.}");
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
                 skillUsedSuccessfully = true;
                 break;
 
             case 'vanish':
                 player.stealthTurns = skillData.duration;
-                logMessage("You throw a smoke bomb and vanish from sight!");
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 15);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 800);
-                playerRef.update({ stealthTurns: player.stealthTurns });
+                logMessage("{gray:You throw a smoke bomb and vanish from sight!}");
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 20);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.3, 0.1, 800);
+                if (typeof playerRef !== 'undefined') playerRef.update({ stealthTurns: player.stealthTurns });
                 skillUsedSuccessfully = true;
                 break;
 
             case 'stealth':
                 player.stealthTurns = skillData.duration;
-                logMessage("You fade into the shadows... (Invisible)");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.1, 0.05, 400);
-                playerRef.update({ stealthTurns: player.stealthTurns });
+                logMessage("{gray:You fade into the shadows... (Invisible)}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 400);
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#374151', 10);
+                if (typeof playerRef !== 'undefined') playerRef.update({ stealthTurns: player.stealthTurns });
                 skillUsedSuccessfully = true;
                 break;
                 
             case 'adrenaline':
                 const stamGain = 10;
                 player.stamina = Math.min(player.maxStamina, player.stamina + stamGain);
-                logMessage("You push past the pain! (+10 Stamina)");
+                logMessage(`{green:You push past the pain! (+10 Stamina)}`);
                 triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal(); // Re-using heal sound for buff
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+10`, '#facc15');
                 skillUsedSuccessfully = true;
                 break;
 
@@ -153,10 +160,17 @@ function useSkill(skillId) {
                         } else {
                             let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
                             if (enemy) {
+                                // SAFEGUARD: Prevent NaN database corruption in instances
+                                enemy.health = Number(enemy.health);
+                                if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+
                                 const finalDmg = Math.max(1, baseDmg - (enemy.defense || 0));
                                 enemy.health -= finalDmg;
-                                logMessage(`Whirlwind hits ${enemy.name} for ${finalDmg}!`);
-                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#fff', 3);
+                                logMessage(`Whirlwind hits ${enemy.name} for {red:${finalDmg}}!`);
+                                if (typeof ParticleSystem !== 'undefined') {
+                                    ParticleSystem.createExplosion(tx, ty, '#fff', 3);
+                                    ParticleSystem.createFloatingText(tx, ty, `-${finalDmg}`, '#ef4444');
+                                }
 
                                 if (enemy.health <= 0) {
                                     logMessage(`You defeated ${enemy.name}!`);
@@ -173,7 +187,7 @@ function useSkill(skillId) {
                     Promise.all(whirlwindPromises).catch(e => console.error("Whirlwind Sync Error:", e));
                 } else if (gameState.mapMode === 'overworld') {
                     // Only say missed if no promises were queued in overworld
-                    logMessage("You whirl through empty air.");
+                    logMessage("{gray:You whirl through empty air.}");
                 }
 
                 skillUsedSuccessfully = true;
@@ -182,15 +196,16 @@ function useSkill(skillId) {
 
         // --- 5. Finalize Self-Cast Turn ---
         if (skillUsedSuccessfully) {
-            playerRef.update({ [costType]: player[costType] }); 
+            if (typeof playerRef !== 'undefined') playerRef.update({ [costType]: player[costType] }); 
             triggerStatFlash(statDisplays.stamina, false); 
             skillModal.classList.add('hidden');
             triggerAbilityCooldown(skillId);
             endPlayerTurn();
-            renderEquipment(); 
+            if (typeof renderEquipment === 'function') renderEquipment(); 
         } else {
             // Refund stamina if skill failed 
             player[costType] += cost;
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         }
     }
 }
@@ -259,7 +274,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                 if (player.stealthTurns > 0) {
                     player.stealthTurns = 0;
                     logMessage("You emerge from the shadows!");
-                    playerRef.update({ stealthTurns: 0 });
+                    if (typeof playerRef !== 'undefined') playerRef.update({ stealthTurns: 0 });
                 }
 
                 hit = true;
@@ -270,9 +285,16 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                 } else {
                     let enemy = gameState.instancedEnemies.find(e => e.x === coords.x && e.y === coords.y);
                     if (enemy) {
+                        // SAFEGUARD: Prevent NaN corruption
+                        enemy.health = Number(enemy.health);
+                        if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+
                         enemy.health -= finalDmg;
-                        logMessage(`You hit ${enemy.name} for ${finalDmg}!`);
-                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(coords.x, coords.y, '#fff', 3);
+                        logMessage(`You hit ${enemy.name} for {red:${finalDmg}} damage!`);
+                        if (typeof ParticleSystem !== 'undefined') {
+                            ParticleSystem.createExplosion(coords.x, coords.y, '#fff', 3);
+                            ParticleSystem.createFloatingText(coords.x, coords.y, `-${finalDmg}`, '#ef4444');
+                        }
 
                         // APPLY STUN (Shield Bash OR Crush)
                         if (skillId === 'shieldBash' || skillId === 'crush') {
@@ -299,7 +321,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
         }
 
         if (!hit) {
-            logMessage("You swing at empty air.");
+            logMessage("{gray:You swing at empty air.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
         } else {
             // Only deduct stamina if a target was actually engaged
@@ -312,7 +334,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
         triggerAbilityCooldown(skillId);
         endPlayerTurn();
-        render();
+        if (typeof render === 'function') render();
 
     } finally {
         // --- 🚨 UNLOCK THE ENGINE ---
@@ -375,8 +397,8 @@ async function executeRangedAttack(dirX, dirY) {
         
         if (player.stealthTurns > 0) {
             player.stealthTurns = 0;
-            logMessage("You fire from the shadows!");
-            playerRef.update({ stealthTurns: 0 });
+            logMessage("{gray:You fire from the shadows!}");
+            if (typeof playerRef !== 'undefined') playerRef.update({ stealthTurns: 0 });
             
             if (player.talents && player.talents.includes('shadow_strike')) {
                 rawPower = Math.floor(rawPower * 4);
@@ -432,7 +454,6 @@ async function executeRangedAttack(dirX, dirY) {
             }
             
             // --- ENVIRONMENTAL INTERACTIONS (FIRE ARROWS) ---
-             // --- ENVIRONMENTAL INTERACTIONS (FIRE ARROWS) ---
             if (isFire && tile === '🛢') {
                 logMessage("{orange:BOOM! Your Fire Arrow ignited an Oil Barrel!}");
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#f97316', 15);
@@ -445,7 +466,10 @@ async function executeRangedAttack(dirX, dirY) {
                 // Splash damage!
                 for (let ey = -1; ey <= 1; ey++) {
                     for (let ex = -1; ex <= 1; ex++) {
-                        applySpellDamage(targetX + ex, targetY + ey, 15, 'fireball');
+                        // Make sure applySpellDamage exists
+                        if (typeof applySpellDamage === 'function') {
+                            applySpellDamage(targetX + ex, targetY + ey, 15, 'fireball');
+                        }
                     }
                 }
                 hitSomething = true;
@@ -454,7 +478,7 @@ async function executeRangedAttack(dirX, dirY) {
                 // SWAMP GAS EXPLOSION
                 logMessage("{orange:The arrow ignites a pocket of swamp gas!}");
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#facc15', 10);
-                applySpellDamage(targetX, targetY, 10, 'fireball'); // AoE damage
+                if (typeof applySpellDamage === 'function') applySpellDamage(targetX, targetY, 10, 'fireball'); // AoE damage
                 hitSomething = true;
                 break;
             }
@@ -464,7 +488,7 @@ async function executeRangedAttack(dirX, dirY) {
                 const theme = CAVE_THEMES[gameState.currentCaveTheme];
                 if (map && map[targetY]) {
                     map[targetY][targetX] = theme.floor;
-                    logMessage("Your Fire Arrow burns away the spider web!");
+                    logMessage("{orange:Your Fire Arrow burns away the spider web!}");
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#f97316', 3);
                     hitSomething = true;
                     break;
@@ -472,7 +496,7 @@ async function executeRangedAttack(dirX, dirY) {
             }
 
             if (isSolid) {
-                logMessage("Your arrow strikes a solid object.");
+                logMessage("{gray:Your arrow strikes a solid object.}");
                 break;
             }
 
@@ -487,10 +511,17 @@ async function executeRangedAttack(dirX, dirY) {
                 } else {
                     let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
                     if (enemy) {
+                        // SAFEGUARD
+                        enemy.health = Number(enemy.health);
+                        if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+
                         const finalDmg = Math.max(1, totalDamage - (enemy.defense || 0));
                         enemy.health -= finalDmg;
-                        logMessage(`You shoot ${enemy.name} for ${finalDmg} damage!`);
-                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, arrowColor, 3);
+                        logMessage(`You shoot ${enemy.name} for {red:${finalDmg}} damage!`);
+                        if (typeof ParticleSystem !== 'undefined') {
+                            ParticleSystem.createExplosion(targetX, targetY, arrowColor, 3);
+                            ParticleSystem.createFloatingText(targetX, targetY, `-${finalDmg}`, '#ef4444');
+                        }
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
 
                         // --- ELEMENTAL STATUS EFFECTS ---
@@ -516,7 +547,7 @@ async function executeRangedAttack(dirX, dirY) {
         }
 
         if (!hitSomething) {
-            logMessage("Your arrow flies off into the distance.");
+            logMessage("{gray:Your arrow flies off into the distance.}");
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Miss", "#9ca3af");
             }
@@ -550,15 +581,17 @@ async function executeRangedAttack(dirX, dirY) {
         }
 
         // --- 4. Finalize Turn ---
-        playerRef.update({
-            stamina: player.stamina,
-            inventory: getSanitizedInventory() // Sync ammo removal
-        });
+        if (typeof playerRef !== 'undefined') {
+            playerRef.update({
+                stamina: player.stamina,
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory // Sync ammo removal
+            });
+        }
         triggerStatFlash(statDisplays.stamina, false); 
         
         endPlayerTurn(); 
-        renderEquipment(); // Refresh UI ammo count
-        render(); 
+        if (typeof renderEquipment === 'function') renderEquipment(); // Refresh UI ammo count
+        if (typeof render === 'function') render(); 
 
     } finally {
         // --- 🚨 UNLOCK THE ENGINE ---
@@ -616,8 +649,8 @@ async function executeLunge(dirX, dirY) {
                 // Found a target!
                 if (player.stealthTurns > 0) {
                     player.stealthTurns = 0;
-                    logMessage("You strike from the shadows!");
-                    playerRef.update({ stealthTurns: 0 });
+                    logMessage("{gray:You strike from the shadows!}");
+                    if (typeof playerRef !== 'undefined') playerRef.update({ stealthTurns: 0 });
                 }
 
                 logMessage(`You lunge and attack the ${enemyData.name}!`);
@@ -638,9 +671,16 @@ async function executeLunge(dirX, dirY) {
                     // Handle Instanced Combat
                     let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
                     if (enemy) {
+                        // SAFEGUARD
+                        enemy.health = Number(enemy.health);
+                        if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+
                         enemy.health -= totalLungeDamage;
-                        logMessage(`You hit the ${enemy.name} for ${totalLungeDamage} damage!`);
-                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#fff', 3);
+                        logMessage(`You hit the ${enemy.name} for {red:${totalLungeDamage}} damage!`);
+                        if (typeof ParticleSystem !== 'undefined') {
+                            ParticleSystem.createExplosion(targetX, targetY, '#fff', 3);
+                            ParticleSystem.createFloatingText(targetX, targetY, `-${totalLungeDamage}`, '#ef4444');
+                        }
 
                         if (enemy.health <= 0) {
                             logMessage(`You defeated the ${enemy.name}!`);
@@ -653,20 +693,20 @@ async function executeLunge(dirX, dirY) {
         }
 
         if (!hit) {
-            logMessage("You lunge... and hit nothing.");
+            logMessage("{gray:You lunge... and hit nothing.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
         } else {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('normal');
         }
 
         // --- 4. Finalize Turn ---
-        playerRef.update({
-            stamina: player.stamina
-        });
+        if (typeof playerRef !== 'undefined') {
+            playerRef.update({ stamina: player.stamina });
+        }
         triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
         triggerAbilityCooldown('lunge');
         endPlayerTurn(); 
-        render(); 
+        if (typeof render === 'function') render(); 
 
     } finally {
         // --- 🚨 UNLOCK THE ENGINE ---
@@ -695,15 +735,15 @@ function executeQuickstep(dirX, dirY) {
         player.x = targetX;
         player.y = targetY;
         player.stamina -= SKILL_DATA['quickstep'].cost;
-        logMessage("You dash forward with blinding speed!");
+        logMessage("{cyan:You dash forward with blinding speed!}");
         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#fff', 5);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
 
         triggerAbilityCooldown('quickstep');
         endPlayerTurn();
-        render();
+        if (typeof render === 'function') render();
     } else {
-        logMessage("Path blocked.");
+        logMessage("{gray:Path blocked.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         gameState.isAiming = false; // Reset aiming
     }
@@ -724,7 +764,7 @@ function executePacify(dirX, dirY) {
 
         // This skill only works in instanced maps
         if (gameState.mapMode === 'overworld') {
-            logMessage("This skill only works in dungeons and castles.");
+            logMessage("{red:This skill only works in dungeons and castles.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             hit = true; // Prevents the "miss" message
             break;
@@ -746,7 +786,7 @@ function executePacify(dirX, dirY) {
         if (enemy) {
 
             if (enemy.isBoss) {
-                logMessage(`The ${enemy.name} is immune to your charms!`);
+                logMessage(`{red:The ${enemy.name} is immune to your charms!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 hit = true;
                 break;
@@ -763,9 +803,10 @@ function executePacify(dirX, dirY) {
                 // --- SUCCESS ---
                 logMessage(`{green:You calm the ${enemy.name}! It becomes passive.}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(targetX, targetY, "PACIFIED", "#4ade80");
                 
                 // Reward the player for dealing with the encounter!
-                grantXp(Math.floor(enemy.xp * 0.8));
+                if (typeof grantXp === 'function') grantXp(Math.floor(enemy.xp * 0.8));
 
                 // Remove it from the enemy list
                 gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
@@ -786,18 +827,16 @@ function executePacify(dirX, dirY) {
     }
 
     if (!hit) {
-        logMessage("You attempt to calm... nothing.");
+        logMessage("{gray:You attempt to calm... nothing.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     }
 
     // --- 4. Finalize Turn ---
-    playerRef.update({
-        psyche: player.psyche
-    });
+    if (typeof playerRef !== 'undefined') playerRef.update({ psyche: player.psyche });
     triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
     triggerAbilityCooldown('pacify');
     endPlayerTurn();
-    render();
+    if (typeof render === 'function') render();
 }
 
 function executeTame(dirX, dirY) {
@@ -815,7 +854,7 @@ function executeTame(dirX, dirY) {
 
         // Check for instanced enemies (Dungeon/Castle)
         if (gameState.mapMode === 'overworld') {
-            logMessage("The beast is too wild here. Drive it into a cave first.");
+            logMessage("{red:The beast is too wild here. Drive it into a cave first.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             hit = true;
             break;
@@ -829,7 +868,7 @@ function executeTame(dirX, dirY) {
             // Check beast types
             const beastTiles = ['w', '@', '🦂', '🐺'];
             if (!beastTiles.includes(enemy.tile)) {
-                logMessage("You can only tame beasts!");
+                logMessage("{red:You can only tame beasts!}");
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 break;
             }
@@ -837,7 +876,7 @@ function executeTame(dirX, dirY) {
             // Check HP Threshold (30%)
             const hpPercent = enemy.health / enemy.maxHealth;
             if (hpPercent > 0.30) {
-                logMessage(`The ${enemy.name} is too healthy to tame! Weaken it first.`);
+                logMessage(`{red:The ${enemy.name} is too healthy to tame! Weaken it first.}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 break;
             }
@@ -847,6 +886,7 @@ function executeTame(dirX, dirY) {
             if (Math.random() < tameChance) {
                 logMessage(`{green:You calm the ${enemy.name}... It accepts you as its master!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(targetX, targetY, "TAMED!", "#4ade80");
 
                 // Create Companion
                 player.companion = {
@@ -872,7 +912,7 @@ function executeTame(dirX, dirY) {
                 }
                 map[targetY][targetX] = validFloor;
                 
-                playerRef.update({ companion: player.companion });
+                if (typeof playerRef !== 'undefined') playerRef.update({ companion: player.companion });
 
             } else {
                 logMessage(`{red:The ${enemy.name} resists your call and snaps at you!}`);
@@ -883,15 +923,22 @@ function executeTame(dirX, dirY) {
     }
 
     if (!hit) {
-        logMessage("You try to tame the empty air.");
+        logMessage("{gray:You try to tame the empty air.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     }
 
-    playerRef.update({ psyche: player.psyche });
+    if (typeof playerRef !== 'undefined') playerRef.update({ psyche: player.psyche });
     triggerAbilityCooldown('tame');
     endPlayerTurn();
-    render();
+    if (typeof render === 'function') render();
 }
+
+/**
+ * Executes the Inflict Madness skill on a target
+ * after the player chooses a direction.
+ * @param {number} dirX - The x-direction of the aim.
+ * @param {number} dirY - The y-direction of the aim.
+ */
 
 function executeInflictMadness(dirX, dirY) {
     const player = gameState.player;
@@ -907,7 +954,7 @@ function executeInflictMadness(dirX, dirY) {
         const targetY = player.y + (dirY * i);
 
         if (gameState.mapMode === 'overworld') {
-            logMessage("This skill only works in dungeons and castles.");
+            logMessage("{red:This skill only works in dungeons and castles.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             hit = true;
             break;
@@ -929,7 +976,7 @@ function executeInflictMadness(dirX, dirY) {
         if (enemy) {
 
             if (enemy.isBoss) {
-                logMessage(`The ${enemy.name}'s mind is too strong to break!`);
+                logMessage(`{red:The ${enemy.name}'s mind is too strong to break!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 hit = true;
                 break;
@@ -945,6 +992,7 @@ function executeInflictMadness(dirX, dirY) {
                 // --- SUCCESS ---
                 logMessage(`{purple:You assault the ${enemy.name}'s mind! It goes mad!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(targetX, targetY, "MADNESS", "#a855f7");
                 enemy.madnessTurns = 5; // Set status for 5 turns
 
             } else {
@@ -960,18 +1008,18 @@ function executeInflictMadness(dirX, dirY) {
     }
 
     if (!hit) {
-        logMessage("You assault the minds of... nothing.");
+        logMessage("{gray:You assault the minds of... nothing.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     }
 
     // --- 4. Finalize Turn ---
-    playerRef.update({
-        psyche: player.psyche
-    });
+    if (typeof playerRef !== 'undefined') {
+        playerRef.update({ psyche: player.psyche });
+    }
     triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
     triggerAbilityCooldown('inflictMadness');
     endPlayerTurn();
-    render();
+    if (typeof render === 'function') render();
 }
 
 /**
@@ -1025,7 +1073,11 @@ function initSkillbookListeners() {
     }
 
     if (skillListEl) {
-        skillListEl.addEventListener('click', (e) => {
+        // Remove old listener to prevent duplicate fires
+        const newList = skillListEl.cloneNode(false);
+        skillListEl.parentNode.replaceChild(newList, skillListEl);
+        
+        newList.addEventListener('click', (e) => {
             const skillItem = e.target.closest('.skill-item');
             if (skillItem && skillItem.dataset.skill) {
                 // Pass the skill's ID to your routing function
