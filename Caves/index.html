@@ -511,7 +511,9 @@
 
     <!-- REUSABLE LORE / NPC MODAL -->
     <div id="loreModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="loreTitle">
-        <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-yellow-700" style="background-color: var(--asset-parchment); color: #1c1917;">
+        <!-- V V V CHANGE THIS LINE V V V -->
+        <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-yellow-700" style="background-color: var(--asset-parchment); color: var(--title-color);">
+            
             <h2 id="loreTitle" class="text-3xl font-bold mb-4 border-b-2 border-yellow-800 pb-2" style="font-family: 'Uncial Antiqua', cursive;">Title</h2>
             
             <div id="loreContent" class="space-y-3 text-base leading-relaxed whitespace-pre-wrap mb-6 max-h-[50vh] overflow-y-auto custom-scrollbar font-serif"></div>
