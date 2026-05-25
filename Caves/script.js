@@ -1253,13 +1253,12 @@ const render = () => {
     }
 
     // --- 3. DRAW CACHED TERRAIN ---
-    // The terrainCanvas is already scaled by DPR.
     const dpr = window.devicePixelRatio || 1;
-    const logicalW = terrainCanvas.width / dpr;
-    const logicalH = terrainCanvas.height / dpr;
+    const logicalW = (VIEWPORT_WIDTH + 4) * TILE_SIZE;
+    const logicalH = (VIEWPORT_HEIGHT + 4) * TILE_SIZE;
 
-    // Draw the cached terrain shifted UP and LEFT by 1 tile to counter the shift we did in the cache!
-    ctx.drawImage(terrainCanvas, -TILE_SIZE, -TILE_SIZE, logicalW, logicalH);
+    // Draw the cached terrain shifted UP and LEFT by 2 tiles to counter the shift we did in the cache!
+    ctx.drawImage(terrainCanvas, -(TILE_SIZE * 2), -(TILE_SIZE * 2), logicalW, logicalH);
 
     // --- 4. LIGHTING & DYNAMIC LAYER (OPTIMIZED) ---
     let ambientLight = 0.0;
