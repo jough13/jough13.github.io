@@ -16,7 +16,10 @@ function triggerDebouncedSave(updates) {
     }
     
     const saveIcon = document.getElementById('saveIndicator');
-    if (saveIcon) saveIcon.classList.remove('hidden'); 
+    if (saveIcon) {
+        saveIcon.classList.remove('opacity-0');
+        saveIcon.classList.add('opacity-100');
+    }
 
     saveTimeout = setTimeout(() => {
         if (playerRef && pendingSaveData) {
@@ -24,7 +27,10 @@ function triggerDebouncedSave(updates) {
         }
         saveTimeout = null;
         pendingSaveData = null;
-        if (saveIcon) saveIcon.classList.add('hidden'); 
+        if (saveIcon) {
+            saveIcon.classList.remove('opacity-100');
+            saveIcon.classList.add('opacity-0');
+        }
     }, 2000); 
 }
 
@@ -45,10 +51,13 @@ function flushPendingSave(updates = null) {
             .catch(err => console.error("Flush save failed:", err));
     }
     
-    // 3. Clear transient save indicators
+    // 3. Clear transient save indicators smoothly
     pendingSaveData = null;
     const saveIcon = document.getElementById('saveIndicator');
-    if (saveIcon) saveIcon.classList.add('hidden'); 
+    if (saveIcon) {
+        saveIcon.classList.remove('opacity-100');
+        saveIcon.classList.add('opacity-0');
+    }
 }
 
 /**
