@@ -21,6 +21,7 @@ let lastMouseY = 0;
 let hoverWorldX = null;
 let hoverWorldY = null;
 let mapAnimFrame = null;
+let lastMapTouchTime = 0; // For mobile double-tap detection
 
 // --- MINIMAP CACHE (With Memory Leak Protection) ---
 const mapChunkCache = new Map();
@@ -150,13 +151,29 @@ function closeWorldMap() {
         cancelAnimationFrame(mapAnimFrame);
         mapAnimFrame = null;
     }
+    
+    // MEMORY LEAK FIX: Unload all chunks that the minimap forced the engine to generate in the background
+    if (typeof chunkManager !== 'undefined' && chunkManager.unloadOutOfRangeChunks && gameState.player) {
+        const currentChunkX = Math.floor(gameState.player.x / MAP_CHUNK_SIZE);
+        const currentChunkY = Math.floor(gameState.player.y / MAP_CHUNK_SIZE);
+        chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
+    }
 }
 
 function fitMapCanvasToContainer() {
     const container = worldMapCanvas.parentElement;
     if (container.clientWidth > 0 && container.clientHeight > 0) {
-        worldMapCanvas.width = container.clientWidth;
-        worldMapCanvas.height = container.clientHeight;
+        // UI WIN: Apply Device Pixel Ratio to fix blurry maps on Mobile/MacBooks
+        const dpr = window.devicePixelRatio || 1;
+        worldMapCanvas.width = container.clientWidth * dpr;
+        worldMapCanvas.height = container.clientHeight * dpr;
+        
+        // Force CSS dimensions to match container exactly
+        worldMapCanvas.style.width = `${container.clientWidth}px`;
+        worldMapCanvas.style.height = `${container.clientHeight}px`;
+        
+        worldMapCtx.setTransform(1, 0, 0, 1, 0, 0);
+        worldMapCtx.scale(dpr, dpr);
     }
 }
 
@@ -178,13 +195,17 @@ function mapLoop() {
 function renderWorldMap() {
     if (!gameState.player.exploredChunks) return;
 
+    // Use logical width/height for calculations to support the DPI scaling fix
+    const logicalWidth = worldMapCanvas.clientWidth;
+    const logicalHeight = worldMapCanvas.clientHeight;
+
     // Clear Background
     worldMapCtx.fillStyle = '#000000';
-    worldMapCtx.fillRect(0, 0, worldMapCanvas.width, worldMapCanvas.height);
+    worldMapCtx.fillRect(0, 0, logicalWidth, logicalHeight);
     worldMapCtx.imageSmoothingEnabled = false;
 
-    const centerX = Math.floor(worldMapCanvas.width / 2);
-    const centerY = Math.floor(worldMapCanvas.height / 2);
+    const centerX = Math.floor(logicalWidth / 2);
+    const centerY = Math.floor(logicalHeight / 2);
     const chunkSizeOnScreen = MAP_CHUNK_SIZE * currentMapScale;
     const now = Date.now(); // Calculate once per frame for all animations
 
@@ -199,8 +220,8 @@ function renderWorldMap() {
         const screenX = Math.floor((chunkWorldX - mapCamera.x) * currentMapScale + centerX);
         const screenY = Math.floor((chunkWorldY - mapCamera.y) * currentMapScale + centerY);
 
-        if (screenX + chunkSizeOnScreen < 0 || screenX > worldMapCanvas.width ||
-            screenY + chunkSizeOnScreen < 0 || screenY > worldMapCanvas.height) {
+        if (screenX + chunkSizeOnScreen < 0 || screenX > logicalWidth ||
+            screenY + chunkSizeOnScreen < 0 || screenY > logicalHeight) {
             return;
         }
 
@@ -223,7 +244,7 @@ function renderWorldMap() {
             const screenX = (pin.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (pin.y - mapCamera.y) * currentMapScale + centerY;
             
-            if (screenX >= 0 && screenX <= worldMapCanvas.width && screenY >= 0 && screenY <= worldMapCanvas.height) {
+            if (screenX >= 0 && screenX <= logicalWidth && screenY >= 0 && screenY <= logicalHeight) {
                 worldMapCtx.fillStyle = 'rgba(0,0,0,0.8)';
                 worldMapCtx.fillText('📌', screenX + currentMapScale/2, (screenY + currentMapScale/2) + 2);
                 worldMapCtx.fillStyle = '#ffffff';
@@ -239,7 +260,7 @@ function renderWorldMap() {
             const screenX = (wp.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (wp.y - mapCamera.y) * currentMapScale + centerY;
             
-            if (screenX >= 0 && screenX <= worldMapCanvas.width && screenY >= 0 && screenY <= worldMapCanvas.height) {
+            if (screenX >= 0 && screenX <= logicalWidth && screenY >= 0 && screenY <= logicalHeight) {
                 worldMapCtx.fillStyle = `rgba(168, 85, 247, ${0.4 + wpPulse * 0.6})`;
                 worldMapCtx.beginPath();
                 worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2, currentMapScale * 1.5, 0, Math.PI * 2);
@@ -258,7 +279,7 @@ function renderWorldMap() {
             const screenX = (poi.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (poi.y - mapCamera.y) * currentMapScale + centerY;
             
-            if (screenX >= 0 && screenX <= worldMapCanvas.width && screenY >= 0 && screenY <= worldMapCanvas.height) {
+            if (screenX >= 0 && screenX <= logicalWidth && screenY >= 0 && screenY <= logicalHeight) {
                 worldMapCtx.fillStyle = 'rgba(0,0,0,0.5)';
                 worldMapCtx.beginPath();
                 worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2, currentMapScale, 0, Math.PI * 2);
@@ -275,7 +296,7 @@ function renderWorldMap() {
         const tx = (gameState.activeTreasure.x - mapCamera.x) * currentMapScale + centerX;
         const ty = (gameState.activeTreasure.y - mapCamera.y) * currentMapScale + centerY;
         
-        if (tx >= 0 && tx <= worldMapCanvas.width && ty >= 0 && ty <= worldMapCanvas.height) {
+        if (tx >= 0 && tx <= logicalWidth && ty >= 0 && ty <= logicalHeight) {
             worldMapCtx.fillStyle = '#ef4444'; 
             worldMapCtx.font = `bold ${Math.max(12, currentMapScale * 2)}px monospace`;
             worldMapCtx.textAlign = 'center';
@@ -291,15 +312,14 @@ function renderWorldMap() {
         }
     }
 
-    // GAMEPLAY WIN: Render Other Online Players
+    // Render Other Online Players
     if (typeof otherPlayers !== 'undefined') {
         Object.values(otherPlayers).forEach(op => {
-            // Only draw players in the shared overworld
             if (op.mapMode === 'overworld' && op.x !== undefined && op.y !== undefined) {
                 const opX = (op.x - mapCamera.x) * currentMapScale + centerX;
                 const opY = (op.y - mapCamera.y) * currentMapScale + centerY;
                 
-                if (opX >= 0 && opX <= worldMapCanvas.width && opY >= 0 && opY <= worldMapCanvas.height) {
+                if (opX >= 0 && opX <= logicalWidth && opY >= 0 && opY <= logicalHeight) {
                     worldMapCtx.fillStyle = '#f97316'; // Distinct Orange
                     worldMapCtx.beginPath();
                     worldMapCtx.arc(opX + currentMapScale/2, opY + currentMapScale/2, Math.max(2, currentMapScale * 0.8), 0, Math.PI * 2);
@@ -324,8 +344,8 @@ function renderWorldMap() {
 
     // Render Hover Highlight
     if (hoverWorldX !== null && hoverWorldY !== null) {
-        const hScreenX = (hoverWorldX - mapCamera.x) * currentMapScale + centerX;
-        const hScreenY = (hoverWorldY - mapCamera.y) * currentMapScale + centerY;
+        const hScreenX = Math.floor((hoverWorldX - mapCamera.x) * currentMapScale + centerX);
+        const hScreenY = Math.floor((hoverWorldY - mapCamera.y) * currentMapScale + centerY);
         
         worldMapCtx.fillStyle = 'rgba(255, 255, 255, 0.2)';
         worldMapCtx.fillRect(hScreenX, hScreenY, currentMapScale, currentMapScale);
@@ -339,7 +359,7 @@ function renderWorldMap() {
     grad.addColorStop(0, 'rgba(0,0,0,0)');
     grad.addColorStop(1, 'rgba(0,0,0,0.8)');
     worldMapCtx.fillStyle = grad;
-    worldMapCtx.fillRect(0, 0, worldMapCanvas.width, worldMapCanvas.height);
+    worldMapCtx.fillRect(0, 0, logicalWidth, logicalHeight);
 
     updateMapUI();
 }
@@ -428,8 +448,8 @@ worldMapCanvas.addEventListener('mousemove', (e) => {
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
         
-        const centerX = Math.floor(worldMapCanvas.width / 2);
-        const centerY = Math.floor(worldMapCanvas.height / 2);
+        const centerX = Math.floor(worldMapCanvas.clientWidth / 2);
+        const centerY = Math.floor(worldMapCanvas.clientHeight / 2);
         
         hoverWorldX = Math.floor((mouseX - centerX) / currentMapScale + mapCamera.x);
         hoverWorldY = Math.floor((mouseY - centerY) / currentMapScale + mapCamera.y);
@@ -438,7 +458,6 @@ worldMapCanvas.addEventListener('mousemove', (e) => {
 
 // Double click features
 worldMapCanvas.addEventListener('dblclick', () => {
-    // GAMEPLAY WIN: Quick Fast-Travel via Map
     if (hoverWorldX !== null && hoverWorldY !== null && gameState.player.unlockedWaypoints) {
         const isUnlocked = gameState.player.unlockedWaypoints.some(wp => wp.x === hoverWorldX && wp.y === hoverWorldY);
         if (isUnlocked && typeof handleFastTravel === 'function') {
@@ -475,15 +494,35 @@ worldMapCanvas.addEventListener('contextmenu', (e) => {
 });
 
 worldMapCanvas.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 1) startMapDrag(e.touches[0].clientX, e.touches[0].clientY);
+    if (e.touches.length === 1) {
+        startMapDrag(e.touches[0].clientX, e.touches[0].clientY);
+        
+        // UX WIN: Mobile Double-Tap Detection
+        const now = Date.now();
+        if (now - lastMapTouchTime < 300) {
+            // Trigger the same double-click logic
+            if (hoverWorldX !== null && hoverWorldY !== null && gameState.player.unlockedWaypoints) {
+                const isUnlocked = gameState.player.unlockedWaypoints.some(wp => wp.x === hoverWorldX && wp.y === hoverWorldY);
+                if (isUnlocked && typeof handleFastTravel === 'function') {
+                    handleFastTravel(hoverWorldX, hoverWorldY);
+                    closeWorldMap();
+                    return;
+                }
+            }
+            targetMapCamera.x = gameState.player.x;
+            targetMapCamera.y = gameState.player.y;
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+        }
+        lastMapTouchTime = now;
+    }
     
     if (e.touches.length === 2) {
         const rect = worldMapCanvas.getBoundingClientRect();
         const touch = e.touches[0];
         const mouseX = touch.clientX - rect.left;
         const mouseY = touch.clientY - rect.top;
-        const centerX = Math.floor(worldMapCanvas.width / 2);
-        const centerY = Math.floor(worldMapCanvas.height / 2);
+        const centerX = Math.floor(worldMapCanvas.clientWidth / 2);
+        const centerY = Math.floor(worldMapCanvas.clientHeight / 2);
         
         const pinX = Math.floor((mouseX - centerX) / currentMapScale + mapCamera.x);
         const pinY = Math.floor((mouseY - centerY) / currentMapScale + mapCamera.y);
@@ -517,122 +556,3 @@ worldMapCanvas.addEventListener('wheel', (e) => {
     if (e.deltaY < 0) targetMapScale = Math.min(16, targetMapScale + 2); 
     else targetMapScale = Math.max(2, targetMapScale - 2); 
 }, { passive: false });
-
-
-// --- SETTINGS UI BINDINGS ---
-let crtEnabled = localStorage.getItem('crtSetting') !== 'false'; 
-
-function applyVisualSettings() {
-    const container = document.getElementById('gameCanvasWrapper');
-    if (container) {
-        if (crtEnabled) container.classList.add('crt');
-        else container.classList.remove('crt');
-    }
-}
-
-function initSettingsListeners() {
-    const modal = document.getElementById('settingsModal');
-    const closeBtn = document.getElementById('closeSettingsButton');
-    const openBtn = document.getElementById('settingsButton');
-
-    const cbMaster = document.getElementById('settingMaster');
-    const cbSteps = document.getElementById('settingSteps');
-    const cbCombat = document.getElementById('settingCombat');
-    const cbMagic = document.getElementById('settingMagic');
-    const cbUI = document.getElementById('settingUI');
-    const cbCRT = document.getElementById('settingCRT');
-    const btnBackup = document.getElementById('btnBackup');
-    const btnRestore = document.getElementById('btnRestore');
-    const btnManualSave = document.getElementById('btnManualSave'); 
-
-    if (!modal || !openBtn || !closeBtn) return;
-
-    const syncUI = () => {
-        if (cbMaster) cbMaster.checked = AudioSystem.settings.master;
-        if (cbSteps) cbSteps.checked = AudioSystem.settings.steps;
-        if (cbCombat) cbCombat.checked = AudioSystem.settings.combat;
-        if (cbMagic) cbMagic.checked = AudioSystem.settings.magic;
-        if (cbUI) cbUI.checked = AudioSystem.settings.ui;
-        if (cbCRT) cbCRT.checked = crtEnabled;
-
-        if (cbMaster) {
-            const isMasterOn = cbMaster.checked;
-            [cbSteps, cbCombat, cbMagic, cbUI].forEach(cb => {
-                if (cb) {
-                    cb.disabled = !isMasterOn;
-                    cb.parentElement.style.opacity = isMasterOn ? '1' : '0.5';
-                }
-            });
-        }
-    };
-
-    openBtn.onclick = (e) => {
-        e.preventDefault();
-        syncUI();
-        if(typeof updateBackupUI === 'function') updateBackupUI(); 
-        modal.classList.remove('hidden');
-    };
-
-    closeBtn.onclick = (e) => {
-        e.preventDefault();
-        modal.classList.add('hidden');
-    };
-
-    const handleAudioToggle = (key, element) => {
-        if (!element) return;
-        element.onchange = (e) => {
-            AudioSystem.settings[key] = e.target.checked;
-            AudioSystem.saveSettings();
-            if (key === 'master') syncUI();
-
-            // JUICE: Play sound on toggle!
-            if (e.target.checked && AudioSystem.settings.master) {
-                if (key === 'steps') AudioSystem.playStep();
-                else AudioSystem.playClick();
-            }
-        };
-    };
-
-    handleAudioToggle('master', cbMaster);
-    handleAudioToggle('steps', cbSteps);
-    handleAudioToggle('combat', cbCombat);
-    handleAudioToggle('magic', cbMagic);
-    handleAudioToggle('ui', cbUI);
-
-    if (cbCRT) {
-        cbCRT.onchange = (e) => {
-            crtEnabled = e.target.checked;
-            localStorage.setItem('crtSetting', crtEnabled);
-            applyVisualSettings(); 
-            if (crtEnabled && typeof AudioSystem !== 'undefined') AudioSystem.playMagic(); 
-        };
-    }
-
-    if (btnBackup) {
-        btnBackup.onclick = (e) => {
-            e.preventDefault();
-            btnBackup.disabled = true;
-            btnBackup.textContent = "Saving...";
-            if (typeof createCloudBackup === 'function') {
-                createCloudBackup().then(() => {
-                    btnBackup.disabled = false;
-                    btnBackup.textContent = "☁️ Create Backup";
-                });
-            }
-        };
-    }
-
-    if (btnRestore) {
-        btnRestore.onclick = (e) => {
-            e.preventDefault();
-            if (typeof restoreCloudBackup === 'function') restoreCloudBackup();
-        };
-    }
-
-    if (btnManualSave) {
-        btnManualSave.onclick = (e) => {
-            e.preventDefault();
-            if (typeof manualSaveGame === 'function') manualSaveGame();
-        };
-    }
-}
