@@ -899,3 +899,126 @@ window.toggleModal = (modalEl, openFunc, closeFunc) => {
         openFunc();
     }
 };
+
+// ==========================================
+// GAME SETTINGS & VISUALS
+// ==========================================
+
+// Load visual settings from localStorage
+function loadVisualSettings() {
+    const defaultSettings = { crt: true };
+    const saved = localStorage.getItem('visualSettings');
+    return saved ? JSON.parse(saved) : defaultSettings;
+}
+
+// Applies the CRT visual filter based on saved preferences
+function applyVisualSettings() {
+    const settings = loadVisualSettings();
+    const wrapper = document.getElementById('gameCanvasWrapper');
+    if (wrapper) {
+        if (settings.crt) {
+            wrapper.classList.add('crt');
+        } else {
+            wrapper.classList.remove('crt');
+        }
+    }
+}
+
+// Binds all the checkboxes and buttons inside the Settings Modal
+function initSettingsListeners() {
+    const settingsBtn = document.getElementById('settingsButton');
+    const closeSettingsBtn = document.getElementById('closeSettingsButton');
+    const settingsModal = document.getElementById('settingsModal');
+
+    // Audio checkboxes
+    const settingMaster = document.getElementById('settingMaster');
+    const settingSteps = document.getElementById('settingSteps');
+    const settingCombat = document.getElementById('settingCombat');
+    const settingMagic = document.getElementById('settingMagic');
+    const settingUI = document.getElementById('settingUI');
+
+    // Visual checkboxes
+    const settingCRT = document.getElementById('settingCRT');
+
+    // Backup Buttons
+    const btnManualSave = document.getElementById('btnManualSave');
+    const btnBackup = document.getElementById('btnBackup');
+    const btnRestore = document.getElementById('btnRestore');
+
+    if (settingsBtn && settingsModal) {
+        settingsBtn.addEventListener('click', () => {
+            // Sync modal UI checkboxes to the actual engine state
+            if (typeof AudioSystem !== 'undefined') {
+                if (settingMaster) settingMaster.checked = AudioSystem.settings.master;
+                if (settingSteps) settingSteps.checked = AudioSystem.settings.steps;
+                if (settingCombat) settingCombat.checked = AudioSystem.settings.combat;
+                if (settingMagic) settingMagic.checked = AudioSystem.settings.magic;
+                if (settingUI) settingUI.checked = AudioSystem.settings.ui;
+            }
+
+            const visualSettings = loadVisualSettings();
+            if (settingCRT) settingCRT.checked = visualSettings.crt;
+
+            // Refresh the "Last Backup" text
+            if (typeof updateBackupUI === 'function') updateBackupUI();
+
+            settingsModal.classList.remove('hidden');
+        });
+    }
+
+    if (closeSettingsBtn && settingsModal) {
+        closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+        
+        // Let players close settings with the Escape key or clicking outside
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) settingsModal.classList.add('hidden');
+        });
+    }
+
+    // Audio Handlers
+    const updateAudioSettings = () => {
+        if (typeof AudioSystem !== 'undefined') {
+            AudioSystem.settings.master = settingMaster.checked;
+            AudioSystem.settings.steps = settingSteps.checked;
+            AudioSystem.settings.combat = settingCombat.checked;
+            AudioSystem.settings.magic = settingMagic.checked;
+            AudioSystem.settings.ui = settingUI.checked;
+            AudioSystem.saveSettings();
+        }
+    };
+
+    if (settingMaster) settingMaster.addEventListener('change', updateAudioSettings);
+    if (settingSteps) settingSteps.addEventListener('change', updateAudioSettings);
+    if (settingCombat) settingCombat.addEventListener('change', updateAudioSettings);
+    if (settingMagic) settingMagic.addEventListener('change', updateAudioSettings);
+    if (settingUI) settingUI.addEventListener('change', updateAudioSettings);
+
+    // Visual Handlers
+    if (settingCRT) {
+        settingCRT.addEventListener('change', (e) => {
+            const visualSettings = loadVisualSettings();
+            visualSettings.crt = e.target.checked;
+            localStorage.setItem('visualSettings', JSON.stringify(visualSettings));
+            applyVisualSettings();
+        });
+    }
+
+    // Save & Backup Handlers
+    if (btnManualSave) {
+        btnManualSave.addEventListener('click', () => {
+            if (typeof manualSaveGame === 'function') manualSaveGame();
+        });
+    }
+
+    if (btnBackup) {
+        btnBackup.addEventListener('click', () => {
+            if (typeof createCloudBackup === 'function') createCloudBackup();
+        });
+    }
+
+    if (btnRestore) {
+        btnRestore.addEventListener('click', () => {
+            if (typeof restoreCloudBackup === 'function') restoreCloudBackup();
+        });
+    }
+}
