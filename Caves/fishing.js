@@ -556,8 +556,9 @@ function executeFishing() {
         if (existingStack && isStackable) {
             existingStack.quantity++;
         } else if (player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+            // THE FIX: Inject the templateId here so the effect binds correctly on re-hydration!
             player.inventory.push({
-                templateId: baseKey,
+                templateId: baseKey, 
                 name: finalItemName, 
                 type: template ? (template.type || 'junk') : 'junk',
                 quantity: 1,
