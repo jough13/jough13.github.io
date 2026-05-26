@@ -365,27 +365,31 @@ function createDefaultPlayerState() {
     };
 }
 
-function grantLoreDiscovery(itemId) {
+function grantLoreDiscovery(mapTileId, codexEntryId = null) {
     const player = gameState.player;
     
-    // 1. Add to found set (existing logic)
+    // 1. Add map location to found set (prevents XP farming)
     if (!gameState.foundLore) gameState.foundLore = new Set();
-    if (gameState.foundLore.has(itemId)) return; // Already found
+    if (gameState.foundLore.has(mapTileId)) return; // Already found this tile
     
-    gameState.foundLore.add(itemId);
+    gameState.foundLore.add(mapTileId);
     grantXp(25); // Base XP for reading
     logMessage("New Codex Entry added.");
 
-    // 2. Check for Set Completion
+    // 2. Track the actual item key (e.g., "📜1") for the Library
+    if (!gameState.foundCodexEntries) gameState.foundCodexEntries = new Set();
+    if (codexEntryId) {
+        gameState.foundCodexEntries.add(codexEntryId);
+    }
+
+    // 3. Check for Set Completion
     let completedSet = null;
 
     for (const setKey in LORE_SETS) {
         const set = LORE_SETS[setKey];
-        // Check if all items in this set are in foundLore
-        const allFound = set.items.every(id => gameState.foundLore.has(id));
+        // THE FIX: Check foundCodexEntries instead of foundLore!
+        const allFound = set.items.every(id => gameState.foundCodexEntries.has(id));
         
-        // Check if we haven't already awarded this set
-        // We'll store completed sets in player.completedLoreSets
         if (!player.completedLoreSets) player.completedLoreSets = [];
         
         if (allFound && !player.completedLoreSets.includes(setKey)) {
@@ -412,9 +416,10 @@ function grantLoreDiscovery(itemId) {
         }
     }
 
-    // 3. Save
+    // 4. Save both sets
     playerRef.update({ 
         foundLore: Array.from(gameState.foundLore),
+        foundCodexEntries: Array.from(gameState.foundCodexEntries),
         completedLoreSets: player.completedLoreSets || [] 
     });
 }
