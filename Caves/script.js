@@ -2192,8 +2192,8 @@ function endPlayerTurn(turnUpdates = {}) {
         const currentChunkId = `${currentChunkX},${currentChunkY}`;
 
         if (lastPlayerChunkId !== currentChunkId) {
+            // flushPendingSave already writes to Firebase, so we just call this!
             flushPendingSave(finalUpdates); 
-            if (playerRef) playerRef.update(sanitizeForFirebase(finalUpdates)).catch(console.error);
             lastPlayerChunkId = currentChunkId; 
         } else {
             triggerDebouncedSave(finalUpdates);
