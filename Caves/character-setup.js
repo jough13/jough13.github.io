@@ -394,10 +394,10 @@ async function finalizeCharacterCreation() {
         recalculateDerivedStats();
     } else {
         // Fallback if script.js hasn't loaded properly
-        player.maxHealth = 5 + (player.constitution * 5);
-        player.maxMana = 5 + (player.wits * 5);
-        player.maxStamina = 5 + (player.endurance * 5);
-        player.maxPsyche = 7 + (player.willpower * 3);
+        player.maxHealth = Math.max(1, 5 + (player.constitution * 5));
+        player.maxMana = Math.max(1, 5 + (player.wits * 5));
+        player.maxStamina = Math.max(1, 5 + (player.endurance * 5));
+        player.maxPsyche = Math.max(1, 7 + (player.willpower * 3));
     }
     
     player.health = player.maxHealth;
