@@ -2139,7 +2139,9 @@ async function attemptMovePlayer(newX, newY) {
                 }
                 gameState.player.isBoating = true;
                 logMessage("You get in the canoe.");
-                chunkManager.setWorldTile(newX, newY, '.');
+
+                chunkManager.setWorldTile(newX, newY, getBaseTerrain(newX, newY)); 
+                
                 playerRef.update({ isBoating: true });
                 break;
                 
@@ -2147,7 +2149,9 @@ async function attemptMovePlayer(newX, newY) {
             case 'sailing_ship':
                 gameState.player.isSailing = true;
                 logMessage("{blue:You board the ship. The ocean is yours to conquer.}");
-                chunkManager.setWorldTile(newX, newY, '.'); // Remove from map
+                
+                chunkManager.setWorldTile(newX, newY, getBaseTerrain(newX, newY)); 
+                
                 playerRef.update({ isSailing: true });
                 return; // Stop processing, we embarked
             case 'dungeon_entrance':
