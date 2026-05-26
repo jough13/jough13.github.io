@@ -480,6 +480,14 @@ function useInventoryItem(itemIndex) {
 
     // --- MAGIC ITEM IDENTIFICATION ---
     if (itemToUse.name === 'Unidentified Magic Item' || itemToUse.tile === '✨') {
+        
+        // Block identification if it's stacked and inventory is full!
+        if (itemToUse.quantity > 1 && player.inventory.length >= MAX_INVENTORY_SLOTS) {
+            logMessage("{red:Inventory full! Make space before identifying stacked items.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
         // Calculate appropriate tier based on player level (1-6)
         let tier = Math.max(1, Math.min(6, Math.floor(player.level / 5) + 1));
         
@@ -498,17 +506,8 @@ function useInventoryItem(itemIndex) {
         if (itemToUse.quantity <= 0) {
             player.inventory.splice(itemIndex, 1, identifiedItem);
         } else {
-            // Unidentified items stacked, put the newly identified one in a new slot
-            if (player.inventory.length < MAX_INVENTORY_SLOTS) {
-                player.inventory.push(identifiedItem);
-            } else {
-                logMessage("{red:Inventory full! The item drops to the ground.}");
-                const dropTile = identifiedItem.tile || '🎒';
-                if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(player.x, player.y, dropTile, 1);
-                else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = dropTile;
-                else chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = dropTile;
-                gameState.mapDirty = true;
-            }
+            // Because of our safety check above, we KNOW we have space here.
+            player.inventory.push(identifiedItem);
         }
         itemUsed = true;
     }
