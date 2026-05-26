@@ -159,17 +159,29 @@ window.handleFastTravel = function (targetX, targetY) {
     };
 
     // --- FORCE DISEMBARK BEFORE TELEPORT & FIX DB DESYNC ---
-    if (player.isBoating) {
-        chunkManager.setWorldTile(player.x, player.y, 'c'); // Drop canoe in the water here
-        player.isBoating = false;
-        updates.isBoating = false; // Fix: Tell Firebase we got out!
-        logMessage("{gray:You leave your canoe behind to travel the leylines.}");
-    }
-    if (player.isSailing) {
-        chunkManager.setWorldTile(player.x, player.y, '⛵'); // Drop ship in the water here
-        player.isSailing = false;
-        updates.isSailing = false; // Fix: Tell Firebase we got out!
-        logMessage("{gray:You drop anchor and leave your ship behind.}");
+    if (player.isBoating || player.isSailing) {
+        const boatTile = player.isSailing ? '⛵' : 'c';
+        
+        // Check which map we are currently in so we don't drop dungeon boats into the overworld!
+        if (gameState.mapMode === 'overworld') {
+            chunkManager.setWorldTile(player.x, player.y, boatTile);
+        } else if (gameState.mapMode === 'dungeon') {
+            chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = boatTile;
+        } else if (gameState.mapMode === 'castle') {
+            chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = boatTile;
+        }
+
+        if (player.isBoating) {
+            player.isBoating = false;
+            updates.isBoating = false; // Tell Firebase we got out
+            logMessage("{gray:You leave your canoe behind to travel the leylines.}");
+        }
+        
+        if (player.isSailing) {
+            player.isSailing = false;
+            updates.isSailing = false; // Tell Firebase we got out
+            logMessage("{gray:You drop anchor and leave your ship behind.}");
+        }
     }
     
     // Failsafe State Override
