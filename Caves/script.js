@@ -2620,10 +2620,11 @@ function triggerRaidBossSpawn(playerX, playerY) {
 function recalculateDerivedStats() {
     const player = gameState.player;
     
-    let calculatedMaxHealth = 5 + (player.constitution * 5);
-    let calculatedMaxMana = 5 + (player.wits * 5);
-    let calculatedMaxStamina = 5 + (player.endurance * 5);
-    let calculatedMaxPsyche = 7 + (player.willpower * 3);
+    // Clamp all derived max stats so they never drop below 1!
+    let calculatedMaxHealth = Math.max(1, 5 + (player.constitution * 5));
+    let calculatedMaxMana = Math.max(1, 5 + (player.wits * 5));
+    let calculatedMaxStamina = Math.max(1, 5 + (player.endurance * 5));
+    let calculatedMaxPsyche = Math.max(1, 7 + (player.willpower * 3));
 
     if (player.completedLoreSets) {
         if (player.completedLoreSets.includes('void_research')) calculatedMaxMana += 10;
@@ -2635,10 +2636,12 @@ function recalculateDerivedStats() {
     player.maxStamina = calculatedMaxStamina;
     player.maxPsyche = calculatedMaxPsyche;
 
-    player.health = Math.min(player.health, player.maxHealth);
-    player.mana = Math.min(player.mana, player.maxMana);
-    player.stamina = Math.min(player.stamina, player.maxStamina);
-    player.psyche = Math.min(player.psyche, player.maxPsyche);
+    // Safety checks to ensure current vitals don't exceed the new maximums
+    // Also ensuring they don't accidentally drop below 1 if they were at 0 from a bug
+    player.health = Math.max(1, Math.min(player.health, player.maxHealth));
+    player.mana = Math.max(0, Math.min(player.mana, player.maxMana));
+    player.stamina = Math.max(0, Math.min(player.stamina, player.maxStamina));
+    player.psyche = Math.max(0, Math.min(player.psyche, player.maxPsyche));
 }
 
 const applyTheme = (theme) => {
