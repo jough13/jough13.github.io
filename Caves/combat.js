@@ -1629,6 +1629,16 @@ function handlePlayerDeath() {
         const item = player.inventory[i];
         let placed = false;
         
+        // --- Shatter magic items on death to prevent them reverting to base items ---
+        const template = ITEM_DATA[item.tile] || ITEM_DATA[item.templateId];
+        const isModified = item.statBonuses || (template && item.name !== template.name);
+        
+        let dropIcon = item.tile || item.templateId || '🎒';
+        
+        if (isModified) {
+            dropIcon = '&'; // Shatters into Arcane Dust because the floor cannot hold magic JSON data
+        }
+        
         for (let r = 0; r <= 2 && !placed; r++) {
             for (let dy = -r; dy <= r && !placed; dy++) {
                 for (let dx = -r; dx <= r && !placed; dx++) {
@@ -1642,8 +1652,7 @@ function handlePlayerDeath() {
 
                     // Check both generic plains floor and specific dungeon floor
                     if (tile === validFloor || tile === '.') {
-                        const dropIcon = item.tile || item.templateId || '🎒';
-
+                        
                         if (gameState.mapMode === 'overworld') {
                             const cX = Math.floor(tx / chunkManager.CHUNK_SIZE);
                             const cY = Math.floor(ty / chunkManager.CHUNK_SIZE);
