@@ -1218,21 +1218,8 @@ async function attemptMovePlayer(newX, newY) {
         const tileId = `${newX},${-newY}`;
 
         if (tileData.type === 'journal') {
-            // New centralized handler
-            grantLoreDiscovery(tileId); // tileId is used as unique key for map locations
-
-            // For the Codex, we also want to mark the ITEM ID as found, not just the map coordinate.
-            // This requires a slight shift: tracking "Lore Item IDs" separate from "Map Coordinates".
-            // For simplicity, we can assume 'grantLoreDiscovery' handles both if we pass the right ID.
-            // Let's rely on ITEM_DATA keys being unique enough for now.
-
-            // To make the set system work, we need to track the ITEM TEMPLATE ID (e.g. "📜1")
-            // alongside the specific map tile coordinates.
-            if (!gameState.foundCodexEntries) gameState.foundCodexEntries = new Set();
-            gameState.foundCodexEntries.add(newTile); // Add "📜1"
-            playerRef.update({
-                foundCodexEntries: Array.from(gameState.foundCodexEntries)
-            });
+            // Pass BOTH the Map ID and the Item Tile (e.g., '📜1')
+            grantLoreDiscovery(tileId, newTile); 
 
             loreTitle.textContent = tileData.title;
             loreContent.textContent = tileData.content;
