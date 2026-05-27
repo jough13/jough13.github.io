@@ -3412,16 +3412,40 @@ restartButton.onclick = () => {
     player.x = 0;
     player.y = 0;
 
-    // 2. Restore Vitals
+    // 2. Preserve Class/Race Base Stats while restoring Vitals
+    // We do NOT call createDefaultPlayerState() here because we want to keep
+    // their name, race, class, talents, map pins, and metrics!
+    
+    // If they have the Elixir bonuses from our previous fix, preserve them!
+    const permHpBonus = player.bonusMaxHealth || 0;
+    const permManaBonus = player.bonusMaxMana || 0;
+    const permStamBonus = player.bonusMaxStamina || 0;
+    const permPsychBonus = player.bonusMaxPsyche || 0;
+    
+    if (typeof recalculateDerivedStats === 'function') {
+        recalculateDerivedStats();
+    }
+    
     player.health = player.maxHealth;
     player.stamina = player.maxStamina;
     player.mana = player.maxMana;
-    player.hunger = 50;
-    player.thirst = 50;
+    player.psyche = player.maxPsyche;
     
-    // Clear buffs
+    player.hunger = player.maxHunger;
+    player.thirst = player.maxThirst;
+    
+    // Clear temporary buffs/debuffs
     player.poisonTurns = 0;
     player.frostbiteTurns = 0;
+    player.burnTurns = 0;
+    player.madnessTurns = 0;
+    player.rootTurns = 0;
+    player.strengthBonusTurns = 0;
+    player.defenseBonusTurns = 0;
+    player.shieldTurns = 0;
+    
+    // Clear companion
+    player.companion = null;
 
     // 3. Give Starter Gear (Hardcore penalty: Rags)
     player.inventory = [
@@ -3429,7 +3453,10 @@ restartButton.onclick = () => {
     ];
     player.equipment = {
         weapon: { name: 'Fists', damage: 0 },
-        armor: { name: 'Tattered Rags', defense: 0 }
+        armor: { name: 'Tattered Rags', defense: 0 },
+        offhand: null,
+        accessory: null,
+        ammo: null
     };
 
     // 4. Reset Map Mode to Overworld
@@ -3443,7 +3470,9 @@ restartButton.onclick = () => {
     gameState.lootedTiles.clear(); 
     player.discoveredPOIs = [];
 
-    // 5. Save "Alive" State & Wiped Map to DB (Using merge to protect Lore/Bestiary/Stash!)
+    // 5. Save "Alive" State & Wiped Map to DB
+    // We DO NOT merge here. We overwrite the document so the wiped inventory is enforced.
+    // However, because we mutated the LIVE player object, their lore, skills, and stats are perfectly intact!
     const resetState = {
         ...player,
         discoveredRegions: [],
@@ -3452,7 +3481,7 @@ restartButton.onclick = () => {
         discoveredPOIs: []
     };
     
-    playerRef.set(sanitizeForFirebase(resetState), { merge: true });
+    playerRef.set(sanitizeForFirebase(resetState));
 
     // 6. UI Cleanup
     gameOverModal.classList.add('hidden');
