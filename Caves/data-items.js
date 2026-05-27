@@ -2158,10 +2158,13 @@ window.ITEM_DATA = {
             
             // Log the modifiers
             chosenMutators.forEach(m => logMessage(`{orange:Modifier: ${window.REALM_MUTATORS[m].name} - ${window.REALM_MUTATORS[m].description}}`));
-
-            // Clear the map memory so the engine is forced to redraw the new realm
+            
+            // Clear the map memory and DETACH Firebase listeners so the old realm doesn't ghost in
             chunkManager.loadedChunks = {};
             chunkManager.worldState = {};
+            Object.values(worldStateListeners).forEach(unsub => unsub());
+            worldStateListeners = {};
+            if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.clearAll();
             state.sharedEnemies = {}; // Clear old dimension enemies
             state.exploredChunks = new Set(); // Reset exploration for this realm
 
