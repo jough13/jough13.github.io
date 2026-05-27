@@ -391,10 +391,23 @@ async function attemptMovePlayer(newX, newY) {
                 logMessage(`You attack the ${targetName} for ${playerDamage} damage!`);
             }
 
+            // --- 🚨 LOCK THE ENGINE ---
             isProcessingMove = true;
-            await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
             
-            isProcessingMove = false;
+            try {
+                // We await the network transaction. If it fails, execution jumps to 'catch' (if it exists) 
+                // and then ALWAYS executes the 'finally' block.
+                await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
+            } catch (err) {
+                console.error("Combat transaction failed or timed out:", err);
+                // The handleOverworldCombat function also has its own catch, but this guarantees 
+                // that even if something breaks upstream, we catch it here and don't freeze the game.
+            } finally {
+                // --- 🚨 UNLOCK THE ENGINE ---
+                // This is guaranteed to run no matter what happens in the await above!
+                isProcessingMove = false;
+            }
+            
             endPlayerTurn();
             render();
             return;
