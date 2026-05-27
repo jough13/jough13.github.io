@@ -2235,7 +2235,11 @@ function endPlayerTurn(turnUpdates = {}) {
         x: gameState.player.x,
         y: gameState.player.y,
         activeTreasure: gameState.activeTreasure || null,
-        weather: gameState.weather || 'clear'
+        weather: gameState.weather || 'clear',
+        
+        // --- MULTIVERSE STATE ---
+        currentRealm: gameState.currentRealm || 0,
+        realmMutators: gameState.realmMutators || []
     };
 
     // OPTIMIZATION: Only serialize massive sets if they were flagged as changed in attemptMovePlayer
@@ -3038,6 +3042,10 @@ async function enterGame(playerData) {
 
     gameState.weather = playerData.weather || 'clear';
     gameState.mapMode = playerData.mapMode || 'overworld';
+    
+    // --- LOAD MULTIVERSE STATE ---
+    gameState.currentRealm = playerData.currentRealm || 0;
+    gameState.realmMutators = playerData.realmMutators || [];
     
     // Chunk Tracking
     const startChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
