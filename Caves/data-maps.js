@@ -331,8 +331,96 @@ window.TILE_DATA = {
         flavor: "A gaping abyss stares back at you. Cold air rushes up from the depths."
     },
     '⛺': {
-        type: 'campsite',
-        flavor: "An abandoned campsite. The embers are still warm."
+        type: 'campsite_entrance',
+        flavor: "A quiet, safe place to rest your head."
+    },
+    '📋': {
+        type: 'anomaly',
+        name: 'Camp Ledger',
+        flavor: "A logbook tracking your campsite improvements.",
+        onInteract: (state, x, y) => {
+            const p = state.player;
+            if (!p.campsiteUpgrades) p.campsiteUpgrades = [];
+            const upg = p.campsiteUpgrades;
+
+            // Helper to check materials
+            const countMat = (name) => p.inventory.filter(i => i.name === name && !i.isEquipped).reduce((sum, i) => sum + i.quantity, 0);
+
+            const wood = countMat('Wood Log');
+            const stone = countMat('Stone');
+            const iron = countMat('Iron Ore');
+            const dust = countMat('Void Dust');
+
+            loreTitle.textContent = "Campsite Ledger";
+            
+            let html = `<p class="text-sm text-gray-300 mb-4 border-b border-gray-700 pb-2">Invest materials to expand your campsite. (Current: ${wood} Wood, ${stone} Stone, ${iron} Iron, ${dust} Void Dust)</p>`;
+
+            const addBtn = (id, name, costStr, canAfford) => {
+                const btnClass = canAfford ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-700 opacity-50 cursor-not-allowed';
+                html += `<button id="btn_${id}" class="mb-2 ${btnClass} text-white font-bold py-2 px-4 rounded w-full flex justify-between" ${canAfford ? '' : 'disabled'}>
+                    <span>Build ${name}</span> <span class="text-xs font-normal">${costStr}</span>
+                </button>`;
+            };
+
+            if (!upg.includes('stash')) addBtn('stash', 'Stash Box', '10 Wood, 5 Stone', wood >= 10 && stone >= 5);
+            if (!upg.includes('workbench')) addBtn('workbench', 'Workbench', '15 Wood, 5 Iron', wood >= 15 && iron >= 5);
+            if (!upg.includes('tent')) addBtn('tent', 'Large Tent (Aesthetic)', '20 Wood, 10 Wolf Pelt', wood >= 20 && countMat('Wolf Pelt') >= 10);
+            if (!upg.includes('waystone')) addBtn('waystone', 'Leyline Waystone', '10 Void Dust, 500 Gold', dust >= 10 && p.coins >= 500);
+
+            if (upg.length >= 4) html += `<p class="text-green-400 font-bold text-center mt-4">Your camp is fully upgraded!</p>`;
+
+            loreContent.innerHTML = html;
+            loreModal.classList.remove('hidden');
+
+            // Bind Buttons
+            setTimeout(() => {
+                const consume = (name, qty) => {
+                    let needed = qty;
+                    for (let i = p.inventory.length - 1; i >= 0; i--) {
+                        if (needed <= 0) break;
+                        let item = p.inventory[i];
+                        if (item.name === name && !item.isEquipped) {
+                            let take = Math.min(item.quantity, needed);
+                            item.quantity -= take;
+                            needed -= take;
+                            if (item.quantity <= 0) p.inventory.splice(i, 1);
+                        }
+                    }
+                };
+
+                const bindUpgrade = (id, reqs, action) => {
+                    const btn = document.getElementById(`btn_${id}`);
+                    if (btn) btn.onclick = () => {
+                        reqs();
+                        p.campsiteUpgrades.push(id);
+                        action();
+                        logMessage(`{green:Campsite upgraded: ${id.toUpperCase()}!}`);
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                        loreModal.classList.add('hidden');
+                        
+                        // Force map to redraw with new item!
+                        chunkManager.generateCampsite();
+                        gameState.mapDirty = true;
+                        render();
+                        
+                        playerRef.update({ 
+                            campsiteUpgrades: p.campsiteUpgrades, 
+                            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory,
+                            coins: p.coins
+                        });
+                        renderInventory();
+                    };
+                };
+
+                bindUpgrade('stash', () => { consume('Wood Log', 10); consume('Stone', 5); }, () => {});
+                bindUpgrade('workbench', () => { consume('Wood Log', 15); consume('Iron Ore', 5); }, () => {});
+                bindUpgrade('tent', () => { consume('Wood Log', 20); consume('Wolf Pelt', 10); }, () => {});
+                bindUpgrade('waystone', () => { consume('Void Dust', 10); p.coins -= 500; }, () => {});
+
+            }, 0);
+
+            return null;
+        }
     },
     '🏛️': {
         type: 'ruin',
