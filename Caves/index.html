@@ -427,61 +427,74 @@
     
     <!-- SETTINGS MODAL -->
     <div id="settingsModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-        <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-gray-500">
-            <h2 id="settingsTitle" class="text-2xl font-bold mb-4 border-b border-gray-500 pb-2">Game Settings</h2>
+        <!-- Added flex-col and max-h-[90vh] to ensure the box stays within the screen -->
+        <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-gray-500 flex flex-col max-h-[90vh]">
+            <h2 id="settingsTitle" class="text-2xl font-bold mb-4 border-b border-gray-500 pb-2 flex-shrink-0">Game Settings</h2>
             
-            <div class="space-y-4">
-                <h3 class="font-bold border-b border-gray-700 pb-1 text-gray-300">Audio</h3>
-                <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-800 rounded transition-colors">
-                    <span class="font-bold">🔊 Master Volume</span>
-                    <input type="checkbox" id="settingMaster" class="form-checkbox h-5 w-5 text-blue-600 rounded">
-                </label>
-                <div class="pl-4 space-y-2 border-l-2 border-gray-700 ml-2">
-                    <label class="flex items-center justify-between cursor-pointer p-1 hover:bg-gray-800 rounded">
-                        <span class="text-sm text-gray-400">🦶 Footsteps</span>
-                        <input type="checkbox" id="settingSteps" class="form-checkbox h-4 w-4 text-blue-600 rounded">
+            <!-- THE FIX: Wrap the settings in a scrollable, growing container -->
+            <div class="overflow-y-auto pr-2 custom-scrollbar flex-grow space-y-6">
+                
+                <!-- Audio Section -->
+                <div class="space-y-4">
+                    <h3 class="font-bold border-b border-gray-700 pb-1 text-gray-300">Audio</h3>
+                    <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-800 rounded transition-colors">
+                        <span class="font-bold">🔊 Master Volume</span>
+                        <input type="checkbox" id="settingMaster" class="form-checkbox h-5 w-5 text-blue-600 rounded">
                     </label>
-                    <label class="flex items-center justify-between cursor-pointer p-1 hover:bg-gray-800 rounded">
-                        <span class="text-sm text-gray-400">⚔️ Combat</span>
-                        <input type="checkbox" id="settingCombat" class="form-checkbox h-4 w-4 text-blue-600 rounded">
+                    <div class="pl-4 space-y-2 border-l-2 border-gray-700 ml-2">
+                        <label class="flex items-center justify-between cursor-pointer p-1 hover:bg-gray-800 rounded">
+                            <span class="text-sm text-gray-400">🦶 Footsteps</span>
+                            <input type="checkbox" id="settingSteps" class="form-checkbox h-4 w-4 text-blue-600 rounded">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer p-1 hover:bg-gray-800 rounded">
+                            <span class="text-sm text-gray-400">⚔️ Combat</span>
+                            <input type="checkbox" id="settingCombat" class="form-checkbox h-4 w-4 text-blue-600 rounded">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer p-1 hover:bg-gray-800 rounded">
+                            <span class="text-sm text-gray-400">✨ Magic</span>
+                            <input type="checkbox" id="settingMagic" class="form-checkbox h-4 w-4 text-blue-600 rounded">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer p-1 hover:bg-gray-800 rounded">
+                            <span class="text-sm text-gray-400">💰 Loot & UI</span>
+                            <input type="checkbox" id="settingUI" class="form-checkbox h-4 w-4 text-blue-600 rounded">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Visuals Section -->
+                <div>
+                    <h3 class="font-bold border-b border-gray-700 pb-1 text-gray-300 mb-2">Visuals</h3>
+                    <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-800 rounded transition-colors">
+                        <span class="font-bold">📺 CRT Scanlines</span>
+                        <input type="checkbox" id="settingCRT" class="form-checkbox h-5 w-5 text-blue-600 rounded">
                     </label>
-                    <label class="flex items-center justify-between cursor-pointer p-1 hover:bg-gray-800 rounded">
-                        <span class="text-sm text-gray-400">✨ Magic</span>
-                        <input type="checkbox" id="settingMagic" class="form-checkbox h-4 w-4 text-blue-600 rounded">
-                    </label>
-                    <label class="flex items-center justify-between cursor-pointer p-1 hover:bg-gray-800 rounded">
-                        <span class="text-sm text-gray-400">💰 Loot & UI</span>
-                        <input type="checkbox" id="settingUI" class="form-checkbox h-4 w-4 text-blue-600 rounded">
-                    </label>
+                </div>
+
+                <!-- Cloud Save Section -->
+                <div>
+                    <h3 class="font-bold border-b border-gray-700 pb-1 text-gray-300 mb-3">Cloud Save</h3>
+                    <div class="text-center bg-black bg-opacity-20 p-4 rounded-xl border border-gray-700">
+                        <button id="btnManualSave" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg text-lg mb-3 shadow-md transition-transform active:scale-95">
+                            💾 Save Progress
+                        </button>
+                        <p id="lastBackupLabel" class="text-xs text-gray-400 mb-3 font-mono" aria-live="polite">Checking status...</p>
+                        <div class="flex gap-2">
+                            <button id="btnBackup" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded shadow-sm transition-transform active:scale-95 text-sm">
+                                ☁️ Create Backup
+                            </button>
+                            <button id="btnRestore" class="flex-1 bg-red-900 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-sm transition-transform active:scale-95 text-sm border border-red-500">
+                                ↺ Restore
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-gray-500 mt-3 leading-tight">
+                            Backups are stored securely in the cloud.<br>Restoring overwrites current progress.
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            <h3 class="font-bold border-b border-gray-700 pb-1 mt-6 text-gray-300">Visuals</h3>
-            <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-800 rounded transition-colors">
-                <span class="font-bold">📺 CRT Scanlines</span>
-                <input type="checkbox" id="settingCRT" class="form-checkbox h-5 w-5 text-blue-600 rounded">
-            </label>
-
-            <h3 class="font-bold border-b border-gray-700 pb-1 mt-6 text-gray-300">Cloud Save</h3>
-            <div class="mt-3 text-center bg-black bg-opacity-20 p-4 rounded-xl border border-gray-700">
-                <button id="btnManualSave" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg text-lg mb-3 shadow-md transition-transform active:scale-95">
-                    💾 Save Progress
-                </button>
-                <p id="lastBackupLabel" class="text-xs text-gray-400 mb-3 font-mono" aria-live="polite">Checking status...</p>
-                <div class="flex gap-2">
-                    <button id="btnBackup" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded shadow-sm transition-transform active:scale-95 text-sm">
-                        ☁️ Create Backup
-                    </button>
-                    <button id="btnRestore" class="flex-1 bg-red-900 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-sm transition-transform active:scale-95 text-sm border border-red-500">
-                        ↺ Restore
-                    </button>
-                </div>
-                <p class="text-[10px] text-gray-500 mt-3 leading-tight">
-                    Backups are stored securely in the cloud.<br>Restoring overwrites current progress.
-                </p>
-            </div>
-
-            <button id="closeSettingsButton" class="mt-6 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">Close Settings</button>
+            <!-- flex-shrink-0 ensures the button never gets squished out of view -->
+            <button id="closeSettingsButton" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 flex-shrink-0">Close Settings</button>
         </div>
     </div>
 
