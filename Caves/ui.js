@@ -153,15 +153,19 @@ const logMessage = (text) => {
     const messageElement = document.createElement('p');
     messageElement.innerHTML = `> ${formattedText}`;
     
-    // JUICE: Slide down / fade in animation for new log messages
+    // Slide down / fade in animation for new log messages
     messageElement.style.animation = 'fade-in 0.2s ease-out';
     messageElement.style.transformOrigin = 'top center';
     
     messageLog.prepend(messageElement);
 
-    if (messageLog.children.length > 50) {
+    // --- STRICT CULLING ---
+    // Remove the oldest messages if the log exceeds 40 lines.
+    // Use a while loop because multiple messages might be appended in a single frame
+    while (messageLog.children.length > 40) {
         messageLog.removeChild(messageLog.lastChild);
     }
+    
     messageLog.scrollTop = 0;
 };
 
