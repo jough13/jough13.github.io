@@ -5,8 +5,11 @@ const EnemyNetworkManager = {
     // Helper to get chunk ID from world coordinates
     getChunkId: (x, y) => `${Math.floor(x / 16)},${Math.floor(y / 16)}`,
     
-    // Helper to get exact Firebase path for an enemy
-    getPath: (x, y, enemyId) => `worldEnemies/${Math.floor(x / 16)},${Math.floor(y / 16)}/${enemyId}`,
+    // Helper to get exact Firebase path for an enemy (ISOLATED BY REALM)
+    getPath: (x, y, enemyId) => {
+        const realmPrefix = (gameState.currentRealm === 0 || !gameState.currentRealm) ? '' : `realm_${gameState.currentRealm}/`;
+        return `worldEnemies/${realmPrefix}${Math.floor(x / 16)},${Math.floor(y / 16)}/${enemyId}`;
+    },
     
     syncChunks: function(playerX, playerY) {
         if (gameState.mapMode !== 'overworld') return;
@@ -37,7 +40,9 @@ const EnemyNetworkManager = {
     },
     
     listenToChunk: function(chunkId) {
-        const ref = rtdb.ref(`worldEnemies/${chunkId}`);
+        // --- MULTIVERSE PATH ISOLATION ---
+        const realmPrefix = (gameState.currentRealm === 0 || !gameState.currentRealm) ? '' : `realm_${gameState.currentRealm}/`;
+        const ref = rtdb.ref(`worldEnemies/${realmPrefix}${chunkId}`);
         
         const onAdded = ref.on('child_added', (snapshot) => {
             const key = snapshot.key;
