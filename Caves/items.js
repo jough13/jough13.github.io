@@ -110,17 +110,25 @@ function generateEnemyLoot(player, enemy) {
     if (gameState.mapMode === 'overworld') {
         dist = Math.sqrt(player.x * player.x + player.y * player.y);
     } else {
-        // Bulletproof extraction of coordinates from instance IDs (e.g. cave_10_20_2)
         const instanceId = gameState.currentCaveId || gameState.currentCastleId || "";
-        const parts = instanceId.split('_').map(Number).filter(n => !isNaN(n));
         
-        if (parts.length >= 2) {
-            // Usually the first two numbers are X and Y
-            const wX = parts[0]; 
-            const wY = parts[1];
-            dist = Math.sqrt(wX * wX + wY * wY);
+        // --- ENDGAME BOSS SCALING ---
+        // The Abyssal Maw doesn't have coordinates in its ID. 
+        // We force it to a massive distance to guarantee Tier 4+ and Legendary loot!
+        if (instanceId === 'cave_landmark') {
+            dist = 5000; 
         } else {
-            dist = 100; // Safe fallback
+            // Bulletproof extraction of coordinates from normal instance IDs (e.g. cave_10_20_2)
+            const parts = instanceId.split('_').map(Number).filter(n => !isNaN(n));
+            
+            if (parts.length >= 2) {
+                // Usually the first two numbers are X and Y
+                const wX = parts[0]; 
+                const wY = parts[1];
+                dist = Math.sqrt(wX * wX + wY * wY);
+            } else {
+                dist = 100; // Safe fallback for other unknown dungeon IDs
+            }
         }
     }
 
