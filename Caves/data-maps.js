@@ -1,3 +1,34 @@
+window.REALM_MUTATORS = {
+    'lava_oceans': {
+        name: "Infernal",
+        description: "The oceans have boiled away into molten rock.",
+        apply: (tile) => (tile === '~' || tile === '≈') ? '🌋' : tile, // Turns water to volcano/lava
+        enemyBuff: 1.5 // 50% stronger enemies
+    },
+    'eternal_night': {
+        name: "Umbral",
+        description: "The sun never rises here. The shadows are alive.",
+        apply: (tile) => tile, // Doesn't change terrain, but we'll hook it into the time engine
+        enemyBuff: 2.0
+    },
+    'overgrown': {
+        name: "Verdant",
+        description: "Nature has consumed everything.",
+        apply: (tile) => {
+            if (tile === 'd' || tile === 'D') return 'F'; // Turns deadlands/deserts to forest
+            if (tile === '.') return '🌳e'; // Turns plains to elder trees
+            return tile;
+        },
+        enemyBuff: 1.2
+    },
+    'shattered': {
+        name: "Shattered",
+        description: "The earth is broken. Void rifts are everywhere.",
+        apply: (tile) => (Math.random() < 0.05 && tile === '.') ? 'Ω' : tile,
+        enemyBuff: 3.0
+    }
+};
+
 window.TILE_DATA = {
     '⛵': {
         type: 'sailing_ship',
