@@ -1725,9 +1725,20 @@ function handleInstancedEnemyDeath(enemy, x, y) {
     }
 
     if (mapArray && mapArray[y]) {
-        mapArray[y][x] = droppedLoot || validFloor;
-        // THE FIX: Clear the cache so the player can pick up the new drop!
-        gameState.lootedTiles.delete(`${mapId}:${x},${-y}`); 
+        const currentTile = mapArray[y][x];
+        
+        // --- SAFE ARCHITECTURE CHECK ---
+        // Do not drop loot if it would overwrite a critical dungeon structure!
+        const criticalTiles = ['<', '>', '+', '/', '🚪', '⛰', '⛲'];
+        
+        if (criticalTiles.includes(currentTile)) {
+            logMessage("{gray:The enemy's loot was lost in the rubble.}");
+        } else {
+            // It's safe to drop the loot here!
+            mapArray[y][x] = droppedLoot || validFloor;
+            // Clear the cache so the player can pick up the new drop!
+            gameState.lootedTiles.delete(`${mapId}:${x},${-y}`); 
+        }
     }
     gameState.mapDirty = true;
 }
