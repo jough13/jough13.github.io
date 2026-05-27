@@ -2201,9 +2201,14 @@ window.ITEM_DATA = {
             state.currentRealm = 0;
             state.realmMutators = [];
             
+            // Clear the map memory and DETACH Firebase listeners
             chunkManager.loadedChunks = {};
             chunkManager.worldState = {};
+            Object.values(worldStateListeners).forEach(unsub => unsub());
+            worldStateListeners = {};
+            if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.clearAll();
             state.sharedEnemies = {};
+            state.exploredChunks = new Set();
             
             state.mapDirty = true;
             if (typeof playerRef !== 'undefined') {
@@ -2212,7 +2217,7 @@ window.ITEM_DATA = {
             return true;
         }
     },
-    
+
     // --- ELITE LOOT ---
     '🐺': { // Using the wolf icon for the pelt bundle
         name: 'Alpha Pelt',
