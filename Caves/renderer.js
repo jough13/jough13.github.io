@@ -86,7 +86,9 @@ const ParticleSystem = {
     },
 
     update: function() {
-        for (let i = this.activeParticles.length - 1; i >= 0; i--) {
+        // Swap-and-Pop Garbage Collection
+        // Avoids .splice() array re-indexing which causes V8 CPU stuttering.
+        for (let i = 0; i < this.activeParticles.length; i++) {
             const p = this.activeParticles[i];
             
             // Physics
@@ -99,10 +101,20 @@ const ParticleSystem = {
 
             p.life -= p.lifeFade; 
             
+            // If the particle is dead...
             if (p.life <= 0) {
                 p.active = false;
                 this.pool.push(p); // Recycle back to pool
-                this.activeParticles.splice(i, 1);
+                
+                // Swap the dead particle with the LAST particle in the array, then pop it.
+                // This is an O(1) operation compared to splice's O(N) operation!
+                const lastParticle = this.activeParticles[this.activeParticles.length - 1];
+                this.activeParticles[i] = lastParticle;
+                this.activeParticles.pop();
+                
+                // Because we swapped the current index with a new particle from the end,
+                // we must decrement 'i' so we don't skip processing the swapped particle!
+                i--; 
             }
         }
     },
