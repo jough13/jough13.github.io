@@ -2158,7 +2158,7 @@ window.ITEM_DATA = {
             
             // Log the modifiers
             chosenMutators.forEach(m => logMessage(`{orange:Modifier: ${window.REALM_MUTATORS[m].name} - ${window.REALM_MUTATORS[m].description}}`));
-            
+
             // Clear the map memory and DETACH Firebase listeners so the old realm doesn't ghost in
             chunkManager.loadedChunks = {};
             chunkManager.worldState = {};
@@ -2212,43 +2212,7 @@ window.ITEM_DATA = {
             return true;
         }
     },
-
-    // --- ELITE LOOT ---
-    '🐺': { // Using the wolf icon for the pelt bundle
-        name: 'Alpha Pelt',
-        type: 'junk' // Valuable sell item
-    },
-    '🏠p': {
-        name: 'Prime Tuning Fork',
-        type: 'consumable',
-        tile: '🏠',
-        description: "Striking it returns you to Realm 0 (The Prime Overworld).",
-        effect: (state) => {
-            if (state.currentRealm === 0 || !state.currentRealm) {
-                logMessage("{gray:You are already in the Prime Realm.}");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                return false;
-            }
-            
-            logMessage("{cyan:You strike the fork. The familiar hum of the Prime Realm pulls you back.}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-            
-            state.screenShake = 30;
-            state.currentRealm = 0;
-            state.realmMutators = [];
-            
-            chunkManager.loadedChunks = {};
-            chunkManager.worldState = {};
-            state.sharedEnemies = {};
-            
-            state.mapDirty = true;
-            if (typeof playerRef !== 'undefined') {
-                playerRef.update({ currentRealm: 0, realmMutators: [] });
-            }
-            return true;
-        }
-    },
-
+    
     // --- ELITE LOOT ---
     '🐺': { // Using the wolf icon for the pelt bundle
         name: 'Alpha Pelt',
