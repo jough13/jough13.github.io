@@ -2121,6 +2121,131 @@ window.ITEM_DATA = {
             }
         }
     },
+
+    // --- THE MULTIVERSE KEYS ---
+    '🧭v': {
+        name: 'Void Astrolabe',
+        type: 'consumable',
+        tile: '🧭',
+        description: "Tunes the leylines to a parallel dimension. Use it on open ground.",
+        effect: (state) => {
+            if (state.mapMode !== 'overworld') {
+                logMessage("{red:You must be under the open sky to tear reality.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return false;
+            }
+
+            // Generate a random Realm ID between 1 and 999,999
+            const newRealmId = Math.floor(Math.random() * 999999) + 1;
+            
+            // Randomly pick 1 to 2 mutators
+            const mutatorKeys = Object.keys(window.REALM_MUTATORS);
+            const numMutators = Math.random() < 0.2 ? 2 : 1;
+            const chosenMutators = [];
+            for(let i=0; i<numMutators; i++) {
+                chosenMutators.push(mutatorKeys[Math.floor(Math.random() * mutatorKeys.length)]);
+            }
+
+            logMessage(`{purple:Reality tears open! You step into Realm #${newRealmId}...}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            
+            // Trigger Massive Screen Shake
+            state.screenShake = 50;
+
+            // Apply Realm Shift
+            state.currentRealm = newRealmId;
+            state.realmMutators = chosenMutators;
+            
+            // Log the modifiers
+            chosenMutators.forEach(m => logMessage(`{orange:Modifier: ${window.REALM_MUTATORS[m].name} - ${window.REALM_MUTATORS[m].description}}`));
+
+            // Clear the map memory so the engine is forced to redraw the new realm
+            chunkManager.loadedChunks = {};
+            chunkManager.worldState = {};
+            state.sharedEnemies = {}; // Clear old dimension enemies
+            state.exploredChunks = new Set(); // Reset exploration for this realm
+
+            // Keep the player at their current X/Y, but the world around them instantly changes!
+            state.mapDirty = true;
+            
+            // Force save the dimension change to Firebase
+            if (typeof playerRef !== 'undefined') {
+                playerRef.update({
+                    currentRealm: state.currentRealm,
+                    realmMutators: state.realmMutators
+                });
+            }
+
+            return true; // Consumes the Astrolabe
+        }
+    },
+    '🏠p': {
+        name: 'Prime Tuning Fork',
+        type: 'consumable',
+        tile: '🏠',
+        description: "Striking it returns you to Realm 0 (The Prime Overworld).",
+        effect: (state) => {
+            if (state.currentRealm === 0 || !state.currentRealm) {
+                logMessage("{gray:You are already in the Prime Realm.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return false;
+            }
+            
+            logMessage("{cyan:You strike the fork. The familiar hum of the Prime Realm pulls you back.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            
+            state.screenShake = 30;
+            state.currentRealm = 0;
+            state.realmMutators = [];
+            
+            chunkManager.loadedChunks = {};
+            chunkManager.worldState = {};
+            state.sharedEnemies = {};
+            
+            state.mapDirty = true;
+            if (typeof playerRef !== 'undefined') {
+                playerRef.update({ currentRealm: 0, realmMutators: [] });
+            }
+            return true;
+        }
+    },
+
+    // --- ELITE LOOT ---
+    '🐺': { // Using the wolf icon for the pelt bundle
+        name: 'Alpha Pelt',
+        type: 'junk' // Valuable sell item
+    },
+    '🏠p': {
+        name: 'Prime Tuning Fork',
+        type: 'consumable',
+        tile: '🏠',
+        description: "Striking it returns you to Realm 0 (The Prime Overworld).",
+        effect: (state) => {
+            if (state.currentRealm === 0 || !state.currentRealm) {
+                logMessage("{gray:You are already in the Prime Realm.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return false;
+            }
+            
+            logMessage("{cyan:You strike the fork. The familiar hum of the Prime Realm pulls you back.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            
+            state.screenShake = 30;
+            state.currentRealm = 0;
+            state.realmMutators = [];
+            
+            chunkManager.loadedChunks = {};
+            chunkManager.worldState = {};
+            state.sharedEnemies = {};
+            
+            state.mapDirty = true;
+            if (typeof playerRef !== 'undefined') {
+                playerRef.update({ currentRealm: 0, realmMutators: [] });
+            }
+            return true;
+        }
+    },
+
     // --- ELITE LOOT ---
     '🐺': { // Using the wolf icon for the pelt bundle
         name: 'Alpha Pelt',
