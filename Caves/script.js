@@ -1,5 +1,32 @@
 // Globals
 
+// --- Anti-Cheat Tracking ---
+let lastValidatedState = null;
+const MAX_GOLD_PER_TICK = 5000; // Max gold you could reasonably earn between saves
+const MAX_XP_PER_TICK = 10000;  // Max XP you could reasonably earn between saves
+
+function validateStateBeforeSave(currentState) {
+    if (!lastValidatedState) return true; // First load is always trusted
+
+    const goldDiff = (currentState.coins || 0) - (lastValidatedState.coins || 0);
+    const xpDiff = (currentState.xp || 0) - (lastValidatedState.xp || 0);
+    const levelDiff = (currentState.level || 1) - (lastValidatedState.level || 1);
+
+    // 1. Check for impossible jumps
+    if (goldDiff > MAX_GOLD_PER_TICK || xpDiff > MAX_XP_PER_TICK || levelDiff > 5) {
+        console.error(`🚨 ANTI-CHEAT TRIGGERED: Impossible stat jump detected. Gold diff: ${goldDiff}, XP diff: ${xpDiff}`);
+        return false;
+    }
+
+    // 2. Prevent negative vital manipulation
+    if (currentState.health < 0 || currentState.coins < 0) {
+        console.error(`🚨 ANTI-CHEAT TRIGGERED: Negative value injection detected.`);
+        return false;
+    }
+
+    return true; // State is clean
+}
+
 /**
  * Queues a Firestore update. If another update comes in before the timer fires,
  * the previous one is cancelled and the new one takes its place.
@@ -18,9 +45,20 @@ function triggerDebouncedSave(updates) {
     // It guarantees one save exactly every X minutes, no matter how much you move.
     if (saveTimeout) return;
 
-    // Set to 3 minutes (180000ms). This is a massive reduction in frequency!
+    // Set to 3 minutes (180000ms)
     saveTimeout = setTimeout(() => {
         if (playerRef && pendingSaveData) {
+            
+            // --- 🚨 ANTI-CHEAT CHECK ---
+            // Merge pending data with the live state for validation
+            const stateToVerify = { ...gameState.player, ...pendingSaveData };
+            if (!validateStateBeforeSave(stateToVerify)) {
+                logMessage("{red:Reality destabilizes. Unnatural energies detected.}");
+                // Reload the page to wipe the cheated client state and load the last clean server state
+                setTimeout(() => location.reload(), 2000);
+                return;
+            }
+
             const saveIcon = document.getElementById('saveIndicator');
             
             if (saveIcon) {
@@ -28,8 +66,12 @@ function triggerDebouncedSave(updates) {
                 saveIcon.classList.add('opacity-100');
             }
             
-            playerRef.update(sanitizeForFirebase(pendingSaveData))
+            const sanitizedData = sanitizeForFirebase(pendingSaveData);
+            playerRef.update(sanitizedData)
                 .then(() => {
+                    // Update our clean baseline after a successful save
+                    lastValidatedState = { ...gameState.player }; 
+                    
                     setTimeout(() => {
                         if (saveIcon) {
                             saveIcon.classList.remove('opacity-100');
@@ -3236,6 +3278,9 @@ async function enterGame(playerData) {
             updateRegionDisplay();
             updateExploration();
             
+            // --- SET ANTI-CHEAT BASELINE ---
+            lastValidatedState = JSON.parse(JSON.stringify(gameState.player));
+
             // Drop the loading curtain!
             loadingIndicator.classList.add('hidden');
 
