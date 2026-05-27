@@ -415,6 +415,8 @@ async function executeRangedAttack(dirX, dirY) {
             // Find it in inventory and remove it
             const invIndex = player.inventory.findIndex(i => i.isEquipped && i.slot === 'ammo');
             if (invIndex > -1) player.inventory.splice(invIndex, 1);
+            
+            // Explicitly nullify the equipment slot so the UI and combat engine know it's gone
             player.equipment.ammo = null;
         }
 
