@@ -1108,6 +1108,7 @@ function updateQuestProgress(enemyTile) {
             console.warn(`Skipping unknown quest ID in save file: ${questId}`);
             continue;
         }
+        
         // 2. Check if the player's quest data is valid (not null/undefined)
         if (!playerQuest || typeof playerQuest !== 'object') {
             console.warn(`Skipping corrupted quest data for: ${questId}`);
@@ -1115,12 +1116,18 @@ function updateQuestProgress(enemyTile) {
         }
 
         // Is this an active quest, not yet complete, and for this enemy type?
-        if (playerQuest.status === 'active' &&
-            questData.enemy === enemyTile &&
-            playerQuest.kills < questData.needed) {
+        // Note: questData.needed is checked dynamically
+        if (playerQuest.status === 'active' && questData.enemy === enemyTile) {
             
-            playerQuest.kills++;
-            logMessage(`Bounty: (${playerQuest.kills} / ${questData.needed})`);
+            // --- NaN CORRUPTION PROTECTION ---
+            // If kills is undefined, null, or NaN, safely coerce it to 0 before incrementing!
+            let currentKills = Number(playerQuest.kills);
+            if (isNaN(currentKills)) currentKills = 0;
+            
+            if (currentKills < questData.needed) {
+                playerQuest.kills = currentKills + 1;
+                logMessage(`Bounty: (${playerQuest.kills} / ${questData.needed})`);
+            }
         }
     }
 }
