@@ -6,23 +6,23 @@
  */
 
 function triggerDebouncedSave(updates) {
-    if (saveTimeout) clearTimeout(saveTimeout);
-    
-    // Merge new updates into existing pending data
+    // Merge new updates into existing pending data safely
     if (pendingSaveData === null) {
         pendingSaveData = { ...updates };
     } else {
         pendingSaveData = { ...pendingSaveData, ...updates };
     }
-    
-    // Note: We DO NOT show the icon here anymore. We are just silently queuing the data.
 
-    // Increased to 90000ms (90 seconds) for very infrequent background saving
+    // If a save is already queued, DO NOT reset the timer!
+    // This converts the logic from a "Debounce" to a "Throttle".
+    // It guarantees one save exactly every X minutes, no matter how much you move.
+    if (saveTimeout) return;
+
+    // Set to 3 minutes (180000ms). This is a massive reduction in frequency!
     saveTimeout = setTimeout(() => {
         if (playerRef && pendingSaveData) {
             const saveIcon = document.getElementById('saveIndicator');
             
-            // Show the icon ONLY when we actually execute the write to the database
             if (saveIcon) {
                 saveIcon.classList.remove('opacity-0');
                 saveIcon.classList.add('opacity-100');
@@ -30,20 +30,19 @@ function triggerDebouncedSave(updates) {
             
             playerRef.update(sanitizeForFirebase(pendingSaveData))
                 .then(() => {
-                    // Fade out after the save is successfully written
                     setTimeout(() => {
                         if (saveIcon) {
                             saveIcon.classList.remove('opacity-100');
                             saveIcon.classList.add('opacity-0');
                         }
-                    }, 1500); // Keep it visible for 1.5s so the player sees it happened
+                    }, 1500); 
                 })
                 .catch(console.error);
         }
         
         saveTimeout = null;
         pendingSaveData = null;
-    }, 90000); 
+    }, 180000); // 3 minutes (180,000 milliseconds)
 }
 
 function flushPendingSave(updates = null) {
@@ -2186,22 +2185,10 @@ function endPlayerTurn(turnUpdates = {}) {
     if (updates.discoveredRegions) finalUpdates.discoveredRegions = updates.discoveredRegions;
 
     // --- 7. SAVE LOGIC (OPTIMIZED) ---
-    if (gameState.mapMode === 'overworld') {
-        const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
-        const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
-        const currentChunkId = `${currentChunkX},${currentChunkY}`;
-
-        if (lastPlayerChunkId !== currentChunkId) {
-            // flushPendingSave already writes to Firebase, so we just call this!
-            flushPendingSave(finalUpdates); 
-            lastPlayerChunkId = currentChunkId; 
-        } else {
-            triggerDebouncedSave(finalUpdates);
-        }
-    } else {
-        // Use debounced saving for instances too to prevent Firebase throttling
-        triggerDebouncedSave(finalUpdates);
-    }
+    // We no longer force a save every single time you cross a 16x16 chunk boundary.
+    // Every single stat, item, and map update is cleanly routed through the background throttler!
+    
+    triggerDebouncedSave(finalUpdates);
 
     // --- 8. PASSIVE TALENTS ---
     // PALADIN: HOLY AURA
