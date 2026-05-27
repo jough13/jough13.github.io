@@ -376,6 +376,9 @@ async function processOverworldEnemyTurns() {
     };
 
     for (const enemyId of activeEnemyIds) {
+        // --- Stop processing enemies if the player is already dead! ---
+        if (gameState.player.health <= 0) break;
+
         if (processedIdsThisFrame.has(enemyId)) continue;
 
         const enemy = gameState.sharedEnemies[enemyId];
@@ -835,6 +838,8 @@ function processEnemyTurns() {
     const enemiesToMove = [...gameState.instancedEnemies];
 
     enemiesToMove.forEach(enemy => {
+        // --- Stop processing enemies if the player is already dead! ---
+        if (gameState.player.health <= 0) return;
 
         if (enemy.rootTurns > 0) {
             enemy.rootTurns--;
