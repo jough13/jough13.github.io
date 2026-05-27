@@ -1047,12 +1047,22 @@ window.ITEM_DATA = {
                 return false;
             }
             
+            // --- PRE-CHECK CAPACITY TO FIX BYPASS GLITCH ---
+            const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle');
+            const waterStack = state.player.inventory.find(i => i.name === 'Clean Water');
+
+            // If we don't have a bottle stack, and this ISN'T our last water, we need a brand new slot.
+            if (!existingBottle && waterStack && waterStack.quantity > 1) {
+                if (state.player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
+                    logMessage("{red:You must clear an inventory slot for the empty bottle before drinking.}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                    return false; // Block the drink!
+                }
+            }
+
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 40);
             logMessage("Ahhh. Crisp and cold. {blue:(+40 Thirst)}");
             triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue'); 
-
-            const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle');
-            const waterStack = state.player.inventory.find(i => i.name === 'Clean Water');
 
             // Case 1: We already have a stack of Empty Bottles. Add to it.
             if (existingBottle) {
@@ -1064,17 +1074,11 @@ window.ITEM_DATA = {
                 waterStack.name = 'Empty Bottle';
                 waterStack.tile = '🫙';
                 waterStack.type = 'consumable';
-                waterStack.effect = ITEM_DATA['🫙'].effect; // Fixes the "Morphed Bottle" bug!
+                waterStack.effect = ITEM_DATA['🫙'].effect; 
                 return false; // Do not consume the slot, we repurposed it
             } 
-            // Case 3: We have multiple waters, so we need a new inventory slot for the bottle.
+            // Case 3: We have multiple waters, so we need a new inventory slot (Which we already verified we have space for!)
             else {
-                // Verify inventory isn't full BEFORE letting them drink!
-                if (state.player.inventory.length >= 9) { // MAX_INVENTORY_SLOTS
-                    logMessage("You must clear an inventory slot for the empty bottle before drinking.");
-                    return false; // Block the drink!
-                }
-                
                 state.player.inventory.push({ 
                     name: 'Empty Bottle', 
                     type: 'consumable', 
@@ -1097,14 +1101,15 @@ window.ITEM_DATA = {
                 return false;
             }
 
-            // PRE-CHECK: Prevent inventory overflow if we need a new slot for the bottle
+            // --- PRE-CHECK CAPACITY TO FIX BYPASS GLITCH ---
             const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle');
             const waterStack = state.player.inventory.find(i => i.name === 'Dirty Water');
             
-            // If we don't have a bottle stack, and this isn't our last water, we need a new slot.
+            // If we don't have a bottle stack, and this ISN'T our last water, we need a brand new slot.
             if (!existingBottle && waterStack && waterStack.quantity > 1) {
-                if (state.player.inventory.length >= 9) { // MAX_INVENTORY_SLOTS
-                    logMessage("You must clear an inventory slot for the empty bottle before drinking.");
+                if (state.player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
+                    logMessage("{red:You must clear an inventory slot for the empty bottle before drinking.}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                     return false; // Block the drink!
                 }
             }
