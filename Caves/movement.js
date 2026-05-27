@@ -2510,11 +2510,24 @@ async function attemptMovePlayer(newX, newY) {
 
     // --- VISUAL FOOTSTEPS & SPLASHES ---
     if (typeof ParticleSystem !== 'undefined') {
-        // If stepping in water, make a blue splash. Otherwise, make a gray dust puff!
-        const isWater = (newTile === '~' || newTile === '≈');
-        const particleColor = isWater ? '#60a5fa' : '#a8a29e'; 
+        // Find the tile you are PUSHING OFF OF to get the correct particle color
+        let prevTileChar = '.';
+        if (gameState.mapMode === 'overworld') {
+            prevTileChar = chunkManager.getTile(prevX, prevY);
+        } else if (gameState.mapMode === 'dungeon') {
+            prevTileChar = chunkManager.caveMaps[gameState.currentCaveId]?.[prevY]?.[prevX] || '.';
+        } else if (gameState.mapMode === 'castle') {
+            prevTileChar = chunkManager.castleMaps[gameState.currentCastleId]?.[prevY]?.[prevX] || '.';
+        }
+
+        const isWater = (prevTileChar === '~' || prevTileChar === '≈');
         
-        // Spawn the particle at the PREVIOUS tile so it looks like you kicked it up
+        let particleColor = '#a8a29e'; // Default Gray Dust
+        if (isWater) particleColor = '#60a5fa'; // Blue Water Splash
+        else if (prevTileChar === '🌋' || prevTileChar === '🔥') particleColor = '#f97316'; // Lava/Fire Sparks
+        else if (prevTileChar === '🧊' || gameState.weather === 'snow') particleColor = '#f3f4f6'; // White Snow/Ice
+        
+        // Spawn the particle at the PREVIOUS tile so it trails behind you
         ParticleSystem.spawn(prevX, prevY, particleColor, 'dust', '', isWater ? 5 : 3);
     }
 
