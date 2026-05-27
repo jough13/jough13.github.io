@@ -758,8 +758,9 @@ const chunkManager = {
             return;
         }
 
-        // --- CHANGED: Use RTDB instead of Firestore ---
-        const ref = rtdb.ref('worldState/' + chunkId);
+        // --- MULTIVERSE PATH ISOLATION ---
+        const realmPrefix = (gameState.currentRealm === 0 || !gameState.currentRealm) ? '' : `realm_${gameState.currentRealm}/`;
+        const ref = rtdb.ref(`worldState/${realmPrefix}${chunkId}`);
 
         const listener = ref.on('value', snapshot => {
             const data = snapshot.val() || {};
@@ -823,11 +824,14 @@ const chunkManager = {
 
         if (typeof gameState !== 'undefined') gameState.mapDirty = true;
 
-        // OPTIMIZATION: Only send the specific tile that changed, not the whole chunk!
+        // Only send the specific tile that changed, not the whole chunk!
         const updateObj = {};
         updateObj[tileKey] = tileData;
 
-        rtdb.ref('worldState/' + chunkId).update(updateObj)
+        // --- MULTIVERSE PATH ISOLATION ---
+        const realmPrefix = (gameState.currentRealm === 0 || !gameState.currentRealm) ? '' : `realm_${gameState.currentRealm}/`;
+
+        rtdb.ref(`worldState/${realmPrefix}${chunkId}`).update(updateObj)
             .catch(err => console.error("Map update failed:", err));
     },
 
