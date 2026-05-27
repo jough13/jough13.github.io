@@ -1397,8 +1397,11 @@ window.ITEM_DATA = {
         tile: '🍎',
         description: "Food of the gods. {gold:Permanently increases Max HP by 1.}",
         effect: (state) => {
+            
+            state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 1;
             state.player.maxHealth += 1;
             state.player.health = state.player.maxHealth;
+
             logMessage("{gold:You feel divine power course through you! (+1 Max HP)}");
             triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
             return true;
@@ -2039,6 +2042,7 @@ window.ITEM_DATA = {
         type: 'consumable',
         description: "A legendary elixir. {gold:Permanently +5 Max HP.}",
         effect: (state) => {
+            state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 5;
             state.player.maxHealth += 5;
             state.player.health += 5;
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); 
@@ -2052,6 +2056,7 @@ window.ITEM_DATA = {
         type: 'consumable',
         description: "A legendary elixir. {gold:Permanently +5 Max Mana.}",
         effect: (state) => {
+            state.player.bonusMaxMana = (state.player.bonusMaxMana || 0) + 5;
             state.player.maxMana += 5;
             state.player.mana += 5;
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20);
