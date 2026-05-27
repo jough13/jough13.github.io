@@ -125,15 +125,33 @@ function getScaledEnemy(enemyTemplate, x, y) {
     // 3. Apply Base Scaling (10% stats per zone level)
     const multiplier = 1 + (zoneLevel * 0.10);
 
+    // --- MULTIVERSE REALM MULTIPLIER ---
+    let realmMultiplier = 1.0;
+    if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.realmMutators) {
+        // Stack the buffs of all active mutators
+        gameState.realmMutators.forEach(m => {
+            if (window.REALM_MUTATORS && window.REALM_MUTATORS[m]) {
+                realmMultiplier *= window.REALM_MUTATORS[m].enemyBuff;
+            }
+        });
+    }
+
     // Add a +/- 10% variance to health so packs of enemies don't all have identical HP!
     const variance = 0.9 + (Math.random() * 0.2); 
     
-    enemy.maxHealth = Math.max(1, Math.floor(enemy.maxHealth * multiplier * variance));
-    enemy.attack = Math.floor(enemy.attack * multiplier) + Math.floor(zoneLevel / 3);
-    enemy.xp = Math.floor(enemy.xp * multiplier);
+    // Apply Multipliers
+    enemy.maxHealth = Math.max(1, Math.floor(enemy.maxHealth * multiplier * realmMultiplier * variance));
+    enemy.attack = Math.floor(enemy.attack * multiplier * realmMultiplier) + Math.floor(zoneLevel / 3);
+    
+    // Double XP inherently in alternate dimensions on top of the scaling!
+    if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0) {
+        enemy.xp = Math.floor(enemy.xp * multiplier * realmMultiplier * 2);
+    } else {
+        enemy.xp = Math.floor(enemy.xp * multiplier);
+    }
 
     // --- SAFE ZONE NERF ---
-    // EASY WIN: Expanded safe zone from 100 to 500 tiles!
+    // Expanded safe zone from 100 to 500 tiles!
     if (dist < 500) {
         // Reduce Attack by 2 (Min 1). 
         enemy.attack = Math.max(1, enemy.attack - 2); 
