@@ -741,9 +741,37 @@ async function processOverworldEnemyTurns() {
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, `-${gameState.player.thornsValue}`, '#22c55e');
                             
                             if (enemy.health <= 0) {
-                        logMessage(`The ${enemy.name} dies upon your thorns!`);
-                        handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
-                        } else {
+                                logMessage(`The ${enemy.name} dies upon your thorns!`);
+                                
+                                // 1. Grant XP & Register Kill
+                                registerKill(enemy);
+
+                                // 2. Queue removal from Firebase RTDB
+                                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
+                                
+                                // 3. Clean up local state
+                                delete gameState.sharedEnemies[enemyId];
+                                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
+                                
+                                // 4. Mark as processed & trigger the Firebase batch update
+                                processedIdsThisFrame.add(enemyId);
+                                movesQueued = true;
+
+                                // 5. Drop Loot on the Overworld Map
+                                const baseEnemyData = ENEMY_DATA[enemy.tile];
+                                if (baseEnemyData) {
+                                    const lootData = { ...baseEnemyData, isElite: enemy.isElite };
+                                    const droppedLoot = generateEnemyLoot(gameState.player, lootData);
+                                    const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
+                                    
+                                    // Don't drop loot into deep ocean water
+                                    if (currentTerrain !== '~') {
+                                        // 2 hour TTL (Time To Live) so the map doesn't get cluttered forever
+                                        chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', 2); 
+                                        gameState.mapDirty = true;
+                                    }
+                                }
+                            } else {
                                 statusChanged = true; // Health changed, ensure we sync below
                             }
                         }
