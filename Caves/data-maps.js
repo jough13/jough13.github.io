@@ -660,6 +660,7 @@ window.TILE_DATA = {
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(x, y); 
 
+                state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 2;
                 state.player.maxHealth += 2;
                 state.player.health = state.player.maxHealth; 
 
@@ -668,7 +669,13 @@ window.TILE_DATA = {
                 }
 
                 state.lootedTiles.add(tileId);
-                return { maxHealth: state.player.maxHealth, health: state.player.health, lootedTiles: Object.fromEntries(state.lootedTiles) };
+                // Ensure bonusMaxHealth is returned so it gets saved immediately
+                return { 
+                    maxHealth: state.player.maxHealth, 
+                    health: state.player.health, 
+                    bonusMaxHealth: state.player.bonusMaxHealth, 
+                    lootedTiles: Object.fromEntries(state.lootedTiles) 
+                };
             } else {
                 logMessage("The Elder Tree stands silent and majestic.");
                 return null;
