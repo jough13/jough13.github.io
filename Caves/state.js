@@ -210,6 +210,8 @@ const gameState = {
 
     // --- World & Map State ---
     mapMode: null,            // 'overworld', 'dungeon', 'castle'
+    currentRealm: 0,          // 0 is the "Prime" Overworld. Anything else is a Shattered Realm.
+    realmMutators: [],        // Special rules for the current realm (e.g., 'lava_oceans')
     currentCaveId: null,
     currentCaveTheme: null,
     currentCastleId: null,
