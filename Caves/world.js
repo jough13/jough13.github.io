@@ -520,6 +520,40 @@ const chunkManager = {
         return map;
     },
 
+    generateCampsite() {
+        const upgrades = gameState.player.campsiteUpgrades || [];
+        
+        // Base Campsite Layout
+        const map = [
+            '🌳🌳🌳🌳🌳🌳🌳🌳🌳🌳🌳',
+            '🌳.........🌳',
+            '🌳.........🌳',
+            '🌳.........🌳',
+            '🌳....🔥....🌳',
+            '🌳.........🌳',
+            '🌳.........🌳',
+            '🌳....X....🌳',
+            '🌳🌳🌳🌳🌳🌳🌳🌳🌳🌳🌳'
+        ].map(row => row.split('')); // Convert strings to arrays so we can inject tiles
+
+        // Default Features
+        map[4][3] = '🛏️'; // Always have a bed to set spawn & heal
+        map[3][2] = '📋'; // The Ledger to buy upgrades
+
+        // Dynamic Upgrades
+        if (upgrades.includes('stash')) map[3][8] = '☒';
+        if (upgrades.includes('workbench')) map[5][2] = 'W';
+        if (upgrades.includes('waystone')) map[5][8] = '#';
+        if (upgrades.includes('tent')) {
+            map[2][4] = '⛺'; map[2][5] = '⛺'; map[2][6] = '⛺';
+            map[3][4] = '⛺'; map[3][5] = '⛺'; map[3][6] = '⛺';
+        }
+
+        // Save into castle maps so the engine treats it as a safe zone
+        this.castleMaps['player_camp'] = map;
+        return map;
+    },
+
     generateCastle(castleId, forcedLayoutKey = null) { 
         if (this.castleMaps[castleId]) return this.castleMaps[castleId];
 
@@ -558,7 +592,7 @@ const chunkManager = {
             }
         }
 
-        // --- NEW: ONLY SPAWN MERCHANTS/VILLAGERS IN SAFE CASTLES ---
+        // --- ONLY SPAWN MERCHANTS/VILLAGERS IN SAFE CASTLES ---
         if (!isDark) {
             const npcTypesToSpawn = ['N', 'N']; 
             let hasShop = baseMap.some(row => row.includes('§'));
