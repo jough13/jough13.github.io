@@ -301,7 +301,7 @@ function createDefaultPlayerState() {
         character: '@',
         color: '#3b82f6',
         coins: 0,
-        health: 5, // FIXED: Matches your recalculate Derived Stats logic
+        health: 5,
         maxHealth: 5,
         mana: 5,
         maxMana: 5,
@@ -316,8 +316,13 @@ function createDefaultPlayerState() {
         thirst: 50,
         maxThirst: 100,
 
+        bonusMaxHealth: 0,
+        bonusMaxMana: 0,
+        bonusMaxStamina: 0,
+        bonusMaxPsyche: 0,
+
         unlockedWaypoints: [], 
-        discoveredPOIs: [], // NEW: Tracks landmarks for the Map
+        discoveredPOIs: [], // Tracks landmarks for the Map
 
         obeliskProgress: [], 
 
@@ -2171,6 +2176,11 @@ function endPlayerTurn(turnUpdates = {}) {
         hunger: gameState.player.hunger,
         thirst: gameState.player.thirst,
 
+        bonusMaxHealth: gameState.player.bonusMaxHealth || 0,
+        bonusMaxMana: gameState.player.bonusMaxMana || 0,
+        bonusMaxStamina: gameState.player.bonusMaxStamina || 0,
+        bonusMaxPsyche: gameState.player.bonusMaxPsyche || 0,
+
         // Progression 
         xp: gameState.player.xp,
         level: gameState.player.level,
@@ -2615,10 +2625,11 @@ function recalculateDerivedStats() {
     const player = gameState.player;
     
     // Clamp all derived max stats so they never drop below 1!
-    let calculatedMaxHealth = Math.max(1, 5 + (player.constitution * 5));
-    let calculatedMaxMana = Math.max(1, 5 + (player.wits * 5));
-    let calculatedMaxStamina = Math.max(1, 5 + (player.endurance * 5));
-    let calculatedMaxPsyche = Math.max(1, 7 + (player.willpower * 3));
+    let calculatedMaxHealth = Math.max(1, 5 + (player.constitution * 5)) + (player.bonusMaxHealth || 0);
+    let calculatedMaxMana = Math.max(1, 5 + (player.wits * 5)) + (player.bonusMaxMana || 0);
+    let calculatedMaxStamina = Math.max(1, 5 + (player.endurance * 5)) + (player.bonusMaxStamina || 0);
+    let calculatedMaxPsyche = Math.max(1, 7 + (player.willpower * 3)) + (player.bonusMaxPsyche || 0);
+
 
     if (player.completedLoreSets) {
         if (player.completedLoreSets.includes('void_research')) calculatedMaxMana += 10;
