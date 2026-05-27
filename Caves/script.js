@@ -3471,6 +3471,10 @@ restartButton.onclick = () => {
     gameState.mapMode = 'overworld';
     gameState.currentCaveId = null;
     gameState.currentCastleId = null;
+    
+    // --- RESET REALM ---
+    gameState.currentRealm = 0;
+    gameState.realmMutators = [];
 
     // Clear local memory so they can earn XP and loot chests again!
     gameState.discoveredRegions.clear();
@@ -3479,10 +3483,10 @@ restartButton.onclick = () => {
     player.discoveredPOIs = [];
 
     // 5. Save "Alive" State & Wiped Map to DB
-    // We DO NOT merge here. We overwrite the document so the wiped inventory is enforced.
-    // However, because we mutated the LIVE player object, their lore, skills, and stats are perfectly intact!
     const resetState = {
         ...player,
+        currentRealm: 0,
+        realmMutators: [],
         discoveredRegions: [],
         exploredChunks: [],
         lootedTiles: [],
