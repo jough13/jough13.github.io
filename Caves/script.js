@@ -3103,6 +3103,14 @@ async function enterGame(playerData) {
         messageDiv.appendChild(nameStrong);
         messageDiv.appendChild(msgSpan); 
         chatMessages.prepend(messageDiv);
+
+        // --- GLOBAL CHAT MEMORY LEAK ---
+        // Prevent the DOM from growing infinitely by removing the oldest message
+        // once we hit a sensible cap (50 messages).
+        while (chatMessages.children.length > 50) {
+            chatMessages.removeChild(chatMessages.lastChild);
+        }
+
         chatMessages.scrollTop = chatMessages.scrollHeight;
     });
 
