@@ -86,7 +86,7 @@ const ParticleSystem = {
     },
 
     update: function() {
-        // Swap-and-Pop Garbage Collection
+        // PERFORMANCE WIN: Swap-and-Pop Garbage Collection
         // Avoids .splice() array re-indexing which causes V8 CPU stuttering.
         for (let i = 0; i < this.activeParticles.length; i++) {
             const p = this.activeParticles[i];
@@ -133,10 +133,11 @@ const ParticleSystem = {
 
             if (screenX < minX || screenX > maxX || screenY < minY || screenY > maxY) continue;
 
-            ctx.save();
-            ctx.globalAlpha = Math.max(0, p.life);
+            const alpha = p.life > 0 ? p.life : 0;
 
+            // PERFORMANCE WIN: Bypassing save/restore matrix pushes for static particles
             if (p.type === 'text') {
+                ctx.globalAlpha = alpha;
                 ctx.fillStyle = p.color;
                 // Pop effect: Scales up slightly as it appears
                 const scale = 1 + (Math.sin(p.life * Math.PI) * 0.3);
@@ -149,20 +150,26 @@ const ParticleSystem = {
                 ctx.strokeText(p.text, screenX, screenY);
                 
                 ctx.fillText(p.text, screenX, screenY);
+                ctx.globalAlpha = 1.0; // Reset manually
             } else if (p.type === 'smoke') {
+                ctx.globalAlpha = alpha;
                 ctx.fillStyle = p.color;
                 ctx.beginPath();
                 ctx.arc(screenX, screenY, p.size * p.life, 0, TWO_PI);
                 ctx.fill();
+                ctx.globalAlpha = 1.0; // Reset manually
             } else {
+                // Dust uses Rotation, which necessitates a fast save/restore matrix shift
+                ctx.save();
+                ctx.globalAlpha = alpha;
                 ctx.fillStyle = p.color;
                 const currentSize = Math.max(0.5, p.size * p.life);
                 // Rotate dust particles based on their X velocity for extra juice
                 ctx.translate(screenX, screenY);
                 ctx.rotate(p.vx * 10);
                 ctx.fillRect(-currentSize/2, -currentSize/2, currentSize, currentSize);
+                ctx.restore();
             }
-            ctx.restore();
         }
     }
 };
@@ -323,7 +330,7 @@ const TileRenderer = {
             const baseRight = peakX + (width / 2);
             const baseBottom = ty + TILE_SIZE;
 
-            // JUICE: Subtle gradient rendering on the lit side of the mountain
+            // Subtle gradient rendering on the lit side of the mountain
             const gradient = ctx.createLinearGradient(peakX, peakY, peakX, baseBottom);
             gradient.addColorStop(0, '#78716c'); // Light peak
             gradient.addColorStop(1, '#57534e'); // Darker base
@@ -415,7 +422,6 @@ const TileRenderer = {
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
 
-        // PERFORMANCE: Using performance.now() instead of Date.now()
         const time = performance.now() / 2000;
         
         const wavePhase1 = time + (Math.sin(mapX * 0.2) + Math.cos(mapY * 0.2));
@@ -432,7 +438,6 @@ const TileRenderer = {
         ctx.stroke();
 
         // Secondary Faint Wave
-        ctx.save();
         ctx.globalAlpha = 0.5; 
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -440,7 +445,7 @@ const TileRenderer = {
         ctx.moveTo(tx + 4, ty + TILE_SIZE / 2 + yOffset2);
         ctx.bezierCurveTo(tx + 10, ty + TILE_SIZE / 2 + yOffset2 + 2, tx + 14, ty + TILE_SIZE / 2 + yOffset2 - 2, tx + TILE_SIZE - 4, ty + TILE_SIZE / 2 + yOffset2);
         ctx.stroke();
-        ctx.restore();
+        ctx.globalAlpha = 1.0; // Reset
 
         // JUICE: Sunlight Glints (Sparkles randomly appearing on waves)
         const seed = Math.sin(mapX * 12.98 + mapY * 78.23);
@@ -461,8 +466,6 @@ const TileRenderer = {
         const time = performance.now();
         const flicker = Math.sin(time / 100) * 3;
 
-        ctx.save();
-        
         // Outer Orange Glow
         ctx.fillStyle = 'rgba(249, 115, 22, 0.4)'; 
         ctx.beginPath(); ctx.arc(tx, ty - 4, 8 + (flicker * 0.5), 0, TWO_PI); ctx.fill();
@@ -474,7 +477,6 @@ const TileRenderer = {
         // Inner Yellow Core
         ctx.fillStyle = '#facc15'; 
         ctx.beginPath(); ctx.arc(tx, ty - 4, 2 + (flicker * 0.1), 0, TWO_PI); ctx.fill();
-        ctx.restore();
 
         // JUICE: Environmental Smoke Particle Emission
         // Only trigger randomly (approx 2 times per second at 60fps) to save pool space
@@ -491,7 +493,6 @@ const TileRenderer = {
         const pulse = Math.sin(performance.now() / 300);
         const size = 6 + (pulse * 2);
 
-        ctx.save();
         ctx.fillStyle = 'rgba(168, 85, 247, 0.4)';
         ctx.beginPath(); ctx.arc(tx, ty, size + 4, 0, TWO_PI); ctx.fill();
         
@@ -501,7 +502,6 @@ const TileRenderer = {
         
         ctx.fillStyle = '#581c87';
         ctx.beginPath(); ctx.arc(tx, ty, size / 2, 0, TWO_PI); ctx.fill();
-        ctx.restore();
     },
 
     // 🧱 Enhanced Wall Renderer
@@ -533,26 +533,29 @@ const TileRenderer = {
         }
     },
 
+    // Bypassing save/restore entirely by manually resetting
     drawTelegraph: (ctx, x, y) => {
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
 
         const alpha = 0.3 + (Math.sin(performance.now() / 150) * 0.15); 
 
-        ctx.save();
-        ctx.fillStyle = `rgba(220, 38, 38, ${alpha})`; 
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = '#dc2626'; 
         ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
 
+        ctx.globalAlpha = 1.0;
         ctx.strokeStyle = '#ef4444';
         ctx.lineWidth = 2;
         ctx.strokeRect(tx, ty, TILE_SIZE, TILE_SIZE);
 
+        ctx.globalAlpha = 0.5;
         ctx.beginPath();
         ctx.moveTo(tx, ty); ctx.lineTo(tx + TILE_SIZE, ty + TILE_SIZE);
         ctx.moveTo(tx + TILE_SIZE, ty); ctx.lineTo(tx, ty + TILE_SIZE);
-        ctx.globalAlpha = 0.5;
         ctx.stroke();
-        ctx.restore();
+
+        ctx.globalAlpha = 1.0; // Reset for engine
     },
 
     // 🩸 UI: High-Fidelity Health Bars
@@ -567,12 +570,10 @@ const TileRenderer = {
         const barHeight = 4;
         const yOffset = TILE_SIZE - barHeight - 1; 
 
-        ctx.save();
-
-        // Drop shadow
-        ctx.shadowColor = "rgba(0,0,0,0.8)";
-        ctx.shadowBlur = 2;
-        ctx.shadowOffsetY = 1;
+        // PERFORMANCE WIN: Native Drop Shadows (ctx.shadowColor/Blur) are extremely slow.
+        // Drawing a black rectangle 1px offset achieves the exact same visual depth instantly.
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; 
+        ctx.beginPath(); ctx.roundRect(tx + 2, ty + yOffset + 1, barWidth, barHeight, 2); ctx.fill();
 
         // Container Pill (Black background)
         ctx.fillStyle = '#111827'; 
@@ -588,7 +589,6 @@ const TileRenderer = {
         grad.addColorStop(0, colorTop);
         grad.addColorStop(1, colorBot);
 
-        ctx.shadowColor = "transparent"; 
         ctx.fillStyle = grad;
         ctx.beginPath(); ctx.roundRect(tx + 1, ty + yOffset, barWidth * percent, barHeight, 2); ctx.fill();
 
@@ -596,8 +596,6 @@ const TileRenderer = {
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.roundRect(tx + 1, ty + yOffset, barWidth, barHeight, 2); ctx.stroke();
-
-        ctx.restore();
     }
 };
 
@@ -669,7 +667,8 @@ function drawLighting(ctx, pScreenX, pScreenY) {
 
         // Draw one single massive rectangle over the whole screen (Max Performance)
         ctx.fillStyle = darknessGradient;
-        ctx.fillRect(-TILE_SIZE * 2, -TILE_SIZE * 2, (VIEWPORT_WIDTH + 4) * TILE_SIZE, (VIEWPORT_HEIGHT + 4) * TILE_SIZE);
+        const padSize = TILE_SIZE * 2;
+        ctx.fillRect(-padSize, -padSize, (VIEWPORT_WIDTH + 4) * TILE_SIZE, (VIEWPORT_HEIGHT + 4) * TILE_SIZE);
     }
 
     // --- Nighttime Fireflies ---
@@ -699,7 +698,9 @@ function drawLighting(ctx, pScreenX, pScreenY) {
 
 // --- HEAVY RENDERING (Only runs when moving) ---
 function renderTerrainCache(startX, startY) {
-    // Use the new padded dimensions
+    // Cache calculations
+    const padSize = TILE_SIZE * 2;
+    const halfTile = TILE_SIZE / 2;
     const paddedWidth = (VIEWPORT_WIDTH + 4) * TILE_SIZE;
     const paddedHeight = (VIEWPORT_HEIGHT + 4) * TILE_SIZE;
 
@@ -715,7 +716,23 @@ function renderTerrainCache(startX, startY) {
 
     terrainCtx.save();
     // Shift down and right to allow drawing at negative coordinates
-    terrainCtx.translate(TILE_SIZE * 2, TILE_SIZE * 2);
+    terrainCtx.translate(padSize, padSize);
+
+    // Lift heavy dictionary lookups OUT of the 1500 iteration x/y loop!
+    let currentCaveThemeObj = null;
+    let currentCastleMap = null;
+    let currentCaveMap = null;
+    let activeMapMode = gameState.mapMode;
+
+    if (activeMapMode === 'dungeon') {
+        currentCaveThemeObj = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+        currentCaveMap = chunkManager.caveMaps[gameState.currentCaveId];
+    } else if (activeMapMode === 'castle') {
+        currentCastleMap = chunkManager.castleMaps[gameState.currentCastleId];
+    }
+
+    // Resolve emoji-width checking function once
+    const isWideCharCheck = typeof isWideChar === 'function' ? isWideChar : (c) => /\p{Extended_Pictographic}/u.test(c);
 
     // INCREASED loop bounds to match the new +4 buffer
     for (let y = -2; y <= VIEWPORT_HEIGHT + 2; y++) {
@@ -729,25 +746,21 @@ function renderTerrainCache(startX, startY) {
             let bgColor = null;
 
             // --- RESOLVE TILE TYPE ---
-            if (gameState.mapMode === 'dungeon') {
-                const map = chunkManager.caveMaps[gameState.currentCaveId];
-                tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
-                const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
-                
-                bgColor = theme.colors.floor;
+            if (activeMapMode === 'dungeon') {
+                tile = (currentCaveMap && currentCaveMap[mapY] && currentCaveMap[mapY][mapX]) ? currentCaveMap[mapY][mapX] : ' ';
+                bgColor = currentCaveThemeObj.colors.floor;
 
-                if (tile === theme.wall) {
-                    TileRenderer.drawWall(terrainCtx, x, y, theme.colors.wall, 'rgba(0,0,0,0.2)', 'rough');
-                } else if (tile === theme.floor) {
-                    TileRenderer.drawBase(terrainCtx, x, y, theme.colors.floor);
+                if (tile === currentCaveThemeObj.wall) {
+                    TileRenderer.drawWall(terrainCtx, x, y, currentCaveThemeObj.colors.wall, 'rgba(0,0,0,0.2)', 'rough');
+                } else if (tile === currentCaveThemeObj.floor) {
+                    TileRenderer.drawBase(terrainCtx, x, y, bgColor);
                 } else {
-                    TileRenderer.drawBase(terrainCtx, x, y, theme.colors.floor);
+                    TileRenderer.drawBase(terrainCtx, x, y, bgColor);
                     fgChar = tile;
                 }
             } 
-            else if (gameState.mapMode === 'castle') {
-                const map = chunkManager.castleMaps[gameState.currentCastleId];
-                tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
+            else if (activeMapMode === 'castle') {
+                tile = (currentCastleMap && currentCastleMap[mapY] && currentCastleMap[mapY][mapX]) ? currentCastleMap[mapY][mapX] : ' ';
                 
                 // Base cobblestone/dark stone floor color
                 bgColor = '#44403c'; 
@@ -802,7 +815,6 @@ function renderTerrainCache(startX, startY) {
                         case '/': fgChar = '/'; fgColor = '#000'; break;
                         default:
                             fgChar = tile;
-                            const isWideCharCheck = typeof isWideChar === 'function' ? isWideChar : (c) => /\p{Extended_Pictographic}/u.test(c);
                             if (ENEMY_DATA[tile]) fgColor = ENEMY_DATA[tile].color || '#ef4444';
                             break;
                     }
@@ -823,9 +835,8 @@ function renderTerrainCache(startX, startY) {
                     }
                 } else {
                     terrainCtx.fillStyle = fgColor;
-                    const isWideCharCheck = typeof isWideChar === 'function' ? isWideChar : (c) => /\p{Extended_Pictographic}/u.test(c);
                     terrainCtx.font = isWideCharCheck(fgChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
-                    terrainCtx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                    terrainCtx.fillText(fgChar, x * TILE_SIZE + halfTile, y * TILE_SIZE + halfTile);
                 }
             }
         }
