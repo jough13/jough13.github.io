@@ -1106,18 +1106,41 @@ async function attemptMovePlayer(newX, newY) {
                 const tileId = `${newX},${-newY}`;
                 const seed = stringToSeed(WORLD_SEED + ':' + tileId);
                 const random = Alea(seed);
+                
                 if (random() < 0.05) {
-                    logMessage("You push against the rock... and it gives way! You've found a hidden passage! +50 XP");
-                    grantXp(50);
-                    chunkManager.setWorldTile(newX, newY, '⛰');
+                    // --- Protect the XP ---
+                    if (!gameState.foundLore) gameState.foundLore = new Set();
+                    
+                    if (!gameState.foundLore.has(`cave_discovery_${tileId}`)) {
+                        logMessage("{gold:You push against the rock... and it gives way! You've found a hidden passage! (+50 XP)}");
+                        grantXp(50);
+                        
+                        // Mark this specific cave as "found" so they never get XP for it again
+                        gameState.foundLore.add(`cave_discovery_${tileId}`);
+                        if (typeof playerRef !== 'undefined' && playerRef) {
+                            playerRef.update({
+                                foundLore: Array.from(gameState.foundLore)
+                            });
+                        }
+                    } else {
+                        logMessage("You clear away the rubble, reopening the hidden passage.");
+                    }
+
+                    // --- GENERATE CAVE ---
+                    // Note: We use a 24-hour TTL (Time To Live) so the cave entrance persists on the map
+                    // for a while so they don't have to keep "bumping" it to see it.
+                    chunkManager.setWorldTile(newX, newY, '⛰', 24);
+                    
                     gameState.mapMode = 'dungeon';
                     gameState.currentCaveId = `cave_${newX}_${newY}`;
                     gameState.overworldExit = {
                         x: gameState.player.x,
                         y: gameState.player.y
                     };
+                    
                     const caveMap = chunkManager.generateCave(gameState.currentCaveId);
                     gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId];
+                    
                     for (let y = 0; y < caveMap.length; y++) {
                         const x = caveMap[y].indexOf('>');
                         if (x !== -1) {
@@ -1126,8 +1149,10 @@ async function attemptMovePlayer(newX, newY) {
                             break;
                         }
                     }
+                    
                     const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
                     gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+                    
                     logMessage("You enter the " + (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') + "...");
                     updateRegionDisplay();
                     gameState.mapDirty = true;
