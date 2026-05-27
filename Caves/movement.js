@@ -1367,35 +1367,47 @@ async function attemptMovePlayer(newX, newY) {
             }
         }
 
-        if (tileData.type === 'campsite') {
-            logMessage("You rest at the abandoned camp...");
-            gameState.player.health = gameState.player.maxHealth;
-            gameState.player.stamina = gameState.player.maxStamina;
-            gameState.player.mana = gameState.player.maxMana;
-            gameState.player.psyche = gameState.player.maxPsyche;
+        if (tileData.type === 'campsite_entrance') {
+            gameState.mapMode = 'castle'; // Treat it as a safe castle internally
+            gameState.currentCastleId = 'player_camp';
             
-            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
-            triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
+            // Save where we are in the overworld so we can exit back to it
+            gameState.overworldExit = {
+                x: gameState.player.x,
+                y: gameState.player.y
+            };
             
-            // EXPLORATION REWARD: Campsites now give the Well Rested Buff!
+            // Generate the dynamic map based on your upgrades
+            chunkManager.generateCampsite();
+            
+            // Place player on the entrance tile inside the camp
+            gameState.player.x = 5; 
+            gameState.player.y = 7; 
+            
+            gameState.instancedEnemies = [];
+            gameState.friendlyNpcs = [];
+            
+            logMessage("{green:You enter your personal campsite.}");
+            
+            // EXPLORATION REWARD: Keep the Well Rested buff logic!
             if (gameState.player.strengthBonusTurns < 10) {
                 gameState.player.strengthBonus = 2;
                 gameState.player.strengthBonusTurns = 50;
-                logMessage("{gold:The fire warms your bones. You feel Well Rested! (+2 Str for 50 turns)}");
+                logMessage("{gold:The safety of the camp inspires you! (+2 Str for 50 turns)}");
                 triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
                 renderEquipment();
-            } else {
-                logMessage("The fire warms your bones. You feel fully restored.");
+                
+                playerRef.update({
+                    strengthBonus: gameState.player.strengthBonus,
+                    strengthBonusTurns: gameState.player.strengthBonusTurns
+                });
             }
 
-            playerRef.update({
-                health: gameState.player.health,
-                stamina: gameState.player.stamina,
-                mana: gameState.player.mana,
-                psyche: gameState.player.psyche,
-                strengthBonus: gameState.player.strengthBonus,
-                strengthBonusTurns: gameState.player.strengthBonusTurns
-            });
+            updateRegionDisplay();
+            gameState.mapDirty = true;
+            render();
+            syncPlayerState();
+            return;
         }
 
         if (tileData.type === 'ruin') {
