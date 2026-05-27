@@ -2323,10 +2323,29 @@ function drinkFromSource() {
 
 function handleChatCommand(message) {
     // 1. Remove the leading '/' and split into parts
-    const raw = message.substring(1); // "give Rusty Sword 2"
-    const parts = raw.split(' ');     // ["give", "Rusty", "Sword", "2"]
+    const raw = message.substring(1); 
+    const parts = raw.split(' ');     
     const command = parts[0].toLowerCase();
     const args = parts.slice(1);
+
+    // --- 🚨 SECURITY: ADMIN GUARD ---
+    // Define the emails of developers/admins here
+    const ADMIN_EMAILS = [
+        "your.email@gmail.com", // <-- CHANGE THIS TO YOUR ACTUAL GOOGLE/FIREBASE EMAIL
+        "admin@cavesandcastles.com"
+    ];
+
+    // List of commands that require admin privileges
+    const protectedCommands = ['purge', 'nuke', 'god', 'heal', 'tp', 'give'];
+
+    if (protectedCommands.includes(command)) {
+        // Check if the current user is logged in and their email is in the admin list
+        if (!auth.currentUser || !ADMIN_EMAILS.includes(auth.currentUser.email)) {
+            logMessage("{red:Unauthorized. You do not have permission to use this command.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+    }
 
     // 2. Command Switch
     switch (command) {
@@ -2335,6 +2354,20 @@ function handleChatCommand(message) {
         case 'commands':
             logMessage("--- Available Commands ---");
             logMessage("/who : List online players");
+            logMessage("/stuck : Teleport to spawn (0,0)");
+            
+            // Only show admin commands to actual admins!
+            if (auth.currentUser && ADMIN_EMAILS.includes(auth.currentUser.email)) {
+                logMessage("--- Admin Commands ---");
+                logMessage("/tp [x] [y] : Teleport to coordinates");
+                logMessage("/give [item name] [qty] : Spawn an item");
+                logMessage("/heal : Full restore (Cheat)");
+                logMessage("/god : Toggle God Mode");
+                logMessage("/nuke : Despawn all overworld enemies");
+                logMessage("/purge : Force-delete current map chunk");
+            }
+            break;
+            
             logMessage("/stuck : Teleport to spawn (0,0)");
             logMessage("/tp [x] [y] : Teleport to coordinates");
             logMessage("/give [item name] [qty] : Spawn an item");
