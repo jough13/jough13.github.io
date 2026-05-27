@@ -1047,46 +1047,51 @@ window.ITEM_DATA = {
                 return false;
             }
             
-            // --- PRE-CHECK CAPACITY TO FIX BYPASS GLITCH ---
-            const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle');
-            const waterStack = state.player.inventory.find(i => i.name === 'Clean Water');
+            const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle' && !i.isEquipped);
+            const waterStack = state.player.inventory.find(i => i.name === 'Clean Water' && !i.isEquipped);
 
-            // If we don't have a bottle stack, and this ISN'T our last water, we need a brand new slot.
+            // --- CAPACITY CHECK (The "Double Drink" Fix) ---
+            // If we have no existing Empty Bottle stack, AND we have more than 1 water left, 
+            // we will need a brand new slot for the bottle.
             if (!existingBottle && waterStack && waterStack.quantity > 1) {
                 if (state.player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
                     logMessage("{red:You must clear an inventory slot for the empty bottle before drinking.}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                    return false; // Block the drink!
+                    return false; // Block the drink entirely!
                 }
             }
 
+            // Apply Vitals
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 40);
             logMessage("Ahhh. Crisp and cold. {blue:(+40 Thirst)}");
             triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue'); 
 
-            // Case 1: We already have a stack of Empty Bottles. Add to it.
+            // --- INVENTORY MANAGEMENT ---
             if (existingBottle) {
+                // Case 1: We already have an empty bottle stack. Just increment it.
                 existingBottle.quantity++;
-                return true; // Consume 1 water
+                return true; // The game engine will deduct 1 'Clean Water' automatically.
             } 
-            // Case 2: No bottle stack, and this is our LAST water. Morph it in-place.
             else if (waterStack && waterStack.quantity === 1) {
+                // Case 2: This is our LAST water. Morph this exact slot into an Empty Bottle.
                 waterStack.name = 'Empty Bottle';
                 waterStack.tile = '🫙';
+                waterStack.templateId = '🫙'; // CRITICAL: Ensure template ID matches so it saves/loads correctly
                 waterStack.type = 'consumable';
                 waterStack.effect = ITEM_DATA['🫙'].effect; 
-                return false; // Do not consume the slot, we repurposed it
+                return false; // Return FALSE so the game engine doesn't deduct the quantity (destroying the bottle we just made)
             } 
-            // Case 3: We have multiple waters, so we need a new inventory slot (Which we already verified we have space for!)
             else {
+                // Case 3: We have multiple waters, and we verified above we have empty inventory space.
                 state.player.inventory.push({ 
+                    templateId: '🫙',
                     name: 'Empty Bottle', 
                     type: 'consumable', 
                     quantity: 1, 
                     tile: '🫙',
                     effect: ITEM_DATA['🫙'].effect
                 });
-                return true; 
+                return true; // The game engine will deduct 1 'Clean Water' automatically.
             }
         }
     },
@@ -1101,46 +1106,44 @@ window.ITEM_DATA = {
                 return false;
             }
 
-            // --- PRE-CHECK CAPACITY TO FIX BYPASS GLITCH ---
-            const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle');
-            const waterStack = state.player.inventory.find(i => i.name === 'Dirty Water');
+            const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle' && !i.isEquipped);
+            const waterStack = state.player.inventory.find(i => i.name === 'Dirty Water' && !i.isEquipped);
             
-            // If we don't have a bottle stack, and this ISN'T our last water, we need a brand new slot.
+            // --- CAPACITY CHECK (The "Double Drink" Fix) ---
             if (!existingBottle && waterStack && waterStack.quantity > 1) {
                 if (state.player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
                     logMessage("{red:You must clear an inventory slot for the empty bottle before drinking.}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                    return false; // Block the drink!
+                    return false; 
                 }
             }
             
-            // --- Apply the Drink Effects ---
+            // Apply Vitals
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 15);
             logMessage("You choke it down. {blue:(+15 Thirst)}");
             
-            // 20% chance to feel sick
+            // Poison Chance
             if (Math.random() < 0.2) {
                 logMessage("Your stomach churns... {purple:(Poisoned)}");
                 state.player.poisonTurns = 3;
             }
 
-            // --- Inventory Management ---
-            // Case 1: We already have a stack of Empty Bottles. Add to it.
+            // --- INVENTORY MANAGEMENT ---
             if (existingBottle) {
                 existingBottle.quantity++;
                 return true; 
             } 
-            // Case 2: No bottle stack, and this is our LAST water. Morph it in-place.
             else if (waterStack && waterStack.quantity === 1) {
                 waterStack.name = 'Empty Bottle';
                 waterStack.tile = '🫙';
+                waterStack.templateId = '🫙';
                 waterStack.type = 'consumable';
                 waterStack.effect = ITEM_DATA['🫙'].effect; 
                 return false; 
             } 
-            // Case 3: We have multiple waters, and we already confirmed we have space above.
             else {
                 state.player.inventory.push({ 
+                    templateId: '🫙',
                     name: 'Empty Bottle', 
                     type: 'consumable', 
                     quantity: 1, 
