@@ -106,6 +106,11 @@ const gameState = {
         psyche: 10,
         maxPsyche: 10,
 
+        bonusMaxHealth: 0,
+        bonusMaxMana: 0,
+        bonusMaxStamina: 0,
+        bonusMaxPsyche: 0,
+
         // Survival Mechanics
         hunger: 50, 
         maxHunger: 100,
