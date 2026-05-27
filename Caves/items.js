@@ -642,27 +642,40 @@ function useInventoryItem(itemIndex) {
         let data = null;
         let learned = false;
 
+        // --- DEFINE THE MAX LEVEL CAP ---
+        const MAX_ABILITY_LEVEL = 10; 
+
         if (itemToUse.type === 'spellbook') {
             data = SPELL_DATA[itemToUse.spellId];
+            const currentLevel = player.spellbook[itemToUse.spellId] || 0;
+
             if (!data) {
                 logMessage("Dud item.");
             } else if (player.level < data.requiredLevel) {
                 logMessage(`Requires Level ${data.requiredLevel}.`);
+            } else if (currentLevel >= MAX_ABILITY_LEVEL) {
+                logMessage(`{red:You have already mastered ${data.name} (Max Level ${MAX_ABILITY_LEVEL}).}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             } else {
-                player.spellbook[itemToUse.spellId] = (player.spellbook[itemToUse.spellId] || 0) + 1;
-                logMessage(player.spellbook[itemToUse.spellId] === 1 ? `{purple:Learned ${data.name}!}` : `{purple:Upgraded ${data.name}!}`);
+                player.spellbook[itemToUse.spellId] = currentLevel + 1;
+                logMessage(player.spellbook[itemToUse.spellId] === 1 ? `{purple:Learned ${data.name}!}` : `{purple:Upgraded ${data.name} to Level ${player.spellbook[itemToUse.spellId]}!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                 learned = true;
             }
         } else if (itemToUse.type === 'skillbook') {
             data = SKILL_DATA[itemToUse.skillId];
+            const currentLevel = player.skillbook[itemToUse.skillId] || 0;
+
             if (!data) {
                 logMessage("Dud item.");
             } else if (player.level < data.requiredLevel) {
                 logMessage(`Requires Level ${data.requiredLevel}.`);
+            } else if (currentLevel >= MAX_ABILITY_LEVEL) {
+                logMessage(`{red:You have already mastered ${data.name} (Max Level ${MAX_ABILITY_LEVEL}).}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             } else {
-                player.skillbook[itemToUse.skillId] = (player.skillbook[itemToUse.skillId] || 0) + 1;
-                logMessage(player.skillbook[itemToUse.skillId] === 1 ? `{blue:Learned ${data.name}!}` : `{blue:Upgraded ${data.name}!}`);
+                player.skillbook[itemToUse.skillId] = currentLevel + 1;
+                logMessage(player.skillbook[itemToUse.skillId] === 1 ? `{blue:Learned ${data.name}!}` : `{blue:Upgraded ${data.name} to Level ${player.skillbook[itemToUse.skillId]}!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                 learned = true;
             }
