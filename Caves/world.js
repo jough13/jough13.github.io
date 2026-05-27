@@ -866,8 +866,11 @@ const chunkManager = {
     },
 
     generateChunk(chunkX, chunkY) {
+        // --- DIMENSIONAL OVERRIDE ---
+        // If we are in Realm 0, use the base seed. Otherwise, use the realm seed!
+        const realmSeed = (gameState.currentRealm === 0 || !gameState.currentRealm) ? WORLD_SEED : `realm_${gameState.currentRealm}`;
         const chunkKey = `${chunkX},${chunkY}`;
-        const random = Alea(stringToSeed(WORLD_SEED + ':' + chunkKey));
+        const random = Alea(stringToSeed(realmSeed + ':' + chunkKey));
 
         let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE));
 
@@ -880,18 +883,21 @@ const chunkManager = {
                 const worldX = chunkX * this.CHUNK_SIZE + x;
                 const worldY = chunkY * this.CHUNK_SIZE + y;
 
-                // --- 1. DETERMINISTIC SPAWNS ---
-                const dSpawn = DETERMINISTIC_SPAWNS[`${worldX},${worldY}`];
-                if (dSpawn) {
-                    chunkData[y][x] = dSpawn;
-                    continue; 
+                // --- 1. DETERMINISTIC SPAWNS (Realm 0 Only) ---
+                if (gameState.currentRealm === 0 || !gameState.currentRealm) {
+                    const dSpawn = DETERMINISTIC_SPAWNS[`${worldX},${worldY}`];
+                    if (dSpawn) {
+                        chunkData[y][x] = dSpawn;
+                        continue; 
+                    }
                 }
 
                 const distSq = (worldX * worldX) + (worldY * worldY);
 
-                // --- BIOME GENERATION ---
-                const elev = elevationNoise.noise(worldX / 70, worldY / 70);
-                const moist = moistureNoise.noise(worldX / 50, worldY / 50);
+                // --- BIOME GENERATION (Offset Z by Realm) ---
+                const realmOffset = (gameState.currentRealm || 0) * 100;
+                const elev = elevationNoise.noise(worldX / 70, worldY / 70, realmOffset);
+                const moist = moistureNoise.noise(worldX / 50, worldY / 50, realmOffset);
 
                 let tile = '.';
                 if (elev < 0.35) tile = '~';
@@ -901,11 +907,21 @@ const chunkManager = {
                 else if (moist < 0.15) tile = 'D';
                 else if (moist > 0.55) tile = 'F';
 
-                // --- NATURAL SPAWN SAFETY OVERRIDE ---
-                if (distSq <= 100) { 
+                // --- NATURAL SPAWN SAFETY OVERRIDE (Realm 0 Only) ---
+                if ((gameState.currentRealm === 0 || !gameState.currentRealm) && distSq <= 100) { 
                     if (['^', '~', '≈', 'd'].includes(tile)) {
                         tile = moist > 0.5 ? 'F' : '.'; 
                     }
+                }
+
+                // --- APPLY REALM MUTATORS ---
+                if (gameState.currentRealm !== 0 && gameState.realmMutators) {
+                    gameState.realmMutators.forEach(mutatorKey => {
+                        const mutator = window.REALM_MUTATORS[mutatorKey];
+                        if (mutator && typeof mutator.apply === 'function') {
+                            tile = mutator.apply(tile);
+                        }
+                    });
                 }
 
                 const featureRoll = random();
@@ -1005,7 +1021,7 @@ const chunkManager = {
                         chunkData[y][x] = featureTile;
                     }
                 }
-                // --- ADD THIS: SHIPWRECKS (Water & Shorelines) ---
+                // --- SHIPWRECKS (Water & Shorelines) ---
                 else if (featureRoll > 0.0020 && featureRoll < 0.0024) {
                     let isShipwreckSpot = false;
                     
@@ -1016,10 +1032,10 @@ const chunkManager = {
                     // 2. If it's on land, check if it's on a beach/shoreline
                     else if (['.', 'D', 'd', 'F'].includes(tile)) {
                         // Check the elevation noise 1 tile in every direction to see if it drops below sea level (< 0.35)
-                        const eN = elevationNoise.noise(worldX / 70, (worldY - 1) / 70);
-                        const eS = elevationNoise.noise(worldX / 70, (worldY + 1) / 70);
-                        const eE = elevationNoise.noise((worldX + 1) / 70, worldY / 70);
-                        const eW = elevationNoise.noise((worldX - 1) / 70, worldY / 70);
+                        const eN = elevationNoise.noise(worldX / 70, (worldY - 1) / 70, realmOffset);
+                        const eS = elevationNoise.noise(worldX / 70, (worldY + 1) / 70, realmOffset);
+                        const eE = elevationNoise.noise((worldX + 1) / 70, worldY / 70, realmOffset);
+                        const eW = elevationNoise.noise((worldX - 1) / 70, worldY / 70, realmOffset);
                         
                         if (eN < 0.35 || eS < 0.35 || eE < 0.35 || eW < 0.35) {
                             isShipwreckSpot = true; // It's a shore!
@@ -1060,9 +1076,13 @@ const chunkManager = {
                     if (tile === 'd') spawnChance = 0.0040;
                     if (tile === '^') spawnChance = 0.0020;
                     if (tile === '~') spawnChance = 0.0015; // Sea monsters spawn rate
+                    
+                    // Increase spawn chances in alternate dimensions!
+                    if (gameState.currentRealm !== 0) spawnChance *= 2.0;
 
                     if (hostileRoll < spawnChance) {
-                        const effectiveDistSq = (distSq < 40000) ? 0 : distSq; // safe zone dist < 200
+                        // If in realm 0 and dist < 200, effective dist is 0 (safe zone). Else true dist.
+                        const effectiveDistSq = ((gameState.currentRealm === 0 || !gameState.currentRealm) && distSq < 40000) ? 0 : distSq; 
                         const enemyTile = this.getEnemySpawn(tile, effectiveDistSq, random);
 
                         if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
@@ -1078,6 +1098,9 @@ const chunkManager = {
                     else if (tile === 'F' && hostileRoll < 0.03) {
                         chunkData[y][x] = '🌳';
                     }
+                    else if (tile === '🌋' && hostileRoll < 0.02) {
+                        chunkData[y][x] = '☄️'; // Let Star Metal spawn rarely in Infernal realms!
+                    }
                     else {
                         chunkData[y][x] = tile;
                     }
@@ -1086,7 +1109,7 @@ const chunkManager = {
         }
 
         // --- ZERO-ALLOCATION SMOOTHING PASS ---
-        const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈'];
+        const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈', '🌋']; // Added lava to smoothable terrain
         
         for (let y = 1; y < this.CHUNK_SIZE - 1; y++) {
             for (let x = 1; x < this.CHUNK_SIZE - 1; x++) {
