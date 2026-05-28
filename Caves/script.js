@@ -158,6 +158,7 @@ async function manualSaveGame() {
             ...gameState.player,
             inventory: getSanitizedInventory(),
             equipment: getSanitizedEquipment(),
+            bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : (gameState.player.bank || []),
             lootedTiles: Object.fromEntries(gameState.lootedTiles),
             discoveredRegions: Array.from(gameState.discoveredRegions),
             exploredChunks: Array.from(gameState.exploredChunks),
