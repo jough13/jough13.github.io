@@ -741,6 +741,7 @@ async function attemptMovePlayer(newX, newY) {
                 quantity: 1,
                 tile: '👻'
             });
+            inventoryWasUpdated = true; 
         } else {
             logMessage("Your inventory is full, the shard falls to the ground.");
         }
@@ -966,6 +967,7 @@ async function attemptMovePlayer(newX, newY) {
                 tile: '🍐',
                 effect: ITEM_DATA['🍐'].effect
             });
+            inventoryWasUpdated = true;
             chunkManager.setWorldTile(newX, newY, 'D');
             renderInventory();
         } else {
@@ -1008,6 +1010,7 @@ async function attemptMovePlayer(newX, newY) {
                 tile: '🍷',
                 effect: ITEM_DATA['🍷'].effect
             });
+            inventoryWasUpdated = true; 
             logMessage("You found an Elixir of Life!");
         }
         chunkManager.setWorldTile(newX, newY, '.');
