@@ -5,23 +5,40 @@ let lastValidatedState = null;
 const MAX_GOLD_PER_TICK = 5000; // Max gold you could reasonably earn between saves
 const MAX_XP_PER_TICK = 10000;  // Max XP you could reasonably earn between saves
 
+// Define Admins who are allowed to bypass Anti-Cheat checks
+const ADMIN_EMAILS = [
+    "your.email@gmail.com", // <-- CHANGE THIS TO YOUR EMAIL
+    "admin@cavesandcastles.com"
+];
+
 function validateStateBeforeSave(currentState) {
     if (!lastValidatedState) return true; // First load is always trusted
+
+    // 1. Admin Bypass: If you are logged in as an admin, allow any stat modifications
+    if (auth.currentUser && ADMIN_EMAILS.includes(auth.currentUser.email)) {
+        return true; 
+    }
 
     const goldDiff = (currentState.coins || 0) - (lastValidatedState.coins || 0);
     const xpDiff = (currentState.xp || 0) - (lastValidatedState.xp || 0);
     const levelDiff = (currentState.level || 1) - (lastValidatedState.level || 1);
 
-    // 1. Check for impossible jumps
+    // 2. Check for impossible mathematical jumps
     if (goldDiff > MAX_GOLD_PER_TICK || xpDiff > MAX_XP_PER_TICK || levelDiff > 5) {
         console.error(`🚨 ANTI-CHEAT TRIGGERED: Impossible stat jump detected. Gold diff: ${goldDiff}, XP diff: ${xpDiff}`);
         return false;
     }
 
-    // 2. Prevent negative vital manipulation
+    // 3. Prevent negative vital manipulation (Underflow exploiting)
     if (currentState.health < 0 || currentState.coins < 0) {
         console.error(`🚨 ANTI-CHEAT TRIGGERED: Negative value injection detected.`);
         return false;
+    }
+
+    // 4. Prevent "God Mode" memory injection by non-admins
+    if (currentState.health > currentState.maxHealth + 10) { // +10 buffer for weird buff interactions
+         console.error(`🚨 ANTI-CHEAT TRIGGERED: Health exceeds maximum bounds.`);
+         return false;
     }
 
     return true; // State is clean
