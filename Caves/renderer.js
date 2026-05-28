@@ -811,16 +811,29 @@ function renderTerrainCache(startX, startY) {
             } 
             else { // Overworld
                 tile = chunkManager.getTile(mapX, mapY);
-                const baseTerrain = getBaseTerrain(mapX, mapY);
+                
+                // PERFORMANCE WIN: Direct array lookup instead of recalculating Perlin noise!
+                const cX = Math.floor(mapX / 16);
+                const cY = Math.floor(mapY / 16);
+                const lX = (mapX % 16 + 16) % 16;
+                const lY = (mapY % 16 + 16) % 16;
+                const chunkId = `${cX},${cY}`;
+
+                // Grab the pristine background terrain from local cache
+                let baseTerrain = '.';
+                if (chunkManager.loadedChunks[chunkId] && chunkManager.loadedChunks[chunkId][lY]) {
+                    baseTerrain = chunkManager.loadedChunks[chunkId][lY][lX];
+                }
                 
                 // Color Logic
                 bgColor = '#22c55e'; // Plains
-                if (baseTerrain === 'F') bgColor = '#14532d';
+                if (baseTerrain === 'F' || baseTerrain === '🌳e') bgColor = '#14532d';
                 else if (baseTerrain === 'd') bgColor = '#2d2d2d';
                 else if (baseTerrain === 'D') bgColor = '#fde047';
                 else if (baseTerrain === '≈') bgColor = '#422006';
-                else if (baseTerrain === '^') bgColor = '#57534e';
+                else if (baseTerrain === '^' || baseTerrain === '⛰') bgColor = '#57534e';
                 else if (baseTerrain === '~') bgColor = '#1e3a8a';
+                else if (baseTerrain === '🌋') bgColor = '#450a0a';
 
                 TileRenderer.drawBase(terrainCtx, x, y, bgColor);
 
@@ -840,9 +853,10 @@ function renderTerrainCache(startX, startY) {
                         case '=': TileRenderer.drawBase(terrainCtx, x, y, '#78350f'); break;
                         case '+': fgChar = '+'; fgColor = '#fbbf24'; break;
                         case '/': fgChar = '/'; fgColor = '#000'; break;
+                        case '🌋': fgChar = '🌋'; break; // Draw volcanoes properly!
                         default:
                             fgChar = tile;
-                            if (ENEMY_DATA[tile]) fgColor = ENEMY_DATA[tile].color || '#ef4444';
+                            if (window.ENEMY_DATA && window.ENEMY_DATA[tile]) fgColor = window.ENEMY_DATA[tile].color || '#ef4444';
                             break;
                     }
                 }
