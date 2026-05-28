@@ -741,7 +741,7 @@ async function attemptMovePlayer(newX, newY) {
                 quantity: 1,
                 tile: '👻'
             });
-            inventoryWasUpdated = true; 
+            inventoryWasUpdated = true; // Auto-save flag
         } else {
             logMessage("Your inventory is full, the shard falls to the ground.");
         }
@@ -927,6 +927,7 @@ async function attemptMovePlayer(newX, newY) {
                     tile: '♥',
                     effect: ITEM_DATA['♥'].effect
                 });
+                inventoryWasUpdated = true; // Auto-save flag
             } else if (roll < 0.6) {
                 logMessage("...and feel refreshed! (Full Heal)");
                 gameState.player.health = gameState.player.maxHealth;
@@ -967,13 +968,14 @@ async function attemptMovePlayer(newX, newY) {
                 tile: '🍐',
                 effect: ITEM_DATA['🍐'].effect
             });
-            inventoryWasUpdated = true;
+            inventoryWasUpdated = true; // Auto-save flag
             chunkManager.setWorldTile(newX, newY, 'D');
             renderInventory();
         } else {
             logMessage("Inventory full! You drop the fruit.");
         }
         return;
+    
     } else if (tileData && tileData.type === 'loot_chest') {
 
         // --- MIMIC CHECK ---
@@ -1010,7 +1012,7 @@ async function attemptMovePlayer(newX, newY) {
                 tile: '🍷',
                 effect: ITEM_DATA['🍷'].effect
             });
-            inventoryWasUpdated = true; 
+            inventoryWasUpdated = true; // Auto-save flag
             logMessage("You found an Elixir of Life!");
         }
         chunkManager.setWorldTile(newX, newY, '.');
