@@ -531,7 +531,10 @@ async function processOverworldEnemyTurns() {
             movesQueued = true;
             processedIdsThisFrame.add(enemyId);
             
-            if (gameState.player.health <= 0) handlePlayerDeath();
+            if (gameState.player.health <= 0) {
+                handlePlayerDeath();
+                break; // Stop processing any more enemies!
+            }
             continue; // Skip the rest of this turn
         }
 
@@ -584,7 +587,10 @@ async function processOverworldEnemyTurns() {
                     if (enemy.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
                     if (enemy.inflicts === 'poison') gameState.player.poisonTurns = 5;
 
-                    if (gameState.player.health <= 0) handlePlayerDeath();
+                    if (gameState.player.health <= 0) {
+                        handlePlayerDeath();
+                        break;
+                    }
                 }
             }
             
@@ -648,7 +654,10 @@ async function processOverworldEnemyTurns() {
                     logMessage(`The ${enemy.name} shoots you for {red:${dmg}} damage!`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
                     
-                    if (gameState.player.health <= 0) handlePlayerDeath();
+                    if (gameState.player.health <= 0) {
+                        handlePlayerDeath();
+                        break;
+                    }
                 }
             }
             
@@ -754,7 +763,10 @@ async function processOverworldEnemyTurns() {
                             triggerStatFlash(statDisplays.health, false);
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
                             
-                            if (gameState.player.health <= 0) handlePlayerDeath();
+                            if (gameState.player.health <= 0) {
+                                handlePlayerDeath();
+                                break;
+                            }
                         }
 
                         // --- OVERWORLD THORNS ---
@@ -1259,7 +1271,10 @@ function processEnemyTurns() {
                     logMessage(`The ${enemy.name} shoots you for {red:${dmg}} damage!`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
                     
-                    if (player.health <= 0) handlePlayerDeath();
+                    if (player.health <= 0) {
+                        handlePlayerDeath();
+                        return;
+                    }
                 }
             }
             return; // End this enemy's turn
