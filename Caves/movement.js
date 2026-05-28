@@ -2567,46 +2567,24 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     if (gameState.mapMode === 'overworld') {
-        const playerInventory = gameState.player.inventory;
-        const hasPickaxe = playerInventory.some(item => item.name === 'Pickaxe');
+        const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+        const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+        const prevChunkX = Math.floor(prevX / chunkManager.CHUNK_SIZE);
+        const prevChunkY = Math.floor(prevY / chunkManager.CHUNK_SIZE);
 
-        if (hasPickaxe) {
-            if (newTile === '^') {
-                logMessage("You use your Pickaxe to chip at the rock...");
-                if (Math.random() < 0.25) {
-                    const existingStack = playerInventory.find(item => item.name === 'Iron Ore');
-                    if (existingStack) {
-                        existingStack.quantity++;
-                        logMessage("...and find some Iron Ore!");
-                        inventoryWasUpdated = true;
-                    } else if (playerInventory.length < MAX_INVENTORY_SLOTS) {
-                        playerInventory.push({
-                            templateId: '•',
-                            name: 'Iron Ore',
-                            type: 'junk',
-                            quantity: 1,
-                            tile: '•'
-                        });
-                        logMessage("...and find some Iron Ore!");
-                        inventoryWasUpdated = true;
-                    } else {
-                        logMessage("...you find ore, but your inventory is full!");
-                    }
-                } else {
-                    logMessage("...but find nothing of value.");
+        // PERFORMANCE WIN: Only trigger heavy network syncs IF we crossed a chunk boundary!
+        if (currentChunkX !== prevChunkX || currentChunkY !== prevChunkY) {
+            // Load 3x3 chunk area around player
+            for (let y = -1; y <= 1; y++) {
+                for (let x = -1; x <= 1; x++) {
+                    chunkManager.listenToChunkState(currentChunkX + x, currentChunkY + y);
                 }
-            } else if (gameState.activeTreasure && newX === gameState.activeTreasure.x && newY === gameState.activeTreasure.y) {
-                logMessage("You dig where the map marked... clunk!");
-                logMessage("You found a Buried Chest!");
-                chunkManager.setWorldTile(newX, newY, '📦');
-                gameState.activeTreasure = null;
-                const mapIndex = playerInventory.findIndex(i => i.type === 'treasure_map');
-                if (mapIndex > -1) {
-                    playerInventory[mapIndex].quantity--;
-                    if (playerInventory[mapIndex].quantity <= 0) playerInventory.splice(mapIndex, 1);
-                    logMessage("The map crumbles to dust, its purpose fulfilled.");
-                }
-                inventoryWasUpdated = true;
+            }
+
+            chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
+
+            if (typeof EnemyNetworkManager !== 'undefined') {
+                EnemyNetworkManager.syncChunks(gameState.player.x, gameState.player.y);
             }
         }
     }
