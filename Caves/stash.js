@@ -100,7 +100,7 @@ window.handleStashTransfer = function (action, index) {
     // Save and Render. Note: getSanitizedInventory prevents Firebase crashes from functions.
     playerRef.update({ 
         inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
-        bank: player.bank 
+        bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
     });
     renderStash();
     renderInventory();
@@ -140,11 +140,11 @@ window.depositAllMaterials = function() {
 
     if (itemsMoved > 0) {
         logMessage(`{green:Mass deposited ${itemsMoved} material stacks.}`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic(); // Satisfying swoosh
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic(); 
         
         playerRef.update({ 
             inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
-            bank: player.bank 
+            bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
         });
         renderStash();
         renderInventory();
