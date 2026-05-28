@@ -3406,10 +3406,35 @@ function gameLoop(timestamp) {
 // Start the loop
 requestAnimationFrame(gameLoop);
 
-// AUTO-SAVE: Save the game if the user closes the tab or refreshes
+// ==========================================
+// AUTO-SAVE & LIFECYCLE MANAGEMENT
+// ==========================================
+
+// DESKTOP: Save the game if the user closes the tab or refreshes
 window.addEventListener('beforeunload', () => { 
     if(typeof player_id !== 'undefined' && player_id) {
         flushPendingSave(); 
+    }
+});
+
+// MOBILE: Save the game when the app is backgrounded, minimized, or tab-switched.
+// iOS Safari and Android Chrome reliably fire this, but ignore 'beforeunload'.
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && typeof player_id !== 'undefined' && player_id) {
+        console.log("App backgrounded. Flushing save data to cloud...");
+        
+        // Push any unsaved steps/inventory changes to Firebase immediately
+        flushPendingSave(); 
+        
+        // Also update the "Online Players" presence so other players see them as offline/away
+        if (typeof onlinePlayerRef !== 'undefined' && onlinePlayerRef) {
+            onlinePlayerRef.remove().catch(() => {});
+        }
+    } else if (document.visibilityState === 'visible' && typeof player_id !== 'undefined' && player_id) {
+        // When they return to the tab, put them back on the "Online Players" list
+        if (typeof syncPlayerState === 'function') {
+            syncPlayerState();
+        }
     }
 });
 
