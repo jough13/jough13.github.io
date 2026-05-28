@@ -2509,8 +2509,8 @@ async function attemptMovePlayer(newX, newY) {
     AudioSystem.playStep();
 
     // --- VISUAL FOOTSTEPS & SPLASHES ---
-    if (typeof ParticleSystem !== 'undefined') {
-        // Find the tile you are PUSHING OFF OF to get the correct particle color
+    if (typeof ParticleSystem !== 'undefined' && ParticleSystem.createFootstep) {
+        // 1. Find the exact tile you are PUSHING OFF OF to get the correct particle color
         let prevTileChar = '.';
         if (gameState.mapMode === 'overworld') {
             prevTileChar = chunkManager.getTile(prevX, prevY);
@@ -2522,13 +2522,17 @@ async function attemptMovePlayer(newX, newY) {
 
         const isWater = (prevTileChar === '~' || prevTileChar === '≈');
         
-        let particleColor = '#a8a29e'; // Default Gray Dust
+        // 2. Context-Aware Terrain Colors!
+        let particleColor = '#a8a29e'; // Default Gray Dust (Stone/Cobblestone)
         if (isWater) particleColor = '#60a5fa'; // Blue Water Splash
         else if (prevTileChar === '🌋' || prevTileChar === '🔥') particleColor = '#f97316'; // Lava/Fire Sparks
-        else if (prevTileChar === '🧊' || gameState.weather === 'snow') particleColor = '#f3f4f6'; // White Snow/Ice
+        else if (prevTileChar === '🧊' || gameState.weather === 'snow') particleColor = '#f3f4f6'; // White Snow
+        else if (prevTileChar === 'F' || prevTileChar === '.') particleColor = '#4ade80'; // Kick up green grass bits!
+        else if (prevTileChar === 'D') particleColor = '#facc15'; // Yellow desert sand
+        else if (prevTileChar === 'd') particleColor = '#52525b'; // Dark grey ash for deadlands
         
-        // Spawn the particle at the PREVIOUS tile so it trails behind you
-        ParticleSystem.spawn(prevX, prevY, particleColor, 'dust', '', isWater ? 5 : 3);
+        // 3. Spawn the particles, passing the dx/dy so they kick BACKWARDS
+        ParticleSystem.createFootstep(prevX, prevY, particleColor, dx, dy, isWater ? 6 : 4);
     }
 
     if (gameState.player.companion) {
