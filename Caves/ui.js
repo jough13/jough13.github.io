@@ -636,7 +636,15 @@ function updateRegionDisplay() {
         const currentRegionY = Math.floor(gameState.player.y / REGION_SIZE);
         const regionId = `${currentRegionX},${currentRegionY}`;
 
-        const regionName = typeof getRegionName === 'function' ? getRegionName(currentRegionX, currentRegionY) : 'Wilderness';
+        // PERFORMANCE WIN: Cache the region name so we don't recalculate RNG strings 60 times a second
+        if (!window.lastRegionCache || window.lastRegionCache.id !== regionId) {
+            window.lastRegionCache = {
+                id: regionId,
+                name: typeof getRegionName === 'function' ? getRegionName(currentRegionX, currentRegionY) : 'Wilderness'
+            };
+        }
+        
+        const regionName = window.lastRegionCache.name;
         const playerCoords = `(${gameState.player.x}, ${-gameState.player.y})`; 
         regionDisplay.textContent = `${regionName} ${playerCoords}`; 
 
