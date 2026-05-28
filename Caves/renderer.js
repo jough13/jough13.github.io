@@ -70,6 +70,33 @@ const ParticleSystem = {
         for(let i=0; i<count; i++) this.spawn(x, y, color, 'dust', '', Math.random()*4+2);
     },
 
+    // --- NEW: DIRECTIONAL FOOTSTEPS ---
+    createFootstep: function(x, y, color, dx, dy, count=4) {
+        for(let i=0; i<count; i++) {
+            if(this.pool.length === 0) return;
+            const p = this.pool.pop();
+            p.active = true;
+            // Add a tiny bit of random spread to the origin point
+            p.x = x + 0.5 + (Math.random() - 0.5) * 0.4; 
+            p.y = y + 0.5 + (Math.random() - 0.5) * 0.4;
+            p.color = color; 
+            p.type = 'dust'; 
+            p.text = '';
+            p.size = Math.random() * 3 + 1;
+            p.life = 1.0;
+            
+            // Kick dust strictly in the OPPOSITE direction of movement (-dx, -dy)
+            const spread = 0.8;
+            p.vx = (-dx * 0.08) + (Math.random() - 0.5) * spread * 0.1;
+            p.vy = (-dy * 0.08) + (Math.random() - 0.5) * spread * 0.1;
+            
+            p.gravity = 0; // ZERO GRAVITY! Dust stays on the exact tile it was kicked from
+            p.friction = 0.85; 
+            p.lifeFade = 0.05 + Math.random() * 0.05; // Fade out rapidly
+            this.activeParticles.push(p);
+        }
+    },
+
     createFloatingText: function(x, y, text, color) {
         // Add a slight random offset so simultaneous numbers don't overlap perfectly
         const offsetX = (Math.random() - 0.5) * 0.7;
