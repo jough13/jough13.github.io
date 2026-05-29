@@ -458,14 +458,16 @@ async function processOverworldEnemyTurns() {
         if (enemy.poisonTurns > 0) {
             enemy.poisonTurns--;
             enemy.health -= 1;
-            statusChanged = true;
+            logMessage(`The ${enemy.name} takes poison damage.`);
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-1", "#22c55e");
             
             if (enemy.health <= 0) {
                 logMessage(`The ${enemy.name} succumbs to poison!`);
+
                 handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
                 return;
             }
+            if (enemy.poisonTurns === 0) logMessage(`The ${enemy.name} is no longer poisoned.`);
         }
 
         let isMad = false;
@@ -1174,12 +1176,9 @@ function processEnemyTurns() {
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, `-${player.thornsValue}`, '#22c55e');
 
                     if (enemy.health <= 0) {
-                        registerKill(enemy);
-                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                        if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
-                        }
-                        map[enemy.y][enemy.x] = generateEnemyLoot(player, enemy);
+                    
+                        handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
+                    
                     }
                 }
             }
