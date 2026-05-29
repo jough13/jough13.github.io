@@ -324,8 +324,7 @@ window.TILE_DATA = {
         flavor: "A crackling fire. Good for cooking."
     },
     'Ω': {
-        type: 'dungeon_entrance',
-        getCaveId: (x, y) => `void_${x}_${y}`, 
+        type: 'void_rift',
         flavor: "The reality tears open here. You hear whispers from the other side."
     },
     '∴': {
