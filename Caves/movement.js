@@ -946,9 +946,52 @@ async function attemptMovePlayer(newX, newY) {
         return;
     }
 
+    // --- VOID RIFT AUTO-TELEPORT ---
     if (newTile === 'Ω') {
-        logMessage("A tear in reality. It is unstable.");
-        logMessage("You need a Void Key to stabilize the passage.");
+        const keyIndex = gameState.player.inventory.findIndex(i => i.name === 'Void Key');
+        
+        if (keyIndex > -1) {
+            logMessage("{purple:The Void Key resonates! Reality tears open and pulls you inside!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            
+            // Consume the key
+            gameState.player.inventory[keyIndex].quantity--;
+            if (gameState.player.inventory[keyIndex].quantity <= 0) {
+                gameState.player.inventory.splice(keyIndex, 1);
+            }
+            inventoryWasUpdated = true;
+
+            // --- TELEPORT TO VOID ---
+            gameState.mapMode = 'dungeon';
+            gameState.currentCaveId = `void_${newX}_${newY}`;
+            gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+
+            // Generate the Void
+            const voidMap = chunkManager.generateCave(gameState.currentCaveId);
+            gameState.currentCaveTheme = 'VOID';
+
+            // Find entrance ('>')
+            for (let y = 0; y < voidMap.length; y++) {
+                const x = voidMap[y].indexOf('>');
+                if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
+            }
+
+            // Setup enemies
+            const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
+            gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+
+            updateRegionDisplay();
+            gameState.mapDirty = true;
+            render();
+            syncPlayerState();
+            return; // Stop processing the move (player is teleported)
+        } else {
+            // Player does NOT have the key. Bounce them back like a wall!
+            logMessage("A tear in reality. It is unstable.");
+            logMessage("You need a Void Key to stabilize the passage.");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return; 
+        }
     }
 
     if (newTile === '🌵') {
