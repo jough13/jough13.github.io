@@ -309,69 +309,61 @@ function generateMagicItem(tier) {
     return newItem;
 }
 
+// ==========================================
+// DB SANITIZATION (FIREBASE SAFE)
+// ==========================================
+
+// Centralized safe-clone for DB writes. Explicitly strips ALL functions.
+function sanitizeItemForDB(item, forceEquipped = false) {
+    if (!item) return null;
+    
+    return {
+        templateId: item.templateId || item.tile, 
+        name: item.name || "Unknown",
+        type: item.type || null,
+        quantity: item.quantity || 1,
+        tile: item.tile || '?',
+        isEquipped: forceEquipped ? true : (item.isEquipped || false),
+        
+        damage: (item.damage !== undefined) ? item.damage : null,
+        defense: (item.defense !== undefined) ? item.defense : null,
+        
+        slot: item.slot || null,
+        statBonuses: item.statBonuses ? { ...item.statBonuses } : null,
+        spellId: item.spellId || null,
+        skillId: item.skillId || null,
+        stat: item.stat || null
+        
+        // Notice we EXPLICITLY leave out 'effect', 'onHit', 'procChance', 'inflicts'.
+        // This is what prevents the Firebase crash!
+    };
+}
+
 function getSanitizedEquipment() {
     const equip = gameState.player.equipment;
 
-    // Helper to clean a single item
-    const sanitize = (item, fallbackType) => {
-        if (!item) return null;
-        
-        return {
-            name: item.name || "Unknown",
-            type: item.type || fallbackType || null, 
-            quantity: item.quantity || 1,
-            tile: item.tile || (fallbackType === 'weapon' ? '👊' : '👕'), 
-            
-            damage: (item.damage !== undefined) ? item.damage : null,
-            defense: (item.defense !== undefined) ? item.defense : null,
-            
-            slot: item.slot || null,
-            statBonuses: item.statBonuses || null,
-            spellId: item.spellId || null,
-            skillId: item.skillId || null,
-            stat: item.stat || null,
-            isEquipped: true
-        };
-    };
+    let weapon = sanitizeItemForDB(equip.weapon, true);
+    if (!weapon) weapon = { name: 'Fists', type: 'weapon', tile: '👊', damage: 0, isEquipped: true };
 
-    let weapon = sanitize(equip.weapon, 'weapon');
-    if (!weapon) {
-        weapon = { name: 'Fists', type: 'weapon', tile: '👊', damage: 0, isEquipped: true };
-    }
-
-    let armor = sanitize(equip.armor, 'armor');
-    if (!armor) {
-        armor = { name: 'Simple Tunic', type: 'armor', tile: '👕', defense: 0, isEquipped: true };
-    }
+    let armor = sanitizeItemForDB(equip.armor, true);
+    if (!armor) armor = { name: 'Simple Tunic', type: 'armor', tile: '👕', defense: 0, isEquipped: true };
 
     return {
         weapon: weapon,
         armor: armor,
-        offhand: sanitize(equip.offhand, 'offhand'),
-        accessory: sanitize(equip.accessory, 'accessory'),
-        ammo: sanitize(equip.ammo, 'ammo')
+        offhand: sanitizeItemForDB(equip.offhand, true),
+        accessory: sanitizeItemForDB(equip.accessory, true),
+        ammo: sanitizeItemForDB(equip.ammo, true)
     };
 }
 
 function getSanitizedInventory() {
-    return gameState.player.inventory.map(item => {
-        const sourceId = item.templateId || item.tile; 
-        
-        return {
-            templateId: sourceId, 
-            name: item.name,
-            type: item.type,
-            quantity: item.quantity || 1,
-            tile: item.tile,
-            isEquipped: item.isEquipped || false,
-            damage: item.damage || null,
-            defense: item.defense || null,
-            statBonuses: item.statBonuses || null,
-            spellId: item.spellId || null,
-            skillId: item.skillId || null,
-            stat: item.stat || null,
-        };
-    });
+    return gameState.player.inventory.map(item => sanitizeItemForDB(item, false));
+}
+
+function getSanitizedBank() {
+    if (!gameState.player.bank) return [];
+    return gameState.player.bank.map(item => sanitizeItemForDB(item, false));
 }
 
 function rehydrateInventory(savedInventory) {
@@ -765,6 +757,32 @@ function useInventoryItem(itemIndex) {
         } else {
             logMessage(`The map marks a location at (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y}).`);
         }
+
+    // --- JOURNALS & LORE ---
+    } else if (['journal', 'lore', 'random_journal', 'random_lore'].includes(itemToUse.type)) {
+        
+        // Find the original item template to grab the text content
+        const template = window.ITEM_DATA[itemToUse.templateId] || window.ITEM_DATA[itemToUse.tile] || {};
+        const title = itemToUse.title || template.title || itemToUse.name;
+        const content = itemToUse.content || template.content || itemToUse.description || "The pages are illegible.";
+
+        // Grant the Codex Discovery (Used for Lore Set Collection bonuses!)
+        if (typeof grantLoreDiscovery === 'function') {
+            grantLoreDiscovery(itemToUse.templateId, itemToUse.templateId);
+        }
+
+        const loreTitle = document.getElementById('loreTitle');
+        const loreContent = document.getElementById('loreContent');
+        const loreModal = document.getElementById('loreModal');
+
+        if (loreTitle && loreContent && loreModal) {
+            loreTitle.textContent = title;
+            loreContent.textContent = content; // Modal CSS handles the \n line breaks
+            loreModal.classList.remove('hidden');
+        }
+
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+        itemUsed = false; // IMPORTANT: Do not consume the item or end the turn!
 
     // --- JUNK / UNKNOWN ---
     } else {
