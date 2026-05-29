@@ -2063,44 +2063,9 @@ window.ITEM_DATA = {
     },
     '🗝️v': {
         name: 'Void Key',
-        type: 'consumable',
+        type: 'quest', // Changed from consumable so it can't be clicked
         tile: '🗝️',
-        description: "It vibrates violently. Unlocks a Void Rift.",
-        effect: (state) => {
-            const currentTile = chunkManager.getTile(state.player.x, state.player.y);
-
-            if (currentTile === 'Ω') {
-                logMessage("You insert the key into the rift...");
-                logMessage("REALITY SHATTERS.");
-
-                // --- TELEPORT TO VOID ---
-                state.mapMode = 'dungeon';
-                state.currentCaveId = `void_${state.player.x}_${state.player.y}`;
-                state.overworldExit = { x: state.player.x, y: state.player.y };
-
-                // Generate the Void
-                const voidMap = chunkManager.generateCave(state.currentCaveId);
-                state.currentCaveTheme = 'VOID';
-
-                // Find entrance ('>')
-                for (let y = 0; y < voidMap.length; y++) {
-                    const x = voidMap[y].indexOf('>');
-                    if (x !== -1) { state.player.x = x; state.player.y = y; break; }
-                }
-
-                // Setup enemies
-                const baseEnemies = chunkManager.caveEnemies[state.currentCaveId] ||[];
-                state.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
-
-                updateRegionDisplay();
-                render();
-                syncPlayerState();
-                return true; // Consume Key
-            } else {
-                logMessage("You must be standing on a Void Rift (Ω) to use this.");
-                return false;
-            }
-        }
+        description: "It vibrates violently. Simply step on a Void Rift (Ω) to use it."
     },
 
     // --- THE MULTIVERSE KEYS ---
