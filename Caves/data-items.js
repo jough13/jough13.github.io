@@ -293,46 +293,7 @@ window.CRAFTING_RECIPES = {
         materials: { "Wood Log": 4, "Iron Ore": 1 },
         xp: 50, level: 2
     },
-    '⛵': {
-        name: 'Sailing Ship',
-        type: 'consumable',
-        tile: '⛵',
-        description: "A sturdy vessel for crossing Deep Water. Use while standing next to the ocean to deploy.",
-        effect: (state) => {
-            // Find adjacent water
-            const dirs = [[0,-1], [0,1], [-1,0], [1,0]];
-            for(let [dx, dy] of dirs) {
-                const tx = state.player.x + dx;
-                const ty = state.player.y + dy;
-                
-                // Context-aware tile fetching!
-                let t;
-                if (state.mapMode === 'overworld') {
-                    t = chunkManager.getTile(tx, ty);
-                } else if (state.mapMode === 'dungeon') {
-                    const map = chunkManager.caveMaps[state.currentCaveId];
-                    t = (map && map[ty] && map[ty][tx]) ? map[ty][tx] : ' ';
-                } else if (state.mapMode === 'castle') {
-                    const map = chunkManager.castleMaps[state.currentCastleId];
-                    t = (map && map[ty] && map[ty][tx]) ? map[ty][tx] : ' ';
-                }
-                
-                // Can only deploy in Deep Water or Swamps
-                if (t === '~' || t === '≈') {
-                    if (state.mapMode === 'overworld') chunkManager.setWorldTile(tx, ty, '⛵');
-                    else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][ty][tx] = '⛵';
-                    else chunkManager.castleMaps[state.currentCastleId][ty][tx] = '⛵';
-                    
-                    logMessage("You deploy the Sailing Ship into the water!");
-                    gameState.mapDirty = true;
-                    if (typeof render === 'function') render();
-                    return true; // Consume the item from inventory
-                }
-            }
-            logMessage("You must be standing directly next to Deep Water or a Swamp to deploy the ship.");
-            return false; // Don't consume it
-        }
-    },
+    
     // --- SURVIVAL GEAR ---
     "Campfire Kit": {
         materials: { "Wood Log": 3, "Stone": 4 },
@@ -1048,51 +1009,42 @@ window.ITEM_DATA = {
             }
             
             const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle' && !i.isEquipped);
-            const waterStack = state.player.inventory.find(i => i.name === 'Clean Water' && !i.isEquipped);
-
-            // --- CAPACITY CHECK (The "Double Drink" Fix) ---
-            // If we have no existing Empty Bottle stack, AND we have more than 1 water left, 
-            // we will need a brand new slot for the bottle.
-            if (!existingBottle && waterStack && waterStack.quantity > 1) {
-                if (state.player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
-                    logMessage("{red:You must clear an inventory slot for the empty bottle before drinking.}");
+            
+            // CAPACITY CHECK: Prevent permanent 10/9 inventory
+            // If we don't have a bottle stack to merge into, AND our inventory is full...
+            if (!existingBottle && state.player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
+                // We check if ANY of our water stacks have more than 1 quantity.
+                // If they do, drinking won't free a slot, resulting in overflowing inventory!
+                const hasLargeWaterStack = state.player.inventory.some(i => i.name === 'Clean Water' && i.quantity > 1);
+                if (hasLargeWaterStack) {
+                    logMessage("{red:Your inventory is full. Clear a slot to hold the empty bottle before drinking.}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                    return false; // Block the drink entirely!
+                    return false; 
                 }
             }
 
             // Apply Vitals
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 40);
             logMessage("Ahhh. Crisp and cold. {blue:(+40 Thirst)}");
-            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue'); 
+            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue'); 
 
-            // --- INVENTORY MANAGEMENT ---
+            // Handle Bottle
             if (existingBottle) {
-                // Case 1: We already have an empty bottle stack. Just increment it.
                 existingBottle.quantity++;
-                return true; // The game engine will deduct 1 'Clean Water' automatically.
-            } 
-            else if (waterStack && waterStack.quantity === 1) {
-                // Case 2: This is our LAST water. Morph this exact slot into an Empty Bottle.
-                waterStack.name = 'Empty Bottle';
-                waterStack.tile = '🫙';
-                waterStack.templateId = '🫙'; // CRITICAL: Ensure template ID matches so it saves/loads correctly
-                waterStack.type = 'consumable';
-                waterStack.effect = ITEM_DATA['🫙'].effect; 
-                return false; // Return FALSE so the game engine doesn't deduct the quantity (destroying the bottle we just made)
-            } 
-            else {
-                // Case 3: We have multiple waters, and we verified above we have empty inventory space.
+            } else {
+                // Temporarily pushes inventory to 10/9, but returning true ensures 
+                // the engine immediately splices the water, bringing it back to 9/9!
                 state.player.inventory.push({ 
                     templateId: '🫙',
                     name: 'Empty Bottle', 
                     type: 'consumable', 
                     quantity: 1, 
                     tile: '🫙',
-                    effect: ITEM_DATA['🫙'].effect
+                    effect: window.ITEM_DATA['🫙'].effect
                 });
-                return true; // The game engine will deduct 1 'Clean Water' automatically.
             }
+            
+            return true; // Tells the game engine to deduct 1 Clean Water
         }
     },
     '🤢': {
@@ -1107,12 +1059,12 @@ window.ITEM_DATA = {
             }
 
             const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle' && !i.isEquipped);
-            const waterStack = state.player.inventory.find(i => i.name === 'Dirty Water' && !i.isEquipped);
             
-            // --- CAPACITY CHECK (The "Double Drink" Fix) ---
-            if (!existingBottle && waterStack && waterStack.quantity > 1) {
-                if (state.player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
-                    logMessage("{red:You must clear an inventory slot for the empty bottle before drinking.}");
+            // CAPACITY CHECK
+            if (!existingBottle && state.player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
+                const hasLargeWaterStack = state.player.inventory.some(i => i.name === 'Dirty Water' && i.quantity > 1);
+                if (hasLargeWaterStack) {
+                    logMessage("{red:Your inventory is full. Clear a slot to hold the empty bottle before drinking.}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                     return false; 
                 }
@@ -1128,30 +1080,21 @@ window.ITEM_DATA = {
                 state.player.poisonTurns = 3;
             }
 
-            // --- INVENTORY MANAGEMENT ---
+            // Handle Bottle
             if (existingBottle) {
                 existingBottle.quantity++;
-                return true; 
-            } 
-            else if (waterStack && waterStack.quantity === 1) {
-                waterStack.name = 'Empty Bottle';
-                waterStack.tile = '🫙';
-                waterStack.templateId = '🫙';
-                waterStack.type = 'consumable';
-                waterStack.effect = ITEM_DATA['🫙'].effect; 
-                return false; 
-            } 
-            else {
+            } else {
                 state.player.inventory.push({ 
                     templateId: '🫙',
                     name: 'Empty Bottle', 
                     type: 'consumable', 
                     quantity: 1, 
                     tile: '🫙',
-                    effect: ITEM_DATA['🫙'].effect
+                    effect: window.ITEM_DATA['🫙'].effect
                 });
-                return true; 
             }
+            
+            return true; // Tells the game engine to deduct 1 Dirty Water
         }
     },
     '🧪f': {
