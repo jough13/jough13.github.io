@@ -1335,7 +1335,45 @@ window.ITEM_DATA = {
         tile: '☒',
         description: "Access your global storage from anywhere you place this."
     },
-
+     '⛵': {
+        name: 'Sailing Ship',
+        type: 'consumable',
+        tile: '⛵',
+        description: "A sturdy vessel for crossing Deep Water. Use while standing next to the ocean to deploy.",
+        effect: (state) => {
+            // Find adjacent water
+            const dirs = [[0,-1], [0,1], [-1,0], [1,0]];
+            for(let [dx, dy] of dirs) {
+                const tx = state.player.x + dx;
+                const ty = state.player.y + dy;
+                
+                let t;
+                if (state.mapMode === 'overworld') {
+                    t = chunkManager.getTile(tx, ty);
+                } else if (state.mapMode === 'dungeon') {
+                    const map = chunkManager.caveMaps[state.currentCaveId];
+                    t = (map && map[ty] && map[ty][tx]) ? map[ty][tx] : ' ';
+                } else if (state.mapMode === 'castle') {
+                    const map = chunkManager.castleMaps[state.currentCastleId];
+                    t = (map && map[ty] && map[ty][tx]) ? map[ty][tx] : ' ';
+                }
+                
+                // Can only deploy in Deep Water or Swamps
+                if (t === '~' || t === '≈') {
+                    if (state.mapMode === 'overworld') chunkManager.setWorldTile(tx, ty, '⛵');
+                    else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][ty][tx] = '⛵';
+                    else chunkManager.castleMaps[state.currentCastleId][ty][tx] = '⛵';
+                    
+                    logMessage("You deploy the Sailing Ship into the water!");
+                    gameState.mapDirty = true;
+                    if (typeof render === 'function') render();
+                    return true; 
+                }
+            }
+            logMessage("You must be standing directly next to Deep Water or a Swamp to deploy the ship.");
+            return false; 
+        }
+    },
     // --- RARE CONSUMABLES ---
     '🍎': {
         name: 'Golden Apple',
