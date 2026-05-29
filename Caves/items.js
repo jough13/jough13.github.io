@@ -49,6 +49,9 @@ function rehydratePlayerState(data) {
             item.slot = templateItem.slot; // Always force slot to prevent bugs
             item.tile = item.tile || templateItem.tile; // Ensure icon
             
+            item.range = item.range || templateItem.range || null;
+            item.isTwoHanded = (item.isTwoHanded !== undefined) ? item.isTwoHanded : (templateItem.isTwoHanded || false);
+            
         } else {
             // Graceful degradation for removed items
             console.warn(`Converting corrupted/missing item to Ash: ${item.name}`);
@@ -328,6 +331,9 @@ function sanitizeItemForDB(item, forceEquipped = false) {
         damage: (item.damage !== undefined) ? item.damage : null,
         defense: (item.defense !== undefined) ? item.defense : null,
         
+        range: (item.range !== undefined) ? item.range : null,
+        isTwoHanded: item.isTwoHanded || false,
+
         slot: item.slot || null,
         statBonuses: item.statBonuses ? { ...item.statBonuses } : null,
         spellId: item.spellId || null,
