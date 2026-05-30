@@ -1,3 +1,5 @@
+// --- START OF FILE audio.js ---
+
 // ==========================================
 // ADVANCED PROCEDURAL AUDIO SYSTEM
 // ==========================================
@@ -68,46 +70,83 @@ const AudioSystem = {
         return true;
     },
 
+    // --- IMMERSION: DYNAMIC ACOUSTICS & PANNING ---
+    
+    // Simulates echoes and muffling if underground
+    _getAcoustics: function() {
+        if (typeof gameState !== 'undefined' && (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle')) {
+            // Echo tail is 50% longer, high frequencies are slightly muffled
+            return { durationMult: 1.5, filterMult: 0.7 }; 
+        }
+        return { durationMult: 1.0, filterMult: 1.0 }; // Open air
+    },
+
+    // Calculates stereo panning based on horizontal distance from the player
+    _getPan: function(x) {
+        if (x === undefined || typeof gameState === 'undefined' || !gameState.player) return 0;
+        const dx = x - gameState.player.x;
+        // Max pan (1.0 or -1.0) reached at 10 tiles away
+        return Math.max(-1, Math.min(1, dx / 10));
+    },
+
     // --- CORE GENERATORS ---
 
-    playNoise: function(duration, vol = 0.1, filterFreq = 1000) {
+    playNoise: function(duration, vol = 0.1, filterFreq = 1000, x) {
         if (!this.settings.master || !this.getCtx()) return;
         
         const ctx = this._ctx;
         if (!this.noiseBuffer) this.initNoise();
 
+        const acoustics = this._getAcoustics();
+        const actualDuration = duration * acoustics.durationMult;
+
         const src = ctx.createBufferSource();
         src.buffer = this.noiseBuffer; 
         
-        // Slightly random pitch for variety
-        src.playbackRate.value = 0.8 + Math.random() * 0.4;
+        // Anti-Fatigue: Wider randomized pitch modulation
+        src.playbackRate.value = 0.6 + Math.random() * 0.8;
 
         const filter = ctx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.value = filterFreq + (Math.random() - 0.5) * 200;
+        filter.frequency.value = (filterFreq + (Math.random() - 0.5) * 200) * acoustics.filterMult;
 
         const gain = ctx.createGain();
         gain.gain.setValueAtTime(vol, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + actualDuration);
 
+        // SPATIAL AUDIO: Stereo Panning
+        let panner = null;
+        if (ctx.createStereoPanner) {
+            panner = ctx.createStereoPanner();
+            panner.pan.value = this._getPan(x);
+        }
+
+        // Build the audio graph
         src.connect(filter);
-        filter.connect(gain);
+        if (panner) {
+            filter.connect(panner);
+            panner.connect(gain);
+        } else {
+            filter.connect(gain);
+        }
         gain.connect(ctx.destination);
 
         src.start();
-        src.stop(ctx.currentTime + duration);
+        src.stop(ctx.currentTime + actualDuration);
         
         src.onended = () => {
-            src.disconnect();
-            filter.disconnect();
-            gain.disconnect();
+            src.disconnect(); filter.disconnect(); gain.disconnect();
+            if (panner) panner.disconnect();
         };
     },
 
-    playTone: function(freq, type, duration, vol = 0.1, pitchShift = true, slideTo = null) {
+    playTone: function(freq, type, duration, vol = 0.1, pitchShift = true, slideTo = null, x) {
         if (!this.settings.master || !this.getCtx()) return;
         
         const ctx = this._ctx;
+        const acoustics = this._getAcoustics();
+        const actualDuration = duration * acoustics.durationMult;
+
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         
@@ -115,27 +154,46 @@ const AudioSystem = {
         
         let finalFreq = freq;
         if (pitchShift) {
-            finalFreq = freq * (0.95 + Math.random() * 0.1); 
+            // Anti-Fatigue: Subtle pitch shift
+            finalFreq = freq * (0.92 + Math.random() * 0.16); 
         }
         
+        // Apply acoustic muffling to high frequencies
+        if (finalFreq > 500 && acoustics.filterMult < 1.0) {
+            finalFreq *= acoustics.filterMult;
+        }
+
         osc.frequency.setValueAtTime(finalFreq, ctx.currentTime);
         if (slideTo) {
-            osc.frequency.exponentialRampToValueAtTime(slideTo, ctx.currentTime + duration);
+            osc.frequency.exponentialRampToValueAtTime(slideTo, ctx.currentTime + actualDuration);
         }
 
-        gain.gain.setValueAtTime(vol, ctx.currentTime);
+        gain.gain.setValueAtTime(0.01, ctx.currentTime);
         // Add a tiny attack envelope to prevent audio popping clicks
-        gain.gain.linearRampToValueAtTime(vol * 1.2, ctx.currentTime + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+        gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + actualDuration);
 
-        osc.connect(gain);
+        // SPATIAL AUDIO
+        let panner = null;
+        if (ctx.createStereoPanner) {
+            panner = ctx.createStereoPanner();
+            panner.pan.value = this._getPan(x);
+        }
+
+        if (panner) {
+            osc.connect(panner);
+            panner.connect(gain);
+        } else {
+            osc.connect(gain);
+        }
         gain.connect(ctx.destination);
+
         osc.start();
-        osc.stop(ctx.currentTime + duration);
+        osc.stop(ctx.currentTime + actualDuration);
         
         osc.onended = () => {
-            osc.disconnect();
-            gain.disconnect();
+            osc.disconnect(); gain.disconnect();
+            if (panner) panner.disconnect();
         };
     },
 
@@ -146,22 +204,25 @@ const AudioSystem = {
         
         const ctx = this._ctx;
         const now = ctx.currentTime;
+        const acoustics = this._getAcoustics();
         
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         
         osc.type = type;
         
-        let totalDuration = notes.length * speed;
+        let totalDuration = notes.length * speed * acoustics.durationMult;
         
         // Build the sequence
         notes.forEach((freq, index) => {
             const noteTime = now + (index * speed);
             if (freq > 0) {
-                osc.frequency.setValueAtTime(freq, noteTime);
+                const adjFreq = freq * (freq > 500 ? acoustics.filterMult : 1.0);
+                osc.frequency.setValueAtTime(adjFreq, noteTime);
+                
                 gain.gain.setValueAtTime(0, noteTime);
                 gain.gain.linearRampToValueAtTime(vol, noteTime + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.01, noteTime + speed - 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.01, noteTime + (speed * acoustics.durationMult) - 0.01);
             } else {
                 // Rest note (Silence)
                 gain.gain.setValueAtTime(0, noteTime);
@@ -173,29 +234,27 @@ const AudioSystem = {
         osc.start(now);
         osc.stop(now + totalDuration);
         
-        osc.onended = () => { 
-            osc.disconnect(); 
-            gain.disconnect(); 
-        };
+        osc.onended = () => { osc.disconnect(); gain.disconnect(); };
     },
 
     // --- SPECIFIC SOUND EFFECTS ---
 
-    playStep: function() { 
+    playStep: function(x) { 
         if (!this.settings.steps) return;
         // Throttle to max 1 step sound per 80ms to prevent crunching during multi-entity movement
         if (!this._throttle('step', 80)) return; 
-        this.playNoise(0.08, 0.05, 600); 
+        this.playNoise(0.08, 0.05, 600, x); 
     },
     
-    // GAMEPLAY WIN: Dynamic Attack Types
-    playAttack: function(type = 'normal') { 
+    // GAMEPLAY WIN: Dynamic Attack Types & Spatial Panning
+    playAttack: function(type = 'normal', x) { 
         if (!this.settings.master || !this.settings.combat || !this.getCtx()) return;
         if (!this._throttle('attack', 50)) return; // Prevent overlapping sweep blowouts
         
         const ctx = this._ctx;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
+        const acoustics = this._getAcoustics();
         
         let startFreq = 300, endFreq = 50, duration = 0.1, vol = 0.1;
 
@@ -212,53 +271,67 @@ const AudioSystem = {
             osc.type = 'sine';
         }
         
-        osc.frequency.setValueAtTime(startFreq, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + duration);
+        const actualDuration = duration * acoustics.durationMult;
+
+        osc.frequency.setValueAtTime(startFreq * acoustics.filterMult, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + actualDuration);
         
-        gain.gain.setValueAtTime(vol, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + duration);
+        gain.gain.setValueAtTime(0.01, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + 0.02);
+        gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + actualDuration);
         
-        osc.connect(gain);
+        let panner = null;
+        if (ctx.createStereoPanner) {
+            panner = ctx.createStereoPanner();
+            panner.pan.value = this._getPan(x);
+        }
+
+        if (panner) {
+            osc.connect(panner); panner.connect(gain);
+        } else {
+            osc.connect(gain);
+        }
         gain.connect(ctx.destination);
+
         osc.start();
-        osc.stop(ctx.currentTime + duration);
+        osc.stop(ctx.currentTime + actualDuration);
         
-        osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+        osc.onended = () => { osc.disconnect(); gain.disconnect(); if (panner) panner.disconnect(); };
     },
 
-    playBow: function() {
+    playBow: function(x) {
         if (this.settings.combat) {
             // Pluck sound
-            this.playTone(400, 'triangle', 0.1, 0.1, true, 200);
+            this.playTone(400, 'triangle', 0.1, 0.1, true, 200, x);
             // Arrow travel whoosh
-            setTimeout(() => this.playNoise(0.15, 0.03, 2000), 20);
+            setTimeout(() => this.playNoise(0.15, 0.03, 2000, x), 20);
         }
     },
     
-    playHit: function() { 
+    playHit: function(x) { 
         if (!this.settings.combat) return;
         if (!this._throttle('hit', 80)) return;
-        this.playTone(80, 'square', 0.15, 0.1, true); 
+        this.playTone(80, 'square', 0.15, 0.1, true, null, x); 
     },
 
-    playCrit: function() {
+    playCrit: function(x) {
         if (!this.settings.combat) return;
         // High-pitched piercing ring for critical hits
-        this.playTone(1200, 'sine', 0.3, 0.15, false, 800);
-        this.playTone(80, 'square', 0.2, 0.1, true); // Accompanied by base hit impact
+        this.playTone(1200, 'sine', 0.3, 0.15, false, 800, x);
+        this.playTone(80, 'square', 0.2, 0.1, true, null, x); // Accompanied by base hit impact
     },
     
-    playMagic: function() { 
+    playMagic: function(x) { 
         if (!this.settings.magic) return;
         if (!this._throttle('magic', 100)) return;
-        this.playTone(600, 'sine', 0.3, 0.05, true, 800); 
+        this.playTone(600, 'sine', 0.3, 0.05, true, 800, x); 
     },
 
-    playHeal: function() {
+    playHeal: function(x) {
         if (!this.settings.magic) return;
         // Shimmering ascending sound
-        this.playTone(300, 'sine', 0.4, 0.05, false, 600);
-        setTimeout(() => this.playTone(400, 'sine', 0.3, 0.05, false, 800), 100);
+        this.playTone(300, 'sine', 0.4, 0.05, false, 600, x);
+        setTimeout(() => this.playTone(400, 'sine', 0.3, 0.05, false, 800, x), 100);
     },
     
     playCoin: function() { 
@@ -300,6 +373,21 @@ const AudioSystem = {
     playLootRare: function() {
         // Shimmering chime
         this.playMelody([523.25, 659.25, 783.99, 1046.50], 'sine', 0.08, 0.08);
+    },
+
+    playSecret: function() {
+        // Mysterious ascending minor chord
+        this.playMelody([329.63, 392.00, 493.88], 'triangle', 0.2, 0.08);
+    },
+
+    playWarning: function() {
+        // Sharp, alarming double-beep (Traps, Blood Moon)
+        this.playMelody([400, 0, 400], 'square', 0.1, 0.1);
+    },
+
+    playDeath: function() {
+        // Dissonant, descending dirge
+        this.playMelody([300, 280, 260, 200], 'sawtooth', 0.3, 0.15);
     }
 };
 
