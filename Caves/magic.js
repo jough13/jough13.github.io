@@ -320,45 +320,48 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         const enemyInfo = liveEnemy || getScaledEnemy(enemyData, targetX, targetY);
   
         try {
-            const transactionResult = await enemyRef.transaction(currentData => {
-                let enemy;
+            // Wrap the spell transaction in a 3-second timeout
+            const transactionResult = await window.withTimeout(
+                enemyRef.transaction(currentData => {
+                    let enemy;
 
-                if (currentData === null) {
-                    enemy = {
-                        name: enemyInfo.name, 
-                        health: enemyInfo.maxHealth,
-                        maxHealth: enemyInfo.maxHealth,
-                        attack: enemyInfo.attack,
-                        defense: enemyData.defense, 
-                        xp: enemyInfo.xp,
-                        loot: enemyData.loot,
-                        tile: tile,
-                        isElite: enemyInfo.isElite || false,
-                        color: enemyInfo.color || null
-                    };
-                } else {
-                    enemy = currentData;
-                }
+                    if (currentData === null) {
+                        enemy = {
+                            name: enemyInfo.name, 
+                            health: enemyInfo.maxHealth,
+                            maxHealth: enemyInfo.maxHealth,
+                            attack: enemyInfo.attack,
+                            defense: enemyData.defense, 
+                            xp: enemyInfo.xp,
+                            loot: enemyData.loot,
+                            tile: tile,
+                            isElite: enemyInfo.isElite || false,
+                            color: enemyInfo.color || null
+                        };
+                    } else {
+                        enemy = currentData;
+                    }
 
-                // CRITICAL ROBUSTNESS: Prevent NaN database corruption
-                enemy.health = Number(enemy.health);
-                if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+                    enemy.health = Number(enemy.health);
+                    if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
 
-                damageDealt = Math.max(1, finalDamage);
-                enemy.health -= damageDealt;
+                    damageDealt = Math.max(1, finalDamage);
+                    enemy.health -= damageDealt;
 
-                let color = '#3b82f6'; 
-                if (spellId === 'fireball' || spellId === 'meteor') color = '#f97316'; 
-                if (spellId === 'poisonBolt') color = '#22c55e'; 
+                    let color = '#3b82f6'; 
+                    if (spellId === 'fireball' || spellId === 'meteor') color = '#f97316'; 
+                    if (spellId === 'poisonBolt') color = '#22c55e'; 
 
-                if (typeof ParticleSystem !== 'undefined') {
-                    ParticleSystem.createExplosion(targetX, targetY, color);
-                    ParticleSystem.createFloatingText(targetX, targetY, `-${damageDealt}`, color);
-                }
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(targetX, targetY, color);
+                        ParticleSystem.createFloatingText(targetX, targetY, `-${damageDealt}`, color);
+                    }
 
-                if (enemy.health <= 0) return null; // Kills it in the database
-                return JSON.parse(JSON.stringify(enemy)); // Safely strips undefined values
-            });
+                    if (enemy.health <= 0) return null; 
+                    return JSON.parse(JSON.stringify(enemy)); 
+                }),
+                3000 // Timeout in milliseconds
+            );
 
             const finalEnemyState = transactionResult.snapshot.val();
             
