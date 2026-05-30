@@ -1,3 +1,5 @@
+// --- START OF FILE config-firebase.js ---
+
 // ==========================================
 // FIREBASE CONFIGURATION & NETWORK SYSTEMS
 // ==========================================
@@ -39,6 +41,16 @@ rtdb.ref('.info/serverTimeOffset').on('value', function(snap) {
 // Use this to get the exact millisecond time on the server without an API call
 window.getServerTime = () => Date.now() + window.serverTimeOffset;
 
+// --- JUICE: GLOBAL CONNECTION BANNER INJECTION ---
+// We dynamically create this so it works across all screens (Login, Character Select, Game)
+let connectionBanner = document.getElementById('firebase-connection-banner');
+if (!connectionBanner) {
+    connectionBanner = document.createElement('div');
+    connectionBanner.id = 'firebase-connection-banner';
+    // Tailwind classes for a sleek, sliding top banner
+    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-1.5 z-[10000] transition-transform duration-300 transform -translate-y-full shadow-md font-mono tracking-widest uppercase';
+    document.body.appendChild(connectionBanner);
+}
 
 // Apply settings only if not already configured to avoid "Overriding host" error
 try {
@@ -47,12 +59,16 @@ try {
     });
 
     // EASY WIN: Enable Offline Persistence! 
-    // If the player's connection drops briefly, their inventory/stat changes 
-    // are saved locally and synced automatically when they reconnect.
     db.enablePersistence()
         .catch((err) => {
             if (err.code === 'failed-precondition') {
+                // QoL WIN: Tell the user why persistence failed instead of hiding it in the console!
                 console.warn("Multiple tabs open. Offline persistence enabled in the first tab only.");
+                connectionBanner.textContent = "⚠️ Multiple Tabs Open - Offline Saving Disabled";
+                connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-1.5 z-[10000] transition-all duration-500 bg-yellow-600 text-black translate-y-0 shadow-md font-mono tracking-widest uppercase';
+                setTimeout(() => {
+                    connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
+                }, 5000);
             } else if (err.code === 'unimplemented') {
                 console.warn("Browser does not support offline persistence.");
             }
@@ -70,7 +86,15 @@ rtdb.ref('.info/connected').on('value', function(snap) {
     if (isConnected) {
         console.log("🟢 Firebase: Connected to server.");
         if (!wasConnected) {
-            // JUICE: Visual and Audio feedback upon restoring connection!
+            // Restore Banner
+            connectionBanner.textContent = "📶 Connection Restored";
+            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-1.5 z-[10000] transition-all duration-500 bg-green-600 text-white translate-y-0 shadow-md font-mono tracking-widest uppercase';
+            
+            // Slide it away after 3 seconds
+            setTimeout(() => {
+                connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
+            }, 3000);
+
             if (typeof logMessage === 'function') logMessage("{green:Network restored. Reconnected to server.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
         }
@@ -78,7 +102,10 @@ rtdb.ref('.info/connected').on('value', function(snap) {
     } else {
         console.warn("🔴 Firebase: Disconnected (Offline / Reconnecting...).");
         if (wasConnected) {
-            // Alert the player immediately so they don't die to lag!
+            // Warning Banner
+            connectionBanner.textContent = "⚠️ Connection Lost - Reconnecting...";
+            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-1.5 z-[10000] transition-all duration-500 bg-red-600 text-white translate-y-0 shadow-md font-mono tracking-widest uppercase';
+            
             if (typeof logMessage === 'function') logMessage("{red:Connection lost! Trying to reconnect...}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         }
@@ -141,12 +168,16 @@ function handleAuthError(error) {
 
 /**
  * High-Performance Recursive object cleaner.
- * Strips 'undefined', 'function', and safely converts Sets/Maps to Arrays/Objects 
- * to prevent Firebase from crashing or silently deleting your data.
+ * Strips 'undefined', 'function', and safely converts Sets/Maps to Arrays/Objects.
+ * 
+ * PERFORMANCE & ROBUSTNESS WIN: Added `seen` WeakSet to prevent Maximum Call Stack 
+ * Exceeded crashes caused by accidental Circular References in game state!
+ * 
  * @param {any} obj The variable to clean.
+ * @param {WeakSet} seen Tracks visited objects to prevent infinite loops.
  * @returns {any} A sanitized clone, safe for Firebase transmission.
  */
-function sanitizeForFirebase(obj) {
+function sanitizeForFirebase(obj, seen = new WeakSet()) {
     // 1. Convert undefined to null immediately
     if (obj === undefined) return null; 
     
@@ -163,14 +194,20 @@ function sanitizeForFirebase(obj) {
         return obj;
     }
 
+    // 3.5 CIRCULAR REFERENCE PROTECTION
+    if (seen.has(obj)) {
+        console.warn("Circular reference detected and severed during Firebase sanitization.");
+        return null; 
+    }
+    seen.add(obj);
+
     // 4. BULLETPROOF ES6 COLLECTION SUPPORT
-    // Firebase destroys Sets and Maps (turns them into `{}`). We fix them here automatically!
     if (obj instanceof Set) {
         // Convert Set to Array and sanitize its children
         const newArr = new Array(obj.size);
         let i = 0;
         for (const val of obj) {
-            newArr[i++] = sanitizeForFirebase(val);
+            newArr[i++] = sanitizeForFirebase(val, seen);
         }
         return newArr;
     }
@@ -179,12 +216,12 @@ function sanitizeForFirebase(obj) {
         // Convert Map to plain Object
         const newObj = {};
         for (const [key, val] of obj) {
-            newObj[key] = sanitizeForFirebase(val);
+            newObj[key] = sanitizeForFirebase(val, seen);
         }
         return newObj;
     }
     
-    // If it's a complex class instance rather than a plain Object/Array, pass it through
+    // If it's a complex class instance rather than a plain Object/Array, pass it through safely
     if (obj.constructor !== Object && !Array.isArray(obj)) return obj;
 
     // 5. Handle Arrays
@@ -192,7 +229,7 @@ function sanitizeForFirebase(obj) {
         // Pre-allocate array size for a slight speed boost on massive inventories
         const newArr = new Array(obj.length);
         for (let i = 0; i < obj.length; i++) {
-            newArr[i] = sanitizeForFirebase(obj[i]);
+            newArr[i] = sanitizeForFirebase(obj[i], seen);
         }
         return newArr;
     }
@@ -206,7 +243,7 @@ function sanitizeForFirebase(obj) {
             // PERFORMANCE: Skip functions immediately so they aren't processed at all
             if (typeof val === 'function') continue;
             
-            newObj[key] = sanitizeForFirebase(val);
+            newObj[key] = sanitizeForFirebase(val, seen);
         }
     }
     return newObj;
