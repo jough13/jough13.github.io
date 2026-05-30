@@ -1,6 +1,30 @@
 // Cache room templates globally to prevent expensive object parsing during cave generation
 window.CACHED_ROOM_TEMPLATES = null;
 
+// ==========================================
+// UNDERWORLD GENERATION (Z-AXIS)
+// ==========================================
+function getUnderworldTerrain(worldX, worldY) {
+    // Offset noise so the underground doesn't match the surface exactly
+    const elev = elevationNoise.noise(worldX / 40 + 1000, worldY / 40 + 1000); 
+    const moist = moistureNoise.noise(worldX / 50 + 2000, worldY / 50 + 2000);
+
+    // "Ridge Noise" creates continuous, winding cave tunnels
+    const ridge = Math.abs(elev - 0.5);
+
+    if (ridge < 0.08) return '▓'; // Thick Cave Walls
+
+    // Extreme elevations become Magma Lakes
+    if (elev < 0.20) return '🌋'; 
+
+    // Open Cavern Floor
+    if (moist > 0.70) return '🍄'; // Fungal Forest
+    if (moist < 0.30 && ridge > 0.3) return '💎c'; // Crystal Clusters
+
+    return '.'; // Standard cavern floor
+}
+
+
 const chunkManager = {
     CHUNK_SIZE: 16,
     loadedChunks: {},
@@ -758,8 +782,11 @@ const chunkManager = {
             return;
         }
 
-        // --- MULTIVERSE PATH ISOLATION ---
-        const realmPrefix = (gameState.currentRealm === 0 || !gameState.currentRealm) ? '' : `realm_${gameState.currentRealm}/`;
+        // --- LAYER & MULTIVERSE PATH ISOLATION ---
+        let realmPrefix = '';
+        if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
+        else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+        
         const ref = rtdb.ref(`worldState/${realmPrefix}${chunkId}`);
 
         const listener = ref.on('value', snapshot => {
@@ -828,8 +855,10 @@ const chunkManager = {
         const updateObj = {};
         updateObj[tileKey] = tileData;
 
-        // --- MULTIVERSE PATH ISOLATION ---
-        const realmPrefix = (gameState.currentRealm === 0 || !gameState.currentRealm) ? '' : `realm_${gameState.currentRealm}/`;
+        // --- LAYER & MULTIVERSE PATH ISOLATION ---
+        let realmPrefix = '';
+        if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
+        else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
 
         rtdb.ref(`worldState/${realmPrefix}${chunkId}`).update(updateObj)
             .catch(err => console.error("Map update failed:", err));
@@ -897,24 +926,30 @@ const chunkManager = {
                 }
 
                 const distSq = (worldX * worldX) + (worldY * worldY);
-
-                // --- BIOME GENERATION (Offset Z by Realm) ---
-                const realmOffset = (gameState.currentRealm || 0) * 100;
-                const elev = elevationNoise.noise(worldX / 70, worldY / 70, realmOffset);
-                const moist = moistureNoise.noise(worldX / 50, worldY / 50, realmOffset);
-
                 let tile = '.';
-                if (elev < 0.35) tile = '~';
-                else if (elev < 0.4 && moist > 0.7) tile = '≈';
-                else if (elev > 0.8) tile = '^';
-                else if (elev > 0.6 && moist < 0.3) tile = 'd';
-                else if (moist < 0.15) tile = 'D';
-                else if (moist > 0.55) tile = 'F';
+                const isUnderworld = gameState.mapMode === 'underworld';
 
-                // --- NATURAL SPAWN SAFETY OVERRIDE (Realm 0 Only) ---
-                if ((gameState.currentRealm === 0 || !gameState.currentRealm) && distSq <= 100) { 
-                    if (['^', '~', '≈', 'd'].includes(tile)) {
-                        tile = moist > 0.5 ? 'F' : '.'; 
+                // --- LAYER ROUTING ---
+                if (isUnderworld) {
+                    tile = getUnderworldTerrain(worldX, worldY);
+                } else {
+                    // --- OVERWORLD BIOME GENERATION ---
+                    const realmOffset = (gameState.currentRealm || 0) * 100;
+                    const elev = elevationNoise.noise(worldX / 70, worldY / 70, realmOffset);
+                    const moist = moistureNoise.noise(worldX / 50, worldY / 50, realmOffset);
+
+                    if (elev < 0.35) tile = '~';
+                    else if (elev < 0.4 && moist > 0.7) tile = '≈';
+                    else if (elev > 0.8) tile = '^';
+                    else if (elev > 0.6 && moist < 0.3) tile = 'd';
+                    else if (moist < 0.15) tile = 'D';
+                    else if (moist > 0.55) tile = 'F';
+
+                    // --- NATURAL SPAWN SAFETY OVERRIDE (Realm 0 Only) ---
+                    if ((gameState.currentRealm === 0 || !gameState.currentRealm) && distSq <= 100) { 
+                        if (['^', '~', '≈', 'd'].includes(tile)) {
+                            tile = moist > 0.5 ? 'F' : '.'; 
+                        }
                     }
                 }
 
@@ -930,190 +965,228 @@ const chunkManager = {
 
                 const featureRoll = random();
 
-                // --- 1. LEGENDARY LANDMARKS (Unique, Very Rare) ---
-                // Force the Grand Fortress to spawn far away from the village (dist > 1500)
-                if (tile === '.' && featureRoll < 0.000001 && distSq > 2250000) { 
-                    chunkData[y][x] = '♛';
-                }
-                else if ((tile === 'd' || tile === '^') && featureRoll < 0.000001) {
-                    chunkData[y][x] = '🕳️';
-                }
-                // --- 2. BIOME ANOMALIES (Very Rare) ---
-                else if (tile === 'F' && featureRoll < 0.0001) {
-                    chunkData[y][x] = '🌳e';
-                }
-                else if (tile === 'F' && featureRoll > 0.0001 && featureRoll < 0.00015) {
-                    chunkData[y][x] = '🍄r';
-                }
-                else if (tile === '^' && featureRoll < 0.0001) {
-                    chunkData[y][x] = '🗿k';
-                }
-                else if (tile === 'D' && featureRoll < 0.0001) {
-                    chunkData[y][x] = '🦴d';
-                }
-                // --- NEW: NIGHT-TIME ANOMALIES ---
-                else if (tile === 'F' && featureRoll > 0.0001 && featureRoll < 0.0003) {
-                    chunkData[y][x] = '🌺'; // Moonblooms in forests
-                }
-                else if (tile === '^' && featureRoll > 0.0001 && featureRoll < 0.0003) {
-                    chunkData[y][x] = '☄️'; // Star-metal in mountains
-                }
-                // --- END NEW ANOMALIES ---
-                else if ((tile === 'd' || tile === 'D') && featureRoll < 0.000005) { // Void Rift
-                    chunkData[y][x] = 'Ω';
-                }
-                // --- 3. RARE STRUCTURES (Scaled by Distance) ---
-                else if (tile === '.' && featureRoll < 0.000005) { // Safe Haven
-                    chunkData[y][x] = 'V';
-                }
-                else if (tile === '~' && featureRoll < 0.00005) { // Whirlpool in deep ocean
-                    chunkData[y][x] = '🌀';
-                }
-                else if (tile === '~' && featureRoll > 0.00005 && featureRoll < 0.0005) {
-                    chunkData[y][x] = '🛟'; // Ocean Flotsam
-                }
-                else if (tile === '.' && featureRoll < 0.00003) { // Shrine
-                    chunkData[y][x] = '⛩️';
-                }
-                else if (tile === '.' && featureRoll < 0.0003) { // Forgotten Letter (Lore)
-                    chunkData[y][x] = '📜l';
-                }
-                else if (tile === '.' && featureRoll < 0.00004) { // Obelisk
-                    chunkData[y][x] = '|';
-                }
-                else if (tile === '.' && featureRoll < 0.00005) { // Wishing Well
-                    chunkData[y][x] = '⛲';
-                }
-                else if ((tile === 'd' || tile === 'D') && featureRoll < 0.000005) { // Void Rift
-                    chunkData[y][x] = 'Ω';
-                }
-                // --- 4. MAJOR STRUCTURES (Explicit Spawn Rates) ---
-                else if (tile === '~' && featureRoll < 0.0005 && distSq > 4000000) {
-                    // Far out in the ocean (> 2000 tiles from spawn)
-                    if (random() < 0.5) chunkData[y][x] = '🌋'; // Volcano Island
-                    else chunkData[y][x] = '🛕'; // Abyssal Temple
-                }
-                else if (tile === '^' && featureRoll < 0.008) {
-                    chunkData[y][x] = '⛰';
-                }
-                else if (tile === 'd' && featureRoll < 0.004) {
-                    chunkData[y][x] = '⛰';
-                }
-                else if ((tile === '.' || tile === 'F') && featureRoll > 0.0005 && featureRoll < 0.0015) {
-                    // 50% chance for a castle to be Dark/Ruined if you are far from home!
-                    if (distSq > 640000 && random() < 0.5) { // dist > 800
-                        chunkData[y][x] = '🕍'; // Dark Castle
+                if (isUnderworld) {
+                    // ==================================================
+                    // UNDERWORLD FEATURES & SPAWNING
+                    // ==================================================
+                    if (tile === '.' && featureRoll < 0.005) {
+                        chunkData[y][x] = '•'; // Iron Ore is more common underground
+                    } else if (tile === '▓' && featureRoll < 0.001) {
+                        chunkData[y][x] = '▲'; // Obsidian in the walls
+                    } else if (tile === '💎c' && featureRoll < 0.005) {
+                        chunkData[y][x] = '💎'; // Raw Gems inside crystal clusters
                     } else {
-                        chunkData[y][x] = '🏰'; // Safe Castle
-                    }
-                }
-                else if ((tile === '.' || tile === 'F') && featureRoll > 0.0015 && featureRoll < 0.0020) {
-                    chunkData[y][x] = '⛰';
-                }
-                // --- 5. COMMON FEATURES ---
-                else if (tile === '.' && featureRoll < 0.0005) {
-                    let features = Object.keys(TILE_DATA);
-                    features = features.filter(f => {
-                        const data = TILE_DATA[f];
-                        const allowedTypes = ['lore', 'lore_statue', 'loot_container', 'campsite', 'decoration'];
-                        // EXCLUDE the shipwreck from generic dry land spawns
-                        return allowedTypes.includes(data.type) && f !== '🚢' && f !== '🛟'; 
-                    });
-
-                    if (features.length > 0) {
-                        const featureTile = features[Math.floor(random() * features.length)];
-                        chunkData[y][x] = featureTile;
-                    }
-                }
-                // --- SHIPWRECKS (Water & Shorelines) ---
-                else if (featureRoll > 0.0020 && featureRoll < 0.0024) {
-                    let isShipwreckSpot = false;
-                    
-                    // 1. Valid if it's already in the water
-                    if (tile === '~' || tile === '≈') {
-                        isShipwreckSpot = true; 
-                    } 
-                    // 2. If it's on land, check if it's on a beach/shoreline
-                    else if (['.', 'D', 'd', 'F'].includes(tile)) {
-                        // Check the elevation noise 1 tile in every direction to see if it drops below sea level (< 0.35)
-                        const eN = elevationNoise.noise(worldX / 70, (worldY - 1) / 70, realmOffset);
-                        const eS = elevationNoise.noise(worldX / 70, (worldY + 1) / 70, realmOffset);
-                        const eE = elevationNoise.noise((worldX + 1) / 70, worldY / 70, realmOffset);
-                        const eW = elevationNoise.noise((worldX - 1) / 70, worldY / 70, realmOffset);
+                        const hostileRoll = random();
+                        let spawnChance = 0.003;
+                        if (tile === '🍄') spawnChance = 0.005; // Fungal forests are dangerous
                         
-                        if (eN < 0.35 || eS < 0.35 || eE < 0.35 || eW < 0.35) {
-                            isShipwreckSpot = true; // It's a shore!
-                        }
-                    }
+                        // Increase spawn chances in alternate dimensions!
+                        if (gameState.currentRealm !== 0) spawnChance *= 2.0;
 
-                    if (isShipwreckSpot) {
-                        chunkData[y][x] = '🚢';
-                    } else {
-                        // It rolled the number but wasn't near water, just leave the terrain alone
-                        chunkData[y][x] = tile; 
-                    }
-                }
-                // --- 6. RIDDLE STATUES ---
-                else if (tile === '.' && featureRoll < 0.00008) {
-                    chunkData[y][x] = '?';
-                }
-                // --- 7. GENERIC STRUCTURES ---
-                else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0001) {
-                    chunkData[y][x] = '🏛️';
-                }
-                else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0002) {
-                    chunkData[y][x] = '⛺';
-                }
-                // --- 8. ARCHAEOLOGY SPOTS ---
-                else if (['.', 'd', 'D', 'F'].includes(tile) && featureRoll < (tile === 'd' || tile === 'D' ? 0.0015 : 0.0005)) {
-                    chunkData[y][x] = '∴';
-                }
-                else if (tile === 'D' && featureRoll < 0.008) {
-                    chunkData[y][x] = '🌴';
-                }
-                else {
-                    // --- 9. ENEMY & RESOURCE SPAWNING ---
-                    const hostileRoll = random();
-
-                    let spawnChance = 0.0015;
-                    if (tile === 'F') spawnChance = 0.0025;
-                    if (tile === 'd') spawnChance = 0.0040;
-                    if (tile === '^') spawnChance = 0.0020;
-                    if (tile === '~') spawnChance = 0.0015; // Sea monsters spawn rate
-                    
-                    // Increase spawn chances in alternate dimensions!
-                    if (gameState.currentRealm !== 0) spawnChance *= 2.0;
-
-                    if (hostileRoll < spawnChance) {
-                        // If in realm 0 and dist < 200, effective dist is 0 (safe zone). Else true dist.
-                        const effectiveDistSq = ((gameState.currentRealm === 0 || !gameState.currentRealm) && distSq < 40000) ? 0 : distSq; 
-                        const enemyTile = this.getEnemySpawn(tile, effectiveDistSq, random);
-
-                        if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
-                            chunkData[y][x] = enemyTile;
+                        if (hostileRoll < spawnChance) {
+                            let proxyBiome = '^'; // Default to mountain enemies for stone caves
+                            if (tile === '🍄') proxyBiome = '≈'; // Swamp enemies in fungus
+                            if (tile === '🌋') proxyBiome = 'D'; // Desert/Fire enemies near magma
+                            
+                            const enemyTile = this.getEnemySpawn(proxyBiome, distSq, random);
+                            if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
+                                chunkData[y][x] = enemyTile;
+                            } else {
+                                chunkData[y][x] = tile;
+                            }
                         } else {
                             chunkData[y][x] = tile;
                         }
                     }
-                    // --- 10. RESOURCE FALLBACKS ---
-                    else if (tile === '^' && hostileRoll < 0.03) {
-                        chunkData[y][x] = '🏚';
+                } else {
+                    // ==================================================
+                    // OVERWORLD FEATURES & SPAWNING
+                    // ==================================================
+                    // --- 1. LEGENDARY LANDMARKS (Unique, Very Rare) ---
+                    // Force the Grand Fortress to spawn far away from the village (dist > 1500)
+                    if (tile === '.' && featureRoll < 0.000001 && distSq > 2250000) { 
+                        chunkData[y][x] = '♛';
                     }
-                    else if (tile === 'F' && hostileRoll < 0.03) {
-                        chunkData[y][x] = '🌳';
+                    else if ((tile === 'd' || tile === '^') && featureRoll < 0.000001) {
+                        chunkData[y][x] = '🕳️';
                     }
-                    else if (tile === '🌋' && hostileRoll < 0.02) {
-                        chunkData[y][x] = '☄️'; // Let Star Metal spawn rarely in Infernal realms!
+                    // --- 2. BIOME ANOMALIES (Very Rare) ---
+                    else if (tile === 'F' && featureRoll < 0.0001) {
+                        chunkData[y][x] = '🌳e';
+                    }
+                    else if (tile === 'F' && featureRoll > 0.0001 && featureRoll < 0.00015) {
+                        chunkData[y][x] = '🍄r';
+                    }
+                    else if (tile === '^' && featureRoll < 0.0001) {
+                        chunkData[y][x] = '🗿k';
+                    }
+                    else if (tile === 'D' && featureRoll < 0.0001) {
+                        chunkData[y][x] = '🦴d';
+                    }
+                    // --- NEW: NIGHT-TIME ANOMALIES ---
+                    else if (tile === 'F' && featureRoll > 0.0001 && featureRoll < 0.0003) {
+                        chunkData[y][x] = '🌺'; // Moonblooms in forests
+                    }
+                    else if (tile === '^' && featureRoll > 0.0001 && featureRoll < 0.0003) {
+                        chunkData[y][x] = '☄️'; // Star-metal in mountains
+                    }
+                    // --- END NEW ANOMALIES ---
+                    else if ((tile === 'd' || tile === 'D') && featureRoll < 0.000005) { // Void Rift
+                        chunkData[y][x] = 'Ω';
+                    }
+                    // --- 3. RARE STRUCTURES (Scaled by Distance) ---
+                    else if (tile === '.' && featureRoll < 0.000005) { // Safe Haven
+                        chunkData[y][x] = 'V';
+                    }
+                    else if (tile === '~' && featureRoll < 0.00005) { // Whirlpool in deep ocean
+                        chunkData[y][x] = '🌀';
+                    }
+                    else if (tile === '~' && featureRoll > 0.00005 && featureRoll < 0.0005) {
+                        chunkData[y][x] = '🛟'; // Ocean Flotsam
+                    }
+                    else if (tile === '.' && featureRoll < 0.00003) { // Shrine
+                        chunkData[y][x] = '⛩️';
+                    }
+                    else if (tile === '.' && featureRoll < 0.0003) { // Forgotten Letter (Lore)
+                        chunkData[y][x] = '📜l';
+                    }
+                    else if (tile === '.' && featureRoll < 0.00004) { // Obelisk
+                        chunkData[y][x] = '|';
+                    }
+                    else if (tile === '.' && featureRoll < 0.00005) { // Wishing Well
+                        chunkData[y][x] = '⛲';
+                    }
+                    else if ((tile === 'd' || tile === 'D') && featureRoll < 0.000005) { // Void Rift
+                        chunkData[y][x] = 'Ω';
+                    }
+                    // --- 4. MAJOR STRUCTURES (Explicit Spawn Rates) ---
+                    else if (tile === '~' && featureRoll < 0.0005 && distSq > 4000000) {
+                        // Far out in the ocean (> 2000 tiles from spawn)
+                        if (random() < 0.5) chunkData[y][x] = '🌋'; // Volcano Island
+                        else chunkData[y][x] = '🛕'; // Abyssal Temple
+                    }
+                    else if (tile === '^' && featureRoll < 0.008) {
+                        chunkData[y][x] = '⛰';
+                    }
+                    else if (tile === 'd' && featureRoll < 0.004) {
+                        chunkData[y][x] = '⛰';
+                    }
+                    else if ((tile === '.' || tile === 'F') && featureRoll > 0.0005 && featureRoll < 0.0015) {
+                        // 50% chance for a castle to be Dark/Ruined if you are far from home!
+                        if (distSq > 640000 && random() < 0.5) { // dist > 800
+                            chunkData[y][x] = '🕍'; // Dark Castle
+                        } else {
+                            chunkData[y][x] = '🏰'; // Safe Castle
+                        }
+                    }
+                    else if ((tile === '.' || tile === 'F') && featureRoll > 0.0015 && featureRoll < 0.0020) {
+                        chunkData[y][x] = '⛰';
+                    }
+                    // --- 5. COMMON FEATURES ---
+                    else if (tile === '.' && featureRoll < 0.0005) {
+                        let features = Object.keys(TILE_DATA);
+                        features = features.filter(f => {
+                            const data = TILE_DATA[f];
+                            const allowedTypes = ['lore', 'lore_statue', 'loot_container', 'campsite', 'decoration'];
+                            // EXCLUDE the shipwreck from generic dry land spawns
+                            return allowedTypes.includes(data.type) && f !== '🚢' && f !== '🛟'; 
+                        });
+
+                        if (features.length > 0) {
+                            const featureTile = features[Math.floor(random() * features.length)];
+                            chunkData[y][x] = featureTile;
+                        }
+                    }
+                    // --- SHIPWRECKS (Water & Shorelines) ---
+                    else if (featureRoll > 0.0020 && featureRoll < 0.0024) {
+                        let isShipwreckSpot = false;
+                        
+                        // 1. Valid if it's already in the water
+                        if (tile === '~' || tile === '≈') {
+                            isShipwreckSpot = true; 
+                        } 
+                        // 2. If it's on land, check if it's on a beach/shoreline
+                        else if (['.', 'D', 'd', 'F'].includes(tile)) {
+                            // Check the elevation noise 1 tile in every direction to see if it drops below sea level (< 0.35)
+                            const eN = elevationNoise.noise(worldX / 70, (worldY - 1) / 70, realmOffset);
+                            const eS = elevationNoise.noise(worldX / 70, (worldY + 1) / 70, realmOffset);
+                            const eE = elevationNoise.noise((worldX + 1) / 70, worldY / 70, realmOffset);
+                            const eW = elevationNoise.noise((worldX - 1) / 70, worldY / 70, realmOffset);
+                            
+                            if (eN < 0.35 || eS < 0.35 || eE < 0.35 || eW < 0.35) {
+                                isShipwreckSpot = true; // It's a shore!
+                            }
+                        }
+
+                        if (isShipwreckSpot) {
+                            chunkData[y][x] = '🚢';
+                        } else {
+                            // It rolled the number but wasn't near water, just leave the terrain alone
+                            chunkData[y][x] = tile; 
+                        }
+                    }
+                    // --- 6. RIDDLE STATUES ---
+                    else if (tile === '.' && featureRoll < 0.00008) {
+                        chunkData[y][x] = '?';
+                    }
+                    // --- 7. GENERIC STRUCTURES ---
+                    else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0001) {
+                        chunkData[y][x] = '🏛️';
+                    }
+                    else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0002) {
+                        chunkData[y][x] = '⛺';
+                    }
+                    // --- 8. ARCHAEOLOGY SPOTS ---
+                    else if (['.', 'd', 'D', 'F'].includes(tile) && featureRoll < (tile === 'd' || tile === 'D' ? 0.0015 : 0.0005)) {
+                        chunkData[y][x] = '∴';
+                    }
+                    else if (tile === 'D' && featureRoll < 0.008) {
+                        chunkData[y][x] = '🌴';
                     }
                     else {
-                        chunkData[y][x] = tile;
+                        // --- 9. ENEMY & RESOURCE SPAWNING ---
+                        const hostileRoll = random();
+
+                        let spawnChance = 0.0015;
+                        if (tile === 'F') spawnChance = 0.0025;
+                        if (tile === 'd') spawnChance = 0.0040;
+                        if (tile === '^') spawnChance = 0.0020;
+                        if (tile === '~') spawnChance = 0.0015; // Sea monsters spawn rate
+                        
+                        // Increase spawn chances in alternate dimensions!
+                        if (gameState.currentRealm !== 0) spawnChance *= 2.0;
+
+                        if (hostileRoll < spawnChance) {
+                            // If in realm 0 and dist < 200, effective dist is 0 (safe zone). Else true dist.
+                            const effectiveDistSq = ((gameState.currentRealm === 0 || !gameState.currentRealm) && distSq < 40000) ? 0 : distSq; 
+                            const enemyTile = this.getEnemySpawn(tile, effectiveDistSq, random);
+
+                            if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
+                                chunkData[y][x] = enemyTile;
+                            } else {
+                                chunkData[y][x] = tile;
+                            }
+                        }
+                        // --- 10. RESOURCE FALLBACKS ---
+                        else if (tile === '^' && hostileRoll < 0.03) {
+                            chunkData[y][x] = '🏚';
+                        }
+                        else if (tile === 'F' && hostileRoll < 0.03) {
+                            chunkData[y][x] = '🌳';
+                        }
+                        else if (tile === '🌋' && hostileRoll < 0.02) {
+                            chunkData[y][x] = '☄️'; // Let Star Metal spawn rarely in Infernal realms!
+                        }
+                        else {
+                            chunkData[y][x] = tile;
+                        }
                     }
                 }
             }
         }
 
         // --- ZERO-ALLOCATION SMOOTHING PASS ---
-        const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈', '🌋']; // Added lava to smoothable terrain
+        const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈', '🌋', '🍄', '💎c']; 
         
         for (let y = 1; y < this.CHUNK_SIZE - 1; y++) {
             for (let x = 1; x < this.CHUNK_SIZE - 1; x++) {
