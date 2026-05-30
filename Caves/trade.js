@@ -1,6 +1,18 @@
+// --- START OF FILE trade.js ---
+
 // ==========================================
 // TRADE & ECONOMY SYSTEM
 // ==========================================
+
+// PERFORMANCE WIN: O(1) Item Lookup Cache for Trading
+// Prevents O(N) string-matching scans against the massive ITEM_DATA dictionary every time you buy an item.
+const _tradeItemKeyCache = {};
+function getTradeItemKey(name) {
+    if (_tradeItemKeyCache[name]) return _tradeItemKeyCache[name];
+    const key = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === name);
+    if (key) _tradeItemKeyCache[name] = key;
+    return key;
+}
 
 // --- EXPANDABILITY WIN: Centralized Value Dictionary ---
 // For items that aren't natively sold in shops but have high intrinsic value to traders.
@@ -92,7 +104,7 @@ function calculateItemValue(item, player) {
 function handleBuyItem(itemName) {
     const player = gameState.player;
     const shopItem = activeShopInventory.find(item => item.name === itemName);
-    const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemName);
+    const itemKey = getTradeItemKey(itemName); // PERFORMANCE WIN: Cached lookup!
     const itemTemplate = ITEM_DATA[itemKey];
 
     if (!shopItem || !itemTemplate) {
@@ -142,6 +154,11 @@ function handleBuyItem(itemName) {
     player.coins -= finalBuyPrice;
     shopItem.stock--;
     logMessage(`You bought a ${itemName} for {gold:${finalBuyPrice} gold}.`);
+    
+    // JUICE: Gold particles in the background
+    if (typeof ParticleSystem !== 'undefined') {
+        ParticleSystem.createFloatingText(player.x, player.y, `-${finalBuyPrice}g`, "#ef4444");
+    }
     if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
     if (existingStack && isStackable) {
@@ -205,6 +222,10 @@ function handleSellItem(itemIndex, amount = 1) {
         logMessage(`You sold a ${itemToSell.name} for {gold:${totalValue} gold}.`);
     }
     
+    // JUICE: Gold particles in the background
+    if (typeof ParticleSystem !== 'undefined') {
+        ParticleSystem.createFloatingText(player.x, player.y, `+${totalValue}g`, "#facc15");
+    }
     if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
     // Remove from inventory
@@ -256,6 +277,11 @@ function handleSellAllItems() {
 
     if (itemsSold > 0) {
         logMessage(`Mass Sold ${itemsSold} junk items for {gold:${goldGained} gold}.`);
+        
+        // JUICE: Gold particles in the background
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createFloatingText(player.x, player.y, `+${goldGained}g`, "#facc15");
+        }
         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
         // Save and Update UI
@@ -269,6 +295,7 @@ function handleSellAllItems() {
         if (typeof renderStats === 'function') renderStats();
     } else {
         logMessage("{gray:You have no unequipped junk or trade goods to sell.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     }
 }
 
@@ -292,7 +319,7 @@ function renderShop() {
 
     // 3. Populate "Buy" list
     activeShopInventory.forEach(item => {
-        const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === item.name);
+        const itemKey = getTradeItemKey(item.name);
         const baseBuyPrice = item.price;
         
         // Discounts
@@ -303,12 +330,18 @@ function renderShop() {
         const finalDiscount = Math.min(discountPercent, 0.5);
         const finalBuyPrice = Math.floor(baseBuyPrice * (1.0 - finalDiscount));
 
+        // JUICE WIN: Visually cross out the original price if Charisma/Lore lowered it!
+        let priceHtml = `${finalBuyPrice}g`;
+        if (finalBuyPrice < baseBuyPrice) {
+            priceHtml = `<del class="text-gray-500 text-xs mr-1 font-normal">${baseBuyPrice}g</del>${finalBuyPrice}g`;
+        }
+
         const li = document.createElement('li');
         li.className = 'shop-item hover:border-green-500 transition-colors duration-150';
         li.innerHTML = `
             <div>
                 <span class="shop-item-name">${item.name} <span class="text-xl">${ITEM_DATA[itemKey]?.tile || '?'}</span></span>
-                <span class="shop-item-details font-bold text-yellow-500">Price: ${finalBuyPrice}g <span class="text-xs text-gray-500 font-normal">(Stock: ${item.stock})</span></span>
+                <span class="shop-item-details font-bold text-yellow-500">Price: ${priceHtml} <span class="text-xs text-gray-500 font-normal">(Stock: ${item.stock})</span></span>
             </div>
             <div class="shop-item-actions">
                 <button data-buy-item="${item.name}" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50">Buy 1</button> 
@@ -326,7 +359,18 @@ function renderShop() {
     } else {
         gameState.player.inventory.forEach((item, index) => {
             // DRY OPTIMIZATION: Use our helper
-            const { sellPrice } = calculateItemValue(item, gameState.player);
+            const { sellPrice, regionMult } = calculateItemValue(item, gameState.player);
+
+            // JUICE WIN: Color-code the market demand so the player doesn't have to guess!
+            let sellPriceColor = "text-yellow-500";
+            let demandTag = "";
+            if (regionMult > 1.0) {
+                sellPriceColor = "text-green-400";
+                demandTag = `<span class="text-[9px] bg-green-900 bg-opacity-40 text-green-400 px-1 rounded ml-1 uppercase border border-green-800">High Demand</span>`;
+            } else if (regionMult < 1.0) {
+                sellPriceColor = "text-red-400";
+                demandTag = `<span class="text-[9px] bg-red-900 bg-opacity-40 text-red-400 px-1 rounded ml-1 uppercase border border-red-800">Low Demand</span>`;
+            }
 
             const li = document.createElement('li');
             li.className = 'shop-item hover:border-blue-500 transition-colors duration-150';
@@ -343,7 +387,7 @@ function renderShop() {
             li.innerHTML = `
                 <div>
                     <span class="shop-item-name">${item.name} <span class="text-xs text-gray-400">x${item.quantity}</span></span>
-                    <span class="shop-item-details font-bold text-yellow-500">Sell for: ${sellPrice}g <span class="text-xs text-gray-500 font-normal">(ea)</span></span>
+                    <span class="shop-item-details font-bold ${sellPriceColor}">Sell for: ${sellPrice}g <span class="text-xs text-gray-500 font-normal">(ea)</span>${demandTag}</span>
                 </div>
                 <div class="shop-item-actions flex items-center">
                     ${actionsHtml}
@@ -362,10 +406,14 @@ function renderShop() {
 
     if (header) {
         if (!header.querySelector('#sellAllBtn')) {
+            // UX WIN: Smart-disable the button if there is no junk to sell
+            const hasJunk = gameState.player.inventory.some(i => !i.isEquipped && (i.type === 'junk' || i.type === 'trade'));
+            const btnClass = hasJunk ? "bg-red-600 hover:bg-red-500 text-white cursor-pointer" : "bg-gray-700 text-gray-500 opacity-50 cursor-not-allowed";
+
             header.innerHTML = `
                 <div class="flex justify-between items-center w-full">
                     <span>Your Inventory</span>
-                    <button id="sellAllBtn" class="text-[10px] uppercase font-bold tracking-widest bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95">Sell All Junk</button>
+                    <button id="sellAllBtn" class="text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ${btnClass}" ${hasJunk ? '' : 'disabled'}>Sell All Junk</button>
                 </div>
             `;
             // Ensure we assign the handler directly 
