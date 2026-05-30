@@ -1,3 +1,5 @@
+<!-- --- START OF FILE devlog.html --- -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -179,6 +181,46 @@
     </header>
 
     <main>
+
+        <!-- DEVLOG #6 -->
+        <article class="update-card">
+            <h2>Devlog #6: The "Juice & Stability" Megapatch</h2>
+            <div class="date">June 5th, 2026</div>
+
+            <p>
+                This week we took a step back from adding new content to focus entirely on making the game <em>feel</em> incredible to play. We've overhauled the audio engine, injected a ton of visual "juice" into the economy, and fortified the game engine against crashes and cheaters.
+            </p>
+
+            <h3><span class="tag tag-content">Juice</span> Audio & Immersion Overhaul</h3>
+            <ul>
+                <li><strong>Spatial Audio Panning:</strong> The audio engine now utilizes Stereo Panning! If a skeleton shoots an arrow at you from the left side of the screen, you will actually hear it in your left ear/speaker.</li>
+                <li><strong>Dungeon Acoustics:</strong> Sound behaves differently underground. When exploring Caves or Castles, sound effects now feature a simulated acoustic "echo" (longer decay tails) and are slightly muffled to mimic sound bouncing off stone walls.</li>
+                <li><strong>Anti-Fatigue Pitch Shifting:</strong> No more "machine-gun" audio. Footsteps, UI clicks, and attacks now feature randomized pitch modulation so you never hear the exact same frequency twice in a row.</li>
+                <li><strong>New Jingles:</strong> Added custom procedural melodies for discovering secrets, triggering traps/blood moons, and dying.</li>
+            </ul>
+
+            <h3><span class="tag tag-qol">QoL</span> UI & Economy Polish</h3>
+            <ul>
+                <li><strong>Dynamic Market UI:</strong> The Merchant interface now explicitly tells you if an item is in "High Demand" (green text) or "Low Demand" (red text) based on your current biome, removing the guesswork from trading!</li>
+                <li><strong>Haggling Feedback:</strong> If your Charisma stat or Lore Knowledge earns you a discount at a shop, the original price is now shown crossed out next to your new, discounted price.</li>
+                <li><strong>Floating Gold Particles:</strong> Buying and selling items now triggers satisfying floating gold (+50g) and red (-15g) particles over your character in the background.</li>
+                <li><strong>Global Connection Banner:</strong> If you lose internet connection, a sleek, sliding banner drops down from the top of the screen to warn you, and flashes green when your connection is restored.</li>
+                <li><strong>Smart Cloud Backups:</strong> The Cloud Save menu now tracks the age of your backup. If your save is over 24 hours old, the text turns yellow to gently remind you to back up your progress!</li>
+            </ul>
+
+            <h3><span class="tag tag-sys">Sys</span> Engine Performance</h3>
+            <ul>
+                <li><strong>O(1) Item Caching:</strong> Added a high-performance lookup cache to the trading system. Buying/Selling is now lightning fast and no longer requires scanning the massive global item dictionary on every click.</li>
+                <li><strong>53-bit Seed Generator:</strong> Upgraded the core world generation hashing function to a Mulberry32 generator. This prevents Bitwise overflow at extreme map coordinates (e.g., +/- 50,000 tiles), ensuring the procedural terrain never repeats!</li>
+            </ul>
+
+            <h3><span class="tag tag-sec">Sec</span> Stability & Anti-Cheat</h3>
+            <ul>
+                <li><strong>Circular Reference Protection:</strong> Upgraded the Firebase data sanitizer with a <code>WeakSet</code> loop detector. If a game object accidentally references itself (causing an infinite loop), the engine now safely severs the link instead of crashing the browser with a Maximum Call Stack error.</li>
+                <li><strong>Expanded Injection Checks:</strong> The Cloud Restore system now actively scans backups for illegal injection of Stat Points and Talent Points. Cheaters attempting to manipulate their save files to gain infinite stats will now find their backups blocked.</li>
+                <li><strong>Deep Clean Restores:</strong> Fixed a bug where restoring an old save could leave "ghost items" in your inventory if the old inventory was smaller than your current one.</li>
+            </ul>
+        </article>
 
         <!-- DEVLOG #5 -->
         <article class="update-card">
