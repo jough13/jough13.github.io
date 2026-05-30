@@ -1,3 +1,5 @@
+// --- START OF FILE combat.js ---
+
 // --- ENEMY NETWORK MANAGER (SPATIAL HASHING) ---
 const EnemyNetworkManager = {
     listeners: {},
@@ -5,14 +7,17 @@ const EnemyNetworkManager = {
     // Helper to get chunk ID from world coordinates
     getChunkId: (x, y) => `${Math.floor(x / 16)},${Math.floor(y / 16)}`,
     
-    // Helper to get exact Firebase path for an enemy (ISOLATED BY REALM)
+    // Helper to get exact Firebase path for an enemy (ISOLATED BY REALM & LAYER)
     getPath: (x, y, enemyId) => {
-        const realmPrefix = (gameState.currentRealm === 0 || !gameState.currentRealm) ? '' : `realm_${gameState.currentRealm}/`;
+        let realmPrefix = '';
+        if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
+        else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+        
         return `worldEnemies/${realmPrefix}${Math.floor(x / 16)},${Math.floor(y / 16)}/${enemyId}`;
     },
     
     syncChunks: function(playerX, playerY) {
-        if (gameState.mapMode !== 'overworld') return;
+        if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') return;
         
         const pChunkX = Math.floor(playerX / 16);
         const pChunkY = Math.floor(playerY / 16);
@@ -40,8 +45,11 @@ const EnemyNetworkManager = {
     },
     
     listenToChunk: function(chunkId) {
-        // --- MULTIVERSE PATH ISOLATION ---
-        const realmPrefix = (gameState.currentRealm === 0 || !gameState.currentRealm) ? '' : `realm_${gameState.currentRealm}/`;
+        // --- MULTIVERSE & LAYER PATH ISOLATION ---
+        let realmPrefix = '';
+        if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
+        else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+        
         const ref = rtdb.ref(`worldEnemies/${realmPrefix}${chunkId}`);
         
         const onAdded = ref.on('child_added', (snapshot) => {
@@ -157,7 +165,8 @@ function getScaledEnemy(enemyTemplate, x, y) {
 
     // --- SAFE ZONE NERF ---
     // Expanded safe zone from 100 to 500 tiles!
-    if (dist < 500) {
+    // Exclude the underworld from the safe zone nerf since it's meant to be harder
+    if (dist < 500 && gameState.mapMode !== 'underworld') {
         // Reduce Attack by 2 (Min 1). 
         enemy.attack = Math.max(1, enemy.attack - 2); 
         // Reduce HP by 40% so they die much faster
@@ -166,7 +175,7 @@ function getScaledEnemy(enemyTemplate, x, y) {
     
     // --- NEWBIE GRACE PERIOD ---
     // If the player is level 3 or under, forcibly cap enemy stats within the first 1000 tiles.
-    if (gameState && gameState.player && gameState.player.level <= 3 && dist < 1000) {
+    if (gameState && gameState.player && gameState.player.level <= 3 && dist < 1000 && gameState.mapMode !== 'underworld') {
         enemy.attack = Math.min(enemy.attack, 3); // Max 3 damage
         enemy.maxHealth = Math.min(enemy.maxHealth, 15); // Max 15 HP
         enemy.defense = Math.min(enemy.defense || 0, 1); // Max 1 Defense so newbies can actually hurt them!
@@ -188,7 +197,7 @@ function getScaledEnemy(enemyTemplate, x, y) {
 
     // --- DISABLE ELITES NEAR SPAWN ---
     // Elites can only spawn if distance > 150. 
-    if (dist > 150 && !enemy.isBoss && Math.random() < eliteChance) {
+    if ((dist > 150 || gameState.mapMode === 'underworld') && !enemy.isBoss && Math.random() < eliteChance) {
         const prefixKeys = Object.keys(ENEMY_PREFIXES);
         const prefixKey = prefixKeys[Math.floor(Math.random() * prefixKeys.length)];
         const affix = ENEMY_PREFIXES[prefixKey];
@@ -215,7 +224,7 @@ function getScaledEnemy(enemyTemplate, x, y) {
     }
 
     // --- BLOOD MOON GLOBAL EVENT ---
-    if (typeof gameState !== 'undefined' && gameState.isBloodMoon && dist > 150) {
+    if (typeof gameState !== 'undefined' && gameState.isBloodMoon && dist > 150 && gameState.mapMode !== 'underworld') {
         enemy.maxHealth = Math.floor(enemy.maxHealth * 1.5);
         enemy.attack += 2;
         enemy.xp *= 2; // Double XP!
@@ -234,7 +243,7 @@ function getScaledEnemy(enemyTemplate, x, y) {
 }
 
 async function wakeUpNearbyEnemies() {
-    if (gameState.mapMode !== 'overworld') return;
+    if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') return;
 
     // Determine player location
     const player = gameState.player;
@@ -255,7 +264,7 @@ async function wakeUpNearbyEnemies() {
             const tile = chunkManager.getTile(x, y);
             
             // Optimization: Only check logic if it looks like an enemy tile
-            if (tile === '.' || tile === 'F' || tile === 'd' || tile === 'D' || tile === '^' || tile === '~' || tile === '≈') continue;
+            if (tile === '.' || tile === 'F' || tile === 'd' || tile === 'D' || tile === '^' || tile === '~' || tile === '≈' || tile === '🍄' || tile === '💎c' || tile === '🌋') continue;
 
             const enemyData = ENEMY_DATA[tile];
 
@@ -318,7 +327,7 @@ async function wakeUpNearbyEnemies() {
  */
 
 async function runSharedAiTurns() {
-    if (gameState.mapMode !== 'overworld') return; 
+    if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') return; 
 
     const now = Date.now();
     const AI_INTERVAL = 600; // Increased to 600ms for smoother server load
@@ -329,7 +338,12 @@ async function runSharedAiTurns() {
     if (now - (window.lastLocalAIAttempt || 0) < AI_INTERVAL) return;
     window.lastLocalAIAttempt = now;
 
-    const heartbeatRef = rtdb.ref('worldState/aiHeartbeat');
+    // Use correct path based on layer
+    let realmPrefix = '';
+    if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
+    else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+    
+    const heartbeatRef = rtdb.ref(`worldState/${realmPrefix}aiHeartbeat`);
 
     try {
         const result = await heartbeatRef.transaction((lastHeartbeat) => {
@@ -358,7 +372,7 @@ async function runSharedAiTurns() {
 }
 
 async function processOverworldEnemyTurns() {
-    if (gameState.mapMode !== 'overworld') return;
+    if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') return;
 
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
@@ -386,12 +400,12 @@ async function processOverworldEnemyTurns() {
         }
     }
 
-    // Helper: Valid path check for overworld
+    // Helper: Valid path check for overworld & underworld
     const isValidMove = (tx, ty, enemyType) => {
         const t = chunkManager.getTile(tx, ty);
-        if (t === '~') return false; 
-        if (['.', 'F', 'd', 'D', '≈'].includes(t)) return true;
-        if (t === '^') {
+        if (t === '~' || t === '🌋') return false; // Water and Magma block movement
+        if (['.', 'F', 'd', 'D', '≈', '🍄', '💎c', '🪜', '•', '▲', '💎'].includes(t)) return true;
+        if (t === '^' || t === '▓') {
             const climbers =['Y', '🐲', 'Ø', 'g', 'o', '🦇', '🦅'];
             return climbers.includes(enemyType);
         }
@@ -415,21 +429,24 @@ async function processOverworldEnemyTurns() {
         
         // --- VILLAGE GUARD SNIPER SYSTEM (Anti-Trolling/Anti-Ghost) ---
         // Expanded guard range to 100 tiles (10000 sq) and shoot anything > 15 XP
-        const distToSpawnSq = (enemy.x * enemy.x) + (enemy.y * enemy.y);
-        if (distToSpawnSq < 10000 && enemy.xp > 15) { 
-            if (distSq < 400) {
-                logMessage(`🏹 A village guard snipes the trespassing ${enemy.name} from the walls!`);
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(enemy.x, enemy.y, '#ef4444', 8);
+        // (Guards don't exist in the underworld, so skip this check there)
+        if (gameState.mapMode === 'overworld') {
+            const distToSpawnSq = (enemy.x * enemy.x) + (enemy.y * enemy.y);
+            if (distToSpawnSq < 10000 && enemy.xp > 15) { 
+                if (distSq < 400) {
+                    logMessage(`🏹 A village guard snipes the trespassing ${enemy.name} from the walls!`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(enemy.x, enemy.y, '#ef4444', 8);
+                }
+                
+                // Queue removal from Firebase
+                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
+                
+                delete gameState.sharedEnemies[enemyId];
+                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
+                processedIdsThisFrame.add(enemyId);
+                movesQueued = true;
+                continue; 
             }
-            
-            // Queue removal from Firebase
-            multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
-            
-            delete gameState.sharedEnemies[enemyId];
-            updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
-            processedIdsThisFrame.add(enemyId);
-            movesQueued = true;
-            continue; 
         }
 
         if (distSq > searchDistSq) continue;
@@ -802,7 +819,7 @@ async function processOverworldEnemyTurns() {
                                     const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
                                     
                                     // Don't drop loot into deep ocean water
-                                    if (currentTerrain !== '~') {
+                                    if (currentTerrain !== '~' && currentTerrain !== '🌋') {
                                         // 2 hour TTL (Time To Live) so the map doesn't get cluttered forever
                                         chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', 2); 
                                         gameState.mapDirty = true;
@@ -1420,7 +1437,7 @@ async function runCompanionTurn() {
                 }
             }
         }
-        else if (gameState.mapMode === 'overworld') {
+        else if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
             const tile = chunkManager.getTile(tx, ty);
             const enemyData = ENEMY_DATA[tile];
 
@@ -1484,7 +1501,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
     if (!gameState.sharedEnemies[enemyId]) {
         logMessage("That enemy is already gone.");
-        if (gameState.mapMode === 'overworld') {
+        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
             chunkManager.setWorldTile(newX, newY, '.');
             gameState.mapDirty = true;
             render();
@@ -1555,14 +1572,15 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                     const currentTerrain = chunkManager.getTile(newX, newY);
 
                     
-                    const passableTerrain =['.', 'd', 'D', 'F', '≈']; 
+                    const passableTerrain =['.', 'F', 'd', 'D', '≈', '🍄', '💎c', '🪜']; 
                     
                     if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
                         // Enemy loot despawns after 2 hours!
                         chunkManager.setWorldTile(newX, newY, droppedLoot, 2);
                         gameState.mapDirty = true;
                     }
-                    if (currentTerrain !== '~') {
+                    // For anything else, allow dropping unless it's deep ocean or lava
+                    else if (currentTerrain !== '~' && currentTerrain !== '🌋') {
                         chunkManager.setWorldTile(newX, newY, droppedLoot, 2);
                         gameState.mapDirty = true;
                     }
@@ -1654,6 +1672,7 @@ function getPlayerDamageModifier(baseDamage) {
 }
 
 function handlePlayerDeath() {
+    if (window.inputQueue) window.inputQueue.length = 0; // Clear input queue to prevent ghost walking!
     if (gameState.godMode) return false; 
     if (gameState.player.health > 0) return false; 
 
@@ -1707,14 +1726,14 @@ function handlePlayerDeath() {
                     const ty = deathY + dy;
                     let tile;
 
-                    if (gameState.mapMode === 'overworld') tile = chunkManager.getTile(tx, ty);
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tile = chunkManager.getTile(tx, ty);
                     else if (gameState.mapMode === 'dungeon') tile = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
                     else tile = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
                     // Check both generic plains floor and specific dungeon floor
                     if (tile === validFloor || tile === '.') {
                         
-                        if (gameState.mapMode === 'overworld') {
+                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                             const cX = Math.floor(tx / chunkManager.CHUNK_SIZE);
                             const cY = Math.floor(ty / chunkManager.CHUNK_SIZE);
                             const cId = `${cX},${cY}`;
@@ -1742,10 +1761,16 @@ function handlePlayerDeath() {
         }
     }
 
-    if (gameState.mapMode === 'overworld') {
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         for (const [cId, updates] of Object.entries(pendingUpdates)) {
-            const safeUpdates = sanitizeForFirebase(updates); 
-            rtdb.ref('worldState/' + cId).update(safeUpdates)
+            const safeUpdates = sanitizeForFirebase(updates);
+            
+            // Allow for Multiverse and Underworld paths!
+            let realmPrefix = '';
+            if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
+            else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+            
+            rtdb.ref(`worldState/${realmPrefix}${cId}`).update(safeUpdates)
                 .catch(err => console.error("Failed to drop corpse loot:", err));
         }
     }
@@ -1760,7 +1785,6 @@ function handlePlayerDeath() {
     return true;
 }
 
-// Add this to the bottom of combat.js!
 function handleInstancedEnemyDeath(enemy, x, y) {
     registerKill(enemy);
 
