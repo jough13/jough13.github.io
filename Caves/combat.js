@@ -1505,31 +1505,31 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
     const safeDamage = (typeof playerDamage === 'number' && !isNaN(playerDamage)) ? playerDamage : 1;
 
     try {
-        const transactionResult = await enemyRef.transaction(currentData => {
-            let enemy = currentData;
-            
-            // If null, the server cache dropped it. Rebuild a clean object!
-            if (enemy === null) {
-                enemy = {
-                    ...enemyInfo,
-                    tile: newTile,
-                    x: newX,
-                    y: newY
-                };
-            }
-            
-            // Force health to be a clean Number to prevent NaN DB corruption
-            enemy.health = Number(enemy.health);
-            if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
-            
-            enemy.health -= safeDamage;
-            
-            // If dead, return null to delete from Firebase
-            if (enemy.health <= 0) return null;
-            
-            // Vaporize ALL undefined values before sending to Firebase!
-            return JSON.parse(JSON.stringify(enemy));
-        });
+        // Wrap the transaction in a 3-second timeout
+        const transactionResult = await window.withTimeout(
+            enemyRef.transaction(currentData => {
+                let enemy = currentData;
+                
+                if (enemy === null) {
+                    enemy = {
+                        ...enemyInfo,
+                        tile: newTile,
+                        x: newX,
+                        y: newY
+                    };
+                }
+                
+                enemy.health = Number(enemy.health);
+                if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+                
+                enemy.health -= safeDamage;
+                
+                if (enemy.health <= 0) return null; 
+                
+                return JSON.parse(JSON.stringify(enemy)); 
+            }), 
+            3000 // Timeout in milliseconds
+        );
 
         if (transactionResult.committed) {
             const finalEnemyState = transactionResult.snapshot.val();
