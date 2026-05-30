@@ -3173,7 +3173,8 @@ async function enterGame(playerData) {
         }
     });
 
-    const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(100);
+    // Only request the 50 messages we actually plan to show
+    const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(50);
     // Assign it to the global variable so it can be cleaned up on logout!
     chatListener = chatRef.on('child_added', (snapshot) => {
         const message = snapshot.val();
@@ -3216,14 +3217,26 @@ async function enterGame(playerData) {
         messageDiv.appendChild(msgSpan); 
         chatMessages.prepend(messageDiv);
 
-        // --- GLOBAL CHAT MEMORY LEAK ---
-        // Prevent the DOM from growing infinitely by removing the oldest message
-        // once we hit a sensible cap (50 messages).
-        while (chatMessages.children.length > 50) {
-            chatMessages.removeChild(chatMessages.lastChild);
-        }
-
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        // Debounced DOM Culling
+        // We use a timer to ensure we only clean the DOM ONCE after a rapid burst of messages
+        // (like during the initial login sync), preventing severe layout thrashing.
+        if (window.chatCullTimer) clearTimeout(window.chatCullTimer);
+        
+        window.chatCullTimer = setTimeout(() => {
+            let removedCount = 0;
+            // Cull down to 50 messages
+            while (chatMessages.children.length > 50) {
+                chatMessages.removeChild(chatMessages.lastChild);
+                removedCount++;
+            }
+            
+            // Only force a scroll reflow if we are already at the bottom
+            // This prevents the chat from violently snapping down if the user was scrolling up to read!
+            const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 10;
+            if (isScrolledToBottom || removedCount > 0) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }, 100); // Wait 100ms for Firebase to finish bursting before cleaning up
     });
 
     // --- FINAL RENDER & INIT ---
