@@ -224,7 +224,15 @@ const gameState = {
     exploredChunks: new Set(),
     foundLore: new Set(),
     foundCodexEntries: new Set(),
-    shopStates: {},           // Persistent merchant inventories
+    shopStates: {},           
+
+    // --- MAP DATA BATCH BUFFER ---
+    pendingMapSaves: {
+        chunks: new Set(),
+        lore: new Set(),
+        looted: {}
+    },
+    needsLegacyMapCleanup: false, // Flags old saves for migration
 
     flags: {
         hasSeenForestWarning: false,
