@@ -1,3 +1,5 @@
+// --- START OF FILE utils.js ---
+
 let TILE_SIZE = 20; // Fixed tile size (prevent them from getting huge)
 let VIEWPORT_WIDTH = 40; // Will update on resize
 let VIEWPORT_HEIGHT = 25; // Will update on resize
@@ -34,19 +36,61 @@ window.MathUtils = {
     },
 
     // Formats large numbers for UI (e.g., 1000000 -> "1,000,000")
-    formatNum: (num) => new Intl.NumberFormat().format(num)
+    formatNum: (num) => new Intl.NumberFormat().format(num),
+
+    // Formats milliseconds into readable time (e.g., "2h 15m" or "45s")
+    formatTime: (ms) => {
+        const seconds = Math.floor((ms / 1000) % 60);
+        const minutes = Math.floor((ms / (1000 * 60)) % 60);
+        const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
+        
+        let str = "";
+        if (hours > 0) str += `${hours}h `;
+        if (minutes > 0) str += `${minutes}m `;
+        if (seconds > 0 || str === "") str += `${seconds}s`;
+        return str.trim();
+    },
+
+    // Fast array shuffler (Fisher-Yates)
+    shuffle: (array) => {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex !== 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        }
+        return array;
+    },
+
+    // Weighted Random Picker (Takes an object of { item: weight })
+    // Example: { "Sword": 10, "Shield": 50, "Gold": 40 }
+    weightedRandom: (choices) => {
+        const keys = Object.keys(choices);
+        let sum = 0;
+        for (let i = 0; i < keys.length; i++) sum += choices[keys[i]];
+        
+        let rand = Math.random() * sum;
+        for (let i = 0; i < keys.length; i++) {
+            rand -= choices[keys[i]];
+            if (rand <= 0) return keys[i];
+        }
+        return keys[keys.length - 1]; // Fallback
+    }
 };
 
 // IMPORTANT: Do NOT alter the math in this function! 
 // Altering it will change the world seed hash and shift everyone's map!
+// ROBUSTNESS WIN: Upgraded to a 53-bit safe hash to prevent overflow on massive map coordinates.
 function stringToSeed(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = (hash << 5) - hash + char;
-        hash |= 0;
+    let h1 = 0xdeadbeef ^ 0, h2 = 0x41c6ce57 ^ 0;
+    for (let i = 0, ch; i < str.length; i++) {
+        ch = str.charCodeAt(i);
+        h1 = Math.imul(h1 ^ ch, 2654435761);
+        h2 = Math.imul(h2 ^ ch, 1597334677);
     }
-    return hash;
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 }
 
 // Alea PRNG - Predictable random numbers for procedural generation
