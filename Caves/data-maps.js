@@ -360,6 +360,27 @@ window.TILE_DATA = {
         getCaveId: (x, y) => `cave_landmark`, 
         flavor: "A gaping abyss stares back at you. Cold air rushes up from the depths."
     },
+    '🕳️': {
+        type: 'underworld_entrance', 
+        name: 'Deep Chasm',
+        flavor: "A gaping abyss stares back at you. Cold air rushes up from the depths."
+    },
+    '🪜': {
+        type: 'underworld_exit',
+        name: 'Climbing Rope',
+        flavor: "A rope leading back up to the surface world."
+    },
+    '🍄': {
+        type: 'anomaly',
+        name: 'Giant Glowing Mushroom',
+        flavor: "It pulses with a strange, bioluminescent light."
+    },
+    '💎c': {
+        type: 'obstacle',
+        name: 'Crystal Cluster',
+        tool: 'Pickaxe',
+        flavor: "A dense cluster of sharp, glowing crystals blocks the path."
+    },
     '⛺': {
         type: 'campsite_entrance',
         flavor: "A quiet, safe place to rest your head."
@@ -1235,7 +1256,7 @@ window.ATMOSPHERE_TEXT = {
         "The trees here are draped in grey, weeping moss.",
         "You pull your boot out of the mud with a loud squelch."
     ],
-    // NEW ATMOSPHERE
+    // ATMOSPHERE
     RUIN: [
         "The stones here tell a story of violence and forgotten ages.",
         "You hear a faint scratching sound from behind the wall.",
