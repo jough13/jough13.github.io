@@ -115,15 +115,16 @@ async function attemptMovePlayer(newX, newY) {
 
                 // REWARD: Give the fragment for this specific direction
                 const fragmentName = `Tablet of the ${dir.charAt(0).toUpperCase() + dir.slice(1)}`;
-                gameState.player.inventory.push(
-                    {
-                        templateId: '🧩',
-                        name: fragmentName,
-                        type: 'junk',
-                        quantity: 1,
-                        tile: '🧩'
-                    }
-                );
+                const fragmentItem = { templateId: '🧩', name: fragmentName, type: 'junk', quantity: 1, tile: '🧩' };
+
+                if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                    gameState.player.inventory.push(fragmentItem);
+                    logMessage(`A stone fragment falls from the obelisk: ${fragmentName}`);
+                } else {
+                    logMessage(`{red:A stone fragment falls from the obelisk, but your inventory is full!}`);
+                    chunkManager.setWorldTile(newX, newY, '🧩', 2); // Drops on ground for 2 hours
+                    gameState.mapDirty = true;
+                }
                 logMessage(`A stone fragment falls from the obelisk: ${fragmentName}`);
 
                 // Save progress
