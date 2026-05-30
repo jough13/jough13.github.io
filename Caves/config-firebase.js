@@ -58,17 +58,23 @@ try {
         cacheSizeBytes: 10485760 // 10 MB Cache for fast map loading
     });
 
-    // EASY WIN: Enable Offline Persistence! 
+    // Enable Offline Persistence! 
     db.enablePersistence()
         .catch((err) => {
             if (err.code === 'failed-precondition') {
-                // QoL WIN: Tell the user why persistence failed instead of hiding it in the console!
                 console.warn("Multiple tabs open. Offline persistence enabled in the first tab only.");
-                connectionBanner.textContent = "⚠️ Multiple Tabs Open - Offline Saving Disabled";
-                connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-1.5 z-[10000] transition-all duration-500 bg-yellow-600 text-black translate-y-0 shadow-md font-mono tracking-widest uppercase';
+                
+                // Delay the banner by 3 seconds so it doesn't flash over the bootloader
                 setTimeout(() => {
-                    connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
-                }, 5000);
+                    connectionBanner.textContent = "⚠️ Multiple Tabs Open - Offline Saving Disabled";
+                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-1.5 z-[10000] transition-all duration-500 bg-yellow-600 text-black translate-y-0 shadow-md font-mono tracking-widest uppercase';
+                    
+                    // Hide the banner 5 seconds after it appears
+                    setTimeout(() => {
+                        connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
+                    }, 5000);
+                }, 3000);
+
             } else if (err.code === 'unimplemented') {
                 console.warn("Browser does not support offline persistence.");
             }
