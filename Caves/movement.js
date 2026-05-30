@@ -57,8 +57,8 @@ async function attemptMovePlayer(newX, newY) {
     let newTile;
 
     // --- CHECK FOR LIVE ENEMIES FIRST (Combat Priority) ---
-    if (gameState.mapMode === 'overworld') {
-        const enemyKey = `overworld:${newX},${-newY}`;
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+        const enemyKey = `overworld:${newX},${-newY}`; // Works for both layers
         const overlayEnemy = gameState.sharedEnemies[enemyKey];
 
         if (overlayEnemy) {
@@ -89,7 +89,7 @@ async function attemptMovePlayer(newX, newY) {
     let tileData = TILE_DATA[newTile];
 
     let tileId;
-    if (gameState.mapMode === 'overworld') {
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         tileId = `${newX},${-newY}`;
     } else {
         const mapId = gameState.currentCaveId || gameState.currentCastleId;
@@ -2143,6 +2143,56 @@ async function attemptMovePlayer(newX, newY) {
         }
 
         switch (tileData.type) {
+            case 'underworld_entrance':
+                logMessage("{purple:You leap into the abyss...}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                
+                // Clear surface map memory to prevent ghostly overlaps
+                chunkManager.loadedChunks = {};
+                chunkManager.worldState = {};
+                Object.values(worldStateListeners).forEach(unsub => unsub());
+                worldStateListeners = {};
+                if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.clearAll();
+
+                gameState.mapMode = 'underworld';
+                
+                // FORCE the drop zone to be a safe floor, and stamp a rope to climb back up!
+                chunkManager.setWorldTile(newX, newY, '.'); 
+                chunkManager.setWorldTile(newX, newY - 1, '🪜'); 
+
+                gameState.player.x = newX;
+                gameState.player.y = newY;
+                
+                updateRegionDisplay();
+                gameState.mapDirty = true;
+                render();
+                syncPlayerState();
+                return;
+
+            case 'underworld_exit':
+                logMessage("{cyan:You grab the rope and climb back to the surface.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+                
+                // Clear underworld map memory
+                chunkManager.loadedChunks = {};
+                chunkManager.worldState = {};
+                Object.values(worldStateListeners).forEach(unsub => unsub());
+                worldStateListeners = {};
+                if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.clearAll();
+
+                gameState.mapMode = 'overworld';
+                
+                gameState.player.x = newX;
+                gameState.player.y = newY;
+                
+                updateRegionDisplay();
+                gameState.mapDirty = true;
+                render();
+                syncPlayerState();
+                return;
+            }
+
+        switch (tileData.type) {
             case 'workbench':
                 if (!gameState.foundLore.has(tileId)) {
                     logMessage("You found a workbench! +10 XP");
@@ -2554,7 +2604,7 @@ async function attemptMovePlayer(newX, newY) {
     if (typeof ParticleSystem !== 'undefined' && ParticleSystem.createFootstep) {
         // 1. Find the exact tile you are PUSHING OFF OF to get the correct particle color
         let prevTileChar = '.';
-        if (gameState.mapMode === 'overworld') {
+        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
             prevTileChar = chunkManager.getTile(prevX, prevY);
         } else if (gameState.mapMode === 'dungeon') {
             prevTileChar = chunkManager.caveMaps[gameState.currentCaveId]?.[prevY]?.[prevX] || '.';
@@ -2666,7 +2716,7 @@ async function attemptMovePlayer(newX, newY) {
         renderInventory();
     }
 
-    if (gameState.mapMode === 'overworld') {
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
         const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
 
