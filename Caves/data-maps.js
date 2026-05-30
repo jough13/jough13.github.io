@@ -1,3 +1,5 @@
+// --- START OF FILE data-maps.js ---
+
 window.REALM_MUTATORS = {
     'lava_oceans': {
         name: "Infernal",
@@ -51,7 +53,7 @@ window.TILE_DATA = {
         // Forces the engine to generate a SUNKEN themed dungeon!
         getCaveId: (x, y) => `sunken_whirlpool_${x}_${y}`
     },
-        '❄️': {
+    '❄️': {
         type: 'anomaly',
         name: 'Ice Bridge',
         flavor: "The water has been frozen solid by magic. It won't last forever."
@@ -87,7 +89,6 @@ window.TILE_DATA = {
             };
         }
     },
-
     '🌴': {
         type: 'anomaly',
         name: 'Palm Tree',
@@ -120,12 +121,10 @@ window.TILE_DATA = {
             }
         }
     },
-
     '🏕️': {
         type: 'ambush_camp',
         flavor: "You stumble into a hidden encampment. It's an ambush!"
     },
-
     '👻k': {
         type: 'spirit_npc',
         name: 'Echo of the King',
@@ -355,11 +354,8 @@ window.TILE_DATA = {
         flavor: "You smash the urn open...",
         lootTable: ['$', '$', 'gold_dust', 'ancient_coin', '💍']
     },
-    '🕳️': {
-        type: 'landmark_cave', 
-        getCaveId: (x, y) => `cave_landmark`, 
-        flavor: "A gaping abyss stares back at you. Cold air rushes up from the depths."
-    },
+    
+    // --- UNDERWORLD TILES ---
     '🕳️': {
         type: 'underworld_entrance', 
         name: 'Deep Chasm',
@@ -381,6 +377,7 @@ window.TILE_DATA = {
         tool: 'Pickaxe',
         flavor: "A dense cluster of sharp, glowing crystals blocks the path."
     },
+
     '⛺': {
         type: 'campsite_entrance',
         flavor: "A quiet, safe place to rest your head."
@@ -966,7 +963,7 @@ window.CASTLE_LAYOUTS = {
             '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓...==..$.......▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓...▓',
             '▓...▓.......▓...▓.......▓...▓...==..$...$...▓...▓.......▓...▓.......▓...▓...▓',
             '▓...▓...B...▓...▓.......▓...▓...==..B...$...▓...▓.......▓...▓.......▓...▓...▓',
-            '▓...▓.......▓...▓.......▓...▓...==..$...$...▓...▓.......▓...▓.......▓...▓...▓',
+            '▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓',
             '▓...▓.......▓...▓.......▓...▓...==..$.......▓...▓.......▓...▓.......▓...▓...▓',
             '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓==▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓...▓',
             '▓...............................==...............🎖️...G..........................▓',
@@ -1256,7 +1253,7 @@ window.ATMOSPHERE_TEXT = {
         "The trees here are draped in grey, weeping moss.",
         "You pull your boot out of the mud with a loud squelch."
     ],
-    // ATMOSPHERE
+    // NEW ATMOSPHERE
     RUIN: [
         "The stones here tell a story of violence and forgotten ages.",
         "You hear a faint scratching sound from behind the wall.",
