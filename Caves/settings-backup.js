@@ -1,3 +1,5 @@
+// --- START OF FILE settings-backup.js ---
+
 // ==========================================
 // CLOUD BACKUPS & SAVE INTEGRITY
 // ==========================================
@@ -48,9 +50,19 @@ async function createCloudBackup(slotId = 'latest') {
     // Prevent players from spamming the backup button and hitting Firebase quotas
     if (now - lastBackupTime < 10000) {
         logMessage("{red:Please wait a moment before creating another backup.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
     lastBackupTime = now;
+
+    // JUICE WIN: Dynamic Button States
+    const btn = document.getElementById('btnBackup');
+    const originalText = btn ? btn.innerHTML : "☁️ Create Backup";
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = "⏳ Uploading...";
+        btn.classList.add('opacity-75', 'cursor-wait');
+    }
 
     logMessage("{gray:Creating cloud backup...}");
     
@@ -82,20 +94,20 @@ async function createCloudBackup(slotId = 'latest') {
         logMessage("{green:Backup successful!}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
         
-        // PERFORMANCE: Update the UI directly using our local timestamp instead of fetching from Firebase
-        const label = document.getElementById('lastBackupLabel');
-        if (label) {
-            const date = new Date(backupState.timestamp);
-            const dateString = date.toLocaleDateString();
-            const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            label.textContent = `Last Backup: ${dateString} at ${timeString}`;
-            label.classList.remove('text-red-500');
-            label.classList.add('text-gray-400');
-        }
+        // Update the UI directly using our local timestamp instead of fetching from Firebase
+        if (typeof updateBackupUI === 'function') updateBackupUI(slotId);
+        
     } catch (err) {
         console.error("Backup creation failed: ", err);
         logMessage("{red:Backup failed.} See console.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+    } finally {
+        // Reset Button State
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            btn.classList.remove('opacity-75', 'cursor-wait');
+        }
     }
 }
 
@@ -103,6 +115,15 @@ async function restoreCloudBackup(slotId = 'latest') {
     if (!playerRef) return;
 
     if (!confirm("Are you sure? This will overwrite your current progress with the selected backup.")) return;
+
+    // JUICE WIN: Dynamic Button States
+    const btn = document.getElementById('btnRestore');
+    const originalText = btn ? btn.innerHTML : "↺ Restore";
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = "⏳ Downloading...";
+        btn.classList.add('opacity-75', 'cursor-wait');
+    }
 
     logMessage("{gray:Locating backup...}");
 
@@ -137,8 +158,17 @@ async function restoreCloudBackup(slotId = 'latest') {
              if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
              return;
         }
+
+        // B. Block Stat & Talent Point Injection
+        if ((data.statPoints || 0) > (gameState.player.statPoints || 0) + 10 || 
+            (data.talentPoints || 0) > (gameState.player.talentPoints || 0) + 5) {
+             console.error("Suspicious Backup Blocked: Unearned Stat/Talent points detected.");
+             logMessage("{red:Backup Validation Failed.} Anomalous progression detected.");
+             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+             return;
+        }
         
-        // B. Block structural JSON injection (e.g. modifying the save file to bypass inventory limits)
+        // C. Block structural JSON injection (e.g. modifying the save file to bypass inventory limits)
         const invLimit = window.MAX_INVENTORY_SLOTS || 9;
         const stashLimit = 50; // Defined in stash.js, hardcoded here as a secondary safety net
         
@@ -155,6 +185,12 @@ async function restoreCloudBackup(slotId = 'latest') {
         // Remove the backup-specific fields before applying to game
         delete data.signature; 
         delete data.timestamp;
+
+        // ROBUSTNESS WIN: Deep Clean Current State
+        // Arrays merged via Object.assign can leave ghost items if the new array is shorter than the old one.
+        gameState.player.inventory = [];
+        gameState.player.bank = [];
+        gameState.player.equipment = { weapon: null, armor: null, offhand: null, accessory: null, ammo: null };
 
         // Apply to Game State (Reuse your enterGame logic structure)
         if (typeof enterGame === 'function') {
@@ -183,6 +219,13 @@ async function restoreCloudBackup(slotId = 'latest') {
         console.error("Restore failed: ", err);
         logMessage("{red:Restore failed.} Check console for details.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+    } finally {
+        // Reset Button State
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            btn.classList.remove('opacity-75', 'cursor-wait');
+        }
     }
 }
 
@@ -194,19 +237,36 @@ async function updateBackupUI(slotId = 'latest') {
     try {
         const doc = await playerRef.collection('backups').doc(slotId).get();
         if (doc.exists) {
-            const date = new Date(doc.data().timestamp);
+            const timestamp = doc.data().timestamp;
+            const date = new Date(timestamp);
             
             const dateString = date.toLocaleDateString();
             const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
-            label.textContent = `Last Backup: ${dateString} at ${timeString}`;
-            label.classList.remove('text-red-500');
-            label.classList.add('text-gray-400');
+            // QoL WIN: Smart Age Warning
+            // If the backup is older than 24 hours, color it yellow to gently warn the player!
+            const now = typeof window.getServerTime === 'function' ? window.getServerTime() : Date.now();
+            const hoursOld = (now - timestamp) / (1000 * 60 * 60);
+
+            label.classList.remove('text-red-500', 'text-yellow-500', 'text-gray-400');
+
+            if (hoursOld > 24) {
+                label.innerHTML = `Last Backup: ${dateString} at ${timeString} <span class="font-bold text-yellow-500">(Over 24h old!)</span>`;
+                label.classList.add('text-yellow-500');
+            } else {
+                label.textContent = `Last Backup: ${dateString} at ${timeString}`;
+                label.classList.add('text-gray-400');
+            }
+
         } else {
-            label.textContent = "No backup found.";
+            label.textContent = "No backup found in the cloud.";
+            label.classList.remove('text-red-500', 'text-yellow-500', 'text-gray-400');
+            label.classList.add('text-gray-400');
         }
     } catch (e) {
         console.error("Failed to read backup status: ", e);
-        label.textContent = "Status: Unknown";
+        label.textContent = "Status: Unknown (Network Error)";
+        label.classList.remove('text-gray-400', 'text-yellow-500');
+        label.classList.add('text-red-500');
     }
 }
