@@ -281,19 +281,22 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
                 // Apply Damage
                 if (gameState.mapMode === 'overworld') {
-                    combatPromises.push(handleOverworldCombat(coords.x, coords.y, enemyData, tile, finalDmg));
+                    // Subtract Defense
+                    const mitigatedDmg = Math.max(1, finalDmg - (enemyData.defense || 0));
+                    combatPromises.push(handleOverworldCombat(coords.x, coords.y, enemyData, tile, mitigatedDmg));
                 } else {
                     let enemy = gameState.instancedEnemies.find(e => e.x === coords.x && e.y === coords.y);
                     if (enemy) {
-                        // SAFEGUARD: Prevent NaN corruption
                         enemy.health = Number(enemy.health);
                         if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
 
-                        enemy.health -= finalDmg;
-                        logMessage(`You hit ${enemy.name} for {red:${finalDmg}} damage!`);
+                        // ▼ NEW: Subtract Defense ▼
+                        const mitigatedDmg = Math.max(1, finalDmg - (enemy.defense || 0));
+                        enemy.health -= mitigatedDmg;
+                        logMessage(`You hit ${enemy.name} for {red:${mitigatedDmg}} damage!`);
                         if (typeof ParticleSystem !== 'undefined') {
                             ParticleSystem.createExplosion(coords.x, coords.y, '#fff', 3);
-                            ParticleSystem.createFloatingText(coords.x, coords.y, `-${finalDmg}`, '#ef4444');
+                            ParticleSystem.createFloatingText(coords.x, coords.y, `-${mitigatedDmg}`, '#ef4444');
                         }
 
                         // APPLY STUN (Shield Bash OR Crush)
