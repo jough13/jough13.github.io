@@ -2431,13 +2431,6 @@ function handleChatCommand(message) {
                 logMessage("/purge : Force-delete current map chunk");
             }
             break;
-            
-            logMessage("/stuck : Teleport to spawn (0,0)");
-            logMessage("/tp [x] [y] : Teleport to coordinates");
-            logMessage("/give [item name] [qty] : Spawn an item");
-            logMessage("/heal : Full restore (Cheat)");
-            logMessage("/god : Toggle God Mode (No hunger/thirst/damage)");
-            break;
 
         case 'purge':
             // 1. Clear local memory
