@@ -323,24 +323,14 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
             // Wrap the spell transaction in a 3-second timeout
             const transactionResult = await window.withTimeout(
                 enemyRef.transaction(currentData => {
-                    let enemy;
-
+                    // --- THE FIX ---
+                    // If the enemy is already dead (null), ABORT the transaction.
+                    // Do NOT recreate the enemy!
                     if (currentData === null) {
-                        enemy = {
-                            name: enemyInfo.name, 
-                            health: enemyInfo.maxHealth,
-                            maxHealth: enemyInfo.maxHealth,
-                            attack: enemyInfo.attack,
-                            defense: enemyData.defense, 
-                            xp: enemyInfo.xp,
-                            loot: enemyData.loot,
-                            tile: tile,
-                            isElite: enemyInfo.isElite || false,
-                            color: enemyInfo.color || null
-                        };
-                    } else {
-                        enemy = currentData;
+                        return undefined; 
                     }
+
+                    let enemy = currentData;
 
                     enemy.health = Number(enemy.health);
                     if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
@@ -362,6 +352,29 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 }),
                 3000 // Timeout in milliseconds
             );
+
+            // --- Only grant XP if OUR transaction succeeded ---
+            if (transactionResult && transactionResult.committed) {
+                const finalEnemyState = transactionResult.snapshot.val();
+                
+                if (finalEnemyState === null) {
+                    logMessage(`The ${enemyInfo.name} was vanquished!`);
+                    registerKill(enemyInfo);
+
+                    const lootData = { ...enemyData, isElite: enemyInfo.isElite };
+                    const droppedLoot = generateEnemyLoot(player, lootData);
+
+                    chunkManager.setWorldTile(targetX, targetY, droppedLoot || '.');
+                }
+            } else {
+                // The transaction aborted because the enemy was already dead
+                if (gameState.sharedEnemies[enemyId]) {
+                    delete gameState.sharedEnemies[enemyId];
+                }
+            }
+        } catch (error) {
+            console.error("Spell damage transaction failed: ", error);
+        }
 
             const finalEnemyState = transactionResult.snapshot.val();
             
