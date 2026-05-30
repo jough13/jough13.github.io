@@ -1433,19 +1433,13 @@ async function runCompanionTurn() {
 
                 try {
                     await enemyRef.transaction(currentData => {
-                        let enemy = currentData;
-
-                        if (enemy === null) {
-                            if (!enemyData) return null;
-                            
-                            // CRITICAL FIX: Safe deep clone to prevent RTDB undefined errors
-                            enemy = JSON.parse(JSON.stringify({
-                                ...getScaledEnemy(enemyData, tx, ty),
-                                tile: tile,
-                                x: tx,
-                                y: ty
-                            }));
+                        
+                        // If the enemy is already dead (null), ABORT the transaction.
+                        if (currentData === null) {
+                            return undefined;
                         }
+
+                        let enemy = currentData;
 
                         const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
                         enemy.health -= dmg;
@@ -1508,16 +1502,13 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
         // Wrap the transaction in a 3-second timeout
         const transactionResult = await window.withTimeout(
             enemyRef.transaction(currentData => {
-                let enemy = currentData;
-                
-                if (enemy === null) {
-                    enemy = {
-                        ...enemyInfo,
-                        tile: newTile,
-                        x: newX,
-                        y: newY
-                    };
+
+                // If the enemy is already dead (null), ABORT the transaction.
+                if (currentData === null) {
+                    return undefined; 
                 }
+                
+                let enemy = currentData;
                 
                 enemy.health = Number(enemy.health);
                 if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
@@ -1531,7 +1522,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             3000 // Timeout in milliseconds
         );
 
-        if (transactionResult.committed) {
+        if (transactionResult && transactionResult.committed) {
             const finalEnemyState = transactionResult.snapshot.val();
 
             if (typeof ParticleSystem !== 'undefined') {
