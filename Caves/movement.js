@@ -216,14 +216,7 @@ async function attemptMovePlayer(newX, newY) {
         return;
     }
 
-    // 3. Obsolete Tile Cleanup
-    const obsoleteTiles = [];
-    if (obsoleteTiles.includes(newTile)) {
-        logMessage("You clear away remnants of an older age.");
-        chunkManager.setWorldTile(newX, newY, '.');
-    }
-
-    // 4. Overlay Collision Check
+    // 3. Overlay Collision Check
     if (gameState.mapMode === 'overworld') {
         const enemyKey = `overworld:${newX},${-newY}`;
         const overlayEnemy = gameState.sharedEnemies[enemyKey];
