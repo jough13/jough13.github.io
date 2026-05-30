@@ -1,3 +1,5 @@
+// --- START OF FILE renderer.js ---
+
 // ==========================================
 // RENDERING ENGINE & VISUAL EFFECTS
 // ==========================================
@@ -635,7 +637,7 @@ function drawLighting(ctx, pScreenX, pScreenY) {
     const candleBonus = (gameState.player.candlelightTurns > 0) ? 8 : 0;
 
     // Determine ambient light and base radius
-    if (gameState.mapMode === 'dungeon') {
+    if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'underworld') {
         ambientLight = 0.85; // Dungeons are permanently dark
         baseRadius = 6 + Math.floor(gameState.player.perception / 2) + torchBonus + candleBonus;
     } else { 
@@ -809,41 +811,52 @@ function renderTerrainCache(startX, startY) {
                     if (tile !== ' ') fgChar = tile;
                 }
             } 
-            else { // Overworld
+            else { // Overworld OR Underworld
                 tile = chunkManager.getTile(mapX, mapY);
                 
-                // PERFORMANCE WIN: Direct array lookup instead of recalculating Perlin noise!
                 const cX = Math.floor(mapX / 16);
                 const cY = Math.floor(mapY / 16);
                 const lX = (mapX % 16 + 16) % 16;
                 const lY = (mapY % 16 + 16) % 16;
                 const chunkId = `${cX},${cY}`;
 
-                // Grab the pristine background terrain from local cache
                 let baseTerrain = '.';
                 if (chunkManager.loadedChunks[chunkId] && chunkManager.loadedChunks[chunkId][lY]) {
                     baseTerrain = chunkManager.loadedChunks[chunkId][lY][lX];
                 }
                 
-                // Color Logic
-                bgColor = '#22c55e'; // Plains
-                if (baseTerrain === 'F' || baseTerrain === '🌳e') bgColor = '#14532d';
-                else if (baseTerrain === 'd') bgColor = '#2d2d2d';
-                else if (baseTerrain === 'D') bgColor = '#fde047';
-                else if (baseTerrain === '≈') bgColor = '#422006';
-                else if (baseTerrain === '^' || baseTerrain === '⛰') bgColor = '#57534e';
-                else if (baseTerrain === '~') bgColor = '#1e3a8a';
-                else if (baseTerrain === '🌋') bgColor = '#450a0a';
+                if (activeMapMode === 'underworld') {
+                    // --- UNDERWORLD COLOR PALETTE ---
+                    bgColor = '#0f172a'; // Deep abyss floor
+                    if (baseTerrain === '▓') bgColor = '#1e293b'; // Cave Walls
+                    else if (baseTerrain === '🌋') bgColor = '#450a0a'; // Magma
+                    else if (baseTerrain === '🍄') bgColor = '#4a044e'; // Fungal Floor
+                    else if (baseTerrain === '💎c') bgColor = '#083344'; // Crystal Floor
+                } else {
+                    // --- OVERWORLD COLOR PALETTE ---
+                    bgColor = '#22c55e'; // Plains
+                    if (baseTerrain === 'F' || baseTerrain === '🌳e') bgColor = '#14532d';
+                    else if (baseTerrain === 'd') bgColor = '#2d2d2d';
+                    else if (baseTerrain === 'D') bgColor = '#fde047';
+                    else if (baseTerrain === '≈') bgColor = '#422006';
+                    else if (baseTerrain === '^' || baseTerrain === '⛰') bgColor = '#57534e';
+                    else if (baseTerrain === '~') bgColor = '#1e3a8a';
+                    else if (baseTerrain === '🌋') bgColor = '#450a0a';
+                }
 
                 TileRenderer.drawBase(terrainCtx, x, y, bgColor);
 
-                // --- STATIC DRAWING & ANIMATION SORTING ---
-                // Note: We skip animated tiles here, but save them to an array so the main loop can draw them fast!
-                if (tile === '~' || tile === '≈' || tile === '🔥' || tile === 'Ω' || tile === '👻k' || (tile === 'D' && gameState.currentCaveTheme === 'FIRE')) {
+                // Animation sorting
+                if (['~', '≈', '🔥', 'Ω', '👻k'].includes(tile) || (tile === 'D' && gameState.currentCaveTheme === 'FIRE') || (tile === '🌋' && activeMapMode === 'underworld')) {
                     gameState.visibleAnimatedTiles.push({ screenX: x, screenY: y, mapX: mapX, mapY: mapY, tile: tile });
                 } else {
                     switch (tile) {
-                        case '.': TileRenderer.drawPlains(terrainCtx, x, y, mapX, mapY, bgColor, '#15803d'); break;
+                        case '▓': TileRenderer.drawWall(terrainCtx, x, y, '#1e293b', 'rgba(0,0,0,0.5)', 'rough'); break;
+                        case '🍄': fgChar = '🍄'; fgColor = '#d946ef'; break;
+                        case '💎c': fgChar = '💎'; fgColor = '#22d3ee'; break;
+                        case '🪜': fgChar = '🪜'; fgColor = '#fbbf24'; break;
+                        // Overworld defaults...
+                        case '.': if(activeMapMode === 'overworld') TileRenderer.drawPlains(terrainCtx, x, y, mapX, mapY, bgColor, '#15803d'); break;
                         case 'F': TileRenderer.drawForest(terrainCtx, x, y, mapX, mapY, bgColor); break;
                         case '^': TileRenderer.drawMountain(terrainCtx, x, y, mapX, mapY, bgColor); break;
                         case 'd': TileRenderer.drawDeadlands(terrainCtx, x, y, mapX, mapY, bgColor, '#444'); break;
@@ -853,7 +866,7 @@ function renderTerrainCache(startX, startY) {
                         case '=': TileRenderer.drawBase(terrainCtx, x, y, '#78350f'); break;
                         case '+': fgChar = '+'; fgColor = '#fbbf24'; break;
                         case '/': fgChar = '/'; fgColor = '#000'; break;
-                        case '🌋': fgChar = '🌋'; break; // Draw volcanoes properly!
+                        case '🌋': fgChar = '🌋'; break; 
                         default:
                             fgChar = tile;
                             if (window.ENEMY_DATA && window.ENEMY_DATA[tile]) fgColor = window.ENEMY_DATA[tile].color || '#ef4444';
