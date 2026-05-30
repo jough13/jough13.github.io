@@ -363,7 +363,9 @@ async function executeRangedAttack(dirX, dirY) {
 
     // --- WEAPON CHECK ---
     const weapon = player.equipment.weapon;
-    if (!weapon || !weapon.name.includes("bow") && !weapon.name.includes("Bow")) {
+    
+    // Check if weapon exists FIRST. If it does, convert name to lowercase to check for "bow".
+    if (!weapon || !weapon.name.toLowerCase().includes("bow")) {
         logMessage("{red:You must have a bow equipped to shoot!}");
         gameState.isAiming = false;
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
