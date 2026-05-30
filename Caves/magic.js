@@ -323,7 +323,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
             // Wrap the spell transaction in a 3-second timeout
             const transactionResult = await window.withTimeout(
                 enemyRef.transaction(currentData => {
-                    // --- THE FIX ---
+
                     // If the enemy is already dead (null), ABORT the transaction.
                     // Do NOT recreate the enemy!
                     if (currentData === null) {
@@ -371,21 +371,6 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 if (gameState.sharedEnemies[enemyId]) {
                     delete gameState.sharedEnemies[enemyId];
                 }
-            }
-        } catch (error) {
-            console.error("Spell damage transaction failed: ", error);
-        }
-
-            const finalEnemyState = transactionResult.snapshot.val();
-            
-            if (finalEnemyState === null) {
-                logMessage(`The ${enemyInfo.name} was vanquished!`);
-                registerKill(enemyInfo);
-
-                const lootData = { ...enemyData, isElite: enemyInfo.isElite };
-                const droppedLoot = generateEnemyLoot(player, lootData);
-
-                chunkManager.setWorldTile(targetX, targetY, droppedLoot || '.');
             }
         } catch (error) {
             console.error("Spell damage transaction failed: ", error);
