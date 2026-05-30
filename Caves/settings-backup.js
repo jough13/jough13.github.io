@@ -69,10 +69,7 @@ async function createCloudBackup(slotId = 'latest') {
     // 1. Get clean data explicitly to prevent saving transient UI state
     const rawData = {
         ...gameState.player,
-        lootedTiles: Array.from(gameState.lootedTiles || []),
-        exploredChunks: Array.from(gameState.exploredChunks || []),
-        foundLore: Array.from(gameState.foundLore || []),
-        foundCodexEntries: Array.from(gameState.foundCodexEntries || []),
+        // Legacy map arrays are deliberately omitted here since they moved to subcollections!
         customPins: gameState.player.customPins || [],
         bank: gameState.player.bank || [], // Explicitly grab the Stash
         inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
@@ -90,7 +87,20 @@ async function createCloudBackup(slotId = 'latest') {
 
     // 3. Save
     try {
+        // A. Save the main player document backup
         await playerRef.collection('backups').doc(slotId).set(backupState);
+        
+        // B. Backup the Map Subcollection safely using a batch
+        const mapSnap = await playerRef.collection('map_data').get();
+        if (!mapSnap.empty) {
+            const batch = db.batch();
+            mapSnap.forEach(doc => {
+                const backupMapRef = playerRef.collection('backups').doc(slotId).collection('map_data').doc(doc.id);
+                batch.set(backupMapRef, doc.data());
+            });
+            await batch.commit();
+        }
+
         logMessage("{green:Backup successful!}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
         
@@ -185,6 +195,17 @@ async function restoreCloudBackup(slotId = 'latest') {
         // Remove the backup-specific fields before applying to game
         delete data.signature; 
         delete data.timestamp;
+
+        // Restore Map Subcollection
+        const backupMapSnap = await playerRef.collection('backups').doc(slotId).collection('map_data').get();
+        if (!backupMapSnap.empty) {
+            const batch = db.batch();
+            backupMapSnap.forEach(doc => {
+                const liveMapRef = playerRef.collection('map_data').doc(doc.id);
+                batch.set(liveMapRef, doc.data(), { merge: true });
+            });
+            await batch.commit();
+        }
 
         // ROBUSTNESS WIN: Deep Clean Current State
         // Arrays merged via Object.assign can leave ghost items if the new array is shorter than the old one.
