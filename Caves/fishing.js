@@ -2,7 +2,7 @@
 // THE ULTIMATE FISHING EXPANSION (MASTERPIECE++)
 // ==============================================
 
-// PERFORMANCE WIN: O(1) Item Lookup Cache
+// Item Lookup Cache
 // Prevents scanning the massive ITEM_DATA dictionary multiple times per catch
 const _itemKeyCache = {};
 function getItemKeyByName(name) {
@@ -12,7 +12,7 @@ function getItemKeyByName(name) {
     return key;
 }
 
-// JUICE: Procedural Sound Effects for Fishing
+// Procedural Sound Effects for Fishing
 function playSplash() {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.25, 0.05, 400);
 }
@@ -412,19 +412,22 @@ function executeFishing() {
         
         const enemyData = window.ENEMY_DATA['l'];
         
+        const spawnX = player.x + 1;
+        const spawnY = player.y;
+        
         if (gameState.mapMode === 'overworld') {
-            const enemyId = `overworld:${player.x},${-player.y}`;
-            const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, player.x, player.y) : enemyData;
-            gameState.sharedEnemies[enemyId] = { ...scaledStats, tile: 'l', x: player.x, y: player.y, spawnTime: Date.now() };
+            const enemyId = `overworld:${spawnX},${-spawnY}`;
+            const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, spawnX, spawnY) : enemyData;
+            gameState.sharedEnemies[enemyId] = { ...scaledStats, tile: 'l', x: spawnX, y: spawnY, spawnTime: Date.now() };
             
             if (typeof EnemyNetworkManager !== 'undefined') {
-                rtdb.ref(EnemyNetworkManager.getPath(player.x, player.y, enemyId)).set(gameState.sharedEnemies[enemyId]);
+                rtdb.ref(EnemyNetworkManager.getPath(spawnX, spawnY, enemyId)).set(gameState.sharedEnemies[enemyId]);
             }
         } else {
-            // FIX: Instanced enemy fallback for dungeon/castle swamps!
+            // Instanced enemy fallback for dungeon/castle swamps!
             const newEnemy = {
                 id: `${gameState.currentCaveId || gameState.currentCastleId}:leech_${Date.now()}`,
-                x: player.x, y: player.y, tile: 'l', name: enemyData.name,
+                x: spawnX, y: spawnY, tile: 'l', name: enemyData.name,
                 health: enemyData.maxHealth, maxHealth: enemyData.maxHealth,
                 attack: enemyData.attack, defense: enemyData.defense || 0,
                 xp: enemyData.xp, loot: enemyData.loot,
@@ -432,6 +435,7 @@ function executeFishing() {
             };
             gameState.instancedEnemies.push(newEnemy);
         }
+        
         if (typeof render === 'function') render();
         return true; 
     }
