@@ -1,5 +1,24 @@
 // Globals
 
+// Groups map coordinates into 50x50 chunk sectors for efficient Firestore Subcollections
+function getSectorId(coordString) {
+    try {
+        if (coordString.includes(':')) {
+            // It's an instanced dungeon/castle (e.g. cave_10_20:5,5)
+            const parts = coordString.split(':');
+            return `sec_instanced_${parts[0]}`; 
+        } else {
+            // It's an overworld coordinate (e.g. 15,-5)
+            const parts = coordString.split(',');
+            const sx = Math.floor(parseInt(parts[0]) / 50);
+            const sy = Math.floor(parseInt(parts[1]) / 50);
+            return `sec_overworld_${sx}_${sy}`;
+        }
+    } catch(e) {
+        return 'sec_misc';
+    }
+}
+
 // --- Anti-Cheat Tracking ---
 let lastValidatedState = null;
 const MAX_GOLD_PER_TICK = 5000; // Max gold you could reasonably earn between saves
@@ -50,6 +69,11 @@ function validateStateBeforeSave(currentState) {
  */
 
 function triggerDebouncedSave(updates) {
+    // Strip out legacy massive arrays to prevent 1MB Firestore blowout
+    delete updates.exploredChunks;
+    delete updates.foundLore;
+    delete updates.lootedTiles;
+
     // Merge new updates into existing pending data safely
     if (pendingSaveData === null) {
         pendingSaveData = { ...updates };
@@ -57,92 +81,120 @@ function triggerDebouncedSave(updates) {
         pendingSaveData = { ...pendingSaveData, ...updates };
     }
 
-    // If a save is already queued, DO NOT reset the timer!
-    // This converts the logic from a "Debounce" to a "Throttle".
-    // It guarantees one save exactly every X minutes, no matter how much you move.
     if (saveTimeout) return;
 
     // Set to 3 minutes (180000ms)
     saveTimeout = setTimeout(() => {
-        if (playerRef && pendingSaveData) {
-            
-            // --- 🚨 ANTI-CHEAT CHECK ---
-            // Merge pending data with the live state for validation
-            const stateToVerify = { ...gameState.player, ...pendingSaveData };
-            if (!validateStateBeforeSave(stateToVerify)) {
-                logMessage("{red:Reality destabilizes. Unnatural energies detected.}");
-                // Reload the page to wipe the cheated client state and load the last clean server state
-                setTimeout(() => location.reload(), 2000);
-                return;
-            }
-
-            const saveIcon = document.getElementById('saveIndicator');
-            
-            if (saveIcon) {
-                saveIcon.classList.remove('opacity-0');
-                saveIcon.classList.add('opacity-100');
-            }
-            
-            const sanitizedData = sanitizeForFirebase(pendingSaveData);
-            playerRef.update(sanitizedData)
-                .then(() => {
-                    // Update our clean baseline after a successful save
-                    lastValidatedState = { ...gameState.player }; 
-                    
-                    setTimeout(() => {
-                        if (saveIcon) {
-                            saveIcon.classList.remove('opacity-100');
-                            saveIcon.classList.add('opacity-0');
-                        }
-                    }, 1500); 
-                })
-                .catch(console.error);
-        }
-        
-        saveTimeout = null;
-        pendingSaveData = null;
-    }, 180000); // 3 minutes (180,000 milliseconds)
+        flushPendingSave();
+    }, 180000); 
 }
 
 function flushPendingSave(updates = null) {
-    // 1. Clear any active debounce timer safely
     if (saveTimeout) {
         clearTimeout(saveTimeout);
         saveTimeout = null;
     }
     
-    // 2. Resolve data to write (preferring passed updates over pending debounced data)
     const dataToSave = updates || pendingSaveData;
     const saveIcon = document.getElementById('saveIndicator');
     
     if (dataToSave && playerRef) {
-        // Show icon for forced saves (like crossing region borders or closing the game)
-        if (saveIcon) {
-            saveIcon.classList.remove('opacity-0');
-            saveIcon.classList.add('opacity-100');
+        // Strip legacy arrays
+        delete dataToSave.exploredChunks;
+        delete dataToSave.foundLore;
+        delete dataToSave.lootedTiles;
+
+        // --- LEGACY MIGRATION CLEANUP ---
+        if (gameState.needsLegacyMapCleanup) {
+            dataToSave.exploredChunks = firebase.firestore.FieldValue.delete();
+            dataToSave.foundLore = firebase.firestore.FieldValue.delete();
+            dataToSave.lootedTiles = firebase.firestore.FieldValue.delete();
+            gameState.needsLegacyMapCleanup = false;
         }
-        
-        // Sanitize the object to remove unsupported properties (functions/undefined)
-        playerRef.update(sanitizeForFirebase(dataToSave))
-            .then(() => {
-                console.log("☁️ Forced flush save completed.");
+
+        const batch = db.batch();
+        let hasMapData = false;
+
+        // --- 1. PROCESS MAP SUBCOLLECTIONS ---
+        if (gameState.pendingMapSaves && 
+           (gameState.pendingMapSaves.chunks.size > 0 || 
+            gameState.pendingMapSaves.lore.size > 0 || 
+            Object.keys(gameState.pendingMapSaves.looted).length > 0)) {
+            
+            hasMapData = true;
+            const sectorUpdates = {};
+            
+            // Group Chunks
+            gameState.pendingMapSaves.chunks.forEach(chunkId => {
+                const sector = getSectorId(chunkId);
+                if (!sectorUpdates[sector]) sectorUpdates[sector] = { chunks: [], lore: [], looted: {} };
+                sectorUpdates[sector].chunks.push(chunkId);
+            });
+            // Group Lore
+            gameState.pendingMapSaves.lore.forEach(loreId => {
+                const sector = getSectorId(loreId);
+                if (!sectorUpdates[sector]) sectorUpdates[sector] = { chunks: [], lore: [], looted: {} };
+                sectorUpdates[sector].lore.push(loreId);
+            });
+            // Group Looted Tiles
+            for (const [key, val] of Object.entries(gameState.pendingMapSaves.looted)) {
+                const sector = getSectorId(key);
+                if (!sectorUpdates[sector]) sectorUpdates[sector] = { chunks: [], lore: [], looted: {} };
+                sectorUpdates[sector].looted[key] = val;
+            }
+
+            // Write to subcollection docs
+            for (const sector in sectorUpdates) {
+                const docRef = playerRef.collection('map_data').doc(sector);
+                const docData = {};
+                
+                if (sectorUpdates[sector].chunks.length > 0) docData.exploredChunks = firebase.firestore.FieldValue.arrayUnion(...sectorUpdates[sector].chunks);
+                if (sectorUpdates[sector].lore.length > 0) docData.foundLore = firebase.firestore.FieldValue.arrayUnion(...sectorUpdates[sector].lore);
+                
+                if (Object.keys(sectorUpdates[sector].looted).length > 0) {
+                    for (const [k, v] of Object.entries(sectorUpdates[sector].looted)) {
+                        docData[`lootedTiles.${k}`] = (v === null) ? firebase.firestore.FieldValue.delete() : v;
+                    }
+                }
+                batch.set(docRef, docData, { merge: true });
+            }
+            
+            // Clear pending buffer
+            gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
+        }
+
+        // --- 2. PROCESS MAIN PLAYER DATA ---
+        if (Object.keys(dataToSave).length > 0) {
+            const stateToVerify = { ...gameState.player, ...dataToSave };
+            if (!validateStateBeforeSave(stateToVerify)) {
+                logMessage("{red:Reality destabilizes. Unnatural energies detected.}");
+                setTimeout(() => location.reload(), 2000);
+                return;
+            }
+            batch.update(playerRef, sanitizeForFirebase(dataToSave));
+        }
+
+        // --- 3. COMMIT BATCH ---
+        if (hasMapData || Object.keys(dataToSave).length > 0) {
+            if (saveIcon) {
+                saveIcon.classList.remove('opacity-0');
+                saveIcon.classList.add('opacity-100');
+            }
+            
+            batch.commit().then(() => {
+                lastValidatedState = { ...gameState.player }; 
                 setTimeout(() => {
                     if (saveIcon) {
                         saveIcon.classList.remove('opacity-100');
                         saveIcon.classList.add('opacity-0');
                     }
                 }, 1500);
-            })
-            .catch(err => {
-                console.error("Flush save failed:", err);
-                if (saveIcon) {
-                    saveIcon.classList.remove('opacity-100');
-                    saveIcon.classList.add('opacity-0');
-                }
+            }).catch(err => {
+                console.error("Batch save failed:", err);
+                if (saveIcon) saveIcon.classList.add('opacity-0');
             });
+        }
     }
-    
-    // 3. Clear transient save indicators
     pendingSaveData = null;
 }
 
@@ -432,11 +484,16 @@ function createDefaultPlayerState() {
 function grantLoreDiscovery(mapTileId, codexEntryId = null) {
     const player = gameState.player;
     
-    // 1. Add map location to found set (prevents XP farming)
+    // 1. Add map location to found set
     if (!gameState.foundLore) gameState.foundLore = new Set();
     if (gameState.foundLore.has(mapTileId)) return; // Already found this tile
     
     gameState.foundLore.add(mapTileId);
+    
+    // --- Route to Subcollection Buffer ---
+    if (!gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
+    gameState.pendingMapSaves.lore.add(mapTileId);
+
     grantXp(25); // Base XP for reading
     logMessage("New Codex Entry added.");
 
@@ -451,7 +508,6 @@ function grantLoreDiscovery(mapTileId, codexEntryId = null) {
 
     for (const setKey in LORE_SETS) {
         const set = LORE_SETS[setKey];
-        // THE FIX: Check foundCodexEntries instead of foundLore!
         const allFound = set.items.every(id => gameState.foundCodexEntries.has(id));
         
         if (!player.completedLoreSets) player.completedLoreSets = [];
@@ -472,7 +528,6 @@ function grantLoreDiscovery(mapTileId, codexEntryId = null) {
                 player.perception += 1;
                 triggerStatAnimation(statDisplays.perception, 'stat-pulse-green');
             }
-            // (Other bonuses like price reduction are checked dynamically in their respective functions)
             
             logMessage(`{gold:CODEX COMPLETE: ${set.name}!}`);
             logMessage(`Bonus Unlocked: ${set.bonus}`);
@@ -480,9 +535,8 @@ function grantLoreDiscovery(mapTileId, codexEntryId = null) {
         }
     }
 
-    // 4. Save both sets
+    // 4. Save Main Profile Data (Map data is now handled by the buffer!)
     playerRef.update({ 
-        foundLore: Array.from(gameState.foundLore),
         foundCodexEntries: Array.from(gameState.foundCodexEntries),
         completedLoreSets: player.completedLoreSets || [] 
     });
@@ -897,10 +951,15 @@ function updateExploration() {
         }
     }
 
-    // Add to Set if new
+    // Add to Set if new, and queue for Firebase Subcollection!
     if (!gameState.exploredChunks.has(chunkId)) {
         gameState.exploredChunks.add(chunkId);
-        return true; // Return true to signal that we need to save
+        
+        // --- NEW: Route to Subcollection Buffer ---
+        if (!gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
+        gameState.pendingMapSaves.chunks.add(chunkId);
+
+        return true; // Signal that we need to save
     }
     return false;
 }
@@ -3063,30 +3122,56 @@ async function enterGame(playerData) {
     const startChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
     lastPlayerChunkId = `${startChunkX},${startChunkY}`;
 
-    // --- RESTORE SETS ---
+    // --- 1. LEGACY MIGRATION CHECK ---
+    if (playerData.exploredChunks || playerData.foundLore || playerData.lootedTiles) {
+        console.log("Migrating legacy map data to subcollections...");
+        gameState.needsLegacyMapCleanup = true; // Flags for deletion on next save
+    }
+
     gameState.discoveredRegions = new Set(playerData.discoveredRegions || []);
-    gameState.foundLore = new Set(playerData.foundLore || []);
-
     gameState.exploredChunks = new Set(playerData.exploredChunks || []);
+    gameState.foundLore = new Set(playerData.foundLore || []);
     gameState.shopStates = playerData.shopStates || {};
-
     gameState.lootedTiles = new Map();
+
     const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
     const now = Date.now();
 
-    if (playerData.lootedTiles) {
-        if (Array.isArray(playerData.lootedTiles)) {
-            // Legacy Migration: Convert old arrays to timestamped map
-            playerData.lootedTiles.forEach(id => gameState.lootedTiles.set(id, now));
-        } else {
-            // Normal Load: Filter out any tiles looted more than 24 hours ago
-            for (const [id, timestamp] of Object.entries(playerData.lootedTiles)) {
-                if (now - timestamp < TWENTY_FOUR_HOURS) {
-                    gameState.lootedTiles.set(id, timestamp);
+    // --- 2. LOAD FROM SUBCOLLECTION (The New Way) ---
+    playerRef.collection('map_data').get().then(snapshot => {
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.exploredChunks) data.exploredChunks.forEach(c => gameState.exploredChunks.add(c));
+            if (data.foundLore) data.foundLore.forEach(l => gameState.foundLore.add(l));
+            if (data.lootedTiles) {
+                for (const [id, timestamp] of Object.entries(data.lootedTiles)) {
+                    if (now - timestamp < TWENTY_FOUR_HOURS) {
+                        gameState.lootedTiles.set(id, timestamp);
+                    }
                 }
             }
+        });
+        
+        // Force the minimap to redraw now that chunks are loaded
+        if (!mapModal.classList.contains('hidden') && typeof renderWorldMap === 'function') {
+            renderWorldMap();
         }
-    }
+    }).catch(e => console.error("Failed to load map subcollection", e));
+
+    // --- 3. POLYFILL LOOTED TILES API ---
+    // This brilliantly intercepts all existing game code so you don't have to rewrite 100 interaction events!
+    gameState.lootedTiles.add = function(key) { this.set(key, Date.now()); };
+    gameState.lootedTiles.set = function(key, val) {
+        Map.prototype.set.call(this, key, val);
+        if (!gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
+        gameState.pendingMapSaves.looted[key] = val;
+    };
+    gameState.lootedTiles.delete = function(key) {
+        Map.prototype.delete.call(this, key);
+        if (!gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
+        gameState.pendingMapSaves.looted[key] = null; // Mark for deletion in Firebase
+    };
+
     
     // Polyfill .add() so we don't break existing game logic!
     gameState.lootedTiles.add = function(key) { this.set(key, Date.now()); };
