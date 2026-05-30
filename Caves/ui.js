@@ -117,6 +117,9 @@ const statBarElements = {
     xp: document.getElementById('xpBar')
 };
 
+// --- GLOBAL UI STATE ---
+window.currentZoom = 20; // The absolute source of truth for TILE_SIZE
+
 // --- CHAT & MESSAGE LOG SYSTEM ---
 const logMessage = (text) => {
     if (!text || !messageLog) return; 
@@ -771,13 +774,12 @@ function resizeCanvas() {
 
     if (containerWidth === 0 || containerHeight === 0) return; // Prevent crashes when hidden
 
-    // 2. Update the global zoom tracker
-    if (!window.currentZoom) window.currentZoom = 20;
-    TILE_SIZE = window.currentZoom; // <-- Removed window.
+    // Directly sync TILE_SIZE to our global zoom state
+    TILE_SIZE = window.currentZoom;
 
     // 3. Calculate Logical Viewport (The number of tiles that fit on screen)
-    VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 2; // <-- Removed window.
-    VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 2; // <-- Removed window.
+    VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 2; 
+    VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 2;
 
     const dpr = window.devicePixelRatio || 1;
 
@@ -858,8 +860,6 @@ if (canvasWrapper) {
     canvasWrapper.addEventListener('wheel', (e) => {
         e.preventDefault(); 
         
-        if (!window.currentZoom) window.currentZoom = 20;
-
         const zoomDirection = Math.sign(e.deltaY);
         
         if (zoomDirection < 0) {
@@ -872,7 +872,7 @@ if (canvasWrapper) {
     }, { passive: false });
 }
 
-// --- FIX: Add return focus to Canvas after closing modals ---
+// --- Add return focus to Canvas after closing modals ---
 function returnFocusToCanvas() {
     // Only focus if the canvas is actually visible
     if (!gameContainer.classList.contains('hidden')) {
