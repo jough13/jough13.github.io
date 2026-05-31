@@ -928,16 +928,18 @@ const chunkManager = {
                 const distSq = (worldX * worldX) + (worldY * worldY);
                 let tile = '.';
                 const isUnderworld = gameState.mapMode === 'underworld';
+                
+                // Define realmOffset globally for this whole tile loop!
+                const realmOffset = (gameState.currentRealm || 0) * 100;
 
                 // --- LAYER ROUTING ---
                 if (isUnderworld) {
                     tile = getUnderworldTerrain(worldX, worldY);
                 } else {
+
                     // --- OVERWORLD BIOME GENERATION ---
-                    const realmOffset = (gameState.currentRealm || 0) * 100;
                     const elev = elevationNoise.noise(worldX / 70, worldY / 70, realmOffset);
                     const moist = moistureNoise.noise(worldX / 50, worldY / 50, realmOffset);
-
                     if (elev < 0.35) tile = '~';
                     else if (elev < 0.4 && moist > 0.7) tile = '≈';
                     else if (elev > 0.8) tile = '^';
