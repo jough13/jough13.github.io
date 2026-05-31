@@ -20,6 +20,19 @@ const MOVEMENT_MAP = {
     '3': [1, 1], 'Numpad3': [1, 1], 'PageDown': [1, 1]
 };
 
+// PERFORMANCE WIN: O(1) Key Lookups
+// Moved out of the event listener so they aren't instantiated on every single keystroke!
+const BLOCKED_SCROLL_KEYS = new Set([
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', ' ',
+    'Home', 'End', 'PageUp', 'PageDown'
+]);
+
+const INSTANT_KEYS = new Set([
+    'Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'h', 'd', 'g', 'q',
+    'I', 'M', 'B', 'K', 'C', 'P', 'H', 'D', 'G', 'Q'
+]);
+
+
 // --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
 
@@ -47,6 +60,9 @@ function handleInput(key) {
             gameState.abilityToAim = null;
             logMessage("{gray:Aiming canceled.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            
+            // JUICE: Visual cancellation feedback
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "Canceled", "#9ca3af");
             if (typeof render === 'function') render(); // Clear telegraphs instantly
             return;
         }
@@ -55,6 +71,9 @@ function handleInput(key) {
             gameState.isDroppingItem = false;
             logMessage("{gray:Drop canceled.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            
+            // JUICE: Visual cancellation feedback
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "Canceled", "#9ca3af");
             if (typeof renderInventory === 'function') renderInventory(); 
             return;
         }
@@ -99,6 +118,10 @@ function handleInput(key) {
             lastActionTime = Date.now(); 
             const abilityId = gameState.abilityToAim;
             
+            // JUICE WIN: Make the player physically turn to face the direction they are aiming!
+            if (dirX > 0) gameState.player.facing = 'right';
+            else if (dirX < 0) gameState.player.facing = 'left';
+
             if (abilityId === 'lunge') executeLunge(dirX, dirY);
             else if (abilityId === 'ranged_attack') executeRangedAttack(dirX, dirY);
             else if (['shieldBash', 'cleave', 'kick', 'crush'].includes(abilityId)) executeMeleeSkill(abilityId, dirX, dirY);
@@ -131,6 +154,7 @@ function handleInput(key) {
 
         if (gameState.isDroppingItem) {
             logMessage("{red:Drop Mode: Select an item to discard.}");
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "DROP", "#ef4444");
         } else {
             logMessage("{gray:Drop Mode cancelled.}");
         }
@@ -175,7 +199,9 @@ function handleInput(key) {
             if (typeof attemptMovePlayer === 'function') attemptMovePlayer(gameState.player.x, gameState.player.y); 
             return;
         } else {
+            // JUICE WIN: Show a subtle question mark if there's nothing to loot
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "?", "#9ca3af");
             logMessage("{gray:There is nothing here to pick up.}");
             return;
         }
@@ -205,7 +231,7 @@ function handleInput(key) {
     if (key.toLowerCase() === 'c') { toggleMenu(collectionsModal, openCollections, null); return; }
     if (key.toLowerCase() === 'p') { toggleMenu(talentModal, openTalentModal, null); return; }
     
-    // NEW: Help Hotkey
+    // Help Hotkey
     if (key.toLowerCase() === 'h') { 
         toggleMenu(helpModal, () => helpModal.classList.remove('hidden'), null); 
         return; 
@@ -249,7 +275,7 @@ function handleInput(key) {
     if ([' ', '5', 'Numpad5', 'Clear', '.'].includes(key)) {
         logMessage("{gray:You wait a moment.}");
         
-        // UX WIN: Spawn visual feedback so the player knows the turn passed
+        // Spawn visual feedback so the player knows the turn passed
         if (typeof ParticleSystem !== 'undefined') {
             ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "💤", "#9ca3af");
         }
@@ -262,17 +288,16 @@ function handleInput(key) {
 
 // --- EVENT LISTENERS ---
 document.addEventListener('keydown', (event) => {
-    // 1. UNIVERSAL INPUT PROTECTOR (Critical Bug Fix)
+    // 1. MODIFIER KEY GUARD (Bug Fix)
+    // Prevents shortcuts like Ctrl+R from triggering a "Rest" action in-game!
+    if (event.ctrlKey || event.altKey || event.metaKey) return;
+
+    // 2. UNIVERSAL INPUT PROTECTOR
     // Ignore WASD and Hotkeys if the user is typing in ANY input field (Chat, Riddle, Character Name)
     if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
 
-    // 2. Prevent default scrolling for game keys
-    const keysToBlock = [
-        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', ' ',
-        'Home', 'End', 'PageUp', 'PageDown'
-    ];
-
-    if (keysToBlock.includes(event.key)) {
+    // 3. Prevent default scrolling for game keys
+    if (BLOCKED_SCROLL_KEYS.has(event.key)) {
         event.preventDefault();
     }
 
@@ -282,14 +307,20 @@ document.addEventListener('keydown', (event) => {
         inputStr = 'Numpad' + event.key;
     }
 
+    // 4. AUTO-REPEAT SPAM GUARD (Bug Fix)
+    // If the player holds down 'I', it won't toggle the inventory 60 times a second.
+    // Movement keys (WASD) bypass this so you can still hold to walk!
+    if (event.repeat && INSTANT_KEYS.has(inputStr)) {
+        return;
+    }
+
     // --- THE INPUT QUEUE ROUTER ---
-    const instantKeys = ['Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'h', 'I', 'M', 'B', 'K', 'C', 'P', 'H', 'd', 'D', 'g', 'G', 'q', 'Q'];
     const anyModalOpen = document.querySelector('.modal-overlay:not(.hidden)');
     
     // Dead check before queueing
     if (gameState && gameState.player && gameState.player.health <= 0) return;
     
-    if (anyModalOpen || instantKeys.includes(event.key) || gameState.isDroppingItem || gameState.inventoryMode) {
+    if (anyModalOpen || INSTANT_KEYS.has(inputStr) || gameState.isDroppingItem || gameState.inventoryMode) {
         handleInput(inputStr); // Execute instantly
     } else {
         // Gameplay actions (Movement, Combat, Aiming) queue up seamlessly!
