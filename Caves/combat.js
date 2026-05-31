@@ -1,5 +1,3 @@
-// --- START OF FILE combat.js ---
-
 // --- ENEMY NETWORK MANAGER (SPATIAL HASHING) ---
 const EnemyNetworkManager = {
     listeners: {},
@@ -1450,13 +1448,9 @@ async function runCompanionTurn() {
 
                 try {
                     await enemyRef.transaction(currentData => {
+                        if (currentData === null) return undefined;
                         
-                        // If the enemy is already dead (null), ABORT the transaction.
-                        if (currentData === null) {
-                            return undefined;
-                        }
-
-                        let enemy = currentData;
+                        let enemy = { ...currentData }; // SHALLOW CLONE TO PREVENT FIREBASE CACHE MUTATION
 
                         const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
                         enemy.health -= dmg;
@@ -1516,28 +1510,28 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
     const safeDamage = (typeof playerDamage === 'number' && !isNaN(playerDamage)) ? playerDamage : 1;
 
     try {
-        // Wrap the transaction in a 3-second timeout
-        const transactionResult = await window.withTimeout(
-            enemyRef.transaction(currentData => {
+        const doTransaction = () => enemyRef.transaction(currentData => {
+            if (currentData === null) return undefined; 
+            
+            let enemy = { ...currentData }; // SHALLOW CLONE TO PREVENT FIREBASE CACHE MUTATION
+            
+            enemy.health = Number(enemy.health);
+            if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+            
+            enemy.health -= safeDamage;
+            
+            if (enemy.health <= 0) return null; 
+            
+            return enemy; 
+        });
 
-                // If the enemy is already dead (null), ABORT the transaction.
-                if (currentData === null) {
-                    return undefined; 
-                }
-                
-                let enemy = currentData;
-                
-                enemy.health = Number(enemy.health);
-                if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
-                
-                enemy.health -= safeDamage;
-                
-                if (enemy.health <= 0) return null; 
-                
-                return JSON.parse(JSON.stringify(enemy)); 
-            }), 
-            3000 // Timeout in milliseconds
-        );
+        let transactionResult;
+        if (typeof window.withTimeout === 'function') {
+            transactionResult = await window.withTimeout(doTransaction(), 3000);
+        } else {
+            console.warn("withTimeout missing. Running raw transaction.");
+            transactionResult = await doTransaction();
+        }
 
         if (transactionResult && transactionResult.committed) {
             const finalEnemyState = transactionResult.snapshot.val();
@@ -1571,7 +1565,6 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                     const droppedLoot = generateEnemyLoot(player, lootData);
                     const currentTerrain = chunkManager.getTile(newX, newY);
 
-                    
                     const passableTerrain =['.', 'F', 'd', 'D', '≈', '🍄', '💎c', '🪜']; 
                     
                     if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
