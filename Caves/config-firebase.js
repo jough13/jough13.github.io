@@ -1,5 +1,3 @@
-// --- START OF FILE config-firebase.js ---
-
 // ==========================================
 // FIREBASE CONFIGURATION & NETWORK SYSTEMS
 // ==========================================
@@ -85,13 +83,17 @@ try {
 
 // --- CONNECTION MONITOR ---
 // Automatically monitors if the user loses internet connection and informs them
-let wasConnected = true; // Assume connected at start to avoid spamming the log on boot
+let hasInitiallyConnected = false; // Tracks if we've made our first successful connection
+let wasConnected = false; 
+
 rtdb.ref('.info/connected').on('value', function(snap) {
     const isConnected = snap.val() === true;
     
     if (isConnected) {
         console.log("🟢 Firebase: Connected to server.");
-        if (!wasConnected) {
+        
+        // Only show "Restored" if we already successfully connected once before and lost it
+        if (hasInitiallyConnected && !wasConnected) {
             // Restore Banner
             connectionBanner.textContent = "📶 Connection Restored";
             connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-1.5 z-[10000] transition-all duration-500 bg-green-600 text-white translate-y-0 shadow-md font-mono tracking-widest uppercase';
@@ -104,10 +106,14 @@ rtdb.ref('.info/connected').on('value', function(snap) {
             if (typeof logMessage === 'function') logMessage("{green:Network restored. Reconnected to server.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
         }
+        
+        hasInitiallyConnected = true;
         wasConnected = true;
     } else {
         console.warn("🔴 Firebase: Disconnected (Offline / Reconnecting...).");
-        if (wasConnected) {
+        
+        // Only show "Connection Lost" if we were actually connected in the first place
+        if (hasInitiallyConnected && wasConnected) {
             // Warning Banner
             connectionBanner.textContent = "⚠️ Connection Lost - Reconnecting...";
             connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-1.5 z-[10000] transition-all duration-500 bg-red-600 text-white translate-y-0 shadow-md font-mono tracking-widest uppercase';
@@ -121,7 +127,6 @@ rtdb.ref('.info/connected').on('value', function(snap) {
     // Dispatch a custom event for other UI files to listen to
     window.dispatchEvent(new CustomEvent('firebase-connection-changed', { detail: { connected: isConnected } }));
 });
-
 
 function handleAuthError(error) {
     let friendlyMessage = '';
