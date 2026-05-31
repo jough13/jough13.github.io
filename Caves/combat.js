@@ -1,3 +1,5 @@
+// --- START OF FILE combat.js ---
+
 // --- ENEMY NETWORK MANAGER (SPATIAL HASHING) ---
 const EnemyNetworkManager = {
     listeners: {},
@@ -1448,9 +1450,10 @@ async function runCompanionTurn() {
 
                 try {
                     await enemyRef.transaction(currentData => {
-                        if (currentData === null) return undefined;
+                        if (!currentData) return undefined;
                         
-                        let enemy = { ...currentData }; // SHALLOW CLONE TO PREVENT FIREBASE CACHE MUTATION
+                        // DEEP CLONE to absolutely prevent Firebase maxretry mutation bugs
+                        let enemy = JSON.parse(JSON.stringify(currentData));
 
                         const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
                         enemy.health -= dmg;
@@ -1511,9 +1514,10 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
     try {
         const doTransaction = () => enemyRef.transaction(currentData => {
-            if (currentData === null) return undefined; 
+            if (!currentData) return undefined; 
             
-            let enemy = { ...currentData }; // SHALLOW CLONE TO PREVENT FIREBASE CACHE MUTATION
+            // DEEP CLONE to absolutely prevent Firebase maxretry mutation bugs
+            let enemy = JSON.parse(JSON.stringify(currentData));
             
             enemy.health = Number(enemy.health);
             if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
