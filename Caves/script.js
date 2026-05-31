@@ -2319,7 +2319,7 @@ function endPlayerTurn(turnUpdates = {}) {
         realmMutators: gameState.realmMutators || []
     };
 
-    // OPTIMIZATION: Only serialize massive sets if they were flagged as changed in attemptMovePlayer
+    // Only serialize massive sets if they were flagged as changed in attemptMovePlayer
     if (updates.exploredChunks) finalUpdates.exploredChunks = updates.exploredChunks;
     if (updates.lootedTiles) finalUpdates.lootedTiles = updates.lootedTiles;
     if (updates.discoveredRegions) finalUpdates.discoveredRegions = updates.discoveredRegions;
@@ -2328,6 +2328,13 @@ function endPlayerTurn(turnUpdates = {}) {
     // We no longer force a save every single time you cross a 16x16 chunk boundary.
     // Every single stat, item, and map update is cleanly routed through the background throttler!
     
+    if (gameState.player.health <= 0) {
+        if (handlePlayerDeath()) {
+            syncPlayerState();
+            return; // Halt save to prevent overwriting the death reset
+        }
+    }
+
     triggerDebouncedSave(finalUpdates);
 
     // --- 8. PASSIVE TALENTS ---
