@@ -2520,9 +2520,7 @@ async function attemptMovePlayer(newX, newY) {
                 clearLootTile();
                 inventoryWasUpdated = true; 
                 renderStats(); 
-                // FORCE SAVE: Prevents gold from resetting if you reload immediately
-                if (typeof flushPendingSave === 'function') flushPendingSave();
-            } 
+            }
             // HANDLE ALL PICKUPABLE ITEMS
             else {
                 const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
@@ -2535,12 +2533,6 @@ async function attemptMovePlayer(newX, newY) {
                     
                     inventoryWasUpdated = true;
                     clearLootTile();
-                    
-                    // FORCE SAVE IMMEDIATELY to secure the loot
-                    flushPendingSave({
-                        inventory: getSanitizedInventory(),
-                        lootedTiles: Object.fromEntries(gameState.lootedTiles)
-                    });
 
                 } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                     
@@ -2565,12 +2557,6 @@ async function attemptMovePlayer(newX, newY) {
                     logMessage(`You picked up a ${itemData.name}.`);
                     inventoryWasUpdated = true;
                     clearLootTile();
-
-                    // FORCE SAVE IMMEDIATELY to secure the loot
-                    flushPendingSave({
-                        inventory: getSanitizedInventory(),
-                        lootedTiles: Object.fromEntries(gameState.lootedTiles)
-                    });
 
                 } else {
                     logMessage(`You see a ${itemData.name}, but your inventory is full!`);
