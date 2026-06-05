@@ -166,19 +166,43 @@ function handleCraftItem(recipeName, requestBatch = false) {
         if (curStack && isStackable) {
             curStack.quantity += craftYield; 
         } else {
-            player.inventory.push({
-                templateId: outputItemKey,
-                name: craftedName,
-                type: itemTemplate.type,
-                quantity: craftYield,
-                tile: outputItemKey || '?',
-                damage: finalDamage, 
-                defense: finalDefense,
-                slot: itemTemplate.slot || null,
-                statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null,
-                effect: itemTemplate.effect || null,
-                isEquipped: false
-            });
+            // --- ANTI-CHEAT & EXPLOIT FIX ---
+            // If the inventory fills up mid-batch (due to masterwork rolls splitting items), drop it safely!
+            if (player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                player.inventory.push({
+                    templateId: outputItemKey,
+                    name: craftedName,
+                    type: itemTemplate.type,
+                    quantity: craftYield,
+                    tile: outputItemKey || '?',
+                    damage: finalDamage, 
+                    defense: finalDefense,
+                    slot: itemTemplate.slot || null,
+                    statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null,
+                    effect: itemTemplate.effect || null,
+                    isEquipped: false
+                });
+            } else {
+                const dropTile = itemTemplate.tile || '🎒';
+                logMessage(`{red:Your pack is full! The ${craftedName} drops to the floor.}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                
+                if (gameState.mapMode === 'overworld') {
+                    chunkManager.setWorldTile(player.x, player.y, dropTile, 2); // Drops for 2 hours
+                } else if (gameState.mapMode === 'dungeon') {
+                    chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = dropTile;
+                } else if (gameState.mapMode === 'castle') {
+                    chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = dropTile;
+                }
+                
+                // Un-mark the tile as looted so they can pick it up immediately
+                let tileId = (gameState.mapMode === 'overworld') 
+                    ? `${player.x},${-player.y}`
+                    : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
+                gameState.lootedTiles.delete(tileId);
+                
+                gameState.mapDirty = true;
+            }
         }
     }
 
@@ -236,6 +260,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
 
     renderCraftingModal();
     if (typeof renderInventory === 'function') renderInventory();
+    if (gameState.mapDirty && typeof render === 'function') render();
 }
 
 function openCraftingModal(mode = 'workbench') {
