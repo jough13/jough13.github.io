@@ -1,3 +1,5 @@
+// --- START OF FILE data-entities.js ---
+
 window.PLAYER_RACES = {
     'human': {
         name: 'Human',
@@ -142,6 +144,27 @@ window.QUEST_DATA = {
         description: "A horror from beyond the stars has taken root in the deep wilds. Do not look directly at it.",
         type: 'kill', enemy: '👾', needed: 1,
         reward: { xp: 1500, coins: 1000, item: 'Elixir of Power', itemQty: 1 }
+    },
+    // ==========================================
+    // --- THE INQUISITOR'S BOUNTIES ---
+    // ==========================================
+    "cultistGenerals": {
+        title: "The Hand's Fingers",
+        description: "The Shadowed Hand is led by Fanatics. Hunt them down.",
+        type: 'kill', enemy: 'z', needed: 15,
+        reward: { xp: 800, coins: 500, item: 'Potion of Speed', itemQty: 3 }
+    },
+    "voidDemons": {
+        title: "Banish the Demons",
+        description: "The cultists have opened rifts. Void Demons ('😈d') are pouring through.",
+        type: 'kill', enemy: '😈d', needed: 5,
+        reward: { xp: 1200, coins: 800, item: 'Elixir of Life', itemQty: 1 }
+    },
+    "krakenHunt": {
+        title: "The Deep Terror",
+        description: "A Kraken ('🦑') is sinking our trade ships. Sail into the deep ocean and slay it.",
+        type: 'kill', enemy: '🦑', needed: 1,
+        reward: { xp: 2000, coins: 1500, item: 'Kraken Ink Sac', itemQty: 2 }
     }
 };
 
@@ -186,7 +209,7 @@ window.ENEMY_PREFIXES = {
     "Vampiric": {
         description: "Drains life on hit.",
         statModifiers: { maxHealth: 5 },
-        special: 'poison', // Simplified combat effect mapping
+        special: 'poison', 
         xpMult: 1.5,
         color: '#be123c' 
     },
@@ -608,6 +631,16 @@ window.ENEMY_DATA = {
         caster: true, castRange: 5, spellDamage: 6,
         inflicts: 'burn',
         flavor: "A spirit of smoke and flame, bound by ancient chains."
+    },
+    // ==========================================
+    // --- THE FINAL BOSS ---
+    // ==========================================
+    '☠️': {
+        name: 'Alaric, The Fallen King',
+        maxHealth: 1000, attack: 20, defense: 8, xp: 5000,
+        loot: '🧿e', color: '#000000', isBoss: true,
+        caster: true, castRange: 6, spellDamage: 12, inflicts: 'madness',
+        flavor: "He is no longer a man. He is a conduit for the Void itself."
     }
 };
 
@@ -752,7 +785,7 @@ window.SPELL_DATA = {
         name: "Candlelight",
         description: "Summons a floating light. Huge vision radius (+6) for a long time.",
         cost: 15, costType: "mana", requiredLevel: 1, target: "self", type: "buff", duration: 100,
-        cooldown: 5 // Short CD so it can be recast easily
+        cooldown: 5 
     },
     "chainLightning": {
         name: "Chain Lightning",
@@ -834,7 +867,7 @@ window.SPELL_DATA = {
         description: "Hurls a bolt of energy. Scales with Wits.",
         scalingStat: "wits",
         cost: 8, costType: "mana", requiredLevel: 1, target: "aimed", baseDamage: 5,
-        cooldown: 1 // Extremely fast cooldown!
+        cooldown: 1 
     },
     "psychicBlast": {
         name: "Psychic Blast",
@@ -942,9 +975,7 @@ window.TALENT_DATA = {
         class: "ranger",
         icon: "👁️"
     },
-    // --- NEW: EVOLUTION TALENTS (CRITICAL BUG FIX) ---
-    // Previously, these were granted upon evolution but undefined in this list, 
-    // causing a game-breaking UI crash when attempting to view the Talent Tree!
+    // --- EVOLUTION TALENTS ---
     "blood_rage": {
         name: "Blood Rage",
         description: "Deal double damage when below 50% Health.",
@@ -1057,7 +1088,7 @@ window.SKILL_DATA = {
     "whirlwind": {
         name: "Whirlwind",
         description: "Strike all adjacent enemies. Scales with Strength and Dexterity.",
-        scalingStat: "strength", // Relies on both, but primarily physical
+        scalingStat: "strength", 
         cost: 15, costType: "stamina", requiredLevel: 4, target: "self", cooldown: 6
     },
     "stealth": {
@@ -1095,7 +1126,6 @@ window.SKILL_DATA = {
     }
 };
 
-// PERFORMANCE/EXPANDABILITY: Pre-computed reverse lookup for Enemy IDs
 window.ENEMY_NAME_TO_ID = {};
 for (const key in window.ENEMY_DATA) {
     window.ENEMY_NAME_TO_ID[window.ENEMY_DATA[key].name] = key;
