@@ -1,5 +1,3 @@
-// --- START OF FILE data-maps.js ---
-
 window.REALM_MUTATORS = {
     'lava_oceans': {
         name: "Infernal",
@@ -137,6 +135,40 @@ window.TILE_DATA = {
             "My knights are gone. My kingdom is ash. Only the Void remains.",
             "Seek the Obelisks to the North, East, West, and South. Restore the key."
         ]
+    },
+
+    // ==========================================
+    // --- NIGHT GHOSTS EXPANSION ---
+    // ==========================================
+    '👻p': {
+        type: 'anomaly',
+        name: 'Wandering Echo',
+        flavor: "A translucent figure wandering aimlessly in the dark.",
+        onInteract: (state, x, y) => {
+            const loreLines = [
+                "We trusted the Mages. They said the Void would obey us...",
+                "The King didn't go mad. He just realized the truth of the universe.",
+                "I stood at the gates of the Grand Fortress. The sky bled purple.",
+                "Find the Shattered Crown. Do not let the Acolytes reforge it.",
+                "It is so cold... why is it so cold?",
+                "Do not trust the voices in the deep caverns. They lie."
+            ];
+            const msg = loreLines[Math.floor(Math.random() * loreLines.length)];
+            
+            loreTitle.textContent = "Echo of a Fallen Soldier";
+            loreContent.textContent = `The ghost looks right through you.\n\n"${msg}"`;
+            loreModal.classList.remove('hidden');
+            
+            // Ghost vanishes after talking, leaving an empty floor
+            chunkManager.setWorldTile(x, y, '.');
+            state.mapDirty = true;
+            
+            logMessage("{purple:The spirit whispers its warning and fades away.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof grantXp === 'function') grantXp(25);
+            
+            return null; // Return null so it doesn't trigger standard loot saves
+        }
     },
 
     // 1. Forest: The Whispering Root
