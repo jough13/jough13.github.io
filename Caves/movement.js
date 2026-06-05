@@ -2,6 +2,50 @@
 // MOVEMENT & MAP TRANSITIONS
 // ==========================================
 
+/**
+ * Helper function to execute critical chunk loading, enemy syncing, and saving
+ * when a player teleports, enters a dungeon, or shifts between world layers.
+ */
+function finalizeMapTransition() {
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+        const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+        const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+
+        // Load 3x3 chunk area around player
+        for (let y = -1; y <= 1; y++) {
+            for (let x = -1; x <= 1; x++) {
+                chunkManager.listenToChunkState(currentChunkX + x, currentChunkY + y);
+            }
+        }
+
+        chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
+
+        if (typeof EnemyNetworkManager !== 'undefined') {
+            EnemyNetworkManager.syncChunks(gameState.player.x, gameState.player.y);
+        }
+        
+        // Wake up nearby static enemies that might be in the new chunk
+        if (typeof wakeUpNearbyEnemies === 'function') wakeUpNearbyEnemies();
+    }
+
+    const newExploration = updateExploration();
+
+    let updates = {
+        x: gameState.player.x,
+        y: gameState.player.y,
+        mapMode: gameState.mapMode,
+        mapId: gameState.currentCaveId || gameState.currentCastleId || null,
+        currentRealm: gameState.currentRealm || 0
+    };
+
+    if (newExploration) {
+        updates.exploredChunks = Array.from(gameState.exploredChunks);
+    }
+
+    // Pass updates to endPlayerTurn so it triggers a debounced save to Firebase
+    endPlayerTurn(updates);
+}
+
 async function attemptMovePlayer(newX, newY) {
     // 1. Unlock input if we are just waiting (Safety fallback)
     if (newX === gameState.player.x && newY === gameState.player.y) {
@@ -210,6 +254,8 @@ async function attemptMovePlayer(newX, newY) {
             updateRegionDisplay();
             render();
             syncPlayerState();
+            finalizeMapTransition(); // NETWORK SYNC
+            return;
         } else {
             logMessage("The door is sealed tight. There is a keyhole shaped like four joined stone fragments.");
         }
@@ -261,7 +307,6 @@ async function attemptMovePlayer(newX, newY) {
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createFloatingText(newX, newY, "MISS", "#9ca3af");
             }
-
 
             // We still end the turn so the enemy can move/attack
             endPlayerTurn();
@@ -978,6 +1023,7 @@ async function attemptMovePlayer(newX, newY) {
             gameState.mapDirty = true;
             render();
             syncPlayerState();
+            finalizeMapTransition(); // NETWORK SYNC
             return; // Stop processing the move (player is teleported)
         } else {
             // Player does NOT have the key. Bounce them back like a wall!
@@ -1061,6 +1107,7 @@ async function attemptMovePlayer(newX, newY) {
         return;
     } else if (newTile === '<') {
         const player = gameState.player;
+        const tileId = `${newX},${-newY}`;
         
         if (gameState.lootedTiles.has(tileId)) {
             logMessage("You step over a disarmed trap.");
@@ -1200,6 +1247,7 @@ async function attemptMovePlayer(newX, newY) {
                     gameState.mapDirty = true;
                     render();
                     syncPlayerState();
+                    finalizeMapTransition(); // NETWORK SYNC
                     return;
                 }
             }
@@ -1281,6 +1329,7 @@ async function attemptMovePlayer(newX, newY) {
         updateRegionDisplay();
         render();
         syncPlayerState();
+        finalizeMapTransition(); // NETWORK SYNC
         return;
     }
 
@@ -1487,6 +1536,7 @@ async function attemptMovePlayer(newX, newY) {
             gameState.mapDirty = true;
             render();
             syncPlayerState();
+            finalizeMapTransition(); // NETWORK SYNC
             return;
         }
 
@@ -2167,6 +2217,7 @@ async function attemptMovePlayer(newX, newY) {
                 gameState.mapDirty = true;
                 render();
                 syncPlayerState();
+                finalizeMapTransition(); // NETWORK SYNC
                 return;
 
             case 'underworld_exit':
@@ -2189,6 +2240,7 @@ async function attemptMovePlayer(newX, newY) {
                 gameState.mapDirty = true;
                 render();
                 syncPlayerState();
+                finalizeMapTransition(); // NETWORK SYNC
                 return;
             }
 
@@ -2232,6 +2284,7 @@ async function attemptMovePlayer(newX, newY) {
 
                 render();
                 syncPlayerState();
+                finalizeMapTransition(); // NETWORK SYNC
                 return;
             case 'cooking_fire':
                 logMessage("You sit by the fire. The warmth is inviting.");
@@ -2271,6 +2324,7 @@ async function attemptMovePlayer(newX, newY) {
 
                 render();
                 syncPlayerState();
+                finalizeMapTransition(); // NETWORK SYNC
                 return;
             case 'canoe':
                 if (!gameState.foundLore.has(tileId)) {
@@ -2333,6 +2387,7 @@ async function attemptMovePlayer(newX, newY) {
 
                 render();
                 syncPlayerState();
+                finalizeMapTransition(); // NETWORK SYNC
                 return;
             case 'dungeon_exit':
                 exitToOverworld("You emerge back into the sunlight.");
@@ -2363,6 +2418,7 @@ async function attemptMovePlayer(newX, newY) {
                 updateRegionDisplay();
                 render();
                 syncPlayerState();
+                finalizeMapTransition(); // NETWORK SYNC
                 return;
             case 'castle_entrance':
                 if (!gameState.foundLore) gameState.foundLore = new Set();
@@ -2397,6 +2453,7 @@ async function attemptMovePlayer(newX, newY) {
 
                 render();
                 syncPlayerState();
+                finalizeMapTransition(); // NETWORK SYNC
                 return;
             case 'castle_exit':
                 exitToOverworld("You leave the castle.");
@@ -2429,6 +2486,7 @@ async function attemptMovePlayer(newX, newY) {
                 gameState.mapDirty = true;
                 render();
                 syncPlayerState();
+                finalizeMapTransition(); // NETWORK SYNC
                 return;
             case 'castle_landmark':
                 // Handled above in 'landmark_castle' key but kept as safety fallback
@@ -2758,7 +2816,6 @@ function exitToOverworld(exitMessage) {
     render();
     syncPlayerState();
 
-    const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
-    const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
-    chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
+    // Trigger the chunk loading, enemy syncing, and Firebase saving
+    finalizeMapTransition();
 }
