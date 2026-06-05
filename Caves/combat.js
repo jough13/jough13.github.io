@@ -1,5 +1,3 @@
-// --- START OF FILE combat.js ---
-
 // --- ENEMY NETWORK MANAGER (SPATIAL HASHING) ---
 const EnemyNetworkManager = {
     listeners: {},
@@ -971,12 +969,7 @@ function processEnemyTurns() {
             
             if (enemy.health <= 0) {
                 logMessage(`The ${enemy.name} succumbs to poison!`);
-                registerKill(enemy);
-                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-                    chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
-                }
-                map[enemy.y][enemy.x] = generateEnemyLoot(player, enemy);
+                handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
                 return;
             }
             if (enemy.poisonTurns === 0) logMessage(`The ${enemy.name} is no longer poisoned.`);
@@ -1455,6 +1448,10 @@ async function runCompanionTurn() {
                         // DEEP CLONE to absolutely prevent Firebase maxretry mutation bugs
                         let enemy = JSON.parse(JSON.stringify(currentData));
 
+                        // ANTI-NAN FIX for Companion Attacks!
+                        enemy.health = Number(enemy.health);
+                        if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+
                         const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
                         enemy.health -= dmg;
 
@@ -1567,18 +1564,17 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                 try {
                     const lootData = { ...enemyData, isElite: enemyInfo.isElite };
                     const droppedLoot = generateEnemyLoot(player, lootData);
-                    const currentTerrain = chunkManager.getTile(newX, newY);
+                    const currentTerrain = chunkManager.getTile(targetX, targetY);
 
-                    const passableTerrain =['.', 'F', 'd', 'D', '≈', '🍄', '💎c', '🪜']; 
-                    
-                    if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
+                    // 🛡️ THE FIX: Protect critical tiles and existing items! 🛡️
+                    const isProtectedTile = ['📦', '⚰️', '🏺', '🚪', '✨', '∴', 'c', '⛵'].includes(currentTerrain);
+                    const isItemTile = typeof ITEM_DATA !== 'undefined' && ITEM_DATA[currentTerrain];
+
+                    if (isProtectedTile || isItemTile) {
+                        logMessage("{gray:The enemy's loot was lost in the underbrush.}");
+                    } else if (currentTerrain !== '~' && currentTerrain !== '🌋') {
                         // Enemy loot despawns after 2 hours!
-                        chunkManager.setWorldTile(newX, newY, droppedLoot, 2);
-                        gameState.mapDirty = true;
-                    }
-                    // For anything else, allow dropping unless it's deep ocean or lava
-                    else if (currentTerrain !== '~' && currentTerrain !== '🌋') {
-                        chunkManager.setWorldTile(newX, newY, droppedLoot, 2);
+                        chunkManager.setWorldTile(targetX, targetY, droppedLoot || '.', 2);
                         gameState.mapDirty = true;
                     }
                 } catch (lootErr) {
@@ -1811,9 +1807,11 @@ function handleInstancedEnemyDeath(enemy, x, y) {
         
         // --- SAFE ARCHITECTURE CHECK ---
         // Do not drop loot if it would overwrite a critical dungeon structure!
+        // We now safely check against ITEM_DATA to protect chests/artifacts as well!
         const criticalTiles = ['<', '>', '+', '/', '🚪', '⛰', '⛲'];
+        const isItemTile = typeof ITEM_DATA !== 'undefined' && ITEM_DATA[currentTile];
         
-        if (criticalTiles.includes(currentTile)) {
+        if (criticalTiles.includes(currentTile) || isItemTile) {
             logMessage("{gray:The enemy's loot was lost in the rubble.}");
         } else {
             // It's safe to drop the loot here!
