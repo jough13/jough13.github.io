@@ -41,7 +41,6 @@ window.LORE_SETS = {
         bonus: "Tireless: +5 Max Stamina.",
         items: ["📘", "J", "L"] 
     },
-    // --- NEW LORE SETS ---
     "anglers_almanac": {
         name: "The Old Mariner's Tale",
         description: "The rantings of a sailor who saw too much.",
@@ -53,6 +52,15 @@ window.LORE_SETS = {
         description: "Blueprints of the ancient fortresses.",
         bonus: "Stalwart: +5 Max Health.",
         items: ["📜f", "🧱", "▤"] 
+    },
+    // ==========================================
+    // --- STARGAZING EXPANSION ---
+    // ==========================================
+    "mythos_of_the_stars": {
+        name: "Mythos of the Stars",
+        description: "Constellations charted by a lonely stargazer.",
+        bonus: "Cosmic Insight: +2 Base Willpower.",
+        items: ["constellation_1", "constellation_2", "constellation_3"] 
     }
 };
 
@@ -189,7 +197,6 @@ window.LORE_SWAMP = [
 // ==========================================
 // DYNAMIC TUTORIALS & VILLAGER RUMORS
 // ==========================================
-// EASY WIN: Applied color tags to important gameplay hints so the player learns mechanics organically!
 
 window.VILLAGER_RUMORS = [
     "I heard spiders hate {red:fire}. Burn 'em, I say!",
@@ -222,8 +229,6 @@ window.VILLAGER_RUMORS = [
     "A Canoe is fine for the swamps, but if you want to brave the deep ocean, you need to build a {blue:Sailing Ship}.",
     "Want to catch a Leviathan? You need an {red:Obsidian Rod} to fish in the volcano, but the deep sea just needs good bait and a lot of stamina.",
     "Wooden arrows are fine, but {orange:Fire Arrows} can detonate oil barrels from a distance! Perfect for clearing out nests.",
-    
-    // --- NEW MECHANIC HINTS ---
     "I lock my doors when the {red:Blood Moon} rises. The beasts go mad, but the brave say they carry richer bounties.",
     "A clever mage doesn't need a boat. Just cast a {cyan:Frost Bolt} at the river and walk across the ice!",
     "Careful with fire in the swamp. The {orange:gas pockets} will blow you to kingdom come if a spark hits them!",
@@ -233,7 +238,8 @@ window.VILLAGER_RUMORS = [
     "You can drop a Stash Box anywhere in the world and access your bank. Magic is convenient, isn't it?",
     "If you plan on exploring deep into the wilds, you better rest in a {green:Cozy Bed} first. It beats walking back from the village.",
     "The deeper you go into a dungeon, the nastier the monsters get. But the loot gets shinier, too.",
-    "I tried fishing in the lava once. My rod turned to ash before it hit the magma."
+    "I tried fishing in the lava once. My rod turned to ash before it hit the magma.",
+    "A merchant told me he saw a man looking at the stars through a Brass Telescope. Sounds boring to me." // New Rumor!
 ];
 
 // ==========================================
@@ -268,8 +274,6 @@ window.RANDOM_JOURNAL_PAGES = [
     "Note to self: Don't cast Fireball near an Oil Barrel. Lost my eyebrows.",
     "The Obsidian Rod is the only thing that won't melt in the volcano. I just hope the Magma Carps are biting.",
     "We found a Fairy Ring today. Elara stepped inside and vanished. I'm going in after her.",
-    
-    // --- NEW PAGES ---
     "I hooked something off the starboard bow. It dragged the ship for three leagues before snapping a steel cable. I am never sailing again.",
     "If you see the sky turn red, run for the village. The Blood Moon is not a myth.",
     "They call it the Abyssal Leviathan. It's not a fish. It's a natural disaster with teeth.",
@@ -315,8 +319,6 @@ window.VISIONS_OF_THE_PAST = [
     "A VISION: A giant shadow, larger than a mountain, leans down and blows out the sun like a candle.",
     "A VISION: The oceans boil. A gargantuan serpent rises from the deep, its scales reflecting a burning sky. It speaks a single word, and the mountains shatter.",
     "A VISION: You see the Cartographer's Guild before the fall. Hundreds of scholars mapping the stars, unaware of the darkness growing beneath their feet.",
-    
-    // --- NEW VISIONS ---
     "A VISION: A vast fleet of ships with black sails approaches the coast. Before they make landfall, the water turns to ice, trapping them forever.",
     "A VISION: An elf stands before an elder tree, whispering. The tree splits open, revealing a glowing green heart. The elf plunges a dagger into it.",
     "A VISION: A massive blood-red moon fills the sky. The people in the streets fall to their knees and begin to claw at their own faces.",
@@ -442,8 +444,6 @@ window.RIDDLE_DATA = [
         reward: "endurance", 
         message: "A single drop of water falls on your brow. You feel refreshed and tireless."
     },
-    
-    // --- NEW RIDDLES ---
     {
         id: "time",
         question: "This thing all things devours: Birds, beasts, trees, flowers; Gnaws iron, bites steel; Grinds hard stones to meal. What am I?",
