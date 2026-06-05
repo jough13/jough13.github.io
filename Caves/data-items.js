@@ -1,5 +1,3 @@
-// --- START OF FILE data-items.js ---
-
 window.COOKING_RECIPES = {
     "Oracle's Broth": {
         materials: { "Bluecap Mushroom": 2, "Medicinal Herb": 1, "Dirty Water": 1 },
@@ -308,6 +306,26 @@ window.CRAFTING_RECIPES = {
 };
 
 window.ITEM_DATA = {
+    '⚔️star': {
+        name: 'Star-Forged Blade',
+        type: 'weapon',
+        tile: '⚔️',
+        damage: 12,
+        slot: 'weapon',
+        statBonuses: { strength: 3, luck: 3 },
+        description: "{red:+12 Dmg}, {green:+3 Str}, {gold:+3 Luck}. It glows with starlight.",
+        excludeFromLoot: true 
+    },
+    '🧥abyss': {
+        name: 'Abyssal Cloak',
+        type: 'armor',
+        tile: '🧥',
+        defense: 6,
+        slot: 'armor',
+        statBonuses: { dexterity: 5, wits: 5 },
+        description: "{blue:+6 Def}, {green:+5 Dex, +5 Wits}. It drinks the surrounding light.",
+        excludeFromLoot: true 
+    },
     // --- JOKE / LORE ITEMS ---
     'repel': {
         name: 'Dragon Repellent',
