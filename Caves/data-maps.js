@@ -1,3 +1,5 @@
+// --- START OF FILE data-maps.js ---
+
 window.REALM_MUTATORS = {
     'lava_oceans': {
         name: "Infernal",
@@ -30,6 +32,198 @@ window.REALM_MUTATORS = {
 };
 
 window.TILE_DATA = {
+    // ==========================================
+    // --- EXPANSION: ENDGAME PLOT & NPCS ---
+    // ==========================================
+    '🪦': {
+        type: 'anomaly',
+        name: 'The Royal Tomb',
+        flavor: "Massive obsidian doors block the way. They bear the crest of the Old King.",
+        onInteract: (state, x, y) => {
+            const hasCrown = state.player.inventory.some(i => i.name === 'Crown of the First King');
+            const hasSword = state.player.inventory.some(i => i.name === 'Stormbringer');
+
+            if (hasCrown && hasSword) {
+                logMessage("{purple:The Crown hums. Stormbringer glows. The obsidian doors grind open...}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                
+                // Teleport to the Boss Room!
+                state.mapMode = 'dungeon';
+                state.currentCaveId = 'tomb_of_alaric';
+                state.currentCaveTheme = 'VOID'; // Dark, corrupted room
+                state.overworldExit = { x: state.player.x, y: state.player.y };
+
+                // Generate a custom 9x9 Boss Arena
+                const arena = [
+                    '▓▓▓▓▓▓▓▓▓',
+                    '▓.......▓',
+                    '▓.🔥.🔥.▓',
+                    '▓...☠️...▓',
+                    '▓.🔥.🔥.▓',
+                    '▓.......▓',
+                    '▓▓▓>▓▓▓▓▓'
+                ];
+                chunkManager.caveMaps['tomb_of_alaric'] = arena.map(row => row.split(''));
+                
+                state.player.x = 4;
+                state.player.y = 5;
+
+                // Spawn Alaric!
+                const bossTemplate = window.ENEMY_DATA['☠️'];
+                if (bossTemplate) {
+                    state.instancedEnemies = [{
+                        id: `alaric_boss`, x: 4, y: 3, tile: '☠️',
+                        name: bossTemplate.name, isBoss: true,
+                        health: bossTemplate.maxHealth, maxHealth: bossTemplate.maxHealth,
+                        attack: bossTemplate.attack, defense: bossTemplate.defense,
+                        xp: bossTemplate.xp, loot: bossTemplate.loot,
+                        caster: true, castRange: 6, spellDamage: 12, inflicts: 'madness',
+                        madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
+                    }];
+                }
+
+                if (typeof updateRegionDisplay === 'function') updateRegionDisplay();
+                state.mapDirty = true;
+                if (typeof render === 'function') render();
+                if (typeof syncPlayerState === 'function') syncPlayerState();
+            } else {
+                logMessage("{gray:A voice echoes in your mind: 'ONLY THE TRUE RULER MAY ENTER.'}");
+                logMessage("{red:You need the Crown of the First King and his legendary blade to open this door.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            }
+            return null;
+        }
+    },
+    '⚒️': {
+        type: 'anomaly',
+        name: 'Master Blacksmith',
+        flavor: "A hulking dwarf striking glowing metal on an anvil.",
+        onInteract: (state, x, y) => {
+            const p = state.player;
+            const inv = p.inventory;
+            
+            // Material checks
+            const hasStarMetal = inv.some(i => i.name === 'Star-Metal Ore');
+            const hasKrakenInk = inv.some(i => i.name === 'Kraken Ink Sac');
+
+            loreTitle.textContent = "Master Blacksmith Thorne";
+            let html = `<p>"Hah! The stuff you make on that wooden workbench is garbage! Bring me real materials, and I'll forge you weapons of legend!"</p><hr class="my-4 border-gray-600">`;
+
+            // Recipe 1: Star-Forged Greatsword
+            if (hasStarMetal && p.coins >= 1000) {
+                html += `<button id="forgeStar" class="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded mb-2 shadow transition-transform active:scale-95">Forge Star-Metal Blade (1x Ore, 1000g)</button>`;
+            } else {
+                html += `<button disabled class="w-full bg-gray-700 text-gray-500 font-bold py-2 px-4 rounded mb-2 cursor-not-allowed">Requires: Star-Metal Ore & 1000g</button>`;
+            }
+
+            // Recipe 2: Abyssal Cloak
+            if (hasKrakenInk && p.coins >= 1500) {
+                html += `<button id="forgeAbyss" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded mb-2 shadow transition-transform active:scale-95">Weave Abyssal Cloak (1x Kraken Ink, 1500g)</button>`;
+            } else {
+                html += `<button disabled class="w-full bg-gray-700 text-gray-500 font-bold py-2 px-4 rounded mb-2 cursor-not-allowed">Requires: Kraken Ink Sac & 1500g</button>`;
+            }
+
+            loreContent.innerHTML = html;
+            loreModal.classList.remove('hidden');
+
+            // Button Binds
+            setTimeout(() => {
+                const consumeItem = (name) => {
+                    const idx = inv.findIndex(i => i.name === name && !i.isEquipped);
+                    if (idx > -1) {
+                        inv[idx].quantity--;
+                        if (inv[idx].quantity <= 0) inv.splice(idx, 1);
+                    }
+                };
+
+                const starBtn = document.getElementById('forgeStar');
+                if (starBtn) starBtn.onclick = () => {
+                    if (inv.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
+                        logMessage("{red:Inventory Full!}"); 
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return;
+                    }
+                    consumeItem('Star-Metal Ore');
+                    p.coins -= 1000;
+                    inv.push({
+                        templateId: '⚔️k', 
+                        name: 'Star-Forged Blade', type: 'weapon', tile: '⚔️', quantity: 1,
+                        damage: 12, slot: 'weapon', statBonuses: { strength: 3, luck: 3 },
+                        description: "{red:+12 Dmg}, {green:+3 Str}, {gold:+3 Luck}. It glows with starlight.",
+                        excludeFromLoot: true
+                    });
+                    logMessage("{gold:Thorne hammers the fallen star into a flawless blade!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                    loreModal.classList.add('hidden');
+                    if (typeof renderInventory === 'function') renderInventory();
+                    if (typeof renderStats === 'function') renderStats();
+                    if (typeof playerRef !== 'undefined') playerRef.update({ coins: p.coins, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv });
+                };
+
+                const abyssBtn = document.getElementById('forgeAbyss');
+                if (abyssBtn) abyssBtn.onclick = () => {
+                    if (inv.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
+                        logMessage("{red:Inventory Full!}"); 
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return;
+                    }
+                    consumeItem('Kraken Ink Sac');
+                    p.coins -= 1500;
+                    inv.push({
+                        templateId: '🧥d',
+                        name: 'Abyssal Cloak', type: 'armor', tile: '🧥', quantity: 1,
+                        defense: 6, slot: 'armor', statBonuses: { dexterity: 5, wits: 5 },
+                        description: "{blue:+6 Def}, {green:+5 Dex, +5 Wits}. It drinks the surrounding light.",
+                        excludeFromLoot: true
+                    });
+                    logMessage("{purple:Thorne weaves the ink into a cloak of pure shadow!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                    loreModal.classList.add('hidden');
+                    if (typeof renderInventory === 'function') renderInventory();
+                    if (typeof renderStats === 'function') renderStats();
+                    if (typeof playerRef !== 'undefined') playerRef.update({ coins: p.coins, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv });
+                };
+            }, 0);
+
+            return null;
+        }
+    },
+    '✝️': {
+        type: 'anomaly',
+        name: 'The Inquisitor',
+        flavor: "A stern man in heavy armor. He is hunting the Shadowed Hand.",
+        onInteract: (state, x, y) => {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            
+            if (!state.foundLore.has("met_inquisitor")) {
+                logMessage("{gold:You meet the Inquisitor. +50 XP}");
+                if (typeof grantXp === 'function') grantXp(50);
+                state.foundLore.add("met_inquisitor");
+                if (typeof playerRef !== 'undefined') playerRef.update({ foundLore: Array.from(state.foundLore) });
+            }
+            
+            loreTitle.textContent = "The Inquisitor";
+            loreContent.innerHTML = `
+                <p>"The darkness is spreading. I have posted new, high-priority bounties on the board. We need capable hunters to slay the horrors before they reach the village."</p>
+                <button id="viewInqBounties" class="mt-4 bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded w-full shadow transition-transform active:scale-95">View Bounties</button>
+            `;
+            loreModal.classList.remove('hidden');
+
+            setTimeout(() => {
+                const btn = document.getElementById('viewInqBounties');
+                if (btn) btn.onclick = () => {
+                    loreModal.classList.add('hidden');
+                    if (typeof openBountyBoard === 'function') openBountyBoard();
+                };
+            }, 0);
+
+            return null;
+        }
+    },
+
+    // ==========================================
+    // --- BASE TILES ---
+    // ==========================================
     '⛵': {
         type: 'sailing_ship',
         title: 'Sailing Ship',
@@ -48,7 +242,6 @@ window.TILE_DATA = {
     '🌀': {
         type: 'dungeon_entrance',
         flavor: "A massive, swirling whirlpool! The current drags you down...",
-        // Forces the engine to generate a SUNKEN themed dungeon!
         getCaveId: (x, y) => `sunken_whirlpool_${x}_${y}`
     },
     '❄️': {
@@ -56,7 +249,6 @@ window.TILE_DATA = {
         name: 'Ice Bridge',
         flavor: "The water has been frozen solid by magic. It won't last forever."
     },
-    // Respawn Points!
     '🛏️': {
         type: 'anomaly',
         name: 'Cozy Bed',
@@ -67,12 +259,10 @@ window.TILE_DATA = {
 
             logMessage("{green:You rest deeply. Your Respawn Point has been set here.}");
             
-            // Full Heal
             state.player.health = state.player.maxHealth;
             state.player.mana = state.player.maxMana;
             state.player.stamina = state.player.maxStamina;
             
-            // Set Respawn
             state.player.respawnPoint = { x: state.player.x, y: state.player.y };
             
             if (typeof triggerStatAnimation !== 'undefined') {
@@ -95,9 +285,9 @@ window.TILE_DATA = {
             const tileId = `${x},${-y}`;
             if (!state.lootedTiles.has(tileId)) {
                 logMessage("You shake the palm tree...");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy'); // Thud sound
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy'); 
                 
-                if (state.player.inventory.length < 9) { // MAX_INVENTORY_SLOTS
+                if (state.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) { 
                     state.player.inventory.push({
                         name: 'Coconut', type: 'consumable', quantity: 1, tile: '🥥', effect: window.ITEM_DATA['🥥'].effect
                     });
@@ -136,10 +326,6 @@ window.TILE_DATA = {
             "Seek the Obelisks to the North, East, West, and South. Restore the key."
         ]
     },
-
-    // ==========================================
-    // --- NIGHT GHOSTS EXPANSION ---
-    // ==========================================
     '👻p': {
         type: 'anomaly',
         name: 'Wandering Echo',
@@ -159,7 +345,6 @@ window.TILE_DATA = {
             loreContent.textContent = `The ghost looks right through you.\n\n"${msg}"`;
             loreModal.classList.remove('hidden');
             
-            // Ghost vanishes after talking, leaving an empty floor
             chunkManager.setWorldTile(x, y, '.');
             state.mapDirty = true;
             
@@ -167,11 +352,9 @@ window.TILE_DATA = {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
             if (typeof grantXp === 'function') grantXp(25);
             
-            return null; // Return null so it doesn't trigger standard loot saves
+            return null; 
         }
     },
-
-    // 1. Forest: The Whispering Root
     '♣': {
         type: 'mini_dungeon_entrance',
         theme: 'ROOT',
@@ -179,8 +362,6 @@ window.TILE_DATA = {
         flavor: "A tunnel bores into the massive roots of an ancient tree.",
         tile: '♣'
     },
-
-    // 2. Desert: The Hidden Oasis
     '🏝️': {
         type: 'mini_dungeon_entrance',
         theme: 'OASIS',
@@ -188,8 +369,6 @@ window.TILE_DATA = {
         flavor: "A cool breeze flows from a cave hidden behind the palms.",
         tile: '🏝️'
     },
-
-    // 3. Mountain: Glacial Crevasse
     '🧊': {
         type: 'mini_dungeon_entrance',
         theme: 'ICE',
@@ -197,27 +376,20 @@ window.TILE_DATA = {
         flavor: "A narrow crack in the ice leads deep into the glacier.",
         tile: '🧊'
     },
-
-    // 4. The Exit (Used inside the mini-dungeons)
     '🔼': {
         type: 'dungeon_exit', 
         tile: '🔼'
     },
-
-    // 1. The Obelisks (The Puzzle Components)
     '⬆️': { type: 'obelisk_puzzle', direction: 'north', flavor: "A freezing cold obelisk stands here.", tile: '|' },
     '➡️': { type: 'obelisk_puzzle', direction: 'east', flavor: "Moss grows on the east side of this stone.", tile: '|' },
     '⬅️': { type: 'obelisk_puzzle', direction: 'west', flavor: "The stone is warm, facing the setting sun.", tile: '|' },
     '⬇️': { type: 'obelisk_puzzle', direction: 'south', flavor: "The stone is scorched and hot.", tile: '|' },
-
-    // 2. The Sealed Door (The Reward Location)
     '🚪': { 
         type: 'sealed_door', 
         name: 'The Vault of the Old King',
         flavor: "A massive stone door with no handle. It has a keyhole.",
         tile: '⛩️' 
     },
-
     '🚢': {
         type: 'loot_container', 
         name: 'Sunken Shipwreck',
@@ -386,8 +558,6 @@ window.TILE_DATA = {
         flavor: "You smash the urn open...",
         lootTable: ['$', '$', 'gold_dust', 'ancient_coin', '💍']
     },
-    
-    // --- UNDERWORLD TILES ---
     '🕳️': {
         type: 'underworld_entrance', 
         name: 'Deep Chasm',
@@ -409,7 +579,6 @@ window.TILE_DATA = {
         tool: 'Pickaxe',
         flavor: "A dense cluster of sharp, glowing crystals blocks the path."
     },
-
     '⛺': {
         type: 'campsite_entrance',
         flavor: "A quiet, safe place to rest your head."
@@ -423,7 +592,6 @@ window.TILE_DATA = {
             if (!p.campsiteUpgrades) p.campsiteUpgrades = [];
             const upg = p.campsiteUpgrades;
 
-            // Helper to check materials
             const countMat = (name) => p.inventory.filter(i => i.name === name && !i.isEquipped).reduce((sum, i) => sum + i.quantity, 0);
 
             const wood = countMat('Wood Log');
@@ -452,7 +620,6 @@ window.TILE_DATA = {
             loreContent.innerHTML = html;
             loreModal.classList.remove('hidden');
 
-            // Bind Buttons
             setTimeout(() => {
                 const consume = (name, qty) => {
                     let needed = qty;
@@ -478,17 +645,18 @@ window.TILE_DATA = {
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                         loreModal.classList.add('hidden');
                         
-                        // Force map to redraw with new item!
                         chunkManager.generateCampsite();
                         gameState.mapDirty = true;
-                        render();
+                        if (typeof render === 'function') render();
                         
-                        playerRef.update({ 
-                            campsiteUpgrades: p.campsiteUpgrades, 
-                            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory,
-                            coins: p.coins
-                        });
-                        renderInventory();
+                        if (typeof playerRef !== 'undefined') {
+                            playerRef.update({ 
+                                campsiteUpgrades: p.campsiteUpgrades, 
+                                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory,
+                                coins: p.coins
+                            });
+                        }
+                        if (typeof renderInventory === 'function') renderInventory();
                     };
                 };
 
@@ -534,8 +702,6 @@ window.TILE_DATA = {
         tool: 'Machete',
         flavor: "A dense wall of thorny vines."
     },
-    
-    // --- 1. THE CARTOGRAPHER'S GUILD ---
     '🗺️': {
         type: 'anomaly', 
         name: 'Guild Cartographer',
@@ -596,8 +762,6 @@ window.TILE_DATA = {
             return null; 
         }
     },
-
-    // --- 2. NIGHT-TIME EXCLUSIVES ---
     '🍄r': {
         name: 'Fairy Ring',
         type: 'anomaly',
@@ -656,7 +820,7 @@ window.TILE_DATA = {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "🌺", "#f472b6");
 
-            if (state.player.inventory.length < 9) { // Max Slots
+            if (state.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) { 
                 state.player.inventory.push({
                     name: 'Moonbloom Petal', type: 'consumable', quantity: 1, tile: '🌸',
                     effect: window.ITEM_DATA['🌸'] ? window.ITEM_DATA['🌸'].effect : null
@@ -671,7 +835,6 @@ window.TILE_DATA = {
             }
         }
     },
-
     '☄️': {
         type: 'anomaly',
         name: 'Star-Metal Node',
@@ -688,7 +851,7 @@ window.TILE_DATA = {
             
             if (!isNight) {
                 logMessage("The rock is dull and harder than diamond. You can't even scratch it.");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy'); // dull thud
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy'); 
                 return null;
             }
 
@@ -700,14 +863,13 @@ window.TILE_DATA = {
             }
 
             logMessage("{cyan:The starlight softens the rock! You mine a chunk of Star-Metal.}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); // Sharp clink
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); 
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#38bdf8', 10);
             
-            // Add a stamina cost to mining it
             state.player.stamina = Math.max(0, state.player.stamina - 3);
             if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('staminaDisplay'), false);
 
-            if (state.player.inventory.length < 9) {
+            if (state.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                 state.player.inventory.push({
                     name: 'Star-Metal Ore', type: 'junk', quantity: 1, tile: '☄️'
                 });
@@ -726,7 +888,6 @@ window.TILE_DATA = {
             }
         }
     },
-
     '🌳e': {
         type: 'anomaly',
         name: 'Elder Tree',
@@ -749,7 +910,6 @@ window.TILE_DATA = {
                 }
 
                 state.lootedTiles.add(tileId);
-                // Ensure bonusMaxHealth is returned so it gets saved immediately
                 return { 
                     maxHealth: state.player.maxHealth, 
                     health: state.player.health, 
@@ -799,9 +959,9 @@ window.TILE_DATA = {
             const tileId = `${x},${-y}`;
             if (!state.lootedTiles.has(tileId)) {
                 logMessage("You search the Dragon's ribs...");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 800); // Rummage sound
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 800); 
 
-                if (state.player.inventory.length < 9) { // MAX_INVENTORY_SLOTS
+                if (state.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) { 
                     const loot = typeof generateMagicItem === 'function' ? generateMagicItem(4) : { name: 'Dragonbone', type: 'junk', tile: '🦴', quantity: 1 }; 
                     state.player.inventory.push(loot);
                     logMessage(`{purple:You found a ${loot.name} buried in the sand!}`);
@@ -1019,7 +1179,7 @@ window.CASTLE_LAYOUTS = {
             'FFFFFFFFFFFFFFFFFFFFFFFFFFF',
             'FFFFFFFFFFFFFFFFFFFFFFFFFFF',
             'FF🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱FF',
-            'FF🧱..🛏️....⛲.........🧱FF',
+            'FF🧱..🛏️....⛲...⚒️.✝️..🧱FF', 
             'FF🧱.🧱🧱🧱.===.🧱🧱🧱.🧱FF',
             'FF🧱.🧱H+..===..+§🧱.🧱FF',
             'FF🧱.🧱🧱🧱.===.🧱🧱🧱.🧱FF',
@@ -1120,7 +1280,6 @@ window.CAVE_THEMES = {
         decorations: ['♥', 'S', '🔮', '☣️', '🕸'], 
         enemies: ['g', 'w', '@']
     },
-    // --- NEW THEMES ---
     RUIN: {
         name: 'A Forgotten Ruin',
         wall: '🧱', floor: '.', secretWall: '▒',
@@ -1210,7 +1369,6 @@ window.CAVE_ROOM_TEMPLATES = {
         width: 7, height: 7,
         map: [' WWWWW ', 'W.🍄.🍄.W', 'W.....W', 'W🍄.🌿.🍄W', 'W.....W', 'W.🍄.🍄.W', ' WWWWW ']
     },
-    // --- NEW ROOMS ---
     "The Obelisk Chamber": {
         width: 7, height: 7,
         map: [' WWWWW ', 'W.....W', 'W..|..W', 'W.|#|.W', 'W..|..W', 'W.....W', ' WWWWW ']
@@ -1285,7 +1443,6 @@ window.ATMOSPHERE_TEXT = {
         "The trees here are draped in grey, weeping moss.",
         "You pull your boot out of the mud with a loud squelch."
     ],
-    // NEW ATMOSPHERE
     RUIN: [
         "The stones here tell a story of violence and forgotten ages.",
         "You hear a faint scratching sound from behind the wall.",
