@@ -751,113 +751,132 @@ window.SPELL_DATA = {
     "candlelight": {
         name: "Candlelight",
         description: "Summons a floating light. Huge vision radius (+6) for a long time.",
-        cost: 15, costType: "mana", requiredLevel: 1, target: "self", type: "buff", duration: 100 
+        cost: 15, costType: "mana", requiredLevel: 1, target: "self", type: "buff", duration: 100,
+        cooldown: 5 // Short CD so it can be recast easily
     },
     "chainLightning": {
         name: "Chain Lightning",
         description: "Strikes a target, then jumps to a nearby enemy. Scales with Wits.",
         scalingStat: "wits",
         cost: 18, costType: "mana", requiredLevel: 6, target: "aimed", baseDamage: 6,
+        cooldown: 4
     },
     "stoneSkin": {
         name: "Stone Skin",
         description: "Greatly increases Defense but lowers Dexterity. Scales with Constitution.",
         scalingStat: "constitution",
-        cost: 20, costType: "mana", requiredLevel: 3, target: "self", type: "buff", duration: 15 // CRITICAL FIX: Added Duration!
+        cost: 20, costType: "mana", requiredLevel: 3, target: "self", type: "buff", duration: 15,
+        cooldown: 5
     },
     "lesserHeal": {
         name: "Lesser Heal",
         description: "Heals for a small amount. Scales with Wits.",
         scalingStat: "wits",
-        cost: 5, costType: "mana", requiredLevel: 1, target: "self", baseHeal: 5       
+        cost: 5, costType: "mana", requiredLevel: 1, target: "self", baseHeal: 5,
+        cooldown: 3
     },
     "clarity": {
         name: "Clarity",
         description: "Focus your mind to reveal adjacent secret walls.",
-        cost: 8, costType: "psyche", requiredLevel: 1, target: "self", type: "utility" 
+        cost: 8, costType: "psyche", requiredLevel: 1, target: "self", type: "utility",
+        cooldown: 2
     },
     "raiseDead": {
         name: "Raise Dead",
         description: "Summons a Skeleton Minion from a corpse (or bone pile) to fight for you. Scales with Willpower.",
         scalingStat: "willpower",
-        cost: 15, costType: "mana", requiredLevel: 1, target: "aimed", range: 3
+        cost: 15, costType: "mana", requiredLevel: 1, target: "aimed", range: 3,
+        cooldown: 5
     },
     "arcaneShield": {
         name: "Arcane Shield",
         description: "Creates a temporary shield that absorbs damage. Scales with Wits.",
         scalingStat: "wits",
-        cost: 10, costType: "mana", requiredLevel: 3, target: "self", type: "buff", baseShield: 5, duration: 5 
+        cost: 10, costType: "mana", requiredLevel: 3, target: "self", type: "buff", baseShield: 5, duration: 5,
+        cooldown: 4
     },
     "fireball": {
         name: "Fireball",
         description: "An explosive orb damages enemies in a 3x3 area. Scales with Wits.",
         scalingStat: "wits",
-        cost: 15, costType: "mana", requiredLevel: 5, target: "aimed", baseDamage: 8, radius: 1 
+        cost: 15, costType: "mana", requiredLevel: 5, target: "aimed", baseDamage: 8, radius: 1,
+        cooldown: 3
     },
     "siphonLife": {
         name: "Siphon Life",
         description: "Drains life from a target, healing you. Scales with Willpower.",
         scalingStat: "willpower",
-        cost: 12, costType: "psyche", requiredLevel: 4, target: "aimed", baseDamage: 4, healPercent: 0.5 
+        cost: 12, costType: "psyche", requiredLevel: 4, target: "aimed", baseDamage: 4, healPercent: 0.5,
+        cooldown: 2
     },
     "thunderbolt": {
         name: "Thunderbolt",
         description: "Strikes a target with massive lightning damage. Scales with Wits.",
         scalingStat: "wits",
-        cost: 20, costType: "mana", requiredLevel: 6, target: "aimed", baseDamage: 12 
+        cost: 20, costType: "mana", requiredLevel: 6, target: "aimed", baseDamage: 12,
+        cooldown: 3
     },
     "meteor": {
         name: "Meteor",
         description: "Summons a meteor from the heavens. Large AoE (5x5). Scales with Wits.",
         scalingStat: "wits",
-        cost: 30, costType: "mana", requiredLevel: 8, target: "aimed", baseDamage: 10, radius: 2 
+        cost: 30, costType: "mana", requiredLevel: 8, target: "aimed", baseDamage: 10, radius: 2,
+        cooldown: 6
     },
     "divineLight": {
         name: "Divine Light",
         description: "Fully restores Health and cures all status effects.",
-        cost: 25, costType: "psyche", requiredLevel: 5, target: "self", type: "utility"
+        cost: 25, costType: "psyche", requiredLevel: 5, target: "self", type: "utility",
+        cooldown: 8
     },
     "magicBolt": {
         name: "Magic Bolt",
         description: "Hurls a bolt of energy. Scales with Wits.",
         scalingStat: "wits",
-        cost: 8, costType: "mana", requiredLevel: 1, target: "aimed", baseDamage: 5
+        cost: 8, costType: "mana", requiredLevel: 1, target: "aimed", baseDamage: 5,
+        cooldown: 1 // Extremely fast cooldown!
     },
     "psychicBlast": {
         name: "Psychic Blast",
         description: "Assaults a target's mind. Scales with Willpower.",
         scalingStat: "willpower",
-        cost: 10, costType: "psyche", requiredLevel: 2, target: "aimed", baseDamage: 6             
+        cost: 10, costType: "psyche", requiredLevel: 2, target: "aimed", baseDamage: 6,
+        cooldown: 2
     },
     "frostBolt": {
         name: "Frost Bolt",
         description: "Hurls a shard of ice. Has a chance to inflict Frostbite. Scales with Willpower.",
         scalingStat: "willpower",
-        cost: 10, costType: "mana", requiredLevel: 1, target: "aimed", baseDamage: 5, inflicts: "frostbite", inflictChance: 0.25     
+        cost: 10, costType: "mana", requiredLevel: 1, target: "aimed", baseDamage: 5, inflicts: "frostbite", inflictChance: 0.25,
+        cooldown: 2
     },
     "poisonBolt": {
         name: "Poison Bolt",
         description: "Launches a bolt of acidic poison. Has a chance to inflict Poison. Scales with Willpower.",
         scalingStat: "willpower",
-        cost: 10, costType: "psyche", requiredLevel: 2, target: "aimed", baseDamage: 4, inflicts: "poison", inflictChance: 0.50     
+        cost: 10, costType: "psyche", requiredLevel: 2, target: "aimed", baseDamage: 4, inflicts: "poison", inflictChance: 0.50,
+        cooldown: 2
     },
     "darkPact": {
         name: "Dark Pact",
         description: "Sacrifice 5 Health to restore 10 Mana. Scales with Willpower.",
         scalingStat: "willpower",
-        cost: 5, costType: "health", requiredLevel: 4, target: "self", baseRestore: 10
+        cost: 5, costType: "health", requiredLevel: 4, target: "self", baseRestore: 10,
+        cooldown: 2
     },
     "entangle": {
         name: "Entangle",
         description: "Roots an enemy in place, preventing movement and attacks. Scales with Intuition.",
         scalingStat: "intuition",
-        cost: 12, costType: "mana", requiredLevel: 3, target: "aimed", baseDamage: 2, inflicts: "root", inflictChance: 1.0   
+        cost: 12, costType: "mana", requiredLevel: 3, target: "aimed", baseDamage: 2, inflicts: "root", inflictChance: 1.0,
+        cooldown: 4
     },
     "thornSkin": {
         name: "Thorn Skin",
         description: "Reflects damage back to attackers. Scales with Intuition.",
         scalingStat: "intuition",
-        cost: 15, costType: "mana", requiredLevel: 4, target: "self", type: "buff", baseReflect: 2, duration: 5
+        cost: 15, costType: "mana", requiredLevel: 4, target: "self", type: "buff", baseReflect: 2, duration: 5,
+        cooldown: 5
     }
 };
 
