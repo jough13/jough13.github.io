@@ -146,7 +146,7 @@ window.TILE_DATA = {
                     consumeItem('Star-Metal Ore');
                     p.coins -= 1000;
                     inv.push({
-                        templateId: '⚔️k', 
+                        templateId: '⚔️star',
                         name: 'Star-Forged Blade', type: 'weapon', tile: '⚔️', quantity: 1,
                         damage: 12, slot: 'weapon', statBonuses: { strength: 3, luck: 3 },
                         description: "{red:+12 Dmg}, {green:+3 Str}, {gold:+3 Luck}. It glows with starlight.",
@@ -170,7 +170,7 @@ window.TILE_DATA = {
                     consumeItem('Kraken Ink Sac');
                     p.coins -= 1500;
                     inv.push({
-                        templateId: '🧥d',
+                        templateId: '🧥abyss',
                         name: 'Abyssal Cloak', type: 'armor', tile: '🧥', quantity: 1,
                         defense: 6, slot: 'armor', statBonuses: { dexterity: 5, wits: 5 },
                         description: "{blue:+6 Def}, {green:+5 Dex, +5 Wits}. It drinks the surrounding light.",
