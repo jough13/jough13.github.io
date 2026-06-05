@@ -1,3 +1,5 @@
+// --- START OF FILE world.js ---
+
 // Cache room templates globally to prevent expensive object parsing during cave generation
 window.CACHED_ROOM_TEMPLATES = null;
 
@@ -1137,6 +1139,16 @@ const chunkManager = {
                     }
                     else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0002) {
                         chunkData[y][x] = '⛺';
+                    }
+                    // --- NIGHT-TIME GHOSTS (Echoes of the Fall) ---
+                    else if ((tile === '.' || tile === 'd') && featureRoll > 0.0002 && featureRoll < 0.0004) {
+                        const hour = gameState.time.hour;
+                        const isNight = hour >= 20 || hour < 5;
+                        if (isNight) {
+                            chunkData[y][x] = '👻p';
+                        } else {
+                            chunkData[y][x] = tile;
+                        }
                     }
                     // --- 8. ARCHAEOLOGY SPOTS ---
                     else if (['.', 'd', 'D', 'F'].includes(tile) && featureRoll < (tile === 'd' || tile === 'D' ? 0.0015 : 0.0005)) {
