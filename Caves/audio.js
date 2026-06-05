@@ -1,5 +1,3 @@
-// --- START OF FILE audio.js ---
-
 // ==========================================
 // ADVANCED PROCEDURAL AUDIO SYSTEM
 // ==========================================
@@ -391,9 +389,32 @@ const AudioSystem = {
     }
 };
 
-// Global Boot Hook
-// Forces the audio context to initialize the very first time the player clicks anywhere
-document.addEventListener('click', function unlockAudioContext() {
-    AudioSystem.initAudioContext();
-    document.removeEventListener('click', unlockAudioContext);
-}, { once: true });
+// ==========================================
+// BROWSER AUDIO HARDWARE UNLOCKER
+// ==========================================
+// Forces the audio context to initialize the very first time the player clicks anywhere.
+// iOS Safari specifically requires sound to be played during this event!
+
+function forceUnlockAudio() {
+    const ctx = AudioSystem.initAudioContext();
+    if (ctx && ctx.state === 'running') {
+        // Play 10 milliseconds of pure silence to satisfy Apple's API requirements
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.value = 0; // Absolute silence
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.01);
+        
+        // Remove the listeners once successfully unlocked
+        document.removeEventListener('click', forceUnlockAudio);
+        document.removeEventListener('touchstart', forceUnlockAudio);
+    }
+}
+
+// Bind to both click and touch events to catch mobile interactions ASAP
+document.addEventListener('click', forceUnlockAudio, { once: true });
+document.addEventListener('touchstart', forceUnlockAudio, { once: true });
