@@ -1,3 +1,5 @@
+// --- START OF FILE stash.js ---
+
 // ==========================================
 // STORAGE STASH & BANK SYSTEM
 // ==========================================
@@ -17,7 +19,8 @@ const cloneItemSafely = (item) => {
     };
 };
 
-window.handleStashTransfer = function (action, index) {
+// QoL WIN: Added 'amount' parameter to support partial stack transfers!
+window.handleStashTransfer = function (action, index, amountStr = 'all') {
     const player = gameState.player;
     if (!player.bank) player.bank = [];
 
@@ -32,6 +35,9 @@ window.handleStashTransfer = function (action, index) {
 
         const isStackable = isStackableItem(item.type);
         const existingBankItem = isStackable ? player.bank.find(i => i.name === item.name) : null;
+        
+        // Determine transfer amount
+        const amountToMove = (amountStr === 'all') ? item.quantity : 1;
 
         // Capacity Check (Only applies if it requires a new slot)
         if (!existingBankItem && player.bank.length >= MAX_STASH_SLOTS) {
@@ -41,14 +47,19 @@ window.handleStashTransfer = function (action, index) {
         }
 
         if (existingBankItem) {
-            existingBankItem.quantity += item.quantity;
+            existingBankItem.quantity += amountToMove;
         } else {
-            player.bank.push(cloneItemSafely(item)); 
+            const newItem = cloneItemSafely(item);
+            newItem.quantity = amountToMove;
+            player.bank.push(newItem); 
         }
         
-        player.inventory.splice(index, 1);
+        item.quantity -= amountToMove;
+        if (item.quantity <= 0) {
+            player.inventory.splice(index, 1);
+        }
         
-        const qtyString = item.quantity > 1 ? `${item.quantity}x ` : '';
+        const qtyString = amountToMove > 1 ? `${amountToMove}x ` : '';
         logMessage(`Deposited ${qtyString}${item.name}.`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Clink sound
     }
@@ -57,6 +68,9 @@ window.handleStashTransfer = function (action, index) {
         const isStackable = isStackableItem(item.type);
         const existingInvItem = isStackable ? player.inventory.find(i => i.name === item.name) : null;
 
+        // Determine transfer amount
+        const amountToMove = (amountStr === 'all') ? item.quantity : 1;
+
         // Inventory Capacity Check
         if (!existingInvItem && player.inventory.length >= window.MAX_INVENTORY_SLOTS) { 
             logMessage("{red:Your inventory is full!}");
@@ -64,40 +78,42 @@ window.handleStashTransfer = function (action, index) {
             return;
         }
 
-        let withdrawnItem = cloneItemSafely(item);
-
-        // PERFORMANCE & ROBUSTNESS: O(1) Rebind Effect Logic using templateId 
-        // This ensures weapons keep their onHit procs and consumables keep their effects after being stored!
-        let templateKey = withdrawnItem.templateId;
-        if (!templateKey) {
-            // Fallback for legacy items missing a templateId
-            templateKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === withdrawnItem.name);
-            if (templateKey) withdrawnItem.templateId = templateKey; // Heal the data
-        }
-        
-        if (templateKey && ITEM_DATA[templateKey]) {
-            const t = ITEM_DATA[templateKey];
-            withdrawnItem.effect = t.effect;
-            withdrawnItem.onHit = t.onHit;
-            withdrawnItem.procChance = t.procChance;
-            withdrawnItem.inflicts = t.inflicts;
-            withdrawnItem.inflictChance = t.inflictChance;
-        }
-
         if (existingInvItem) {
-            existingInvItem.quantity += withdrawnItem.quantity;
+            existingInvItem.quantity += amountToMove;
         } else {
+            let withdrawnItem = cloneItemSafely(item);
+            withdrawnItem.quantity = amountToMove;
+
+            // PERFORMANCE & ROBUSTNESS: O(1) Rebind Effect Logic using templateId 
+            let templateKey = withdrawnItem.templateId;
+            if (!templateKey) {
+                templateKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === withdrawnItem.name);
+                if (templateKey) withdrawnItem.templateId = templateKey; 
+            }
+            
+            if (templateKey && ITEM_DATA[templateKey]) {
+                const t = ITEM_DATA[templateKey];
+                withdrawnItem.effect = t.effect;
+                withdrawnItem.onHit = t.onHit;
+                withdrawnItem.procChance = t.procChance;
+                withdrawnItem.inflicts = t.inflicts;
+                withdrawnItem.inflictChance = t.inflictChance;
+            }
+            
             player.inventory.push(withdrawnItem); 
         }
         
-        player.bank.splice(index, 1);
+        item.quantity -= amountToMove;
+        if (item.quantity <= 0) {
+            player.bank.splice(index, 1);
+        }
         
-        const qtyString = withdrawnItem.quantity > 1 ? `${withdrawnItem.quantity}x ` : '';
-        logMessage(`Withdrew ${qtyString}${withdrawnItem.name}.`);
+        const qtyString = amountToMove > 1 ? `${amountToMove}x ` : '';
+        logMessage(`Withdrew ${qtyString}${item.name}.`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Clink sound
     }
 
-    // Save and Render. Note: getSanitizedInventory prevents Firebase crashes from functions.
+    // Save and Render.
     playerRef.update({ 
         inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
         bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
@@ -106,18 +122,15 @@ window.handleStashTransfer = function (action, index) {
     renderInventory();
 };
 
-// Gameplay Addition: Quality of Life feature to dump all crafting materials instantly
 window.depositAllMaterials = function() {
     const player = gameState.player;
     if (!player.bank) player.bank = [];
     
     let itemsMoved = 0;
 
-    // Iterate backwards so we can safely splice items out of the array
     for (let i = player.inventory.length - 1; i >= 0; i--) {
         const item = player.inventory[i];
         
-        // Only target stackable resource types that aren't equipped
         if (item.isEquipped) continue;
         if (!['junk', 'ingredient', 'trade'].includes(item.type)) continue;
 
@@ -142,6 +155,9 @@ window.depositAllMaterials = function() {
         logMessage(`{green:Mass deposited ${itemsMoved} material stacks.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic(); 
         
+        // Auto-sort the stash cleanly after a mass dump
+        window.sortStash(false); // pass false to skip playing the step sound again
+        
         playerRef.update({ 
             inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
             bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
@@ -154,6 +170,50 @@ window.depositAllMaterials = function() {
     }
 };
 
+// QoL WIN: Stash Sorting Algorithm
+window.sortStash = function(playSound = true) {
+    const player = gameState.player;
+    if (!player.bank || player.bank.length === 0) return;
+
+    // 1. Consolidate stacks in case there are duplicates
+    const consolidated = [];
+    player.bank.forEach(item => {
+        const isStackable = isStackableItem(item.type);
+        const existing = consolidated.find(i => i.name === item.name && isStackable);
+        
+        if (existing) {
+            existing.quantity += item.quantity;
+        } else {
+            consolidated.push({...item}); 
+        }
+    });
+
+    // 2. Sort by Type, then Name
+    const typeWeights = { 
+        'weapon': 1, 'armor': 2, 'accessory': 3, 'ammo': 4, 
+        'consumable': 5, 'tool': 6, 'spellbook': 7, 'quest': 8, 'trade': 9, 'junk': 10 
+    };
+
+    consolidated.sort((a, b) => {
+        const wA = typeWeights[a.type] || 20;
+        const wB = typeWeights[b.type] || 20;
+        
+        if (wA !== wB) return wA - wB; 
+        return a.name.localeCompare(b.name); 
+    });
+
+    player.bank = consolidated;
+
+    if (playSound && typeof AudioSystem !== 'undefined') {
+        AudioSystem.playStep();
+    }
+
+    if (typeof playerRef !== 'undefined' && playerRef) {
+        playerRef.update({ bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank });
+    }
+    renderStash();
+};
+
 function renderStash() {
     stashPlayerList.innerHTML = '';
     stashBankList.innerHTML = '';
@@ -161,11 +221,9 @@ function renderStash() {
     const player = gameState.player;
     const bank = player.bank || [];
 
-    // PERFORMANCE: Use DocumentFragments to prevent layout thrashing
     const playerFragment = document.createDocumentFragment();
     const bankFragment = document.createDocumentFragment();
 
-    // Helper to generate hover tooltips for magic items
     const generateTooltip = (item) => {
         let tooltip = item.name;
         if (item.statBonuses) {
@@ -182,27 +240,37 @@ function renderStash() {
         player.inventory.forEach((item, index) => {
             const li = document.createElement('li');
             li.className = 'shop-item hover:border-green-500 transition-colors duration-150';
-            li.title = generateTooltip(item); // UX WIN: Added Tooltips
+            li.title = generateTooltip(item); 
             
-            // Format bonuses for tooltip/display
-            let extraInfo = '';
-            if (item.statBonuses) {
-                extraInfo = ` <span class="text-xs text-indigo-400">[*]</span>`;
-            }
+            // JUICE: Highlight Magic Items
+            const nameColor = item.statBonuses ? 'text-purple-400 font-bold' : 'text-gray-200';
+
+            let extraInfo = item.statBonuses ? ` <span class="text-xs text-purple-500">[*]</span>` : '';
             if (item.isEquipped) {
-                extraInfo += ` <span class="text-xs text-yellow-500 font-bold">[EQP]</span>`;
+                extraInfo += ` <span class="text-[10px] text-yellow-500 font-bold bg-black bg-opacity-40 px-1 rounded ml-1 uppercase tracking-widest">[EQP]</span>`;
+            }
+
+            // QoL: Split Stack Buttons
+            let buttonsHtml = '';
+            if (item.isEquipped) {
+                buttonsHtml = `<button class="text-xs bg-gray-700 text-gray-500 px-3 py-1 rounded shadow-sm opacity-50 cursor-not-allowed" disabled>Equipped</button>`;
+            } else if (item.quantity > 1) {
+                buttonsHtml = `
+                    <button class="text-[10px] bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold" onclick="handleStashTransfer('deposit', ${index}, 1)">Dep 1</button>
+                    <button class="text-[10px] bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold ml-1" onclick="handleStashTransfer('deposit', ${index}, 'all')">All</button>
+                `;
+            } else {
+                buttonsHtml = `<button class="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-all active:scale-95" onclick="handleStashTransfer('deposit', ${index}, 'all')">Deposit</button>`;
             }
 
             li.innerHTML = `
                 <div class="flex items-center gap-2">
                     <span class="text-lg">${item.tile || '🎒'}</span>
-                    <span>${item.name} <span class="text-xs text-gray-400">x${item.quantity}</span>${extraInfo}</span>
+                    <span class="${nameColor}">${item.name} <span class="text-xs text-gray-400 ml-1">x${item.quantity}</span>${extraInfo}</span>
                 </div>
-                <button class="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-all active:scale-95 disabled:opacity-50" 
-                        ${item.isEquipped ? 'disabled title="Unequip first"' : ''}
-                        onclick="handleStashTransfer('deposit', ${index})">
-                    Deposit
-                </button>
+                <div class="flex items-center">
+                    ${buttonsHtml}
+                </div>
             `;
             playerFragment.appendChild(li);
         });
@@ -215,19 +283,31 @@ function renderStash() {
         bank.forEach((item, index) => {
             const li = document.createElement('li');
             li.className = 'shop-item hover:border-blue-500 transition-colors duration-150';
-            li.title = generateTooltip(item); // UX WIN: Added Tooltips
+            li.title = generateTooltip(item); 
             
-            let extraInfo = item.statBonuses ? ` <span class="text-xs text-indigo-400">[*]</span>` : '';
+            // JUICE: Highlight Magic Items
+            const nameColor = item.statBonuses ? 'text-purple-400 font-bold' : 'text-gray-200';
+            let extraInfo = item.statBonuses ? ` <span class="text-xs text-purple-500">[*]</span>` : '';
+
+            // QoL: Split Stack Buttons
+            let buttonsHtml = '';
+            if (item.quantity > 1) {
+                buttonsHtml = `
+                    <button class="text-[10px] bg-blue-700 hover:bg-blue-600 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold" onclick="handleStashTransfer('withdraw', ${index}, 1)">Take 1</button>
+                    <button class="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold ml-1" onclick="handleStashTransfer('withdraw', ${index}, 'all')">All</button>
+                `;
+            } else {
+                buttonsHtml = `<button class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-all active:scale-95" onclick="handleStashTransfer('withdraw', ${index}, 'all')">Withdraw</button>`;
+            }
 
             li.innerHTML = `
                 <div class="flex items-center gap-2">
                     <span class="text-lg">${item.tile || '📦'}</span>
-                    <span>${item.name} <span class="text-xs text-gray-400">x${item.quantity}</span>${extraInfo}</span>
+                    <span class="${nameColor}">${item.name} <span class="text-xs text-gray-400 ml-1">x${item.quantity}</span>${extraInfo}</span>
                 </div>
-                <button class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-all active:scale-95" 
-                        onclick="handleStashTransfer('withdraw', ${index})">
-                    Withdraw
-                </button>
+                <div class="flex items-center">
+                    ${buttonsHtml}
+                </div>
             `;
             bankFragment.appendChild(li);
         });
@@ -236,10 +316,21 @@ function renderStash() {
     stashPlayerList.appendChild(playerFragment);
     stashBankList.appendChild(bankFragment);
 
-    // Update the Bank Title dynamically to show capacity
+    // --- DYNAMIC CAPACITY UI ---
     const bankHeader = stashBankList.parentElement.querySelector('h3');
     if (bankHeader) {
-        bankHeader.innerHTML = `Stash Vault <span class="text-sm font-normal text-gray-400 ml-2">(${bank.length}/${MAX_STASH_SLOTS})</span>`;
+        const capacityPct = bank.length / MAX_STASH_SLOTS;
+        let capColor = "text-green-400";
+        if (capacityPct > 0.95) capColor = "text-red-500 animate-pulse";
+        else if (capacityPct > 0.8) capColor = "text-yellow-500";
+
+        // Inject Auto-Sort alongside capacity
+        bankHeader.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+                <span>Stash Vault <span class="text-[10px] font-normal ${capColor} ml-1 bg-black bg-opacity-30 px-1 rounded">(${bank.length}/${MAX_STASH_SLOTS})</span></span>
+                <button onclick="sortStash()" class="text-[10px] uppercase font-bold tracking-widest bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95">Sort</button>
+            </div>
+        `;
     }
 
     // Inject Mass Deposit Button into Player Inventory Header
