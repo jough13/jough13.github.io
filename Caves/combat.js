@@ -1564,19 +1564,17 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                 try {
                     const lootData = { ...enemyData, isElite: enemyInfo.isElite };
                     const droppedLoot = generateEnemyLoot(player, lootData);
-                    const currentTerrain = chunkManager.getTile(targetX, targetY);
-
-                    // 🛡️ THE FIX: Protect critical tiles and existing items! 🛡️
+                    const currentTerrain = chunkManager.getTile(newX, newY);
                     const isProtectedTile = ['📦', '⚰️', '🏺', '🚪', '✨', '∴', 'c', '⛵'].includes(currentTerrain);
                     const isItemTile = typeof ITEM_DATA !== 'undefined' && ITEM_DATA[currentTerrain];
 
                     if (isProtectedTile || isItemTile) {
                         logMessage("{gray:The enemy's loot was lost in the underbrush.}");
                     } else if (currentTerrain !== '~' && currentTerrain !== '🌋') {
-                        // Enemy loot despawns after 2 hours!
-                        chunkManager.setWorldTile(targetX, targetY, droppedLoot || '.', 2);
+                        chunkManager.setWorldTile(newX, newY, droppedLoot || '.', 2); 
                         gameState.mapDirty = true;
                     }
+
                 } catch (lootErr) {
                     console.error("Loot drop error:", lootErr);
                 }
