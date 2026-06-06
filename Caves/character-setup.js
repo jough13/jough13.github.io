@@ -99,8 +99,10 @@ if (confirmDeleteButton) {
             const btn = confirmDeleteButton;
             const originalText = btn.textContent;
             
+            // ROBUSTNESS: Disable buttons during deletion to prevent spamming
             btn.disabled = true;
             btn.textContent = "Deleting...";
+            if (cancelDeleteButton) cancelDeleteButton.disabled = true;
 
             try {
                 // Delete the main character document
@@ -115,14 +117,18 @@ if (confirmDeleteButton) {
                 });
                 await batch.commit();
 
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
                 await renderSlots(); 
             } catch (e) {
                 console.error("Error deleting slot:", e);
                 alert("Failed to delete character. Check console.");
             }
 
+            // Restore buttons
             btn.disabled = false;
             btn.textContent = originalText;
+            if (cancelDeleteButton) cancelDeleteButton.disabled = false;
+            
             if (deleteConfirmModal) deleteConfirmModal.classList.add('hidden');
             slotPendingDeletion = null;
         }
@@ -139,6 +145,9 @@ if (cancelDeleteButton) {
 
 if (deleteConfirmModal) {
     deleteConfirmModal.addEventListener('click', (e) => {
+        // Prevent closing if we are currently deleting
+        if (confirmDeleteButton && confirmDeleteButton.disabled) return;
+        
         if (e.target === deleteConfirmModal) {
             deleteConfirmModal.classList.add('hidden');
             slotPendingDeletion = null;
@@ -155,8 +164,8 @@ function selectCreationOption(type, key, element) {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
 
     const container = element.parentElement;
-    Array.from(container.children).forEach(child => child.classList.remove('selected'));
-    element.classList.add('selected');
+    Array.from(container.children).forEach(child => child.classList.remove('selected', 'bg-blue-900', 'bg-opacity-20'));
+    element.classList.add('selected', 'bg-blue-900', 'bg-opacity-20');
 
     updateCreationSummary();
 }
@@ -166,11 +175,20 @@ function updateCreationSummary() {
     const nameInput = document.getElementById('charNameInput');
     
     // Clean the input to prevent weird spacing or hidden HTML tags
-    // Allow letters, numbers, and single spaces between words. Trim outer space.
-    creationState.name = nameInput.value.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    let rawName = nameInput.value.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, ' ').trimStart();
+    
+    // QoL WIN: Auto Title-Case the name (e.g. "gandalf the grey" -> "Gandalf The Grey")
+    let formattedName = rawName.split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+        
+    creationState.name = formattedName.trim();
 
     const raceName = creationState.race ? PLAYER_RACES[creationState.race].name : "???";
     const className = creationState.background ? PLAYER_BACKGROUNDS[creationState.background].name : "???";
+    
+    // JUICE WIN: Dynamic Avatar Preview
+    const raceIcon = creationState.race ? PLAYER_RACES[creationState.race].icon : "👤";
     
     let stats = [];
     let calcCon = 1, calcWits = 1, calcEnd = 1, calcWill = 1;
@@ -197,14 +215,13 @@ function updateCreationSummary() {
     }
 
     // GAMEPLAY WIN: Projected Vitals Preview
-    // Show players exactly what their starting HP/Mana will be before they hit play!
     const projHP = 5 + (calcCon * 5);
     const projMana = 5 + (calcWits * 5);
     const projStamina = 5 + (calcEnd * 5);
     const projPsyche = 7 + (calcWill * 3);
 
     const vitalsHtml = (creationState.race && creationState.background) ? `
-        <div class="grid grid-cols-2 gap-1 text-[11px] mt-2 bg-black bg-opacity-20 p-2 rounded">
+        <div class="grid grid-cols-2 gap-1 text-[11px] mt-2 bg-black bg-opacity-30 p-2 rounded border border-gray-700">
             <span class="text-green-400 font-bold">HP: ${projHP}</span>
             <span class="text-blue-400 font-bold">Mana: ${projMana}</span>
             <span class="text-yellow-400 font-bold">Stam: ${projStamina}</span>
@@ -214,10 +231,16 @@ function updateCreationSummary() {
 
     if (summaryDiv) {
         summaryDiv.innerHTML = `
-            <p>Name: <span class="highlight-text font-bold">${creationState.name || "???"}</span></p>
-            <p>Identity: ${creationState.gender || "?"} ${raceName} ${className}</p>
-            <div class="mt-2 text-xs border-t pt-2 border-gray-500">
-                ${stats.length > 0 ? stats.join('<br>') : "Select Race & Class to see bonuses."}
+            <div class="flex items-center gap-4 mb-3">
+                <div class="text-5xl drop-shadow-lg bg-black bg-opacity-30 rounded-xl p-3 border border-gray-600 flex-shrink-0">${raceIcon}</div>
+                <div class="flex flex-col flex-grow">
+                    <div class="highlight-text font-bold text-xl leading-tight truncate max-w-[180px]">${creationState.name || "???"}</div>
+                    <div class="text-xs text-gray-400 uppercase tracking-widest mt-1">${creationState.gender || "?"} ${raceName}</div>
+                    <div class="text-xs text-yellow-500 font-bold" style="font-family: 'Uncial Antiqua', cursive;">${className}</div>
+                </div>
+            </div>
+            <div class="text-xs border-t pt-2 border-gray-600 text-gray-300">
+                ${stats.length > 0 ? stats.join('<br>') : "<span class='italic opacity-50'>Select Race & Class to see bonuses.</span>"}
             </div>
             ${vitalsHtml}
         `;
@@ -243,7 +266,7 @@ function updateCreationSummary() {
         btn.classList.add('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
         btn.classList.remove('bg-green-600', 'hover:bg-green-500');
     } else {
-        btn.textContent = "Begin Adventure!";
+        btn.innerHTML = "Begin Adventure <span>→</span>";
         btn.disabled = false;
         btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-gray-600');
         btn.classList.add('bg-green-600', 'hover:bg-green-500');
@@ -282,18 +305,41 @@ window.generateRandomName = function() {
     }
 };
 
+// QoL WIN: Instant Full Randomizer for Roguelike feel
+window.quickRollCharacter = function() {
+    generateRandomName();
+            
+    const genders = ['Male', 'Female', 'Non-Binary'];
+    const rG = genders[Math.floor(Math.random() * genders.length)];
+    const btnG = document.querySelector(`.gender-btn[data-value="${rG}"]`);
+    if (btnG) btnG.click();
+
+    const races = Object.keys(PLAYER_RACES);
+    const rR = races[Math.floor(Math.random() * races.length)];
+    const btnR = document.querySelector(`#raceSelectionContainer div[data-key="${rR}"]`);
+    if (btnR) btnR.click();
+
+    const classes = Object.keys(PLAYER_BACKGROUNDS);
+    const rC = classes[Math.floor(Math.random() * classes.length)];
+    const btnC = document.querySelector(`#classSelectionContainer div[data-key="${rC}"]`);
+    if (btnC) btnC.click();
+    
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+};
+
 function initCreationUI() {
     creationState = { name: "", race: null, gender: "Non-Binary", background: null };
     
     const nameInput = document.getElementById('charNameInput');
     if (nameInput) nameInput.value = "";
     
-    // EASY WIN: Inject the dice button next to the name input dynamically
+    // EASY WIN: Inject the dice buttons dynamically
     if (nameInput && !document.getElementById('randomNameBtn')) {
         const nameContainer = nameInput.parentElement;
+        
+        // 1. Wrap the name input to add the dice button next to it
         const wrapper = document.createElement('div');
         wrapper.className = "flex gap-2";
-        
         nameInput.parentNode.insertBefore(wrapper, nameInput);
         wrapper.appendChild(nameInput);
         
@@ -304,6 +350,14 @@ function initCreationUI() {
         diceBtn.textContent = "🎲";
         diceBtn.onclick = generateRandomName;
         wrapper.appendChild(diceBtn);
+
+        // 2. Add the "Quick Roll" macro button just above it
+        const quickRollBtn = document.createElement('button');
+        quickRollBtn.id = 'quickRollBtn';
+        quickRollBtn.className = "bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-lg text-xs tracking-widest uppercase shadow-md transition-transform active:scale-95 mb-3 flex items-center justify-center gap-2 w-full";
+        quickRollBtn.innerHTML = `<span>⚡</span> Quick Roll Character`;
+        quickRollBtn.onclick = window.quickRollCharacter;
+        nameContainer.insertBefore(quickRollBtn, wrapper);
     }
     
     const raceContainer = document.getElementById('raceSelectionContainer');
@@ -312,7 +366,7 @@ function initCreationUI() {
         for (const key in PLAYER_RACES) {
             const r = PLAYER_RACES[key];
             const div = document.createElement('div');
-            div.className = 'creation-option p-3 rounded-lg flex items-center gap-2 border-gray-600 border-2';
+            div.className = 'creation-option p-3 rounded-lg flex items-center gap-3 border-gray-600 border-2 transition-all';
             div.innerHTML = `<span class="text-3xl">${r.icon}</span> <span class="font-bold text-lg">${r.name}</span>`;
             div.onclick = () => selectCreationOption('race', key, div);
             div.dataset.key = key; 
@@ -326,10 +380,10 @@ function initCreationUI() {
         for (const key in PLAYER_BACKGROUNDS) {
             const bg = PLAYER_BACKGROUNDS[key];
             const div = document.createElement('div');
-            div.className = 'creation-option p-3 rounded-lg border-gray-600 border-2';
+            div.className = 'creation-option p-3 rounded-lg border-gray-600 border-2 transition-all';
             div.innerHTML = `
                 <div class="font-bold text-lg text-yellow-500" style="font-family: 'Uncial Antiqua', cursive;">${bg.name}</div>
-                <div class="text-xs text-gray-400 mt-1">Start: ${bg.items[0].name}</div>
+                <div class="text-xs text-gray-400 mt-1 truncate">Start: ${bg.items[0].name}</div>
             `;
             div.onclick = () => selectCreationOption('background', key, div);
             div.dataset.key = key;
@@ -378,6 +432,9 @@ async function finalizeCharacterCreation() {
     player.race = creationState.race;
     player.gender = creationState.gender;
     player.background = creationState.background; 
+    
+    // Set the character icon to the Race's Emoji!
+    player.character = raceData.icon || '@';
 
     // 2. Apply Class Stats
     for (const stat in bgData.stats) {
@@ -440,6 +497,6 @@ async function finalizeCharacterCreation() {
         console.error("Failed to save new character:", e);
         alert("Failed to finalize character creation. Check your connection.");
         btn.disabled = false;
-        btn.textContent = "Begin Adventure!";
+        btn.innerHTML = "Begin Adventure <span>→</span>";
     }
 }
