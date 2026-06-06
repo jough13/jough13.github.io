@@ -659,12 +659,21 @@ function getRegionName(regionX, regionY) {
 }
 
 const TERRAIN_COST = {
-    '^': 2,
-    '≈': 2, 
-    '~': Infinity, 
-    'F': 1, 
-    '<': 0, // Stairs are free to step on
-    '>': 0  // Make sure exit stairs are free too
+    // --- Difficult Terrain ---
+    '^': 2,   // Mountains
+    '≈': 2,   // Swamp
+    '~': Infinity, // Deep Water (Blocks movement entirely)
+    
+    // --- Standard Terrain ---
+    'F': 1,   // Forest
+    '.': 1,   // Plains, Dungeon Floors, and Castle Courtyards
+    'D': 1,   // Desert
+    'd': 1,   // Deadlands
+    '=': 1,   // Wooden Bridges / Paths
+    
+    // --- Free Actions ---
+    '<': 0,   // Stairs up are free to step on
+    '>': 0    // Stairs down are free to step on
 };
 
 
@@ -3265,6 +3274,9 @@ async function enterGame(playerData) {
         }
     });
 
+    // --- BUFFER FOR BURST CHAT MESSAGES ---
+    let pendingChatMessages = [];
+
     // Only request the 50 messages we actually plan to show
     const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(50);
     // Assign it to the global variable so it can be cleaned up on logout!
@@ -3307,28 +3319,42 @@ async function enterGame(playerData) {
         messageDiv.appendChild(timeSpan);
         messageDiv.appendChild(nameStrong);
         messageDiv.appendChild(msgSpan); 
-        chatMessages.prepend(messageDiv);
-
-        // Debounced DOM Culling
-        // We use a timer to ensure we only clean the DOM ONCE after a rapid burst of messages
-        // (like during the initial login sync), preventing severe layout thrashing.
-        if (window.chatCullTimer) clearTimeout(window.chatCullTimer);
         
-        window.chatCullTimer = setTimeout(() => {
+        // 1. ADD TO JAVASCRIPT BUFFER INSTEAD OF THE DOM
+        pendingChatMessages.push(messageDiv);
+
+        // 2. BATCH DOM INSERTION & CULLING
+        if (window.chatRenderTimer) clearTimeout(window.chatRenderTimer);
+        
+        window.chatRenderTimer = setTimeout(() => {
+            if (pendingChatMessages.length === 0) return;
+
+            const fragment = document.createDocumentFragment();
+            
+            // Loop backwards: Firebase sends Oldest -> Newest. 
+            // Because chat is 'flex-col-reverse' (newest at bottom), we prepend them to the 
+            // fragment in reverse order so they stack perfectly into the DOM!
+            for (let i = pendingChatMessages.length - 1; i >= 0; i--) {
+                fragment.appendChild(pendingChatMessages[i]);
+            }
+            
+            // ONE single DOM layout calculation!
+            chatMessages.prepend(fragment);
+            pendingChatMessages = []; // Clear buffer
+
+            // Cull down to 50 messages safely
             let removedCount = 0;
-            // Cull down to 50 messages
             while (chatMessages.children.length > 50) {
                 chatMessages.removeChild(chatMessages.lastChild);
                 removedCount++;
             }
             
-            // Only force a scroll reflow if we are already at the bottom
-            // This prevents the chat from violently snapping down if the user was scrolling up to read!
+            // Adjust scroll safely
             const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 10;
             if (isScrolledToBottom || removedCount > 0) {
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
-        }, 100); // Wait 100ms for Firebase to finish bursting before cleaning up
+        }, 50); // 50ms buffer window catches the entire Firebase initial load payload
     });
 
     // --- FINAL RENDER & INIT ---
