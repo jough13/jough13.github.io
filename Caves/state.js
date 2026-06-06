@@ -1,3 +1,5 @@
+// --- START OF FILE state.js ---
+
 // ============================================================================
 // GLOBAL CONFIGURATION CONSTANTS
 // ============================================================================
@@ -48,7 +50,16 @@ const gameState = {
     // --- System & Engine State ---
     initialEnemiesLoaded: false,
     mapDirty: true,           // Flag to force canvas redraws
-    screenShake: 0,           // Visual effect intensity
+    
+    // JUICE WIN: Directional Screen Shake State
+    screenShake: 0,           // Legacy scalar (kept for backwards compatibility)
+    cameraShake: {
+        intensity: 0,
+        dx: 0,                // Directional X knockback
+        dy: 0,                // Directional Y knockback
+        decay: 0.85           // How fast the shake settles
+    },
+
     inventoryMode: false,
     isDroppingItem: false,
     isAiming: false,
@@ -59,6 +70,16 @@ const gameState = {
     lastStartX: null,         // Viewport caching (renderer.js)
     lastStartY: null,         // Viewport caching (renderer.js)
     visibleAnimatedTiles: [], // Highly optimized rendering array
+
+    // PERFORMANCE WIN: UI Render Batching Flags
+    // Allows the engine to batch DOM updates at the end of the frame instead of shotgunning them
+    renderFlags: {
+        stats: false,
+        inventory: false,
+        equipment: false,
+        hotbar: false,
+        minimap: false
+    },
 
     // --- Player State ---
     player: {
@@ -71,6 +92,10 @@ const gameState = {
         background: null,     // Starting class
         className: null,      // Evolved class name
         classEvolved: false,
+        
+        // FLAVOR WIN: Titles System
+        titles: [],           // Earned titles (e.g., "The Kingslayer", "Master Angler")
+        activeTitle: null,    // Currently displayed title
         
         // Positioning & Movement
         x: 0,
@@ -199,12 +224,16 @@ const gameState = {
         companion: null,       // Tamed beasts / Mercenaries
         tutorialProgress: 0,   // Onboarding system tracking
         
-        // Lifetime Metrics (For future achievements/leaderboards)
+        // EXPANDABILITY WIN: Expanded Lifetime Metrics
         metrics: {
             totalKills: 0,
             totalDeaths: 0,
             stepsTaken: 0,
-            itemsCrafted: 0
+            itemsCrafted: 0,
+            goldEarned: 0,
+            fishCaught: 0,
+            dungeonsCleared: 0,
+            spellsCast: 0
         }
     },
 
@@ -249,6 +278,7 @@ const gameState = {
         hour: 6,
         minute: 0,
         year: 642,
+        season: "Spring",     // MECHANIC PREP: Dynamic seasons
         era: "of the Fourth Age"
     },
 
