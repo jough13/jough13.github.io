@@ -6,12 +6,13 @@
 
 const BACKUP_SALT = "kEsMaI_v1_S3cR3t_s@lt"; // Change this to something random!
 
-// Robust string hashing function (Upgraded Anti-Cheat)
-function generateSaveSignature(data) {
-    // EXPANDABILITY: We now hash inventory size, stash size, and maxHealth to prevent item injection
-    const invLen = data.inventory ? data.inventory.length : 0;
-    const bankLen = data.bank ? data.bank.length : 0;
-    const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.maxHealth}_${invLen}_${bankLen}_${data.background}_${BACKUP_SALT}`;
+// --- SECURITY WIN: Deep Hashing ---
+// We now hash the exact sequence of item names, preventing players from modifying the save file
+// to swap 5 pieces of "Stone" into 5 "Legendary Swords" (which bypassed the old length check).
+function generateStrictSaveSignature(data) {
+    const invStr = data.inventory ? data.inventory.map(i => i.name).join('') : 'empty';
+    const bankStr = data.bank ? data.bank.map(i => i.name).join('') : 'empty';
+    const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.maxHealth}_${invStr}_${bankStr}_${data.background}_${BACKUP_SALT}`;
     
     let hash = 0;
     if (stringToHash.length === 0) return hash.toString();
@@ -23,7 +24,22 @@ function generateSaveSignature(data) {
     return hash.toString();
 }
 
-// ROBUSTNESS: Backward compatibility for backups made before the signature upgrade
+// ROBUSTNESS: Intermediate compatibility for saves using the array-length hashing method.
+function generateSaveSignature(data) {
+    const invLen = data.inventory ? data.inventory.length : 0;
+    const bankLen = data.bank ? data.bank.length : 0;
+    const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.maxHealth}_${invLen}_${bankLen}_${data.background}_${BACKUP_SALT}`;
+    let hash = 0;
+    if (stringToHash.length === 0) return hash.toString();
+    for (let i = 0; i < stringToHash.length; i++) {
+        const char = stringToHash.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0;
+    }
+    return hash.toString();
+}
+
+// ROBUSTNESS: Oldest backward compatibility for early-access backups.
 function generateLegacySaveSignature(data) {
     const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.background}_${BACKUP_SALT}`;
     let hash = 0;
@@ -55,13 +71,17 @@ async function createCloudBackup(slotId = 'latest') {
     }
     lastBackupTime = now;
 
-    // JUICE WIN: Dynamic Button States
+    // JUICE WIN: Dynamic Button Phasing
     const btn = document.getElementById('btnBackup');
     const originalText = btn ? btn.innerHTML : "☁️ Create Backup";
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = "⏳ Uploading...";
+        btn.innerHTML = "⏳ Scanning...";
         btn.classList.add('opacity-75', 'cursor-wait');
+        
+        // Phase UI texts for tactile feedback
+        setTimeout(() => { if (btn.disabled) btn.innerHTML = "⏳ Uploading..."; }, 400);
+        setTimeout(() => { if (btn.disabled) btn.innerHTML = "⏳ Verifying..."; }, 1200);
     }
 
     logMessage("{gray:Creating cloud backup...}");
@@ -82,8 +102,8 @@ async function createCloudBackup(slotId = 'latest') {
         ? sanitizeForFirebase(rawData) 
         : JSON.parse(JSON.stringify(rawData)); // Absolute fallback if sanitizer is missing
 
-    // 2. Sign the data (After sanitization!)
-    backupState.signature = generateSaveSignature(backupState);
+    // 2. Sign the data using the newest Strict Hashing logic
+    backupState.signature = generateStrictSaveSignature(backupState);
 
     // 3. Save
     try {
@@ -102,7 +122,7 @@ async function createCloudBackup(slotId = 'latest') {
         }
 
         logMessage("{green:Backup successful!}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
         
         // Update the UI directly using our local timestamp instead of fetching from Firebase
         if (typeof updateBackupUI === 'function') updateBackupUI(slotId);
@@ -124,7 +144,13 @@ async function createCloudBackup(slotId = 'latest') {
 async function restoreCloudBackup(slotId = 'latest') {
     if (!playerRef) return;
 
-    if (!confirm("Are you sure? This will overwrite your current progress with the selected backup.")) return;
+    // QoL WIN: Hard confirmation prompt to prevent accidental data wipes!
+    const confirmation = prompt("⚠️ WARNING: This will overwrite your current progress with the cloud backup.\n\nType RESTORE to confirm:");
+    if (confirmation !== "RESTORE") {
+        logMessage("{gray:Restore cancelled.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+        return;
+    }
 
     // JUICE WIN: Dynamic Button States
     const btn = document.getElementById('btnRestore');
@@ -148,12 +174,13 @@ async function restoreCloudBackup(slotId = 'latest') {
 
         const data = doc.data();
 
-        // 1. Verify Integrity (Try new robust signature first, then fallback to legacy)
-        const calculatedSig = generateSaveSignature(data);
+        // 1. Verify Integrity (Check strict first, cascade down to legacy)
+        const strictSig = generateStrictSaveSignature(data);
+        const normalSig = generateSaveSignature(data);
         const legacySig = generateLegacySaveSignature(data);
         
-        if (data.signature !== calculatedSig && data.signature !== legacySig) {
-            console.error(`Signature Mismatch! Saved: ${data.signature}, Calc: ${calculatedSig}, Legacy: ${legacySig}`);
+        if (data.signature !== strictSig && data.signature !== normalSig && data.signature !== legacySig) {
+            console.error(`Signature Mismatch! Saved: ${data.signature}, Strict: ${strictSig}, Legacy: ${legacySig}`);
             logMessage("{red:CORRUPT DATA.} Backup signature mismatch.");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return; // STOP RESTORE
@@ -229,8 +256,13 @@ async function restoreCloudBackup(slotId = 'latest') {
         if (typeof renderEquipment === 'function') renderEquipment();
         if (typeof renderInventory === 'function') renderInventory();
 
-        logMessage("{green:Restore complete.}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+        // JUICE WIN: "Time Travel" feedback effect!
+        gameState.screenShake = 30;
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ffffff', 40);
+        }
+        logMessage("{purple:Reality violently shifts... the timeline has been rewritten.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
         
         // Close modal
         const settingsModal = document.getElementById('settingsModal');
@@ -264,18 +296,29 @@ async function updateBackupUI(slotId = 'latest') {
             const dateString = date.toLocaleDateString();
             const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
-            // QoL WIN: Smart Age Warning
-            // If the backup is older than 24 hours, color it yellow to gently warn the player!
+            // UX WIN: Relative Time Calculations (e.g. "12 minutes ago")
             const now = typeof window.getServerTime === 'function' ? window.getServerTime() : Date.now();
             const hoursOld = (now - timestamp) / (1000 * 60 * 60);
+            
+            let relativeStr = "";
+            if (hoursOld < 1) {
+                const mins = Math.max(1, Math.floor(hoursOld * 60));
+                relativeStr = `${mins} minute${mins !== 1 ? 's' : ''} ago`;
+            } else if (hoursOld < 24) {
+                const hrs = Math.floor(hoursOld);
+                relativeStr = `${hrs} hour${hrs !== 1 ? 's' : ''} ago`;
+            } else {
+                const days = Math.floor(hoursOld / 24);
+                relativeStr = `${days} day${days !== 1 ? 's' : ''} ago`;
+            }
 
             label.classList.remove('text-red-500', 'text-yellow-500', 'text-gray-400');
 
             if (hoursOld > 24) {
-                label.innerHTML = `Last Backup: ${dateString} at ${timeString} <span class="font-bold text-yellow-500">(Over 24h old!)</span>`;
+                label.innerHTML = `Backup: ${dateString} at ${timeString} <br><span class="font-bold text-yellow-500">(Over 24h old!)</span>`;
                 label.classList.add('text-yellow-500');
             } else {
-                label.textContent = `Last Backup: ${dateString} at ${timeString}`;
+                label.innerHTML = `Backup: ${dateString} at ${timeString} <br><span class="text-blue-400 font-bold">(${relativeStr})</span>`;
                 label.classList.add('text-gray-400');
             }
 
