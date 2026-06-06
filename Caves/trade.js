@@ -100,8 +100,8 @@ function calculateItemValue(item, player) {
     };
 }
 
-
-function handleBuyItem(itemName) {
+// QoL WIN: Added 'amount' parameter for stack buying!
+function handleBuyItem(itemName, amount = 1) {
     const player = gameState.player;
     const shopItem = activeShopInventory.find(item => item.name === itemName);
     const itemKey = getTradeItemKey(itemName); // PERFORMANCE WIN: Cached lookup!
@@ -128,15 +128,26 @@ function handleBuyItem(itemName) {
     const finalDiscount = Math.min(discountPercent, 0.50);
     const finalBuyPrice = Math.floor(basePrice * (1.0 - finalDiscount));
 
+    // --- BATCH CALCULATION ---
+    let buyQty = 1;
+    if (amount === 'all') {
+        const affordableQty = Math.floor(player.coins / finalBuyPrice);
+        buyQty = Math.min(shopItem.stock, affordableQty);
+        if (buyQty <= 0) buyQty = 1; // Fallback to 1 to let the standard error messages trigger
+    } else {
+        buyQty = parseInt(amount) || 1;
+    }
+
     // Checks
-    if (player.coins < finalBuyPrice) {
+    const totalCost = finalBuyPrice * buyQty;
+    if (player.coins < totalCost) {
         logMessage("{red:You don't have enough gold for that.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
-    if (shopItem.stock <= 0) {
-        logMessage("{red:The shop is out of stock!}");
+    if (shopItem.stock < buyQty) {
+        logMessage("{red:The shop does not have enough stock!}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
@@ -151,24 +162,29 @@ function handleBuyItem(itemName) {
     }
 
     // Process the transaction
-    player.coins -= finalBuyPrice;
-    shopItem.stock--;
-    logMessage(`You bought a ${itemName} for {gold:${finalBuyPrice} gold}.`);
+    player.coins -= totalCost;
+    shopItem.stock -= buyQty;
+    
+    if (buyQty > 1) {
+        logMessage(`You bought a stack of ${itemName} (x${buyQty}) for {gold:${totalCost} gold}.`);
+    } else {
+        logMessage(`You bought a ${itemName} for {gold:${totalCost} gold}.`);
+    }
     
     // JUICE: Gold particles in the background
     if (typeof ParticleSystem !== 'undefined') {
-        ParticleSystem.createFloatingText(player.x, player.y, `-${finalBuyPrice}g`, "#ef4444");
+        ParticleSystem.createFloatingText(player.x, player.y, `-${totalCost}g`, "#ef4444");
     }
     if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
     if (existingStack && isStackable) {
-        existingStack.quantity++;
+        existingStack.quantity += buyQty;
     } else {
         player.inventory.push({
             templateId: itemKey,
             name: itemTemplate.name,
             type: itemTemplate.type,
-            quantity: 1,
+            quantity: buyQty,
             tile: itemTemplate.tile || itemKey || '?',
             damage: itemTemplate.damage || null,
             defense: itemTemplate.defense || null,
@@ -179,7 +195,6 @@ function handleBuyItem(itemName) {
         });
     }
 
-    // BUG FIX: Removed double-update. Update once safely.
     playerRef.update({
         coins: player.coins,
         inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
@@ -203,8 +218,14 @@ function handleSellItem(itemIndex, amount = 1) {
         return;
     }
 
-    // Use our new highly optimized helper!
-    const { sellPrice, regionMult } = calculateItemValue(itemToSell, player);
+    const { sellPrice, basePrice, regionMult } = calculateItemValue(itemToSell, player);
+
+    // UX WIN: Safety prompt for Magical/Valuable Gear!
+    if ((itemToSell.statBonuses && Object.keys(itemToSell.statBonuses).length > 0) || basePrice >= 100) {
+        if (!confirm(`Are you sure you want to sell your ${itemToSell.name}? This is a rare or highly valuable item.`)) {
+            return; // Abort sale
+        }
+    }
 
     if (regionMult > 1.0) logMessage(`Market demand is high here! {green:(x${regionMult})}`);
     else if (regionMult < 1.0) logMessage(`Market flooded. Low demand. {red:(x${regionMult})}`);
@@ -303,6 +324,7 @@ function renderShop() {
     const shopBuyList = document.getElementById('shopBuyList');
     const shopSellList = document.getElementById('shopSellList');
     const shopPlayerCoins = document.getElementById('shopPlayerCoins');
+    const shopTitle = document.getElementById('shopTitle');
 
     if (!shopBuyList || !shopSellList || !shopPlayerCoins) return;
 
@@ -313,14 +335,40 @@ function renderShop() {
     // 2. Update player's gold
     shopPlayerCoins.innerHTML = `Your Gold: <span class="text-yellow-400">${gameState.player.coins}</span>`;
 
+    // 3. Extract Biome context for dynamic flavor text
+    let biome = 'Plains';
+    if (gameState.mapMode === 'dungeon' && gameState.currentCaveTheme === 'ROCK') biome = 'Mountain';
+    else if (gameState.mapMode === 'overworld') {
+        const elev = elevationNoise.noise(gameState.player.x / 70, gameState.player.y / 70);
+        const moist = moistureNoise.noise(gameState.player.x / 50, gameState.player.y / 50);
+        if (elev < 0.35) biome = 'Water';
+        else if (elev < 0.4 && moist > 0.7) biome = 'Swamp';
+        else if (elev > 0.8) biome = 'Mountain';
+        else if (elev > 0.6 && moist < 0.3) biome = 'Deadlands';
+        else if (moist < 0.15) biome = 'Desert';
+        else if (moist > 0.55) biome = 'Forest';
+    }
+
+    // JUICE: Dynamic Shop Flavor Text
+    if (shopTitle) {
+        let flavor = "A traveling merchant.";
+        if (biome === 'Desert') flavor = "Water is worth its weight in gold here.";
+        else if (biome === 'Mountain') flavor = "I'll pay top coin for wood and food.";
+        else if (biome === 'Swamp') flavor = "Antidotes are flying off the shelves.";
+        else if (gameState.mapMode === 'castle') flavor = "Luxury goods and rare artifacts accepted.";
+        
+        shopTitle.innerHTML = `Merchant <span class="block text-xs font-normal text-gray-400 mt-1 italic tracking-normal font-sans">"${flavor}"</span>`;
+    }
+
     // PERFORMANCE: Use DocumentFragments
     const buyFrag = document.createDocumentFragment();
     const sellFrag = document.createDocumentFragment();
 
-    // 3. Populate "Buy" list
+    // 4. Populate "Buy" list
     activeShopInventory.forEach(item => {
         const itemKey = getTradeItemKey(item.name);
         const baseBuyPrice = item.price;
+        const itemTemplate = ITEM_DATA[itemKey];
         
         // Discounts
         let discountPercent = gameState.player.charisma * 0.005;
@@ -330,30 +378,40 @@ function renderShop() {
         const finalDiscount = Math.min(discountPercent, 0.5);
         const finalBuyPrice = Math.floor(baseBuyPrice * (1.0 - finalDiscount));
 
-        // JUICE WIN: Visually cross out the original price if Charisma/Lore lowered it!
+        // Visually cross out the original price if Charisma/Lore lowered it
         let priceHtml = `${finalBuyPrice}g`;
         if (finalBuyPrice < baseBuyPrice) {
             priceHtml = `<del class="text-gray-500 text-xs mr-1 font-normal">${baseBuyPrice}g</del>${finalBuyPrice}g`;
+        }
+
+        // QoL WIN: Buy Max Button for Stackables
+        let actionsHtml = `<button data-buy-item="${item.name}" data-amount="1" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50">Buy 1</button>`;
+        const isStackable = itemTemplate && ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
+        
+        if (isStackable && item.stock > 1) {
+            actionsHtml += `<button data-buy-item="${item.name}" data-amount="all" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs">Max</button>`;
         }
 
         const li = document.createElement('li');
         li.className = 'shop-item hover:border-green-500 transition-colors duration-150';
         li.innerHTML = `
             <div>
-                <span class="shop-item-name">${item.name} <span class="text-xl">${ITEM_DATA[itemKey]?.tile || '?'}</span></span>
+                <span class="shop-item-name">${item.name} <span class="text-xl">${itemTemplate?.tile || '?'}</span></span>
                 <span class="shop-item-details font-bold text-yellow-500">Price: ${priceHtml} <span class="text-xs text-gray-500 font-normal">(Stock: ${item.stock})</span></span>
             </div>
-            <div class="shop-item-actions">
-                <button data-buy-item="${item.name}" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50">Buy 1</button> 
+            <div class="shop-item-actions flex items-center">
+                ${actionsHtml}
             </div>
         `;
+
         if (gameState.player.coins < finalBuyPrice || item.stock <= 0) {
-            li.querySelector('button').disabled = true;
+            const btns = li.querySelectorAll('button');
+            btns.forEach(b => b.disabled = true);
         }
         buyFrag.appendChild(li);
     });
 
-    // 4. Populate "Sell" list
+    // 5. Populate "Sell" list
     if (gameState.player.inventory.length === 0) {
         shopSellList.innerHTML = '<li class="shop-item-details italic">Your inventory is empty.</li>';
     } else {
@@ -400,25 +458,23 @@ function renderShop() {
     shopBuyList.appendChild(buyFrag);
     shopSellList.appendChild(sellFrag);
 
-    // --- Inject Sell All Junk Button into the Header safely ---
+    // --- Inject Dynamic Headers ---
     const sellListContainer = shopSellList.parentElement;
-    const header = sellListContainer.querySelector('h3');
+    const sellHeader = sellListContainer.querySelector('h3');
 
-    if (header) {
-        if (!header.querySelector('#sellAllBtn')) {
-            // UX WIN: Smart-disable the button if there is no junk to sell
-            const hasJunk = gameState.player.inventory.some(i => !i.isEquipped && (i.type === 'junk' || i.type === 'trade'));
-            const btnClass = hasJunk ? "bg-red-600 hover:bg-red-500 text-white cursor-pointer" : "bg-gray-700 text-gray-500 opacity-50 cursor-not-allowed";
+    if (sellHeader) {
+        // UX WIN: Smart-disable the button if there is no junk to sell
+        const hasJunk = gameState.player.inventory.some(i => !i.isEquipped && (i.type === 'junk' || i.type === 'trade'));
+        const btnClass = hasJunk ? "bg-red-600 hover:bg-red-500 text-white cursor-pointer" : "bg-gray-700 text-gray-500 opacity-50 cursor-not-allowed";
 
-            header.innerHTML = `
-                <div class="flex justify-between items-center w-full">
-                    <span>Your Inventory</span>
-                    <button id="sellAllBtn" class="text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ${btnClass}" ${hasJunk ? '' : 'disabled'}>Sell All Junk</button>
-                </div>
-            `;
-            // Ensure we assign the handler directly 
-            document.getElementById('sellAllBtn').onclick = handleSellAllItems;
-        }
+        sellHeader.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+                <span>Your Bag <span class="text-[10px] text-gray-400 font-normal ml-1">(${gameState.player.inventory.length}/${window.MAX_INVENTORY_SLOTS || 9})</span></span>
+                <button id="sellAllBtn" class="text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ${btnClass}" ${hasJunk ? '' : 'disabled'}>Sell All Junk</button>
+            </div>
+        `;
+        // Ensure we assign the handler directly 
+        document.getElementById('sellAllBtn').onclick = handleSellAllItems;
     }
 }
 
@@ -496,7 +552,8 @@ function initShopListeners() {
         newBuyList.addEventListener('click', (e) => {
             const btn = e.target.closest('button[data-buy-item]');
             if (btn) {
-                handleBuyItem(btn.dataset.buyItem);
+                const amount = btn.dataset.amount || 1;
+                handleBuyItem(btn.dataset.buyItem, amount);
             }
         });
     }
