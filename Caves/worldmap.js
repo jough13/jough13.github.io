@@ -93,6 +93,7 @@ function getCachedMapChunk(cx, cy) {
 
 // Determines accurate colors including new Nautical & Night items!
 function getTileColorForMap(worldX, worldY) {
+    // Fast Bitwise Math for Chunk ID
     const chunkId = `${Math.floor(worldX / MAP_CHUNK_SIZE)},${Math.floor(worldY / MAP_CHUNK_SIZE)}`;
     if (!gameState.exploredChunks.has(chunkId)) return MAP_COLORS.EMPTY; 
 
@@ -204,22 +205,26 @@ function renderWorldMap() {
     worldMapCtx.fillRect(0, 0, logicalWidth, logicalHeight);
     worldMapCtx.imageSmoothingEnabled = false;
 
-    const centerX = Math.floor(logicalWidth / 2);
-    const centerY = Math.floor(logicalHeight / 2);
+    // PERFORMANCE WIN: Pre-calculate screen boundaries with fast Bitwise operators
+    const centerX = (logicalWidth / 2) | 0;
+    const centerY = (logicalHeight / 2) | 0;
     const chunkSizeOnScreen = MAP_CHUNK_SIZE * currentMapScale;
-    const now = Date.now(); // Calculate once per frame for all animations
+    const now = Date.now(); 
 
     // Render Explored Chunks
     gameState.exploredChunks.forEach(chunkId => {
-        const [cx, cy] = chunkId.split(',').map(Number);
+        const parts = chunkId.split(',');
+        const cx = parseInt(parts[0], 10);
+        const cy = parseInt(parts[1], 10);
         if (isNaN(cx) || isNaN(cy)) return; 
 
         const chunkWorldX = cx * MAP_CHUNK_SIZE;
         const chunkWorldY = cy * MAP_CHUNK_SIZE;
 
-        const screenX = Math.floor((chunkWorldX - mapCamera.x) * currentMapScale + centerX);
-        const screenY = Math.floor((chunkWorldY - mapCamera.y) * currentMapScale + centerY);
+        const screenX = ((chunkWorldX - mapCamera.x) * currentMapScale + centerX) | 0;
+        const screenY = ((chunkWorldY - mapCamera.y) * currentMapScale + centerY) | 0;
 
+        // Culling Check
         if (screenX + chunkSizeOnScreen < 0 || screenX > logicalWidth ||
             screenY + chunkSizeOnScreen < 0 || screenY > logicalHeight) {
             return;
@@ -232,14 +237,27 @@ function renderWorldMap() {
         worldMapCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
         worldMapCtx.lineWidth = 1;
         worldMapCtx.strokeRect(screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
+
+        // CONTENT WIN: Fine Tile Grid at high zoom levels
+        if (currentMapScale >= 10) {
+            worldMapCtx.beginPath();
+            worldMapCtx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+            for (let i = 1; i < MAP_CHUNK_SIZE; i++) {
+                worldMapCtx.moveTo(screenX + i * currentMapScale, screenY);
+                worldMapCtx.lineTo(screenX + i * currentMapScale, screenY + chunkSizeOnScreen);
+                worldMapCtx.moveTo(screenX, screenY + i * currentMapScale);
+                worldMapCtx.lineTo(screenX + chunkSizeOnScreen, screenY + i * currentMapScale);
+            }
+            worldMapCtx.stroke();
+        }
     });
+
+    worldMapCtx.font = `bold ${Math.max(14, currentMapScale * 2)}px monospace`;
+    worldMapCtx.textAlign = 'center';
+    worldMapCtx.textBaseline = 'middle';
 
     // Render Custom Player Pins
     if (gameState.player.customPins) {
-        worldMapCtx.font = `bold ${Math.max(14, currentMapScale * 2)}px monospace`;
-        worldMapCtx.textAlign = 'center';
-        worldMapCtx.textBaseline = 'middle';
-
         gameState.player.customPins.forEach(pin => {
             const screenX = (pin.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (pin.y - mapCamera.y) * currentMapScale + centerY;
@@ -256,25 +274,26 @@ function renderWorldMap() {
     // Render Unlocked Waystones
     if (gameState.player.unlockedWaypoints) {
         const wpPulse = (Math.sin(now / 200) + 1) / 2; 
+        
+        worldMapCtx.globalAlpha = 0.4 + wpPulse * 0.6;
+        worldMapCtx.fillStyle = '#a855f7'; // Purple
+        
         gameState.player.unlockedWaypoints.forEach(wp => {
             const screenX = (wp.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (wp.y - mapCamera.y) * currentMapScale + centerY;
             
             if (screenX >= 0 && screenX <= logicalWidth && screenY >= 0 && screenY <= logicalHeight) {
-                worldMapCtx.fillStyle = `rgba(168, 85, 247, ${0.4 + wpPulse * 0.6})`;
                 worldMapCtx.beginPath();
                 worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2, currentMapScale * 1.5, 0, Math.PI * 2);
                 worldMapCtx.fill();
             }
         });
+        worldMapCtx.globalAlpha = 1.0;
     }
 
     // Render Discovered Points of Interest (POIs)
     if (gameState.player.discoveredPOIs) {
         worldMapCtx.font = `bold ${Math.max(10, currentMapScale * 1.5)}px monospace`;
-        worldMapCtx.textAlign = 'center';
-        worldMapCtx.textBaseline = 'middle';
-
         gameState.player.discoveredPOIs.forEach(poi => {
             const screenX = (poi.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (poi.y - mapCamera.y) * currentMapScale + centerY;
@@ -299,28 +318,28 @@ function renderWorldMap() {
         if (tx >= 0 && tx <= logicalWidth && ty >= 0 && ty <= logicalHeight) {
             worldMapCtx.fillStyle = '#ef4444'; 
             worldMapCtx.font = `bold ${Math.max(12, currentMapScale * 2)}px monospace`;
-            worldMapCtx.textAlign = 'center';
-            worldMapCtx.textBaseline = 'middle';
             worldMapCtx.fillText('❌', tx + currentMapScale/2, ty + currentMapScale/2);
             
             const pulse = (Math.sin(now / 200) + 1) / 2;
-            worldMapCtx.strokeStyle = `rgba(239, 68, 68, ${1 - pulse})`;
+            worldMapCtx.strokeStyle = '#ef4444';
+            worldMapCtx.globalAlpha = 1 - pulse;
             worldMapCtx.lineWidth = 2;
             worldMapCtx.beginPath();
             worldMapCtx.arc(tx + currentMapScale/2, ty + currentMapScale/2, currentMapScale * 2 + (pulse * 15), 0, Math.PI * 2);
             worldMapCtx.stroke();
+            worldMapCtx.globalAlpha = 1.0;
         }
     }
 
     // Render Other Online Players
     if (typeof otherPlayers !== 'undefined') {
+        worldMapCtx.fillStyle = '#f97316'; // Distinct Orange
         Object.values(otherPlayers).forEach(op => {
             if (op.mapMode === 'overworld' && op.x !== undefined && op.y !== undefined) {
                 const opX = (op.x - mapCamera.x) * currentMapScale + centerX;
                 const opY = (op.y - mapCamera.y) * currentMapScale + centerY;
                 
                 if (opX >= 0 && opX <= logicalWidth && opY >= 0 && opY <= logicalHeight) {
-                    worldMapCtx.fillStyle = '#f97316'; // Distinct Orange
                     worldMapCtx.beginPath();
                     worldMapCtx.arc(opX + currentMapScale/2, opY + currentMapScale/2, Math.max(2, currentMapScale * 0.8), 0, Math.PI * 2);
                     worldMapCtx.fill();
@@ -329,14 +348,24 @@ function renderWorldMap() {
         });
     }
 
-    // Render Player Marker
+    // Render Player Marker & Radar Pulse
     const playerScreenX = (gameState.player.x - mapCamera.x) * currentMapScale + centerX;
     const playerScreenY = (gameState.player.y - mapCamera.y) * currentMapScale + centerY;
-    const playerPulse = (Math.sin(now / 150) + 1) / 2;
+    const playerPulse = (now % 2000) / 2000; // 0 to 1 over 2 seconds
 
+    // Radar Ring
+    worldMapCtx.beginPath();
+    worldMapCtx.arc(playerScreenX + currentMapScale/2, playerScreenY + currentMapScale/2, currentMapScale * 2 + (playerPulse * 30), 0, Math.PI * 2);
+    worldMapCtx.strokeStyle = '#3b82f6';
+    worldMapCtx.globalAlpha = 1 - playerPulse;
+    worldMapCtx.lineWidth = 2;
+    worldMapCtx.stroke();
+    worldMapCtx.globalAlpha = 1.0;
+
+    // Core Player Dot
     worldMapCtx.fillStyle = '#ef4444';
     worldMapCtx.beginPath();
-    worldMapCtx.arc(playerScreenX + currentMapScale/2, playerScreenY + currentMapScale/2, Math.max(3, currentMapScale) + (playerPulse * 2), 0, Math.PI * 2);
+    worldMapCtx.arc(playerScreenX + currentMapScale/2, playerScreenY + currentMapScale/2, Math.max(3, currentMapScale), 0, Math.PI * 2);
     worldMapCtx.fill();
     worldMapCtx.strokeStyle = '#ffffff';
     worldMapCtx.lineWidth = 2;
@@ -391,7 +420,6 @@ function updateMapUI() {
             else if (tile === '.') tileName = "Plains";
             else if (tile === '#') {
                 tileName = "Waystone";
-                // GAMEPLAY WIN: Quick-Travel Hint
                 const isUnlocked = gameState.player.unlockedWaypoints && gameState.player.unlockedWaypoints.some(wp => wp.x === hoverWorldX && wp.y === hoverWorldY);
                 if (isUnlocked) actionHint = ' | <span class="text-purple-400 font-bold">Double-Click to Travel</span>';
             }
@@ -400,7 +428,9 @@ function updateMapUI() {
             else tileName = "Unknown Area";
         }
         
-        hoverText = ` | Hover: <span class="text-yellow-400 font-bold">${tileName}</span> (${hoverWorldX}, ${-hoverWorldY})`;
+        // QoL WIN: Calculate precise distance from player
+        const dist = Math.floor(Math.sqrt((hoverWorldX - gameState.player.x) ** 2 + (hoverWorldY - gameState.player.y) ** 2));
+        hoverText = ` | Hover: <span class="text-yellow-400 font-bold">${tileName}</span> (${hoverWorldX}, ${-hoverWorldY}) <span class="text-gray-500">[${dist}m]</span>`;
     }
     
     mapCoordsDisplay.innerHTML = `Player: (${gameState.player.x}, ${-gameState.player.y})${hoverText}${actionHint}`;
@@ -551,8 +581,34 @@ worldMapCanvas.addEventListener('touchmove', (e) => {
 
 window.addEventListener('touchend', stopMapDrag);
 
+// JUICE WIN: Zoom-to-Cursor Logic
 worldMapCanvas.addEventListener('wheel', (e) => {
     e.preventDefault();
+    
+    const rect = worldMapCanvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    const centerX = Math.floor(worldMapCanvas.clientWidth / 2);
+    const centerY = Math.floor(worldMapCanvas.clientHeight / 2);
+    
+    // Find exactly what world coordinate the mouse is hovering over right now
+    const worldXAtMouse = (mouseX - centerX) / currentMapScale + mapCamera.x;
+    const worldYAtMouse = (mouseY - centerY) / currentMapScale + mapCamera.y;
+
+    const oldTargetScale = targetMapScale;
+
+    // Apply the zoom
     if (e.deltaY < 0) targetMapScale = Math.min(16, targetMapScale + 2); 
     else targetMapScale = Math.max(2, targetMapScale - 2); 
+
+    // If we actually zoomed, shift the camera so the world coordinate stays under the mouse!
+    if (oldTargetScale !== targetMapScale) {
+        targetMapCamera.x = worldXAtMouse - (mouseX - centerX) / targetMapScale;
+        targetMapCamera.y = worldYAtMouse - (mouseY - centerY) / targetMapScale;
+        
+        // Also snap current camera to prevent wild swinging when zooming rapidly
+        mapCamera.x = targetMapCamera.x;
+        mapCamera.y = targetMapCamera.y;
+    }
 }, { passive: false });
