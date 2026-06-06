@@ -1,3 +1,5 @@
+// --- START OF FILE fishing.js ---
+
 // ==============================================
 // THE ULTIMATE FISHING EXPANSION (MASTERPIECE++)
 // ==============================================
@@ -78,11 +80,16 @@ const NEW_FISHING_ITEMS = {
             });
             gridHtml += `</div>`;
 
+            // UI WIN: Cap XP bar visuals if max level (15) is reached
+            const isMax = lvl >= 15;
+            const xpBarWidth = isMax ? 100 : Math.min(100, (xp/nextXp)*100);
+            const xpText = isMax ? `<span class="text-yellow-500 font-bold uppercase tracking-widest">MAXED</span>` : `XP: ${xp} / ${nextXp}`;
+
             let html = `
             <div class="mb-4 bg-black bg-opacity-20 p-3 rounded-lg border border-gray-700">
                 <p class="text-lg font-bold text-blue-400 flex justify-between"><span>Fishing Level: ${lvl}</span> <span>${caughtCount}/${allFish.length}</span></p>
-                <p class="text-xs text-gray-400 mb-2">XP: ${xp} / ${nextXp}</p>
-                <div class="stat-bar-container mb-2"><div class="stat-bar bg-blue-500" style="width: ${Math.min(100, (xp/nextXp)*100)}%"></div></div>
+                <p class="text-xs text-gray-400 mb-2">${xpText}</p>
+                <div class="stat-bar-container mb-2"><div class="stat-bar ${isMax ? 'bg-yellow-500' : 'bg-blue-500'}" style="width: ${xpBarWidth}%"></div></div>
                 ${perksHtml}
             </div>
             <h3 class="font-bold border-b border-gray-600 mb-2 flex justify-between text-sm">
@@ -102,6 +109,10 @@ const NEW_FISHING_ITEMS = {
             }
             return false; // Don't consume the book!
         }
+    },
+    '🎣s': {
+        name: 'Steel Fishing Rod', type: 'tool', tile: '🎣',
+        description: "A durable rod with a metal spool. Boosts catch rates slightly."
     },
     '🎣o': {
         name: 'Obsidian Fishing Rod', type: 'tool', tile: '🎣',
@@ -235,6 +246,7 @@ Object.assign(window.ITEM_DATA, NEW_FISHING_ITEMS);
 if (window.CASTLE_SHOP_INVENTORY) {
     window.CASTLE_SHOP_INVENTORY.push(
         { name: 'Angler\'s Logbook', price: 20, stock: 1 },
+        { name: 'Steel Fishing Rod', price: 150, stock: 1 },
         { name: 'Obsidian Fishing Rod', price: 500, stock: 1 },
         { name: 'Minnow', price: 2, stock: 0 }, { name: 'River Trout', price: 6, stock: 0 },
         { name: 'Leaping Salmon', price: 25, stock: 0 }, { name: 'Golden Koi', price: 150, stock: 0 },
@@ -310,6 +322,7 @@ function executeFishing() {
         currentTile = (map && map[player.y] && map[player.y][player.x]) ? map[player.y][player.x] : ' ';
     }
 
+    const hasSteelRod = player.inventory.some(i => i.name === 'Steel Fishing Rod' && !i.isEquipped);
     const hasObsidianRod = player.inventory.some(i => i.name === 'Obsidian Fishing Rod' && !i.isEquipped);
     const isLava = (currentTile === '~' && gameState.mapMode === 'dungeon' && gameState.currentCaveTheme === 'FIRE');
     
@@ -355,13 +368,14 @@ function executeFishing() {
     let baitCatchBoost = 0;
     let baitRareBoost = 0;
     let baitWeightMult = 1.0; // GAMEPLAY WIN: Good bait catches bigger fish!
+    let baitColor = 'gray';
 
     const validBaits = [
-        { name: 'Kraken Ink Sac', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'deep' }, 
-        { name: 'Fire Elemental Core', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'lava' }, 
-        { name: 'Minnow', catchBoost: 0.15, rareBoost: 0.30, weightMult: 1.15 }, 
-        { name: 'Raw Meat', catchBoost: 0.25, rareBoost: 0.10, weightMult: 1.05 }, 
-        { name: 'Bird Egg', catchBoost: 0.10, rareBoost: 0.05, weightMult: 1.0 } 
+        { name: 'Kraken Ink Sac', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'deep', color: 'purple' }, 
+        { name: 'Fire Elemental Core', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'lava', color: 'orange' }, 
+        { name: 'Minnow', catchBoost: 0.15, rareBoost: 0.30, weightMult: 1.15, color: 'blue' }, 
+        { name: 'Raw Meat', catchBoost: 0.25, rareBoost: 0.10, weightMult: 1.05, color: 'red' }, 
+        { name: 'Bird Egg', catchBoost: 0.10, rareBoost: 0.05, weightMult: 1.0, color: 'gray' } 
     ];
 
     for (let b of validBaits) {
@@ -372,6 +386,7 @@ function executeFishing() {
             baitCatchBoost = b.catchBoost;
             baitRareBoost = b.rareBoost;
             baitWeightMult = b.weightMult;
+            baitColor = b.color;
             player.inventory[idx].quantity--;
             if (player.inventory[idx].quantity <= 0) player.inventory.splice(idx, 1);
             break; 
@@ -436,6 +451,7 @@ function executeFishing() {
             gameState.instancedEnemies.push(newEnemy);
         }
         
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(spawnX, spawnY, '#111827', 6);
         if (typeof render === 'function') render();
         return true; 
     }
@@ -443,7 +459,10 @@ function executeFishing() {
     // --- CALCULATE SUCCESS CHANCE ---
     let catchChance = 0.30 + (player.fishingLevel * 0.05) + (player.dexterity * 0.02) + (player.luck * 0.02);
     
-    if (zone === 'deep') catchChance += 0.20; 
+    // MECHANIC WIN: Steel Rod gives a baseline boost to offset the Deep Water penalty
+    if (hasSteelRod || hasObsidianRod) catchChance += 0.10;
+    
+    if (zone === 'deep') catchChance -= 0.15; 
     if (zone === 'lava') catchChance -= 0.10; 
     if (gameState.weather === 'rain' || gameState.weather === 'storm') catchChance += 0.15; 
     if (isFrenzy) catchChance += 0.25; // Massive frenzy boost
@@ -453,12 +472,14 @@ function executeFishing() {
     if (zone === 'deep') flavorText = "You drop your heavy line into the abyss...";
     if (zone === 'lava') flavorText = "You cast your obsidian line into the bubbling magma...";
     
-    if (usedBaitName) flavorText += ` (Used ${usedBaitName})`;
+    if (usedBaitName) flavorText += ` {${baitColor}:(Used ${usedBaitName})}`;
     if (isNight) flavorText += " The darkness is absolute.";
     if (isFrenzy) logMessage("{blue:The water is boiling with activity! (Feeding Frenzy)}");
     logMessage(`{gray:${flavorText}}`);
     
     playSplash(); // Cast audio
+    // JUICE: Visual water splash
+    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y - 1, '#60a5fa', 5);
 
     // --- ROLL FOR CATCH ---
     if (Math.random() < catchChance) {
@@ -506,15 +527,17 @@ function executeFishing() {
                 if (isLeviathansBane) {
                     logMessage("{purple:Leviathan's Bane: You effortlessly tire out the beast!}");
                 } else {
-                    logMessage("{orange:(-4 Stamina)}");
-                    if (player.stamina < 4) {
+                    const stamDrain = (hasSteelRod || hasObsidianRod) ? 2 : 4;
+                    logMessage(`{orange:(-${stamDrain} Stamina)}`);
+                    
+                    if (player.stamina < stamDrain) {
                         playLineSnap();
                         logMessage(`{red:You are too exhausted to reel it in... The line snaps!}`);
                         player.stamina = 0;
                         triggerStatFlash(document.getElementById('staminaDisplay'), false);
                         return true; 
                     } else {
-                        player.stamina -= 4;
+                        player.stamina -= stamDrain;
                         triggerStatFlash(document.getElementById('staminaDisplay'), false);
                     }
                 }
@@ -537,6 +560,7 @@ function executeFishing() {
         if (typeof ParticleSystem !== 'undefined') {
             // Launch the emoji into the air!
             ParticleSystem.spawn(player.x, player.y - 1, '#ffffff', 'text', catchTile, 16);
+            playSplash();
         }
 
         if (rarity === 'legendary') {
@@ -560,7 +584,7 @@ function executeFishing() {
         if (existingStack && isStackable) {
             existingStack.quantity++;
         } else if (player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
-            // THE FIX: Inject the templateId here so the effect binds correctly on re-hydration!
+            // Inject the templateId here so the effect binds correctly on re-hydration!
             player.inventory.push({
                 templateId: baseKey, 
                 name: finalItemName, 
@@ -577,13 +601,14 @@ function executeFishing() {
             // Inventory is full and the item doesn't stack!
             logMessage(`{red:Your pack is too full to keep the ${finalItemName}. It flops back into the water!}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y - 1, '#60a5fa', 5); // Flop splash
             // Note: XP and Records are kept intentionally because they still succeeded at the fishing mini-game mechanic.
         }
 
         player.fishingXp += xpGained;
         const xpNeeded = player.fishingLevel * 50;
 
-        if (player.fishingXp >= xpNeeded) {
+        if (player.fishingXp >= xpNeeded && player.fishingLevel < 15) {
             player.fishingXp -= xpNeeded;
             player.fishingLevel++;
             logMessage(`{blue:FISHING LEVEL UP! You are now a Level ${player.fishingLevel} Angler.}`);
