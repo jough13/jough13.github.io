@@ -1,3 +1,5 @@
+// --- START OF FILE menus.js ---
+
 function openTalentModal() {
     if (window.inputQueue) window.inputQueue.length = 0;
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
@@ -123,6 +125,11 @@ function openEvolutionModal() {
 }
 
 function selectEvolution(evoData) {
+    // QoL WIN: Safety prompt to prevent accidental permanent choices
+    if (!confirm(`Are you sure you want to evolve into a ${evoData.name}? This choice is permanent and cannot be undone.`)) {
+        return;
+    }
+
     const player = gameState.player;
 
     // 1. Apply Stats
@@ -157,6 +164,7 @@ function selectEvolution(evoData) {
     // 6. Save & Close
     logMessage(`{yellow:You have evolved into a ${evoData.name}!}`);
     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
     
     if (typeof playerRef !== 'undefined') {
         playerRef.update({
@@ -183,16 +191,27 @@ function renderBountyBoard() {
     const playerQuests = gameState.player.quests || {};
     const fragment = document.createDocumentFragment();
 
-    // Loop through all defined quests
-    for (const questId in QUEST_DATA) {
+    // QoL WIN: Smart Quest Sorting
+    const sortedQuests = Object.keys(QUEST_DATA).map(questId => {
         const quest = QUEST_DATA[questId];
-
-        if (quest.type === 'fetch' || quest.type === 'collect') continue;
-
         const playerQuest = playerQuests[questId];
+        let sortOrder = 3; // Available (Default)
         
+        if (playerQuest) {
+            if (playerQuest.status === 'completed') sortOrder = 4; // Bottom
+            else if (playerQuest.status === 'active') {
+                if (playerQuest.kills >= quest.needed) sortOrder = 1; // Top (Ready to turn in)
+                else sortOrder = 2; // In Progress
+            }
+        }
+        return { questId, quest, playerQuest, sortOrder };
+    }).filter(q => q.quest.type !== 'fetch' && q.quest.type !== 'collect')
+      .sort((a, b) => a.sortOrder - b.sortOrder); // Execute sort
+
+    sortedQuests.forEach(data => {
+        const { questId, quest, playerQuest } = data;
         const div = document.createElement('div');
-        div.className = 'quest-item p-4 mb-3 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-50';
+        div.className = 'quest-item p-4 mb-3 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-50 transition-colors';
 
         if (!playerQuest) {
             // --- Scenario 1: Quest is Available ---
@@ -214,7 +233,7 @@ function renderBountyBoard() {
 
             if (playerQuest.kills >= quest.needed) {
                 // --- 2a: Ready to Turn In ---
-                div.classList.add('border-green-500');
+                div.classList.add('border-green-500', 'bg-green-900', 'bg-opacity-20');
                 actionButton = `<button data-quest-id="${questId}" data-action="turnin" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-sm font-bold shadow transition-transform active:scale-95 animate-pulse">Turn In</button>`;
             } else {
                 // --- 2b: Still in progress ---
@@ -240,7 +259,8 @@ function renderBountyBoard() {
                 </div>`;
         }
         fragment.appendChild(div);
-    }
+    });
+    
     questList.appendChild(fragment);
 }
 
@@ -420,23 +440,35 @@ function renderBestiary() {
             return;
         }
 
-        let statsHtml = `<span class="text-[10px] uppercase font-bold tracking-widest text-gray-400">Kills: ${count}</span>`;
+        // JUICE WIN: Integrated Progress Bars for unlocking Bestiary tiers!
+        let statsHtml = `<div class="text-[10px] uppercase font-bold tracking-widest text-gray-400 mb-1">Kills: ${count}</div>`;
+        
         if (unlockedStats) {
-            statsHtml += `<br><span class="text-green-500 font-bold text-xs mt-1 inline-block">HP: ${data.maxHealth}</span> <span class="text-gray-600 mx-1">|</span> <span class="text-red-500 font-bold text-xs">Atk: ${data.attack}</span> <span class="text-gray-600 mx-1">|</span> <span class="text-blue-400 font-bold text-xs">Def: ${data.defense || 0}</span>`;
+            statsHtml += `<span class="text-green-500 font-bold text-xs mt-1 inline-block">HP: ${data.maxHealth}</span> <span class="text-gray-600 mx-1">|</span> <span class="text-red-500 font-bold text-xs">Atk: ${data.attack}</span> <span class="text-gray-600 mx-1">|</span> <span class="text-blue-400 font-bold text-xs">Def: ${data.defense || 0}</span>`;
         } else {
-            statsHtml += `<br><span class="text-[10px] italic text-gray-500 mt-1 inline-block">Defeat 5 to reveal stats</span>`;
+            const pctStats = Math.min(100, (count / 5) * 100);
+            statsHtml += `
+                <div class="w-full bg-gray-900 rounded h-1 mb-1 mt-1 border border-gray-700">
+                    <div class="bg-green-500 h-full rounded" style="width: ${pctStats}%"></div>
+                </div>
+                <span class="text-[9px] italic text-gray-500">Defeat 5 to reveal stats</span>`;
         }
 
         let loreHtml = '';
         if (unlockedLore && data.flavor) {
-            loreHtml = `<div class="text-xs mt-2 italic text-gray-400 border-l-2 border-gray-600 pl-2">"${data.flavor}"</div>`;
+            loreHtml = `<div class="text-xs mt-3 italic text-gray-400 border-l-2 border-gray-600 pl-2">"${data.flavor}"</div>`;
         } else if (!unlockedLore) {
-            loreHtml = `<div class="text-[10px] mt-2 italic text-gray-600">Defeat 10 to reveal lore</div>`;
+            const pctLore = Math.min(100, (count / 10) * 100);
+            loreHtml = `
+                <div class="w-full bg-gray-900 rounded h-1 mb-1 mt-2 border border-gray-700">
+                    <div class="bg-purple-500 h-full rounded" style="width: ${pctLore}%"></div>
+                </div>
+                <div class="text-[9px] italic text-gray-600">Defeat 10 to reveal lore</div>`;
         }
 
-        div.className = 'bestiary-entry p-3 mb-2 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-40 transition-colors hover:border-gray-500';
+        div.className = 'bestiary-entry p-3 mb-2 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-40 transition-colors hover:border-gray-500 relative overflow-hidden';
         div.innerHTML = `
-            <div class="flex items-start gap-4">
+            <div class="flex items-start gap-4 z-10 relative">
                 <div class="text-4xl w-12 text-center" style="text-shadow: 2px 2px 0 #000;">${key}</div>
                 <div class="flex-grow">
                     <h4 class="font-bold text-lg text-yellow-500 leading-none mb-1">${data.name}</h4>
@@ -444,6 +476,7 @@ function renderBestiary() {
                     ${loreHtml}
                 </div>
             </div>
+            ${data.isBoss ? '<div class="absolute top-0 right-0 bg-red-900 bg-opacity-50 text-red-300 text-[9px] px-2 py-1 font-bold uppercase rounded-bl-lg">Boss</div>' : ''}
         `;
         fragment.appendChild(div);
     });
@@ -467,10 +500,17 @@ function renderLibrary() {
         const setDiv = document.createElement('div');
         setDiv.className = `panel p-4 mb-3 rounded-lg border-2 transition-colors duration-200 ${isComplete ? 'border-yellow-500 bg-yellow-900 bg-opacity-10' : 'border-gray-600 hover:border-gray-500'}`;
         
+        // Progress Bar
+        const pct = (foundCount / totalCount) * 100;
+        const barColor = isComplete ? 'bg-yellow-400' : 'bg-blue-500';
+
         let headerHtml = `
             <div class="flex justify-between items-center cursor-pointer mb-1" onclick="toggleSetDetails('${setKey}')">
                 <h3 class="font-bold text-lg m-0 p-0 border-none ${isComplete ? 'text-yellow-500' : 'text-gray-200'}">${set.name}</h3>
                 <span class="text-xs font-bold bg-black bg-opacity-30 px-2 py-1 rounded">${foundCount} / ${totalCount}</span>
+            </div>
+            <div class="w-full bg-gray-900 rounded h-1 mb-2 border border-gray-700">
+                <div class="${barColor} h-full rounded transition-all duration-500" style="width: ${pct}%"></div>
             </div>
             <div class="text-xs text-gray-400 italic mb-2">${set.description}</div>
             ${isComplete ? `<div class="text-[10px] uppercase tracking-widest font-bold text-green-400 mt-2 bg-green-900 bg-opacity-20 p-2 rounded border border-green-800">Bonus Active: ${set.bonus}</div>` : ''}
@@ -539,6 +579,7 @@ function renderSkillTrainerModal() {
     const player = gameState.player;
     skillTrainerStatPoints.textContent = `Your Stat Points: ${player.statPoints || 0}`;
     const canAfford = (player.statPoints || 0) > 0;
+    const MAX_LEVEL = 10;
     
     const fragment = document.createDocumentFragment();
 
@@ -549,7 +590,11 @@ function renderSkillTrainerModal() {
         let buttonHtml = '';
         let levelText = '';
 
-        if (currentLevel === 0) {
+        if (currentLevel >= MAX_LEVEL) {
+            levelText = `<span class="text-[10px] uppercase font-bold tracking-widest text-yellow-500 bg-yellow-900 bg-opacity-30 px-2 py-1 rounded border border-yellow-700">MAXED</span>`;
+            buttonHtml = `<button class="bg-gray-800 text-gray-500 px-3 py-2 rounded text-xs font-bold border border-gray-700 cursor-not-allowed" disabled>Max Level</button>`;
+        }
+        else if (currentLevel === 0) {
             levelText = '<span class="text-[10px] uppercase font-bold tracking-widest text-red-500">Not Learned</span>';
             if (player.level >= skillData.requiredLevel) {
                 buttonHtml = `<button class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-xs font-bold shadow transition-transform active:scale-95 disabled:opacity-50" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Learn (1 SP)</button>`;
@@ -557,12 +602,12 @@ function renderSkillTrainerModal() {
                 buttonHtml = `<button class="bg-gray-700 text-gray-400 px-3 py-2 rounded text-xs font-bold opacity-50 cursor-not-allowed" disabled>Requires Lvl ${skillData.requiredLevel}</button>`;
             }
         } else {
-            levelText = `<span class="text-[10px] uppercase font-bold tracking-widest text-blue-400">Level: ${currentLevel}</span>`;
+            levelText = `<span class="text-[10px] uppercase font-bold tracking-widest text-blue-400">Level: ${currentLevel} / ${MAX_LEVEL}</span>`;
             buttonHtml = `<button class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded text-xs font-bold shadow transition-transform active:scale-95 disabled:opacity-50" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Upgrade (1 SP)</button>`;
         }
 
         const li = document.createElement('li');
-        li.className = 'panel p-3 mb-2 rounded-lg border-2 border-gray-600 hover:border-gray-500 transition-colors flex justify-between items-center';
+        li.className = `panel p-3 mb-2 rounded-lg border-2 ${currentLevel >= MAX_LEVEL ? 'border-yellow-600 bg-yellow-900 bg-opacity-10' : 'border-gray-600 hover:border-gray-500'} transition-colors flex justify-between items-center`;
         li.innerHTML = `
             <div class="flex-grow pr-4">
                 <div class="font-bold text-lg text-yellow-500 mb-1">${skillData.name}</div>
@@ -595,6 +640,11 @@ function handleLearnSkill(skillId) {
 
     const currentLevel = player.skillbook[skillId] || 0;
     if (currentLevel === 0 && player.level < skillData.requiredLevel) {
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
+    }
+
+    if (currentLevel >= 10) { // Max level check
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
@@ -639,33 +689,38 @@ function openSpellbook() {
         return;
     }
 
-    for (const spellId in playerSpells) {
+    // QoL WIN: Smart Sorting for Spells (Affordable -> Too Expensive -> Maxed)
+    const MAX_LEVEL = 10;
+    const sortedSpells = Object.keys(playerSpells).map(spellId => {
         const spellLevel = playerSpells[spellId];
-        const spellData = SPELL_DATA[spellId]; 
+        const spellData = SPELL_DATA[spellId];
+        if (!spellData) return null;
 
-        if (!spellData) continue;
+        let displayCost = spellData.cost;
+        if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
+            displayCost = Math.floor(displayCost * 0.8);
+        }
 
         let canCast = false;
-        let costString = `${spellData.cost} ${spellData.costType}`;
-        let costColorClass = "text-blue-400"; 
+        if (spellData.costType === 'mana') canCast = player.mana >= displayCost;
+        else if (spellData.costType === 'psyche') canCast = player.psyche >= spellData.cost;
+        else if (spellData.costType === 'health') canCast = player.health > spellData.cost;
 
-        if (spellData.costType === 'mana') {
-            // Apply Archmage discount visually here too!
-            let displayCost = spellData.cost;
-            if (player.talents && player.talents.includes('mana_flow')) displayCost = Math.floor(displayCost * 0.8);
-            
-            costString = `${displayCost} ${spellData.costType}`;
-            canCast = player.mana >= displayCost;
-            if (!canCast) costColorClass = "text-red-500";
-        } else if (spellData.costType === 'psyche') {
-            canCast = player.psyche >= spellData.cost;
-            if (!canCast) costColorClass = "text-red-500";
-            else costColorClass = "text-purple-400";
-        } else if (spellData.costType === 'health') {
-            canCast = player.health > spellData.cost;
-            if (!canCast) costColorClass = "text-red-500";
-            else costColorClass = "text-green-500";
-        }
+        let sortWeight = canCast ? 1 : 2;
+        if (spellLevel >= MAX_LEVEL) sortWeight += 5; // Push maxed to bottom or just organize by castability
+
+        return { spellId, spellLevel, spellData, canCast, displayCost, sortWeight };
+    }).filter(s => s !== null).sort((a, b) => a.sortWeight - b.sortWeight);
+
+    sortedSpells.forEach(s => {
+        const { spellId, spellLevel, spellData, canCast, displayCost } = s;
+
+        let costString = `${displayCost} ${spellData.costType}`;
+        let costColorClass = canCast ? (spellData.costType === 'mana' ? "text-blue-400" : (spellData.costType === 'psyche' ? "text-purple-400" : "text-green-500")) : "text-red-500";
+
+        const maxedBadge = spellLevel >= MAX_LEVEL 
+            ? `<span class="text-[9px] bg-yellow-900 text-yellow-500 border border-yellow-700 px-1 rounded ml-2">MAXED</span>` 
+            : '';
 
         const li = document.createElement('li');
         li.className = `spell-item p-3 mb-2 rounded-lg border-2 transition-all cursor-pointer ${canCast ? 'border-gray-600 hover:border-blue-500 hover:-translate-y-1 shadow hover:shadow-lg' : 'border-gray-800 opacity-50'}`;
@@ -676,6 +731,7 @@ function openSpellbook() {
                 <div class="font-bold text-lg mb-1 flex items-center gap-2">
                     ${spellData.name} 
                     <span class="text-[10px] bg-black bg-opacity-30 px-2 py-0.5 rounded text-gray-300">Lvl ${spellLevel}</span>
+                    ${maxedBadge}
                 </div>
                 <div class="text-xs text-gray-400 leading-tight">${spellData.description}</div>
             </div>
@@ -689,7 +745,7 @@ function openSpellbook() {
         `;
 
         fragment.appendChild(li);
-    }
+    });
 
     spellList.appendChild(fragment);
     spellModal.classList.remove('hidden'); 
@@ -710,28 +766,32 @@ function openSkillbook() {
         return;
     }
 
-    for (const skillId in playerSkills) {
+    // QoL WIN: Smart Sorting for Skills
+    const MAX_LEVEL = 10;
+    const sortedSkills = Object.keys(playerSkills).map(skillId => {
         const skillLevel = playerSkills[skillId];
-        const skillData = SKILL_DATA[skillId]; 
-
-        if (!skillData) continue;
+        const skillData = SKILL_DATA[skillId];
+        if (!skillData) return null;
 
         let canUse = false;
-        let costString = `${skillData.cost} ${skillData.costType}`;
-        let costColorClass = "text-yellow-500"; 
+        if (skillData.costType === 'stamina') canUse = player.stamina >= skillData.cost;
+        else if (skillData.costType === 'psyche') canUse = player.psyche >= skillData.cost;
+        else if (skillData.costType === 'health') canUse = player.health > skillData.cost;
 
-        if (skillData.costType === 'stamina') {
-            canUse = player.stamina >= skillData.cost;
-            if (!canUse) costColorClass = "text-red-500";
-        } else if (skillData.costType === 'psyche') {
-            canUse = player.psyche >= skillData.cost;
-            if (!canUse) costColorClass = "text-red-500";
-            else costColorClass = "text-purple-400";
-        } else if (skillData.costType === 'health') {
-            canUse = player.health > skillData.cost;
-            if (!canUse) costColorClass = "text-red-500";
-            else costColorClass = "text-green-500";
-        }
+        let sortWeight = canUse ? 1 : 2;
+        return { skillId, skillLevel, skillData, canUse, sortWeight };
+    }).filter(s => s !== null).sort((a, b) => a.sortWeight - b.sortWeight);
+
+
+    sortedSkills.forEach(s => {
+        const { skillId, skillLevel, skillData, canUse } = s;
+
+        let costString = `${skillData.cost} ${skillData.costType}`;
+        let costColorClass = canUse ? (skillData.costType === 'stamina' ? "text-yellow-500" : (skillData.costType === 'psyche' ? "text-purple-400" : "text-green-500")) : "text-red-500";
+
+        const maxedBadge = skillLevel >= MAX_LEVEL 
+            ? `<span class="text-[9px] bg-yellow-900 text-yellow-500 border border-yellow-700 px-1 rounded ml-2">MAXED</span>` 
+            : '';
 
         const li = document.createElement('li');
         li.className = `skill-item p-3 mb-2 rounded-lg border-2 transition-all cursor-pointer ${canUse ? 'border-gray-600 hover:border-yellow-500 hover:-translate-y-1 shadow hover:shadow-lg' : 'border-gray-800 opacity-50'}`;
@@ -742,6 +802,7 @@ function openSkillbook() {
                 <div class="font-bold text-lg mb-1 flex items-center gap-2">
                     ${skillData.name} 
                     <span class="text-[10px] bg-black bg-opacity-30 px-2 py-0.5 rounded text-gray-300">Lvl ${skillLevel}</span>
+                    ${maxedBadge}
                 </div>
                 <div class="text-xs text-gray-400 leading-tight">${skillData.description}</div>
             </div>
@@ -755,7 +816,7 @@ function openSkillbook() {
         `;
 
         fragment.appendChild(li);
-    }
+    });
 
     skillList.appendChild(fragment);
     skillModal.classList.remove('hidden'); 
