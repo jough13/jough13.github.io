@@ -1,3 +1,5 @@
+// --- START OF FILE ui.js ---
+
 // ==========================================
 // USER INTERFACE & DOM MANAGEMENT
 // ==========================================
@@ -80,6 +82,7 @@ const equippedArmorDisplay = document.getElementById('equippedArmorDisplay');
 
 const coreStatsPanel = document.getElementById('coreStatsPanel');
 const statusEffectsPanel = document.getElementById('statusEffectsPanel');
+const statusPanel = document.getElementById('statusPanel'); // Vitals container
 
 let lastLogText = "";
 let lastLogCount = 1;
@@ -127,8 +130,12 @@ const logMessage = (text) => {
     // 1. SANITIZE: Turn "<script>" into "&lt;script&gt;"
     let safeText = escapeHtml(text);
 
-    // 2. FORMAT: Re-introduce specific HTML tags safely
-    let formattedText = safeText
+    // 2. QoL WIN: Smart Auto-Highlighting
+    // Automatically highlights critical game events without needing manual color tags in the source code!
+    let preFormatted = safeText.replace(/\b(CRITICAL HIT!|CRITICAL|AMBUSH!|LEVEL UP!|NEW RECORD!)\b/g, '{gold:$1}');
+
+    // 3. FORMAT: Re-introduce specific HTML tags safely
+    let formattedText = preFormatted
         .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
         .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
         .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
@@ -141,7 +148,7 @@ const logMessage = (text) => {
     // --- ANTI-SPAM LOGIC ---
     if (text === lastLogText && messageLog.firstChild) {
         lastLogCount++;
-        messageLog.firstChild.innerHTML = `> ${formattedText} <span class="text-gray-500 ml-2 font-bold">(x${lastLogCount})</span>`;
+        messageLog.firstChild.innerHTML = `> ${formattedText} <span class="text-gray-500 ml-2 font-bold bg-black bg-opacity-30 px-1 rounded">(x${lastLogCount})</span>`;
         // JUICE: Small bump animation to show it updated
         messageLog.firstChild.style.animation = 'none';
         void messageLog.firstChild.offsetWidth; 
@@ -164,7 +171,6 @@ const logMessage = (text) => {
 
     // --- STRICT CULLING ---
     // Remove the oldest messages if the log exceeds 40 lines.
-    // Use a while loop because multiple messages might be appended in a single frame
     while (messageLog.children.length > 40) {
         messageLog.removeChild(messageLog.lastChild);
     }
@@ -183,7 +189,12 @@ const renderStats = () => {
             const value = gameState.player[statName];
             const label = statName.charAt(0).toUpperCase() + statName.slice(1);
 
-            if (statName === 'xp') {
+            if (statName === 'level') {
+                // JUICE WIN: Display active titles below the player's level!
+                const titleStr = gameState.player.activeTitle ? `<span class="block text-[10px] uppercase tracking-widest text-purple-400 mt-1">${gameState.player.activeTitle}</span>` : '';
+                element.innerHTML = `Level: ${value}${titleStr}`;
+            }
+            else if (statName === 'xp') {
                 const max = gameState.player.xpToNextLevel;
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
 
@@ -222,19 +233,24 @@ const renderStats = () => {
                     element.classList.add('text-purple-500');
                     statBarElements.health.style.backgroundColor = '#a855f7'; 
                     if(canvasWrapper) canvasWrapper.classList.add('critical-health'); 
+                    if(statusPanel) statusPanel.classList.remove('border-red-600', 'shadow-[0_0_15px_rgba(220,38,38,0.5)]');
                 } else {
                     if (percent > 60) {
                         element.classList.add('text-green-500');
                         statBarElements.health.style.backgroundColor = '#22c55e'; 
                         if(canvasWrapper) canvasWrapper.classList.remove('critical-health'); 
+                        if(statusPanel) statusPanel.classList.remove('border-red-600', 'shadow-[0_0_15px_rgba(220,38,38,0.5)]');
                     } else if (percent > 25) {
                         element.classList.add('text-yellow-500');
                         statBarElements.health.style.backgroundColor = '#eab308'; 
                         if(canvasWrapper) canvasWrapper.classList.remove('critical-health'); 
+                        if(statusPanel) statusPanel.classList.remove('border-red-600', 'shadow-[0_0_15px_rgba(220,38,38,0.5)]');
                     } else {
+                        // JUICE WIN: Pulsing Red Vitals Panel on Critical Health
                         element.classList.add('text-red-500');
                         statBarElements.health.style.backgroundColor = '#ef4444'; 
                         if(canvasWrapper) canvasWrapper.classList.add('critical-health'); 
+                        if(statusPanel) statusPanel.classList.add('border-red-600', 'shadow-[0_0_15px_rgba(220,38,38,0.5)]', 'transition-all', 'duration-300');
                     }
                 }
 
@@ -296,6 +312,7 @@ const renderStats = () => {
         }
     }
     
+    // Update Browser Tab Title
     if (gameState.mapMode && gameState.player && gameState.player.level) {
         document.title = `HP: ${Math.ceil(gameState.player.health)}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
     }
@@ -450,6 +467,7 @@ const renderInventory = () => {
                 if (typeof handleInput === 'function') handleInput((index + 1).toString());
             };
 
+            // Build the Native Tooltip
             let title = item.name;
             if (item.statBonuses) {
                 title += " (";
@@ -457,9 +475,26 @@ const renderInventory = () => {
                 for (const stat in item.statBonuses) {
                     bonuses.push(`+${item.statBonuses[stat]} ${stat}`);
                 }
-                title += bonuses.join(', ');
-                title += ")";
+                title += bonuses.join(', ') + ")";
             }
+
+            // Dynamic Equipment Comparison!
+            if (!item.isEquipped && (item.type === 'weapon' || item.type === 'armor')) {
+                const isWpn = item.type === 'weapon';
+                const equippedItem = isWpn ? gameState.player.equipment.weapon : gameState.player.equipment.armor;
+                
+                if (equippedItem) {
+                    const statName = isWpn ? 'damage' : 'defense';
+                    const myStat = item[statName] || 0;
+                    const eqStat = equippedItem[statName] || 0;
+                    const diff = myStat - eqStat;
+                    
+                    if (diff > 0) title += `\n[ Better than equipped: +${diff} ${statName} ]`;
+                    else if (diff < 0) title += `\n[ Worse than equipped: ${diff} ${statName} ]`;
+                    else title += `\n[ Equal to equipped ]`;
+                }
+            }
+
             itemDiv.title = title;
 
             const itemChar = document.createElement('span');
@@ -540,6 +575,16 @@ const renderEquipment = () => {
     const acc = equip.accessory;
     const ammo = equip.ammo;
 
+    // --- UI/UX WIN: Dynamic Empty Slot Styling ---
+    const applySlotStyle = (iconElement, isEmpty) => {
+        if (!iconElement) return;
+        if (isEmpty) {
+            iconElement.className = 'equipment-slot text-3xl opacity-30 border-dashed border-gray-600 transition-all';
+        } else {
+            iconElement.className = 'equipment-slot text-3xl border-solid border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)] transition-all';
+        }
+    };
+
     // --- DAMAGE CALCULATION ---
     const playerStrength = player.strength + (player.strengthBonus || 0); 
     const weaponDamage = weapon.damage || 0;
@@ -603,29 +648,29 @@ const renderEquipment = () => {
 
     if (wIcon) {
         wIcon.textContent = (weapon.tile || '👊').replace(/[a-zA-Z]/g, '');
-        wIcon.style.opacity = (weapon.name === 'Fists') ? '0.3' : '1';
+        applySlotStyle(wIcon, weapon.name === 'Fists');
         wIcon.title = weaponTooltip; 
     }
     if (aIcon) {
         aIcon.textContent = (armor.tile || '👕').replace(/[a-zA-Z]/g, '');
-        aIcon.style.opacity = (armor.name === 'Simple Tunic' || armor.name === 'Tattered Rags') ? '0.3' : '1';
+        applySlotStyle(aIcon, armor.name === 'Simple Tunic' || armor.name === 'Tattered Rags');
         aIcon.title = armorTooltip;
     }
     if (oIcon) {
         oIcon.textContent = offhand ? offhand.tile.replace(/[a-zA-Z]/g, '') : '🛡️';
-        oIcon.style.opacity = offhand ? '1' : '0.3';
+        applySlotStyle(oIcon, !offhand);
         oIcon.title = offhand ? `${offhand.name}\nDefense: +${offhand.defense || 0}` : 'Empty Off-Hand';
     }
     if (cIcon) {
         cIcon.textContent = acc ? acc.tile.replace(/[a-zA-Z]/g, '') : '💍';
-        cIcon.style.opacity = acc ? '1' : '0.3';
+        applySlotStyle(cIcon, !acc);
         let accTooltip = acc ? acc.name : 'Empty Accessory';
         if (acc && acc.statBonuses) accTooltip += `\nBonuses: ${Object.entries(acc.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
         cIcon.title = accTooltip;
     }
     if (mIcon && ammoCount) {
         mIcon.childNodes[0].nodeValue = ammo ? ammo.tile.replace(/[a-zA-Z]/g, '') : '➹';
-        mIcon.style.opacity = ammo ? '1' : '0.3';
+        applySlotStyle(mIcon, !ammo);
         mIcon.title = ammo ? `${ammo.name}\nDamage: +${ammo.damage || 0}\nRemaining: ${ammo.quantity}` : 'No Ammo Equipped';
         
         ammoCount.textContent = ammo ? ammo.quantity : '';
@@ -760,13 +805,11 @@ function resizeCanvas() {
     const canvasContainer = canvas.parentElement;
     if (!canvasContainer) return;
 
-    // We MUST account for the padding/border of the container
-    // OffsetWidth/Height includes borders, ClientWidth/Height includes padding. 
-    // To get the pure drawing area, we measure the client dimensions.
-    
-    // We temporarily hide the canvas to prevent it from forcing the container to be larger than it should be
+    // ROBUSTNESS: Ensure exact pixel math without forcing the container to warp
     canvas.style.display = 'none';
     
+    // We must read the exact client dimensions *after* hiding the canvas 
+    // to prevent the container from getting stuck in an oversized state.
     const containerWidth = canvasContainer.clientWidth;
     const containerHeight = canvasContainer.clientHeight;
     
@@ -778,6 +821,7 @@ function resizeCanvas() {
     TILE_SIZE = window.currentZoom;
 
     // 3. Calculate Logical Viewport (The number of tiles that fit on screen)
+    // Add a safe buffer of +2 to ensure scrolling never exposes empty pixels at the edges
     VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 2; 
     VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 2;
 
@@ -795,13 +839,13 @@ function resizeCanvas() {
     ctx.setTransform(1, 0, 0, 1, 0, 0); 
     ctx.scale(dpr, dpr); 
     ctx.imageSmoothingEnabled = false; 
-    ctx.font = `${TILE_SIZE}px monospace`; // <-- Removed window.
+    ctx.font = `${TILE_SIZE}px monospace`; 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
     // 7. Resize Offscreen Canvas (Added +4 Buffer for camera panning)
-    const logicalWidth = (VIEWPORT_WIDTH + 4) * TILE_SIZE; // <-- Removed window.
-    const logicalHeight = (VIEWPORT_HEIGHT + 4) * TILE_SIZE; // <-- Removed window.
+    const logicalWidth = (VIEWPORT_WIDTH + 4) * TILE_SIZE; 
+    const logicalHeight = (VIEWPORT_HEIGHT + 4) * TILE_SIZE; 
 
     terrainCanvas.width = logicalWidth * dpr;
     terrainCanvas.height = logicalHeight * dpr;
@@ -809,7 +853,7 @@ function resizeCanvas() {
     // 8. Configure Offscreen Context
     terrainCtx.setTransform(1, 0, 0, 1, 0, 0); 
     terrainCtx.scale(dpr, dpr); 
-    terrainCtx.font = `${TILE_SIZE}px monospace`; // <-- Removed window.
+    terrainCtx.font = `${TILE_SIZE}px monospace`; 
     terrainCtx.textAlign = 'center';
     terrainCtx.textBaseline = 'middle';
 
