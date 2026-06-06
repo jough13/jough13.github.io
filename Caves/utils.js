@@ -1,5 +1,17 @@
 // --- START OF FILE utils.js ---
 
+// ==========================================
+// NETWORK TIMEOUT HELPER
+// ==========================================
+window.withTimeout = function(promise, ms = 3000) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Network Timeout")), ms)
+        )
+    ]);
+};
+
 let TILE_SIZE = 20; // Fixed tile size (prevent them from getting huge)
 let VIEWPORT_WIDTH = 40; // Will update on resize
 let VIEWPORT_HEIGHT = 25; // Will update on resize
@@ -8,8 +20,9 @@ const WORLD_WIDTH = 500;
 const WORLD_HEIGHT = 500;
 const WORLD_SEED = 'caves-and-castles-v1';
 
-// --- EXPANDABILITY: Universal Math & RPG Toolkit ---
-// Centralizing these prevents rewriting Math.sqrt and Math.random everywhere.
+// ==========================================
+// UNIVERSAL MATH & RPG TOOLKIT
+// ==========================================
 window.MathUtils = {
     // Distance squared is much faster to compute than true distance (no Math.sqrt)
     distSq: (x1, y1, x2, y2) => (x2 - x1) ** 2 + (y2 - y1) ** 2,
@@ -22,6 +35,16 @@ window.MathUtils = {
     
     // Smooth linear interpolation for cameras and entity gliding
     lerp: (start, end, amt) => (1 - amt) * start + amt * end,
+
+    // JUICE WIN: Animation Easing Curves for UI & Cameras
+    smoothstep: (min, max, value) => {
+        let x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+        return x * x * (3 - 2 * x);
+    },
+    easeOutElastic: (x) => {
+        const c4 = (2 * Math.PI) / 3;
+        return x === 0 ? 0 : x === 1 ? 1 : Math.pow(2, -10 * x) * Math.sin((x * 10 - 0.75) * c4) + 1;
+    },
     
     // Returns a random integer between min and max (inclusive)
     randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
@@ -32,6 +55,22 @@ window.MathUtils = {
         for (let i = 0; i < count; i++) {
             total += Math.floor(Math.random() * sides) + 1;
         }
+        return total;
+    },
+
+    // EXPANDABILITY WIN: Parses standard TTRPG strings like "2d6+4"
+    roll: (notation) => {
+        const match = notation.match(/^(\d+)d(\d+)(?:([+-])(\d+))?$/i);
+        if (!match) return 0;
+        const count = parseInt(match[1], 10);
+        const sides = parseInt(match[2], 10);
+        const modifierSign = match[3];
+        const modifierVal = parseInt(match[4], 10);
+
+        let total = window.MathUtils.rollDice(sides, count);
+        if (modifierSign === '+') total += modifierVal;
+        else if (modifierSign === '-') total -= modifierVal;
+
         return total;
     },
 
@@ -78,6 +117,32 @@ window.MathUtils = {
     }
 };
 
+// ==========================================
+// COLOR UTILITIES (For Visual Juice)
+// ==========================================
+window.ColorUtils = {
+    hexToRgb: (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : {r: 255, g: 255, b: 255};
+    },
+    
+    // Smoothly blends two hex colors based on an amount (0.0 to 1.0)
+    lerpHex: (hex1, hex2, amt) => {
+        const c1 = window.ColorUtils.hexToRgb(hex1);
+        const c2 = window.ColorUtils.hexToRgb(hex2);
+        
+        const r = Math.round(window.MathUtils.lerp(c1.r, c2.r, amt));
+        const g = Math.round(window.MathUtils.lerp(c1.g, c2.g, amt));
+        const b = Math.round(window.MathUtils.lerp(c1.b, c2.b, amt));
+        
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+};
+
 // IMPORTANT: Do NOT alter the math in this function! 
 // Altering it will change the world seed hash and shift everyone's map!
 // ROBUSTNESS WIN: Upgraded to a 53-bit safe hash to prevent overflow on massive map coordinates.
@@ -95,13 +160,8 @@ function stringToSeed(str) {
 
 // Alea PRNG - Predictable random numbers for procedural generation
 function Alea(seed) {
-    let s0 = 0,
-        s1 = 0,
-        s2 = 0,
-        c = 1;
-    if (seed == null) {
-        seed = +new Date;
-    }
+    let s0 = 0, s1 = 0, s2 = 0, c = 1;
+    if (seed == null) seed = +new Date;
     s0 = (seed >>> 0) * 0x9e3779b9;
     s1 = (seed >>> 0) * 0x9e3779b9;
     s2 = (seed >>> 0) * 0x9e3779b9;
@@ -139,29 +199,18 @@ const Perlin = {
     },
     noise: function (x, y, z = 0) {
         const floor = Math.floor;
-        const X = floor(x) & 255,
-            Y = floor(y) & 255,
-            Z = floor(z) & 255;
-        x -= floor(x);
-        y -= floor(y);
-        z -= floor(z);
-        const u = this.fade(x),
-            v = this.fade(y),
-            w = this.fade(z);
-        const A = this.p[X] + Y,
-            AA = this.p[A] + Z,
-            AB = this.p[A + 1] + Z,
-            B = this.p[X + 1] + Y,
-            BA = this.p[B] + Z,
-            BB = this.p[B + 1] + Z;
+        const X = floor(x) & 255, Y = floor(y) & 255, Z = floor(z) & 255;
+        x -= floor(x); y -= floor(y); z -= floor(z);
+        const u = this.fade(x), v = this.fade(y), w = this.fade(z);
+        const A = this.p[X] + Y, AA = this.p[A] + Z, AB = this.p[A + 1] + Z,
+              B = this.p[X + 1] + Y, BA = this.p[B] + Z, BB = this.p[B + 1] + Z;
         return this.scale(this.lerp(w, this.lerp(v, this.lerp(u, this.grad(this.p[AA], x, y, z), this.grad(this.p[BA], x - 1, y, z)), this.lerp(u, this.grad(this.p[AB], x, y - 1, z), this.grad(this.p[BB], x - 1, y - 1, z))), this.lerp(v, this.lerp(u, this.grad(this.p[AA + 1], x, y, z - 1), this.grad(this.p[BA + 1], x - 1, y, z - 1)), this.lerp(u, this.grad(this.p[AB + 1], x, y - 1, z - 1), this.grad(this.p[BB + 1], x - 1, y - 1, z - 1)))));
     },
     fade: t => t * t * t * (t * (t * 6 - 15) + 10),
     lerp: (t, a, b) => a + t * (b - a),
     grad: (hash, x, y, z) => {
         const h = hash & 15;
-        const u = h < 8 ? x : y,
-            v = h < 4 ? y : h === 12 || h === 14 ? x : z;
+        const u = h < 8 ? x : y, v = h < 4 ? y : h === 12 || h === 14 ? x : z;
         return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
     },
     scale: n => (1 + n) / 2
@@ -187,22 +236,27 @@ const isWideChar = (char) => {
     return isWide;
 };
 
+// ==========================================
+// TEXT FORMATTING & SANITIZATION
+// ==========================================
+
 const entityMap = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;',
-  '/': '&#x2F;',
-  '`': '&#x60;',
-  '=': '&#x3D;'
+  '&': '&amp;', '<': '&lt;', '>': '&gt;',
+  '"': '&quot;', "'": '&#39;', '/': '&#x2F;',
+  '`': '&#x60;', '=': '&#x3D;'
 };
 
 function escapeHtml(string) {
   if (!string) return "";
-  return String(string).replace(/[&<>"'`=\/]/g, function (s) {
+  // Strip invisible control characters (except space/tab) before escaping HTML
+  const noControlChars = String(string).replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+  return noControlChars.replace(/[&<>"'`=\/]/g, function (s) {
     return entityMap[s];
   });
+}
+
+function capitalizeWords(str) {
+    return str.replace(/\b\w/g, char => char.toUpperCase());
 }
 
 function getOrdinalSuffix(day) {
@@ -238,6 +292,23 @@ function getDirectionString(dir) {
         if (x === 1)  return 'south-east';
     }
     return 'nearby'; // Fallback
+}
+
+/**
+ * IMMERSION WIN: Calculates relative distance and direction for flavor text.
+ * e.g. "a few steps to the North" or "far off to the South-West"
+ */
+function getRelativePositionText(dx, dy) {
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    let distStr = "nearby";
+    if (dist > 15) distStr = "far off to the";
+    else if (dist > 5) distStr = "some distance to the";
+    else distStr = "a few steps to the";
+
+    const dir = getDirectionString({ x: Math.sign(dx), y: Math.sign(dy) });
+    if (dir === 'nearby') return 'right on top of you';
+    
+    return `${distStr} ${capitalizeWords(dir)}`;
 }
 
 const elevationNoise = Object.create(Perlin);
