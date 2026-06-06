@@ -1,3 +1,5 @@
+// --- START OF FILE fast-travel.js ---
+
 // ==========================================
 // FAST TRAVEL & LEYLINE SYSTEM
 // ==========================================
@@ -15,7 +17,7 @@ function openFastTravelModal() {
     
     const subtitle = fastTravelModal.querySelector('p.text-sm');
     if (subtitle) {
-        subtitle.innerHTML = `Travel the leylines to an attuned Waystone?<br><span class="text-xs text-purple-300 font-bold">(Cost: ${travelCost} Mana)</span>`;
+        subtitle.innerHTML = `Travel the leylines to an attuned Waystone?<br><span class="text-xs text-purple-300 font-bold">(Base Cost: ${travelCost} Mana)</span>`;
     }
 
     fastTravelModal.classList.remove('hidden');
@@ -34,74 +36,123 @@ function renderFastTravelList() {
     // PERFORMANCE: Use DocumentFragment to batch DOM inserts
     const fragment = document.createDocumentFragment();
 
-    // Helper to calculate distance
+    // Base Cost Calculation
+    const baseTravelCost = (player.talents && player.talents.includes('mana_flow')) ? 8 : 10;
+
+    // Helper: Calculate Distance
     const getDist = (tx, ty) => Math.floor(Math.sqrt(Math.pow(tx - playerX, 2) + Math.pow(ty - playerY, 2)));
 
-    // --- 1. PERMANENT FALLBACK: Safe Haven Village ---
+    // Helper: Calculate Compass Direction (QoL WIN!)
+    const getDir = (tx, ty) => {
+        const dx = tx - playerX;
+        const dy = ty - playerY; // Negative Y is North in our grid
+        if (dx === 0 && dy === 0) return '';
+        let dir = '';
+        if (dy < 0) dir += 'N';
+        else if (dy > 0) dir += 'S';
+        if (dx > 0) dir += 'E';
+        else if (dx < 0) dir += 'W';
+        return dir ? ` ${dir}` : '';
+    };
+
+    // --- UI CATEGORY: SANCTUARIES ---
+    const sanctuaryHeader = document.createElement('div');
+    sanctuaryHeader.className = "text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-2 mb-2 border-b border-gray-700 pb-1";
+    sanctuaryHeader.textContent = "Sanctuaries";
+    fragment.appendChild(sanctuaryHeader);
+
+    // 1. PERMANENT FALLBACK: Safe Haven Village
     if (playerX !== 0 || playerY !== 0) {
+        // NEWBIE GRACE PERIOD: Free travel to spawn if level 3 or under!
+        const isFree = player.level <= 3;
+        const cost = isFree ? 0 : baseTravelCost;
+        const canAfford = player.mana >= cost;
+        
+        const btnClass = canAfford ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-gray-700 text-gray-400 opacity-50 cursor-not-allowed";
+        const btnText = canAfford ? (isFree ? 'Free' : `-${cost} MP`) : 'OOM';
+
         const villageLi = document.createElement('li');
-        villageLi.className = 'shop-item bg-blue-900 bg-opacity-20 border-blue-700 hover:border-blue-400 transition-all';
+        villageLi.className = 'shop-item bg-blue-900 bg-opacity-20 border-blue-700 hover:border-blue-400 transition-all transform hover:-translate-y-0.5';
         villageLi.innerHTML = `
             <div>
                 <span class="font-bold text-blue-400">Safe Haven Village</span>
-                <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: 0, 0 <span class="ml-2 text-blue-300">(Dist: ${getDist(0, 0)})</span></div>
+                <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: 0, 0 <span class="ml-2 text-blue-300">(Dist: ${getDist(0, 0)}m${getDir(0, 0)})</span></div>
             </div>
-            <button class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95" onclick="handleFastTravel(0, 0)">Recall</button>
+            <button class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 ${btnClass}" ${canAfford ? '' : 'disabled'} onclick="handleFastTravel(0, 0)">${btnText}</button>
         `;
         fragment.appendChild(villageLi);
     }
 
-    // --- 2. PERMANENT FALLBACK: Personal Bed / Camp ---
+    // 2. PERMANENT FALLBACK: Personal Bed / Camp
     if (player.respawnPoint && (player.respawnPoint.x !== playerX || player.respawnPoint.y !== playerY)) {
-        // Prevent duplicating the village if their bed IS the village
         if (player.respawnPoint.x !== 0 || player.respawnPoint.y !== 0) {
             const rx = player.respawnPoint.x;
             const ry = player.respawnPoint.y;
+            const canAfford = player.mana >= baseTravelCost;
+            
+            const btnClass = canAfford ? "bg-green-600 hover:bg-green-500 text-white" : "bg-gray-700 text-gray-400 opacity-50 cursor-not-allowed";
+            const btnText = canAfford ? `-${baseTravelCost} MP` : 'OOM';
+
             const bedLi = document.createElement('li');
-            bedLi.className = 'shop-item bg-green-900 bg-opacity-20 border-green-700 hover:border-green-400 transition-all';
+            bedLi.className = 'shop-item bg-green-900 bg-opacity-20 border-green-700 hover:border-green-400 transition-all transform hover:-translate-y-0.5';
             bedLi.innerHTML = `
                 <div>
                     <span class="font-bold text-green-400">Personal Camp (Bed)</span>
-                    <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${rx}, ${-ry} <span class="ml-2 text-green-300">(Dist: ${getDist(rx, ry)})</span></div>
+                    <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${rx}, ${-ry} <span class="ml-2 text-green-300">(Dist: ${getDist(rx, ry)}m${getDir(rx, ry)})</span></div>
                 </div>
-                <button class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95" onclick="handleFastTravel(${rx}, ${ry})">Recall</button>
+                <button class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 ${btnClass}" ${canAfford ? '' : 'disabled'} onclick="handleFastTravel(${rx}, ${ry})">${btnText}</button>
             `;
             fragment.appendChild(bedLi);
         }
     }
 
-    // --- 3. DYNAMIC WAYSTONES ---
+    // --- UI CATEGORY: WILDERNESS WAYSTONES ---
+    const waystoneHeader = document.createElement('div');
+    waystoneHeader.className = "text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-6 mb-2 border-b border-gray-700 pb-1 flex justify-between";
+    waystoneHeader.innerHTML = `<span>Wilderness Waystones</span> <span>${waypoints.length} Unlocked</span>`;
+    fragment.appendChild(waystoneHeader);
+
     const availableWaypoints = waypoints
         .filter(wp => wp.x !== playerX || wp.y !== playerY) // Filter out current spot
-        .map(wp => ({ ...wp, dist: getDist(wp.x, wp.y) }))
+        .map(wp => ({ ...wp, dist: getDist(wp.x, wp.y), dir: getDir(wp.x, wp.y) }))
         .sort((a, b) => a.dist - b.dist); // Sort by distance ascending
 
-    if (availableWaypoints.length === 0 && fragment.childNodes.length === 0) {
-        fastTravelList.innerHTML = '<li class="italic text-gray-500 p-4 text-center border border-gray-700 rounded-lg">You haven\'t attuned to any Waystones yet. Explore the world to find them!</li>';
-        return;
-    }
+    if (availableWaypoints.length === 0) {
+        const emptyLi = document.createElement('li');
+        emptyLi.className = 'italic text-gray-500 p-4 text-center border border-gray-700 rounded-lg text-xs';
+        emptyLi.textContent = "You haven't attuned to any Wilderness Waystones yet. Explore the world to find them!";
+        fragment.appendChild(emptyLi);
+    } else {
+        const canAffordBase = player.mana >= baseTravelCost;
+        const btnClass = canAffordBase ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-gray-700 text-gray-400 opacity-50 cursor-not-allowed";
+        const btnText = canAffordBase ? `-${baseTravelCost} MP` : 'OOM';
 
-    availableWaypoints.forEach(wp => {
-        const li = document.createElement('li');
-        li.className = 'shop-item bg-purple-900 bg-opacity-10 border-gray-700 hover:border-purple-500 transition-all';
-        li.innerHTML = `
-            <div>
-                <span class="font-bold text-purple-400">${wp.name}</span>
-                <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${wp.x}, ${-wp.y} <span class="ml-2 text-purple-300">(Dist: ${wp.dist})</span></div>
-            </div>
-            <button class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95" onclick="handleFastTravel(${wp.x}, ${wp.y})">Travel</button>
-        `;
-        fragment.appendChild(li);
-    });
+        availableWaypoints.forEach(wp => {
+            const li = document.createElement('li');
+            li.className = 'shop-item bg-purple-900 bg-opacity-10 border-gray-700 hover:border-purple-500 transition-all transform hover:-translate-y-0.5';
+            li.innerHTML = `
+                <div>
+                    <span class="font-bold text-purple-400">${wp.name}</span>
+                    <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${wp.x}, ${-wp.y} <span class="ml-2 text-purple-300">(Dist: ${wp.dist}m${wp.dir})</span></div>
+                </div>
+                <button class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 ${btnClass}" ${canAffordBase ? '' : 'disabled'} onclick="handleFastTravel(${wp.x}, ${wp.y})">${btnText}</button>
+            `;
+            fragment.appendChild(li);
+        });
+    }
 
     fastTravelList.appendChild(fragment);
 }
 
 window.handleFastTravel = function (targetX, targetY) {
+    // Prevent double-clicking
+    if (isProcessingMove) return;
+
     const player = gameState.player;
     
-    // Apply Talent Discount
-    const TRAVEL_COST = (player.talents && player.talents.includes('mana_flow')) ? 8 : 10;
+    // Apply Talent Discount & Newbie Grace Period
+    const isFreeRecall = (targetX === 0 && targetY === 0) && player.level <= 3;
+    const TRAVEL_COST = isFreeRecall ? 0 : ((player.talents && player.talents.includes('mana_flow')) ? 8 : 10);
 
     // --- GAMEPLAY WIN: Anti-Combat Teleport ---
     // You cannot flee via leylines if enemies are too close! (5 tile radius)
@@ -144,11 +195,17 @@ window.handleFastTravel = function (targetX, targetY) {
         return;
     }
 
+    // --- ENGINE LOCK ---
+    isProcessingMove = true;
+
     // --- DEPARTURE FX ---
     if (typeof ParticleSystem !== 'undefined') {
         ParticleSystem.createExplosion(player.x, player.y, '#8b5cf6', 15); // Purple explosion
     }
     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+    
+    // JUICE: Teleport Sickness Screen Shake
+    gameState.screenShake = 15;
 
     // Deduct Cost
     player.mana -= TRAVEL_COST;
@@ -196,7 +253,12 @@ window.handleFastTravel = function (targetX, targetY) {
     updates.x = targetX;
     updates.y = targetY;
 
-    logMessage("{purple:You dissolve into pure energy and reappear at your destination.}");
+    if (isFreeRecall) {
+        logMessage("{cyan:The leylines gently carry you back to safety.}");
+    } else {
+        logMessage("{purple:You dissolve into pure energy and reappear at your destination.}");
+    }
+    
     if (typeof triggerStatAnimation === 'function') triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
 
     // Ensure landing spot exists visually if it's not the village
@@ -231,6 +293,9 @@ window.handleFastTravel = function (targetX, targetY) {
     }
     
     if (typeof renderStats === 'function') renderStats();
+
+    // Unlock Engine after a brief delay to simulate travel time
+    setTimeout(() => { isProcessingMove = false; }, 300);
 };
 
 if (closeFastTravelButton) {
