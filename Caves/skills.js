@@ -1,3 +1,5 @@
+// --- START OF FILE skills.js ---
+
 /**
  * Handles all skill logic based on SKILL_DATA
  * and the player's skillbook.
@@ -46,6 +48,19 @@ function useSkill(skillId) {
         return; 
     }
 
+    // --- ROBUSTNESS WIN: Hotbar Weapon Verification ---
+    const wpn = player.equipment.weapon ? player.equipment.weapon.name : '';
+    if (skillId === 'deflect' && (!wpn.includes('Sword') && !wpn.includes('Blade'))) {
+        logMessage("{red:You must equip a Sword or Blade to use Deflect.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
+    }
+    if (skillId === 'channel' && !wpn.includes('Staff')) {
+        logMessage("{red:You must equip a Staff to use Channel.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
+    }
+
     // --- 3. Handle Targeting ---
     if (skillData.target === 'aimed') {
         // --- Aimed Skills (e.g., Lunge) ---
@@ -54,7 +69,7 @@ function useSkill(skillId) {
         gameState.abilityToAim = skillId; 
         skillModal.classList.add('hidden');
         logMessage(`{yellow:${skillData.name}: Press an arrow key or WASD to use. (Esc) to cancel.}`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
         return; 
 
     } else if (skillData.target === 'self') {
@@ -99,6 +114,7 @@ function useSkill(skillId) {
                 player.thornsTurns = 1;   // Only for the very next turn/hit
                 logMessage("{gray:You raise your blade, ready to deflect the next blow.}");
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "STANCE", "#9ca3af");
                 skillUsedSuccessfully = true;
                 break;
 
@@ -134,7 +150,16 @@ function useSkill(skillId) {
             case 'whirlwind':
                 logMessage("{red:You spin in a deadly vortex!}");
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy');
+                gameState.screenShake = 15; // JUICE: Heavy screen shake
                 
+                // JUICE: Radial particle burst
+                if (typeof ParticleSystem !== 'undefined') {
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (Math.PI / 4) * i;
+                        ParticleSystem.spawn(player.x + Math.cos(angle)*1.5, player.y + Math.sin(angle)*1.5, '#d4d4d8', 'dust', '', 4);
+                    }
+                }
+
                 const baseDmg = (player.strength + player.dexterity) * skillLevel;
 
                 // Create an array to hold all the async combat promises
@@ -216,6 +241,17 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
     const skillLevel = player.skillbook[skillId] || 1;
 
     let hit = false;
+    
+    // --- ROBUSTNESS WIN: Sub-skill requirements ---
+    if (skillId === 'shieldBash') {
+        const offhand = player.equipment.offhand;
+        if (!offhand || !offhand.name.includes('Shield')) {
+            logMessage("{red:You must have a Shield equipped in your off-hand to use Shield Bash!}");
+            gameState.isAiming = false;
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+    }
 
     // --- 🚨 LOCK THE ENGINE ---
     isProcessingMove = true;
@@ -247,6 +283,12 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
             } else { 
                 enemiesToHit.push({ x: targetX - 1, y: targetY });
                 enemiesToHit.push({ x: targetX + 1, y: targetY });
+            }
+            // Cleave visual
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.spawn(targetX, targetY, '#e5e7eb', 'dust', '', 4);
+                ParticleSystem.spawn(enemiesToHit[1].x, enemiesToHit[1].y, '#e5e7eb', 'dust', '', 3);
+                ParticleSystem.spawn(enemiesToHit[2].x, enemiesToHit[2].y, '#e5e7eb', 'dust', '', 3);
             }
         }
 
@@ -290,7 +332,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                         enemy.health = Number(enemy.health);
                         if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
 
-                        // ▼ NEW: Subtract Defense ▼
+                        // ▼ Subtract Defense ▼
                         const mitigatedDmg = Math.max(1, finalDmg - (enemy.defense || 0));
                         enemy.health -= mitigatedDmg;
                         logMessage(`You hit ${enemy.name} for {red:${mitigatedDmg}} damage!`);
@@ -299,11 +341,13 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                             ParticleSystem.createFloatingText(coords.x, coords.y, `-${mitigatedDmg}`, '#ef4444');
                         }
 
-                        // APPLY STUN (Shield Bash OR Crush)
+                        // APPLY STUN & JUICE (Shield Bash OR Crush)
                         if (skillId === 'shieldBash' || skillId === 'crush') {
+                            gameState.screenShake = 12; // Heavy Hit Feel
                             if (!enemy.isBoss) {
                                 enemy.stunTurns = 3;
                                 logMessage(`{yellow:${enemy.name} is stunned!}`);
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(coords.x, coords.y, "STUNNED", "#facc15");
                             } else {
                                 logMessage(`{gray:The boss shrugs off your stun attempt!}`);
                             }
@@ -364,9 +408,9 @@ async function executeRangedAttack(dirX, dirY) {
     // --- WEAPON CHECK ---
     const weapon = player.equipment.weapon;
     
-    // Check if weapon exists FIRST. If it does, convert name to lowercase to check for "bow".
-    if (!weapon || !weapon.name.toLowerCase().includes("bow")) {
-        logMessage("{red:You must have a bow equipped to shoot!}");
+    // Check if weapon exists FIRST. If it does, convert name to lowercase to check for "bow" or "crossbow".
+    if (!weapon || (!weapon.name.toLowerCase().includes("bow") && !weapon.name.toLowerCase().includes("crossbow"))) {
+        logMessage("{red:You must have a bow or crossbow equipped to shoot!}");
         gameState.isAiming = false;
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
@@ -388,6 +432,7 @@ async function executeRangedAttack(dirX, dirY) {
         
         const isFire = ammo.name.includes('Fire');
         const isPoison = ammo.name.includes('Poison');
+        const isHeavyCrossbow = weapon.name.includes('Heavy Crossbow');
 
         let arrowColor = '#d4d4d8'; // Default grey
         if (isFire) arrowColor = '#f97316';   // Orange
@@ -395,6 +440,12 @@ async function executeRangedAttack(dirX, dirY) {
         
         // Ranged attacks scale off Dexterity + Bow Dmg + Arrow Dmg
         let rawPower = player.dexterity + weaponDamage + ammoDamage;
+
+        // JUICE: Crossbows hit harder but cause recoil
+        if (isHeavyCrossbow) {
+            rawPower += 2;
+            gameState.screenShake = 8;
+        }
 
         if (player.talents && player.talents.includes('eagle_eye')) {
             rawPower = Math.floor(rawPower * 1.5);
@@ -426,7 +477,9 @@ async function executeRangedAttack(dirX, dirY) {
         }
 
         // --- 3. Projectile Loop (Dynamic Range) ---
-        logMessage("You loose an arrow!");
+        if (isHeavyCrossbow) logMessage("THWACK! You fire a heavy bolt!");
+        else logMessage("You loose an arrow!");
+        
         if (typeof AudioSystem !== 'undefined') AudioSystem.playBow(); 
         
         // Pull range from the equipped weapon, fallback to 4
@@ -636,6 +689,11 @@ async function executeLunge(dirX, dirY) {
             const targetX = player.x + (dirX * i);
             const targetY = player.y + (dirY * i);
 
+            // JUICE: Dust Trail
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.spawn(player.x + (dirX * (i-1)), player.y + (dirY * (i-1)), '#d4d4d8', 'dust', '', 4);
+            }
+
             let tile;
             if (gameState.mapMode === 'dungeon') {
                 const map = chunkManager.caveMaps[gameState.currentCaveId];
@@ -743,7 +801,12 @@ function executeQuickstep(dirX, dirY) {
         player.y = targetY;
         player.stamina -= SKILL_DATA['quickstep'].cost;
         logMessage("{cyan:You dash forward with blinding speed!}");
-        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#fff', 5);
+        
+        // JUICE: Smoke Trail
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.spawn(player.x - dirX, player.y - dirY, '#f8fafc', 'smoke', '', 4);
+            ParticleSystem.createExplosion(player.x, player.y, '#fff', 5);
+        }
         if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
 
         triggerAbilityCooldown('quickstep');
