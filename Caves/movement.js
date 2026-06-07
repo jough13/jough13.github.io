@@ -404,7 +404,7 @@ async function attemptMovePlayer(newX, newY) {
                 logMessage(`You see the corpse of a ${enemyData.name}.`);
             }
 
-        } else if (gameState.mapMode === 'overworld') {
+        } else if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
             // --- SHARED COMBAT ---
             let playerDamage = Math.max(1, rawDamage - (enemyData.defense || 0));
 
