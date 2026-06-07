@@ -354,7 +354,7 @@ function turnInQuest(questId) {
                 logMessage(`{red:Your inventory is full! The ${rewardItemTemplate.name} falls to the ground.}`);
                 const dropTile = rewardKey || '🎒'; 
                 
-                if (gameState.mapMode === 'overworld') {
+                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                     chunkManager.setWorldTile(gameState.player.x, gameState.player.y, dropTile);
                 } else if (gameState.mapMode === 'dungeon') {
                     chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] = dropTile;
@@ -363,7 +363,7 @@ function turnInQuest(questId) {
                 }
                 
                 // Clear the looted memory for this coordinate so it can be picked up
-                let tileId = (gameState.mapMode === 'overworld') 
+                let tileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
                     ? `${gameState.player.x},${-gameState.player.y}`
                     : `${gameState.currentCaveId || gameState.currentCastleId}:${gameState.player.x},${-gameState.player.y}`;
                 gameState.lootedTiles.delete(tileId);
