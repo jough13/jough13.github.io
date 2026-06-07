@@ -2481,6 +2481,17 @@ logoutButton.addEventListener('click', () => {
     
     Object.values(worldStateListeners).forEach(unsubscribe => unsubscribe());
     worldStateListeners = {};
+    
+    // Kill ghost listeners to prevent RTDB connection exhaustion!
+    if (typeof EnemyNetworkManager !== 'undefined') {
+        EnemyNetworkManager.clearAll();
+    }
+    
+    // Also disconnect from global chat
+    if (chatListener) {
+        rtdb.ref('chat').off('child_added', chatListener);
+        chatListener = null;
+    }
 
     // 4. Clear Local Memory
     clearSessionState();
