@@ -942,9 +942,12 @@ const chunkManager = {
                     // --- OVERWORLD BIOME GENERATION ---
                     const elev = elevationNoise.noise(worldX / 70, worldY / 70, realmOffset);
                     const moist = moistureNoise.noise(worldX / 50, worldY / 50, realmOffset);
+                    
                     if (elev < 0.35) tile = '~';
                     else if (elev < 0.4 && moist > 0.7) tile = '≈';
-                    else if (elev > 0.8) tile = '^';
+                    else if (elev > 0.75 && moist > 0.6) tile = '🌲'; // Tundra Pine Forest
+                    else if (elev > 0.75 && moist <= 0.6) tile = '❄️'; // Snow Plains
+                    else if (elev > 0.85) tile = '^';
                     else if (elev > 0.6 && moist < 0.3) tile = 'd';
                     else if (moist < 0.15) tile = 'D';
                     else if (moist > 0.55) tile = 'F';
