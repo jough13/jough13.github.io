@@ -958,7 +958,9 @@ const chunkManager = {
                     const moist = moistureNoise.noise(worldX / 50, worldY / 50, realmOffset);
                     
                     if (elev < 0.35) tile = '~';
+                    else if (elev < 0.4 && moist > 0.85) tile = '🍄'; // Fungal Jungle (Wet/Low)
                     else if (elev < 0.4 && moist > 0.7) tile = '≈';
+                    else if (elev > 0.85 && moist < 0.2) tile = '💎c'; // Crystal Peaks (High/Dry)
                     else if (elev > 0.75 && moist > 0.6) tile = '🌲'; // Tundra Pine Forest
                     else if (elev > 0.75 && moist <= 0.6) tile = '❄️'; // Snow Plains
                     else if (elev > 0.85) tile = '^';
