@@ -78,6 +78,7 @@ function rehydratePlayerState(data) {
  * @param {object} enemy - The enemy data (from ENEMY_DATA or RTDB).
  * @returns {string} The tile character of the dropped item.
  */
+
 function generateEnemyLoot(player, enemy) {
     // --- 0. QUEST ITEM DROPS ---
     // 1. Sun Shard (Desert, 5% chance)
@@ -94,6 +95,17 @@ function generateEnemyLoot(player, enemy) {
     if (gameState.player.relicQuestStage === 3 && (enemy.tile === 'Y' || enemy.tile === '🐲') && Math.random() < 0.05) {
         logMessage("{purple:You found the Void Crystal!}");
         return '💎v';
+    }
+
+    // Shadowed Hand Quest Stage 0 -> 1
+    if ((gameState.player.shadowQuestStage || 0) === 0 && enemy.name.includes('Cultist') && Math.random() < 0.20) {
+        logMessage("{purple:You found Cultist Orders on the body!}");
+        return '📜c';
+    }
+    // Shadowed Hand Quest Stage 1 -> 2
+    if (gameState.player.shadowQuestStage === 1 && enemy.name === 'Cultist Fanatic' && Math.random() < 0.25) {
+        logMessage("{purple:You found a Shadow Amulet!}");
+        return '🧿s';
     }
 
     // --- 1. Check for Active Fetch Quests ---
