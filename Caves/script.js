@@ -2648,9 +2648,39 @@ async function enterGame(playerData) {
     gameState.weather = playerData.weather || 'clear';
     gameState.mapMode = playerData.mapMode || 'overworld';
     
-    // --- LOAD MULTIVERSE STATE ---
+    // --- LOAD MULTIVERSE STATE & RESTORE MAP IDs ---
     gameState.currentRealm = playerData.currentRealm || 0;
     gameState.realmMutators = playerData.realmMutators || [];
+    
+    if (gameState.mapMode === 'dungeon') {
+        gameState.currentCaveId = playerData.mapId;
+        if (gameState.currentCaveId) {
+            // Generate the cave map immediately so it exists for the renderer!
+            chunkManager.generateCave(gameState.currentCaveId);
+            gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId];
+            
+            // Restore instanced enemies
+            const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
+            gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+        } else {
+            // Failsafe: Kick them to the overworld if the cave ID was corrupted
+            gameState.mapMode = 'overworld';
+        }
+    } else if (gameState.mapMode === 'castle') {
+        gameState.currentCastleId = playerData.mapId;
+        if (gameState.currentCastleId) {
+            // Generate the castle map immediately!
+            const layoutType = gameState.currentCastleId.includes('village') ? 'SAFE_HAVEN' : null;
+            chunkManager.generateCastle(gameState.currentCastleId, layoutType);
+            
+            // Restore instanced enemies & NPCs
+            const baseCastleEnemies = chunkManager.castleEnemies[gameState.currentCastleId] || [];
+            gameState.instancedEnemies = JSON.parse(JSON.stringify(baseCastleEnemies));
+            gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
+        } else {
+            gameState.mapMode = 'overworld';
+        }
+    }
     
     // Chunk Tracking
     const startChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
