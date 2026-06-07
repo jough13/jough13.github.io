@@ -519,7 +519,7 @@ async function attemptMovePlayer(newX, newY) {
                     logMessage(`You unearthed a ${template.name}, but your inventory is full! It drops to the ground.`);
                     // Drop the artifact on the ground
                     const dropTile = template.tile || key;
-                    if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, dropTile);
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(newX, newY, dropTile);
                     else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = dropTile;
                     else chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = dropTile;
                     
@@ -1586,12 +1586,12 @@ async function attemptMovePlayer(newX, newY) {
                         } else {
                             logMessage("Your pack is full! The Spectacles drop to the floor.");
                             // Drop the spectacles ('👓') on the ruin tile (newX, newY)
-                            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '👓');
+                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(newX, newY, '👓');
                             else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = '👓';
                             else chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '👓';
                             
                             // Un-mark the tile as looted so they can pick them up
-                            let unlootTileId = (gameState.mapMode === 'overworld') ? `${newX},${-newY}` : `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
+                            let unlootTileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') ? `${newX},${-newY}` : `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
                             gameState.lootedTiles.delete(unlootTileId);
                             
                             gameState.mapDirty = true;
