@@ -750,6 +750,10 @@ function renderTerrainCache(startX, startY) {
                     // --- OVERWORLD COLOR PALETTE ---
                     bgColor = '#22c55e'; // Plains
                     if (baseTerrain === 'F' || baseTerrain === '🌳e') bgColor = '#14532d';
+                    else if (baseTerrain === '🌲') bgColor = '#0f766e'; // Tundra Forest
+                    else if (baseTerrain === '❄️') bgColor = '#e0f2fe'; // Snow
+                    else if (baseTerrain === '🍄') bgColor = '#4a044e'; // Fungal Jungle
+                    else if (baseTerrain === '💎c') bgColor = '#083344'; // Crystal Peaks
                     else if (baseTerrain === 'd') bgColor = '#2d2d2d';
                     else if (baseTerrain === 'D') bgColor = '#fde047';
                     else if (baseTerrain === '≈') bgColor = '#422006';
