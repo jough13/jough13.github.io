@@ -449,9 +449,9 @@ function handleItemDrop(key) {
     logMessage(`Dropped 1x ${itemToDrop.name}.`);
 
     // Place on Map
-    if (gameState.mapMode === 'overworld') {
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         // Items dropped manually by players despawn after 2 hours!
-        chunkManager.setWorldTile(player.x, player.y, itemToDrop.tile, 2); 
+        chunkManager.setWorldTile(player.x, player.y, itemToDrop.tile, 2);
     } else if (gameState.mapMode === 'dungeon') {
         chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = itemToDrop.tile;
     } else if (gameState.mapMode === 'castle') {
