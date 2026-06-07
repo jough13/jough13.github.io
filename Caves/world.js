@@ -6,6 +6,7 @@ window.CACHED_ROOM_TEMPLATES = null;
 // ==========================================
 // UNDERWORLD GENERATION (Z-AXIS)
 // ==========================================
+
 function getUnderworldTerrain(worldX, worldY) {
     // Offset noise so the underground doesn't match the surface exactly
     const elev = elevationNoise.noise(worldX / 40 + 1000, worldY / 40 + 1000); 
@@ -26,6 +27,17 @@ function getUnderworldTerrain(worldX, worldY) {
     return '.'; // Standard cavern floor
 }
 
+function getSkyTerrain(worldX, worldY) {
+    const cloudNoise = elevationNoise.noise(worldX / 30 + 5000, worldY / 30 + 5000);
+    const structureNoise = moistureNoise.noise(worldX / 20 + 6000, worldY / 20 + 6000);
+
+    // If noise is high, it's a solid cloud. Otherwise, empty sky (' ')
+    if (cloudNoise > 0.65) {
+        if (structureNoise > 0.75) return '🏛️'; // Marble ruins in the clouds
+        return '☁️'; // Walkable Cloud
+    }
+    return ' '; // Deadly empty sky
+}
 
 const chunkManager = {
     CHUNK_SIZE: 16,
@@ -935,8 +947,10 @@ const chunkManager = {
                 const realmOffset = (gameState.currentRealm || 0) * 100;
 
                 // --- LAYER ROUTING ---
-                if (isUnderworld) {
+                if (gameState.mapMode === 'underworld') {
                     tile = getUnderworldTerrain(worldX, worldY);
+                } else if (gameState.mapMode === 'skyrealm') {
+                    tile = getSkyTerrain(worldX, worldY);
                 } else {
 
                     // --- OVERWORLD BIOME GENERATION ---
