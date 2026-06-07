@@ -1,3 +1,5 @@
+<!-- --- START OF FILE index.html --- -->
+
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
@@ -499,7 +501,17 @@
         </div>
     </div>
 
-    <!-- DELETE CONFIRM MODAL (Already defined near top, keeping logical DOM order) -->
+    <!-- DELETE CONFIRM MODAL -->
+    <div id="deleteConfirmModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
+        <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-red-600 text-center max-w-sm">
+            <h2 id="deleteConfirmTitle" class="text-2xl font-bold mb-4 text-red-500 border-b border-red-900 pb-2">Delete Character?</h2>
+            <p class="text-sm text-gray-300 mb-6">Are you sure you want to delete this character? This action is <strong class="text-red-400">permanent</strong> and cannot be undone.</p>
+            <div class="flex gap-4">
+                <button id="cancelDeleteButton" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl flex-1 shadow-md transition-transform active:scale-95">Cancel</button>
+                <button id="confirmDeleteButton" class="bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl flex-1 shadow-md transition-transform active:scale-95 border border-red-400">Delete</button>
+            </div>
+        </div>
+    </div>
 
     <!-- GAME OVER MODAL -->
     <div id="gameOverModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
