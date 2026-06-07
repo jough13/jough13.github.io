@@ -670,6 +670,8 @@ const TERRAIN_COST = {
     'D': 1,   // Desert
     'd': 1,   // Deadlands
     '=': 0,   // Wooden Bridges / Paths
+    '❄️': 1,  // Deep Snow
+    '🌲': 1,  // Tundra Pine
     
     // --- Free Actions ---
     '<': 0,   // Stairs up are free to step on
