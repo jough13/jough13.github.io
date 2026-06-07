@@ -2,7 +2,7 @@
 // CRAFTING & COOKING SYSTEM
 // ==========================================
 
-// PERFORMANCE WIN: O(1) Item Lookup Cache for Crafting
+// O(1) Item Lookup Cache for Crafting
 // Prevents O(N) string-matching scans against the massive ITEM_DATA dictionary every render frame.
 const _craftItemKeyCache = {};
 function getCraftItemKey(name) {
@@ -187,7 +187,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
                 logMessage(`{red:Your pack is full! The ${craftedName} drops to the floor.}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 
-                if (gameState.mapMode === 'overworld') {
+                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                     chunkManager.setWorldTile(player.x, player.y, dropTile, 2); // Drops for 2 hours
                 } else if (gameState.mapMode === 'dungeon') {
                     chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = dropTile;
@@ -196,7 +196,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
                 }
                 
                 // Un-mark the tile as looted so they can pick it up immediately
-                let tileId = (gameState.mapMode === 'overworld') 
+                let tileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
                     ? `${player.x},${-player.y}`
                     : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
                 gameState.lootedTiles.delete(tileId);
