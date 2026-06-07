@@ -306,6 +306,8 @@ window.CRAFTING_RECIPES = {
 };
 
 window.ITEM_DATA = {
+    '📜c': { name: 'Cultist Orders', type: 'quest', description: "Plans detailing an attack on the village." },
+    '🧿s': { name: 'Shadow Amulet', type: 'quest', description: "It hums with dark energy. A key for high-ranking cultists." },
     '🌱': {
         name: 'Cloudseed',
         type: 'consumable',
