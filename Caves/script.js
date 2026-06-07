@@ -666,10 +666,10 @@ const TERRAIN_COST = {
     
     // --- Standard Terrain ---
     'F': 1,   // Forest
-    '.': 1,   // Plains, Dungeon Floors, and Castle Courtyards
+    '.': 0,   // Plains, Dungeon Floors, and Castle Courtyards
     'D': 1,   // Desert
     'd': 1,   // Deadlands
-    '=': 1,   // Wooden Bridges / Paths
+    '=': 0,   // Wooden Bridges / Paths
     
     // --- Free Actions ---
     '<': 0,   // Stairs up are free to step on
@@ -2736,16 +2736,6 @@ async function enterGame(playerData) {
         if (!gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
         gameState.pendingMapSaves.looted[key] = null; // Mark for deletion in Firebase
     };
-
-    
-    // Polyfill .add() so we don't break existing game logic!
-    gameState.lootedTiles.add = function(key) { this.set(key, Date.now()); };
-
-    if (!playerData.background) {
-        loadingIndicator.classList.add('hidden');
-        charCreationModal.classList.remove('hidden');
-        return;
-    }
 
     // --- SETUP LISTENERS ---
     if (sharedEnemiesListener) {
