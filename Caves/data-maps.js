@@ -32,9 +32,45 @@ window.REALM_MUTATORS = {
 };
 
 window.TILE_DATA = {
-    // ==========================================
-    // --- EXPANSION: ENDGAME PLOT & NPCS ---
-    // ==========================================
+    '🍄b': {
+        type: 'anomaly',
+        name: 'Bouncer Cap',
+        flavor: "A massive, rubbery mushroom. It looks highly pressurized.",
+        onInteract: (state, x, y) => {
+            const dx = x - state.player.x;
+            const dy = y - state.player.y;
+            
+            logMessage("{green:BOING!} The mushroom launches you through the air!");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#4ade80', 15);
+            
+            state.screenShake = 10;
+            
+            // Fling the player 4 tiles in the direction they were walking
+            let landX = x;
+            let landY = y;
+            for(let i=1; i<=4; i++) {
+                const checkX = x + (dx * i);
+                const checkY = y + (dy * i);
+                const tile = chunkManager.getTile(checkX, checkY);
+                // Stop if we hit a solid wall or mountain
+                if (['^', '▓', '▒', '🧱'].includes(tile)) break;
+                landX = checkX;
+                landY = checkY;
+            }
+            
+            state.player.x = landX;
+            state.player.y = landY;
+            
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(landX, landY, '#d4d4d8', 10);
+            return { x: landX, y: landY };
+        }
+    },
+    '⚙️d': {
+        type: 'dungeon_entrance',
+        flavor: "A massive brass gear protrudes from the earth. A staircase leads into the ticking darkness...",
+        getCaveId: (x, y) => `clockwork_${x}_${y}`
+    },
     '🪦': {
         type: 'anomaly',
         name: 'The Royal Tomb',
@@ -193,31 +229,57 @@ window.TILE_DATA = {
         name: 'The Inquisitor',
         flavor: "A stern man in heavy armor. He is hunting the Shadowed Hand.",
         onInteract: (state, x, y) => {
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-            
-            if (!state.foundLore.has("met_inquisitor")) {
-                logMessage("{gold:You meet the Inquisitor. +50 XP}");
-                if (typeof grantXp === 'function') grantXp(50);
-                state.foundLore.add("met_inquisitor");
-                if (typeof playerRef !== 'undefined') playerRef.update({ foundLore: Array.from(state.foundLore) });
-            }
-            
+            const player = state.player;
+            player.shadowQuestStage = player.shadowQuestStage || 0;
+            const inv = player.inventory;
+
             loreTitle.textContent = "The Inquisitor";
-            loreContent.innerHTML = `
-                <p>"The darkness is spreading. I have posted new, high-priority bounties on the board. We need capable hunters to slay the horrors before they reach the village."</p>
-                <button id="viewInqBounties" class="mt-4 bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded w-full shadow transition-transform active:scale-95">View Bounties</button>
-            `;
+            let html = "";
+
+            if (player.shadowQuestStage === 0) {
+                const orderIdx = inv.findIndex(i => i.name === 'Cultist Orders');
+                if (orderIdx > -1) {
+                    html = `<p>"What's this? Cultist Orders? ...By the Light. They are planning to assault the Safe Haven. You have done us a great service."</p><p class="mt-2 text-yellow-500 font-bold">+500 XP & 200 Gold!</p>`;
+                    inv.splice(orderIdx, 1);
+                    player.shadowQuestStage = 1;
+                    player.coins += 200;
+                    if (typeof grantXp === 'function') grantXp(500);
+                } else {
+                    html = `<p>"The darkness is spreading. If you find any Cultists in the ruins (🏛️), slay them and bring me proof of their plans."</p>`;
+                }
+            } 
+            else if (player.shadowQuestStage === 1) {
+                const amuletIdx = inv.findIndex(i => i.name === 'Shadow Amulet');
+                if (amuletIdx > -1) {
+                    html = `<p>"A Shadow Amulet! This belongs to a high-ranking Fanatic. With this, we can track their leader, the Necromancer Lord."</p><p class="mt-2 text-yellow-500 font-bold">+1000 XP & Paladin's Shield!</p>`;
+                    inv.splice(amuletIdx, 1);
+                    player.shadowQuestStage = 2;
+                    if (typeof grantXp === 'function') grantXp(1000);
+                    
+                    if (inv.length < window.MAX_INVENTORY_SLOTS) {
+                        const shieldKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === 'Aegis of the Ancients') || '🛡️a';
+                        inv.push({ templateId: shieldKey, name: 'Aegis of the Ancients', type: 'armor', tile: '🛡️', quantity: 1, defense: 8, slot: 'armor' });
+                    }
+                } else {
+                    html = `<p>"The Cultist Fanatics are hiding in the Dark Castles (🕍). Find one, defeat him, and bring me his Shadow Amulet."</p>`;
+                }
+            }
+            else {
+                html = `<p>"The Light protects us, thanks to you. If you wish to hunt standard bounties, check the board."</p>`;
+            }
+
+            // Always allow bounty board access
+            html += `<button id="viewInqBounties" class="mt-4 bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded w-full shadow">View Bounties</button>`;
+
+            loreContent.innerHTML = html;
             loreModal.classList.remove('hidden');
 
             setTimeout(() => {
                 const btn = document.getElementById('viewInqBounties');
-                if (btn) btn.onclick = () => {
-                    loreModal.classList.add('hidden');
-                    if (typeof openBountyBoard === 'function') openBountyBoard();
-                };
+                if (btn) btn.onclick = () => { loreModal.classList.add('hidden'); openBountyBoard(); };
             }, 0);
 
-            return null;
+            return { inventory: inv, shadowQuestStage: player.shadowQuestStage, coins: player.coins };
         }
     },
 
@@ -1197,6 +1259,13 @@ window.CASTLE_LAYOUTS = {
 };
 
 window.CAVE_THEMES = {
+    CLOCKWORK: {
+        name: 'An Ancient Machine',
+        wall: '⚙️', floor: '▤', secretWall: '▒',
+        colors: { wall: '#b45309', floor: '#44403c' },
+        decorations: ['🛢', '⛓️', '💡'], // Oil Barrels, Chains, Bulbs
+        enemies: ['🤖', 'k', '🧌'] // Clockwork Guardians, Kobold Scavengers, Golems
+    },
     FUNGAL: {
         name: 'The Mycelium Depths',
         wall: '▓', floor: '.', secretWall: '▒',
