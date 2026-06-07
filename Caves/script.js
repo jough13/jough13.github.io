@@ -666,10 +666,12 @@ const TERRAIN_COST = {
     
     // --- Standard Terrain ---
     'F': 1,   // Forest
-    '.': 0,   // Plains, Dungeon Floors, and Castle Courtyards
+    '.': 0,   // Plains
     'D': 1,   // Desert
     'd': 1,   // Deadlands
-    '=': 0,   // Wooden Bridges / Paths
+    '=': 0,   // Wooden Bridges
+    '🍄': 1,  // Fungal Jungle
+    '💎c': 1, // Crystal Peaks
     '❄️': 1,  // Deep Snow
     '🌲': 1,  // Tundra Pine
     
