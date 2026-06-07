@@ -46,6 +46,48 @@ function finalizeMapTransition() {
     endPlayerTurn(updates);
 }
 
+/**
+ * Claims a world tile (like an item or chest) using a Firebase Transaction.
+ * Prevents duplication exploits when multiple players try to grab the same object.
+ */
+async function claimWorldTile(x, y, expectedTile) {
+    // Instanced maps (Dungeons/Castles) are single-player, so no transaction is needed.
+    if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') {
+        return true; 
+    }
+    
+    const chunkX = Math.floor(x / chunkManager.CHUNK_SIZE);
+    const chunkY = Math.floor(y / chunkManager.CHUNK_SIZE);
+    const chunkId = `${chunkX},${chunkY}`;
+    const localX = ((x % chunkManager.CHUNK_SIZE) + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
+    const localY = ((y % chunkManager.CHUNK_SIZE) + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
+    const tileKey = `${localX},${localY}`;
+    
+    let realmPrefix = '';
+    if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
+    else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+    
+    const tileRef = rtdb.ref(`worldState/${realmPrefix}${chunkId}/${tileKey}`);
+    
+    try {
+        const txResult = await tileRef.transaction(currentData => {
+            // If it's a TTL (time-to-live) object, check the 't' property. Otherwise check the string.
+            const currentVal = (typeof currentData === 'object' && currentData !== null) ? currentData.t : currentData;
+            
+            // If the item isn't there anymore, abort the transaction!
+            if (currentVal !== expectedTile) return undefined; 
+            
+            // Otherwise, claim it by deleting it from the world state
+            return null; 
+        });
+        
+        return txResult.committed;
+    } catch (e) {
+        console.error("Failed to claim tile:", e);
+        return false;
+    }
+}
+
 async function attemptMovePlayer(newX, newY) {
     // 1. Unlock input if we are just waiting (Safety fallback)
     if (newX === gameState.player.x && newY === gameState.player.y) {
@@ -99,6 +141,22 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     let newTile;
+
+    // --- SKY REALM FALL HAZARD ---
+    if (gameState.mapMode === 'skyrealm' && newTile === ' ') {
+        logMessage("{red:You step off the edge and plummet to the earth!}");
+        gameState.player.health -= 25; // Massive fall damage
+        gameState.screenShake = 30;
+        triggerStatFlash(statDisplays.health, false);
+        
+        // Return to Overworld
+        gameState.mapMode = 'overworld';
+        gameState.mapDirty = true;
+        render();
+        
+        if (handlePlayerDeath()) return;
+        return; // Stop the move, you fell!
+    }
 
     // --- CHECK FOR LIVE ENEMIES FIRST (Combat Priority) ---
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
@@ -1061,6 +1119,18 @@ async function attemptMovePlayer(newX, newY) {
         return;
     
     } else if (tileData && tileData.type === 'loot_chest') {
+        
+        // --- ANTI-DUPLICATION TRANSACTION ---
+        isProcessingMove = true;
+        const claimed = await claimWorldTile(newX, newY, newTile);
+        isProcessingMove = false;
+
+        if (!claimed) {
+            logMessage("{gray:The chest has already been looted.}");
+            chunkManager.setWorldTile(newX, newY, '.');
+            render();
+            return;
+        }
 
         // --- MIMIC CHECK ---
         if (Math.random() < 0.10) {
@@ -2573,6 +2643,18 @@ async function attemptMovePlayer(newX, newY) {
             logMessage(`You see where a ${itemData.name} once was...`);
         } 
         else {
+            // --- ANTI-DUPLICATION TRANSACTION ---
+            isProcessingMove = true;
+            const claimed = await claimWorldTile(newX, newY, newTile);
+            isProcessingMove = false;
+
+            if (!claimed) {
+                logMessage("{gray:Someone else grabbed that item before you!}");
+                chunkManager.setWorldTile(newX, newY, '.');
+                render();
+                return;
+            }
+
             // --- INSTANT ITEMS (Gold) ---
             if (itemData.type === 'instant') {
                 itemData.effect(gameState, tileId);
