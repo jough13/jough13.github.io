@@ -171,7 +171,7 @@ function useSkill(skillId) {
                         const tx = player.x + x;
                         const ty = player.y + y;
 
-                        if (gameState.mapMode === 'overworld') {
+                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                             const enemyId = `overworld:${tx},${-ty}`;
                             const liveEnemy = gameState.sharedEnemies[enemyId];
                             const tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(tx, ty);
@@ -322,7 +322,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                 hit = true;
 
                 // Apply Damage
-                if (gameState.mapMode === 'overworld') {
+                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                     // Subtract Defense
                     const mitigatedDmg = Math.max(1, finalDmg - (enemyData.defense || 0));
                     combatPromises.push(handleOverworldCombat(coords.x, coords.y, enemyData, tile, mitigatedDmg));
@@ -499,7 +499,7 @@ async function executeRangedAttack(dirX, dirY) {
             let tile;
             let isSolid = false;
 
-            if (gameState.mapMode === 'overworld') {
+            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                 const enemyId = `overworld:${targetX},${-targetY}`;
                 const liveEnemy = gameState.sharedEnemies[enemyId];
                 tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
@@ -565,7 +565,7 @@ async function executeRangedAttack(dirX, dirY) {
             if (enemyData) {
                 hitSomething = true;
                 
-                if (gameState.mapMode === 'overworld') {
+                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                     const finalDmg = Math.max(1, totalDamage - (enemyData.defense || 0));
                     await handleOverworldCombat(targetX, targetY, enemyData, tile, finalDmg);
                 } else {
@@ -728,7 +728,7 @@ async function executeLunge(dirX, dirY) {
                 const totalLungeDamage = Math.max(1, Math.floor(baseLungeDamage + scalingDamage));
                 // --- End Damage Calc ---
 
-                if (gameState.mapMode === 'overworld') {
+                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                     // Handle Overworld Combat
                     await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
 
