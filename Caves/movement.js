@@ -850,7 +850,8 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     if (newTile === '¥') {
-        activeShopInventory = TRADER_INVENTORY;
+        // Deep clone the inventory so buying items doesn't permanently empty the global template!
+        activeShopInventory = JSON.parse(JSON.stringify(TRADER_INVENTORY));
         logMessage("You meet a Wandering Trader. 'Rare goods, for a price...'");
         renderShop();
         shopModal.classList.remove('hidden');
