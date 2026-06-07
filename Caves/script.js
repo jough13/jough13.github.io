@@ -1836,11 +1836,12 @@ function endPlayerTurn(turnUpdates = {}) {
         killCounts: gameState.player.killCounts || {},
         quests: gameState.player.quests || {},
 
-        // World State
+        // World State & Companions
         x: gameState.player.x,
         y: gameState.player.y,
         activeTreasure: gameState.activeTreasure || null,
         weather: gameState.weather || 'clear',
+        companion: gameState.player.companion || null, // Save companion HP/State
         
         // --- MULTIVERSE STATE ---
         currentRealm: gameState.currentRealm || 0,
