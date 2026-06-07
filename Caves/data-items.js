@@ -306,6 +306,29 @@ window.CRAFTING_RECIPES = {
 };
 
 window.ITEM_DATA = {
+    '🌱': {
+        name: 'Cloudseed',
+        type: 'consumable',
+        tile: '🌱',
+        description: "Plant this on open ground to grow a stalk into the heavens.",
+        effect: (state) => {
+            if (state.mapMode !== 'overworld') {
+                logMessage("You must plant this under the open sky.");
+                return false;
+            }
+            logMessage("{green:A massive beanstalk erupts from the earth, piercing the clouds!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            
+            // Generate the stalk on the overworld so they can climb back up later!
+            chunkManager.setWorldTile(state.player.x, state.player.y, '🌿');
+            
+            // Transition to Sky Realm
+            state.mapMode = 'skyrealm';
+            state.mapDirty = true;
+            if (typeof render === 'function') render();
+            return true;
+        }
+    },
     '⚔️star': {
         name: 'Star-Forged Blade',
         type: 'weapon',
