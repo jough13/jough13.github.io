@@ -991,9 +991,11 @@ const chunkManager = {
                 const featureRoll = random();
 
                 if (isUnderworld) {
+
                     // ==================================================
                     // UNDERWORLD FEATURES & SPAWNING
                     // ==================================================
+
                     if (tile === '.' && featureRoll < 0.005) {
                         chunkData[y][x] = '•'; // Iron Ore is more common underground
                     } else if (tile === '▓' && featureRoll < 0.001) {
@@ -1024,9 +1026,11 @@ const chunkManager = {
                         }
                     }
                 } else {
+
                     // ==================================================
                     // OVERWORLD FEATURES & SPAWNING
                     // ==================================================
+
                     // --- 1. LEGENDARY LANDMARKS (Unique, Very Rare) ---
                     // Force the Grand Fortress to spawn far away from the village (dist > 1500)
                     if (tile === '.' && featureRoll < 0.000001 && distSq > 2250000) { 
@@ -1048,14 +1052,20 @@ const chunkManager = {
                     else if (tile === 'D' && featureRoll < 0.0001) {
                         chunkData[y][x] = '🦴d';
                     }
-                    // --- NEW: NIGHT-TIME ANOMALIES ---
+                    // --- NIGHT-TIME ANOMALIES ---
                     else if (tile === 'F' && featureRoll > 0.0001 && featureRoll < 0.0003) {
                         chunkData[y][x] = '🌺'; // Moonblooms in forests
                     }
                     else if (tile === '^' && featureRoll > 0.0001 && featureRoll < 0.0003) {
                         chunkData[y][x] = '☄️'; // Star-metal in mountains
                     }
-                    // --- END NEW ANOMALIES ---
+                    // --- EXPLORATION EXPANSION ---
+                    else if (tile === '🍄' && featureRoll < 0.005) {
+                        chunkData[y][x] = '🍄b'; // Bouncy mushrooms in Fungal Jungles
+                    }
+                    else if (tile === 'D' && featureRoll < 0.0005) {
+                        chunkData[y][x] = '⚙️d'; // Clockwork Dungeons buried in the Desert!
+                    }
                     else if ((tile === 'd' || tile === 'D') && featureRoll < 0.000005) { // Void Rift
                         chunkData[y][x] = 'Ω';
                     }
