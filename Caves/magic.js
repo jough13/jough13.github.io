@@ -269,7 +269,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
     // Determine the tile and enemy data
     let tile;
-    if (gameState.mapMode === 'overworld') {
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         const enemyId = `overworld:${targetX},${-targetY}`;
         const liveEnemy = gameState.sharedEnemies[enemyId];
         tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
@@ -312,7 +312,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
     let damageDealt = 0; 
 
-    if (gameState.mapMode === 'overworld') {
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         const enemyId = `overworld:${targetX},${-targetY}`;
         const enemyRef = rtdb.ref(EnemyNetworkManager.getPath(targetX, targetY, enemyId));
 
@@ -714,13 +714,13 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[y]?.[x];
                         else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[y]?.[x];
 
-                        // CRITICAL FIX: Ensure Fireball triggers Barrel Explosions!
+                        // Ensure Fireball triggers Barrel Explosions!
                         if (tileAt === '🛢') {
                             logMessage("{orange:BOOM! An Oil Barrel explodes!}");
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f97316', 15);
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.4, 0.2, 200);
                             
-                            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '.');
+                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(x, y, '.');
                             else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][y][x] = '.';
                             else chunkManager.castleMaps[gameState.currentCastleId][y][x] = '.';
                             
