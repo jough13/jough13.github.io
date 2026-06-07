@@ -543,6 +543,36 @@ window.ENEMY_DATA = {
         inflicts: 'root',
         flavor: "A monstrous shape-shifter hoping for a greedy victim."
     },
+    '🧟': {
+        name: 'Spore Zombie',
+        maxHealth: 18, attack: 4, defense: 0, xp: 25,
+        loot: '🍄', 
+        color: '#86efac', 
+        inflicts: 'poison', inflictChance: 0.4,
+        flavor: "It was once an adventurer. Now, glowing fungus controls its nervous system."
+    },
+    '🪨c': {
+        name: 'Crystal Behemoth',
+        maxHealth: 35, attack: 5, defense: 4, xp: 60,
+        loot: '💎', 
+        color: '#22d3ee', 
+        flavor: "Its crystalline hide reflects the ambient light... and your attacks."
+    },
+    '🤖': {
+        name: 'Clockwork Guardian',
+        maxHealth: 50, attack: 8, defense: 6, xp: 120,
+        loot: '⚙️', 
+        color: '#f59e0b', 
+        flavor: "A relic of the Second Age. It still ruthlessly executes its final programmed order: ELIMINATE."
+    },
+    '🐛': {
+        name: 'Dune Thresher',
+        maxHealth: 120, attack: 12, defense: 2, xp: 400,
+        loot: '🦷', 
+        color: '#d97706', 
+        isBoss: true,
+        flavor: "The ground shakes before it erupts from the sand, a maw of a thousand teeth."
+    },
     '🧙': {
         name: 'Necromancer Lord',
         maxHealth: 80, attack: 7, defense: 3, xp: 1000,
