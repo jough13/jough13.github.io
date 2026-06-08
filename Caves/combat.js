@@ -1820,3 +1820,75 @@ function handleInstancedEnemyDeath(enemy, x, y) {
     }
     gameState.mapDirty = true;
 }
+
+async function executeThrowTNT(dirX, dirY) {
+    const player = gameState.player;
+    
+    // --- 🚨 LOCK THE ENGINE ---
+    isProcessingMove = true;
+
+    try {
+        // 1. Consume the TNT from Inventory
+        const invIndex = player.inventory.findIndex(i => i.name === 'Dwarven TNT');
+        if (invIndex > -1) {
+            player.inventory[invIndex].quantity--;
+            if (player.inventory[invIndex].quantity <= 0) player.inventory.splice(invIndex, 1);
+            if (typeof playerRef !== 'undefined') playerRef.update({ inventory: getSanitizedInventory() });
+        } else {
+            return; // Safety catch
+        }
+
+        // 2. Calculate Landing Zone (Throw it 3 tiles away)
+        const targetX = player.x + (dirX * 3);
+        const targetY = player.y + (dirY * 3);
+
+        logMessage("{orange:You lob the TNT! KABOOM!}");
+        gameState.screenShake = 30; // Massive shake!
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.4, 200);
+
+        const explosionPromises = [];
+
+        // 3. Detonate in a 3x3 Area
+        for (let y = targetY - 1; y <= targetY + 1; y++) {
+            for (let x = targetX - 1; x <= targetX + 1; x++) {
+                
+                // A. Deal 30 Damage to any enemies caught in the blast
+                explosionPromises.push(
+                    applySpellDamage(x, y, 30, 'fireball').then(hit => {
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f97316', 5);
+                    })
+                );
+
+                // B. Blow up Cracked Walls (🏚) to reveal rare gems and mithril!
+                let tileAt;
+                if (gameState.mapMode === 'overworld') tileAt = chunkManager.getTile(x, y);
+                else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[y]?.[x];
+                else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[y]?.[x];
+
+                if (tileAt === '🏚' || tileAt === '🏚️') {
+                    // 20% Mithril, 40% Diamond, 40% Massive Gold Cache
+                    const roll = Math.random();
+                    let loot = '$';
+                    if (roll < 0.20) loot = '💠';
+                    else if (roll < 0.60) loot = '💎';
+
+                    if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(x, y, loot);
+                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][y][x] = loot;
+                    
+                    logMessage("{yellow:The explosion shatters a cracked wall, revealing hidden treasure!}");
+                }
+            }
+        }
+        
+        await Promise.all(explosionPromises);
+        
+        // Finalize Turn
+        gameState.isAiming = false;
+        endPlayerTurn();
+        if (typeof render === 'function') render();
+        if (typeof renderInventory === 'function') renderInventory();
+
+    } finally {
+        isProcessingMove = false;
+    }
+}
