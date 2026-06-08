@@ -306,6 +306,18 @@ window.CRAFTING_RECIPES = {
 };
 
 window.ITEM_DATA = {
+    '🧨': {
+        name: 'Dwarven TNT',
+        type: 'consumable',
+        tile: '🧨',
+        description: "Aim and throw to blow up walls (🏚) and enemies in a 3x3 radius!",
+        effect: (state) => {
+            logMessage("{orange:Select a direction to throw the TNT... (WASD/Arrows)}");
+            state.isAiming = true;
+            state.abilityToAim = 'throwTNT';
+            return false; // Don't consume it here. We consume it when thrown!
+        }
+    },
     '📜c': { name: 'Cultist Orders', type: 'quest', description: "Plans detailing an attack on the village." },
     '🧿s': { name: 'Shadow Amulet', type: 'quest', description: "It hums with dark energy. A key for high-ranking cultists." },
     '🌱': {
