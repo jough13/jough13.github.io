@@ -422,6 +422,7 @@ window.ENEMY_DATA = {
         caster: true, castRange: 4, spellDamage: 3,
         flavor: "They whisper ancient texts that hurt your ears to hear."
     },
+    
 
     // --- LEVEL 4-5 (Advanced Threats) ---
     '@': {
@@ -462,6 +463,13 @@ window.ENEMY_DATA = {
         color: '#38bdf8', 
         inflicts: 'frostbite',
         flavor: "Ancient northmen, preserved by the biting frost."
+    },
+    '👷': {
+        name: 'Undead Miner',
+        maxHealth: 25, attack: 5, defense: 2, xp: 35,
+        loot: '🧨', // Drops TNT!
+        color: '#fcd34d', 
+        flavor: "He still swings his pickaxe, long after his shift has ended."
     },
 
     // --- LEVEL 6+ (Elites) ---
