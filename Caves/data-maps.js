@@ -32,6 +32,51 @@ window.REALM_MUTATORS = {
 };
 
 window.TILE_DATA = {
+    '🛒': {
+        type: 'anomaly',
+        name: 'Minecart',
+        flavor: "A rusted iron cart on a track. Hop in?",
+        onInteract: (state, x, y) => {
+            const dx = x - state.player.x;
+            const dy = y - state.player.y;
+            
+            logMessage("{yellow:You hop into the minecart! WHOOSH!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.2, 500);
+            state.screenShake = 15;
+
+            let landX = x;
+            let landY = y;
+            
+            // Slide up to 15 tiles in the direction pushed
+            for(let i=1; i<=15; i++) {
+                const checkX = x + (dx * i);
+                const checkY = y + (dy * i);
+                let tile = '.';
+                
+                if (state.mapMode === 'overworld') tile = chunkManager.getTile(checkX, checkY);
+                else if (state.mapMode === 'dungeon') tile = chunkManager.caveMaps[state.currentCaveId][checkY][checkX];
+                else if (state.mapMode === 'castle') tile = chunkManager.castleMaps[state.currentCastleId][checkY][checkX];
+
+                // Stop if we hit a wall, water, or an enemy
+                if (['^', '▓', '▒', '🧱', '🏚', '🏚️', '~', '🌋'].includes(tile) || (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile])) {
+                    break;
+                }
+                
+                landX = checkX;
+                landY = checkY;
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(landX, landY, '#facc15', 2); // Spark trail!
+            }
+
+            state.player.x = landX;
+            state.player.y = landY;
+            return { x: landX, y: landY };
+        }
+    },
+    '⛰️m': {
+        type: 'dungeon_entrance',
+        flavor: "A reinforced wooden archway leads into the deep earth...",
+        getCaveId: (x, y) => `mine_${x}_${y}`
+    },
     '🍄b': {
         type: 'anomaly',
         name: 'Bouncer Cap',
@@ -1259,6 +1304,13 @@ window.CASTLE_LAYOUTS = {
 };
 
 window.CAVE_THEMES = {
+    DWARVEN_MINE: {
+        name: 'Abandoned Dwarven Mine',
+        wall: '▓', floor: '.', secretWall: '🏚',
+        colors: { wall: '#451a03', floor: '#57534e' },
+        decorations: ['🛤️', '🛤️', '🛒', '⛏️', '🛢'],
+        enemies: ['s', '🦇', '👷', '🧌'] // Skeletons, Bats, Miners, Golems
+    },
     CLOCKWORK: {
         name: 'An Ancient Machine',
         wall: '⚙️', floor: '▤', secretWall: '▒',
