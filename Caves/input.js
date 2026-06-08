@@ -5,7 +5,7 @@
 // --- GLOBALS & SAFETY ---
 window.inputQueue = window.inputQueue || []; // Guarantee queue exists regardless of load order
 
-// PERFORMANCE WIN: O(1) Directional Mapping
+// O(1) Directional Mapping
 // Replaces massive if/else and switch statements with a single instant dictionary lookup
 const MOVEMENT_MAP = {
     // Cardinals
@@ -130,6 +130,7 @@ function handleInput(key) {
             else if (abilityId === 'pacify') executePacify(dirX, dirY);
             else if (abilityId === 'inflictMadness') executeInflictMadness(dirX, dirY);
             else if (abilityId === 'tame') executeTame(dirX, dirY);
+            else if (abilityId === 'throwTNT') executeThrowTNT(dirX, dirY);
             else logMessage("{red:Unknown ability. Aiming canceled.}");
 
             gameState.isAiming = false;
