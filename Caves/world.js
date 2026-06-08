@@ -108,8 +108,11 @@ const chunkManager = {
             chosenThemeKey = 'VOID'; // Force Void Theme
             enemyCount = Math.max(enemyCount, 25);   
         } else if (caveId.startsWith('sunken_')) {
-            chosenThemeKey = 'SUNKEN'; // Force Sunken Theme
+            chosenThemeKey = 'SUNKEN'; 
             enemyCount = Math.max(enemyCount, 25);   
+        } else if (caveId.startsWith('mine_')) {
+            chosenThemeKey = 'DWARVEN_MINE';
+            enemyCount = Math.max(enemyCount, 30);
         } else {
             // Normal procedural cave
             const randomTheme = Alea(stringToSeed(caveId + ':theme'));
@@ -1102,6 +1105,9 @@ const chunkManager = {
                     }
                     else if (tile === '^' && featureRoll < 0.008) {
                         chunkData[y][x] = '⛰';
+                    }
+                    else if (tile === '^' && featureRoll >= 0.008 && featureRoll < 0.012) {
+                        chunkData[y][x] = '⛰️m';
                     }
                     else if (tile === 'd' && featureRoll < 0.004) {
                         chunkData[y][x] = '⛰';
