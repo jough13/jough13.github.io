@@ -306,6 +306,35 @@ window.CRAFTING_RECIPES = {
 };
 
 window.ITEM_DATA = {
+    '🏆': {
+        name: "Gladiator's Token",
+        type: "consumable",
+        tile: "🏆",
+        description: "Proof of your victory in the Colosseum. {gold:Permanently +2 to All Core Stats!}",
+        effect: (state) => {
+            const p = state.player;
+            p.strength += 2; 
+            p.dexterity += 2; 
+            p.wits += 2; 
+            p.constitution += 2; 
+            p.luck += 2;
+            
+            logMessage("{gold:You crush the token. The strength of champions flows into you!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#facc15', 30);
+            
+            if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
+
+            // Re-open the exit!
+            if (state.mapMode === 'dungeon' && state.currentCaveTheme === 'ARENA') {
+                chunkManager.caveMaps[state.currentCaveId][13][7] = '<';
+                logMessage("{cyan:The gates reopen! You may exit the arena.}");
+                state.mapDirty = true;
+            }
+
+            return true; // Consume the item
+        }
+    },
     '🧨': {
         name: 'Dwarven TNT',
         type: 'consumable',
