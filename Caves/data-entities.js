@@ -679,6 +679,14 @@ window.ENEMY_DATA = {
         loot: '🧿e', color: '#000000', isBoss: true,
         caster: true, castRange: 6, spellDamage: 12, inflicts: 'madness',
         flavor: "He is no longer a man. He is a conduit for the Void itself."
+    },
+    '🩸c': {
+        name: 'Arena Champion',
+        maxHealth: 350, attack: 18, defense: 5, xp: 2500,
+        loot: '🏆', // Drops the Token!
+        color: '#dc2626', 
+        isBoss: true,
+        flavor: "A towering gladiator of bone and ash. Undefeated. Until now."
     }
 };
 
