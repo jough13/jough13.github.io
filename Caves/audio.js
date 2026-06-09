@@ -1,3 +1,5 @@
+// --- START OF FILE audio.js ---
+
 // ==========================================
 // ADVANCED PROCEDURAL AUDIO SYSTEM
 // ==========================================
@@ -68,7 +70,7 @@ const AudioSystem = {
         return true;
     },
 
-    // --- IMMERSION: DYNAMIC ACOUSTICS & PANNING ---
+    // --- IMMERSION: DYNAMIC ACOUSTICS & DISTANCE ATTENUATION ---
     
     // Simulates echoes and muffling if underground
     _getAcoustics: function() {
@@ -79,12 +81,19 @@ const AudioSystem = {
         return { durationMult: 1.0, filterMult: 1.0 }; // Open air
     },
 
-    // Calculates stereo panning based on horizontal distance from the player
-    _getPan: function(x) {
-        if (x === undefined || typeof gameState === 'undefined' || !gameState.player) return 0;
+    // JUICE WIN: Calculates stereo panning, volume dropoff, and high-frequency loss based on distance!
+    _getSpatialData: function(x) {
+        if (x === undefined || typeof gameState === 'undefined' || !gameState.player) {
+            return { pan: 0, distanceVol: 1.0, distanceFilter: 1.0 };
+        }
         const dx = x - gameState.player.x;
-        // Max pan (1.0 or -1.0) reached at 10 tiles away
-        return Math.max(-1, Math.min(1, dx / 10));
+        const absDx = Math.abs(dx);
+        
+        return {
+            pan: Math.max(-1, Math.min(1, dx / 10)), // Stereo pan
+            distanceVol: Math.max(0.1, 1.0 - (absDx * 0.06)), // Fades out as distance increases
+            distanceFilter: Math.max(0.3, 1.0 - (absDx * 0.05)) // Muffles far sounds (loss of treble)
+        };
     },
 
     // --- CORE GENERATORS ---
@@ -96,7 +105,10 @@ const AudioSystem = {
         if (!this.noiseBuffer) this.initNoise();
 
         const acoustics = this._getAcoustics();
+        const spatial = this._getSpatialData(x);
+        
         const actualDuration = duration * acoustics.durationMult;
+        const actualVol = vol * spatial.distanceVol;
 
         const src = ctx.createBufferSource();
         src.buffer = this.noiseBuffer; 
@@ -106,17 +118,18 @@ const AudioSystem = {
 
         const filter = ctx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.value = (filterFreq + (Math.random() - 0.5) * 200) * acoustics.filterMult;
+        // Apply acoustic cave muffling AND distance muffling
+        filter.frequency.value = (filterFreq + (Math.random() - 0.5) * 200) * acoustics.filterMult * spatial.distanceFilter;
 
         const gain = ctx.createGain();
-        gain.gain.setValueAtTime(vol, ctx.currentTime);
+        gain.gain.setValueAtTime(actualVol, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + actualDuration);
 
         // SPATIAL AUDIO: Stereo Panning
         let panner = null;
         if (ctx.createStereoPanner) {
             panner = ctx.createStereoPanner();
-            panner.pan.value = this._getPan(x);
+            panner.pan.value = spatial.pan;
         }
 
         // Build the audio graph
@@ -143,7 +156,10 @@ const AudioSystem = {
         
         const ctx = this._ctx;
         const acoustics = this._getAcoustics();
+        const spatial = this._getSpatialData(x);
+        
         const actualDuration = duration * acoustics.durationMult;
+        const actualVol = vol * spatial.distanceVol;
 
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -156,26 +172,26 @@ const AudioSystem = {
             finalFreq = freq * (0.92 + Math.random() * 0.16); 
         }
         
-        // Apply acoustic muffling to high frequencies
-        if (finalFreq > 500 && acoustics.filterMult < 1.0) {
-            finalFreq *= acoustics.filterMult;
+        // Apply acoustic & distance muffling to high frequencies
+        if (finalFreq > 400) {
+            finalFreq *= (acoustics.filterMult * spatial.distanceFilter);
         }
 
         osc.frequency.setValueAtTime(finalFreq, ctx.currentTime);
         if (slideTo) {
-            osc.frequency.exponentialRampToValueAtTime(slideTo, ctx.currentTime + actualDuration);
+            osc.frequency.exponentialRampToValueAtTime(slideTo * spatial.distanceFilter, ctx.currentTime + actualDuration);
         }
 
         gain.gain.setValueAtTime(0.01, ctx.currentTime);
         // Add a tiny attack envelope to prevent audio popping clicks
-        gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + 0.02);
+        gain.gain.linearRampToValueAtTime(actualVol, ctx.currentTime + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + actualDuration);
 
         // SPATIAL AUDIO
         let panner = null;
         if (ctx.createStereoPanner) {
             panner = ctx.createStereoPanner();
-            panner.pan.value = this._getPan(x);
+            panner.pan.value = spatial.pan;
         }
 
         if (panner) {
@@ -195,8 +211,38 @@ const AudioSystem = {
         };
     },
 
-    // EXPANDABILITY WIN: Generic Melody Sequencer
-    // Allows easy creation of custom jingles for quests, puzzles, or rare loot!
+    // EXPANDABILITY WIN: The Polyphonic Engine
+    // Plays multiple tones simultaneously. Perfect for thick, lush rewards or terrifying bosses!
+    playChord: function(notes, type = 'sine', duration = 0.5, vol = 0.1) {
+        if (!this.settings.master || !this.settings.ui || !this.getCtx()) return;
+        const ctx = this._ctx;
+        const acoustics = this._getAcoustics();
+        const actualDuration = duration * acoustics.durationMult;
+        
+        // Distribute volume so chords don't blow out the speakers
+        const noteVol = vol / notes.length;
+
+        notes.forEach(freq => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc.type = type;
+            osc.frequency.value = freq * acoustics.filterMult;
+
+            gain.gain.setValueAtTime(0.01, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(noteVol, ctx.currentTime + 0.05); 
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + actualDuration);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.start();
+            osc.stop(ctx.currentTime + actualDuration);
+            
+            osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+        });
+    },
+
     playMelody: function(notes, type = 'sine', speed = 0.15, vol = 0.1) {
         if (!this.settings.master || !this.settings.ui || !this.getCtx()) return;
         
@@ -211,7 +257,6 @@ const AudioSystem = {
         
         let totalDuration = notes.length * speed * acoustics.durationMult;
         
-        // Build the sequence
         notes.forEach((freq, index) => {
             const noteTime = now + (index * speed);
             if (freq > 0) {
@@ -222,7 +267,6 @@ const AudioSystem = {
                 gain.gain.linearRampToValueAtTime(vol, noteTime + 0.02);
                 gain.gain.exponentialRampToValueAtTime(0.01, noteTime + (speed * acoustics.durationMult) - 0.01);
             } else {
-                // Rest note (Silence)
                 gain.gain.setValueAtTime(0, noteTime);
             }
         });
@@ -239,20 +283,20 @@ const AudioSystem = {
 
     playStep: function(x) { 
         if (!this.settings.steps) return;
-        // Throttle to max 1 step sound per 80ms to prevent crunching during multi-entity movement
         if (!this._throttle('step', 80)) return; 
         this.playNoise(0.08, 0.05, 600, x); 
     },
     
-    // GAMEPLAY WIN: Dynamic Attack Types & Spatial Panning
+    // CONTENT EXPANSION: Added Sweep and Pierce variants
     playAttack: function(type = 'normal', x) { 
         if (!this.settings.master || !this.settings.combat || !this.getCtx()) return;
-        if (!this._throttle('attack', 50)) return; // Prevent overlapping sweep blowouts
+        if (!this._throttle('attack', 50)) return; 
         
         const ctx = this._ctx;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         const acoustics = this._getAcoustics();
+        const spatial = this._getSpatialData(x);
         
         let startFreq = 300, endFreq = 50, duration = 0.1, vol = 0.1;
 
@@ -262,6 +306,15 @@ const AudioSystem = {
         } else if (type === 'light') {
             startFreq = 600; endFreq = 200; duration = 0.08; vol = 0.08;
             osc.type = 'sine';
+        } else if (type === 'sweep') {
+            // Long, wide swing (Cleave / Whirlwind)
+            startFreq = 200; endFreq = 100; duration = 0.2; vol = 0.12;
+            osc.type = 'sine';
+            this.playNoise(0.15, 0.05, 800, x); // Mix with wind noise
+        } else if (type === 'pierce') {
+            // Fast, sharp thrust (Daggers / Spears)
+            startFreq = 800; endFreq = 100; duration = 0.05; vol = 0.1;
+            osc.type = 'sawtooth';
         } else {
             // Normal
             startFreq = 300 + (Math.random() * 100);
@@ -270,18 +323,19 @@ const AudioSystem = {
         }
         
         const actualDuration = duration * acoustics.durationMult;
+        const actualVol = vol * spatial.distanceVol;
 
-        osc.frequency.setValueAtTime(startFreq * acoustics.filterMult, ctx.currentTime);
+        osc.frequency.setValueAtTime(startFreq * acoustics.filterMult * spatial.distanceFilter, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + actualDuration);
         
         gain.gain.setValueAtTime(0.01, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + 0.02);
+        gain.gain.linearRampToValueAtTime(actualVol, ctx.currentTime + 0.02);
         gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + actualDuration);
         
         let panner = null;
         if (ctx.createStereoPanner) {
             panner = ctx.createStereoPanner();
-            panner.pan.value = this._getPan(x);
+            panner.pan.value = spatial.pan;
         }
 
         if (panner) {
@@ -299,9 +353,7 @@ const AudioSystem = {
 
     playBow: function(x) {
         if (this.settings.combat) {
-            // Pluck sound
             this.playTone(400, 'triangle', 0.1, 0.1, true, 200, x);
-            // Arrow travel whoosh
             setTimeout(() => this.playNoise(0.15, 0.03, 2000, x), 20);
         }
     },
@@ -314,9 +366,8 @@ const AudioSystem = {
 
     playCrit: function(x) {
         if (!this.settings.combat) return;
-        // High-pitched piercing ring for critical hits
         this.playTone(1200, 'sine', 0.3, 0.15, false, 800, x);
-        this.playTone(80, 'square', 0.2, 0.1, true, null, x); // Accompanied by base hit impact
+        this.playTone(80, 'square', 0.2, 0.1, true, null, x); 
     },
     
     playMagic: function(x) { 
@@ -327,7 +378,6 @@ const AudioSystem = {
 
     playHeal: function(x) {
         if (!this.settings.magic) return;
-        // Shimmering ascending sound
         this.playTone(300, 'sine', 0.4, 0.05, false, 600, x);
         setTimeout(() => this.playTone(400, 'sine', 0.3, 0.05, false, 800, x), 100);
     },
@@ -356,10 +406,10 @@ const AudioSystem = {
         }
     },
     
-    // --- JUICE: SEQUENCED JINGLES ---
+    // --- JUICE & EXPANDABILITY: SEQUENCED JINGLES ---
     
     playLevelUp: function() {
-        // C Major Arpeggio: C4, E4, G4, C5
+        // C Major Arpeggio
         this.playMelody([261.63, 329.63, 392.00, 523.25], 'sine', 0.15, 0.1);
     },
 
@@ -379,13 +429,29 @@ const AudioSystem = {
     },
 
     playWarning: function() {
-        // Sharp, alarming double-beep (Traps, Blood Moon)
+        // Sharp, alarming double-beep
         this.playMelody([400, 0, 400], 'square', 0.1, 0.1);
     },
 
     playDeath: function() {
         // Dissonant, descending dirge
         this.playMelody([300, 280, 260, 200], 'sawtooth', 0.3, 0.15);
+    },
+
+    // NEW JINGLES: Hook these up to UI actions for instant gratification!
+    playDiscovery: function() {
+        // A lush, lingering magical chord when finding a new Biome or Waystone
+        this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 1.5, 0.15);
+    },
+
+    playBossSpawn: function() {
+        // Terrifying, dissonant low rumble
+        this.playChord([50, 55, 60], 'sawtooth', 2.0, 0.2);
+    },
+
+    playCraftSuccess: function() {
+        // Satisfying metallic/chime sequence
+        this.playMelody([400, 600, 800], 'triangle', 0.1, 0.1);
     }
 };
 
