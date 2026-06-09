@@ -111,8 +111,13 @@ const chunkManager = {
             chosenThemeKey = 'SUNKEN'; 
             enemyCount = Math.max(enemyCount, 25);   
         } else if (caveId.startsWith('mine_')) {
-            chosenThemeKey = 'DWARVEN_MINE';
+            chosenThemeKey = 'DWARVEN_MINE'; 
             enemyCount = Math.max(enemyCount, 30);
+        } else if (caveId.startsWith('arena_')) {
+            chosenThemeKey = 'ARENA';
+            CAVE_WIDTH = 15;
+            CAVE_HEIGHT = 15;
+            enemyCount = 0; // No random spawns!
         } else {
             // Normal procedural cave
             const randomTheme = Alea(stringToSeed(caveId + ':theme'));
@@ -120,43 +125,59 @@ const chunkManager = {
             const themeKeys = Object.keys(CAVE_THEMES).filter(k => k !== 'ABYSS' && k !== 'VOID');
             chosenThemeKey = themeKeys[Math.floor(randomTheme() * themeKeys.length)];
         }
-        // -----------------------
 
         const theme = CAVE_THEMES[chosenThemeKey];
         this.caveThemes[caveId] = chosenThemeKey; // Remember the theme
 
-        // 2. Generate the map layout (Random Walk)
+        // 2. Generate the map layout
         const map = Array.from({ length: CAVE_HEIGHT }, () => Array(CAVE_WIDTH).fill(theme.wall));
-
         const random = Alea(stringToSeed(caveId));
-        let x = Math.floor(CAVE_WIDTH / 2);
-        let y = Math.floor(CAVE_HEIGHT / 2);
+        const startPos = { x: Math.floor(CAVE_WIDTH / 2), y: Math.floor(CAVE_HEIGHT / 2) };
 
-        const startPos = {
-            x,
-            y
-        };
-        
-        // Bigger maps need more carving steps
-        let steps = Math.floor((CAVE_WIDTH * CAVE_HEIGHT) * 0.45);
-        
-        // GAMEPLAY WIN: Variable brush size for more organic caves
-        while (steps > 0) {
-            map[y][x] = theme.floor; // Use theme's floor
-            
-            // 15% chance to carve a 2x2 room instead of a 1x1 path (makes nice caverns)
-            if (random() < 0.15 && y < CAVE_HEIGHT - 2 && x < CAVE_WIDTH - 2) {
-                map[y+1][x] = theme.floor;
-                map[y][x+1] = theme.floor;
-                map[y+1][x+1] = theme.floor;
+        // --- ARENA CUSTOM LAYOUT OVERRIDE ---
+        if (chosenThemeKey === 'ARENA') {
+            // Hollow out a 13x13 square inside the 15x15 map
+            for(let ry = 1; ry < CAVE_HEIGHT - 1; ry++) {
+                for(let rx = 1; rx < CAVE_WIDTH - 1; rx++) {
+                    map[ry][rx] = theme.floor;
+                }
             }
+            map[7][7] = '🚩'; // Center Banner
+            map[13][7] = '<'; // Exit Stairs at the bottom
+            startPos.x = 7; 
+            startPos.y = 12; // Spawn player in front of exit
+            
+            // Reset player wave counter upon entering a fresh instance
+            if (typeof gameState !== 'undefined' && gameState.player) {
+                gameState.player.arenaWave = 0;
+            }
+        } 
+        else {
+            // --- STANDARD PROCEDURAL CAVE (Random Walk) ---
+            let x = startPos.x;
+            let y = startPos.y;
+            
+            // Bigger maps need more carving steps
+            let steps = Math.floor((CAVE_WIDTH * CAVE_HEIGHT) * 0.45);
+            
+            // GAMEPLAY WIN: Variable brush size for more organic caves
+            while (steps > 0) {
+                map[y][x] = theme.floor; 
+                
+                // 15% chance to carve a 2x2 room instead of a 1x1 path
+                if (random() < 0.15 && y < CAVE_HEIGHT - 2 && x < CAVE_WIDTH - 2) {
+                    map[y+1][x] = theme.floor;
+                    map[y][x+1] = theme.floor;
+                    map[y+1][x+1] = theme.floor;
+                }
 
-            const direction = Math.floor(random() * 4);
-            if (direction === 0 && x > 2) x--;
-            else if (direction === 1 && x < CAVE_WIDTH - 3) x++;
-            else if (direction === 2 && y > 2) y--;
-            else if (direction === 3 && y < CAVE_HEIGHT - 3) y++;
-            steps--;
+                const direction = Math.floor(random() * 4);
+                if (direction === 0 && x > 2) x--;
+                else if (direction === 1 && x < CAVE_WIDTH - 3) x++;
+                else if (direction === 2 && y > 2) y--;
+                else if (direction === 3 && y < CAVE_HEIGHT - 3) y++;
+                steps--;
+            }
         }
 
         // --- 3. STAMP THEMED ROOMS ---
@@ -1107,7 +1128,10 @@ const chunkManager = {
                         chunkData[y][x] = '⛰';
                     }
                     else if (tile === '^' && featureRoll >= 0.008 && featureRoll < 0.012) {
-                        chunkData[y][x] = '⛰️m';
+                        chunkData[y][x] = '⛰️m'; // Dwarven Mines
+                    }
+                    else if (tile === 'd' && featureRoll > 0.0005 && featureRoll < 0.002) {
+                        chunkData[y][x] = '🏟️'; // Colosseum spawns in Deadlands
                     }
                     else if (tile === 'd' && featureRoll < 0.004) {
                         chunkData[y][x] = '⛰';
