@@ -32,6 +32,82 @@ window.REALM_MUTATORS = {
 };
 
 window.TILE_DATA = {
+    '🏟️': {
+        type: 'dungeon_entrance',
+        flavor: "A massive, blood-stained arena carved from black stone. The gates are open...",
+        getCaveId: (x, y) => `arena_${x}_${y}`
+    },
+    '🚩': {
+        type: 'anomaly',
+        name: 'Battle Standard',
+        flavor: "A blood-soaked banner. Touch it to begin the trial.",
+        onInteract: (state, x, y) => {
+            const mapId = state.currentCaveId;
+            
+            // Check if enemies are still alive
+            const liveEnemies = state.instancedEnemies.filter(e => e.health > 0);
+            if (liveEnemies.length > 0) {
+                logMessage("{red:You must defeat the current wave first!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return null;
+            }
+
+            state.player.arenaWave = (state.player.arenaWave || 0) + 1;
+
+            if (state.player.arenaWave > 5) {
+                logMessage("{gray:The arena is silent. You have conquered the Colosseum.}");
+                return null;
+            }
+
+            logMessage(`{red:--- WAVE ${state.player.arenaWave} BEGINS ---}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); 
+            state.screenShake = 15;
+
+            // Define the waves
+            const waveData = [
+                ['s', 's', 's', 's'],               // Wave 1: Skeletons
+                ['b', 'b', 'b', 'C'],               // Wave 2: Bandits & Chief
+                ['o', 'o', 'w', 'w'],               // Wave 3: Orcs & Wolves
+                ['🧌', '🧌', 'f', 'f'],               // Wave 4: Golems & Fire Elementals
+                ['🩸c']                              // Wave 5: THE CHAMPION
+            ];
+
+            const spawns = waveData[state.player.arenaWave - 1];
+            
+            // Spawn them in the corners of the 15x15 arena
+            const spawnPoints = [ [3,3], [11,3], [3,11], [11,11] ]; 
+
+            spawns.forEach((enemyChar, index) => {
+                const pt = spawnPoints[index % spawnPoints.length];
+                const t = window.ENEMY_DATA[enemyChar];
+                
+                // Scale them as if they are in the deep endgame (Distance 2500)
+                let scaled = typeof getScaledEnemy === 'function' ? getScaledEnemy(t, 2500, 2500) : t;
+
+                state.instancedEnemies.push({
+                    id: `${mapId}:wave_${state.player.arenaWave}_${index}`,
+                    x: pt[0], y: pt[1], tile: enemyChar, name: scaled.name,
+                    health: scaled.maxHealth, maxHealth: scaled.maxHealth,
+                    attack: scaled.attack, defense: scaled.defense, xp: scaled.xp,
+                    loot: t.loot, isBoss: t.isBoss, isElite: scaled.isElite,
+                    color: scaled.color, caster: t.caster, castRange: t.castRange, 
+                    spellDamage: t.spellDamage, inflicts: t.inflicts,
+                    madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
+                });
+                
+                chunkManager.caveMaps[mapId][pt[1]][pt[0]] = enemyChar;
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(pt[0], pt[1], '#ef4444');
+            });
+
+            // LOCK THE PLAYER IN FOR THE FINAL BOSS
+            if (state.player.arenaWave === 5) {
+                chunkManager.caveMaps[mapId][13][7] = '▓'; // Delete the exit stairs
+                logMessage("{red:The gates slam shut! You are trapped with the Champion!}");
+            }
+
+            return { arenaWave: state.player.arenaWave };
+        }
+    },
     '🛒': {
         type: 'anomaly',
         name: 'Minecart',
@@ -1304,6 +1380,13 @@ window.CASTLE_LAYOUTS = {
 };
 
 window.CAVE_THEMES = {
+    ARENA: {
+        name: 'Colosseum of Ash',
+        wall: '▓', floor: '.', secretWall: '▒',
+        colors: { wall: '#450a0a', floor: '#292524' },
+        decorations: [], // Empty, we generate this manually
+        enemies: [] // Empty, spawned manually by the banner
+    },
     DWARVEN_MINE: {
         name: 'Abandoned Dwarven Mine',
         wall: '▓', floor: '.', secretWall: '🏚',
