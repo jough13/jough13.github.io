@@ -1,3 +1,5 @@
+// --- START OF FILE config-firebase.js ---
+
 // ==========================================
 // FIREBASE CONFIGURATION & NETWORK SYSTEMS
 // ==========================================
@@ -24,20 +26,25 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 const rtdb = firebase.database();
 
-// --- EXPANDABILITY: Global Server Time Helpers ---
+// --- EXPANDABILITY: Global Server Time & Network Helpers ---
 // Provides server-authoritative timestamps to prevent client-side clock manipulation/cheating
 window.getFirestoreTimestamp = () => firebase.firestore.FieldValue.serverTimestamp();
 window.getRTDBTimestamp = () => firebase.database.ServerValue.TIMESTAMP;
 window.getFirestoreDelete = () => firebase.firestore.FieldValue.delete();
 
+// Expose Network State globally so other scripts can check ping/status easily
+window.FirebaseNetworkState = {
+    isConnected: false,
+    serverTimeOffset: 0
+};
+
 // MMO SYNC: Keep track of the offset between the local client clock and the Firebase Server
-window.serverTimeOffset = 0;
 rtdb.ref('.info/serverTimeOffset').on('value', function(snap) {
-    window.serverTimeOffset = snap.val() || 0;
+    window.FirebaseNetworkState.serverTimeOffset = snap.val() || 0;
 });
 
 // Use this to get the exact millisecond time on the server without an API call
-window.getServerTime = () => Date.now() + window.serverTimeOffset;
+window.getServerTime = () => Date.now() + window.FirebaseNetworkState.serverTimeOffset;
 
 // --- JUICE: GLOBAL CONNECTION BANNER INJECTION ---
 // We dynamically create this so it works across all screens (Login, Character Select, Game)
@@ -45,8 +52,9 @@ let connectionBanner = document.getElementById('firebase-connection-banner');
 if (!connectionBanner) {
     connectionBanner = document.createElement('div');
     connectionBanner.id = 'firebase-connection-banner';
-    // Tailwind classes for a sleek, sliding top banner
-    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-1.5 z-[10000] transition-transform duration-300 transform -translate-y-full shadow-md font-mono tracking-widest uppercase';
+    // Tailwind classes for a sleek, sliding top banner with text-shadow for readability
+    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[10000] transition-transform duration-500 transform -translate-y-full shadow-lg font-mono tracking-widest uppercase text-shadow-sm';
+    connectionBanner.style.textShadow = "1px 1px 0px rgba(0,0,0,0.5)"; // Ensure it pops over bright maps
     document.body.appendChild(connectionBanner);
 }
 
@@ -65,7 +73,7 @@ try {
                 // Delay the banner by 3 seconds so it doesn't flash over the bootloader
                 setTimeout(() => {
                     connectionBanner.textContent = "⚠️ Multiple Tabs Open - Offline Saving Disabled";
-                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-1.5 z-[10000] transition-all duration-500 bg-yellow-600 text-black translate-y-0 shadow-md font-mono tracking-widest uppercase';
+                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[10000] transition-all duration-500 bg-yellow-600 text-black translate-y-0 shadow-lg font-mono tracking-widest uppercase';
                     
                     // Hide the banner 5 seconds after it appears
                     setTimeout(() => {
@@ -83,11 +91,12 @@ try {
 
 // --- CONNECTION MONITOR ---
 // Automatically monitors if the user loses internet connection and informs them
-let hasInitiallyConnected = false; // Tracks if we've made our first successful connection
+let hasInitiallyConnected = false; 
 let wasConnected = false; 
 
 rtdb.ref('.info/connected').on('value', function(snap) {
     const isConnected = snap.val() === true;
+    window.FirebaseNetworkState.isConnected = isConnected;
     
     if (isConnected) {
         console.log("🟢 Firebase: Connected to server.");
@@ -96,7 +105,7 @@ rtdb.ref('.info/connected').on('value', function(snap) {
         if (hasInitiallyConnected && !wasConnected) {
             // Restore Banner
             connectionBanner.textContent = "📶 Connection Restored";
-            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-1.5 z-[10000] transition-all duration-500 bg-green-600 text-white translate-y-0 shadow-md font-mono tracking-widest uppercase';
+            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[10000] transition-all duration-500 bg-green-600 text-white translate-y-0 shadow-lg font-mono tracking-widest uppercase';
             
             // Slide it away after 3 seconds
             setTimeout(() => {
@@ -114,9 +123,9 @@ rtdb.ref('.info/connected').on('value', function(snap) {
         
         // Only show "Connection Lost" if we were actually connected in the first place
         if (hasInitiallyConnected && wasConnected) {
-            // Warning Banner
+            // Warning Banner (JUICE WIN: Added animate-pulse so the user knows it's actively trying to reconnect)
             connectionBanner.textContent = "⚠️ Connection Lost - Reconnecting...";
-            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-1.5 z-[10000] transition-all duration-500 bg-red-600 text-white translate-y-0 shadow-md font-mono tracking-widest uppercase';
+            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[10000] transition-all duration-500 bg-red-600 text-white translate-y-0 shadow-lg font-mono tracking-widest uppercase animate-pulse';
             
             if (typeof logMessage === 'function') logMessage("{red:Connection lost! Trying to reconnect...}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -159,6 +168,13 @@ function handleAuthError(error) {
         case 'auth/operation-not-allowed':
             friendlyMessage = 'Email/Password accounts are not enabled on this server.';
             break;
+        // EXPANDABILITY WIN: Handled Account Linking & Security Errors
+        case 'auth/credential-already-in-use':
+            friendlyMessage = 'This credential is already linked to another account.';
+            break;
+        case 'auth/requires-recent-login':
+            friendlyMessage = 'For your security, please log out and log back in to perform this action.';
+            break;
         default:
             friendlyMessage = 'An unexpected error occurred. Please try again.';
             break;
@@ -197,11 +213,11 @@ function sanitizeForFirebase(obj, seen = new WeakSet()) {
         return obj;
     }
 
-    // 3. SAFETY: Pass native Dates and special Firebase FieldValues straight through!
+    // 3. SAFETY & MINIFICATION FIX: 
+    // Checking obj.constructor.name breaks when Javascript is minified (e.g., 'FieldValue' becomes 'e').
+    // Using instanceof directly against the global firebase object is 100% minification safe!
     if (obj instanceof Date) return obj;
-    
-    // Ensure we don't accidentally iterate over a Firebase ServerValue
-    if (obj.constructor && obj.constructor.name && obj.constructor.name.includes("FieldValue")) {
+    if (typeof firebase !== 'undefined' && firebase.firestore && obj instanceof firebase.firestore.FieldValue) {
         return obj;
     }
 
