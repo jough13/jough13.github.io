@@ -478,8 +478,24 @@ async function processOverworldEnemyTurns() {
             
             if (enemy.health <= 0) {
                 logMessage(`The ${enemy.name} succumbs to poison!`);
-
-                handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
+                
+                registerKill(enemy);
+                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
+                delete gameState.sharedEnemies[enemyId];
+                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
+                processedIdsThisFrame.add(enemyId);
+                movesQueued = true;
+                
+                const baseEnemyData = ENEMY_DATA[enemy.tile];
+                if (baseEnemyData) {
+                    const lootData = { ...baseEnemyData, isElite: enemy.isElite };
+                    const droppedLoot = generateEnemyLoot(gameState.player, lootData);
+                    const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
+                    if (currentTerrain !== '~' && currentTerrain !== '🌋') {
+                        chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', 2); 
+                        gameState.mapDirty = true;
+                    }
+                }
                 return;
             }
             if (enemy.poisonTurns === 0) logMessage(`The ${enemy.name} is no longer poisoned.`);
