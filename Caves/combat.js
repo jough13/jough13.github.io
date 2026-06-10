@@ -1890,6 +1890,7 @@ async function executeThrowTNT(dirX, dirY) {
 
                     if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(x, y, loot);
                     else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][y][x] = loot;
+                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][y][x] = loot; 
                     
                     logMessage("{yellow:The explosion shatters a cracked wall, revealing hidden treasure!}");
                 }
