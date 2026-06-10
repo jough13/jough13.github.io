@@ -1475,7 +1475,7 @@ function endPlayerTurn(turnUpdates = {}) {
         const hasGills = player.waterBreathingTurns > 0;
         const isBoating = player.isBoating;
 
-        if (!hasGills && !isBoating && !gameState.godMode) {
+        if (!hasGills && !isBoating && !player.isSailing && !gameState.godMode) {
             if (player.waterBreathingTurns === 0 && updates.waterBreathingTurns === 0) {
                 logMessage("Your magical gills fade away...");
             }
