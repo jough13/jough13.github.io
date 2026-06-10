@@ -2416,11 +2416,9 @@ async function attemptMovePlayer(newX, newY) {
             case 'sailing_ship':
                 gameState.player.isSailing = true;
                 logMessage("{blue:You board the ship. The ocean is yours to conquer.}");
-                
                 chunkManager.setWorldTile(newX, newY, getBaseTerrain(newX, newY)); 
-                
                 playerRef.update({ isSailing: true });
-                return; // Stop processing, we embarked
+                break;
             case 'dungeon_entrance':
                 // --- Ensure Set exists ---
                 if (!gameState.foundLore) gameState.foundLore = new Set();
