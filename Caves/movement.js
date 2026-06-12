@@ -64,8 +64,12 @@ async function claimWorldTile(x, y, expectedTile) {
     const tileKey = `${localX},${localY}`;
     
     let realmPrefix = '';
-    if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
-    else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+    if (gameState.currentRealm !== 0 && gameState.currentRealm) {
+        realmPrefix = `realm_${gameState.currentRealm}/`;
+    }
+    if (gameState.mapMode === 'underworld') {
+        realmPrefix += 'underworld/';
+    }
     
     const tileRef = rtdb.ref(`worldState/${realmPrefix}${chunkId}/${tileKey}`);
     
