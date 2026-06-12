@@ -53,14 +53,23 @@ window.LORE_SETS = {
         bonus: "Stalwart: +5 Max Health.",
         items: ["📜f", "🧱", "▤"] 
     },
-    // ==========================================
-    // --- STARGAZING EXPANSION ---
-    // ==========================================
     "mythos_of_the_stars": {
         name: "Mythos of the Stars",
         description: "Constellations charted by a lonely stargazer.",
         bonus: "Cosmic Insight: +2 Base Willpower.",
         items: ["constellation_1", "constellation_2", "constellation_3"] 
+    },
+    "the_shadowed_hand": {
+        name: "The Shadowed Hand",
+        description: "A dossier compiled by the Inquisitor detailing the Cult's structure.",
+        bonus: "Zealot's Bane: +1 Base Strength.",
+        items: ["📜c", "🧿s", "z"] 
+    },
+    "dwarven_mining_logs": {
+        name: "Dwarven Mining Logs",
+        description: "Sturdy leather-bound notes on explosive excavations.",
+        bonus: "Demolitionist: +1 Base Constitution.",
+        items: ["🧨", "⛏️", "💎"]
     }
 };
 
@@ -84,11 +93,14 @@ window.LORE_STONE_MESSAGES = [
     "Beware the smiling merchant; his scales are tipped with lead.",
     "The Leviathan slumbers, but its dreams cause the tides.",
     "To tame a beast, one must first break its will. To break a man, simply give him gold.",
-    "The ashes of the Oracle still speak, if you know how to listen."
+    "The ashes of the Oracle still speak, if you know how to listen.",
+    "A world built on glass cannot withstand a falling star.",
+    "The astrolabe points not to the stars, but to the realms between them.",
+    "Even the Kraken fears what sleeps in the deepest trench."
 ];
 
 // ==========================================
-// BIOME SPECIFIC FLAVOR TEXT (Waystones)
+// BIOME SPECIFIC FLAVOR TEXT (Waystones & Overworld)
 // ==========================================
 
 window.LORE_PLAINS = [
@@ -115,7 +127,8 @@ window.LORE_PLAINS = [
     "You find a rusted locket half-buried in the dirt.",
     "The grass here is entirely grey, drained of all color.",
     "A flock of crows takes off suddenly, startled by something unseen.",
-    "You step on a cracked shield bearing an unrecognized crest."
+    "You step on a cracked shield bearing an unrecognized crest.",
+    "The air smells sweet, like blooming clover and old ozone."
 ];
 
 window.LORE_FOREST = [
@@ -142,7 +155,8 @@ window.LORE_FOREST = [
     "You find a hunter's trap, rusted shut with something ancient caught inside.",
     "The wind whistling through the branches sounds like a choir.",
     "A massive web stretches between two oaks. The weaver is nowhere to be seen.",
-    "You see a pair of glowing yellow eyes fade into the brush."
+    "You see a pair of glowing yellow eyes fade into the brush.",
+    "A single Moonbloom petal rests on a fern, faintly glowing."
 ];
 
 window.LORE_MOUNTAIN = [
@@ -168,7 +182,8 @@ window.LORE_MOUNTAIN = [
     "You hear the rhythmic clinking of a miner's pick from deep within the rock.",
     "A cairn of stones marks the resting place of an unknown climber.",
     "The stars seem unnaturally close at this altitude.",
-    "You find a patch of star-metal embedded in a crater."
+    "You find a patch of star-metal embedded in a crater.",
+    "A giant feather, hard as steel, is wedged between two boulders."
 ];
 
 window.LORE_SWAMP = [
@@ -191,7 +206,43 @@ window.LORE_SWAMP = [
     "You find a skeleton pinned to a tree with black iron spikes.",
     "The water here is perfectly reflective, but it shows someone else's face.",
     "You see the silhouette of a massive serpent gliding just beneath the surface.",
-    "A willow tree weeps black sap into the stagnant water."
+    "A willow tree weeps black sap into the stagnant water.",
+    "The buzzing of insects here is loud enough to drown out your own thoughts."
+];
+
+window.LORE_DESERT = [
+    "The heat rising from the sand distorts the air.",
+    "Your throat feels dry just looking at the dunes.",
+    "The wind shifts the sand, erasing your footprints.",
+    "Bleached bones poke out from a dune.",
+    "You spot a shimmering mirage on the horizon.",
+    "The silence of the desert is absolute.",
+    "A scuttling sound comes from beneath the sand.",
+    "The sand here has been fused into a sheet of green glass.",
+    "A rusted clockwork gear sticks out of a dune, clicking faintly.",
+    "You find a waterskin. It is filled with hot, biting sand.",
+    "The sun beats down relentlessly, baking the earth.",
+    "A massive shadow sweeps over the dunes, but there are no clouds.",
+    "Half of an ancient stone tablet juts from the sand.",
+    "You step on a scorpion shell the size of a shield.",
+    "The wind hisses through a hollow, fossilized ribcage."
+];
+
+window.LORE_DEADLANDS = [
+    "The ash falls from the sky like dirty snow.",
+    "The earth here is cracked and devoid of all life.",
+    "A fissure in the ground glows with a sickly purple light.",
+    "Even the wind seems to die when it crosses into this land.",
+    "You find a tree entirely petrified into black stone.",
+    "A flock of skeletal birds circles silently overhead.",
+    "The dust tastes of copper and regret.",
+    "You see footprints walking in a circle, then simply vanishing.",
+    "A ruined siege engine rots away into nothingness.",
+    "The ground feels warm, as if a great fire burns just beneath the surface.",
+    "A torn banner bearing an unknown crest flutters weakly.",
+    "You hear the faint, haunting sound of a weeping child. You dare not follow it.",
+    "A colossal sword, big as a watchtower, is embedded in the plains.",
+    "The sky above the deadlands is always a bruising, bruised purple."
 ];
 
 // ==========================================
@@ -239,7 +290,12 @@ window.VILLAGER_RUMORS = [
     "If you plan on exploring deep into the wilds, you better rest in a {green:Cozy Bed} first. It beats walking back from the village.",
     "The deeper you go into a dungeon, the nastier the monsters get. But the loot gets shinier, too.",
     "I tried fishing in the lava once. My rod turned to ash before it hit the magma.",
-    "A merchant told me he saw a man looking at the stars through a Brass Telescope. Sounds boring to me." // New Rumor!
+    "A merchant told me he saw a man looking at the stars through a Brass Telescope. Sounds boring to me.",
+    "I hear the Master Blacksmith can forge weapons out of {cyan:Star-Metal}... if you have the coin.",
+    "They say tossing {orange:Dwarven TNT} at a cracked wall will blow it wide open. Might even find gems inside!",
+    "Don't go to the Colosseum in the deadlands. I knew a warrior who went to fight in the Arena. He never came back.",
+    "The Inquisitor pays top gold for Cultist amulets. He's trying to root out the Shadowed Hand.",
+    "Some say the Void Astrolabe doesn't just teleport you... it takes you to a {purple:parallel dimension} altogether."
 ];
 
 // ==========================================
@@ -279,7 +335,9 @@ window.RANDOM_JOURNAL_PAGES = [
     "They call it the Abyssal Leviathan. It's not a fish. It's a natural disaster with teeth.",
     "I threw a firebomb into the swamp just to watch it burn. The resulting gas explosion leveled an entire thicket. Fascinating.",
     "My companion, a loyal dire wolf, took down a goblin brute by itself. I gave it a steak. It's better company than most men.",
-    "The deeper you go into the caves, the hotter it gets. At floor five, the rock turns to obsidian and the air to ash."
+    "The deeper you go into the caves, the hotter it gets. At floor five, the rock turns to obsidian and the air to ash.",
+    "The arena champion... he's not human. I watched him take a mace to the chest and not even flinch. I forfeit.",
+    "Dwarven TNT is highly unstable. Threw a stick at a cracked wall and nearly blew my own arms off. Found a diamond though."
 ];
 
 window.LORE_FRAGMENTS = [
@@ -296,7 +354,8 @@ window.LORE_FRAGMENTS = [
     "The Cartographer's Guild pays well for maps. But they never tell us what they're looking for.",
     "I saw a man in robes freeze the river and walk across it. Witchcraft.",
     "To whom it may concern: The chest in the dark castle is trapped. Signed, Lefty.",
-    "We dug up an ancient idol in the deadlands. It hums. I can't sleep."
+    "We dug up an ancient idol in the deadlands. It hums. I can't sleep.",
+    "The tuning fork resonates with a frequency that gives me a migraine. It points nowhere."
 ];
 
 // ==========================================
@@ -324,12 +383,14 @@ window.VISIONS_OF_THE_PAST = [
     "A VISION: A massive blood-red moon fills the sky. The people in the streets fall to their knees and begin to claw at their own faces.",
     "A VISION: You see a dwarven forge deep underground. They are pouring molten gold over a writhing, shadowy entity to trap it.",
     "A VISION: The Sage, much younger, is writing furiously in a book. He looks up directly at you. 'You are too late,' he says.",
-    "A VISION: A beautiful city floats in the sky. Slowly, it tilts, and then plummets to the earth, leaving a crater that will one day become a swamp."
+    "A VISION: A beautiful city floats in the sky. Slowly, it tilts, and then plummets to the earth, leaving a crater that will one day become a swamp.",
+    "A VISION: You watch as reality splits like a mirror. A thousand versions of the King make a thousand different choices. All end in ash."
 ];
 
 // ==========================================
 // RIDDLE DATA (Statues)
 // ==========================================
+// PERFORMANCE: All answers are strictly lowercase to prevent case-conversion misses!
 
 window.RIDDLE_DATA = [
     {
@@ -475,21 +536,21 @@ window.RIDDLE_DATA = [
     {
         id: "promise",
         question: "What must be broken before you can use it?",
-        answers: ["egg", "an egg"],
+        answers: ["egg", "an egg", "promise", "a promise"],
         reward: "luck", 
         message: "A small bird lands on the statue, then flies away. You feel fortuitous."
     },
     {
         id: "stars",
         question: "We come at night without being fetched, and we are lost in the day without being stolen. What are we?",
-        answers: ["stars", "the stars"],
+        answers: ["stars", "the stars", "star"],
         reward: "perception", 
         message: "The sky seems clearer. Your eyes pierce the darkness."
     },
     {
         id: "tree",
         question: "In spring I am gay in handsome array; in summer more clothing I wear; when colder it grows, I fling off my clothes; and in winter quite naked appear. What am I?",
-        answers: ["tree", "a tree", "wood"],
+        answers: ["tree", "a tree", "wood", "forest"],
         reward: "endurance", 
         message: "You feel rooted to the earth. Your stamina expands."
     },
@@ -534,5 +595,78 @@ window.RIDDLE_DATA = [
         answers: ["needle", "a needle", "hurricane", "storm"],
         reward: "perception", 
         message: "Your focus narrows to a pinpoint. Your vision sharpens."
+    },
+    // --- NEW EXPANDED RIDDLES ---
+    {
+        id: "coffin",
+        question: "The man who makes it, doesn't need it. The man who buys it, doesn't want it. The man who uses it, doesn't know it. What is it?",
+        answers: ["coffin", "a coffin", "casket"],
+        reward: "willpower",
+        message: "A cold draft blows past you. Your resolve to live hardens."
+    },
+    {
+        id: "cloud",
+        question: "I fly without wings. I cry without eyes. Wherever I go, darkness follows me. What am I?",
+        answers: ["cloud", "a cloud", "storm", "raincloud"],
+        reward: "intuition",
+        message: "You feel the moisture in the air before it rains. Your instincts sharpen."
+    },
+    {
+        id: "glove",
+        question: "What has four fingers and a thumb, but is not living?",
+        answers: ["glove", "a glove", "gauntlet"],
+        reward: "dexterity",
+        message: "Your hands feel nimble and quick."
+    },
+    {
+        id: "towel",
+        question: "What gets wet while drying?",
+        answers: ["towel", "a towel"],
+        reward: "endurance",
+        message: "The statue weeps a single tear. Your endurance improves."
+    },
+    {
+        id: "age",
+        question: "What goes up but never comes down?",
+        answers: ["age", "your age", "my age"],
+        reward: "wits",
+        message: "You feel the weight of years, but also the wisdom they bring."
+    },
+    {
+        id: "word",
+        question: "I am a single word, but if you pronounce me right, I mean the exact opposite. What am I?",
+        answers: ["wrong", "incorrect"],
+        reward: "charisma",
+        message: "A clever trick of the tongue. You feel more eloquent."
+    },
+    {
+        id: "keyboard",
+        question: "I have keys but no doors. I have a space but no room. You can enter, but you cannot go outside. What am I?",
+        answers: ["keyboard", "a keyboard", "piano"],
+        reward: "perception",
+        message: "Your mind clicks the pieces together. Your awareness broadens."
+    },
+    {
+        id: "onion",
+        question: "Take off my skin and I won't cry, but you will! What am I?",
+        answers: ["onion", "an onion"],
+        reward: "constitution",
+        message: "The statue sheds a tear, but you remain stoic."
+    },
+    {
+        id: "teeth",
+        question: "Thirty white horses on a red hill. First they champ, then they stamp, then they stand still.",
+        answers: ["teeth", "my teeth"],
+        reward: "strength",
+        message: "You clench your jaw. Your muscles feel dense."
+    },
+    {
+        id: "book",
+        question: "I have leaves, but no branches. I have a spine, but no bones. What am I?",
+        answers: ["book", "a book", "tome"],
+        reward: "wits",
+        message: "Knowledge flows into your mind from the ancient stone."
     }
 ];
+
+// --- END OF FILE data-lore.js ---
