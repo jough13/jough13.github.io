@@ -1786,8 +1786,12 @@ function handlePlayerDeath() {
             
             // Allow for Multiverse and Underworld paths!
             let realmPrefix = '';
-            if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
-            else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+            if (gameState.currentRealm !== 0 && gameState.currentRealm) {
+                realmPrefix = `realm_${gameState.currentRealm}/`;
+            }
+            if (gameState.mapMode === 'underworld') {
+                realmPrefix += 'underworld/';
+            }
             
             rtdb.ref(`worldState/${realmPrefix}${cId}`).update(safeUpdates)
                 .catch(err => console.error("Failed to drop corpse loot:", err));
