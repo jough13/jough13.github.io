@@ -722,11 +722,10 @@ async function executeLunge(dirX, dirY) {
                 hit = true;
 
                 // --- 3. Calculate Final Damage ---
-                // Formula: ( (PlayerBaseDmg - EnemyDef) * Multiplier ) + (Strength * Level)
-                const baseLungeDamage = (playerBaseDamage - (enemyData.defense || 0)) * skillData.baseDamageMultiplier;
-                const scalingDamage = (player.strength * skillLevel);
-                const totalLungeDamage = Math.max(1, Math.floor(baseLungeDamage + scalingDamage));
-                // --- End Damage Calc ---
+                // Apply multipliers FIRST, then subtract Enemy Defense (Matches Cleave/Bash)
+                const baseLungeDamage = playerBaseDamage * skillData.baseDamageMultiplier;
+                const finalDmg = Math.max(1, Math.floor(baseLungeDamage + (player.strength * skillLevel)));
+                const totalLungeDamage = Math.max(1, finalDmg - (enemyData.defense || 0));
 
                 if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                     // Handle Overworld Combat
