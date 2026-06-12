@@ -253,7 +253,10 @@ async function attemptMovePlayer(newX, newY) {
             });
 
             // Punishment damage visual
-            ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444', 10);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444', 10);
+            
+            // --- Check if the shockwave killed the player ---
+            if (handlePlayerDeath()) return;
         }
         return;
     }
@@ -902,9 +905,15 @@ async function attemptMovePlayer(newX, newY) {
                 triggerStatFlash(statDisplays.health, false);
                 loreModal.classList.add('hidden');
                 renderStats();
+                
+                // --- Check if the statue's punishment killed the player ---
+                if (handlePlayerDeath()) {
+                    // Sync the multiplayer server state immediately since this is an async callback
+                    if (typeof syncPlayerState === 'function') syncPlayerState();
+                    return; 
+                }
             }
         };
-        return;
     }
 
     if (newTile === '¥') {
@@ -1148,6 +1157,10 @@ async function attemptMovePlayer(newX, newY) {
             gameState.screenShake = 10;
             triggerStatFlash(statDisplays.health, false);
             logMessage("The Mimic bites you for 3 damage!");
+            
+            // --- Check if the Mimic's ambush bite killed the player ---
+            if (handlePlayerDeath()) return; 
+            
             render();
             return;
         }
