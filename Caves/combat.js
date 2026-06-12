@@ -8,8 +8,12 @@ const EnemyNetworkManager = {
     // Helper to get exact Firebase path for an enemy (ISOLATED BY REALM & LAYER)
     getPath: (x, y, enemyId) => {
         let realmPrefix = '';
-        if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
-        else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+        if (gameState.currentRealm !== 0 && gameState.currentRealm) {
+            realmPrefix = `realm_${gameState.currentRealm}/`;
+        }
+        if (gameState.mapMode === 'underworld') {
+            realmPrefix += 'underworld/';
+        }
         
         return `worldEnemies/${realmPrefix}${Math.floor(x / 16)},${Math.floor(y / 16)}/${enemyId}`;
     },
@@ -45,8 +49,12 @@ const EnemyNetworkManager = {
     listenToChunk: function(chunkId) {
         // --- MULTIVERSE & LAYER PATH ISOLATION ---
         let realmPrefix = '';
-        if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
-        else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+        if (gameState.currentRealm !== 0 && gameState.currentRealm) {
+            realmPrefix = `realm_${gameState.currentRealm}/`;
+        }
+        if (gameState.mapMode === 'underworld') {
+            realmPrefix += 'underworld/';
+        }
         
         const ref = rtdb.ref(`worldEnemies/${realmPrefix}${chunkId}`);
         
@@ -331,15 +339,19 @@ async function runSharedAiTurns() {
     const AI_INTERVAL = 600; // Increased to 600ms for smoother server load
     const STALE_TIMEOUT = 5000; 
 
-    // --- NEW: CLIENT-SIDE GATEKEEPER ---
+    // --- CLIENT-SIDE GATEKEEPER ---
     // If we already attempted an AI tick locally within the interval, don't even talk to Firebase!
     if (now - (window.lastLocalAIAttempt || 0) < AI_INTERVAL) return;
     window.lastLocalAIAttempt = now;
 
     // Use correct path based on layer
     let realmPrefix = '';
-    if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
-    else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+    if (gameState.currentRealm !== 0 && gameState.currentRealm) {
+        realmPrefix = `realm_${gameState.currentRealm}/`;
+    }
+    if (gameState.mapMode === 'underworld') {
+        realmPrefix += 'underworld/';
+    }
     
     const heartbeatRef = rtdb.ref(`worldState/${realmPrefix}aiHeartbeat`);
 
