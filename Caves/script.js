@@ -2283,9 +2283,9 @@ function triggerRaidBossSpawn(playerX, playerY) {
         tile: '👾',
         x: spawnX,
         y: spawnY,
-        health: bossTemplate.maxHealth,
-        maxHealth: bossTemplate.maxHealth,
-        attack: bossTemplate.attack,
+        health: 10000,
+        maxHealth: 10000,
+        attack: bossTemplate.attack * 2, // Double damage to make it a true raid boss!
         defense: bossTemplate.defense,
         xp: bossTemplate.xp,
         loot: bossTemplate.loot,
@@ -2318,7 +2318,6 @@ function recalculateDerivedStats() {
     let calculatedMaxMana = Math.max(1, 5 + (player.wits * 5)) + (player.bonusMaxMana || 0);
     let calculatedMaxStamina = Math.max(1, 5 + (player.endurance * 5)) + (player.bonusMaxStamina || 0);
     let calculatedMaxPsyche = Math.max(1, 7 + (player.willpower * 3)) + (player.bonusMaxPsyche || 0);
-
 
     if (player.completedLoreSets) {
         if (player.completedLoreSets.includes('void_research')) calculatedMaxMana += 10;
