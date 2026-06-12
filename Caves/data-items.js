@@ -1982,11 +1982,6 @@ window.ITEM_DATA = {
         slot: 'armor',
         description: "{blue:+1 Def}. Boiled leather stitched with sinew."
     },
-    '🛡️': { 
-        name: 'Tome of Shielding',
-        type: 'spellbook',
-        spellId: 'arcaneShield'
-    },
     // --- SHIELDS ---
     '🛡️w': {
         name: 'Wooden Shield',
@@ -2283,7 +2278,7 @@ window.ITEM_DATA = {
     },
     '<': {
         name: 'Spike Trap',
-        type: 'trap'
+        type: 'constructible'
     },
     '¡': {
         name: 'Iron Sword',
