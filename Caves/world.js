@@ -160,7 +160,7 @@ const chunkManager = {
             // Bigger maps need more carving steps
             let steps = Math.floor((CAVE_WIDTH * CAVE_HEIGHT) * 0.45);
             
-            // GAMEPLAY WIN: Variable brush size for more organic caves
+            // Variable brush size for more organic caves
             while (steps > 0) {
                 map[y][x] = theme.floor; 
                 
@@ -822,8 +822,12 @@ const chunkManager = {
 
         // --- LAYER & MULTIVERSE PATH ISOLATION ---
         let realmPrefix = '';
-        if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
-        else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+        if (gameState.currentRealm !== 0 && gameState.currentRealm) {
+            realmPrefix = `realm_${gameState.currentRealm}/`;
+        }
+        if (gameState.mapMode === 'underworld') {
+            realmPrefix += 'underworld/';
+        }
         
         const ref = rtdb.ref(`worldState/${realmPrefix}${chunkId}`);
 
@@ -895,8 +899,12 @@ const chunkManager = {
 
         // --- LAYER & MULTIVERSE PATH ISOLATION ---
         let realmPrefix = '';
-        if (gameState.mapMode === 'underworld') realmPrefix = 'underworld/';
-        else if (gameState.currentRealm !== 0 && gameState.currentRealm) realmPrefix = `realm_${gameState.currentRealm}/`;
+        if (gameState.currentRealm !== 0 && gameState.currentRealm) {
+            realmPrefix = `realm_${gameState.currentRealm}/`;
+        }
+        if (gameState.mapMode === 'underworld') {
+            realmPrefix += 'underworld/';
+        }
 
         rtdb.ref(`worldState/${realmPrefix}${chunkId}`).update(updateObj)
             .catch(err => console.error("Map update failed:", err));
