@@ -204,6 +204,8 @@ const gameState = {
         campsiteUpgrades: [], 
         quests: {},
         relicQuestStage: 0,    // Tracks the Historian's main quest line
+        shadowQuestStage: 0,   // Tracks the Inquisitor's quest line
+        arenaWave: 0,          // Tracks Colosseum survival wave
         killCounts: {},
         completedLoreSets: [], // Tracks finished codex pages
         obeliskProgress: [],   // Tracks Ancient Key puzzle
@@ -227,12 +229,15 @@ const gameState = {
         // EXPANDABILITY WIN: Expanded Lifetime Metrics
         metrics: {
             totalKills: 0,
+            bossesDefeated: 0,
             totalDeaths: 0,
             stepsTaken: 0,
             itemsCrafted: 0,
+            potionsBrewed: 0,
             goldEarned: 0,
             fishCaught: 0,
             dungeonsCleared: 0,
+            secretsFound: 0,
             spellsCast: 0
         }
     },
@@ -269,9 +274,10 @@ const gameState = {
         hasSailedDeepOcean: false
     },
 
-    // Weather & Time
+    // Weather, Time & Global Events
     weather: 'clear',
     currentForecast: 'clear', // Background forecast for weather transitions
+    isBloodMoon: false,       // Global server event flag
     playerTurnCount: 0,
     time: {
         day: 1,
@@ -288,3 +294,5 @@ const gameState = {
     sharedEnemies: {},        // Multiplayer overworld enemies
     enemySpatialMap: new Map()// For optimized AI pathing
 };
+
+// --- END OF FILE state.js ---
