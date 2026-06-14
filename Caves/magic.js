@@ -1,3 +1,5 @@
+// --- START OF FILE magic.js ---
+
 /**
  * Handles all spellcasting logic based on SPELL_DATA
  * and the player's spellbook.
@@ -14,14 +16,16 @@ function castSpell(spellId) {
     }
 
     if (player.cooldowns && player.cooldowns[spellId] > 0) {
-        logMessage(`That spell is not ready yet (${player.cooldowns[spellId]} turns).`);
+        logMessage(`{gray:That spell is not ready yet (${player.cooldowns[spellId]} turns).}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
     const spellLevel = player.spellbook[spellId] || 0;
 
     if (spellLevel === 0) {
-        logMessage("You don't know that spell.");
+        logMessage("{gray:You don't know that spell.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
@@ -45,6 +49,10 @@ function castSpell(spellId) {
     } else if (player[costType] < cost) {
         logMessage(`{red:You don't have enough ${costType} to cast that.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        
+        // JUICE: Flash the UI bar red to show why it failed
+        const displayEl = document.getElementById(`${costType}Display`);
+        if (displayEl && typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false);
         return;
     }
 
@@ -92,7 +100,7 @@ function castSpell(spellId) {
 
             case 'candlelight':
                 if (player.candlelightTurns > 0) {
-                    logMessage("You renew the magical light.");
+                    logMessage("{yellow:You renew the magical light.}");
                 } else {
                     logMessage("{yellow:A warm, floating orb of light appears above you.}");
                 }
@@ -109,6 +117,11 @@ function castSpell(spellId) {
                 break;
 
             case 'divineLight':
+                // LORE WIN: Dynamic cure messaging
+                if (player.madnessTurns > 0) logMessage("{gold:The maddening whispers are banished from your mind.}");
+                if (player.poisonTurns > 0) logMessage("{gold:The foul toxins are purged from your blood.}");
+                if (player.frostbiteTurns > 0) logMessage("{gold:The supernatural chill leaves your bones.}");
+                
                 player.health = player.maxHealth;
                 player.poisonTurns = 0;
                 player.frostbiteTurns = 0;
@@ -203,7 +216,7 @@ function castSpell(spellId) {
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                     render();
                 } else {
-                    logMessage("You focus, but find no hidden passages nearby.");
+                    logMessage("{gray:You focus, but the stone around you holds no secrets.}");
                 }
                 triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
                 spellCastSuccessfully = true;
@@ -219,6 +232,9 @@ function castSpell(spellId) {
                     logMessage(`You sacrifice {red:${cost} health} to restore {blue:${actualRestore} mana}.`);
                     triggerStatAnimation(statDisplays.health, 'stat-pulse-red'); 
                     triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                    // Visceral feedback for dark magic
+                    gameState.screenShake = 5;
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#be123c', 8);
                 } else {
                     logMessage("{gray:You cast Dark Pact, but your mana is already full.}");
                 }
@@ -277,19 +293,26 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
         tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
     }
-
-    // --- ELEMENTAL SYNERGY (ENVIRONMENT) ---
+    
+    const enemyData = ENEMY_DATA[tile];
     const isTargetInWater = (tile === '~' || tile === '≈');
 
+    // --- ELEMENTAL SYNERGY (ENVIRONMENT & ENEMY TYPES) ---
     if (spellId === 'thunderbolt' || spellId === 'chainLightning') {
         if (isTargetInWater || weather === 'rain' || weather === 'storm') {
             finalDamage = Math.floor(finalDamage * 2.0); // 2x Damage!
             logMessage(`{yellow:The electricity conducts through the water/rain! (Critical Damage)}`);
         }
-    } else if (spellId === 'fireball' || spellId === 'meteor') {
+        if (enemyData && enemyData.name && enemyData.name.includes('Clockwork')) {
+            finalDamage = Math.floor(finalDamage * 1.5);
+            logMessage(`{yellow:The mechanical guardian short-circuits! (Critical Damage)}`);
+        }
+    } 
+    else if (spellId === 'fireball' || spellId === 'meteor') {
         if (weather === 'rain' || weather === 'storm') {
             finalDamage = Math.floor(finalDamage * 0.5); // Fire fizzles in rain
-        } else if (tile === '≈') {
+        } 
+        else if (tile === '≈') {
             // Swamp Gas Explosion Synergy!
             if (Math.random() < 0.15) {
                 logMessage(`{orange:The fire ignites a pocket of swamp gas! BOOM!}`);
@@ -297,8 +320,21 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 finalDamage = Math.floor(finalDamage * 1.5);
             }
         }
-    } else if (spellId === 'frostBolt') {
+        
+        // Steam Synergy
+        if (isTargetInWater) {
+             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#f3f4f6', 6); 
+             if (Math.random() < 0.3) logMessage("{gray:The water boils and hisses, releasing a cloud of steam.}");
+        }
+    } 
+    else if (spellId === 'frostBolt') {
         if (weather === 'snow') finalDamage = Math.floor(finalDamage * 1.5);
+        
+        if (enemyData && enemyData.name && enemyData.name.includes('Fire')) {
+            finalDamage = Math.floor(finalDamage * 1.5);
+            logMessage(`{cyan:The elemental flame recoils from the biting cold! (Critical Damage)}`);
+        }
+        
         // ICE BRIDGE SYNERGY
         if (isTargetInWater && gameState.mapMode === 'overworld') {
             chunkManager.setWorldTile(targetX, targetY, '❄️', 1); // Melts in 1 hour
@@ -307,7 +343,6 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         }
     }
 
-    const enemyData = ENEMY_DATA[tile];
     if (!enemyData) return false; // No enemy here
 
     let damageDealt = 0; 
@@ -421,7 +456,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
             }
 
             else if (enemy && spellData.inflicts === 'poison' && enemy.poisonTurns <= 0) {
-                logMessage(`{green:The ${enemy.name} is afflicted with Poison!}`);
+                logMessage(`{green:The ${enemy.name} is poisoned!}`);
                 enemy.poisonTurns = 3; 
             }
 
@@ -477,6 +512,9 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 for (let i = 1; i <= 3; i++) {
                     const tx = player.x + (dirX * i);
                     const ty = player.y + (dirY * i);
+                    
+                    // Visual path
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.spawn(tx, ty, '#4ade80', 'dust', '', 3);
 
                     if (await applySpellDamage(tx, ty, entangleDmg, spellId)) {
                         hitSomething = true;
@@ -512,16 +550,19 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 
                 logMessage(logMsg);
 
-                // FIX: Increased range from 3 to 5 tiles!
                 for (let i = 1; i <= 5; i++) {
                     const targetX = player.x + (dirX * i);
                     const targetY = player.y + (dirY * i);
 
-                    // --- Animated Arrow Trail ---
+                    // --- Animated Trail ---
                     if (typeof ParticleSystem !== 'undefined') {
-                        // Stagger the particle spawning by 40ms per tile to create a "flying" effect
+                        let trailColor = '#d4d4d8';
+                        if (spellId === 'siphonLife' || spellId === 'psychicBlast') trailColor = '#c084fc';
+                        if (spellId === 'frostBolt') trailColor = '#7dd3fc';
+                        if (spellId === 'poisonBolt') trailColor = '#4ade80';
+                        
                         setTimeout(() => {
-                            ParticleSystem.spawn(targetX, targetY, '#d4d4d8', 'dust', '', 3);
+                            ParticleSystem.spawn(targetX, targetY, trailColor, 'dust', '', 3);
                         }, i * 40); 
                     }
                     
@@ -539,7 +580,8 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             case 'thunderbolt': {
                 const thunderDmg = spellData.baseDamage + (player.wits * spellLevel);
                 logMessage("{yellow:CRACK! Lightning strikes!}");
-                // FIX: Increased Thunderbolt range from 4 to 6!
+                gameState.screenShake = 15; // JUICE
+                
                 for (let i = 1; i <= 6; i++) {
                     const tx = player.x + (dirX * i);
                     const ty = player.y + (dirY * i);
@@ -565,7 +607,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     my = player.y + (dirY * i);
                     
                     let tileAt;
-                    if (gameState.mapMode === 'overworld') {
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                         const enemyId = `overworld:${mx},${-my}`;
                         const liveEnemy = gameState.sharedEnemies[enemyId];
                         tileAt = liveEnemy ? liveEnemy.tile : chunkManager.getTile(mx, my);
@@ -582,7 +624,15 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 }
 
                 logMessage("{orange:A meteor crashes down from the heavens!}");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.3, 100);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.8, 0.5, 100);
+                gameState.screenShake = 25; // Massive shake
+                
+                // Epicenter visual
+                if (typeof ParticleSystem !== 'undefined') {
+                    for(let i=0; i<30; i++) {
+                        ParticleSystem.spawn(mx, my, '#f97316', 'dust', '', Math.random()*6+4);
+                    }
+                }
 
                 const meteorPromises = []; 
                 for (let y = my - spellData.radius; y <= my + spellData.radius; y++) {
@@ -604,7 +654,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 const targetY = player.y + dirY;
 
                 let tileType;
-                if (gameState.mapMode === 'overworld') {
+                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                     tileType = chunkManager.getTile(targetX, targetY);
                 } else if (gameState.mapMode === 'dungeon') {
                     tileType = chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX];
@@ -616,13 +666,19 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     if (gameState.player.companion) {
                         logMessage("{gray:You already have a companion! Dismiss them first.}");
                     } else {
-                        logMessage("{purple:You chant the words of unlife... A Skeleton rises to serve you!}");
+                        logMessage("{purple:You chant the words of unlife... The bones assemble and rise to serve you!}");
 
-                        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(targetX, targetY, '.');
+                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(targetX, targetY, '.');
                         else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
+                        else chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] = '.';
+
+                        // LORE WIN: Dynamic Minion Naming based on origin
+                        let minionName = "Risen Skeleton";
+                        if (tileType === '⚰️') minionName = "Awakened Warrior";
+                        else if (gameState.mapMode === 'underworld') minionName = "Abyssal Thrall";
 
                         gameState.player.companion = {
-                            name: "Risen Skeleton",
+                            name: minionName,
                             tile: "s",
                             type: "undead",
                             hp: 15 + (player.willpower * 5),
@@ -645,7 +701,6 @@ async function executeAimedSpell(spellId, dirX, dirY) {
 
             case 'chainLightning': {
                 const lightningDmg = spellData.baseDamage + (player.wits * spellLevel);
-                // Increased Chain Lightning cast distance from 3 to 5
                 const targetX = player.x + (dirX * 5);
                 const targetY = player.y + (dirY * 5);
 
@@ -666,7 +721,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         if (x === targetX && y === targetY) continue;
 
                         let hasEnemy = false;
-                        if (gameState.mapMode === 'overworld') {
+                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                             const tile = chunkManager.getTile(x, y);
                             if (ENEMY_DATA[tile]) hasEnemy = true;
                         } else {
@@ -685,7 +740,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     setTimeout(() => logMessage(`{cyan:The lightning arcs to ${jumpsToMake} nearby enemies!}`), 200);
                 }
 
-                const lightningPromises = []; // Hold the promises
+                const lightningPromises = []; 
                 for (let i = 0; i < jumpsToMake; i++) {
                     const jumpTgt = potentialJumpTargets[i];
                     const jumpDmg = Math.max(1, Math.floor(lightningDmg * 0.75));
@@ -695,7 +750,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         })
                     );
                 }
-                await Promise.all(lightningPromises); // WAIT for all jumps to finish
+                await Promise.all(lightningPromises); 
                 break;
             }
 
@@ -706,11 +761,11 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 const targetY = player.y + (dirY * 5);
                 logMessage("{orange:A fireball erupts in the distance!}");
 
-                const fbPromises = []; // Hold the promises
+                const fbPromises = []; 
                 for (let y = targetY - radius; y <= targetY + radius; y++) {
                     for (let x = targetX - radius; x <= targetX + radius; x++) {
                         let tileAt;
-                        if (gameState.mapMode === 'overworld') tileAt = chunkManager.getTile(x, y);
+                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(x, y);
                         else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[y]?.[x];
                         else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[y]?.[x];
 
@@ -749,13 +804,13 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         );
                     }
                 }
-                await Promise.all(fbPromises); // WAIT for all fire damage to process
+                await Promise.all(fbPromises); 
                 break;
             }
         }
 
         // Visual feedback if a projectile spell hits nothing!
-        if (!hitSomething && (spellId === 'magicBolt' || spellId === 'siphonLife' || spellId === 'poisonBolt' || spellId === 'frostBolt')) {
+        if (!hitSomething && (spellId === 'magicBolt' || spellId === 'siphonLife' || spellId === 'poisonBolt' || spellId === 'frostBolt' || spellId === 'entangle')) {
             logMessage("{gray:Your spell flies harmlessly into the distance.}");
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Fizzle...", "#9ca3af");
@@ -828,3 +883,5 @@ function triggerAbilityCooldown(abilityId) {
         if (typeof renderHotbar === 'function') renderHotbar();
     }
 }
+
+// --- END OF FILE magic.js ---
