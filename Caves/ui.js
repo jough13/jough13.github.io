@@ -124,6 +124,19 @@ const statBarElements = {
 window.currentZoom = 20; // The absolute source of truth for TILE_SIZE
 
 // --- CHAT & MESSAGE LOG SYSTEM ---
+// PERFORMANCE WIN: Cache Regexes so the V8 engine doesn't recompile them on every log
+const CRIT_REGEX = /\b(CRITICAL HIT!|CRITICAL|AMBUSH!|LEVEL UP!|NEW RECORD!|MAXED)\b/g;
+const FORMAT_REGEXES = [
+    { rx: /{red:(.*?)}/g, repl: '<span class="text-red-500 font-bold">$1</span>' },
+    { rx: /{green:(.*?)}/g, repl: '<span class="text-green-500 font-bold">$1</span>' },
+    { rx: /{blue:(.*?)}/g, repl: '<span class="text-blue-400 font-bold">$1</span>' },
+    { rx: /{gold:(.*?)}/g, repl: '<span class="text-yellow-500 font-bold">$1</span>' },
+    { rx: /{purple:(.*?)}/g, repl: '<span class="text-purple-400 font-bold">$1</span>' },
+    { rx: /{cyan:(.*?)}/g, repl: '<span class="text-cyan-400 font-bold">$1</span>' },
+    { rx: /{orange:(.*?)}/g, repl: '<span class="text-orange-400 font-bold">$1</span>' },
+    { rx: /{gray:(.*?)}/g, repl: '<span class="text-gray-500">$1</span>' }
+];
+
 const logMessage = (text) => {
     if (!text || !messageLog) return; 
 
@@ -131,19 +144,12 @@ const logMessage = (text) => {
     let safeText = escapeHtml(text);
 
     // 2. QoL WIN: Smart Auto-Highlighting
-    // Automatically highlights critical game events without needing manual color tags in the source code!
-    let preFormatted = safeText.replace(/\b(CRITICAL HIT!|CRITICAL|AMBUSH!|LEVEL UP!|NEW RECORD!)\b/g, '{gold:$1}');
+    let formattedText = safeText.replace(CRIT_REGEX, '{gold:$1}');
 
-    // 3. FORMAT: Re-introduce specific HTML tags safely
-    let formattedText = preFormatted
-        .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
-        .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
-        .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
-        .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
-        .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
-        .replace(/{cyan:(.*?)}/g, '<span class="text-cyan-400 font-bold">$1</span>')
-        .replace(/{orange:(.*?)}/g, '<span class="text-orange-400 font-bold">$1</span>')
-        .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
+    // 3. FORMAT: Apply cached color tags
+    for (let i = 0; i < FORMAT_REGEXES.length; i++) {
+        formattedText = formattedText.replace(FORMAT_REGEXES[i].rx, FORMAT_REGEXES[i].repl);
+    }
 
     // --- ANTI-SPAM LOGIC ---
     if (text === lastLogText && messageLog.firstChild) {
@@ -337,6 +343,21 @@ function updateWeatherUI() {
         }
     }
 
+    // GAMEPLAY WIN: Multiverse UI Indication
+    // If the player steps into an alternate dimension, display its rules immediately!
+    if (gameState.currentRealm !== 0 && gameState.realmMutators && gameState.realmMutators.length > 0) {
+        if (typeof window.REALM_MUTATORS !== 'undefined') {
+            const mutatorNames = gameState.realmMutators.map(m => window.REALM_MUTATORS[m]?.name || "Unknown").join(", ");
+            if (displayString) {
+                displayString += ` | 🌌 [${mutatorNames}]`;
+            } else {
+                displayString = `🌌 ANOMALY: [${mutatorNames}]`;
+            }
+            // Anomaly overrides color
+            colorClass = 'text-purple-400 animate-pulse';
+        }
+    }
+
     if (displayString) {
         weatherDisplay.innerHTML = displayString;
         weatherDisplay.className = `text-[10px] font-bold mt-1 tracking-widest uppercase block ${colorClass}`;
@@ -458,6 +479,13 @@ const renderInventory = () => {
                 slotClass += ' bg-blue-900 bg-opacity-10 hover:border-blue-500';
             } else {
                 slotClass += ' hover:border-blue-500 hover:bg-gray-800';
+            }
+
+            // JUICE WIN: Dynamic Borders for Magical/Rare Items!
+            if (!item.isEquipped && item._rarity) {
+                if (item._rarity === 'rare') slotClass += ' border-purple-500 shadow-[0_0_6px_rgba(168,85,247,0.3)]';
+                else if (item._rarity === 'epic') slotClass += ' border-red-500 shadow-[0_0_6px_rgba(239,68,68,0.3)]';
+                else if (item._rarity === 'legendary') slotClass += ' border-yellow-500 shadow-[0_0_6px_rgba(234,179,8,0.3)]';
             }
             
             itemDiv.className = slotClass;
@@ -592,7 +620,8 @@ const renderEquipment = () => {
     const totalDamage = playerStrength + weaponDamage + ammoDamage;
 
     let weaponString = `Wpn: ${weapon.name} (+${weaponDamage})`;
-    let weaponTooltip = `${weapon.name}\nDamage: +${weaponDamage}`;
+    // QoL WIN: Explicitly show base + bonus stats in the tooltip
+    let weaponTooltip = `${weapon.name}\nBase Damage: +${weaponDamage}\n(Your Total: ${totalDamage})`;
     if (weapon.statBonuses) {
         const bonusArr = Object.entries(weapon.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
         if (bonusArr.length > 0) {
@@ -618,7 +647,7 @@ const renderEquipment = () => {
     const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
 
     let armorString = `Body: ${armor.name} (+${armorDefense})`;
-    let armorTooltip = `${armor.name}\nDefense: +${armorDefense}`;
+    let armorTooltip = `${armor.name}\nBase Defense: +${armorDefense}\n(Your Total: ${totalDefense})`;
     if (armor.statBonuses) {
         const bonusArr = Object.entries(armor.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
         if (bonusArr.length > 0) {
@@ -864,27 +893,27 @@ function resizeCanvas() {
     }
 }
 
-// INJECT STAT TOOLTIPS
+// LORE EXPANSION WIN: Inject RPG Tooltips into the Stat Panel
 (function initStatTooltips() {
     const statDescriptions = {
         // Vitals
-        health: "Your life force. If it hits 0, you die and lose gold/items.",
-        mana: "Magical energy used to cast Spells and travel Leylines.",
-        stamina: "Physical energy used for Weapon Skills, running, and mining.",
-        psyche: "Mental fortitude. Used for Taming, Pacifying, and resisting madness.",
-        hunger: "If empty, you stop regenerating HP.",
-        thirst: "If empty, you stop regenerating Stamina.",
+        health: "Health: The physical toll your body can endure. If it hits 0, you die and lose gold/items.",
+        mana: "Mana: Magical essence channeled from the leylines. Used to cast Spells and Fast Travel.",
+        stamina: "Stamina: Physical energy. Used to perform powerful Weapon Skills, run, or mine ore.",
+        psyche: "Psyche: Mental fortitude. Required to tame beasts, pacify enemies, and resist Void madness.",
+        hunger: "Hunger: Determines natural healing. If empty, you stop regenerating Health over time.",
+        thirst: "Thirst: Determines physical recovery. If empty, you stop regenerating Stamina over time.",
         // Attributes
-        strength: "Increases Melee Damage, carry capacity, and mining yield.",
-        wits: "Increases Max Mana, Spell Damage, and Arcane Shield strength.",
-        constitution: "Increases Max Health and Base Defense.",
-        dexterity: "Increases Dodge Chance, Stealth, Ranged Damage, and Base Defense.",
-        charisma: "Improves Shop Prices and Taming/Pacify chances.",
-        luck: "Increases Critical Hit chance, Dodge chance, and rare Loot drops.",
-        willpower: "Increases Max Psyche, Dark/Frost spell damage, and summon health.",
-        perception: "Increases Accuracy, Vision Radius, and chance to find Secret Doors.",
-        endurance: "Increases Max Stamina and resistance to Swamp Sickness.",
-        intuition: "Improves Nature/Druid spells and senses unseen enemies nearby."
+        strength: "Strength: Modifies raw Melee Damage. Also improves mining yield and carry capacity.",
+        wits: "Wits: Increases Spell Damage, Arcane Shield strength, and expands maximum Mana reserves.",
+        constitution: "Constitution: Hardens the body. Increases base Defense and expands maximum Health.",
+        dexterity: "Dexterity: Enhances reflexes. Increases Dodge chance, Stealth duration, and Ranged Damage.",
+        charisma: "Charisma: The art of influence. Grants better Shop Prices and improves the chance to Tame/Pacify.",
+        luck: "Luck: Bends fate. Increases Critical Hit chance, Dodge chance, and rare Magic Loot drops.",
+        willpower: "Willpower: Dark resilience. Increases Max Psyche, Dark/Frost spell damage, and summon health.",
+        perception: "Perception: Keen senses. Improves combat Accuracy and the chance to passively spot Secret Doors.",
+        endurance: "Endurance: Tireless resolve. Increases Max Stamina and improves resistance to Swamp Sickness.",
+        intuition: "Intuition: Connection to nature. Improves Druidic spells and senses unseen enemies nearby."
     };
 
     setTimeout(() => {
@@ -1078,3 +1107,5 @@ function initSettingsListeners() {
         });
     }
 }
+
+// --- END OF FILE ui.js ---
