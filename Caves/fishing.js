@@ -22,6 +22,10 @@ function playLineSnap() {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playTone(150, 'sawtooth', 0.2, 0.1, false, 50);
 }
 
+// Cached DOM elements for eating
+let _hungerDisplayObj = null;
+let _healthDisplayObj = null;
+
 // --- 1. DYNAMIC ITEM INJECTION ---
 const NEW_FISHING_ITEMS = {
     // --- Tools & Utility ---
@@ -52,14 +56,17 @@ const NEW_FISHING_ITEMS = {
                 'Magma Carp', 'Obsidian Eel', 'Heart of the Volcano'
             ];
             
-            const caughtCount = allFish.filter(f => records[f]).length;
-            const completionPercent = Math.floor((caughtCount / allFish.length) * 100);
+            let caughtCount = 0;
+            let totalWeight = 0;
 
             let gridHtml = `<div class="grid grid-cols-2 gap-2 mt-2 max-h-56 overflow-y-auto pr-2 custom-scrollbar">`;
             
             allFish.forEach(fishName => {
                 const record = records[fishName];
                 if (record) {
+                    caughtCount++;
+                    totalWeight += record;
+                    
                     let color = "text-gray-300";
                     if (record >= 50) color = "text-blue-300";
                     if (record >= 100) color = "text-purple-400 font-bold";
@@ -80,6 +87,8 @@ const NEW_FISHING_ITEMS = {
             });
             gridHtml += `</div>`;
 
+            const completionPercent = Math.floor((caughtCount / allFish.length) * 100);
+
             // UI WIN: Cap XP bar visuals if max level (15) is reached
             const isMax = lvl >= 15;
             const xpBarWidth = isMax ? 100 : Math.min(100, (xp/nextXp)*100);
@@ -91,6 +100,7 @@ const NEW_FISHING_ITEMS = {
                 <p class="text-xs text-gray-400 mb-2">${xpText}</p>
                 <div class="stat-bar-container mb-2"><div class="stat-bar ${isMax ? 'bg-yellow-500' : 'bg-blue-500'}" style="width: ${xpBarWidth}%"></div></div>
                 ${perksHtml}
+                <div class="mt-2 text-xs text-gray-400 text-right italic">Total Trophy Weight: <span class="text-yellow-500 font-bold">${totalWeight} lbs</span></div>
             </div>
             <h3 class="font-bold border-b border-gray-600 mb-2 flex justify-between text-sm">
                 <span>Fish Directory</span>
@@ -140,7 +150,34 @@ const NEW_FISHING_ITEMS = {
     '🌋eel': { name: 'Obsidian Eel', type: 'weapon', tile: '🐍', damage: 6, slot: 'weapon', inflicts: 'burn', inflictChance: 0.3, description: "{red:+6 Dmg}. A living, whip-like eel that sears flesh. {orange:(Burns target)}" },
     '🌋hrt': { name: 'Heart of the Volcano', type: 'accessory', tile: '❤️', defense: 2, slot: 'accessory', statBonuses: { constitution: 5, strength: 3 }, description: "{blue:+2 Def}, {green:+5 Con, +3 Str}. It beats with volcanic fury." },
 
-    // --- Dredged Treasures ---
+    // --- Dredged Treasures & Lore Expansion ---
+    '🪖r': { name: 'Rusted Helm', type: 'armor', tile: '🪖', defense: 1, slot: 'armor', description: "{blue:+1 Def}. Pulled from the muck. Still slightly damp." },
+    '💀d': { name: 'Drowned Skull', type: 'junk', tile: '💀', description: "Covered in algae. Unsettling." },
+    '🦪': { 
+        name: 'Abyssal Oyster', type: 'consumable', tile: '🦪', description: "Pry it open...", 
+        effect: (state) => {
+            logMessage("You pry open the tough shell...");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.1, 0.1, 1000);
+            
+            if (Math.random() < 0.20) {
+                const existingPearl = state.player.inventory.find(i => i.name === 'Black Pearl' && !i.isEquipped);
+                if (existingPearl || state.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                    logMessage("{purple:You found a Black Pearl inside!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                    
+                    if (existingPearl) existingPearl.quantity++;
+                    else state.player.inventory.push({ templateId: '💎b', name: 'Black Pearl', type: 'junk', quantity: 1, tile: '💎' });
+                } else {
+                    logMessage("{red:You found a Black Pearl, but your inventory is full!}");
+                }
+            } else {
+                logMessage("Just some slimy oyster meat. {yellow:(+15 Hunger)}");
+                state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 15);
+                triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            }
+            return true; // Consume Oyster
+        }
+    },
     '📦w': { 
         name: 'Waterlogged Chest', type: 'consumable', tile: '📦', 
         description: "Covered in seaweed. Use it to pry it open!",
@@ -226,7 +263,11 @@ const NEW_FISHING_ITEMS = {
                     "...the Leviathan is real. It took the Captain. It took the mast...",
                     "...if you reach the Safe Haven, tell Elara I won't be coming home...",
                     "...the sirens sing not of love, but of the void below...",
-                    "...the magma carps only bite when the mountain rumbles..."
+                    "...the magma carps only bite when the mountain rumbles...",
+                    "...I saw the Old King's face in the water. He was weeping black tears...",
+                    "...the Shadowed Hand is searching the coast. I must hide the map...",
+                    "...don't trust the fairies in the forest. They stole my best rod...",
+                    "...the stars aren't moving. We are falling..."
                 ];
                 const msg = loreFragments[Math.floor(Math.random() * loreFragments.length)];
                 logMessage(`{gray:"${msg}"}`);
@@ -264,27 +305,35 @@ function eatFish(state, hungerAmt, hpAmt = 0) {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return false;
     }
+    
+    // Performance: Cache DOM lookups
+    if (!_hungerDisplayObj) _hungerDisplayObj = document.getElementById('hungerDisplay');
+    if (!_healthDisplayObj) _healthDisplayObj = document.getElementById('healthDisplay');
+
     state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + hungerAmt);
     if (hpAmt > 0) state.player.health = Math.min(state.player.maxHealth, state.player.health + hpAmt);
     
     if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Munch sound
     logMessage(`You eat the fish. {yellow:(+${hungerAmt} Hunger)}${hpAmt > 0 ? `, {green:(+${hpAmt} HP)}` : ''}`);
-    triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
-    if (hpAmt > 0) triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+    
+    if (typeof triggerStatAnimation !== 'undefined') {
+        triggerStatAnimation(_hungerDisplayObj, 'stat-pulse-green');
+        if (hpAmt > 0) triggerStatAnimation(_healthDisplayObj, 'stat-pulse-green');
+    }
     return true;
 }
 
 // --- 2. THE LOOT TABLES ---
 const FISHING_LOOT = {
     shallow: {
-        trash: [{ name: 'Soggy Boot' }, { name: 'Wood Log' }, { name: 'Bone Shard' }],
+        trash: [{ name: 'Soggy Boot' }, { name: 'Wood Log' }, { name: 'Bone Shard' }, { name: 'Rusted Helm' }],
         common: [{ name: 'Minnow' }, { name: 'Raw Fish' }],
         uncommon: [{ name: 'River Trout', minW: 2, maxW: 10 }, { name: 'Raw Fish' }],
         rare: [{ name: 'Leaping Salmon', minW: 12, maxW: 35 }, { name: 'Message in a Bottle' }],
         legendary: [{ name: 'Golden Koi', minW: 10, maxW: 40 }, { name: 'Ring of Regeneration' }]
     },
     swamp: {
-        trash: [{ name: 'Soggy Boot' }, { name: 'Stick' }, { name: 'Dirty Water' }],
+        trash: [{ name: 'Soggy Boot' }, { name: 'Stick' }, { name: 'Dirty Water' }, { name: 'Drowned Skull' }],
         common: [{ name: 'Mudcat' }, { name: 'Raw Fish' }],
         uncommon: [{ name: 'Sludge Eel', minW: 5, maxW: 25 }, { name: 'Mudcat' }],
         rare: [{ name: 'Eyeless Cave Fish', minW: 2, maxW: 8 }, { name: 'Poisoned Dagger' }],
@@ -294,7 +343,7 @@ const FISHING_LOOT = {
         trash: [{ name: 'Rusted Anchor' }, { name: 'Soggy Boot' }, { name: 'Wood Log' }],
         common: [{ name: 'Deep Sea Cod', minW: 10, maxW: 50 }, { name: 'Raw Fish' }],
         uncommon: [{ name: 'Silver Tuna', minW: 40, maxW: 150 }, { name: 'Deep Sea Cod', minW: 30, maxW: 80 }],
-        rare: [{ name: 'Swordfish' }, { name: 'Waterlogged Chest' }, { name: 'Message in a Bottle' }],
+        rare: [{ name: 'Swordfish' }, { name: 'Waterlogged Chest' }, { name: 'Abyssal Oyster' }],
         legendary: [{ name: 'Abyssal Angler', minW: 60, maxW: 200 }, { name: 'Scepter of the Tides' }]
     },
     lava: {
@@ -370,11 +419,14 @@ function executeFishing() {
     let baitWeightMult = 1.0; // GAMEPLAY WIN: Good bait catches bigger fish!
     let baitColor = 'gray';
 
+    // QoL WIN: Expanded Bait options using early game junk!
     const validBaits = [
         { name: 'Kraken Ink Sac', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'deep', color: 'purple' }, 
         { name: 'Fire Elemental Core', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'lava', color: 'orange' }, 
         { name: 'Minnow', catchBoost: 0.15, rareBoost: 0.30, weightMult: 1.15, color: 'blue' }, 
         { name: 'Raw Meat', catchBoost: 0.25, rareBoost: 0.10, weightMult: 1.05, color: 'red' }, 
+        { name: 'Rat Tail', catchBoost: 0.10, rareBoost: 0.0, weightMult: 0.9, color: 'gray' }, 
+        { name: 'Bat Wing', catchBoost: 0.10, rareBoost: 0.05, weightMult: 0.9, color: 'gray' }, 
         { name: 'Bird Egg', catchBoost: 0.10, rareBoost: 0.05, weightMult: 1.0, color: 'gray' } 
     ];
 
@@ -414,9 +466,9 @@ function executeFishing() {
         playLineSnap();
 
         player.health -= dmg;
-        gameState.screenShake = 15;
+        gameState.screenShake = 20; // JUICE
         triggerStatFlash(document.getElementById('healthDisplay'), false);
-        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#ef4444', 10);
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#ef4444', 15);
         if (player.health <= 0) if (typeof handlePlayerDeath === 'function') handlePlayerDeath();
         return true; 
     }
@@ -426,7 +478,6 @@ function executeFishing() {
         logMessage("{red:You hooked something aggressive... A Giant Leech bursts from the water!}");
         
         const enemyData = window.ENEMY_DATA['l'];
-        
         const spawnX = player.x + 1;
         const spawnY = player.y;
         
@@ -451,7 +502,11 @@ function executeFishing() {
             gameState.instancedEnemies.push(newEnemy);
         }
         
-        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(spawnX, spawnY, '#111827', 6);
+        gameState.screenShake = 15; // JUICE
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createExplosion(spawnX, spawnY, '#111827', 10);
+            ParticleSystem.createExplosion(spawnX, spawnY, '#22c55e', 5); // Acid spray
+        }
         if (typeof render === 'function') render();
         return true; 
     }
@@ -566,6 +621,7 @@ function executeFishing() {
         if (rarity === 'legendary') {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
             logMessage(`{gold:A MASSIVE TUG! You hauled up a ${finalItemName}!}`);
+            gameState.screenShake = 5; // JUICE
         } else if (rarity === 'rare') {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
             logMessage(`{purple:A strong bite! You caught a ${finalItemName}!}`);
@@ -634,3 +690,5 @@ function executeFishing() {
     if (typeof renderInventory === 'function') renderInventory();
     return true; 
 }
+
+// --- END OF FILE fishing.js ---
