@@ -1,3 +1,5 @@
+// --- START OF FILE character-setup.js ---
+
 // ==========================================
 // CHARACTER CREATION & SLOT MANAGEMENT
 // ==========================================
@@ -174,18 +176,21 @@ function updateCreationSummary() {
     const summaryDiv = document.getElementById('creationSummary');
     const nameInput = document.getElementById('charNameInput');
     
-    // Clean the input to prevent weird spacing or hidden HTML tags
-    let rawName = nameInput.value.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, ' ').trimStart();
+    // Clean the input to prevent weird spacing or hidden HTML tags (including zero-width chars)
+    let rawName = nameInput.value.replace(/[^a-zA-Z0-9 \-']/g, '').replace(/\s+/g, ' ').trimStart();
     
     // QoL WIN: Auto Title-Case the name (e.g. "gandalf the grey" -> "Gandalf The Grey")
     let formattedName = rawName.split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .map(word => word.charAt(0) ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '')
         .join(' ');
         
     creationState.name = formattedName.trim();
 
     const raceName = creationState.race ? PLAYER_RACES[creationState.race].name : "???";
     const className = creationState.background ? PLAYER_BACKGROUNDS[creationState.background].name : "???";
+    
+    const raceDesc = creationState.race ? PLAYER_RACES[creationState.race].description : "";
+    const classDesc = creationState.background ? PLAYER_BACKGROUNDS[creationState.background].description : "";
     
     // JUICE WIN: Dynamic Avatar Preview
     const raceIcon = creationState.race ? PLAYER_RACES[creationState.race].icon : "👤";
@@ -221,7 +226,7 @@ function updateCreationSummary() {
     const projPsyche = 7 + (calcWill * 3);
 
     const vitalsHtml = (creationState.race && creationState.background) ? `
-        <div class="grid grid-cols-2 gap-1 text-[11px] mt-2 bg-black bg-opacity-30 p-2 rounded border border-gray-700">
+        <div class="grid grid-cols-2 gap-1 text-[11px] mt-3 bg-black bg-opacity-30 p-2 rounded border border-gray-700 shadow-inner">
             <span class="text-green-400 font-bold">HP: ${projHP}</span>
             <span class="text-blue-400 font-bold">Mana: ${projMana}</span>
             <span class="text-yellow-400 font-bold">Stam: ${projStamina}</span>
@@ -239,8 +244,12 @@ function updateCreationSummary() {
                     <div class="text-xs text-yellow-500 font-bold" style="font-family: 'Uncial Antiqua', cursive;">${className}</div>
                 </div>
             </div>
-            <div class="text-xs border-t pt-2 border-gray-600 text-gray-300">
-                ${stats.length > 0 ? stats.join('<br>') : "<span class='italic opacity-50'>Select Race & Class to see bonuses.</span>"}
+            ${(raceDesc || classDesc) ? `
+            <div class="text-xs italic text-gray-400 mb-3 border-l-2 border-gray-600 pl-2">
+                ${raceDesc} ${classDesc}
+            </div>` : ''}
+            <div class="text-xs border-t pt-2 border-gray-600 text-gray-300 font-bold">
+                ${stats.length > 0 ? stats.join('<br>') : "<span class='italic opacity-50 font-normal'>Select Race & Class to see bonuses.</span>"}
             </div>
             ${vitalsHtml}
         `;
@@ -287,20 +296,38 @@ window.generateRandomName = function() {
     const prefixes = [
         "Thor", "Garr", "El", "Fae", "Kael", "Mor", "Vex", "Zar", "Brim", "Nyx",
         "Ael", "Val", "Dra", "Bael", "Xyl", "Quin", "Syl", "Or", "Ign", "Gloom",
-        "Lu", "Cor", "Ash", "Sil", "Fen", "Grim", "Mal", "Ren", "Tav", "Zeph"
+        "Lu", "Cor", "Ash", "Sil", "Fen", "Grim", "Mal", "Ren", "Tav", "Zeph",
+        "Aer", "Bryn", "Cael", "Dorn", "Ery", "Fael", "Gael", "Hald", "Ith", "Jor"
     ];
     const suffixes = [
         "in", "ick", "ara", "en", "is", "os", "ia", "on", "us", "th",
         "ius", "dor", "mir", "vyn", "ryn", "las", "ric", "tar", "eth", "mont",
-        "stone", "fire", "bane", "weaver", "shade", "moon", "sun", "heart", "blood"
+        "stone", "fire", "bane", "weaver", "shade", "moon", "sun", "heart", "blood",
+        "forge", "smith", "strider", "whisper", "song", "wind", "storm"
     ];
     
-    const p = prefixes[Math.floor(Math.random() * prefixes.length)];
-    const s = suffixes[Math.floor(Math.random() * suffixes.length)];
+    // Fun RPG Titles (15% chance to append)
+    const titles = [
+        " the Brave", " the Swift", " of the Void", " the Wise", " the Exile", 
+        " Ironheart", " Shadow-walker", " the Lost", " the Cursed", " the Bold"
+    ];
+    
+    let p = prefixes[Math.floor(Math.random() * prefixes.length)];
+    let s = suffixes[Math.floor(Math.random() * suffixes.length)];
+    let t = (Math.random() < 0.15) ? titles[Math.floor(Math.random() * titles.length)] : "";
     
     const nameInput = document.getElementById('charNameInput');
     if (nameInput) {
-        nameInput.value = p + s;
+        nameInput.value = p + s + t;
+        
+        // JUICE WIN: Make the summary box "pop" so it feels like a tactile dice roll
+        const summaryBox = document.getElementById('creationSummary');
+        if (summaryBox) {
+            summaryBox.parentElement.style.animation = 'none';
+            void summaryBox.parentElement.offsetWidth; // Trigger reflow
+            summaryBox.parentElement.style.animation = 'pop-in 0.2s ease-out';
+        }
+        
         updateCreationSummary(); // Force UI to update immediately
     }
 };
@@ -360,9 +387,11 @@ function initCreationUI() {
         nameContainer.insertBefore(quickRollBtn, wrapper);
     }
     
+    // PERFORMANCE WIN: Use DocumentFragments to prevent layout thrashing
     const raceContainer = document.getElementById('raceSelectionContainer');
     if (raceContainer) {
         raceContainer.innerHTML = '';
+        const raceFrag = document.createDocumentFragment();
         for (const key in PLAYER_RACES) {
             const r = PLAYER_RACES[key];
             const div = document.createElement('div');
@@ -370,13 +399,15 @@ function initCreationUI() {
             div.innerHTML = `<span class="text-3xl">${r.icon}</span> <span class="font-bold text-lg">${r.name}</span>`;
             div.onclick = () => selectCreationOption('race', key, div);
             div.dataset.key = key; 
-            raceContainer.appendChild(div);
+            raceFrag.appendChild(div);
         }
+        raceContainer.appendChild(raceFrag);
     }
 
     const classContainer = document.getElementById('classSelectionContainer');
     if (classContainer) {
         classContainer.innerHTML = '';
+        const classFrag = document.createDocumentFragment();
         for (const key in PLAYER_BACKGROUNDS) {
             const bg = PLAYER_BACKGROUNDS[key];
             const div = document.createElement('div');
@@ -387,8 +418,9 @@ function initCreationUI() {
             `;
             div.onclick = () => selectCreationOption('background', key, div);
             div.dataset.key = key;
-            classContainer.appendChild(div);
+            classFrag.appendChild(div);
         }
+        classContainer.appendChild(classFrag);
     }
 
     const genderBtns = document.querySelectorAll('.gender-btn');
@@ -417,6 +449,12 @@ function initCreationUI() {
 async function finalizeCharacterCreation() {
     const btn = document.getElementById('finalizeCreationBtn');
     if (!btn) return;
+    
+    // Failsafe: Prevent empty names from slipping through
+    if (!creationState.name || creationState.name.trim() === "") {
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
+    }
     
     btn.disabled = true;
     btn.textContent = "Forging Destiny...";
@@ -500,3 +538,5 @@ async function finalizeCharacterCreation() {
         btn.innerHTML = "Begin Adventure <span>→</span>";
     }
 }
+
+// --- END OF FILE character-setup.js ---
