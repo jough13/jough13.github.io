@@ -6,6 +6,9 @@
 
 const BACKUP_SALT = "kEsMaI_v1_S3cR3t_s@lt"; // Change this to something random!
 
+// Concurrency lock to prevent mashing buttons and causing DB race conditions
+let isBackupOperationRunning = false;
+
 // --- SECURITY WIN: Deep Hashing ---
 // We now hash the exact sequence of item names, preventing players from modifying the save file
 // to swap 5 pieces of "Stone" into 5 "Legendary Swords" (which bypassed the old length check).
@@ -58,7 +61,7 @@ let lastBackupTime = 0; // Anti-Spam Timer
 
 // EXPANDABILITY: Added slotId parameter so you can easily implement multiple save slots later
 async function createCloudBackup(slotId = 'latest') {
-    if (!playerRef) return;
+    if (!playerRef || isBackupOperationRunning) return;
 
     // Use server-authoritative time if available to prevent client clock manipulation
     const now = typeof window.getServerTime === 'function' ? window.getServerTime() : Date.now();
@@ -69,6 +72,8 @@ async function createCloudBackup(slotId = 'latest') {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
+    
+    isBackupOperationRunning = true;
     lastBackupTime = now;
 
     // JUICE WIN: Dynamic Button Phasing
@@ -110,15 +115,28 @@ async function createCloudBackup(slotId = 'latest') {
         // A. Save the main player document backup
         await playerRef.collection('backups').doc(slotId).set(backupState);
         
-        // B. Backup the Map Subcollection safely using a batch
+        // B. Backup the Map Subcollection safely using chunked batches (Max 500 ops per batch)
         const mapSnap = await playerRef.collection('map_data').get();
         if (!mapSnap.empty) {
-            const batch = db.batch();
-            mapSnap.forEach(doc => {
+            let batch = db.batch();
+            let operationCount = 0;
+            
+            for (const doc of mapSnap.docs) {
                 const backupMapRef = playerRef.collection('backups').doc(slotId).collection('map_data').doc(doc.id);
                 batch.set(backupMapRef, doc.data());
-            });
-            await batch.commit();
+                operationCount++;
+                
+                // Firestore limit is 500 writes per batch
+                if (operationCount >= 450) {
+                    await batch.commit();
+                    batch = db.batch();
+                    operationCount = 0;
+                }
+            }
+            // Commit any remaining writes
+            if (operationCount > 0) {
+                await batch.commit();
+            }
         }
 
         logMessage("{green:Backup successful!}");
@@ -127,12 +145,24 @@ async function createCloudBackup(slotId = 'latest') {
         // Update the UI directly using our local timestamp instead of fetching from Firebase
         if (typeof updateBackupUI === 'function') updateBackupUI(slotId);
         
+        // JUICE WIN: Flash the label green so they know it worked immediately
+        const label = document.getElementById('lastBackupLabel');
+        if (label) {
+            label.classList.remove('text-gray-400');
+            label.classList.add('text-green-400', 'animate-pulse');
+            setTimeout(() => {
+                label.classList.remove('text-green-400', 'animate-pulse');
+                label.classList.add('text-gray-400');
+            }, 2500);
+        }
+        
     } catch (err) {
         console.error("Backup creation failed: ", err);
         logMessage("{red:Backup failed.} See console.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     } finally {
-        // Reset Button State
+        // Reset Button State and Locks
+        isBackupOperationRunning = false;
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = originalText;
@@ -142,7 +172,7 @@ async function createCloudBackup(slotId = 'latest') {
 }
 
 async function restoreCloudBackup(slotId = 'latest') {
-    if (!playerRef) return;
+    if (!playerRef || isBackupOperationRunning) return;
 
     // QoL WIN: Hard confirmation prompt to prevent accidental data wipes!
     const confirmation = prompt("⚠️ WARNING: This will overwrite your current progress with the cloud backup.\n\nType RESTORE to confirm:");
@@ -151,6 +181,8 @@ async function restoreCloudBackup(slotId = 'latest') {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
         return;
     }
+
+    isBackupOperationRunning = true;
 
     // JUICE WIN: Dynamic Button States
     const btn = document.getElementById('btnRestore');
@@ -223,15 +255,26 @@ async function restoreCloudBackup(slotId = 'latest') {
         delete data.signature; 
         delete data.timestamp;
 
-        // Restore Map Subcollection
+        // Restore Map Subcollection (with chunking for massive maps)
         const backupMapSnap = await playerRef.collection('backups').doc(slotId).collection('map_data').get();
         if (!backupMapSnap.empty) {
-            const batch = db.batch();
-            backupMapSnap.forEach(doc => {
+            let batch = db.batch();
+            let operationCount = 0;
+            
+            for (const doc of backupMapSnap.docs) {
                 const liveMapRef = playerRef.collection('map_data').doc(doc.id);
                 batch.set(liveMapRef, doc.data(), { merge: true });
-            });
-            await batch.commit();
+                operationCount++;
+                
+                if (operationCount >= 450) {
+                    await batch.commit();
+                    batch = db.batch();
+                    operationCount = 0;
+                }
+            }
+            if (operationCount > 0) {
+                await batch.commit();
+            }
         }
 
         // ROBUSTNESS WIN: Deep Clean Current State
@@ -273,7 +316,8 @@ async function restoreCloudBackup(slotId = 'latest') {
         logMessage("{red:Restore failed.} Check console for details.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     } finally {
-        // Reset Button State
+        // Reset Button State and Lock
+        isBackupOperationRunning = false;
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = originalText;
@@ -301,7 +345,9 @@ async function updateBackupUI(slotId = 'latest') {
             const hoursOld = (now - timestamp) / (1000 * 60 * 60);
             
             let relativeStr = "";
-            if (hoursOld < 1) {
+            if (hoursOld < 0.016) { // Less than ~1 minute
+                relativeStr = "Just now";
+            } else if (hoursOld < 1) {
                 const mins = Math.max(1, Math.floor(hoursOld * 60));
                 relativeStr = `${mins} minute${mins !== 1 ? 's' : ''} ago`;
             } else if (hoursOld < 24) {
@@ -334,3 +380,5 @@ async function updateBackupUI(slotId = 'latest') {
         label.classList.add('text-red-500');
     }
 }
+
+// --- END OF FILE settings-backup.js ---
