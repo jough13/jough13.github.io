@@ -1,3 +1,5 @@
+// --- START OF FILE fast-travel.js ---
+
 // ==========================================
 // FAST TRAVEL & LEYLINE SYSTEM
 // ==========================================
@@ -7,9 +9,12 @@ const fastTravelList = document.getElementById('fastTravelList');
 const closeFastTravelButton = document.getElementById('closeFastTravelButton');
 
 function openFastTravelModal() {
+    if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+    
     renderFastTravelList();
     
-    // EASY WIN: Dynamic UI text that respects the Archmage 'mana_flow' talent!
+    // Dynamic UI text that respects the Archmage 'mana_flow' talent!
     const player = gameState.player;
     const travelCost = (player.talents && player.talents.includes('mana_flow')) ? 8 : 10;
     
@@ -60,7 +65,8 @@ function renderFastTravelList() {
     fragment.appendChild(sanctuaryHeader);
 
     // 1. PERMANENT FALLBACK: Safe Haven Village
-    if (playerX !== 0 || playerY !== 0) {
+    // MULTIVERSE LOGIC: If we are in an alternate dimension, the village is always visible as an escape hatch!
+    if (playerX !== 0 || playerY !== 0 || (gameState.currentRealm && gameState.currentRealm !== 0)) {
         // NEWBIE GRACE PERIOD: Free travel to spawn if level 3 or under!
         const isFree = player.level <= 3;
         const cost = isFree ? 0 : baseTravelCost;
@@ -69,11 +75,15 @@ function renderFastTravelList() {
         const btnClass = canAfford ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-gray-700 text-gray-400 opacity-50 cursor-not-allowed";
         const btnText = canAfford ? (isFree ? 'Free' : `-${cost} MP`) : 'OOM';
 
+        // QoL WIN: Show dimension shift warning if returning from an alternate realm
+        const isCrossRealm = (gameState.currentRealm && gameState.currentRealm !== 0);
+        const dimensionBadge = isCrossRealm ? `<span class="ml-2 px-1 rounded bg-purple-900 text-purple-300 border border-purple-500 animate-pulse text-[9px]">DIMENSIONAL SHIFT</span>` : '';
+
         const villageLi = document.createElement('li');
         villageLi.className = 'shop-item bg-blue-900 bg-opacity-20 border-blue-700 hover:border-blue-400 transition-all transform hover:-translate-y-0.5';
         villageLi.innerHTML = `
             <div>
-                <span class="font-bold text-blue-400">Safe Haven Village</span>
+                <span class="font-bold text-blue-400">Safe Haven Village</span>${dimensionBadge}
                 <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: 0, 0 <span class="ml-2 text-blue-300">(Dist: ${getDist(0, 0)}m${getDir(0, 0)})</span></div>
             </div>
             <button class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 ${btnClass}" ${canAfford ? '' : 'disabled'} onclick="handleFastTravel(0, 0)">${btnText}</button>
@@ -155,7 +165,7 @@ window.handleFastTravel = function (targetX, targetY) {
     // --- GAMEPLAY WIN: Anti-Combat Teleport ---
     // You cannot flee via leylines if enemies are too close! (5 tile radius)
     let inCombat = false;
-    if (gameState.mapMode === 'overworld') {
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         for (const enemyId in gameState.sharedEnemies) {
             const enemy = gameState.sharedEnemies[enemyId];
             if (Math.abs(enemy.x - player.x) <= 5 && Math.abs(enemy.y - player.y) <= 5) {
@@ -190,6 +200,14 @@ window.handleFastTravel = function (targetX, targetY) {
     if (player.mana < TRAVEL_COST) {
         logMessage(`{red:Not enough Mana to travel the leylines. (Need ${TRAVEL_COST})}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        
+        // JUICE: Flash the mana bar red so they clearly see why it failed
+        const manaDisplay = document.getElementById('manaDisplay');
+        if (manaDisplay) {
+            manaDisplay.classList.remove('stat-flash-red');
+            void manaDisplay.offsetWidth;
+            manaDisplay.classList.add('stat-flash-red');
+        }
         return;
     }
 
@@ -198,12 +216,25 @@ window.handleFastTravel = function (targetX, targetY) {
 
     // --- DEPARTURE FX ---
     if (typeof ParticleSystem !== 'undefined') {
-        ParticleSystem.createExplosion(player.x, player.y, '#8b5cf6', 15); // Purple explosion
+        // Create an inward implosion effect
+        for(let i=0; i<20; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 3;
+            ParticleSystem.spawn(player.x + Math.cos(angle)*dist, player.y + Math.sin(angle)*dist, '#8b5cf6', 'dust');
+            const p = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length-1];
+            if (p) {
+                // Pull particles inward
+                p.vx = -Math.cos(angle) * 0.2;
+                p.vy = -Math.sin(angle) * 0.2;
+                p.lifeFade = 0.05;
+            }
+        }
+        ParticleSystem.createExplosion(player.x, player.y, '#c084fc', 10);
     }
     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
     
     // JUICE: Teleport Sickness Screen Shake
-    gameState.screenShake = 15;
+    gameState.screenShake = 20;
 
     // Deduct Cost
     player.mana -= TRAVEL_COST;
@@ -239,6 +270,21 @@ window.handleFastTravel = function (targetX, targetY) {
         }
     }
     
+    // --- MULTIVERSE CHECK (Returning to Prime Realm) ---
+    // If the player uses Fast Travel to go back to 0,0, auto-pull them out of any alternate dimension.
+    if (isVillageBypass && gameState.currentRealm !== 0) {
+        logMessage("{cyan:The leylines pull you across the multiverse, safely back to the Prime Realm.}");
+        gameState.currentRealm = 0;
+        gameState.realmMutators = [];
+        updates.currentRealm = 0;
+        updates.realmMutators = [];
+        
+        // Purge memory of the alternate dimension
+        chunkManager.loadedChunks = {};
+        chunkManager.worldState = {};
+        if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.clearAll();
+    }
+
     // Failsafe State Override
     gameState.mapMode = 'overworld';
     gameState.currentCaveId = null;
@@ -268,7 +314,7 @@ window.handleFastTravel = function (targetX, targetY) {
     
     // --- ARRIVAL FX ---
     if (typeof ParticleSystem !== 'undefined') {
-        ParticleSystem.createExplosion(player.x, player.y, '#3b82f6', 20); // Blue explosion
+        ParticleSystem.createExplosion(player.x, player.y, '#3b82f6', 25); // Huge Blue explosion
     }
     
     // Force complete redraw
@@ -297,5 +343,10 @@ window.handleFastTravel = function (targetX, targetY) {
 };
 
 if (closeFastTravelButton) {
-    closeFastTravelButton.addEventListener('click', () => fastTravelModal.classList.add('hidden'));
+    closeFastTravelButton.addEventListener('click', () => {
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+        fastTravelModal.classList.add('hidden');
+    });
 }
+
+// --- END OF FILE fast-travel.js ---
