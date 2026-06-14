@@ -1,3 +1,5 @@
+// --- START OF FILE worldmap.js ---
+
 // ==========================================
 // WORLD MAP SYSTEM & SETTINGS
 // ==========================================
@@ -50,7 +52,14 @@ const MAP_COLORS = {
     DESERT: [253, 224, 71, 255],
     FOREST: [20, 83, 45, 255],
     PLAINS: [34, 197, 94, 255],
-    EMPTY: [0, 0, 0, 0]
+    EMPTY: [0, 0, 0, 0],
+    
+    // Newly Added Lore Anomalies
+    ELDER_TREE: [6, 78, 59, 255],     // Deep mystical green
+    FAIRY_RING: [217, 70, 239, 255],  // Fuchsia
+    CLOCKWORK: [180, 83, 9, 255],     // Amber/Brass
+    MINE: [68, 64, 60, 255],          // Stone Grey
+    VOID: [46, 2, 73, 255]            // Deep Purple/Black
 };
 
 function getCachedMapChunk(cx, cy) {
@@ -76,7 +85,7 @@ function getCachedMapChunk(cx, cy) {
         for (let x = 0; x < MAP_CHUNK_SIZE; x++) {
             const worldX = cx * MAP_CHUNK_SIZE + x;
             const worldY = cy * MAP_CHUNK_SIZE + y;
-            const colorRGBA = getTileColorForMap(worldX, worldY); // Now returns raw array
+            const colorRGBA = getTileColorForMap(worldX, worldY); 
             
             const index = (y * MAP_CHUNK_SIZE + x) * 4;
             data[index] = colorRGBA[0];
@@ -91,7 +100,7 @@ function getCachedMapChunk(cx, cy) {
     return c;
 }
 
-// Determines accurate colors including new Nautical & Night items!
+// Determines accurate colors including new Nautical, Night, and Void items!
 function getTileColorForMap(worldX, worldY) {
     // Fast Bitwise Math for Chunk ID
     const chunkId = `${Math.floor(worldX / MAP_CHUNK_SIZE)},${Math.floor(worldY / MAP_CHUNK_SIZE)}`;
@@ -102,7 +111,7 @@ function getTileColorForMap(worldX, worldY) {
     // Landmarks & Structures
     if (['V', '🏰', '♛', '🏛️', '🚪', '🎓'].includes(tile)) return MAP_COLORS.WHITE;
     if (tile === '🕍') return MAP_COLORS.DARK_RED; 
-    if (['⛰', '🕳️', '🧊', '♣', '🏝️'].includes(tile)) return MAP_COLORS.CAVE;
+    if (['⛰', '🧊', '♣', '🏝️'].includes(tile)) return MAP_COLORS.CAVE;
     if (['#', '|', '⛩️', '⛲', '✨'].includes(tile)) return MAP_COLORS.MAGIC; 
     if (['🧱', '▤', '=', '+', '☒', '⛺'].includes(tile)) return MAP_COLORS.BUILT;
     if (tile === 'c' || tile === '⛵') return MAP_COLORS.RED;
@@ -112,9 +121,14 @@ function getTileColorForMap(worldX, worldY) {
     // Anomalies
     if (tile === '🌋') return MAP_COLORS.VOLCANO;
     if (tile === '🛕') return MAP_COLORS.TEMPLE;
-    if (tile === '🛟') return MAP_COLORS.FLOTSAM;
+    if (tile === '🛟' || tile === '🚢') return MAP_COLORS.FLOTSAM;
     if (tile === '🌺') return MAP_COLORS.MOONBLOOM;
     if (tile === '☄️') return MAP_COLORS.STAR;
+    if (tile === '🌳e') return MAP_COLORS.ELDER_TREE;
+    if (tile === '🍄r') return MAP_COLORS.FAIRY_RING;
+    if (tile === '⚙️d') return MAP_COLORS.CLOCKWORK;
+    if (tile === '⛰️m') return MAP_COLORS.MINE;
+    if (tile === 'Ω' || tile === '🕳️') return MAP_COLORS.VOID;
 
     // Natural Biomes (Fallback)
     const elev = elevationNoise.noise(worldX / 70, worldY / 70);
@@ -200,10 +214,29 @@ function renderWorldMap() {
     const logicalWidth = worldMapCanvas.clientWidth;
     const logicalHeight = worldMapCanvas.clientHeight;
 
-    // Clear Background
-    worldMapCtx.fillStyle = '#000000';
+    // JUICE WIN: Cartography Grid Background
+    // Deep dark blue/black instead of pure black for a blueprint/map feel
+    worldMapCtx.fillStyle = '#020617'; 
     worldMapCtx.fillRect(0, 0, logicalWidth, logicalHeight);
     worldMapCtx.imageSmoothingEnabled = false;
+
+    // Draw subtle, panning cartography grid
+    worldMapCtx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    worldMapCtx.lineWidth = 1;
+    const gridSpacing = 50;
+    const gridOffset_X = (mapCamera.x * currentMapScale) % gridSpacing;
+    const gridOffset_Y = (mapCamera.y * currentMapScale) % gridSpacing;
+    
+    worldMapCtx.beginPath();
+    for(let x = -gridOffset_X; x < logicalWidth; x += gridSpacing) {
+        worldMapCtx.moveTo(x, 0);
+        worldMapCtx.lineTo(x, logicalHeight);
+    }
+    for(let y = -gridOffset_Y; y < logicalHeight; y += gridSpacing) {
+        worldMapCtx.moveTo(0, y);
+        worldMapCtx.lineTo(logicalWidth, y);
+    }
+    worldMapCtx.stroke();
 
     // PERFORMANCE WIN: Pre-calculate screen boundaries with fast Bitwise operators
     const centerX = (logicalWidth / 2) | 0;
@@ -294,6 +327,9 @@ function renderWorldMap() {
     // Render Discovered Points of Interest (POIs)
     if (gameState.player.discoveredPOIs) {
         worldMapCtx.font = `bold ${Math.max(10, currentMapScale * 1.5)}px monospace`;
+        // JUICE WIN: Dynamic hover/bobbing animation for POIs
+        const bobY = Math.sin(now / 300) * (currentMapScale * 0.2); 
+        
         gameState.player.discoveredPOIs.forEach(poi => {
             const screenX = (poi.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (poi.y - mapCamera.y) * currentMapScale + centerY;
@@ -305,7 +341,7 @@ function renderWorldMap() {
                 worldMapCtx.fill();
                 
                 worldMapCtx.fillStyle = '#ffffff';
-                worldMapCtx.fillText(poi.icon, screenX + currentMapScale/2, screenY + currentMapScale/2);
+                worldMapCtx.fillText(poi.icon, screenX + currentMapScale/2, screenY + currentMapScale/2 + bobY);
             }
         });
     }
@@ -390,6 +426,17 @@ function renderWorldMap() {
     worldMapCtx.fillStyle = grad;
     worldMapCtx.fillRect(0, 0, logicalWidth, logicalHeight);
 
+    // JUICE WIN: Golden Compass Rose
+    worldMapCtx.fillStyle = 'rgba(250, 204, 21, 0.6)'; // Yellow/Gold
+    worldMapCtx.font = 'bold 20px "Uncial Antiqua", cursive';
+    worldMapCtx.fillText('N', logicalWidth - 35, logicalHeight - 55);
+    
+    worldMapCtx.beginPath();
+    worldMapCtx.moveTo(logicalWidth - 35, logicalHeight - 75); // Top point
+    worldMapCtx.lineTo(logicalWidth - 40, logicalHeight - 40); // Bottom left
+    worldMapCtx.lineTo(logicalWidth - 30, logicalHeight - 40); // Bottom right
+    worldMapCtx.fill();
+
     updateMapUI();
 }
 
@@ -399,37 +446,53 @@ function updateMapUI() {
     
     if (hoverWorldX !== null && hoverWorldY !== null) {
         const chunkId = `${Math.floor(hoverWorldX / MAP_CHUNK_SIZE)},${Math.floor(hoverWorldY / MAP_CHUNK_SIZE)}`;
-        let tileName = "Unexplored";
+        let tileName = "Uncharted Wilderness";
         
         if (gameState.exploredChunks.has(chunkId)) {
             const tile = chunkManager.getTile(hoverWorldX, hoverWorldY);
+            
+            // LORE EXPANSION WIN: Dynamically translate all anomaly tiles into map legend lore!
             if (typeof TILE_DATA !== 'undefined' && TILE_DATA[tile] && TILE_DATA[tile].name) {
                 tileName = TILE_DATA[tile].name;
-            } else if (tile === 'V') tileName = "Safe Haven Village";
+            } 
+            else if (tile === 'V') tileName = "Safe Haven Village";
             else if (tile === '🏰') tileName = "Castle Ruins";
             else if (tile === '♛') tileName = "Grand Fortress";
-            else if (tile === '🛕') tileName = "Sunken Temple"; 
-            else if (tile === '🌋') tileName = "Volcanic Island"; 
+            else if (tile === '🛕') tileName = "Sunken Temple (Danger)"; 
+            else if (tile === '🌋') tileName = "Volcanic Island (Extreme Heat)"; 
             else if (tile === '⛰') tileName = "Cave Entrance";
-            else if (tile === 'F') tileName = "Forest";
-            else if (tile === 'D') tileName = "Desert";
-            else if (tile === 'd') tileName = "Deadlands";
-            else if (tile === '^') tileName = "Mountains";
-            else if (tile === '~') tileName = "Deep Water";
-            else if (tile === '≈') tileName = "Swamp";
-            else if (tile === '.') tileName = "Plains";
+            else if (tile === '🌳e') tileName = "Elder Tree (Ancient Magic)";
+            else if (tile === '🍄r') tileName = "Fairy Ring (Fae Territory)";
+            else if (tile === '⚙️d') tileName = "Clockwork Ruins (Second Age)";
+            else if (tile === '⛰️m') tileName = "Dwarven Mines (Abandoned)";
+            else if (tile === 'Ω') tileName = "Void Rift (Lethal)";
+            else if (tile === '🕳️') tileName = "Abyssal Chasm (Underworld)";
+            else if (tile === '🚢') tileName = "Sunken Shipwreck";
+            else if (tile === '🛟') tileName = "Ocean Flotsam";
+            else if (tile === '🌺') tileName = "Moonbloom Patch";
+            else if (tile === '☄️') tileName = "Star-Metal Crater";
+            else if (tile === 'F') tileName = "Dense Forest";
+            else if (tile === 'D') tileName = "Scorching Desert";
+            else if (tile === 'd') tileName = "Ashen Deadlands";
+            else if (tile === '^') tileName = "Impassable Mountains";
+            else if (tile === '~') tileName = "Deep Ocean";
+            else if (tile === '≈') tileName = "Fetid Swamp";
+            else if (tile === '.') tileName = "Open Plains";
             else if (tile === '#') {
-                tileName = "Waystone";
+                tileName = "Leyline Waystone";
                 const isUnlocked = gameState.player.unlockedWaypoints && gameState.player.unlockedWaypoints.some(wp => wp.x === hoverWorldX && wp.y === hoverWorldY);
                 if (isUnlocked) actionHint = ' | <span class="text-purple-400 font-bold">Double-Click to Travel</span>';
             }
             else if (tile === '🗺️') tileName = "Cartographer's Guild";
             else if (['🧱', '=', '+', '☒'].includes(tile)) tileName = "Built Structure";
-            else tileName = "Unknown Area";
+            else tileName = "Uncharted Wilderness";
         }
         
-        // QoL WIN: Calculate precise distance from player
-        const dist = Math.floor(Math.sqrt((hoverWorldX - gameState.player.x) ** 2 + (hoverWorldY - gameState.player.y) ** 2));
+        // QoL WIN: Calculate precise distance from player using integer math
+        const dx = hoverWorldX - gameState.player.x;
+        const dy = hoverWorldY - gameState.player.y;
+        const dist = Math.floor(Math.sqrt(dx * dx + dy * dy));
+        
         hoverText = ` | Hover: <span class="text-yellow-400 font-bold">${tileName}</span> (${hoverWorldX}, ${-hoverWorldY}) <span class="text-gray-500">[${dist}m]</span>`;
     }
     
@@ -612,3 +675,5 @@ worldMapCanvas.addEventListener('wheel', (e) => {
         mapCamera.y = targetMapCamera.y;
     }
 }, { passive: false });
+
+// --- END OF FILE worldmap.js ---
