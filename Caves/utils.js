@@ -41,9 +41,23 @@ window.MathUtils = {
         let x = Math.max(0, Math.min(1, (value - min) / (max - min)));
         return x * x * (3 - 2 * x);
     },
+    easeOutQuad: (x) => {
+        return 1 - (1 - x) * (1 - x);
+    },
+    easeInOutQuad: (x) => {
+        return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+    },
     easeOutElastic: (x) => {
         const c4 = (2 * Math.PI) / 3;
         return x === 0 ? 0 : x === 1 ? 1 : Math.pow(2, -10 * x) * Math.sin((x * 10 - 0.75) * c4) + 1;
+    },
+    bounceOut: (x) => {
+        const n1 = 7.5625;
+        const d1 = 2.75;
+        if (x < 1 / d1) { return n1 * x * x; } 
+        else if (x < 2 / d1) { return n1 * (x -= 1.5 / d1) * x + 0.75; } 
+        else if (x < 2.5 / d1) { return n1 * (x -= 2.25 / d1) * x + 0.9375; } 
+        else { return n1 * (x -= 2.625 / d1) * x + 0.984375; }
     },
     
     // Returns a random integer between min and max (inclusive)
@@ -206,6 +220,21 @@ const Perlin = {
               B = this.p[X + 1] + Y, BA = this.p[B] + Z, BB = this.p[B + 1] + Z;
         return this.scale(this.lerp(w, this.lerp(v, this.lerp(u, this.grad(this.p[AA], x, y, z), this.grad(this.p[BA], x - 1, y, z)), this.lerp(u, this.grad(this.p[AB], x, y - 1, z), this.grad(this.p[BB], x - 1, y - 1, z))), this.lerp(v, this.lerp(u, this.grad(this.p[AA + 1], x, y, z - 1), this.grad(this.p[BA + 1], x - 1, y, z - 1)), this.lerp(u, this.grad(this.p[AB + 1], x, y - 1, z - 1), this.grad(this.p[BB + 1], x - 1, y - 1, z - 1)))));
     },
+    // EXPANDABILITY WIN: Fractional Brownian Motion (fBm)
+    // Layers multiple passes of noise to create highly organic, rugged terrain values
+    fBm: function(x, y, z = 0, octaves = 4, persistence = 0.5, lacunarity = 2) {
+        let total = 0;
+        let frequency = 1;
+        let amplitude = 1;
+        let maxValue = 0; 
+        for(let i=0; i < octaves; i++) {
+            total += this.noise(x * frequency, y * frequency, z * frequency) * amplitude;
+            maxValue += amplitude;
+            amplitude *= persistence;
+            frequency *= lacunarity;
+        }
+        return total / maxValue;
+    },
     fade: t => t * t * t * (t * (t * 6 - 15) + 10),
     lerp: (t, a, b) => a + t * (b - a),
     grad: (hash, x, y, z) => {
@@ -219,18 +248,22 @@ const Perlin = {
 // --- OPTIMIZATION: Cache Emoji Checks ---
 const charWidthCache = {};
 
-// PERFORMANCE WIN: Expanded cache from 255 to 2047! 
-// This covers Latin Extended, Greek, Cyrillic, and Arabic blocks.
-// This ensures the notoriously slow Regex check is NEVER called for standard chat/UI text.
+// We still build the cache boundary, but the fast-path below rarely hits it.
 for (let i = 0; i <= 2047; i++) {
     const char = String.fromCharCode(i);
     charWidthCache[char] = false;
 }
 
+// PERFORMANCE WIN: The ASCII Fast-Path
+// Drastically speeds up rendering by skipping the Regex and Cache lookups for standard Latin/ASCII characters.
 const isWideChar = (char) => {
+    // 1. Instant rejection for standard characters (e.g., '.', '#', 'a', 'W')
+    if (char.charCodeAt(0) < 255) return false; 
+    
+    // 2. Cache Lookup
     if (charWidthCache[char] !== undefined) return charWidthCache[char];
     
-    // ROBUSTNESS: Enhanced Emoji Regex to catch multi-part emojis (e.g., flags, skin tones)
+    // 3. Regex Fallback for un-cached Emojis/Unicode
     const isWide = /[\p{Extended_Pictographic}\p{Emoji}\p{Emoji_Component}]/u.test(char); 
     charWidthCache[char] = isWide;
     return isWide;
@@ -253,6 +286,12 @@ function escapeHtml(string) {
   return noControlChars.replace(/[&<>"'`=\/]/g, function (s) {
     return entityMap[s];
   });
+}
+
+// QoL WIN: Instantly strips {color:text} syntax for clean native browser tooltips
+function stripColorTags(str) {
+    if (!str) return "";
+    return str.replace(/\{[a-z]+:(.*?)\}/ig, '$1');
 }
 
 function capitalizeWords(str) {
@@ -328,3 +367,5 @@ function generateUUID() {
         return v.toString(16);
     });
 }
+
+// --- END OF FILE utils.js ---
