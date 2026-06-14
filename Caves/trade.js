@@ -22,13 +22,19 @@ const BASE_ITEM_VALUES = {
     'Ancient Coin': 25, 'Alpha Pelt': 60, 'Rainbow Shell': 100, 
     'Golden Pocket Watch': 120, 'Jade Idol': 90, 'Black Pearl': 250,
     'Heart of the Forest': 300, 'Kraken Ink Sac': 150, 'Ancient Vase': 75,
-    'Stone Head': 60, 'Fossilized Bone': 40,
+    'Stone Head': 60, 'Fossilized Bone': 40, 'Drowned Skull': 30, 'Rusted Helm': 15,
     
+    // Materials, Boss Drops & Rare Goods
+    'Star-Metal Ore': 150, 'Obsidian Shard': 75, 'Void Dust': 40, 
+    'Demon Horn': 100, 'Whale Bone': 80, 'Kraken Ink': 100, 'Basilisk Eye': 120,
+    'Mithril Ore': 100, 'Dragon Scale': 150, 'Elemental Core': 100, 'Frost Essence': 80,
+
     // Fish & Sea Creatures
     'Golden Koi': 150, 'Deep Sea Cod': 10, 'Silver Tuna': 50, 
     'Magma Carp': 60, 'Sludge Eel': 15, 'Eyeless Cave Fish': 40, 
     'Swamp Serpent Scale': 200, 'Minnow': 1, 'River Trout': 4, 
-    'Leaping Salmon': 15, 'Mudcat': 2
+    'Leaping Salmon': 15, 'Mudcat': 2, 'Abyssal Angler': 180, 'Swordfish': 60,
+    'Abyssal Oyster': 45
 };
 
 /**
@@ -126,7 +132,7 @@ function handleBuyItem(itemName, amount = 1) {
 
     // 3. Final Calculation
     const finalDiscount = Math.min(discountPercent, 0.50);
-    const finalBuyPrice = Math.floor(basePrice * (1.0 - finalDiscount));
+    const finalBuyPrice = Math.max(1, Math.floor(basePrice * (1.0 - finalDiscount)));
 
     // --- BATCH CALCULATION ---
     let buyQty = 1;
@@ -155,7 +161,7 @@ function handleBuyItem(itemName, amount = 1) {
     const existingStack = player.inventory.find(item => item.name === itemName && !item.isEquipped);
     const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
 
-    if (!existingStack && player.inventory.length >= window.MAX_INVENTORY_SLOTS) {
+    if (!existingStack && player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
         logMessage("{red:Your inventory is full!}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
@@ -279,8 +285,11 @@ function handleSellAllItems() {
         if (item.isEquipped) continue;
 
         // 2. Filter: Only sell 'junk' (Loot/Fish) and 'trade' goods
-        // We protect 'consumable', 'weapon', 'armor', 'tool', etc. to keep the player safe.
+        // ROBUSTNESS: Explicitly protect 'ingredient' and 'consumable' so they don't sell their crafting mats or potions!
         if (item.type === 'junk' || item.type === 'trade') {
+
+            // Skip magically enhanced junk just in case (edge cases)
+            if (item.statBonuses && Object.keys(item.statBonuses).length > 0) continue;
 
             // DRY OPTIMIZATION: Use our helper
             const { sellPrice } = calculateItemValue(item, player);
@@ -297,7 +306,7 @@ function handleSellAllItems() {
     }
 
     if (itemsSold > 0) {
-        logMessage(`Mass Sold ${itemsSold} junk items for {gold:${goldGained} gold}.`);
+        logMessage(`Mass Sold ${itemsSold} junk/trade items for {gold:${goldGained} gold}.`);
         
         // JUICE: Gold particles in the background
         if (typeof ParticleSystem !== 'undefined') {
@@ -338,6 +347,7 @@ function renderShop() {
     // 3. Extract Biome context for dynamic flavor text
     let biome = 'Plains';
     if (gameState.mapMode === 'dungeon' && gameState.currentCaveTheme === 'ROCK') biome = 'Mountain';
+    else if (gameState.mapMode === 'underworld') biome = 'Underworld';
     else if (gameState.mapMode === 'overworld') {
         const elev = elevationNoise.noise(gameState.player.x / 70, gameState.player.y / 70);
         const moist = moistureNoise.noise(gameState.player.x / 50, gameState.player.y / 50);
@@ -353,8 +363,10 @@ function renderShop() {
     if (shopTitle) {
         let flavor = "A traveling merchant.";
         if (biome === 'Desert') flavor = "Water is worth its weight in gold here.";
+        else if (biome === 'Deadlands') flavor = "I would trade my own soul for a sip of clean water.";
         else if (biome === 'Mountain') flavor = "I'll pay top coin for wood and food.";
         else if (biome === 'Swamp') flavor = "Antidotes are flying off the shelves.";
+        else if (biome === 'Underworld') flavor = "I collect things the surface dwellers fear.";
         else if (gameState.mapMode === 'castle') flavor = "Luxury goods and rare artifacts accepted.";
         
         shopTitle.innerHTML = `Merchant <span class="block text-xs font-normal text-gray-400 mt-1 italic tracking-normal font-sans">"${flavor}"</span>`;
@@ -376,7 +388,7 @@ function renderShop() {
             discountPercent += 0.10; 
         }
         const finalDiscount = Math.min(discountPercent, 0.5);
-        const finalBuyPrice = Math.floor(baseBuyPrice * (1.0 - finalDiscount));
+        const finalBuyPrice = Math.max(1, Math.floor(baseBuyPrice * (1.0 - finalDiscount)));
 
         // Visually cross out the original price if Charisma/Lore lowered it
         let priceHtml = `${finalBuyPrice}g`;
@@ -384,12 +396,16 @@ function renderShop() {
             priceHtml = `<del class="text-gray-500 text-xs mr-1 font-normal">${baseBuyPrice}g</del>${finalBuyPrice}g`;
         }
 
+        // UX WIN: Color code the price if you can't afford it
+        const canAffordItem = gameState.player.coins >= finalBuyPrice;
+        const priceColorClass = canAffordItem ? 'text-yellow-500' : 'text-red-500';
+
         // QoL WIN: Buy Max Button for Stackables
-        let actionsHtml = `<button data-buy-item="${item.name}" data-amount="1" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50">Buy 1</button>`;
+        let actionsHtml = `<button data-buy-item="${item.name}" data-amount="1" style="transform: translate3d(0,0,0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50">Buy 1</button>`;
         const isStackable = itemTemplate && ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
         
         if (isStackable && item.stock > 1) {
-            actionsHtml += `<button data-buy-item="${item.name}" data-amount="all" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs">Max</button>`;
+            actionsHtml += `<button data-buy-item="${item.name}" data-amount="all" style="transform: translate3d(0,0,0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs">Max</button>`;
         }
 
         const li = document.createElement('li');
@@ -397,14 +413,14 @@ function renderShop() {
         li.innerHTML = `
             <div>
                 <span class="shop-item-name">${item.name} <span class="text-xl">${itemTemplate?.tile || '?'}</span></span>
-                <span class="shop-item-details font-bold text-yellow-500">Price: ${priceHtml} <span class="text-xs text-gray-500 font-normal">(Stock: ${item.stock})</span></span>
+                <span class="shop-item-details font-bold ${priceColorClass}">Price: ${priceHtml} <span class="text-xs text-gray-500 font-normal">(Stock: ${item.stock})</span></span>
             </div>
             <div class="shop-item-actions flex items-center">
                 ${actionsHtml}
             </div>
         `;
 
-        if (gameState.player.coins < finalBuyPrice || item.stock <= 0) {
+        if (!canAffordItem || item.stock <= 0) {
             const btns = li.querySelectorAll('button');
             btns.forEach(b => b.disabled = true);
         }
@@ -413,7 +429,7 @@ function renderShop() {
 
     // 5. Populate "Sell" list
     if (gameState.player.inventory.length === 0) {
-        shopSellList.innerHTML = '<li class="shop-item-details italic">Your inventory is empty.</li>';
+        shopSellList.innerHTML = '<li class="shop-item-details italic text-sm text-gray-500 border border-gray-700 p-2 rounded">Your inventory is empty.</li>';
     } else {
         gameState.player.inventory.forEach((item, index) => {
             // DRY OPTIMIZATION: Use our helper
@@ -434,12 +450,12 @@ function renderShop() {
             li.className = 'shop-item hover:border-blue-500 transition-colors duration-150';
             
             // UX WIN: Add a "Sell Stack" button if they have more than 1!
-            let actionsHtml = `<button data-sell-index="${index}" data-amount="1" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50" ${item.isEquipped ? 'disabled title="Unequip first"' : ''}>Sell 1</button>`;
+            let actionsHtml = `<button data-sell-index="${index}" data-amount="1" style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50" ${item.isEquipped ? 'disabled title="Unequip first"' : ''}>Sell 1</button>`;
             
             if (item.quantity > 1 && !item.isEquipped) {
-                actionsHtml += `<button data-sell-index="${index}" data-amount="all" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs">All (${item.quantity})</button>`;
+                actionsHtml += `<button data-sell-index="${index}" data-amount="all" style="transform: translate3d(0,0,0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs">All (${item.quantity})</button>`;
             } else if (item.isEquipped) {
-                actionsHtml = `<span class="text-[10px] font-bold text-yellow-500 bg-black bg-opacity-30 px-2 py-1 rounded uppercase tracking-widest">Equipped</span>`;
+                actionsHtml = `<span class="text-[10px] font-bold text-yellow-500 bg-black bg-opacity-30 px-2 py-1 rounded uppercase tracking-widest border border-yellow-800">Equipped</span>`;
             }
 
             li.innerHTML = `
@@ -465,12 +481,12 @@ function renderShop() {
     if (sellHeader) {
         // UX WIN: Smart-disable the button if there is no junk to sell
         const hasJunk = gameState.player.inventory.some(i => !i.isEquipped && (i.type === 'junk' || i.type === 'trade'));
-        const btnClass = hasJunk ? "bg-red-600 hover:bg-red-500 text-white cursor-pointer" : "bg-gray-700 text-gray-500 opacity-50 cursor-not-allowed";
+        const btnClass = hasJunk ? "bg-red-600 hover:bg-red-500 text-white cursor-pointer" : "bg-gray-800 text-gray-500 opacity-50 cursor-not-allowed border border-gray-700";
 
         sellHeader.innerHTML = `
             <div class="flex justify-between items-center w-full">
                 <span>Your Bag <span class="text-[10px] text-gray-400 font-normal ml-1">(${gameState.player.inventory.length}/${window.MAX_INVENTORY_SLOTS || 9})</span></span>
-                <button id="sellAllBtn" class="text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ${btnClass}" ${hasJunk ? '' : 'disabled'}>Sell All Junk</button>
+                <button id="sellAllBtn" style="transform: translate3d(0,0,0);" class="text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ${btnClass}" ${hasJunk ? '' : 'disabled'}>Sell All Junk</button>
             </div>
         `;
         // Ensure we assign the handler directly 
@@ -484,10 +500,11 @@ function getRegionalPriceMultiplier(itemType, itemName) {
     // Get current biome info
     const isDungeon = gameState.mapMode === 'dungeon';
     const isCastle = gameState.mapMode === 'castle';
+    const isUnderworld = gameState.mapMode === 'underworld';
 
     // Default Overworld check
     let biome = 'Plains';
-    if (!isDungeon && !isCastle) {
+    if (!isDungeon && !isCastle && !isUnderworld) {
         const elev = elevationNoise.noise(gameState.player.x / 70, gameState.player.y / 70);
         const moist = moistureNoise.noise(gameState.player.x / 50, gameState.player.y / 50);
         if (elev < 0.35) biome = 'Water';
@@ -506,25 +523,32 @@ function getRegionalPriceMultiplier(itemType, itemName) {
         if (itemName === 'Wildberry' || itemName === 'Healing Potion') multiplier = 2.0; // Demand is high
         if (itemName === 'Obsidian Shard') multiplier = 1.5;
     }
-
-    // 2. MOUNTAIN: Pays for Wood/Food. Hates Ore/Stone.
-    if (biome === 'Mountain' || (isDungeon && gameState.currentCaveTheme === 'ROCK')) {
-        if (itemName === 'Iron Ore' || itemName === 'Stone') multiplier = 0.5;
-        if (itemName === 'Stick' || itemName === 'Machete') multiplier = 1.5;
+    
+    // 2. DEADLANDS & UNDERWORLD: Will pay extraordinary sums for basic survival gear!
+    if (biome === 'Deadlands' || isUnderworld) {
+        if (itemName === 'Clean Water' || itemName === 'Flask of Water' || itemName === 'Healing Potion') multiplier = 2.5; 
+        if (itemName === 'Torch' || itemName === 'Campfire Kit') multiplier = 2.0;
+        if (itemName === 'Void Dust' || itemName === 'Demon Horn') multiplier = 0.8; // Common drops here
     }
 
-    // 3. FOREST/SWAMP: Pays for Metal/Tech. Hates Wood/Herbs.
+    // 3. MOUNTAIN & VOLCANO: Pays for Wood/Food. Hates Ore/Stone.
+    if (biome === 'Mountain' || (isDungeon && gameState.currentCaveTheme === 'ROCK') || (isDungeon && gameState.currentCaveTheme === 'FIRE')) {
+        if (itemName === 'Iron Ore' || itemName === 'Stone' || itemName === 'Obsidian Shard') multiplier = 0.5;
+        if (itemName === 'Stick' || itemName === 'Wood Log' || itemName === 'Machete') multiplier = 1.5;
+    }
+
+    // 4. FOREST/SWAMP: Pays for Metal/Tech. Hates Wood/Herbs.
     if (biome === 'Forest' || biome === 'Swamp') {
-        if (itemName === 'Medicinal Herb' || itemName === 'Stick') multiplier = 0.5;
+        if (itemName === 'Medicinal Herb' || itemName === 'Stick' || itemName === 'Wood Log') multiplier = 0.5;
         if (itemName === 'Iron Ore' || itemName === 'Steel Sword') multiplier = 1.3;
         if (itemName === 'Antidote') multiplier = 2.0; // High demand in swamps!
     }
 
-    // 4. CASTLES/VILLAGES: Pay extra for Luxury, Relics, and Exotic Fish
+    // 5. CASTLES/VILLAGES: Pay extra for Luxury, Relics, and Exotic Fish
     if (isCastle || biome === 'Safe Haven') {
         if (itemType === 'junk' || itemType === 'quest' || itemType === 'trade') multiplier = 1.2; 
         if (itemName === 'Shattered Crown' || itemName === 'Signet Ring') multiplier = 1.5;
-        if (['Golden Koi', 'Black Pearl', 'Rainbow Shell'].includes(itemName)) multiplier = 1.3;
+        if (['Golden Koi', 'Black Pearl', 'Rainbow Shell', 'Abyssal Oyster'].includes(itemName)) multiplier = 1.3;
     }
 
     return multiplier;
@@ -572,3 +596,5 @@ function initShopListeners() {
         });
     }
 }
+
+// --- END OF FILE trade.js ---
