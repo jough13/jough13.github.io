@@ -4,6 +4,12 @@
 // FIREBASE CONFIGURATION & NETWORK SYSTEMS
 // ==========================================
 
+/* 
+ * SECURITY NOTE: 
+ * In Firebase, it is completely normal and safe for these API keys to be public in the client-side code.
+ * However, the database MUST be protected by strict Firebase Security Rules (Firestore & RTDB) 
+ * to ensure users can only read/write their own specific UID documents and the shared world map.
+ */
 const firebaseConfig = {
     apiKey: "AIzaSyCkQ7H6KzvnLFTYOblS1l12RR2tv7Os6iY",
     authDomain: "caves-and-castles.firebaseapp.com",
@@ -38,6 +44,9 @@ window.FirebaseNetworkState = {
     serverTimeOffset: 0
 };
 
+// Global helper for instant online checks without traversing the object
+window.isOnline = () => window.FirebaseNetworkState.isConnected;
+
 // MMO SYNC: Keep track of the offset between the local client clock and the Firebase Server
 rtdb.ref('.info/serverTimeOffset').on('value', function(snap) {
     window.FirebaseNetworkState.serverTimeOffset = snap.val() || 0;
@@ -52,8 +61,8 @@ let connectionBanner = document.getElementById('firebase-connection-banner');
 if (!connectionBanner) {
     connectionBanner = document.createElement('div');
     connectionBanner.id = 'firebase-connection-banner';
-    // Tailwind classes for a sleek, sliding top banner with text-shadow for readability
-    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[10000] transition-transform duration-500 transform -translate-y-full shadow-lg font-mono tracking-widest uppercase text-shadow-sm';
+    // JUICE WIN: Added backdrop-blur-md and z-[20000] for a frosted glass look that sits above EVERYTHING
+    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-transform duration-500 transform -translate-y-full shadow-lg font-mono tracking-widest uppercase text-shadow-sm backdrop-blur-md';
     connectionBanner.style.textShadow = "1px 1px 0px rgba(0,0,0,0.5)"; // Ensure it pops over bright maps
     document.body.appendChild(connectionBanner);
 }
@@ -73,7 +82,7 @@ try {
                 // Delay the banner by 3 seconds so it doesn't flash over the bootloader
                 setTimeout(() => {
                     connectionBanner.textContent = "⚠️ Multiple Tabs Open - Offline Saving Disabled";
-                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[10000] transition-all duration-500 bg-yellow-600 text-black translate-y-0 shadow-lg font-mono tracking-widest uppercase';
+                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-yellow-600 bg-opacity-90 text-black translate-y-0 shadow-lg font-mono tracking-widest uppercase backdrop-blur-md';
                     
                     // Hide the banner 5 seconds after it appears
                     setTimeout(() => {
@@ -105,7 +114,7 @@ rtdb.ref('.info/connected').on('value', function(snap) {
         if (hasInitiallyConnected && !wasConnected) {
             // Restore Banner
             connectionBanner.textContent = "📶 Connection Restored";
-            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[10000] transition-all duration-500 bg-green-600 text-white translate-y-0 shadow-lg font-mono tracking-widest uppercase';
+            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-green-600 bg-opacity-90 text-white translate-y-0 shadow-lg font-mono tracking-widest uppercase backdrop-blur-md';
             
             // Slide it away after 3 seconds
             setTimeout(() => {
@@ -125,7 +134,7 @@ rtdb.ref('.info/connected').on('value', function(snap) {
         if (hasInitiallyConnected && wasConnected) {
             // Warning Banner (JUICE WIN: Added animate-pulse so the user knows it's actively trying to reconnect)
             connectionBanner.textContent = "⚠️ Connection Lost - Reconnecting...";
-            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[10000] transition-all duration-500 bg-red-600 text-white translate-y-0 shadow-lg font-mono tracking-widest uppercase animate-pulse';
+            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-red-600 bg-opacity-90 text-white translate-y-0 shadow-lg font-mono tracking-widest uppercase animate-pulse backdrop-blur-md';
             
             if (typeof logMessage === 'function') logMessage("{red:Connection lost! Trying to reconnect...}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -145,6 +154,7 @@ function handleAuthError(error) {
             break;
         case 'auth/user-not-found':
         case 'auth/wrong-password':
+        case 'auth/invalid-credential':
             friendlyMessage = 'Invalid credentials. Please check your email and password.';
             break;
         case 'auth/email-already-in-use':
@@ -167,6 +177,9 @@ function handleAuthError(error) {
             break;
         case 'auth/operation-not-allowed':
             friendlyMessage = 'Email/Password accounts are not enabled on this server.';
+            break;
+        case 'auth/user-token-expired':
+            friendlyMessage = 'Your session has expired. Please log in again.';
             break;
         // EXPANDABILITY WIN: Handled Account Linking & Security Errors
         case 'auth/credential-already-in-use':
@@ -253,6 +266,9 @@ function sanitizeForFirebase(obj, seen = new WeakSet()) {
 
     // 5. Handle Arrays
     if (Array.isArray(obj)) {
+        // PERFORMANCE WIN: O(1) Fast-Path for empty arrays (Saves a ton of time on empty bank/inventory syncs)
+        if (obj.length === 0) return [];
+
         // Pre-allocate array size for a slight speed boost on massive inventories
         const newArr = new Array(obj.length);
         for (let i = 0; i < obj.length; i++) {
@@ -275,3 +291,5 @@ function sanitizeForFirebase(obj, seen = new WeakSet()) {
     }
     return newObj;
 }
+
+// --- END OF FILE config-firebase.js ---
