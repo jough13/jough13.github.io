@@ -1,3 +1,5 @@
+// --- START OF FILE input.js ---
+
 // ==========================================
 // INPUT HANDLING & QUEUE SYSTEM
 // ==========================================
@@ -27,9 +29,11 @@ const BLOCKED_SCROLL_KEYS = new Set([
     'Home', 'End', 'PageUp', 'PageDown'
 ]);
 
+// Added the new J (Journal) and Zoom (+ / -) hotkeys to the spam guard
 const INSTANT_KEYS = new Set([
-    'Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'h', 'd', 'g', 'q',
-    'I', 'M', 'B', 'K', 'C', 'P', 'H', 'D', 'G', 'Q'
+    'Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'h', 'd', 'g', 'q', 'j',
+    'I', 'M', 'B', 'K', 'C', 'P', 'H', 'D', 'G', 'Q', 'J',
+    '+', '=', '-', '_'
 ]);
 
 
@@ -100,6 +104,18 @@ function handleInput(key) {
 
     if (key.toLowerCase() === 'q') {
         if (typeof drinkFromSource === 'function') drinkFromSource();
+        return;
+    }
+
+    // --- ACCESSIBILITY WIN: Keyboard Zoom Controls ---
+    if (key === '=' || key === '+') {
+        window.currentZoom = Math.min(40, window.currentZoom + 2);
+        if (typeof resizeCanvas === 'function') resizeCanvas();
+        return;
+    }
+    if (key === '-' || key === '_') {
+        window.currentZoom = Math.max(12, window.currentZoom - 2);
+        if (typeof resizeCanvas === 'function') resizeCanvas();
         return;
     }
 
@@ -231,6 +247,7 @@ function handleInput(key) {
     if (key.toLowerCase() === 'k') { toggleMenu(skillModal, openSkillbook, null); return; }
     if (key.toLowerCase() === 'c') { toggleMenu(collectionsModal, openCollections, null); return; }
     if (key.toLowerCase() === 'p') { toggleMenu(talentModal, openTalentModal, null); return; }
+    if (key.toLowerCase() === 'j') { toggleMenu(questModal, openBountyBoard, null); return; } // QoL WIN: Journal Hotkey
     
     // Help Hotkey
     if (key.toLowerCase() === 'h') { 
@@ -274,7 +291,16 @@ function handleInput(key) {
     }
 
     if ([' ', '5', 'Numpad5', 'Clear', '.'].includes(key)) {
-        logMessage("{gray:You wait a moment.}");
+        // LORE/JUICE WIN: Dynamic flavor text for waiting
+        const waitFlavors = [
+            "You pause to catch your breath.",
+            "You listen to the sounds of the world.",
+            "You stand perfectly still.",
+            "You gather your thoughts.",
+            "You wait a moment."
+        ];
+        const msg = waitFlavors[Math.floor(Math.random() * waitFlavors.length)];
+        logMessage(`{gray:${msg}}`);
         
         // Spawn visual feedback so the player knows the turn passed
         if (typeof ParticleSystem !== 'undefined') {
@@ -340,3 +366,5 @@ window.addEventListener('resize', () => {
         resizeTimer = setTimeout(resizeCanvas, 100); 
     }
 });
+
+// --- END OF FILE input.js ---
