@@ -3,99 +3,55 @@
 window.PLAYER_RACES = {
     'human': {
         name: 'Human',
-        description: "Versatile and ambitious. They adapt to any situation.",
+        description: "Versatile, ambitious, and stubborn. They adapt to any situation.",
         stats: { charisma: 1, luck: 1, endurance: 1 }, 
         icon: '👨'
     },
     'elf': {
         name: 'Elf',
-        description: "Ancient and keen-eyed. Magic flows through their veins.",
+        description: "Ancient and keen-eyed. The magic of the First Age still flows through their veins.",
         stats: { wits: 2, perception: 1 }, 
         icon: '🧝'
     },
     'dwarf': {
         name: 'Dwarf',
-        description: "Stout and unyielding. Born of stone and steel.",
+        description: "Stout and unyielding. Born of stone, steel, and subterranean darkness.",
         stats: { constitution: 2, strength: 1 }, 
         icon: '🧔'
     },
     'orc': {
         name: 'Orc',
-        description: "Fierce and mighty. Glory is earned in blood.",
+        description: "Fierce and mighty. For an Orc, glory is earned strictly in blood and battle.",
         stats: { strength: 2, endurance: 1 }, 
         icon: '👹'
     },
     'halfling': {
         name: 'Halfling',
-        description: "Small, quiet, and incredibly lucky.",
+        description: "Small, exceptionally quiet, and supernaturally lucky.",
         stats: { dexterity: 2, luck: 1 }, 
         icon: '🦶'
     }
 };
 
 window.QUEST_DATA = {
+    // --- EARLY GAME ---
     "healerSupply": {
         title: "Herbal Remedies",
         description: "The Healer is running low on supplies. Gather 5 Medicinal Herbs ('🌿') from the swamp.",
-        type: 'collect',
-        itemNeeded: 'Medicinal Herb',
-        needed: 5,
+        type: 'collect', itemNeeded: 'Medicinal Herb', needed: 5,
         reward: { xp: 200, coins: 50, item: 'Healing Potion', itemQty: 3 }
-    },
-    "banditChief": {
-        title: "Wanted: The Chief",
-        description: "The Bandit Chief ('C') has been spotted in the fortresses. Put an end to his reign.",
-        type: 'kill', 
-        enemy: 'C',   
-        needed: 1,
-        reward: { xp: 500, coins: 300, item: 'Steel Sword', itemQty: 1 }
     },
     "goblinHeirloom": {
         title: "The Lost Heirloom",
         description: "A villager is distraught. A goblin ('g') stole their family heirloom!",
-        type: 'fetch',
-        enemy: 'g',
-        itemNeeded: 'Heirloom',
-        itemTile: '♦',
+        type: 'fetch', enemy: 'g', itemNeeded: 'Heirloom', itemTile: '♦',
         reward: { xp: 150, coins: 100 }
     },
     "goblinTrophies": {
         title: "Goblin Trophies",
         description: "A Lost Prospector ('K') is tired of being harassed. He'll reward you for clearing out 10 Goblin Totems.",
-        type: 'collect',
-        itemNeeded: 'Goblin Totem',
-        needed: 10,
+        type: 'collect', itemNeeded: 'Goblin Totem', needed: 10,
         reward: { xp: 200, coins: 150 }
-    },
-    "orcHunt": {
-        title: "Bounty: Orc Hunt",
-        description: "The brutes are getting bold. Put them down.",
-        type: 'kill', enemy: 'o', needed: 8,
-        reward: { xp: 150, coins: 100 }
-    },
-    "mageMenace": {
-        title: "Bounty: Mage Menace",
-        description: "Apprentice mages are experimenting in the wild. Stop them before they burn something down.",
-        type: 'kill', enemy: 'm', needed: 5,
-        reward: { xp: 180, coins: 120 }
-    },
-    "draugrProblems": {
-        title: "Bounty: Draugr Problems",
-        description: "The Draugr are walking again. Send them back to their graves.",
-        type: 'kill', enemy: 'Z', needed: 5,
-        reward: { xp: 200, coins: 150 }
-    },
-    "acolyteHunt": {
-        title: "Bounty: Shadow Acolytes",
-        description: "Strange, robed figures have been spotted in the crypts. Clear them out.",
-        type: 'kill', enemy: 'a', needed: 10,
-        reward: { xp: 150, coins: 100 }
-    },
-    "spiderHunt": {
-        title: "Bounty: Spider Nest",
-        description: "The caves are crawling with giant spiders. Clear out the nests.",
-        type: 'kill', enemy: '@', needed: 12,
-        reward: { xp: 120, coins: 80 }
     },
     "wolfHunt": {
         title: "Bounty: Wolf Hunt",
@@ -115,11 +71,43 @@ window.QUEST_DATA = {
         type: 'kill', enemy: 's', needed: 10,
         reward: { xp: 100, coins: 50 }
     },
+    "spiderHunt": {
+        title: "Bounty: Spider Nest",
+        description: "The caves are crawling with giant spiders. Clear out the nests.",
+        type: 'kill', enemy: '@', needed: 12,
+        reward: { xp: 120, coins: 80 }
+    },
+    
+    // --- MID GAME ---
     "banditCleanup": {
         title: "Bounty: Bandit Cleanup",
         description: "Bandits have been waylaying travelers. Bring them to justice.",
         type: 'kill', enemy: 'b', needed: 12,
         reward: { xp: 120, coins: 75 }
+    },
+    "banditChief": {
+        title: "Wanted: The Chief",
+        description: "The Bandit Chief ('C') has been spotted in the fortresses. Put an end to his reign.",
+        type: 'kill', enemy: 'C', needed: 1,
+        reward: { xp: 500, coins: 300, item: 'Steel Sword', itemQty: 1 }
+    },
+    "orcHunt": {
+        title: "Bounty: Orc Hunt",
+        description: "The brutes are getting bold. Put them down.",
+        type: 'kill', enemy: 'o', needed: 8,
+        reward: { xp: 150, coins: 100 }
+    },
+    "mageMenace": {
+        title: "Bounty: Mage Menace",
+        description: "Apprentice mages are experimenting in the wild. Stop them before they burn something down.",
+        type: 'kill', enemy: 'm', needed: 5,
+        reward: { xp: 180, coins: 120 }
+    },
+    "draugrProblems": {
+        title: "Bounty: Draugr Problems",
+        description: "The Draugr are walking again. Send them back to their graves.",
+        type: 'kill', enemy: 'Z', needed: 5,
+        reward: { xp: 200, coins: 150 }
     },
     "trollHunt": {
         title: "Bounty: Ogre Sighting",
@@ -139,15 +127,14 @@ window.QUEST_DATA = {
         type: 'kill', enemy: '🧌', needed: 3,
         reward: { xp: 300, coins: 200 }
     },
-    "eldritchTerror": {
-        title: "Bounty: The Unnamable",
-        description: "A horror from beyond the stars has taken root in the deep wilds. Do not look directly at it.",
-        type: 'kill', enemy: '👾', needed: 1,
-        reward: { xp: 1500, coins: 1000, item: 'Elixir of Power', itemQty: 1 }
+    
+    // --- LATE GAME & INQUISITOR ---
+    "starMetalCrafter": {
+        title: "Fallen Stars",
+        description: "Master Thorne requires raw Star-Metal Ore ('☄️') from the mountaintops to craft his masterpieces.",
+        type: 'collect', itemNeeded: 'Star-Metal Ore', needed: 1,
+        reward: { xp: 500, coins: 300 }
     },
-    // ==========================================
-    // --- THE INQUISITOR'S BOUNTIES ---
-    // ==========================================
     "cultistGenerals": {
         title: "The Hand's Fingers",
         description: "The Shadowed Hand is led by Fanatics. Hunt them down.",
@@ -165,6 +152,18 @@ window.QUEST_DATA = {
         description: "A Kraken ('🦑') is sinking our trade ships. Sail into the deep ocean and slay it.",
         type: 'kill', enemy: '🦑', needed: 1,
         reward: { xp: 2000, coins: 1500, item: 'Kraken Ink Sac', itemQty: 2 }
+    },
+    "leviathanHunt": {
+        title: "Bounty: The Apex",
+        description: "The Abyssal Leviathan ('🦕') has swallowed entire galleons. Plunge into the abyss and hunt it.",
+        type: 'kill', enemy: '🦕', needed: 1,
+        reward: { xp: 3000, coins: 2500, item: 'Black Pearl', itemQty: 3 }
+    },
+    "eldritchTerror": {
+        title: "Bounty: The Unnamable",
+        description: "A horror from beyond the stars ('👾') has taken root in the deep wilds. Do not look directly at it.",
+        type: 'kill', enemy: '👾', needed: 1,
+        reward: { xp: 4000, coins: 3000, item: 'Elixir of Power', itemQty: 1 }
     }
 };
 
@@ -218,6 +217,20 @@ window.ENEMY_PREFIXES = {
         statModifiers: { attack: 3, defense: -1 },
         xpMult: 1.3,
         color: '#f97316' 
+    },
+    // --- EXPANSION WIN: New Elite Modifiers ---
+    "Crystalline": {
+        description: "Covered in jagged, hardened crystal.",
+        statModifiers: { defense: 4, maxHealth: 5 },
+        xpMult: 1.6,
+        color: '#22d3ee' // Cyan
+    },
+    "Infernal": {
+        description: "Wreathed in unholy flames.",
+        statModifiers: { attack: 2 },
+        special: 'burn',
+        xpMult: 1.4,
+        color: '#f97316' // Orange
     }
 };
 
@@ -252,6 +265,21 @@ window.ENEMY_DATA = {
         color: '#fca5a5', 
         excludeFromLoot: true, 
         flavor: "He looks nervous, holding his dagger with shaking hands."
+    },
+    '🍄s': {
+        name: 'Sporeling',
+        maxHealth: 4, attack: 1, defense: 1, xp: 6,
+        loot: '🍄',
+        color: '#d946ef',
+        inflicts: 'poison', inflictChance: 0.15,
+        flavor: "A tiny, aggressive walking mushroom."
+    },
+    '⚙️s': {
+        name: 'Clockwork Spider',
+        maxHealth: 3, attack: 2, defense: 3, xp: 8,
+        loot: '⚙️',
+        color: '#b45309',
+        flavor: "A ticking brass arachnid. Surprisingly sturdy."
     },
 
     // --- DESERT WILDLIFE ---
@@ -422,7 +450,14 @@ window.ENEMY_DATA = {
         caster: true, castRange: 4, spellDamage: 3,
         flavor: "They whisper ancient texts that hurt your ears to hear."
     },
-    
+    '👻i': {
+        name: 'Ice Wraith',
+        maxHealth: 10, attack: 3, defense: 2, xp: 20,
+        loot: 'E',
+        color: '#7dd3fc',
+        caster: true, castRange: 4, spellDamage: 4, inflicts: 'frostbite', inflictChance: 0.3,
+        flavor: "A soul trapped forever in the biting cold."
+    },
 
     // --- LEVEL 4-5 (Advanced Threats) ---
     '@': {
@@ -470,6 +505,14 @@ window.ENEMY_DATA = {
         loot: '🧨', // Drops TNT!
         color: '#fcd34d', 
         flavor: "He still swings his pickaxe, long after his shift has ended."
+    },
+    '👁️': {
+        name: 'Void Watcher',
+        maxHealth: 15, attack: 1, defense: 0, xp: 45,
+        loot: 'vd',
+        color: '#c084fc',
+        caster: true, castRange: 6, spellDamage: 5, inflicts: 'madness', inflictChance: 0.5,
+        flavor: "A floating, unblinking eye born from the cosmic tear."
     },
 
     // --- LEVEL 6+ (Elites) ---
@@ -646,13 +689,6 @@ window.ENEMY_DATA = {
         inflicts: 'madness', inflictChance: 0.5,
         flavor: "To look at it is to invite insanity."
     },
-    '🤖': {
-        name: 'Clockwork Guardian',
-        maxHealth: 100, attack: 8, defense: 10, xp: 500,
-        loot: '⚙️', 
-        color: '#d97706', 
-        flavor: "A relic of a lost civilization, still relentlessly patrolling."
-    },
     '🐉h': {
         name: 'Swamp Hydra',
         maxHealth: 60, attack: 6, defense: 2, xp: 150,
@@ -703,7 +739,7 @@ window.PLAYER_BACKGROUNDS = {
     },
     'rogue': {
         name: 'Rogue',
-        description: 'Nimble and lethal, favoring speed and critical strikes.',
+        description: 'Nimble and lethal, favoring speed, evasion, and critical strikes.',
         stats: { dexterity: 2, luck: 1 },
         items: [
             { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon' },
@@ -713,7 +749,7 @@ window.PLAYER_BACKGROUNDS = {
     },
     'mage': {
         name: 'Mage',
-        description: 'A scholar of the arcane, wielding destructive spells.',
+        description: 'A scholar of the arcane, wielding destructive spells and shields.',
         stats: { wits: 2, willpower: 1 },
         items: [
             { templateId: '📚', name: 'Spellbook: Magic Bolt', type: 'spellbook', quantity: 1, tile: '📚', spellId: 'magicBolt' },
@@ -732,7 +768,7 @@ window.PLAYER_BACKGROUNDS = {
     },
     'wretch': {
         name: 'The Wretch',
-        description: 'Naked, afraid, and penniless. A true challenge.',
+        description: 'Naked, afraid, and penniless. A true challenge for veterans.',
         stats: { luck: 2, endurance: 2 }, 
         items: [
             { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor' },
@@ -747,7 +783,7 @@ window.EVOLUTION_DATA = {
             id: 'berserker',
             name: 'Berserker',
             icon: '👹', 
-            description: "Gain Rage on hit. Deal double damage below 50% HP.",
+            description: "A terrifying force of nature. Deals double damage when heavily wounded.",
             stats: { strength: 4, constitution: 2 },
             talent: 'blood_rage'
         },
@@ -755,7 +791,7 @@ window.EVOLUTION_DATA = {
             id: 'paladin',
             name: 'Paladin',
             icon: '🛡️',
-            description: "Immune to Poison/Disease. Heals allies nearby.",
+            description: "A holy defender. Emits an aura that passively heals nearby allies.",
             stats: { constitution: 3, willpower: 2, charisma: 2 },
             talent: 'holy_aura'
         }
@@ -765,7 +801,7 @@ window.EVOLUTION_DATA = {
             id: 'assassin',
             name: 'Assassin',
             icon: '🥷',
-            description: "Attacks from Stealth deal 4x damage.",
+            description: "A master of the shadows. Attacks from stealth deal massive 4x damage.",
             stats: { dexterity: 4, wits: 2 },
             talent: 'shadow_strike'
         },
@@ -773,7 +809,7 @@ window.EVOLUTION_DATA = {
             id: 'ranger',
             name: 'Ranger',
             icon: '🏹',
-            description: "Master of the bow. Ranged attacks deal +50% damage.", 
+            description: "A lethal marksman. Ranged attacks deal +50% damage.", 
             stats: { dexterity: 3, perception: 3 },
             talent: 'eagle_eye'
         }
@@ -783,7 +819,7 @@ window.EVOLUTION_DATA = {
             id: 'archmage',
             name: 'Archmage',
             icon: '🧙‍♂️',
-            description: "Spells cost 20% less Mana.",
+            description: "A conduit for the leylines. Spells cost 20% less Mana.",
             stats: { wits: 5, maxMana: 20 },
             talent: 'mana_flow'
         },
@@ -791,7 +827,7 @@ window.EVOLUTION_DATA = {
             id: 'battlemage',
             name: 'Battlemage',
             icon: '🗡️',
-            description: "Can wear Heavy Armor without penalty.",
+            description: "A heavily armored spellcaster. Negates Heavy Armor penalties.",
             stats: { strength: 3, wits: 3 },
             talent: 'arcane_steel'
         }
@@ -801,7 +837,7 @@ window.EVOLUTION_DATA = {
             id: 'lich',
             name: 'Lich',
             icon: '💀',
-            description: "You no longer need food or water. You are Undead.",
+            description: "You have conquered death. You no longer require food or water.",
             stats: { wits: 4, willpower: 4 },
             talent: 'undeath'
         }
@@ -811,7 +847,7 @@ window.EVOLUTION_DATA = {
             id: 'hero',
             name: 'True Hero',
             icon: '👑',
-            description: "Stats +5. You survived the darkness.",
+            description: "You survived the darkness against all odds. Massive stat boost.",
             stats: { strength: 5, dexterity: 5, wits: 5, constitution: 5 },
             talent: 'legend'
         },
@@ -819,7 +855,7 @@ window.EVOLUTION_DATA = {
             id: 'void_touched',
             name: 'Void-Touched',
             icon: '👁️',
-            description: "You stared into the abyss, and it stared back. Unmatched magical potential.",
+            description: "You stared into the abyss, and it stared back. Can pass through Phase Walls.",
             stats: { willpower: 10, wits: 10, constitution: -2 },
             talent: 'void_walker'
         }
@@ -835,124 +871,124 @@ window.SPELL_DATA = {
     },
     "chainLightning": {
         name: "Chain Lightning",
-        description: "Strikes a target, then jumps to a nearby enemy. Scales with Wits.",
+        description: "Strikes a target, then jumps to a nearby enemy. Scales with {blue:Wits}.",
         scalingStat: "wits",
         cost: 18, costType: "mana", requiredLevel: 6, target: "aimed", baseDamage: 6,
         cooldown: 4
     },
     "stoneSkin": {
         name: "Stone Skin",
-        description: "Greatly increases Defense but lowers Dexterity. Scales with Constitution.",
+        description: "Greatly increases Defense but lowers Dexterity. Scales with {green:Constitution}.",
         scalingStat: "constitution",
         cost: 20, costType: "mana", requiredLevel: 3, target: "self", type: "buff", duration: 15,
         cooldown: 5
     },
     "lesserHeal": {
         name: "Lesser Heal",
-        description: "Heals for a small amount. Scales with Wits.",
+        description: "Heals for a small amount. Scales with {blue:Wits}.",
         scalingStat: "wits",
         cost: 5, costType: "mana", requiredLevel: 1, target: "self", baseHeal: 5,
         cooldown: 3
     },
     "clarity": {
         name: "Clarity",
-        description: "Focus your mind to reveal adjacent secret walls.",
+        description: "Focus your mind to reveal adjacent {purple:secret walls}.",
         cost: 8, costType: "psyche", requiredLevel: 1, target: "self", type: "utility",
         cooldown: 2
     },
     "raiseDead": {
         name: "Raise Dead",
-        description: "Summons a Skeleton Minion from a corpse (or bone pile) to fight for you. Scales with Willpower.",
+        description: "Summons a Skeleton from a corpse (or bone pile) to fight for you. Scales with {purple:Willpower}.",
         scalingStat: "willpower",
         cost: 15, costType: "mana", requiredLevel: 1, target: "aimed", range: 3,
         cooldown: 5
     },
     "arcaneShield": {
         name: "Arcane Shield",
-        description: "Creates a temporary shield that absorbs damage. Scales with Wits.",
+        description: "Creates a temporary shield that absorbs damage. Scales with {blue:Wits}.",
         scalingStat: "wits",
         cost: 10, costType: "mana", requiredLevel: 3, target: "self", type: "buff", baseShield: 5, duration: 5,
         cooldown: 4
     },
     "fireball": {
         name: "Fireball",
-        description: "An explosive orb damages enemies in a 3x3 area. Scales with Wits.",
+        description: "An explosive orb damages enemies in a 3x3 area. Scales with {blue:Wits}.",
         scalingStat: "wits",
         cost: 15, costType: "mana", requiredLevel: 5, target: "aimed", baseDamage: 8, radius: 1,
         cooldown: 3
     },
     "siphonLife": {
         name: "Siphon Life",
-        description: "Drains life from a target, healing you. Scales with Willpower.",
+        description: "Drains life from a target, healing you. Scales with {purple:Willpower}.",
         scalingStat: "willpower",
         cost: 12, costType: "psyche", requiredLevel: 4, target: "aimed", baseDamage: 4, healPercent: 0.5,
         cooldown: 2
     },
     "thunderbolt": {
         name: "Thunderbolt",
-        description: "Strikes a target with massive lightning damage. Scales with Wits.",
+        description: "Strikes a target with massive lightning damage. Scales with {blue:Wits}.",
         scalingStat: "wits",
         cost: 20, costType: "mana", requiredLevel: 6, target: "aimed", baseDamage: 12,
         cooldown: 3
     },
     "meteor": {
         name: "Meteor",
-        description: "Summons a meteor from the heavens. Large AoE (5x5). Scales with Wits.",
+        description: "Summons a meteor from the heavens. Large AoE (5x5). Scales with {blue:Wits}.",
         scalingStat: "wits",
         cost: 30, costType: "mana", requiredLevel: 8, target: "aimed", baseDamage: 10, radius: 2,
         cooldown: 6
     },
     "divineLight": {
         name: "Divine Light",
-        description: "Fully restores Health and cures all status effects.",
+        description: "Fully restores Health and {gold:cures all status effects}.",
         cost: 25, costType: "psyche", requiredLevel: 5, target: "self", type: "utility",
         cooldown: 8
     },
     "magicBolt": {
         name: "Magic Bolt",
-        description: "Hurls a bolt of energy. Scales with Wits.",
+        description: "Hurls a bolt of arcane energy. Scales with {blue:Wits}.",
         scalingStat: "wits",
         cost: 8, costType: "mana", requiredLevel: 1, target: "aimed", baseDamage: 5,
         cooldown: 1 
     },
     "psychicBlast": {
         name: "Psychic Blast",
-        description: "Assaults a target's mind. Scales with Willpower.",
+        description: "Assaults a target's mind. Scales with {purple:Willpower}.",
         scalingStat: "willpower",
         cost: 10, costType: "psyche", requiredLevel: 2, target: "aimed", baseDamage: 6,
         cooldown: 2
     },
     "frostBolt": {
         name: "Frost Bolt",
-        description: "Hurls a shard of ice. Has a chance to inflict Frostbite. Scales with Willpower.",
+        description: "Hurls a shard of ice. Has a chance to inflict {cyan:Frostbite}. Scales with {purple:Willpower}.",
         scalingStat: "willpower",
         cost: 10, costType: "mana", requiredLevel: 1, target: "aimed", baseDamage: 5, inflicts: "frostbite", inflictChance: 0.25,
         cooldown: 2
     },
     "poisonBolt": {
         name: "Poison Bolt",
-        description: "Launches a bolt of acidic poison. Has a chance to inflict Poison. Scales with Willpower.",
+        description: "Launches a bolt of acid. Has a chance to inflict {green:Poison}. Scales with {purple:Willpower}.",
         scalingStat: "willpower",
         cost: 10, costType: "psyche", requiredLevel: 2, target: "aimed", baseDamage: 4, inflicts: "poison", inflictChance: 0.50,
         cooldown: 2
     },
     "darkPact": {
         name: "Dark Pact",
-        description: "Sacrifice 5 Health to restore 10 Mana. Scales with Willpower.",
+        description: "Sacrifice 5 Health to restore 10 Mana. Scales with {purple:Willpower}.",
         scalingStat: "willpower",
         cost: 5, costType: "health", requiredLevel: 4, target: "self", baseRestore: 10,
         cooldown: 2
     },
     "entangle": {
         name: "Entangle",
-        description: "Roots an enemy in place, preventing movement and attacks. Scales with Intuition.",
+        description: "Roots an enemy in place, preventing movement and attacks. Scales with {yellow:Intuition}.",
         scalingStat: "intuition",
         cost: 12, costType: "mana", requiredLevel: 3, target: "aimed", baseDamage: 2, inflicts: "root", inflictChance: 1.0,
         cooldown: 4
     },
     "thornSkin": {
         name: "Thorn Skin",
-        description: "Reflects damage back to attackers. Scales with Intuition.",
+        description: "Reflects damage back to attackers. Scales with {yellow:Intuition}.",
         scalingStat: "intuition",
         cost: 15, costType: "mana", requiredLevel: 4, target: "self", type: "buff", baseReflect: 2, duration: 5,
         cooldown: 5
@@ -963,98 +999,98 @@ window.TALENT_DATA = {
     // --- BASE TALENTS ---
     "bloodlust": {
         name: "Bloodlust",
-        description: "Heal 2 HP whenever you kill an enemy.",
+        description: "Heal {green:2 HP} whenever you kill an enemy.",
         class: "warrior",
         icon: "🩸"
     },
     "iron_skin": {
         name: "Iron Skin",
-        description: "Permanent +1 Bonus to Defense.",
+        description: "Permanent {blue:+1 Bonus} to Base Defense.",
         class: "warrior",
         icon: "🛡️"
     },
     "backstab": {
         name: "Backstab",
-        description: "Critical hits deal 3x damage instead of 1.5x.",
+        description: "Critical hits deal {red:3x damage} instead of 1.5x.",
         class: "rogue",
         icon: "🗡️"
     },
     "evasion": {
         name: "Evasion",
-        description: "+10% chance to dodge enemy attacks.",
+        description: "{gold:+10% chance} to dodge enemy attacks.",
         class: "rogue",
         icon: "💨"
     },
     "arcane_potency": {
         name: "Arcane Potency",
-        description: "All spells deal +2 Bonus Damage.",
+        description: "All spells deal {blue:+2 Bonus Damage}.",
         class: "mage",
         icon: "✨"
     },
     "scholar": {
         name: "Scholar",
-        description: "Gain +20% more XP from all sources.",
+        description: "Gain {yellow:+20% more XP} from all sources.",
         class: "mage",
         icon: "📖"
     },
     "soul_siphon": {
         name: "Soul Siphon",
-        description: "Restore 2 Mana whenever you kill an enemy.",
+        description: "Restore {purple:2 Mana} whenever you kill an enemy.",
         class: "necromancer",
         icon: "💀"
     },
     "survivalist": {
         name: "Survivalist",
-        description: "Foraging (Wildberries/Herbs) restores double HP/Mana.",
+        description: "Foraging (Wildberries/Herbs) restores {green:double HP/Mana}.",
         class: "general",
         icon: "🌿"
     },
     "pathfinder": {
         name: "Pathfinder",
-        description: "Move through forests and brush without losing stamina.",
+        description: "Move through forests and brush {gold:without losing stamina}.",
         class: "ranger",
         icon: "🌲"
     },
     "eagle_eye": {
         name: "Eagle Eye",
-        description: "Ranged attacks deal +50% Damage.",
+        description: "Ranged attacks deal {red:+50% Damage}.",
         class: "ranger",
         icon: "👁️"
     },
     // --- EVOLUTION TALENTS ---
     "blood_rage": {
         name: "Blood Rage",
-        description: "Deal double damage when below 50% Health.",
+        description: "Deal {red:double damage} when below 50% Health.",
         class: "berserker",
         icon: "💢"
     },
     "holy_aura": {
         name: "Holy Aura",
-        description: "Passively heals you and your companion when low on health.",
+        description: "Passively {green:heals you and your companion} when low on health.",
         class: "paladin",
         icon: "👼"
     },
     "shadow_strike": {
         name: "Shadow Strike",
-        description: "Attacks from stealth deal 4x massive damage.",
+        description: "Attacks from stealth deal {purple:4x massive damage}.",
         class: "assassin",
         icon: "🥷"
     },
     "mana_flow": {
         name: "Mana Flow",
-        description: "Reduces spell Mana costs and Leyline travel costs by 20%.",
+        description: "Reduces spell Mana costs and Leyline travel costs by {blue:20%}.",
         class: "archmage",
         icon: "🌌"
     },
     "arcane_steel": {
         name: "Arcane Steel",
-        description: "Negates the Dexterity and movement penalties of Heavy Armor.",
+        description: "{gray:Negates the Dexterity and movement penalties} of Heavy Armor.",
         class: "battlemage",
         icon: "🛡️"
     },
     "undeath": {
         name: "Undeath",
-        description: "You no longer require food or water to survive.",
+        description: "You {gray:no longer require food or water} to survive.",
         class: "lich",
         icon: "🧟"
     },
@@ -1066,7 +1102,7 @@ window.TALENT_DATA = {
     },
     "void_walker": { 
         name: "Void Walker",
-        description: "Step through Phase Walls without taking damage.",
+        description: "Step through {purple:Phase Walls} without taking damage.",
         class: "void_touched",
         icon: "👁️"
     }
@@ -1081,92 +1117,92 @@ window.SKILL_DATA = {
     },
     "vanish": {
         name: "Vanish",
-        description: "Instantly drop all enemy aggro and enter Stealth.",
+        description: "Instantly drop all enemy aggro and enter {gray:Stealth}.",
         cost: 15, costType: "stamina", requiredLevel: 4, target: "self", cooldown: 30, type: "utility"
     },
     "brace": {
         name: "Brace",
-        description: "Gain temporary Defense. Scales with Constitution.",
+        description: "Gain temporary Defense. Scales with {green:Constitution}.",
         scalingStat: "constitution",
         cost: 6, costType: "stamina", requiredLevel: 2, target: "self", type: "buff", baseDefense: 1, duration: 3, cooldown: 5 
     },
     "tame": {
         name: "Tame Beast",
-        description: "Attempt to bond with a weakened animal (HP < 30%). Scales with Charisma.",
+        description: "Attempt to bond with a weakened animal (HP < 30%). Scales with {gold:Charisma}.",
         scalingStat: "charisma",
         cost: 15, costType: "psyche", requiredLevel: 3, target: "aimed", cooldown: 20
     },
     "lunge": {
         name: "Lunge",
-        description: "Attack an enemy 2-3 tiles away. Scales with Strength.",
+        description: "Attack an enemy 2-3 tiles away. Scales with {red:Strength}.",
         scalingStat: "strength",
         cost: 5, costType: "stamina", requiredLevel: 2, target: "aimed", baseDamageMultiplier: 1.0, cooldown: 3 
     },
     "shieldBash": {
         name: "Shield Bash",
-        description: "Strike an enemy with your shield, stunning them. Scales with Constitution.",
+        description: "Strike an enemy with your shield, {yellow:stunning them}. Scales with {green:Constitution}.",
         scalingStat: "constitution",
         cost: 10, costType: "stamina", requiredLevel: 3, target: "aimed", baseDamageMultiplier: 0.5, cooldown: 5
     },
     "cleave": {
         name: "Cleave",
-        description: "Strike the target and enemies adjacent to it. Scales with Strength.",
+        description: "Strike the target and {red:enemies adjacent to it}. Scales with Strength.",
         scalingStat: "strength",
         cost: 12, costType: "stamina", requiredLevel: 5, target: "aimed", baseDamageMultiplier: 0.8, cooldown: 4
     },
     "adrenaline": {
         name: "Adrenaline",
-        description: "Instantly restore 10 Stamina.",
+        description: "Instantly restore {yellow:10 Stamina}.",
         cost: 5, costType: "health", requiredLevel: 2, target: "self", cooldown: 10
     },
     "pacify": {
         name: "Pacify",
-        description: "Attempt to calm a hostile target. Scales with Charisma.",
+        description: "Attempt to calm a hostile target. Scales with {gold:Charisma}.",
         scalingStat: "charisma",
         cost: 10, costType: "psyche", requiredLevel: 3, target: "aimed", cooldown: 5 
     },
     "inflictMadness": {
         name: "Inflict Madness",
-        description: "Assault a target's mind. Scales with Charisma.",
+        description: "Assault a target's mind. Scales with {gold:Charisma}.",
         scalingStat: "charisma",
         cost: 12, costType: "psyche", requiredLevel: 5, target: "aimed", cooldown: 8 
     },
     "whirlwind": {
         name: "Whirlwind",
-        description: "Strike all adjacent enemies. Scales with Strength and Dexterity.",
+        description: "Strike {red:all adjacent enemies}. Scales with Strength and Dexterity.",
         scalingStat: "strength", 
         cost: 15, costType: "stamina", requiredLevel: 4, target: "self", cooldown: 6
     },
     "stealth": {
         name: "Stealth",
-        description: "Become invisible to enemies for 5 turns or until you attack.",
+        description: "Become {gray:invisible} to enemies for 5 turns or until you attack.",
         cost: 10, costType: "stamina", requiredLevel: 3, target: "self", duration: 5, cooldown: 10
     },
     // --- WEAPON TECHNIQUES ---
     "crush": {
         name: "Crush",
-        description: "A heavy blow that stuns the target. Scales with Strength. (Hammer/Club only)",
+        description: "A heavy blow that {yellow:stuns} the target. Scales with Strength. (Hammer/Club only)",
         scalingStat: "strength",
         cost: 8, costType: "stamina", requiredLevel: 1, target: "aimed", baseDamageMultiplier: 1.2, cooldown: 6
     },
     "quickstep": {
         name: "Quickstep",
-        description: "Dash 2 tiles instantly. (Dagger only)",
+        description: "Dash {cyan:2 tiles} instantly. (Dagger only)",
         cost: 5, costType: "stamina", requiredLevel: 1, target: "aimed", cooldown: 4, type: "movement"
     },
     "deflect": {
         name: "Deflect",
-        description: "Enter a defensive stance, reflecting the next attack. (Sword only)",
+        description: "Enter a defensive stance, {blue:reflecting the next attack}. (Sword only)",
         cost: 6, costType: "stamina", requiredLevel: 1, target: "self", duration: 2, cooldown: 5
     },
     "channel": {
         name: "Channel",
-        description: "Focus your energy to restore Mana. (Staff only)",
+        description: "Focus your energy to restore {blue:Mana}. (Staff only)",
         cost: 0, costType: "stamina", requiredLevel: 1, target: "self", cooldown: 10
     },
     "ranged_attack": {
         name: "Shoot",
-        description: "Fire an arrow at a distant target. Scales with Dexterity.",
+        description: "Fire an arrow at a distant target. Scales with {green:Dexterity}.",
         scalingStat: "dexterity",
         cost: 4, costType: "stamina", requiredLevel: 1, target: "aimed", baseDamageMultiplier: 1.0, cooldown: 0 
     }
@@ -1176,3 +1212,5 @@ window.ENEMY_NAME_TO_ID = {};
 for (const key in window.ENEMY_DATA) {
     window.ENEMY_NAME_TO_ID[window.ENEMY_DATA[key].name] = key;
 }
+
+// --- END OF FILE data-entities.js ---
