@@ -10,7 +10,7 @@ window.REALM_MUTATORS = {
     'eternal_night': {
         name: "Umbral",
         description: "The sun never rises here. The shadows are alive.",
-        apply: (tile) => tile, // Doesn't change terrain, but we'll hook it into the time engine
+        apply: (tile) => tile, // Doesn't change terrain, but hooked into the time engine
         enemyBuff: 2.0
     },
     'overgrown': {
@@ -28,6 +28,23 @@ window.REALM_MUTATORS = {
         description: "The earth is broken. Void rifts are everywhere.",
         apply: (tile) => (Math.random() < 0.05 && tile === '.') ? 'Ω' : tile,
         enemyBuff: 3.0
+    },
+    // --- EXPANSION WIN: New Mutators ---
+    'frozen_wastes': {
+        name: "Glacial",
+        description: "An eternal, magical winter grips this realm.",
+        apply: (tile) => {
+            if (tile === '~' || tile === '≈') return '🧊';
+            if (tile === '.' || tile === 'F') return '❄️';
+            return tile;
+        },
+        enemyBuff: 1.3
+    },
+    'crystalline': {
+        name: "Crystalline",
+        description: "The very earth has crystallized under immense pressure.",
+        apply: (tile) => (tile === '^' || tile === '⛰') ? '💎c' : tile,
+        enemyBuff: 1.4
     }
 };
 
@@ -561,7 +578,8 @@ window.TILE_DATA = {
     },
     '🔼': {
         type: 'dungeon_exit', 
-        tile: '🔼'
+        tile: '🔼',
+        flavor: "Stairs leading back up."
     },
     '⬆️': { type: 'obelisk_puzzle', direction: 'north', flavor: "A freezing cold obelisk stands here.", tile: '|' },
     '➡️': { type: 'obelisk_puzzle', direction: 'east', flavor: "Moss grows on the east side of this stone.", tile: '|' },
@@ -590,26 +608,32 @@ window.TILE_DATA = {
         message: [
             "The hermit's ghost whispers: 'The King didn't find the Void. The Void found him.'",
             "A message is carved into the stone: 'Beware the rain in the deadlands.'"
-        ]
+        ],
+        flavor: "An ancient statue of a forgotten mage."
     },
     '#': {
         type: 'lore',
-        message: 'An ancient, weathered stone stands here. The markings are faded.'
+        message: 'An ancient, weathered stone stands here. The markings are faded.',
+        flavor: "A humming Leyline Waystone."
     },
     '☗': {
         type: 'lore',
-        message: ['"...the king has fallen..."', '"...his castle to the west lies empty..."', '"...but a dark presence still lingers."']
+        message: ['"...the king has fallen..."', '"...his castle to the west lies empty..."', '"...but a dark presence still lingers."'],
+        flavor: "A weathered wooden signpost."
     },
     '⛰': {
         type: 'dungeon_entrance',
-        getCaveId: (x, y) => `cave_${x}_${y}`
+        getCaveId: (x, y) => `cave_${x}_${y}`,
+        flavor: "A dark cave entrance leading underground."
     },
     '>': {
-        type: 'dungeon_exit'
+        type: 'dungeon_exit',
+        flavor: "Stairs leading deeper into the dungeon."
     },
     '🏰': {
         type: 'castle_entrance',
-        getCastleId: (x, y) => `castle_${x}_${y}`
+        getCastleId: (x, y) => `castle_${x}_${y}`,
+        flavor: "The gates of a fortified castle."
     },
     '🕍': {
         type: 'dark_castle_entrance',
@@ -617,36 +641,44 @@ window.TILE_DATA = {
         getCastleId: (x, y) => `darkcastle_${x}_${y}`
     },
     'X': {
-        type: 'castle_exit'
+        type: 'castle_exit',
+        flavor: "The exit to the fortress."
     },
     'B': {
         type: 'lore',
-        message: 'This is a bounty board, covered in notices.'
+        message: 'This is a bounty board, covered in notices.',
+        flavor: "A wooden board pinned with bounty posters."
     },
     'L': {
         type: 'journal',
         title: 'The King\'s Lament',
-        content: `Day 34 since the fall...\n\nThe stones of this castle weep. I hear them every night. The whispers tell of a power that sleeps beneath the mountains, a power we were foolish to awaken.\n\nMy knights are gone. My kingdom is ash. All that remains is this cursed immortality, a silent witness to my failure.`
+        content: `Day 34 since the fall...\n\nThe stones of this castle weep. I hear them every night. The whispers tell of a power that sleeps beneath the mountains, a power we were foolish to awaken.\n\nMy knights are gone. My kingdom is ash. All that remains is this cursed immortality, a silent witness to my failure.`,
+        flavor: "A dusty journal rests on a pedestal."
     },
     'N': {
         type: 'npc',
-        title: 'Villager'
+        title: 'Villager',
+        flavor: "A local villager, going about their business."
     },
     '§': {
         type: 'shop',
-        title: 'General Store'
+        title: 'General Store',
+        flavor: "A traveling merchant's stall."
     },
     'H': {
         type: 'npc_healer',
-        title: 'Healer'
+        title: 'Healer',
+        flavor: "The local healer's cottage. Smells of herbs."
     },
     'W': {
         type: 'workbench',
-        title: 'Crafting Workbench'
+        title: 'Crafting Workbench',
+        flavor: "A sturdy wooden workbench covered in tools."
     },
     'G': {
         type: 'npc_guard',
-        title: 'Castle Guard'
+        title: 'Castle Guard',
+        flavor: "A heavily armed guard stands at attention."
     },
     '🎖️': {
         type: 'npc_captain',
@@ -655,55 +687,68 @@ window.TILE_DATA = {
     },
     'O': {
         type: 'npc_sage',
-        title: 'Sage'
+        title: 'Sage',
+        flavor: "An old sage muttering to themselves."
     },
     'T': {
         type: 'npc_skill_trainer',
-        title: 'Skill Trainer'
+        title: 'Skill Trainer',
+        flavor: "A combat master willing to share their techniques."
     },
     'J': {
         type: 'journal',
         title: 'Orc War-Chant',
-        content: `Blood and dust. Steel and bone.\n\nThe weak build with stone. The strong build with fear.\n\nWe come from the fire, we return to the ash. The mountain is our mother, the world our feast. Stomp the soft-skins. Take their steel. Raise the tusk-banner.\n\n...the rest is scrawled in a crude, unintelligible script.`
+        content: `Blood and dust. Steel and bone.\n\nThe weak build with stone. The strong build with fear.\n\nWe come from the fire, we return to the ash. The mountain is our mother, the world our feast. Stomp the soft-skins. Take their steel. Raise the tusk-banner.\n\n...the rest is scrawled in a crude, unintelligible script.`,
+        flavor: "A scrap of hide covered in crude writing."
     },
     '📘': {
         type: 'journal',
         title: 'Frozen Journal',
-        content: `Day 12: The cold... it seeps into your bones. But the essence in these walls is worth a fortune. I must have more.\n\nDay 15: I saw one of them today. A... walking corpse, encased in ice. It didn't see me. My pickaxe feels heavy.\n\nDay 17: They are the old ones. The first warriors. The cold preserves them. Binds them. They guard the essence.\n\nDay ???: Can't feel my fingers. It's in my pack. I can't... I...`
+        content: `Day 12: The cold... it seeps into your bones. But the essence in these walls is worth a fortune. I must have more.\n\nDay 15: I saw one of them today. A... walking corpse, encased in ice. It didn't see me. My pickaxe feels heavy.\n\nDay 17: They are the old ones. The first warriors. The cold preserves them. Binds them. They guard the essence.\n\nDay ???: Can't feel my fingers. It's in my pack. I can't... I...`,
+        flavor: "A frozen, stiff book dropped in the snow."
     },
     'K': {
         type: 'npc_prospector',
-        title: 'Lost Prospector'
+        title: 'Lost Prospector',
+        flavor: "A dirty dwarf holding a pickaxe."
     },
     'c': {
         type: 'canoe',
-        title: 'A small canoe'
+        title: 'A small canoe',
+        flavor: "A simple wooden canoe pulled onto the shore."
     },
     '♛': {
         type: 'landmark_castle',
-        getCastleId: (x, y) => `castle_landmark_${x}_${y}`
+        getCastleId: (x, y) => `castle_landmark_${x}_${y}`,
+        flavor: "The towering Grand Fortress."
     },
     'b': { type: 'enemy' },
     'w': { type: 'enemy' },
     'V': {
         type: 'village_entrance',
-        getVillageId: (x, y) => `village_${x}_${y}`
+        getVillageId: (x, y) => `village_${x}_${y}`,
+        flavor: "The gates to the Safe Haven Village."
     },
     '⛩️': {
-        type: 'shrine'
+        type: 'shrine',
+        flavor: "An ancient shrine dedicated to forgotten gods."
     },
     '🎓': {
         type: 'npc_historian',
-        title: 'Royal Historian'
+        title: 'Royal Historian',
+        flavor: "An elderly scholar buried in scrolls."
     },
     '|': {
-        type: 'obelisk'
+        type: 'obelisk',
+        flavor: "A tall, black stone obelisk humming with power."
     },
     '¥': {
-        type: 'trader'
+        type: 'trader',
+        flavor: "A wandering trader with a pack full of oddities."
     },
     '📦': {
-        type: 'loot_chest'
+        type: 'loot_chest',
+        flavor: "A sturdy wooden chest bound in iron."
     },
     '🔥': {
         type: 'cooking_fire',
@@ -726,6 +771,7 @@ window.TILE_DATA = {
     },
     '🗿': {
         type: 'lore_statue',
+        flavor: "A weathered stone statue of unknown origin.",
         message: [
             "The statue's face is worn away, but it still holds a bowl of fresh water.",
             "A statue of a weeping knight. The inscription reads: 'Duty is heavier than a mountain.'",
@@ -859,7 +905,8 @@ window.TILE_DATA = {
     },
     '🌿': {
         type: 'forage',
-        item: 'Medicinal Herb'
+        item: 'Medicinal Herb',
+        flavor: "A patch of useful medicinal herbs."
     },
     '🕸': {
         type: 'obstacle',
@@ -1497,6 +1544,14 @@ window.CAVE_THEMES = {
         colors: { wall: '#14532d', floor: '#166534' },
         decorations: ['🌿', '🍄', '🌳e'],
         enemies: ['@', '🐍', '🐸']
+    },
+    // --- EXPANSION WIN: Sand Tombs ---
+    SAND_TOMB: {
+        name: 'A Sand-swept Tomb',
+        wall: '🧱', floor: 'D', secretWall: '🏚',
+        colors: { wall: '#b45309', floor: '#fde047' },
+        decorations: ['🏺', '🏺', '🦴d', '🦂', '$'],
+        enemies: ['🦂s', '🐍c', 'Z', 'm']
     }
 };
 
@@ -1584,6 +1639,27 @@ window.CAVE_ROOM_TEMPLATES = {
     "Lava Vent": {
         width: 7, height: 7,
         map: [' WWWWW ', 'W..~..W', 'W.~~~.W', 'W~🔥~.W', 'W.~~~.W', 'W..~..W', ' WWWWW ']
+    },
+    // --- EXPANSION WIN: 5 New Dungeon Rooms ---
+    "The Forgotten Library": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.📚.📚.W', 'W.📜...W', 'W...👻p.W', 'W.....W', 'W.📚.📚.W', ' WWWWW ']
+    },
+    "The Smuggler's Den": {
+        width: 9, height: 5,
+        map: [' WWWWWWW ', 'W.🛢..📦.W', 'W..C.b..W', 'W.🛢....W', ' WWWWWWW ']
+    },
+    "Crystalline Nook": {
+        width: 5, height: 5,
+        map: ['WWWWW', 'W💎c💎cW', 'W.🔮.W', 'W💜..W', 'WWWWW']
+    },
+    "The Mad King's Tomb": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.⚰️.⚰️.W', 'W...Z..W', 'W..👑..W', 'W......W', 'W.<..<.W', ' WWWWW ']
+    },
+    "Void Altar": {
+        width: 5, height: 5,
+        map: ['WWWWW', 'WvdvdW', 'W.⛩️.W', 'W....W', 'WWWWW']
     }
 };
 
@@ -1652,5 +1728,36 @@ window.ATMOSPHERE_TEXT = {
         "You hear a faint scratching sound from behind the wall.",
         "The air smells of ancient dust and copper.",
         "A cold draft whistles through the crumbling masonry."
+    ],
+    // --- EXPANSION WIN: Missing Atmosphere Arrays ---
+    DEADLANDS: [
+        "A gust of wind kicks up a cloud of choking ash.",
+        "The silence here is absolute. Not a single insect buzzes.",
+        "You step on something brittle. A dry branch? Or a bone?",
+        "The sky above has a bruised, sickly purple hue.",
+        "A perfectly preserved, petrified tree stands alone in the dust."
+    ],
+    UNDERWORLD: [
+        "The ceiling is lost to the absolute darkness above.",
+        "A deep, subsonic rumble vibrates through the soles of your boots.",
+        "You hear the distinct sound of water dripping... but you see no pools.",
+        "Gravity feels unnaturally heavy down here.",
+        "The darkness here feels older than the sun."
+    ],
+    OCEAN: [
+        "The endless blue horizon makes you feel incredibly small.",
+        "A school of silver fish darts away from your hull.",
+        "The rhythmic rocking of the waves is almost hypnotic.",
+        "Salt spray stings your eyes.",
+        "You hear a deep, resonant hum echoing up from the depths."
+    ],
+    VOLCANO: [
+        "The heat radiating from the rocks blisters your skin.",
+        "A vent of steam hisses violently, smelling of rotten eggs.",
+        "The air ripples and warps with the intense heat.",
+        "You wipe sweat from your eyes. It stings.",
+        "A distant crack of rock alerts you to shifting magma flows."
     ]
 };
+
+// --- END OF FILE data-maps.js ---
