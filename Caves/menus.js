@@ -35,7 +35,8 @@ function renderTalentTree() {
         if (isLearned) {
             btnHtml = `<span class="text-green-500 font-bold text-sm tracking-wide uppercase">Learned</span>`;
         } else if (canAfford) {
-            btnHtml = `<button onclick="learnTalent('${key}')" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold shadow-md transition-transform active:scale-95">Learn</button>`;
+            // PERFORMANCE & JUICE WIN: Hardware accelerated buttons!
+            btnHtml = `<button onclick="learnTalent('${key}')" style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold shadow-md transition-transform active:scale-95">Learn</button>`;
         } else {
             btnHtml = `<span class="text-gray-500 text-sm tracking-wide uppercase font-bold">Locked</span>`;
         }
@@ -43,9 +44,9 @@ function renderTalentTree() {
         div.innerHTML = `
             <div class="flex justify-between items-center">
                 <div class="flex items-center gap-4">
-                    <div class="text-3xl">${talent.icon}</div>
+                    <div class="text-3xl" style="filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.5));">${talent.icon}</div>
                     <div>
-                        <div class="font-bold text-lg">${talent.name} <span class="text-[10px] text-gray-400 uppercase tracking-widest ml-2">${talent.class}</span></div>
+                        <div class="font-bold text-lg">${talent.name} <span class="text-[10px] text-gray-400 uppercase tracking-widest ml-2 bg-black bg-opacity-30 px-1 rounded">${talent.class}</span></div>
                         <div class="text-xs text-gray-300 mt-1">${talent.description}</div>
                     </div>
                 </div>
@@ -73,7 +74,13 @@ window.learnTalent = function (talentId) {
 
     logMessage(`{purple:You mastered the ${TALENT_DATA[talentId].name} talent!}`);
     triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+    
+    // JUICE WIN: Powerful tactile feedback when learning a mastery skill!
     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+    if (typeof ParticleSystem !== 'undefined') {
+        ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 20);
+        ParticleSystem.createFloatingText(player.x, player.y, "TALENT LEARNED", "#a855f7");
+    }
 
     if (typeof playerRef !== 'undefined') {
         playerRef.update({
@@ -104,9 +111,10 @@ function openEvolutionModal() {
 
         const div = document.createElement('div');
         div.className = "panel p-5 rounded-xl border-2 border-gray-600 hover:border-yellow-500 cursor-pointer transition-all transform hover:-translate-y-1 shadow-lg";
+        div.style.transform = "translate3d(0,0,0)";
         div.onclick = () => selectEvolution(evo);
         div.innerHTML = `
-            <div class="text-5xl mb-3">${evo.icon}</div>
+            <div class="text-5xl mb-3" style="filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.5));">${evo.icon}</div>
             <h3 class="text-2xl font-bold text-yellow-500 mb-1" style="font-family: 'Uncial Antiqua', cursive;">${evo.name}</h3>
             <p class="text-xs text-gray-400 mb-2 h-8 italic">${evo.description}</p>
             <div class="text-sm text-blue-300 mb-4 h-10 font-bold border-l-2 border-blue-500 pl-2 py-1 bg-black bg-opacity-30">
@@ -224,7 +232,7 @@ function renderBountyBoard() {
                     <div class="text-[10px] font-bold text-green-400 uppercase tracking-widest">Reward: ${quest.reward.xp} XP | ${quest.reward.coins} Gold ${itemRewardStr}</div>
                 </div>
                 <div class="flex-none">
-                    <button data-quest-id="${questId}" data-action="accept" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold shadow transition-transform active:scale-95">Accept</button>
+                    <button data-quest-id="${questId}" data-action="accept" style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold shadow transition-transform active:scale-95">Accept</button>
                 </div>`;
         } else if (playerQuest.status === 'active') {
             // --- Scenario 2: Quest is In-Progress ---
@@ -234,7 +242,7 @@ function renderBountyBoard() {
             if (playerQuest.kills >= quest.needed) {
                 // --- 2a: Ready to Turn In ---
                 div.classList.add('border-green-500', 'bg-green-900', 'bg-opacity-20');
-                actionButton = `<button data-quest-id="${questId}" data-action="turnin" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-sm font-bold shadow transition-transform active:scale-95 animate-pulse">Turn In</button>`;
+                actionButton = `<button data-quest-id="${questId}" data-action="turnin" style="transform: translate3d(0,0,0);" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-sm font-bold shadow transition-transform active:scale-95 animate-pulse">Turn In</button>`;
             } else {
                 // --- 2b: Still in progress ---
                 actionButton = `<button disabled class="bg-gray-700 text-gray-400 px-4 py-2 rounded text-sm font-bold opacity-50 cursor-not-allowed">In Progress</button>`;
@@ -288,9 +296,10 @@ function acceptQuest(questId) {
 function turnInQuest(questId) {
     const quest = QUEST_DATA[questId];
     const playerQuest = gameState.player.quests[questId];
+    const player = gameState.player;
 
     if (!quest || !playerQuest || playerQuest.status !== 'active') { 
-        logMessage("Quest is not active.");
+        logMessage("{gray:Quest is not active.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
@@ -299,21 +308,21 @@ function turnInQuest(questId) {
     let itemIndex = -1; 
 
     if (quest.type === 'fetch') {
-        itemIndex = gameState.player.inventory.findIndex(item => item.name === quest.itemNeeded && !item.isEquipped);
+        itemIndex = player.inventory.findIndex(item => item.name === quest.itemNeeded && !item.isEquipped);
         if (itemIndex === -1) {
             logMessage(`{red:You don't have the ${quest.itemNeeded}!}`);
             hasRequirements = false;
         }
     } else if (quest.type === 'collect') {
-        itemIndex = gameState.player.inventory.findIndex(item => item.name === quest.itemNeeded);
-        if (itemIndex === -1 || gameState.player.inventory[itemIndex].quantity < quest.needed) {
+        itemIndex = player.inventory.findIndex(item => item.name === quest.itemNeeded);
+        if (itemIndex === -1 || player.inventory[itemIndex].quantity < quest.needed) {
             logMessage(`{red:You don't have enough ${quest.itemNeeded}s! You need ${quest.needed}.}`);
             hasRequirements = false;
         }
     } else {
         // Checking kills
         if ((playerQuest.kills || 0) < quest.needed) {
-            logMessage("Quest is not ready to turn in.");
+            logMessage("{gray:Quest is not ready to turn in.}");
             hasRequirements = false;
         }
     }
@@ -328,7 +337,16 @@ function turnInQuest(questId) {
     logMessage(`{green:Quest Complete! You gained ${quest.reward.xp} XP and ${quest.reward.coins} Gold!}`);
     
     if (typeof grantXp === 'function') grantXp(quest.reward.xp);
-    gameState.player.coins += quest.reward.coins;
+    player.coins += quest.reward.coins;
+
+    // EXPANDABILITY WIN: Track completed bounties in lifetime metrics!
+    if (!player.metrics) player.metrics = {};
+    player.metrics.questsCompleted = (player.metrics.questsCompleted || 0) + 1;
+
+    // JUICE WIN: Floating Particles for Reward
+    if (typeof ParticleSystem !== 'undefined') {
+        ParticleSystem.createFloatingText(player.x, player.y, `+${quest.reward.coins}g`, "#facc15");
+    }
 
     if (quest.reward.item) {
         const rewardItemTemplate = Object.values(ITEM_DATA).find(i => i.name === quest.reward.item);
@@ -336,8 +354,8 @@ function turnInQuest(questId) {
             const rewardKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === quest.reward.item);
             const qty = quest.reward.itemQty || 1;
 
-            if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
-                gameState.player.inventory.push({
+            if (player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                player.inventory.push({
                     templateId: rewardKey,
                     name: rewardItemTemplate.name,
                     type: rewardItemTemplate.type,
@@ -355,17 +373,17 @@ function turnInQuest(questId) {
                 const dropTile = rewardKey || '🎒'; 
                 
                 if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                    chunkManager.setWorldTile(gameState.player.x, gameState.player.y, dropTile);
+                    chunkManager.setWorldTile(player.x, player.y, dropTile);
                 } else if (gameState.mapMode === 'dungeon') {
-                    chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] = dropTile;
+                    chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = dropTile;
                 } else if (gameState.mapMode === 'castle') {
-                    chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x] = dropTile;
+                    chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = dropTile;
                 }
                 
                 // Clear the looted memory for this coordinate so it can be picked up
                 let tileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
-                    ? `${gameState.player.x},${-gameState.player.y}`
-                    : `${gameState.currentCaveId || gameState.currentCastleId}:${gameState.player.x},${-gameState.player.y}`;
+                    ? `${player.x},${-player.y}`
+                    : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
                 gameState.lootedTiles.delete(tileId);
                 
                 gameState.mapDirty = true;
@@ -378,20 +396,22 @@ function turnInQuest(questId) {
     playerQuest.status = 'completed';
 
     if (quest.type === 'fetch' && itemIndex > -1) {
-        gameState.player.inventory.splice(itemIndex, 1);
+        player.inventory.splice(itemIndex, 1);
     } else if (quest.type === 'collect' && itemIndex > -1) {
-        const itemStack = gameState.player.inventory[itemIndex];
+        // ROBUSTNESS: Ensure we only subtract exactly what's needed, preserving the rest of the stack
+        const itemStack = player.inventory[itemIndex];
         itemStack.quantity -= quest.needed;
         if (itemStack.quantity <= 0) {
-            gameState.player.inventory.splice(itemIndex, 1);
+            player.inventory.splice(itemIndex, 1);
         }
     }
 
     if (typeof playerRef !== 'undefined') {
         playerRef.update({
-            quests: gameState.player.quests,
-            coins: gameState.player.coins,
-            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
+            quests: player.quests,
+            coins: player.coins,
+            metrics: player.metrics,
+            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
         });
     }
 
@@ -444,39 +464,39 @@ function renderBestiary() {
         let statsHtml = `<div class="text-[10px] uppercase font-bold tracking-widest text-gray-400 mb-1">Kills: ${count}</div>`;
         
         if (unlockedStats) {
-            statsHtml += `<span class="text-green-500 font-bold text-xs mt-1 inline-block">HP: ${data.maxHealth}</span> <span class="text-gray-600 mx-1">|</span> <span class="text-red-500 font-bold text-xs">Atk: ${data.attack}</span> <span class="text-gray-600 mx-1">|</span> <span class="text-blue-400 font-bold text-xs">Def: ${data.defense || 0}</span>`;
+            statsHtml += `<span class="text-green-500 font-bold text-xs mt-1 inline-block drop-shadow-sm">HP: ${data.maxHealth}</span> <span class="text-gray-600 mx-1">|</span> <span class="text-red-500 font-bold text-xs drop-shadow-sm">Atk: ${data.attack}</span> <span class="text-gray-600 mx-1">|</span> <span class="text-blue-400 font-bold text-xs drop-shadow-sm">Def: ${data.defense || 0}</span>`;
         } else {
             const pctStats = Math.min(100, (count / 5) * 100);
             statsHtml += `
-                <div class="w-full bg-gray-900 rounded h-1 mb-1 mt-1 border border-gray-700">
-                    <div class="bg-green-500 h-full rounded" style="width: ${pctStats}%"></div>
+                <div class="w-full bg-gray-900 rounded h-1 mb-1 mt-1 border border-gray-700 shadow-inner">
+                    <div class="bg-green-500 h-full rounded transition-all duration-500" style="width: ${pctStats}%"></div>
                 </div>
-                <span class="text-[9px] italic text-gray-500">Defeat 5 to reveal stats</span>`;
+                <span class="text-[9px] italic text-gray-500 font-bold tracking-wide">Defeat 5 to reveal stats</span>`;
         }
 
         let loreHtml = '';
         if (unlockedLore && data.flavor) {
-            loreHtml = `<div class="text-xs mt-3 italic text-gray-400 border-l-2 border-gray-600 pl-2">"${data.flavor}"</div>`;
+            loreHtml = `<div class="text-xs mt-3 italic text-gray-400 border-l-2 border-gray-600 pl-3 leading-relaxed">"${data.flavor}"</div>`;
         } else if (!unlockedLore) {
             const pctLore = Math.min(100, (count / 10) * 100);
             loreHtml = `
-                <div class="w-full bg-gray-900 rounded h-1 mb-1 mt-2 border border-gray-700">
-                    <div class="bg-purple-500 h-full rounded" style="width: ${pctLore}%"></div>
+                <div class="w-full bg-gray-900 rounded h-1 mb-1 mt-3 border border-gray-700 shadow-inner">
+                    <div class="bg-purple-500 h-full rounded transition-all duration-500" style="width: ${pctLore}%"></div>
                 </div>
-                <div class="text-[9px] italic text-gray-600">Defeat 10 to reveal lore</div>`;
+                <div class="text-[9px] italic text-gray-600 font-bold tracking-wide">Defeat 10 to reveal lore</div>`;
         }
 
-        div.className = 'bestiary-entry p-3 mb-2 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-40 transition-colors hover:border-gray-500 relative overflow-hidden';
+        div.className = 'bestiary-entry p-3 mb-3 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-40 transition-colors hover:border-gray-500 relative overflow-hidden';
         div.innerHTML = `
             <div class="flex items-start gap-4 z-10 relative">
-                <div class="text-4xl w-12 text-center" style="text-shadow: 2px 2px 0 #000;">${key}</div>
+                <div class="text-4xl w-12 text-center" style="text-shadow: 2px 4px 4px rgba(0,0,0,0.6);">${key}</div>
                 <div class="flex-grow">
-                    <h4 class="font-bold text-lg text-yellow-500 leading-none mb-1">${data.name}</h4>
+                    <h4 class="font-bold text-lg text-yellow-500 leading-none mb-1 drop-shadow-sm">${data.name}</h4>
                     ${statsHtml}
                     ${loreHtml}
                 </div>
             </div>
-            ${data.isBoss ? '<div class="absolute top-0 right-0 bg-red-900 bg-opacity-50 text-red-300 text-[9px] px-2 py-1 font-bold uppercase rounded-bl-lg">Boss</div>' : ''}
+            ${data.isBoss ? '<div class="absolute top-0 right-0 bg-red-900 bg-opacity-50 text-red-300 text-[9px] px-2 py-1 font-bold uppercase tracking-widest rounded-bl-lg border-b border-l border-red-700">Boss</div>' : ''}
         `;
         fragment.appendChild(div);
     });
@@ -507,13 +527,13 @@ function renderLibrary() {
         let headerHtml = `
             <div class="flex justify-between items-center cursor-pointer mb-1" onclick="toggleSetDetails('${setKey}')">
                 <h3 class="font-bold text-lg m-0 p-0 border-none ${isComplete ? 'text-yellow-500' : 'text-gray-200'}">${set.name}</h3>
-                <span class="text-xs font-bold bg-black bg-opacity-30 px-2 py-1 rounded">${foundCount} / ${totalCount}</span>
+                <span class="text-xs font-bold bg-black bg-opacity-30 px-2 py-1 rounded shadow-inner">${foundCount} / ${totalCount}</span>
             </div>
-            <div class="w-full bg-gray-900 rounded h-1 mb-2 border border-gray-700">
-                <div class="${barColor} h-full rounded transition-all duration-500" style="width: ${pct}%"></div>
+            <div class="w-full bg-gray-900 rounded h-1 mb-2 border border-gray-700 shadow-inner">
+                <div class="${barColor} h-full rounded transition-all duration-500 shadow-sm" style="width: ${pct}%"></div>
             </div>
             <div class="text-xs text-gray-400 italic mb-2">${set.description}</div>
-            ${isComplete ? `<div class="text-[10px] uppercase tracking-widest font-bold text-green-400 mt-2 bg-green-900 bg-opacity-20 p-2 rounded border border-green-800">Bonus Active: ${set.bonus}</div>` : ''}
+            ${isComplete ? `<div class="text-[10px] uppercase tracking-widest font-bold text-green-400 mt-2 bg-green-900 bg-opacity-20 p-2 rounded border border-green-800 shadow-sm">Bonus Active: ${set.bonus}</div>` : ''}
         `;
 
         let entriesHtml = '<div class="mt-3 space-y-1 pl-3 border-l-2 border-gray-600 hidden transition-all" id="set-content-' + setKey + '">';
@@ -597,20 +617,20 @@ function renderSkillTrainerModal() {
         else if (currentLevel === 0) {
             levelText = '<span class="text-[10px] uppercase font-bold tracking-widest text-red-500">Not Learned</span>';
             if (player.level >= skillData.requiredLevel) {
-                buttonHtml = `<button class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-xs font-bold shadow transition-transform active:scale-95 disabled:opacity-50" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Learn (1 SP)</button>`;
+                buttonHtml = `<button style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Learn (1 SP)</button>`;
             } else {
                 buttonHtml = `<button class="bg-gray-700 text-gray-400 px-3 py-2 rounded text-xs font-bold opacity-50 cursor-not-allowed" disabled>Requires Lvl ${skillData.requiredLevel}</button>`;
             }
         } else {
             levelText = `<span class="text-[10px] uppercase font-bold tracking-widest text-blue-400">Level: ${currentLevel} / ${MAX_LEVEL}</span>`;
-            buttonHtml = `<button class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded text-xs font-bold shadow transition-transform active:scale-95 disabled:opacity-50" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Upgrade (1 SP)</button>`;
+            buttonHtml = `<button style="transform: translate3d(0,0,0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Upgrade (1 SP)</button>`;
         }
 
         const li = document.createElement('li');
         li.className = `panel p-3 mb-2 rounded-lg border-2 ${currentLevel >= MAX_LEVEL ? 'border-yellow-600 bg-yellow-900 bg-opacity-10' : 'border-gray-600 hover:border-gray-500'} transition-colors flex justify-between items-center`;
         li.innerHTML = `
             <div class="flex-grow pr-4">
-                <div class="font-bold text-lg text-yellow-500 mb-1">${skillData.name}</div>
+                <div class="font-bold text-lg text-yellow-500 mb-1 drop-shadow-sm">${skillData.name}</div>
                 <div class="text-xs text-gray-300 leading-tight">${skillData.description}</div>
             </div>
             <div class="flex-none flex flex-col items-end gap-2">
@@ -660,6 +680,10 @@ function handleLearnSkill(skillId) {
     }
 
     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+    if (typeof ParticleSystem !== 'undefined') {
+        ParticleSystem.createExplosion(player.x, player.y, '#3b82f6', 15);
+        ParticleSystem.createFloatingText(player.x, player.y, "SKILL UP!", "#60a5fa");
+    }
 
     if (typeof playerRef !== 'undefined') {
         playerRef.update({
@@ -728,7 +752,7 @@ function openSpellbook() {
 
         li.innerHTML = `
             <div class="flex-grow pr-4">
-                <div class="font-bold text-lg mb-1 flex items-center gap-2">
+                <div class="font-bold text-lg mb-1 flex items-center gap-2 drop-shadow-sm">
                     ${spellData.name} 
                     <span class="text-[10px] bg-black bg-opacity-30 px-2 py-0.5 rounded text-gray-300">Lvl ${spellLevel}</span>
                     ${maxedBadge}
@@ -737,7 +761,7 @@ function openSpellbook() {
             </div>
             <div class="flex-none flex flex-col items-end gap-2">
                 <span class="text-xs font-bold uppercase tracking-widest ${costColorClass}">${costString}</span>
-                <button class="text-[10px] bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded shadow uppercase font-bold transition-transform active:scale-95" 
+                <button style="transform: translate3d(0,0,0);" class="text-[10px] bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded shadow-md uppercase font-bold transition-transform active:scale-95" 
                     onclick="assignToHotbar('${spellId}'); event.stopPropagation();">
                     Assign
                 </button>
@@ -799,7 +823,7 @@ function openSkillbook() {
 
         li.innerHTML = `
             <div class="flex-grow pr-4">
-                <div class="font-bold text-lg mb-1 flex items-center gap-2">
+                <div class="font-bold text-lg mb-1 flex items-center gap-2 drop-shadow-sm">
                     ${skillData.name} 
                     <span class="text-[10px] bg-black bg-opacity-30 px-2 py-0.5 rounded text-gray-300">Lvl ${skillLevel}</span>
                     ${maxedBadge}
@@ -808,7 +832,7 @@ function openSkillbook() {
             </div>
             <div class="flex-none flex flex-col items-end gap-2">
                 <span class="text-xs font-bold uppercase tracking-widest ${costColorClass}">${costString}</span>
-                <button class="text-[10px] bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded shadow uppercase font-bold transition-transform active:scale-95" 
+                <button style="transform: translate3d(0,0,0);" class="text-[10px] bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded shadow-md uppercase font-bold transition-transform active:scale-95" 
                     onclick="assignToHotbar('${skillId}'); event.stopPropagation();">
                     Assign
                 </button>
@@ -821,3 +845,5 @@ function openSkillbook() {
     skillList.appendChild(fragment);
     skillModal.classList.remove('hidden'); 
 }
+
+// --- END OF FILE menus.js ---
