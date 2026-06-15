@@ -1,5 +1,15 @@
 // --- START OF FILE items.js ---
 
+// PERFORMANCE WIN: O(1) Cache for Item Name Lookups during Rehydration
+const _itemTemplateCache = {};
+function resolveTemplateIdByName(name) {
+    if (_itemTemplateCache[name]) return _itemTemplateCache[name];
+    if (typeof window.ITEM_DATA === 'undefined') return null;
+    const key = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === name);
+    if (key) _itemTemplateCache[name] = key;
+    return key;
+}
+
 /**
  * Takes raw player data (from Firebase) and reconnects it to game templates.
  * ensuring items have effects, correct stats, and valid IDs.
@@ -17,9 +27,9 @@ function rehydratePlayerState(data) {
             templateKey = item.templateId;
         }
 
-        // 2. FALLBACK A: Name Match
+        // 2. FALLBACK A: Name Match (Using Cache for Performance)
         if (!templateItem) {
-            templateKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === item.name);
+            templateKey = resolveTemplateIdByName(item.name);
             if (templateKey) templateItem = ITEM_DATA[templateKey];
         }
 
@@ -87,7 +97,7 @@ function generateEnemyLoot(player, enemy) {
         return '💎s';
     }
     // 2. Moon Tear (Swamp, 5% chance)
-    if (gameState.player.relicQuestStage === 2 && (enemy.tile === 'l' || enemy.tile === 'Hydra') && Math.random() < 0.05) {
+    if (gameState.player.relicQuestStage === 2 && (enemy.tile === 'l' || enemy.tile === '🐉h') && Math.random() < 0.05) {
         logMessage("{blue:You found the Moon Tear!}");
         return '💎m';
     }
@@ -127,13 +137,18 @@ function generateEnemyLoot(player, enemy) {
 
     // --- 2. Calculate Distance for Scaling ---
     let dist;
-    if (gameState.mapMode === 'overworld') {
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         dist = Math.sqrt(player.x * player.x + player.y * player.y);
+        
+        // Multipliers for alternate realms
+        if (gameState.currentRealm && gameState.currentRealm !== 0) {
+            dist += 1000; // Flat boost to loot quality in alternate dimensions
+        }
     } else {
         const instanceId = gameState.currentCaveId || gameState.currentCastleId || "";
         
         // --- ENDGAME BOSS SCALING ---
-        if (instanceId === 'cave_landmark') {
+        if (instanceId === 'cave_landmark' || instanceId.includes('tomb_of_alaric')) {
             dist = 5000; 
         } else {
             const parts = instanceId.split('_').map(Number).filter(n => !isNaN(n));
@@ -167,14 +182,15 @@ function generateEnemyLoot(player, enemy) {
 
     // --- 4. Magic Item Chance ---
     let magicChance = 0.01; // 1% Base
-    if (dist > 500) magicChance = 0.10; // 10% in endgame
+    if (dist > 1500) magicChance = 0.15; // 15% in extreme endgame
+    else if (dist > 500) magicChance = 0.10; // 10% in endgame
     else if (dist > 250) magicChance = 0.05; // 5% in midgame
 
     // Luck Bonus (0.5% per luck point)
     magicChance += (player.luck * 0.005);
 
     if (enemy.isElite) {
-        magicChance += 0.15; // +15% chance for Magic Item from Elites!
+        magicChance += 0.20; // Elites drop magic items very frequently
         logMessage(`{purple:The ${enemy.name} leaves behind a glowing essence...}`);
     }
 
@@ -182,9 +198,9 @@ function generateEnemyLoot(player, enemy) {
         return '✨'; // Drop Unidentified Magic Item!
     }
 
-    // --- 4.5 LEGENDARY DROPS (Tier 4 Only) ---
+    // --- 4.5 LEGENDARY ARTIFACT DROPS (Tier 6 Only) ---
     if (dist > 2500 && Math.random() < 0.05) { // 5% chance per kill in deep wilds
-        const legendaries = ['⚔️k', '🛡️a', '👢w', '👑v', '🍎'];
+        const legendaries = ['⚔️k', '🛡️a', '👢w', '👑v', '🍎', '🗡️v', '👹'];
         const drop = legendaries[Math.floor(Math.random() * legendaries.length)];
 
         const item = ITEM_DATA[drop];
@@ -193,6 +209,9 @@ function generateEnemyLoot(player, enemy) {
         // Visual fanfare
         if (typeof ParticleSystem !== 'undefined') {
             ParticleSystem.createLevelUp(player.x, player.y);
+        }
+        if (typeof AudioSystem !== 'undefined') {
+            AudioSystem.playLootRare();
         }
 
         return drop;
@@ -203,20 +222,30 @@ function generateEnemyLoot(player, enemy) {
 
     const commonLoot = ['♥', '🔮', 'S', '💜', '🐀', '🦇w', '🦷', '🧣'];
     const tier1Loot = ['\\', '%', '🏏', '🦯', '🏹', '👕', '👘'];
-    const tier2Loot = ['!', '[', '📚', '🛡️s', '🛡️w'];
-    const tier3Loot = ['⚔️s', 'A', 'Ψ', 'M', '⚔️l', '⛓️', '🛡️i'];
-    const tier4Loot = ['🪓', '🔨', '🛡️p'];
+    const tier2Loot = ['!', '[', '📚', '🛡️s', '🛡️w', 'P', '8'];
+    const tier3Loot = ['⚔️s', 'A', 'Ψ', 'M', '⚔️l', '⛓️', '🛡️i', '9'];
+    const tier4Loot = ['🪓', '🔨', '🛡️p', '*'];
+    // CONTENT WIN: Added T5 and T6 items to world drops!
+    const tier5Loot = ['⚔️o', '🛡️o', '❄️b', '❄️m', '⚔️m', '🛡️m']; 
 
     let tier1Chance = 0.30;
     let tier2Chance = 0.0;
     let tier3Chance = 0.0;
     let tier4Chance = 0.0;
+    let tier5Chance = 0.0;
 
-    if (dist > 500) { // Endgame Zone
+    if (dist > 1500) { // The Abyss
+        tier1Chance = 0.0;
+        tier2Chance = 0.05;
+        tier3Chance = 0.20;
+        tier4Chance = 0.40;
+        tier5Chance = 0.35;
+    } else if (dist > 500) { // Endgame Zone
         tier1Chance = 0.0;
         tier2Chance = 0.20;
-        tier3Chance = 0.50;
-        tier4Chance = 0.30;
+        tier3Chance = 0.40;
+        tier4Chance = 0.20;
+        tier5Chance = 0.05;
     } else if (dist > 250) { // Midgame Zone
         tier1Chance = 0.10;
         tier2Chance = 0.40;
@@ -226,13 +255,13 @@ function generateEnemyLoot(player, enemy) {
         tier1Chance = 0.30;
         tier2Chance = 0.30;
         tier3Chance = 0.05;
-        tier4Chance = 0.0;
     }
 
-    if (scaledRoll < tier4Chance) return tier4Loot[Math.floor(Math.random() * tier4Loot.length)];
-    if (scaledRoll < tier4Chance + tier3Chance) return tier3Loot[Math.floor(Math.random() * tier3Loot.length)];
-    if (scaledRoll < tier4Chance + tier3Chance + tier2Chance) return tier2Loot[Math.floor(Math.random() * tier2Loot.length)];
-    if (scaledRoll < tier4Chance + tier3Chance + tier2Chance + tier1Chance) return tier1Loot[Math.floor(Math.random() * tier1Loot.length)];
+    if (scaledRoll < tier5Chance) return tier5Loot[Math.floor(Math.random() * tier5Loot.length)];
+    if (scaledRoll < tier5Chance + tier4Chance) return tier4Loot[Math.floor(Math.random() * tier4Loot.length)];
+    if (scaledRoll < tier5Chance + tier4Chance + tier3Chance) return tier3Loot[Math.floor(Math.random() * tier3Loot.length)];
+    if (scaledRoll < tier5Chance + tier4Chance + tier3Chance + tier2Chance) return tier2Loot[Math.floor(Math.random() * tier2Loot.length)];
+    if (scaledRoll < tier5Chance + tier4Chance + tier3Chance + tier2Chance + tier1Chance) return tier1Loot[Math.floor(Math.random() * tier1Loot.length)];
 
     return commonLoot[Math.floor(Math.random() * commonLoot.length)];
 }
@@ -323,12 +352,12 @@ function generateMagicItem(tier) {
 
     // Ensure "Magic" status visually if no affixes were added
     if (!hasPrefix && !hasSuffix) {
-        newItem.name = `Reinforced ${newItem.name}`;
+        newItem.name = `Fine ${newItem.name}`; // Flavor change from 'Reinforced'
         if (newItem.type === 'weapon') newItem.damage += 1;
         if (newItem.type === 'armor') newItem.defense += 1;
     }
 
-    // Assign internal rarity tag for identification fanfare
+    // Assign internal rarity tag for identification fanfare and UI borders
     if (hasPrefix && hasSuffix) newItem._rarity = 'epic';
     else if (hasPrefix || hasSuffix) newItem._rarity = 'rare';
     else newItem._rarity = 'uncommon';
@@ -364,9 +393,10 @@ function sanitizeItemForDB(item, forceEquipped = false) {
         statBonuses: item.statBonuses ? { ...item.statBonuses } : null,
         spellId: item.spellId || null,
         skillId: item.skillId || null,
-        stat: item.stat || null
+        stat: item.stat || null,
         
-        // Notice we EXPLICITLY leave out '_rarity', 'effect', 'onHit', etc.
+        // QoL WIN: Explicitly preserve rarity so inventory borders persist across reloads!
+        _rarity: item._rarity || null
     };
 }
 
@@ -451,9 +481,24 @@ function handleItemDrop(key) {
     }
 
     if (!isValidDropTile) {
-        logMessage("You can't drop items here. (Must be on open floor)");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
+        if (currentTile === '~' || currentTile === '≈') {
+            logMessage(`{gray:You toss the ${itemToDrop.name} into the water. It sinks out of sight.}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 500); // Splash
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#3b82f6', 6);
+            
+            // Consumed by the deep!
+            itemToDrop.quantity--;
+            if (itemToDrop.quantity <= 0) player.inventory.splice(itemIndex, 1);
+            
+            gameState.isDroppingItem = false;
+            playerRef.update({ inventory: getSanitizedInventory() });
+            renderInventory();
+            return;
+        } else {
+            logMessage("You can't drop items here. (Must be on open floor)");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
     }
 
     // --- EXECUTE DROP ---
@@ -471,7 +516,7 @@ function handleItemDrop(key) {
     }
 
     // Clear Loot Memory (So it can be picked up again)
-    let tileId = (gameState.mapMode === 'overworld') 
+    let tileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
         ? `${player.x},${-player.y}`
         : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
     gameState.lootedTiles.delete(tileId);
@@ -517,7 +562,7 @@ function useInventoryItem(itemIndex) {
     if (itemToUse.name === 'Unidentified Magic Item' || itemToUse.tile === '✨') {
         
         // Block identification if it's stacked and inventory is full!
-        if (itemToUse.quantity > 1 && player.inventory.length >= MAX_INVENTORY_SLOTS) {
+        if (itemToUse.quantity > 1 && player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
             logMessage("{red:Inventory full! Make space before identifying stacked items.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
@@ -539,7 +584,7 @@ function useInventoryItem(itemIndex) {
         if (identifiedItem._rarity === 'epic') { colorTag = 'red'; rarityLabel = 'Epic'; }
         if (identifiedItem._rarity === 'legendary') { colorTag = 'gold'; rarityLabel = 'Legendary'; }
         
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
         
         logMessage(`{${colorTag}:✨ You identified a ${rarityLabel} item: ${identifiedItem.name}!}`);
@@ -556,13 +601,13 @@ function useInventoryItem(itemIndex) {
     }
 
     // --- FISHING LOGIC ---
-    else if (itemToUse.name === 'Fishing Rod' || itemToUse.name === 'Obsidian Fishing Rod') {
-        itemUsed = executeFishing();
+    else if (itemToUse.name === 'Fishing Rod' || itemToUse.name === 'Obsidian Fishing Rod' || itemToUse.name === 'Steel Fishing Rod') {
+        itemUsed = typeof executeFishing === 'function' ? executeFishing() : false;
     }
 
-    // --- CONSTRUCTIBLES (Walls, Floors) ---
+    // --- CONSTRUCTIBLES (Walls, Floors, Traps) ---
     else if (itemToUse.type === 'constructible') {
-        const currentTile = chunkManager.getTile(player.x, player.y);
+        const currentTile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(player.x, player.y) : '.';
         const invalidTiles = ['~', '≈', '🧱', '+', '☒', '▓', '^'];
 
         if (invalidTiles.includes(currentTile)) {
@@ -573,7 +618,7 @@ function useInventoryItem(itemIndex) {
 
         logMessage(`You place the ${itemToUse.name}.`);
 
-        if (gameState.mapMode === 'overworld') {
+        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
             chunkManager.setWorldTile(player.x, player.y, itemToUse.tile);
         } else if (gameState.mapMode === 'dungeon') {
             chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = itemToUse.tile;
@@ -612,7 +657,7 @@ function useInventoryItem(itemIndex) {
             // Remove old weapon skill if it was a weapon
             if (slot === 'weapon') {
                 const getWeaponSkill = (item) => {
-                    if (item.name.includes("Hammer") || item.name.includes("Club") || item.tile === '🔨' || item.tile === '🏏') return 'crush';
+                    if (item.name.includes("Hammer") || item.name.includes("Club") || item.tile === '🔨' || item.tile === '🏏' || item.name.includes("Axe")) return 'crush';
                     if (item.name.includes("Dagger") || item.tile === '†' || item.tile === '🗡️') return 'quickstep';
                     if (item.name.includes("Sword") || item.name.includes("Blade") || item.tile === '⚔️' || item.tile === '!') return 'deflect';
                     if (item.name.includes("Staff") || item.tile === 'Ψ' || item.tile === '🦯') return 'channel';
@@ -621,7 +666,7 @@ function useInventoryItem(itemIndex) {
                 const oldSkill = getWeaponSkill(currentEquipped);
                 if (oldSkill && player.skillbook[oldSkill]) {
                     delete player.skillbook[oldSkill];
-                    logMessage(`You unlearned ${SKILL_DATA[oldSkill].name}.`);
+                    logMessage(`You unlearned ${SKILL_DATA[oldSkill] ? SKILL_DATA[oldSkill].name : 'a skill'}.`);
                 }
             }
         }
@@ -670,10 +715,19 @@ function useInventoryItem(itemIndex) {
             applyStatBonuses(itemToUse, 1);
             logMessage(`You equip the ${itemToUse.name}.${deltaText}`);
 
+            // JUICE WIN: Massive fanfare for equipping high-tier legendary items!
+            if (itemToUse._rarity === 'legendary' || itemToUse._rarity === 'epic' || itemToUse.name.includes("Fallen King")) {
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#facc15', 25);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                gameState.screenShake = 5;
+            } else {
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Clinking equip sound
+            }
+
             // Grant new weapon skill
             if (slot === 'weapon') {
                 const getWeaponSkill = (item) => {
-                    if (item.name.includes("Hammer") || item.name.includes("Club") || item.tile === '🔨' || item.tile === '🏏') return 'crush';
+                    if (item.name.includes("Hammer") || item.name.includes("Club") || item.tile === '🔨' || item.tile === '🏏' || item.name.includes("Axe")) return 'crush';
                     if (item.name.includes("Dagger") || item.tile === '†' || item.tile === '🗡️') return 'quickstep';
                     if (item.name.includes("Sword") || item.name.includes("Blade") || item.tile === '⚔️' || item.tile === '!') return 'deflect';
                     if (item.name.includes("Staff") || item.tile === 'Ψ' || item.tile === '🦯') return 'channel';
@@ -683,13 +737,12 @@ function useInventoryItem(itemIndex) {
                 const newSkill = getWeaponSkill(itemToUse);
                 if (newSkill) {
                     player.skillbook[newSkill] = 1; 
-                    logMessage(`Weapon Technique: You learned ${SKILL_DATA[newSkill].name}!`);
+                    logMessage(`Weapon Technique: You learned ${SKILL_DATA[newSkill] ? SKILL_DATA[newSkill].name : newSkill}!`);
                     if (!player.hotbar[0]) player.hotbar[0] = newSkill;
                 }
             }
         }
         
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Clinking equip sound
         itemUsed = true;
 
     // --- SPELLBOOKS, SKILLBOOKS, TOOLS ---
@@ -700,7 +753,7 @@ function useInventoryItem(itemIndex) {
         const MAX_ABILITY_LEVEL = 10; 
 
         if (itemToUse.type === 'spellbook') {
-            data = SPELL_DATA[itemToUse.spellId];
+            data = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[itemToUse.spellId] : null;
             const currentLevel = player.spellbook[itemToUse.spellId] || 0;
 
             if (!data) {
@@ -717,7 +770,7 @@ function useInventoryItem(itemIndex) {
                 learned = true;
             }
         } else if (itemToUse.type === 'skillbook') {
-            data = SKILL_DATA[itemToUse.skillId];
+            data = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[itemToUse.skillId] : null;
             const currentLevel = player.skillbook[itemToUse.skillId] || 0;
 
             if (!data) {
@@ -751,7 +804,20 @@ function useInventoryItem(itemIndex) {
         if (stat && player.hasOwnProperty(stat)) {
             player[stat]++;
             logMessage(`{gold:You consume the tome. ${stat.toUpperCase()} +1!}`);
-            triggerStatAnimation(statDisplays[stat], 'stat-pulse-green');
+            
+            // JUICE WIN: Match particle color to stat consumed
+            let color = '#facc15';
+            if (stat === 'strength') color = '#ef4444';
+            if (stat === 'wits') color = '#3b82f6';
+            if (stat === 'constitution') color = '#22c55e';
+            
+            if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined') {
+                triggerStatAnimation(statDisplays[stat], 'stat-pulse-green');
+            }
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createExplosion(player.x, player.y, color, 20);
+                ParticleSystem.createFloatingText(player.x, player.y, `+1 ${stat.substring(0,3).toUpperCase()}`, color);
+            }
             if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
             
             // Re-calc max HP/Mana instantly
@@ -766,15 +832,17 @@ function useInventoryItem(itemIndex) {
 
     // --- BUFF POTIONS ---
     } else if (itemToUse.type === 'buff_potion') {
-        const template = ITEM_DATA[Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === itemToUse.name)];
+        const template = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === itemToUse.name)] : null;
 
-        if (player.strengthBonusTurns > 0) {
+        if (template && player.strengthBonusTurns > 0) {
             logMessage("Effect already active.");
-        } else {
+        } else if (template) {
             player.strengthBonus = template.amount;
             player.strengthBonusTurns = template.duration;
             logMessage(`You drink the potion. (+${template.amount} Str)`);
-            triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
+            if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined') {
+                triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
+            }
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
             
             itemToUse.quantity--;
@@ -792,13 +860,13 @@ function useInventoryItem(itemIndex) {
         // JUICE WIN: Screen Shake for teleporting!
         gameState.screenShake = 15;
 
-        if (gameState.mapMode === 'overworld') {
+        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
             player.x = 0;
             player.y = 0;
-            chunkManager.loadedChunks = {}; 
+            if (typeof chunkManager !== 'undefined') chunkManager.loadedChunks = {}; 
             logMessage("The world twists... you stand at the Village gates.");
         } else {
-            exitToOverworld("The magic pulls you out of the dungeon and back to the surface.");
+            if (typeof exitToOverworld === 'function') exitToOverworld("The magic pulls you out of the dungeon and back to the surface.");
         }
 
         itemToUse.quantity--;
@@ -814,7 +882,7 @@ function useInventoryItem(itemIndex) {
             const ty = Math.floor(player.y + Math.sin(angle) * dist);
             
             gameState.activeTreasure = { x: tx, y: ty };
-            if (playerRef) playerRef.update({ activeTreasure: gameState.activeTreasure });
+            if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ activeTreasure: gameState.activeTreasure });
 
             logMessage(`{gold:The map reveals a hidden mark! Location: (${tx}, ${-ty}).}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
@@ -827,7 +895,7 @@ function useInventoryItem(itemIndex) {
     } else if (['journal', 'lore', 'random_journal', 'random_lore'].includes(itemToUse.type)) {
         
         // Find the original item template to grab the text content
-        const template = window.ITEM_DATA[itemToUse.templateId] || window.ITEM_DATA[itemToUse.tile] || {};
+        const template = typeof window.ITEM_DATA !== 'undefined' ? (window.ITEM_DATA[itemToUse.templateId] || window.ITEM_DATA[itemToUse.tile] || {}) : {};
         const title = itemToUse.title || template.title || itemToUse.name;
         const content = itemToUse.content || template.content || itemToUse.description || "The pages are illegible.";
 
@@ -857,11 +925,11 @@ function useInventoryItem(itemIndex) {
 
     // --- FINAL SAVE & RENDER ---
     if (itemUsed) {
-        syncPlayerState();
-        endPlayerTurn();
-        renderInventory();
-        renderEquipment();
-        renderStats();
+        if (typeof syncPlayerState === 'function') syncPlayerState();
+        if (typeof endPlayerTurn === 'function') endPlayerTurn();
+        if (typeof renderInventory === 'function') renderInventory();
+        if (typeof renderEquipment === 'function') renderEquipment();
+        if (typeof renderStats === 'function') renderStats();
         if (typeof render === 'function') render();
     }
 }
@@ -893,9 +961,9 @@ function applyStatBonuses(item, operation) {
             // Visual Juice
             if (operation === 1) {
                 logMessage(`You feel ${stat} increase! (+${amount})`);
-                triggerStatFlash(statDisplays[stat], true);
+                if (typeof triggerStatFlash === 'function' && typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays[stat], true);
             } else {
-                triggerStatFlash(statDisplays[stat], false);
+                if (typeof triggerStatFlash === 'function' && typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays[stat], false);
             }
         }
     }
@@ -905,3 +973,5 @@ function applyStatBonuses(item, operation) {
         recalculateDerivedStats();
     }
 }
+
+// --- END OF FILE items.js ---
