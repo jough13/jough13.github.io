@@ -6,6 +6,8 @@
 
 const AudioSystem = {
     _ctx: null, 
+    _masterGain: null,
+    _compressor: null,
     noiseBuffer: null, 
     
     // PERFORMANCE WIN: Audio Throttling
@@ -31,6 +33,21 @@ const AudioSystem = {
     initAudioContext: function() {
         if (!this._ctx) {
             this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // AUDIO QUALITY WIN: Studio-grade Mastering Chain
+            // Prevents massive AoE spells from clipping and blowing out the speakers
+            this._masterGain = this._ctx.createGain();
+            this._masterGain.gain.value = 0.7; // Leave 30% headroom
+            
+            this._compressor = this._ctx.createDynamicsCompressor();
+            this._compressor.threshold.value = -12; // Start compressing at -12dB
+            this._compressor.knee.value = 30;       // Smooth transition
+            this._compressor.ratio.value = 12;      // Hard limiting
+            this._compressor.attack.value = 0.003;  // React instantly
+            this._compressor.release.value = 0.25;  // Let go naturally
+
+            this._masterGain.connect(this._compressor);
+            this._compressor.connect(this._ctx.destination);
         }
         if (this._ctx.state === 'suspended') {
             this._ctx.resume().catch(e => console.warn("AudioContext resume failed:", e));
@@ -74,11 +91,16 @@ const AudioSystem = {
     
     // Simulates echoes and muffling if underground
     _getAcoustics: function() {
-        if (typeof gameState !== 'undefined' && (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle')) {
-            // Echo tail is 50% longer, high frequencies are slightly muffled
-            return { durationMult: 1.5, filterMult: 0.7 }; 
+        if (typeof gameState !== 'undefined') {
+            if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'underworld') {
+                // Deep caves: Heavy echo, muffled highs
+                return { durationMult: 1.2, filterMult: 0.6, echoDelay: 0.15, echoFeedback: 0.35 }; 
+            } else if (gameState.mapMode === 'castle') {
+                // Castles/Ruins: Slapback echo, less muffling
+                return { durationMult: 1.1, filterMult: 0.85, echoDelay: 0.08, echoFeedback: 0.2 }; 
+            }
         }
-        return { durationMult: 1.0, filterMult: 1.0 }; // Open air
+        return { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0 }; // Open air
     },
 
     // JUICE WIN: Calculates stereo panning, volume dropoff, and high-frequency loss based on distance!
@@ -94,6 +116,39 @@ const AudioSystem = {
             distanceVol: Math.max(0.1, 1.0 - (absDx * 0.06)), // Fades out as distance increases
             distanceFilter: Math.max(0.3, 1.0 - (absDx * 0.05)) // Muffles far sounds (loss of treble)
         };
+    },
+
+    // Helper to connect a node to the master chain (with optional reverb)
+    _routeToMaster: function(ctx, sourceNode, acoustics, spatial) {
+        // 1. Panner
+        let panner = null;
+        if (ctx.createStereoPanner) {
+            panner = ctx.createStereoPanner();
+            panner.pan.value = spatial.pan;
+            sourceNode.connect(panner);
+        } else {
+            panner = sourceNode; // Fallback
+        }
+
+        // 2. Reverb (Delay Network)
+        if (acoustics.echoDelay > 0) {
+            const delay = ctx.createDelay();
+            delay.delayTime.value = acoustics.echoDelay;
+            const feedback = ctx.createGain();
+            feedback.gain.value = acoustics.echoFeedback;
+
+            // Route signal to delay
+            panner.connect(delay);
+            // Route delay back into itself
+            delay.connect(feedback);
+            feedback.connect(delay);
+            // Route delay to master
+            delay.connect(this._masterGain);
+        }
+
+        // 3. Dry Signal to Master
+        panner.connect(this._masterGain);
+        return panner;
     },
 
     // --- CORE GENERATORS ---
@@ -122,32 +177,21 @@ const AudioSystem = {
         filter.frequency.value = (filterFreq + (Math.random() - 0.5) * 200) * acoustics.filterMult * spatial.distanceFilter;
 
         const gain = ctx.createGain();
-        gain.gain.setValueAtTime(actualVol, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + actualDuration);
-
-        // SPATIAL AUDIO: Stereo Panning
-        let panner = null;
-        if (ctx.createStereoPanner) {
-            panner = ctx.createStereoPanner();
-            panner.pan.value = spatial.pan;
-        }
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(actualVol, ctx.currentTime + 0.01); // Quick attack
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + actualDuration); // No pop
 
         // Build the audio graph
         src.connect(filter);
-        if (panner) {
-            filter.connect(panner);
-            panner.connect(gain);
-        } else {
-            filter.connect(gain);
-        }
-        gain.connect(ctx.destination);
+        filter.connect(gain);
+        
+        this._routeToMaster(ctx, gain, acoustics, spatial);
 
         src.start();
         src.stop(ctx.currentTime + actualDuration);
         
         src.onended = () => {
             src.disconnect(); filter.disconnect(); gain.disconnect();
-            if (panner) panner.disconnect();
         };
     },
 
@@ -182,38 +226,25 @@ const AudioSystem = {
             osc.frequency.exponentialRampToValueAtTime(slideTo * spatial.distanceFilter, ctx.currentTime + actualDuration);
         }
 
-        gain.gain.setValueAtTime(0.01, ctx.currentTime);
-        // Add a tiny attack envelope to prevent audio popping clicks
-        gain.gain.linearRampToValueAtTime(actualVol, ctx.currentTime + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + actualDuration);
+        // QoL WIN: Anti-Popping Envelopes
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(actualVol, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + actualDuration);
 
-        // SPATIAL AUDIO
-        let panner = null;
-        if (ctx.createStereoPanner) {
-            panner = ctx.createStereoPanner();
-            panner.pan.value = spatial.pan;
-        }
-
-        if (panner) {
-            osc.connect(panner);
-            panner.connect(gain);
-        } else {
-            osc.connect(gain);
-        }
-        gain.connect(ctx.destination);
+        this._routeToMaster(ctx, gain, acoustics, spatial);
+        osc.connect(gain);
 
         osc.start();
         osc.stop(ctx.currentTime + actualDuration);
         
         osc.onended = () => {
             osc.disconnect(); gain.disconnect();
-            if (panner) panner.disconnect();
         };
     },
 
     // EXPANDABILITY WIN: The Polyphonic Engine
     // Plays multiple tones simultaneously. Perfect for thick, lush rewards or terrifying bosses!
-    playChord: function(notes, type = 'sine', duration = 0.5, vol = 0.1) {
+    playChord: function(notes, type = 'sine', duration = 0.5, vol = 0.1, detune = 0) {
         if (!this.settings.master || !this.settings.ui || !this.getCtx()) return;
         const ctx = this._ctx;
         const acoustics = this._getAcoustics();
@@ -222,19 +253,20 @@ const AudioSystem = {
         // Distribute volume so chords don't blow out the speakers
         const noteVol = vol / notes.length;
 
-        notes.forEach(freq => {
+        notes.forEach((freq, index) => {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             
             osc.type = type;
-            osc.frequency.value = freq * acoustics.filterMult;
+            // Apply slight detuning to create a richer, "chorus" effect
+            osc.frequency.value = (freq * acoustics.filterMult) + (index * detune);
 
-            gain.gain.setValueAtTime(0.01, ctx.currentTime);
-            gain.gain.linearRampToValueAtTime(noteVol, ctx.currentTime + 0.05); 
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + actualDuration);
+            gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(noteVol, ctx.currentTime + 0.05); 
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + actualDuration);
 
             osc.connect(gain);
-            gain.connect(ctx.destination);
+            this._routeToMaster(ctx, gain, acoustics, this._getSpatialData());
             
             osc.start();
             osc.stop(ctx.currentTime + actualDuration);
@@ -263,16 +295,18 @@ const AudioSystem = {
                 const adjFreq = freq * (freq > 500 ? acoustics.filterMult : 1.0);
                 osc.frequency.setValueAtTime(adjFreq, noteTime);
                 
-                gain.gain.setValueAtTime(0, noteTime);
-                gain.gain.linearRampToValueAtTime(vol, noteTime + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.01, noteTime + (speed * acoustics.durationMult) - 0.01);
+                // Crisp envelope per note
+                gain.gain.setValueAtTime(0.0001, noteTime);
+                gain.gain.exponentialRampToValueAtTime(vol, noteTime + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + (speed * acoustics.durationMult) - 0.01);
             } else {
-                gain.gain.setValueAtTime(0, noteTime);
+                // Rest note
+                gain.gain.setValueAtTime(0.0001, noteTime);
             }
         });
         
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        this._routeToMaster(ctx, gain, acoustics, this._getSpatialData());
         osc.start(now);
         osc.stop(now + totalDuration);
         
@@ -284,7 +318,10 @@ const AudioSystem = {
     playStep: function(x) { 
         if (!this.settings.steps) return;
         if (!this._throttle('step', 80)) return; 
-        this.playNoise(0.08, 0.05, 600, x); 
+        
+        // Add a low-frequency thump to the dust noise to make footsteps feel grounded
+        this.playNoise(0.08, 0.04, 500, x); 
+        this.playTone(80, 'sine', 0.05, 0.05, true, 40, x);
     },
     
     // CONTENT EXPANSION: Added Sweep and Pierce variants
@@ -303,6 +340,8 @@ const AudioSystem = {
         if (type === 'heavy') {
             startFreq = 150; endFreq = 20; duration = 0.15; vol = 0.15;
             osc.type = 'triangle';
+            // Layer a crunch noise on top for physical impact feel
+            this.playNoise(0.1, 0.08, 1200, x);
         } else if (type === 'light') {
             startFreq = 600; endFreq = 200; duration = 0.08; vol = 0.08;
             osc.type = 'sine';
@@ -328,27 +367,17 @@ const AudioSystem = {
         osc.frequency.setValueAtTime(startFreq * acoustics.filterMult * spatial.distanceFilter, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + actualDuration);
         
-        gain.gain.setValueAtTime(0.01, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(actualVol, ctx.currentTime + 0.02);
-        gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + actualDuration);
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(actualVol, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + actualDuration);
         
-        let panner = null;
-        if (ctx.createStereoPanner) {
-            panner = ctx.createStereoPanner();
-            panner.pan.value = spatial.pan;
-        }
-
-        if (panner) {
-            osc.connect(panner); panner.connect(gain);
-        } else {
-            osc.connect(gain);
-        }
-        gain.connect(ctx.destination);
+        osc.connect(gain);
+        this._routeToMaster(ctx, gain, acoustics, spatial);
 
         osc.start();
         osc.stop(ctx.currentTime + actualDuration);
         
-        osc.onended = () => { osc.disconnect(); gain.disconnect(); if (panner) panner.disconnect(); };
+        osc.onended = () => { osc.disconnect(); gain.disconnect(); };
     },
 
     playBow: function(x) {
@@ -361,19 +390,27 @@ const AudioSystem = {
     playHit: function(x) { 
         if (!this.settings.combat) return;
         if (!this._throttle('hit', 80)) return;
+        
+        // AUDIO QUALITY WIN: Layered Synthesis
+        // Combine a harsh square wave with white noise for a visceral, bone-crunching hit
         this.playTone(80, 'square', 0.15, 0.1, true, null, x); 
+        this.playNoise(0.1, 0.1, 1500, x);
     },
 
     playCrit: function(x) {
         if (!this.settings.combat) return;
         this.playTone(1200, 'sine', 0.3, 0.15, false, 800, x);
         this.playTone(80, 'square', 0.2, 0.1, true, null, x); 
+        this.playNoise(0.2, 0.15, 2000, x); // Extra crunch
     },
     
     playMagic: function(x) { 
         if (!this.settings.magic) return;
         if (!this._throttle('magic', 100)) return;
+        
+        // Rich dual-tone for magic
         this.playTone(600, 'sine', 0.3, 0.05, true, 800, x); 
+        this.playTone(900, 'sine', 0.3, 0.03, true, 1200, x); 
     },
 
     playHeal: function(x) {
@@ -385,7 +422,8 @@ const AudioSystem = {
     playCoin: function() { 
         if (!this.settings.ui) return;
         if (!this._throttle('coin', 50)) return;
-        this.playTone(1200, 'sine', 0.1, 0.05, true); 
+        // JUICE WIN: Classic two-note coin sound (e.g. B5 -> E6)
+        this.playMelody([987.77, 1318.51], 'sine', 0.05, 0.08); 
     },
     
     playError: function() {
@@ -409,8 +447,8 @@ const AudioSystem = {
     // --- JUICE & EXPANDABILITY: SEQUENCED JINGLES ---
     
     playLevelUp: function() {
-        // C Major Arpeggio
-        this.playMelody([261.63, 329.63, 392.00, 523.25], 'sine', 0.15, 0.1);
+        // Glorious, detuned C Major Arpeggio
+        this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 0.6, 0.15, 1.5);
     },
 
     playQuestComplete: function() {
@@ -438,15 +476,14 @@ const AudioSystem = {
         this.playMelody([300, 280, 260, 200], 'sawtooth', 0.3, 0.15);
     },
 
-    // NEW JINGLES: Hook these up to UI actions for instant gratification!
     playDiscovery: function() {
         // A lush, lingering magical chord when finding a new Biome or Waystone
-        this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 1.5, 0.15);
+        this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 1.5, 0.15, 2.0);
     },
 
     playBossSpawn: function() {
-        // Terrifying, dissonant low rumble
-        this.playChord([50, 55, 60], 'sawtooth', 2.0, 0.2);
+        // Terrifying, dissonant, detuned low rumble
+        this.playChord([50, 55, 60], 'sawtooth', 2.0, 0.2, 5.0);
     },
 
     playCraftSuccess: function() {
@@ -467,10 +504,10 @@ function forceUnlockAudio() {
         // Play 10 milliseconds of pure silence to satisfy Apple's API requirements
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        gain.gain.value = 0; // Absolute silence
+        gain.gain.value = 0.0001; // True silence
         
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(ctx.destination); // Bypass master chain for unlocker
         
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.01);
@@ -484,3 +521,5 @@ function forceUnlockAudio() {
 // Bind to both click and touch events to catch mobile interactions ASAP
 document.addEventListener('click', forceUnlockAudio, { once: true });
 document.addEventListener('touchstart', forceUnlockAudio, { once: true });
+
+// --- END OF FILE audio.js ---
