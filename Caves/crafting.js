@@ -1,3 +1,5 @@
+// --- START OF FILE crafting.js ---
+
 // ==========================================
 // CRAFTING & COOKING SYSTEM
 // ==========================================
@@ -102,8 +104,9 @@ function handleCraftItem(recipeName, requestBatch = false) {
         return;
     }
 
-    // 3. Determine Batch Size
-    const batchSize = requestBatch ? maxCraftable : 1;
+    // 3. Determine Batch Size (Strict Integer Parsing)
+    const batchSize = requestBatch ? Math.floor(maxCraftable) : 1;
+    if (batchSize < 1) return;
 
     // 4. Consume Materials (Backward loop for safe array mutation)
     for (const matName in recipe.materials) {
@@ -209,6 +212,11 @@ function handleCraftItem(recipeName, requestBatch = false) {
     // 6. Flavor & Juice Logging
     const totalYield = batchSize * (recipe.yield || 1);
     
+    // EXPANDABILITY WIN: Track lifetime metrics!
+    if (!player.metrics) player.metrics = {};
+    if (isCooking) player.metrics.potionsBrewed = (player.metrics.potionsBrewed || 0) + totalYield;
+    else player.metrics.itemsCrafted = (player.metrics.itemsCrafted || 0) + totalYield;
+    
     // JUICE WIN: Floating World Particles for Crafting!
     if (typeof ParticleSystem !== 'undefined') {
         const floatText = masterworksCrafted > 0 ? `+${masterworksCrafted} ${lastCraftedName}` : `+${totalYield} ${lastCraftedName}`;
@@ -225,8 +233,12 @@ function handleCraftItem(recipeName, requestBatch = false) {
         logMessage(`You ${isCooking ? 'cooked' : 'crafted'}: ${recipeName}${qtyStr}.`);
         
         if (typeof AudioSystem !== 'undefined') {
-            if (batchSize > 1) AudioSystem.playMagic(); // Satisfying sound for big batches
-            else AudioSystem.playStep(); // Clink sound for single crafts
+            if (typeof AudioSystem.playCraftSuccess === 'function') {
+                AudioSystem.playCraftSuccess(); 
+            } else {
+                if (batchSize > 1) AudioSystem.playMagic(); 
+                else AudioSystem.playStep(); 
+            }
         }
     }
 
@@ -254,7 +266,8 @@ function handleCraftItem(recipeName, requestBatch = false) {
             inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
             craftingLevel: player.craftingLevel,
             craftingXp: player.craftingXp,
-            craftingXpToNext: player.craftingXpToNext
+            craftingXpToNext: player.craftingXpToNext,
+            metrics: player.metrics
         });
     }
 
@@ -270,8 +283,8 @@ function openCraftingModal(mode = 'workbench') {
     const title = document.querySelector('#craftingModal h2');
     if (title) {
         title.innerHTML = mode === 'cooking' 
-            ? "Cooking Pot <span class='text-sm text-yellow-500 block font-normal'>Combine ingredients to survive.</span>" 
-            : "Crafting Workbench <span class='text-sm text-green-500 block font-normal'>Forge weapons, armor, and tools.</span>";
+            ? "Cooking Pot <span class='text-sm text-yellow-500 block font-normal mt-1'>Combine ingredients to survive the wilds.</span>" 
+            : "Crafting Workbench <span class='text-sm text-green-500 block font-normal mt-1'>Forge weapons, weave armor, and build tools.</span>";
     }
 
     renderCraftingModal();
@@ -281,7 +294,7 @@ function openCraftingModal(mode = 'workbench') {
 
 /**
  * Renders the list of all available crafting recipes using DocumentFragment
- * QoL UPGRADE: Now features Smart Sorting and Dynamic Inventory Badges!
+ * QoL UPGRADE: Now features Smart Sorting, Dynamic Inventory Badges, and Lore Lookups!
  */
 function renderCraftingModal() {
     const craftingRecipeList = document.getElementById('craftingRecipeList');
@@ -327,13 +340,22 @@ function renderCraftingModal() {
         const { recipeName, recipe, outputItemKey, itemTemplate, existingStack, maxCraftable, levelMet, canCraft } = data;
         const outputItemTile = outputItemKey || '?';
 
+        // LORE WIN: Lookup the base description of the item so players know what it does
+        // Use our stripColorTags helper if it exists to keep the UI clean
+        let baseDescription = itemTemplate.description || "A crafted item.";
+        if (typeof stripColorTags === 'function') {
+            baseDescription = stripColorTags(baseDescription);
+        } else {
+            baseDescription = baseDescription.replace(/\{[a-z]+:(.*?)\}/ig, '$1'); // Fallback regex
+        }
+
         // Build Material List HTML
-        let materialsHtml = '<ul class="crafting-item-materials mt-1">';
+        let materialsHtml = '<ul class="crafting-item-materials mt-2 flex flex-wrap gap-2">';
         for (const materialName in recipe.materials) {
             const requiredQuantity = recipe.materials[materialName];
             const currentQuantity = availableMats[materialName] || 0;
-            const quantityClass = currentQuantity < requiredQuantity ? 'text-red-400 font-bold' : 'text-gray-400';
-            materialsHtml += `<li class="text-xs ${quantityClass}">${materialName} (${currentQuantity}/${requiredQuantity})</li>`;
+            const quantityClass = currentQuantity < requiredQuantity ? 'text-red-400 font-bold border-red-900 bg-red-900 bg-opacity-20' : 'text-gray-300 border-gray-700 bg-black bg-opacity-30';
+            materialsHtml += `<li class="text-[10px] px-2 py-0.5 rounded border ${quantityClass}">${materialName} (${currentQuantity}/${requiredQuantity})</li>`;
         }
         materialsHtml += '</ul>';
 
@@ -356,15 +378,15 @@ function renderCraftingModal() {
 
         // QoL WIN: Show how many you already own!
         const ownedCount = existingStack ? existingStack.quantity : 0;
-        const ownedHtml = ownedCount > 0 ? `<span class="text-[10px] bg-gray-800 border border-gray-600 text-gray-300 px-1.5 py-0.5 rounded ml-2 font-normal uppercase tracking-widest">Owned: ${ownedCount}</span>` : '';
+        const ownedHtml = ownedCount > 0 ? `<span class="text-[9px] bg-gray-800 border border-gray-600 text-gray-300 px-1.5 py-0.5 rounded ml-2 font-bold uppercase tracking-widest">Owned: ${ownedCount}</span>` : '';
 
-        // Build Action Buttons
+        // Build Action Buttons (Hardware Accelerated)
         const actionText = gameState.currentCraftingMode === 'cooking' ? 'Cook 1' : 'Craft 1';
-        let actionHtml = `<button data-craft-item="${recipeName}" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed font-bold" ${canCraft ? '' : 'disabled'}>${actionText}</button>`;
+        let actionHtml = `<button data-craft-item="${recipeName}" style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed font-bold" ${canCraft ? '' : 'disabled'}>${actionText}</button>`;
         
         // Add "Craft All" Batch button if applicable
         if (maxCraftable > 1 && levelMet) {
-            actionHtml += `<button data-craft-all="${recipeName}" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded shadow transition-transform active:scale-95 ml-2 font-bold text-xs flex flex-col items-center">
+            actionHtml += `<button data-craft-all="${recipeName}" style="transform: translate3d(0,0,0);" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded shadow transition-transform active:scale-95 ml-2 font-bold text-xs flex flex-col items-center">
                 <span>All</span>
                 <span class="text-[10px] font-normal opacity-80">(x${maxCraftable})</span>
             </button>`;
@@ -378,10 +400,11 @@ function renderCraftingModal() {
         li.innerHTML = `
             <div class="flex-grow pr-4">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="text-2xl">${outputItemTile}</span>
+                    <span class="text-2xl" title="${itemTemplate.name || recipeName}">${outputItemTile}</span>
                     <span class="crafting-item-name font-bold text-lg text-green-400" style="font-family: 'Uncial Antiqua', cursive;">${recipeName}</span>
                     ${ownedHtml}
                 </div>
+                <div class="text-xs text-gray-400 italic leading-tight">${baseDescription}</div>
                 ${materialsHtml}
                 ${infoHtml}
             </div>
@@ -428,3 +451,5 @@ function initCraftingListeners() {
 if (typeof areGlobalListenersInitialized !== 'undefined' && !areGlobalListenersInitialized) {
     initCraftingListeners();
 }
+
+// --- END OF FILE crafting.js ---
