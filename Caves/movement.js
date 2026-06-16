@@ -227,9 +227,10 @@ async function attemptMovePlayer(newX, newY) {
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#3b82f6', 15); // Blue explosion
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
 
-                // REWARD: Give the fragment for this specific direction
+                // Dynamically generate the correct specific templateId so the lore attaches properly
+                const templateId = `🧩${dir.charAt(0).toLowerCase()}`;
                 const fragmentName = `Tablet of the ${dir.charAt(0).toUpperCase() + dir.slice(1)}`;
-                const fragmentItem = { templateId: '🧩', name: fragmentName, type: 'junk', quantity: 1, tile: '🧩' };
+                const fragmentItem = { templateId: templateId, name: fragmentName, type: 'junk', quantity: 1, tile: '🧩' };
 
                 if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                     gameState.player.inventory.push(fragmentItem);
@@ -955,8 +956,16 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     if (newTile === '¥') {
-        // Deep clone the inventory so buying items doesn't permanently empty the global template!
-        activeShopInventory = JSON.parse(JSON.stringify(TRADER_INVENTORY));
+        // Create a persistent shop ID based on coordinates so his stock doesn't magically refresh
+        const shopId = `trader_${newX}_${newY}`;
+        
+        if (!gameState.shopStates) gameState.shopStates = {};
+        if (!gameState.shopStates[shopId]) {
+            gameState.shopStates[shopId] = JSON.parse(JSON.stringify(TRADER_INVENTORY));
+        }
+        
+        activeShopInventory = gameState.shopStates[shopId];
+        
         logMessage("You meet a Wandering Trader. 'Rare goods, for a price...'");
         if (typeof renderShop === 'function') renderShop();
         shopModal.classList.remove('hidden');
