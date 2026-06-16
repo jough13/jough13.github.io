@@ -1,3 +1,5 @@
+// --- START OF FILE movement.js ---
+
 // ==========================================
 // MOVEMENT & MAP TRANSITIONS
 // ==========================================
@@ -139,7 +141,7 @@ async function attemptMovePlayer(newX, newY) {
 
         // If BOTH neighbors are blocked, you can't squeeze through the crack
         if (isHardBlock(t1) && isHardBlock(t2)) {
-            logMessage("The gap is too tight to squeeze through.");
+            logMessage("{gray:The gap is too tight to squeeze through.}");
             return; // Stop the move immediately
         }
     }
@@ -147,19 +149,25 @@ async function attemptMovePlayer(newX, newY) {
     let newTile;
 
     // --- SKY REALM FALL HAZARD ---
-    if (gameState.mapMode === 'skyrealm' && newTile === ' ') {
-        logMessage("{red:You step off the edge and plummet to the earth!}");
-        gameState.player.health -= 25; // Massive fall damage
-        gameState.screenShake = 30;
-        triggerStatFlash(statDisplays.health, false);
-        
-        // Return to Overworld
-        gameState.mapMode = 'overworld';
-        gameState.mapDirty = true;
-        render();
-        
-        if (handlePlayerDeath()) return;
-        return; // Stop the move, you fell!
+    if (gameState.mapMode === 'skyrealm') {
+        const checkTile = chunkManager.getTile(newX, newY);
+        if (checkTile === ' ') {
+            logMessage("{red:You step off the edge and plummet to the earth!}");
+            
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(1.0, 0.2, 300); // Wind rush
+            
+            gameState.player.health -= 25; // Massive fall damage
+            gameState.screenShake = 30;
+            triggerStatFlash(statDisplays.health, false);
+            
+            // Return to Overworld
+            gameState.mapMode = 'overworld';
+            gameState.mapDirty = true;
+            render();
+            
+            if (handlePlayerDeath()) return;
+            return; // Stop the move, you fell!
+        }
     }
 
     // --- CHECK FOR LIVE ENEMIES FIRST (Combat Priority) ---
@@ -215,9 +223,9 @@ async function attemptMovePlayer(newX, newY) {
             if (!gameState.player.obeliskProgress.includes(dir)) {
                 gameState.player.obeliskProgress.push(dir);
 
-                logMessage(`The Obelisk hums violently! (${gameState.player.obeliskProgress.length}/4 activated)`);
-                ParticleSystem.createExplosion(newX, newY, '#3b82f6', 15); // Blue explosion
-                AudioSystem.playMagic();
+                logMessage(`{cyan:The Obelisk hums violently! (${gameState.player.obeliskProgress.length}/4 activated)}`);
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#3b82f6', 15); // Blue explosion
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
 
                 // REWARD: Give the fragment for this specific direction
                 const fragmentName = `Tablet of the ${dir.charAt(0).toUpperCase() + dir.slice(1)}`;
@@ -225,18 +233,17 @@ async function attemptMovePlayer(newX, newY) {
 
                 if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                     gameState.player.inventory.push(fragmentItem);
-                    logMessage(`A stone fragment falls from the obelisk: ${fragmentName}`);
+                    logMessage(`{purple:A stone fragment falls from the obelisk: ${fragmentName}}`);
                 } else {
                     logMessage(`{red:A stone fragment falls from the obelisk, but your inventory is full!}`);
                     chunkManager.setWorldTile(newX, newY, '🧩', 2); // Drops on ground for 2 hours
                     gameState.mapDirty = true;
                 }
-                logMessage(`A stone fragment falls from the obelisk: ${fragmentName}`);
 
                 // Save progress
                 playerRef.update({
                     obeliskProgress: gameState.player.obeliskProgress,
-                    inventory: gameState.player.inventory
+                    inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
                 });
             } else {
                 logMessage("This obelisk is already active.");
@@ -244,7 +251,7 @@ async function attemptMovePlayer(newX, newY) {
         }
         // Wrong order? Reset!
         else if (!gameState.player.obeliskProgress.includes(dir)) {
-            logMessage("The Obelisk shrieks! A shockwave knocks you back!");
+            logMessage("{red:The Obelisk shrieks! A shockwave knocks you back!}");
             logMessage("{red:PUZZLE FAILED. Sequence Reset.}");
 
             gameState.player.health -= 5;
@@ -257,9 +264,10 @@ async function attemptMovePlayer(newX, newY) {
             });
 
             // Punishment damage visual
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444', 10);
             
-            // --- Check if the shockwave killed the player ---
+            // --- FIX: Check if the shockwave killed the player ---
             if (handlePlayerDeath()) return;
         }
         return;
@@ -270,11 +278,11 @@ async function attemptMovePlayer(newX, newY) {
         const hasItem = gameState.player.inventory.some(i => i.name === requiredItem);
 
         if (!hasItem) {
-            logMessage(tileData.invisibleMessage || "You walk through a patch of unnaturally cold air.");
+            logMessage(`{gray:${tileData.invisibleMessage || "You walk through a patch of unnaturally cold air."}}`);
             gameState.player.x = newX;
             gameState.player.y = newY;
             gameState.mapDirty = true;
-            AudioSystem.playStep();
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.1, 400); // Ethereal whisper
             endPlayerTurn();
             render();
             return;
@@ -303,17 +311,19 @@ async function attemptMovePlayer(newX, newY) {
         const hasKey = gameState.player.inventory.some(i => i.name === 'Ancient Key');
 
         if (hasKey) {
-            logMessage("You insert the Ancient Key. The massive doors grind open...");
+            logMessage("{yellow:You insert the Ancient Key. The massive doors grind open...}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            
             // Teleport to a special Vault Dungeon ID
             gameState.mapMode = 'dungeon';
             gameState.currentCaveId = 'vault_kings_treasure';
-            gameState.currentCaveTheme = 'GOLDEN'; // Make sure this theme exists in data-maps
+            gameState.currentCaveTheme = 'GOLDEN'; 
 
             // Generate the Vault
             chunkManager.generateCave(gameState.currentCaveId);
 
             // Move player
-            gameState.player.x = 10; // Arbitrary safe spot in your gen logic
+            gameState.player.x = 10; // Arbitrary safe spot in gen logic
             gameState.player.y = 10;
 
             updateRegionDisplay();
@@ -337,18 +347,17 @@ async function attemptMovePlayer(newX, newY) {
             if (ENEMY_DATA[overlayEnemy.tile]) {
                 // Valid enemy: Override tile to trigger combat
                 newTile = overlayEnemy.tile;
-                // Update tileData in case the enemy tile has interaction data (rare, but safe)
+                // Update tileData in case the enemy tile has interaction data
                 tileData = TILE_DATA[newTile];
             } else {
                 // Invalid "Ghost" enemy logic
-                logMessage("Dissipating a phantom signal...");
+                logMessage("{gray:Dissipating a phantom signal...}");
 
                 // 1. Delete from DB and Local State
                 rtdb.ref(`worldEnemies/${enemyKey}`).remove();
                 delete gameState.sharedEnemies[enemyKey];
 
                 // 2. Reset the destination tile to the actual terrain
-                // This allows the player to walk onto the tile immediately
                 newTile = chunkManager.getTile(newX, newY);
                 tileData = TILE_DATA[newTile];
 
@@ -372,6 +381,7 @@ async function attemptMovePlayer(newX, newY) {
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createFloatingText(newX, newY, "MISS", "#9ca3af");
             }
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
 
             // We still end the turn so the enemy can move/attack
             endPlayerTurn();
@@ -390,7 +400,8 @@ async function attemptMovePlayer(newX, newY) {
         // --- BREAK STEALTH ---
         if (gameState.player.stealthTurns > 0) {
             gameState.player.stealthTurns = 0;
-            logMessage("You emerge from the shadows.");
+            logMessage("{gray:You emerge from the shadows.}");
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#374151', 10);
             playerRef.update({
                 stealthTurns: 0
             });
@@ -426,30 +437,39 @@ async function attemptMovePlayer(newX, newY) {
                 // --- WEAPON PROC SYSTEM ---
                 const equippedWeapon = gameState.player.equipment.weapon;
                 if (equippedWeapon && equippedWeapon.onHit && Math.random() < equippedWeapon.procChance) {
-                    logMessage(`Your ${equippedWeapon.name} surges with power!`);
+                    logMessage(`{blue:Your ${equippedWeapon.name} surges with power!}`);
                     const spellId = equippedWeapon.onHit;
                     const spellData = SPELL_DATA[spellId];
                     const procDmg = spellData.baseDamage + (gameState.player.wits * 0.5);
                     applySpellDamage(newX, newY, procDmg, spellId);
                 }
 
-                AudioSystem.playAttack();
+                // JUICE WIN: Dynamic Audio Feedback
+                if (isCrit && typeof AudioSystem !== 'undefined' && typeof AudioSystem.playCrit === 'function') {
+                    AudioSystem.playCrit();
+                } else if (typeof AudioSystem !== 'undefined') {
+                    AudioSystem.playAttack();
+                }
 
                 // Log & Effects
                 if (isCrit) {
-                    logMessage(`CRITICAL HIT! You strike the ${enemy.name} for ${playerDamage} damage!`);
-                    ParticleSystem.createExplosion(newX, newY, '#facc15');
-                    ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
+                    logMessage(`{gold:CRITICAL HIT! You strike the ${enemy.name} for ${playerDamage} damage!}`);
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(newX, newY, '#facc15');
+                        ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
+                    }
                 } else {
                     logMessage(`You attack the ${enemy.name} for {red:${playerDamage}} damage!`);
-                    ParticleSystem.createExplosion(newX, newY, '#ef4444');
-                    ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(newX, newY, '#ef4444');
+                        ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
+                    }
                 }
 
                 // Weapon Poison Effect
                 const weapon = gameState.player.equipment.weapon;
                 if (weapon && weapon.inflicts === 'poison' && enemy.poisonTurns <= 0 && Math.random() < (weapon.inflictChance || 0.25)) {
-                    logMessage("Your weapon poisons the enemy!");
+                    logMessage(`{green:Your weapon poisons the ${enemy.name}!}`);
                     enemy.poisonTurns = 3;
                 }
 
@@ -478,21 +498,25 @@ async function attemptMovePlayer(newX, newY) {
                 playerDamage = Math.max(playerDamage, graceFloor);
             }
 
-            AudioSystem.playAttack();
-
             // Look up the live entity to get the correct name (e.g. "Spectral Giant Rat")
-            // instead of the base template name ("Giant Rat").
             const enemyId = `overworld:${newX},${-newY}`;
             const liveEnemy = gameState.sharedEnemies[enemyKey];
             const targetName = liveEnemy ? liveEnemy.name : enemyData.name;
 
+            // JUICE WIN: Dynamic Audio Feedback
+            if (isCrit && typeof AudioSystem !== 'undefined' && typeof AudioSystem.playCrit === 'function') {
+                AudioSystem.playCrit();
+            } else if (typeof AudioSystem !== 'undefined') {
+                AudioSystem.playAttack();
+            }
+
             if (isCrit) {
-                logMessage(`CRITICAL HIT! You strike the ${targetName} for ${playerDamage} damage!`);
+                logMessage(`{gold:CRITICAL HIT! You strike the ${targetName} for ${playerDamage} damage!}`);
                 if (typeof ParticleSystem !== 'undefined') {
                     ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
                 }
             } else {
-                logMessage(`You attack the ${targetName} for ${playerDamage} damage!`);
+                logMessage(`You attack the ${targetName} for {red:${playerDamage}} damage!`);
             }
 
             // --- 🚨 LOCK THE ENGINE ---
@@ -538,6 +562,8 @@ async function attemptMovePlayer(newX, newY) {
 
         if (hasShovel) {
             logMessage("You dig into the loose soil...");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Thud/dig sound
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#78350f', 15); // Dirt flying
 
             // 1. Stamina Cost
             gameState.player.stamina = Math.max(0, gameState.player.stamina - 2);
@@ -549,7 +575,7 @@ async function attemptMovePlayer(newX, newY) {
 
             if (roll < 0.15) {
                 // 15% Chance: Trap/Enemy!
-                logMessage("You disturbed a grave! A Skeleton crawls out!");
+                logMessage("{red:You disturbed a grave! A Skeleton crawls out!}");
                 chunkManager.setWorldTile(newX, newY, 's'); // Spawn Skeleton
 
                 // Create enemy in memory immediately so it can fight
@@ -565,12 +591,12 @@ async function attemptMovePlayer(newX, newY) {
                 render();
                 return; // Stop movement, fight starts next turn
             } else if (roll < 0.50) {
-                // 35% Chance: Artifact
-                const artifacts = ['🏺a', '🗿h', '🦴d', 'ancient_coin', 'gold_dust'];
+                // 35% Chance: Artifact (Expanded Loot)
+                const artifacts = ['🏺a', '🗿h', '🦴d', 'ancient_coin', 'gold_dust', '💍', '💎b'];
                 const key = artifacts[Math.floor(Math.random() * artifacts.length)];
                 const template = ITEM_DATA[key];
 
-                if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                     gameState.player.inventory.push({
                         templateId: key,
                         name: template.name,
@@ -578,10 +604,11 @@ async function attemptMovePlayer(newX, newY) {
                         quantity: 1,
                         tile: template.tile || key
                     });
-                    logMessage(`You unearthed a ${template.name}!`);
+                    logMessage(`{purple:You unearthed a ${template.name}!}`);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                     grantXp(25); // Discovery XP
                 } else {
-                    logMessage(`You unearthed a ${template.name}, but your inventory is full! It drops to the ground.`);
+                    logMessage(`{red:You unearthed a ${template.name}, but your inventory is full! It drops to the ground.}`);
                     // Drop the artifact on the ground
                     const dropTile = template.tile || key;
                     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(newX, newY, dropTile);
@@ -594,19 +621,19 @@ async function attemptMovePlayer(newX, newY) {
                 }
             } else {
                 // 50% Chance: Just dirt/worms
-                logMessage("Just dirt and rocks.");
+                logMessage("{gray:Just dirt and rocks.}");
             }
 
             // Clear the tile
             chunkManager.setWorldTile(newX, newY, '.');
             playerRef.update({
-                inventory: getSanitizedInventory()
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
             });
-            renderInventory();
+            if (typeof renderInventory === 'function') renderInventory();
             render();
             return; // Digging takes a turn
         } else {
-            logMessage("The soil is loose here. If only you had a Shovel...");
+            logMessage("{gray:The soil is loose here. If only you had a Shovel...}");
         }
     }
 
@@ -670,13 +697,14 @@ async function attemptMovePlayer(newX, newY) {
                         description: "Restored to its former glory. You act with the authority of the Old World."
                     });
 
-                    logMessage("The Historian restores the crown. It shines like the sun!");
+                    logMessage("{gold:The Historian restores the crown. It shines like the sun!}");
                     triggerStatAnimation(document.getElementById('levelDisplay'), 'stat-pulse-purple');
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
 
                     playerRef.update({
-                        inventory: getSanitizedInventory()
+                        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv
                     });
-                    renderInventory();
+                    if (typeof renderInventory === 'function') renderInventory();
                     loreModal.classList.add('hidden');
                 };
             }, 0);
@@ -711,7 +739,7 @@ async function attemptMovePlayer(newX, newY) {
             const hasShardIndex = inv.findIndex(i => i.name === 'Void Crystal');
             if (hasShardIndex > -1) {
                 // Check space before taking
-                if (inv.length < MAX_INVENTORY_SLOTS) {
+                if (inv.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                     inv.splice(hasShardIndex, 1);
                     player.relicQuestStage = 4;
                     grantXp(500);
@@ -764,12 +792,13 @@ async function attemptMovePlayer(newX, newY) {
                             if (gameState.player.inventory[currentShardIdx].quantity <= 0) gameState.player.inventory.splice(currentShardIdx, 1);
 
                             grantXp(100);
-                            logMessage("The Historian shares ancient secrets with you.");
+                            logMessage("{purple:The Historian shares ancient secrets with you.}");
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                             loreModal.classList.add('hidden');
                             playerRef.update({
-                                inventory: getSanitizedInventory()
+                                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv
                             });
-                            renderInventory();
+                            if (typeof renderInventory === 'function') renderInventory();
                         }
                     };
                 }
@@ -781,7 +810,7 @@ async function attemptMovePlayer(newX, newY) {
                             gameState.player.inventory[currentShardIdx].quantity -= 3;
                             if (gameState.player.inventory[currentShardIdx].quantity <= 0) gameState.player.inventory.splice(currentShardIdx, 1);
 
-                            if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                            if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                                 // Random Stat Tome
                                 const stats = ['strength', 'wits', 'constitution', 'dexterity', 'luck'];
                                 const rndStat = stats[Math.floor(Math.random() * stats.length)];
@@ -795,19 +824,20 @@ async function attemptMovePlayer(newX, newY) {
                                     stat: rndStat
                                 };
                                 gameState.player.inventory.push(tomeItem);
-                                logMessage(`Received ${tomeItem.name}!`);
+                                logMessage(`{gold:Received ${tomeItem.name}!}`);
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                             } else {
-                                logMessage("Inventory full! Shards returned.");
+                                logMessage("{red:Inventory full! Shards returned.}");
                                 gameState.player.inventory[currentShardIdx].quantity += 3; // Refund
                             }
 
                             loreModal.classList.add('hidden');
                             playerRef.update({
-                                inventory: getSanitizedInventory()
+                                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv
                             });
-                            renderInventory();
+                            if (typeof renderInventory === 'function') renderInventory();
                         } else {
-                            logMessage("Not enough shards.");
+                            logMessage("{gray:Not enough shards.}");
                         }
                     };
                 }
@@ -817,9 +847,9 @@ async function attemptMovePlayer(newX, newY) {
         // Save progress
         playerRef.update({
             relicQuestStage: player.relicQuestStage,
-            inventory: getSanitizedInventory()
+            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv
         });
-        renderInventory();
+        if (typeof renderInventory === 'function') renderInventory();
         return;
     }
 
@@ -833,11 +863,12 @@ async function attemptMovePlayer(newX, newY) {
         ];
         const msg = echoes[Math.floor(Math.random() * echoes.length)];
 
-        logMessage(`The ghost whispers: "${msg}"`);
-        logMessage("It fades away, leaving a Memory Shard.");
+        logMessage(`{gray:The ghost whispers: "${msg}"}`);
+        logMessage("{purple:It fades away, leaving a Memory Shard.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.1, 400); // Ethereal whisper
 
         // Give Item
-        if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+        if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
             gameState.player.inventory.push({
                 templateId: '👻s',
                 name: 'Memory Shard',
@@ -847,14 +878,14 @@ async function attemptMovePlayer(newX, newY) {
             });
             inventoryWasUpdated = true; // Auto-save flag
         } else {
-            logMessage("Your inventory is full, the shard falls to the ground.");
+            logMessage("{red:Your inventory is full, the shard falls to the ground.}");
         }
 
         chunkManager.setWorldTile(newX, newY, '.'); // Remove ghost
         playerRef.update({
-            inventory: getSanitizedInventory()
+            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
         });
-        renderInventory();
+        if (typeof renderInventory === 'function') renderInventory();
         return;
     }
 
@@ -863,7 +894,7 @@ async function attemptMovePlayer(newX, newY) {
 
         // Check if already solved
         if (gameState.lootedTiles.has(tileId)) {
-            logMessage("The statue stands silent. Its riddle is solved.");
+            logMessage("{gray:The statue stands silent. Its riddle is solved.}");
             return;
         }
 
@@ -889,9 +920,10 @@ async function attemptMovePlayer(newX, newY) {
             const answer = riddleInput.value.toLowerCase().trim();
             if (riddle.answers.includes(answer)) {
                 // Correct!
-                logMessage(riddle.message);
+                logMessage(`{green:${riddle.message}}`);
                 gameState.player[riddle.reward]++; // Give Stat
                 triggerStatAnimation(statDisplays[riddle.reward], 'stat-pulse-green');
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
 
                 // Mark solved
                 gameState.lootedTiles.add(tileId);
@@ -904,13 +936,14 @@ async function attemptMovePlayer(newX, newY) {
                 renderStats();
             } else {
                 // Wrong
-                logMessage("The statue remains silent. That is not the answer.");
+                logMessage("{red:The statue remains silent. That is not the answer.}");
                 gameState.player.health -= 2; // Punishment
                 triggerStatFlash(statDisplays.health, false);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 loreModal.classList.add('hidden');
                 renderStats();
                 
-                // --- Check if the statue's punishment killed the player ---
+                // --- FIX: Check if the statue's punishment killed the player ---
                 if (handlePlayerDeath()) {
                     // Sync the multiplayer server state immediately since this is an async callback
                     if (typeof syncPlayerState === 'function') syncPlayerState();
@@ -918,13 +951,14 @@ async function attemptMovePlayer(newX, newY) {
                 }
             }
         };
+        return;
     }
 
     if (newTile === '¥') {
         // Deep clone the inventory so buying items doesn't permanently empty the global template!
         activeShopInventory = JSON.parse(JSON.stringify(TRADER_INVENTORY));
         logMessage("You meet a Wandering Trader. 'Rare goods, for a price...'");
-        renderShop();
+        if (typeof renderShop === 'function') renderShop();
         shopModal.classList.remove('hidden');
         return;
     }
@@ -936,23 +970,27 @@ async function attemptMovePlayer(newX, newY) {
         const phaseWallTile = theme ? theme.phaseWall : null;
 
         if (secretWallTile && newTile === secretWallTile) {
-            logMessage("The wall sounds hollow... You break through!");
+            logMessage("{cyan:The wall sounds hollow... You break through!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#9ca3af', 10);
+            
             chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
             grantXp(15);
             render();
             return;
         }
         if (phaseWallTile && newTile === phaseWallTile) {
-            logMessage("You step into the wall... and pass right through it like smoke.");
+            logMessage("{purple:You step into the wall... and pass right through it like smoke.}");
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#a855f7', 15);
         } else if (theme && (newTile === theme.wall || newTile === ' ')) {
-            logMessage("The wall is solid.");
+            logMessage("{gray:The wall is solid.}");
             return;
         }
     }
 
     // --- CASTLE WALL CHECK ---
     if (gameState.mapMode === 'castle' && (newTile === '▓' || newTile === '▒' || newTile === ' ')) {
-        logMessage("You bump into the castle wall.");
+        logMessage("{gray:You bump into the castle wall.}");
         return;
     }
 
@@ -962,20 +1000,23 @@ async function attemptMovePlayer(newX, newY) {
         let shrineUsed = false;
 
         if (gameState.lootedTiles.has(tileId)) {
-            logMessage("The shrine's power is spent.");
+            logMessage("{gray:The shrine's power is spent.}");
             return;
         }
 
         loreTitle.textContent = "An Ancient Shrine";
         loreContent.innerHTML = `
             <p>The shrine hums with a faint energy. You feel you can ask for one boon.</p>
-            <button id="shrineStr" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">Pray for Strength (+5 Str for 500 turns)</button>
-            <button id="shrineWits" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Pray for Wits (+5 Wits for 500 turns)</button>
+            <button id="shrineStr" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full shadow-md">Pray for Strength (+5 Str for 500 turns)</button>
+            <button id="shrineWits" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full shadow-md">Pray for Wits (+5 Wits for 500 turns)</button>
         `;
         loreModal.classList.remove('hidden');
 
         document.getElementById('shrineStr').addEventListener('click', () => {
-            logMessage("You pray for Strength. You feel a surge of power that will last for days!");
+            logMessage("{green:You pray for Strength. You feel a surge of power that will last for days!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#facc15', 30);
+            
             player.strengthBonus = 5;
             player.strengthBonusTurns = 500;
 
@@ -983,7 +1024,7 @@ async function attemptMovePlayer(newX, newY) {
                 strengthBonus: 5,
                 strengthBonusTurns: 500
             });
-            renderEquipment();
+            if (typeof renderEquipment === 'function') renderEquipment();
             shrineUsed = true;
 
             if (shrineUsed) gameState.lootedTiles.add(tileId);
@@ -996,7 +1037,10 @@ async function attemptMovePlayer(newX, newY) {
         });
 
         document.getElementById('shrineWits').addEventListener('click', () => {
-            logMessage("You pray for Wits. Your mind expands with ancient knowledge!");
+            logMessage("{blue:You pray for Wits. Your mind expands with ancient knowledge!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#facc15', 30);
+            
             player.witsBonus = 5;
             player.witsBonusTurns = 500;
 
@@ -1023,36 +1067,73 @@ async function attemptMovePlayer(newX, newY) {
         if (gameState.player.coins >= 50) {
             logMessage("You toss 50 gold into the well...");
             gameState.player.coins -= 50;
+            
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+            setTimeout(() => { if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 500); }, 300); // Splash
+
             playerRef.update({
                 coins: gameState.player.coins
             });
             renderStats();
+            
             const roll = Math.random();
-            if (roll < 0.3) {
-                logMessage("...and receive a Healing Potion!");
-                gameState.player.inventory.push({
-                    templateId: '♥',
-                    name: 'Healing Potion',
-                    type: 'consumable',
-                    quantity: 1,
-                    tile: '♥',
-                    effect: ITEM_DATA['♥'].effect
-                });
-                inventoryWasUpdated = true; // Auto-save flag
-            } else if (roll < 0.6) {
-                logMessage("...and feel refreshed! (Full Heal)");
+            if (roll < 0.05) {
+                // JUICE & LORE WIN: The 5% Miracle Chance
+                logMessage("{gold:...the water glows brilliantly! A MIRACLE!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#facc15', 30);
+                
+                if (Math.random() > 0.5) {
+                    gameState.player.bonusMaxHealth = (gameState.player.bonusMaxHealth || 0) + 1;
+                    gameState.player.maxHealth += 1;
+                    gameState.player.health = gameState.player.maxHealth;
+                    logMessage("{green:Permanent Effect: +1 Max HP!}");
+                    triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+                } else {
+                    gameState.player.bonusMaxMana = (gameState.player.bonusMaxMana || 0) + 1;
+                    gameState.player.maxMana += 1;
+                    gameState.player.mana = gameState.player.maxMana;
+                    logMessage("{blue:Permanent Effect: +1 Max Mana!}");
+                    triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                }
+            } else if (roll < 0.35) {
+                logMessage("{green:...and receive a Healing Potion!}");
+                
+                // Inventory capacity check for the potion
+                if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                    gameState.player.inventory.push({
+                        templateId: '♥',
+                        name: 'Healing Potion',
+                        type: 'consumable',
+                        quantity: 1,
+                        tile: '♥',
+                        effect: ITEM_DATA['♥'].effect
+                    });
+                    inventoryWasUpdated = true; 
+                } else {
+                    logMessage("{red:But your inventory is full! The potion drops to the ground.}");
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(gameState.player.x, gameState.player.y, '♥');
+                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] = '♥';
+                    else chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x] = '♥';
+                    gameState.mapDirty = true;
+                }
+            } else if (roll < 0.7) {
+                logMessage("{cyan:...and feel refreshed! (Full Heal)}");
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#22c55e', 15);
                 gameState.player.health = gameState.player.maxHealth;
                 gameState.player.mana = gameState.player.maxMana;
+                triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
                 playerRef.update({
                     health: gameState.player.health,
                     mana: gameState.player.mana
                 });
             } else {
-                logMessage("...splash. Nothing happens.");
+                logMessage("{gray:...splash. Nothing happens.}");
             }
-            renderInventory();
+            if (typeof renderInventory === 'function') renderInventory();
         } else {
-            logMessage("You need 50 gold to make a wish.");
+            logMessage("{red:You need 50 gold to make a wish.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         }
         return;
     }
@@ -1064,6 +1145,7 @@ async function attemptMovePlayer(newX, newY) {
         if (keyIndex > -1) {
             logMessage("{purple:The Void Key resonates! Reality tears open and pulls you inside!}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#a855f7', 30);
             
             // Consume the key
             gameState.player.inventory[keyIndex].quantity--;
@@ -1099,22 +1181,23 @@ async function attemptMovePlayer(newX, newY) {
             return; // Stop processing the move (player is teleported)
         } else {
             // Player does NOT have the key. Bounce them back like a wall!
-            logMessage("A tear in reality. It is unstable.");
-            logMessage("You need a Void Key to stabilize the passage.");
+            logMessage("{gray:A tear in reality. It is unstable.}");
+            logMessage("{red:You need a Void Key to stabilize the passage.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return; 
         }
     }
 
     if (newTile === '🌵') {
-        logMessage("Ouch! The thorns prick you, but you grab a fruit.");
+        logMessage("{orange:Ouch! The thorns prick you, but you grab a fruit.}");
         gameState.player.health -= 1;
         gameState.screenShake = 10; // Shake intensity
         triggerStatFlash(statDisplays.health, false);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('pierce');
 
         if (handlePlayerDeath()) return;
 
-        if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+        if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
             gameState.player.inventory.push({
                 templateId: '🍐',
                 name: 'Cactus Fruit',
@@ -1125,9 +1208,9 @@ async function attemptMovePlayer(newX, newY) {
             });
             inventoryWasUpdated = true; // Auto-save flag
             chunkManager.setWorldTile(newX, newY, 'D');
-            renderInventory();
+            if (typeof renderInventory === 'function') renderInventory();
         } else {
-            logMessage("Inventory full! You drop the fruit.");
+            logMessage("{red:Inventory full! You drop the fruit.}");
         }
         return;
     
@@ -1147,7 +1230,8 @@ async function attemptMovePlayer(newX, newY) {
 
         // --- MIMIC CHECK ---
         if (Math.random() < 0.10) {
-            logMessage("The chest lurches open... It has teeth! IT'S A MIMIC!");
+            logMessage("{red:The chest lurches open... It has teeth! IT'S A MIMIC!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy'); // Bite sound
 
             if (gameState.mapMode === 'overworld') {
                 chunkManager.setWorldTile(newX, newY, 'M');
@@ -1158,11 +1242,11 @@ async function attemptMovePlayer(newX, newY) {
             }
 
             gameState.player.health -= 3;
-            gameState.screenShake = 10;
+            gameState.screenShake = 15;
             triggerStatFlash(statDisplays.health, false);
             logMessage("The Mimic bites you for 3 damage!");
             
-            // --- Check if the Mimic's ambush bite killed the player ---
+            // --- FIX: Check if the Mimic's ambush bite killed the player ---
             if (handlePlayerDeath()) return; 
             
             render();
@@ -1172,9 +1256,10 @@ async function attemptMovePlayer(newX, newY) {
         logMessage("You pry open the chest...");
         const goldAmount = 50 + Math.floor(Math.random() * 50);
         gameState.player.coins += goldAmount;
-        logMessage(`You found ${goldAmount} Gold!`);
+        logMessage(`{gold:You found ${goldAmount} Gold!}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
-        if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+        if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
             gameState.player.inventory.push({
                 templateId: '🍷',
                 name: 'Elixir of Life',
@@ -1184,32 +1269,36 @@ async function attemptMovePlayer(newX, newY) {
                 effect: ITEM_DATA['🍷'].effect
             });
             inventoryWasUpdated = true; // Auto-save flag
-            logMessage("You found an Elixir of Life!");
+            logMessage("{purple:You found an Elixir of Life!}");
         }
         chunkManager.setWorldTile(newX, newY, '.');
         playerRef.update({
             coins: gameState.player.coins,
-            inventory: gameState.player.inventory
+            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
         });
-        renderInventory();
+        if (typeof renderInventory === 'function') renderInventory();
         return;
+
     } else if (newTile === '<') {
         const player = gameState.player;
         const tileId = `${newX},${-newY}`;
         
         if (gameState.lootedTiles.has(tileId)) {
-            logMessage("You step over a disarmed trap.");
+            logMessage("{gray:You step over a disarmed trap.}");
         } else {
             const avoidChance = Math.min(0.75, player.dexterity * 0.01);
             if (Math.random() < avoidChance) {
-                logMessage("You spot a spike trap and deftly avoid it, disarming it!");
+                logMessage("{green:You spot a spike trap and deftly avoid it, disarming it!}");
                 gameState.lootedTiles.add(tileId);
                 playerRef.update({
                     lootedTiles: Object.fromEntries(gameState.lootedTiles)
                 });
                 return;
             } else {
-                logMessage("You step right on a spike trap! Ouch!");
+                logMessage("{red:You step right on a spike trap! Ouch!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('pierce');
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(newX, newY, "TRAP!", "#ef4444");
+
                 const trapDamage = 3;
                 player.health -= trapDamage;
                 gameState.screenShake = 10;
@@ -1229,7 +1318,7 @@ async function attemptMovePlayer(newX, newY) {
 
     if (newTile === 'F' && gameState.player.talents && gameState.player.talents.includes('pathfinder')) {
         moveCost = 0;
-        if (Math.random() < 0.05) logMessage("You move swiftly through the trees.");
+        if (Math.random() < 0.05) logMessage("{green:You move swiftly through the trees.}");
     }
 
     if (['⛰', '🏰', 'V', '♛', '🛕', '🌋', '🕳️'].includes(newTile)) {
@@ -1255,7 +1344,7 @@ async function attemptMovePlayer(newX, newY) {
         } else if (walkableLandTiles.includes(newTile)) { // NEW: Strict land check
             isDisembarking = true;
         } else {
-            logMessage("You can't beach the canoe here.");
+            logMessage("{gray:You can't beach the canoe here.}");
             return;
         }
     } else if (gameState.player.isSailing) {
@@ -1264,7 +1353,7 @@ async function attemptMovePlayer(newX, newY) {
         } else if (walkableLandTiles.includes(newTile)) { // NEW: Strict land check
             isShipDisembarking = true;
         } else {
-            logMessage("You can't dock the ship here.");
+            logMessage("{gray:You can't dock the ship here.}");
             return;
         }
     } else {
@@ -1300,7 +1389,7 @@ async function attemptMovePlayer(newX, newY) {
                             });
                         }
                     } else {
-                        logMessage("You clear away the rubble, reopening the hidden passage.");
+                        logMessage("{gray:You clear away the rubble, reopening the hidden passage.}");
                     }
 
                     // --- GENERATE CAVE ---
@@ -1339,14 +1428,14 @@ async function attemptMovePlayer(newX, newY) {
                     return;
                 }
             }
-            logMessage("That way is blocked.");
+            logMessage("{gray:That way is blocked.}");
             return;
         }
     }
 
     if (isDisembarking) {
         gameState.player.isBoating = false;
-        logMessage("You beach the canoe and step onto the shore.");
+        logMessage("{gray:You beach the canoe and step onto the shore.}");
         
         if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(prevX, prevY, 'c');
         else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][prevY][prevX] = 'c';
@@ -1357,7 +1446,7 @@ async function attemptMovePlayer(newX, newY) {
     // --- SHIP DISEMBARKING ---
     if (isShipDisembarking) {
         gameState.player.isSailing = false;
-        logMessage("You drop anchor and step ashore.");
+        logMessage("{gray:You drop anchor and step ashore.}");
         
         if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(prevX, prevY, '⛵');
         else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][prevY][prevX] = '⛵';
@@ -1368,7 +1457,8 @@ async function attemptMovePlayer(newX, newY) {
 
     // --- DOOR LOGIC ---
     if (newTile === '+') {
-        logMessage("You open the door.");
+        logMessage("{gray:You open the door.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
         if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '/'); // '/' is Open Door
         else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = '/';
         render();
@@ -1423,20 +1513,18 @@ async function attemptMovePlayer(newX, newY) {
 
     // --- STASH LOGIC ---
     if (newTile === '☒') {
-        logMessage("You open your Stash Box.");
-        openStashModal();
+        logMessage("{gray:You open your Stash Box.}");
+        if (typeof openStashModal === 'function') openStashModal();
         return;
     }
 
     // Check special tiles
     if (tileData) {
-        console.log("Entering TileData Block. Type:", tileData.type);
-
         const tileId = `${newX},${-newY}`;
 
         if (tileData.type === 'journal') {
             // Pass BOTH the Map ID and the Item Tile (e.g., '📜1')
-            grantLoreDiscovery(tileId, newTile); 
+            if (typeof grantLoreDiscovery === 'function') grantLoreDiscovery(tileId, newTile); 
 
             loreTitle.textContent = tileData.title;
             loreContent.textContent = tileData.content;
@@ -1447,7 +1535,7 @@ async function attemptMovePlayer(newX, newY) {
         if (tileData.type === 'ambush_camp') {
             logMessage("{red:AMBUSH!} " + tileData.flavor);
             gameState.screenShake = 15;
-            AudioSystem.playHit();
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
 
             // Spawn 3 Bandits and 1 Chief in a ring around the player
             const spawnSpots = [[-1, -1],[1, -1], [-1, 1], [1, 1]];
@@ -1464,7 +1552,7 @@ async function attemptMovePlayer(newX, newY) {
                     const enemyData = ENEMY_DATA[eType];
                     const enemyId = `overworld:${ex},${-ey}`;
                     
-                    const scaledStats = getScaledEnemy(enemyData, ex, ey);
+                    const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, ex, ey) : enemyData;
                     const newEnemy = { ...scaledStats, tile: eType, x: ex, y: ey, spawnTime: Date.now() };
                     
                     if (typeof EnemyNetworkManager !== 'undefined') {
@@ -1481,15 +1569,18 @@ async function attemptMovePlayer(newX, newY) {
         }
 
         if (tileData.type === 'barrel') {
-            logMessage("You smash the barrel open!");
+            logMessage("{orange:You smash the barrel open!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 800); // Smash sound
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#d4d4d8', 8); // Splinters
+
             if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '.');
             else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = '.';
             else chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
 
             // 30% chance to drop oil (fuel)
             if (Math.random() < 0.3) {
-                logMessage("You salvage some oil.");
-                player.candlelightTurns += 20;
+                logMessage("{yellow:You salvage some oil. (+20 Candlelight)}");
+                gameState.player.candlelightTurns += 20;
             }
             render();
             return;
@@ -1501,14 +1592,20 @@ async function attemptMovePlayer(newX, newY) {
             const hasTool = playerInventory.some(i => i.name === toolName);
 
             if (hasTool) {
-                logMessage(`You use your ${toolName} to clear the ${tileData.name}.`);
+                logMessage(`{green:You use your ${toolName} to clear the ${tileData.name}.}`);
+                
+                if (typeof AudioSystem !== 'undefined') {
+                    if (toolName === 'Pickaxe') AudioSystem.playHit();
+                    if (toolName === 'Machete') AudioSystem.playAttack('sweep');
+                }
+
                 if (tileData.name === 'Thicket' || tileData.name === 'Dead Tree') {
                     const existingWood = playerInventory.find(i => i.name === 'Wood Log');
                     if (existingWood) {
                         existingWood.quantity++;
                         logMessage("You gathered a Wood Log!");
                         inventoryWasUpdated = true;
-                    } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    } else if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                         playerInventory.push({
                             templateId: '🪵',
                             name: 'Wood Log',
@@ -1519,7 +1616,7 @@ async function attemptMovePlayer(newX, newY) {
                         logMessage("You gathered a Wood Log!");
                         inventoryWasUpdated = true;
                     } else {
-                        logMessage("Inventory full! The wood is lost.");
+                        logMessage("{red:Inventory full! The wood is lost.}");
                     }
                 } else if (toolName === 'Pickaxe') {
                     const existingStone = playerInventory.find(i => i.name === 'Stone');
@@ -1527,7 +1624,7 @@ async function attemptMovePlayer(newX, newY) {
                         existingStone.quantity++;
                         logMessage("You gathered Stone!");
                         inventoryWasUpdated = true;
-                    } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    } else if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                         playerInventory.push({
                             templateId: '🪨',
                             name: 'Stone',
@@ -1539,15 +1636,20 @@ async function attemptMovePlayer(newX, newY) {
                         inventoryWasUpdated = true;
                     }
                 }
-                if (toolName === 'Pickaxe') triggerStatFlash(statDisplays.strength, true);
-                if (toolName === 'Machete') triggerStatFlash(statDisplays.dexterity, true);
+                
+                if (typeof triggerStatFlash === 'function') {
+                    if (toolName === 'Pickaxe') triggerStatFlash(statDisplays.strength, true);
+                    if (toolName === 'Machete') triggerStatFlash(statDisplays.dexterity, true);
+                }
 
-                playerRef.update({
-                    inventory: getSanitizedInventory()
-                });
-                renderInventory();
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
+                    });
+                }
+                if (typeof renderInventory === 'function') renderInventory();
 
-                if (newTile === '🏚') {
+                if (newTile === '🏚' || newTile === '🏚️') {
                     const roll = Math.random();
                     let drop = null;
                     if (roll < 0.20) drop = '•';
@@ -1557,7 +1659,8 @@ async function attemptMovePlayer(newX, newY) {
                     if (drop) {
                         if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, drop);
                         else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = drop;
-                        logMessage("Something was hidden inside the wall!");
+                        logMessage("{yellow:Something was hidden inside the wall!}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
                         render();
                         return;
                     }
@@ -1566,7 +1669,7 @@ async function attemptMovePlayer(newX, newY) {
                 let floorTile = '.';
                 if (gameState.mapMode === 'dungeon') {
                     const theme = CAVE_THEMES[gameState.currentCaveTheme];
-                    floorTile = theme.floor;
+                    floorTile = theme ? theme.floor : '.';
                 } else if (gameState.mapMode === 'overworld') {
                     if (newTile === '🌳') floorTile = 'F';
                     else if (newTile === '🏚') floorTile = '^';
@@ -1579,7 +1682,8 @@ async function attemptMovePlayer(newX, newY) {
                 render();
                 return;
             } else {
-                logMessage(`${tileData.flavor} (Requires ${toolName})`);
+                logMessage(`{gray:${tileData.flavor} (Requires ${toolName})}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 return;
             }
         }
@@ -1611,26 +1715,28 @@ async function attemptMovePlayer(newX, newY) {
                 gameState.player.strengthBonus = 2;
                 gameState.player.strengthBonusTurns = 50;
                 logMessage("{gold:The safety of the camp inspires you! (+2 Str for 50 turns)}");
-                triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
-                renderEquipment();
+                if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
+                if (typeof renderEquipment === 'function') renderEquipment();
                 
-                playerRef.update({
-                    strengthBonus: gameState.player.strengthBonus,
-                    strengthBonusTurns: gameState.player.strengthBonusTurns
-                });
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        strengthBonus: gameState.player.strengthBonus,
+                        strengthBonusTurns: gameState.player.strengthBonusTurns
+                    });
+                }
             }
 
-            updateRegionDisplay();
+            if (typeof updateRegionDisplay === 'function') updateRegionDisplay();
             gameState.mapDirty = true;
             render();
-            syncPlayerState();
+            if (typeof syncPlayerState === 'function') syncPlayerState();
             finalizeMapTransition(); // NETWORK SYNC
             return;
         }
 
         if (tileData.type === 'ruin') {
             if (gameState.lootedTiles.has(tileId)) {
-                logMessage("These ruins have already been searched.");
+                logMessage("{gray:These ruins have already been searched.}");
                 return;
             }
             logMessage("You search the ancient shelves...");
@@ -1642,7 +1748,7 @@ async function attemptMovePlayer(newX, newY) {
                 const nextChronicleKey = missingChronicles[0];
                 const itemTemplate = ITEM_DATA[nextChronicleKey];
 
-                if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                     gameState.player.inventory.push({
                         templateId: nextChronicleKey,
                         name: itemTemplate.name,
@@ -1652,13 +1758,14 @@ async function attemptMovePlayer(newX, newY) {
                         title: itemTemplate.title,
                         content: itemTemplate.content
                     });
-                    logMessage(`You found ${itemTemplate.name}!`);
-                    grantXp(50);
+                    logMessage(`{purple:You found ${itemTemplate.name}!}`);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                    if (typeof grantXp === 'function') grantXp(50);
 
                     if (missingChronicles.length === 1) {
-                        logMessage("You have collected all the Lost Chronicles!");
-                        logMessage("You feel a surge of intellect.");
-                        if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        logMessage("{gold:You have collected all the Lost Chronicles!}");
+                        logMessage("{blue:You feel a surge of intellect.}");
+                        if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                             const reward = ITEM_DATA['👓'];
                             gameState.player.inventory.push({
                                 templateId: '👓',
@@ -1670,9 +1777,10 @@ async function attemptMovePlayer(newX, newY) {
                                 slot: reward.slot,
                                 statBonuses: reward.statBonuses
                             });
-                            logMessage("You found the Scholar's Spectacles!");
+                            logMessage("{purple:You found the Scholar's Spectacles!}");
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                         } else {
-                            logMessage("Your pack is full! The Spectacles drop to the floor.");
+                            logMessage("{red:Your pack is full! The Spectacles drop to the floor.}");
                             // Drop the spectacles ('👓') on the ruin tile (newX, newY)
                             if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(newX, newY, '👓');
                             else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = '👓';
@@ -1687,12 +1795,13 @@ async function attemptMovePlayer(newX, newY) {
                         }
                     }
                 } else {
-                    logMessage("You found a Chronicle, but your inventory is full!");
+                    logMessage("{red:You found a Chronicle, but your inventory is full!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                     return;
                 }
             } else {
-                logMessage("You found an Arcane Scroll.");
-                if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                logMessage("{purple:You found an Arcane Scroll.}");
+                if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                     gameState.player.inventory.push({
                         templateId: '📜',
                         name: 'Scroll: Clarity',
@@ -1701,17 +1810,21 @@ async function attemptMovePlayer(newX, newY) {
                         tile: '📜',
                         spellId: 'clarity'
                     });
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                 } else {
-                    logMessage("But your inventory is full.");
+                    logMessage("{red:But your inventory is full.}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                     return;
                 }
             }
             gameState.lootedTiles.add(tileId);
-            playerRef.update({
-                lootedTiles: Object.fromEntries(gameState.lootedTiles),
-                inventory: gameState.player.inventory
-            });
-            renderInventory();
+            if (typeof playerRef !== 'undefined' && playerRef) {
+                playerRef.update({
+                    lootedTiles: Object.fromEntries(gameState.lootedTiles),
+                    inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
+                });
+            }
+            if (typeof renderInventory === 'function') renderInventory();
             return;
         }
 
@@ -1722,18 +1835,23 @@ async function attemptMovePlayer(newX, newY) {
             loreTitle.textContent = "Weathered Statue";
             loreContent.textContent = msg;
             loreModal.classList.remove('hidden');
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            
             if (!gameState.foundLore.has(tileId)) {
-                grantXp(10);
+                if (typeof grantXp === 'function') grantXp(10);
                 gameState.foundLore.add(tileId);
-                playerRef.update({
-                    foundLore: Array.from(gameState.foundLore)
-                });
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
             }
             return;
         }
 
         if (tileData.type === 'loot_container') {
-            logMessage(tileData.flavor);
+            logMessage(`{gray:${tileData.flavor}}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 500); // Rummage sound
             let lootTable = tileData.lootTable; // Default table
 
             // --- Dynamic Loot Table for Generic Chests ---
@@ -1751,20 +1869,18 @@ async function attemptMovePlayer(newX, newY) {
             const random = Alea(seed);
             const lootCount = 1 + Math.floor(random() * 2);
 
+            let coinsFound = 0;
+
             for (let i = 0; i < lootCount; i++) {
                 const itemKey = lootTable[Math.floor(random() * lootTable.length)];
                 if (itemKey === '$') {
                     const amount = 5 + Math.floor(random() * 15);
-                    gameState.player.coins += amount;
-
-                    AudioSystem.playCoin();
-
-                    logMessage(`You found ${amount} gold coins.`);
+                    coinsFound += amount;
                     continue;
                 }
                 const itemTemplate = ITEM_DATA[itemKey];
                 if (itemTemplate) {
-                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                         gameState.player.inventory.push({
                             templateId: itemKey,
                             name: itemTemplate.name,
@@ -1776,37 +1892,48 @@ async function attemptMovePlayer(newX, newY) {
                             slot: itemTemplate.slot || null,
                             statBonuses: itemTemplate.statBonuses || null
                         });
-                        logMessage(`You found: ${itemTemplate.name}`);
+                        logMessage(`You found: {purple:${itemTemplate.name}}`);
                     } else {
-                        logMessage(`You found a ${itemTemplate.name}, but your pack is full.`);
+                        logMessage(`{red:You found a ${itemTemplate.name}, but your pack is full.}`);
                     }
                 }
             }
+            
+            if (coinsFound > 0) {
+                gameState.player.coins += coinsFound;
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+                logMessage(`You found {gold:${coinsFound} gold coins.}`);
+            }
 
-            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '.');
+            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(newX, newY, '.');
             else if (gameState.mapMode === 'dungeon') {
                 const theme = CAVE_THEMES[gameState.currentCaveTheme];
-                chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
+                chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme ? theme.floor : '.';
             }
-            playerRef.update({
-                coins: gameState.player.coins,
-                inventory: gameState.player.inventory
-            });
-            renderInventory();
-            renderStats();
+            
+            if (typeof playerRef !== 'undefined' && playerRef) {
+                playerRef.update({
+                    coins: gameState.player.coins,
+                    inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
+                });
+            }
+            if (typeof renderInventory === 'function') renderInventory();
+            if (typeof renderStats === 'function') renderStats();
             return;
         }
 
         if (newTile === 'B') {
             if (!gameState.foundLore.has(tileId)) {
-                logMessage("You've discovered a Bounty Board! +15 XP");
-                grantXp(15);
+                logMessage("{gold:You've discovered a Bounty Board! +15 XP}");
+                if (typeof grantXp === 'function') grantXp(15);
                 gameState.foundLore.add(tileId);
-                playerRef.update({
-                    foundLore: Array.from(gameState.foundLore)
-                });
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
             }
-            openBountyBoard();
+            if (typeof openBountyBoard === 'function') openBountyBoard();
             return;
         }
 
@@ -1824,7 +1951,7 @@ async function attemptMovePlayer(newX, newY) {
                 // New discovery!
                 const regionX = Math.floor(newX / REGION_SIZE);
                 const regionY = Math.floor(newY / REGION_SIZE);
-                const regionName = getRegionName(regionX, regionY);
+                const regionName = typeof getRegionName === 'function' ? getRegionName(regionX, regionY) : "Wilderness";
 
                 player.unlockedWaypoints.push({
                     x: newX,
@@ -1832,37 +1959,49 @@ async function attemptMovePlayer(newX, newY) {
                     name: regionName
                 });
 
-                logMessage("Waystone Attuned! You can now fast travel here.");
-                grantXp(25);
-                triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue'); // Visual flair
+                logMessage("{cyan:Waystone Attuned! You can now fast travel here.}");
+                if (typeof grantXp === 'function') grantXp(25);
+                if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue'); // Visual flair
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
 
                 // Save immediately
-                playerRef.update({
-                    unlockedWaypoints: player.unlockedWaypoints
-                });
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        unlockedWaypoints: player.unlockedWaypoints
+                    });
+                }
             }
 
             // 3. Generate Lore (Keep existing flavor)
             if (!gameState.foundLore.has(tileId)) {
                 gameState.foundLore.add(tileId);
-                playerRef.update({
-                    foundLore: Array.from(gameState.foundLore)
-                });
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
             }
 
             const elev = elevationNoise.noise(newX / 70, newY / 70);
             const moist = moistureNoise.noise(newX / 50, newY / 50);
-            let loreArray = LORE_PLAINS;
+            let loreArray = typeof LORE_PLAINS !== 'undefined' ? LORE_PLAINS : ["The stone hums with power."];
             let biomeName = "Plains";
+            
             if (elev < 0.4 && moist > 0.7) {
-                loreArray = LORE_SWAMP;
+                if (typeof LORE_SWAMP !== 'undefined') loreArray = LORE_SWAMP;
                 biomeName = "Swamp";
             } else if (elev > 0.8) {
-                loreArray = LORE_MOUNTAIN;
+                if (typeof LORE_MOUNTAIN !== 'undefined') loreArray = LORE_MOUNTAIN;
                 biomeName = "Mountain";
             } else if (moist > 0.55) {
-                loreArray = LORE_FOREST;
+                if (typeof LORE_FOREST !== 'undefined') loreArray = LORE_FOREST;
                 biomeName = "Forest";
+            } else if (elev > 0.6 && moist < 0.3) {
+                if (typeof LORE_DEADLANDS !== 'undefined') loreArray = LORE_DEADLANDS;
+                biomeName = "Deadlands";
+            } else if (moist < 0.15) {
+                if (typeof LORE_DESERT !== 'undefined') loreArray = LORE_DESERT;
+                biomeName = "Desert";
             }
 
             const seed = stringToSeed(tileId);
@@ -1873,16 +2012,17 @@ async function attemptMovePlayer(newX, newY) {
             // 4. Show Modal with Travel Button
             loreTitle.textContent = `Waystone: ${biomeName}`;
             loreContent.innerHTML = `
-                <p class="italic text-gray-600 mb-4">"...${message}..."</p>
-                <p>The stone hums with power. It is attuned to the leylines.</p>
-                <button id="openFastTravel" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full">✨ Fast Travel (10 Mana)</button>
+                <p class="italic text-gray-400 mb-4 border-l-2 border-gray-600 pl-3 leading-relaxed">"...${message}..."</p>
+                <p class="text-sm">The stone hums with power. It is attuned to the leylines.</p>
+                <button id="openFastTravel" style="transform: translate3d(0,0,0);" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">✨ Fast Travel (10 Mana)</button>
             `;
             loreModal.classList.remove('hidden');
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
 
             // Bind the button
             setTimeout(() => { // Timeout ensures element is in DOM
                 const btn = document.getElementById('openFastTravel');
-                if (btn) btn.onclick = openFastTravelModal;
+                if (btn && typeof openFastTravelModal === 'function') btn.onclick = openFastTravelModal;
             }, 0);
 
             return;
@@ -1893,12 +2033,14 @@ async function attemptMovePlayer(newX, newY) {
                 const existingStack = gameState.player.inventory.find(item => item.name === 'Obsidian Shard');
                 if (existingStack) {
                     existingStack.quantity++;
-                    logMessage("The Obelisk hums, and another shard forms in your pack.");
-                    playerRef.update({
-                        inventory: gameState.player.inventory
-                    });
-                    renderInventory();
-                } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    logMessage("{purple:The Obelisk hums, and another shard forms in your pack.}");
+                    if (typeof playerRef !== 'undefined' && playerRef) {
+                        playerRef.update({
+                            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
+                        });
+                    }
+                    if (typeof renderInventory === 'function') renderInventory();
+                } else if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                     gameState.player.inventory.push({
                         templateId: '▲',
                         name: 'Obsidian Shard',
@@ -1906,123 +2048,191 @@ async function attemptMovePlayer(newX, newY) {
                         quantity: 1,
                         tile: '▲'
                     });
-                    logMessage("The Obelisk hums, and a shard of black glass falls into your hand.");
-                    playerRef.update({
-                        inventory: gameState.player.inventory
-                    });
-                    renderInventory();
+                    logMessage("{purple:The Obelisk hums, and a shard of black glass falls into your hand.}");
+                    if (typeof playerRef !== 'undefined' && playerRef) {
+                        playerRef.update({
+                            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
+                        });
+                    }
+                    if (typeof renderInventory === 'function') renderInventory();
                 } else {
-                    logMessage("The Obelisk offers a shard, but your inventory is full!");
+                    logMessage("{red:The Obelisk offers a shard, but your inventory is full!}");
                 }
 
                 if (gameState.player.mana < gameState.player.maxMana || gameState.player.psyche < gameState.player.maxPsyche) {
                     gameState.player.mana = gameState.player.maxMana;
                     gameState.player.psyche = gameState.player.maxPsyche;
-                    triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
-                    triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
-                    logMessage("The ancient stone restores your magical energy.");
-                    playerRef.update({
-                        mana: gameState.player.mana,
-                        psyche: gameState.player.psyche
-                    });
-                    renderStats();
+                    if (typeof triggerStatAnimation === 'function') {
+                        triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                        triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+                    }
+                    logMessage("{cyan:The ancient stone restores your magical energy.}");
+                    if (typeof playerRef !== 'undefined' && playerRef) {
+                        playerRef.update({
+                            mana: gameState.player.mana,
+                            psyche: gameState.player.psyche
+                        });
+                    }
+                    if (typeof renderStats === 'function') renderStats();
                 }
 
-                const seed = stringToSeed(tileId);
-                const random = Alea(seed);
-                const visionIndex = Math.floor(random() * VISIONS_OF_THE_PAST.length);
-                const vision = VISIONS_OF_THE_PAST[visionIndex];
-
-                loreTitle.textContent = "Ancient Obelisk";
-                loreContent.textContent = `The black stone is cold to the touch. Suddenly, the world fades away...\n\n${vision}`;
-                loreModal.classList.remove('hidden');
+                if (typeof VISIONS_OF_THE_PAST !== 'undefined') {
+                    const seed = stringToSeed(tileId);
+                    const random = Alea(seed);
+                    const visionIndex = Math.floor(random() * VISIONS_OF_THE_PAST.length);
+                    const vision = VISIONS_OF_THE_PAST[visionIndex];
+    
+                    loreTitle.textContent = "Ancient Obelisk";
+                    // Format the vision to use the internal color tags
+                    let formattedVision = vision;
+                    if (typeof escapeHtml === 'function') {
+                        formattedVision = escapeHtml(vision)
+                            .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
+                            .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>');
+                    }
+                    loreContent.innerHTML = `<p class="italic text-gray-300">The black stone is cold to the touch. Suddenly, the world fades away...</p><hr class="border-gray-700 my-4"><p class="font-serif leading-relaxed text-blue-100">${formattedVision}</p>`;
+                    loreModal.classList.remove('hidden');
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                }
 
                 gameState.foundLore.add(tileId);
-                playerRef.update({
-                    foundLore: Array.from(gameState.foundLore)
-                });
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
             }
             return;
         }
 
         if (tileData.type === 'random_journal') {
             if (!gameState.foundLore.has(tileId)) {
-                logMessage("You found a scattered page! +10 XP");
-                grantXp(10);
+                logMessage("{gold:You found a scattered page! +10 XP}");
+                if (typeof grantXp === 'function') grantXp(10);
                 gameState.foundLore.add(tileId);
-                playerRef.update({
-                    foundLore: Array.from(gameState.foundLore)
-                });
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
             }
-            const seed = stringToSeed(tileId);
-            const random = Alea(seed);
-            const messageIndex = Math.floor(random() * RANDOM_JOURNAL_PAGES.length);
-            const message = RANDOM_JOURNAL_PAGES[messageIndex];
-            loreTitle.textContent = "A Scattered Page";
-            loreContent.textContent = `You pick up a damp, crumpled page...\n\n"...${message}..."`;
-            loreModal.classList.remove('hidden');
+            if (typeof RANDOM_JOURNAL_PAGES !== 'undefined') {
+                const seed = stringToSeed(tileId);
+                const random = Alea(seed);
+                const messageIndex = Math.floor(random() * RANDOM_JOURNAL_PAGES.length);
+                const message = RANDOM_JOURNAL_PAGES[messageIndex];
+                
+                let formattedMsg = message;
+                if (typeof escapeHtml === 'function') {
+                    formattedMsg = escapeHtml(message)
+                        .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
+                        .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
+                        .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
+                        .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
+                        .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
+                        .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
+                }
+                
+                loreTitle.textContent = "A Scattered Page";
+                loreContent.innerHTML = `<p class="italic text-gray-400 mb-3">You pick up a damp, crumpled page...</p><p class="font-serif leading-relaxed">"...${formattedMsg}..."</p>`;
+                loreModal.classList.remove('hidden');
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
+            }
             return;
         }
 
+        // --- NPC FALLBACKS ---
         if (newTile === 'N') {
             const npcQuestId = "goblinHeirloom";
-            const questData = QUEST_DATA[npcQuestId];
+            const questData = typeof QUEST_DATA !== 'undefined' ? QUEST_DATA[npcQuestId] : null;
             const playerQuest = gameState.player.quests[npcQuestId];
             const player = gameState.player;
             const genericVillagerId = "met_villager";
+            
             if (!gameState.foundLore.has(genericVillagerId)) {
-                logMessage("You meet a villager. +5 XP");
-                grantXp(5);
+                logMessage("{gold:You meet a villager. +5 XP}");
+                if (typeof grantXp === 'function') grantXp(5);
                 gameState.foundLore.add(genericVillagerId);
-                playerRef.update({
-                    foundLore: Array.from(gameState.foundLore)
-                });
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
             }
+
+            if (!questData) return; // Failsafe if data is missing
 
             if (!playerQuest) {
                 loreTitle.textContent = "Distraught Villager";
-                loreContent.innerHTML = `<p>An old villager wrings their hands.\n\n"Oh, thank goodness! A goblin stole my family heirloom... It's all I have left. If you find it, please bring it back!"</p><button id="acceptNpcQuest" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">"I'll keep an eye out."</button>`;
+                loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">An old villager wrings their hands.</p><p class="font-serif leading-relaxed">"Oh, thank goodness! A goblin stole my family heirloom... It's all I have left. If you find it, please bring it back!"</p><button id="acceptNpcQuest" style="transform: translate3d(0,0,0);" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"I'll keep an eye out."</button>`;
                 loreModal.classList.remove('hidden');
-                document.getElementById('acceptNpcQuest').addEventListener('click', () => {
-                    acceptQuest(npcQuestId);
-                    loreModal.classList.add('hidden');
-                }, {
-                    once: true
-                });
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                
+                setTimeout(() => {
+                    document.getElementById('acceptNpcQuest').addEventListener('click', () => {
+                        if (typeof acceptQuest === 'function') acceptQuest(npcQuestId);
+                        loreModal.classList.add('hidden');
+                    }, { once: true });
+                }, 0);
             } else if (playerQuest.status === 'active') {
                 const hasItem = player.inventory.some(item => item.name === questData.itemNeeded);
                 if (hasItem) {
                     loreTitle.textContent = "Joyful Villager";
-                    loreContent.innerHTML = `<p>The villager's eyes go wide.\n\n"You found it! My heirloom! Thank you, thank you! I don't have much, but please, take this for your trouble."</p><button id="turnInNpcQuest" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Here you go. (Complete Quest)"</button>`;
+                    loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The villager's eyes go wide.</p><p class="font-serif leading-relaxed">"You found it! My heirloom! Thank you, thank you! I don't have much, but please, take this for your trouble."</p><button id="turnInNpcQuest" style="transform: translate3d(0,0,0);" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 animate-pulse">"Here you go. (Complete Quest)"</button>`;
                     loreModal.classList.remove('hidden');
-                    document.getElementById('turnInNpcQuest').addEventListener('click', () => {
-                        turnInQuest(npcQuestId);
-                        loreModal.classList.add('hidden');
-                    }, {
-                        once: true
-                    });
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                    
+                    setTimeout(() => {
+                        document.getElementById('turnInNpcQuest').addEventListener('click', () => {
+                            if (typeof turnInQuest === 'function') turnInQuest(npcQuestId);
+                            loreModal.classList.add('hidden');
+                        }, { once: true });
+                    }, 0);
                 } else {
                     loreTitle.textContent = "Anxious Villager";
-                    loreContent.innerHTML = `<p>The villager looks up hopefully.\n\n"Any luck finding my heirloom? Those goblins are such pests..."</p><button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"I'm still looking."</button>`;
+                    loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The villager looks up hopefully.</p><p class="font-serif leading-relaxed">"Any luck finding my heirloom? Those goblins are such pests..."</p><button id="closeNpcLore" style="transform: translate3d(0,0,0);" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"I'm still looking."</button>`;
                     loreModal.classList.remove('hidden');
-                    document.getElementById('closeNpcLore').addEventListener('click', () => {
-                        loreModal.classList.add('hidden');
-                    }, {
-                        once: true
-                    });
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                    
+                    setTimeout(() => {
+                        document.getElementById('closeNpcLore').addEventListener('click', () => {
+                            loreModal.classList.add('hidden');
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                        }, { once: true });
+                    }, 0);
                 }
             } else if (playerQuest.status === 'completed') {
                 const seed = stringToSeed(tileId);
                 const random = Alea(seed);
-                const rumor = VILLAGER_RUMORS[Math.floor(random() * VILLAGER_RUMORS.length)];
+                let rumor = "Stay safe out there.";
+                if (typeof VILLAGER_RUMORS !== 'undefined' && VILLAGER_RUMORS.length > 0) {
+                    rumor = VILLAGER_RUMORS[Math.floor(random() * VILLAGER_RUMORS.length)];
+                }
+                
+                // Format the rumor to use internal color tags
+                if (typeof escapeHtml === 'function') {
+                    rumor = escapeHtml(rumor)
+                        .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
+                        .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
+                        .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
+                        .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
+                        .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
+                        .replace(/{orange:(.*?)}/g, '<span class="text-orange-400 font-bold">$1</span>')
+                        .replace(/{cyan:(.*?)}/g, '<span class="text-cyan-400 font-bold">$1</span>')
+                        .replace(/{gray:(.*?)}/g, '<span class="text-gray-400">$1</span>');
+                }
+
                 loreTitle.textContent = "Grateful Villager";
-                loreContent.innerHTML = `<p>The villager smiles warmly.\n\n"Thank you again for your help, adventurer. By the way..."</p><p class="italic text-sm mt-2">"${rumor}"</p><button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Good to know."</button>`;
+                loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The villager smiles warmly.</p><p class="font-serif leading-relaxed">"Thank you again for your help, adventurer. By the way..."</p><p class="mt-4 border-l-2 border-blue-500 pl-3 py-1 bg-black bg-opacity-20 text-blue-100 rounded-r">"${rumor}"</p><button id="closeNpcLore" style="transform: translate3d(0,0,0);" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"Good to know."</button>`;
                 loreModal.classList.remove('hidden');
-                document.getElementById('closeNpcLore').addEventListener('click', () => {
-                    loreModal.classList.add('hidden');
-                }, {
-                    once: true
-                });
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                
+                setTimeout(() => {
+                    document.getElementById('closeNpcLore').addEventListener('click', () => {
+                        loreModal.classList.add('hidden');
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                    }, { once: true });
+                }, 0);
             }
             return;
         }
@@ -2033,34 +2243,37 @@ async function attemptMovePlayer(newX, newY) {
 
             if (!playerQuest) {
                 loreTitle.textContent = "Captain of the Guard";
-                loreContent.innerHTML = `<p>The Captain looks grim.\n\n"The Bandit Chief has grown too bold. He's holed up in a fortress nearby. I need someone expendable—err, brave—to take him out."</p><button id="acceptGuard" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded w-full">"Consider it done."</button>`;
+                loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The Captain looks grim.</p><p class="font-serif leading-relaxed">"The Bandit Chief has grown too bold. He's holed up in a fortress nearby. I need someone expendable—err, brave—to take him out."</p><button id="acceptGuard" style="transform: translate3d(0,0,0);" class="mt-4 bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"Consider it done."</button>`;
                 loreModal.classList.remove('hidden');
-                document.getElementById('acceptGuard').addEventListener('click', () => {
-                    acceptQuest(questId);
-                    loreModal.classList.add('hidden');
-                }, {
-                    once: true
-                });
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                
+                setTimeout(() => {
+                    document.getElementById('acceptGuard').addEventListener('click', () => {
+                        if (typeof acceptQuest === 'function') acceptQuest(questId);
+                        loreModal.classList.add('hidden');
+                    }, { once: true });
+                }, 0);
                 return;
             } else if (playerQuest.status === 'active') {
                 if (playerQuest.kills >= 1) {
                     loreTitle.textContent = "Impressed Captain";
-                    loreContent.innerHTML = `<p>"They say the Chief is dead? Ha! I knew you had it in you. Take this blade, you've earned it."</p><button id="turnInGuard" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Thanks. (Complete)"</button>`;
+                    loreContent.innerHTML = `<p class="font-serif leading-relaxed">"They say the Chief is dead? Ha! I knew you had it in you. Take this blade, you've earned it."</p><button id="turnInGuard" style="transform: translate3d(0,0,0);" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 animate-pulse">"Thanks. (Complete)"</button>`;
                     loreModal.classList.remove('hidden');
-                    document.getElementById('turnInGuard').addEventListener('click', () => {
-                        turnInQuest(questId);
-                        loreModal.classList.add('hidden');
-                    }, {
-                        once: true
-                    });
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                    
+                    setTimeout(() => {
+                        document.getElementById('turnInGuard').addEventListener('click', () => {
+                            if (typeof turnInQuest === 'function') turnInQuest(questId);
+                            loreModal.classList.add('hidden');
+                        }, { once: true });
+                    }, 0);
                     return;
                 } else {
-                    logMessage("The Captain nods. 'Bring me the Chief's head.'");
+                    logMessage("{gray:The Captain nods. 'Bring me the Chief's head.'}");
                 }
             } else {
-                // Default Flavor Text if quest is done
                 const msgs = ["The roads are safer thanks to you.", "Stay sharp out there.", "Move along, citizen."];
-                logMessage(`Guard: "${msgs[Math.floor(Math.random() * msgs.length)]}"`);
+                logMessage(`{gray:Guard: "${msgs[Math.floor(Math.random() * msgs.length)]}"}`);
             }
             return;
         }
@@ -2071,99 +2284,122 @@ async function attemptMovePlayer(newX, newY) {
                 `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
 
             if (!gameState.foundLore.has(tileId)) {
-                logMessage("You listen to the Sage's ramblings. +10 XP");
-                grantXp(10);
+                logMessage("{gold:You listen to the Sage's ramblings. +10 XP}");
+                if (typeof grantXp === 'function') grantXp(10);
                 gameState.foundLore.add(tileId);
-                playerRef.update({
-                    foundLore: Array.from(gameState.foundLore)
-                });
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
             }
 
-            const seed = stringToSeed(tileId);
-            const random = Alea(seed);
-            const messageIndex = Math.floor(random() * LORE_STONE_MESSAGES.length);
-            const message = LORE_STONE_MESSAGES[messageIndex];
+            let message = "The Void watches.";
+            if (typeof LORE_STONE_MESSAGES !== 'undefined' && LORE_STONE_MESSAGES.length > 0) {
+                const seed = stringToSeed(tileId);
+                const random = Alea(seed);
+                const messageIndex = Math.floor(random() * LORE_STONE_MESSAGES.length);
+                message = LORE_STONE_MESSAGES[messageIndex];
+            }
+            
             loreTitle.textContent = "Sage";
-            loreContent.textContent = `The old Sage is staring at a tapestry, muttering to themself.\n\n"...yes, yes... ${message}..."`;
+            loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The old Sage is staring at a tapestry, muttering to themself.</p><p class="font-serif leading-relaxed text-blue-200">"...yes, yes... ${message}..."</p>`;
             loreModal.classList.remove('hidden');
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             return;
         }
 
         if (newTile === 'T') {
-            // --- Define tileId ---
             const tileId = (gameState.mapMode === 'overworld') ?
                 `${newX},${-newY}` :
                 `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
 
             if (!gameState.foundLore.has(tileId)) {
-                grantXp(15);
+                if (typeof grantXp === 'function') grantXp(15);
                 gameState.foundLore.add(tileId);
-                playerRef.update({
-                    foundLore: Array.from(gameState.foundLore)
-                });
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
             }
-            openSkillTrainerModal();
+            if (typeof openSkillTrainerModal === 'function') openSkillTrainerModal();
             return;
         }
 
         if (newTile === 'K') {
             const npcQuestId = "goblinTrophies";
-            const questData = QUEST_DATA[npcQuestId];
+            const questData = typeof QUEST_DATA !== 'undefined' ? QUEST_DATA[npcQuestId] : null;
             const playerQuest = gameState.player.quests[npcQuestId];
             const player = gameState.player;
             const genericProspectorId = "met_prospector";
+            
             if (!gameState.foundLore.has(genericProspectorId)) {
-                logMessage("You meet a Lost Prospector. +5 XP");
-                grantXp(5);
+                logMessage("{gold:You meet a Lost Prospector. +5 XP}");
+                if (typeof grantXp === 'function') grantXp(5);
                 gameState.foundLore.add(genericProspectorId);
-                playerRef.update({
-                    foundLore: Array.from(gameState.foundLore)
-                });
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
             }
+            
+            if (!questData) return;
 
             if (!playerQuest) {
                 loreTitle.textContent = "Frustrated Prospector";
-                loreContent.innerHTML = `<p>A grizzled prospector, muttering to themself, jumps as you approach.\n\n"Goblins! I hate 'em! Always stealing my supplies, leaving these... these *totems* everywhere. Say, if you're clearing 'em out, bring me 10 of those Goblin Totems. I'll make it worth your while!"</p><button id="acceptNpcQuest" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">"I'll see what I can do."</button>`;
+                loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">A grizzled prospector, muttering to themself, jumps as you approach.</p><p class="font-serif leading-relaxed">"Goblins! I hate 'em! Always stealing my supplies, leaving these... these *totems* everywhere. Say, if you're clearing 'em out, bring me 10 of those Goblin Totems. I'll make it worth your while!"</p><button id="acceptNpcQuest" style="transform: translate3d(0,0,0);" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"I'll see what I can do."</button>`;
                 loreModal.classList.remove('hidden');
-                document.getElementById('acceptNpcQuest').addEventListener('click', () => {
-                    acceptQuest(npcQuestId);
-                    loreModal.classList.add('hidden');
-                }, {
-                    once: true
-                });
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                
+                setTimeout(() => {
+                    document.getElementById('acceptNpcQuest').addEventListener('click', () => {
+                        if (typeof acceptQuest === 'function') acceptQuest(npcQuestId);
+                        loreModal.classList.add('hidden');
+                    }, { once: true });
+                }, 0);
             } else if (playerQuest.status === 'active') {
                 const itemInInv = player.inventory.find(item => item.name === questData.itemNeeded);
                 const hasItems = itemInInv && itemInInv.quantity >= questData.needed;
                 if (hasItems) {
                     loreTitle.textContent = "Surprised Prospector";
-                    loreContent.innerHTML = `<p>The prospector's eyes go wide as you show him the totems.\n\n"Ha! You actually did it! That'll teach 'em. Here, as promised. This is for your trouble."</p><button id="turnInNpcQuest" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Here you go. (Complete Quest)"</button>`;
+                    loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The prospector's eyes go wide as you show him the totems.</p><p class="font-serif leading-relaxed">"Ha! You actually did it! That'll teach 'em. Here, as promised. This is for your trouble."</p><button id="turnInNpcQuest" style="transform: translate3d(0,0,0);" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 animate-pulse">"Here you go. (Complete Quest)"</button>`;
                     loreModal.classList.remove('hidden');
-                    document.getElementById('turnInNpcQuest').addEventListener('click', () => {
-                        turnInQuest(npcQuestId);
-                        loreModal.classList.add('hidden');
-                    }, {
-                        once: true
-                    });
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                    
+                    setTimeout(() => {
+                        document.getElementById('turnInNpcQuest').addEventListener('click', () => {
+                            if (typeof turnInQuest === 'function') turnInQuest(npcQuestId);
+                            loreModal.classList.add('hidden');
+                        }, { once: true });
+                    }, 0);
                 } else {
                     const needed = questData.needed - (itemInInv ? itemInInv.quantity : 0);
                     loreTitle.textContent = "Impatient Prospector";
-                    loreContent.innerHTML = `<p>The prospector looks up.\n\n"Back already? You still need to find ${needed} more ${questData.itemNeeded}s. Get a move on!"</p><button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"I'm still looking."</button>`;
+                    loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The prospector looks up.</p><p class="font-serif leading-relaxed">"Back already? You still need to find ${needed} more ${questData.itemNeeded}s. Get a move on!"</p><button id="closeNpcLore" style="transform: translate3d(0,0,0);" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"I'm still looking."</button>`;
                     loreModal.classList.remove('hidden');
-                    document.getElementById('closeNpcLore').addEventListener('click', () => {
-                        loreModal.classList.add('hidden');
-                    }, {
-                        once: true
-                    });
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                    
+                    setTimeout(() => {
+                        document.getElementById('closeNpcLore').addEventListener('click', () => {
+                            loreModal.classList.add('hidden');
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                        }, { once: true });
+                    }, 0);
                 }
             } else if (playerQuest.status === 'completed') {
                 loreTitle.textContent = "Grateful Prospector";
-                loreContent.innerHTML = `<p>The prospector nods at you.\n\n"Thanks again for your help, adventurer. The caves are a little quieter... for now."</p><button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"You're welcome."</button>`;
+                loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The prospector nods at you.</p><p class="font-serif leading-relaxed">"Thanks again for your help, adventurer. The caves are a little quieter... for now."</p><button id="closeNpcLore" style="transform: translate3d(0,0,0);" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"You're welcome."</button>`;
                 loreModal.classList.remove('hidden');
-                document.getElementById('closeNpcLore').addEventListener('click', () => {
-                    loreModal.classList.add('hidden');
-                }, {
-                    once: true
-                });
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                
+                setTimeout(() => {
+                    document.getElementById('closeNpcLore').addEventListener('click', () => {
+                        loreModal.classList.add('hidden');
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                    }, { once: true });
+                }, 0);
             }
             return;
         }
@@ -2171,19 +2407,22 @@ async function attemptMovePlayer(newX, newY) {
         if (newTile === '§') {
             const hour = gameState.time.hour;
             if (hour < 6 || hour >= 20) {
-                logMessage("The General Store is closed. A sign reads: 'Open 6 AM - 8 PM'.");
+                logMessage("{gray:The General Store is closed. A sign reads: 'Open 6 AM - 8 PM'.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 return;
             }
 
             // Discovery XP Logic
-            const tileId = `${newX},${-newY}`; // Used for lore discovery
+            const tileId = `${newX},${-newY}`; 
             if (!gameState.foundLore.has(tileId)) {
-                logMessage("You've discovered a General Store! +15 XP");
-                grantXp(15);
+                logMessage("{gold:You've discovered a General Store! +15 XP}");
+                if (typeof grantXp === 'function') grantXp(15);
                 gameState.foundLore.add(tileId);
-                playerRef.update({
-                    foundLore: Array.from(gameState.foundLore)
-                });
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
             }
 
             // --- NEW SHOP PERSISTENCE LOGIC ---
@@ -2198,8 +2437,8 @@ async function attemptMovePlayer(newX, newY) {
 
             // Check if this specific shop has been visited this session
             if (!gameState.shopStates[shopId]) {
-                let template = SHOP_INVENTORY; // Default
-                if (gameState.mapMode === 'castle') template = CASTLE_SHOP_INVENTORY;
+                let template = typeof SHOP_INVENTORY !== 'undefined' ? SHOP_INVENTORY : []; 
+                if (gameState.mapMode === 'castle' && typeof CASTLE_SHOP_INVENTORY !== 'undefined') template = CASTLE_SHOP_INVENTORY;
 
                 // Deep copy to break reference to the global constant
                 gameState.shopStates[shopId] = JSON.parse(JSON.stringify(template));
@@ -2214,32 +2453,39 @@ async function attemptMovePlayer(newX, newY) {
                 logMessage("You enter the General Store.");
             }
 
-            renderShop();
-            shopModal.classList.remove('hidden');
+            if (typeof renderShop === 'function') renderShop();
+            const sModal = document.getElementById('shopModal');
+            if (sModal) sModal.classList.remove('hidden');
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             return;
         }
 
         if (newTile === 'H') {
             const hour = gameState.time.hour;
             if (hour < 6 || hour >= 20) {
-                logMessage("The Healer's cottage is dark. They must be sleeping.");
+                logMessage("{gray:The Healer's cottage is dark. They must be sleeping.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 return;
             }
 
             const questId = "healerSupply";
-            const questData = QUEST_DATA[questId];
+            const questData = typeof QUEST_DATA !== 'undefined' ? QUEST_DATA[questId] : null;
             const playerQuest = gameState.player.quests[questId];
+
+            if (!questData) return; // Failsafe
 
             if (!playerQuest) {
                 loreTitle.textContent = "Worried Healer";
-                loreContent.innerHTML = `<p>"The swamp fever is spreading, and I am out of herbs. If you can brave the swamps and bring me 5 Medicinal Herbs, I can make a cure."</p><button id="acceptHealer" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">"I'll find them."</button>`;
+                loreContent.innerHTML = `<p class="font-serif leading-relaxed">"The swamp fever is spreading, and I am out of herbs. If you can brave the swamps and bring me 5 Medicinal Herbs, I can make a cure."</p><button id="acceptHealer" style="transform: translate3d(0,0,0);" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"I'll find them."</button>`;
                 loreModal.classList.remove('hidden');
-                document.getElementById('acceptHealer').addEventListener('click', () => {
-                    acceptQuest(questId);
-                    loreModal.classList.add('hidden');
-                }, {
-                    once: true
-                });
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                
+                setTimeout(() => {
+                    document.getElementById('acceptHealer').addEventListener('click', () => {
+                        if (typeof acceptQuest === 'function') acceptQuest(questId);
+                        loreModal.classList.add('hidden');
+                    }, { once: true });
+                }, 0);
                 return;
             } else if (playerQuest.status === 'active') {
                 const itemIndex = gameState.player.inventory.findIndex(i => i.name === 'Medicinal Herb');
@@ -2247,36 +2493,59 @@ async function attemptMovePlayer(newX, newY) {
 
                 if (qty >= 5) {
                     loreTitle.textContent = "Relieved Healer";
-                    loreContent.innerHTML = `<p>"You found them! These are perfect. Here, take these potions for your trouble."</p><button id="turnInHealer" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Glad to help. (Complete)"</button>`;
+                    loreContent.innerHTML = `<p class="font-serif leading-relaxed">"You found them! These are perfect. Here, take these potions for your trouble."</p><button id="turnInHealer" style="transform: translate3d(0,0,0);" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 animate-pulse">"Glad to help. (Complete)"</button>`;
                     loreModal.classList.remove('hidden');
-                    document.getElementById('turnInHealer').addEventListener('click', () => {
-                        turnInQuest(questId);
-                        loreModal.classList.add('hidden');
-                    }, {
-                        once: true
-                    });
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                    
+                    setTimeout(() => {
+                        document.getElementById('turnInHealer').addEventListener('click', () => {
+                            if (typeof turnInQuest === 'function') turnInQuest(questId);
+                            loreModal.classList.add('hidden');
+                        }, { once: true });
+                    }, 0);
                     return;
                 }
             }
 
             const HEAL_COST = 10;
             const player = gameState.player;
-            if (player.health < player.maxHealth) {
+            if (player.health < player.maxHealth || player.poisonTurns > 0 || player.frostbiteTurns > 0 || player.madnessTurns > 0) {
                 if (player.coins >= HEAL_COST) {
                     player.coins -= HEAL_COST;
                     player.health = player.maxHealth;
-                    logMessage(`The Healer restores your health for ${HEAL_COST} gold.`);
-                    triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
-                    playerRef.update({
-                        health: player.health,
-                        coins: player.coins
-                    });
+                    
+                    // Purge status effects!
+                    player.poisonTurns = 0;
+                    player.frostbiteTurns = 0;
+                    player.madnessTurns = 0;
+                    player.burnTurns = 0;
+                    player.rootTurns = 0;
+
+                    logMessage(`{green:The Healer restores your health and purges afflictions for ${HEAL_COST} gold.}`);
+                    if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#22c55e', 20);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal();
+                    
+                    if (typeof playerRef !== 'undefined' && playerRef) {
+                        playerRef.update({
+                            health: player.health,
+                            coins: player.coins,
+                            poisonTurns: 0,
+                            frostbiteTurns: 0,
+                            madnessTurns: 0,
+                            burnTurns: 0,
+                            rootTurns: 0
+                        });
+                    }
                 } else {
-                    logMessage(`"You need ${HEAL_COST} gold for my services," the Healer says.`);
+                    logMessage(`{gray:"You need ${HEAL_COST} gold for my services," the Healer says.}`);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 }
             } else {
-                logMessage(`"You are already at full health!" the Healer says.`);
+                logMessage(`{gray:"You are already perfectly healthy!" the Healer says.}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             }
+            if (typeof renderStats === 'function') renderStats();
             return;
         }
 
@@ -2335,23 +2604,27 @@ async function attemptMovePlayer(newX, newY) {
         switch (tileData.type) {
             case 'workbench':
                 if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You found a workbench! +10 XP");
-                    grantXp(10);
+                    logMessage("{gold:You found a workbench! +10 XP}");
+                    if (typeof grantXp === 'function') grantXp(10);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({
-                        foundLore: Array.from(gameState.foundLore)
-                    });
+                    if (typeof playerRef !== 'undefined' && playerRef) {
+                        playerRef.update({
+                            foundLore: Array.from(gameState.foundLore)
+                        });
+                    }
                 }
-                openCraftingModal('workbench');
+                if (typeof openCraftingModal === 'function') openCraftingModal('workbench');
                 return;
             case 'village_entrance':
                 if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You've discovered a safe haven village! +100 XP");
-                    grantXp(100);
+                    logMessage("{gold:You've discovered a safe haven village! +100 XP}");
+                    if (typeof grantXp === 'function') grantXp(100);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({
-                        foundLore: Array.from(gameState.foundLore)
-                    });
+                    if (typeof playerRef !== 'undefined' && playerRef) {
+                        playerRef.update({
+                            foundLore: Array.from(gameState.foundLore)
+                        });
+                    }
                 }
                 gameState.mapMode = 'castle';
                 gameState.currentCastleId = tileData.getVillageId(newX, newY);
@@ -2365,27 +2638,29 @@ async function attemptMovePlayer(newX, newY) {
                 gameState.player.y = villageSpawn.y;
                 gameState.instancedEnemies = [];
                 gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
-                logMessage("You enter the peaceful village.");
+                logMessage("{green:You enter the peaceful village.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+                
                 updateRegionDisplay();
-
                 gameState.mapDirty = true;
-
                 render();
                 syncPlayerState();
                 finalizeMapTransition(); // NETWORK SYNC
                 return;
             case 'cooking_fire':
                 logMessage("You sit by the fire. The warmth is inviting.");
-                openCraftingModal('cooking');
+                if (typeof openCraftingModal === 'function') openCraftingModal('cooking');
                 return;
             case 'landmark_cave':
                 if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You stare into the abyss... and it stares back. +100 XP");
-                    grantXp(100);
+                    logMessage("{gold:You stare into the abyss... and it stares back. +100 XP}");
+                    if (typeof grantXp === 'function') grantXp(100);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({
-                        foundLore: Array.from(gameState.foundLore)
-                    });
+                    if (typeof playerRef !== 'undefined' && playerRef) {
+                        playerRef.update({
+                            foundLore: Array.from(gameState.foundLore)
+                        });
+                    }
                 }
                 gameState.mapMode = 'dungeon';
                 gameState.currentCaveId = 'cave_landmark';
@@ -2405,48 +2680,54 @@ async function attemptMovePlayer(newX, newY) {
                 }
                 const epicEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
                 gameState.instancedEnemies = JSON.parse(JSON.stringify(epicEnemies));
-                logMessage("You descend into The Maw.");
+                logMessage("{purple:You descend into The Maw.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                
                 updateRegionDisplay();
-
                 gameState.mapDirty = true;
-
                 render();
                 syncPlayerState();
                 finalizeMapTransition(); // NETWORK SYNC
                 return;
             case 'canoe':
                 if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You found a canoe! +10 XP");
-                    grantXp(10);
+                    logMessage("{gold:You found a canoe! +10 XP}");
+                    if (typeof grantXp === 'function') grantXp(10);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    if (typeof playerRef !== 'undefined' && playerRef) {
+                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    }
                 }
                 gameState.player.isBoating = true;
-                logMessage("You get in the canoe.");
+                logMessage("{blue:You get in the canoe.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 500); // Splash
 
                 chunkManager.setWorldTile(newX, newY, getBaseTerrain(newX, newY)); 
-                
-                playerRef.update({ isBoating: true });
+                if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ isBoating: true });
                 break;
                 
             // --- SHIP EMBARKING ---
             case 'sailing_ship':
                 gameState.player.isSailing = true;
                 logMessage("{blue:You board the ship. The ocean is yours to conquer.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.3, 0.1, 400); // Heavy splash
+                
                 chunkManager.setWorldTile(newX, newY, getBaseTerrain(newX, newY)); 
-                playerRef.update({ isSailing: true });
+                if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ isSailing: true });
                 break;
             case 'dungeon_entrance':
                 // --- Ensure Set exists ---
                 if (!gameState.foundLore) gameState.foundLore = new Set();
 
                 if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You've discovered a cave entrance! +10 XP");
-                    grantXp(10);
+                    logMessage("{gold:You've discovered a cave entrance! +10 XP}");
+                    if (typeof grantXp === 'function') grantXp(10);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({
-                        foundLore: Array.from(gameState.foundLore)
-                    });
+                    if (typeof playerRef !== 'undefined' && playerRef) {
+                        playerRef.update({
+                            foundLore: Array.from(gameState.foundLore)
+                        });
+                    }
                 }
                 gameState.mapMode = 'dungeon';
                 gameState.currentCaveId = tileData.getCaveId(newX, newY);
@@ -2466,25 +2747,29 @@ async function attemptMovePlayer(newX, newY) {
                 }
                 const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
                 gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+                
                 logMessage("You enter the " + (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') + "...");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+                
                 updateRegionDisplay();
-
                 gameState.mapDirty = true;
-
                 render();
                 syncPlayerState();
                 finalizeMapTransition(); // NETWORK SYNC
                 return;
             case 'dungeon_exit':
-                exitToOverworld("You emerge back into the sunlight.");
+                if (typeof exitToOverworld === 'function') exitToOverworld("You emerge back into the sunlight.");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
                 return;
             case 'landmark_castle':
                 if (!gameState.foundLore) gameState.foundLore = new Set();
                 if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You've discovered the FORGOTTEN FORTRESS! +100 XP");
-                    grantXp(100);
+                    logMessage("{gold:You've discovered the FORGOTTEN FORTRESS! +100 XP}");
+                    if (typeof grantXp === 'function') grantXp(100);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    if (typeof playerRef !== 'undefined' && playerRef) {
+                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    }
                 }
                 gameState.mapMode = 'castle';
                 gameState.currentCastleId = tileData.getCastleId(newX, newY);
@@ -2500,7 +2785,9 @@ async function attemptMovePlayer(newX, newY) {
                 const baseLandmarkEnemies = chunkManager.castleEnemies[gameState.currentCastleId] || [];
                 gameState.instancedEnemies = JSON.parse(JSON.stringify(baseLandmarkEnemies));
                 
-                logMessage("You enter the imposing fortress...");
+                logMessage("{red:You enter the imposing fortress...}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic(); // Ominous entrance
+                
                 updateRegionDisplay();
                 render();
                 syncPlayerState();
@@ -2510,12 +2797,14 @@ async function attemptMovePlayer(newX, newY) {
                 if (!gameState.foundLore) gameState.foundLore = new Set();
 
                 if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You've discovered a castle entrance! +10 XP");
-                    grantXp(10);
+                    logMessage("{gold:You've discovered a castle entrance! +10 XP}");
+                    if (typeof grantXp === 'function') grantXp(10);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({
-                        foundLore: Array.from(gameState.foundLore)
-                    });
+                    if (typeof playerRef !== 'undefined' && playerRef) {
+                        playerRef.update({
+                            foundLore: Array.from(gameState.foundLore)
+                        });
+                    }
                 }
                 gameState.mapMode = 'castle';
                 gameState.currentCastleId = tileData.getCastleId(newX, newY);
@@ -2532,25 +2821,29 @@ async function attemptMovePlayer(newX, newY) {
                 // --- LOAD CASTLE ENEMIES ---
                 const baseCastleEnemies = chunkManager.castleEnemies[gameState.currentCastleId] || [];
                 gameState.instancedEnemies = JSON.parse(JSON.stringify(baseCastleEnemies));
+                
                 logMessage("You enter the castle grounds.");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+                
                 updateRegionDisplay();
-
                 gameState.mapDirty = true;
-
                 render();
                 syncPlayerState();
                 finalizeMapTransition(); // NETWORK SYNC
                 return;
             case 'castle_exit':
-                exitToOverworld("You leave the castle.");
+                if (typeof exitToOverworld === 'function') exitToOverworld("You leave the castle.");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
                 return;
             case 'dark_castle_entrance':
                 if (!gameState.foundLore) gameState.foundLore = new Set();
                 if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You've discovered a ruined fortress. Evil stirs within... +25 XP");
-                    grantXp(25);
+                    logMessage("{gold:You've discovered a ruined fortress. Evil stirs within... +25 XP}");
+                    if (typeof grantXp === 'function') grantXp(25);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    if (typeof playerRef !== 'undefined' && playerRef) {
+                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    }
                 }
                 gameState.mapMode = 'castle';
                 gameState.currentCastleId = tileData.getCastleId(newX, newY);
@@ -2567,7 +2860,9 @@ async function attemptMovePlayer(newX, newY) {
                 const baseDarkEnemies = chunkManager.castleEnemies[gameState.currentCastleId] || [];
                 gameState.instancedEnemies = JSON.parse(JSON.stringify(baseDarkEnemies));
                 
-                logMessage("You enter the dark fortress. Weapons drawn.");
+                logMessage("{red:You enter the dark fortress. Weapons drawn.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); // Spooky entrance
+                
                 updateRegionDisplay();
                 gameState.mapDirty = true;
                 render();
@@ -2580,18 +2875,22 @@ async function attemptMovePlayer(newX, newY) {
             case 'lore':
                 if (!gameState.foundLore) gameState.foundLore = new Set();
                 if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You've found an old signpost! +10 XP");
-                    grantXp(10);
+                    logMessage("{gold:You've found an old signpost! +10 XP}");
+                    if (typeof grantXp === 'function') grantXp(10);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({
-                        foundLore: Array.from(gameState.foundLore)
-                    });
+                    if (typeof playerRef !== 'undefined' && playerRef) {
+                        playerRef.update({
+                            foundLore: Array.from(gameState.foundLore)
+                        });
+                    }
                 }
                 if (Array.isArray(tileData.message)) {
                     const currentTurn = Math.floor((gameState.time.day * 1440 + gameState.time.hour * 60 + gameState.time.minute) / TURN_DURATION_MINUTES);
                     const messageIndex = currentTurn % tileData.message.length;
-                    logMessage(tileData.message[messageIndex]);
-                } else logMessage(tileData.message);
+                    logMessage(`{gray:${tileData.message[messageIndex]}}`);
+                } else {
+                    logMessage(`{gray:${tileData.message}}`);
+                }
         }
     }
 
@@ -2601,22 +2900,31 @@ async function attemptMovePlayer(newX, newY) {
 
     // --- MAGIC ITEM GENERATION (Sparkles) ---
     if (newTile === '✨') {
-        if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+        if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
             const dist = Math.sqrt(newX * newX + newY * newY);
             let tier = 1;
-            if (dist > 500) tier = 4;
+            if (dist > 1500) tier = 5;
+            else if (dist > 500) tier = 4;
             else if (dist > 250) tier = 3;
             else if (dist > 100) tier = 2;
 
-            const newItem = generateMagicItem(tier);
+            const newItem = typeof generateMagicItem === 'function' ? generateMagicItem(tier) : { name: 'Magic Item', type: 'junk', tile: '✨', quantity: 1 };
             gameState.player.inventory.push(newItem);
-            logMessage(`You picked up a ${newItem.name}!`);
+            
+            // LORE/JUICE WIN: Color code the log message based on rarity
+            let color = "gray";
+            if (newItem._rarity === 'uncommon') color = "green";
+            if (newItem._rarity === 'rare') color = "purple";
+            if (newItem._rarity === 'epic' || newItem._rarity === 'legendary') color = "gold";
+            
+            logMessage(`You picked up a {${color}:${newItem.name}}!`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
 
             inventoryWasUpdated = true;
             gameState.lootedTiles.add(tileId);
 
             // Clear the tile visually
-            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '.');
+            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(newX, newY, '.');
             else if (gameState.mapMode === 'dungeon') {
                 const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
                 chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
@@ -2624,7 +2932,8 @@ async function attemptMovePlayer(newX, newY) {
                 chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
             }
         } else {
-            logMessage("You see a sparkling item, but your inventory is full!");
+            logMessage("{red:You see a sparkling item, but your inventory is full!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         }
     }
     // --- STANDARD ITEM PICKUP ---
@@ -2633,7 +2942,7 @@ async function attemptMovePlayer(newX, newY) {
         
         function clearLootTile() {
             gameState.lootedTiles.add(tileId);
-            if (gameState.mapMode === 'overworld') {
+            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                 chunkManager.setWorldTile(newX, newY, '.');
             } else if (gameState.mapMode === 'dungeon') {
                 const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
@@ -2647,15 +2956,16 @@ async function attemptMovePlayer(newX, newY) {
         if (itemData.type === 'random_lore') {
             const seed = stringToSeed(`${newX},${newY}`);
             const random = Alea(seed);
-            const fragment = LORE_FRAGMENTS[Math.floor(random() * LORE_FRAGMENTS.length)];
+            const fragment = typeof LORE_FRAGMENTS !== 'undefined' ? LORE_FRAGMENTS[Math.floor(random() * LORE_FRAGMENTS.length)] : "A piece of paper.";
             loreTitle.textContent = "Forgotten Letter";
-            loreContent.textContent = `You smooth out the paper. The handwriting is faded.\n\n"${fragment}"`;
+            loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">You smooth out the paper. The handwriting is faded.</p><p class="font-serif leading-relaxed">"${fragment}"</p>`;
             loreModal.classList.remove('hidden');
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             clearLootTile();
             inventoryWasUpdated = true;
         }
         else if (isTileLooted) {
-            logMessage(`You see where a ${itemData.name} once was...`);
+            logMessage(`{gray:You see where a ${itemData.name} once was...}`);
         } 
         else {
             // --- ANTI-DUPLICATION TRANSACTION ---
@@ -2675,22 +2985,24 @@ async function attemptMovePlayer(newX, newY) {
                 itemData.effect(gameState, tileId);
                 clearLootTile();
                 inventoryWasUpdated = true; 
-                renderStats(); 
+                if (typeof renderStats === 'function') renderStats(); 
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
             }
             // HANDLE ALL PICKUPABLE ITEMS
             else {
                 const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
                 // Allow equipment to stack now too
-                const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'quest', 'lore', 'tool', 'armor', 'weapon'].includes(itemData.type);
+                const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'quest', 'lore', 'tool', 'armor', 'weapon', 'ammo'].includes(itemData.type);
 
                 if (existingItem && isStackable) {
                     existingItem.quantity++;
                     logMessage(`You picked up a ${itemData.name}.`);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Generic pickup
                     
                     inventoryWasUpdated = true;
                     clearLootTile();
 
-                } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                } else if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                     
                     // Create safe object for DB (Copied from existing logic)
                     const itemForDb = {
@@ -2706,16 +3018,26 @@ async function attemptMovePlayer(newX, newY) {
                         effect: itemData.effect || null,
                         spellId: itemData.spellId || null,
                         skillId: itemData.skillId || null,
-                        stat: itemData.stat || null
+                        stat: itemData.stat || null,
+                        _rarity: itemData._rarity || null // Preserve rarity tag for borders
                     };
                     gameState.player.inventory.push(itemForDb);
                     
                     logMessage(`You picked up a ${itemData.name}.`);
+                    
+                    // Distinct sounds for rare items
+                    if (itemForDb._rarity === 'legendary' || itemForDb._rarity === 'epic' || itemForDb._rarity === 'rare') {
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                    } else {
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); 
+                    }
+
                     inventoryWasUpdated = true;
                     clearLootTile();
 
                 } else {
-                    logMessage(`You see a ${itemData.name}, but your inventory is full!`);
+                    logMessage(`{red:You see a ${itemData.name}, but your inventory is full!}`);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 }
             }
         }
@@ -2723,7 +3045,8 @@ async function attemptMovePlayer(newX, newY) {
 
     const staminaDeficit = moveCost - gameState.player.stamina;
     if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) {
-        logMessage("You're too tired, and pushing on would be fatal!");
+        logMessage("{red:You're too tired, and pushing on would be fatal!}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
@@ -2740,7 +3063,7 @@ async function attemptMovePlayer(newX, newY) {
 
     gameState.mapDirty = true;
 
-    AudioSystem.playStep();
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(newX);
 
     // --- VISUAL FOOTSTEPS & SPLASHES ---
     if (typeof ParticleSystem !== 'undefined' && ParticleSystem.createFootstep) {
@@ -2784,19 +3107,22 @@ async function attemptMovePlayer(newX, newY) {
         gameState.player.health -= staminaDeficit;
         gameState.screenShake = 10; // Shake intensity
         triggerStatFlash(statDisplays.health, false);
-        logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
+        logMessage(`{red:You push yourself to the limit, costing ${staminaDeficit} health!}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     }
 
     if (moveCost > 0) {
         triggerStatFlash(statDisplays.stamina, false);
-        logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
+        if (moveCost > 1) logMessage(`{gray:Traversing the difficult terrain costs ${moveCost} stamina.}`);
     }
 
     if (newTile === '≈') {
         const resistChance = Math.max(0, (10 - gameState.player.endurance)) * 0.01;
         if (Math.random() < resistChance && gameState.player.poisonTurns <= 0) {
-            logMessage("You feel sick from the swamp's foul water. You are Poisoned!");
+            logMessage("{green:You feel sick from the swamp's foul water. You are Poisoned!}");
             gameState.player.poisonTurns = 5;
+            triggerStatFlash(statDisplays.health, false);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         }
     }
 
@@ -2823,14 +3149,17 @@ async function attemptMovePlayer(newX, newY) {
         }
     }
 
-    passivePerceptionCheck();
-    triggerAtmosphericFlavor(newTile);
-    render();
+    if (typeof passivePerceptionCheck === 'function') passivePerceptionCheck();
+    if (typeof triggerAtmosphericFlavor === 'function') triggerAtmosphericFlavor(newTile);
+    
+    // Engine Render happens automatically via game loop in script.js now,
+    // but we leave this direct render call as a fallback in case frame skipping occurred.
+    if (typeof render === 'function') render();
 
-    updateRegionDisplay();
-    syncPlayerState();
+    if (typeof updateRegionDisplay === 'function') updateRegionDisplay();
+    if (typeof syncPlayerState === 'function') syncPlayerState();
 
-    const newExploration = updateExploration();
+    const newExploration = typeof updateExploration === 'function' ? updateExploration() : false;
 
     let updates = {
         x: gameState.player.x,
@@ -2853,16 +3182,16 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     if (inventoryWasUpdated) {
-        updates.inventory = getSanitizedInventory();
+        updates.inventory = typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory;
         updates.lootedTiles = Object.fromEntries(gameState.lootedTiles);
-        renderInventory();
+        if (typeof renderInventory === 'function') renderInventory();
     }
 
+    // Secondary chunk loading pass to ensure instanced layers (Underworld) load correctly
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
         const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
 
-        // Load 3x3 chunk area around player
         for (let y = -1; y <= 1; y++) {
             for (let x = -1; x <= 1; x++) {
                 chunkManager.listenToChunkState(currentChunkX + x, currentChunkY + y);
@@ -2876,14 +3205,14 @@ async function attemptMovePlayer(newX, newY) {
 
     if (gameState.player.health <= 0) {
         // Call the unified death handler (drops corpse, clears inventory, shows UI)
-        if (handlePlayerDeath()) {
-            syncPlayerState(); // Update multiplayer server so others see you vanish
+        if (typeof handlePlayerDeath === 'function' && handlePlayerDeath()) {
+            if (typeof syncPlayerState === 'function') syncPlayerState(); 
             return; // STOP! Do not run endPlayerTurn or it will overwrite the death state!
         }
     }
 
     // Pass the updates object in so Firebase actually saves your loot/exploration!
-    endPlayerTurn(updates); 
+    if (typeof endPlayerTurn === 'function') endPlayerTurn(updates); 
 }
 
 function exitToOverworld(exitMessage) {
@@ -2894,7 +3223,7 @@ function exitToOverworld(exitMessage) {
         // --- TELEPORT SAFETY FALLBACK ---
         // If we don't know where we came from, send player to spawn (0,0)
         // This prevents getting stuck in walls or oceans at dungeon coordinates (e.g. 15,15)
-        logMessage("You lost your bearings in the dark...");
+        logMessage("{gray:You lost your bearings in the dark...}");
         logMessage("...and found your way back to the Village.");
         gameState.player.x = 0;
         gameState.player.y = 0;
@@ -2910,10 +3239,12 @@ function exitToOverworld(exitMessage) {
     gameState.instancedEnemies = [];
 
     logMessage(exitMessage);
-    updateRegionDisplay();
-    render();
-    syncPlayerState();
+    if (typeof updateRegionDisplay === 'function') updateRegionDisplay();
+    if (typeof render === 'function') render();
+    if (typeof syncPlayerState === 'function') syncPlayerState();
 
     // Trigger the chunk loading, enemy syncing, and Firebase saving
     finalizeMapTransition();
 }
+
+// --- END OF FILE movement.js ---
