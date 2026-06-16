@@ -22,7 +22,11 @@ async function initCharacterSelect(user) {
     characterSelectModal.classList.remove('hidden');
     
     const loadingIndicator = document.getElementById('loadingIndicator');
-    if (loadingIndicator) loadingIndicator.classList.remove('hidden'); 
+    // Only show the interim loading screen if the page has fully loaded
+    // and the user has bypassed the Title Screen, preventing overlap!
+    if (loadingIndicator && document.body.classList.contains('is-loaded')) {
+        loadingIndicator.classList.remove('hidden'); 
+    }
 
     // 1. Legacy Migration Check
     const oldRootRef = db.collection('players').doc(user.uid);
