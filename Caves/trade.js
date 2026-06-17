@@ -9,6 +9,7 @@
 const _tradeItemKeyCache = {};
 function getTradeItemKey(name) {
     if (_tradeItemKeyCache[name]) return _tradeItemKeyCache[name];
+    if (typeof window.ITEM_DATA === 'undefined') return null;
     const key = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === name);
     if (key) _tradeItemKeyCache[name] = key;
     return key;
@@ -34,7 +35,11 @@ const BASE_ITEM_VALUES = {
     'Magma Carp': 60, 'Sludge Eel': 15, 'Eyeless Cave Fish': 40, 
     'Swamp Serpent Scale': 200, 'Minnow': 1, 'River Trout': 4, 
     'Leaping Salmon': 15, 'Mudcat': 2, 'Abyssal Angler': 180, 'Swordfish': 60,
-    'Abyssal Oyster': 45
+    'Abyssal Oyster': 45, 
+    'Astral Jelly': 80, 'Void Ray': 150, 'Star-Eater': 500, // Void Fish
+
+    // High-Tier Tools & Magic
+    'Diamond Tipped Pickaxe': 300, 'Cloudseed': 500, 'Void Astrolabe': 750
 };
 
 /**
@@ -46,8 +51,8 @@ function calculateItemValue(item, player) {
     let shopItem = activeShopInventory.find(sItem => sItem.name === item.name);
 
     // Fallback: Check Template ID match (for modified/magic items)
-    if (!shopItem && item.templateId && ITEM_DATA[item.templateId]) {
-        const baseName = ITEM_DATA[item.templateId].name;
+    if (!shopItem && item.templateId && window.ITEM_DATA && window.ITEM_DATA[item.templateId]) {
+        const baseName = window.ITEM_DATA[item.templateId].name;
         shopItem = activeShopInventory.find(sItem => sItem.name === baseName);
     }
 
@@ -68,8 +73,8 @@ function calculateItemValue(item, player) {
     } else {
         // Look up against our central dictionary
         let lookupName = item.name;
-        if (item.templateId && ITEM_DATA[item.templateId]) {
-            lookupName = ITEM_DATA[item.templateId].name;
+        if (item.templateId && window.ITEM_DATA && window.ITEM_DATA[item.templateId]) {
+            lookupName = window.ITEM_DATA[item.templateId].name;
         }
         if (BASE_ITEM_VALUES[lookupName]) basePrice = BASE_ITEM_VALUES[lookupName];
         else if (BASE_ITEM_VALUES[item.name]) basePrice = BASE_ITEM_VALUES[item.name];
@@ -80,6 +85,7 @@ function calculateItemValue(item, player) {
     const sellBonusPercent = player.charisma * 0.005;
     const finalSellBonus = Math.min(sellBonusPercent, 0.25); // Max 25% boost from Charisma
 
+    const SELL_MODIFIER = 0.5; // Base 50% markdown when selling to shops
     let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
 
     // 4. Economy Caps (Prevent infinite money loops)
@@ -111,7 +117,7 @@ function handleBuyItem(itemName, amount = 1) {
     const player = gameState.player;
     const shopItem = activeShopInventory.find(item => item.name === itemName);
     const itemKey = getTradeItemKey(itemName); // PERFORMANCE WIN: Cached lookup!
-    const itemTemplate = ITEM_DATA[itemKey];
+    const itemTemplate = window.ITEM_DATA ? window.ITEM_DATA[itemKey] : null;
 
     if (!shopItem || !itemTemplate) {
         logMessage("{red:Error: Item not found in shop.}");
@@ -201,10 +207,12 @@ function handleBuyItem(itemName, amount = 1) {
         });
     }
 
-    playerRef.update({
-        coins: player.coins,
-        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
-    });
+    if (typeof playerRef !== 'undefined') {
+        playerRef.update({
+            coins: player.coins,
+            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
+        });
+    }
 
     renderShop(); 
     if (typeof renderInventory === 'function') renderInventory(); 
@@ -262,10 +270,12 @@ function handleSellItem(itemIndex, amount = 1) {
     }
 
     // Update database and UI
-    playerRef.update({
-        coins: player.coins,
-        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
-    });
+    if (typeof playerRef !== 'undefined') {
+        playerRef.update({
+            coins: player.coins,
+            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
+        });
+    }
 
     renderShop();
     if (typeof renderInventory === 'function') renderInventory();
@@ -315,10 +325,12 @@ function handleSellAllItems() {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
         // Save and Update UI
-        playerRef.update({
-            coins: player.coins,
-            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
-        });
+        if (typeof playerRef !== 'undefined') {
+            playerRef.update({
+                coins: player.coins,
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
+            });
+        }
         
         renderShop();
         if (typeof renderInventory === 'function') renderInventory();
@@ -347,26 +359,32 @@ function renderShop() {
     // 3. Extract Biome context for dynamic flavor text
     let biome = 'Plains';
     if (gameState.mapMode === 'dungeon' && gameState.currentCaveTheme === 'ROCK') biome = 'Mountain';
+    else if (gameState.mapMode === 'skyrealm') biome = 'Sky Realm';
     else if (gameState.mapMode === 'underworld') biome = 'Underworld';
     else if (gameState.mapMode === 'overworld') {
-        const elev = elevationNoise.noise(gameState.player.x / 70, gameState.player.y / 70);
-        const moist = moistureNoise.noise(gameState.player.x / 50, gameState.player.y / 50);
-        if (elev < 0.35) biome = 'Water';
-        else if (elev < 0.4 && moist > 0.7) biome = 'Swamp';
-        else if (elev > 0.8) biome = 'Mountain';
-        else if (elev > 0.6 && moist < 0.3) biome = 'Deadlands';
-        else if (moist < 0.15) biome = 'Desert';
-        else if (moist > 0.55) biome = 'Forest';
+        const realmOffset = (gameState.currentRealm || 0) * 100;
+        if (typeof elevationNoise !== 'undefined' && typeof moistureNoise !== 'undefined') {
+            const elev = elevationNoise.noise(gameState.player.x / 70, gameState.player.y / 70, realmOffset);
+            const moist = moistureNoise.noise(gameState.player.x / 50, gameState.player.y / 50, realmOffset);
+            if (elev < 0.35) biome = 'Water';
+            else if (elev < 0.4 && moist > 0.7) biome = 'Swamp';
+            else if (elev > 0.8) biome = 'Mountain';
+            else if (elev > 0.6 && moist < 0.3) biome = 'Deadlands';
+            else if (moist < 0.15) biome = 'Desert';
+            else if (moist > 0.55) biome = 'Forest';
+        }
     }
 
     // JUICE: Dynamic Shop Flavor Text
     if (shopTitle) {
         let flavor = "A traveling merchant.";
-        if (biome === 'Desert') flavor = "Water is worth its weight in gold here.";
+        if (gameState.currentRealm !== 0 && gameState.currentRealm) flavor = "I didn't expect to find a customer in this dimension.";
+        else if (biome === 'Desert') flavor = "Water is worth its weight in gold here.";
         else if (biome === 'Deadlands') flavor = "I would trade my own soul for a sip of clean water.";
         else if (biome === 'Mountain') flavor = "I'll pay top coin for wood and food.";
         else if (biome === 'Swamp') flavor = "Antidotes are flying off the shelves.";
         else if (biome === 'Underworld') flavor = "I collect things the surface dwellers fear.";
+        else if (biome === 'Sky Realm') flavor = "The air is thin, but the views are priceless.";
         else if (gameState.mapMode === 'castle') flavor = "Luxury goods and rare artifacts accepted.";
         
         shopTitle.innerHTML = `Merchant <span class="block text-xs font-normal text-gray-400 mt-1 italic tracking-normal font-sans">"${flavor}"</span>`;
@@ -380,7 +398,7 @@ function renderShop() {
     activeShopInventory.forEach(item => {
         const itemKey = getTradeItemKey(item.name);
         const baseBuyPrice = item.price;
-        const itemTemplate = ITEM_DATA[itemKey];
+        const itemTemplate = window.ITEM_DATA ? window.ITEM_DATA[itemKey] : null;
         
         // Discounts
         let discountPercent = gameState.player.charisma * 0.005;
@@ -390,26 +408,28 @@ function renderShop() {
         const finalDiscount = Math.min(discountPercent, 0.5);
         const finalBuyPrice = Math.max(1, Math.floor(baseBuyPrice * (1.0 - finalDiscount)));
 
-        // Visually cross out the original price if Charisma/Lore lowered it
+        // UX WIN: Visually highlight the discount in green
         let priceHtml = `${finalBuyPrice}g`;
         if (finalBuyPrice < baseBuyPrice) {
-            priceHtml = `<del class="text-gray-500 text-xs mr-1 font-normal">${baseBuyPrice}g</del>${finalBuyPrice}g`;
+            priceHtml = `<del class="text-gray-500 text-xs mr-1 font-normal">${baseBuyPrice}g</del><span class="text-green-400">${finalBuyPrice}g</span>`;
         }
 
-        // UX WIN: Color code the price if you can't afford it
+        // Color code the price if you can't afford it
         const canAffordItem = gameState.player.coins >= finalBuyPrice;
         const priceColorClass = canAffordItem ? 'text-yellow-500' : 'text-red-500';
 
         // QoL WIN: Buy Max Button for Stackables
-        let actionsHtml = `<button data-buy-item="${item.name}" data-amount="1" style="transform: translate3d(0,0,0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50">Buy 1</button>`;
+        let actionsHtml = `<button data-buy-item="${item.name}" data-amount="1" style="transform: translateZ(0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50">Buy 1</button>`;
         const isStackable = itemTemplate && ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
         
         if (isStackable && item.stock > 1) {
-            actionsHtml += `<button data-buy-item="${item.name}" data-amount="all" style="transform: translate3d(0,0,0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs">Max</button>`;
+            actionsHtml += `<button data-buy-item="${item.name}" data-amount="all" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs">Max</button>`;
         }
 
+        const outOfStockClass = item.stock <= 0 ? 'opacity-50 grayscale' : 'hover:border-green-500';
+
         const li = document.createElement('li');
-        li.className = 'shop-item hover:border-green-500 transition-colors duration-150';
+        li.className = `shop-item transition-colors duration-150 ${outOfStockClass}`;
         li.innerHTML = `
             <div>
                 <span class="shop-item-name">${item.name} <span class="text-xl">${itemTemplate?.tile || '?'}</span></span>
@@ -450,10 +470,10 @@ function renderShop() {
             li.className = 'shop-item hover:border-blue-500 transition-colors duration-150';
             
             // UX WIN: Add a "Sell Stack" button if they have more than 1!
-            let actionsHtml = `<button data-sell-index="${index}" data-amount="1" style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50" ${item.isEquipped ? 'disabled title="Unequip first"' : ''}>Sell 1</button>`;
+            let actionsHtml = `<button data-sell-index="${index}" data-amount="1" style="transform: translateZ(0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50" ${item.isEquipped ? 'disabled title="Unequip first"' : ''}>Sell 1</button>`;
             
             if (item.quantity > 1 && !item.isEquipped) {
-                actionsHtml += `<button data-sell-index="${index}" data-amount="all" style="transform: translate3d(0,0,0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs">All (${item.quantity})</button>`;
+                actionsHtml += `<button data-sell-index="${index}" data-amount="all" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs">All (${item.quantity})</button>`;
             } else if (item.isEquipped) {
                 actionsHtml = `<span class="text-[10px] font-bold text-yellow-500 bg-black bg-opacity-30 px-2 py-1 rounded uppercase tracking-widest border border-yellow-800">Equipped</span>`;
             }
@@ -486,7 +506,7 @@ function renderShop() {
         sellHeader.innerHTML = `
             <div class="flex justify-between items-center w-full">
                 <span>Your Bag <span class="text-[10px] text-gray-400 font-normal ml-1">(${gameState.player.inventory.length}/${window.MAX_INVENTORY_SLOTS || 9})</span></span>
-                <button id="sellAllBtn" style="transform: translate3d(0,0,0);" class="text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ${btnClass}" ${hasJunk ? '' : 'disabled'}>Sell All Junk</button>
+                <button id="sellAllBtn" style="transform: translateZ(0);" class="text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ${btnClass}" ${hasJunk ? '' : 'disabled'}>Sell All Junk</button>
             </div>
         `;
         // Ensure we assign the handler directly 
@@ -501,12 +521,14 @@ function getRegionalPriceMultiplier(itemType, itemName) {
     const isDungeon = gameState.mapMode === 'dungeon';
     const isCastle = gameState.mapMode === 'castle';
     const isUnderworld = gameState.mapMode === 'underworld';
+    const isAlternateRealm = (typeof gameState !== 'undefined' && gameState.currentRealm && gameState.currentRealm !== 0);
 
     // Default Overworld check
     let biome = 'Plains';
-    if (!isDungeon && !isCastle && !isUnderworld) {
-        const elev = elevationNoise.noise(gameState.player.x / 70, gameState.player.y / 70);
-        const moist = moistureNoise.noise(gameState.player.x / 50, gameState.player.y / 50);
+    if (!isDungeon && !isCastle && !isUnderworld && typeof elevationNoise !== 'undefined') {
+        const realmOffset = isAlternateRealm ? gameState.currentRealm * 100 : 0;
+        const elev = elevationNoise.noise(gameState.player.x / 70, gameState.player.y / 70, realmOffset);
+        const moist = moistureNoise.noise(gameState.player.x / 50, gameState.player.y / 50, realmOffset);
         if (elev < 0.35) biome = 'Water';
         else if (elev < 0.4 && moist > 0.7) biome = 'Swamp';
         else if (elev > 0.8) biome = 'Mountain';
@@ -517,38 +539,44 @@ function getRegionalPriceMultiplier(itemType, itemName) {
 
     // --- SUPPLY & DEMAND LOGIC ---
 
-    // 1. DESERT: Pays huge for Water/Food/Herbs. Hates Sand/Cactus.
+    // 1. MULTIVERSE / ALTERNATE DIMENSIONS: Survival items are priceless
+    if (isAlternateRealm) {
+        if (itemName === 'Clean Water' || itemName === 'Flask of Water' || itemName === 'Hardtack') multiplier = 2.0;
+        if (itemName === 'Torch' || itemName === 'Campfire Kit') multiplier = 1.5;
+    }
+
+    // 2. DESERT: Pays huge for Water/Food/Herbs. Hates Sand/Cactus.
     if (biome === 'Desert') {
         if (itemName === 'Cactus Fruit') multiplier = 0.5; // Supply is high
         if (itemName === 'Wildberry' || itemName === 'Healing Potion') multiplier = 2.0; // Demand is high
         if (itemName === 'Obsidian Shard') multiplier = 1.5;
     }
     
-    // 2. DEADLANDS & UNDERWORLD: Will pay extraordinary sums for basic survival gear!
+    // 3. DEADLANDS & UNDERWORLD: Will pay extraordinary sums for basic survival gear!
     if (biome === 'Deadlands' || isUnderworld) {
         if (itemName === 'Clean Water' || itemName === 'Flask of Water' || itemName === 'Healing Potion') multiplier = 2.5; 
-        if (itemName === 'Torch' || itemName === 'Campfire Kit') multiplier = 2.0;
+        if (itemName === 'Torch' || itemName === 'Ever-Burning Candle' || itemName === 'Campfire Kit') multiplier = 2.0;
         if (itemName === 'Void Dust' || itemName === 'Demon Horn') multiplier = 0.8; // Common drops here
     }
 
-    // 3. MOUNTAIN & VOLCANO: Pays for Wood/Food. Hates Ore/Stone.
+    // 4. MOUNTAIN & VOLCANO: Pays for Wood/Food. Hates Ore/Stone.
     if (biome === 'Mountain' || (isDungeon && gameState.currentCaveTheme === 'ROCK') || (isDungeon && gameState.currentCaveTheme === 'FIRE')) {
         if (itemName === 'Iron Ore' || itemName === 'Stone' || itemName === 'Obsidian Shard') multiplier = 0.5;
         if (itemName === 'Stick' || itemName === 'Wood Log' || itemName === 'Machete') multiplier = 1.5;
     }
 
-    // 4. FOREST/SWAMP: Pays for Metal/Tech. Hates Wood/Herbs.
+    // 5. FOREST/SWAMP: Pays for Metal/Tech. Hates Wood/Herbs.
     if (biome === 'Forest' || biome === 'Swamp') {
         if (itemName === 'Medicinal Herb' || itemName === 'Stick' || itemName === 'Wood Log') multiplier = 0.5;
         if (itemName === 'Iron Ore' || itemName === 'Steel Sword') multiplier = 1.3;
         if (itemName === 'Antidote') multiplier = 2.0; // High demand in swamps!
     }
 
-    // 5. CASTLES/VILLAGES: Pay extra for Luxury, Relics, and Exotic Fish
+    // 6. CASTLES/VILLAGES: Pay extra for Luxury, Relics, and Exotic Fish
     if (isCastle || biome === 'Safe Haven') {
         if (itemType === 'junk' || itemType === 'quest' || itemType === 'trade') multiplier = 1.2; 
         if (itemName === 'Shattered Crown' || itemName === 'Signet Ring') multiplier = 1.5;
-        if (['Golden Koi', 'Black Pearl', 'Rainbow Shell', 'Abyssal Oyster'].includes(itemName)) multiplier = 1.3;
+        if (['Golden Koi', 'Black Pearl', 'Rainbow Shell', 'Abyssal Oyster', 'Astral Jelly', 'Void Ray'].includes(itemName)) multiplier = 1.3;
     }
 
     return multiplier;
