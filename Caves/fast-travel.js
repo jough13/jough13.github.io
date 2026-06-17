@@ -29,6 +29,20 @@ function openFastTravelModal() {
     if (loreModal) loreModal.classList.add('hidden');
 }
 
+// Helper to determine biome icon from regional names
+function getBiomeIcon(name) {
+    if (!name) return '✨';
+    const n = name.toLowerCase();
+    if (n.includes('forest') || n.includes('wood')) return '🌲';
+    if (n.includes('mountain') || n.includes('peak')) return '⛰️';
+    if (n.includes('swamp') || n.includes('marsh')) return '🐸';
+    if (n.includes('desert') || n.includes('sand')) return '🐪';
+    if (n.includes('dead') || n.includes('ash')) return '💀';
+    if (n.includes('water') || n.includes('sea') || n.includes('ocean')) return '🌊';
+    if (n.includes('plains') || n.includes('expanse') || n.includes('valley')) return '🌿';
+    return '✨'; // Default
+}
+
 function renderFastTravelList() {
     fastTravelList.innerHTML = '';
     const player = gameState.player;
@@ -50,12 +64,19 @@ function renderFastTravelList() {
         const dx = tx - playerX;
         const dy = ty - playerY; // Negative Y is North in our grid
         if (dx === 0 && dy === 0) return '';
-        let dir = '';
-        if (dy < 0) dir += 'N';
-        else if (dy > 0) dir += 'S';
-        if (dx > 0) dir += 'E';
-        else if (dx < 0) dir += 'W';
-        return dir ? ` ${dir}` : '';
+        
+        let ns = '';
+        let ew = '';
+        if (dy < 0) ns = 'North';
+        else if (dy > 0) ns = 'South';
+        
+        if (dx < 0) ew = 'West';
+        else if (dx > 0) ew = 'East';
+        
+        if (ns && ew) return ` (${ns}-${ew})`;
+        if (ns) return ` (${ns})`;
+        if (ew) return ` (${ew})`;
+        return '';
     };
 
     // --- UI CATEGORY: SANCTUARIES ---
@@ -83,7 +104,7 @@ function renderFastTravelList() {
         villageLi.className = 'shop-item bg-blue-900 bg-opacity-20 border-blue-700 hover:border-blue-400 transition-all transform hover:-translate-y-0.5';
         villageLi.innerHTML = `
             <div>
-                <span class="font-bold text-blue-400">Safe Haven Village</span>${dimensionBadge}
+                <span class="font-bold text-blue-400">🛡️ Safe Haven Village</span>${dimensionBadge}
                 <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: 0, 0 <span class="ml-2 text-blue-300">(Dist: ${getDist(0, 0)}m${getDir(0, 0)})</span></div>
             </div>
             <button class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 ${btnClass}" ${canAfford ? '' : 'disabled'} onclick="handleFastTravel(0, 0)">${btnText}</button>
@@ -105,7 +126,7 @@ function renderFastTravelList() {
             bedLi.className = 'shop-item bg-green-900 bg-opacity-20 border-green-700 hover:border-green-400 transition-all transform hover:-translate-y-0.5';
             bedLi.innerHTML = `
                 <div>
-                    <span class="font-bold text-green-400">Personal Camp (Bed)</span>
+                    <span class="font-bold text-green-400">⛺ Personal Camp (Bed)</span>
                     <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${rx}, ${-ry} <span class="ml-2 text-green-300">(Dist: ${getDist(rx, ry)}m${getDir(rx, ry)})</span></div>
                 </div>
                 <button class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 ${btnClass}" ${canAfford ? '' : 'disabled'} onclick="handleFastTravel(${rx}, ${ry})">${btnText}</button>
@@ -136,11 +157,13 @@ function renderFastTravelList() {
         const btnText = canAffordBase ? `-${baseTravelCost} MP` : 'OOM';
 
         availableWaypoints.forEach(wp => {
+            const icon = getBiomeIcon(wp.name);
+            
             const li = document.createElement('li');
             li.className = 'shop-item bg-purple-900 bg-opacity-10 border-gray-700 hover:border-purple-500 transition-all transform hover:-translate-y-0.5';
             li.innerHTML = `
                 <div>
-                    <span class="font-bold text-purple-400">${wp.name}</span>
+                    <span class="font-bold text-purple-400">${icon} ${wp.name}</span>
                     <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${wp.x}, ${-wp.y} <span class="ml-2 text-purple-300">(Dist: ${wp.dist}m${wp.dir})</span></div>
                 </div>
                 <button class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 ${btnClass}" ${canAffordBase ? '' : 'disabled'} onclick="handleFastTravel(${wp.x}, ${wp.y})">${btnText}</button>
@@ -152,7 +175,8 @@ function renderFastTravelList() {
     fastTravelList.appendChild(fragment);
 }
 
-window.handleFastTravel = function (targetX, targetY) {
+// JUICE WIN: Make the handler fully asynchronous so we can await particle animations!
+window.handleFastTravel = async function (targetX, targetY) {
     // Prevent double-clicking
     if (isProcessingMove) return;
 
@@ -162,19 +186,21 @@ window.handleFastTravel = function (targetX, targetY) {
     const isFreeRecall = (targetX === 0 && targetY === 0) && player.level <= 3;
     const TRAVEL_COST = isFreeRecall ? 0 : ((player.talents && player.talents.includes('mana_flow')) ? 8 : 10);
 
-    // --- GAMEPLAY WIN: Anti-Combat Teleport ---
+    // --- GAMEPLAY WIN: True Euclidean Anti-Combat Teleport ---
     // You cannot flee via leylines if enemies are too close! (5 tile radius)
     let inCombat = false;
+    const COMBAT_RADIUS_SQ = 25; 
+    
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         for (const enemyId in gameState.sharedEnemies) {
             const enemy = gameState.sharedEnemies[enemyId];
-            if (Math.abs(enemy.x - player.x) <= 5 && Math.abs(enemy.y - player.y) <= 5) {
+            if (Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2) <= COMBAT_RADIUS_SQ) {
                 inCombat = true;
                 break;
             }
         }
     } else {
-        inCombat = gameState.instancedEnemies.some(e => Math.abs(e.x - player.x) <= 5 && Math.abs(e.y - player.y) <= 5);
+        inCombat = gameState.instancedEnemies.some(e => Math.pow(e.x - player.x, 2) + Math.pow(e.y - player.y, 2) <= COMBAT_RADIUS_SQ);
     }
 
     if (inCombat) {
@@ -211,30 +237,36 @@ window.handleFastTravel = function (targetX, targetY) {
         return;
     }
 
-    // --- ENGINE LOCK ---
+    // --- ENGINE LOCK & UI HIDE ---
     isProcessingMove = true;
+    fastTravelModal.classList.add('hidden'); // Instantly hide so they can see the effect
 
-    // --- DEPARTURE FX ---
+    // --- DEPARTURE FX (With Async Delay) ---
     if (typeof ParticleSystem !== 'undefined') {
-        // Create an inward implosion effect
-        for(let i=0; i<20; i++) {
+        // Create a massive inward implosion effect
+        for(let i = 0; i < 30; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const dist = 3;
-            ParticleSystem.spawn(player.x + Math.cos(angle)*dist, player.y + Math.sin(angle)*dist, '#8b5cf6', 'dust');
+            const dist = 4 + Math.random() * 2;
+            ParticleSystem.spawn(player.x + Math.cos(angle) * dist, player.y + Math.sin(angle) * dist, '#a855f7', 'dust');
             const p = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length-1];
             if (p) {
-                // Pull particles inward
-                p.vx = -Math.cos(angle) * 0.2;
-                p.vy = -Math.sin(angle) * 0.2;
-                p.lifeFade = 0.05;
+                // Pull particles inward sharply
+                p.vx = -Math.cos(angle) * 0.3;
+                p.vy = -Math.sin(angle) * 0.3;
+                p.lifeFade = 0.03; // Live just long enough to reach the center
             }
         }
-        ParticleSystem.createExplosion(player.x, player.y, '#c084fc', 10);
+        ParticleSystem.createFloatingText(player.x, player.y, "Warping...", "#c084fc");
     }
+    
     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
     
-    // JUICE: Teleport Sickness Screen Shake
-    gameState.screenShake = 20;
+    // JUICE: Teleport Sickness Pre-Warp Screen Shake
+    gameState.screenShake = 10;
+
+    // --- TENSION BUILDER ---
+    // Wait for the particles to suck into the player before snapping the coordinates!
+    await new Promise(resolve => setTimeout(resolve, 400));
 
     // Deduct Cost
     player.mana -= TRAVEL_COST;
@@ -315,7 +347,20 @@ window.handleFastTravel = function (targetX, targetY) {
     // --- ARRIVAL FX ---
     if (typeof ParticleSystem !== 'undefined') {
         ParticleSystem.createExplosion(player.x, player.y, '#3b82f6', 25); // Huge Blue explosion
+        
+        // Radial Ring Shockwave
+        for(let i = 0; i < 15; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            ParticleSystem.spawn(player.x, player.y, '#93c5fd', 'dust');
+            const p = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length-1];
+            if (p) {
+                p.vx = Math.cos(angle) * 0.4;
+                p.vy = Math.sin(angle) * 0.4;
+            }
+        }
     }
+    
+    gameState.screenShake = 15; // Landing impact
     
     // Force complete redraw
     gameState.mapDirty = true;
@@ -328,8 +373,6 @@ window.handleFastTravel = function (targetX, targetY) {
     if (typeof chunkManager.unloadOutOfRangeChunks === 'function') {
         chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
     }
-
-    fastTravelModal.classList.add('hidden');
     
     // Save state completely to Firebase
     if (typeof playerRef !== 'undefined' && playerRef) {
@@ -338,8 +381,8 @@ window.handleFastTravel = function (targetX, targetY) {
     
     if (typeof renderStats === 'function') renderStats();
 
-    // Unlock Engine after a brief delay to simulate travel time
-    setTimeout(() => { isProcessingMove = false; }, 300);
+    // Unlock Engine after a brief delay to simulate travel recovery time
+    setTimeout(() => { isProcessingMove = false; }, 200);
 };
 
 if (closeFastTravelButton) {
