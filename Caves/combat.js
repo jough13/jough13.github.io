@@ -1802,6 +1802,9 @@ function handlePlayerDeath() {
     
     player.inventory = []; 
     player.equipment = { weapon: { name: 'Fists', damage: 0 }, armor: { name: 'Simple Tunic', defense: 0 } };
+    
+    // Reset Arena progress so they aren't permanently locked out of the Colosseum if they return
+    player.arenaWave = 0; 
 
     playerRef.set(sanitizeForFirebase(player), { merge: true }).catch(console.error);
 
