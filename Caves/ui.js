@@ -544,6 +544,20 @@ const renderInventory = () => {
                 itemDiv.appendChild(equipBadge);
             }
 
+            // Show a hover "Bind" button for usables!
+            if (item.type === 'consumable' || item.type === 'instant' || item.type === 'tool') {
+                const assignBtn = document.createElement('button');
+                // Uses Tailwind group-hover to only appear when mousing over the item
+                assignBtn.className = 'absolute -bottom-2 right-0 bg-blue-600 hover:bg-blue-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity';
+                assignBtn.textContent = 'Bind';
+                assignBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    assignToHotbar(item.templateId || item.name);
+                };
+                itemDiv.classList.add('group'); // Attach group class to parent
+                itemDiv.appendChild(assignBtn);
+            }
+
             itemDiv.appendChild(slotNumber);
             itemDiv.appendChild(itemChar);
             itemDiv.appendChild(itemQuantity);
