@@ -1,8 +1,9 @@
 // --- START OF FILE utils.js ---
 
 // ==========================================
-// NETWORK TIMEOUT HELPER
+// NETWORK & ASYNC UTILITIES
 // ==========================================
+
 window.withTimeout = function(promise, ms = 3000) {
     return Promise.race([
         promise,
@@ -11,6 +12,31 @@ window.withTimeout = function(promise, ms = 3000) {
         )
     ]);
 };
+
+// PERFORMANCE WIN: Generic Debounce & Throttle
+// Essential for limiting API calls, window resizing, or rapid UI button mashing
+window.debounce = function(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+};
+
+window.throttle = function(func, limit) {
+    let inThrottle;
+    return function(...args) {
+        if (!inThrottle) {
+            func.apply(this, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
+};
+
+// ==========================================
+// GLOBAL CONFIGURATION
+// ==========================================
 
 let TILE_SIZE = 20; // Fixed tile size (prevent them from getting huge)
 let VIEWPORT_WIDTH = 40; // Will update on resize
@@ -27,8 +53,14 @@ window.MathUtils = {
     // Distance squared is much faster to compute than true distance (no Math.sqrt)
     distSq: (x1, y1, x2, y2) => (x2 - x1) ** 2 + (y2 - y1) ** 2,
     
-    // True distance
+    // True Euclidean distance
     dist: (x1, y1, x2, y2) => Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2),
+    
+    // Manhattan distance (Extremely fast, perfect for grid-based AI pathfinding bounds)
+    manhattanDist: (x1, y1, x2, y2) => Math.abs(x1 - x2) + Math.abs(y1 - y2),
+
+    // Returns angle in radians between two points (Essential for particle/projectile rotation)
+    angleBetween: (x1, y1, x2, y2) => Math.atan2(y2 - y1, x2 - x1),
     
     // Keeps a value within a specified range
     clamp: (val, min, max) => Math.max(min, Math.min(max, val)),
@@ -41,12 +73,10 @@ window.MathUtils = {
         let x = Math.max(0, Math.min(1, (value - min) / (max - min)));
         return x * x * (3 - 2 * x);
     },
-    easeOutQuad: (x) => {
-        return 1 - (1 - x) * (1 - x);
-    },
-    easeInOutQuad: (x) => {
-        return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
-    },
+    easeInQuad: (x) => x * x,
+    easeOutQuad: (x) => 1 - (1 - x) * (1 - x),
+    easeInOutQuad: (x) => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2,
+    easeOutCubic: (x) => 1 - Math.pow(1 - x, 3),
     easeOutElastic: (x) => {
         const c4 = (2 * Math.PI) / 3;
         return x === 0 ? 0 : x === 1 ? 1 : Math.pow(2, -10 * x) * Math.sin((x * 10 - 0.75) * c4) + 1;
@@ -154,8 +184,33 @@ window.ColorUtils = {
         const b = Math.round(window.MathUtils.lerp(c1.b, c2.b, amt));
         
         return `rgb(${r}, ${g}, ${b})`;
+    },
+
+    // Takes a hex code and a percentage (-1.0 to 1.0) to lighten or darken it natively
+    adjustBrightness: (hex, percent) => {
+        let {r, g, b} = window.ColorUtils.hexToRgb(hex);
+        
+        r = parseInt(r * (1 + percent), 10);
+        g = parseInt(g * (1 + percent), 10);
+        b = parseInt(b * (1 + percent), 10);
+        
+        r = Math.max(0, Math.min(255, r));
+        g = Math.max(0, Math.min(255, g));
+        b = Math.max(0, Math.min(255, b));
+        
+        return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
+    },
+
+    // Generates an rgba string from a hex code and alpha value
+    rgba: (hex, alpha) => {
+        const {r, g, b} = window.ColorUtils.hexToRgb(hex);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 };
+
+// ==========================================
+// CORE PRNG & NOISE LOGIC (DO NOT ALTER MATH)
+// ==========================================
 
 // IMPORTANT: Do NOT alter the math in this function! 
 // Altering it will change the world seed hash and shift everyone's map!
@@ -298,6 +353,19 @@ function capitalizeWords(str) {
     return str.replace(/\b\w/g, char => char.toUpperCase());
 }
 
+// Simple singular/plural converter (e.g., pluralize(5, "Arrow") -> "5 Arrows")
+window.pluralize = function(count, noun, suffix = 's') {
+    return `${count} ${noun}${count !== 1 ? suffix : ''}`;
+};
+
+// Oxford Comma list formatter (e.g., ['A', 'B', 'C'] -> "A, B, and C")
+window.formatList = function(arr) {
+    if (!arr || arr.length === 0) return "";
+    if (arr.length === 1) return arr[0];
+    if (arr.length === 2) return `${arr[0]} and ${arr[1]}`;
+    return `${arr.slice(0, -1).join(', ')}, and ${arr[arr.length - 1]}`;
+};
+
 function getOrdinalSuffix(day) {
     if (day > 3 && day < 21) return 'th';
     switch (day % 10) {
@@ -350,10 +418,24 @@ function getRelativePositionText(dx, dy) {
     return `${distStr} ${capitalizeWords(dir)}`;
 }
 
-const elevationNoise = Object.create(Perlin);
-elevationNoise.init(WORLD_SEED + ':elevation');
-const moistureNoise = Object.create(Perlin);
-moistureNoise.init(WORLD_SEED + ':moisture');
+// ==========================================
+// DEEP OBJECT MANAGEMENT
+// ==========================================
+
+// PERFORMANCE WIN: High-speed recursive clone. 
+// Replaces JSON.parse(JSON.stringify()) in combat and save loops for massive speedups!
+window.fastClone = function(obj) {
+    if (obj === null || typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return obj.map(window.fastClone);
+    
+    const cloned = {};
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            cloned[key] = window.fastClone(obj[key]);
+        }
+    }
+    return cloned;
+};
 
 // Hardware-Accelerated UUIDs
 function generateUUID() {
@@ -367,5 +449,11 @@ function generateUUID() {
         return v.toString(16);
     });
 }
+
+// Initialize Global Noise Instances
+const elevationNoise = Object.create(Perlin);
+elevationNoise.init(WORLD_SEED + ':elevation');
+const moistureNoise = Object.create(Perlin);
+moistureNoise.init(WORLD_SEED + ':moisture');
 
 // --- END OF FILE utils.js ---
