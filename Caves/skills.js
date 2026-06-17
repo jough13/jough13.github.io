@@ -8,7 +8,7 @@
 
 function useSkill(skillId) {
     const player = gameState.player;
-    const skillData = SKILL_DATA[skillId]; 
+    const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[skillId] : null; 
 
     if (!skillData) {
         logMessage("{red:Unknown skill. (No skill data found)}");
@@ -67,7 +67,10 @@ function useSkill(skillId) {
         // Cost is checked, but *not* deducted. execute functions will deduct it.
         gameState.isAiming = true;
         gameState.abilityToAim = skillId; 
-        skillModal.classList.add('hidden');
+        
+        const skillModal = document.getElementById('skillModal');
+        if (skillModal) skillModal.classList.add('hidden');
+        
         logMessage(`{yellow:${skillData.name}: Press an arrow key or WASD to use. (Esc) to cancel.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
         return; 
@@ -100,12 +103,21 @@ function useSkill(skillId) {
                 break;
 
             case 'channel':
-                const manaGain = 5 + (player.wits * 2);
+                let manaGain = 5 + (player.wits * 2);
+                
+                // --- EXPANSION WIN: Archmage Synergy ---
+                if (player.talents && player.talents.includes('mana_flow')) {
+                    manaGain += 5;
+                    logMessage("{purple:Your Mana Flow talent deepens the channel!}");
+                }
+                
                 player.mana = Math.min(player.maxMana, player.mana + manaGain);
                 logMessage(`{blue:You channel energy... +${manaGain} Mana.}`);
-                triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                
+                if (typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+${manaGain}`, '#3b82f6');
+                
                 skillUsedSuccessfully = true;
                 break;
 
@@ -113,8 +125,17 @@ function useSkill(skillId) {
                 player.thornsValue = 100; // Reflect huge damage
                 player.thornsTurns = 1;   // Only for the very next turn/hit
                 logMessage("{gray:You raise your blade, ready to deflect the next blow.}");
+                
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "STANCE", "#9ca3af");
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createFloatingText(player.x, player.y, "STANCE", "#9ca3af");
+                    // JUICE WIN: Glowing blue aura indicates the stance is active
+                    for(let i = 0; i < 8; i++) {
+                        const angle = (Math.PI / 4) * i;
+                        ParticleSystem.spawn(player.x + Math.cos(angle) * 1.2, player.y + Math.sin(angle) * 1.2, '#93c5fd', 'dust', '', 4);
+                    }
+                }
+                
                 skillUsedSuccessfully = true;
                 break;
 
@@ -140,15 +161,23 @@ function useSkill(skillId) {
                 const stamGain = 10;
                 player.stamina = Math.min(player.maxStamina, player.stamina + stamGain);
                 logMessage(`{green:You push past the pain! (+10 Stamina)}`);
-                triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal(); // Re-using heal sound for buff
+                if (typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal(); 
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+10`, '#facc15');
                 skillUsedSuccessfully = true;
                 break;
 
-            // PERFORMANCE & ROBUSTNESS WIN: Multi-Target RTDB Combat Wrapper
             case 'whirlwind':
-                logMessage("{red:You spin in a deadly vortex!}");
+                let baseDmg = (player.strength + player.dexterity) * skillLevel;
+                
+                // --- EXPANSION WIN: Two-Handed Whirlwind Synergy ---
+                if (player.equipment.weapon && player.equipment.weapon.isTwoHanded) {
+                    baseDmg = Math.floor(baseDmg * 1.5);
+                    logMessage("{orange:Your massive two-handed weapon creates a devastating sweep!}");
+                } else {
+                    logMessage("{red:You spin in a deadly vortex!}");
+                }
+                
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy');
                 gameState.screenShake = 15; // JUICE: Heavy screen shake
                 
@@ -156,11 +185,10 @@ function useSkill(skillId) {
                 if (typeof ParticleSystem !== 'undefined') {
                     for (let i = 0; i < 8; i++) {
                         const angle = (Math.PI / 4) * i;
-                        ParticleSystem.spawn(player.x + Math.cos(angle)*1.5, player.y + Math.sin(angle)*1.5, '#d4d4d8', 'dust', '', 4);
+                        const pColor = (player.equipment.weapon && player.equipment.weapon.isTwoHanded) ? '#f97316' : '#d4d4d8';
+                        ParticleSystem.spawn(player.x + Math.cos(angle)*1.5, player.y + Math.sin(angle)*1.5, pColor, 'dust', '', 5);
                     }
                 }
-
-                const baseDmg = (player.strength + player.dexterity) * skillLevel;
 
                 // Create an array to hold all the async combat promises
                 const whirlwindPromises = [];
@@ -179,19 +207,18 @@ function useSkill(skillId) {
                             const enemyData = ENEMY_DATA[tile];
                             if (enemyData) {
                                 const finalDmg = Math.max(1, baseDmg - (enemyData.defense || 0));
-                                // Push to array so we can await them all at once later
                                 whirlwindPromises.push(handleOverworldCombat(tx, ty, enemyData, tile, finalDmg));
                             }
                         } else {
                             let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
                             if (enemy) {
-                                // SAFEGUARD: Prevent NaN database corruption in instances
                                 enemy.health = Number(enemy.health);
                                 if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
 
                                 const finalDmg = Math.max(1, baseDmg - (enemy.defense || 0));
                                 enemy.health -= finalDmg;
                                 logMessage(`Whirlwind hits ${enemy.name} for {red:${finalDmg}}!`);
+                                
                                 if (typeof ParticleSystem !== 'undefined') {
                                     ParticleSystem.createExplosion(tx, ty, '#fff', 3);
                                     ParticleSystem.createFloatingText(tx, ty, `-${finalDmg}`, '#ef4444');
@@ -199,7 +226,7 @@ function useSkill(skillId) {
 
                                 if (enemy.health <= 0) {
                                     logMessage(`You defeated ${enemy.name}!`);
-                                    handleInstancedEnemyDeath(enemy, tx, ty);
+                                    if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, tx, ty);
                                 }
                             }
                         }
@@ -207,11 +234,8 @@ function useSkill(skillId) {
                 }
 
                 if (whirlwindPromises.length > 0) {
-                    // We must NOT freeze the engine waiting for 8 network requests sequentially.
-                    // Promise.all fires them off concurrently!
                     Promise.all(whirlwindPromises).catch(e => console.error("Whirlwind Sync Error:", e));
                 } else if (gameState.mapMode === 'overworld') {
-                    // Only say missed if no promises were queued in overworld
                     logMessage("{gray:You whirl through empty air.}");
                 }
 
@@ -222,10 +246,13 @@ function useSkill(skillId) {
         // --- 5. Finalize Self-Cast Turn ---
         if (skillUsedSuccessfully) {
             if (typeof playerRef !== 'undefined') playerRef.update({ [costType]: player[costType] }); 
-            triggerStatFlash(statDisplays.stamina, false); 
-            skillModal.classList.add('hidden');
+            if (typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays.stamina, false); 
+            
+            const skillModal = document.getElementById('skillModal');
+            if (skillModal) skillModal.classList.add('hidden');
+            
             triggerAbilityCooldown(skillId);
-            endPlayerTurn();
+            if (typeof endPlayerTurn === 'function') endPlayerTurn();
             if (typeof renderEquipment === 'function') renderEquipment(); 
         } else {
             // Refund stamina if skill failed 
@@ -237,10 +264,11 @@ function useSkill(skillId) {
 
 async function executeMeleeSkill(skillId, dirX, dirY) {
     const player = gameState.player;
-    const skillData = SKILL_DATA[skillId];
+    const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[skillId] : null;
     const skillLevel = player.skillbook[skillId] || 1;
 
     let hit = false;
+    if (!skillData) return;
     
     // --- ROBUSTNESS WIN: Sub-skill requirements ---
     if (skillId === 'shieldBash') {
@@ -264,7 +292,9 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
         let rawPower = playerStrength + weaponDamage;
 
         // --- APPLY PASSIVE MODIFIERS (Blood Rage) ---
-        rawPower = getPlayerDamageModifier(rawPower);
+        if (typeof getPlayerDamageModifier === 'function') {
+            rawPower = getPlayerDamageModifier(rawPower);
+        }
 
         const baseDmg = rawPower * skillData.baseDamageMultiplier;
         const finalDmg = Math.max(1, Math.floor(baseDmg + (player.strength * 0.5 * skillLevel)));
@@ -297,6 +327,9 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
         for (const coords of enemiesToHit) {
             let tile;
             let map;
+            
+            if (typeof chunkManager === 'undefined') break; // Safety fallback
+
             if (gameState.mapMode === 'dungeon') {
                 map = chunkManager.caveMaps[gameState.currentCaveId];
                 tile = (map && map[coords.y]) ? map[coords.y][coords.x] : ' ';
@@ -310,7 +343,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                 tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(coords.x, coords.y);
             }
 
-            const enemyData = ENEMY_DATA[tile];
+            const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
             if (enemyData) {
 
                 if (player.stealthTurns > 0) {
@@ -323,9 +356,10 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
                 // Apply Damage
                 if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                    // Subtract Defense
                     const mitigatedDmg = Math.max(1, finalDmg - (enemyData.defense || 0));
-                    combatPromises.push(handleOverworldCombat(coords.x, coords.y, enemyData, tile, mitigatedDmg));
+                    if (typeof handleOverworldCombat === 'function') {
+                        combatPromises.push(handleOverworldCombat(coords.x, coords.y, enemyData, tile, mitigatedDmg));
+                    }
                 } else {
                     let enemy = gameState.instancedEnemies.find(e => e.x === coords.x && e.y === coords.y);
                     if (enemy) {
@@ -336,16 +370,24 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                         const mitigatedDmg = Math.max(1, finalDmg - (enemy.defense || 0));
                         enemy.health -= mitigatedDmg;
                         logMessage(`You hit ${enemy.name} for {red:${mitigatedDmg}} damage!`);
+                        
                         if (typeof ParticleSystem !== 'undefined') {
-                            ParticleSystem.createExplosion(coords.x, coords.y, '#fff', 3);
+                            // Unique particle color based on the skill
+                            let pColor = '#ffffff';
+                            if (skillId === 'kick') pColor = '#facc15';
+                            if (skillId === 'crush') pColor = '#ef4444';
+                            
+                            ParticleSystem.createExplosion(coords.x, coords.y, pColor, 4);
                             ParticleSystem.createFloatingText(coords.x, coords.y, `-${mitigatedDmg}`, '#ef4444');
                         }
 
-                        // APPLY STUN & JUICE (Shield Bash OR Crush)
-                        if (skillId === 'shieldBash' || skillId === 'crush') {
-                            gameState.screenShake = 12; // Heavy Hit Feel
+                        // --- EXPANSION WIN: APPLY STUN & JUICE (Shield Bash, Crush, OR Kick) ---
+                        if (skillId === 'shieldBash' || skillId === 'crush' || skillId === 'kick') {
+                            gameState.screenShake = (skillId === 'kick') ? 8 : 12; // Heavy Hit Feel
+                            
                             if (!enemy.isBoss) {
-                                enemy.stunTurns = 3;
+                                // Kick stuns for 2 turns, heavy bashes stun for 3
+                                enemy.stunTurns = (skillId === 'kick') ? 2 : 3;
                                 logMessage(`{yellow:${enemy.name} is stunned!}`);
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(coords.x, coords.y, "STUNNED", "#facc15");
                             } else {
@@ -355,7 +397,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
                         if (enemy.health <= 0) {
                             logMessage(`You defeated ${enemy.name}!`);
-                            handleInstancedEnemyDeath(enemy, coords.x, coords.y);
+                            if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, coords.x, coords.y);
                         }
                     }
                 }
@@ -380,7 +422,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
         }
 
         triggerAbilityCooldown(skillId);
-        endPlayerTurn();
+        if (typeof endPlayerTurn === 'function') endPlayerTurn();
         if (typeof render === 'function') render();
 
     } finally {
@@ -394,7 +436,8 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
  */
 async function executeRangedAttack(dirX, dirY) {
     const player = gameState.player;
-    const skillData = SKILL_DATA['ranged_attack'];
+    const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA['ranged_attack'] : null;
+    if (!skillData) return;
     
     // --- AMMO CHECK ---
     const ammo = player.equipment.ammo;
@@ -462,7 +505,7 @@ async function executeRangedAttack(dirX, dirY) {
             }
         }
 
-        const totalDamage = Math.max(1, rawPower);
+        let totalDamage = Math.max(1, rawPower);
 
         // --- CONSUME AMMO ---
         ammo.quantity--;
@@ -508,7 +551,7 @@ async function executeRangedAttack(dirX, dirY) {
             } else {
                 const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
                 tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
-                const theme = CAVE_THEMES[gameState.currentCaveTheme];
+                const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
                 const wallTile = theme ? theme.wall : '▓';
                 if (tile === wallTile || tile === '▒' || tile === '+') isSolid = true;
             }
@@ -560,14 +603,16 @@ async function executeRangedAttack(dirX, dirY) {
                 break;
             }
 
-            const enemyData = ENEMY_DATA[tile];
+            const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
 
             if (enemyData) {
                 hitSomething = true;
                 
                 if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                     const finalDmg = Math.max(1, totalDamage - (enemyData.defense || 0));
-                    await handleOverworldCombat(targetX, targetY, enemyData, tile, finalDmg);
+                    if (typeof handleOverworldCombat === 'function') {
+                        await handleOverworldCombat(targetX, targetY, enemyData, tile, finalDmg);
+                    }
                 } else {
                     let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
                     if (enemy) {
@@ -595,11 +640,20 @@ async function executeRangedAttack(dirX, dirY) {
 
                         if (enemy.health <= 0) {
                             logMessage(`You defeated ${enemy.name}!`);
-                            handleInstancedEnemyDeath(enemy, targetX, targetY);
+                            if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, targetX, targetY);
                         }
                     }
                 }
-                break; 
+
+                // --- EXPANSION WIN: Crossbow Piercing ---
+                // If it's a heavy crossbow, the bolt punches through to the next tile but loses 50% damage!
+                if (isHeavyCrossbow && totalDamage > 1) {
+                    logMessage(`{orange:The heavy bolt pierces right through!}`);
+                    totalDamage = Math.floor(totalDamage * 0.5); 
+                    // We DO NOT break here, allowing the loop to continue to the next tile!
+                } else {
+                    break; // Standard arrows stop after hitting one target
+                }
             }
             
             finalTargetX = targetX;
@@ -612,7 +666,7 @@ async function executeRangedAttack(dirX, dirY) {
                 ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Miss", "#9ca3af");
             }
             
-            // --- NEW: RECOVERABLE AMMO ---
+            // --- RECOVERABLE AMMO ---
             // 50% chance the arrow survives... ONLY IF IT'S A WOODEN ARROW! (Fire burns, poison dissipates)
             if (ammo.name === 'Wooden Arrow' && Math.random() < 0.50) {
                 let validFloor = true;
@@ -628,12 +682,14 @@ async function executeRangedAttack(dirX, dirY) {
                 if (['~', '≈', ' '].includes(dropTile)) validFloor = false; 
 
                 // --- Prevent arrows from overwriting items already on the ground! ---
-                if (ITEM_DATA[dropTile] || ['📦', '⚰️', '🏺', '🚪', '🔼'].includes(dropTile)) {
+                if ((typeof ITEM_DATA !== 'undefined' && ITEM_DATA[dropTile]) || ['📦', '⚰️', '🏺', '🚪', '🔼'].includes(dropTile)) {
                     validFloor = false; 
                 }
 
                 if (validFloor) {
-                    chunkManager.setWorldTile(finalTargetX, finalTargetY, '➹', 2); // Drops for 2 hours
+                    if (typeof chunkManager !== 'undefined' && typeof chunkManager.setWorldTile === 'function') {
+                        chunkManager.setWorldTile(finalTargetX, finalTargetY, '➹', 2); // Drops for 2 hours
+                    }
                     gameState.mapDirty = true;
                     logMessage("{gray:You see your arrow sticking out of the ground nearby.}");
                 }
@@ -647,9 +703,9 @@ async function executeRangedAttack(dirX, dirY) {
                 inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory // Sync ammo removal
             });
         }
-        triggerStatFlash(statDisplays.stamina, false); 
+        if (typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays.stamina, false); 
         
-        endPlayerTurn(); 
+        if (typeof endPlayerTurn === 'function') endPlayerTurn(); 
         if (typeof renderEquipment === 'function') renderEquipment(); // Refresh UI ammo count
         if (typeof render === 'function') render(); 
 
@@ -662,10 +718,11 @@ async function executeRangedAttack(dirX, dirY) {
 async function executeLunge(dirX, dirY) {
     const player = gameState.player;
     const skillId = "lunge"; 
-    const skillData = SKILL_DATA[skillId];
+    const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[skillId] : null;
     const skillLevel = player.skillbook[skillId] || 1;
 
     let hit = false;
+    if (!skillData) return;
 
     // --- 🚨 LOCK THE ENGINE ---
     isProcessingMove = true;
@@ -681,7 +738,9 @@ async function executeLunge(dirX, dirY) {
         let rawPower = playerStrength + weaponDamage;
 
         // --- APPLY PASSIVE MODIFIERS (Blood Rage) ---
-        rawPower = getPlayerDamageModifier(rawPower);
+        if (typeof getPlayerDamageModifier === 'function') {
+            rawPower = getPlayerDamageModifier(rawPower);
+        }
         const playerBaseDamage = rawPower;
 
         // Loop 2 and 3 tiles away
@@ -708,7 +767,7 @@ async function executeLunge(dirX, dirY) {
                 tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
             }
 
-            const enemyData = ENEMY_DATA[tile];
+            const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
 
             if (enemyData) {
                 // Found a target!
@@ -729,8 +788,9 @@ async function executeLunge(dirX, dirY) {
 
                 if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                     // Handle Overworld Combat
-                    await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
-
+                    if (typeof handleOverworldCombat === 'function') {
+                        await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
+                    }
                 } else {
                     // Handle Instanced Combat
                     let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
@@ -748,7 +808,7 @@ async function executeLunge(dirX, dirY) {
 
                         if (enemy.health <= 0) {
                             logMessage(`You defeated the ${enemy.name}!`);
-                            handleInstancedEnemyDeath(enemy, targetX, targetY);
+                            if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, targetX, targetY);
                         }
                     }
                 }
@@ -767,9 +827,10 @@ async function executeLunge(dirX, dirY) {
         if (typeof playerRef !== 'undefined') {
             playerRef.update({ stamina: player.stamina });
         }
-        triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
+        if (typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
+        
         triggerAbilityCooldown('lunge');
-        endPlayerTurn(); 
+        if (typeof endPlayerTurn === 'function') endPlayerTurn(); 
         if (typeof render === 'function') render(); 
 
     } finally {
@@ -780,6 +841,9 @@ async function executeLunge(dirX, dirY) {
 
 function executeQuickstep(dirX, dirY) {
     const player = gameState.player;
+    const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA['quickstep'] : null;
+    if (!skillData) return;
+
     // Move 2 tiles
     const targetX = player.x + (dirX * 2);
     const targetY = player.y + (dirY * 2);
@@ -798,7 +862,7 @@ function executeQuickstep(dirX, dirY) {
     if (['.', 'F', 'd', 'D'].includes(tile) || (gameState.mapMode === 'dungeon' && tile !== '▓' && tile !== '▒')) {
         player.x = targetX;
         player.y = targetY;
-        player.stamina -= SKILL_DATA['quickstep'].cost;
+        player.stamina -= skillData.cost;
         logMessage("{cyan:You dash forward with blinding speed!}");
         
         // JUICE: Smoke Trail
@@ -809,7 +873,7 @@ function executeQuickstep(dirX, dirY) {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
 
         triggerAbilityCooldown('quickstep');
-        endPlayerTurn();
+        if (typeof endPlayerTurn === 'function') endPlayerTurn();
         if (typeof render === 'function') render();
     } else {
         logMessage("{gray:Path blocked.}");
@@ -820,7 +884,8 @@ function executeQuickstep(dirX, dirY) {
 
 function executePacify(dirX, dirY) {
     const player = gameState.player;
-    const skillData = SKILL_DATA["pacify"];
+    const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA["pacify"] : null;
+    if (!skillData) return;
 
     // --- 1. Deduct Cost ---
     player.psyche -= skillData.cost;
@@ -843,7 +908,7 @@ function executePacify(dirX, dirY) {
         let theme;
         if (gameState.mapMode === 'dungeon') {
             map = chunkManager.caveMaps[gameState.currentCaveId];
-            theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+            theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] || { floor: '.' } : { floor: '.' };
         } else {
             map = chunkManager.castleMaps[gameState.currentCastleId];
             theme = { floor: '.' };
@@ -902,15 +967,17 @@ function executePacify(dirX, dirY) {
 
     // --- 4. Finalize Turn ---
     if (typeof playerRef !== 'undefined') playerRef.update({ psyche: player.psyche });
-    triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+    if (typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+    
     triggerAbilityCooldown('pacify');
-    endPlayerTurn();
+    if (typeof endPlayerTurn === 'function') endPlayerTurn();
     if (typeof render === 'function') render();
 }
 
 function executeTame(dirX, dirY) {
     const player = gameState.player;
-    const skillData = SKILL_DATA["tame"];
+    const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA["tame"] : null;
+    if (!skillData) return;
 
     // 1. Deduct Cost
     player.psyche -= skillData.cost;
@@ -934,8 +1001,9 @@ function executeTame(dirX, dirY) {
         if (enemy) {
             hit = true;
 
-            // Check beast types
-            const beastTiles = ['w', '@', '🦂', '🐺'];
+            // --- EXPANSION WIN: Expanded list of Tameable Beasts ---
+            const beastTiles = ['w', '@', '🦂', '🐺', '🐗', '🐸', '🦇', '🦌'];
+            
             if (!beastTiles.includes(enemy.tile)) {
                 logMessage("{red:You can only tame beasts!}");
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -976,7 +1044,7 @@ function executeTame(dirX, dirY) {
                 // Clear the map tile so it doesn't leave a ghost sprite
                 let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
                 let validFloor = '.';
-                if (gameState.mapMode === 'dungeon' && CAVE_THEMES[gameState.currentCaveTheme]) {
+                if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
                     validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
                 }
                 map[targetY][targetX] = validFloor;
@@ -998,7 +1066,7 @@ function executeTame(dirX, dirY) {
 
     if (typeof playerRef !== 'undefined') playerRef.update({ psyche: player.psyche });
     triggerAbilityCooldown('tame');
-    endPlayerTurn();
+    if (typeof endPlayerTurn === 'function') endPlayerTurn();
     if (typeof render === 'function') render();
 }
 
@@ -1011,7 +1079,8 @@ function executeTame(dirX, dirY) {
 
 function executeInflictMadness(dirX, dirY) {
     const player = gameState.player;
-    const skillData = SKILL_DATA["inflictMadness"];
+    const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA["inflictMadness"] : null;
+    if (!skillData) return;
 
     // --- 1. Deduct Cost ---
     player.psyche -= skillData.cost;
@@ -1033,7 +1102,7 @@ function executeInflictMadness(dirX, dirY) {
         let theme;
         if (gameState.mapMode === 'dungeon') {
             map = chunkManager.caveMaps[gameState.currentCaveId];
-            theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+            theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] || { floor: '.' } : { floor: '.' };
         } else {
             map = chunkManager.castleMaps[gameState.currentCastleId];
             theme = { floor: '.' };
@@ -1085,9 +1154,10 @@ function executeInflictMadness(dirX, dirY) {
     if (typeof playerRef !== 'undefined') {
         playerRef.update({ psyche: player.psyche });
     }
-    triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+    if (typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+    
     triggerAbilityCooldown('inflictMadness');
-    endPlayerTurn();
+    if (typeof endPlayerTurn === 'function') endPlayerTurn();
     if (typeof render === 'function') render();
 }
 
@@ -1095,7 +1165,7 @@ function executeInflictMadness(dirX, dirY) {
  * Sets the cooldown for a skill or spell and updates the DB/UI.
  */
 function triggerAbilityCooldown(abilityId) {
-    const data = SKILL_DATA[abilityId] || SPELL_DATA[abilityId];
+    const data = (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) || (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]);
 
     if (data && data.cooldown) {
         // Initialize object if it doesn't exist
@@ -1155,3 +1225,5 @@ function initSkillbookListeners() {
         });
     }
 }
+
+// --- END OF FILE skills.js ---
