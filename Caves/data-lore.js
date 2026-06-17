@@ -96,7 +96,9 @@ window.LORE_STONE_MESSAGES = [
     "The ashes of the Oracle still speak, if you know how to listen.",
     "A world built on glass cannot withstand a falling star.",
     "The astrolabe points not to the stars, but to the realms between them.",
-    "Even the Kraken fears what sleeps in the deepest trench."
+    "Even the Kraken fears what sleeps in the deepest trench.",
+    "The sky is not a ceiling, but an ocean waiting to be sailed.",
+    "If you stare into the chasm long enough, it will invite you inside."
 ];
 
 // ==========================================
@@ -250,7 +252,24 @@ window.LORE_DEADLANDS = [
 // ==========================================
 
 window.VILLAGER_RUMORS = [
+    // --- COMBAT & MECHANICS ---
     "I heard spiders hate {red:fire}. Burn 'em, I say!",
+    "The skeletons are stupid, but they never tire. A spear is useless against them; you need something heavy to {gold:crush} the bones.",
+    "A {gray:Greataxe} is devastating, but it requires two hands. You'll have to put your shield away.",
+    "I watched a Ranger take down a Drake before it even got close. A good bow relies entirely on your {green:Dexterity}.",
+    "If a wild beast is badly wounded, try talking to it. You might just make a friend. Takes a lot of {gold:Charisma}, though.",
+    "If you want the best gear, you gotta make it yourself. Highly skilled crafters can make {gold:Masterwork} weapons that hit harder.",
+    
+    // --- NEW MECHANICS TUTORIALS ---
+    "A Heavy Crossbow is slow to load, but the bolts hit so hard they {red:pierce right through} targets! Try lining them up.",
+    "If you're using the {orange:Whirlwind} technique, make sure you're holding a two-handed weapon. The sweep is absolutely devastating.",
+    "I heard if you plant a {green:Cloudseed} under the open sky, it grows into a stalk that reaches the heavens. Imagine the view...",
+    "You can bind potions, tools, and food to your {blue:Quick-Slots} now! Just open your bag and hover over the item.",
+    "If you ever need to clear a quick-slot on your hotbar, just {purple:right-click} it.",
+    "They say throwing a stick of {orange:Dwarven TNT} at a cracked wall will blow it wide open. Might even find gems inside!",
+    "If you find an {purple:Obsidian Fishing Rod}, don't throw it away. I hear you can cast it straight into the heart of a volcano.",
+
+    // --- EXPLORATION & WORLD ---
     "If you find a pickaxe, try the mountains. Good {gray:Iron Ore} there.",
     "The castle guards are tough, but they protect good loot.",
     "Don't eat the yellow snow. Or the blue mushrooms. Actually, just stick to bread.",
@@ -272,13 +291,8 @@ window.VILLAGER_RUMORS = [
     "The mages in the tower used to turn lead into gold. Now they just turn men into monsters.",
     "Never camp near a circle of mushrooms. The Fae will steal your boots.",
     "If you find an {gray:Obsidian Shard}, keep it hidden. The shadow acolytes can smell them.",
-    "I watched a Ranger take down a Drake before it even got close. A good bow relies entirely on your {green:Dexterity}.",
-    "If a wild beast is badly wounded, try talking to it. You might just make a friend. Takes a lot of {gold:Charisma}, though.",
-    "If you want the best gear, you gotta make it yourself. Highly skilled crafters can make {gold:Masterwork} weapons that hit harder.",
-    "A {gray:Greataxe} is devastating, but it requires two hands. You'll have to put your shield away.",
     "If you see a ring of {purple:purple mushrooms}, step inside! The Fae might restore your magic... or they might teleport you across the world.",
     "A Canoe is fine for the swamps, but if you want to brave the deep ocean, you need to build a {blue:Sailing Ship}.",
-    "Want to catch a Leviathan? You need an {red:Obsidian Rod} to fish in the volcano, but the deep sea just needs good bait and a lot of stamina.",
     "Wooden arrows are fine, but {orange:Fire Arrows} can detonate oil barrels from a distance! Perfect for clearing out nests.",
     "I lock my doors when the {red:Blood Moon} rises. The beasts go mad, but the brave say they carry richer bounties.",
     "A clever mage doesn't need a boat. Just cast a {cyan:Frost Bolt} at the river and walk across the ice!",
@@ -289,10 +303,8 @@ window.VILLAGER_RUMORS = [
     "You can drop a Stash Box anywhere in the world and access your bank. Magic is convenient, isn't it?",
     "If you plan on exploring deep into the wilds, you better rest in a {green:Cozy Bed} first. It beats walking back from the village.",
     "The deeper you go into a dungeon, the nastier the monsters get. But the loot gets shinier, too.",
-    "I tried fishing in the lava once. My rod turned to ash before it hit the magma.",
     "A merchant told me he saw a man looking at the stars through a Brass Telescope. Sounds boring to me.",
     "I hear the Master Blacksmith can forge weapons out of {cyan:Star-Metal}... if you have the coin.",
-    "They say tossing {orange:Dwarven TNT} at a cracked wall will blow it wide open. Might even find gems inside!",
     "Don't go to the Colosseum in the deadlands. I knew a warrior who went to fight in the Arena. He never came back.",
     "The Inquisitor pays top gold for Cultist amulets. He's trying to root out the Shadowed Hand.",
     "Some say the Void Astrolabe doesn't just teleport you... it takes you to a {purple:parallel dimension} altogether."
@@ -323,7 +335,6 @@ window.RANDOM_JOURNAL_PAGES = [
     "Final Note: The Shadowed Hand offered us immortality. They didn't mention that we'd have to forget our names to keep it.",
     "The First King wasn't a man. The tapestries in the Grand Fortress show him arriving in a vessel made of fallen stars.",
     "I watched the bandit chief cleave an oak tree in half. If you face him, do not let him swing.",
-    "The skeletons are stupid, but they never tire. A spear is useless against them; you need something heavy to {gold:crush} the bones.",
     "I found an intricate golden pocket watch inside a mimic's stomach. Why was it still ticking?",
     "Do not trust the Rainbow Shells. The merchants pay well for them, but they whisper when you sleep.",
     "My magic shield shattered in a single hit! The brute hit me for 15 damage, but the shield only absorbed 5. Note to self: {blue:Arcane Shield} has a limit.",
@@ -337,7 +348,8 @@ window.RANDOM_JOURNAL_PAGES = [
     "My companion, a loyal dire wolf, took down a goblin brute by itself. I gave it a steak. It's better company than most men.",
     "The deeper you go into the caves, the hotter it gets. At floor five, the rock turns to obsidian and the air to ash.",
     "The arena champion... he's not human. I watched him take a mace to the chest and not even flinch. I forfeit.",
-    "Dwarven TNT is highly unstable. Threw a stick at a cracked wall and nearly blew my own arms off. Found a diamond though."
+    "Dwarven TNT is highly unstable. Threw a stick at a cracked wall and nearly blew my own arms off. Found a diamond though.",
+    "I climbed the beanstalk. The air was thin, and the clouds felt like marble beneath my feet. I saw a fountain that poured pure starlight."
 ];
 
 window.LORE_FRAGMENTS = [
@@ -384,7 +396,9 @@ window.VISIONS_OF_THE_PAST = [
     "A VISION: You see a dwarven forge deep underground. They are pouring molten gold over a writhing, shadowy entity to trap it.",
     "A VISION: The Sage, much younger, is writing furiously in a book. He looks up directly at you. 'You are too late,' he says.",
     "A VISION: A beautiful city floats in the sky. Slowly, it tilts, and then plummets to the earth, leaving a crater that will one day become a swamp.",
-    "A VISION: You watch as reality splits like a mirror. A thousand versions of the King make a thousand different choices. All end in ash."
+    "A VISION: You watch as reality splits like a mirror. A thousand versions of the King make a thousand different choices. All end in ash.",
+    "A VISION: You stand on a cloud of solid marble. Below you, the world is burning. A voice behind you says, 'We built this to escape, but we brought it with us.'",
+    "A VISION: The Underworld expands endlessly. You see thousands of stone cocoons hanging from the cavern ceiling. One of them twitches."
 ];
 
 // ==========================================
@@ -445,7 +459,7 @@ window.RIDDLE_DATA = [
     {
         id: "map",
         question: "I have cities, but no houses. I have mountains, but no trees. I have water, but no fish. What am I?",
-        answers: ["map", "a map"],
+        answers: ["map", "a map", "maps"],
         reward: "perception", 
         message: "The statue's blank eyes seem to focus. Your vision pierces the veil."
     },
@@ -522,7 +536,7 @@ window.RIDDLE_DATA = [
     {
         id: "breath",
         question: "I am light as a feather, yet the strongest man cannot hold me for much more than a minute. What am I?",
-        answers: ["breath", "my breath", "air"],
+        answers: ["breath", "my breath", "air", "your breath"],
         reward: "constitution", 
         message: "You draw in a deep, lung-expanding breath. Your vitality surges."
     },
@@ -578,7 +592,7 @@ window.RIDDLE_DATA = [
     {
         id: "name",
         question: "It belongs to you, but other people use it more than you do. What is it?",
-        answers: ["name", "my name"],
+        answers: ["name", "my name", "your name"],
         reward: "charisma", 
         message: "The statue acknowledges you. You feel more influential."
     },
@@ -596,7 +610,6 @@ window.RIDDLE_DATA = [
         reward: "perception", 
         message: "Your focus narrows to a pinpoint. Your vision sharpens."
     },
-    // --- NEW EXPANDED RIDDLES ---
     {
         id: "coffin",
         question: "The man who makes it, doesn't need it. The man who buys it, doesn't want it. The man who uses it, doesn't know it. What is it?",
@@ -607,7 +620,7 @@ window.RIDDLE_DATA = [
     {
         id: "cloud",
         question: "I fly without wings. I cry without eyes. Wherever I go, darkness follows me. What am I?",
-        answers: ["cloud", "a cloud", "storm", "raincloud"],
+        answers: ["cloud", "a cloud", "storm", "raincloud", "clouds"],
         reward: "intuition",
         message: "You feel the moisture in the air before it rains. Your instincts sharpen."
     },
@@ -666,6 +679,13 @@ window.RIDDLE_DATA = [
         answers: ["book", "a book", "tome"],
         reward: "wits",
         message: "Knowledge flows into your mind from the ancient stone."
+    },
+    {
+        id: "candle",
+        question: "You measure my life in hours and I serve you by expiring. I'm quick when I'm thin and slow when I'm fat. The wind is my enemy. What am I?",
+        answers: ["candle", "a candle"],
+        reward: "luck",
+        message: "A flicker of light dances in the statue's eyes. You feel incredibly fortunate."
     }
 ];
 
