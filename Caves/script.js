@@ -1143,15 +1143,23 @@ function renderHotbar() {
         slotDiv.appendChild(keyHint);
 
         if (abilityId) {
-            // Determine if it's a Skill or Spell for data lookup
-            const data = SKILL_DATA[abilityId] || SPELL_DATA[abilityId];
-            if (data) {
-                // Show Icon/Name abbreviation
-                const label = document.createElement('span');
-                label.className = "font-bold text-sm";
-                label.textContent = data.name.substring(0, 2).toUpperCase(); // First 2 letters
+            const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[abilityId] : null;
+            const spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[abilityId] : null;
+            
+            // Check if the ID belongs to an item
+            let itemData = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[abilityId] : null;
+            if (!itemData && typeof ITEM_DATA !== 'undefined') {
+                const itemKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === abilityId);
+                if (itemKey) itemData = ITEM_DATA[itemKey];
+            }
+
+            if (skillData || spellData) {
+                const data = skillData || spellData;
+                const abrv = document.createElement('span');
+                abrv.className = "font-bold text-sm";
+                abrv.textContent = data.name.substring(0, 2).toUpperCase(); 
                 slotDiv.title = `${data.name} (Cost: ${data.cost} ${data.costType})`;
-                slotDiv.appendChild(label);
+                slotDiv.appendChild(abrv);
 
                 // Cooldown Overlay
                 if (cooldowns[abilityId] > 0) {
@@ -1161,15 +1169,46 @@ function renderHotbar() {
                     cdOverlay.textContent = cooldowns[abilityId];
                     slotDiv.appendChild(cdOverlay);
                 }
+            } else if (itemData) {
+                // It's an item! Show the emoji icon
+                const iconSpan = document.createElement('span');
+                iconSpan.className = "font-bold text-2xl drop-shadow-md";
+                iconSpan.textContent = itemData.tile || '🎒';
+                
+                // Get current quantity from inventory
+                const invItem = gameState.player.inventory.find(i => i.name === itemData.name || i.templateId === abilityId);
+                const qty = invItem ? invItem.quantity : 0;
+                
+                slotDiv.title = `${itemData.name} (Qty: ${qty})`;
+                slotDiv.appendChild(iconSpan);
+                
+                // Show quantity badge
+                const qtyBadge = document.createElement('span');
+                qtyBadge.className = "absolute bottom-0 right-0 text-[10px] bg-black bg-opacity-70 text-white px-1 rounded-tl font-bold";
+                qtyBadge.textContent = qty;
+                slotDiv.appendChild(qtyBadge);
+
+                // Gray out if we ran out of them
+                if (qty <= 0) {
+                    slotDiv.classList.add('opacity-40', 'grayscale');
+                }
             }
         } else {
             slotDiv.classList.add('border-dashed', 'opacity-50');
         }
 
-        // Click to clear slot (Right click logic could go here later)
+        // Left Click to Use
         slotDiv.onclick = () => {
-            if (gameState.inventoryMode) return; // Don't trigger during inventory
+            if (gameState.inventoryMode) return; 
             useHotbarSlot(index);
+        };
+        
+        // Right Click to unbind a slot!
+        slotDiv.oncontextmenu = (e) => {
+            e.preventDefault();
+            gameState.player.hotbar[index] = null;
+            if (typeof playerRef !== 'undefined') playerRef.update({ hotbar: gameState.player.hotbar });
+            renderHotbar();
         };
 
         hotbarContainer.appendChild(slotDiv);
@@ -1182,7 +1221,8 @@ function useHotbarSlot(index) {
 
     const cooldowns = gameState.player.cooldowns || {};
     if (cooldowns[abilityId] > 0) {
-        logMessage("That ability is on cooldown!");
+        logMessage("{gray:That ability is on cooldown!}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
 
@@ -1190,6 +1230,22 @@ function useHotbarSlot(index) {
         useSkill(abilityId);
     } else if (SPELL_DATA[abilityId]) {
         castSpell(abilityId);
+    } else {
+        // Assume it's an item, resolve its proper name
+        let targetName = abilityId;
+        if (ITEM_DATA[abilityId]) {
+            targetName = ITEM_DATA[abilityId].name;
+        }
+
+        // Find the item in the inventory
+        const invIndex = gameState.player.inventory.findIndex(i => i.name === targetName || i.templateId === abilityId);
+        
+        if (invIndex > -1) {
+            useInventoryItem(invIndex);
+        } else {
+            logMessage(`{gray:You don't have any more of that item.}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        }
     }
 }
 
