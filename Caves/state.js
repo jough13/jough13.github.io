@@ -29,6 +29,11 @@ let lastAiExecution = 0;
 let saveTimeout = null;       // Tracks the pending save timer
 let areGlobalListenersInitialized = false;
 
+// PERFORMANCE WIN: Officially declared timers to prevent polluting the Window object
+let chatRenderTimer = null;   // Batches DOM insertions for global chat
+let lastLocalAIAttempt = 0;   // Prevents the client from hammering the AI Firebase transaction
+let lastSortAudio = 0;        // Throttles the auto-sort clicking sound
+
 // --- Caches & Data Buffers ---
 let cachedThemeColors = {};
 const processingSpawnTiles = new Set();
@@ -48,6 +53,7 @@ const wokenEnemyTiles = new Set(); // Global set to track processed tiles this s
 
 const gameState = {
     // --- System & Engine State ---
+    saveVersion: "0.2.6",     // Useful for future DB migration scripts
     initialEnemiesLoaded: false,
     mapDirty: true,           // Flag to force canvas redraws
     
@@ -104,8 +110,12 @@ const gameState = {
         visualY: 0,           // Camera smoothing Y
         facing: 'right',      // Player facing direction for rendering
         respawnPoint: { x: 0, y: 0 }, // Custom bed/waystone respawns
+        
+        // EXPANSION HOOKS: Mounts & Vehicles
         isBoating: false,     // Canoe state
         isSailing: false,     // Deep sea ship state
+        isMounted: false,     // Land mount state (Future expansion)
+        mountName: null,      // Flavor text for current mount
         
         // Multiplayer UI
         chatBubble: null,     // Floating text above head
@@ -211,13 +221,16 @@ const gameState = {
         obeliskProgress: [],   // Tracks Ancient Key puzzle
         cartographerProgress: 0, // Maps submitted for reward
         
-        // Professions
+        // Professions & Gathering
         craftingLevel: 1, 
         craftingXp: 0, 
         craftingXpToNext: 50,
         fishingLevel: 1,
         fishingXp: 0,
         fishingRecords: {},    // Best catches weight
+        farmingLevel: 1,       // EXPANSION HOOK: Agriculture
+        farmingXp: 0,
+        farmingXpToNext: 50,
 
         // Map & Exploration Data
         unlockedWaypoints: [], // Fast travel nodes { x, y, name }
@@ -238,12 +251,15 @@ const gameState = {
             fishCaught: 0,
             dungeonsCleared: 0,
             secretsFound: 0,
-            spellsCast: 0
+            spellsCast: 0,
+            timesRested: 0,       // New
+            cropsHarvested: 0,    // New (Agriculture Expansion)
+            leylinesUsed: 0       // New
         }
     },
 
     // --- World & Map State ---
-    mapMode: null,            // 'overworld', 'dungeon', 'castle'
+    mapMode: null,            // 'overworld', 'dungeon', 'castle', 'skyrealm', 'underworld'
     currentRealm: 0,          // 0 is the "Prime" Overworld. Anything else is a Shattered Realm.
     realmMutators: [],        // Special rules for the current realm (e.g., 'lava_oceans')
     currentCaveId: null,
