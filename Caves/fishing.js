@@ -53,7 +53,8 @@ const NEW_FISHING_ITEMS = {
                 'Minnow', 'River Trout', 'Leaping Salmon', 'Golden Koi',
                 'Mudcat', 'Sludge Eel', 'Eyeless Cave Fish', 'Swamp Serpent Scale',
                 'Deep Sea Cod', 'Silver Tuna', 'Swordfish', 'Abyssal Angler',
-                'Magma Carp', 'Obsidian Eel', 'Heart of the Volcano'
+                'Magma Carp', 'Obsidian Eel', 'Heart of the Volcano',
+                'Astral Jelly', 'Void Ray', 'Star-Eater' // Expanded to include Void Fish
             ];
             
             let caughtCount = 0;
@@ -126,7 +127,7 @@ const NEW_FISHING_ITEMS = {
     },
     '🎣o': {
         name: 'Obsidian Fishing Rod', type: 'tool', tile: '🎣',
-        description: "Woven from fire-proof silk and dark glass. Required for Lava Fishing."
+        description: "Woven from fire-proof silk and dark glass. Required for Lava & Void Fishing."
     },
 
     // --- Shallow & Swamp Fish ---
@@ -149,6 +150,11 @@ const NEW_FISHING_ITEMS = {
     '🌋crp': { name: 'Magma Carp', type: 'consumable', tile: '🐟', description: "It's already cooked perfectly! {yellow:+35 Hunger}, {green:+10 HP}", effect: (s) => eatFish(s, 35, 10) },
     '🌋eel': { name: 'Obsidian Eel', type: 'weapon', tile: '🐍', damage: 6, slot: 'weapon', inflicts: 'burn', inflictChance: 0.3, description: "{red:+6 Dmg}. A living, whip-like eel that sears flesh. {orange:(Burns target)}" },
     '🌋hrt': { name: 'Heart of the Volcano', type: 'accessory', tile: '❤️', defense: 2, slot: 'accessory', statBonuses: { constitution: 5, strength: 3 }, description: "{blue:+2 Def}, {green:+5 Con, +3 Str}. It beats with volcanic fury." },
+
+    // --- Void/Astral Fish (NEW) ---
+    '🐟str': { name: 'Astral Jelly', type: 'consumable', tile: '🪼', description: "It tastes like blueberries and static electricity. {yellow:+15 Hunger}, {purple:+20 Psyche}", effect: (s) => eatFish(s, 15, 0, 20) },
+    '🐟vry': { name: 'Void Ray', type: 'junk', tile: '🦇', description: "A flat, cartilaginous creature that swims through empty space. Highly valuable." },
+    '🦈str': { name: 'Star-Eater', type: 'weapon', tile: '🦈', damage: 8, slot: 'weapon', statBonuses: { willpower: 2 }, description: "{red:+8 Dmg}, {purple:+2 Will}. A terrifying maw pulled from the rift." },
 
     // --- Dredged Treasures & Lore Expansion ---
     '🪖r': { name: 'Rusted Helm', type: 'armor', tile: '🪖', defense: 1, slot: 'armor', description: "{blue:+1 Def}. Pulled from the muck. Still slightly damp." },
@@ -283,8 +289,8 @@ const NEW_FISHING_ITEMS = {
 // Inject items
 Object.assign(window.ITEM_DATA, NEW_FISHING_ITEMS);
 
-// Inject to Shop
-if (window.CASTLE_SHOP_INVENTORY) {
+// SAFE INJECTION: Prevent duplicating the logbook if script hot-reloads
+if (window.CASTLE_SHOP_INVENTORY && !window.CASTLE_SHOP_INVENTORY.some(i => i.name === 'Angler\'s Logbook')) {
     window.CASTLE_SHOP_INVENTORY.push(
         { name: 'Angler\'s Logbook', price: 20, stock: 1 },
         { name: 'Steel Fishing Rod', price: 150, stock: 1 },
@@ -299,9 +305,10 @@ if (window.CASTLE_SHOP_INVENTORY) {
     );
 }
 
-function eatFish(state, hungerAmt, hpAmt = 0) {
-    if (state.player.hunger >= state.player.maxHunger && state.player.health >= state.player.maxHealth) {
-        logMessage("You are completely full.");
+// EXPANSION WIN: Support for Psyche restoration from Void Fish
+function eatFish(state, hungerAmt, hpAmt = 0, psycheAmt = 0) {
+    if (state.player.hunger >= state.player.maxHunger && state.player.health >= state.player.maxHealth && state.player.psyche >= state.player.maxPsyche) {
+        logMessage("You are completely full and refreshed.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return false;
     }
@@ -309,16 +316,23 @@ function eatFish(state, hungerAmt, hpAmt = 0) {
     // Performance: Cache DOM lookups
     if (!_hungerDisplayObj) _hungerDisplayObj = document.getElementById('hungerDisplay');
     if (!_healthDisplayObj) _healthDisplayObj = document.getElementById('healthDisplay');
+    const _psycheDisplayObj = document.getElementById('psycheDisplay'); 
 
     state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + hungerAmt);
     if (hpAmt > 0) state.player.health = Math.min(state.player.maxHealth, state.player.health + hpAmt);
+    if (psycheAmt > 0) state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + psycheAmt);
     
     if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Munch sound
-    logMessage(`You eat the fish. {yellow:(+${hungerAmt} Hunger)}${hpAmt > 0 ? `, {green:(+${hpAmt} HP)}` : ''}`);
+    
+    let logStr = `You eat the fish. {yellow:(+${hungerAmt} Hunger)}`;
+    if (hpAmt > 0) logStr += `, {green:(+${hpAmt} HP)}`;
+    if (psycheAmt > 0) logStr += `, {purple:(+${psycheAmt} Psyche)}`;
+    logMessage(logStr);
     
     if (typeof triggerStatAnimation !== 'undefined') {
         triggerStatAnimation(_hungerDisplayObj, 'stat-pulse-green');
         if (hpAmt > 0) triggerStatAnimation(_healthDisplayObj, 'stat-pulse-green');
+        if (psycheAmt > 0 && _psycheDisplayObj) triggerStatAnimation(_psycheDisplayObj, 'stat-pulse-purple');
     }
     return true;
 }
@@ -352,6 +366,13 @@ const FISHING_LOOT = {
         uncommon: [{ name: 'Obsidian Shard' }, { name: 'Magma Carp', minW: 20, maxW: 50 }],
         rare: [{ name: 'Obsidian Eel', minW: 10, maxW: 30 }],
         legendary: [{ name: 'Heart of the Volcano' }, { name: 'Obsidian Edge' }] 
+    },
+    void: {
+        trash: [{ name: 'Void Dust' }, { name: 'Bone Shard' }, { name: 'Memory Shard' }],
+        common: [{ name: 'Astral Jelly', minW: 1, maxW: 5 }],
+        uncommon: [{ name: 'Astral Jelly', minW: 5, maxW: 15 }, { name: 'Void Dust' }],
+        rare: [{ name: 'Void Ray', minW: 20, maxW: 80 }],
+        legendary: [{ name: 'Star-Eater', minW: 100, maxW: 500 }, { name: 'Void-Touched Ring' }] 
     }
 };
 
@@ -373,10 +394,14 @@ function executeFishing() {
 
     const hasSteelRod = player.inventory.some(i => i.name === 'Steel Fishing Rod' && !i.isEquipped);
     const hasObsidianRod = player.inventory.some(i => i.name === 'Obsidian Fishing Rod' && !i.isEquipped);
-    const isLava = (currentTile === '~' && gameState.mapMode === 'dungeon' && gameState.currentCaveTheme === 'FIRE');
     
-    if (currentTile !== '~' && currentTile !== '≈') {
-        logMessage("You need to be standing in water or sailing to fish.");
+    const isLava = currentTile === '🌋' || (currentTile === '~' && gameState.mapMode === 'dungeon' && gameState.currentCaveTheme === 'FIRE');
+    
+    // You can fish in the void if you are in an alternate dimension or in a corrupted cave
+    const isVoid = (gameState.currentRealm !== 0) || (gameState.mapMode === 'dungeon' && ['VOID', 'ABYSS', 'CORRUPTED'].includes(gameState.currentCaveTheme));
+
+    if (currentTile !== '~' && currentTile !== '≈' && currentTile !== '🌋') {
+        logMessage("You need to be standing in water, lava, or sailing to fish.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return false;
     }
@@ -384,6 +409,13 @@ function executeFishing() {
     if (isLava && !hasObsidianRod) {
         logMessage("{red:You cast your line into the lava... and it instantly incinerates!}");
         logMessage("You need an Obsidian Fishing Rod to fish here.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return false;
+    }
+
+    if (isVoid && !hasSteelRod && !hasObsidianRod) {
+        logMessage("{red:Your wooden rod instantly rots away in these unnatural waters!}");
+        logMessage("You need at least a Steel Fishing Rod here.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return false;
     }
@@ -411,6 +443,7 @@ function executeFishing() {
     if (currentTile === '≈') zone = 'swamp';
     if (player.isSailing) zone = 'deep';
     if (isLava) zone = 'lava';
+    if (isVoid) zone = 'void'; // Overrides previous classifications
 
     // --- ADVANCED BAIT SYSTEM ---
     let usedBaitName = null;
@@ -421,6 +454,7 @@ function executeFishing() {
 
     // QoL WIN: Expanded Bait options using early game junk!
     const validBaits = [
+        { name: 'Void Dust', catchBoost: 0.20, rareBoost: 0.60, weightMult: 1.50, zoneOnly: 'void', color: 'purple' },
         { name: 'Kraken Ink Sac', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'deep', color: 'purple' }, 
         { name: 'Fire Elemental Core', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'lava', color: 'orange' }, 
         { name: 'Minnow', catchBoost: 0.15, rareBoost: 0.30, weightMult: 1.15, color: 'blue' }, 
@@ -473,27 +507,31 @@ function executeFishing() {
         return true; 
     }
 
-    if (zone === 'swamp' && Math.random() < 0.05) {
+    // CONTENT WIN: Ambush monsters based on biomes
+    let ambushEnemy = null;
+    if (zone === 'swamp' && Math.random() < 0.05) ambushEnemy = 'l'; // Leech
+    if (zone === 'void' && Math.random() < 0.05) ambushEnemy = 'v';  // Void Stalker
+
+    if (ambushEnemy) {
         playSplash();
-        logMessage("{red:You hooked something aggressive... A Giant Leech bursts from the water!}");
+        logMessage(`{purple:You hooked something from the depths... A hostile creature emerges!}`);
         
-        const enemyData = window.ENEMY_DATA['l'];
+        const enemyData = window.ENEMY_DATA[ambushEnemy];
         const spawnX = player.x + 1;
         const spawnY = player.y;
         
-        if (gameState.mapMode === 'overworld') {
+        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
             const enemyId = `overworld:${spawnX},${-spawnY}`;
             const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, spawnX, spawnY) : enemyData;
-            gameState.sharedEnemies[enemyId] = { ...scaledStats, tile: 'l', x: spawnX, y: spawnY, spawnTime: Date.now() };
+            gameState.sharedEnemies[enemyId] = { ...scaledStats, tile: ambushEnemy, x: spawnX, y: spawnY, spawnTime: Date.now() };
             
             if (typeof EnemyNetworkManager !== 'undefined') {
                 rtdb.ref(EnemyNetworkManager.getPath(spawnX, spawnY, enemyId)).set(gameState.sharedEnemies[enemyId]);
             }
         } else {
-            // Instanced enemy fallback for dungeon/castle swamps!
             const newEnemy = {
-                id: `${gameState.currentCaveId || gameState.currentCastleId}:leech_${Date.now()}`,
-                x: spawnX, y: spawnY, tile: 'l', name: enemyData.name,
+                id: `${gameState.currentCaveId || gameState.currentCastleId}:ambush_${Date.now()}`,
+                x: spawnX, y: spawnY, tile: ambushEnemy, name: enemyData.name,
                 health: enemyData.maxHealth, maxHealth: enemyData.maxHealth,
                 attack: enemyData.attack, defense: enemyData.defense || 0,
                 xp: enemyData.xp, loot: enemyData.loot,
@@ -505,7 +543,6 @@ function executeFishing() {
         gameState.screenShake = 15; // JUICE
         if (typeof ParticleSystem !== 'undefined') {
             ParticleSystem.createExplosion(spawnX, spawnY, '#111827', 10);
-            ParticleSystem.createExplosion(spawnX, spawnY, '#22c55e', 5); // Acid spray
         }
         if (typeof render === 'function') render();
         return true; 
@@ -517,7 +554,7 @@ function executeFishing() {
     // MECHANIC WIN: Steel Rod gives a baseline boost to offset the Deep Water penalty
     if (hasSteelRod || hasObsidianRod) catchChance += 0.10;
     
-    if (zone === 'deep') catchChance -= 0.15; 
+    if (zone === 'deep' || zone === 'void') catchChance -= 0.15; 
     if (zone === 'lava') catchChance -= 0.10; 
     if (gameState.weather === 'rain' || gameState.weather === 'storm') catchChance += 0.15; 
     if (isFrenzy) catchChance += 0.25; // Massive frenzy boost
@@ -526,6 +563,7 @@ function executeFishing() {
     let flavorText = "You cast your line...";
     if (zone === 'deep') flavorText = "You drop your heavy line into the abyss...";
     if (zone === 'lava') flavorText = "You cast your obsidian line into the bubbling magma...";
+    if (zone === 'void') flavorText = "You cast your line into the shimmering rift...";
     
     if (usedBaitName) flavorText += ` {${baitColor}:(Used ${usedBaitName})}`;
     if (isNight) flavorText += " The darkness is absolute.";
@@ -533,8 +571,16 @@ function executeFishing() {
     logMessage(`{gray:${flavorText}}`);
     
     playSplash(); // Cast audio
-    // JUICE: Visual water splash
-    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y - 1, '#60a5fa', 5);
+    
+    // JUICE: Visual water splash matching the biome
+    if (typeof ParticleSystem !== 'undefined') {
+        let splashColor = '#60a5fa'; // Blue
+        if (zone === 'swamp') splashColor = '#16a34a'; // Green
+        if (zone === 'lava') splashColor = '#f97316'; // Orange
+        if (zone === 'void') splashColor = '#a855f7'; // Purple
+        
+        ParticleSystem.createExplosion(player.x, player.y - 1, splashColor, 5);
+    }
 
     // --- ROLL FOR CATCH ---
     if (Math.random() < catchChance) {
@@ -680,6 +726,7 @@ function executeFishing() {
         playerRef.update({
             stamina: player.stamina,
             health: player.health,
+            psyche: player.psyche, // Added for new jelly fish
             fishingLevel: player.fishingLevel,
             fishingXp: player.fishingXp,
             fishingRecords: player.fishingRecords,
