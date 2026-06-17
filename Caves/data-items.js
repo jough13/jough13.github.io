@@ -1,15 +1,17 @@
+// --- START OF FILE data-items.js ---
+
 window.COOKING_RECIPES = {
     "Oracle's Broth": {
         materials: { "Bluecap Mushroom": 2, "Medicinal Herb": 1, "Dirty Water": 1 },
-        xp: 25, level: 2 // It's foul, but it opens the mind.
+        xp: 25, level: 2 
     },
     "Soldier's Last Meal": {
         materials: { "Steak": 2, "Hardtack": 2, "Wheel of Cheese": 1 },
-        xp: 60, level: 3 // A heavy meal meant for those who don't expect to return.
+        xp: 60, level: 3 
     },
     "Void-Salted Fish": {
         materials: { "Raw Fish": 1, "Void Dust": 1 },
-        xp: 100, level: 4 // Dangerous to eat, but it fills you with strange energy.
+        xp: 100, level: 4 
     },
     "Monster Stew": { 
         materials: { "Rat Tail": 2, "Bat Wing": 1, "Clean Water": 1 },
@@ -60,7 +62,7 @@ window.COOKING_RECIPES = {
 window.CRAFTING_RECIPES = {
     "Ancient Key": {
         materials: { "Tablet of the North": 1, "Tablet of the East": 1, "Tablet of the West": 1, "Tablet of the South": 1 },
-        xp: 500, level: 1 // No level requirement, it's a puzzle reward
+        xp: 500, level: 1 
     },
     // --- TIER 0 (Basic Survival) ---
     "Wooden Club": {
@@ -91,7 +93,7 @@ window.CRAFTING_RECIPES = {
         materials: { "Wooden Arrow": 5, "Snake Fang": 1 }, 
         xp: 25, level: 2, yield: 5 
     },    
-    // --- TIER 1 (Basic Survival) ---
+    // --- TIER 1 (Basic Survival & Alchemy) ---
     "Leather Tunic": {
         materials: { "Wolf Pelt": 3 },
         xp: 10, level: 1
@@ -103,6 +105,14 @@ window.CRAFTING_RECIPES = {
     "Healing Potion": {
         materials: { "Wildberry": 2, "Cactus Fruit": 1 }, 
         xp: 10, level: 1
+    },
+    "Mana Potion": {
+        materials: { "Bluecap Mushroom": 2, "Clean Water": 1 }, 
+        xp: 15, level: 1
+    },
+    "Stamina Potion": {
+        materials: { "Wildberry": 2, "Clean Water": 1 }, 
+        xp: 15, level: 1
     },
 
     // --- TIER 2 (Apprentice) ---
@@ -125,6 +135,10 @@ window.CRAFTING_RECIPES = {
     "Bandit's Boots": {
         materials: { "Bandit's Insignia": 5, "Wolf Pelt": 2 },
         xp: 20, level: 2
+    },
+    "Shovel": {
+        materials: { "Stick": 2, "Iron Ore": 2 },
+        xp: 30, level: 2
     },
     "Pickaxe": {
         materials: { "Stick": 2, "Orc Tusk": 3 },
@@ -156,6 +170,10 @@ window.CRAFTING_RECIPES = {
         materials: { "Bone Dagger": 1, "Spider Silk": 5 },
         xp: 45, level: 3
     },
+    "Steel Fishing Rod": {
+        materials: { "Fishing Rod": 1, "Iron Ore": 3 },
+        xp: 40, level: 3
+    },
     "Silk Cowl": {
         materials: { "Spider Silk": 4 },
         xp: 40, level: 3
@@ -165,7 +183,7 @@ window.CRAFTING_RECIPES = {
         xp: 35, level: 3
     },
     // --- TIER 3 (Advanced) ---
-    "Reinforced Tunic": {
+    "Studded Armor": {
         materials: { "Leather Tunic": 1, "Iron Ore": 5, "Spider Silk": 2 },
         xp: 60, level: 3
     },
@@ -213,24 +231,32 @@ window.CRAFTING_RECIPES = {
         materials: { "Dragon Scale": 2, "Bone Dagger": 1, "Obsidian Shard": 1 },
         xp: 120, level: 4
     },
-    // --- TIER 5 (Diamond) ---
-    "Diamond Tipped Pickaxe": {
-        materials: { "Pickaxe": 1, "Raw Diamond": 2 },
-        xp: 200, level: 5
-    },
+    
     // --- UTILITY ---
     "Black Powder Bomb": {
         materials: { "Stone": 1, "Fire Elemental Core": 1 }, 
         xp: 50, level: 3
     },
 
-    // --- TIER 4/5 (Special) ---
+    // --- TIER 4/5 (Special & Keys) ---
     "Void Key": {
         materials: { "Void Dust": 5, "Obsidian Shard": 1 },
         xp: 100, level: 4
     },
+    "Prime Tuning Fork": {
+        materials: { "Iron Ore": 5, "Void Dust": 5 },
+        xp: 150, level: 5
+    },
 
     // --- TIER 5 (Master) ---
+    "Diamond Tipped Pickaxe": {
+        materials: { "Pickaxe": 1, "Raw Diamond": 2 },
+        xp: 200, level: 5
+    },
+    "Obsidian Fishing Rod": {
+        materials: { "Steel Fishing Rod": 1, "Obsidian Shard": 3, "Spider Silk": 3 },
+        xp: 180, level: 5
+    },
     "Obsidian Edge": {
         materials: { "Obsidian Shard": 3, "Steel Sword": 1, "Arcane Dust": 5 },
         xp: 100, level: 5
@@ -302,7 +328,7 @@ window.CRAFTING_RECIPES = {
     "Torch": {
         materials: { "Stick": 1, "Tattered Rags": 1 },
         xp: 5, level: 1
-    },
+    }
 };
 
 window.ITEM_DATA = {
@@ -332,7 +358,7 @@ window.ITEM_DATA = {
                 state.mapDirty = true;
             }
 
-            return true; // Consume the item
+            return true; 
         }
     },
     '🧨': {
@@ -344,7 +370,7 @@ window.ITEM_DATA = {
             logMessage("{orange:Select a direction to throw the TNT... (WASD/Arrows)}");
             state.isAiming = true;
             state.abilityToAim = 'throwTNT';
-            return false; // Don't consume it here. We consume it when thrown!
+            return false; 
         }
     },
     '📜c': { name: 'Cultist Orders', type: 'quest', description: "Plans detailing an attack on the village." },
@@ -362,10 +388,8 @@ window.ITEM_DATA = {
             logMessage("{green:A massive beanstalk erupts from the earth, piercing the clouds!}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
             
-            // Generate the stalk on the overworld so they can climb back up later!
             chunkManager.setWorldTile(state.player.x, state.player.y, '🌿');
             
-            // Transition to Sky Realm
             state.mapMode = 'skyrealm';
             state.mapDirty = true;
             if (typeof render === 'function') render();
@@ -392,12 +416,16 @@ window.ITEM_DATA = {
         description: "{blue:+6 Def}, {green:+5 Dex, +5 Wits}. It drinks the surrounding light.",
         excludeFromLoot: true 
     },
-    // --- JOKE / LORE ITEMS ---
     'repel': {
         name: 'Dragon Repellent',
-        type: 'junk',
+        type: 'consumable',
         tile: '🧄',
-        description: "It smells strongly of garlic and snake oil. It definitely does not work."
+        description: "It smells strongly of garlic and snake oil. It definitely does not work.",
+        effect: (state) => {
+            logMessage("You spray yourself with the pungent liquid. You smell terrible. Dragons are completely unaffected.");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 800);
+            return true;
+        }
     },
 
     '🐾1': { 
@@ -425,6 +453,40 @@ window.ITEM_DATA = {
             state.player.poisonTurns = 0;
             logMessage("{green:The poison is flushed from your veins!}");
             triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+            return true;
+        }
+    },
+    '🧪m': {
+        name: 'Mana Potion',
+        type: 'consumable',
+        tile: '🧪',
+        description: "A glowing blue liquid. {blue:+30 Mana, +10 Thirst}",
+        effect: (state) => {
+            if (state.player.mana >= state.player.maxMana && state.player.thirst >= state.player.maxThirst) {
+                logMessage("You don't need this right now.");
+                return false;
+            }
+            state.player.mana = Math.min(state.player.maxMana, state.player.mana + 30);
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10);
+            logMessage("Used a Mana Potion. {blue:(+30 Mana, +10 Thirst)}");
+            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
+            return true;
+        }
+    },
+    '🧪y': {
+        name: 'Stamina Potion',
+        type: 'consumable',
+        tile: '🧪',
+        description: "A bubbling yellow liquid. {green:+30 Stamina}, {blue:+10 Thirst}",
+        effect: (state) => {
+            if (state.player.stamina >= state.player.maxStamina && state.player.thirst >= state.player.maxThirst) {
+                logMessage("You don't need this right now.");
+                return false;
+            }
+            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 30);
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10);
+            logMessage("Used a Stamina Potion. {green:(+30 Stamina)}, {blue:(+10 Thirst)}");
+            triggerStatAnimation(document.getElementById('staminaDisplay'), 'stat-pulse-yellow');
             return true;
         }
     },
@@ -609,6 +671,10 @@ window.ITEM_DATA = {
             }
             return false;
         }
+    },
+    '🎣s': {
+        name: 'Steel Fishing Rod', type: 'tool', tile: '🎣',
+        description: "A durable rod with a metal spool. Boosts catch rates slightly."
     },
     '🎣o': {
         name: 'Obsidian Fishing Rod', type: 'tool', tile: '🎣',
@@ -1176,6 +1242,134 @@ window.ITEM_DATA = {
     },
 
     // --- CULINARY EXPANSION ---
+    '🍲o': {
+        name: "Oracle's Broth",
+        type: 'consumable',
+        tile: '🍲',
+        description: "Foul smelling. {purple:+5 Psyche}, {blue:+20 Mana}",
+        effect: (state) => {
+            state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + 5);
+            state.player.mana = Math.min(state.player.maxMana, state.player.mana + 20);
+            logMessage("Your mind expands. {purple:(+5 Psyche)}, {blue:(+20 Mana)}");
+            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
+            return true;
+        }
+    },
+    '🍱s': {
+        name: "Soldier's Last Meal",
+        type: 'consumable',
+        tile: '🍱',
+        description: "Heavy and fulfilling. {yellow:+100 Hunger}, {green:+20 HP}, {yellow:+20 Stamina}",
+        effect: (state) => {
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 100);
+            state.player.health = Math.min(state.player.maxHealth, state.player.health + 20);
+            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 20);
+            logMessage("You feel ready for anything. {green:(+20 HP, +20 Stamina)}");
+            triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+            return true;
+        }
+    },
+    '🐟v': {
+        name: "Void-Salted Fish",
+        type: 'consumable',
+        tile: '🐟',
+        description: "Tastes like static. {blue:+50 Mana}, {yellow:+20 Hunger}",
+        effect: (state) => {
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 20);
+            state.player.mana = Math.min(state.player.maxMana, state.player.mana + 50);
+            logMessage("Arcane energy courses through you. {blue:(+50 Mana)}");
+            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
+            return true;
+        }
+    },
+    '🍖h': {
+        name: "Honey Glazed Ham",
+        type: 'consumable',
+        tile: '🍖',
+        description: "Sweet and savory. {yellow:+60 Hunger}, {green:+10 HP}",
+        effect: (state) => {
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 60);
+            state.player.health = Math.min(state.player.maxHealth, state.player.health + 10);
+            logMessage("Delicious! {yellow:(+60 Hunger)}, {green:(+10 HP)}");
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            return true;
+        }
+    },
+    '🍳': {
+        name: "Omelet",
+        type: 'consumable',
+        tile: '🍳',
+        description: "Fluffy and filling. {yellow:+40 Hunger}",
+        effect: (state) => {
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 40);
+            logMessage("A great breakfast. {yellow:(+40 Hunger)}");
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            return true;
+        }
+    },
+    '🥩': {
+        name: "Steak",
+        type: 'consumable',
+        tile: '🥩',
+        description: "A hearty cut of cooked meat. {yellow:+50 Hunger}",
+        effect: (state) => {
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 50);
+            logMessage("Tastes like victory. {yellow:(+50 Hunger)}");
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            return true;
+        }
+    },
+    '🍣': {
+        name: "Grilled Fish",
+        type: 'consumable',
+        tile: '🍣',
+        description: "Crispy skin, flaky meat. {yellow:+35 Hunger}",
+        effect: (state) => {
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 35);
+            logMessage("Perfectly cooked. {yellow:(+35 Hunger)}");
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            return true;
+        }
+    },
+    '🧃': {
+        name: "Berry Juice",
+        type: 'consumable',
+        tile: '🧃',
+        description: "Sweet and refreshing. {blue:+30 Thirst}, {green:+5 HP}",
+        effect: (state) => {
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 30);
+            state.player.health = Math.min(state.player.maxHealth, state.player.health + 5);
+            logMessage("Refreshing! {blue:(+30 Thirst)}, {green:(+5 HP)}");
+            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+            return true;
+        }
+    },
+    '🥣c': {
+        name: "Cactus Stew",
+        type: 'consumable',
+        tile: '🥣',
+        description: "Spicy and hydrating. {yellow:+40 Hunger}, {blue:+20 Thirst}",
+        effect: (state) => {
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 40);
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20);
+            logMessage("It clears your sinuses. {yellow:(+40 Hunger)}, {blue:(+20 Thirst)}");
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            return true;
+        }
+    },
+    '🍱h': {
+        name: "Hearty Meal",
+        type: 'consumable',
+        tile: '🍱',
+        description: "A feast fit for a king. {yellow:+80 Hunger}, {green:+15 HP}",
+        effect: (state) => {
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 80);
+            state.player.health = Math.min(state.player.maxHealth, state.player.health + 15);
+            logMessage("A feast! {yellow:(+80 Hunger)}, {green:(+15 HP)}");
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            return true;
+        }
+    },
     '🧀': { 
         name: 'Wheel of Cheese', 
         type: 'consumable', 
@@ -1237,6 +1431,7 @@ window.ITEM_DATA = {
     '📜m': { name: 'Merchant\'s Ledger', type: 'junk', description: "Detailed trade routes. Bandits would pay for this info." },
     '🧵': { name: 'Spool of Silk', type: 'junk', description: "Fine material from the eastern lands." },
     '💎b': { name: 'Black Pearl', type: 'junk', description: "Found only in the deepest abysses." },
+    '💎r': { name: 'Raw Diamond', type: 'junk', description: "Incredibly hard and valuable." },
 
     // --- LEGENDARY WEAPONS (On-Hit Effects) ---
     '⚡': {
@@ -1483,6 +1678,14 @@ window.ITEM_DATA = {
         statBonuses: { dexterity: 2, luck: 1 },
         description: "{red:+4 Dmg}, {green:+2 Dex}, {gold:+1 Luck}. Carved from the fang of a drake."
     },
+    '🗡️m': {
+        name: 'Masterwork Dagger',
+        type: 'weapon',
+        damage: 5,
+        slot: 'weapon',
+        statBonuses: { dexterity: 2, luck: 1 },
+        description: "{red:+5 Dmg}, {green:+2 Dex}, {gold:+1 Luck}. Perfectly balanced."
+    },
 
     // --- DRAGONSCALE SET ---
     '🛡️d': {
@@ -1502,6 +1705,14 @@ window.ITEM_DATA = {
         slot: 'armor',
         statBonuses: { strength: 1, willpower: 1 }, 
         description: "{blue:+6 Def}, {green:+1 Str}, {purple:+1 Will}. Fireproof and tough."
+    },
+    '🛡️v': {
+        name: 'Void-Shielded Mail',
+        type: 'armor',
+        defense: 6,
+        slot: 'armor',
+        statBonuses: { willpower: 2, maxMana: 10 },
+        description: "{blue:+6 Def}, {purple:+2 Will, +10 Max Mana}. Absorbs magical impacts."
     },
 
     // --- NEW CONSUMABLES ---
@@ -1711,7 +1922,9 @@ window.ITEM_DATA = {
                 return false;
             }
             const oldHealth = state.player.health;
-            state.player.health = Math.min(state.player.maxHealth, state.player.health + window.HEALING_AMOUNT);
+            // Use 3 from previous version logic or dynamic amount
+            const healAmt = typeof window.HEALING_AMOUNT !== 'undefined' ? window.HEALING_AMOUNT : 3;
+            state.player.health = Math.min(state.player.maxHealth, state.player.health + healAmt);
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10); 
             if (state.player.health > oldHealth) {
                 triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
@@ -1725,7 +1938,8 @@ window.ITEM_DATA = {
         type: 'instant', 
         effect: (state, tileId) => {
             const oldMana = state.player.mana;
-            state.player.mana = Math.min(state.player.maxMana, state.player.mana + window.MANA_RESTORE_AMOUNT);
+            const manaAmt = typeof window.MANA_RESTORE_AMOUNT !== 'undefined' ? window.MANA_RESTORE_AMOUNT : 3;
+            state.player.mana = Math.min(state.player.maxMana, state.player.mana + manaAmt);
             if (state.player.mana > oldMana) {
                 triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
             }
@@ -1738,7 +1952,8 @@ window.ITEM_DATA = {
         type: 'instant', 
         effect: (state, tileId) => {
             const oldStamina = state.player.stamina;
-            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + window.STAMINA_RESTORE_AMOUNT);
+            const stamAmt = typeof window.STAMINA_RESTORE_AMOUNT !== 'undefined' ? window.STAMINA_RESTORE_AMOUNT : 4;
+            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + stamAmt);
             if (state.player.stamina > oldStamina) {
                 triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
             }
@@ -1751,7 +1966,8 @@ window.ITEM_DATA = {
         type: 'instant', 
         effect: (state, tileId) => {
             const oldPsyche = state.player.psyche;
-            state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + window.PSYCHE_RESTORE_AMOUNT);
+            const psychAmt = typeof window.PSYCHE_RESTORE_AMOUNT !== 'undefined' ? window.PSYCHE_RESTORE_AMOUNT : 2;
+            state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + psychAmt);
             if (state.player.psyche > oldPsyche) {
                 triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); 
             }
@@ -1906,6 +2122,11 @@ window.ITEM_DATA = {
     },
 
     // --- TIER 5 EQUIPMENT (Mithril) ---
+    '⛏️d': {
+        name: 'Diamond Tipped Pickaxe',
+        type: 'tool',
+        description: "Can break through the hardest of stones with ease."
+    },
     '⚔️m': {
         name: 'Mithril Sword',
         type: 'weapon',
@@ -2333,7 +2554,7 @@ window.ITEM_DATA = {
             state.player.health += 5;
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); 
             logMessage("You drink the thick red liquid. {gold:(+5 Max HP)}, {blue:(+20 Thirst)}");
-            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+            triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -2347,7 +2568,7 @@ window.ITEM_DATA = {
             state.player.mana += 5;
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20);
             logMessage("You drink the glowing blue liquid. {gold:(+5 Max Mana)}, {blue:(+20 Thirst)}");
-            triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -2470,20 +2691,6 @@ window.ITEM_DATA = {
         name: 'Tattered Map',
         type: 'treasure_map'
     },
-    '🍐': {
-        name: 'Cactus Fruit',
-        type: 'consumable',
-        description: "Juicy and hydrating. {yellow:+10 Hunger}, {blue:+15 Thirst}, {green:+5 Stamina}",
-        effect: (state) => {
-            if (state.player.hunger >= state.player.maxHunger && state.player.thirst >= state.player.maxThirst && state.player.stamina >= state.player.maxStamina) return false;
-            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 5);
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 10); 
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 15); 
-            logMessage('Juicy! {yellow:(+10 Hunger)}, {blue:(+15 Thirst)}, {green:(+5 Stamina)}');
-            triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
-            return true;
-        }
-    },
     'x': {
         name: 'Tattered Rags',
         type: 'armor',
@@ -2522,10 +2729,13 @@ window.ITEM_DATA = {
             const seed = stringToSeed(tileId || 'gold'); 
             const random = Alea(seed);
 
+            // Access damage amount safely to avoid errors if script.js loads out of order
+            const dmgAmt = typeof window.DAMAGE_AMOUNT !== 'undefined' ? window.DAMAGE_AMOUNT : 2;
+
             if (random() < 0.05) { 
-                state.player.health -= window.DAMAGE_AMOUNT;
+                state.player.health -= dmgAmt;
                 triggerStatFlash(statDisplays.health, false); 
-                logMessage(`{red:It was a trap! Lost ${window.DAMAGE_AMOUNT} health!}`);
+                logMessage(`{red:It was a trap! Lost ${dmgAmt} health!}`);
             } else { 
                 const amount = Math.floor(random() * 10) + 1; 
                 state.player.coins += amount;
@@ -2564,40 +2774,11 @@ window.ITEM_DATA = {
         title: 'Prophecy of the Return',
         content: "It is written: When the five thrones are empty, and the crown is shattered, a traveler from the void will restore the balance."
     },
-    '👓': {
-        name: 'Scholar\'s Spectacles',
-        type: 'armor',
-        defense: 1,
-        slot: 'accessory',
-        statBonuses: { wits: 3, intuition: 2 },
-        description: "{purple:+3 Wits, +2 Int}. Relic of a master historian."
-    },
-    '🌿': {
-        name: 'Medicinal Herb',
-        type: 'consumable',
-        tile: '🌿',
-        description: "Bitter but healthy. {green:+2 HP} and cures poison.",
-        effect: (state) => {
-            if (state.player.health >= state.player.maxHealth && state.player.poisonTurns <= 0) {
-                logMessage("You don't need this right now.");
-                return false;
-            }
-            state.player.health = Math.min(state.player.maxHealth, state.player.health + 2);
-            if (state.player.poisonTurns > 0) {
-                state.player.poisonTurns = 0;
-                logMessage("The herb neutralizes the poison in your veins.");
-            } else {
-                logMessage("You chew the bitter herb. {green:(+2 HP)}");
-            }
-            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
-            return true;
-        }
-    },
     '✨': {
         name: 'Unidentified Magic Item',
         type: 'junk', 
         description: "It hums with potential energy."
-    },
+    }
 };
 
 // --- RANDOMIZED LOOT DATA ---
@@ -2634,10 +2815,15 @@ window.LOOT_SUFFIXES = {
 
 window.SHOP_INVENTORY =[
     { name: 'Healing Potion', price: 25, stock: 10 },
+    { name: 'Mana Potion', price: 25, stock: 10 },
+    { name: 'Stamina Potion', price: 25, stock: 10 },
     { name: 'Fire Resistance Potion', price: 50, stock: 5 },
     { name: 'Stamina Crystal', price: 15, stock: 20 },
     { name: 'Mana Orb', price: 20, stock: 10 },
     { name: 'Wooden Arrow', price: 2, stock: 50 }, 
+    { name: 'Shovel', price: 40, stock: 2 },
+    { name: 'Pickaxe', price: 60, stock: 2 },
+    { name: 'Machete', price: 50, stock: 2 },
     { name: 'Bag of Flour', price: 5, stock: 20 },
     { name: 'Bird Egg', price: 3, stock: 10 },
     { name: 'Jar of Honey', price: 10, stock: 5 }
@@ -2645,6 +2831,8 @@ window.SHOP_INVENTORY =[
 
 window.CASTLE_SHOP_INVENTORY =[
     { name: 'Healing Potion', price: 25, stock: 20 },
+    { name: 'Mana Potion', price: 25, stock: 20 },
+    { name: 'Stamina Potion', price: 25, stock: 20 },
     { name: 'Stamina Crystal', price: 15, stock: 30 },
     { name: 'Mana Orb', price: 20, stock: 20 },
     { name: 'Wooden Arrow', price: 2, stock: 100 }, 
@@ -2653,6 +2841,8 @@ window.CASTLE_SHOP_INVENTORY =[
     { name: 'Studded Armor', price: 120, stock: 1 },
     { name: 'Scroll: Clarity', price: 250, stock: 1 },
     { name: 'Scroll of Siphoning', price: 400, stock: 1 },
+    { name: 'Shovel', price: 40, stock: 2 },
+    { name: 'Pickaxe', price: 60, stock: 2 },
     { name: 'Machete', price: 150, stock: 2 },
     { name: 'Climbing Tools', price: 250, stock: 2 },
     { name: 'Bone Dagger', price: 80, stock: 3 },
@@ -2665,8 +2855,12 @@ window.CASTLE_SHOP_INVENTORY =[
 ];
 
 window.TRADER_INVENTORY =[
+    { name: 'Golden Apple', price: 2000, stock: 1 },
     { name: 'Elixir of Life', price: 500, stock: 1 },
     { name: 'Elixir of Power', price: 500, stock: 1 },
+    { name: 'Cloudseed', price: 1000, stock: 1 },
+    { name: 'Void Astrolabe', price: 1500, stock: 1 },
+    { name: 'Prime Tuning Fork', price: 500, stock: 1 },
     { name: 'Brass Telescope', price: 300, stock: 1 }, 
     { name: 'Obsidian Shard', price: 200, stock: 3 },
     { name: 'Scroll: Entangle', price: 300, stock: 1 },
@@ -2683,3 +2877,5 @@ window.LOOT_TABLE_ARCHAEOLOGY =[
     'idol',        
     'tome_page'    
 ];
+
+// --- END OF FILE data-items.js ---
