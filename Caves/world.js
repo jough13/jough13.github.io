@@ -18,11 +18,15 @@ function getUnderworldTerrain(worldX, worldY) {
     if (ridge < 0.08) return '▓'; // Thick Cave Walls
 
     // Extreme elevations become Magma Lakes
-    if (elev < 0.20) return '🌋'; 
+    if (elev < 0.15) return '🌋'; 
+    
+    // CONTENT WIN: Expanded Underworld Biomes
+    if (elev > 0.85) return '🕸'; // Deep Spider Nests
+    if (ridge > 0.45 && moist > 0.4 && moist < 0.6) return '🏛️'; // Sunken Abyssal Ruins
 
     // Open Cavern Floor
-    if (moist > 0.70) return '🍄'; // Fungal Forest
-    if (moist < 0.30 && ridge > 0.3) return '💎c'; // Crystal Clusters
+    if (moist > 0.75) return '🍄'; // Fungal Forest
+    if (moist < 0.25 && ridge > 0.3) return '💎c'; // Crystal Clusters
 
     return '.'; // Standard cavern floor
 }
@@ -30,10 +34,15 @@ function getUnderworldTerrain(worldX, worldY) {
 function getSkyTerrain(worldX, worldY) {
     const cloudNoise = elevationNoise.noise(worldX / 30 + 5000, worldY / 30 + 5000);
     const structureNoise = moistureNoise.noise(worldX / 20 + 6000, worldY / 20 + 6000);
+    const magicNoise = elevationNoise.noise(worldX / 10 + 7000, worldY / 10 + 7000);
 
     // If noise is high, it's a solid cloud. Otherwise, empty sky (' ')
     if (cloudNoise > 0.65) {
-        if (structureNoise > 0.75) return '🏛️'; // Marble ruins in the clouds
+        // CONTENT WIN: Populated Sky Realm
+        if (structureNoise > 0.85) return '🏛️'; // Marble ruins in the clouds
+        if (structureNoise > 0.80) return '⛲'; // Sky Fountain
+        if (magicNoise > 0.90) return '✨'; // Star Fragment
+        if (magicNoise < 0.10) return '⛅'; // Storm Cloud
         return '☁️'; // Walkable Cloud
     }
     return ' '; // Deadly empty sky
@@ -47,6 +56,7 @@ const chunkManager = {
     caveThemes: {},
     castleMaps: {},
     caveEnemies: {},
+    _maxTierCache: {}, // PERFORMANCE WIN: Cache for O(1) enemy tier lookups
     
     generateCave(caveId) {
         if (this.caveMaps[caveId]) return this.caveMaps[caveId];
@@ -177,6 +187,36 @@ const chunkManager = {
                 else if (direction === 2 && y > 2) y--;
                 else if (direction === 3 && y < CAVE_HEIGHT - 3) y++;
                 steps--;
+            }
+
+            // --- AESTHETIC WIN: Cellular Automata Organic Smoothing ---
+            // Dissolves annoying 1x1 pillars and fills useless 1x1 potholes 
+            // without severing the main path connections!
+            for (let sy = 1; sy < CAVE_HEIGHT - 1; sy++) {
+                for (let sx = 1; sx < CAVE_WIDTH - 1; sx++) {
+                    if (map[sy][sx] === theme.wall) {
+                        let floorNeighbors = 0;
+                        if (map[sy-1][sx] === theme.floor) floorNeighbors++;
+                        if (map[sy+1][sx] === theme.floor) floorNeighbors++;
+                        if (map[sy][sx-1] === theme.floor) floorNeighbors++;
+                        if (map[sy][sx+1] === theme.floor) floorNeighbors++;
+                        
+                        // Pillar Dissolve
+                        if (floorNeighbors >= 3) map[sy][sx] = theme.floor;
+                    } 
+                    else if (map[sy][sx] === theme.floor) {
+                        let wallNeighbors = 0;
+                        if (map[sy-1][sx] === theme.wall) wallNeighbors++;
+                        if (map[sy+1][sx] === theme.wall) wallNeighbors++;
+                        if (map[sy][sx-1] === theme.wall) wallNeighbors++;
+                        if (map[sy][sx+1] === theme.wall) wallNeighbors++;
+                        
+                        // Pothole Fill (Protect the exact spawn point!)
+                        if (wallNeighbors >= 4 && (sx !== startPos.x || sy !== startPos.y)) {
+                            map[sy][sx] = theme.wall;
+                        }
+                    }
+                }
             }
         }
 
@@ -334,7 +374,7 @@ const chunkManager = {
 
                 const lootId = `${caveId}:${randX},${-randY}`;
 
-                if (gameState.lootedTiles.has(lootId)) {
+                if (typeof gameState !== 'undefined' && gameState.lootedTiles && gameState.lootedTiles.has(lootId)) {
                     continue; // Skip placing loot here, it's already taken
                 }
 
@@ -490,10 +530,10 @@ const chunkManager = {
                         if (wallCount === 3 && random() > 0.95) {
 
                             // Find the wall opposite the entrance and carve
-                            if (floorDir === 0 && map[y + 2][x] === theme.wall) {
+                            if (floorDir === 0 && map[y + 2] && map[y + 2][x] === theme.wall) {
                                 map[y + 1][x] = secretWallTile;
                                 map[y + 2][x] = '$';
-                            } else if (floorDir === 1 && map[y - 2][x] === theme.wall) {
+                            } else if (floorDir === 1 && map[y - 2] && map[y - 2][x] === theme.wall) {
                                 map[y - 1][x] = secretWallTile;
                                 map[y - 2][x] = '$';
                             } else if (floorDir === 2 && map[y][x + 2] === theme.wall) {
@@ -548,15 +588,19 @@ const chunkManager = {
                 if (attempts > 800) minBossDistSq = 0;
             }
 
+            // ROBUSTNESS WIN: Safe Arena Fallback
             if (!bossPlaced) {
                 console.warn("⚠️ Boss placement RNG failed. Forcing spawn at center.");
                 const bx = Math.floor(CAVE_WIDTH / 2);
                 const by = Math.floor(CAVE_HEIGHT / 2);
 
-                // FIX: Carve an arena so the boss doesn't spawn entombed in walls!
-                for(let oy=-2; oy<=2; oy++) {
-                    for(let ox=-2; ox<=2; ox++) {
-                        map[by+oy][bx+ox] = theme.floor;
+                // FIX: Carve an arena safely so the boss doesn't spawn entombed in walls!
+                for(let oy=-3; oy<=3; oy++) {
+                    for(let ox=-3; ox<=3; ox++) {
+                        // Check bounds to be absolutely safe
+                        if(by+oy > 0 && by+oy < CAVE_HEIGHT-1 && bx+ox > 0 && bx+ox < CAVE_WIDTH-1) {
+                            map[by+oy][bx+ox] = theme.floor;
+                        }
                     }
                 }
 
@@ -583,7 +627,7 @@ const chunkManager = {
     },
 
     generateCampsite() {
-        const upgrades = gameState.player.campsiteUpgrades || [];
+        const upgrades = typeof gameState !== 'undefined' && gameState.player.campsiteUpgrades ? gameState.player.campsiteUpgrades : [];
         
         // Base Campsite Layout
         const map = [
@@ -803,6 +847,44 @@ const chunkManager = {
                     }
                 }
             }
+            
+            // CONTENT WIN: Dynamic Secret Treasure Vaults
+            let carved = false;
+            for(let attempt = 0; attempt < 50 && !carved; attempt++) {
+                const cx = Math.floor(random() * (map[0].length - 6)) + 3;
+                const cy = Math.floor(random() * (map.length - 6)) + 3;
+                // Check if 5x5 area is purely solid walls
+                let allWalls = true;
+                for(let dy=-2; dy<=2; dy++) {
+                    for(let dx=-2; dx<=2; dx++) {
+                        if (map[cy+dy][cx+dx] !== '▓' && map[cy+dy][cx+dx] !== '▒') {
+                            allWalls = false; break;
+                        }
+                    }
+                    if(!allWalls) break;
+                }
+                
+                if (allWalls) {
+                    // Carve 3x3 vault
+                    for(let dy=-1; dy<=1; dy++) {
+                        for(let dx=-1; dx<=1; dx++) {
+                            map[cy+dy][cx+dx] = '.';
+                        }
+                    }
+                    // Place Treasures
+                    map[cy][cx] = '📦'; 
+                    map[cy-1][cx] = '$';
+                    map[cy+1][cx] = '💎';
+                    
+                    // Create a cracked wall '🏚' entrance so players can bomb into it
+                    const dir = Math.floor(random() * 4);
+                    if (dir===0) map[cy-2][cx] = '🏚';
+                    if (dir===1) map[cy+2][cx] = '🏚';
+                    if (dir===2) map[cy][cx-2] = '🏚';
+                    if (dir===3) map[cy][cx+2] = '🏚';
+                    carved = true;
+                }
+            }
         }
 
         this.castleMaps[castleId] = map;
@@ -822,10 +904,10 @@ const chunkManager = {
 
         // --- LAYER & MULTIVERSE PATH ISOLATION ---
         let realmPrefix = '';
-        if (gameState.currentRealm !== 0 && gameState.currentRealm) {
+        if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) {
             realmPrefix = `realm_${gameState.currentRealm}/`;
         }
-        if (gameState.mapMode === 'underworld') {
+        if (typeof gameState !== 'undefined' && gameState.mapMode === 'underworld') {
             realmPrefix += 'underworld/';
         }
         
@@ -899,10 +981,10 @@ const chunkManager = {
 
         // --- LAYER & MULTIVERSE PATH ISOLATION ---
         let realmPrefix = '';
-        if (gameState.currentRealm !== 0 && gameState.currentRealm) {
+        if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) {
             realmPrefix = `realm_${gameState.currentRealm}/`;
         }
-        if (gameState.mapMode === 'underworld') {
+        if (typeof gameState !== 'undefined' && gameState.mapMode === 'underworld') {
             realmPrefix += 'underworld/';
         }
 
@@ -935,8 +1017,12 @@ const chunkManager = {
         const table = spawns[biome];
         if (!table) return null;
 
-        const maxDefinedTier = Math.max(...Object.keys(table).map(Number));
-        const safeTier = Math.min(tier, maxDefinedTier);
+        // PERFORMANCE WIN: O(1) Cache lookup instead of expensive Object.keys mapping
+        if (this._maxTierCache[biome] === undefined) {
+            this._maxTierCache[biome] = Math.max(...Object.keys(table).map(Number));
+        }
+
+        const safeTier = Math.min(tier, this._maxTierCache[biome]);
         const tierList = table[safeTier];
         if (!tierList) return null;
 
@@ -949,7 +1035,8 @@ const chunkManager = {
     generateChunk(chunkX, chunkY) {
         // --- DIMENSIONAL OVERRIDE ---
         // If we are in Realm 0, use the base seed. Otherwise, use the realm seed!
-        const realmSeed = (gameState.currentRealm === 0 || !gameState.currentRealm) ? WORLD_SEED : `realm_${gameState.currentRealm}`;
+        const realmState = (typeof gameState !== 'undefined' ? gameState.currentRealm : 0) || 0;
+        const realmSeed = (realmState === 0) ? WORLD_SEED : `realm_${realmState}`;
         const chunkKey = `${chunkX},${chunkY}`;
         const random = Alea(stringToSeed(realmSeed + ':' + chunkKey));
 
@@ -959,13 +1046,16 @@ const chunkManager = {
             "0,-50": "⬆️", "50,0": "➡️", "-50,0": "⬅️", "0,50": "⬇️", "35,35": "🚪" 
         };
 
+        const mapMode = typeof gameState !== 'undefined' ? gameState.mapMode : 'overworld';
+        const isUnderworld = mapMode === 'underworld';
+
         for (let y = 0; y < this.CHUNK_SIZE; y++) {
             for (let x = 0; x < this.CHUNK_SIZE; x++) {
                 const worldX = chunkX * this.CHUNK_SIZE + x;
                 const worldY = chunkY * this.CHUNK_SIZE + y;
 
                 // --- 1. DETERMINISTIC SPAWNS (Realm 0 Only) ---
-                if (gameState.currentRealm === 0 || !gameState.currentRealm) {
+                if (realmState === 0) {
                     const dSpawn = DETERMINISTIC_SPAWNS[`${worldX},${worldY}`];
                     if (dSpawn) {
                         chunkData[y][x] = dSpawn;
@@ -975,15 +1065,14 @@ const chunkManager = {
 
                 const distSq = (worldX * worldX) + (worldY * worldY);
                 let tile = '.';
-                const isUnderworld = gameState.mapMode === 'underworld';
                 
                 // Define realmOffset globally for this whole tile loop!
-                const realmOffset = (gameState.currentRealm || 0) * 100;
+                const realmOffset = realmState * 100;
 
                 // --- LAYER ROUTING ---
-                if (gameState.mapMode === 'underworld') {
+                if (isUnderworld) {
                     tile = getUnderworldTerrain(worldX, worldY);
-                } else if (gameState.mapMode === 'skyrealm') {
+                } else if (mapMode === 'skyrealm') {
                     tile = getSkyTerrain(worldX, worldY);
                 } else {
 
@@ -1003,7 +1092,7 @@ const chunkManager = {
                     else if (moist > 0.55) tile = 'F';
 
                     // --- NATURAL SPAWN SAFETY OVERRIDE (Realm 0 Only) ---
-                    if ((gameState.currentRealm === 0 || !gameState.currentRealm) && distSq <= 100) { 
+                    if (realmState === 0 && distSq <= 100) { 
                         if (['^', '~', '≈', 'd'].includes(tile)) {
                             tile = moist > 0.5 ? 'F' : '.'; 
                         }
@@ -1011,7 +1100,7 @@ const chunkManager = {
                 }
 
                 // --- APPLY REALM MUTATORS ---
-                if (gameState.currentRealm !== 0 && gameState.realmMutators) {
+                if (realmState !== 0 && typeof gameState !== 'undefined' && gameState.realmMutators) {
                     gameState.realmMutators.forEach(mutatorKey => {
                         const mutator = window.REALM_MUTATORS[mutatorKey];
                         if (mutator && typeof mutator.apply === 'function') {
@@ -1038,14 +1127,16 @@ const chunkManager = {
                         const hostileRoll = random();
                         let spawnChance = 0.003;
                         if (tile === '🍄') spawnChance = 0.005; // Fungal forests are dangerous
+                        if (tile === '🕸') spawnChance = 0.015; // Spider nests are swarming
                         
                         // Increase spawn chances in alternate dimensions!
-                        if (gameState.currentRealm !== 0) spawnChance *= 2.0;
+                        if (realmState !== 0) spawnChance *= 2.0;
 
                         if (hostileRoll < spawnChance) {
                             let proxyBiome = '^'; // Default to mountain enemies for stone caves
                             if (tile === '🍄') proxyBiome = '≈'; // Swamp enemies in fungus
                             if (tile === '🌋') proxyBiome = 'D'; // Desert/Fire enemies near magma
+                            if (tile === '🕸') proxyBiome = '🍄'; // Poisonous enemies in nests
                             
                             const enemyTile = this.getEnemySpawn(proxyBiome, distSq, random);
                             if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
@@ -1084,11 +1175,21 @@ const chunkManager = {
                     else if (tile === 'D' && featureRoll < 0.0001) {
                         chunkData[y][x] = '🦴d';
                     }
+                    // --- CONTENT WIN: Minor Environment Additions ---
+                    else if (tile === 'F' && featureRoll > 0.0003 && featureRoll < 0.0004) {
+                        chunkData[y][x] = '⛺k'; // Abandoned campfire
+                    }
+                    else if (tile === 'd' && featureRoll > 0.0004 && featureRoll < 0.0006) {
+                        chunkData[y][x] = '⚰️'; // Ancient Grave
+                    }
+                    else if (tile === '^' && featureRoll > 0.0003 && featureRoll < 0.0004) {
+                        chunkData[y][x] = '⛏️'; // Lost Pickaxe
+                    }
                     // --- NIGHT-TIME ANOMALIES ---
-                    else if (tile === 'F' && featureRoll > 0.0001 && featureRoll < 0.0003) {
+                    else if (tile === 'F' && featureRoll > 0.0004 && featureRoll < 0.0006) {
                         chunkData[y][x] = '🌺'; // Moonblooms in forests
                     }
-                    else if (tile === '^' && featureRoll > 0.0001 && featureRoll < 0.0003) {
+                    else if (tile === '^' && featureRoll > 0.0004 && featureRoll < 0.0006) {
                         chunkData[y][x] = '☄️'; // Star-metal in mountains
                     }
                     // --- EXPLORATION EXPANSION ---
@@ -1211,13 +1312,9 @@ const chunkManager = {
                     }
                     // --- NIGHT-TIME GHOSTS (Echoes of the Fall) ---
                     else if ((tile === '.' || tile === 'd') && featureRoll > 0.0002 && featureRoll < 0.0004) {
-                        const hour = gameState.time.hour;
-                        const isNight = hour >= 20 || hour < 5;
-                        if (isNight) {
-                            chunkData[y][x] = '👻p';
-                        } else {
-                            chunkData[y][x] = tile;
-                        }
+                        // In chunk generation we don't have access to active state time safely, 
+                        // so we just place them and let the interaction layer handle night/day rendering
+                        chunkData[y][x] = '👻p';
                     }
                     // --- 8. ARCHAEOLOGY SPOTS ---
                     else if (['.', 'd', 'D', 'F'].includes(tile) && featureRoll < (tile === 'd' || tile === 'D' ? 0.0015 : 0.0005)) {
@@ -1237,11 +1334,11 @@ const chunkManager = {
                         if (tile === '~') spawnChance = 0.0015; // Sea monsters spawn rate
                         
                         // Increase spawn chances in alternate dimensions!
-                        if (gameState.currentRealm !== 0) spawnChance *= 2.0;
+                        if (realmState !== 0) spawnChance *= 2.0;
 
                         if (hostileRoll < spawnChance) {
                             // If in realm 0 and dist < 200, effective dist is 0 (safe zone). Else true dist.
-                            const effectiveDistSq = ((gameState.currentRealm === 0 || !gameState.currentRealm) && distSq < 40000) ? 0 : distSq; 
+                            const effectiveDistSq = (realmState === 0 && distSq < 40000) ? 0 : distSq; 
                             const enemyTile = this.getEnemySpawn(tile, effectiveDistSq, random);
 
                             if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
@@ -1269,7 +1366,7 @@ const chunkManager = {
         }
 
         // --- ZERO-ALLOCATION SMOOTHING PASS ---
-        const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈', '🌋', '🍄', '💎c']; 
+        const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈', '🌋', '🍄', '💎c', '🕸']; 
         
         for (let y = 1; y < this.CHUNK_SIZE - 1; y++) {
             for (let x = 1; x < this.CHUNK_SIZE - 1; x++) {
@@ -1337,6 +1434,20 @@ const chunkManager = {
                 if (this.worldState[chunkId]) delete this.worldState[chunkId];
             }
         }
+        
+        // PERFORMANCE WIN: Clean up distant spatial buckets to prevent memory leaks
+        if (typeof gameState !== 'undefined' && gameState.enemySpatialMap) {
+            for (const [key, set] of gameState.enemySpatialMap.entries()) {
+                const parts = key.split(',');
+                const cx = Number(parts[0]);
+                const cy = Number(parts[1]);
+                
+                // If bucket is more than 3 spatial chunks away, purge it
+                if (Math.abs(cx - playerChunkX) > 3 || Math.abs(cy - playerChunkY) > 3) {
+                    gameState.enemySpatialMap.delete(key);
+                }
+            }
+        }
     }
 };
 
@@ -1353,7 +1464,7 @@ function updateSpatialMap(enemyId, oldX, oldY, newX, newY) {
     // 1. Remove from old bucket if it exists
     if (oldX !== null && oldY !== null && oldX !== undefined && oldY !== undefined) {
         const oldKey = getSpatialKey(oldX, oldY);
-        if (gameState.enemySpatialMap.has(oldKey)) {
+        if (typeof gameState !== 'undefined' && gameState.enemySpatialMap && gameState.enemySpatialMap.has(oldKey)) {
             const set = gameState.enemySpatialMap.get(oldKey);
             set.delete(enemyId);
             if (set.size === 0) gameState.enemySpatialMap.delete(oldKey); 
@@ -1363,9 +1474,13 @@ function updateSpatialMap(enemyId, oldX, oldY, newX, newY) {
     // 2. Add to new bucket
     if (newX !== null && newY !== null && newX !== undefined && newY !== undefined) {
         const newKey = getSpatialKey(newX, newY);
-        if (!gameState.enemySpatialMap.has(newKey)) {
-            gameState.enemySpatialMap.set(newKey, new Set());
+        if (typeof gameState !== 'undefined' && gameState.enemySpatialMap) {
+            if (!gameState.enemySpatialMap.has(newKey)) {
+                gameState.enemySpatialMap.set(newKey, new Set());
+            }
+            gameState.enemySpatialMap.get(newKey).add(enemyId);
         }
-        gameState.enemySpatialMap.get(newKey).add(enemyId);
     }
 }
+
+// --- END OF FILE world.js ---
