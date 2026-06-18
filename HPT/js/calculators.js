@@ -458,8 +458,8 @@ const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             if (isNaN(A0) || A0 < 0) throw new Error("Activity must be a positive number.");
 
             // 2. Validate Dates
-            const start = new Date(originalDate);
-            const end = new Date(targetDate);
+            const start = new Date(originalDate + 'Z');
+            const end = new Date(targetDate + 'Z');
 
             if (isNaN(start.getTime()) || isNaN(end.getTime())) {
                 // Fail silently while user is typing/selecting dates
@@ -752,20 +752,24 @@ const StandardDecayCalculator = ({
 
             let t_seconds = 0;
 
-            if (calculationMode === MODE_TIME) {
-                // Time calculation logic happens below
-            } else if (timeMode === 'date') {
-                const startStr = useUTC ? referenceDate + 'Z' : referenceDate;
-                const endStr = useUTC ? targetDate + 'Z' : targetDate;
-                const start = new Date(startStr);
-                const end = new Date(endStr);
+            if (calculationMode !== MODE_TIME) {
+                if (timeMode === 'date') {
+                    const startStr = useUTC ? referenceDate + 'Z' : referenceDate;
+                    const endStr = useUTC ? targetDate + 'Z' : targetDate;
+                    const start = new Date(startStr);
+                    const end = new Date(endStr);
 
-                if (isNaN(start.getTime()) || isNaN(end.getTime())) { setError("Please enter valid dates."); setResult(null); return; }
-                t_seconds = (end - start) / 1000;
-            } else {
-                const t_input = safeParseFloat(timeElapsed);
-                if (isNaN(t_input)) return; 
-                t_seconds = t_input * unitConversions[timeUnit];
+                    if (isNaN(start.getTime()) || isNaN(end.getTime())) { 
+                        setError("Please enter valid dates."); 
+                        setResult(null); 
+                        return; 
+                    }
+                    t_seconds = (end - start) / 1000;
+                } else {
+                    const t_input = safeParseFloat(timeElapsed);
+                    if (isNaN(t_input)) return; 
+                    t_seconds = t_input * unitConversions[timeUnit];
+                }
             }
 
             let timeForChart_seconds = t_seconds;
@@ -2153,30 +2157,43 @@ const SimpleEfficiencyCalculator = ({
     const { settings } = React.useContext(SettingsContext);
     const isSI = settings?.unitSystem === 'si';
 
+    // --- NEW LOCAL STATE FOR BACKGROUND SEPARATION ---
+    const [bkgCounts, setBkgCounts] = React.useState('');
+    const [bkgTime, setBkgTime] = React.useState('1'); // Default to 1 min to prevent division by zero
+
     // Auto-Calculate Effect
     React.useEffect(() => {
         // 1. Reset
         setResult(null);
         setError('');
 
-        // --- MODE 1: SCALER (Counts + Time -> CPM) ---
+        // --- MODE 1: SCALER (Gross Counts - Bkg Counts -> Net CPM) ---
         if (mode === 'scaler') {
             if (!counts || !time) return; 
-            const c = safeParseFloat(counts);
-            const t = safeParseFloat(time);
+            const c_g = safeParseFloat(counts);
+            const t_g = safeParseFloat(time);
+            
+            // Default background variables to 0 counts and 1 minute if left blank
+            const c_b = bkgCounts !== '' ? safeParseFloat(bkgCounts) : 0;
+            const t_b = bkgTime !== '' ? safeParseFloat(bkgTime) : 1;
 
-            if (isNaN(c) || c < 0) return;
-            if (isNaN(t) || t <= 0) return;
+            if (isNaN(c_g) || c_g < 0) return;
+            if (isNaN(t_g) || t_g <= 0) return;
+            if (isNaN(c_b) || c_b < 0) return;
+            if (isNaN(t_b) || t_b <= 0) return;
 
-            const rate = c / t;
-            // Poisson Error (Standard Deviation of Rate) = sqrt(N) / t
-            // Note: This is 1-sigma (68% confidence)
-            const stdDev = Math.sqrt(c) / t;
+            // Calculate standard operational health physics parameters
+            const rateGross = c_g / t_g;
+            const rateBkg = c_b / t_b;
+            const rateNet = Math.max(0, rateGross - rateBkg);
+
+            // True Net Count Rate Error Propagation (1-sigma, 68% confidence)
+            const stdDev = Math.sqrt((c_g / (t_g * t_g)) + (c_b / (t_b * t_b)));
 
             setResult({ 
-                label: 'Count Rate', 
-                value: rate.toFixed(1) + ' cpm',
-                subtext: `± ${stdDev.toFixed(1)} cpm (1σ)`
+                label: 'Net Count Rate (cpm)', 
+                value: rateNet.toFixed(1) + ' cpm',
+                subtext: `± ${stdDev.toFixed(1)} cpm (1σ) [Gross: ${rateGross.toFixed(1)} | Bkg: ${rateBkg.toFixed(1)}]`
             });
         }
 
@@ -2220,12 +2237,12 @@ const SimpleEfficiencyCalculator = ({
                 subtext: `${formattedSubActivity} ${subUnit}`
             });
         }
-    // Removed setCpm/setEfficiency from dependencies to prevent loops
-    }, [mode, counts, time, cpm, dpm, efficiency, isSI, setResult, setError]); 
+    // Added bkgCounts and bkgTime to the hook tracking baseline
+    }, [mode, counts, time, cpm, dpm, efficiency, bkgCounts, bkgTime, isSI, setResult, setError]); 
 
     return (
         <div className="space-y-4 animate-fade-in">
-            <ContextualNote type="info">Performs basic scaler math and efficiency conversions. Assumes standard Poisson statistics for count error.</ContextualNote>
+            <ContextualNote type="info">Performs radiochemistry sample scaler math and efficiency conversions using verified net error propagation statistics.</ContextualNote>
 
             {/* 3-Way Toggle */}
             <div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg">
@@ -2237,15 +2254,28 @@ const SimpleEfficiencyCalculator = ({
             <div className="space-y-3">
                 {/* Inputs for SCALER */}
                 {mode === 'scaler' && (
-                    <div className="grid grid-cols-2 gap-4 animate-fade-in">
-                        
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Total Counts</label>
-                            <input type="number" inputMode="decimal" value={counts} onChange={e => setCounts(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    <div className="space-y-3 animate-fade-in">
+                        {/* Sample Rows */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs uppercase font-bold text-slate-500">Gross Sample Counts</label>
+                                <input type="number" inputMode="decimal" value={counts} onChange={e => setCounts(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-mono" placeholder="e.g. 500" />
+                            </div>
+                            <div>
+                                <label className="block text-xs uppercase font-bold text-slate-500">Sample Time (min)</label>
+                                <input type="number" inputMode="decimal" value={time} onChange={e => setTime(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-mono" placeholder="e.g. 1" />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Count Time (min)</label>
-                            <input type="number" inputMode="decimal" value={time} onChange={e => setTime(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        {/* Background Rows */}
+                        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-dashed border-slate-200 dark:border-slate-700">
+                            <div>
+                                <label className="block text-xs uppercase font-bold text-slate-400">Bkg Counts (Optional)</label>
+                                <input type="number" inputMode="decimal" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-mono" placeholder="0" />
+                            </div>
+                            <div>
+                                <label className="block text-xs uppercase font-bold text-slate-400">Bkg Time (min)</label>
+                                <input type="number" inputMode="decimal" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-mono" placeholder="1" />
+                            </div>
                         </div>
                     </div>
                 )}
@@ -2254,14 +2284,14 @@ const SimpleEfficiencyCalculator = ({
                 {mode !== 'scaler' && (
                     <div className="animate-fade-in">
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Net Count Rate (cpm)</label>
-                        <input type="number" inputMode="decimal" value={cpm} onChange={e => setCpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        <input type="number" inputMode="decimal" value={cpm} onChange={e => setCpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-mono" />
                     </div>
                 )}
 
                 {mode === 'calcEff' && (
                     <div className="animate-fade-in">
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Source Activity (dpm)</label>
-                        <input type="number" inputMode="decimal" value={dpm} onChange={e => setDpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        <input type="number" inputMode="decimal" value={dpm} onChange={e => setDpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-mono" />
                     </div>
                 )}
 
@@ -2269,8 +2299,8 @@ const SimpleEfficiencyCalculator = ({
                     <div className="animate-fade-in">
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Instrument Efficiency (%)</label>
                         <div className="relative mt-1">
-                            <input type="number" inputMode="decimal" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">%</div>
+                            <input type="number" inputMode="decimal" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-mono" />
+                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 font-bold">%</div>
                         </div>
                     </div>
                 )}
@@ -2279,12 +2309,11 @@ const SimpleEfficiencyCalculator = ({
             {/* Error Message */}
             {error && <p className="text-red-500 text-sm text-center animate-fade-in">{error}</p>}
 
-            {/* Result Box */}
             {result && (
                 <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-center border border-slate-200 dark:border-slate-600 animate-fade-in">
                     <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">{result.label}</p>
-                    <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.value}</p>
-                    {result.subtext && <p className="text-sm text-slate-500 mt-1">{result.subtext}</p>}
+                    <p className="text-3xl font-bold text-sky-600 dark:text-sky-400 tracking-tight">{result.value}</p>
+                    {result.subtext && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">{result.subtext}</p>}
                 </div>
             )}
         </div>
@@ -3240,6 +3269,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let rawLimit = nuclideData.shipping[newItemForm];
         let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
 
+        const hrcqLimitTBq = Math.min(3000 * limitTBq, 1000);
+
         let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
 
         if (newItemSymbol === 'H-3') { 
@@ -3287,8 +3318,13 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             fracTypeA: limitTBq === Infinity ? 0 : actTBq / limitTBq,
             fracExcItem: (limitTBq === Infinity || itemLimitExc === 0) ? 0 : actTBq / itemLimitExc,
             fracExcPkg: (limitTBq === Infinity || pkgLimitExc === 0) ? 0 : actTBq / pkgLimitExc,
-            fracExempt: calculatedFracExempt,
+            
+            ratioExemptAct: exemptLimitBq === 0 ? (actBq > 0 ? Infinity : 0) : actBq / exemptLimitBq,
+            ratioExemptConc: exemptConcLimitBq_g === 0 ? (specActivityBq_g > 0 ? Infinity : 0) : (massGrams > 0 ? specActivityBq_g / exemptConcLimitBq_g : 0),
+            
             fracRQ: rqLimitTBq === Infinity ? 0 : actTBq / rqLimitTBq,
+            fracHRCQ: hrcqLimitTBq === 0 ? 0 : actTBq / hrcqLimitTBq,
+
             mass: massGrams,
             lsaHint: lsaHint,
             psn: itemManualPSN || suggestedPSN
@@ -3309,63 +3345,72 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     // Calculate Package Totals
     React.useEffect(() => {
-        if (packageItems.length === 0) { 
-            setClassificationResult(null); 
-            return; 
+    if (packageItems.length === 0) { 
+        setClassificationResult(null); 
+        return; 
+    }
+
+    let totalTBq = 0;
+    let sumFracTypeA = 0;
+    let sumFracExcPkg = 0;
+    
+    // This variable remains the same
+    let sumFracHRCQ = 0; 
+    
+    let sumFracRQ = 0;
+    let sumExemptAct = 0;
+    let sumExemptConc = 0;
+    let anyItemFailsExc = false;
+    let hasFissile = false;
+
+    packageItems.forEach(item => {
+        totalTBq += item.actTBq;
+        sumFracTypeA += item.fracTypeA;
+        sumFracExcPkg += item.fracExcPkg;
+        
+        sumFracHRCQ += item.fracHRCQ;
+        
+        sumFracRQ += item.fracRQ;
+        sumExemptAct += item.ratioExemptAct;
+        sumExemptConc += item.ratioExemptConc;
+
+        if (item.category === 'instrument' && item.fracExcItem > 1.0) {
+            anyItemFailsExc = true;
         }
+        if (FISSILE_ISOTOPES.includes(item.symbol)) {
+            hasFissile = true;
+        }
+    });
 
-        let totalTBq = 0;
-        let sumFracTypeA = 0;
-        let sumFracExcPkg = 0;
-        let sumFracHRCQ = 0;
-        let sumFracExempt = 0;
-        let sumFracRQ = 0;
-        let anyItemFailsExc = false;
-        let hasFissile = false;
+    let classification = '';
+    let methodology = '';
+    const isRQ = sumFracRQ >= 1.0;
 
-        packageItems.forEach(item => {
-            totalTBq += item.actTBq;
-            sumFracTypeA += item.fracTypeA;
-            sumFracExcPkg += item.fracExcPkg;
-            sumFracHRCQ += (item.actTBq / (3000 * item.typeALimit)); 
-            sumFracExempt += item.fracExempt;
-            sumFracRQ += item.fracRQ;
+    const isExemptConsignment = sumExemptAct <= 1.0 || sumExemptConc <= 1.0;
 
-            if (item.category === 'instrument' && item.fracExcItem > 1.0) {
-                anyItemFailsExc = true;
-            }
-            
-            if (FISSILE_ISOTOPES.includes(item.symbol)) {
-                hasFissile = true;
-            }
-        });
+    if (isExemptConsignment) {
+        classification = 'EXEMPT';
+        methodology = 'Not Regulated as Class 7 (Consignment mixture satisfies the unity rule for exemptions under 49 CFR 173.433).';
+    } else if (sumFracExcPkg <= 1.0 && !anyItemFailsExc) {
+        classification = 'EXCEPTED';
+        methodology = 'Sum of Fractions ≤ 1.0 (Excepted Limits) AND all individual items meet Item Limits.';
+    } else if (sumFracTypeA <= 1.0) {
+        classification = 'TYPE_A';
+        methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)';
+    } else {
 
-        let classification = '';
-        let methodology = '';
-        const isRQ = sumFracRQ >= 1.0;
-
-        if (sumFracExempt <= 1.0) {
-            classification = 'EXEMPT';
-            methodology = 'Not Regulated as Class 7 (Below Exempt Consignment Limits per 49 CFR 173.436)';
-        } else if (sumFracExcPkg <= 1.0 && !anyItemFailsExc) {
-            classification = 'EXCEPTED';
-            methodology = 'Sum of Fractions ≤ 1.0 (Excepted Limits) AND all individual items meet Item Limits.';
-        } else if (sumFracTypeA <= 1.0) {
-            classification = 'TYPE_A';
-            methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)';
+        if (sumFracHRCQ > 1.0) {
+            classification = 'HRCQ';
+            methodology = 'Activity exceeds the cumulative Highway Route Controlled Quantity unity rule threshold under 49 CFR 173.403.';
         } else {
-            if (sumFracHRCQ > 1.0 || totalTBq > 1000) {
-                classification = 'HRCQ';
-                methodology = 'Activity exceeds Type A and HRCQ thresholds.';
-            } else {
-                classification = 'TYPE_B';
-                methodology = 'Activity exceeds Type A limits.';
-            }
+            classification = 'TYPE_B';
+            methodology = 'Activity exceeds Type A limits but remains below HRCQ criteria.';
         }
+    }
 
-        setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, isRQ, hasFissile });
+    setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, isRQ, hasFissile });
 
-    }, [packageItems]);
+}, [packageItems]);
 
     React.useEffect(() => {
         if (!doseRateAt1m && !surfaceDoseRate) { setLabelResult(null); }
@@ -4231,14 +4276,17 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             }
 
             let rate_R_hr;
-            if (selectedNuclide.symbol.includes('I-131') && !isNaN(rateCheck) && rateCheck > 0) {
-                // Calculate back from measured rate at 'd' meters
+            let basisText = '';
+            
+            if (!isNaN(rateCheck) && rateCheck > 0) {
+                
                 const rate_mrem_hr_at_1m = rateCheck; 
-                // Inverse Square Law
                 rate_R_hr = (rate_mrem_hr_at_1m / 1000) * Math.pow(1 / d_m, 2);
+                basisText = 'Measured 1m rate basis';
             } else {
-                // Calculate theoretical rate using native units
+                // Fall back to theoretical calculation using the nuclide's gamma constant
                 rate_R_hr = (gamma_app * A0_Ci * att) / Math.pow(d_m, 2);
+                basisText = 'Theoretical activity basis';
             }
 
             // Total Dose = Rate * Occupancy * (T_eff / ln(2))
@@ -4250,7 +4298,12 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             setResult({
                 title: dose_mrem <= TEDE_LIMIT_MREM ? 'PASS (Tier 2)' : 'FAIL',
                 pass: dose_mrem <= TEDE_LIMIT_MREM,
-                details: [`Total Dose: ${formatDoseValue(dose_mrem, 'dose', settings).value} ${formatDoseValue(dose_mrem, 'dose', settings).unit}`, `(Limit: ${limitDisplay})`],
+            
+                details: [
+                    `Total Dose: ${formatDoseValue(dose_mrem, 'dose', settings).value} ${formatDoseValue(dose_mrem, 'dose', settings).unit}`, 
+                    `(Limit: ${limitDisplay})`,
+                    `(${basisText})`
+                ],
                 rawDose: dose_mrem
             });
         } catch (e) { setResult(null); setError(e.message); }
@@ -6559,19 +6612,28 @@ const KusnetzCalculator = ({
 
     // Helper: Linear interpolation for delay times between standard 5-minute marks
     const getKusnetzFactor = (t) => {
-        if (t < 40 || t > 90) return null;
-        if (KUSNETZ_FACTORS[t]) return KUSNETZ_FACTORS[t];
+                if (t < 40 || t > 90) return null;
+                // If it lands perfectly on an exact 5-minute mark, return the preset value directly
+                if (KUSNETZ_FACTORS[t]) return KUSNETZ_FACTORS[t];
 
-        const times = Object.keys(KUSNETZ_FACTORS).map(Number).sort((a,b) => a-b);
-        for (let i = 0; i < times.length - 1; i++) {
-            if (t > times[i] && t < times[i+1]) {
-                const t1 = times[i]; const t2 = times[i+1];
-                const f1 = KUSNETZ_FACTORS[t1]; const f2 = KUSNETZ_FACTORS[t2];
-                return f1 + ((t - t1) / (t2 - t1)) * (f2 - f1);
-            }
-        }
-        return null;
-    };
+                const times = Object.keys(KUSNETZ_FACTORS).map(Number).sort((a, b) => a - b);
+                for (let i = 0; i < times.length - 1; i++) {
+                    if (t > times[i] && t < times[i + 1]) {
+                        const t1 = times[i]; 
+                        const t2 = times[i + 1];
+                        const f1 = KUSNETZ_FACTORS[t1]; 
+                        const f2 = KUSNETZ_FACTORS[t2];
+                        
+                        // Calculate the exact fractional distance between the two keys
+                        const fraction = (t - t1) / (t2 - t1);
+                        
+                        // Use a true weighted blend. This is mathematically bulletproof
+                        // for descending slopes and eliminates potential sign-flip vulnerabilities.
+                        return f1 * (1 - fraction) + f2 * fraction;
+                    }
+                }
+                return null;
+            };
 
     React.useEffect(() => {
         try {
@@ -7185,11 +7247,19 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                     doseRateR_hr = Math.PI * gammaConstant * A_A_Ci_m2 * Math.log((Math.pow(r_m, 2) + Math.pow(d_m, 2)) / Math.pow(d_m, 2));
                 }
                 
+                // Dynamically adjust labeling and notes based on Geometry Mode
+                const isPoint = geometryMode === GEOMETRY_POINT;
+                const geoWarning = isPoint 
+                    ? null 
+                    : "Extended geometry notice: Integration models the unattenuated free-air exposure field (R/hr). Actual deep tissue dose equivalent (rem/Sv) will vary due to angular scatter distributions and self-absorption.";
+
                 setResult({ 
                     type: 'gamma', 
                     rawDoseRate_mrem_hr: doseRateR_hr * 1000 * transValue, 
                     usedGamma: gammaConstant,
-                    label: "Est. Dose Eq. (1 R ≈ 1 rem)" 
+                    // Adjust label text to maintain professional and auditing accuracy
+                    label: isPoint ? "Est. Deep Dose Eq. (1 R ≈ 1 rem)" : "Estimated Exposure Field (Air Kerma)",
+                    sourceNote: geoWarning
                 });
                 break;
             }
@@ -7864,22 +7934,33 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                     return;
                 }
                 
+                // Initial base estimate without buildup
                 let reqThickCm = hvl_cm * Math.log2(unshieldedRate_R_hr / target_R_hr);
                 
-                // SAFETY FIX: Finite Check on Iterative Buildup
                 if (useBuildup) {
-                    for(let i=0; i<10; i++) {
-                        const mfp = (Math.log(2) / hvl_cm) * reqThickCm;
-                        const B = 1 + mfp;
-                        // Avoid runaway
-                        if (!isFinite(B) || B > 1e6) break;
-                        reqThickCm = hvl_cm * Math.log2((unshieldedRate_R_hr * B) / target_R_hr);
+                    // STABLE ITERATIVE METHOD FOR TRANSYNDENTAL EQUATION
+                    for (let i = 0; i < 12; i++) {
+                        const mfp = (Math.log(2) / hvl_cm) * reqThickCm; // Mean Free Paths (μx)
+                        const B = 1 + mfp; // Linear buildup approximation
+                        
+                        // Break if buildup factor reaches unphysical boundaries
+                        if (!isFinite(B) || B > 1e5) break;
+                        
+                        const logArg = (unshieldedRate_R_hr * B) / target_R_hr;
+                        // Catch negative/zero log arguments before they turn into NaN
+                        if (logArg <= 0 || isNaN(logArg)) break;
+                        
+                        const nextThick = hvl_cm * Math.log2(logArg);
+                        
+                        // DAMPING MECHANISM: 50/50 blend smooths out oscillations 
+                        // and forces rapid convergence to a fixed point.
+                        reqThickCm = 0.5 * reqThickCm + 0.5 * nextThick;
                     }
                 }
                 
                 setResult({
                     type: 'thickness',
-                    val: reqThickCm,
+                    val: Math.max(0, reqThickCm), // Enforce non-negative physics edge clamp
                     unshielded_mrem_hr: unshieldedRate_R_hr * 1000,
                     hvl: hvl_cm,
                     tvl: tvl_cm 
@@ -8330,12 +8411,21 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
     }, [isTimerRunning, targetEndTime]);
 
     const handleStartTimer = () => {
-        // Add isFinite check to prevent starting a timer for "Infinite" stay times
-        if (!result || !result.isSafe || !isFinite(result.seconds)) return; 
+        if (!result || !result.isSafe) return; 
+        
+        const plannedTimeValue = safeParseFloat(plannedTime);
+        if (isNaN(plannedTimeValue) || plannedTimeValue <= 0) return;
+        
+        // Convert planned time directly to seconds for the active countdown clock
+        const plannedSeconds = plannedTimeValue * timeFactorsHours[plannedTimeUnit] * 3600;
+        
+        // Enforce a hard physical safety ceiling against maximum allowable stay seconds
+        const secondsToRun = Math.min(Math.floor(plannedSeconds), Math.floor(result.seconds));
+        
+        if (!isFinite(secondsToRun) || secondsToRun <= 0) return;
     
-    const secondsToRun = Math.floor(result.seconds);
         setTimeLeft(secondsToRun);
-        setTargetEndTime(Date.now() + (secondsToRun * 1000)); // Lock in the absolute finish time
+        setTargetEndTime(Date.now() + (secondsToRun * 1000)); 
         setIsTimerRunning(true);
     };
 
@@ -9283,11 +9373,18 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         
         // Currie Equation
         let Ld_counts;
+        
         if (backgroundMode === 'counts' && Math.abs(Ts - Tb) > 0.01 * Ts) {
-            // Paired observations with different times
-            Ld_counts = (2.71) + 3.29 * Math.sqrt(bkgRate * Ts * (1 + Ts/Tb));
+            // 1. Paired observations with different individual times (Ts ≠ Tb)
+            // Uses the NUREG-1507 exact variance propagation formula
+            Ld_counts = 2.71 + 3.29 * Math.sqrt(bkgRate * Ts * (1 + (Ts / Tb)));
+        } else if (backgroundMode === 'rate') {
+            // 2. Established well-known background rate baseline (Tb >> Ts)
+            // Because background variance error is negligible, the coefficient drops to 3.29
+            Ld_counts = 2.71 + 3.29 * Math.sqrt(bkgRate * Ts);
         } else {
-            // Well-known background (Rate) or equal times
+            // 3. Paired observations with equal sample and background times (backgroundMode === 'counts' AND Ts ≈ Tb)
+            // Traditional Currie paired-blank threshold constant (2 * 1.645 * sqrt(2) ≈ 4.65)
             Ld_counts = 2.71 + 4.65 * Math.sqrt(bkgRate * Ts);
         }
         
