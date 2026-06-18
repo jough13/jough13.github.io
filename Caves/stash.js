@@ -8,30 +8,30 @@
 // and breaking Firebase document size limits.
 window.MAX_STASH_SLOTS = 50; 
 
-// PERFORMANCE WIN: O(1) Item Lookup Cache for Withdrawing
-// Using 'var' and '|| {}' prevents hot-reload redeclaration crashes!
-var _stashItemKeyCache = _stashItemKeyCache || {};
+// O(1) Item Lookup Cache for Withdrawing
+// Attaching directly to 'window' makes it 100% immune to hot-reload SyntaxErrors!
+window._stashItemKeyCache = window._stashItemKeyCache || {};
 
 function getStashItemKey(name) {
-    if (_stashItemKeyCache[name]) return _stashItemKeyCache[name];
+    if (window._stashItemKeyCache[name]) return window._stashItemKeyCache[name];
     if (typeof window.ITEM_DATA === 'undefined') return null;
     const key = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === name);
-    if (key) _stashItemKeyCache[name] = key;
+    if (key) window._stashItemKeyCache[name] = key;
     return key;
 }
 
 // Helper to determine if an item is allowed to merge quantities
-var isStackableItem = (type) => ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(type);
+window.isStackableItem = (type) => ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(type);
 
 // Helper for deep cloning items safely without JSON serialization overhead
-var cloneItemSafely = (item) => {
+window.cloneItemSafely = (item) => {
     return {
         ...item,
         statBonuses: item.statBonuses ? { ...item.statBonuses } : null
     };
 };
 
-// QoL WIN: Added 'amount' parameter to support partial stack transfers!
+// Added 'amount' parameter to support partial stack transfers!
 window.handleStashTransfer = function (action, index, amountStr = 'all') {
     const player = gameState.player;
     if (!player.bank) player.bank = [];
