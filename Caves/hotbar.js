@@ -4,16 +4,17 @@
 // HOTBAR & QUICK ACTION SYSTEM
 // ==========================================
 
-const hotbarContainer = document.getElementById('hotbarContainer');
+// FIX: Renamed to hotbarContainerEl to prevent global DOM ID collision
+const hotbarContainerEl = document.getElementById('hotbarContainer');
 
 function renderHotbar() {
-    hotbarContainer.innerHTML = '';
+    hotbarContainerEl.innerHTML = '';
 
     // Absolute positioned label that sits on the border/top-left
     const label = document.createElement('div');
     label.className = 'absolute -top-3 left-2 text-[10px] uppercase font-bold text-gray-400 tracking-widest bg-[var(--bg-panel)] px-1';
     label.textContent = 'Hotkeys';
-    hotbarContainer.appendChild(label);
+    hotbarContainerEl.appendChild(label);
 
     const hotbar = gameState.player.hotbar;
     const cooldowns = gameState.player.cooldowns || {};
@@ -97,7 +98,8 @@ function renderHotbar() {
             renderHotbar();
         };
 
-        hotbarContainer.appendChild(slotDiv);
+        // FIX: Replaced hotbarContainer with hotbarContainerEl
+        hotbarContainerEl.appendChild(slotDiv);
     });
 }
 
@@ -152,3 +154,5 @@ function assignToHotbar(abilityId) {
     playerRef.update({ hotbar: hotbar });
     renderHotbar();
 }
+
+// --- END OF FILE hotbar.js ---
