@@ -4,20 +4,22 @@
 // TRADE & ECONOMY SYSTEM
 // ==========================================
 
-// PERFORMANCE WIN: O(1) Item Lookup Cache for Trading
+// O(1) Item Lookup Cache for Trading
 // Prevents O(N) string-matching scans against the massive ITEM_DATA dictionary every time you buy an item.
-const _tradeItemKeyCache = {};
+// Attaching to window prevents hot-reload SyntaxErrors!
+window._tradeItemKeyCache = window._tradeItemKeyCache || {};
+
 function getTradeItemKey(name) {
-    if (_tradeItemKeyCache[name]) return _tradeItemKeyCache[name];
+    if (window._tradeItemKeyCache[name]) return window._tradeItemKeyCache[name];
     if (typeof window.ITEM_DATA === 'undefined') return null;
     const key = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === name);
-    if (key) _tradeItemKeyCache[name] = key;
+    if (key) window._tradeItemKeyCache[name] = key;
     return key;
 }
 
-// --- EXPANDABILITY WIN: Centralized Value Dictionary ---
+// --- Centralized Value Dictionary ---
 // For items that aren't natively sold in shops but have high intrinsic value to traders.
-const BASE_ITEM_VALUES = {
+window.BASE_ITEM_VALUES = window.BASE_ITEM_VALUES || {
     // Relics & Artifacts
     'Shattered Crown': 200, 'Signet Ring': 80, 'Pouch of Gold Dust': 50, 
     'Ancient Coin': 25, 'Alpha Pelt': 60, 'Rainbow Shell': 100, 
@@ -76,8 +78,8 @@ function calculateItemValue(item, player) {
         if (item.templateId && window.ITEM_DATA && window.ITEM_DATA[item.templateId]) {
             lookupName = window.ITEM_DATA[item.templateId].name;
         }
-        if (BASE_ITEM_VALUES[lookupName]) basePrice = BASE_ITEM_VALUES[lookupName];
-        else if (BASE_ITEM_VALUES[item.name]) basePrice = BASE_ITEM_VALUES[item.name];
+        if (window.BASE_ITEM_VALUES[lookupName]) basePrice = window.BASE_ITEM_VALUES[lookupName];
+        else if (window.BASE_ITEM_VALUES[item.name]) basePrice = window.BASE_ITEM_VALUES[item.name];
     }
 
     // 3. Calculate Modifiers
