@@ -1305,17 +1305,17 @@ const PopoutWindow = ({ children, title, onClose, externalWindow }) => {
         
         // 1. Grab the current theme from the main app before opening
         const isDark = document.documentElement.classList.contains('dark');
-        const themeColor = isDark ? '#0f172a' : '#f8fafc'; // slate-900 or slate-50
+        const themeColor = isDark ? '#0f172a' : '#f8fafc'; 
         
-        // 2. Write a complete, fresh HTML document to the new window.
+        // 2. Write a complete, fresh HTML document.
+        // Note: The Tailwind script has been intentionally removed here.
+        // It prevents PWA CORS errors and speeds up the popout load time.
         const htmlContent = `
             <!DOCTYPE html>
             <html class="${isDark ? 'dark' : ''}">
             <head>
                 <title>${title}</title>
                 <meta name="theme-color" content="${themeColor}">
-                <script src="https://cdn.tailwindcss.com"></script>
-                <script>tailwind.config = { darkMode: 'class' }</script>
             </head>
             <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 m-0 p-0 overflow-x-hidden">
                 <div id="popout-root"></div>
@@ -1327,11 +1327,9 @@ const PopoutWindow = ({ children, title, onClose, externalWindow }) => {
         externalWindow.document.write(htmlContent);
         externalWindow.document.close();
         
-        // 3. Copy over custom local styles (like your style.css)
+        // 3. Copy over custom local styles AND the generated Tailwind CSS
         document.head.querySelectorAll('link[rel="stylesheet"], style').forEach(node => {
-            if (node.tagName !== 'META') {
-                externalWindow.document.head.appendChild(node.cloneNode(true));
-            }
+            externalWindow.document.head.appendChild(node.cloneNode(true));
         });
         
         // 4. Target the div we explicitly created in the HTML string
@@ -1349,7 +1347,7 @@ const PopoutWindow = ({ children, title, onClose, externalWindow }) => {
             externalWindow.close();
             setContainer(null);
         };
-    }, [externalWindow, title]); // Only run once when the window is provided
+    }, [externalWindow, title]); 
     
     // Dynamic Theme Syncing
     React.useEffect(() => {
