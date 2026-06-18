@@ -6,11 +6,14 @@
 
 // Item Lookup Cache
 // Prevents scanning the massive ITEM_DATA dictionary multiple times per catch
-const _itemKeyCache = {};
+// Attaching to window prevents hot-reload SyntaxErrors!
+window._itemKeyCache = window._itemKeyCache || {};
+
 function getItemKeyByName(name) {
-    if (_itemKeyCache[name]) return _itemKeyCache[name];
+    if (window._itemKeyCache[name]) return window._itemKeyCache[name];
+    if (typeof window.ITEM_DATA === 'undefined') return null; // Safe fallback
     const key = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === name);
-    if (key) _itemKeyCache[name] = key;
+    if (key) window._itemKeyCache[name] = key;
     return key;
 }
 
@@ -22,12 +25,13 @@ function playLineSnap() {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playTone(150, 'sawtooth', 0.2, 0.1, false, 50);
 }
 
-// Cached DOM elements for eating
-let _hungerDisplayObj = null;
-let _healthDisplayObj = null;
+// Cached DOM elements for eating (Attached to window for hot-reload safety)
+window._hungerDisplayObj = window._hungerDisplayObj || null;
+window._healthDisplayObj = window._healthDisplayObj || null;
 
 // --- 1. DYNAMIC ITEM INJECTION ---
-const NEW_FISHING_ITEMS = {
+// Using 'var' prevents block-scoped redeclaration crashes during hot-reloads
+var NEW_FISHING_ITEMS = {
     // --- Tools & Utility ---
     '📖fsh': { 
         name: "Angler's Logbook", type: 'consumable', tile: '📖', 
@@ -286,8 +290,10 @@ const NEW_FISHING_ITEMS = {
     }
 };
 
-// Inject items
-Object.assign(window.ITEM_DATA, NEW_FISHING_ITEMS);
+// Inject items safely
+if (typeof window.ITEM_DATA !== 'undefined') {
+    Object.assign(window.ITEM_DATA, NEW_FISHING_ITEMS);
+}
 
 // SAFE INJECTION: Prevent duplicating the logbook if script hot-reloads
 if (window.CASTLE_SHOP_INVENTORY && !window.CASTLE_SHOP_INVENTORY.some(i => i.name === 'Angler\'s Logbook')) {
@@ -313,9 +319,9 @@ function eatFish(state, hungerAmt, hpAmt = 0, psycheAmt = 0) {
         return false;
     }
     
-    // Performance: Cache DOM lookups
-    if (!_hungerDisplayObj) _hungerDisplayObj = document.getElementById('hungerDisplay');
-    if (!_healthDisplayObj) _healthDisplayObj = document.getElementById('healthDisplay');
+    // Performance: Cache DOM lookups safely attached to window
+    if (!window._hungerDisplayObj) window._hungerDisplayObj = document.getElementById('hungerDisplay');
+    if (!window._healthDisplayObj) window._healthDisplayObj = document.getElementById('healthDisplay');
     const _psycheDisplayObj = document.getElementById('psycheDisplay'); 
 
     state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + hungerAmt);
@@ -330,15 +336,16 @@ function eatFish(state, hungerAmt, hpAmt = 0, psycheAmt = 0) {
     logMessage(logStr);
     
     if (typeof triggerStatAnimation !== 'undefined') {
-        triggerStatAnimation(_hungerDisplayObj, 'stat-pulse-green');
-        if (hpAmt > 0) triggerStatAnimation(_healthDisplayObj, 'stat-pulse-green');
+        triggerStatAnimation(window._hungerDisplayObj, 'stat-pulse-green');
+        if (hpAmt > 0) triggerStatAnimation(window._healthDisplayObj, 'stat-pulse-green');
         if (psycheAmt > 0 && _psycheDisplayObj) triggerStatAnimation(_psycheDisplayObj, 'stat-pulse-purple');
     }
     return true;
 }
 
 // --- 2. THE LOOT TABLES ---
-const FISHING_LOOT = {
+// Use 'var' to prevent redeclaration crashes on hot-reloading
+var FISHING_LOOT = {
     shallow: {
         trash: [{ name: 'Soggy Boot' }, { name: 'Wood Log' }, { name: 'Bone Shard' }, { name: 'Rusted Helm' }],
         common: [{ name: 'Minnow' }, { name: 'Raw Fish' }],
