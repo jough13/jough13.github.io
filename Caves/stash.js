@@ -6,11 +6,12 @@
 
 // Hard cap to prevent players from hoarding thousands of unique items 
 // and breaking Firebase document size limits.
-window.MAX_STASH_SLOTS = 50;
+window.MAX_STASH_SLOTS = 50; 
 
-// O(1) Item Lookup Cache for Withdrawing
-// Prevents O(N) string-matching scans against the massive ITEM_DATA dictionary every time an item is moved.
-const _stashItemKeyCache = {};
+// PERFORMANCE WIN: O(1) Item Lookup Cache for Withdrawing
+// Using 'var' and '|| {}' prevents hot-reload redeclaration crashes!
+var _stashItemKeyCache = _stashItemKeyCache || {};
+
 function getStashItemKey(name) {
     if (_stashItemKeyCache[name]) return _stashItemKeyCache[name];
     if (typeof window.ITEM_DATA === 'undefined') return null;
@@ -20,10 +21,10 @@ function getStashItemKey(name) {
 }
 
 // Helper to determine if an item is allowed to merge quantities
-const isStackableItem = (type) => ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(type);
+var isStackableItem = (type) => ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(type);
 
 // Helper for deep cloning items safely without JSON serialization overhead
-const cloneItemSafely = (item) => {
+var cloneItemSafely = (item) => {
     return {
         ...item,
         statBonuses: item.statBonuses ? { ...item.statBonuses } : null
@@ -52,7 +53,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
 
         // Capacity Check (Only applies if it requires a new slot)
         if (!existingBankItem && player.bank.length >= window.MAX_STASH_SLOTS) {
-        logMessage(`{red:Your stash is full! (Max ${window.MAX_STASH_SLOTS} slots)}`);
+            logMessage(`{red:Your stash is full! (Max ${window.MAX_STASH_SLOTS} slots)}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
@@ -443,7 +444,8 @@ function openStashModal() {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     
     renderStash();
-    stashModal.classList.remove('hidden');
+    const stashModal = document.getElementById('stashModal');
+    if (stashModal) stashModal.classList.remove('hidden');
 }
 
 // --- END OF FILE stash.js ---
