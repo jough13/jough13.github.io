@@ -22,11 +22,12 @@ const MOVEMENT_MAP = {
     '3': [1, 1], 'Numpad3': [1, 1], 'PageDown': [1, 1]
 };
 
-// PERFORMANCE WIN: O(1) Key Lookups
-// Moved out of the event listener so they aren't instantiated on every single keystroke!
+// PERFORMANCE & QoL WIN: O(1) Key Lookups & Expanded Browser Protections
+// Moved out of the event listener so they aren't instantiated on every single keystroke.
+// Added Tab and Enter to prevent unwanted browser scrolling/focus-shifting while playing.
 const BLOCKED_SCROLL_KEYS = new Set([
     'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', ' ',
-    'Home', 'End', 'PageUp', 'PageDown'
+    'Home', 'End', 'PageUp', 'PageDown', 'Tab', 'Enter'
 ]);
 
 // Added the new J (Journal) and Zoom (+ / -) hotkeys to the spam guard
@@ -57,6 +58,7 @@ function handleInput(key) {
 
     // --- ESCAPE KEY / MODAL CLOSER ---
     if (key === 'Escape') {
+        // PERFORMANCE & SAFETY WIN: Aggressively clear the queue if the user panics and mashes Escape
         window.inputQueue.length = 0; 
 
         if (gameState.isAiming) {
@@ -152,8 +154,10 @@ function handleInput(key) {
             gameState.isAiming = false;
             gameState.abilityToAim = null;
         } else {
+            // JUICE WIN: Dynamic visual/audio feedback for pressing invalid keys while aiming
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-            logMessage("{gray:Invalid direction. Use Arrow keys or Numpad.}");
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "?", "#ef4444");
+            logMessage("{gray:Invalid direction. Use Arrow keys or WASD to aim. (Esc) to cancel.}");
         }
         return;
     }
@@ -255,9 +259,13 @@ function handleInput(key) {
         return; 
     }
 
+    // Direct Chat Input focus wrapper
     if (key === 'Enter') { 
         const chatIn = document.getElementById('chatInput');
-        if (chatIn) chatIn.focus(); 
+        if (chatIn) {
+            event.preventDefault(); // Don't trigger a form submit or scroll
+            chatIn.focus(); 
+        }
         return; 
     }
 
@@ -291,14 +299,36 @@ function handleInput(key) {
     }
 
     if ([' ', '5', 'Numpad5', 'Clear', '.'].includes(key)) {
-        // LORE/JUICE WIN: Dynamic flavor text for waiting
-        const waitFlavors = [
+        
+        // LORE & CONTENT WIN: Dynamic, biome-aware Atmospheric Waiting
+        let waitFlavors = [
             "You pause to catch your breath.",
             "You listen to the sounds of the world.",
             "You stand perfectly still.",
             "You gather your thoughts.",
             "You wait a moment."
         ];
+
+        if (gameState.mapMode === 'overworld') {
+            if (gameState.weather === 'rain') waitFlavors.push("You pause, letting the rain wash over you.", "You listen to the drumming of the rain.");
+            if (gameState.weather === 'storm') waitFlavors.push("You wait, feeling the thunder rattle your teeth.");
+            if (gameState.weather === 'snow') waitFlavors.push("You watch your breath fog in the freezing air.", "You wait, letting the snow settle.");
+            if (gameState.weather === 'fog') waitFlavors.push("You wait, peering into the thick mist.");
+            
+            // Extreme Danger State Overrides
+            if (gameState.isBloodMoon) waitFlavors = ["You freeze, hoping the blood-crazed beasts don't see you.", "You wait in the bloody crimson light, trembling."];
+        } 
+        else if (gameState.mapMode === 'dungeon') {
+            waitFlavors.push("You listen to the echoing water dripping in the dark.");
+            waitFlavors.push("You pause, straining your eyes against the gloom.");
+            if (gameState.currentCaveTheme === 'VOID') waitFlavors.push("You listen to the deafening silence of the Void.");
+            if (gameState.currentCaveTheme === 'FIRE') waitFlavors.push("You wipe sweat from your brow in the stifling heat.");
+        } 
+        else if (gameState.mapMode === 'underworld') {
+            waitFlavors.push("You stand still. The crushing weight of the earth above presses down.");
+            waitFlavors.push("You pause. The shadows here feel alive.");
+        }
+
         const msg = waitFlavors[Math.floor(Math.random() * waitFlavors.length)];
         logMessage(`{gray:${msg}}`);
         
@@ -321,7 +351,7 @@ document.addEventListener('keydown', (event) => {
 
     // 2. UNIVERSAL INPUT PROTECTOR
     // Ignore WASD and Hotkeys if the user is typing in ANY input field (Chat, Riddle, Character Name)
-    if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+    if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
 
     // 3. Prevent default scrolling for game keys
     if (BLOCKED_SCROLL_KEYS.has(event.key)) {
