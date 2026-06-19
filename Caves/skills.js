@@ -220,7 +220,7 @@ function useSkill(skillId) {
                                 logMessage(`Whirlwind hits ${enemy.name} for {red:${finalDmg}}!`);
                                 
                                 if (typeof ParticleSystem !== 'undefined') {
-                                    ParticleSystem.createExplosion(tx, ty, '#fff', 3);
+                                    ParticleSystem.createExplosion(tx, ty, '#ef4444', 3); // Blood spray
                                     ParticleSystem.createFloatingText(tx, ty, `-${finalDmg}`, '#ef4444');
                                 }
 
@@ -372,18 +372,19 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                         logMessage(`You hit ${enemy.name} for {red:${mitigatedDmg}} damage!`);
                         
                         if (typeof ParticleSystem !== 'undefined') {
-                            // Unique particle color based on the skill
-                            let pColor = '#ffffff';
-                            if (skillId === 'kick') pColor = '#facc15';
-                            if (skillId === 'crush') pColor = '#ef4444';
+                            // JUICE WIN: Unique particle color based on the skill
+                            let pColor = '#ef4444'; // Default Blood Red
+                            if (skillId === 'kick') pColor = '#facc15'; // Yellow stun sparks
+                            if (skillId === 'shieldBash') pColor = '#d4d4d8'; // Grey shield splinters
                             
-                            ParticleSystem.createExplosion(coords.x, coords.y, pColor, 4);
+                            ParticleSystem.createExplosion(coords.x, coords.y, pColor, 6);
                             ParticleSystem.createFloatingText(coords.x, coords.y, `-${mitigatedDmg}`, '#ef4444');
                         }
 
                         // --- EXPANSION WIN: APPLY STUN & JUICE (Shield Bash, Crush, OR Kick) ---
                         if (skillId === 'shieldBash' || skillId === 'crush' || skillId === 'kick') {
-                            gameState.screenShake = (skillId === 'kick') ? 8 : 12; // Heavy Hit Feel
+                            // Heavy Hit Feel
+                            gameState.screenShake = (skillId === 'kick') ? 8 : 15; 
                             
                             if (!enemy.isBoss) {
                                 // Kick stuns for 2 turns, heavy bashes stun for 3
@@ -417,6 +418,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
             player[skillData.costType] -= skillData.cost;
             if (typeof AudioSystem !== 'undefined') {
                 if (skillId === 'crush' || skillId === 'shieldBash') AudioSystem.playAttack('heavy');
+                else if (skillId === 'cleave') AudioSystem.playAttack('sweep');
                 else AudioSystem.playAttack('normal');
             }
         }
@@ -802,9 +804,10 @@ async function executeLunge(dirX, dirY) {
                         enemy.health -= totalLungeDamage;
                         logMessage(`You hit the ${enemy.name} for {red:${totalLungeDamage}} damage!`);
                         if (typeof ParticleSystem !== 'undefined') {
-                            ParticleSystem.createExplosion(targetX, targetY, '#fff', 3);
+                            ParticleSystem.createExplosion(targetX, targetY, '#ef4444', 4); // Blood
                             ParticleSystem.createFloatingText(targetX, targetY, `-${totalLungeDamage}`, '#ef4444');
                         }
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('pierce');
 
                         if (enemy.health <= 0) {
                             logMessage(`You defeated the ${enemy.name}!`);
@@ -859,6 +862,48 @@ function executeQuickstep(dirX, dirY) {
         tile = map[targetY][targetX];
     }
 
+    // MECHANIC & JUICE WIN: Dagger Flurry
+    // If you quickstep directly INTO an enemy, you unleash a flurry of slashes and bounce back!
+    if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) {
+        logMessage("{purple:You dash forward, unleashing a flurry of strikes, and bounce back!}");
+        gameState.screenShake = 5;
+        
+        if (typeof AudioSystem !== 'undefined') {
+            AudioSystem.playAttack('light');
+            setTimeout(() => AudioSystem.playAttack('pierce'), 100);
+            setTimeout(() => AudioSystem.playAttack('light'), 200);
+        }
+
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createExplosion(targetX, targetY, '#d4d4d8', 8); // Flurry slashes
+            ParticleSystem.createExplosion(targetX, targetY, '#ef4444', 4); // Blood
+        }
+
+        // Apply a solid chunk of damage immediately using the magic loop
+        // We use applySpellDamage here to ensure the transaction and XP are handled safely!
+        const flurryDamage = Math.floor(player.dexterity * 1.5) + (player.equipment.weapon?.damage || 0);
+        
+        // Wrap this inside a small timeout to let the dash finish visually before the damage registers
+        setTimeout(async () => {
+            await applySpellDamage(targetX, targetY, flurryDamage, 'quickstep');
+            
+            // Add poison if we have a poisoned dagger
+            if (player.equipment.weapon?.inflicts === 'poison') {
+                if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+                    const e = gameState.instancedEnemies.find(en => en.x === targetX && en.y === targetY);
+                    if (e) e.poisonTurns = 3;
+                }
+            }
+        }, 50);
+
+        player.stamina -= skillData.cost;
+        triggerAbilityCooldown('quickstep');
+        if (typeof endPlayerTurn === 'function') endPlayerTurn();
+        if (typeof render === 'function') render();
+        return;
+    }
+
+    // NORMAL QUICKSTEP
     if (['.', 'F', 'd', 'D'].includes(tile) || (gameState.mapMode === 'dungeon' && tile !== '▓' && tile !== '▒')) {
         player.x = targetX;
         player.y = targetY;
@@ -935,18 +980,19 @@ function executePacify(dirX, dirY) {
 
             if (Math.random() < successChance) {
                 // --- SUCCESS ---
-                logMessage(`{green:You calm the ${enemy.name}! It becomes passive.}`);
+                // LORE WIN: Instead of deleting them, we transform them into passive entities
+                logMessage(`{green:You soothe the ${enemy.name}'s rage! It becomes dazed.}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(targetX, targetY, "PACIFIED", "#4ade80");
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(targetX, targetY, "DAZED", "#4ade80");
                 
-                // Reward the player for dealing with the encounter!
+                // Reward the player for dealing with the encounter non-lethally!
                 if (typeof grantXp === 'function') grantXp(Math.floor(enemy.xp * 0.8));
 
-                // Remove it from the enemy list
-                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-
-                // Set its tile to a floor
-                map[targetY][targetX] = theme.floor;
+                // Change their AI status to idle permanently
+                enemy.name = `Dazed ${enemy.name}`;
+                enemy.attack = 0;
+                enemy.caster = false;
+                enemy.color = '#9ca3af'; // Grey out
 
             } else {
                 // --- FAILURE ---
