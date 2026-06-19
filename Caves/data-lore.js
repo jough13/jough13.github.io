@@ -689,4 +689,15 @@ window.RIDDLE_DATA = [
     }
 ];
 
+window.REGION_HISTORY = [
+    "A great battle was fought here in the Second Age. The earth still remembers the blood.",
+    "Once a thriving trade route, now abandoned to the wilds.",
+    "The Old King used to hunt in these lands before the madness took him.",
+    "Travelers report hearing strange, melodic singing here at dusk.",
+    "Nothing of note happened here, which in this world, is a blessing.",
+    "The Cartographer's Guild warns that compasses behave strangely in this sector.",
+    "A legendary beast is said to claim this territory as its own.",
+    "The ruins of a nameless village lie buried somewhere beneath the soil here."
+];
+
 // --- END OF FILE data-lore.js ---
