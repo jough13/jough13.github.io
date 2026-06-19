@@ -1806,7 +1806,17 @@ function handlePlayerDeath() {
     // Reset Arena progress so they aren't permanently locked out of the Colosseum if they return
     player.arenaWave = 0; 
 
-    playerRef.set(sanitizeForFirebase(player), { merge: true }).catch(console.error);
+    // Force the database to pull them out of any alternate dimensions or dungeons immediately
+    // so if they close the browser on the Game Over screen, they don't load into a wall later!
+    const deathUpdates = {
+        ...sanitizeForFirebase(player),
+        currentRealm: 0,
+        realmMutators: [],
+        mapMode: 'overworld',
+        mapId: null
+    };
+
+    playerRef.set(deathUpdates, { merge: true }).catch(console.error);
 
     return true;
 }
