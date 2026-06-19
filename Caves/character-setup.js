@@ -53,10 +53,17 @@ window.selectSlot = async function (slotId) {
     if (isEnteringGame) return; 
     isEnteringGame = true;
 
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+    // JUICE WIN: Play a deep, resonant magical tone when tethering to a timeline
+    if (typeof AudioSystem !== 'undefined') {
+        AudioSystem.playTone(200, 'sine', 0.5, 0.2, false, 100);
+    }
 
     const loadingIndicator = document.getElementById('loadingIndicator');
-    if (loadingIndicator) loadingIndicator.classList.remove('hidden');
+    if (loadingIndicator) {
+        loadingIndicator.classList.remove('hidden');
+        const flavorText = document.getElementById('loadingFlavorText');
+        if (flavorText) flavorText.textContent = "Tethering Soul to Reality...";
+    }
 
     player_id = currentUser.uid; 
     playerRef = db.collection('players').doc(player_id).collection('characters').doc(slotId);
@@ -94,9 +101,19 @@ const confirmDeleteButton = document.getElementById('confirmDeleteButton');
 const cancelDeleteButton = document.getElementById('cancelDeleteButton');
 
 window.deleteSlot = function (slotId) {
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playError(); // Use error sound as warning
+    // JUICE & LORE WIN: Ominous warning sound and atmospheric text update
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); 
     slotPendingDeletion = slotId;
-    if (deleteConfirmModal) deleteConfirmModal.classList.remove('hidden');
+    
+    if (deleteConfirmModal) {
+        const title = document.getElementById('deleteConfirmTitle');
+        if (title) title.innerHTML = "Sever Timeline?";
+        
+        const desc = document.querySelector('#deleteConfirmModal p');
+        if (desc) desc.innerHTML = "Are you sure you want to erase this soul from the Akashic Records? This action is <strong class='text-red-400 font-bold tracking-widest uppercase'>permanent</strong> and cannot be undone.";
+        
+        deleteConfirmModal.classList.remove('hidden');
+    }
 };
 
 if (confirmDeleteButton) {
@@ -107,7 +124,7 @@ if (confirmDeleteButton) {
             
             // ROBUSTNESS: Disable buttons during deletion to prevent spamming
             btn.disabled = true;
-            btn.textContent = "Deleting...";
+            btn.textContent = "Erasing Soul...";
             if (cancelDeleteButton) cancelDeleteButton.disabled = true;
 
             try {
@@ -123,7 +140,13 @@ if (confirmDeleteButton) {
                 });
                 await batch.commit();
 
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+                // JUICE WIN: Play the heavy death dirge to signify permanent erasure
+                if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playDeath === 'function') {
+                    AudioSystem.playDeath();
+                } else if (typeof AudioSystem !== 'undefined') {
+                    AudioSystem.playStep();
+                }
+                
                 await renderSlots(); 
             } catch (e) {
                 console.error("Error deleting slot:", e);
@@ -167,7 +190,9 @@ if (deleteConfirmModal) {
 
 function selectCreationOption(type, key, element) {
     creationState[type] = key;
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+    
+    // JUICE WIN: Soft magical hum when selecting identity traits
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playTone(600, 'sine', 0.1, 0.05, false);
 
     const container = element.parentElement;
     Array.from(container.children).forEach(child => child.classList.remove('selected', 'bg-blue-900', 'bg-opacity-20'));
@@ -293,7 +318,7 @@ if (charNameInput) charNameInput.addEventListener('input', updateCreationSummary
 const finalizeCreationBtn = document.getElementById('finalizeCreationBtn');
 if (finalizeCreationBtn) finalizeCreationBtn.addEventListener('click', finalizeCharacterCreation);
 
-// EXPANDABILITY WIN: Massive Name Generator Expansion
+// EXPANDABILITY & LORE WIN: Massive Name Generator Expansion
 window.generateRandomName = function() {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     
@@ -301,24 +326,27 @@ window.generateRandomName = function() {
         "Thor", "Garr", "El", "Fae", "Kael", "Mor", "Vex", "Zar", "Brim", "Nyx",
         "Ael", "Val", "Dra", "Bael", "Xyl", "Quin", "Syl", "Or", "Ign", "Gloom",
         "Lu", "Cor", "Ash", "Sil", "Fen", "Grim", "Mal", "Ren", "Tav", "Zeph",
-        "Aer", "Bryn", "Cael", "Dorn", "Ery", "Fael", "Gael", "Hald", "Ith", "Jor"
+        "Aer", "Bryn", "Cael", "Dorn", "Ery", "Fael", "Gael", "Hald", "Ith", "Jor",
+        "Vor", "Kra", "Zin", "Thal", "Orik", "Ul", "Xan", "Yrr"
     ];
     const suffixes = [
         "in", "ick", "ara", "en", "is", "os", "ia", "on", "us", "th",
         "ius", "dor", "mir", "vyn", "ryn", "las", "ric", "tar", "eth", "mont",
         "stone", "fire", "bane", "weaver", "shade", "moon", "sun", "heart", "blood",
-        "forge", "smith", "strider", "whisper", "song", "wind", "storm"
+        "forge", "smith", "strider", "whisper", "song", "wind", "storm",
+        "grip", "fist", "gaze", "step"
     ];
     
-    // Fun RPG Titles (15% chance to append)
+    // Fun RPG Titles (20% chance to append)
     const titles = [
         " the Brave", " the Swift", " of the Void", " the Wise", " the Exile", 
-        " Ironheart", " Shadow-walker", " the Lost", " the Cursed", " the Bold"
+        " Ironheart", " Shadow-walker", " the Lost", " the Cursed", " the Bold",
+        " the Unbroken", " the Star-Touched", " the Pale", " Giantsbane", " the Silent"
     ];
     
     let p = prefixes[Math.floor(Math.random() * prefixes.length)];
     let s = suffixes[Math.floor(Math.random() * suffixes.length)];
-    let t = (Math.random() < 0.15) ? titles[Math.floor(Math.random() * titles.length)] : "";
+    let t = (Math.random() < 0.20) ? titles[Math.floor(Math.random() * titles.length)] : "";
     
     const nameInput = document.getElementById('charNameInput');
     if (nameInput) {
@@ -463,7 +491,8 @@ async function finalizeCharacterCreation() {
     btn.disabled = true;
     btn.textContent = "Forging Destiny...";
     
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp(); // Triumphant start sound!
+    // JUICE WIN: Triumphant start sound!
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp(); 
 
     const player = gameState.player;
     const bgData = PLAYER_BACKGROUNDS[creationState.background];
@@ -526,7 +555,14 @@ async function finalizeCharacterCreation() {
         
         gameState.mapMode = 'overworld';
         
+        // LORE & JUICE WIN: Majestic spawn-in sequence!
+        logMessage(`{cyan:The leylines converge. A new destiny begins...}`);
         logMessage(`{green:Welcome, ${player.name} the ${raceData.name} ${bgData.name}.}`);
+        
+        gameState.screenShake = 20; // Massive world-entry thud
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createExplosion(player.x, player.y, '#3b82f6', 40); // Huge blue leyline burst
+        }
         
         // Force the UI to catch up with the newly created stats!
         if (typeof renderStats === 'function') renderStats();
