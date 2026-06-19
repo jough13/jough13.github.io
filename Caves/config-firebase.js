@@ -55,15 +55,15 @@ rtdb.ref('.info/serverTimeOffset').on('value', function(snap) {
 // Use this to get the exact millisecond time on the server without an API call
 window.getServerTime = () => Date.now() + window.FirebaseNetworkState.serverTimeOffset;
 
-// --- JUICE: GLOBAL CONNECTION BANNER INJECTION ---
+// --- JUICE & LORE: GLOBAL CONNECTION BANNER INJECTION ---
 // We dynamically create this so it works across all screens (Login, Character Select, Game)
 let connectionBanner = document.getElementById('firebase-connection-banner');
 if (!connectionBanner) {
     connectionBanner = document.createElement('div');
     connectionBanner.id = 'firebase-connection-banner';
-    // JUICE WIN: Added backdrop-blur-md and z-[20000] for a frosted glass look that sits above EVERYTHING
-    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-transform duration-500 transform -translate-y-full shadow-lg font-mono tracking-widest uppercase text-shadow-sm backdrop-blur-md';
-    connectionBanner.style.textShadow = "1px 1px 0px rgba(0,0,0,0.5)"; // Ensure it pops over bright maps
+    // JUICE WIN: Added backdrop-blur-md, deep shadows, and borders for a polished UI overlay
+    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-transform duration-500 transform -translate-y-full shadow-2xl font-mono tracking-widest uppercase text-shadow-sm backdrop-blur-md';
+    connectionBanner.style.textShadow = "2px 2px 0px rgba(0,0,0,0.8)"; 
     document.body.appendChild(connectionBanner);
 }
 
@@ -79,19 +79,28 @@ try {
             if (err.code === 'failed-precondition') {
                 console.warn("Multiple tabs open. Offline persistence enabled in the first tab only.");
                 
-                // Delay the banner by 3 seconds so it doesn't flash over the bootloader
+                // LORE WIN: Themed Multiple-Tab warning
                 setTimeout(() => {
-                    connectionBanner.textContent = "⚠️ Multiple Tabs Open - Offline Saving Disabled";
-                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-yellow-600 bg-opacity-90 text-black translate-y-0 shadow-lg font-mono tracking-widest uppercase backdrop-blur-md';
+                    connectionBanner.innerHTML = "⚠️ Temporal Paradox Detected<br><span class='text-[9px] font-normal'>Multiple timelines open. Offline saving disabled for this instance.</span>";
+                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-purple-900 bg-opacity-95 text-purple-200 border-b-2 border-purple-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md';
                     
-                    // Hide the banner 5 seconds after it appears
+                    // Hide the banner 6 seconds after it appears
                     setTimeout(() => {
                         connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
-                    }, 5000);
+                    }, 6000);
                 }, 3000);
 
             } else if (err.code === 'unimplemented') {
                 console.warn("Browser does not support offline persistence.");
+                // QoL WIN: Detect Incognito mode or incompatible browsers
+                setTimeout(() => {
+                    connectionBanner.innerHTML = "⚠️ Akashic Records Unavailable<br><span class='text-[9px] font-normal'>Your browser (or Incognito Mode) blocks local saves. Cloud saving only.</span>";
+                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-gray-800 bg-opacity-95 text-gray-300 border-b-2 border-gray-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md';
+                    
+                    setTimeout(() => {
+                        connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
+                    }, 6000);
+                }, 3000);
             }
         });
 } catch (e) {
@@ -108,20 +117,20 @@ rtdb.ref('.info/connected').on('value', function(snap) {
     window.FirebaseNetworkState.isConnected = isConnected;
     
     if (isConnected) {
-        console.log("🟢 Firebase: Connected to server.");
+        console.log("🟢 Firebase: Leyline Resonance Stable.");
         
         // Only show "Restored" if we already successfully connected once before and lost it
         if (hasInitiallyConnected && !wasConnected) {
             // Restore Banner
-            connectionBanner.textContent = "📶 Connection Restored";
-            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-green-600 bg-opacity-90 text-white translate-y-0 shadow-lg font-mono tracking-widest uppercase backdrop-blur-md';
+            connectionBanner.textContent = "✨ Leyline Resonance Restored";
+            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-green-900 bg-opacity-95 text-green-200 border-b-2 border-green-500 translate-y-0 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md';
             
             // Slide it away after 3 seconds
             setTimeout(() => {
                 connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
             }, 3000);
 
-            if (typeof logMessage === 'function') logMessage("{green:Network restored. Reconnected to server.}");
+            if (typeof logMessage === 'function') logMessage("{green:The leylines stabilize. Connection to the realm restored.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
         }
         
@@ -133,11 +142,19 @@ rtdb.ref('.info/connected').on('value', function(snap) {
         // Only show "Connection Lost" if we were actually connected in the first place
         if (hasInitiallyConnected && wasConnected) {
             // Warning Banner (JUICE WIN: Added animate-pulse so the user knows it's actively trying to reconnect)
-            connectionBanner.textContent = "⚠️ Connection Lost - Reconnecting...";
-            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-red-600 bg-opacity-90 text-white translate-y-0 shadow-lg font-mono tracking-widest uppercase animate-pulse backdrop-blur-md';
+            connectionBanner.textContent = "⚠️ Leyline Connection Severed - Re-Attuning...";
+            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-red-900 bg-opacity-95 text-red-200 border-b-2 border-red-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase animate-pulse backdrop-blur-md';
             
-            if (typeof logMessage === 'function') logMessage("{red:Connection lost! Trying to reconnect...}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            if (typeof logMessage === 'function') logMessage("{red:The leylines have ruptured! Trying to re-attune...}");
+            
+            // JUICE WIN: Ominous low rumble and screen shake to alert the player their connection dropped
+            if (typeof AudioSystem !== 'undefined') {
+                AudioSystem.playNoise(1.5, 0.4, 200); // Deep, long rumble
+                AudioSystem.playTone(100, 'sawtooth', 1.0, 0.2, false, 50); // Descending bass tone
+            }
+            if (typeof gameState !== 'undefined' && gameState.player) {
+                gameState.screenShake = 15;
+            }
         }
         wasConnected = false;
     }
