@@ -823,6 +823,38 @@ function updateWeather() {
         gameState.isBloodMoon = false;
         logMessage(`The sun rises, breaking the blood moon's curse.`);
     }
+    // --- THE METEOR SHOWER EVENT ---
+    const isClearNight = isNight && gameState.weather === 'clear';
+    
+    if (isClearNight && gameState.mapMode === 'overworld' && Math.random() < 0.005) {
+        logMessage("{gold:Look up! A meteor shower illuminates the night sky!}");
+        
+        // Spawn 1 to 3 fallen stars near the player
+        const starCount = Math.floor(Math.random() * 3) + 1;
+        for (let i = 0; i < starCount; i++) {
+            // Drop it 5 to 15 tiles away
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 5 + Math.random() * 10;
+            const dropX = Math.floor(player.x + Math.cos(angle) * dist);
+            const dropY = Math.floor(player.y + Math.sin(angle) * dist);
+            
+            // Only drop on valid ground
+            const groundTile = chunkManager.getTile(dropX, dropY);
+            if (['.', 'D', 'd', 'F', '^'].includes(groundTile)) {
+                // Drop Star-Metal Ore with a 2-hour TTL!
+                chunkManager.setWorldTile(dropX, dropY, '☄️', 2); 
+                
+                // Visual Juice
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createExplosion(dropX, dropY, '#facc15', 20); // Gold explosion where it lands
+                }
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(1.0, 0.3, 100); // Deep boom
+                
+                logMessage(`{purple:A star crashes into the earth near (${dropX}, ${-dropY})!}`);
+                gameState.screenShake = 10;
+            }
+        }
+    }
 }
 
 function handleStatAllocation(event) {
