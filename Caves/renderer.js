@@ -44,9 +44,9 @@ const ParticleSystem = {
         
         if (type === 'text') {
             p.vx = (Math.random() - 0.5) * 0.02; // Slight horizontal drift
-            p.vy = -0.03; 
+            p.vy = -0.04; // Slightly faster initial pop
             p.size = 14;
-            p.gravity = -0.001; // JUICE: Floats UP and accelerates!
+            p.gravity = -0.0015; // JUICE: Floats UP and accelerates!
             p.lifeFade = 0.025; 
         } else if (type === 'smoke') {
             p.vx = (Math.random() - 0.5) * 0.02;
@@ -174,17 +174,20 @@ const ParticleSystem = {
             // PERFORMANCE WIN: Bypassing save/restore matrix pushes for static particles
             if (p.type === 'text') {
                 ctx.globalAlpha = alpha;
-                ctx.fillStyle = p.color;
-                // Pop effect: Scales up slightly as it appears
+                
+                // Pop effect: Scales up slightly as it appears, bounces back
                 const scale = 1 + (Math.sin(p.life * Math.PI) * 0.3);
                 ctx.font = `bold ${p.size * scale}px monospace`;
                 
                 // Draw stroke FIRST (behind the text) for thicker, cleaner outlines
-                ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+                // Set miterLimit to prevent spiky stroke corners on some letters
+                ctx.strokeStyle = 'rgba(0,0,0,0.85)';
                 ctx.lineWidth = 3;
-                ctx.lineJoin = 'round'; 
+                ctx.lineJoin = 'miter';
+                ctx.miterLimit = 2; 
                 ctx.strokeText(p.text, screenX, screenY);
                 
+                ctx.fillStyle = p.color;
                 ctx.fillText(p.text, screenX, screenY);
                 ctx.globalAlpha = 1.0; // Reset manually
             } else if (p.type === 'smoke') {
@@ -452,13 +455,15 @@ const TileRenderer = {
     },
 
     // 🌊 Water (Animated - Organic Flow + Glints)
-    drawWater: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
+    // JUICE WIN: Now accepts 'isDeep' to alter wave speed and intensity
+    drawWater: (ctx, x, y, mapX, mapY, baseColor, accentColor, isDeep = false) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
 
-        const time = performance.now() / 2000;
+        // Deep water rolls slower than shallow water
+        const time = performance.now() / (isDeep ? 2500 : 1500);
         
         const wavePhase1 = time + (Math.sin(mapX * 0.2) + Math.cos(mapY * 0.2));
         const wavePhase2 = time * 1.5 + (Math.sin(mapX * 0.3) - Math.cos(mapY * 0.3)); 
@@ -468,7 +473,7 @@ const TileRenderer = {
         // Primary Wave
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        const yOffset1 = Math.sin(wavePhase1) * 3;
+        const yOffset1 = Math.sin(wavePhase1) * (isDeep ? 4 : 2); // Deep water has higher peaks
         ctx.moveTo(tx + 2, ty + TILE_SIZE / 2 + yOffset1);
         ctx.bezierCurveTo(tx + 8, ty + TILE_SIZE / 2 + yOffset1 - 2, tx + 12, ty + TILE_SIZE / 2 + yOffset1 + 2, tx + TILE_SIZE - 2, ty + TILE_SIZE / 2 + yOffset1);
         ctx.stroke();
@@ -515,29 +520,40 @@ const TileRenderer = {
         ctx.beginPath(); ctx.arc(tx, ty - 4, 2 + (flicker * 0.1), 0, TWO_PI); ctx.fill();
 
         // Environmental Smoke Particle Emission
-        // Only trigger randomly (approx 2 times per second at 60fps) to save pool space
-        if (Math.random() < 0.03 && typeof mapX !== 'undefined') {
+        if (Math.random() < 0.05 && typeof mapX !== 'undefined') {
             ParticleSystem.spawn(mapX, mapY - 0.2, 'rgba(156, 163, 175, 0.4)', 'smoke');
         }
     },
 
-    // Ω Void Rift (Animated)
-    drawVoid: (ctx, x, y) => {
+    // Ω Void Rift (Animated Vortex)
+    // LORE WIN: The Void now actively tears and spins like a vortex!
+    drawVoid: (ctx, x, y, mapX, mapY) => {
         TileRenderer.drawBase(ctx, x, y, '#000');
         const tx = x * TILE_SIZE + TILE_SIZE / 2;
         const ty = y * TILE_SIZE + TILE_SIZE / 2;
-        const pulse = Math.sin(performance.now() / 300);
+        
+        const now = performance.now();
+        const pulse = Math.sin(now / 300);
         const size = 6 + (pulse * 2);
 
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate((now / 500) + (mapX * 0.1)); // Spin!
+
+        // Outer Glow
         ctx.fillStyle = 'rgba(168, 85, 247, 0.4)';
-        ctx.beginPath(); ctx.arc(tx, ty, size + 4, 0, TWO_PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, size + 4, 0, TWO_PI); ctx.fill();
         
+        // Ring
         ctx.strokeStyle = '#a855f7';
         ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(tx, ty, size, 0, TWO_PI); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, size, 0, TWO_PI); ctx.stroke();
         
+        // Inner Core
         ctx.fillStyle = '#581c87';
-        ctx.beginPath(); ctx.arc(tx, ty, size / 2, 0, TWO_PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, size / 2, 0, TWO_PI); ctx.fill();
+        
+        ctx.restore();
     },
 
     // 🧱 Enhanced Wall Renderer
@@ -601,25 +617,20 @@ const TileRenderer = {
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
 
-        const barWidth = TILE_SIZE - 2; // Slight padding on sides
+        const barWidth = TILE_SIZE - 2; 
         const barHeight = 4;
         const yOffset = TILE_SIZE - barHeight - 1; 
 
-        // PERFORMANCE WIN: Native Drop Shadows (ctx.shadowColor/Blur) are extremely slow.
-        // Drawing a black rectangle 1px offset achieves the exact same visual depth instantly.
         ctx.fillStyle = 'rgba(0,0,0,0.5)'; 
         ctx.beginPath(); ctx.roundRect(tx + 2, ty + yOffset + 1, barWidth, barHeight, 2); ctx.fill();
 
-        // Container Pill (Black background)
         ctx.fillStyle = '#111827'; 
         ctx.beginPath(); ctx.roundRect(tx + 1, ty + yOffset, barWidth, barHeight, 2); ctx.fill();
 
-        // Health Fill Color
         let colorTop = '#4ade80'; let colorBot = '#16a34a'; // Green
         if (percent < 0.5) { colorTop = '#fde047'; colorBot = '#ca8a04'; } // Yellow
         if (percent < 0.25) { colorTop = '#f87171'; colorBot = '#dc2626'; } // Red
 
-        // Inner Gradient for a glossy 3D RPG look
         const grad = ctx.createLinearGradient(0, ty + yOffset, 0, ty + yOffset + barHeight);
         grad.addColorStop(0, colorTop);
         grad.addColorStop(1, colorBot);
@@ -627,21 +638,27 @@ const TileRenderer = {
         ctx.fillStyle = grad;
         ctx.beginPath(); ctx.roundRect(tx + 1, ty + yOffset, barWidth * percent, barHeight, 2); ctx.fill();
 
-        // Outline
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.roundRect(tx + 1, ty + yOffset, barWidth, barHeight, 2); ctx.stroke();
+    },
+
+    // JUICE WIN: Dynamic Drop Shadows
+    drawShadow: (ctx, x, y) => {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.beginPath();
+        // Draw an ellipse slightly below the center of the tile
+        ctx.ellipse(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE - 3, TILE_SIZE / 3, TILE_SIZE / 6, 0, 0, TWO_PI);
+        ctx.fill();
     }
 };
 
 // --- PERFORMANCE WIN: GLOBAL LIGHTING CACHE ---
-// Prevents recreating expensive radial gradients 60 times a second!
 let _cachedGradient = null;
 let _cachedGradientParams = "";
 
 // --- HEAVY RENDERING (Only runs when moving) ---
 function renderTerrainCache(startX, startY) {
-    // Cache calculations
     const padSize = TILE_SIZE * 2;
     const halfTile = TILE_SIZE / 2;
     const paddedWidth = (VIEWPORT_WIDTH + 4) * TILE_SIZE;
@@ -658,10 +675,8 @@ function renderTerrainCache(startX, startY) {
     gameState.visibleAnimatedTiles = [];
 
     terrainCtx.save();
-    // Shift down and right to allow drawing at negative coordinates
     terrainCtx.translate(padSize, padSize);
 
-    // Lift heavy dictionary lookups OUT of the 1500 iteration x/y loop!
     let currentCaveThemeObj = null;
     let currentCastleMap = null;
     let currentCaveMap = null;
@@ -674,10 +689,8 @@ function renderTerrainCache(startX, startY) {
         currentCastleMap = chunkManager.castleMaps[gameState.currentCastleId];
     }
 
-    // Resolve emoji-width checking function once
     const isWideCharCheck = typeof isWideChar === 'function' ? isWideChar : (c) => /\p{Extended_Pictographic}/u.test(c);
 
-    // INCREASED loop bounds to match the new +4 buffer
     for (let y = -2; y <= VIEWPORT_HEIGHT + 2; y++) {
         for (let x = -2; x <= VIEWPORT_WIDTH + 2; x++) {
             const mapX = startX + x;
@@ -688,7 +701,6 @@ function renderTerrainCache(startX, startY) {
             let fgColor = '#FFFFFF';
             let bgColor = null;
 
-            // --- RESOLVE TILE TYPE ---
             if (activeMapMode === 'dungeon') {
                 tile = (currentCaveMap && currentCaveMap[mapY] && currentCaveMap[mapY][mapX]) ? currentCaveMap[mapY][mapX] : ' ';
                 bgColor = currentCaveThemeObj.colors.floor;
@@ -704,28 +716,22 @@ function renderTerrainCache(startX, startY) {
             } 
             else if (activeMapMode === 'castle') {
                 tile = (currentCastleMap && currentCastleMap[mapY] && currentCastleMap[mapY][mapX]) ? currentCastleMap[mapY][mapX] : ' ';
-                
-                // Base cobblestone/dark stone floor color
                 bgColor = '#44403c'; 
 
                 if (tile === '▓' || tile === '▒') {
                     TileRenderer.drawWall(terrainCtx, x, y, '#78350f', '#451a03', 'brick');
                 } else if (tile === 'F') {
-                    // Render castle courtyard gardens
                     TileRenderer.drawForest(terrainCtx, x, y, mapX, mapY, '#14532d');
                 } else if (tile === '=') {
-                    // Render wooden bridges/paths
                     TileRenderer.drawBase(terrainCtx, x, y, '#78350f'); 
                 } else if (tile === '.') {
-                    // Render standard cobblestone floor
                     TileRenderer.drawBase(terrainCtx, x, y, bgColor);
                 } else {
-                    // Everything else (NPCs, Exits, Items)
                     TileRenderer.drawBase(terrainCtx, x, y, bgColor);
                     if (tile !== ' ') fgChar = tile;
                 }
             } 
-            else { // Overworld OR Underworld
+            else { 
                 tile = chunkManager.getTile(mapX, mapY);
                 
                 const cX = Math.floor(mapX / 16);
@@ -740,20 +746,18 @@ function renderTerrainCache(startX, startY) {
                 }
                 
                 if (activeMapMode === 'underworld') {
-                    // --- UNDERWORLD COLOR PALETTE ---
-                    bgColor = '#0f172a'; // Deep abyss floor
-                    if (baseTerrain === '▓') bgColor = '#1e293b'; // Cave Walls
-                    else if (baseTerrain === '🌋') bgColor = '#450a0a'; // Magma
-                    else if (baseTerrain === '🍄') bgColor = '#4a044e'; // Fungal Floor
-                    else if (baseTerrain === '💎c') bgColor = '#083344'; // Crystal Floor
+                    bgColor = '#0f172a'; 
+                    if (baseTerrain === '▓') bgColor = '#1e293b'; 
+                    else if (baseTerrain === '🌋') bgColor = '#450a0a'; 
+                    else if (baseTerrain === '🍄') bgColor = '#4a044e'; 
+                    else if (baseTerrain === '💎c') bgColor = '#083344'; 
                 } else {
-                    // --- OVERWORLD COLOR PALETTE ---
-                    bgColor = '#22c55e'; // Plains
+                    bgColor = '#22c55e'; 
                     if (baseTerrain === 'F' || baseTerrain === '🌳e') bgColor = '#14532d';
-                    else if (baseTerrain === '🌲') bgColor = '#0f766e'; // Tundra Forest
-                    else if (baseTerrain === '❄️') bgColor = '#e0f2fe'; // Snow
-                    else if (baseTerrain === '🍄') bgColor = '#4a044e'; // Fungal Jungle
-                    else if (baseTerrain === '💎c') bgColor = '#083344'; // Crystal Peaks
+                    else if (baseTerrain === '🌲') bgColor = '#0f766e'; 
+                    else if (baseTerrain === '❄️') bgColor = '#e0f2fe'; 
+                    else if (baseTerrain === '🍄') bgColor = '#4a044e'; 
+                    else if (baseTerrain === '💎c') bgColor = '#083344'; 
                     else if (baseTerrain === 'd') bgColor = '#2d2d2d';
                     else if (baseTerrain === 'D') bgColor = '#fde047';
                     else if (baseTerrain === '≈') bgColor = '#422006';
@@ -773,7 +777,6 @@ function renderTerrainCache(startX, startY) {
                         case '🍄': fgChar = '🍄'; fgColor = '#d946ef'; break;
                         case '💎c': fgChar = '💎'; fgColor = '#22d3ee'; break;
                         case '🪜': fgChar = '🪜'; fgColor = '#fbbf24'; break;
-                        // Overworld defaults...
                         case '.': if(activeMapMode === 'overworld') TileRenderer.drawPlains(terrainCtx, x, y, mapX, mapY, bgColor, '#15803d'); break;
                         case 'F': TileRenderer.drawForest(terrainCtx, x, y, mapX, mapY, bgColor); break;
                         case '^': TileRenderer.drawMountain(terrainCtx, x, y, mapX, mapY, bgColor); break;
@@ -793,7 +796,6 @@ function renderTerrainCache(startX, startY) {
                 }
             }
 
-            // Draw Static Character (Items, Objects)
             if (fgChar) {
                 if (fgChar === '^' || fgChar === '⛰') {
                     const isCave = (fgChar === '⛰');
@@ -883,19 +885,16 @@ const render = () => {
 
             if (tile === '👻k') {
                 if (hasLens) {
-                    // JUICE: Idle Floating for Spirits
                     const floatY = Math.sin(now / 500 + mapX) * 3;
+                    TileRenderer.drawShadow(ctx, x, y); // Ground shadow
                     ctx.fillStyle = 'rgba(168, 85, 247, 0.6)'; 
                     ctx.font = `bold ${TILE_SIZE}px monospace`;
                     ctx.fillText('👻', x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2 + floatY);
                 }
             } 
-            else if (tile === '~') {
-                const waveVal = (performance.now() / 1500) + (mapX * 0.3) + (mapY * 0.2) + Math.sin(mapY * 0.5);
-                let fgChar = Math.sin(waveVal) > 0 ? '~' : '≈';
-                ctx.fillStyle = '#3b82f6';
-                ctx.font = `bold ${TILE_SIZE}px monospace`;
-                ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+            else if (tile === '~' || tile === '≈') {
+                const isDeep = tile === '~';
+                TileRenderer.drawWater(ctx, x, y, mapX, mapY, isDeep ? '#1e3a8a' : '#422006', isDeep ? '#3b82f6' : '#16a34a', isDeep);
             } else if (tile === '🔥' || tile === 'D') {
                 const flicker = Math.floor(performance.now() / 100) % 3;
                 let fgColor = flicker === 0 ? '#ef4444' : (flicker === 1 ? '#f97316' : '#facc15');
@@ -906,11 +905,7 @@ const render = () => {
                     ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
             } else if (tile === 'Ω') {
-                const spin = Math.floor(performance.now() / 150) % 4;
-                const chars =['Ω', 'C', 'U', '∩'];
-                ctx.fillStyle = '#a855f7';
-                ctx.font = `bold ${TILE_SIZE}px monospace`;
-                ctx.fillText(chars[spin], x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                TileRenderer.drawVoid(ctx, x, y, mapX, mapY);
             }
         });
     }
@@ -938,17 +933,19 @@ const render = () => {
 
         const char = entity.tile || '?';
         const isWide = isWideChar(char);
-
-        // JUICE WIN: Idle Breathing Animation!
         const breathOffset = Math.sin(now / 300 + (entity.x * 12.3 + entity.y * 7.1)) * (TILE_SIZE * 0.08);
 
         if (entity.type === 'spirit') ctx.globalAlpha = 0.6;
 
+        // JUICE WIN: Draw Ground Shadow BEFORE the entity
+        if (entity.type !== 'spirit') TileRenderer.drawShadow(ctx, x, y);
+
         ctx.fillStyle = entity.color || '#ef4444';
         ctx.font = isWide ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
         
-        ctx.strokeStyle = '#ef4444'; 
-        ctx.lineWidth = 2; 
+        ctx.strokeStyle = '#000000'; 
+        ctx.lineWidth = 3; 
+        ctx.lineJoin = 'round';
         ctx.strokeText(char, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2 + breathOffset);
         
         ctx.fillStyle = entity.color || '#ef4444';
@@ -1000,8 +997,9 @@ const render = () => {
             const screenY = (vy - startY) * TILE_SIZE;
             
             if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
-                // Idle Breathing for Other Players
                 const opBreath = Math.sin(now / 300 + (op.x * 12.3 + op.y * 7.1)) * (TILE_SIZE * 0.08);
+                
+                TileRenderer.drawShadow(ctx, vx - startX, vy - startY);
                 
                 ctx.fillStyle = '#f97316';
                 ctx.font = `bold ${TILE_SIZE}px monospace`;
@@ -1030,13 +1028,15 @@ const render = () => {
     const playerChar = gameState.player.isSailing ? '⛵' : (gameState.player.isBoating ? 'c' : gameState.player.character);
     ctx.font = `bold ${TILE_SIZE}px monospace`;
     
-    // Idle Breathing for Player
     const playerBreath = Math.sin(now / 300 + (p.x * 12.3 + p.y * 7.1)) * (TILE_SIZE * 0.08);
     const pScreenX = (visX - startX) * TILE_SIZE + TILE_SIZE / 2;
     const pScreenY = (visY - startY) * TILE_SIZE + TILE_SIZE / 2 + playerBreath;
 
+    TileRenderer.drawShadow(ctx, visX - startX, visY - startY);
+
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
     ctx.strokeText(playerChar, pScreenX, pScreenY);
     ctx.fillStyle = '#3b82f6';
     ctx.fillText(playerChar, pScreenX, pScreenY);
@@ -1073,14 +1073,35 @@ const render = () => {
     const torchBonus = hasTorch ? 6 : 0;
     const candleBonus = (gameState.player.candlelightTurns > 0) ? 8 : 0;
 
+    // ATMOSPHERE WIN: Dynamic Biome Lighting Tints
+    let r = 255, g = 140, b = 0; // Default Warm Torch
+
     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'underworld') {
         ambientLight = 0.85; 
         baseRadius = 6 + Math.floor(gameState.player.perception / 2) + torchBonus + candleBonus;
+        
+        // Dungeon Tints
+        const themeName = chunkManager.caveThemes[gameState.currentCaveId];
+        if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
+        else if (themeName === 'VOID' || gameState.mapMode === 'underworld') { r = 168; g = 85; b = 247; }
+        
     } else { 
         const timeInMinutes = (gameState.time.hour * 60) + gameState.time.minute;
         const timeWave = (Math.cos((timeInMinutes / 1440) * Math.PI * 2) + 1) / 2;
         ambientLight = timeWave * 0.85;
         baseRadius = (ambientLight > 0.3) ? 8 + torchBonus + candleBonus : 25;
+
+        // Overworld Biome Tints (Only active at night when holding a light source)
+        if (ambientLight > 0.4 && (hasTorch || candleBonus > 0)) {
+            const centerTile = chunkManager.getTile(p.x, p.y);
+            if (centerTile === '🍄') { r = 168; g = 85; b = 247; } // Fungal
+            else if (centerTile === '≈') { r = 134; g = 239; b = 172; } // Swamp Gas
+            else if (centerTile === '❄️' || centerTile === '🌲') { r = 186; g = 230; b = 253; } // Snow
+        }
+        
+        // Event Overrides
+        if (gameState.isBloodMoon) { r = 220; g = 38; b = 38; } 
+        else if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
     }
 
     const torchFlicker = (Math.sin(now / 1000) * 0.2) + (Math.cos(now / 2500) * 0.1);
@@ -1088,20 +1109,9 @@ const render = () => {
     const outerDarkness = ambientLight; 
 
     if (outerDarkness > 0.0) {
-        let r = 255, g = 140, b = 0; 
-        if (gameState.mapMode === 'dungeon') {
-            const themeName = chunkManager.caveThemes[gameState.currentCaveId];
-            if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
-            if (themeName === 'VOID') { r = 168; g = 85; b = 247; }
-        } else if (gameState.mapMode === 'overworld') {
-            if (gameState.isBloodMoon) { r = 220; g = 38; b = 38; } 
-            else if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
-        }
-
         const lightPxRadius = lightRadius * TILE_SIZE;
         const gradKey = `${lightPxRadius.toFixed(1)}_${outerDarkness.toFixed(2)}_${r}_${g}_${b}`;
         
-        // PERFORMANCE WIN: Cache Radial Gradient using translation to prevent millions of math calculations!
         if (_cachedGradientParams !== gradKey) {
             _cachedGradient = ctx.createRadialGradient(0, 0, lightPxRadius * 0.2, 0, 0, lightPxRadius);
             _cachedGradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.15)`);
@@ -1111,44 +1121,68 @@ const render = () => {
         }
 
         ctx.save();
-        // Shift context to the exact pixel coordinate of the player
         ctx.translate((visX - startX) * TILE_SIZE + TILE_SIZE / 2, (visY - startY) * TILE_SIZE + TILE_SIZE / 2);
         ctx.fillStyle = _cachedGradient;
         
-        // Draw the cached gradient infinitely outwards
-        // We use VIEWPORT_WIDTH * 2 to guarantee the corners of the screen are covered regardless of player position
         const coverW = VIEWPORT_WIDTH * TILE_SIZE * 2;
         const coverH = VIEWPORT_HEIGHT * TILE_SIZE * 2;
         ctx.fillRect(-coverW, -coverH, coverW * 2, coverH * 2);
         ctx.restore();
     }
 
-    // --- Ambient Fireflies ---
-    if (outerDarkness > 0.4 && gameState.mapMode === 'overworld') {
+    // --- LORE & ATMOSPHERE WIN: Biome-Specific Ambient Particles ---
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         const centerTile = chunkManager.getTile(p.x, p.y);
-        if (centerTile === 'F' || centerTile === '🌳e') {
-            if (Math.random() < 0.05 && typeof ParticleSystem !== 'undefined') {
-                const fx = p.x + (Math.random() * VIEWPORT_WIDTH) - (VIEWPORT_WIDTH / 2);
-                const fy = p.y + (Math.random() * VIEWPORT_HEIGHT) - (VIEWPORT_HEIGHT / 2);
+        const isNight = outerDarkness > 0.4;
+        
+        if (Math.random() < 0.15 && typeof ParticleSystem !== 'undefined') {
+            const fx = p.x + (Math.random() * VIEWPORT_WIDTH) - (VIEWPORT_WIDTH / 2);
+            const fy = p.y + (Math.random() * VIEWPORT_HEIGHT) - (VIEWPORT_HEIGHT / 2);
+            
+            if (centerTile === 'F' && isNight) {
+                // Fireflies
                 ParticleSystem.spawn(fx, fy, '#86efac', 'dust', '', 2); 
-                
-                const activeBug = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
-                if (activeBug) {
-                    activeBug.vy = -0.02 - (Math.random() * 0.02);
-                    activeBug.vx = (Math.random() - 0.5) * 0.05;
-                    activeBug.gravity = 0;
-                    activeBug.lifeFade = 0.01; 
+                const bug = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
+                if (bug) {
+                    bug.vy = -0.01 - (Math.random() * 0.02);
+                    bug.vx = (Math.random() - 0.5) * 0.05;
+                    bug.gravity = 0; bug.lifeFade = 0.01; 
+                }
+            } else if (centerTile === 'd' || centerTile === '🌋') {
+                // Grey Ash
+                ParticleSystem.spawn(fx, fy, '#9ca3af', 'dust', '', Math.random()*2 + 1); 
+                const ash = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
+                if (ash) {
+                    ash.vy = -0.03 - (Math.random() * 0.03); // Drifts up
+                    ash.vx = (Math.random() - 0.5) * 0.08;
+                    ash.gravity = 0; ash.lifeFade = 0.015;
+                }
+            } else if (centerTile === '🍄') {
+                // Glowing Spores
+                ParticleSystem.spawn(fx, fy, '#d946ef', 'dust', '', Math.random()*2 + 1); 
+                const spore = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
+                if (spore) {
+                    spore.vy = (Math.random() - 0.5) * 0.02; 
+                    spore.vx = (Math.random() - 0.5) * 0.02;
+                    spore.gravity = 0; spore.lifeFade = 0.01;
+                }
+            } else if (centerTile === 'D') {
+                // Blowing Sand
+                ParticleSystem.spawn(fx, fy, '#fde047', 'dust', '', 1); 
+                const sand = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
+                if (sand) {
+                    sand.vy = 0; 
+                    sand.vx = 0.1 + (Math.random() * 0.1); // Blows hard right
+                    sand.gravity = 0; sand.lifeFade = 0.05; // Short life
                 }
             }
         }
     }
 
-    // --- Weather Layer ---
+    // --- Dynamic Weather Particles ---
     const intensity = gameState.player.weatherIntensity || 0;
-        if (intensity > 0 && gameState.weather !== 'clear' && gameState.mapMode === 'overworld') {
+    if (intensity > 0 && gameState.weather !== 'clear' && gameState.mapMode === 'overworld') {
         ctx.save();
-        
-        // Disable interpolation completely for weather rendering to ensure lines/flakes render crisply
         ctx.setTransform(1, 0, 0, 1, 0, 0); 
         ctx.scale(dpr, dpr);
         ctx.globalAlpha = intensity;
@@ -1158,24 +1192,36 @@ const render = () => {
             ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             ctx.strokeStyle = 'rgba(120, 140, 255, 0.6)';
             ctx.lineWidth = 1;
+            
             const dropCount = Math.floor(200 * intensity);
             for (let i = 0; i < dropCount; i++) {
                 const rx = Math.random() * (canvas.width / dpr);
                 const ry = Math.random() * (canvas.height / dpr);
                 const len = 10 + Math.random() * 10;
                 ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + len); ctx.stroke();
+                
+                // JUICE: Occasional Rain Splashes on the ground
+                if (Math.random() < 0.1 * intensity) {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                    ctx.beginPath();
+                    ctx.ellipse(rx - 5, ry + len, 4, 1.5, 0, 0, TWO_PI);
+                    ctx.stroke();
+                }
             }
         }
         else if (gameState.weather === 'snow') {
             ctx.fillStyle = 'rgba(200, 200, 220, 0.15)';
             ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             ctx.fillStyle = 'white';
+            
             const flakeCount = Math.floor(150 * intensity);
             for (let i = 0; i < flakeCount; i++) {
                 const rx = Math.random() * (canvas.width / dpr);
                 const ry = Math.random() * (canvas.height / dpr);
                 const size = Math.random() * 2 + 1;
-                ctx.fillRect(rx, ry, size, size);
+                // JUICE: Dynamic Wind Drift
+                const drift = Math.sin(now / 2000 + ry) * 10;
+                ctx.fillRect(rx + drift, ry, size, size);
             }
         }
         else if (gameState.weather === 'storm') {
@@ -1189,8 +1235,14 @@ const render = () => {
                 const ry = Math.random() * (canvas.height / dpr);
                 ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 8, ry + 15); ctx.stroke();
             }
-            if (Math.random() < 0.05 * intensity) {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            
+            // JUICE WIN: Lightning Flashes
+            if (Math.random() < 0.02 * intensity) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+            } else if (Math.random() < 0.05 * intensity) {
+                // Secondary dull flash
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
                 ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             }
         }
@@ -1220,7 +1272,6 @@ const render = () => {
                 }
             });
             if (minDist < 20 || bosses.length === 1) {
-                // Draw in screen-space regardless of camera
                 ctx.setTransform(1, 0, 0, 1, 0, 0); 
                 ctx.scale(dpr, dpr);
                 
@@ -1252,11 +1303,11 @@ const render = () => {
         }
     }
 
-    // --- JUICE WIN: Visceral Blood Overlay for heavy hits ---
+    // --- Visceral Blood Overlay for heavy hits ---
     if (gameState.screenShake > 8) {
         ctx.setTransform(1, 0, 0, 1, 0, 0); 
         ctx.scale(dpr, dpr);
-        ctx.fillStyle = `rgba(220, 38, 38, ${Math.min(0.3, gameState.screenShake / 50)})`; // Faint Red
+        ctx.fillStyle = `rgba(220, 38, 38, ${Math.min(0.3, gameState.screenShake / 50)})`; 
         ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
     }
 
@@ -1273,14 +1324,15 @@ function syncPlayerState() {
             mapMode: gameState.mapMode,
             mapId: gameState.currentCaveId || gameState.currentCastleId || null,
             email: auth.currentUser.email,
-            // Sync Companion Position
             companion: gameState.player.companion ? {
                 tile: gameState.player.companion.tile,
                 name: gameState.player.companion.name,
-                x: gameState.player.companion.x, // Sync X
-                y: gameState.player.companion.y  // Sync Y
+                x: gameState.player.companion.x, 
+                y: gameState.player.companion.y  
             } : null
         };
         onlinePlayerRef.set(stateToSync);
     }
 }
+
+// --- END OF FILE renderer.js ---
