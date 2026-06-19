@@ -105,7 +105,7 @@ function getCachedMapChunk(cx, cy) {
     return c;
 }
 
-// Determines accurate colors including new Nautical, Night, and Void items!
+// Determines accurate colors including Nautical, Night, and Void items!
 function getTileColorForMap(worldX, worldY) {
     const tile = chunkManager.getTile(worldX, worldY); 
 
@@ -158,22 +158,23 @@ function getMapTileName(x, y) {
         return TILE_DATA[tile].name;
     } 
     
+    // LORE WIN: Richer, more evocative Cartography names
     const names = {
-        'V': "Safe Haven Village", '🏰': "Castle Ruins", '♛': "Grand Fortress",
-        '🛕': "Sunken Temple (Danger)", '🌋': "Volcanic Island (Extreme Heat)", 
-        '⛰': "Cave Entrance", '🌳e': "Elder Tree (Ancient Magic)",
-        '🍄r': "Fairy Ring (Fae Territory)", '⚙️d': "Clockwork Ruins (Second Age)",
-        '⛰️m': "Dwarven Mines (Abandoned)", 'Ω': "Void Rift (Lethal)",
-        '🕳️': "Abyssal Chasm (Underworld)", '🚢': "Sunken Shipwreck",
-        '🛟': "Ocean Flotsam", '🌺': "Moonbloom Patch", '☄️': "Star-Metal Crater",
-        'F': "Dense Forest", 'D': "Scorching Desert", 'd': "Ashen Deadlands",
-        '^': "Impassable Mountains", '~': "Deep Ocean", '≈': "Fetid Swamp",
-        '.': "Open Plains", '#': "Leyline Waystone", '🗺️': "Cartographer's Guild",
-        '🧊': "Glacier / Ice", '❄️': "Deep Snow", '🌲': "Tundra Pine"
+        'V': "Safe Haven (The Last Settlement)", '🏰': "Fallen Castle Ruins", '♛': "The Grand Fortress (Danger)",
+        '🛕': "Sunken Abyssal Temple", '🌋': "Infernal Volcanic Island", 
+        '⛰': "Dark Cavern Entrance", '🌳e': "Ancient Elder Tree",
+        '🍄r': "Fae Territory (Fairy Ring)", '⚙️d': "Clockwork Vault (Second Age)",
+        '⛰️m': "Abandoned Dwarven Mines", 'Ω': "Tear in the Firmament (Void Rift)",
+        '🕳️': "Abyssal Chasm (Underworld Entrance)", '🚢': "Barnacle-Encrusted Shipwreck",
+        '🛟': "Ocean Flotsam", '🌺': "Rare Moonbloom Patch", '☄️': "Star-Metal Crater",
+        'F': "Dense Overgrown Forest", 'D': "Scorching Sand Dunes", 'd': "Ashen Deadlands",
+        '^': "Impassable Mountain Peaks", '~': "The Deep Ocean", '≈': "Fetid Swamp Waters",
+        '.': "Open Plains", '#': "Magical Leyline Waystone", '🗺️': "Cartographer's Guild Station",
+        '🧊': "Slippery Glacial Ice", '❄️': "Deep Tundra Snow", '🌲': "Frozen Pine Forest"
     };
 
     if (names[tile]) return names[tile];
-    if (['🧱', '=', '+', '☒'].includes(tile)) return "Built Structure";
+    if (['🧱', '=', '+', '☒'].includes(tile)) return "Man-Made Structure";
     
     return "Uncharted Wilderness";
 }
@@ -322,64 +323,108 @@ function renderWorldMap() {
         }
     });
 
+    // ========================================================================
+    // CONTENT WIN: THE LEYLINE NETWORK
+    // Draws a beautiful, glowing web connecting all unlocked Waypoints!
+    // ========================================================================
+    if (gameState.player.unlockedWaypoints && gameState.player.unlockedWaypoints.length > 0) {
+        const wpPulse = (Math.sin(now / 300) + 1) / 2; // Pulsing opacity
+        
+        worldMapCtx.strokeStyle = `rgba(168, 85, 247, ${0.15 + wpPulse * 0.2})`; // Electric Purple
+        worldMapCtx.lineWidth = Math.max(1, currentMapScale * 0.15);
+        worldMapCtx.beginPath();
+        
+        // Connect the Safe Haven Village (0,0) as the central hub to all other waypoints
+        const vX = (0 - mapCamera.x) * currentMapScale + centerX;
+        const vY = (0 - mapCamera.y) * currentMapScale + centerY;
+        
+        gameState.player.unlockedWaypoints.forEach(wp => {
+            if (wp.x !== 0 || wp.y !== 0) { // Don't draw a line to itself
+                const screenX = (wp.x - mapCamera.x) * currentMapScale + centerX;
+                const screenY = (wp.y - mapCamera.y) * currentMapScale + centerY;
+                
+                // Only draw the line if at least one endpoint is on screen or near it
+                if ((vX > -100 && vX < logicalWidth + 100 && vY > -100 && vY < logicalHeight + 100) ||
+                    (screenX > -100 && screenX < logicalWidth + 100 && screenY > -100 && screenY < logicalHeight + 100)) {
+                    worldMapCtx.moveTo(vX, vY);
+                    worldMapCtx.lineTo(screenX, screenY);
+                }
+            }
+        });
+        worldMapCtx.stroke();
+    }
+
     worldMapCtx.font = `bold ${Math.max(14, currentMapScale * 2)}px monospace`;
     worldMapCtx.textAlign = 'center';
     worldMapCtx.textBaseline = 'middle';
 
     // Render Custom Player Pins
-    if (gameState.player.customPins) {
+    if (gameState.player.customPins && gameState.player.customPins.length > 0) {
+        worldMapCtx.fillStyle = '#ffffff';
+        const pinBob = Math.sin(now / 150) * (currentMapScale * 0.15); // Bounce!
+        
         gameState.player.customPins.forEach(pin => {
             const screenX = (pin.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (pin.y - mapCamera.y) * currentMapScale + centerY;
             
             if (screenX >= 0 && screenX <= logicalWidth && screenY >= 0 && screenY <= logicalHeight) {
-                const pinBob = Math.sin(now / 150) * (currentMapScale * 0.15); // Bounce!
-                
+                // Drop shadow
                 worldMapCtx.fillStyle = 'rgba(0,0,0,0.8)';
                 worldMapCtx.fillText('📌', screenX + currentMapScale/2, (screenY + currentMapScale/2) + 2 + pinBob);
+                
+                // Pin
                 worldMapCtx.fillStyle = '#ffffff';
                 worldMapCtx.fillText('📌', screenX + currentMapScale/2, screenY + currentMapScale/2 + pinBob);
             }
         });
     }
 
-    // Render Unlocked Waystones
-    if (gameState.player.unlockedWaypoints) {
+    // Render Unlocked Waystones (Batched Canvas API for Performance)
+    if (gameState.player.unlockedWaypoints && gameState.player.unlockedWaypoints.length > 0) {
         const wpPulse = (Math.sin(now / 200) + 1) / 2; 
-        
-        worldMapCtx.globalAlpha = 0.4 + wpPulse * 0.6;
         worldMapCtx.fillStyle = '#a855f7'; // Purple
+        worldMapCtx.globalAlpha = 0.4 + wpPulse * 0.6;
         
+        worldMapCtx.beginPath(); // Batch drawing circles
         gameState.player.unlockedWaypoints.forEach(wp => {
             const screenX = (wp.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (wp.y - mapCamera.y) * currentMapScale + centerY;
             
             if (screenX >= 0 && screenX <= logicalWidth && screenY >= 0 && screenY <= logicalHeight) {
-                worldMapCtx.beginPath();
+                worldMapCtx.moveTo(screenX + currentMapScale/2, screenY + currentMapScale/2);
                 worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2, currentMapScale * 1.5, 0, Math.PI * 2);
-                worldMapCtx.fill();
             }
         });
+        worldMapCtx.fill();
         worldMapCtx.globalAlpha = 1.0;
     }
 
     // Render Discovered Points of Interest (POIs)
-    if (gameState.player.discoveredPOIs) {
+    if (gameState.player.discoveredPOIs && gameState.player.discoveredPOIs.length > 0) {
         worldMapCtx.font = `bold ${Math.max(10, currentMapScale * 1.5)}px monospace`;
+        
         // JUICE WIN: Dynamic hover/bobbing animation for POIs
         const bobY = Math.sin(now / 300) * (currentMapScale * 0.2); 
         
+        // 1. Draw all backgrounds first
+        worldMapCtx.fillStyle = 'rgba(0,0,0,0.5)';
+        worldMapCtx.beginPath();
         gameState.player.discoveredPOIs.forEach(poi => {
             const screenX = (poi.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (poi.y - mapCamera.y) * currentMapScale + centerY;
-            
             if (screenX >= 0 && screenX <= logicalWidth && screenY >= 0 && screenY <= logicalHeight) {
-                worldMapCtx.fillStyle = 'rgba(0,0,0,0.5)';
-                worldMapCtx.beginPath();
+                worldMapCtx.moveTo(screenX + currentMapScale/2, screenY + currentMapScale/2);
                 worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2, currentMapScale, 0, Math.PI * 2);
-                worldMapCtx.fill();
-                
-                worldMapCtx.fillStyle = '#ffffff';
+            }
+        });
+        worldMapCtx.fill();
+        
+        // 2. Draw all text on top
+        worldMapCtx.fillStyle = '#ffffff';
+        gameState.player.discoveredPOIs.forEach(poi => {
+            const screenX = (poi.x - mapCamera.x) * currentMapScale + centerX;
+            const screenY = (poi.y - mapCamera.y) * currentMapScale + centerY;
+            if (screenX >= 0 && screenX <= logicalWidth && screenY >= 0 && screenY <= logicalHeight) {
                 worldMapCtx.fillText(poi.icon, screenX + currentMapScale/2, screenY + currentMapScale/2 + bobY);
             }
         });
@@ -406,21 +451,22 @@ function renderWorldMap() {
         }
     }
 
-    // Render Other Online Players
+    // Render Other Online Players (Batched Canvas API for Performance)
     if (typeof otherPlayers !== 'undefined') {
         worldMapCtx.fillStyle = '#f97316'; // Distinct Orange
+        worldMapCtx.beginPath();
         Object.values(otherPlayers).forEach(op => {
             if (op.mapMode === 'overworld' && op.x !== undefined && op.y !== undefined) {
                 const opX = (op.x - mapCamera.x) * currentMapScale + centerX;
                 const opY = (op.y - mapCamera.y) * currentMapScale + centerY;
                 
                 if (opX >= 0 && opX <= logicalWidth && opY >= 0 && opY <= logicalHeight) {
-                    worldMapCtx.beginPath();
+                    worldMapCtx.moveTo(opX + currentMapScale/2, opY + currentMapScale/2);
                     worldMapCtx.arc(opX + currentMapScale/2, opY + currentMapScale/2, Math.max(2, currentMapScale * 0.8), 0, Math.PI * 2);
-                    worldMapCtx.fill();
                 }
             }
         });
+        worldMapCtx.fill();
     }
 
     // Render Player Marker & Radar Pulse
@@ -499,16 +545,55 @@ function renderWorldMap() {
     worldMapCtx.fillStyle = grad;
     worldMapCtx.fillRect(0, 0, logicalWidth, logicalHeight);
 
-    // JUICE WIN: Golden Compass Rose
-    worldMapCtx.fillStyle = 'rgba(250, 204, 21, 0.6)'; // Yellow/Gold
-    worldMapCtx.font = 'bold 20px "Uncial Antiqua", cursive';
-    worldMapCtx.fillText('N', logicalWidth - 35, logicalHeight - 55);
-    
+    // LORE & JUICE WIN: Detailed Old-World Cartography Compass Rose
+    const cx = logicalWidth - 50;
+    const cy = logicalHeight - 65;
+
+    // Outer decorative ring
+    worldMapCtx.strokeStyle = 'rgba(250, 204, 21, 0.3)'; // Faint Gold
+    worldMapCtx.lineWidth = 1;
     worldMapCtx.beginPath();
-    worldMapCtx.moveTo(logicalWidth - 35, logicalHeight - 75); // Top point
-    worldMapCtx.lineTo(logicalWidth - 40, logicalHeight - 40); // Bottom left
-    worldMapCtx.lineTo(logicalWidth - 30, logicalHeight - 40); // Bottom right
+    worldMapCtx.arc(cx, cy, 30, 0, TWO_PI);
+    worldMapCtx.stroke();
+    
+    // Inner decorative ring
+    worldMapCtx.beginPath();
+    worldMapCtx.arc(cx, cy, 22, 0, TWO_PI);
+    worldMapCtx.stroke();
+
+    // Runic/Tick marks around the compass
+    worldMapCtx.beginPath();
+    for(let i=0; i<12; i++) {
+        const angle = (i * Math.PI) / 6;
+        const isMajor = (i % 3 === 0);
+        const len = isMajor ? 6 : 3;
+        worldMapCtx.moveTo(cx + Math.cos(angle) * 22, cy + Math.sin(angle) * 22);
+        worldMapCtx.lineTo(cx + Math.cos(angle) * (22 + len), cy + Math.sin(angle) * (22 + len));
+    }
+    worldMapCtx.stroke();
+
+    // The Golden North Needle
+    worldMapCtx.fillStyle = 'rgba(250, 204, 21, 0.8)'; 
+    worldMapCtx.beginPath();
+    worldMapCtx.moveTo(cx, cy - 35); // Top point
+    worldMapCtx.lineTo(cx - 6, cy); // Bottom left
+    worldMapCtx.lineTo(cx + 6, cy); // Bottom right
     worldMapCtx.fill();
+    
+    // The Shadow South Needle
+    worldMapCtx.fillStyle = 'rgba(0, 0, 0, 0.6)'; 
+    worldMapCtx.beginPath();
+    worldMapCtx.moveTo(cx, cy + 35); // Bottom point
+    worldMapCtx.lineTo(cx - 6, cy); // Top left
+    worldMapCtx.lineTo(cx + 6, cy); // Top right
+    worldMapCtx.fill();
+
+    // Letter 'N'
+    worldMapCtx.fillStyle = '#facc15';
+    worldMapCtx.font = 'bold 22px "Uncial Antiqua", cursive';
+    worldMapCtx.textAlign = 'center';
+    worldMapCtx.textBaseline = 'middle';
+    worldMapCtx.fillText('N', cx, cy - 50);
     
     // Realm Banner (If not in the Prime Realm)
     if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) {
@@ -530,7 +615,7 @@ function updateMapUI() {
     if (hoverWorldX !== null && hoverWorldY !== null) {
         const tileName = getMapTileName(hoverWorldX, hoverWorldY);
         
-        if (tileName === "Leyline Waystone") {
+        if (tileName === "Magical Leyline Waystone") {
             const isUnlocked = gameState.player.unlockedWaypoints && gameState.player.unlockedWaypoints.some(wp => wp.x === hoverWorldX && wp.y === hoverWorldY);
             if (isUnlocked) actionHint = ' | <span class="text-purple-400 font-bold animate-pulse">Double-Click to Travel</span>';
             else actionHint = ' | <span class="text-gray-500">Unattuned Waystone</span>';
@@ -539,8 +624,16 @@ function updateMapUI() {
         const dx = hoverWorldX - gameState.player.x;
         const dy = hoverWorldY - gameState.player.y;
         const dist = Math.floor(Math.sqrt(dx * dx + dy * dy));
+
+        // LORE WIN: "Here be Dragons" styling for extreme, uncharted distances
+        let dangerTag = "";
+        if (tileName === "Uncharted Wilderness" && dist > 1500) {
+            dangerTag = ` <span class="text-red-500 italic text-[10px] uppercase font-serif tracking-widest">(Here Be Monsters)</span>`;
+        } else if (tileName === "The Deep Ocean" && dist > 1500) {
+            dangerTag = ` <span class="text-blue-500 italic text-[10px] uppercase font-serif tracking-widest">(Here Be Leviathans)</span>`;
+        }
         
-        hoverText = ` | Hover: <span class="text-yellow-400 font-bold">${tileName}</span> (${hoverWorldX}, ${-hoverWorldY}) <span class="text-gray-500">[${dist}m]</span>`;
+        hoverText = ` | Hover: <span class="text-yellow-400 font-bold">${tileName}</span>${dangerTag} (${hoverWorldX}, ${-hoverWorldY}) <span class="text-gray-500">[${dist}m]</span>`;
     }
     
     mapCoordsDisplay.innerHTML = `Player: (${gameState.player.x}, ${-gameState.player.y})${hoverText}${actionHint}`;
