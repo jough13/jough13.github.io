@@ -89,9 +89,17 @@ const AudioSystem = {
 
     // --- IMMERSION: DYNAMIC ACOUSTICS & DISTANCE ATTENUATION ---
     
-    // Simulates echoes and muffling if underground
+    // Simulates echoes and muffling based on dimension and depth!
     _getAcoustics: function() {
         if (typeof gameState !== 'undefined') {
+            // LORE WIN: Void / Alternate Realms sound oppressive, distorted, and echoing
+            if (gameState.currentRealm !== 0 || gameState.currentCaveTheme === 'VOID') {
+                return { durationMult: 1.5, filterMult: 0.4, echoDelay: 0.3, echoFeedback: 0.5 };
+            }
+            // Sky Realm: Thin air, high frequencies pass easily, massive open echo
+            if (gameState.mapMode === 'skyrealm') {
+                return { durationMult: 0.8, filterMult: 1.5, echoDelay: 0.4, echoFeedback: 0.4 };
+            }
             if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'underworld') {
                 // Deep caves: Heavy echo, muffled highs
                 return { durationMult: 1.2, filterMult: 0.6, echoDelay: 0.15, echoFeedback: 0.35 }; 
@@ -113,8 +121,8 @@ const AudioSystem = {
         
         return {
             pan: Math.max(-1, Math.min(1, dx / 10)), // Stereo pan
-            distanceVol: Math.max(0.1, 1.0 - (absDx * 0.06)), // Fades out as distance increases
-            distanceFilter: Math.max(0.3, 1.0 - (absDx * 0.05)) // Muffles far sounds (loss of treble)
+            distanceVol: Math.max(0.05, 1.0 - (absDx * 0.06)), // Fades out as distance increases
+            distanceFilter: Math.max(0.1, 1.0 - (absDx * 0.05)) // Muffles far sounds (loss of treble)
         };
     },
 
@@ -244,8 +252,8 @@ const AudioSystem = {
 
     // EXPANDABILITY WIN: The Polyphonic Engine
     // Plays multiple tones simultaneously. Perfect for thick, lush rewards or terrifying bosses!
-    playChord: function(notes, type = 'sine', duration = 0.5, vol = 0.1, detune = 0) {
-        if (!this.settings.master || !this.settings.ui || !this.getCtx()) return;
+    playChord: function(notes, type = 'sine', duration = 0.5, vol = 0.1, detune = 0, slideDown = false) {
+        if (!this.settings.master || !this.getCtx()) return;
         const ctx = this._ctx;
         const acoustics = this._getAcoustics();
         const actualDuration = duration * acoustics.durationMult;
@@ -259,7 +267,12 @@ const AudioSystem = {
             
             osc.type = type;
             // Apply slight detuning to create a richer, "chorus" effect
-            osc.frequency.value = (freq * acoustics.filterMult) + (index * detune);
+            const startFreq = (freq * acoustics.filterMult) + (index * detune);
+            osc.frequency.setValueAtTime(startFreq, ctx.currentTime);
+            
+            if (slideDown) {
+                osc.frequency.exponentialRampToValueAtTime(startFreq * 0.5, ctx.currentTime + actualDuration);
+            }
 
             gain.gain.setValueAtTime(0.0001, ctx.currentTime);
             gain.gain.exponentialRampToValueAtTime(noteVol, ctx.currentTime + 0.05); 
@@ -387,14 +400,41 @@ const AudioSystem = {
         }
     },
     
+    // JUICE WIN: Intelligent, material-aware hit sounds!
     playHit: function(x) { 
-        if (!this.settings.combat) return;
+        if (!this.settings.combat || !this.getCtx()) return;
         if (!this._throttle('hit', 80)) return;
         
-        // AUDIO QUALITY WIN: Layered Synthesis
-        // Combine a harsh square wave with white noise for a visceral, bone-crunching hit
-        this.playTone(80, 'square', 0.15, 0.1, true, null, x); 
-        this.playNoise(0.1, 0.1, 1500, x);
+        let material = 'flesh'; // Default
+        
+        // Smart Context: Check what tile is at X!
+        if (typeof chunkManager !== 'undefined' && typeof gameState !== 'undefined') {
+            let tileAtX = null;
+            if (gameState.mapMode === 'overworld') tileAtX = chunkManager.getTile(x, gameState.player.y);
+            else if (gameState.mapMode === 'dungeon') tileAtX = chunkManager.caveMaps[gameState.currentCaveId]?.[gameState.player.y]?.[x];
+            
+            if (tileAtX && typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tileAtX]) {
+                const eName = ENEMY_DATA[tileAtX].name || "";
+                if (eName.includes("Skeleton") || eName.includes("Draugr") || eName.includes("Bone")) material = 'bone';
+                else if (eName.includes("Clockwork") || eName.includes("Golem")) material = 'metal';
+                else if (eName.includes("Wraith") || eName.includes("Void") || eName.includes("Spirit")) material = 'ethereal';
+            }
+        }
+
+        if (material === 'bone') {
+            this.playTone(400, 'square', 0.05, 0.1, true, null, x); // Sharp crack
+            this.playNoise(0.05, 0.15, 3000, x); // High pitch snap
+        } else if (material === 'metal') {
+            this.playTone(800, 'triangle', 0.3, 0.15, true, 200, x); // Ringing clang
+            this.playNoise(0.1, 0.1, 2000, x);
+        } else if (material === 'ethereal') {
+            this.playTone(200, 'sine', 0.4, 0.15, false, 50, x); // Bass drop
+            this.playNoise(0.2, 0.08, 400, x); // Muffled woosh
+        } else {
+            // Default Flesh Crunch
+            this.playTone(80, 'square', 0.15, 0.1, true, null, x); 
+            this.playNoise(0.1, 0.1, 1500, x);
+        }
     },
 
     playCrit: function(x) {
@@ -489,6 +529,19 @@ const AudioSystem = {
     playCraftSuccess: function() {
         // Satisfying metallic/chime sequence
         this.playMelody([400, 600, 800], 'triangle', 0.1, 0.1);
+    },
+
+    // LORE WIN: Massive, reality-bending audio for the Timeline Restore feature!
+    playTimelineShift: function() {
+        this.playChord([100, 150, 200], 'sawtooth', 1.5, 0.2, 5.0, true); // Deep dive
+        setTimeout(() => this.playChord([400, 600, 800], 'sine', 1.0, 0.15, 2.0), 500); // Heavenly finish
+        this.playNoise(1.5, 0.2, 2000); // Rushing wind
+    },
+
+    // LORE WIN: Dropping into the Void
+    playVoidEnter: function() {
+        this.playChord([40, 45, 50], 'square', 3.0, 0.2, 1.0, true);
+        this.playNoise(2.0, 0.3, 400); 
     }
 };
 
@@ -515,11 +568,15 @@ function forceUnlockAudio() {
         // Remove the listeners once successfully unlocked
         document.removeEventListener('click', forceUnlockAudio);
         document.removeEventListener('touchstart', forceUnlockAudio);
+        document.removeEventListener('pointerdown', forceUnlockAudio);
+        document.removeEventListener('keydown', forceUnlockAudio);
     }
 }
 
-// Bind to both click and touch events to catch mobile interactions ASAP
+// QoL WIN: Bind to ALL major input vectors so tablet/stylus/keyboard players unlock audio flawlessly
 document.addEventListener('click', forceUnlockAudio, { once: true });
 document.addEventListener('touchstart', forceUnlockAudio, { once: true });
+document.addEventListener('pointerdown', forceUnlockAudio, { once: true });
+document.addEventListener('keydown', forceUnlockAudio, { once: true });
 
 // --- END OF FILE audio.js ---
