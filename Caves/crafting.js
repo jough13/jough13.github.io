@@ -130,6 +130,9 @@ function handleCraftItem(recipeName, requestBatch = false) {
 
     // 5. Generate Items
     let masterworksCrafted = 0;
+    let culinaryCrits = 0;
+    let totalYield = 0;
+    
     const isCooking = (gameState.currentCraftingMode === 'cooking');
     let lastCraftedName = itemTemplate.name;
 
@@ -144,9 +147,13 @@ function handleCraftItem(recipeName, requestBatch = false) {
         let finalDamage = itemTemplate.damage || null;
         let finalDefense = itemTemplate.defense || null;
 
-        if ((itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') && Math.random() < masterworkChance) {
+        // Determine Quantity Yield per craft (Base)
+        let craftYield = recipe.yield || 1; 
+
+        if (!isCooking && (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') && Math.random() < masterworkChance) {
             isMasterwork = true;
             masterworksCrafted++;
+            craftYield = 1; // Masterworks cannot be stacked during creation
             craftedName = `Masterwork ${itemTemplate.name}`;
             lastCraftedName = craftedName; // Used for Juice logging later
 
@@ -158,14 +165,20 @@ function handleCraftItem(recipeName, requestBatch = false) {
             if (itemTemplate.type === 'armor') finalDefense = (finalDefense || 0) + 1;
         }
 
-        // Determine Quantity Yield per craft
-        const craftYield = (isMasterwork) ? 1 : (recipe.yield || 1); 
+        // --- CONTENT WIN: Culinary Criticals! ---
+        // High luck gives a chance to perfectly stretch ingredients into an extra portion
+        if (isCooking && Math.random() < 0.10 + (player.luck * 0.02)) {
+            culinaryCrits++;
+            craftYield += 1; // Bonus portion!
+        }
+
+        totalYield += craftYield;
 
         // Add to Inventory
         // Re-evaluate existing stack inside the loop in case previous iterations created it
         const curStack = player.inventory.find(item => item.name === craftedName && !item.isEquipped);
 
-        // Allow stacking of identical masterworks if the base type allows it (e.g. Masterwork Arrows)
+        // Allow stacking of identical items/masterworks if the base type allows it
         if (curStack && isStackable) {
             curStack.quantity += craftYield; 
         } else {
@@ -183,7 +196,8 @@ function handleCraftItem(recipeName, requestBatch = false) {
                     slot: itemTemplate.slot || null,
                     statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null,
                     effect: itemTemplate.effect || null,
-                    isEquipped: false
+                    isEquipped: false,
+                    _rarity: isMasterwork ? 'rare' : null // Add glow to masterworks
                 });
             } else {
                 const dropTile = itemTemplate.tile || '🎒';
@@ -210,8 +224,6 @@ function handleCraftItem(recipeName, requestBatch = false) {
     }
 
     // 6. Flavor & Juice Logging
-    const totalYield = batchSize * (recipe.yield || 1);
-    
     // EXPANDABILITY WIN: Track lifetime metrics!
     if (!player.metrics) player.metrics = {};
     if (isCooking) player.metrics.potionsBrewed = (player.metrics.potionsBrewed || 0) + totalYield;
@@ -220,21 +232,30 @@ function handleCraftItem(recipeName, requestBatch = false) {
     // JUICE WIN: Floating World Particles for Crafting!
     if (typeof ParticleSystem !== 'undefined') {
         const floatText = masterworksCrafted > 0 ? `+${masterworksCrafted} ${lastCraftedName}` : `+${totalYield} ${lastCraftedName}`;
-        const floatColor = masterworksCrafted > 0 ? '#a855f7' : '#4ade80';
+        const floatColor = masterworksCrafted > 0 ? '#a855f7' : (culinaryCrits > 0 ? '#facc15' : '#4ade80');
         ParticleSystem.createFloatingText(player.x, player.y, floatText, floatColor);
     }
 
     if (masterworksCrafted > 0) {
-        logMessage(`{purple:Critical Success! You crafted ${masterworksCrafted}x ${itemTemplate.name}!}`);
+        logMessage(`{purple:Critical Success! You forged ${masterworksCrafted}x Masterwork ${itemTemplate.name}!}`);
         if (typeof triggerStatAnimation === 'function') triggerStatAnimation(document.getElementById('levelDisplay'), 'stat-pulse-purple');
         if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
     } else {
         const qtyStr = totalYield > 1 ? ` (x${totalYield})` : '';
         logMessage(`You ${isCooking ? 'cooked' : 'crafted'}: ${recipeName}${qtyStr}.`);
         
+        if (culinaryCrits > 0) {
+            logMessage(`{gold:Perfect Batch! Your culinary instincts yielded extra portions!}`);
+        }
+        
+        // JUICE WIN: Dynamic Audio Feedback based on item type
         if (typeof AudioSystem !== 'undefined') {
-            if (typeof AudioSystem.playCraftSuccess === 'function') {
-                AudioSystem.playCraftSuccess(); 
+            if (isCooking) {
+                AudioSystem.playNoise(0.4, 0.05, 800); // Sizzling sound
+            } else if (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') {
+                AudioSystem.playHit(); // Heavy anvil clang
+            } else if (typeof AudioSystem.playCraftSuccess === 'function') {
+                AudioSystem.playCraftSuccess(); // Generic success chime
             } else {
                 if (batchSize > 1) AudioSystem.playMagic(); 
                 else AudioSystem.playStep(); 
@@ -320,8 +341,11 @@ function renderCraftingModal() {
         const levelMet = playerLevel >= recipe.level;
         const canCraft = maxCraftable > 0 && levelMet;
 
+        // LORE WIN: If the recipe is significantly higher level than the player, obscure it!
+        const isObscured = recipe.level > playerLevel + 1;
+
         return {
-            recipeName, recipe, outputItemKey, itemTemplate, existingStack, maxCraftable, levelMet, canCraft
+            recipeName, recipe, outputItemKey, itemTemplate, existingStack, maxCraftable, levelMet, canCraft, isObscured
         };
     });
 
@@ -337,16 +361,23 @@ function renderCraftingModal() {
     const fragment = document.createDocumentFragment();
 
     recipeDataArray.forEach(data => {
-        const { recipeName, recipe, outputItemKey, itemTemplate, existingStack, maxCraftable, levelMet, canCraft } = data;
-        const outputItemTile = outputItemKey || '?';
-
-        // LORE WIN: Lookup the base description of the item so players know what it does
-        // Use our stripColorTags helper if it exists to keep the UI clean
+        const { recipeName, recipe, outputItemKey, itemTemplate, existingStack, maxCraftable, levelMet, canCraft, isObscured } = data;
+        
+        // Handle Obscured Mystery Blueprints
+        let displayName = recipeName;
+        let displayTile = outputItemKey || '?';
         let baseDescription = itemTemplate.description || "A crafted item.";
+        
         if (typeof stripColorTags === 'function') {
             baseDescription = stripColorTags(baseDescription);
         } else {
-            baseDescription = baseDescription.replace(/\{[a-z]+:(.*?)\}/ig, '$1'); // Fallback regex
+            baseDescription = baseDescription.replace(/\{[a-z]+:(.*?)\}/ig, '$1'); 
+        }
+
+        if (isObscured && gameState.currentCraftingMode === 'workbench') {
+            displayName = "Unknown Blueprint";
+            displayTile = '❓';
+            baseDescription = "The diagrams are too complex for your current skill level. Keep practicing.";
         }
 
         // Build Material List HTML
@@ -355,7 +386,13 @@ function renderCraftingModal() {
             const requiredQuantity = recipe.materials[materialName];
             const currentQuantity = availableMats[materialName] || 0;
             const quantityClass = currentQuantity < requiredQuantity ? 'text-red-400 font-bold border-red-900 bg-red-900 bg-opacity-20' : 'text-gray-300 border-gray-700 bg-black bg-opacity-30';
-            materialsHtml += `<li class="text-[10px] px-2 py-0.5 rounded border ${quantityClass}">${materialName} (${currentQuantity}/${requiredQuantity})</li>`;
+            
+            // If obscured, hide the exact materials needed to build suspense
+            if (isObscured) {
+                materialsHtml += `<li class="text-[10px] px-2 py-0.5 rounded border border-gray-700 bg-black bg-opacity-30 text-gray-500">???</li>`;
+            } else {
+                materialsHtml += `<li class="text-[10px] px-2 py-0.5 rounded border ${quantityClass}">${materialName} (${currentQuantity}/${requiredQuantity})</li>`;
+            }
         }
         materialsHtml += '</ul>';
 
@@ -376,16 +413,16 @@ function renderCraftingModal() {
             infoHtml = `<div class="text-[10px] uppercase font-bold mt-2 text-yellow-500 bg-black bg-opacity-20 inline-block px-2 py-1 rounded border border-gray-700">Delicious! | Reward: ${recipe.xp} XP</div>`;
         }
 
-        // QoL WIN: Show how many you already own!
+        // QoL WIN: Show how many you already own! (Hide if obscured)
         const ownedCount = existingStack ? existingStack.quantity : 0;
-        const ownedHtml = ownedCount > 0 ? `<span class="text-[9px] bg-gray-800 border border-gray-600 text-gray-300 px-1.5 py-0.5 rounded ml-2 font-bold uppercase tracking-widest">Owned: ${ownedCount}</span>` : '';
+        const ownedHtml = (ownedCount > 0 && !isObscured) ? `<span class="text-[9px] bg-gray-800 border border-gray-600 text-gray-300 px-1.5 py-0.5 rounded ml-2 font-bold uppercase tracking-widest">Owned: ${ownedCount}</span>` : '';
 
         // Build Action Buttons (Hardware Accelerated)
         const actionText = gameState.currentCraftingMode === 'cooking' ? 'Cook 1' : 'Craft 1';
         let actionHtml = `<button data-craft-item="${recipeName}" style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed font-bold" ${canCraft ? '' : 'disabled'}>${actionText}</button>`;
         
         // Add "Craft All" Batch button if applicable
-        if (maxCraftable > 1 && levelMet) {
+        if (maxCraftable > 1 && levelMet && !isObscured) {
             actionHtml += `<button data-craft-all="${recipeName}" style="transform: translate3d(0,0,0);" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded shadow transition-transform active:scale-95 ml-2 font-bold text-xs flex flex-col items-center">
                 <span>All</span>
                 <span class="text-[10px] font-normal opacity-80">(x${maxCraftable})</span>
@@ -394,14 +431,15 @@ function renderCraftingModal() {
 
         // Dim uncraftable items slightly to draw the eye to available recipes
         const liOpacity = canCraft ? 'opacity-100' : 'opacity-60 hover:opacity-100';
+        const nameColor = isObscured ? 'text-gray-500' : 'text-green-400';
 
         const li = document.createElement('li');
         li.className = `crafting-item bg-gray-900 bg-opacity-40 border border-gray-700 p-3 rounded-lg flex justify-between items-center mb-2 hover:border-green-500 transition-all ${liOpacity}`;
         li.innerHTML = `
             <div class="flex-grow pr-4">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="text-2xl" title="${itemTemplate.name || recipeName}">${outputItemTile}</span>
-                    <span class="crafting-item-name font-bold text-lg text-green-400" style="font-family: 'Uncial Antiqua', cursive;">${recipeName}</span>
+                    <span class="text-2xl" title="${itemTemplate.name || recipeName}">${displayTile}</span>
+                    <span class="crafting-item-name font-bold text-lg ${nameColor}" style="font-family: 'Uncial Antiqua', cursive;">${displayName}</span>
                     ${ownedHtml}
                 </div>
                 <div class="text-xs text-gray-400 italic leading-tight">${baseDescription}</div>
