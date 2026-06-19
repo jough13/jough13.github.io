@@ -1175,11 +1175,14 @@ const chunkManager = {
                     else if (tile === 'D' && featureRoll < 0.0001) {
                         chunkData[y][x] = '🦴d';
                     }
-                    // --- CONTENT WIN: Minor Environment Additions ---
-                    else if (tile === 'F' && featureRoll > 0.0003 && featureRoll < 0.0004) {
-                        chunkData[y][x] = '⛺k'; // Abandoned campfire
+                    // --- Minor Environment Additions ---
+                    else if (tile === '.' && featureRoll > 0.0003 && featureRoll < 0.0004) {
+                        chunkData[y][x] = '⛺a'; // Tragic Abandoned Campsite
                     }
-                    else if (tile === 'd' && featureRoll > 0.0004 && featureRoll < 0.0006) {
+                    else if (tile === 'F' && featureRoll > 0.0004 && featureRoll < 0.0005) {
+                        chunkData[y][x] = '⛺k'; // Abandoned campfire (Shifted roll slightly to prevent overlap)
+                    }
+                    else if (tile === 'd' && featureRoll > 0.0005 && featureRoll < 0.0007) {
                         chunkData[y][x] = '⚰️'; // Ancient Grave
                     }
                     else if (tile === '^' && featureRoll > 0.0003 && featureRoll < 0.0004) {
