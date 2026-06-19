@@ -3,13 +3,13 @@
 window.PLAYER_RACES = {
     'human': {
         name: 'Human',
-        description: "Versatile, ambitious, and stubborn. They adapt to any situation.",
+        description: "Versatile, ambitious, and stubborn. The short-lived conquerors of the Second Age.",
         stats: { charisma: 1, luck: 1, endurance: 1 }, 
         icon: '👨'
     },
     'elf': {
         name: 'Elf',
-        description: "Ancient and keen-eyed. The magic of the First Age still flows through their veins.",
+        description: "Ancient and keen-eyed. The fading magic of the First Age still flows through their veins.",
         stats: { wits: 2, perception: 1 }, 
         icon: '🧝'
     },
@@ -21,13 +21,13 @@ window.PLAYER_RACES = {
     },
     'orc': {
         name: 'Orc',
-        description: "Fierce and mighty. For an Orc, glory is earned strictly in blood and battle.",
+        description: "Fierce and mighty. For an Orc, glory is earned strictly in blood, battle, and honor.",
         stats: { strength: 2, endurance: 1 }, 
         icon: '👹'
     },
     'halfling': {
         name: 'Halfling',
-        description: "Small, exceptionally quiet, and supernaturally lucky.",
+        description: "Small, exceptionally quiet, and supernaturally lucky. They prefer to go unnoticed.",
         stats: { dexterity: 2, luck: 1 }, 
         icon: '🦶'
     }
@@ -37,43 +37,43 @@ window.QUEST_DATA = {
     // --- EARLY GAME ---
     "healerSupply": {
         title: "Herbal Remedies",
-        description: "The Healer is running low on supplies. Gather 5 Medicinal Herbs ('🌿') from the swamp.",
+        description: "\"The swamp fever is spreading quickly. I desperately need 5 Medicinal Herbs ('🌿') to brew a cure.\"",
         type: 'collect', itemNeeded: 'Medicinal Herb', needed: 5,
         reward: { xp: 200, coins: 50, item: 'Healing Potion', itemQty: 3 }
     },
     "goblinHeirloom": {
         title: "The Lost Heirloom",
-        description: "A villager is distraught. A goblin ('g') stole their family heirloom!",
+        description: "\"Please, a goblin ('g') stole my grandmother's ring! It's all I have left of my family!\"",
         type: 'fetch', enemy: 'g', itemNeeded: 'Heirloom', itemTile: '♦',
         reward: { xp: 150, coins: 100 }
     },
     "goblinTrophies": {
         title: "Goblin Trophies",
-        description: "A Lost Prospector ('K') is tired of being harassed. He'll reward you for clearing out 10 Goblin Totems.",
+        description: "\"Those green runts keep stealing my mining gear! Bring me 10 Goblin Totems to prove you're thinning them out!\"",
         type: 'collect', itemNeeded: 'Goblin Totem', needed: 10,
         reward: { xp: 200, coins: 150 }
     },
     "wolfHunt": {
         title: "Bounty: Wolf Hunt",
-        description: "The local shepherds are plagued by wolves. Thin their numbers.",
+        description: "\"The winter has made the packs bold. They took two sheep last night. Slay 10 Wolves ('w').\"",
         type: 'kill', enemy: 'w', needed: 10,
         reward: { xp: 100, coins: 50 }
     },
     "goblinHunt": {
         title: "Bounty: Goblin Hunt",
-        description: "Goblins are multiplying in the nearby caves. Clear them out.",
+        description: "\"Goblins ('g') are multiplying in the nearby caves. Clear out 15 of them before they organize.\"",
         type: 'kill', enemy: 'g', needed: 15, 
         reward: { xp: 75, coins: 30 }
     },
     "skeletonScourge": {
         title: "Bounty: Skeleton Scourge",
-        description: "Restless dead are rising. Put them back to rest.",
+        description: "\"The Old King's guard are walking the earth again. Put 10 Skeletons ('s') back to rest.\"",
         type: 'kill', enemy: 's', needed: 10,
         reward: { xp: 100, coins: 50 }
     },
     "spiderHunt": {
         title: "Bounty: Spider Nest",
-        description: "The caves are crawling with giant spiders. Clear out the nests.",
+        description: "\"The eastern caves are crawling with giant arachnids ('@'). Burn out their nests.\"",
         type: 'kill', enemy: '@', needed: 12,
         reward: { xp: 120, coins: 80 }
     },
@@ -81,49 +81,49 @@ window.QUEST_DATA = {
     // --- MID GAME ---
     "banditCleanup": {
         title: "Bounty: Bandit Cleanup",
-        description: "Bandits have been waylaying travelers. Bring them to justice.",
+        description: "\"Highwaymen ('b') are waylaying travelers on the plains. Bring 12 of them to justice.\"",
         type: 'kill', enemy: 'b', needed: 12,
         reward: { xp: 120, coins: 75 }
     },
     "banditChief": {
         title: "Wanted: The Chief",
-        description: "The Bandit Chief ('C') has been spotted in the fortresses. Put an end to his reign.",
+        description: "\"The Bandit Chief ('C') has occupied the ruined fortresses. Put a permanent end to his reign.\"",
         type: 'kill', enemy: 'C', needed: 1,
         reward: { xp: 500, coins: 300, item: 'Steel Sword', itemQty: 1 }
     },
     "orcHunt": {
         title: "Bounty: Orc Hunt",
-        description: "The brutes are getting bold. Put them down.",
+        description: "\"The Orc Brutes ('o') are testing our defenses. Show them we are not easy prey.\"",
         type: 'kill', enemy: 'o', needed: 8,
         reward: { xp: 150, coins: 100 }
     },
     "mageMenace": {
         title: "Bounty: Mage Menace",
-        description: "Apprentice mages are experimenting in the wild. Stop them before they burn something down.",
+        description: "\"Rogue scholars ('m') are experimenting with Void magic in the wild. Stop them before reality tears.\"",
         type: 'kill', enemy: 'm', needed: 5,
         reward: { xp: 180, coins: 120 }
     },
     "draugrProblems": {
         title: "Bounty: Draugr Problems",
-        description: "The Draugr are walking again. Send them back to their graves.",
+        description: "\"The frozen dead ('Z') are marching south. Send 5 of the Draugr back to their icy graves.\"",
         type: 'kill', enemy: 'Z', needed: 5,
         reward: { xp: 200, coins: 150 }
     },
     "trollHunt": {
         title: "Bounty: Ogre Sighting",
-        description: "A massive Ogre has been terrorizing the mountain pass.",
+        description: "\"A massive Ogre ('Ø') has been terrorizing the mountain pass, crushing carts into splintered wood.\"",
         type: 'kill', enemy: 'Ø', needed: 1,
         reward: { xp: 250, coins: 150, item: 'Stamina Crystal', itemQty: 2 }
     },
     "cultistCleanup": {
         title: "Bounty: Dark Rituals",
-        description: "Cultists are gathering in the ruins. Break up their rituals.",
+        description: "\"The Shadowed Hand gathers in the ruins. Silence 8 of their Initiates ('c').\"",
         type: 'kill', enemy: 'c', needed: 8,
         reward: { xp: 180, coins: 120 }
     },
     "golemBreaker": {
         title: "Bounty: Stone Golems",
-        description: "The earth itself is rising against us. We need miners, or fighters.",
+        description: "\"The earth itself is rejecting us. Slay 3 Stone Golems ('🧌') to secure the quarries.\"",
         type: 'kill', enemy: '🧌', needed: 3,
         reward: { xp: 300, coins: 200 }
     },
@@ -131,106 +131,113 @@ window.QUEST_DATA = {
     // --- LATE GAME & INQUISITOR ---
     "starMetalCrafter": {
         title: "Fallen Stars",
-        description: "Master Thorne requires raw Star-Metal Ore ('☄️') from the mountaintops to craft his masterpieces.",
+        description: "\"Master Thorne requires raw Star-Metal ('☄️'). You must search the highest peaks at midnight.\"",
         type: 'collect', itemNeeded: 'Star-Metal Ore', needed: 1,
         reward: { xp: 500, coins: 300 }
     },
     "cultistGenerals": {
         title: "The Hand's Fingers",
-        description: "The Shadowed Hand is led by Fanatics. Hunt them down.",
+        description: "\"The Cult is led by bloodthirsty Fanatics ('z'). Decapitate their leadership.\"",
         type: 'kill', enemy: 'z', needed: 15,
         reward: { xp: 800, coins: 500, item: 'Potion of Speed', itemQty: 3 }
     },
     "voidDemons": {
         title: "Banish the Demons",
-        description: "The cultists have opened rifts. Void Demons ('😈d') are pouring through.",
+        description: "\"Rifts have opened in the Deadlands. Void Demons ('😈d') are pouring through. Close the breach!\"",
         type: 'kill', enemy: '😈d', needed: 5,
         reward: { xp: 1200, coins: 800, item: 'Elixir of Life', itemQty: 1 }
     },
     "krakenHunt": {
         title: "The Deep Terror",
-        description: "A Kraken ('🦑') is sinking our trade ships. Sail into the deep ocean and slay it.",
+        description: "\"A Kraken ('🦑') is sinking our supply galleons. Sail into the deep ocean and slay the beast.\"",
         type: 'kill', enemy: '🦑', needed: 1,
         reward: { xp: 2000, coins: 1500, item: 'Kraken Ink Sac', itemQty: 2 }
     },
     "leviathanHunt": {
         title: "Bounty: The Apex",
-        description: "The Abyssal Leviathan ('🦕') has swallowed entire galleons. Plunge into the abyss and hunt it.",
+        description: "\"The Abyssal Leviathan ('🦕') has awoken. Plunge into the ocean's abyss and hunt the apex predator.\"",
         type: 'kill', enemy: '🦕', needed: 1,
         reward: { xp: 3000, coins: 2500, item: 'Black Pearl', itemQty: 3 }
     },
     "eldritchTerror": {
         title: "Bounty: The Unnamable",
-        description: "A horror from beyond the stars ('👾') has taken root in the deep wilds. Do not look directly at it.",
+        description: "\"A horror from beyond the stars ('👾') has taken root in the wilds. Do not look directly at it.\"",
         type: 'kill', enemy: '👾', needed: 1,
         reward: { xp: 4000, coins: 3000, item: 'Elixir of Power', itemQty: 1 }
     }
 };
 
+// LORE & MECHANIC WIN: Deeply flavorful elite affixes that wildly alter combat
 window.ENEMY_PREFIXES = {
     "Savage": {
-        description: "Deals extra damage.",
+        description: "Fights with terrifying ferocity. Deals extra damage.",
         statModifiers: { attack: 2 },
         xpMult: 1.2,
         color: '#ef4444' 
     },
     "Armored": {
-        description: "Harder to hit.",
+        description: "Covered in thick plates. Highly resistant to physical damage.",
         statModifiers: { defense: 2 },
         xpMult: 1.2,
         color: '#9ca3af' 
     },
     "Swift": {
-        description: "Harder to hit and moves fast.",
+        description: "Moves with blinding speed. Hard to hit.",
         statModifiers: { defense: 1 }, 
         xpMult: 1.1,
         color: '#facc15' 
     },
     "Massive": {
-        description: "A giant among its kind.",
+        description: "A mutated giant among its kind.",
         statModifiers: { maxHealth: 10, attack: 1 },
         xpMult: 1.5,
         color: '#ea580c' 
     },
     "Plagued": {
-        description: "Carries disease.",
+        description: "Oozes with sickness. Its attacks poison the blood.",
         statModifiers: { maxHealth: 5 },
         special: 'poison',
         xpMult: 1.3,
         color: '#22c55e' 
     },
     "Spectral": {
-        description: "Hard to hurt with physical weapons.",
+        description: "Phases between realms. Hard to hurt with physical weapons.",
         statModifiers: { defense: 3, maxHealth: -5 }, 
         xpMult: 1.4,
         color: '#a855f7' 
     },
     "Vampiric": {
-        description: "Drains life on hit.",
+        description: "Drains the life from its victims to heal itself.",
         statModifiers: { maxHealth: 5 },
-        special: 'poison', 
+        special: 'poison', // Proxy for life drain mechanics
         xpMult: 1.5,
         color: '#be123c' 
     },
     "Frenzied": {
-        description: "Attacks wildly and without warning.",
+        description: "Attacks wildly and without warning, abandoning defense.",
         statModifiers: { attack: 3, defense: -1 },
         xpMult: 1.3,
         color: '#f97316' 
     },
-    // --- EXPANSION WIN: New Elite Modifiers ---
     "Crystalline": {
-        description: "Covered in jagged, hardened crystal.",
+        description: "Covered in jagged, hardened crystal that deflects blows.",
         statModifiers: { defense: 4, maxHealth: 5 },
         xpMult: 1.6,
-        color: '#22d3ee' // Cyan
+        color: '#22d3ee' 
     },
     "Infernal": {
-        description: "Wreathed in unholy flames.",
+        description: "Wreathed in unholy flames. Searing to the touch.",
         statModifiers: { attack: 2 },
         special: 'burn',
         xpMult: 1.4,
-        color: '#f97316' // Orange
+        color: '#f97316' 
+    },
+    "Void-Corrupted": {
+        description: "Touched by the outside. It teleports erratically and shatters minds.",
+        statModifiers: { maxHealth: 10, attack: 1 },
+        special: 'madness',
+        xpMult: 2.0,
+        color: '#581c87' 
     }
 };
 
@@ -241,14 +248,14 @@ window.ENEMY_DATA = {
         maxHealth: 3, attack: 1, defense: 0, xp: 4,
         loot: '🐀', 
         color: '#a8a29e', 
-        flavor: "It hisses and bares yellow teeth."
+        flavor: "It has survived ages in the dark by eating what others leave behind. Its yellow teeth are filed sharp from gnawing on bones."
     },
     '🦇': {
         name: 'Giant Bat',
         maxHealth: 2, attack: 1, defense: 0, xp: 5,
         loot: '🦇', 
         color: '#52525b', 
-        flavor: "It swoops down from the darkness!"
+        flavor: "It swoops down from the darkness, hunting by the sound of your heartbeat."
     },
     '🐍': {
         name: 'Viper',
@@ -256,7 +263,7 @@ window.ENEMY_DATA = {
         loot: '🦷', 
         color: '#22c55e', 
         inflicts: 'poison', inflictChance: 0.2,
-        flavor: "Its scales blend perfectly with the undergrowth."
+        flavor: "Its emerald scales blend perfectly with the undergrowth. You usually feel the fangs before you see the snake."
     },
     'R': {
         name: 'Bandit Recruit',
@@ -264,7 +271,7 @@ window.ENEMY_DATA = {
         loot: '🧣', 
         color: '#fca5a5', 
         excludeFromLoot: true, 
-        flavor: "He looks nervous, holding his dagger with shaking hands."
+        flavor: "He looks nervous, holding a rusted dagger with shaking hands. Hunger drove him to this."
     },
     '🍄s': {
         name: 'Sporeling',
@@ -272,14 +279,14 @@ window.ENEMY_DATA = {
         loot: '🍄',
         color: '#d946ef',
         inflicts: 'poison', inflictChance: 0.15,
-        flavor: "A tiny, aggressive walking mushroom."
+        flavor: "A tiny, aggressive walking mushroom. It releases a cloud of choking dust when threatened."
     },
     '⚙️s': {
         name: 'Clockwork Spider',
         maxHealth: 3, attack: 2, defense: 3, xp: 8,
         loot: '⚙️',
         color: '#b45309',
-        flavor: "A ticking brass arachnid. Surprisingly sturdy."
+        flavor: "Ticking brass and rusted gears. It bleeds black oil instead of blood, yet fights with unnatural ferocity."
     },
 
     // --- DESERT WILDLIFE ---
@@ -289,7 +296,7 @@ window.ENEMY_DATA = {
         loot: '🦷',
         color: '#d97706', 
         inflicts: 'poison', inflictChance: 0.3,
-        flavor: "It burrows in the sand, waiting."
+        flavor: "It burrows perfectly into the dunes, leaving only its venomous stinger exposed to the sun."
     },
     '🐍c': { 
         name: 'King Cobra',
@@ -297,7 +304,7 @@ window.ENEMY_DATA = {
         loot: '🦷',
         color: '#eab308', 
         inflicts: 'poison', inflictChance: 0.5,
-        flavor: "It rears up, hood flared, hissing loudly."
+        flavor: "It rears up, hood flared, hissing loudly. A single bite can drop a warhorse in minutes."
     },
 
     // --- SWAMP WILDLIFE ---
@@ -306,14 +313,14 @@ window.ENEMY_DATA = {
         maxHealth: 20, attack: 3, defense: 0, xp: 25,
         loot: '🍖', 
         color: '#15803d', 
-        flavor: "It looks at you with unblinking, bulbous eyes."
+        flavor: "It sits perfectly still in the muck, waiting to swallow careless travelers whole."
     },
     '🦟': {
         name: 'Blood Mosquito',
         maxHealth: 2, attack: 1, defense: 5, xp: 10,
         loot: 'vd',
         color: '#be123c', 
-        flavor: "An annoying, high-pitched whine follows it."
+        flavor: "An annoying, high-pitched whine follows it. It is swollen and red with stolen blood."
     },
 
     // --- AQUATIC WILDLIFE ---
@@ -322,14 +329,14 @@ window.ENEMY_DATA = {
         maxHealth: 25, attack: 6, defense: 1, xp: 35,
         loot: '🐟', 
         color: '#94a3b8', 
-        flavor: "A massive dorsal fin slices through the water towards your canoe."
+        flavor: "A massive, scarred dorsal fin slices through the water. It has smelled you."
     },
     '🦀': {
         name: 'Giant Crab',
         maxHealth: 18, attack: 4, defense: 5, xp: 25,
         loot: '🍖',
         color: '#ea580c', 
-        flavor: "Its claws are easily strong enough to snap an oar in half."
+        flavor: "Its heavily armored shell is nearly impenetrable, and its claws can snap a ship's oar in half."
     },
     '🦑': {
         name: 'Kraken',
@@ -339,7 +346,7 @@ window.ENEMY_DATA = {
         isBoss: true,
         inflicts: 'root', inflictChance: 0.5,
         caster: true, castRange: 4, spellDamage: 8,
-        flavor: "Massive, writhing tentacles burst from the deep ocean!"
+        flavor: "Massive, writhing tentacles burst from the deep ocean! It pulls entire galleons into the abyss."
     },
     '🧜‍♀️': {
         name: 'Siren',
@@ -348,7 +355,7 @@ window.ENEMY_DATA = {
         color: '#38bdf8', 
         caster: true, castRange: 4, spellDamage: 6,
         inflicts: 'madness', inflictChance: 0.3,
-        flavor: "Her song is beautiful, but her eyes are pitch black."
+        flavor: "Her song is beautiful and tragic, but beneath the water, her eyes are pitch black and hungry."
     },
     '🦕': {
         name: 'Abyssal Leviathan',
@@ -356,7 +363,7 @@ window.ENEMY_DATA = {
         loot: '💎b', 
         color: '#0284c7', 
         isBoss: true,
-        flavor: "A prehistoric terror of the deep. Its jaws can snap a ship in half."
+        flavor: "A prehistoric terror of the deep. It is a natural disaster with teeth. Run."
     },
     // --- FOREST WILDLIFE ---
     '🐻': {
@@ -364,14 +371,14 @@ window.ENEMY_DATA = {
         maxHealth: 14, attack: 3, defense: 1, xp: 25, 
         loot: '❄️f', 
         color: '#78350f', 
-        flavor: "A large bear. It looks hungry, but not invincible."
+        flavor: "A towering wall of muscle and fur. It fiercely defends its territory."
     },
     '🦌': {
         name: 'Stag',
         maxHealth: 15, attack: 2, defense: 0, xp: 10,
         loot: '🍖',
         color: '#b45309', 
-        flavor: "It watches you warily, antlers lowered."
+        flavor: "It watches you warily, heavy antlers lowered in a defensive stance."
     },
 
     // --- LEVEL 2-3 (Standard Threats) ---
@@ -380,28 +387,28 @@ window.ENEMY_DATA = {
         maxHealth: 6, attack: 2, defense: 0, xp: 12,
         loot: 't',
         color: '#16a34a', 
-        flavor: "Scavengers who worship the scrap metal left behind by the Great Fall."
+        flavor: "Scavengers who worship the scrap metal left behind by the Great Fall. Cowards alone, deadly in packs."
     },
     'w': {
         name: 'Wolf',
         maxHealth: 8, attack: 3, defense: 0, xp: 15,
         loot: 'p',
         color: '#78716c', 
-        flavor: "A lean, hungry predator of the wilds."
+        flavor: "A lean, hungry predator of the wilds. It circles you, waiting for an opening."
     },
     's': {
         name: 'Skeleton',
         maxHealth: 10, attack: 3, defense: 1, xp: 18,
         loot: '(',
         color: '#e5e7eb', 
-        flavor: "Once the King's elite guard. Even in death, they cannot break their oath of silence."
+        flavor: "Once the King's elite guard. Even in death, their bones are bound by an oath to protect the ruins."
     },
     'b': {
         name: 'Bandit',
         maxHealth: 10, attack: 2, defense: 1, xp: 20,
         loot: 'i',
         color: '#ef4444', 
-        flavor: "Desperate men driven to crime by a dying world."
+        flavor: "Desperate men driven to crime by a dying world. They fight dirty."
     },
     '👺': {
         name: 'Goblin Archer',
@@ -409,7 +416,7 @@ window.ENEMY_DATA = {
         loot: '➹', 
         color: '#16a34a',
         isRanged: true, range: 5,
-        flavor: "It draws back a crudely strung shortbow."
+        flavor: "It draws back a crudely strung shortbow, giggling as it aims for your knees."
     },
     '👺m': {
         name: 'Goblin Shaman',
@@ -418,7 +425,7 @@ window.ENEMY_DATA = {
         color: '#4ade80', 
         caster: true, castRange: 4, spellDamage: 4,
         inflicts: 'root', inflictChance: 0.3,
-        flavor: "It wears a skull mask and chants in a guttural tongue."
+        flavor: "It wears a skull mask and chants in a guttural tongue, commanding the roots of the earth."
     },
     '💀a': {
         name: 'Skeleton Archer',
@@ -426,21 +433,21 @@ window.ENEMY_DATA = {
         loot: '➹', 
         color: '#e5e7eb',
         isRanged: true, range: 6,
-        flavor: "Its aim is supernaturally steady, unaffected by breath or heartbeat."
+        flavor: "Its aim is supernaturally steady, completely unaffected by breath, heartbeat, or fear."
     },
     'k': {
         name: 'Kobold',
         maxHealth: 6, attack: 2, defense: 0, xp: 10,
         loot: '$',
         color: '#ea580c', 
-        flavor: "Yip yip! A reptilian hoarder of shiny things."
+        flavor: "Yip yip! A reptilian hoarder of shiny things. They steal anything not nailed down."
     },
     '🐗': {
         name: 'Wild Boar',
         maxHealth: 12, attack: 3, defense: 0, xp: 20,
         loot: '🍖',
         color: '#57534e', 
-        flavor: "It scrapes its tusks against the ground, preparing to charge."
+        flavor: "It scrapes its razor-sharp tusks against the ground, preparing to charge in a blind rage."
     },
     'a': {
         name: 'Shadow Acolyte',
@@ -448,7 +455,7 @@ window.ENEMY_DATA = {
         loot: 'r',
         color: '#4f46e5', 
         caster: true, castRange: 4, spellDamage: 3,
-        flavor: "They whisper ancient texts that hurt your ears to hear."
+        flavor: "They whisper ancient texts that physically hurt your ears to hear. Zealots of the Void."
     },
     '👻i': {
         name: 'Ice Wraith',
@@ -456,7 +463,7 @@ window.ENEMY_DATA = {
         loot: 'E',
         color: '#7dd3fc',
         caster: true, castRange: 4, spellDamage: 4, inflicts: 'frostbite', inflictChance: 0.3,
-        flavor: "A soul trapped forever in the biting cold."
+        flavor: "A screaming soul trapped forever in the biting cold. To touch it is to feel the grave."
     },
 
     // --- LEVEL 4-5 (Advanced Threats) ---
@@ -466,7 +473,7 @@ window.ENEMY_DATA = {
         loot: '"',
         color: '#1f2937', 
         inflicts: 'poison',
-        flavor: "It moves with terrifying, silent speed."
+        flavor: "It moves with terrifying, silent speed, its eight eyes reflecting the moonlight."
     },
     '🦂': {
         name: 'Giant Scorpion',
@@ -474,7 +481,7 @@ window.ENEMY_DATA = {
         loot: 'i',
         color: '#b45309', 
         inflicts: 'poison',
-        flavor: "Its stinger drips with venom."
+        flavor: "Its carapace deflects blades, and its stinger drips with neurotoxin."
     },
     'l': {
         name: 'Giant Leech',
@@ -482,14 +489,14 @@ window.ENEMY_DATA = {
         loot: 'p',
         color: '#111827', 
         inflicts: 'poison',
-        flavor: "A writhing mass of hunger from the deep swamps."
+        flavor: "A writhing mass of blind hunger from the deep swamps. It seeks warmth and blood."
     },
     'o': {
         name: 'Orc Brute',
         maxHealth: 20, attack: 5, defense: 1, xp: 40,
         loot: 'U',
         color: '#14532d', 
-        flavor: "A towering wall of muscle and rage."
+        flavor: "A towering wall of muscle and rage. They respect nothing but overwhelming violence."
     },
     'Z': {
         name: 'Draugr',
@@ -497,14 +504,14 @@ window.ENEMY_DATA = {
         loot: 'E',
         color: '#38bdf8', 
         inflicts: 'frostbite',
-        flavor: "Ancient northmen, preserved by the biting frost."
+        flavor: "Ancient northmen, preserved perfectly by the biting frost. Their eyes glow with pale blue light."
     },
     '👷': {
         name: 'Undead Miner',
         maxHealth: 25, attack: 5, defense: 2, xp: 35,
         loot: '🧨', // Drops TNT!
         color: '#fcd34d', 
-        flavor: "He still swings his pickaxe, long after his shift has ended."
+        flavor: "He still swings his rusted pickaxe, long after his final shift ended centuries ago."
     },
     '👁️': {
         name: 'Void Watcher',
@@ -512,7 +519,7 @@ window.ENEMY_DATA = {
         loot: 'vd',
         color: '#c084fc',
         caster: true, castRange: 6, spellDamage: 5, inflicts: 'madness', inflictChance: 0.5,
-        flavor: "A floating, unblinking eye born from the cosmic tear."
+        flavor: "A floating, unblinking eye born from the cosmic tear. It sees your darkest regrets."
     },
 
     // --- LEVEL 6+ (Elites) ---
@@ -521,14 +528,14 @@ window.ENEMY_DATA = {
         maxHealth: 25, attack: 6, defense: 1, xp: 60,
         loot: '🐺',
         color: '#44403c', 
-        flavor: "An enormous beast with eyes like burning coals."
+        flavor: "An enormous beast with eyes like burning coals. The unquestioned alpha of the woods."
     },
     'Ø': { 
         name: 'Ogre',
         maxHealth: 35, attack: 7, defense: 1, xp: 80,
         loot: '$',
         color: '#84cc16', 
-        flavor: "Dull-witted but incredibly destructive."
+        flavor: "Dull-witted but incredibly destructive. It uses entire tree trunks as clubs."
     },
     'Y': {
         name: 'Yeti',
@@ -536,7 +543,7 @@ window.ENEMY_DATA = {
         loot: '❄️f',
         color: '#f8fafc', 
         inflicts: 'frostbite',
-        flavor: "The undisputed apex predator of the frozen peaks."
+        flavor: "The undisputed apex predator of the frozen peaks. It blends perfectly into the blizzards."
     },
     'm': {
         name: 'Arcane Mage',
@@ -544,14 +551,14 @@ window.ENEMY_DATA = {
         loot: '&',
         color: '#c084fc', 
         caster: true, castRange: 6, spellDamage: 6,
-        flavor: "A scholar who stared too long into the Void. Their body is now just a vessel for forbidden math."
+        flavor: "A scholar who stared too long into the Void. Their body is now just a crumbling vessel for forbidden math."
     },
     'C': {
         name: 'Bandit Chief',
         maxHealth: 25, attack: 5, defense: 2, xp: 50,
         loot: 'i',
         color: '#991b1b', 
-        flavor: "A ruthless leader clad in stolen armor."
+        flavor: "A ruthless leader clad in stolen armor, demanding heavy tolls in blood and gold."
     },
     'f': {
         name: 'Fire Elemental',
@@ -560,7 +567,7 @@ window.ENEMY_DATA = {
         color: '#fb923c', 
         caster: true, castRange: 4, spellDamage: 5,
         inflicts: 'burn',
-        flavor: "A walking inferno of pure elemental rage."
+        flavor: "A walking inferno of pure elemental rage. The ground turns to glass where it walks."
     },
     '👻': {
         name: 'Lost Soul',
@@ -568,7 +575,7 @@ window.ENEMY_DATA = {
         maxHealth: 15, attack: 3, defense: 0, xp: 20,
         loot: 'ectoplasm',
         color: '#8b5cf6', 
-        flavor: "It wails silently, trapped between realms."
+        flavor: "It wails silently, trapped between realms. A tragic echo of the Fall."
     },
     '😈d': {
         name: 'Void Demon',
@@ -576,7 +583,7 @@ window.ENEMY_DATA = {
         loot: '😈',
         color: '#581c87', 
         teleporter: true, inflicts: 'madness',
-        flavor: "A fragment of the nothingness that existed before the First Age."
+        flavor: "A fragment of the nothingness that existed before the First Age. It hates all life."
     },
     'v': {
         name: 'Void Stalker',
@@ -584,7 +591,7 @@ window.ENEMY_DATA = {
         loot: 'vd',
         color: '#7c3aed', 
         teleporter: true,
-        flavor: "It phases in and out of reality, tracking your scent."
+        flavor: "It phases in and out of reality, tracking your scent through higher dimensions."
     },
     'M': {
         name: 'Mimic',
@@ -592,7 +599,7 @@ window.ENEMY_DATA = {
         loot: '💍',
         color: '#854d0e', 
         inflicts: 'root',
-        flavor: "A monstrous shape-shifter hoping for a greedy victim."
+        flavor: "A monstrous shape-shifter hoping for a greedy victim. Its tongue is sticky with acid."
     },
     '🧟': {
         name: 'Spore Zombie',
@@ -600,14 +607,14 @@ window.ENEMY_DATA = {
         loot: '🍄', 
         color: '#86efac', 
         inflicts: 'poison', inflictChance: 0.4,
-        flavor: "It was once an adventurer. Now, glowing fungus controls its nervous system."
+        flavor: "It was once an adventurer. Now, glowing fungal networks control its nervous system."
     },
     '🪨c': {
         name: 'Crystal Behemoth',
         maxHealth: 35, attack: 5, defense: 4, xp: 60,
         loot: '💎', 
         color: '#22d3ee', 
-        flavor: "Its crystalline hide reflects the ambient light... and your attacks."
+        flavor: "Its crystalline hide reflects the ambient light... and deflects your attacks with ease."
     },
     '🤖': {
         name: 'Clockwork Guardian',
@@ -622,7 +629,7 @@ window.ENEMY_DATA = {
         loot: '🦷', 
         color: '#d97706', 
         isBoss: true,
-        flavor: "The ground shakes before it erupts from the sand, a maw of a thousand teeth."
+        flavor: "The ground shakes before it erupts from the sand, a massive maw of a thousand spinning teeth."
     },
     '🧙': {
         name: 'Necromancer Lord',
@@ -631,21 +638,21 @@ window.ENEMY_DATA = {
         color: '#000000', 
         caster: true, castRange: 7, spellDamage: 8,
         isBoss: true,
-        flavor: "He wears a crown of bone and commands the armies of the dead. Do not let him cast."
+        flavor: "He wears a crown of bone and commands the armies of the dead. Do not let him complete his incantations."
     },
     'c': {
         name: 'Cultist Initiate',
         maxHealth: 12, attack: 3, defense: 0, xp: 25,
         loot: '📜', 
         color: '#be185d', 
-        flavor: "He mutters prayers to a sleeping god."
+        flavor: "He mutters fanatical prayers to a sleeping god in the dark."
     },
     'z': {
         name: 'Cultist Fanatic',
         maxHealth: 15, attack: 6, defense: 0, xp: 35,
         loot: '🗡️', 
         color: '#9f1239', 
-        flavor: "He fights with reckless, terrifying abandon."
+        flavor: "He fights with reckless, terrifying abandon, eager to martyr himself."
     },
 
     // --- NEW BEASTS (Tanky & Dangerous) ---
@@ -654,7 +661,7 @@ window.ENEMY_DATA = {
         maxHealth: 40, attack: 4, defense: 3, xp: 60,
         loot: '🪨', 
         color: '#a8a29e', 
-        flavor: "A walking boulder. Blades skitter off its hide."
+        flavor: "A walking boulder, animated by ancient earth magic. Blades skitter harmlessly off its hide."
     },
     '🐲': {
         name: 'Young Drake',
@@ -662,7 +669,7 @@ window.ENEMY_DATA = {
         loot: '🐉', 
         color: '#dc2626', 
         inflicts: 'burn', inflictChance: 0.3,
-        flavor: "Smoke curls from its nostrils as it eyes you hungrily."
+        flavor: "Smoke curls from its nostrils as it eyes you hungrily. It is small for a dragon, but still lethal."
     },
     // --- TIER 4 (The Deep Wilds - 2500+ Distance) ---
     '🦖': {
@@ -670,7 +677,7 @@ window.ENEMY_DATA = {
         maxHealth: 150, attack: 12, defense: 5, xp: 500,
         loot: '🦖', 
         color: '#14532d', 
-        flavor: "The earth shakes with every step."
+        flavor: "The earth physically shakes with every heavy step. It is the king of the deep jungles."
     },
     '🧛': {
         name: 'Vampire Lord',
@@ -679,7 +686,7 @@ window.ENEMY_DATA = {
         color: '#e11d48', 
         caster: true, castRange: 5, spellDamage: 8,
         inflicts: 'siphon', 
-        flavor: "He moves faster than your eyes can follow."
+        flavor: "He moves faster than your eyes can follow, elegant, aristocratic, and completely merciless."
     },
     '👾': {
         name: 'Eldritch Horror',
@@ -687,7 +694,7 @@ window.ENEMY_DATA = {
         loot: 'vd',
         color: '#8b5cf6', 
         inflicts: 'madness', inflictChance: 0.5,
-        flavor: "To look at it is to invite insanity."
+        flavor: "Its geometry makes no sense. To look directly at it is to invite your own mind to shatter."
     },
     '🐉h': {
         name: 'Swamp Hydra',
@@ -695,7 +702,7 @@ window.ENEMY_DATA = {
         loot: '🐉',
         color: '#15803d', 
         inflicts: 'poison',
-        flavor: "Multiple heads snap at you from the muck."
+        flavor: "Multiple venomous heads snap at you from the toxic muck."
     },
     '🔥e': {
         name: 'Efreet',
@@ -704,7 +711,7 @@ window.ENEMY_DATA = {
         color: '#f97316', 
         caster: true, castRange: 5, spellDamage: 6,
         inflicts: 'burn',
-        flavor: "A spirit of smoke and flame, bound by ancient chains."
+        flavor: "A malicious spirit of smoke and flame, bound to this plane by ancient chains."
     },
     // ==========================================
     // --- THE FINAL BOSS ---
@@ -714,7 +721,7 @@ window.ENEMY_DATA = {
         maxHealth: 1000, attack: 20, defense: 8, xp: 5000,
         loot: '🧿e', color: '#000000', isBoss: true,
         caster: true, castRange: 6, spellDamage: 12, inflicts: 'madness',
-        flavor: "He is no longer a man. He is a conduit for the Void itself."
+        flavor: "He is no longer a man. The crown is fused to his skull. He is a conduit for the Void itself."
     },
     '🩸c': {
         name: 'Arena Champion',
@@ -722,7 +729,7 @@ window.ENEMY_DATA = {
         loot: '🏆', // Drops the Token!
         color: '#dc2626', 
         isBoss: true,
-        flavor: "A towering gladiator of bone and ash. Undefeated. Until now."
+        flavor: "A towering gladiator constructed of bone and ash. Undefeated across a thousand lifetimes. Until now."
     }
 };
 
@@ -783,7 +790,7 @@ window.EVOLUTION_DATA = {
             id: 'berserker',
             name: 'Berserker',
             icon: '👹', 
-            description: "A terrifying force of nature. Deals double damage when heavily wounded.",
+            description: "A terrifying force of nature.",
             stats: { strength: 4, constitution: 2 },
             talent: 'blood_rage'
         },
@@ -791,7 +798,7 @@ window.EVOLUTION_DATA = {
             id: 'paladin',
             name: 'Paladin',
             icon: '🛡️',
-            description: "A holy defender. Emits an aura that passively heals nearby allies.",
+            description: "A holy defender shrouded in light.",
             stats: { constitution: 3, willpower: 2, charisma: 2 },
             talent: 'holy_aura'
         }
@@ -801,7 +808,7 @@ window.EVOLUTION_DATA = {
             id: 'assassin',
             name: 'Assassin',
             icon: '🥷',
-            description: "A master of the shadows. Attacks from stealth deal massive 4x damage.",
+            description: "A master of the shadows.",
             stats: { dexterity: 4, wits: 2 },
             talent: 'shadow_strike'
         },
@@ -809,7 +816,7 @@ window.EVOLUTION_DATA = {
             id: 'ranger',
             name: 'Ranger',
             icon: '🏹',
-            description: "A lethal marksman. Ranged attacks deal +50% damage.", 
+            description: "A lethal and precise marksman.", 
             stats: { dexterity: 3, perception: 3 },
             talent: 'eagle_eye'
         }
@@ -819,7 +826,7 @@ window.EVOLUTION_DATA = {
             id: 'archmage',
             name: 'Archmage',
             icon: '🧙‍♂️',
-            description: "A conduit for the leylines. Spells cost 20% less Mana.",
+            description: "A pure conduit for the leylines.",
             stats: { wits: 5, maxMana: 20 },
             talent: 'mana_flow'
         },
@@ -827,7 +834,7 @@ window.EVOLUTION_DATA = {
             id: 'battlemage',
             name: 'Battlemage',
             icon: '🗡️',
-            description: "A heavily armored spellcaster. Negates Heavy Armor penalties.",
+            description: "A heavily armored spellcaster.",
             stats: { strength: 3, wits: 3 },
             talent: 'arcane_steel'
         }
@@ -837,7 +844,7 @@ window.EVOLUTION_DATA = {
             id: 'lich',
             name: 'Lich',
             icon: '💀',
-            description: "You have conquered death. You no longer require food or water.",
+            description: "You have conquered death itself.",
             stats: { wits: 4, willpower: 4 },
             talent: 'undeath'
         }
@@ -847,7 +854,7 @@ window.EVOLUTION_DATA = {
             id: 'hero',
             name: 'True Hero',
             icon: '👑',
-            description: "You survived the darkness against all odds. Massive stat boost.",
+            description: "You survived the darkness against all odds.",
             stats: { strength: 5, dexterity: 5, wits: 5, constitution: 5 },
             talent: 'legend'
         },
@@ -855,7 +862,7 @@ window.EVOLUTION_DATA = {
             id: 'void_touched',
             name: 'Void-Touched',
             icon: '👁️',
-            description: "You stared into the abyss, and it stared back. Can pass through Phase Walls.",
+            description: "You stared into the abyss, and it stared back.",
             stats: { willpower: 10, wits: 10, constitution: -2 },
             talent: 'void_walker'
         }
