@@ -1,886 +1,3156 @@
-/* --- START OF FILE style.css --- */
+// Globals
 
-/* ==========================================================================
-   THEME VARIABLES & COLOR PALETTES
-   ========================================================================== */
-:root {
-    /* Brighter, more saturated light-theme colors */
-    --bg-page: #f9fafb;
-    --bg-container: #ffffff;
-    --bg-panel: #f3f4f6;
-    --text-default: #111827;
-    --text-muted: #4b5563;
-    --text-highlight: #4f46e5;
-    --border-color: #d1d5db;
-    --canvas-bg: #ffffff;
-    --canvas-border: #9ca3af;
-    --player-color: #1e40af;
-    --terrain-color: #374151;
-
-    /* Procedural Map Colors */
-    --mtn-base: #57534e;   /* Warm grey */
-    --mtn-shadow: #44403c; /* Darker grey for depth */
-    --mtn-cap: #f9fafb;    /* Bright snow */
-
-    /* LIGHT MODE PARCHMENT (Asset-Ready UI) */
-    --asset-parchment: #e7e5e4; 
-    --title-color: #1c1917;
-    --title-shadow: 2px 2px 0px rgba(255,255,255,0.8), 4px 4px 10px rgba(0,0,0,0.15);
-    --title-stroke: 1px #6b7280;
-
-    /* UI Image Assets */
-    --asset-bg-stone: url('assets/bg_castle.png'); 
-    --asset-frame-border: url('assets/frame_outer.png'); 
-    --asset-input-bg: url('assets/input_bg.png'); 
-    --asset-btn-normal: url('assets/btn_normal.png'); 
-    --asset-btn-pressed: url('assets/btn_pressed.png'); 
-}
-
-[data-theme="dark"] {
-    /* Brighter, more saturated dark-theme colors */
-    --bg-page: #111827;
-    --bg-container: #1f2937;
-    --bg-panel: #374151;
-    --text-default: #f9fafb;
-    --text-muted: #9ca3af;
-    --text-highlight: #facc15;
-    --border-color: #4b5563;
-    --canvas-bg: #000000;
-    --canvas-border: #9ca3af;
-    --player-color: #3b82f6;
-    --terrain-color: #d1d5db;
-
-    --pattern-color: rgba(255, 255, 255, 0.05);
-        
-    /* Dark Mode specific map glows */
-    --vine-dark:  rgba(22, 163, 74, 0.15); 
-    --vine-light: rgba(74, 222, 128, 0.15); 
-    --rock-dark:  rgba(28, 25, 23, 0.4); 
-    --rock-light: rgba(87, 83, 78, 0.2);
-
-    /* DARK MODE PARCHMENT (Asset-Ready UI) */
-    --asset-parchment: #262626; 
-    --title-color: #f3f4f6;
-    --title-shadow: 3px 3px 0px rgba(0,0,0,0.9), 0px 0px 15px rgba(234, 179, 8, 0.15);
-    --title-stroke: 1px #000000; 
-}
-
-/* ==========================================================================
-   GLOBAL STYLES & ACCESSIBILITY
-   ========================================================================== */
-body {
-    font-family: 'Courier New', Courier, monospace;
-    background-color: var(--bg-page);
-    color: var(--text-default);
-    
-    /* Crisper font rendering for ASCII art */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-
-    /* Layout Logic */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 1rem;
-    margin: 0;
-    
-    /* Prevent accidental pull-to-refresh on mobile */
-    overscroll-behavior-y: none;
-    /* Prevent ugly blue tap highlights on mobile */
-    -webkit-tap-highlight-color: transparent;
-}
-
-/* JUICE WIN: Thematic Text Selection */
-::selection {
-    background-color: var(--text-highlight);
-    color: var(--bg-page);
-}
-
-/* ACCESSIBILITY WIN: Custom Focus Rings for Keyboard Navigation */
-:focus-visible {
-    outline: 2px solid var(--text-highlight);
-    outline-offset: 3px;
-    border-radius: 4px;
-}
-
-/* EASY WIN: Universal tactile button clicks with hardware acceleration */
-button {
-    transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, border-color 0.2s ease, filter 0.1s ease, box-shadow 0.2s ease;
-    will-change: transform;
-    transform: translateZ(0); /* Force GPU layer */
-}
-button:active:not(:disabled) {
-    transform: scale(0.95) translateZ(0);
-    filter: brightness(0.85);
-}
-button:disabled {
-    cursor: not-allowed;
-}
-
-.game-container, .themed-container {
-    background-color: var(--bg-container);
-    border-color: var(--border-color);
-}
-
-.panel {
-    background-color: var(--bg-panel);
-    border-color: var(--border-color);
-}
-
-.highlight-text {
-    color: var(--text-highlight);
-}
-
-.muted-text {
-    color: var(--text-muted);
-}
-
-/* JUICE: Give highlight text a faint neon glow in dark mode */
-[data-theme="dark"] .highlight-text {
-    text-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
-}
-
-/* Prevent accidental text highlighting during frantic clicking */
-#gameContainer, .modal-content, canvas, .mobile-controls {
-    user-select: none;  
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -webkit-touch-callout: none; /* iOS Bug Fix */
-}
-
-/* Allow users to select text in input fields and chat logs */
-.themed-input, #chatMessages, #messageLog {
-    user-select: auto;
-    -webkit-user-select: auto;
-    /* PERFORMANCE WIN: Inform the browser that layout changes here don't affect the rest of the page */
-    contain: content; 
-}
-
-#chatMessages, #messageLog {
-    /* Smooth scrolling for chat */
-    scroll-behavior: smooth;
-    /* BUG FIX: Prevent long unbroken strings from stretching the layout */
-    word-break: break-word;
-    overflow-wrap: break-word;
-}
-
-#chatInput:focus {
-    outline: none;
-    border-color: var(--text-highlight);
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.4);
-}
-
-/* ==========================================================================
-   SCROLLBARS (Themed & Carved Look)
-   ========================================================================== */
-.custom-scrollbar {
-    /* Cross-browser Firefox support */
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-color) transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 4px;
-    box-shadow: inset 0 0 6px rgba(0,0,0,0.4);
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 4px;
-    border: 1px solid rgba(0,0,0,0.3);
-    transition: background 0.2s ease;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: var(--text-highlight);
-}
-.custom-scrollbar::-webkit-scrollbar-corner {
-    background: transparent;
-}
-
-/* ==========================================================================
-   GAME CANVAS & HARDWARE ACCELERATION
-   ========================================================================== */
-canvas {
-    image-rendering: -moz-crisp-edges;
-    image-rendering: -webkit-crisp-edges;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-    touch-action: none; /* Prevents browser zooming/panning on the canvas */
-}
-
-#gameCanvasWrapper {
-    box-shadow: 0 0 25px rgba(0, 0, 0, 0.4); 
-    transition: box-shadow 0.3s ease; 
-    contain: strict; 
-    will-change: box-shadow, filter; 
-    transform: translateZ(0); 
-}
-
-/* Animated CRT Scanlines & Screen Flicker */
-@keyframes scanline-scroll {
-    0% { background-position: 0 0; }
-    100% { background-position: 0 4px; }
-}
-
-@keyframes crt-flicker {
-    0% { opacity: 0.98; }
-    5% { opacity: 0.95; } /* Softened flicker */
-    10% { opacity: 0.99; }
-    15% { opacity: 1; }
-    100% { opacity: 1; }
-}
-
-#gameCanvasWrapper.crt {
-    overflow: hidden;
-    position: relative;
-    /* Slowed down the flicker loop so it feels more natural and less annoying */
-    animation: crt-flicker 8s infinite linear; 
-}
-
-#gameCanvasWrapper.crt::after {
-    content: " ";
-    display: block;
-    position: absolute;
-    /* Perfectly matches the container now that we aren't physically transforming it */
-    top: 0; left: 0; bottom: 0; right: 0;
-    background: linear-gradient(
-        to bottom,
-        rgba(18, 16, 16, 0) 50%,
-        rgba(0, 0, 0, 0.08) 50% 
-    );
-    background-size: 100% 4px;
-    z-index: 10;
-    pointer-events: none; 
-    
-    /* The static vignette shadow */
-    box-shadow: inset 0 0 50px rgba(0,0,0,0.6); 
-    
-    /* Perfectly smooth, seamless scrolling */
-    animation: scanline-scroll 0.8s linear infinite; 
-}
-
-/* ==========================================================================
-   INVENTORY, HOTBAR & EQUIPMENT
-   ========================================================================== */
-#hotbarContainer > div {
-    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    transform: translateZ(0);
-}
-#hotbarContainer > div:hover:not(.opacity-50) {
-    transform: translateY(-6px) translateZ(0);
-    border-color: var(--text-highlight);
-    box-shadow: 0 8px 12px rgba(0,0,0,0.2), 0 0 10px rgba(79, 70, 229, 0.3);
-}
-
-.inventory-slot {
-    width: 56px; /* Slightly larger for easier tapping */
-    height: 56px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    border: 1px solid var(--border-color);
-    background: linear-gradient(145deg, var(--bg-page), var(--bg-panel)); /* Slight 3D feel */
-    border-radius: 8px;
-    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    will-change: transform, border-color, box-shadow;
-    transform: translateZ(0); 
-}
-
-.inventory-slot:hover {
-    transform: translateY(-5px) translateZ(0);
-    border-color: var(--text-highlight);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.25), 0 0 10px rgba(79, 70, 229, 0.25); /* Deepened glow */
-    z-index: 10; /* Pop over siblings */
-}
-
-.inventory-slot .item-char {
-    font-size: 2rem; /* Bigger icons */
-    font-weight: bold;
-    /* JUICE WIN: Dynamic drop shadow makes items pop off the UI */
-    filter: drop-shadow(2px 3px 2px rgba(0,0,0,0.5));
-}
-
-@keyframes equip-glow {
-    0% { box-shadow: 0 0 3px rgba(234, 179, 8, 0.4); border-color: rgba(234, 179, 8, 0.5); }
-    100% { box-shadow: 0 0 15px rgba(234, 179, 8, 1); border-color: rgba(234, 179, 8, 1); }
-}
-
-.inventory-slot.equipped {
-    background-color: rgba(234, 179, 8, 0.15); 
-    /* JUICE WIN: Smoother looping animation with alternate ease-in-out */
-    animation: equip-glow 1.5s infinite alternate ease-in-out;
-}
-
-.equipment-slot {
-    width: 68px;
-    height: 68px;
-    background: linear-gradient(145deg, var(--bg-page), var(--bg-panel));
-    border: 2px solid var(--border-color);
-    border-radius: 12px; 
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2.4rem; 
-    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.2); 
-    color: var(--text-default);
-    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    will-change: transform, border-color, box-shadow;
-    transform: translateZ(0);
-}
-
-.equipment-slot:hover {
-    border-color: var(--text-highlight);
-    transform: scale(1.1) translateZ(0);
-    box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.3), 0 0 12px rgba(79, 70, 229, 0.4);
-}
-
-.equipment-slot .item-char {
-    filter: drop-shadow(2px 3px 4px rgba(0,0,0,0.6));
-}
-
-/* ==========================================================================
-   ANIMATIONS & JUICE
-   ========================================================================== */
-@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-
-/* Modals slide up with an elastic spring effect */
-@keyframes pop-in { 
-    0% { opacity: 0; transform: scale(0.9) translateY(25px); } 
-    70% { opacity: 1; transform: scale(1.02) translateY(-2px); }
-    100% { opacity: 1; transform: scale(1) translateY(0); } 
-}
-
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-6px) rotate(-1deg); }
-    50% { transform: translateX(6px) rotate(1deg); }
-    75% { transform: translateX(-6px) rotate(-1deg); }
-}
-.shake { animation: shake 0.35s ease-in-out; }
-
-/* Subtle title breathing */
-@keyframes float-breathe {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-5px) scale(1.01); }
-}
-
-/* Button Glint / Shine Effect */
-@keyframes btn-glint {
-    0% { background-position: -200% center; }
-    20% { background-position: 200% center; }
-    100% { background-position: 200% center; }
-}
-
-/* Legendary Item Shimmer Effect */
-@keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-}
-.shimmer {
-    background: linear-gradient(120deg, transparent 20%, rgba(255,255,255,0.5) 50%, transparent 80%);
-    background-size: 200% 100%;
-    animation: shimmer 2.5s infinite linear;
-}
-
-/* Stat Flashes & Pulses */
-@keyframes flash-green { 0% { background-color: rgba(74, 222, 128, 0.7); transform: scale(1.05); } 100% { background-color: transparent; transform: scale(1); } }
-@keyframes flash-red { 0% { background-color: rgba(239, 68, 68, 0.7); transform: scale(0.95); } 100% { background-color: transparent; transform: scale(1); } }
-.stat-flash-green { animation: flash-green 0.5s ease-out; }
-.stat-flash-red { animation: flash-red 0.5s ease-out; }
-
-@keyframes pulse-blue { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.8); } 50% { transform: scale(1.08); box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
-@keyframes pulse-purple { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.8); } 50% { transform: scale(1.08); box-shadow: 0 0 0 12px rgba(139, 92, 246, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); } }
-@keyframes pulse-green { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.8); } 50% { transform: scale(1.08); box-shadow: 0 0 0 12px rgba(74, 222, 128, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); } }
-@keyframes pulse-red { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); } 50% { transform: scale(1.08); box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-@keyframes pulse-yellow { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.8); } 50% { transform: scale(1.08); box-shadow: 0 0 0 12px rgba(234, 179, 8, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
-
-.stat-pulse-blue { animation: pulse-blue 0.6s ease-out; }
-.stat-pulse-purple { animation: pulse-purple 0.6s ease-out; }
-.stat-pulse-green { animation: pulse-green 0.6s ease-out; }
-.stat-pulse-red { animation: pulse-red 0.6s ease-out; }
-.stat-pulse-yellow { animation: pulse-yellow 0.6s ease-out; }
-.stat-pulse-gray { animation: pulse-gray 0.6s ease-out; } 
-
-/* Damage/Heal Canvas Overlays */
-@keyframes screen-blood { 
-    0% { box-shadow: inset 0 0 0 0 rgba(220, 38, 38, 0); background-color: rgba(220, 38, 38, 0); } 
-    30% { box-shadow: inset 0 0 120px 50px rgba(220, 38, 38, 0.85); background-color: rgba(220, 38, 38, 0.2); } 
-    100% { box-shadow: inset 0 0 0 0 rgba(220, 38, 38, 0); background-color: rgba(220, 38, 38, 0); } 
-}
-@keyframes screen-heal { 
-    0% { box-shadow: inset 0 0 0 0 rgba(34, 197, 94, 0); background-color: rgba(34, 197, 94, 0); } 
-    50% { box-shadow: inset 0 0 80px 30px rgba(34, 197, 94, 0.6); background-color: rgba(34, 197, 94, 0.15); } 
-    100% { box-shadow: inset 0 0 0 0 rgba(34, 197, 94, 0); background-color: rgba(34, 197, 94, 0); } 
-}
-.damage-flash { animation: screen-blood 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); will-change: box-shadow, background-color; }
-.heal-flash { animation: screen-heal 0.4s ease-out; will-change: box-shadow, background-color; }
-
-/* Critical Health Heartbeat */
-@keyframes heartbeat {
-    0% { box-shadow: inset 0 0 25px rgba(220, 38, 38, 0.5); border-color: rgba(220, 38, 38, 0.6); }
-    50% { box-shadow: inset 0 0 90px rgba(220, 38, 38, 0.9); border-color: rgba(220, 38, 38, 1); }
-    100% { box-shadow: inset 0 0 25px rgba(220, 38, 38, 0.5); border-color: rgba(220, 38, 38, 0.6); }
-}
-.critical-health {
-    animation: heartbeat 1.2s infinite ease-in-out;
-    will-change: box-shadow, border-color;
-}
-
-/* ==========================================================================
-   MODALS & OVERLAYS
-   ========================================================================== */
-/* JUICE WIN: Smooth backdrop blur fade-in with graceful degradation */
-@keyframes blur-in {
-    from { backdrop-filter: blur(0px); background-color: rgba(0,0,0,0); }
-    to { backdrop-filter: blur(6px); background-color: rgba(0,0,0,0.75); }
-}
-
-.modal-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 200;
-    animation: blur-in 0.3s ease-out forwards;
-}
-
-@supports not (backdrop-filter: blur(6px)) {
-    .modal-overlay {
-        background-color: rgba(0,0,0,0.9) !important;
+// Groups map coordinates into 50x50 chunk sectors for efficient Firestore Subcollections
+function getSectorId(coordString) {
+    try {
+        if (coordString.includes(':')) {
+            // It's an instanced dungeon/castle (e.g. cave_10_20:5,5)
+            const parts = coordString.split(':');
+            return `sec_instanced_${parts[0]}`; 
+        } else {
+            // It's an overworld coordinate (e.g. 15,-5)
+            const parts = coordString.split(',');
+            const sx = Math.floor(parseInt(parts[0]) / 50);
+            const sy = Math.floor(parseInt(parts[1]) / 50);
+            return `sec_overworld_${sx}_${sy}`;
+        }
+    } catch(e) {
+        return 'sec_misc';
     }
 }
 
-.modal-content {
-    max-width: 520px;
-    width: 92%;
-    animation: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
-    max-height: 90vh; 
-    transform: translateZ(0); 
-    display: flex;
-    flex-direction: column;
-    /* Ensure internal DOM changes don't lag the page */
-    contain: content;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+// --- Anti-Cheat Tracking ---
+let lastValidatedState = null;
+const MAX_GOLD_PER_TICK = 5000; // Max gold you could reasonably earn between saves
+const MAX_XP_PER_TICK = 10000;  // Max XP you could reasonably earn between saves
+
+// Define Admins who are allowed to bypass Anti-Cheat checks
+const ADMIN_EMAILS = [
+    "your.email@gmail.com", // <-- CHANGE THIS TO YOUR EMAIL
+    "admin@cavesandcastles.com"
+];
+
+function validateStateBeforeSave(currentState) {
+    if (!lastValidatedState) return true; // First load is always trusted
+
+    // 1. Admin Bypass: If you are logged in as an admin, allow any stat modifications
+    if (auth.currentUser && ADMIN_EMAILS.includes(auth.currentUser.email)) {
+        return true; 
+    }
+
+    const goldDiff = (currentState.coins || 0) - (lastValidatedState.coins || 0);
+    const xpDiff = (currentState.xp || 0) - (lastValidatedState.xp || 0);
+    const levelDiff = (currentState.level || 1) - (lastValidatedState.level || 1);
+
+    // 2. Check for impossible mathematical jumps
+    if (goldDiff > MAX_GOLD_PER_TICK || xpDiff > MAX_XP_PER_TICK || levelDiff > 5) {
+        console.error(`🚨 ANTI-CHEAT TRIGGERED: Impossible stat jump detected. Gold diff: ${goldDiff}, XP diff: ${xpDiff}`);
+        return false;
+    }
+
+    // 3. Prevent negative vital manipulation (Underflow exploiting)
+    if (currentState.health < 0 || currentState.coins < 0) {
+        console.error(`🚨 ANTI-CHEAT TRIGGERED: Negative value injection detected.`);
+        return false;
+    }
+
+    // 4. Prevent "God Mode" memory injection by non-admins
+    if (currentState.health > currentState.maxHealth + 10) { // +10 buffer for weird buff interactions
+         console.error(`🚨 ANTI-CHEAT TRIGGERED: Health exceeds maximum bounds.`);
+         return false;
+    }
+
+    return true; // State is clean
 }
 
-kbd {
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 3px 8px;
-    font-size: 0.85rem;
-    box-shadow: 0 3px 0 rgba(0,0,0,0.3);
-    vertical-align: middle;
+/**
+ * Queues a Firestore update. If another update comes in before the timer fires,
+ * the previous one is cancelled and the new one takes its place.
+ */
+
+function triggerDebouncedSave(updates) {
+    // Strip out legacy massive arrays to prevent 1MB Firestore blowout
+    delete updates.exploredChunks;
+    delete updates.foundLore;
+    delete updates.lootedTiles;
+
+    // Merge new updates into existing pending data safely
+    if (pendingSaveData === null) {
+        pendingSaveData = { ...updates };
+    } else {
+        pendingSaveData = { ...pendingSaveData, ...updates };
+    }
+
+    if (saveTimeout) return;
+
+    // Set to 3 minutes (180000ms)
+    saveTimeout = setTimeout(() => {
+        flushPendingSave();
+    }, 180000); 
 }
 
-/* ==========================================================================
-   LIST ITEMS (Shops, Quests, Crafting)
-   ========================================================================== */
-.shop-item, .spell-item, .skill-item, .quest-item, .crafting-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px;
-    background-color: var(--bg-page);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    border-left-width: 5px; /* JUICE WIN: Thicker left edge for selection feel */
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translateZ(0);
-    will-change: transform, border-color, box-shadow;
-}
-
-.spell-item:hover, .skill-item:hover, .shop-item:hover, .crafting-item:hover, .quest-item:hover {
-    transform: translateX(6px) translateZ(0); /* Slide slightly right instead of up for lists */
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    border-left-color: var(--text-highlight);
-    background-color: var(--bg-container); /* Slight brighten on hover */
-    z-index: 2;
-}
-
-/* Tactile feedback when clicking lists */
-.spell-item:active, .skill-item:active, .shop-item:active, .crafting-item:active, .quest-item:active {
-    transform: translateX(3px) scale(0.98) translateZ(0);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.25);
-}
-
-/* ==========================================================================
-   STAT BARS (Animated RPG Barber-Pole Overlays)
-   ========================================================================== */
-.stat-add-btn {
-    display: none;
-    font-weight: bold;
-    color: var(--bg-page);
-    background-color: var(--text-highlight);
-    border: none;
-    border-radius: 50%;
-    width: 1.5rem;
-    height: 1.5rem;
-    line-height: 1.5rem;
-    text-align: center;
-    cursor: pointer;
-    transition: transform 0.2s, filter 0.2s;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-}
-.stat-add-btn:hover { transform: scale(1.2) translateZ(0); filter: brightness(1.2); }
-.show-stat-buttons .stat-add-btn { display: block; animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
-
-.stat-bar-container {
-    width: 100%;
-    height: 12px;
-    background-color: rgba(0,0,0,0.4);
-    border-radius: 6px;
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-    box-shadow: inset 0 2px 6px rgba(0,0,0,0.6); /* Deep glass tube look */
-    transform: translateZ(0); 
-}
-
-/* ==========================================================================
-   STAT BARS (Animated RPG Overlays)
-   ========================================================================== */
-
-@keyframes strip-move {
-    0% { background-position: 0 0; }
-    100% { background-position: 24px 0; }
-}
-
-.stat-bar {
-    height: 100%;
-    width: 100%;
-    transition: width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.3s ease;
-    will-change: width, background-color; 
+function flushPendingSave(updates = null) {
+    if (saveTimeout) {
+        clearTimeout(saveTimeout);
+        saveTimeout = null;
+    }
     
-    /* Clean, glossy 3D top edge without the noisy stripes */
-    background-image: linear-gradient(
-        to bottom,
-        rgba(255,255,255,0.4) 0%,
-        rgba(255,255,255,0) 40%,
-        rgba(0,0,0,0.2) 100%
-    );
-    border-right: 1px solid rgba(0,0,0,0.6); /* Hard edge on the tip of the bar */
-}
-
-/* Apply the scrolling stripes ONLY to the XP bar so it feels special! */
-.bar-xp {
-    background-image: linear-gradient(
-        45deg,
-        rgba(255, 255, 255, 0.2) 25%,
-        transparent 25%,
-        transparent 50%,
-        rgba(255, 255, 255, 0.2) 50%,
-        rgba(255, 255, 255, 0.2) 75%,
-        transparent 75%,
-        transparent
-    ), linear-gradient(
-        to bottom,
-        rgba(255,255,255,0.4) 0%,
-        rgba(255,255,255,0) 40%,
-        rgba(0,0,0,0.15) 100%
-    );
-    background-size: 24px 24px, 100% 100%;
-    animation: strip-move 1s linear infinite;
-}
-
-/* ==========================================================================
-   CHARACTER CREATION
-   ========================================================================== */
-.creation-option {
-    border: 2px solid var(--border-color);
-    background-color: var(--bg-panel);
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    opacity: 0.7;
-    will-change: transform, opacity, box-shadow;
-}
-
-.creation-option:hover {
-    transform: translateY(-3px) translateZ(0);
-    opacity: 1.0;
-    border-color: var(--text-muted);
-    box-shadow: 0 6px 10px rgba(0,0,0,0.15);
-}
-
-.creation-option.selected {
-    border-color: var(--text-highlight); 
-    background-color: rgba(79, 70, 229, 0.15); 
-    opacity: 1.0;
-    box-shadow: 0 0 15px rgba(79, 70, 229, 0.5);
-    transform: scale(1.04) translateZ(0);
-}
-
-.gender-btn {
-    padding: 14px;
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-    flex: 1;
-    text-align: center;
-    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    background-color: var(--bg-panel);
-}
-
-.gender-btn.selected {
-    background-color: var(--text-highlight);
-    color: #ffffff;
-    border-color: transparent;
-    transform: scale(1.06) translateZ(0);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.25);
-}
-
-/* ==========================================================================
-   MOBILE CONTROLS (Ergonomic & Tactile)
-   ========================================================================== */
-.mobile-controls {
-    position: fixed;
-    bottom: env(safe-area-inset-bottom, 20px);
-    left: 0;
-    width: 100%;
-    height: 200px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    padding: 0 20px;
-    pointer-events: none; 
-    z-index: 50;
-    -webkit-touch-callout: none; /* Prevents long-press image saving on iOS */
-}
-
-@media (min-width: 1024px) {
-    .mobile-controls { display: none !important; }
-}
-
-.d-pad-container, .action-buttons-container {
-    touch-action: manipulation; 
-    pointer-events: auto;
-}
-
-.d-pad-container {
-    display: grid;
-    grid-template-columns: 70px 70px 70px;
-    grid-template-rows: 70px 70px 70px;
-    gap: 8px; 
-}
-
-.d-pad-btn {
-    width: 70px;
-    height: 70px;
-    background-color: rgba(255, 255, 255, 0.92);
-    border: 2px solid var(--border-color);
-    border-radius: 18px;
-    font-size: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 8px 12px rgba(0,0,0,0.2), inset 0 2px 0 rgba(255,255,255,0.6);
-    user-select: none;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    transition: transform 0.05s, background-color 0.1s, box-shadow 0.05s;
-    will-change: transform; 
-}
-
-.d-pad-btn:active, .action-btn:active {
-    background-color: rgba(220, 220, 220, 1);
-    transform: scale(0.88) translateY(6px) translateZ(0); 
-    box-shadow: inset 0 8px 16px rgba(0,0,0,0.5); /* Deeper physical press */
-}
-
-[data-theme="dark"] .d-pad-btn, [data-theme="dark"] .action-btn {
-    background-color: rgba(55, 65, 81, 0.92);
-    border-color: rgba(0,0,0,0.6);
-    color: white;
-    box-shadow: 0 8px 12px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.15);
-}
-
-[data-theme="dark"] .d-pad-btn:active, [data-theme="dark"] .action-btn:active {
-    background-color: rgba(31, 41, 55, 1);
-    box-shadow: inset 0 8px 16px rgba(0,0,0,0.8); 
-}
-
-.d-pad-btn.up { grid-column: 2; grid-row: 1; }
-.d-pad-btn.left { grid-column: 1; grid-row: 2; }
-.d-pad-btn.center { grid-column: 2; grid-row: 2; font-size: 1.6rem; background-color: rgba(199, 210, 254, 0.85);}
-.d-pad-btn.right { grid-column: 3; grid-row: 2; }
-.d-pad-btn.down { grid-column: 2; grid-row: 3; }
-
-.action-buttons-container {
-    display: grid;
-    grid-template-columns: 60px 60px;
-    gap: 14px;
-    margin-bottom: 20px;
-}
-
-.action-btn {
-    width: 60px;
-    height: 60px;
-    background-color: rgba(255, 255, 255, 0.92);
-    border: 2px solid var(--border-color);
-    border-radius: 50%;
-    font-size: 1.6rem;
-    box-shadow: 0 8px 12px rgba(0,0,0,0.2), inset 0 2px 0 rgba(255,255,255,0.6);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    transition: transform 0.05s, background-color 0.1s, box-shadow 0.05s;
-    will-change: transform;
-}
-
-.action-btn.red { background-color: rgba(239, 68, 68, 0.92); color: white; border-color: #991b1b; }
-.action-btn.blue { background-color: rgba(59, 130, 246, 0.92); color: white; border-color: #1e40af; }
-
-
-/* ==========================================================================
-   LOGIN SCREEN (Asset-Ready UI)
-   ========================================================================== */
-.login-bg {
-    background-color: #000; 
-    background-image: var(--asset-bg-stone); 
-    background-size: cover; 
-    background-position: center bottom;
-    background-repeat: no-repeat;
-    box-shadow: inset 0 0 250px rgba(0,0,0,0.95); 
-    image-rendering: pixelated;
-}
-
-.ui-frame-asset {
-    border: 48px solid transparent; 
-    border-image-source: var(--asset-frame-border); 
-    border-image-slice: 28%; 
-    border-image-repeat: repeat;
-    image-rendering: pixelated;
-    filter: drop-shadow(15px 15px 0px rgba(0,0,0,0.7)); 
-    transform: translateZ(0);
-}
-
-.ui-parchment-asset {
-    background-color: var(--asset-parchment); 
-    padding: 1rem 2rem 2rem 2rem;
-    margin: -24px; /* Pulls the background slightly under the frame */
-}
-
-.ui-input-asset {
-    background-image: var(--asset-input-bg);
-    background-size: 100% 100%; 
-    background-repeat: no-repeat;
-    padding: 28px 32px 20px 32px; 
-    margin-bottom: 12px;
-    image-rendering: pixelated;
-    display: flex;
-    align-items: center;
-}
-
-.ui-input-asset input {
-    background-color: transparent !important;
-    border: none !important;
-    outline: none !important;
-    color: #4ade80 !important; 
-    font: normal bold 1.4rem/1.5 'Courier New', Courier, monospace !important; 
-    text-shadow: none !important; 
-    width: 100%;
-    transform: translateY(2px); 
-}
-
-.ui-input-asset input::placeholder { 
-    color: #4b5563 !important; 
-    opacity: 0.8;
-}
-
-/* Chrome Autofill Override Hack - Bulletproof */
-.ui-input-asset input:-webkit-autofill,
-.ui-input-asset input:-webkit-autofill:hover, 
-.ui-input-asset input:-webkit-autofill:focus, 
-.ui-input-asset input:-webkit-autofill:active {
-    -webkit-text-fill-color: #4ade80 !important;
-    -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
-    background-color: transparent !important;
-    transition: background-color 5000s ease-in-out 0s !important;
-}
-
-.ui-input-asset input:-webkit-autofill::first-line {
-    font-family: 'Courier New', Courier, monospace !important;
-    font-size: 1.4rem !important;
-    font-weight: bold !important;
-}
-
-.ui-btn-asset {
-    background-color: transparent;
-    background-image: var(--asset-btn-normal);
-    background-size: 100% 100%;
-    background-repeat: no-repeat;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 2.2rem;
-    font-weight: bold;
-    color: #ffffff; 
-    text-shadow: 3px 3px 0px rgba(0,0,0,1); 
-    padding: 22px;
-    margin-top: 12px;
-    width: 100%;
-    image-rendering: pixelated;
-    transition: filter 0.15s ease, transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    cursor: pointer;
-    will-change: transform, filter, background-position;
-    transform: translateZ(0);
+    const dataToSave = updates || pendingSaveData;
+    const saveIcon = document.getElementById('saveIndicator');
     
-    /* JUICE WIN: Sweeping Light Glint */
-    background-image: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%), var(--asset-btn-normal);
-    background-size: 200% 100%, 100% 100%;
-    animation: btn-glint 4s infinite linear;
+    if (dataToSave && playerRef) {
+        // Strip legacy arrays
+        delete dataToSave.exploredChunks;
+        delete dataToSave.foundLore;
+        delete dataToSave.lootedTiles;
+
+        // --- LEGACY MIGRATION CLEANUP ---
+        if (gameState.needsLegacyMapCleanup) {
+            dataToSave.exploredChunks = firebase.firestore.FieldValue.delete();
+            dataToSave.foundLore = firebase.firestore.FieldValue.delete();
+            dataToSave.lootedTiles = firebase.firestore.FieldValue.delete();
+            gameState.needsLegacyMapCleanup = false;
+        }
+
+        const batch = db.batch();
+        let hasMapData = false;
+
+        // --- 1. PROCESS MAP SUBCOLLECTIONS ---
+        if (gameState.pendingMapSaves && 
+           (gameState.pendingMapSaves.chunks.size > 0 || 
+            gameState.pendingMapSaves.lore.size > 0 || 
+            Object.keys(gameState.pendingMapSaves.looted).length > 0)) {
+            
+            hasMapData = true;
+            const sectorUpdates = {};
+            
+            // Group Chunks
+            gameState.pendingMapSaves.chunks.forEach(chunkId => {
+                const sector = getSectorId(chunkId);
+                if (!sectorUpdates[sector]) sectorUpdates[sector] = { chunks: [], lore: [], looted: {} };
+                sectorUpdates[sector].chunks.push(chunkId);
+            });
+            // Group Lore
+            gameState.pendingMapSaves.lore.forEach(loreId => {
+                const sector = getSectorId(loreId);
+                if (!sectorUpdates[sector]) sectorUpdates[sector] = { chunks: [], lore: [], looted: {} };
+                sectorUpdates[sector].lore.push(loreId);
+            });
+            // Group Looted Tiles
+            for (const [key, val] of Object.entries(gameState.pendingMapSaves.looted)) {
+                const sector = getSectorId(key);
+                if (!sectorUpdates[sector]) sectorUpdates[sector] = { chunks: [], lore: [], looted: {} };
+                sectorUpdates[sector].looted[key] = val;
+            }
+
+            // Write to subcollection docs
+            for (const sector in sectorUpdates) {
+                const docRef = playerRef.collection('map_data').doc(sector);
+                const docData = {};
+                
+                if (sectorUpdates[sector].chunks.length > 0) docData.exploredChunks = firebase.firestore.FieldValue.arrayUnion(...sectorUpdates[sector].chunks);
+                if (sectorUpdates[sector].lore.length > 0) docData.foundLore = firebase.firestore.FieldValue.arrayUnion(...sectorUpdates[sector].lore);
+                
+                if (Object.keys(sectorUpdates[sector].looted).length > 0) {
+                    for (const [k, v] of Object.entries(sectorUpdates[sector].looted)) {
+                        docData[`lootedTiles.${k}`] = (v === null) ? firebase.firestore.FieldValue.delete() : v;
+                    }
+                }
+                batch.set(docRef, docData, { merge: true });
+            }
+            
+            // Clear pending buffer
+            gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
+        }
+
+        // --- 2. PROCESS MAIN PLAYER DATA ---
+        if (Object.keys(dataToSave).length > 0) {
+            const stateToVerify = { ...gameState.player, ...dataToSave };
+            if (!validateStateBeforeSave(stateToVerify)) {
+                logMessage("{red:Reality destabilizes. Unnatural energies detected.}");
+                setTimeout(() => location.reload(), 2000);
+                return;
+            }
+            batch.update(playerRef, sanitizeForFirebase(dataToSave));
+        }
+
+        // --- 3. COMMIT BATCH ---
+        if (hasMapData || Object.keys(dataToSave).length > 0) {
+            if (saveIcon) {
+                saveIcon.classList.remove('opacity-0');
+                saveIcon.classList.add('opacity-100');
+            }
+            
+            batch.commit().then(() => {
+                lastValidatedState = { ...gameState.player }; 
+                setTimeout(() => {
+                    if (saveIcon) {
+                        saveIcon.classList.remove('opacity-100');
+                        saveIcon.classList.add('opacity-0');
+                    }
+                }, 1500);
+            }).catch(err => {
+                console.error("Batch save failed:", err);
+                if (saveIcon) saveIcon.classList.add('opacity-0');
+            });
+        }
+    }
+    pendingSaveData = null;
 }
 
-.ui-btn-asset:hover { filter: brightness(1.2); }
-.ui-btn-asset:active {
-    background-image: none, var(--asset-btn-pressed);
-    color: #cccccc; 
-    transform: translateY(6px) translateZ(0); 
-    text-shadow: 1px 1px 0px rgba(0,0,0,1); 
+/**
+ * Saves the complete current game state to Firestore immediately.
+ * Provides user feedback on success or failure.
+ */
+
+async function manualSaveGame() {
+    if (!playerRef) {
+        logMessage("{red:Cannot save: Not connected to a character.}");
+        return;
+    }
+
+    const saveBtn = document.getElementById('btnManualSave');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving...";
+    }
+
+    logMessage("💾 Saving game to the cloud...");
+
+    // Force any pending debounced saves to happen first
+    flushPendingSave(); 
+    
+    // Only attempt to save if we have a valid database reference
+    if (playerRef) {
+        // Explicitly gather ALL engine state so we don't lose map memory on logout!
+        const finalState = {
+            ...gameState.player,
+            inventory: getSanitizedInventory(),
+            equipment: getSanitizedEquipment(),
+            bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : (gameState.player.bank || []),
+            lootedTiles: Object.fromEntries(gameState.lootedTiles),
+            discoveredRegions: Array.from(gameState.discoveredRegions),
+            exploredChunks: Array.from(gameState.exploredChunks),
+            foundLore: Array.from(gameState.foundLore || []),
+            foundCodexEntries: Array.from(gameState.foundCodexEntries || []),
+            shopStates: gameState.shopStates || {},
+            activeTreasure: gameState.activeTreasure || null,
+        };
+
+        // Remove ephemeral visual properties
+        delete finalState.color;
+        delete finalState.character;
+
+        // Save to Firestore
+        playerRef.set(sanitizeForFirebase(finalState), { merge: true }).catch(err => {
+            console.error("Error saving on logout:", err);
+        });
+    }
+
+    try {
+        // Use set with merge to ensure a clean overwrite with the current state
+        await playerRef.set(sanitizeForFirebase(finalState), { merge: true });
+        logMessage("{green:Game saved successfully!}");
+        
+        if (saveBtn) {
+            saveBtn.textContent = "✅ Saved!";
+            setTimeout(() => { 
+                saveBtn.textContent = "💾 Save Progress";
+                saveBtn.disabled = false;
+            }, 2000);
+        }
+    } catch (err) {
+        console.error("Manual save failed:", err);
+        logMessage("{red:Save failed. Check console for details.}");
+        if (saveBtn) {
+            saveBtn.textContent = "💾 Save Progress";
+            saveBtn.disabled = false;
+        }
+    }
 }
 
-/* Retro Checkboxes */
-.retro-checkbox-label {
-    font-family: 'Courier New', Courier, monospace;
-    font-weight: bold;
-    font-size: 1.2rem;
-    color: var(--text-default);
-    user-select: none;
-}
-.custom-check::before { content: "[ ]"; color: var(--text-muted); transition: color 0.2s; }
-.retro-checkbox:checked + label .custom-check::before { 
-    content: "[x]"; 
-    color: #4ade80; 
-    text-shadow: 0 0 8px rgba(74, 222, 128, 0.6); 
-}
-input[type="checkbox"].hidden { display: none; }
+let pendingSaveData = null; 
 
-.gothic-title {
-    font-family: 'Uncial Antiqua', 'UnifrakturMaguntia', cursive; 
-    font-size: 4rem;
-    color: var(--title-color); 
-    text-shadow: var(--title-shadow); 
-    margin-bottom: 1.5rem;
-    -webkit-text-stroke: var(--title-stroke); 
-    animation: float-breathe 6s ease-in-out infinite;
-    will-change: transform;
+// --- INPUT THROTTLE ---
+let lastActionTime = 0;
+window.ACTION_COOLDOWN = 150; 
+window.SELL_MODIFIER = 0.5; 
+window.HEALING_AMOUNT = 3;
+window.DAMAGE_AMOUNT = 2;
+window.MANA_RESTORE_AMOUNT = 3;
+window.STAMINA_RESTORE_AMOUNT = 4;
+window.PSYCHE_RESTORE_AMOUNT = 2;
+window.STAT_INCREASE_AMOUNT = 1;
+window.TURN_DURATION_MINUTES = 10;
+window.REGION_SIZE = 160;
+
+const DAYS_OF_WEEK = ["Sunsday", "Moonsday", "Kingsday", "Earthday", "Watersday", "Windsday", "Firesday"];
+const MONTHS_OF_YEAR = ["First Seed", "Rains Hand", "Second Seed", "Suns Height", "Last Seed", "Hearthfire", "Frostfall", "Suns Dusk", "Evening Star", "Morning Star", "Suns Dawn", "Deep Winter"];
+const DAYS_IN_MONTH = 30;
+
+const NAME_PREFIXES = ["Whispering", "Sunken", "Forgotten", "Broken", "Shrouded", "Glimmering", "Verdant", "Ashen"];
+const NAME_MIDDLES = ["Plains", "Forest", "Hills", "Expanse", "Valley", "Marsh", "Reach", "Woods"];
+const NAME_SUFFIXES = ["of Sorrow", "of the Ancients", "of Ash", "of the King", "of Renewal", "of Despair"];
+
+const CAVE_PREFIXES = ["Whispering", "Sunken", "Forgotten", "Broken", "Shrouded", "Glimmering", "Verdant", "Ashen", "Crystal", "Shadow", "Frozen", "Burning"];
+const CAVE_SUFFIXES = ["Caverns", "Grotto", "Deep", "Lair", "Tunnels", "Delve", "Hollow", "Fissure", "Pits", "Maze"];
+
+const CASTLE_PREFIXES = ["Broken", "Fallen", "King's", "Shadow", "Gleaming", "Iron", "Stone", "Forgotten", "Ancient", "Last", "Crimson"];
+const CASTLE_SUFFIXES = ["Spire", "Keep", "Fortress", "Hold", "Citadel", "Bastion", "Tower", "Ruin", "Reach", "Sanctum"];
+
+const DAY_CYCLE_STOPS = [{
+    time: 0,
+    color: [10, 10, 40],
+    opacity: 0.10
+},
+{
+    time: 350,
+    color: [20, 20, 80],
+    opacity: 0.12
+},
+{
+    time: 390,
+    color: [255, 150, 80],
+    opacity: 0.08
+},
+{
+    time: 430,
+    color: [240, 255, 255],
+    opacity: 0.0
+},
+{
+    time: 1070,
+    color: [240, 255, 255],
+    opacity: 0.0
+},
+{
+    time: 1110,
+    color: [255, 150, 80],
+    opacity: 0.08
+},
+{
+    time: 1150,
+    color: [20, 20, 80],
+    opacity: 0.12
+},
+{
+    time: 1440,
+    color: [10, 10, 40],
+    opacity: 0.10
+}
+];
+
+async function renderSlots() {
+    slotsContainer.innerHTML = '';
+    const charsRef = db.collection('players').doc(currentUser.uid).collection('characters');
+
+    const slotIds = ['slot1', 'slot2', 'slot3'];
+
+    for (const slotId of slotIds) {
+        const doc = await charsRef.doc(slotId).get();
+        const slotDiv = document.createElement('div');
+        
+        slotDiv.className = "ui-input-asset flex-col justify-between transition-transform cursor-pointer hover:scale-[1.02] min-h-[320px] w-full !p-6";
+
+        if (doc.exists) {
+            const data = doc.data();
+            const bg = PLAYER_BACKGROUNDS[data.background] || { name: 'Unknown' };
+
+            // --- OCCUPIED SLOT UI ---
+            slotDiv.innerHTML = `
+                <div class="text-center w-full pt-2">
+                    <h3 class="text-3xl font-bold text-white mb-2" style="font-family: 'Uncial Antiqua', cursive; text-shadow: 2px 2px 0 #000;">${data.name || 'Unnamed'}</h3>
+                    <div class="text-4xl my-3 text-[#4ade80]" style="text-shadow: 0 0 10px rgba(74, 222, 128, 0.4);">${data.isBoating ? 'c' : (data.character || '@')}</div>
+                    <p class="font-bold text-yellow-400 text-lg uppercase tracking-widest">${bg.name}</p>
+                    <p class="text-sm text-gray-300 font-bold mt-1">Level ${data.level || 1}</p>
+                    <p class="text-xs text-gray-400 mt-3 h-8 leading-tight">${getRegionName(Math.floor((data.x || 0) / 160), Math.floor((data.y || 0) / 160))}</p>
+                </div>
+                
+                <div class="flex gap-2 w-full mt-4 items-center h-12">
+                    <button onclick="selectSlot('${slotId}')" class="ui-btn-asset flex-grow h-full !text-2xl !p-0 !mt-0">PLAY</button>
+                    
+                    <!-- ADDED: relative top-[ px] right-[ px] -->
+                    <button onclick="deleteSlot('${slotId}')" class="relative top-[3px] right-[9px] w-12 h-8 flex-none bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-xl flex items-center justify-center transition-transform active:scale-95" style="border: 2px solid #000; box-shadow: inset -2px -2px 0px rgba(0,0,0,0.4), inset 2px 2px 0px rgba(255,255,255,0.3); text-shadow: 2px 2px 0px #000;" title="Delete">X</button>
+                </div>
+            `;
+        } else {
+            // --- EMPTY SLOT UI ---
+            slotDiv.classList.add('opacity-80', 'hover:opacity-100');
+
+            slotDiv.onclick = (e) => {
+                if (e.target === slotDiv || e.target.closest('.empty-slot-content')) selectSlot(slotId);
+            };
+
+            slotDiv.innerHTML = `
+                <div class="text-center w-full empty-slot-content pt-6 flex-grow flex flex-col justify-center">
+                    <h3 class="text-2xl font-bold mb-4 text-gray-400" style="font-family: 'Uncial Antiqua', cursive;">Slot ${slotId.replace('slot', '')}</h3>
+                    <div class="text-5xl mb-4 text-gray-600">+</div>
+                    <p class="text-gray-500 font-bold tracking-widest uppercase">Empty</p>
+                </div>
+                
+                <div class="w-full mt-4 h-12">
+                    <button onclick="event.stopPropagation(); selectSlot('${slotId}')" class="ui-btn-asset w-full h-full !text-2xl !p-0 !mt-0 !text-gray-200">CREATE</button>
+                </div>
+            `;
+        }
+        slotsContainer.appendChild(slotDiv);
+    }
+    loadingIndicator.classList.add('hidden');
 }
 
-.pixel-text {
-    font-family: 'Courier New', Courier, monospace;
-    font-weight: bold;
-    font-size: 1.1rem;
-    color: var(--text-muted); 
+logoutFromSelectButton.addEventListener('click', () => {
+    auth.signOut();
+    characterSelectModal.classList.add('hidden');
+    authContainer.classList.remove('hidden');
+});
+
+function createDefaultPlayerState() {
+    return {
+        x: 0,
+        y: 0,
+        character: '@',
+        color: '#3b82f6',
+        coins: 0,
+        health: 5,
+        maxHealth: 5,
+        mana: 5,
+        maxMana: 5,
+        stamina: 5,
+        maxStamina: 5,
+        psyche: 7,
+        maxPsyche: 7,
+
+        // --- LIGHT SURVIVAL STATS ---
+        hunger: 50,
+        maxHunger: 100,
+        thirst: 50,
+        maxThirst: 100,
+
+        bonusMaxHealth: 0,
+        bonusMaxMana: 0,
+        bonusMaxStamina: 0,
+        bonusMaxPsyche: 0,
+
+        unlockedWaypoints: [], 
+        discoveredPOIs: [], // Tracks landmarks for the Map
+
+        obeliskProgress: [], 
+
+        strength: 1, wits: 1, luck: 1, constitution: 1,
+        dexterity: 1, charisma: 1, willpower: 1, perception: 1,
+        endurance: 1, intuition: 1,
+
+        equipment: {
+            weapon: { name: 'Fists', damage: 0 },
+            armor: { name: 'Simple Tunic', defense: 0 },
+            offhand: null,
+            accessory: null,
+            ammo: null
+        },
+
+        inventory: [
+            { templateId: '🍞', name: 'Hardtack', type: 'consumable', quantity: 2, tile: '🍞' },
+            { templateId: '💧f', name: 'Flask of Water', type: 'consumable', quantity: 2, tile: '💧' }
+        ],
+
+        bank: [], 
+        talents: [], 
+        talentPoints: 0,
+        killCounts: {}, 
+
+        spellbook: { "lesserHeal": 1, "magicBolt": 1 },
+        skillbook: { "brace": 1, "lunge": 1 },
+
+        level: 1, xp: 0, xpToNextLevel: 100, statPoints: 0,
+        foundLore: [], 
+
+        defenseBonus: 0, defenseBonusTurns: 0,
+        shieldValue: 0, shieldTurns: 0,
+        strengthBonus: 0, strengthBonusTurns: 0,
+        witsBonus: 0, witsBonusTurns: 0,
+
+        frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0,
+        candlelightTurns: 0, isBoating: false, activeTreasure: null,
+        exploredChunks: [], quests: {},
+        hotbar: [null, null, null, null, null], 
+        cooldowns: {}, stealthTurns: 0, companion: null, 
+
+        craftingLevel: 1, craftingXp: 0, craftingXpToNext: 50,
+    };
 }
 
-/* --- END OF FILE style.css --- */
+function grantLoreDiscovery(mapTileId, codexEntryId = null) {
+    const player = gameState.player;
+    
+    // 1. Add map location to found set
+    if (!gameState.foundLore) gameState.foundLore = new Set();
+    if (gameState.foundLore.has(mapTileId)) return; // Already found this tile
+    
+    gameState.foundLore.add(mapTileId);
+    
+    // --- Route to Subcollection Buffer ---
+    if (!gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
+    gameState.pendingMapSaves.lore.add(mapTileId);
+
+    grantXp(25); // Base XP for reading
+    logMessage("New Codex Entry added.");
+
+    // 2. Track the actual item key (e.g., "📜1") for the Library
+    if (!gameState.foundCodexEntries) gameState.foundCodexEntries = new Set();
+    if (codexEntryId) {
+        gameState.foundCodexEntries.add(codexEntryId);
+    }
+
+    // 3. Check for Set Completion
+    let completedSet = null;
+
+    for (const setKey in LORE_SETS) {
+        const set = LORE_SETS[setKey];
+        const allFound = set.items.every(id => gameState.foundCodexEntries.has(id));
+        
+        if (!player.completedLoreSets) player.completedLoreSets = [];
+        
+        if (allFound && !player.completedLoreSets.includes(setKey)) {
+            completedSet = set;
+            player.completedLoreSets.push(setKey);
+            
+            // --- APPLY PERMANENT BONUS ---
+            if (setKey === 'void_research') {
+                player.maxMana += 10;
+                player.mana += 10;
+            } else if (setKey === 'deep_delver') {
+                player.maxStamina += 5;
+                player.stamina += 5;
+                triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
+            } else if (setKey === 'beastmaster_guide') {
+                player.perception += 1;
+                triggerStatAnimation(statDisplays.perception, 'stat-pulse-green');
+            }
+            
+            logMessage(`{gold:CODEX COMPLETE: ${set.name}!}`);
+            logMessage(`Bonus Unlocked: ${set.bonus}`);
+            triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+        }
+    }
+
+    // 4. Save Main Profile Data (Map data is now handled by the buffer!)
+    playerRef.update({ 
+        foundCodexEntries: Array.from(gameState.foundCodexEntries),
+        completedLoreSets: player.completedLoreSets || [] 
+    });
+}
+
+async function restartGame() {
+    // 1. Capture the current background so we don't lose the class choice
+    const currentBg = gameState.player.background;
+
+    // 2. Clear Session State FIRST (This resets mapMode to null)
+    clearSessionState();
+
+    // 3. Get fresh state
+    const defaultState = createDefaultPlayerState();
+
+    // 4. Re-apply background tag and stats (so you stay a Warrior/Mage/etc)
+    if (currentBg && PLAYER_BACKGROUNDS[currentBg]) {
+        defaultState.background = currentBg;
+
+        const bgStats = PLAYER_BACKGROUNDS[currentBg].stats;
+        for (let stat in bgStats) {
+            defaultState[stat] += bgStats[stat];
+        }
+        // Recalculate derived stats based on background bonuses
+        if (bgStats.constitution) defaultState.maxHealth += (bgStats.constitution * 5);
+        if (bgStats.wits) defaultState.maxMana += (bgStats.wits * 5);
+
+        // Heal to new max
+        defaultState.health = defaultState.maxHealth;
+        defaultState.mana = defaultState.maxMana;
+
+        // Note: You get the default items (Bread/Water), not the starting class kit again.
+        // If you want the class kit, you'd need to re-merge the 'items' array from PLAYER_BACKGROUNDS here.
+    }
+
+    // 5. Apply to Game State
+    Object.assign(gameState.player, defaultState);
+
+    // 6. Set Map Mode (MUST be done AFTER clearSessionState)
+    gameState.mapMode = 'overworld';
+    gameState.currentCastleId = null;
+    gameState.currentCaveId = null;
+
+    // 7. Save to DB
+    await playerRef.set(defaultState);
+
+    // 8. UI Updates
+    logMessage("Your adventure begins anew...");
+    renderStats();
+    renderInventory();
+    updateRegionDisplay();
+
+    // Force a re-render/resize to ensure canvas is active
+    resizeCanvas();
+    render();
+
+    // 9. Hide the modal
+    gameOverModal.classList.add('hidden');
+}
+
+function getInterpolatedDayCycleColor(hour, minute) {
+    const currentTimeInMinutes = hour * 60 + minute;
+    let prevStop = DAY_CYCLE_STOPS[0];
+    let nextStop = DAY_CYCLE_STOPS[DAY_CYCLE_STOPS.length - 1];
+    for (let i = 0; i < DAY_CYCLE_STOPS.length; i++) {
+        if (DAY_CYCLE_STOPS[i].time >= currentTimeInMinutes) {
+            nextStop = DAY_CYCLE_STOPS[i];
+            prevStop = DAY_CYCLE_STOPS[i - 1] || DAY_CYCLE_STOPS[0];
+            break;
+        }
+    }
+    const timeRange = nextStop.time - prevStop.time;
+    const timeProgress = (timeRange === 0) ? 1 : (currentTimeInMinutes - prevStop.time) / timeRange;
+    const lerp = (a, b, t) => a * (1 - t) + b * t;
+    const r = Math.round(lerp(prevStop.color[0], nextStop.color[0], timeProgress));
+    const g = Math.round(lerp(prevStop.color[1], nextStop.color[1], timeProgress));
+    const b = Math.round(lerp(prevStop.color[2], nextStop.color[2], timeProgress));
+    const opacity = lerp(prevStop.opacity, nextStop.opacity, timeProgress);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
+const renderTime = () => {
+    const time = gameState.time;
+    const dayOfWeek = DAYS_OF_WEEK[(time.day - 1) % DAYS_OF_WEEK.length];
+    const month = MONTHS_OF_YEAR[Math.floor((time.day - 1) / DAYS_IN_MONTH) % MONTHS_OF_YEAR.length];
+    const dayOfMonth = ((time.day - 1) % DAYS_IN_MONTH) + 1;
+    const daySuffix = getOrdinalSuffix(dayOfMonth);
+    const hour12 = time.hour % 12 === 0 ? 12 : time.hour % 12;
+    const ampm = time.hour < 12 ? 'AM' : 'PM';
+    const minutePadded = String(time.minute).padStart(2, '0');
+    timeDisplay.textContent = `${dayOfWeek}, the ${dayOfMonth}${daySuffix} of ${month}, Year ${time.year} ${time.era} | ${hour12}:${minutePadded} ${ampm}`;
+};
+
+function getCaveName(caveId) {
+    const seed = `${WORLD_SEED}:${caveId}`;
+    const random = Alea(stringToSeed(seed));
+    const prefix = CAVE_PREFIXES[Math.floor(random() * CAVE_PREFIXES.length)];
+    const suffix = CAVE_SUFFIXES[Math.floor(random() * CAVE_SUFFIXES.length)];
+    return `The ${prefix} ${suffix}`;
+}
+
+function getCastleName(castleId) {
+    const seed = `${WORLD_SEED}:${castleId}`;
+    const random = Alea(stringToSeed(seed));
+    const prefix = CASTLE_PREFIXES[Math.floor(random() * CASTLE_PREFIXES.length)];
+    const suffix = CASTLE_SUFFIXES[Math.floor(random() * CASTLE_SUFFIXES.length)];
+    return `The ${prefix} ${suffix}`;
+}
+
+function getRegionName(regionX, regionY) {
+    const seed = `${WORLD_SEED}:${regionX},${regionY}`;
+    const random = Alea(stringToSeed(seed));
+    const prefix = NAME_PREFIXES[Math.floor(random() * NAME_PREFIXES.length)];
+    const middle = NAME_MIDDLES[Math.floor(random() * NAME_MIDDLES.length)];
+    if (random() > 0.5) {
+        const suffix = NAME_SUFFIXES[Math.floor(random() * NAME_SUFFIXES.length)];
+        return `The ${prefix} ${middle} ${suffix}`;
+    }
+    return `The ${prefix} ${middle}`;
+}
+
+const TERRAIN_COST = {
+    // --- Difficult Terrain ---
+    '^': 2,   // Mountains
+    '≈': 2,   // Swamp
+    '~': Infinity, // Deep Water (Blocks movement entirely)
+    
+    // --- Standard Terrain ---
+    'F': 1,   // Forest
+    '.': 0,   // Plains
+    'D': 1,   // Desert
+    'd': 1,   // Deadlands
+    '=': 0,   // Wooden Bridges
+    '🍄': 1,  // Fungal Jungle
+    '💎c': 1, // Crystal Peaks
+    '❄️': 1,  // Deep Snow
+    '🌲': 1,  // Tundra Pine
+    
+    // --- Free Actions ---
+    '<': 0,   // Stairs up are free to step on
+    '>': 0    // Stairs down are free to step on
+};
+
+
+const talentModal = document.getElementById('talentModal');
+const closeTalentButton = document.getElementById('closeTalentButton');
+const talentListDiv = document.getElementById('talentList');
+const talentPointsDisplay = document.getElementById('talentPointsDisplay');
+
+
+
+closeTalentButton.addEventListener('click', () => talentModal.classList.add('hidden'));
+
+ctx.font = `${TILE_SIZE}px monospace`;
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+
+function triggerAtmosphericFlavor(tile) {
+    // 5% chance to trigger flavor text on move (approx every 20 steps)
+    if (Math.random() > 0.05) return;
+
+    let flavorOptions = [];
+    const time = gameState.time;
+    const weather = gameState.weather;
+
+    // 1. Add Weather/Time Context
+    if (weather === 'storm' || weather === 'rain') {
+        flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.STORM);
+    }
+    if (time.hour >= 20 || time.hour < 5) {
+        flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.NIGHT);
+    } else if (time.hour >= 5 && time.hour < 8) {
+        flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.DAWN);
+    }
+
+    // 2. Add Biome Context
+    if (tile === 'F') flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.FOREST);
+    else if (tile === 'D') flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.DESERT);
+    else if (tile === '^') flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.MOUNTAIN);
+    else if (tile === '≈') flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.SWAMP);
+
+    // 3. Pick a Message
+    if (flavorOptions.length > 0) {
+        const msg = flavorOptions[Math.floor(Math.random() * flavorOptions.length)];
+        // Use gray coloring for atmosphere to distinguish from game mechanics
+        logMessage(`{gray:${msg}}`);
+    }
+}
+
+function updateWeather() {
+    const player = gameState.player;
+
+    // 1. Initialize State if missing
+    if (typeof player.weatherIntensity === 'undefined') player.weatherIntensity = 0;
+    if (typeof player.weatherState === 'undefined') player.weatherState = 'calm'; 
+    if (typeof player.weatherDuration === 'undefined') player.weatherDuration = 0;
+
+    // OPTIMIZATION: Only sample the heavy Perlin noise once every 20 turns
+    let localForecast = 'clear';
+    if (gameState.mapMode === 'overworld') {
+        if (gameState.playerTurnCount % 20 === 0 || !gameState.currentForecast) {
+            const temp = elevationNoise.noise(player.x / 300, player.y / 300);
+            const humid = moistureNoise.noise(player.x / 300 + 100, player.y / 300 + 100);
+            
+            if (humid > 0.92) { 
+                if (temp < 0.3) gameState.currentForecast = 'snow';
+                else if (humid > 0.96) gameState.currentForecast = 'storm'; 
+                else gameState.currentForecast = 'rain';
+            } else if (humid > 0.85 && temp < 0.35) { 
+                gameState.currentForecast = 'fog';
+            } else {
+                gameState.currentForecast = 'clear';
+            }
+        }
+        localForecast = gameState.currentForecast || 'clear';
+    }
+
+    // 2. Weather State Machine
+    const TRANSITION_SPEED = 0.1; // Takes 10 turns to fade in/out fully
+
+    switch (player.weatherState) {
+        case 'calm':
+            // If the forecast calls for weather, start building it
+            if (localForecast !== 'clear') {
+                gameState.weather = localForecast; // Set the type
+                player.weatherState = 'building';
+                logMessage(`The sky darkens. It looks like ${localForecast} is coming.`);
+            }
+            break;
+
+        case 'building':
+            // Increase intensity
+            player.weatherIntensity += TRANSITION_SPEED;
+            if (player.weatherIntensity >= 1.0) {
+                player.weatherIntensity = 1.0;
+                player.weatherState = 'active';
+                player.weatherDuration = 50 + Math.floor(Math.random() * 50); // Lasts 50-100 turns
+                logMessage(`The ${gameState.weather} is fully upon you.`);
+            }
+            break;
+
+        case 'active':
+            player.weatherDuration--;
+
+            // If we walked OUT of the bad weather zone, start fading early
+            if (localForecast === 'clear' && player.weatherDuration > 5) {
+                player.weatherDuration = 5;
+                logMessage("The weather seems to be clearing up.");
+            }
+
+            if (player.weatherDuration <= 0) {
+                player.weatherState = 'fading';
+            }
+            break;
+
+        case 'fading':
+            // Decrease intensity
+            player.weatherIntensity -= TRANSITION_SPEED;
+            if (player.weatherIntensity <= 0) {
+                player.weatherIntensity = 0;
+                player.weatherState = 'calm';
+                gameState.weather = 'clear';
+                logMessage("The skies are clear again.");
+            }
+            break;
+    }
+    
+    const hour = gameState.time.hour;
+    const isNight = hour >= 20 || hour < 5;
+
+    // 1 in 15 chance every night for a Blood Moon
+    if (isNight && !gameState.isBloodMoon && Math.random() < 0.005) { // Checked frequently, so low probability
+        gameState.isBloodMoon = true;
+        logMessage(`{red:The moon turns blood red... The monsters grow frenzied!}`);
+        
+        // 10% chance during a blood moon to spawn a raid boss near an active player
+        if (Math.random() < 0.10) {
+            triggerRaidBossSpawn(player.x, player.y);
+        }
+    } else if (!isNight && gameState.isBloodMoon) {
+        gameState.isBloodMoon = false;
+        logMessage(`The sun rises, breaking the blood moon's curse.`);
+    }
+}
+
+function handleStatAllocation(event) {
+    // Only run if a stat button was clicked
+    if (!event.target.classList.contains('stat-add-btn')) return;
+
+    // Check if the player has points to spend
+    if (gameState.player.statPoints <= 0) {
+        logMessage("You have no stat points to spend.");
+        return;
+    }
+
+    // Get the stat name from the button's 'data-stat' attribute
+    const statToIncrease = event.target.dataset.stat;
+
+    if (statToIncrease && gameState.player.hasOwnProperty(statToIncrease)) {
+        // 1. Spend the point & Increase the Stat
+        gameState.player.statPoints--;
+        gameState.player[statToIncrease]++;
+
+        logMessage(`You increased your ${statToIncrease}!`);
+
+        // 2. Recalculate Derived Vitals (Health/Mana/etc) automatically
+        // This replaces the big if/else block that manually added +5
+        const oldMaxHealth = gameState.player.maxHealth;
+        const oldMaxMana = gameState.player.maxMana;
+        
+        recalculateDerivedStats();
+
+        // Optional: Heal the difference so they get the benefit immediately
+        if (gameState.player.maxHealth > oldMaxHealth) {
+            gameState.player.health += (gameState.player.maxHealth - oldMaxHealth);
+        }
+        if (gameState.player.maxMana > oldMaxMana) {
+            gameState.player.mana += (gameState.player.maxMana - oldMaxMana);
+        }
+
+        // 3. Update database
+        // We save the entire player object state to ensure sync
+        playerRef.update({
+            statPoints: gameState.player.statPoints,
+            [statToIncrease]: gameState.player[statToIncrease],
+            maxHealth: gameState.player.maxHealth,
+            health: gameState.player.health,
+            maxMana: gameState.player.maxMana,
+            mana: gameState.player.mana,
+            maxStamina: gameState.player.maxStamina,
+            stamina: gameState.player.stamina,
+            maxPsyche: gameState.player.maxPsyche,
+            psyche: gameState.player.psyche
+        });
+
+        // 4. Update UI
+        renderStats();
+    }
+}
+
+// Add the event listener to the panel
+coreStatsPanel.addEventListener('click', handleStatAllocation);
+
+// --- AUTH UI ELEMENTS ---
+const authTitle = document.getElementById('authTitle'); // Back to targeting the H1!
+const authButton = document.getElementById('authButton');
+const rememberMe = document.getElementById('rememberMe');
+const authToggle = document.getElementById('authToggle');
+let isLoginMode = true;
+
+// --- AUTH TOGGLE HANDLER ---
+authToggle.addEventListener('click', (e) => {
+    e.preventDefault();
+    isLoginMode = !isLoginMode;
+
+    if (isLoginMode) {
+        authTitle.textContent = 'Login';
+        authButton.textContent = 'LOGIN';
+        authToggle.textContent = 'Create Account';
+    } else {
+        authTitle.textContent = 'Create Account';
+        authButton.textContent = 'SIGN UP';
+        authToggle.textContent = 'Back to Login';
+    }
+    authError.textContent = '';
+});
+
+// --- UNIFIED AUTH BUTTON HANDLER ---
+authButton.addEventListener('click', async () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    authError.textContent = '';
+
+    // Set persistence based on the "Remember Me" checkbox
+    const persistence = rememberMe.checked 
+        ? firebase.auth.Auth.Persistence.LOCAL // Stays logged in across browser sessions
+        : firebase.auth.Auth.Persistence.SESSION; // Clears when tab is closed
+
+    try {
+        await auth.setPersistence(persistence);
+
+        if (isLoginMode) {
+            // LOGIN LOGIC
+            await auth.signInWithEmailAndPassword(email, password);
+        } else {
+            // SIGN UP LOGIC
+            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+            const user = userCredential.user;
+            // Note: createDefaultPlayerState() is now called in the selectSlot logic
+        }
+    } catch (error) {
+        handleAuthError(error);
+    }
+});
+
+document.getElementById('closeMapButton').addEventListener('click', closeWorldMap);
+
+window.addEventListener('resize', () => {
+    if (!mapModal.classList.contains('hidden')) {
+        fitMapCanvasToContainer();
+        renderWorldMap();
+    }
+});
+
+function updateExploration() {
+    // Only track exploration in the Overworld
+    if (gameState.mapMode !== 'overworld') return false;
+
+    // Calculate Chunk ID
+    const chunkX = Math.floor(gameState.player.x / MAP_CHUNK_SIZE);
+    const chunkY = Math.floor(gameState.player.y / MAP_CHUNK_SIZE);
+    
+    // --- Prevent saving corrupted NaN chunk IDs ---
+    if (isNaN(chunkX) || isNaN(chunkY)) return false;
+    
+    const chunkId = `${chunkX},${chunkY}`;
+
+    // If the Set doesn't exist yet, create it.
+    if (!gameState.exploredChunks) {
+        // Try to recover data from the player object if it exists there
+        if (gameState.player && Array.isArray(gameState.player.exploredChunks)) {
+            gameState.exploredChunks = new Set(gameState.player.exploredChunks);
+        } else {
+            gameState.exploredChunks = new Set();
+        }
+    }
+
+    // Add to Set if new, and queue for Firebase Subcollection!
+    if (!gameState.exploredChunks.has(chunkId)) {
+        gameState.exploredChunks.add(chunkId);
+        
+        // --- NEW: Route to Subcollection Buffer ---
+        if (!gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
+        gameState.pendingMapSaves.chunks.add(chunkId);
+
+        return true; // Signal that we need to save
+    }
+    return false;
+}
+
+function grantXp(amount) {
+    const player = gameState.player;
+
+    // Safety: Ensure amount is a number
+    amount = Number(amount);
+    if (isNaN(amount) || amount <= 0) return;
+
+    // --- TALENT: SCHOLAR (+20% XP) ---
+    if (player.talents && player.talents.includes('scholar')) {
+        amount = Math.floor(amount * 1.2);
+    }
+
+    player.xp += amount;
+    
+    logMessage(`You gained ${amount} XP!`);
+    triggerStatFlash(statDisplays.xp, true);
+
+    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+${amount} XP`, '#a855f7');
+
+    // --- Level Up Loop ---
+    while (player.xp >= player.xpToNextLevel) { 
+        
+        const needed = player.xpToNextLevel; 
+        
+        if (player.xp >= needed) {
+            player.xp -= needed;
+            player.level++;
+            player.statPoints++;
+            player.xpToNextLevel = player.level * 100;
+            
+            // --- FULL HEAL ON LEVEL UP ---
+            player.health = player.maxHealth;
+            player.mana = player.maxMana;
+            player.stamina = player.maxStamina;
+            player.hunger = player.maxHunger;
+            player.thirst = player.maxThirst;
+
+            logMessage(`LEVEL UP! You are now level ${player.level}!`);
+            logMessage(`{green:You feel completely revitalized!}`); // Added flavor text
+            
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createLevelUp(player.x, player.y);
+            }
+
+            // Check for Class Evolution
+            if (player.level >= 10 && !player.classEvolved) {
+                openEvolutionModal();
+            }
+
+            // --- Award Talent Point every 3 levels ---
+            if (player.level % 3 === 0) {
+                player.talentPoints = (player.talentPoints || 0) + 1;
+                logMessage("You gained a Mastery Talent Point! Press 'P' to spend it.");
+                triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+            } else {
+                logMessage(`You gained 1 Stat Point.`);
+                triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
+            }
+        } else {
+            break; 
+        }
+    }
+
+    renderStats();
+}
+
+function initMobileControls() {
+    const mobileContainer = document.getElementById('mobileControls');
+    if (!mobileContainer) return; // Safety check
+
+    // Show controls when entering game
+    mobileContainer.classList.remove('hidden');
+
+    // --- Force show on larger mobile screens ---
+    // This removes the Tailwind class that hides it on large screens
+    mobileContainer.classList.remove('lg:hidden');
+
+    // Remove old listeners to prevent duplicates (Standard practice)
+    const newContainer = mobileContainer.cloneNode(true);
+    mobileContainer.parentNode.replaceChild(newContainer, mobileContainer);
+
+    // Attach Generic Listener
+    newContainer.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+
+        // Prevent double-tap zoom behavior
+        e.preventDefault();
+
+        if (btn && btn.dataset.key) {
+            e.stopPropagation();
+            handleInput(btn.dataset.key);
+        }
+    });
+
+    // Prevent double-tap zoom on the buttons specifically
+    newContainer.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+    });
+}
+
+const stashModal = document.getElementById('stashModal');
+const closeStashButton = document.getElementById('closeStashButton');
+const stashPlayerList = document.getElementById('stashPlayerList');
+const stashBankList = document.getElementById('stashBankList');
+
+closeStashButton.addEventListener('click', () => stashModal.classList.add('hidden'));
+
+function initShopListeners() {
+    // Close button
+    closeShopButton.addEventListener('click', () => {
+        shopModal.classList.add('hidden');
+    });
+
+    // Handle clicks inside the "Buy" list
+    shopBuyList.addEventListener('click', (e) => {
+        if (e.target.dataset.buyItem) {
+            handleBuyItem(e.target.dataset.buyItem);
+        }
+    });
+
+    // Handle clicks inside the "Sell" list
+    shopSellList.addEventListener('click', (e) => {
+        if (e.target.dataset.sellIndex) {
+            handleSellItem(parseInt(e.target.dataset.sellIndex, 10));
+        }
+    });
+}
+
+function initSpellbookListeners() {
+    closeSpellButton.addEventListener('click', () => {
+        spellModal.classList.add('hidden');
+    });
+
+    spellList.addEventListener('click', (e) => {
+        const spellItem = e.target.closest('.spell-item');
+        if (spellItem && spellItem.dataset.spell) {
+            castSpell(spellItem.dataset.spell);
+        }
+    });
+}
+
+function openInventoryModal() {
+    if (window.inputQueue) window.inputQueue.length = 0;
+    if (gameState.player.inventory.length === 0) {
+        logMessage("Your inventory is empty.");
+        return;
+    }
+    renderInventory(); // Re-render inventory just before showing
+    inventoryModal.classList.remove('hidden');
+    gameState.inventoryMode = true; // Enter inventory mode
+}
+
+function closeInventoryModal() {
+    inventoryModal.classList.add('hidden');
+    gameState.inventoryMode = false; // Exit inventory mode
+}
+
+const evolutionModal = document.getElementById('evolutionModal');
+const evolutionOptionsDiv = document.getElementById('evolutionOptions');
+
+// This function will be called every time an enemy is killed
+function updateQuestProgress(enemyTile) {
+    if (!gameState.player.quests) return; // Safety check for missing quest object
+
+    const playerQuests = gameState.player.quests;
+
+    for (const questId in playerQuests) {
+        const playerQuest = playerQuests[questId];
+        const questData = QUEST_DATA[questId];
+
+        // 1. Check if quest data exists in the game code
+        if (!questData) {
+            console.warn(`Skipping unknown quest ID in save file: ${questId}`);
+            continue;
+        }
+        
+        // 2. Check if the player's quest data is valid (not null/undefined)
+        if (!playerQuest || typeof playerQuest !== 'object') {
+            console.warn(`Skipping corrupted quest data for: ${questId}`);
+            continue;
+        }
+
+        // Is this an active quest, not yet complete, and for this enemy type?
+        // Note: questData.needed is checked dynamically
+        if (playerQuest.status === 'active' && questData.enemy === enemyTile) {
+            
+            // --- NaN CORRUPTION PROTECTION ---
+            // If kills is undefined, null, or NaN, safely coerce it to 0 before incrementing!
+            let currentKills = Number(playerQuest.kills);
+            if (isNaN(currentKills)) currentKills = 0;
+            
+            if (currentKills < questData.needed) {
+                playerQuest.kills = currentKills + 1;
+                logMessage(`Bounty: (${playerQuest.kills} / ${questData.needed})`);
+            }
+        }
+    }
+}
+
+function initQuestListeners() {
+    closeQuestButton.addEventListener('click', () => {
+        questModal.classList.add('hidden');
+    });
+
+    questList.addEventListener('click', (e) => {
+        const button = e.target.closest('button');
+        if (!button) return;
+
+        const questId = button.dataset.questId;
+        const action = button.dataset.action;
+
+        if (action === 'accept') {
+            acceptQuest(questId);
+        } else if (action === 'turnin') {
+            turnInQuest(questId);
+        }
+    });
+}
+
+const collectionsModal = document.getElementById('collectionsModal');
+const closeCollectionsButton = document.getElementById('closeCollectionsButton');
+const bestiaryView = document.getElementById('bestiaryView');
+const libraryView = document.getElementById('libraryView');
+const tabBestiary = document.getElementById('tabBestiary');
+const tabLibrary = document.getElementById('tabLibrary');
+
+// --- Event Listeners ---
+closeCollectionsButton.addEventListener('click', () => collectionsModal.classList.add('hidden'));
+
+tabBestiary.addEventListener('click', () => {
+    bestiaryView.classList.remove('hidden');
+    libraryView.classList.add('hidden');
+    tabBestiary.classList.add('border-b-2', 'border-blue-500', 'text-black');
+    tabBestiary.classList.remove('text-gray-500');
+    tabLibrary.classList.remove('border-b-2', 'border-blue-500', 'text-black');
+    tabLibrary.classList.add('text-gray-500');
+});
+
+tabLibrary.addEventListener('click', () => {
+    libraryView.classList.remove('hidden');
+    bestiaryView.classList.add('hidden');
+    tabLibrary.classList.add('border-b-2', 'border-blue-500', 'text-black');
+    tabLibrary.classList.remove('text-gray-500');
+    tabBestiary.classList.remove('border-b-2', 'border-blue-500', 'text-black');
+    tabBestiary.classList.add('text-gray-500');
+});
+
+function initSkillTrainerListeners() {
+    closeSkillTrainerButton.addEventListener('click', () => {
+        skillTrainerModal.classList.add('hidden');
+    });
+
+    skillTrainerList.addEventListener('click', (e) => {
+        const button = e.target.closest('button[data-skill-id]');
+        if (button && !button.disabled) {
+            handleLearnSkill(button.dataset.skillId);
+        }
+    });
+}
+
+function passivePerceptionCheck() {
+    const player = gameState.player;
+
+    // This check only works in dungeons
+    if (gameState.mapMode !== 'dungeon') {
+        return;
+    }
+
+    const map = chunkManager.caveMaps[gameState.currentCaveId];
+    if (!map) return; // Map not loaded
+
+    const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+    const secretWallTile = theme.secretWall;
+    if (!secretWallTile) return; // This theme has no secret walls
+
+    let foundWall = false;
+
+    // Check all 8 adjacent tiles
+    for (let y = -1; y <= 1; y++) {
+        for (let x = -1; x <= 1; x++) {
+            if (x === 0 && y === 0) continue; // Skip self
+
+            const checkX = player.x + x;
+            const checkY = player.y + y;
+
+            if (map[checkY] && map[checkY][checkX] === secretWallTile) {
+                // We are adjacent to a secret wall.
+                // Roll to see if we spot it.
+                // 1% chance per perception point, max 75% chance per check.
+                const spotChance = Math.min(player.perception * 0.01, 0.75);
+
+                if (Math.random() < spotChance) {
+                    map[checkY][checkX] = theme.floor; // Reveal the wall!
+                    foundWall = true;
+                }
+            }
+        }
+    }
+
+    if (foundWall) {
+        // We only log once even if multiple walls are found in one step
+        logMessage("Your keen perception reveals a hidden passage!");
+        grantXp(15); // Grant the same XP as breaking it
+        // We don't need to call render() here, as the main movement
+        // block will call render() just after this function finishes.
+    }
+}
+
+/**
+ * Calculates the natural terrain for a specific coordinate
+ * based on the world seed noises.
+ */
+
+function getBaseTerrain(worldX, worldY) {
+    const elev = elevationNoise.noise(worldX / 70, worldY / 70);
+    const moist = moistureNoise.noise(worldX / 50, worldY / 50);
+
+    let tile = '.';
+    if (elev < 0.35) tile = '~'; // Water
+    else if (elev < 0.4 && moist > 0.7) tile = '≈'; // Swamp
+    else if (elev > 0.8) tile = '^'; // Mountain
+    else if (elev > 0.6 && moist < 0.3) tile = 'd'; // Deadlands
+    else if (moist < 0.15) tile = 'D'; // Desert
+    else if (moist > 0.55) tile = 'F'; // Forest
+
+    // --- NATURAL SPAWN SAFETY OVERRIDE ---
+    // Instead of a hard square, use a circular radius (Distance Squared)
+    const distSq = (worldX * worldX) + (worldY * worldY);
+    if (distSq <= 100) { // Radius of 10 tiles from spawn
+        // Only override blocking or dangerous terrain, let natural forests/deserts stay!
+        if (['^', '~', '≈', 'd'].includes(tile)) {
+            // Downgrade dangerous tiles to Forest or Plains depending on how wet the area is
+            tile = moist > 0.5 ? 'F' : '.'; 
+        }
+    }
+
+    return tile;
+}
+
+function endPlayerTurn(turnUpdates = {}) {
+    
+    // Inherit any updates passed in from movement/interactions!
+    let updates = { ...turnUpdates }; 
+
+    // --- LIGHT SURVIVAL MECHANICS ---
+    const player = gameState.player;
+
+    // Base drain rates (Standard difficulty)
+    let hungerDrain = 0.02;
+    let thirstDrain = 0.05;
+
+    // Grace Period (Level 1-2)
+    if (player.level < 3) {
+        hungerDrain = 0.005;
+        thirstDrain = 0.01;
+    }
+
+    if (player.completedLoreSets && player.completedLoreSets.includes('adventurer_tips')) {
+        hungerDrain *= 0.90; // 10% Slower drain
+        thirstDrain *= 0.90; 
+    }
+
+    // --- LICH: UNDEATH ---
+    if (!player.talents || !player.talents.includes('undeath')) {
+        player.hunger = Math.max(0, player.hunger - hungerDrain);
+        player.thirst = Math.max(0, player.thirst - thirstDrain);
+    }
+
+    // --- ENVIRONMENTAL HAZARDS ---
+    let currentTile;
+    if (gameState.mapMode === 'dungeon') {
+        const map = chunkManager.caveMaps[gameState.currentCaveId];
+        currentTile = (map && map[player.y]) ? map[player.y][player.x] : '.';
+    }
+    else if (gameState.mapMode === 'castle') {
+        const map = chunkManager.castleMaps[gameState.currentCastleId];
+        currentTile = (map && map[player.y]) ? map[player.y][player.x] : '.';
+    }
+    else {
+        currentTile = chunkManager.getTile(player.x, player.y);
+    }
+
+    const inDungeon = gameState.mapMode === 'dungeon';
+
+    // 1. LAVA (Volcano Biome)
+    if (inDungeon && gameState.currentCaveTheme === 'FIRE' && (currentTile === '~' || currentTile === '≈')) {
+        const hasArmor = player.equipment.armor && player.equipment.armor.name.includes('Dragonscale');
+        const hasPotion = player.fireResistTurns > 0;
+
+        if (!hasArmor && !hasPotion && !gameState.godMode) {
+            logMessage("The lava burns you! (2 Dmg)");
+            player.health -= 2;
+            gameState.screenShake = 10;
+            triggerStatFlash(statDisplays.health, false);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "BURN", "#ef4444");
+
+            if (handlePlayerDeath()) return;
+        }
+    }
+
+    // 2. DROWNING (Sunken Temple / Deep Water)
+    if (currentTile === '~') {
+        const hasGills = player.waterBreathingTurns > 0;
+        const isBoating = player.isBoating;
+
+        if (!hasGills && !isBoating && !player.isSailing && !gameState.godMode) {
+            if (player.waterBreathingTurns === 0 && updates.waterBreathingTurns === 0) {
+                logMessage("Your magical gills fade away...");
+            }
+            logMessage("The deep water swallows you whole!");
+            logMessage("You have drowned.");
+
+            player.health = 0;
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "☠️", "#1e3a8a");
+
+            handlePlayerDeath();
+            return;
+        }
+    }
+
+    // --- 1. THE BONUSES (Vitality) ---
+    let regenBonus = false;
+
+    if (player.hunger > 80 && player.health < player.maxHealth && gameState.playerTurnCount % 5 === 0) {
+        player.health++;
+        logMessage("Well Fed: You regenerate 1 Health.");
+        triggerStatFlash(statDisplays.health, true);
+        ParticleSystem.createFloatingText(player.x, player.y, "♥", "#22c55e");
+        regenBonus = true;
+    }
+
+    if (player.thirst > 80 && player.stamina < player.maxStamina && gameState.playerTurnCount % 3 === 0) {
+        player.stamina++;
+        logMessage("Hydrated: You regenerate 1 Stamina.");
+        triggerStatFlash(statDisplays.stamina, true);
+        regenBonus = true;
+    }
+
+    // Mages & Necromancers (and their evolutions) regenerate mana every 3 turns. Others every 5 turns.
+    const isMage = ['mage', 'necromancer'].includes(player.background);
+    const manaRegenRate = isMage ? 3 : 5; 
+
+    // Regenerate if they aren't starving/dehydrated and aren't at max mana
+    if (player.hunger > 0 && player.thirst > 0 && player.mana < player.maxMana && gameState.playerTurnCount % manaRegenRate === 0) {
+        player.mana++;
+        
+        // We only log it occasionally to prevent spamming the chat box, but the UI bar flashes every time!
+        if (gameState.playerTurnCount % (manaRegenRate * 3) === 0) {
+            logMessage("Your magic reserves slowly replenish. (+1 Mana)");
+        }
+        
+        triggerStatFlash(statDisplays.mana, true);
+        regenBonus = true;
+    }
+
+    // --- 2. THE PENALTIES (Weakness) ---
+    if (player.hunger <= 0 && gameState.playerTurnCount % 10 === 0) {
+        logMessage("Your stomach growls. You feel weak. (No HP Regen)");
+    }
+    if (player.thirst <= 0 && gameState.playerTurnCount % 10 === 0) {
+        logMessage("Your throat is parched. You feel sluggish. (No Stamina Regen)");
+    }
+
+    if (gameState.mapMode === 'overworld') {
+        wakeUpNearbyEnemies();
+    }
+
+    // --- UPDATED AMBUSH LOGIC ---
+    // Was: % 60 and < 0.20 (Avg every 300 turns)
+    // Now: % 150 and < 0.05 (Avg every 3000 turns) -> Much rarer!
+     // --- UPDATED AMBUSH LOGIC ---
+    if (gameState.mapMode === 'overworld' && gameState.playerTurnCount % 150 === 0) {
+        
+        // --- 1. CALCULATE SAFETY METRICS ---
+        const distFromSpawn = Math.sqrt(player.x * player.x + player.y * player.y);
+        
+        // --- 2. APPLY SAFEGUARDS ---
+        // Rule A: No ambushes within 50 tiles of the village (Safe Zone)
+        // Rule B: No ambushes if Level 1 (Newbie Grace Period)
+        if (distFromSpawn > 50 && player.level >= 2) {
+
+            // 5% Chance (1 in 20)
+            if (Math.random() < 0.05) { 
+                logMessage("{red:AMBUSH!} Enemies are closing in!");
+                gameState.screenShake = 15;
+                AudioSystem.playHit();
+
+                const currentTile = chunkManager.getTile(player.x, player.y);
+                let ambushType = 'b';
+                if (currentTile === 'F') ambushType = 'w';
+                if (currentTile === 'd') ambushType = 's';
+                if (currentTile === 'D') ambushType = '🦂';
+
+                // Reduce spawn count slightly (3 instead of 4) for fairness
+                const offsets = [[-4, 0], [4, 0], [0, -4]]; 
+
+                offsets.forEach(offset => {
+                    const tx = player.x + offset[0] + Math.floor(Math.random() * 3) - 1;
+                    const ty = player.y + offset[1] + Math.floor(Math.random() * 3) - 1;
+
+                    const enemyData = window.ENEMY_DATA[ambushType]; // Use window. to be safe
+                    const enemyId = `overworld:${tx},${-ty}`;
+                    
+                    // Use our safe scaling logic
+                    const scaledStats = getScaledEnemy(enemyData, tx, ty);
+                    
+                    // Ensure we don't overwrite an existing enemy
+                    if (!gameState.sharedEnemies[enemyId]) {
+                        const newEnemy = { 
+                            ...scaledStats, 
+                            tile: ambushType, 
+                            x: tx, 
+                            y: ty,
+                            spawnTime: Date.now() 
+                        };
+
+                        if (typeof EnemyNetworkManager !== 'undefined') {
+                            rtdb.ref(EnemyNetworkManager.getPath(tx, ty, enemyId)).set(newEnemy);
+                        }
+                        
+                        if (typeof ParticleSystem !== 'undefined') {
+                            ParticleSystem.createExplosion(tx, ty, '#ef4444');
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    gameState.playerTurnCount++;
+    updateWeather();
+
+    // --- DISTRIBUTED ENEMY GARBAGE COLLECTION ---
+    // Every 50 turns, have this client sweep the area to delete abandoned enemies
+    if (gameState.mapMode === 'overworld' && gameState.playerTurnCount % 50 === 0) {
+        Object.entries(gameState.sharedEnemies).forEach(([enemyId, enemy]) => {
+            let isNearAnyone = false;
+            
+            // 1. Is it near YOU? (Within 100 tiles)
+            if (Math.abs(enemy.x - gameState.player.x) < 100 && Math.abs(enemy.y - gameState.player.y) < 100) {
+                isNearAnyone = true;
+            }
+            
+            // 2. Is it near any OTHER online player?
+            for (const pid in otherPlayers) {
+                const op = otherPlayers[pid];
+                if (op.mapMode === 'overworld' && Math.abs(enemy.x - op.x) < 100 && Math.abs(enemy.y - op.y) < 100) {
+                    isNearAnyone = true;
+                }
+            }
+
+            // 3. If no one is around, delete it from Firebase to save database quotas!
+            if (!isNearAnyone) {
+                if (typeof EnemyNetworkManager !== 'undefined') {
+                    rtdb.ref(EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)).remove();
+                }
+                delete gameState.sharedEnemies[enemyId];
+            }
+        });
+    }
+
+    // --- STORM LIGHTNING STRIKES ---
+    if (gameState.mapMode === 'overworld' && gameState.weather === 'storm') {
+        if (Math.random() < 0.15) {
+            const rx = gameState.player.x + Math.floor(Math.random() * 20) - 10;
+            const ry = gameState.player.y + Math.floor(Math.random() * 20) - 10;
+
+            logMessage("⚡ CRACK! Lightning strikes nearby!");
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createExplosion(rx, ry, '#facc15', 10);
+            }
+
+            if (rx === gameState.player.x && ry === gameState.player.y) {
+                logMessage("You were struck by lightning!! (10 Dmg)");
+                gameState.player.health -= 10;
+                gameState.screenShake = 10;
+                triggerStatFlash(statDisplays.health, false);
+            }
+            else {
+                applySpellDamage(rx, ry, 10, 'thunderbolt');
+            }
+        }
+    }
+
+    // --- 1. Tick Status Effects ---
+    if (player.poisonTurns > 0) {
+        player.poisonTurns--;
+        player.health -= 1;
+        gameState.screenShake = 10;
+        logMessage("You take 1 poison damage...");
+        triggerStatFlash(statDisplays.health, false);
+        ParticleSystem.createFloatingText(player.x, player.y, "-1", "#22c55e");
+
+        updates.health = player.health;
+        updates.poisonTurns = player.poisonTurns;
+        if (player.poisonTurns === 0) {
+            logMessage("The poison has worn off.");
+        }
+    }
+
+    if (player.waterBreathingTurns > 0) {
+        player.waterBreathingTurns--;
+        updates.waterBreathingTurns = player.waterBreathingTurns;
+
+        if (player.waterBreathingTurns === 3) {
+            logMessage("Warning: Your gills are starting to close up! (3 turns left)");
+        }
+        if (player.waterBreathingTurns === 0) {
+            logMessage("Your gills disappear.");
+        }
+    }
+
+    if (player.frostbiteTurns > 0) {
+        player.frostbiteTurns--;
+        player.stamina = Math.max(0, player.stamina - 2);
+        logMessage("Frostbite saps your stamina...");
+        triggerStatFlash(statDisplays.stamina, false);
+        updates.stamina = player.stamina;
+        updates.frostbiteTurns = player.frostbiteTurns;
+        if (player.frostbiteTurns === 0) {
+            logMessage("You are no longer frostbitten.");
+        }
+    }
+
+    if (player.strengthBonusTurns > 0) {
+        player.strengthBonusTurns--;
+        updates.strengthBonusTurns = player.strengthBonusTurns;
+
+        if (player.strengthBonusTurns === 0) {
+            player.strengthBonus = 0;
+            logMessage("Your surge of strength fades.");
+            updates.strengthBonus = 0;
+        }
+        renderEquipment();
+    }
+
+    if (player.witsBonusTurns > 0) {
+        player.witsBonusTurns--;
+        updates.witsBonusTurns = player.witsBonusTurns;
+
+        if (player.witsBonusTurns === 0) {
+            player.witsBonus = 0;
+            logMessage("The clarity of mind fades.");
+            updates.witsBonus = 0;
+        }
+    }
+
+    if (player.thornsTurns > 0) {
+        player.thornsTurns--;
+        updates.thornsTurns = player.thornsTurns;
+        if (player.thornsTurns === 0) {
+            player.thornsValue = 0;
+            updates.thornsValue = 0;
+            logMessage("Your thorny skin softens.");
+        }
+    }
+
+    if (player.fireResistTurns > 0) {
+        player.fireResistTurns--;
+        updates.fireResistTurns = player.fireResistTurns;
+        if (player.fireResistTurns === 0) logMessage("Your fire resistance fades.");
+    }
+
+    // --- TICK COOLDOWNS ---
+    if (player.cooldowns) {
+        let cooldownsChanged = false;
+        for (const key in player.cooldowns) {
+            if (player.cooldowns[key] > 0) {
+                player.cooldowns[key]--;
+                cooldownsChanged = true;
+            }
+        }
+        if (cooldownsChanged) {
+            updates.cooldowns = player.cooldowns;
+            renderHotbar();
+        }
+    }
+
+    // --- CANDLELIGHT TIMER ---
+    if (player.candlelightTurns > 0) {
+        player.candlelightTurns--;
+        updates.candlelightTurns = player.candlelightTurns;
+        if (player.candlelightTurns === 5) {
+            logMessage("Your magical light is flickering...");
+        }
+        if (player.candlelightTurns === 0) {
+            logMessage("Your Candlelight spell extinguishes.");
+        }
+    }
+
+    // --- TICK STEALTH ---
+    if (player.stealthTurns > 0) {
+        player.stealthTurns--;
+        if (player.stealthTurns === 0) {
+            logMessage("You emerge from the shadows.");
+        }
+        updates.stealthTurns = player.stealthTurns;
+    }
+
+    // Tick down buff/debuff durations
+    if (gameState.player.defenseBonusTurns > 0) {
+        gameState.player.defenseBonusTurns--;
+
+        if (gameState.player.defenseBonusTurns === 0) {
+            gameState.player.defenseBonus = 0;
+            logMessage("You are no longer bracing.");
+            playerRef.update({
+                defenseBonus: 0,
+                defenseBonusTurns: 0
+            });
+        } else {
+            playerRef.update({
+                defenseBonusTurns: gameState.player.defenseBonusTurns,
+                ...updates
+            });
+        }
+        renderEquipment();
+    }
+
+    if (gameState.player.shieldTurns > 0) {
+        gameState.player.shieldTurns--;
+
+        if (gameState.player.shieldTurns === 0) {
+            gameState.player.shieldValue = 0;
+            logMessage("Your Arcane Shield fades.");
+            playerRef.update({
+                shieldValue: 0,
+                shieldTurns: 0
+            });
+        } else {
+            playerRef.update({
+                shieldTurns: gameState.player.shieldTurns,
+                ...updates
+            });
+        }
+        renderStats();
+    }
+
+    processFriendlyTurns();
+    runCompanionTurn();
+    runSharedAiTurns();
+
+    processEnemyTurns();
+
+    // We merge the specific status updates (poison, buffs) with the core stats.
+    // This ensures XP, Quests, and Health are saved together, preventing the reset bug.
+ const finalUpdates = {
+        ...updates, 
+
+        // Core Vitals
+        health: gameState.player.health,
+        stamina: gameState.player.stamina,
+        mana: gameState.player.mana,
+        psyche: gameState.player.psyche,
+        hunger: gameState.player.hunger,
+        thirst: gameState.player.thirst,
+
+        bonusMaxHealth: gameState.player.bonusMaxHealth || 0,
+        bonusMaxMana: gameState.player.bonusMaxMana || 0,
+        bonusMaxStamina: gameState.player.bonusMaxStamina || 0,
+        bonusMaxPsyche: gameState.player.bonusMaxPsyche || 0,
+
+        // Progression 
+        xp: gameState.player.xp,
+        level: gameState.player.level,
+        statPoints: gameState.player.statPoints,
+        talentPoints: gameState.player.talentPoints || 0,
+        killCounts: gameState.player.killCounts || {},
+        quests: gameState.player.quests || {},
+
+        // World State & Companions
+        x: gameState.player.x,
+        y: gameState.player.y,
+        activeTreasure: gameState.activeTreasure || null,
+        weather: gameState.weather || 'clear',
+        companion: gameState.player.companion || null, // Save companion HP/State
+        
+        // --- MULTIVERSE STATE ---
+        currentRealm: gameState.currentRealm || 0,
+        realmMutators: gameState.realmMutators || []
+    };
+
+    // Only serialize massive sets if they were flagged as changed in attemptMovePlayer
+    if (updates.exploredChunks) finalUpdates.exploredChunks = updates.exploredChunks;
+    if (updates.lootedTiles) finalUpdates.lootedTiles = updates.lootedTiles;
+    if (updates.discoveredRegions) finalUpdates.discoveredRegions = updates.discoveredRegions;
+
+    // --- 7. SAVE LOGIC (OPTIMIZED) ---
+    // We no longer force a save every single time you cross a 16x16 chunk boundary.
+    // Every single stat, item, and map update is cleanly routed through the background throttler!
+    
+    if (gameState.player.health <= 0) {
+        if (handlePlayerDeath()) {
+            syncPlayerState();
+            return; // Halt save to prevent overwriting the death reset
+        }
+    }
+
+    triggerDebouncedSave(finalUpdates);
+
+    // --- 8. PASSIVE TALENTS ---
+    // PALADIN: HOLY AURA
+    if (player.talents && player.talents.includes('holy_aura')) {
+        if (player.companion && player.companion.hp < player.companion.maxHp) {
+            player.companion.hp = Math.min(player.companion.maxHp, player.companion.hp + 2);
+            if (Math.random() < 0.1) logMessage("Holy Aura heals your companion.");
+        }
+        if (player.health < player.maxHealth * 0.3) {
+            player.health += 1;
+            triggerStatFlash(statDisplays.health, true);
+        }
+    }
+
+    renderStats();
+}
+
+restartButton.addEventListener('click', restartGame);
+
+closeLoreButton.addEventListener('click', () => {
+    loreModal.classList.add('hidden');
+});
+
+loreModal.addEventListener('click', (event) => {
+    if (event.target === loreModal) {
+        loreModal.classList.add('hidden');
+    }
+});
+
+function drinkFromSource() {
+    const player = gameState.player;
+
+    // 1. Define offsets to check (Current tile + N/S/E/W)
+    const offsets = [
+        { x: 0, y: 0 },   // Standing on
+        { x: 0, y: -1 },  // North
+        { x: 0, y: 1 },   // South
+        { x: -1, y: 0 },  // West
+        { x: 1, y: 0 }    // East
+    ];
+
+    let foundWater = false;
+    let waterType = null;
+
+    // 2. Scan surroundings
+    for (const offset of offsets) {
+        const tx = player.x + offset.x;
+        const ty = player.y + offset.y;
+
+        let tile;
+        // Logic to get tile based on map mode
+        if (gameState.mapMode === 'overworld') {
+            tile = chunkManager.getTile(tx, ty);
+        } else if (gameState.mapMode === 'dungeon') {
+            const map = chunkManager.caveMaps[gameState.currentCaveId];
+            tile = (map && map[ty]) ? map[ty][tx] : null;
+        } else if (gameState.mapMode === 'castle') {
+            const map = chunkManager.castleMaps[gameState.currentCastleId];
+            tile = (map && map[ty]) ? map[ty][tx] : null;
+        }
+
+        // Check for water types
+        if (tile === '~') { waterType = 'fresh'; foundWater = true; break; } // River/Lake
+        if (tile === '≈') { waterType = 'swamp'; foundWater = true; break; } // Swamp
+        if (tile === '⛲') { waterType = 'magic'; foundWater = true; break; } // Fountain
+    }
+
+    // 3. Apply Effects
+    if (foundWater) {
+        // Allow drinking from magic fountains even if thirst is full
+        if (waterType !== 'magic' && player.thirst >= player.maxThirst) {
+            logMessage("You aren't thirsty.");
+            return;
+        }
+
+        if (waterType === 'fresh') {
+            player.thirst = Math.min(player.maxThirst, player.thirst + 50);
+            logMessage("You cup your hands and drink from the water. (+50 Thirst)");
+            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+        }
+        else if (waterType === 'swamp') {
+            player.thirst = Math.min(player.maxThirst, player.thirst + 30);
+            logMessage("The water tastes foul, but it helps. (+30 Thirst)");
+
+            // 20% chance of Dysentery (Poison)
+            if (Math.random() < 0.2) {
+                logMessage("Your stomach churns... (Poisoned)");
+                player.poisonTurns = 5;
+            }
+            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+        }
+
+        else if (waterType === 'magic') {
+            // Optional: Check if actually needed
+            if (player.thirst >= player.maxThirst && player.stamina >= player.maxStamina) {
+                logMessage("The fountain hums, but you are already fully revitalized.");
+                return; // Don't waste a turn
+            }
+
+            player.thirst = player.maxThirst;
+            player.stamina = player.maxStamina;
+            logMessage("The magic water revitalizes you! (Full Thirst & Stamina)");
+            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+            triggerStatAnimation(document.getElementById('staminaDisplay'), 'stat-pulse-yellow'); // Add visual for stamina too
+        }
+
+        // Cost 1 turn
+        endPlayerTurn();
+        renderStats();
+
+    } else {
+        logMessage("There is no water nearby to drink.");
+    }
+}
+
+function handleChatCommand(message) {
+    // 1. Remove the leading '/' and split into parts
+    const raw = message.substring(1); 
+    const parts = raw.split(' ');     
+    const command = parts[0].toLowerCase();
+    const args = parts.slice(1);
+
+    // --- 🚨 SECURITY: ADMIN GUARD ---
+    // Define the emails of developers/admins here
+    const ADMIN_EMAILS = [
+        "your.email@gmail.com", // <-- CHANGE THIS TO YOUR ACTUAL GOOGLE/FIREBASE EMAIL
+        "admin@cavesandcastles.com"
+    ];
+
+    // List of commands that require admin privileges
+    const protectedCommands = ['purge', 'nuke', 'god', 'heal', 'tp', 'give'];
+
+    if (protectedCommands.includes(command)) {
+        // Check if the current user is logged in and their email is in the admin list
+        if (!auth.currentUser || !ADMIN_EMAILS.includes(auth.currentUser.email)) {
+            logMessage("{red:Unauthorized. You do not have permission to use this command.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+    }
+
+    // 2. Command Switch
+    switch (command) {
+
+        case 'help':
+        case 'commands':
+            logMessage("--- Available Commands ---");
+            logMessage("/who : List online players");
+            logMessage("/stuck : Teleport to spawn (0,0)");
+            
+            // Only show admin commands to actual admins!
+            if (auth.currentUser && ADMIN_EMAILS.includes(auth.currentUser.email)) {
+                logMessage("--- Admin Commands ---");
+                logMessage("/tp [x] [y] : Teleport to coordinates");
+                logMessage("/give [item name] [qty] : Spawn an item");
+                logMessage("/heal : Full restore (Cheat)");
+                logMessage("/god : Toggle God Mode");
+                logMessage("/nuke : Despawn all overworld enemies");
+                logMessage("/purge : Force-delete current map chunk");
+            }
+            break;
+
+        case 'purge':
+            // 1. Clear local memory
+            chunkManager.loadedChunks = {};
+            chunkManager.worldState = {};
+            gameState.exploredChunks = new Set();
+
+            // 2. Clear Firebase World State (This deletes ALL map data)
+            logMessage("Purging world map... (This may take a moment)");
+            const batch = db.batch();
+            // Note: Deleting collections client-side is hard in Firestore. 
+            // Instead, we will just force a re-render of the CURRENT chunk locally
+            // and overwrite it.
+
+            chunkManager.loadedChunks = {}; // Clear local cache
+            chunkManager.worldState = {};   // Clear state buffer
+
+            // Force regenerate current location
+            const cX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+            const cY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+            const chunkId = `${cX},${cY}`;
+
+            // Delete the specific chunk from Firebase RTDB
+            rtdb.ref('worldState/' + chunkId).remove().then(() => {
+                logMessage("Current chunk purged. Regenerating...");
+                render();
+            });
+            break;
+
+        case 'nuke':
+            logMessage("NUKE: Wiping all enemies from the map...");
+            rtdb.ref('worldEnemies').remove().then(() => {
+                logMessage("Map cleared. Enemies will respawn naturally.");
+                gameState.sharedEnemies = {}; // Clear local state
+                wokenEnemyTiles.clear(); // Reset spawn memory
+                render();
+            });
+            break;
+
+        case 'who':
+            let onlineList = ["You"];
+            for (const id in otherPlayers) {
+                const p = otherPlayers[id];
+                // Sanitize the name before adding it to the list
+                const rawName = p.email ? p.email.split('@')[0] : "Unknown";
+                const safeName = escapeHtml(rawName);
+                
+                onlineList.push(`${safeName} (Lvl ${escapeHtml(p.level) || '?'})`);
+            }
+            logMessage(`Online Players (${onlineList.length}): ${onlineList.join(', ')}`);
+            break;
+
+        case 'stuck':
+            gameState.player.x = 0;
+            gameState.player.y = 0;
+            exitToOverworld("You force a teleport back to the village.");
+            break;
+
+        case 'god':
+            gameState.godMode = !gameState.godMode;
+            if (gameState.godMode) {
+                logMessage("God Mode ENABLED. You are immortal.");
+                // Prevent death in damage logic by adding a check for gameState.godMode
+            } else {
+                logMessage("God Mode DISABLED.");
+            }
+            break;
+
+        case 'heal':
+            gameState.player.health = gameState.player.maxHealth;
+            gameState.player.mana = gameState.player.maxMana;
+            gameState.player.stamina = gameState.player.maxStamina;
+            gameState.player.hunger = gameState.player.maxHunger;
+            gameState.player.thirst = gameState.player.maxThirst;
+            playerRef.update({
+                health: gameState.player.health,
+                mana: gameState.player.mana,
+                stamina: gameState.player.stamina,
+                hunger: gameState.player.hunger,
+                thirst: gameState.player.thirst
+            });
+            renderStats();
+            logMessage("Cheater! (Health fully restored)");
+            break;
+
+        case 'tp':
+            if (args.length < 2) {
+                logMessage("Usage: /tp [x] [y]");
+                return;
+            }
+            const tx = parseInt(args[0]);
+            const ty = parseInt(args[1]); // Remember y is usually inverted in display, but raw here
+
+            if (isNaN(tx) || isNaN(ty)) {
+                logMessage("Invalid coordinates.");
+                return;
+            }
+
+            gameState.player.x = tx;
+            gameState.player.y = -ty; // Invert Y to match map display logic if needed, or keep raw
+
+            // Handle visual updates
+            chunkManager.unloadOutOfRangeChunks(
+                Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE),
+                Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE)
+            );
+
+            logMessage(`Teleported to ${tx}, ${ty}.`);
+            updateRegionDisplay();
+            render();
+            renderMinimap();
+            syncPlayerState();
+
+            playerRef.update({ x: gameState.player.x, y: gameState.player.y });
+            break;
+
+        case 'give':
+            if (args.length < 1) {
+                logMessage("Usage: /give [item name] [quantity]");
+                return;
+            }
+
+            // Logic to handle multi-word items (e.g. "Rusty Sword")
+            // Check if the last argument is a number (quantity)
+            let quantity = 1;
+            let itemName = "";
+
+            const lastArg = args[args.length - 1];
+            if (!isNaN(parseInt(lastArg))) {
+                quantity = parseInt(lastArg);
+                itemName = args.slice(0, -1).join(' '); // Join the rest as name
+            } else {
+                itemName = args.join(' '); // No number, assume name
+            }
+
+            // Case-insensitive search in ITEM_DATA
+            const targetKey = Object.keys(ITEM_DATA).find(k =>
+                ITEM_DATA[k].name.toLowerCase() === itemName.toLowerCase()
+            );
+
+            if (targetKey) {
+                const template = ITEM_DATA[targetKey];
+
+                // Add to inventory
+                if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    gameState.player.inventory.push({
+                        name: template.name,
+                        type: template.type,
+                        quantity: quantity,
+                        tile: targetKey,
+                        // Copy properties if they exist
+                        damage: template.damage || null,
+                        defense: template.defense || null,
+                        slot: template.slot || null,
+                        statBonuses: template.statBonuses || null,
+                        effect: template.effect // Copy function ref
+                    });
+
+                    logMessage(`Spawned ${quantity}x ${template.name}.`);
+                    renderInventory();
+                    playerRef.update({ inventory: getSanitizedInventory() });
+                } else {
+                    logMessage("Inventory full!");
+                }
+            } else {
+                logMessage(`Item '${itemName}' not found.`);
+            }
+            break;
+
+        default:
+            logMessage(`Unknown command: /${command}. Type /help for list.`);
+            break;
+    }
+}
+
+function restPlayer() {
+    // 1. Check Survival Constraints
+    if (gameState.player.hunger <= 0 || gameState.player.thirst <= 0) {
+        logMessage("You are too weak from hunger or thirst to rest effectively.");
+        endPlayerTurn(); 
+        return;
+    }
+
+    let rested = false;
+    let logMsg = "You rest for a moment. ";
+
+    // 2. Check Location
+    const inSafeZone = (gameState.mapMode === 'castle');
+    const restAmount = inSafeZone ? 5 : 1;
+
+    // 3. Regenerate Stamina
+    if (gameState.player.stamina < gameState.player.maxStamina) {
+        const amountToAdd = Math.min(gameState.player.maxStamina - gameState.player.stamina, restAmount);
+        gameState.player.stamina += amountToAdd;
+        triggerStatFlash(statDisplays.stamina, true);
+        logMsg += `Recovered ${amountToAdd} stamina. `;
+        rested = true;
+    }
+
+    // 4. Regenerate Health
+    if (gameState.player.health < gameState.player.maxHealth) {
+        const amountToAdd = Math.min(gameState.player.maxHealth - gameState.player.health, restAmount);
+        gameState.player.health += amountToAdd;
+        triggerStatFlash(statDisplays.health, true);
+        logMsg += `Recovered ${amountToAdd} health.`;
+        rested = true;
+    }
+
+    // 5. WELL RESTED BONUS
+    if (inSafeZone && !rested) {
+        if (gameState.player.strengthBonusTurns < 10) {
+            gameState.player.strengthBonus = 2;
+            gameState.player.strengthBonusTurns = 50;
+            logMessage("{gold:You feel Well Rested! (+2 Strength for 50 turns)}");
+            triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
+            
+            renderEquipment(); 
+            endPlayerTurn(); // Saves everything
+            return;
+        } else {
+            logMessage("You are already well rested.");
+        }
+    }
+
+    // 6. Feedback
+    if (!rested && !inSafeZone) {
+        logMessage("You are already at full health and stamina.");
+    } else if (rested) {
+        if (inSafeZone) logMessage(`You rest comfortably in the haven. (+${restAmount} HP/Stamina)`);
+        else logMessage(logMsg);
+    }
+    
+    // 7. End Turn (This saves Health, Stamina, AND your pending XP)
+    endPlayerTurn();
+}
+
+function triggerRaidBossSpawn(playerX, playerY) {
+    if (gameState.mapMode !== 'overworld') return;
+
+    // Spawn 10 to 20 tiles away from the player
+    const spawnX = playerX + (Math.random() > 0.5 ? 1 : -1) * (10 + Math.floor(Math.random() * 10));
+    const spawnY = playerY + (Math.random() > 0.5 ? 1 : -1) * (10 + Math.floor(Math.random() * 10));
+    const bossId = `overworld_raid_${Date.now()}`;
+
+    // Grab the Behemoth template (We'll add this to data-entities.js next)
+    const bossTemplate = ENEMY_DATA['👾']; 
+    if (!bossTemplate) return;
+
+    const bossEntity = {
+        name: "World Boss: " + bossTemplate.name,
+        tile: '👾',
+        x: spawnX,
+        y: spawnY,
+        health: 10000,
+        maxHealth: 10000,
+        attack: bossTemplate.attack * 2, // Double damage to make it a true raid boss!
+        defense: bossTemplate.defense,
+        xp: bossTemplate.xp,
+        loot: bossTemplate.loot,
+        isBoss: true,
+        isElite: true,
+        color: '#f43f5e', // Rose Red
+        spawnTime: Date.now()
+    };
+
+    // Save to RTDB
+    rtdb.ref(EnemyNetworkManager.getPath(spawnX, spawnY, bossId)).set(bossEntity);
+
+    // Announce to Global Chat!
+    rtdb.ref('chat').push().set({
+        senderId: 'SERVER',
+        email: 'SYSTEM',
+        message: `{red:⚠️ A Void Behemoth has ripped into reality near (${spawnX}, ${-spawnY})! Gather your allies!}`,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    gameState.screenShake = 30;
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+}
+
+function recalculateDerivedStats() {
+    const player = gameState.player;
+    
+    // Clamp all derived max stats so they never drop below 1!
+    let calculatedMaxHealth = Math.max(1, 5 + (player.constitution * 5)) + (player.bonusMaxHealth || 0);
+    let calculatedMaxMana = Math.max(1, 5 + (player.wits * 5)) + (player.bonusMaxMana || 0);
+    let calculatedMaxStamina = Math.max(1, 5 + (player.endurance * 5)) + (player.bonusMaxStamina || 0);
+    let calculatedMaxPsyche = Math.max(1, 7 + (player.willpower * 3)) + (player.bonusMaxPsyche || 0);
+
+    if (player.completedLoreSets) {
+        if (player.completedLoreSets.includes('void_research')) calculatedMaxMana += 10;
+        if (player.completedLoreSets.includes('deep_delver')) calculatedMaxStamina += 5;
+    }
+
+    player.maxHealth = calculatedMaxHealth;
+    player.maxMana = calculatedMaxMana;
+    player.maxStamina = calculatedMaxStamina;
+    player.maxPsyche = calculatedMaxPsyche;
+
+    // Safety checks to ensure current vitals don't exceed the new maximums
+    // Also ensuring they don't accidentally drop below 1 if they were at 0 from a bug
+    player.health = Math.max(1, Math.min(player.health, player.maxHealth));
+    player.mana = Math.max(0, Math.min(player.mana, player.maxMana));
+    player.stamina = Math.max(0, Math.min(player.stamina, player.maxStamina));
+    player.psyche = Math.max(0, Math.min(player.psyche, player.maxPsyche));
+}
+
+const applyTheme = (theme) => {
+    document.documentElement.setAttribute('data-theme', theme);
+    darkModeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+    localStorage.setItem('theme', theme);
+    ctx.font = `${TILE_SIZE}px monospace`;
+
+    updateThemeColors();
+
+    render();
+};
+
+darkModeToggle.addEventListener('click', () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+});
+
+helpButton.addEventListener('click', () => {
+    helpModal.classList.remove('hidden');
+});
+
+closeHelpButton.addEventListener('click', () => {
+    helpModal.classList.add('hidden');
+});
+
+helpModal.addEventListener('click', (event) => {
+    if (event.target === helpModal) {
+        helpModal.classList.add('hidden');
+    }
+});
+
+chatInput.addEventListener('keydown', (event) => {
+    event.stopPropagation();
+    if (event.key === 'Escape') {
+        chatInput.blur();
+        event.preventDefault();
+        return;
+    }
+
+    if (event.key === 'Enter' && chatInput.value) {
+                let message = chatInput.value.trim();
+        
+        // 1. Limit Length
+        if (message.length > 255) {
+            logMessage("{red:Message too long.}");
+            return;
+        }
+
+        chatInput.value = ''; 
+
+        if (message.startsWith('/')) {
+            handleChatCommand(message);
+            chatInput.blur(); 
+            return; // Don't send commands to global chat
+        }
+
+        const messageRef = rtdb.ref('chat').push();
+        messageRef.set({
+            senderId: player_id,
+            email: auth.currentUser.email,
+            isBoating: gameState.player.isBoating,
+            message: message,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        chatInput.blur(); // Unfocus after chatting so you can walk immediately!
+    }
+});
+
+function clearSessionState() {
+    gameState.lootedTiles.clear();
+    gameState.discoveredRegions.clear();
+    wokenEnemyTiles.clear();
+    pendingSpawns.clear(); // Clear pending spawns
+
+    gameState.mapMode = null;
+
+    gameState.shopStates = {}; // Clear shop memory
+
+    if (gameState.flags) {
+        gameState.flags.hasSeenForestWarning = false;
+        gameState.flags.canoeEmbarkCount = 0;
+    }
+
+    chunkManager.caveMaps = {};
+    chunkManager.castleMaps = {};
+    chunkManager.caveEnemies = {};
+    chunkManager.caveThemes = {};
+    chunkManager.castleSpawnPoints = {};
+
+    // --- LISTENER CLEANUP ---
+        if (typeof EnemyNetworkManager !== 'undefined') {
+        EnemyNetworkManager.clearAll();
+    }
+    if (chatListener) { // If you saved the chat listener reference
+        rtdb.ref('chat').off('child_added', chatListener);
+        chatListener = null;
+    }
+    // Also clear the local enemy list to prevent ghosts
+    gameState.sharedEnemies = {};
+
+    areGlobalListenersInitialized = false; 
+}
+
+logoutButton.addEventListener('click', () => {
+
+    // 0. Cancel any pending saves immediately
+
+    if (saveTimeout) {
+        clearTimeout(saveTimeout);
+        saveTimeout = null;
+    }
+
+    // 1. Only attempt to save if we have a valid database reference
+    if (playerRef) {
+        const finalState = {
+            ...gameState.player,
+            lootedTiles: Object.fromEntries(gameState.lootedTiles)
+        };
+
+        // Create a clean version of the inventory before saving
+        if (finalState.inventory) {
+            finalState.inventory = getSanitizedInventory();
+        }
+
+        // Remove ephemeral visual properties
+        delete finalState.color;
+        delete finalState.character;
+
+        // Save to Firestore
+        playerRef.set(sanitizeForFirebase(finalState), { merge: true }).catch(err => {
+            console.error("Error saving on logout:", err);
+        });
+    }
+
+    // 2. Remove from Online Players list (Realtime DB)
+    if (onlinePlayerRef) {
+        onlinePlayerRef.remove().catch(err => console.error(err));
+    }
+
+    // 3. Detach Firebase Listeners
+    if (unsubscribePlayerListener) {
+        unsubscribePlayerListener();
+        unsubscribePlayerListener = null;
+    }
+    
+    Object.values(worldStateListeners).forEach(unsubscribe => unsubscribe());
+    worldStateListeners = {};
+    
+    // Kill ghost listeners to prevent RTDB connection exhaustion!
+    if (typeof EnemyNetworkManager !== 'undefined') {
+        EnemyNetworkManager.clearAll();
+    }
+    
+    // Also disconnect from global chat
+    if (chatListener) {
+        rtdb.ref('chat').off('child_added', chatListener);
+        chatListener = null;
+    }
+
+    // 4. Clear Local Memory
+    clearSessionState();
+
+    // 5. Sign Out
+    auth.signOut().then(() => {
+        console.log("Signed out successfully.");
+        // UI reset is handled by onAuthStateChanged, but we can force hide here to be snappy
+        gameContainer.classList.add('hidden');
+        authContainer.classList.remove('hidden');
+    });
+});
+
+async function enterGame(playerData) {
+    gameContainer.classList.remove('hidden');
+
+    applyVisualSettings();
+
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    canvas.style.visibility = 'hidden';
+
+    // 1. Sync World Time
+    const timeDoc = await db.collection('world').doc('time').get();
+    if (timeDoc.exists) {
+        const data = timeDoc.data();
+        gameState.time.day = data.day;
+        gameState.time.hour = data.hour;
+        gameState.time.minute = data.minute;
+        renderTime();
+    }
+
+    // 2. Handle Permadeath / Respawn Logic
+    if (playerData.health <= 0) {
+        logMessage("You have respawned at the village.");
+        const defaultState = createDefaultPlayerState();
+        const preservedStats = {
+            background: playerData.background,
+            level: playerData.level || 1,
+            xp: playerData.xp || 0,
+            xpToNextLevel: playerData.xpToNextLevel || 100,
+            statPoints: playerData.statPoints || 0,
+            talentPoints: playerData.talentPoints || 0,
+            talents: playerData.talents || [],
+            quests: playerData.quests || {},
+            killCounts: playerData.killCounts || {},
+            foundLore: playerData.foundLore || [],
+            discoveredRegions: playerData.discoveredRegions || [],
+            unlockedWaypoints: playerData.unlockedWaypoints || [],
+            strength: playerData.strength || 1,
+            wits: playerData.wits || 1,
+            constitution: playerData.constitution || 1,
+            dexterity: playerData.dexterity || 1,
+            charisma: playerData.charisma || 1,
+            luck: playerData.luck || 1,
+            willpower: playerData.willpower || 1,
+            perception: playerData.perception || 1,
+            endurance: playerData.endurance || 1,
+            intuition: playerData.intuition || 1,
+            maxHealth: playerData.maxHealth || 10,
+            maxMana: playerData.maxMana || 10,
+            maxStamina: playerData.maxStamina || 10,
+            maxPsyche: playerData.maxPsyche || 10,
+            spellbook: playerData.spellbook || {},
+            skillbook: playerData.skillbook || {},
+            craftingLevel: playerData.craftingLevel || 1,
+            craftingXp: playerData.craftingXp || 0,
+            craftingXpToNext: playerData.craftingXpToNext || 50,
+            classEvolved: playerData.classEvolved || false,
+            className: playerData.className || null,
+            character: playerData.character || '@'
+        };
+
+        // Merge logic for respawn
+        playerData = {
+            ...defaultState,
+            ...preservedStats,
+            x: 0,
+            y: 0,
+            health: preservedStats.maxHealth,
+            mana: preservedStats.maxMana,
+            stamina: preservedStats.maxStamina,
+            coins: Math.floor((playerData.coins || 0) / 2),
+            inventory: [
+                { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
+            ],
+            equipment: {
+                weapon: { name: 'Fists', damage: 0 },
+                armor: { name: 'Tattered Rags', defense: 0 }
+            }
+        };
+
+        // Save new alive state
+        await playerRef.set(sanitizeForFirebase(playerData));
+    }
+
+    // --- REHYDRATE ITEMS BEFORE APPLYING STATE ---
+    if (playerData.inventory) {
+        playerData.inventory = rehydratePlayerState(playerData);
+    }
+
+    // Merge everything into global gameState
+    const fullPlayerData = {
+        ...createDefaultPlayerState(),
+        ...playerData 
+    };
+    Object.assign(gameState.player, fullPlayerData);
+
+    // Equipment slots must point to the specific objects in the inventory array
+    if (gameState.player.equipment) {
+        ['weapon', 'armor', 'offhand', 'accessory', 'ammo'].forEach(slot => {
+            // We match by slot and isEquipped to guarantee we get the right reference
+            const invItem = gameState.player.inventory.find(i => i.slot === slot && i.isEquipped);
+            if (invItem) {
+                gameState.player.equipment[slot] = invItem;
+            } else {
+                // Nullify if it shouldn't exist
+                if(slot === 'offhand' || slot === 'accessory' || slot === 'ammo') {
+                    gameState.player.equipment[slot] = null;
+                }
+            }
+        });
+    }
+
+    recalculateDerivedStats(); 
+
+    // --- Anti-Stuck Logic (Safe spot search) ---
+    if (gameState.mapMode === 'overworld') {
+        const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
+        const blockedTiles = ['^', '▓', '▒', '🧱'];
+        if (!gameState.player.isBoating && (currentTile === '~' || currentTile === '≈')) {
+            blockedTiles.push('~', '≈'); 
+        }
+
+        if (blockedTiles.includes(currentTile)) {
+            console.warn("Player loaded inside obstacle. Finding safe spot...");
+            let found = false;
+            for (let r = 1; r <= 5; r++) { 
+                if (found) break;
+                for (let dy = -r; dy <= r; dy++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        const tx = gameState.player.x + dx;
+                        const ty = gameState.player.y + dy;
+                        const t = chunkManager.getTile(tx, ty);
+                        if (['.', 'F', 'd', 'D'].includes(t)) {
+                            gameState.player.x = tx;
+                            gameState.player.y = ty;
+                            found = true;
+                            logMessage("You woke up in a safer spot.");
+                            playerRef.update({ x: tx, y: ty });
+                            break;
+                        }
+                    }
+                    if (found) break;
+                }
+            }
+        }
+    }
+
+    if (playerData.activeTreasure) {
+        gameState.activeTreasure = playerData.activeTreasure;
+        logMessage(`You recall a location marked on your map: (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y})`);
+    } else {
+        gameState.activeTreasure = null;
+    }
+
+    gameState.weather = playerData.weather || 'clear';
+    gameState.mapMode = playerData.mapMode || 'overworld';
+    
+    // --- LOAD MULTIVERSE STATE & RESTORE MAP IDs ---
+    gameState.currentRealm = playerData.currentRealm || 0;
+    gameState.realmMutators = playerData.realmMutators || [];
+    
+    if (gameState.mapMode === 'dungeon') {
+        gameState.currentCaveId = playerData.mapId;
+        if (gameState.currentCaveId) {
+            // Generate the cave map immediately so it exists for the renderer!
+            chunkManager.generateCave(gameState.currentCaveId);
+            gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId];
+            
+            // Restore instanced enemies
+            const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
+            gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+        } else {
+            // Failsafe: Kick them to the overworld if the cave ID was corrupted
+            gameState.mapMode = 'overworld';
+        }
+    } else if (gameState.mapMode === 'castle') {
+        gameState.currentCastleId = playerData.mapId;
+        if (gameState.currentCastleId) {
+            // Generate the castle map immediately!
+            const layoutType = gameState.currentCastleId.includes('village') ? 'SAFE_HAVEN' : null;
+            chunkManager.generateCastle(gameState.currentCastleId, layoutType);
+            
+            // Restore instanced enemies & NPCs
+            const baseCastleEnemies = chunkManager.castleEnemies[gameState.currentCastleId] || [];
+            gameState.instancedEnemies = JSON.parse(JSON.stringify(baseCastleEnemies));
+            gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
+        } else {
+            gameState.mapMode = 'overworld';
+        }
+    }
+    
+    // Chunk Tracking
+    const startChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+    const startChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+    lastPlayerChunkId = `${startChunkX},${startChunkY}`;
+
+    // --- 1. LEGACY MIGRATION CHECK ---
+    if (playerData.exploredChunks || playerData.foundLore || playerData.lootedTiles) {
+        console.log("Migrating legacy map data to subcollections...");
+        gameState.needsLegacyMapCleanup = true; // Flags for deletion on next save
+    }
+
+    gameState.discoveredRegions = new Set(playerData.discoveredRegions || []);
+    gameState.exploredChunks = new Set(playerData.exploredChunks || []);
+    gameState.foundLore = new Set(playerData.foundLore || []);
+    gameState.shopStates = playerData.shopStates || {};
+    gameState.lootedTiles = new Map();
+
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    // --- 2. LOAD FROM SUBCOLLECTION (The New Way) ---
+    playerRef.collection('map_data').get().then(snapshot => {
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.exploredChunks) data.exploredChunks.forEach(c => gameState.exploredChunks.add(c));
+            if (data.foundLore) data.foundLore.forEach(l => gameState.foundLore.add(l));
+            if (data.lootedTiles) {
+                for (const [id, timestamp] of Object.entries(data.lootedTiles)) {
+                    if (now - timestamp < TWENTY_FOUR_HOURS) {
+                        gameState.lootedTiles.set(id, timestamp);
+                    }
+                }
+            }
+        });
+        
+        // Force the minimap to redraw now that chunks are loaded
+        if (!mapModal.classList.contains('hidden') && typeof renderWorldMap === 'function') {
+            renderWorldMap();
+        }
+    }).catch(e => console.error("Failed to load map subcollection", e));
+
+    // --- 3. POLYFILL LOOTED TILES API ---
+    // This brilliantly intercepts all existing game code so you don't have to rewrite 100 interaction events!
+    gameState.lootedTiles.add = function(key) { this.set(key, Date.now()); };
+    gameState.lootedTiles.set = function(key, val) {
+        Map.prototype.set.call(this, key, val);
+        if (!gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
+        gameState.pendingMapSaves.looted[key] = val;
+    };
+    gameState.lootedTiles.delete = function(key) {
+        Map.prototype.delete.call(this, key);
+        if (!gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
+        gameState.pendingMapSaves.looted[key] = null; // Mark for deletion in Firebase
+    };
+
+    // --- SETUP LISTENERS ---
+    if (sharedEnemiesListener) {
+        sharedEnemiesListener(); // Execute the cleanup wrapper!
+        sharedEnemiesListener = null;
+    }
+    if (chatListener) rtdb.ref('chat').off('child_added', chatListener);
+
+    onlinePlayerRef = rtdb.ref(`onlinePlayers/${player_id}`);
+    const connectedRef = rtdb.ref('.info/connected');
+
+    connectedRef.on('value', (snap) => {
+        if (snap.val() === true) {
+            const stateToSet = {
+                x: gameState.player.x,
+                y: gameState.player.y,
+                health: gameState.player.health,
+                maxHealth: gameState.player.maxHealth,
+                mapMode: gameState.mapMode,
+                mapId: gameState.currentCaveId || gameState.currentCastleId || null,
+                email: auth.currentUser.email
+            };
+            onlinePlayerRef.set(stateToSet);
+
+            // We ONLY want to remove the player from the online list when they disconnect.
+            // Do NOT append a .then() here, as it will execute immediately on the client and wipe data!
+            onlinePlayerRef.onDisconnect().remove();
+        }
+    });
+
+    db.collection('world').doc('time').onSnapshot((doc) => {
+        if (doc.exists) {
+            const serverTime = doc.data();
+            gameState.time.day = serverTime.day;
+            gameState.time.hour = serverTime.hour;
+            gameState.time.minute = serverTime.minute;
+            renderTime();
+            render(); 
+        }
+    });
+
+    rtdb.ref('onlinePlayers').on('value', (snapshot) => {
+        const newOtherPlayers = snapshot.val() || {};
+        if (newOtherPlayers[player_id]) {
+            // Note: We deliberately DO NOT sync our own position from here 
+            // to avoid jitter. Our local state is authority for position.
+            delete newOtherPlayers[player_id];
+        }
+        otherPlayers = newOtherPlayers;
+        render();
+    });
+
+    // --- START ENEMY CHUNK LISTENER ---
+    if (gameState.mapMode === 'overworld' && typeof EnemyNetworkManager !== 'undefined') {
+        EnemyNetworkManager.syncChunks(gameState.player.x, gameState.player.y);
+    }
+
+    gameState.initialEnemiesLoaded = true;
+
+    // --- PROTECTED SNAPSHOT LISTENER (See previous step) ---
+    unsubscribePlayerListener = playerRef.onSnapshot({ includeMetadataChanges: true }, (doc) => {
+        // Prevent syncing over local changes during play
+        if (doc.metadata.hasPendingWrites || gameState.mapMode || isProcessingMove) {
+            return;
+        }
+        if (doc.exists) {
+            const data = doc.data();
+            // This only runs if we are sitting in a menu and an external admin changes our data,
+            // or on extremely slow initial loads where the game state wasn't set yet.
+            const statsToSync = ['coins', 'xp', 'level', 'statPoints'];
+            statsToSync.forEach(stat => {
+                if (data[stat] !== undefined) gameState.player[stat] = data[stat];
+            });
+            renderStats();
+        }
+    });
+
+    // --- BUFFER FOR BURST CHAT MESSAGES ---
+    let pendingChatMessages = [];
+
+    // Only request the 50 messages we actually plan to show
+    const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(50);
+    // Assign it to the global variable so it can be cleaned up on logout!
+    chatListener = chatRef.on('child_added', (snapshot) => {
+        const message = snapshot.val();
+
+        // --- FLOATING CHAT BUBBLE ---
+        // Store the message on the player object for 5 seconds
+        // Only draw the bubble if the message was sent in the last 5 seconds!
+        const now = Date.now();
+        if (now - message.timestamp < 5000) {
+            if (message.senderId === player_id) {
+                gameState.player.chatBubble = message.message;
+                gameState.player.chatTimer = now + 5000;
+            } else if (otherPlayers[message.senderId]) {
+                otherPlayers[message.senderId].chatBubble = message.message;
+                otherPlayers[message.senderId].chatTimer = now + 5000;
+            }
+        }
+
+        const messageDiv = document.createElement('div');
+        const date = new Date(message.timestamp);
+        const timeString = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        const timeSpan = document.createElement('span');
+        timeSpan.className = "muted-text text-xs";
+        timeSpan.textContent = `[${timeString}] `;
+
+        const nameStrong = document.createElement('strong');
+        if (message.senderId === player_id) nameStrong.className = "highlight-text";
+        const safeName = escapeHtml(message.email ? message.email.split('@')[0] : "Unknown");
+        nameStrong.textContent = `${safeName}: `;
+
+        const msgSpan = document.createElement('span');
+        const safeBody = escapeHtml(message.message); 
+        const formattedBody = safeBody
+            .replace(/{red:(.*?)}/g, '<span class="text-red-500">$1</span>')
+            .replace(/{blue:(.*?)}/g, '<span class="text-blue-400">$1</span>');
+
+        msgSpan.innerHTML = formattedBody; 
+        messageDiv.appendChild(timeSpan);
+        messageDiv.appendChild(nameStrong);
+        messageDiv.appendChild(msgSpan); 
+        
+        // 1. ADD TO JAVASCRIPT BUFFER INSTEAD OF THE DOM
+        pendingChatMessages.push(messageDiv);
+
+        // 2. BATCH DOM INSERTION & CULLING
+        if (window.chatRenderTimer) clearTimeout(window.chatRenderTimer);
+        
+        window.chatRenderTimer = setTimeout(() => {
+            if (pendingChatMessages.length === 0) return;
+
+            const fragment = document.createDocumentFragment();
+            
+            // Loop backwards: Firebase sends Oldest -> Newest. 
+            // Because chat is 'flex-col-reverse' (newest at bottom), we prepend them to the 
+            // fragment in reverse order so they stack perfectly into the DOM!
+            for (let i = pendingChatMessages.length - 1; i >= 0; i--) {
+                fragment.appendChild(pendingChatMessages[i]);
+            }
+            
+            // ONE single DOM layout calculation!
+            chatMessages.prepend(fragment);
+            pendingChatMessages = []; // Clear buffer
+
+            // Cull down to 50 messages safely
+            let removedCount = 0;
+            while (chatMessages.children.length > 50) {
+                chatMessages.removeChild(chatMessages.lastChild);
+                removedCount++;
+            }
+            
+            // Adjust scroll safely
+            const isScrolledToBottom = chatMessages.scrollHeight - chatMessages.clientHeight <= chatMessages.scrollTop + 10;
+            if (isScrolledToBottom || removedCount > 0) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }, 50); // 50ms buffer window catches the entire Firebase initial load payload
+    });
+
+    // --- FINAL RENDER & INIT ---
+
+    // --- Pre-warm data loading (Load ALL 3x3 chunks, not just the center!) ---
+    const waitForWorldData = new Promise((resolve) => {
+        if (gameState.mapMode === 'overworld') {
+            const cX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+            const cY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+            
+            let chunksLoaded = 0;
+            const totalChunks = 9;
+
+            for(let y = -1; y <= 1; y++) {
+                for(let x = -1; x <= 1; x++) {
+                    const targetX = cX + x;
+                    const targetY = cY + y;
+                    
+                    // 1. Force procedural generation in local memory
+                    chunkManager.getTile(targetX * chunkManager.CHUNK_SIZE, targetY * chunkManager.CHUNK_SIZE);
+                    
+                    // 2. Attach Firebase listener and wait for ALL 9 to return their initial snapshot
+                    chunkManager.listenToChunkState(targetX, targetY, () => {
+                        chunksLoaded++;
+                        if (chunksLoaded === totalChunks) resolve();
+                    });
+                }
+            }
+        } else {
+            resolve(); // Instanced maps (Dungeons/Castles) load instantly locally
+        }
+    });
+
+    const waitForEnemies = new Promise((resolve) => {
+        if (gameState.mapMode === 'overworld' && typeof EnemyNetworkManager !== 'undefined') {
+            // Initiate the wide-net chunk sync right now instead of waiting for the first move
+            EnemyNetworkManager.syncChunks(gameState.player.x, gameState.player.y);
+            
+            // Because RTDB `.on()` listeners don't have a clean "all done" callback like Firestore,
+            // we give the Realtime Database a flat 400ms to download the surrounding enemies.
+            setTimeout(resolve, 400); 
+        } else {
+            resolve();
+        }
+    });
+
+    // Wait for BOTH the map modifications and the enemies to finish downloading
+    Promise.all([waitForWorldData, waitForEnemies]).then(() => {
+        if (gameState.mapMode === 'overworld') {
+            wakeUpNearbyEnemies(); 
+        }
+
+        // Final tiny buffer to ensure the DOM has processed the new data
+        setTimeout(() => {
+            // Force updates
+            renderStats();
+            renderEquipment();
+            renderTime();
+            resizeCanvas();
+            renderHotbar();
+            renderInventory(); // Renders rehydrated items
+            
+            // Force a clean cache render BEFORE showing the canvas
+            gameState.mapDirty = true; 
+            render();
+            
+            canvas.style.visibility = 'visible';
+            syncPlayerState();
+
+            logMessage(`Welcome back, ${playerData.background} of level ${gameState.player.level}.`);
+            updateRegionDisplay();
+            updateExploration();
+            
+            // --- SET ANTI-CHEAT BASELINE ---
+            lastValidatedState = JSON.parse(JSON.stringify(gameState.player));
+
+            // Drop the loading curtain!
+            loadingIndicator.classList.add('hidden');
+
+            if (!areGlobalListenersInitialized) {
+                console.log("Initializing Global UI Listeners...");
+                initShopListeners();
+                initSpellbookListeners();
+                initInventoryListeners();
+                initSkillbookListeners();
+                initQuestListeners();
+                initCraftingListeners();
+                initSkillTrainerListeners();
+                initMobileControls();
+                initSettingsListeners();
+                areGlobalListenersInitialized = true; 
+            } else {
+                const mobileContainer = document.getElementById('mobileControls');
+                if (mobileContainer) mobileContainer.classList.remove('hidden');
+            }
+        }, 100); 
+    });
+}
+
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (savedTheme) applyTheme(savedTheme);
+        else if (prefersDark) applyTheme('dark');
+        else applyTheme('light');
+
+        // --- Call initCharacterSelect instead of startGame ---
+        gameContainer.classList.add('hidden');
+        initCharacterSelect(user);
+    } else {
+        authContainer.classList.remove('hidden');
+        gameContainer.classList.add('hidden');
+        characterSelectModal.classList.add('hidden'); // Hide select modal
+        player_id = null;
+        if (onlinePlayerRef) onlinePlayerRef.remove();
+        if (unsubscribePlayerListener) unsubscribePlayerListener();
+        Object.values(worldStateListeners).forEach(unsubscribe => unsubscribe());
+        worldStateListeners = {};
+        clearSessionState();
+        console.log("No user is signed in.");
+    }
+});
+
+let lastFrameTime = 0;
+let timeSinceLastDraw = 0;
+const FPS_CAP = 1000 / 60; // 16.6ms per frame (60 FPS)
+
+function gameLoop(timestamp) {
+    if (!lastFrameTime) lastFrameTime = timestamp;
+    const rawDt = timestamp - lastFrameTime;
+    lastFrameTime = timestamp;
+    
+    timeSinceLastDraw += rawDt;
+
+    // --- THROTTLE TO 60 FPS TO SAVE CPU/BATTERY ---
+    if (timeSinceLastDraw < FPS_CAP) {
+        requestAnimationFrame(gameLoop);
+        return; // Skip drawing this frame
+    }
+    
+    const dt = timeSinceLastDraw / 1000;
+
+    // Cap delta-time so the game doesn't jump wildly if you switch browser tabs
+    const safeDt = Math.min(dt, 0.1);
+    timeSinceLastDraw = 0; // Reset accumulator
+
+    // --- 1. LERP (SMOOTH GLIDE) THE PLAYER CAMERA ---
+    const p = gameState.player;
+    if (p.visualX === undefined) p.visualX = p.x;
+    if (p.visualY === undefined) p.visualY = p.y;
+    
+    // TELEPORT SNAP: If the distance is > 2 tiles, snap instantly!
+    if (Math.abs(p.x - p.visualX) > 2 || Math.abs(p.y - p.visualY) > 2) {
+        p.visualX = p.x;
+        p.visualY = p.y;
+        gameState.lastStartX = null; // Force background to redraw instantly
+    }
+
+    // Move visual camera towards logical position smoothly.
+    // '8' is the perfect speed to make holding WASD feel like continuous walking!
+    p.visualX += (p.x - p.visualX) * 8 * safeDt;
+    p.visualY += (p.y - p.visualY) * 8 * safeDt;
+
+    // 2. Update Particles smoothly
+    if (typeof ParticleSystem !== 'undefined') ParticleSystem.update();
+
+    // 3. Process Input Queue
+    if (window.inputQueue && window.inputQueue.length > 0 && Date.now() - lastActionTime >= ACTION_COOLDOWN) {
+        const key = window.inputQueue.shift(); // Pulls the oldest key pressed
+        handleInput(key);
+    }
+
+    // 4. Force continuous rendering while sliding
+    if (gameState.mapMode) {
+        if (Math.abs(p.x - p.visualX) > 0.01 || Math.abs(p.y - p.visualY) > 0.01) {
+            render(); 
+        } else {
+            // Snap to exact coordinates to save CPU when standing still
+            p.visualX = p.x;
+            p.visualY = p.y;
+            render();
+        }
+    }
+
+    // Runs as fast as your monitor allows (60fps, 144fps, etc.)
+    requestAnimationFrame(gameLoop);
+}
+
+// Start the loop
+requestAnimationFrame(gameLoop);
+
+// ==========================================
+// AUTO-SAVE & LIFECYCLE MANAGEMENT
+// ==========================================
+
+// DESKTOP: Save the game if the user closes the tab or refreshes
+window.addEventListener('beforeunload', () => { 
+    if(typeof player_id !== 'undefined' && player_id) {
+        flushPendingSave(); 
+    }
+});
+
+// MOBILE: Save the game when the app is backgrounded, minimized, or tab-switched.
+// iOS Safari and Android Chrome reliably fire this, but ignore 'beforeunload'.
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && typeof player_id !== 'undefined' && player_id) {
+        console.log("App backgrounded. Flushing save data to cloud...");
+        
+        // Push any unsaved steps/inventory changes to Firebase immediately
+        flushPendingSave(); 
+        
+        // Also update the "Online Players" presence so other players see them as offline/away
+        if (typeof onlinePlayerRef !== 'undefined' && onlinePlayerRef) {
+            onlinePlayerRef.remove().catch(() => {});
+        }
+    } else if (document.visibilityState === 'visible' && typeof player_id !== 'undefined' && player_id) {
+        // When they return to the tab, put them back on the "Online Players" list
+        if (typeof syncPlayerState === 'function') {
+            syncPlayerState();
+        }
+    }
+});
+
+// --- Restart / Respawn Handler ---
+restartButton.onclick = () => {
+    const player = gameState.player;
+
+    // 1. Reset Position (The "Original Coordinates")
+    player.x = 0;
+    player.y = 0;
+
+    // 2. Preserve Class/Race Base Stats while restoring Vitals
+    // We do NOT call createDefaultPlayerState() here because we want to keep
+    // their name, race, class, talents, map pins, and metrics!
+    
+    // If they have the Elixir bonuses from our previous fix, preserve them!
+    const permHpBonus = player.bonusMaxHealth || 0;
+    const permManaBonus = player.bonusMaxMana || 0;
+    const permStamBonus = player.bonusMaxStamina || 0;
+    const permPsychBonus = player.bonusMaxPsyche || 0;
+    
+    if (typeof recalculateDerivedStats === 'function') {
+        recalculateDerivedStats();
+    }
+    
+    player.health = player.maxHealth;
+    player.stamina = player.maxStamina;
+    player.mana = player.maxMana;
+    player.psyche = player.maxPsyche;
+    
+    player.hunger = player.maxHunger;
+    player.thirst = player.maxThirst;
+    
+    // Clear temporary buffs/debuffs
+    player.poisonTurns = 0;
+    player.frostbiteTurns = 0;
+    player.burnTurns = 0;
+    player.madnessTurns = 0;
+    player.rootTurns = 0;
+    player.strengthBonusTurns = 0;
+    player.defenseBonusTurns = 0;
+    player.shieldTurns = 0;
+    
+    // Clear companion
+    player.companion = null;
+
+    // 3. Give Starter Gear (Hardcore penalty: Rags)
+    const starterRags = { 
+        templateId: 'x', // Added templateId for perfect DB hydration
+        name: 'Tattered Rags', 
+        type: 'armor', 
+        quantity: 1, 
+        tile: 'x', 
+        defense: 0, 
+        slot: 'armor', 
+        isEquipped: true 
+    };
+
+    player.inventory = [starterRags];
+    
+    // The equipment slot MUST reference the exact object in the inventory array!
+    player.equipment = {
+        weapon: { name: 'Fists', damage: 0 },
+        armor: starterRags, 
+        offhand: null,
+        accessory: null,
+        ammo: null
+    };
+
+    // 4. Reset Map Mode to Overworld
+    gameState.mapMode = 'overworld';
+    gameState.currentCaveId = null;
+    gameState.currentCastleId = null;
+    
+    // --- RESET REALM ---
+    gameState.currentRealm = 0;
+    gameState.realmMutators = [];
+
+    // Clear local memory so they can earn XP and loot chests again!
+    gameState.discoveredRegions.clear();
+    gameState.exploredChunks.clear();
+    gameState.lootedTiles.clear(); 
+    player.discoveredPOIs = [];
+
+    // 5. Save "Alive" State & Wiped Map to DB
+    const resetState = {
+        ...player,
+        currentRealm: 0,
+        realmMutators: [],
+        discoveredRegions: [],
+        exploredChunks: [],
+        lootedTiles: [],
+        discoveredPOIs: []
+    };
+    
+    playerRef.set(sanitizeForFirebase(resetState));
+
+    // 6. UI Cleanup
+    gameOverModal.classList.add('hidden');
+    logMessage("{green:You open your eyes... you have been given a second chance.}");
+
+    // Force full re-render
+    updateRegionDisplay();
+    renderStats();
+    renderInventory();
+    renderEquipment();
+    resizeCanvas();
+    render();
+};
+
+// --- Main Menu Handler ---
+const mainMenuBtn = document.getElementById('mainMenuButton');
+if (mainMenuBtn) {
+    mainMenuBtn.onclick = () => {
+        // Reloading is the safest way to clear all game state (variables, listeners, etc.)
+        // and return to the login/character select screen.
+        location.reload();
+    };
+}
