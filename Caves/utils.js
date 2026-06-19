@@ -103,13 +103,14 @@ window.MathUtils = {
     },
 
     // EXPANDABILITY WIN: Parses standard TTRPG strings like "2d6+4"
-    roll: (notation) => {
+    rollDiceString: (notation) => {
         const match = notation.match(/^(\d+)d(\d+)(?:([+-])(\d+))?$/i);
         if (!match) return 0;
+        
         const count = parseInt(match[1], 10);
         const sides = parseInt(match[2], 10);
         const modifierSign = match[3];
-        const modifierVal = parseInt(match[4], 10);
+        const modifierVal = parseInt(match[4], 10) || 0;
 
         let total = window.MathUtils.rollDice(sides, count);
         if (modifierSign === '+') total += modifierVal;
@@ -375,6 +376,26 @@ function getOrdinalSuffix(day) {
         default: return "th";
     }
 }
+
+// LORE WIN: Convert raw engine time into a beautiful in-universe date string
+window.formatWorldTime = function(timeData) {
+    if (!timeData) return "Unknown Era";
+    
+    // Arrays must match the ones defined in script.js constants!
+    const DAYS_OF_WEEK = ["Sunsday", "Moonsday", "Kingsday", "Earthday", "Watersday", "Windsday", "Firesday"];
+    const MONTHS_OF_YEAR = ["First Seed", "Rains Hand", "Second Seed", "Suns Height", "Last Seed", "Hearthfire", "Frostfall", "Suns Dusk", "Evening Star", "Morning Star", "Suns Dawn", "Deep Winter"];
+    const DAYS_IN_MONTH = 30;
+
+    const dayOfWeek = DAYS_OF_WEEK[(timeData.day - 1) % DAYS_OF_WEEK.length];
+    const month = MONTHS_OF_YEAR[Math.floor((timeData.day - 1) / DAYS_IN_MONTH) % MONTHS_OF_YEAR.length];
+    const dayOfMonth = ((timeData.day - 1) % DAYS_IN_MONTH) + 1;
+    const daySuffix = getOrdinalSuffix(dayOfMonth);
+    const hour12 = timeData.hour % 12 === 0 ? 12 : timeData.hour % 12;
+    const ampm = timeData.hour < 12 ? 'AM' : 'PM';
+    const minutePadded = String(timeData.minute).padStart(2, '0');
+    
+    return `${dayOfWeek}, the ${dayOfMonth}${daySuffix} of ${month}, Year ${timeData.year} ${timeData.era} | ${hour12}:${minutePadded} ${ampm}`;
+};
 
 /**
  * Converts a direction object {x, y} into a readable string.
