@@ -225,7 +225,6 @@ function generateEnemyLoot(player, enemy) {
     const tier2Loot = ['!', '[', '📚', '🛡️s', '🛡️w', 'P', '8'];
     const tier3Loot = ['⚔️s', 'A', 'Ψ', 'M', '⚔️l', '⛓️', '🛡️i', '9'];
     const tier4Loot = ['🪓', '🔨', '🛡️p', '*'];
-    // CONTENT WIN: Added T5 and T6 items to world drops!
     const tier5Loot = ['⚔️o', '🛡️o', '❄️b', '❄️m', '⚔️m', '🛡️m']; 
 
     let tier1Chance = 0.30;
@@ -311,20 +310,37 @@ function generateMagicItem(tier) {
     let hasPrefix = false;
     let hasSuffix = false;
 
-    // 2. Roll for Prefix (50% chance + tier bonus + luck)
-    if (Math.random() < 0.5 + (tier * 0.1) + luckBonus) {
-        const validPrefixes = Object.keys(LOOT_PREFIXES).filter(p => LOOT_PREFIXES[p].type === newItem.type);
-        if (validPrefixes.length > 0) {
-            const prefixName = validPrefixes[Math.floor(Math.random() * validPrefixes.length)];
-            const prefixData = LOOT_PREFIXES[prefixName];
+    // --- CONTENT WIN: Cursed Items ---
+    // 5% chance at Tier 3+ to roll a Cursed item with massive stats but heavy penalties
+    if (tier >= 3 && Math.random() < 0.05) {
+        newItem.name = `Cursed ${newItem.name}`;
+        hasPrefix = true;
+        
+        // Massive offensive/defensive buffs
+        if (newItem.type === 'weapon') newItem.damage += 4;
+        if (newItem.type === 'armor') newItem.defense += 4;
+        
+        // Terrible stat drains
+        newItem.statBonuses.luck = (newItem.statBonuses.luck || 0) - 2;
+        newItem.statBonuses.willpower = (newItem.statBonuses.willpower || 0) - 1;
+        
+        newItem._rarity = 'epic'; // Treated as epic for border colors
+    } else {
+        // 2. Roll for Normal Prefix (50% chance + tier bonus + luck)
+        if (Math.random() < 0.5 + (tier * 0.1) + luckBonus) {
+            const validPrefixes = Object.keys(LOOT_PREFIXES).filter(p => LOOT_PREFIXES[p].type === newItem.type);
+            if (validPrefixes.length > 0) {
+                const prefixName = validPrefixes[Math.floor(Math.random() * validPrefixes.length)];
+                const prefixData = LOOT_PREFIXES[prefixName];
 
-            newItem.name = `${prefixName} ${newItem.name}`;
-            hasPrefix = true;
+                newItem.name = `${prefixName} ${newItem.name}`;
+                hasPrefix = true;
 
-            for (const stat in prefixData.bonus) {
-                if (stat === 'damage') newItem.damage += prefixData.bonus[stat];
-                else if (stat === 'defense') newItem.defense += prefixData.bonus[stat];
-                else newItem.statBonuses[stat] = (newItem.statBonuses[stat] || 0) + prefixData.bonus[stat];
+                for (const stat in prefixData.bonus) {
+                    if (stat === 'damage') newItem.damage += prefixData.bonus[stat];
+                    else if (stat === 'defense') newItem.defense += prefixData.bonus[stat];
+                    else newItem.statBonuses[stat] = (newItem.statBonuses[stat] || 0) + prefixData.bonus[stat];
+                }
             }
         }
     }
@@ -358,11 +374,13 @@ function generateMagicItem(tier) {
     }
 
     // Assign internal rarity tag for identification fanfare and UI borders
-    if (hasPrefix && hasSuffix) newItem._rarity = 'epic';
-    else if (hasPrefix || hasSuffix) newItem._rarity = 'rare';
-    else newItem._rarity = 'uncommon';
-    
-    if (tier >= 5) newItem._rarity = 'legendary';
+    if (!newItem._rarity) {
+        if (hasPrefix && hasSuffix) newItem._rarity = 'epic';
+        else if (hasPrefix || hasSuffix) newItem._rarity = 'rare';
+        else newItem._rarity = 'uncommon';
+        
+        if (tier >= 5) newItem._rarity = 'legendary';
+    }
 
     return newItem;
 }
@@ -471,7 +489,35 @@ function handleItemDrop(key) {
         currentTile = chunkManager.getTile(player.x, player.y);
     }
 
-    // Validate Floor
+    // LORE WIN: Environmental Item Destruction
+    if (currentTile === '🌋' || currentTile === '🔥') {
+        logMessage(`{orange:You toss the ${itemToDrop.name} into the flames. It turns to ash instantly.}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.2, 800); // sizzle
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#f97316', 8);
+        
+        itemToDrop.quantity--;
+        if (itemToDrop.quantity <= 0) player.inventory.splice(itemIndex, 1);
+        
+        gameState.isDroppingItem = false;
+        playerRef.update({ inventory: getSanitizedInventory() });
+        renderInventory();
+        return;
+        
+    } else if (currentTile === 'Ω' || currentTile === '🕳️') {
+        logMessage(`{purple:You drop the ${itemToDrop.name} into the abyss. It ceases to exist.}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 12);
+        
+        itemToDrop.quantity--;
+        if (itemToDrop.quantity <= 0) player.inventory.splice(itemIndex, 1);
+        
+        gameState.isDroppingItem = false;
+        playerRef.update({ inventory: getSanitizedInventory() });
+        renderInventory();
+        return;
+    }
+
+    // Validate Standard Floor Drop
     let isValidDropTile = false;
     if (gameState.mapMode === 'overworld' && currentTile === '.') isValidDropTile = true;
     else if (gameState.mapMode === 'castle' && currentTile === '.') isValidDropTile = true;
@@ -501,7 +547,7 @@ function handleItemDrop(key) {
         }
     }
 
-    // --- EXECUTE DROP ---
+    // --- EXECUTE NORMAL DROP ---
     itemToDrop.quantity--;
     logMessage(`Dropped 1x ${itemToDrop.name}.`);
 
@@ -584,10 +630,17 @@ function useInventoryItem(itemIndex) {
         if (identifiedItem._rarity === 'epic') { colorTag = 'red'; rarityLabel = 'Epic'; }
         if (identifiedItem._rarity === 'legendary') { colorTag = 'gold'; rarityLabel = 'Legendary'; }
         
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+        if (identifiedItem.name.includes("Cursed")) {
+            logMessage(`{red:The item radiates malice... You identified a Cursed item: ${identifiedItem.name}!}`);
+            gameState.screenShake = 15;
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); // Ominous tone
+        } else {
+            logMessage(`{${colorTag}:✨ The magic settles... You identified a ${rarityLabel} item: ${identifiedItem.name}!}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+            if (identifiedItem._rarity === 'legendary') gameState.screenShake = 5;
+        }
+
         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
-        
-        logMessage(`{${colorTag}:✨ You identified a ${rarityLabel} item: ${identifiedItem.name}!}`);
         
         // Replace in inventory
         itemToUse.quantity--;
@@ -713,7 +766,15 @@ function useInventoryItem(itemIndex) {
             itemToUse.isEquipped = true;
             player.equipment[slot] = itemToUse;
             applyStatBonuses(itemToUse, 1);
-            logMessage(`You equip the ${itemToUse.name}.${deltaText}`);
+            
+            // QoL WIN: Thematic Equip Verbs
+            let equipVerb = "equip";
+            if (slot === 'weapon') equipVerb = "wield";
+            else if (slot === 'armor') equipVerb = "don";
+            else if (slot === 'ammo') equipVerb = "nock";
+            else if (slot === 'accessory') equipVerb = "put on";
+            
+            logMessage(`You ${equipVerb} the ${itemToUse.name}.${deltaText}`);
 
             // JUICE WIN: Massive fanfare for equipping high-tier legendary items!
             if (itemToUse._rarity === 'legendary' || itemToUse._rarity === 'epic' || itemToUse.name.includes("Fallen King")) {
