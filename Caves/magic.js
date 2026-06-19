@@ -50,8 +50,8 @@ function castSpell(spellId) {
         logMessage(`{red:You don't have enough ${costType} to cast that.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         
-        // JUICE: Flash the UI bar red to show why it failed
-        const displayEl = document.getElementById(`${costType}Display`);
+        // JUICE & PERFORMANCE: Cached DOM lookup for flashing
+        const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[costType] : document.getElementById(`${costType}Display`);
         if (displayEl && typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false);
         return;
     }
@@ -80,7 +80,7 @@ function castSpell(spellId) {
                 player.defenseBonusTurns = spellData.duration;
 
                 logMessage(`{gray:Your skin turns to granite! (+${skinBonus} Defense)}`);
-                triggerStatAnimation(statDisplays.health, 'stat-pulse-gray'); 
+                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-gray'); 
 
                 updates.defenseBonus = player.defenseBonus;
                 updates.defenseBonusTurns = player.defenseBonusTurns;
@@ -91,7 +91,7 @@ function castSpell(spellId) {
                 const reflectAmount = spellData.baseReflect + (player.intuition * spellLevel);
                 player.thornsValue = reflectAmount;
                 player.thornsTurns = spellData.duration;
-                logMessage(`{green:Your skin hardens! (Reflect ${reflectAmount} dmg)}`);
+                logMessage(`{green:Your skin hardens into iron-like thorns! (Reflect ${reflectAmount} dmg)}`);
 
                 updates.thornsValue = reflectAmount;
                 updates.thornsTurns = spellData.duration;
@@ -107,7 +107,7 @@ function castSpell(spellId) {
 
                 player.candlelightTurns = spellData.duration;
 
-                triggerStatAnimation(statDisplays.mana, 'stat-pulse-yellow');
+                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.mana, 'stat-pulse-yellow');
                 if (typeof ParticleSystem !== 'undefined') {
                     ParticleSystem.createFloatingText(player.x, player.y, "💡", "#facc15");
                 }
@@ -117,10 +117,12 @@ function castSpell(spellId) {
                 break;
 
             case 'divineLight':
-                // LORE WIN: Dynamic cure messaging
-                if (player.madnessTurns > 0) logMessage("{gold:The maddening whispers are banished from your mind.}");
-                if (player.poisonTurns > 0) logMessage("{gold:The foul toxins are purged from your blood.}");
-                if (player.frostbiteTurns > 0) logMessage("{gold:The supernatural chill leaves your bones.}");
+                // LORE WIN: Dynamic cure messaging with atmospheric text
+                let ailmentsCured = false;
+                if (player.madnessTurns > 0) { logMessage("{gold:The maddening whispers are banished from your mind.}"); ailmentsCured = true; }
+                if (player.poisonTurns > 0) { logMessage("{gold:The foul toxins are purged from your blood.}"); ailmentsCured = true; }
+                if (player.frostbiteTurns > 0) { logMessage("{gold:The supernatural chill leaves your bones.}"); ailmentsCured = true; }
+                if (player.burnTurns > 0) { logMessage("{gold:The searing flames are extinguished.}"); ailmentsCured = true; }
                 
                 player.health = player.maxHealth;
                 player.poisonTurns = 0;
@@ -130,12 +132,38 @@ function castSpell(spellId) {
                 player.burnTurns = 0;
 
                 logMessage("{gold:A holy light bathes you. You are fully restored!}");
-                triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
                 
                 if (typeof ParticleSystem !== 'undefined') {
                     ParticleSystem.createExplosion(player.x, player.y, '#facc15', 30); // Massive golden explosion
                     ParticleSystem.createLevelUp(player.x, player.y); 
                 }
+
+                // CONTENT WIN: Holy Nova
+                // Instantly scorch nearby undead and demons when casting Divine Light!
+                const novaRadius = 2;
+                const holyDamage = 20 + (player.wits * spellLevel);
+                let hitUnholy = false;
+                
+                for (let y = player.y - novaRadius; y <= player.y + novaRadius; y++) {
+                    for (let x = player.x - novaRadius; x <= player.x + novaRadius; x++) {
+                        if (x === player.x && y === player.y) continue;
+                        
+                        let tileAt;
+                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(x, y);
+                        else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[y]?.[x];
+                        else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[y]?.[x];
+
+                        const eData = ENEMY_DATA[tileAt];
+                        if (eData && (eData.name.includes("Skeleton") || eData.name.includes("Demon") || eData.name.includes("Zombie") || eData.name.includes("Wraith") || eData.name.includes("Draugr") || eData.name.includes("Vampire"))) {
+                            // Fire and forget spell damage applying to surrounding enemies
+                            applySpellDamage(x, y, holyDamage, 'divineLight');
+                            hitUnholy = true;
+                        }
+                    }
+                }
+                
+                if (hitUnholy) logMessage("{gold:The blinding light sears the nearby darkness!}");
 
                 updates.health = player.health;
                 updates.poisonTurns = 0;
@@ -155,7 +183,7 @@ function castSpell(spellId) {
 
                 if (healedFor > 0) {
                     logMessage(`You cast Lesser Heal and recover {green:${healedFor} health}.`);
-                    triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+                    if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+${healedFor}`, '#22c55e'); 
 
                 } else {
@@ -178,7 +206,7 @@ function castSpell(spellId) {
                 player.shieldTurns = spellData.duration;
 
                 logMessage(`{blue:You conjure an Arcane Shield, absorbing ${shieldAmount} damage!}`);
-                triggerStatAnimation(statDisplays.health, 'stat-pulse-blue');
+                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-blue');
 
                 updates.shieldValue = player.shieldValue;
                 updates.shieldTurns = player.shieldTurns;
@@ -187,15 +215,38 @@ function castSpell(spellId) {
 
             case 'clarity':
                 if (gameState.mapMode !== 'dungeon') {
-                    logMessage("{gray:You can only feel for secret walls in caves.}");
-                    spellCastSuccessfully = true;
-                    break;
+                    // LORE WIN: The Void Gazes Back
+                    // If they cast mind-expanding magic in a corrupted realm, they suffer!
+                    if (gameState.currentRealm !== 0) {
+                        logMessage("{purple:You cast your senses into the Void... Something vast and cold looks back.}");
+                        logMessage("{red:You are afflicted with Madness!}");
+                        player.madnessTurns = (player.madnessTurns || 0) + 2;
+                        updates.madnessTurns = player.madnessTurns;
+                        
+                        gameState.screenShake = 15;
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 20);
+                        spellCastSuccessfully = true;
+                        break;
+                    } else {
+                        logMessage("{gray:You can only feel for secret walls in enclosed caves.}");
+                        spellCastSuccessfully = true;
+                        break;
+                    }
                 }
 
                 const map = chunkManager.caveMaps[gameState.currentCaveId];
                 const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
                 const secretWallTile = theme.secretWall;
                 let foundWall = false;
+
+                // Also check if we are casting it in the Void Dungeon
+                if (gameState.currentCaveTheme === 'VOID') {
+                    logMessage("{purple:Your mind brushes against the walls of this place... it feels alive.}");
+                    player.madnessTurns = (player.madnessTurns || 0) + 1;
+                    updates.madnessTurns = player.madnessTurns;
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                }
 
                 for (let y = -1; y <= 1; y++) {
                     for (let x = -1; x <= 1; x++) {
@@ -218,7 +269,7 @@ function castSpell(spellId) {
                 } else {
                     logMessage("{gray:You focus, but the stone around you holds no secrets.}");
                 }
-                triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
                 spellCastSuccessfully = true;
                 break;
 
@@ -230,11 +281,19 @@ function castSpell(spellId) {
 
                 if (actualRestore > 0) {
                     logMessage(`You sacrifice {red:${cost} health} to restore {blue:${actualRestore} mana}.`);
-                    triggerStatAnimation(statDisplays.health, 'stat-pulse-red'); 
-                    triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
-                    // Visceral feedback for dark magic
-                    gameState.screenShake = 5;
-                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#be123c', 8);
+                    
+                    if (typeof triggerStatAnimation !== 'undefined') {
+                        triggerStatAnimation(statDisplays.health, 'stat-pulse-red'); 
+                        triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                    }
+                    
+                    // JUICE WIN: Visceral feedback for dark magic
+                    gameState.screenShake = 12;
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(player.x, player.y, '#be123c', 15);
+                        ParticleSystem.createFloatingText(player.x, player.y, `-${cost}`, '#ef4444');
+                    }
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); // Add a crunch!
                 } else {
                     logMessage("{gray:You cast Dark Pact, but your mana is already full.}");
                 }
@@ -260,7 +319,7 @@ function castSpell(spellId) {
             // Refund the cost if the spell failed (e.g., shield already active)
             player[costType] += cost;
             // Also flash the bar red to show it failed
-            if(statDisplays[costType]) triggerStatFlash(statDisplays[costType], false); 
+            if(typeof statDisplays !== 'undefined' && statDisplays[costType]) triggerStatFlash(statDisplays[costType], false); 
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         }
     }
@@ -274,7 +333,7 @@ function castSpell(spellId) {
 
 async function applySpellDamage(targetX, targetY, damage, spellId) {
     const player = gameState.player;
-    const spellData = SPELL_DATA[spellId];
+    const spellData = SPELL_DATA[spellId] || { healPercent: 0, inflicts: null };
     const weather = gameState.weather; 
     let finalDamage = damage;
 
@@ -302,6 +361,8 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         if (isTargetInWater || weather === 'rain' || weather === 'storm') {
             finalDamage = Math.floor(finalDamage * 2.0); // 2x Damage!
             logMessage(`{yellow:The electricity conducts through the water/rain! (Critical Damage)}`);
+            // JUICE: Electrocute the water visually
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#facc15', 5);
         }
         if (enemyData && enemyData.name && enemyData.name.includes('Clockwork')) {
             finalDamage = Math.floor(finalDamage * 1.5);
@@ -341,6 +402,31 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
             logMessage(`{cyan:The water freezes into a solid path!}`);
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#e0f2fe', 8);
         }
+        
+        // CONTENT WIN: Thermal Shock Synergy
+        if (tile === '🌋') {
+            logMessage(`{cyan:The intense cold solidifies the magma into Obsidian!}`);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#1f2937', 15);
+            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                chunkManager.setWorldTile(targetX, targetY, '▲', 2); // Drop an obsidian shard that lasts for 2 hours
+                gameState.mapDirty = true;
+            }
+        }
+        if (tile === '🔥') {
+            logMessage(`{cyan:The frost extinguishes the flames.}`);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#d4d4d8', 8);
+            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                chunkManager.setWorldTile(targetX, targetY, '.');
+                gameState.mapDirty = true;
+            } else if (gameState.mapMode === 'dungeon') {
+                const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+                chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = theme.floor;
+            }
+        }
+    }
+    else if (spellId === 'divineLight') {
+        // Flavor for hitting unholy enemies with Holy Nova
+        if (enemyData) logMessage(`{gold:The holy light sears the ${enemyData.name}!}`);
     }
 
     if (!enemyData) return false; // No enemy here
@@ -376,6 +462,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                     let color = '#3b82f6'; 
                     if (spellId === 'fireball' || spellId === 'meteor') color = '#f97316'; 
                     if (spellId === 'poisonBolt') color = '#22c55e'; 
+                    if (spellId === 'divineLight') color = '#facc15';
 
                     if (typeof ParticleSystem !== 'undefined') {
                         ParticleSystem.createExplosion(targetX, targetY, color);
@@ -422,6 +509,8 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
             let color = '#3b82f6'; 
             if (spellId === 'fireball' || spellId === 'meteor') color = '#f97316'; 
             if (spellId === 'poisonBolt') color = '#22c55e'; 
+            if (spellId === 'divineLight') color = '#facc15';
+            
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, color, 4);
 
             if (enemy.health <= 0) {
@@ -440,7 +529,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
             const actualHeal = player.health - oldHealth;
             if (actualHeal > 0) {
                 logMessage(`You drain {green:${actualHeal} health} from the ${enemyData.name}.`);
-                triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
                 if (typeof playerRef !== 'undefined') playerRef.update({ health: player.health });
             }
         }
@@ -506,7 +595,18 @@ async function executeAimedSpell(spellId, dirX, dirY) {
 
             // --- 1. ENTANGLE (Unique Logic) ---
             case 'entangle': {
-                logMessage("{green:Vines burst from the ground!}");
+                // LORE WIN: Adaptive Flora
+                let currentTile = '.';
+                if (typeof chunkManager !== 'undefined') currentTile = chunkManager.getTile(player.x, player.y);
+                
+                let vineMsg = "Vines burst from the ground!";
+                let vineColor = '#4ade80'; // Green
+                
+                if (currentTile === 'D') { vineMsg = "Thorny roots erupt from the sand!"; vineColor = '#ca8a04'; }
+                else if (currentTile === '❄️' || currentTile === '🧊') { vineMsg = "Frozen roots shatter the ice!"; vineColor = '#7dd3fc'; }
+                else if (currentTile === 'd') { vineMsg = "Ashen, dead vines snare the target!"; vineColor = '#57534e'; }
+                
+                logMessage(`{green:${vineMsg}}`);
                 const entangleDmg = spellData.baseDamage + (player.intuition * spellLevel); 
 
                 for (let i = 1; i <= 3; i++) {
@@ -514,12 +614,12 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     const ty = player.y + (dirY * i);
                     
                     // Visual path
-                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.spawn(tx, ty, '#4ade80', 'dust', '', 3);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.spawn(tx, ty, vineColor, 'dust', '', 3);
 
                     if (await applySpellDamage(tx, ty, entangleDmg, spellId)) {
                         hitSomething = true;
                         if (typeof ParticleSystem !== 'undefined') {
-                            ParticleSystem.createFloatingText(tx, ty, "ROOTED", "#22c55e");
+                            ParticleSystem.createFloatingText(tx, ty, "ROOTED", vineColor);
                         }
                         break;
                     }
@@ -617,8 +717,24 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[my]?.[mx];
                     }
 
+                    // CONTENT WIN: Meteor Mining!
+                    if (tileAt === '^') {
+                        // If it hits an empty mountain, 5% chance to extract Star-Metal!
+                        if (Math.random() < 0.05) {
+                            logMessage("{gold:The meteor shatters the mountain, revealing a glowing core!}");
+                            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(mx, my, '☄️');
+                        }
+                        break; // Stop at the mountain
+                    }
+                    // CONTENT WIN: Deforestation
+                    if (tileAt === '🌳') {
+                        logMessage("{orange:The thicket goes up in flames!}");
+                        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(mx, my, '🔥', 0.5); // Burns for 30 minutes
+                        break;
+                    }
+
                     // Stop early if we hit a solid object, wall, or an enemy!
-                    if (ENEMY_DATA[tileAt] || ['^', '▓', '▒', '🧱'].includes(tileAt)) {
+                    if (ENEMY_DATA[tileAt] || ['▓', '▒', '🧱'].includes(tileAt)) {
                         break;
                     }
                 }
@@ -676,6 +792,8 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         let minionName = "Risen Skeleton";
                         if (tileType === '⚰️') minionName = "Awakened Warrior";
                         else if (gameState.mapMode === 'underworld') minionName = "Abyssal Thrall";
+                        else if (gameState.currentRealm !== 0) minionName = "Void-Tethered Husk";
+                        else if (chunkManager.getTile(targetX, targetY) === 'D') minionName = "Desiccated Mummy";
 
                         gameState.player.companion = {
                             name: minionName,
@@ -740,13 +858,20 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     setTimeout(() => logMessage(`{cyan:The lightning arcs to ${jumpsToMake} nearby enemies!}`), 200);
                 }
 
+                // JUICE WIN: Cascading Chain Lightning Animation
+                // Wraps the execution in a timeout so the lightning visibly travels instead of hitting all at once
                 const lightningPromises = []; 
                 for (let i = 0; i < jumpsToMake; i++) {
                     const jumpTgt = potentialJumpTargets[i];
                     const jumpDmg = Math.max(1, Math.floor(lightningDmg * 0.75));
+                    
                     lightningPromises.push(
-                        applySpellDamage(jumpTgt.x, jumpTgt.y, jumpDmg, spellId).then(hit => {
-                            if (hit && typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(jumpTgt.x, jumpTgt.y, '#93c5fd');
+                        new Promise(resolve => {
+                            setTimeout(async () => {
+                                const hit = await applySpellDamage(jumpTgt.x, jumpTgt.y, jumpDmg, spellId);
+                                if (hit && typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(jumpTgt.x, jumpTgt.y, '#93c5fd');
+                                resolve();
+                            }, i * 150); // 150ms delay per jump
                         })
                     );
                 }
@@ -785,6 +910,12 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                                     fbPromises.push(applySpellDamage(x + ex, y + ey, 15, 'fireball'));
                                 }
                             }
+                        }
+                        
+                        // CONTENT WIN: Deforestation
+                        if (tileAt === '🌳') {
+                            logMessage("{orange:The thicket goes up in flames!}");
+                            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '🔥', 0.5); // Burns for 30 minutes
                         }
 
                         if (gameState.mapMode === 'dungeon' && tileAt === '🕸') {
@@ -829,9 +960,9 @@ async function executeAimedSpell(spellId, dirX, dirY) {
 
         // Only pulse the UI bar if resources were actually spent
         if (hitSomething) {
-            if (spellData.costType === 'mana') {
+            if (spellData.costType === 'mana' && typeof statDisplays !== 'undefined') {
                 triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
-            } else if (spellData.costType === 'psyche') {
+            } else if (spellData.costType === 'psyche' && typeof statDisplays !== 'undefined') {
                 triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
             }
         }
@@ -852,7 +983,8 @@ async function executeAimedSpell(spellId, dirX, dirY) {
  */
 
 function triggerAbilityCooldown(abilityId) {
-    const data = SKILL_DATA[abilityId] || SPELL_DATA[abilityId];
+    const data = (typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[abilityId] : null) || 
+                 (typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[abilityId] : null);
 
     if (data && data.cooldown) {
         // Initialize object if it doesn't exist
