@@ -31,6 +31,21 @@ window.cloneItemSafely = (item) => {
     };
 };
 
+// JUICE WIN: Dynamic Audio based on the item type being transferred
+function playStashAudio(itemType) {
+    if (typeof AudioSystem === 'undefined') return;
+    
+    if (['weapon', 'armor', 'tool'].includes(itemType)) {
+        AudioSystem.playHit(); // Heavy metallic clank
+    } else if (['consumable', 'ammo', 'ingredient'].includes(itemType)) {
+        AudioSystem.playNoise(0.1, 0.1, 800); // Rustling/paper sound
+    } else if (['trade'].includes(itemType)) {
+        AudioSystem.playCoin(); // Wealth jingle
+    } else {
+        AudioSystem.playStep(); // Standard thud
+    }
+}
+
 // Added 'amount' parameter to support partial stack transfers!
 window.handleStashTransfer = function (action, index, amountStr = 'all') {
     const player = gameState.player;
@@ -74,7 +89,10 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
         const qtyString = amountToMove > 1 ? `${amountToMove}x ` : '';
         const nameFormatted = item.statBonuses ? `{purple:${item.name}}` : item.name;
         logMessage(`Deposited ${qtyString}${nameFormatted}.`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Clink sound
+        
+        playStashAudio(item.type);
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '📦', '#ffffff');
+
     }
     else if (action === 'withdraw') {
         const item = player.bank[index];
@@ -85,7 +103,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
         const amountToMove = (amountStr === 'all') ? item.quantity : 1;
 
         // Inventory Capacity Check
-        if (!existingInvItem && player.inventory.length >= window.MAX_INVENTORY_SLOTS) { 
+        if (!existingInvItem && player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) { 
             logMessage("{red:Your inventory is full!}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
@@ -124,14 +142,18 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
         const qtyString = amountToMove > 1 ? `${amountToMove}x ` : '';
         const nameFormatted = item.statBonuses ? `{purple:${item.name}}` : item.name;
         logMessage(`Withdrew ${qtyString}${nameFormatted}.`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Clink sound
+        
+        playStashAudio(item.type);
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '🎒', '#ffffff');
     }
 
     // Save and Render.
-    playerRef.update({ 
-        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
-        bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
-    });
+    if (typeof playerRef !== 'undefined' && playerRef) {
+        playerRef.update({ 
+            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
+            bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
+        });
+    }
     renderStash();
     renderInventory();
 };
@@ -171,16 +193,19 @@ window.depositAllMaterials = function() {
         // JUICE WIN: Satisfying visual confirmation behind the modal
         if (typeof ParticleSystem !== 'undefined') {
             ParticleSystem.createFloatingText(player.x, player.y, "STASHED", "#4ade80");
+            ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 10);
         }
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic(); 
         
         // Auto-sort the stash cleanly after a mass dump
         window.sortStash(false); // pass false to skip playing the step sound again
         
-        playerRef.update({ 
-            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
-            bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
-        });
+        if (typeof playerRef !== 'undefined' && playerRef) {
+            playerRef.update({ 
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
+                bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
+            });
+        }
         renderStash();
         renderInventory();
     } else {
@@ -226,10 +251,12 @@ window.quickStackToStash = function() {
         
         window.sortStash(false);
         
-        playerRef.update({ 
-            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
-            bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
-        });
+        if (typeof playerRef !== 'undefined' && playerRef) {
+            playerRef.update({ 
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
+                bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
+            });
+        }
         renderStash();
         renderInventory();
     } else {
@@ -320,6 +347,21 @@ function renderStash() {
         return tooltip;
     };
 
+    // QoL WIN: Generate visually pleasing category tags for the list
+    const generateTypeTag = (type) => {
+        if (!type) return '';
+        const tagMap = {
+            'weapon': { color: 'text-red-400', bg: 'bg-red-900 border-red-800' },
+            'armor': { color: 'text-blue-400', bg: 'bg-blue-900 border-blue-800' },
+            'consumable': { color: 'text-green-400', bg: 'bg-green-900 border-green-800' },
+            'trade': { color: 'text-yellow-400', bg: 'bg-yellow-900 border-yellow-800' },
+            'ammo': { color: 'text-orange-400', bg: 'bg-orange-900 border-orange-800' },
+            'junk': { color: 'text-gray-400', bg: 'bg-gray-800 border-gray-700' }
+        };
+        const style = tagMap[type] || { color: 'text-purple-400', bg: 'bg-purple-900 border-purple-800' };
+        return `<span class="text-[8px] uppercase tracking-widest ${style.color} ${style.bg} bg-opacity-30 px-1.5 py-0.5 rounded border ml-2 shadow-inner inline-block relative -top-0.5">${type}</span>`;
+    };
+
     // Render Player Inventory (Deposit)
     if (player.inventory.length === 0) {
         stashPlayerList.innerHTML = '<li class="italic text-sm text-gray-500 p-2 border border-gray-700 rounded-lg">Your bag is empty.</li>';
@@ -332,9 +374,11 @@ function renderStash() {
             // JUICE: Highlight Magic Items
             const nameColor = item.statBonuses ? 'text-purple-400 font-bold' : 'text-gray-200';
 
-            let extraInfo = item.statBonuses ? ` <span class="text-xs text-purple-400">✨</span>` : '';
+            let extraInfo = item.statBonuses ? ` <span class="text-xs text-purple-400 drop-shadow-md">✨</span>` : '';
+            extraInfo += generateTypeTag(item.type);
+            
             if (item.isEquipped) {
-                extraInfo += ` <span class="text-[9px] text-yellow-500 font-bold bg-black bg-opacity-40 px-1 rounded ml-1 uppercase tracking-widest border border-yellow-800">[EQP]</span>`;
+                extraInfo += ` <span class="text-[9px] text-yellow-500 font-bold bg-black bg-opacity-40 px-1 rounded ml-1 uppercase tracking-widest border border-yellow-800 shadow-inner relative -top-0.5">[EQP]</span>`;
             }
 
             // QoL: Split Stack Buttons
@@ -352,7 +396,7 @@ function renderStash() {
 
             li.innerHTML = `
                 <div class="flex items-center gap-2">
-                    <span class="text-lg">${item.tile || '🎒'}</span>
+                    <span class="text-lg drop-shadow-md">${item.tile || '🎒'}</span>
                     <span class="${nameColor}">${item.name} <span class="text-xs text-gray-400 ml-1">x${item.quantity}</span>${extraInfo}</span>
                 </div>
                 <div class="flex items-center">
@@ -374,7 +418,9 @@ function renderStash() {
             
             // JUICE: Highlight Magic Items
             const nameColor = item.statBonuses ? 'text-purple-400 font-bold' : 'text-gray-200';
-            let extraInfo = item.statBonuses ? ` <span class="text-xs text-purple-400">✨</span>` : '';
+            
+            let extraInfo = item.statBonuses ? ` <span class="text-xs text-purple-400 drop-shadow-md">✨</span>` : '';
+            extraInfo += generateTypeTag(item.type);
 
             // QoL: Split Stack Buttons
             let buttonsHtml = '';
@@ -389,7 +435,7 @@ function renderStash() {
 
             li.innerHTML = `
                 <div class="flex items-center gap-2">
-                    <span class="text-lg">${item.tile || '📦'}</span>
+                    <span class="text-lg drop-shadow-md">${item.tile || '📦'}</span>
                     <span class="${nameColor}">${item.name} <span class="text-xs text-gray-400 ml-1">x${item.quantity}</span>${extraInfo}</span>
                 </div>
                 <div class="flex items-center">
@@ -414,7 +460,7 @@ function renderStash() {
         // Inject Auto-Sort alongside capacity
         bankHeader.innerHTML = `
             <div class="flex justify-between items-center w-full">
-                <span>Stash Vault <span class="text-[10px] font-normal ${capColor} ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700">(${bank.length}/${window.MAX_STASH_SLOTS})</span></span>
+                <span>Dimensional Vault <span class="text-[10px] font-normal ${capColor} ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner">(${bank.length}/${window.MAX_STASH_SLOTS})</span></span>
                 <button onclick="sortStash()" class="text-[10px] uppercase font-bold tracking-widest bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95" style="transform: translateZ(0);">Sort</button>
             </div>
         `;
@@ -427,10 +473,10 @@ function renderStash() {
             <div class="flex justify-between items-center w-full">
                 <span>Your Bag</span>
                 <div class="flex gap-2">
-                    <button id="quickStackBtn" onclick="quickStackToStash()" class="text-[10px] uppercase font-bold tracking-widest bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95" style="transform: translateZ(0);">
+                    <button id="quickStackBtn" onclick="quickStackToStash()" class="text-[10px] uppercase font-bold tracking-widest bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-purple-800" style="transform: translateZ(0);">
                         Quick Stack
                     </button>
-                    <button id="massDepositBtn" onclick="depositAllMaterials()" class="text-[10px] uppercase font-bold tracking-widest bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95" style="transform: translateZ(0);">
+                    <button id="massDepositBtn" onclick="depositAllMaterials()" class="text-[10px] uppercase font-bold tracking-widest bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-gray-800" style="transform: translateZ(0);">
                         Deposit Mats
                     </button>
                 </div>
@@ -444,6 +490,13 @@ function openStashModal() {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     
     renderStash();
+    
+    // LORE WIN: Flavor text explaining how stashes work globally
+    const title = document.querySelector('#stashModal h2');
+    if (title) {
+        title.innerHTML = `Dimensional Vault <span class='text-sm text-purple-400 block font-normal mt-1 italic font-serif'>Space and time fold inside this heavy iron box. Your items are safe across all realms.</span>`;
+    }
+    
     const stashModal = document.getElementById('stashModal');
     if (stashModal) stashModal.classList.remove('hidden');
 }
