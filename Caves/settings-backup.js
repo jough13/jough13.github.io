@@ -1,7 +1,7 @@
 // --- START OF FILE settings-backup.js ---
 
 // ==========================================
-// CLOUD BACKUPS & SAVE INTEGRITY
+// CLOUD BACKUPS, SAVE INTEGRITY & THE AKASHIC RECORDS
 // ==========================================
 
 const BACKUP_SALT = "kEsMaI_v1_S3cR3t_s@lt"; // Change this to something random!
@@ -13,8 +13,16 @@ let isBackupOperationRunning = false;
 // We now hash the exact sequence of item names, preventing players from modifying the save file
 // to swap 5 pieces of "Stone" into 5 "Legendary Swords" (which bypassed the old length check).
 function generateStrictSaveSignature(data) {
-    const invStr = data.inventory ? data.inventory.map(i => i.name).join('') : 'empty';
-    const bankStr = data.bank ? data.bank.map(i => i.name).join('') : 'empty';
+    // PERFORMANCE WIN: Fast string building for massive arrays
+    let invStr = 'empty';
+    if (data.inventory && data.inventory.length > 0) {
+        invStr = data.inventory.map(i => i.name).join('');
+    }
+    let bankStr = 'empty';
+    if (data.bank && data.bank.length > 0) {
+        bankStr = data.bank.map(i => i.name).join('');
+    }
+    
     const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.maxHealth}_${invStr}_${bankStr}_${data.background}_${BACKUP_SALT}`;
     
     let hash = 0;
@@ -68,7 +76,7 @@ async function createCloudBackup(slotId = 'latest') {
     
     // Prevent players from spamming the backup button and hitting Firebase quotas
     if (now - lastBackupTime < 10000) {
-        logMessage("{red:Please wait a moment before creating another backup.}");
+        logMessage("{red:The Weavers of Fate need time to rest. Please wait.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
@@ -76,20 +84,20 @@ async function createCloudBackup(slotId = 'latest') {
     isBackupOperationRunning = true;
     lastBackupTime = now;
 
-    // JUICE WIN: Dynamic Button Phasing
+    // JUICE WIN: Dynamic Button Phasing & Lore Flavor
     const btn = document.getElementById('btnBackup');
-    const originalText = btn ? btn.innerHTML : "☁️ Create Backup";
+    const originalText = btn ? btn.innerHTML : "☁️ Anchor Timeline";
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = "⏳ Scanning...";
+        btn.innerHTML = "⏳ Consulting Akashic Records...";
         btn.classList.add('opacity-75', 'cursor-wait');
         
         // Phase UI texts for tactile feedback
-        setTimeout(() => { if (btn.disabled) btn.innerHTML = "⏳ Uploading..."; }, 400);
-        setTimeout(() => { if (btn.disabled) btn.innerHTML = "⏳ Verifying..."; }, 1200);
+        setTimeout(() => { if (btn.disabled) btn.innerHTML = "⏳ Weaving Fate..."; }, 400);
+        setTimeout(() => { if (btn.disabled) btn.innerHTML = "⏳ Sealing Anomaly..."; }, 1200);
     }
 
-    logMessage("{gray:Creating cloud backup...}");
+    logMessage("{cyan:Inscribing your current timeline into the Akashic Records...}");
     
     // 1. Get clean data explicitly to prevent saving transient UI state
     const rawData = {
@@ -139,26 +147,32 @@ async function createCloudBackup(slotId = 'latest') {
             }
         }
 
-        logMessage("{green:Backup successful!}");
+        logMessage("{green:Your timeline has been safely anchored.}");
+        
+        // LORE/JUICE: Tactile feedback for stamping the timeline
+        gameState.screenShake = 3; 
         if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+        if (typeof ParticleSystem !== 'undefined' && gameState.player) {
+            ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "TIMELINE SECURED", "#22d3ee");
+        }
         
         // Update the UI directly using our local timestamp instead of fetching from Firebase
         if (typeof updateBackupUI === 'function') updateBackupUI(slotId);
         
-        // JUICE WIN: Flash the label green so they know it worked immediately
+        // JUICE WIN: Flash the label cyan so they know it worked immediately
         const label = document.getElementById('lastBackupLabel');
         if (label) {
             label.classList.remove('text-gray-400');
-            label.classList.add('text-green-400', 'animate-pulse');
+            label.classList.add('text-cyan-400', 'animate-pulse');
             setTimeout(() => {
-                label.classList.remove('text-green-400', 'animate-pulse');
+                label.classList.remove('text-cyan-400', 'animate-pulse');
                 label.classList.add('text-gray-400');
             }, 2500);
         }
         
     } catch (err) {
         console.error("Backup creation failed: ", err);
-        logMessage("{red:Backup failed.} See console.");
+        logMessage("{red:The Akashic Records rejected the anchor.} See console.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     } finally {
         // Reset Button State and Locks
@@ -174,10 +188,10 @@ async function createCloudBackup(slotId = 'latest') {
 async function restoreCloudBackup(slotId = 'latest') {
     if (!playerRef || isBackupOperationRunning) return;
 
-    // QoL WIN: Hard confirmation prompt to prevent accidental data wipes!
-    const confirmation = prompt("⚠️ WARNING: This will overwrite your current progress with the cloud backup.\n\nType RESTORE to confirm:");
+    // LORE & QoL WIN: Hard confirmation prompt styled around reality manipulation
+    const confirmation = prompt("⚠️ WARNING: This will collapse your current reality and overwrite it with the anchored timeline.\n\nType RESTORE to confirm:");
     if (confirmation !== "RESTORE") {
-        logMessage("{gray:Restore cancelled.}");
+        logMessage("{gray:Timeline collapse cancelled.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
         return;
     }
@@ -186,20 +200,20 @@ async function restoreCloudBackup(slotId = 'latest') {
 
     // JUICE WIN: Dynamic Button States
     const btn = document.getElementById('btnRestore');
-    const originalText = btn ? btn.innerHTML : "↺ Restore";
+    const originalText = btn ? btn.innerHTML : "↺ Reweave Fate";
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = "⏳ Downloading...";
+        btn.innerHTML = "⏳ Searching the Void...";
         btn.classList.add('opacity-75', 'cursor-wait');
     }
 
-    logMessage("{gray:Locating backup...}");
+    logMessage("{purple:Unraveling the current reality... seeking the anchor point.}");
 
     try {
         const doc = await playerRef.collection('backups').doc(slotId).get();
 
         if (!doc.exists) {
-            logMessage("{red:No backup found.}");
+            logMessage("{red:No anchor found in the Void.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
@@ -213,7 +227,7 @@ async function restoreCloudBackup(slotId = 'latest') {
         
         if (data.signature !== strictSig && data.signature !== normalSig && data.signature !== legacySig) {
             console.error(`Signature Mismatch! Saved: ${data.signature}, Strict: ${strictSig}, Legacy: ${legacySig}`);
-            logMessage("{red:CORRUPT DATA.} Backup signature mismatch.");
+            logMessage("{red:CORRUPT TIMELINE DETECTED.} The Weavers of Fate block the transition.");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return; // STOP RESTORE
         }
@@ -223,7 +237,7 @@ async function restoreCloudBackup(slotId = 'latest') {
         // A. Actively block restores that feature massive impossible gold/xp disparities 
         if (data.coins > gameState.player.coins + 5000 && data.xp === gameState.player.xp) {
              console.error("Suspicious Backup Blocked: Massive gold discrepancy without XP gain.");
-             logMessage("{red:Backup Validation Failed.} Anomalous data detected.");
+             logMessage("{red:Reality Violation Failed.} Anomalous gold detected.");
              if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
              return;
         }
@@ -232,7 +246,7 @@ async function restoreCloudBackup(slotId = 'latest') {
         if ((data.statPoints || 0) > (gameState.player.statPoints || 0) + 10 || 
             (data.talentPoints || 0) > (gameState.player.talentPoints || 0) + 5) {
              console.error("Suspicious Backup Blocked: Unearned Stat/Talent points detected.");
-             logMessage("{red:Backup Validation Failed.} Anomalous progression detected.");
+             logMessage("{red:Reality Violation Failed.} Anomalous progression detected.");
              if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
              return;
         }
@@ -243,13 +257,13 @@ async function restoreCloudBackup(slotId = 'latest') {
         
         if ((data.inventory && data.inventory.length > invLimit + 5) || (data.bank && data.bank.length > stashLimit + 5)) {
              console.error(`Suspicious Backup Blocked: Inventory/Stash size exceeds maximum limits. (Inv: ${data.inventory?.length}, Bank: ${data.bank?.length})`);
-             logMessage("{red:Backup Validation Failed.} Invalid container size.");
+             logMessage("{red:Reality Violation Failed.} Space-time container limits exceeded.");
              if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
              return;
         }
 
         // 3. Restore
-        logMessage("{gray:Restoring data...}");
+        logMessage("{purple:Anchor point acquired. Rebuilding the world...}");
         
         // Remove the backup-specific fields before applying to game
         delete data.signature; 
@@ -290,9 +304,26 @@ async function restoreCloudBackup(slotId = 'latest') {
             Object.assign(gameState.player, data);
         }
         
+        // --- CONTENT & LORE WIN: The Paradox Anomaly ---
+        // 5% chance when save-scumming that the fabric of reality tears, giving you a strange item.
+        let paradoxTriggered = false;
+        if (Math.random() < 0.05 && gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+            const paradoxShard = {
+                templateId: '⏳', 
+                name: 'Paradox Anomaly',
+                type: 'junk',
+                quantity: 1,
+                tile: '⏳',
+                description: "A crystallized fragment of a discarded timeline. You shouldn't have this.",
+                _rarity: 'legendary' // Gives it a golden/glowing border in inventory
+            };
+            gameState.player.inventory.push(paradoxShard);
+            paradoxTriggered = true;
+        }
+        
         // Save immediately to the main slot so it persists
         // Use set to ensure we don't accidentally merge corrupted fields
-        await playerRef.set(data);
+        await playerRef.set(gameState.player);
 
         // Force the UI to physically update to match the newly loaded old data!
         if (typeof renderStats === 'function') renderStats();
@@ -300,11 +331,18 @@ async function restoreCloudBackup(slotId = 'latest') {
         if (typeof renderInventory === 'function') renderInventory();
 
         // JUICE WIN: "Time Travel" feedback effect!
-        gameState.screenShake = 30;
+        gameState.screenShake = 35;
         if (typeof ParticleSystem !== 'undefined') {
+            // Giant purple/white implosion
             ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ffffff', 40);
+            ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#a855f7', 20);
         }
         logMessage("{purple:Reality violently shifts... the timeline has been rewritten.}");
+        
+        if (paradoxTriggered) {
+            logMessage("{gold:The violent shift in time left something unnatural in your pocket...}");
+        }
+        
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
         
         // Close modal
@@ -313,7 +351,7 @@ async function restoreCloudBackup(slotId = 'latest') {
 
     } catch (err) {
         console.error("Restore failed: ", err);
-        logMessage("{red:Restore failed.} Check console for details.");
+        logMessage("{red:Timeline Restore failed.} The Weavers reject this thread. Check console.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     } finally {
         // Reset Button State and Lock
@@ -361,21 +399,21 @@ async function updateBackupUI(slotId = 'latest') {
             label.classList.remove('text-red-500', 'text-yellow-500', 'text-gray-400');
 
             if (hoursOld > 24) {
-                label.innerHTML = `Backup: ${dateString} at ${timeString} <br><span class="font-bold text-yellow-500">(Over 24h old!)</span>`;
+                label.innerHTML = `Timeline Anchored: ${dateString} at ${timeString} <br><span class="font-bold text-yellow-500">(Over 24h old!)</span>`;
                 label.classList.add('text-yellow-500');
             } else {
-                label.innerHTML = `Backup: ${dateString} at ${timeString} <br><span class="text-blue-400 font-bold">(${relativeStr})</span>`;
+                label.innerHTML = `Timeline Anchored: ${dateString} at ${timeString} <br><span class="text-cyan-400 font-bold">(${relativeStr})</span>`;
                 label.classList.add('text-gray-400');
             }
 
         } else {
-            label.textContent = "No backup found in the cloud.";
+            label.textContent = "No anchor found in the Akashic Records.";
             label.classList.remove('text-red-500', 'text-yellow-500', 'text-gray-400');
             label.classList.add('text-gray-400');
         }
     } catch (e) {
         console.error("Failed to read backup status: ", e);
-        label.textContent = "Status: Unknown (Network Error)";
+        label.textContent = "Status: Unknown (Leyline Interference)";
         label.classList.remove('text-gray-400', 'text-yellow-500');
         label.classList.add('text-red-500');
     }
