@@ -540,58 +540,63 @@ function grantLoreDiscovery(mapTileId, codexEntryId = null) {
     });
 }
 
+// --- FULLY CLEANED RESTART LOGIC ---
 async function restartGame() {
-    // 1. Capture the current background so we don't lose the class choice
     const currentBg = gameState.player.background;
 
-    // 2. Clear Session State FIRST (This resets mapMode to null)
     clearSessionState();
 
-    // 3. Get fresh state
     const defaultState = createDefaultPlayerState();
 
-    // 4. Re-apply background tag and stats (so you stay a Warrior/Mage/etc)
+    // Preserve Background and re-calculate derived stats
     if (currentBg && PLAYER_BACKGROUNDS[currentBg]) {
         defaultState.background = currentBg;
-
         const bgStats = PLAYER_BACKGROUNDS[currentBg].stats;
         for (let stat in bgStats) {
             defaultState[stat] += bgStats[stat];
         }
-        // Recalculate derived stats based on background bonuses
         if (bgStats.constitution) defaultState.maxHealth += (bgStats.constitution * 5);
         if (bgStats.wits) defaultState.maxMana += (bgStats.wits * 5);
 
-        // Heal to new max
         defaultState.health = defaultState.maxHealth;
         defaultState.mana = defaultState.maxMana;
-
-        // Note: You get the default items (Bread/Water), not the starting class kit again.
-        // If you want the class kit, you'd need to re-merge the 'items' array from PLAYER_BACKGROUNDS here.
     }
 
-    // 5. Apply to Game State
     Object.assign(gameState.player, defaultState);
 
-    // 6. Set Map Mode (MUST be done AFTER clearSessionState)
     gameState.mapMode = 'overworld';
     gameState.currentCastleId = null;
     gameState.currentCaveId = null;
+    
+    gameState.currentRealm = 0;
+    gameState.realmMutators = [];
 
-    // 7. Save to DB
-    await playerRef.set(defaultState);
+    // Clear exploration arrays for new run
+    gameState.discoveredRegions.clear();
+    gameState.exploredChunks.clear();
+    gameState.lootedTiles.clear(); 
+    gameState.player.discoveredPOIs = [];
 
-    // 8. UI Updates
+    // FIX: Ensure the database explicitly receives the realm reset
+    const resetPayload = {
+        ...defaultState,
+        currentRealm: 0,
+        realmMutators: [],
+        mapMode: 'overworld',
+        mapId: null
+    };
+
+    await playerRef.set(resetPayload);
+
     logMessage("Your adventure begins anew...");
+    updateRegionDisplay();
     renderStats();
     renderInventory();
-    updateRegionDisplay();
+    renderEquipment();
 
-    // Force a re-render/resize to ensure canvas is active
     resizeCanvas();
     render();
 
-    // 9. Hide the modal
     gameOverModal.classList.add('hidden');
 }
 
@@ -2478,6 +2483,10 @@ async function enterGame(playerData) {
             ...preservedStats,
             x: 0,
             y: 0,
+            currentRealm: 0,      // Ensure hard-reloads pull you to the Prime Realm
+            realmMutators: [],    // Clear mutators
+            mapMode: 'overworld', // Force overworld mode
+            mapId: null,          // Clear dungeon instances
             health: preservedStats.maxHealth,
             mana: preservedStats.maxMana,
             stamina: preservedStats.maxStamina,
