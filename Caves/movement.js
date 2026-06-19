@@ -3160,6 +3160,25 @@ async function attemptMovePlayer(newX, newY) {
 
     if (typeof passivePerceptionCheck === 'function') passivePerceptionCheck();
     if (typeof triggerAtmosphericFlavor === 'function') triggerAtmosphericFlavor(newTile);
+
+    // --- WHISPERING RUINS ---
+    // If walking near death or ancient magic, trigger a spooky event
+    if (['🏛️', '🕍', '⚰️', '🕳️', 'Ω'].includes(newTile) || gameState.mapMode === 'underworld') {
+        if (Math.random() < 0.08) { // 8% chance per step near these tiles
+            const whispers = ["Turn back...", "We starved...", "He is watching...", "So cold...", "Why did you come here?"];
+            const msg = whispers[Math.floor(Math.random() * whispers.length)];
+            
+            // 1. Spooky floating text right on the player
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y - 1, msg, "#a855f7");
+            }
+            // 2. Play a reversed, high-pitched spooky tone
+            if (typeof AudioSystem !== 'undefined') {
+                AudioSystem.playTone(800, 'sine', 0.8, 0.05, false, 400); // Pitch slides DOWN
+            }
+            logMessage(`{gray:A voice whispers on the wind: "${msg}"}`);
+        }
+    }
     
     // Engine Render happens automatically via game loop in script.js now,
     // but we leave this direct render call as a fallback in case frame skipping occurred.
