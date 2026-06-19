@@ -57,7 +57,7 @@ const gameState = {
     initialEnemiesLoaded: false,
     mapDirty: true,           // Flag to force canvas redraws
     
-    // JUICE WIN: Directional Screen Shake State
+    // JUICE WIN: Directional Screen Shake & Flash State
     screenShake: 0,           // Legacy scalar (kept for backwards compatibility)
     cameraShake: {
         intensity: 0,
@@ -65,6 +65,12 @@ const gameState = {
         dy: 0,                // Directional Y knockback
         decay: 0.85           // How fast the shake settles
     },
+    screenFlash: {
+        color: null,          // e.g., '#ffffff' for lightning
+        alpha: 0,             // Current opacity
+        decay: 0.1            // How fast the flash fades
+    },
+    activeFilter: null,       // Persistent screen tint (e.g., 'void_corruption')
 
     inventoryMode: false,
     isDroppingItem: false,
@@ -185,12 +191,22 @@ const gameState = {
         candlelightTurns: 0,
         stealthTurns: 0,
         
-        // Environment Protection
+        // Environment Protection & Immunities
         fireResistTurns: 0,
         waterBreathingTurns: 0,
         weatherState: 'calm',
         weatherIntensity: 0,
         weatherDuration: 0,
+        statusImmunities: [], // Allows buffs to grant temporary immunity to specific debuffs
+
+        // LORE WIN: Factions & Reputation
+        // Tracks the player's standing with various factions in the world
+        reputation: {
+            guild: 0,         // Cartographers/Merchants
+            crown: 0,         // Kingdom Guards
+            shadowed_hand: -10, // Default hostile
+            fae: 0            // The Feywild tricksters
+        },
 
         // Storage & Items
         inventory: [],
@@ -293,7 +309,12 @@ const gameState = {
     // Weather, Time & Global Events
     weather: 'clear',
     currentForecast: 'clear', // Background forecast for weather transitions
-    isBloodMoon: false,       // Global server event flag
+    
+    // EXPANDABILITY WIN: Global Server Events
+    isBloodMoon: false,       // Global server event flag (Red tint, aggressive mobs)
+    isEclipse: false,         // Global server event flag (Total darkness, rare spawns)
+    isLeylineSurge: false,    // Global server event flag (Mana regenerates rapidly, spells hit harder)
+    
     playerTurnCount: 0,
     time: {
         day: 1,
