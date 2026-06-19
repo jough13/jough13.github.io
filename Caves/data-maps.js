@@ -49,6 +49,54 @@ window.REALM_MUTATORS = {
 };
 
 window.TILE_DATA = {
+    '⛺a': {
+        type: 'anomaly',
+        name: 'Abandoned Campsite',
+        flavor: "A ruined tent flaps in the wind. The fire has been cold for years.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("Only tattered cloth and ash remain.");
+                return null;
+            }
+
+            let biome = 'Plains';
+            const t = chunkManager.getTile(x, y);
+            if (t === 'D') biome = 'Desert';
+            if (t === '^') biome = 'Mountain';
+            if (t === '≈') biome = 'Swamp';
+
+            let story = "You find a journal: 'The wolves are circling. We are out of arrows.'";
+            let loot = '➹'; // Wooden Arrow
+
+            if (biome === 'Desert') {
+                story = "You find a skeleton clutching an empty water flask. 'The heat... the mirages lie.'";
+                loot = '🫙'; // Empty Bottle
+            } else if (biome === 'Mountain') {
+                story = "A frozen corpse huddles in the tent. 'The cold took my fingers. I cannot strike a spark.'";
+                loot = '🪵'; // Wood Log
+            } else if (biome === 'Swamp') {
+                story = "The tent is covered in slime. A note reads: 'Do not trust the glowing lights in the fog.'";
+                loot = '🧪a'; // Antidote
+            }
+
+            loreTitle.textContent = "A Grim Discovery";
+            loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">You search the ruined camp...</p><p class="font-serif text-gray-300 leading-relaxed">${story}</p>`;
+            loreModal.classList.remove('hidden');
+
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 500); // Rummage sound
+            
+            // Drop the thematic loot!
+            const itemTemplate = window.ITEM_DATA[loot];
+            if (state.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                state.player.inventory.push({ ...itemTemplate, quantity: 1 });
+                logMessage(`{purple:You salvaged a ${itemTemplate.name}.}`);
+            }
+
+            state.lootedTiles.add(tileId);
+            return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles) };
+        }
+    },
     '🏟️': {
         type: 'dungeon_entrance',
         flavor: "A massive, blood-stained arena carved from black stone. The gates are open...",
