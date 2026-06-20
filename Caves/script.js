@@ -2062,18 +2062,21 @@ function handleChatCommand(message) {
             gameState.player.health = gameState.player.maxHealth;
             gameState.player.mana = gameState.player.maxMana;
             gameState.player.stamina = gameState.player.maxStamina;
+            gameState.player.psyche = gameState.player.maxPsyche;
             gameState.player.hunger = gameState.player.maxHunger;
             gameState.player.thirst = gameState.player.maxThirst;
             playerRef.update({
                 health: gameState.player.health,
                 mana: gameState.player.mana,
                 stamina: gameState.player.stamina,
+                psyche: gameState.player.psyche,
                 hunger: gameState.player.hunger,
                 thirst: gameState.player.thirst
             });
             renderStats();
-            logMessage("Cheater! (Health fully restored)");
+            logMessage("Cheater! (Vitals fully restored)");
             break;
+
 
         case 'tp':
             if (args.length < 2) {
