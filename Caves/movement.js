@@ -557,6 +557,80 @@ async function attemptMovePlayer(newX, newY) {
         return; 
     }
 
+    // --- ACTIVE TREASURE MAP LOGIC ---
+    if (gameState.activeTreasure && newX === gameState.activeTreasure.x && newY === gameState.activeTreasure.y) {
+        const hasShovel = gameState.player.inventory.some(i => i.name === 'Shovel');
+        
+        if (hasShovel) {
+            logMessage("{gold:You hit something solid! You unearthed the hidden treasure!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#facc15', 25);
+
+            // 1. Give massive gold
+            const goldFound = 500 + Math.floor(Math.random() * 500);
+            gameState.player.coins += goldFound;
+            
+            // Integrate with our new Anti-Cheat tracker!
+            if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(goldFound);
+            logMessage(`{yellow:You found ${goldFound} Gold!}`);
+
+            // 2. Give high-tier artifacts/gems
+            const treasureLoot = ['💎b', '💎r', '👑', '💍', '🏺a', '✨', '✨'];
+            const numItems = 2 + Math.floor(Math.random() * 2); // 2 to 3 premium items
+            
+            for (let i = 0; i < numItems; i++) {
+                const itemKey = treasureLoot[Math.floor(Math.random() * treasureLoot.length)];
+                const template = ITEM_DATA[itemKey];
+                
+                if (template && gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                    gameState.player.inventory.push({
+                        templateId: itemKey,
+                        name: template.name,
+                        type: template.type,
+                        quantity: 1,
+                        tile: template.tile || itemKey,
+                        damage: template.damage || null,
+                        defense: template.defense || null,
+                        slot: template.slot || null,
+                        statBonuses: template.statBonuses || null
+                    });
+                    logMessage(`{purple:You unearthed a ${template.name}!}`);
+                } else {
+                    logMessage(`{red:You unearthed a ${template.name}, but your pack is full!}`);
+                    // Drop the excess loot on the ground
+                    const dropTile = template ? (template.tile || itemKey) : '🎒';
+                    if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, dropTile, 24); // 24hr TTL
+                    gameState.mapDirty = true;
+                }
+            }
+
+            // 3. Clear the treasure mark & apply stamina cost
+            gameState.activeTreasure = null;
+            gameState.player.stamina = Math.max(0, gameState.player.stamina - 2);
+            if (typeof triggerStatFlash === 'function') triggerStatFlash(statDisplays.stamina, false);
+            
+            // 4. Save and Update
+            if (typeof playerRef !== 'undefined') {
+                playerRef.update({ 
+                    activeTreasure: null,
+                    coins: gameState.player.coins,
+                    inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
+                });
+            }
+            if (typeof renderInventory === 'function') renderInventory();
+            if (typeof renderStats === 'function') renderStats();
+            
+            gameState.mapDirty = true;
+            render();
+            endPlayerTurn();
+            return;
+        } else {
+            logMessage("{gray:X marks the spot... but you need a Shovel to dig here.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return; // Block movement so they don't accidentally walk past it
+        }
+    }
+
     // --- ARCHAEOLOGY LOGIC ---
     if (newTile === '∴') {
         const hasShovel = gameState.player.inventory.some(i => i.name === 'Shovel');
