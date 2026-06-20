@@ -1490,13 +1490,10 @@ async function runCompanionTurn() {
                 const visualDmg = Math.max(1, companion.attack - (enemyData.defense || 0));
 
                 try {
-                    await enemyRef.transaction(currentData => {
+                    const txResult = await window.withTimeout(enemyRef.transaction(currentData => {
                         if (!currentData) return undefined;
                         
-                        // DEEP CLONE to absolutely prevent Firebase maxretry mutation bugs
                         let enemy = JSON.parse(JSON.stringify(currentData));
-
-                        // ANTI-NAN FIX for Companion Attacks!
                         enemy.health = Number(enemy.health);
                         if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
 
@@ -1505,29 +1502,29 @@ async function runCompanionTurn() {
 
                         if (enemy.health <= 0) return null;
                         return enemy;
-                    }, (error, committed, snapshot) => {
-                        if (committed) {
-                            if (typeof ParticleSystem !== 'undefined') {
-                                ParticleSystem.createExplosion(tx, ty, '#86efac', 5); 
-                                ParticleSystem.createFloatingText(tx, ty, `-${visualDmg}`, '#fff');
-                            }
+                    }), 3000);
 
-                            if (!snapshot.exists()) {
-                                logMessage(`{green:Your ${companion.name} tears the ${enemyData.name} apart!}`);
-                                grantXp(Math.floor(enemyData.xp / 2));
-                                
-                                const droppedLoot = generateEnemyLoot(gameState.player, enemyData); 
-                                chunkManager.setWorldTile(tx, ty, droppedLoot || '.');
-                                
-                                if (gameState.sharedEnemies[enemyId]) {
-                                    delete gameState.sharedEnemies[enemyId];
-                                }
-                                render(); 
-                            } else {
-                                logMessage(`Your ${companion.name} hits the ${enemyData.name}!`);
-                            }
+                    if (txResult && txResult.committed) {
+                        if (typeof ParticleSystem !== 'undefined') {
+                            ParticleSystem.createExplosion(tx, ty, '#86efac', 5); 
+                            ParticleSystem.createFloatingText(tx, ty, `-${visualDmg}`, '#fff');
                         }
-                    });
+
+                        if (!txResult.snapshot.exists()) {
+                            logMessage(`{green:Your ${companion.name} tears the ${enemyData.name} apart!}`);
+                            if (typeof grantXp === 'function') grantXp(Math.floor(enemyData.xp / 2));
+                            
+                            const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, enemyData) : '.'; 
+                            chunkManager.setWorldTile(tx, ty, droppedLoot);
+                            
+                            if (gameState.sharedEnemies[enemyId]) {
+                                delete gameState.sharedEnemies[enemyId];
+                            }
+                            render(); 
+                        } else {
+                            logMessage(`Your ${companion.name} hits the ${enemyData.name}!`);
+                        }
+                    }
                 } catch (err) {
                     console.error("Companion combat error:", err);
                 }
