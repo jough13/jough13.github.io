@@ -1,6 +1,3 @@
---- START OF FILE data-items.js ---
-
-```javascript
 // --- START OF FILE data-items.js ---
 
 window.COOKING_RECIPES = {
@@ -349,14 +346,8 @@ window.ITEM_DATA = {
             p.luck += 2;
             
             logMessage("{gold:You crush the token. The strength of champions flows into you!}");
-            
-            // JUICE WIN: Massive screen shake and audio for the ultimate reward
-            state.screenShake = 20;
             if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-            if (typeof ParticleSystem !== 'undefined') {
-                ParticleSystem.createExplosion(p.x, p.y, '#facc15', 30);
-                ParticleSystem.createFloatingText(p.x, p.y, "+2 ALL STATS", "#facc15");
-            }
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#facc15', 30);
             
             if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
 
@@ -382,8 +373,8 @@ window.ITEM_DATA = {
             return false; 
         }
     },
-    '📜c': { name: 'Cultist Orders', type: 'quest', description: "Plans detailing a coordinated assault on the Safe Haven." },
-    '🧿s': { name: 'Shadow Amulet', type: 'quest', description: "It hums with dark energy. A key worn only by Fanatics." },
+    '📜c': { name: 'Cultist Orders', type: 'quest', description: "Plans detailing an attack on the village." },
+    '🧿s': { name: 'Shadow Amulet', type: 'quest', description: "It hums with dark energy. A key for high-ranking cultists." },
     '🌱': {
         name: 'Cloudseed',
         type: 'consumable',
@@ -395,11 +386,7 @@ window.ITEM_DATA = {
                 return false;
             }
             logMessage("{green:A massive beanstalk erupts from the earth, piercing the clouds!}");
-            
-            // JUICE WIN: Epic screen shake and explosive audio
-            state.screenShake = 30;
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#4ade80', 40);
             
             chunkManager.setWorldTile(state.player.x, state.player.y, '🌿');
             
@@ -426,7 +413,7 @@ window.ITEM_DATA = {
         defense: 6,
         slot: 'armor',
         statBonuses: { dexterity: 5, wits: 5 },
-        description: "{blue:+6 Def}, {green:+5 Dex, +5 Wits}. It actively drinks the surrounding light.",
+        description: "{blue:+6 Def}, {green:+5 Dex, +5 Wits}. It drinks the surrounding light.",
         excludeFromLoot: true 
     },
     'repel': {
@@ -465,7 +452,7 @@ window.ITEM_DATA = {
             }
             state.player.poisonTurns = 0;
             logMessage("{green:The poison is flushed from your veins!}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+            triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -482,7 +469,7 @@ window.ITEM_DATA = {
             state.player.mana = Math.min(state.player.maxMana, state.player.mana + 30);
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10);
             logMessage("Used a Mana Potion. {blue:(+30 Mana, +10 Thirst)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
+            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -499,7 +486,7 @@ window.ITEM_DATA = {
             state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 30);
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10);
             logMessage("Used a Stamina Potion. {green:(+30 Stamina)}, {blue:(+10 Thirst)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('staminaDisplay'), 'stat-pulse-yellow');
+            triggerStatAnimation(document.getElementById('staminaDisplay'), 'stat-pulse-yellow');
             return true;
         }
     },
@@ -531,7 +518,7 @@ window.ITEM_DATA = {
             state.player.health -= 2; 
             
             logMessage("You gag as it goes down. {yellow:+20 Hunger}, {red:-2 HP}"); 
-            if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(statDisplays.health, false); 
+            triggerStatFlash(statDisplays.health, false); 
             return true; 
         } 
     },
@@ -547,7 +534,7 @@ window.ITEM_DATA = {
         type: "trade",
         char: "🦴",
         color: "#a8a29e",
-        description: "The remains of something massive that predates the Kingdom.",
+        description: "The remains of something that predates the Kingdom.",
         value: 5
     },
     'pottery': {
@@ -555,7 +542,7 @@ window.ITEM_DATA = {
         type: "trade",
         char: "🏺",
         color: "#d97706",
-        description: "It depicts a golden king with no face.",
+        description: "It depicts a king with no face.",
         value: 15
     },
     'arrowhead': {
@@ -563,7 +550,7 @@ window.ITEM_DATA = {
         type: "trade",
         char: "🔺",
         color: "#1f2937",
-        description: "Sharp as the day it was knapped. Ancient Elven make.",
+        description: "Sharp as the day it was knapped. Elven make.",
         value: 25
     },
     'idol': {
@@ -571,7 +558,7 @@ window.ITEM_DATA = {
         type: "trade",
         char: "🗿",
         color: "#78716c",
-        description: "A heavy statue of a forgotten frog god. It feels wet no matter how much you dry it.",
+        description: "It feels warm to the touch. Unsettling.",
         value: 100
     },
     'tome_page': {
@@ -579,24 +566,8 @@ window.ITEM_DATA = {
         type: "lore",
         char: "📜",
         color: "#fef3c7",
-        description: "A fragment of a spell: '...the void requires a living tether...'",
+        description: "A fragment of a spell: '...the void requires a tether...'",
         value: 50
-    },
-    'alaric_seal': {
-        name: "King's Sigil",
-        type: "trade",
-        char: "🎖️",
-        color: "#facc15",
-        description: "A heavy golden coin bearing the crest of the Fallen King. Historians pay dearly for this.",
-        value: 200
-    },
-    'egg': {
-        name: "Petrified Egg",
-        type: "trade",
-        char: "🥚",
-        color: "#57534e",
-        description: "It is turned completely to stone, yet it is unnaturally warm to the touch.",
-        value: 150
     },
     '🐙': {
         name: 'Kraken Ink Sac',
@@ -615,7 +586,7 @@ window.ITEM_DATA = {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 15);
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); 
             logMessage('You crack open the coconut. {yellow:(+15 Hunger)}, {blue:(+20 Thirst)}');
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -770,7 +741,7 @@ window.ITEM_DATA = {
                     logMessage(`{red:You found a ${prize}, but your inventory was full and it washed away!}`);
                 }
             }
-            if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('coinsDisplay'), true);
+            triggerStatFlash(document.getElementById('coinsDisplay'), true);
             return true; 
         }
     },
@@ -1080,7 +1051,7 @@ window.ITEM_DATA = {
             }
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 30);
             logMessage("You gnaw on the rock-hard bread. {yellow:(+30 Hunger)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1096,7 +1067,7 @@ window.ITEM_DATA = {
             }
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 30);
             logMessage("Refreshing. {blue:(+30 Thirst)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -1140,21 +1111,16 @@ window.ITEM_DATA = {
             if (valid) {
                 logMessage("You arrange the stones and light the fire.");
 
-                // JUICE WIN: Pop a spark when building a fire!
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#f97316', 5);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 500);
-
                 if (state.mapMode === 'overworld') {
                     chunkManager.setWorldTile(state.player.x, state.player.y, '🔥');
                 } else if (state.mapMode === 'dungeon') {
                     chunkManager.caveMaps[state.currentCaveId][state.player.y][state.player.x] = '🔥';
                 }
 
-                if (typeof render === 'function') render(); 
+                render(); 
                 return true; 
             } else {
                 logMessage("You can't build a fire here.");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 return false; 
             }
         }
@@ -1285,7 +1251,7 @@ window.ITEM_DATA = {
             state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + 5);
             state.player.mana = Math.min(state.player.maxMana, state.player.mana + 20);
             logMessage("Your mind expands. {purple:(+5 Psyche)}, {blue:(+20 Mana)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
+            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -1299,7 +1265,7 @@ window.ITEM_DATA = {
             state.player.health = Math.min(state.player.maxHealth, state.player.health + 20);
             state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 20);
             logMessage("You feel ready for anything. {green:(+20 HP, +20 Stamina)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+            triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1312,7 +1278,7 @@ window.ITEM_DATA = {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 20);
             state.player.mana = Math.min(state.player.maxMana, state.player.mana + 50);
             logMessage("Arcane energy courses through you. {blue:(+50 Mana)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
+            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -1325,7 +1291,7 @@ window.ITEM_DATA = {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 60);
             state.player.health = Math.min(state.player.maxHealth, state.player.health + 10);
             logMessage("Delicious! {yellow:(+60 Hunger)}, {green:(+10 HP)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1337,7 +1303,7 @@ window.ITEM_DATA = {
         effect: (state) => {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 40);
             logMessage("A great breakfast. {yellow:(+40 Hunger)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1349,7 +1315,7 @@ window.ITEM_DATA = {
         effect: (state) => {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 50);
             logMessage("Tastes like victory. {yellow:(+50 Hunger)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1361,7 +1327,7 @@ window.ITEM_DATA = {
         effect: (state) => {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 35);
             logMessage("Perfectly cooked. {yellow:(+35 Hunger)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1374,7 +1340,7 @@ window.ITEM_DATA = {
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 30);
             state.player.health = Math.min(state.player.maxHealth, state.player.health + 5);
             logMessage("Refreshing! {blue:(+30 Thirst)}, {green:(+5 HP)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -1387,7 +1353,7 @@ window.ITEM_DATA = {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 40);
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20);
             logMessage("It clears your sinuses. {yellow:(+40 Hunger)}, {blue:(+20 Thirst)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1400,7 +1366,7 @@ window.ITEM_DATA = {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 80);
             state.player.health = Math.min(state.player.maxHealth, state.player.health + 15);
             logMessage("A feast! {yellow:(+80 Hunger)}, {green:(+15 HP)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1412,7 +1378,7 @@ window.ITEM_DATA = {
             if (state.player.hunger >= state.player.maxHunger) return false;
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 15); 
             logMessage("It tastes sharp and nutty. {yellow:(+15 Hunger)}"); 
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true; 
         } 
     },
@@ -1427,7 +1393,7 @@ window.ITEM_DATA = {
             state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 5); 
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 10); 
             logMessage("Sweet energy! {yellow:(+10 Hunger)}, {green:(+5 Stamina)}"); 
-            if (typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow'); 
+            triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow'); 
             return true; 
         } 
     },
@@ -1440,7 +1406,7 @@ window.ITEM_DATA = {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 50); 
             state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + 10); 
             logMessage("Warm, sweet, and comforting. {yellow:(+50 Hunger)}, {purple:(+10 Psyche)}"); 
-            if (typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); 
+            triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); 
             return true; 
         } 
     },
@@ -1453,15 +1419,15 @@ window.ITEM_DATA = {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 40); 
             state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); 
             logMessage("A solid meal on the go. {yellow:(+40 Hunger)}, {green:(+5 HP)}"); 
-            if (typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-green'); 
+            triggerStatAnimation(statDisplays.health, 'stat-pulse-green'); 
             return true; 
         } 
     },
 
     // --- TRADE GOODS ---
-    '🐚': { name: 'Rainbow Shell', type: 'junk', description: "It shimmers with every color of the cosmos. Said to be a scale from a celestial leviathan." }, 
-    '🕰️': { name: 'Golden Pocket Watch', type: 'junk', description: "It's stopped at 12:00. The casing is pure gold, and it ticks backward when you enter the Void." },
-    '🗿': { name: 'Jade Idol', type: 'junk', description: "A heavy statue of a forgotten frog god. It feels wet no matter how much you dry it." },
+    '🐚': { name: 'Rainbow Shell', type: 'junk', description: "It shimmers with every color. Collectors love these." }, 
+    '🕰️': { name: 'Golden Pocket Watch', type: 'junk', description: "It's stopped at 12:00. The casing is pure gold." },
+    '🗿': { name: 'Jade Idol', type: 'junk', description: "A heavy statue of a forgotten frog god." },
     '📜m': { name: 'Merchant\'s Ledger', type: 'junk', description: "Detailed trade routes. Bandits would pay for this info." },
     '🧵': { name: 'Spool of Silk', type: 'junk', description: "Fine material from the eastern lands." },
     '💎b': { name: 'Black Pearl', type: 'junk', description: "Found only in the deepest abysses." },
@@ -1763,12 +1729,13 @@ window.ITEM_DATA = {
         name: 'Black Powder Bomb',
         type: 'consumable',
         tile: '💣',
-        description: "Aim and throw to decimate a 3x3 area! Deals 15 damage.",
+        description: "Throw it! Deals 15 damage to a target.",
         effect: (state) => {
-            logMessage("{orange:Select a direction to throw the Bomb... (WASD/Arrows)}");
-            state.isAiming = true;
-            state.abilityToAim = 'throwTNT'; // Shares the TNT targeting logic
-            return false;
+            logMessage("{red:BOOM!} The explosion blasts everything nearby! (-5 HP)");
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#f97316', 15);
+            state.player.health -= 5;
+            triggerStatFlash(statDisplays.health, false);
+            return true;
         }
     },
 
@@ -1941,10 +1908,7 @@ window.ITEM_DATA = {
             state.player.maxHealth += 1;
             state.player.health = state.player.maxHealth;
             logMessage("{gold:You feel divine power course through you! (+1 Max HP)}");
-            
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(state.player.x, state.player.y);
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+            triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1963,10 +1927,9 @@ window.ITEM_DATA = {
             state.player.health = Math.min(state.player.maxHealth, state.player.health + healAmt);
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10); 
             if (state.player.health > oldHealth) {
-                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+                triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
             }
             logMessage(`Used a Healing Potion. {green:(+HP)}, {blue:(+10 Thirst)}`);
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal();
             return true;
         }
     },
@@ -1978,11 +1941,9 @@ window.ITEM_DATA = {
             const manaAmt = typeof window.MANA_RESTORE_AMOUNT !== 'undefined' ? window.MANA_RESTORE_AMOUNT : 3;
             state.player.mana = Math.min(state.player.maxMana, state.player.mana + manaAmt);
             if (state.player.mana > oldMana) {
-                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
             }
             logMessage('You absorb a Mana Orb!');
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#3b82f6', 10);
         },
         description: "A fragment of a dream given form. It feels insubstantial in your hand."
     },
@@ -1994,11 +1955,9 @@ window.ITEM_DATA = {
             const stamAmt = typeof window.STAMINA_RESTORE_AMOUNT !== 'undefined' ? window.STAMINA_RESTORE_AMOUNT : 4;
             state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + stamAmt);
             if (state.player.stamina > oldStamina) {
-                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
+                triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
             }
             logMessage(`You shatter a Stamina Crystal!`);
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 10);
         },
         description: "A jagged green crystal that pulses with a rhythmic light."
     },
@@ -2010,11 +1969,9 @@ window.ITEM_DATA = {
             const psychAmt = typeof window.PSYCHE_RESTORE_AMOUNT !== 'undefined' ? window.PSYCHE_RESTORE_AMOUNT : 2;
             state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + psychAmt);
             if (state.player.psyche > oldPsyche) {
-                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); 
+                triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); 
             }
             logMessage('You absorb a Psyche Shard.');
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#a855f7', 10);
         }
     },
     '📜C': {
@@ -2052,7 +2009,7 @@ window.ITEM_DATA = {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 5);
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 5);
             logMessage('Sweet! {yellow:(+5 Hunger/Thirst)}, {green:(+1 HP)}');
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
             return true;
         }
     },
@@ -2066,7 +2023,7 @@ window.ITEM_DATA = {
             state.player.mana = Math.min(state.player.maxMana, state.player.mana + 1);
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 5); 
             if (state.player.mana > oldMana) {
-                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
             }
             logMessage('You eat a Bluecap. {blue:(+1 Mana)}, {yellow:(+5 Hunger)}');
             return true;
@@ -2597,9 +2554,7 @@ window.ITEM_DATA = {
             state.player.health += 5;
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); 
             logMessage("You drink the thick red liquid. {gold:(+5 Max HP)}, {blue:(+20 Thirst)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 30);
+            triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -2613,9 +2568,7 @@ window.ITEM_DATA = {
             state.player.mana += 5;
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20);
             logMessage("You drink the glowing blue liquid. {gold:(+5 Max Mana)}, {blue:(+20 Thirst)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 30);
+            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -2781,12 +2734,12 @@ window.ITEM_DATA = {
 
             if (random() < 0.05) { 
                 state.player.health -= dmgAmt;
-                if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(statDisplays.health, false); 
+                triggerStatFlash(statDisplays.health, false); 
                 logMessage(`{red:It was a trap! Lost ${dmgAmt} health!}`);
             } else { 
                 const amount = Math.floor(random() * 10) + 1; 
                 state.player.coins += amount;
-                if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(statDisplays.coins, true); 
+                triggerStatFlash(statDisplays.coins, true); 
                 logMessage(`You found {gold:${amount} gold coins!}`);
             }
         }
@@ -2843,10 +2796,6 @@ window.LOOT_PREFIXES = {
     "Balanced": { type: 'weapon', bonus: { dexterity: 1 } },
     "Heavy": { type: 'weapon', bonus: { strength: 1 } },
     "Light": { type: 'armor', bonus: { dexterity: 1 } },
-    
-    // LORE WIN: Cursed Affixes
-    "Bloodbound": { type: 'weapon', bonus: { damage: 3, constitution: -1 }, color: '#dc2626' }, 
-    "Ethereal": { type: 'armor', bonus: { defense: 2, dexterity: 2, strength: -1 }, color: '#c084fc' }
 };
 
 window.LOOT_SUFFIXES = {
@@ -2859,11 +2808,8 @@ window.LOOT_SUFFIXES = {
     "of the Titan": { bonus: { strength: 2, defense: 1 } },
     "of Speed": { bonus: { dexterity: 2 } },
     "of Kings": { bonus: { charisma: 1, luck: 1, willpower: 1 } },
-    "of Stone": { bonus: { constitution: 2, defense: 1 } },
-    
-    // LORE WIN: Void Affixes
     "of the Void": { bonus: { willpower: 2, psyche: 2 } },
-    "of the Abyss": { bonus: { willpower: 3, luck: -2 }, color: '#581c87' } 
+    "of Stone": { bonus: { constitution: 2, defense: 1 } }
 };
 
 
@@ -2929,10 +2875,7 @@ window.LOOT_TABLE_ARCHAEOLOGY =[
     'pottery',     
     'arrowhead',   
     'idol',        
-    'tome_page',
-    'alaric_seal', // Rare Sigil
-    'egg'          // Petrified Egg
+    'tome_page'    
 ];
 
 // --- END OF FILE data-items.js ---
-```
