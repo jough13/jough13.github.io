@@ -253,6 +253,7 @@ function handleSellItem(itemIndex, amount = 1) {
 
     // Process the transaction
     player.coins += totalValue;
+    if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(totalValue);
     
     if (qtyToSell > 1) {
         logMessage(`You sold a stack of ${itemToSell.name} (x${qtyToSell}) for {gold:${totalValue} gold}.`);
@@ -312,6 +313,8 @@ function handleSellAllItems() {
             player.coins += totalValue;
             goldGained += totalValue;
             itemsSold += item.quantity;
+            
+            if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(totalValue);
 
             // Remove from inventory
             player.inventory.splice(i, 1);
