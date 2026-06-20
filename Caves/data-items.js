@@ -467,10 +467,9 @@ window.ITEM_DATA = {
                 logMessage("You don't need this right now.");
                 return false;
             }
-            state.player.mana = Math.min(state.player.maxMana, state.player.mana + 30);
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10);
+            window.modifyVital('mana', 30);
+            window.modifyVital('thirst', 10);
             logMessage("Used a Mana Potion. {blue:(+30 Mana, +10 Thirst)}");
-            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -484,10 +483,9 @@ window.ITEM_DATA = {
                 logMessage("You don't need this right now.");
                 return false;
             }
-            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 30);
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10);
+            window.modifyVital('stamina', 30);
+            window.modifyVital('thirst', 10);
             logMessage("Used a Stamina Potion. {green:(+30 Stamina)}, {blue:(+10 Thirst)}");
-            triggerStatAnimation(document.getElementById('staminaDisplay'), 'stat-pulse-yellow');
             return true;
         }
     },
@@ -514,12 +512,9 @@ window.ITEM_DATA = {
         description: "Looks awful, tastes worse. {yellow:+20 Hunger}, {red:-2 HP}", 
         effect: (state) => { 
             if (state.player.hunger >= state.player.maxHunger) return false;
-            
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 20); 
-            state.player.health -= 2; 
-            
+            window.modifyVital('hunger', 20);
+            window.modifyVital('health', -2);
             logMessage("You gag as it goes down. {yellow:+20 Hunger}, {red:-2 HP}"); 
-            triggerStatFlash(statDisplays.health, false); 
             return true; 
         } 
     },
@@ -584,10 +579,9 @@ window.ITEM_DATA = {
         description: "Hard to open, but refreshing. {yellow:+15 Hunger}, {blue:+20 Thirst}",
         effect: (state) => {
             if (state.player.hunger >= state.player.maxHunger && state.player.thirst >= state.player.maxThirst) return false;
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 15);
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); 
+            window.modifyVital('hunger', 15);
+            window.modifyVital('thirst', 20);
             logMessage('You crack open the coconut. {yellow:(+15 Hunger)}, {blue:(+20 Thirst)}');
-            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -743,7 +737,7 @@ window.ITEM_DATA = {
                     logMessage(`{red:You found a ${prize}, but your inventory was full and it washed away!}`);
                 }
             }
-            triggerStatFlash(document.getElementById('coinsDisplay'), true);
+            if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('coinsDisplay'), true);
             return true; 
         }
     },
@@ -1054,9 +1048,8 @@ window.ITEM_DATA = {
                 logMessage("You are completely full.");
                 return false; 
             }
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 30);
+            window.modifyVital('hunger', 30);
             logMessage("You gnaw on the rock-hard bread. {yellow:(+30 Hunger)}");
-            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1070,9 +1063,8 @@ window.ITEM_DATA = {
                 logMessage("You are not thirsty right now.");
                 return false;
             }
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 30);
+            window.modifyVital('thirst', 30);
             logMessage("Refreshing. {blue:(+30 Thirst)}");
-            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -1272,10 +1264,9 @@ window.ITEM_DATA = {
         tile: '🍲',
         description: "Foul smelling. {purple:+5 Psyche}, {blue:+20 Mana}",
         effect: (state) => {
-            state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + 5);
-            state.player.mana = Math.min(state.player.maxMana, state.player.mana + 20);
+            window.modifyVital('psyche', 5);
+            window.modifyVital('mana', 20);
             logMessage("Your mind expands. {purple:(+5 Psyche)}, {blue:(+20 Mana)}");
-            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -1285,11 +1276,10 @@ window.ITEM_DATA = {
         tile: '🍱',
         description: "Heavy and fulfilling. {yellow:+100 Hunger}, {green:+20 HP}, {yellow:+20 Stamina}",
         effect: (state) => {
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 100);
-            state.player.health = Math.min(state.player.maxHealth, state.player.health + 20);
-            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 20);
+            window.modifyVital('hunger', 100);
+            window.modifyVital('health', 20);
+            window.modifyVital('stamina', 20);
             logMessage("You feel ready for anything. {green:(+20 HP, +20 Stamina)}");
-            triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1299,10 +1289,9 @@ window.ITEM_DATA = {
         tile: '🐟',
         description: "Tastes like static. {blue:+50 Mana}, {yellow:+20 Hunger}",
         effect: (state) => {
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 20);
-            state.player.mana = Math.min(state.player.maxMana, state.player.mana + 50);
+            window.modifyVital('hunger', 20);
+            window.modifyVital('mana', 50);
             logMessage("Arcane energy courses through you. {blue:(+50 Mana)}");
-            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -1312,10 +1301,9 @@ window.ITEM_DATA = {
         tile: '🍖',
         description: "Sweet and savory. {yellow:+60 Hunger}, {green:+10 HP}",
         effect: (state) => {
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 60);
-            state.player.health = Math.min(state.player.maxHealth, state.player.health + 10);
+            window.modifyVital('hunger', 60);
+            window.modifyVital('health', 10);
             logMessage("Delicious! {yellow:(+60 Hunger)}, {green:(+10 HP)}");
-            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1325,9 +1313,8 @@ window.ITEM_DATA = {
         tile: '🍳',
         description: "Fluffy and filling. {yellow:+40 Hunger}",
         effect: (state) => {
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 40);
+            window.modifyVital('hunger', 40);
             logMessage("A great breakfast. {yellow:(+40 Hunger)}");
-            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1337,9 +1324,8 @@ window.ITEM_DATA = {
         tile: '🥩',
         description: "A hearty cut of cooked meat. {yellow:+50 Hunger}",
         effect: (state) => {
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 50);
+            window.modifyVital('hunger', 50);
             logMessage("Tastes like victory. {yellow:(+50 Hunger)}");
-            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1349,9 +1335,8 @@ window.ITEM_DATA = {
         tile: '🍣',
         description: "Crispy skin, flaky meat. {yellow:+35 Hunger}",
         effect: (state) => {
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 35);
+            window.modifyVital('hunger', 35);
             logMessage("Perfectly cooked. {yellow:(+35 Hunger)}");
-            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1361,10 +1346,9 @@ window.ITEM_DATA = {
         tile: '🧃',
         description: "Sweet and refreshing. {blue:+30 Thirst}, {green:+5 HP}",
         effect: (state) => {
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 30);
-            state.player.health = Math.min(state.player.maxHealth, state.player.health + 5);
+            window.modifyVital('thirst', 30);
+            window.modifyVital('health', 5);
             logMessage("Refreshing! {blue:(+30 Thirst)}, {green:(+5 HP)}");
-            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -1374,10 +1358,9 @@ window.ITEM_DATA = {
         tile: '🥣',
         description: "Spicy and hydrating. {yellow:+40 Hunger}, {blue:+20 Thirst}",
         effect: (state) => {
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 40);
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20);
+            window.modifyVital('hunger', 40);
+            window.modifyVital('thirst', 20);
             logMessage("It clears your sinuses. {yellow:(+40 Hunger)}, {blue:(+20 Thirst)}");
-            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1387,10 +1370,9 @@ window.ITEM_DATA = {
         tile: '🍱',
         description: "A feast fit for a king. {yellow:+80 Hunger}, {green:+15 HP}",
         effect: (state) => {
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 80);
-            state.player.health = Math.min(state.player.maxHealth, state.player.health + 15);
+            window.modifyVital('hunger', 80);
+            window.modifyVital('health', 15);
             logMessage("A feast! {yellow:(+80 Hunger)}, {green:(+15 HP)}");
-            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1400,9 +1382,8 @@ window.ITEM_DATA = {
         description: "A pungent wheel of aged cheese. {yellow:+15 Hunger}", 
         effect: (state) => { 
             if (state.player.hunger >= state.player.maxHunger) return false;
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 15); 
+            window.modifyVital('hunger', 15);
             logMessage("It tastes sharp and nutty. {yellow:(+15 Hunger)}"); 
-            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             return true; 
         } 
     },
@@ -1414,10 +1395,9 @@ window.ITEM_DATA = {
         description: "Sweet and sticky. {yellow:+10 Hunger, +5 Stamina}", 
         effect: (state) => { 
             if (state.player.hunger >= state.player.maxHunger && state.player.stamina >= state.player.maxStamina) return false;
-            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 5); 
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 10); 
+            window.modifyVital('stamina', 5);
+            window.modifyVital('hunger', 10);
             logMessage("Sweet energy! {yellow:(+10 Hunger)}, {green:(+5 Stamina)}"); 
-            triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow'); 
             return true; 
         } 
     },
@@ -1427,10 +1407,9 @@ window.ITEM_DATA = {
         description: "A masterpiece of baking. {yellow:+50 Hunger}, {purple:+10 Psyche}", 
         effect: (state) => { 
             if (state.player.hunger >= state.player.maxHunger && state.player.psyche >= state.player.maxPsyche) return false;
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 50); 
-            state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + 10); 
+            window.modifyVital('hunger', 50);
+            window.modifyVital('psyche', 10);
             logMessage("Warm, sweet, and comforting. {yellow:(+50 Hunger)}, {purple:(+10 Psyche)}"); 
-            triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); 
             return true; 
         } 
     },
@@ -1440,10 +1419,9 @@ window.ITEM_DATA = {
         description: "Portable and filling. {yellow:+40 Hunger}, {green:+5 HP}", 
         effect: (state) => { 
             if (state.player.hunger >= state.player.maxHunger && state.player.health >= state.player.maxHealth) return false;
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 40); 
-            state.player.health = Math.min(state.player.maxHealth, state.player.health + 5); 
+            window.modifyVital('hunger', 40);
+            window.modifyVital('health', 5);
             logMessage("A solid meal on the go. {yellow:(+40 Hunger)}, {green:(+5 HP)}"); 
-            triggerStatAnimation(statDisplays.health, 'stat-pulse-green'); 
             return true; 
         } 
     },
@@ -1578,9 +1556,8 @@ window.ITEM_DATA = {
                 }
             }
 
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 40);
+            window.modifyVital('thirst', 40);
             logMessage("Ahhh. Crisp and cold. {blue:(+40 Thirst)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue'); 
 
             if (existingBottle) {
                 existingBottle.quantity++;
@@ -1620,7 +1597,7 @@ window.ITEM_DATA = {
                 }
             }
             
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 15);
+            window.modifyVital('thirst', 15);
             logMessage("You choke it down. {blue:(+15 Thirst)}");
             
             if (Math.random() < 0.2) {
@@ -1765,8 +1742,7 @@ window.ITEM_DATA = {
         effect: (state) => {
             logMessage("{red:BOOM!} The explosion blasts everything nearby! (-5 HP)");
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#f97316', 15);
-            state.player.health -= 5;
-            triggerStatFlash(statDisplays.health, false);
+            window.modifyVital('health', -5);
             return true;
         }
     },
@@ -1940,7 +1916,7 @@ window.ITEM_DATA = {
             state.player.maxHealth += 1;
             state.player.health = state.player.maxHealth;
             logMessage("{gold:You feel divine power course through you! (+1 Max HP)}");
-            triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -1953,14 +1929,9 @@ window.ITEM_DATA = {
                 logMessage("You are already at full health and not thirsty.");
                 return false;
             }
-            const oldHealth = state.player.health;
-            // Use 3 from previous version logic or dynamic amount
             const healAmt = typeof window.HEALING_AMOUNT !== 'undefined' ? window.HEALING_AMOUNT : 3;
-            state.player.health = Math.min(state.player.maxHealth, state.player.health + healAmt);
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10); 
-            if (state.player.health > oldHealth) {
-                triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
-            }
+            window.modifyVital('health', healAmt);
+            window.modifyVital('thirst', 10);
             logMessage(`Used a Healing Potion. {green:(+HP)}, {blue:(+10 Thirst)}`);
             return true;
         }
@@ -1969,12 +1940,8 @@ window.ITEM_DATA = {
         name: 'Mana Orb',
         type: 'instant', 
         effect: (state, tileId) => {
-            const oldMana = state.player.mana;
             const manaAmt = typeof window.MANA_RESTORE_AMOUNT !== 'undefined' ? window.MANA_RESTORE_AMOUNT : 3;
-            state.player.mana = Math.min(state.player.maxMana, state.player.mana + manaAmt);
-            if (state.player.mana > oldMana) {
-                triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
-            }
+            window.modifyVital('mana', manaAmt);
             logMessage('You absorb a Mana Orb!');
         },
         description: "A fragment of a dream given form. It feels insubstantial in your hand."
@@ -1983,12 +1950,8 @@ window.ITEM_DATA = {
         name: 'Stamina Crystal',
         type: 'instant', 
         effect: (state, tileId) => {
-            const oldStamina = state.player.stamina;
             const stamAmt = typeof window.STAMINA_RESTORE_AMOUNT !== 'undefined' ? window.STAMINA_RESTORE_AMOUNT : 4;
-            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + stamAmt);
-            if (state.player.stamina > oldStamina) {
-                triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
-            }
+            window.modifyVital('stamina', stamAmt);
             logMessage(`You shatter a Stamina Crystal!`);
         },
         description: "A jagged green crystal that pulses with a rhythmic light."
@@ -1997,12 +1960,8 @@ window.ITEM_DATA = {
         name: 'Psyche Shard',
         type: 'instant', 
         effect: (state, tileId) => {
-            const oldPsyche = state.player.psyche;
             const psychAmt = typeof window.PSYCHE_RESTORE_AMOUNT !== 'undefined' ? window.PSYCHE_RESTORE_AMOUNT : 2;
-            state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + psychAmt);
-            if (state.player.psyche > oldPsyche) {
-                triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); 
-            }
+            window.modifyVital('psyche', psychAmt);
             logMessage('You absorb a Psyche Shard.');
         }
     },
@@ -2037,11 +1996,10 @@ window.ITEM_DATA = {
         description: "Sweet! {yellow:+5 Hunger}, {blue:+5 Thirst}, {green:+1 HP}",
         effect: (state) => {
             if (state.player.health >= state.player.maxHealth && state.player.hunger >= state.player.maxHunger && state.player.thirst >= state.player.maxThirst) return false;
-            state.player.health = Math.min(state.player.maxHealth, state.player.health + 1);
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 5);
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 5);
+            window.modifyVital('health', 1);
+            window.modifyVital('hunger', 5);
+            window.modifyVital('thirst', 5);
             logMessage('Sweet! {yellow:(+5 Hunger/Thirst)}, {green:(+1 HP)}');
-            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
             return true;
         }
     },
@@ -2051,12 +2009,8 @@ window.ITEM_DATA = {
         description: "Tastes like dirt. {blue:+1 Mana}, {yellow:+5 Hunger}",
         effect: (state) => {
             if (state.player.mana >= state.player.maxMana && state.player.hunger >= state.player.maxHunger) return false;
-            const oldMana = state.player.mana;
-            state.player.mana = Math.min(state.player.maxMana, state.player.mana + 1);
-            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 5); 
-            if (state.player.mana > oldMana) {
-                triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
-            }
+            window.modifyVital('mana', 1);
+            window.modifyVital('hunger', 5);
             logMessage('You eat a Bluecap. {blue:(+1 Mana)}, {yellow:(+5 Hunger)}');
             return true;
         }
@@ -2603,9 +2557,9 @@ window.ITEM_DATA = {
             state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 5;
             state.player.maxHealth += 5;
             state.player.health += 5;
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); 
+            window.modifyVital('thirst', 20);
             logMessage("You drink the thick red liquid. {gold:(+5 Max HP)}, {blue:(+20 Thirst)}");
-            triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
             return true;
         }
     },
@@ -2617,9 +2571,9 @@ window.ITEM_DATA = {
             state.player.bonusMaxMana = (state.player.bonusMaxMana || 0) + 5;
             state.player.maxMana += 5;
             state.player.mana += 5;
-            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20);
+            window.modifyVital('thirst', 20);
             logMessage("You drink the glowing blue liquid. {gold:(+5 Max Mana)}, {blue:(+20 Thirst)}");
-            triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
+            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
             return true;
         }
     },
@@ -2784,13 +2738,14 @@ window.ITEM_DATA = {
             const dmgAmt = typeof window.DAMAGE_AMOUNT !== 'undefined' ? window.DAMAGE_AMOUNT : 2;
 
             if (random() < 0.05) { 
-                state.player.health -= dmgAmt;
-                triggerStatFlash(statDisplays.health, false); 
+                window.modifyVital('health', -dmgAmt);
                 logMessage(`{red:It was a trap! Lost ${dmgAmt} health!}`);
             } else { 
                 const amount = Math.floor(random() * 10) + 1; 
                 state.player.coins += amount;
-                triggerStatFlash(statDisplays.coins, true); 
+                if (typeof triggerStatFlash !== 'undefined' && typeof statDisplays !== 'undefined') {
+                    triggerStatFlash(statDisplays.coins, true);
+                }
                 logMessage(`You found {gold:${amount} gold coins!}`);
             }
         }
