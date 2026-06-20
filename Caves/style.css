@@ -142,6 +142,20 @@ button:disabled {
     text-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
 }
 
+/* LORE WIN: Iridescent magic text effect for legendary items or void speech */
+.text-magic-shimmer {
+    background: linear-gradient(to right, #a855f7, #3b82f6, #facc15, #a855f7);
+    background-size: 200% auto;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: text-shimmer 4s linear infinite;
+}
+
+@keyframes text-shimmer {
+    to { background-position: 200% center; }
+}
+
 /* Prevent accidental text highlighting during frantic clicking */
 #gameContainer, .modal-content, canvas, .mobile-controls {
     user-select: none;  
@@ -216,22 +230,21 @@ canvas {
 
 #gameCanvasWrapper {
     box-shadow: 0 0 25px rgba(0, 0, 0, 0.4); 
-    transition: box-shadow 0.3s ease; 
-    /* PERFORMANCE WIN: Containment tells the browser this box never affects outside layout */
+    transition: box-shadow 0.3s ease, filter 0.3s ease, transform 0.3s ease; 
     contain: strict; 
-    will-change: box-shadow, filter; 
+    will-change: box-shadow, filter, transform; 
     transform: translateZ(0); 
 }
 
 /* Animated CRT Scanlines & Screen Flicker */
 @keyframes scanline-scroll {
-    0% { transform: translateY(0); }
-    100% { transform: translateY(8px); }
+    0% { background-position: 0 0; }
+    100% { background-position: 0 4px; }
 }
 
 @keyframes crt-flicker {
     0% { opacity: 0.98; }
-    5% { opacity: 0.96; } /* Softened flicker to be less harsh on eyes */
+    5% { opacity: 0.95; } /* Softened flicker */
     10% { opacity: 0.99; }
     15% { opacity: 1; }
     100% { opacity: 1; }
@@ -240,15 +253,16 @@ canvas {
 #gameCanvasWrapper.crt {
     overflow: hidden;
     position: relative;
-    animation: crt-flicker 4s infinite linear;
+    /* Slowed down the flicker loop so it feels more natural and less annoying */
+    animation: crt-flicker 8s infinite linear; 
 }
 
 #gameCanvasWrapper.crt::after {
     content: " ";
     display: block;
     position: absolute;
-    /* Make it slightly larger so transform doesn't tear edges */
-    top: -8px; left: 0; bottom: -8px; right: 0;
+    /* Perfectly matches the container now that we aren't physically transforming it */
+    top: 0; left: 0; bottom: 0; right: 0;
     background: linear-gradient(
         to bottom,
         rgba(18, 16, 16, 0) 50%,
@@ -257,13 +271,37 @@ canvas {
     background-size: 100% 4px;
     z-index: 10;
     pointer-events: none; 
-    box-shadow: inset 0 0 50px rgba(0,0,0,0.6); /* Deepened Vignette */
     
-    /* PERFORMANCE WIN: Animate transform instead of background-position */
-    animation: scanline-scroll 2s linear infinite; 
-    will-change: transform;
-    transform: translateZ(0);
+    /* The static vignette shadow */
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.6); 
+    
+    /* Perfectly smooth, seamless scrolling */
+    animation: scanline-scroll 0.8s linear infinite; 
 }
+
+/* ==========================================================================
+   ENVIRONMENTAL ATMOSPHERE FILTERS
+   ========================================================================== */
+/* Triggers when walking into deep snow/ice */
+@keyframes frost-vignette {
+    0% { box-shadow: inset 0 0 20px rgba(125, 211, 252, 0.2); border-color: rgba(125, 211, 252, 0.3); }
+    50% { box-shadow: inset 0 0 80px rgba(125, 211, 252, 0.6); border-color: rgba(125, 211, 252, 0.8); }
+    100% { box-shadow: inset 0 0 20px rgba(125, 211, 252, 0.2); border-color: rgba(125, 211, 252, 0.3); }
+}
+.frost-flash {
+    animation: frost-vignette 3s infinite ease-in-out;
+}
+
+/* Triggers in the Void or when suffering Madness */
+@keyframes void-wobble {
+    0% { filter: hue-rotate(0deg) contrast(1.1); transform: skewX(0deg); box-shadow: inset 0 0 30px rgba(168, 85, 247, 0.2); }
+    50% { filter: hue-rotate(15deg) contrast(1.3) brightness(0.85); transform: skewX(0.5deg) scale(1.01); box-shadow: inset 0 0 80px rgba(168, 85, 247, 0.6); }
+    100% { filter: hue-rotate(0deg) contrast(1.1); transform: skewX(0deg); box-shadow: inset 0 0 30px rgba(168, 85, 247, 0.2); }
+}
+.void-distortion {
+    animation: void-wobble 5s infinite ease-in-out;
+}
+
 
 /* ==========================================================================
    INVENTORY, HOTBAR & EQUIPMENT
@@ -312,12 +350,34 @@ canvas {
     0% { box-shadow: 0 0 3px rgba(234, 179, 8, 0.4); border-color: rgba(234, 179, 8, 0.5); }
     100% { box-shadow: 0 0 15px rgba(234, 179, 8, 1); border-color: rgba(234, 179, 8, 1); }
 }
-
 .inventory-slot.equipped {
     background-color: rgba(234, 179, 8, 0.15); 
     /* JUICE WIN: Smoother looping animation with alternate ease-in-out */
     animation: equip-glow 1.5s infinite alternate ease-in-out;
 }
+
+/* JUICE WIN: Rarity Glows for Magic Items in Inventory */
+@keyframes rare-pulse {
+    0% { box-shadow: inset 0 0 5px rgba(168, 85, 247, 0.1); border-color: rgba(168, 85, 247, 0.5); }
+    50% { box-shadow: inset 0 0 15px rgba(168, 85, 247, 0.3); border-color: rgba(168, 85, 247, 0.9); }
+    100% { box-shadow: inset 0 0 5px rgba(168, 85, 247, 0.1); border-color: rgba(168, 85, 247, 0.5); }
+}
+@keyframes epic-pulse {
+    0% { box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.6); }
+    50% { box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 1); }
+    100% { box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.6); }
+}
+@keyframes legendary-pulse {
+    0% { box-shadow: inset 0 0 10px rgba(234, 179, 8, 0.2); border-color: rgba(234, 179, 8, 0.7); }
+    50% { box-shadow: inset 0 0 25px rgba(234, 179, 8, 0.6); border-color: rgba(234, 179, 8, 1); }
+    100% { box-shadow: inset 0 0 10px rgba(234, 179, 8, 0.2); border-color: rgba(234, 179, 8, 0.7); }
+}
+
+/* Assign via JS or HTML classes */
+.inventory-slot.rarity-rare { animation: rare-pulse 2.5s infinite ease-in-out; }
+.inventory-slot.rarity-epic { animation: epic-pulse 2.5s infinite ease-in-out; }
+.inventory-slot.rarity-legendary { animation: legendary-pulse 2s infinite ease-in-out; }
+
 
 .equipment-slot {
     width: 68px;
@@ -766,6 +826,9 @@ kbd {
     background-color: var(--asset-parchment); 
     padding: 1rem 2rem 2rem 2rem;
     margin: -24px; /* Pulls the background slightly under the frame */
+    
+    /* LORE WIN: Subtle woven-paper/parchment texture overlay */
+    background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 2px, transparent 2px, transparent 4px);
 }
 
 .ui-input-asset {
