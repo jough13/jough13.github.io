@@ -1105,8 +1105,19 @@ window.ITEM_DATA = {
             }
 
             let valid = false;
-            if (state.mapMode === 'overworld' && (currentTile === '.' || currentTile === 'd' || currentTile === 'D')) valid = true;
-            if (state.mapMode === 'dungeon') valid = true; 
+            
+            if ((state.mapMode === 'overworld' || state.mapMode === 'underworld') && (currentTile === '.' || currentTile === 'd' || currentTile === 'D')) {
+                valid = true;
+            }
+            
+            // Ensure it only places on valid Dungeon/Castle floors, protecting the stairs!
+            if (state.mapMode === 'dungeon') {
+                const theme = window.CAVE_THEMES[state.currentCaveTheme] || window.CAVE_THEMES['ROCK'];
+                if (currentTile === theme.floor) valid = true;
+            }
+            if (state.mapMode === 'castle' && currentTile === '.') {
+                valid = true;
+            }
 
             if (valid) {
                 logMessage("You arrange the stones and light the fire.");
