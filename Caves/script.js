@@ -24,6 +24,16 @@ let lastValidatedState = null;
 const MAX_GOLD_PER_TICK = 5000; // Max gold you could reasonably earn between saves
 const MAX_XP_PER_TICK = 10000;  // Max XP you could reasonably earn between saves
 
+window.legitimateGoldDelta = 0;
+window.legitimateXpDelta = 0;
+
+window.trackLegitimateGold = function(amount) {
+    window.legitimateGoldDelta += amount;
+};
+window.trackLegitimateXp = function(amount) {
+    window.legitimateXpDelta += amount;
+};
+
 // Define Admins who are allowed to bypass Anti-Cheat checks
 const ADMIN_EMAILS = [
     "your.email@gmail.com", // <-- CHANGE THIS TO YOUR EMAIL
@@ -38,8 +48,9 @@ function validateStateBeforeSave(currentState) {
         return true; 
     }
 
-    const goldDiff = (currentState.coins || 0) - (lastValidatedState.coins || 0);
-    const xpDiff = (currentState.xp || 0) - (lastValidatedState.xp || 0);
+    // Subtract the legally earned gold/xp before checking for impossible jumps!
+    const goldDiff = (currentState.coins || 0) - (lastValidatedState.coins || 0) - (window.legitimateGoldDelta || 0);
+    const xpDiff = (currentState.xp || 0) - (lastValidatedState.xp || 0) - (window.legitimateXpDelta || 0);
     const levelDiff = (currentState.level || 1) - (lastValidatedState.level || 1);
 
     // 2. Check for impossible mathematical jumps
@@ -183,6 +194,8 @@ function flushPendingSave(updates = null) {
             
             batch.commit().then(() => {
                 lastValidatedState = { ...gameState.player }; 
+                window.legitimateGoldDelta = 0; // Reset tracking for the next save cycle
+                window.legitimateXpDelta = 0;
                 setTimeout(() => {
                     if (saveIcon) {
                         saveIcon.classList.remove('opacity-100');
@@ -1025,6 +1038,11 @@ function grantXp(amount) {
     }
 
     player.xp += amount;
+    
+    // TRACK LEGITIMATE XP FOR ANTI-CHEAT
+    if (typeof window.trackLegitimateXp === 'function') {
+        window.trackLegitimateXp(amount);
+    }
     
     logMessage(`You gained ${amount} XP!`);
     triggerStatFlash(statDisplays.xp, true);
