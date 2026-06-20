@@ -1,3 +1,5 @@
+// --- START OF FILE combat.js ---
+
 // --- ENEMY NETWORK MANAGER (SPATIAL HASHING) ---
 const EnemyNetworkManager = {
     listeners: {},
@@ -372,7 +374,7 @@ async function runSharedAiTurns() {
                 const intuitChance = Math.min(player.intuition * 0.005, 0.5);
                 if (Math.random() < intuitChance) {
                     const dirString = getDirectionString(nearestEnemyDir);
-                    logMessage(`You sense a hostile presence to the ${dirString}!`);
+                    logMessage(`{gray:You sense a hostile presence to the ${dirString}!}`);
                 }
             }
         }
@@ -444,7 +446,7 @@ async function processOverworldEnemyTurns() {
             const distToSpawnSq = (enemy.x * enemy.x) + (enemy.y * enemy.y);
             if (distToSpawnSq < 10000 && enemy.xp > 15) { 
                 if (distSq < 400) {
-                    logMessage(`🏹 A village guard snipes the trespassing ${enemy.name} from the walls!`);
+                    logMessage(`{blue:🏹 A village guard snipes the trespassing ${enemy.name} from the walls!}`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(enemy.x, enemy.y, '#ef4444', 8);
                 }
                 
@@ -485,11 +487,11 @@ async function processOverworldEnemyTurns() {
         if (enemy.poisonTurns > 0) {
             enemy.poisonTurns--;
             enemy.health -= 1;
-            logMessage(`The ${enemy.name} takes poison damage.`);
+            logMessage(`{gray:The ${enemy.name} takes poison damage.}`);
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-1", "#22c55e");
             
             if (enemy.health <= 0) {
-                logMessage(`The ${enemy.name} succumbs to poison!`);
+                logMessage(`{green:The ${enemy.name} succumbs to poison!}`);
                 
                 registerKill(enemy);
                 multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
@@ -510,7 +512,7 @@ async function processOverworldEnemyTurns() {
                 }
                 return;
             }
-            if (enemy.poisonTurns === 0) logMessage(`The ${enemy.name} is no longer poisoned.`);
+            if (enemy.poisonTurns === 0) logMessage(`{gray:The ${enemy.name} is no longer poisoned.}`);
         }
 
         let isMad = false;
@@ -529,14 +531,14 @@ async function processOverworldEnemyTurns() {
             enemy.pendingAttacks =[];
 
             if (enemy.tile === 'm' || enemy.tile === '😈d') {
-                logMessage(`The ${enemy.name} gathers dark energy...`);
+                logMessage(`{orange:The ${enemy.name} gathers dark energy...}`);
                 enemy.pendingAttacks.push({ x: playerX, y: playerY });
                 enemy.pendingAttacks.push({ x: playerX + 1, y: playerY });
                 enemy.pendingAttacks.push({ x: playerX - 1, y: playerY });
                 enemy.pendingAttacks.push({ x: playerX, y: playerY + 1 });
                 enemy.pendingAttacks.push({ x: playerX, y: playerY - 1 });
             } else {
-                logMessage(`The ${enemy.name} takes a deep breath!`);
+                logMessage(`{orange:The ${enemy.name} takes a deep breath!}`);
                 for (let ty = -1; ty <= 1; ty++) {
                     for (let tx = -1; tx <= 1; tx++) {
                         enemy.pendingAttacks.push({ x: playerX + tx, y: playerY + ty });
@@ -563,13 +565,17 @@ async function processOverworldEnemyTurns() {
                     const dmg = Math.floor(enemy.attack * 1.5); 
                     gameState.player.health -= dmg;
                     gameState.screenShake = 15;
+                    
+                    // JUICE: Full screen red flash for heavy telegraph damage
+                    gameState.screenFlash = { color: '#ef4444', alpha: 0.4, decay: 0.05 };
+                    
                     triggerStatFlash(statDisplays.health, false);
-                    logMessage(`You are caught in the ${enemy.name}'s blast! (-${dmg} HP)`);
+                    logMessage(`{red:You are caught in the ${enemy.name}'s blast! (-${dmg} HP)}`);
                     hitPlayer = true;
                 }
             });
 
-            if (!hitPlayer) logMessage(`The ${enemy.name}'s attack strikes the ground!`);
+            if (!hitPlayer) logMessage(`{gray:The ${enemy.name}'s attack strikes the ground!}`);
 
             enemy.pendingAttacks = null;
             multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId) + '/pendingAttacks'] = null; // Sync clear to Firebase
@@ -606,18 +612,19 @@ async function processOverworldEnemyTurns() {
             if (gameState.player.talents && gameState.player.talents.includes('evasion')) dodgeChance += 0.10;
 
             if (Math.random() < dodgeChance) {
-                logMessage(`The ${enemy.name} fires a ${spellName}, but you dodge!`);
+                logMessage(`{blue:The ${enemy.name} fires a ${spellName}, but you dodge!}`);
             } else {
                 let dmg = spellDmg;
                 if (gameState.player.shieldValue > 0) {
                     const absorb = Math.min(gameState.player.shieldValue, dmg);
                     gameState.player.shieldValue -= absorb;
                     dmg -= absorb;
-                    logMessage(`Shield absorbs ${absorb} magic damage!`);
+                    logMessage(`{cyan:Shield absorbs ${absorb} magic damage!}`);
                 }
                 if (dmg > 0) {
                     gameState.player.health -= dmg;
                     gameState.screenShake = 10; 
+                    gameState.screenFlash = { color: '#be123c', alpha: 0.3, decay: 0.1 };
                     
                     const wrapper = document.getElementById('gameCanvasWrapper');
                     if (wrapper) {
@@ -627,7 +634,7 @@ async function processOverworldEnemyTurns() {
                     }
 
                     triggerStatFlash(statDisplays.health, false);
-                    logMessage(`The ${enemy.name} casts ${spellName} for {red:${dmg}} damage!`);
+                    logMessage(`{red:The ${enemy.name} casts ${spellName} for ${dmg} damage!}`);
 
                     if (enemy.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
                     if (enemy.inflicts === 'poison') gameState.player.poisonTurns = 5;
@@ -661,7 +668,7 @@ async function processOverworldEnemyTurns() {
             }
 
             if (Math.random() < dodgeChance) {
-                logMessage(`The ${enemy.name} shoots an arrow, but you dodge!`);
+                logMessage(`{blue:The ${enemy.name} shoots an arrow, but you dodge!}`);
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, "Dodge!", "#3b82f6");
             } else {
                 // Use physical defense calculation (including shields!)
@@ -681,12 +688,13 @@ async function processOverworldEnemyTurns() {
                     const absorb = Math.min(gameState.player.shieldValue, dmg);
                     gameState.player.shieldValue -= absorb;
                     dmg -= absorb;
-                    logMessage(`Shield absorbs ${absorb} ranged damage!`);
+                    logMessage(`{cyan:Shield absorbs ${absorb} ranged damage!}`);
                 }
                 
                 if (dmg > 0) {
                     gameState.player.health -= dmg;
                     gameState.screenShake = 10;
+                    gameState.screenFlash = { color: '#ef4444', alpha: 0.2, decay: 0.05 };
                     
                     const wrapper = document.getElementById('gameCanvasWrapper');
                     if (wrapper) {
@@ -696,7 +704,7 @@ async function processOverworldEnemyTurns() {
                     }
                     
                     triggerStatFlash(statDisplays.health, false);
-                    logMessage(`The ${enemy.name} shoots you for {red:${dmg}} damage!`);
+                    logMessage(`{red:The ${enemy.name} shoots you for ${dmg} damage!}`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
                     
                     if (gameState.player.health <= 0) {
@@ -778,7 +786,7 @@ async function processOverworldEnemyTurns() {
                     }
 
                     if (Math.random() < dodgeChance) {
-                        logMessage(`The ${enemy.name} attacks, but you dodge!`);
+                        logMessage(`{blue:The ${enemy.name} attacks, but you dodge!}`);
                         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, "Dodge!", "#3b82f6");
                     } else {
                         // Apply unified damage calc
@@ -789,8 +797,8 @@ async function processOverworldEnemyTurns() {
                             const absorb = Math.min(gameState.player.shieldValue, dmg);
                             gameState.player.shieldValue -= absorb;
                             dmg -= absorb;
-                            logMessage(`Shield absorbs ${absorb} damage!`);
-                            if (gameState.player.shieldValue === 0) logMessage("Your Arcane Shield shatters!");
+                            logMessage(`{cyan:Shield absorbs ${absorb} damage!}`);
+                            if (gameState.player.shieldValue === 0) logMessage("{cyan:Your Arcane Shield shatters!}");
                         }
 
                         if (dmg > 0) {
@@ -804,7 +812,7 @@ async function processOverworldEnemyTurns() {
                                 wrapper.classList.add('damage-flash');
                             }
 
-                            logMessage(`A ${enemy.name} attacks you for {red:${dmg}} damage!`);
+                            logMessage(`{red:A ${enemy.name} attacks you for ${dmg} damage!}`);
                             triggerStatFlash(statDisplays.health, false);
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
                             
@@ -817,11 +825,11 @@ async function processOverworldEnemyTurns() {
                         // --- OVERWORLD THORNS ---
                         if (gameState.player.thornsValue > 0) {
                             enemy.health -= gameState.player.thornsValue;
-                            logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} thorn damage!`);
+                            logMessage(`{green:The ${enemy.name} takes ${gameState.player.thornsValue} thorn damage!}`);
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, `-${gameState.player.thornsValue}`, '#22c55e');
                             
                             if (enemy.health <= 0) {
-                                logMessage(`The ${enemy.name} dies upon your thorns!`);
+                                logMessage(`{green:The ${enemy.name} dies upon your thorns!}`);
                                 
                                 // 1. Grant XP & Register Kill
                                 registerKill(enemy);
@@ -951,13 +959,13 @@ function processEnemyTurns() {
 
         if (enemy.rootTurns > 0) {
             enemy.rootTurns--;
-            logMessage(`The ${enemy.name} struggles against roots!`);
-            if (enemy.rootTurns === 0) logMessage(`The ${enemy.name} breaks free.`);
+            logMessage(`{gray:The ${enemy.name} struggles against roots!}`);
+            if (enemy.rootTurns === 0) logMessage(`{gray:The ${enemy.name} breaks free.}`);
             return;
         }
         if (enemy.stunTurns > 0) {
             enemy.stunTurns--;
-            logMessage(`The ${enemy.name} is stunned!`);
+            logMessage(`{yellow:The ${enemy.name} is stunned!}`);
             return;
         }
 
@@ -972,19 +980,19 @@ function processEnemyTurns() {
                 map[enemy.y][enemy.x] = theme.floor;
                 map[newY][newX] = enemy.tile;
                 enemy.x = newX; enemy.y = newY;
-                logMessage(`The ${enemy.name} flees in terror!`);
+                logMessage(`{purple:The ${enemy.name} flees in terror!}`);
             } else {
-                logMessage(`The ${enemy.name} cowers in the corner!`);
+                logMessage(`{purple:The ${enemy.name} cowers in the corner!}`);
             }
-            if (enemy.madnessTurns === 0) logMessage(`The ${enemy.name} regains its senses.`);
+            if (enemy.madnessTurns === 0) logMessage(`{gray:The ${enemy.name} regains its senses.}`);
             return; 
         }
 
         if (enemy.frostbiteTurns > 0) {
             enemy.frostbiteTurns--;
-            if (enemy.frostbiteTurns === 0) logMessage(`The ${enemy.name} is no longer frostbitten.`);
+            if (enemy.frostbiteTurns === 0) logMessage(`{cyan:The ${enemy.name} is no longer frostbitten.}`);
             if (Math.random() < 0.25) {
-                logMessage(`The ${enemy.name} is frozen solid and skips its turn!`);
+                logMessage(`{cyan:The ${enemy.name} is frozen solid and skips its turn!}`);
                 return;
             }
         }
@@ -992,15 +1000,15 @@ function processEnemyTurns() {
         if (enemy.poisonTurns > 0) {
             enemy.poisonTurns--;
             enemy.health -= 1;
-            logMessage(`The ${enemy.name} takes poison damage.`);
+            logMessage(`{green:The ${enemy.name} takes poison damage.}`);
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-1", "#22c55e");
             
             if (enemy.health <= 0) {
-                logMessage(`The ${enemy.name} succumbs to poison!`);
+                logMessage(`{green:The ${enemy.name} succumbs to poison!}`);
                 handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
                 return;
             }
-            if (enemy.poisonTurns === 0) logMessage(`The ${enemy.name} is no longer poisoned.`);
+            if (enemy.poisonTurns === 0) logMessage(`{gray:The ${enemy.name} is no longer poisoned.}`);
         }
 
         const dx = player.x - enemy.x;
@@ -1013,15 +1021,21 @@ function processEnemyTurns() {
         if (enemy.isBoss) {
             if ((enemy.poisonTurns > 0 || enemy.rootTurns > 0) && Math.random() < 0.5) {
                 enemy.poisonTurns = 0; enemy.rootTurns = 0;
-                logMessage(`The ${enemy.name} shrugs off your magic!`);
+                logMessage(`{red:The ${enemy.name} shrugs off your magic!}`);
             }
 
             if (enemy.health < enemy.maxHealth * 0.5 && !enemy.hasEnraged) {
                 enemy.hasEnraged = true; 
+                
+                // JUICE WIN: Play the terrifying spawn sound when a boss enrages!
+                if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playBossSpawn === 'function') {
+                    AudioSystem.playBossSpawn();
+                }
 
                 if (enemy.name.includes("Necromancer")) {
-                    logMessage(`The ${enemy.name} screams! "ARISE, MY SERVANTS!"`);
+                    logMessage(`{red:The ${enemy.name} screams! "ARISE, MY SERVANTS!"}`);
                     gameState.screenShake = 20;
+                    gameState.screenFlash = { color: '#000000', alpha: 0.5, decay: 0.05 };
 
                     const offsets = [[-1, -1], [1, -1], [0, 1], [-1, 1],[1, 1]];
                     let spawned = 0;
@@ -1038,14 +1052,15 @@ function processEnemyTurns() {
                                 health: t.maxHealth, maxHealth: t.maxHealth,
                                 attack: t.attack + 1, defense: t.defense, xp: 5
                             });
-                            ParticleSystem.createExplosion(sx, sy, '#a855f7'); 
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(sx, sy, '#a855f7'); 
                             spawned++;
                         }
                     }
                 }
                 else if (enemy.name.includes("Demon") || enemy.tile === '😈d') {
-                    logMessage(`The ${enemy.name} roars and shatters reality!`);
+                    logMessage(`{purple:The ${enemy.name} roars and shatters reality!}`);
                     gameState.screenShake = 30;
+                    gameState.screenFlash = { color: '#a855f7', alpha: 0.6, decay: 0.05 };
 
                     let teleported = false;
                     for (let i = 0; i < 10; i++) {
@@ -1060,13 +1075,13 @@ function processEnemyTurns() {
                     }
 
                     if (teleported) {
-                        logMessage("You are thrown through the void!");
-                        ParticleSystem.createExplosion(player.x, player.y, '#a855f7');
+                        logMessage("{purple:You are thrown through the void!}");
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#a855f7');
                         gameState.isAiming = false;
                     }
 
                     enemy.attack += 2;
-                    logMessage(`The ${enemy.name} grows stronger!`);
+                    logMessage(`{red:The ${enemy.name} grows stronger!}`);
                 }
                 return; 
             }
@@ -1084,7 +1099,7 @@ function processEnemyTurns() {
                             x: sx, y: sy, tile: 's', name: "Summoned Skeleton",
                             health: t.maxHealth, maxHealth: t.maxHealth, attack: t.attack, defense: t.defense, xp: 0
                         });
-                        logMessage(`The ${enemy.name} summons a Skeleton!`);
+                        logMessage(`{gray:The ${enemy.name} summons a Skeleton!}`);
                         return; 
                     }
                 }
@@ -1096,7 +1111,7 @@ function processEnemyTurns() {
                     map[enemy.y][enemy.x] = theme.floor;
                     map[ty][tx] = enemy.tile;
                     enemy.x = tx; enemy.y = ty;
-                    logMessage(`The ${enemy.name} vanishes in mist!`);
+                    logMessage(`{gray:The ${enemy.name} vanishes in mist!}`);
                     return;
                 }
             }
@@ -1114,7 +1129,7 @@ function processEnemyTurns() {
                         map[enemy.y][enemy.x] = theme.floor;
                         map[ty][tx] = enemy.tile;
                         enemy.x = tx; enemy.y = ty;
-                        logMessage(`The ${enemy.name} blinks through the void!`);
+                        logMessage(`{purple:The ${enemy.name} blinks through the void!}`);
                         return;
                     }
                 }
@@ -1131,14 +1146,17 @@ function processEnemyTurns() {
                     if (gameState.godMode) return;
                     const dmg = Math.floor(enemy.attack * 1.5); 
                     player.health -= dmg;
+                    
                     gameState.screenShake = 15;
+                    gameState.screenFlash = { color: '#ef4444', alpha: 0.4, decay: 0.05 };
+                    
                     triggerStatFlash(statDisplays.health, false);
-                    logMessage(`You are caught in the ${enemy.name}'s blast! (-${dmg} HP)`);
+                    logMessage(`{red:You are caught in the ${enemy.name}'s blast! (-${dmg} HP)}`);
                     hitPlayer = true;
                 }
             });
 
-            if (!hitPlayer) logMessage(`The ${enemy.name}'s attack strikes the ground!`);
+            if (!hitPlayer) logMessage(`{gray:The ${enemy.name}'s attack strikes the ground!}`);
 
             enemy.pendingAttacks = null;
             if (handlePlayerDeath()) return;
@@ -1151,14 +1169,14 @@ function processEnemyTurns() {
             enemy.pendingAttacks =[];
 
             if (enemy.tile === 'm' || enemy.tile === '😈d') {
-                logMessage(`The ${enemy.name} gathers dark energy...`);
+                logMessage(`{orange:The ${enemy.name} gathers dark energy...}`);
                 enemy.pendingAttacks.push({ x: player.x, y: player.y });
                 enemy.pendingAttacks.push({ x: player.x + 1, y: player.y });
                 enemy.pendingAttacks.push({ x: player.x - 1, y: player.y });
                 enemy.pendingAttacks.push({ x: player.x, y: player.y + 1 });
                 enemy.pendingAttacks.push({ x: player.x, y: player.y - 1 });
             } else {
-                logMessage(`The ${enemy.name} takes a deep breath!`);
+                logMessage(`{orange:The ${enemy.name} takes a deep breath!}`);
                 for (let ty = -1; ty <= 1; ty++) {
                     for (let tx = -1; tx <= 1; tx++) {
                         enemy.pendingAttacks.push({ x: player.x + tx, y: player.y + ty });
@@ -1186,7 +1204,7 @@ function processEnemyTurns() {
             if (player.talents && player.talents.includes('evasion')) dodgeChance += 0.10;
 
             if (Math.random() < dodgeChance) {
-                logMessage(`The ${enemy.name} attacks, but you dodge!`);
+                logMessage(`{blue:The ${enemy.name} attacks, but you dodge!}`);
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "Dodge!", "#3b82f6");
             } else {
                 let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
@@ -1195,14 +1213,14 @@ function processEnemyTurns() {
                     const absorb = Math.min(player.shieldValue, dmg);
                     player.shieldValue -= absorb;
                     dmg -= absorb;
-                    logMessage(`Shield absorbs ${absorb} damage!`);
-                    if (player.shieldValue === 0) logMessage("Your Arcane Shield shatters!");
+                    logMessage(`{cyan:Shield absorbs ${absorb} damage!}`);
+                    if (player.shieldValue === 0) logMessage("{cyan:Your Arcane Shield shatters!}");
                 }
                 if (dmg > 0) {
                     player.health -= dmg;
                     gameState.screenShake = 10; 
                     triggerStatFlash(statDisplays.health, false);
-                    logMessage(`The ${enemy.name} hits you for {red:${dmg}} damage!`);
+                    logMessage(`{red:The ${enemy.name} hits you for ${dmg} damage!}`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
 
                     if (handlePlayerDeath()) return;
@@ -1210,13 +1228,12 @@ function processEnemyTurns() {
                 
                 if (player.thornsValue > 0) {
                     enemy.health -= player.thornsValue;
-                    logMessage(`The ${enemy.name} takes ${player.thornsValue} thorn damage!`);
+                    logMessage(`{green:The ${enemy.name} takes ${player.thornsValue} thorn damage!}`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, `-${player.thornsValue}`, '#22c55e');
 
                     if (enemy.health <= 0) {
-                    
+                        logMessage(`{green:The ${enemy.name} dies upon your thorns!}`);
                         handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
-                    
                     }
                 }
             }
@@ -1234,20 +1251,22 @@ function processEnemyTurns() {
             if (enemy.tile === '@') spellName = "Poison Spit";
 
             if (Math.random() < Math.min(player.luck * 0.002, 0.25)) {
-                logMessage(`The ${enemy.name} fires a ${spellName}, but you dodge!`);
+                logMessage(`{blue:The ${enemy.name} fires a ${spellName}, but you dodge!}`);
             } else {
                 let dmg = spellDmg;
                 if (player.shieldValue > 0) {
                     const absorb = Math.min(player.shieldValue, dmg);
                     player.shieldValue -= absorb;
                     dmg -= absorb;
-                    logMessage(`Shield absorbs ${absorb} magic damage!`);
+                    logMessage(`{cyan:Shield absorbs ${absorb} magic damage!}`);
                 }
                 if (dmg > 0) {
                     player.health -= dmg;
                     gameState.screenShake = 10; 
+                    gameState.screenFlash = { color: '#be123c', alpha: 0.3, decay: 0.1 };
+                    
                     triggerStatFlash(statDisplays.health, false);
-                    logMessage(`The ${enemy.name} casts ${spellName} for {red:${dmg}} damage!`);
+                    logMessage(`{red:The ${enemy.name} casts ${spellName} for ${dmg} damage!}`);
 
                     if (enemy.inflicts === 'frostbite') player.frostbiteTurns = 5;
                     if (enemy.inflicts === 'poison') player.poisonTurns = 5;
@@ -1271,7 +1290,7 @@ function processEnemyTurns() {
             }
 
             if (Math.random() < dodgeChance) {
-                logMessage(`The ${enemy.name} shoots an arrow, but you dodge!`);
+                logMessage(`{blue:The ${enemy.name} shoots an arrow, but you dodge!}`);
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "Dodge!", "#3b82f6");
             } else {
                 const armorDefense = player.equipment.armor ? (player.equipment.armor.defense || 0) : 0;
@@ -1290,12 +1309,13 @@ function processEnemyTurns() {
                     const absorb = Math.min(player.shieldValue, dmg);
                     player.shieldValue -= absorb;
                     dmg -= absorb;
-                    logMessage(`Shield absorbs ${absorb} ranged damage!`);
+                    logMessage(`{cyan:Shield absorbs ${absorb} ranged damage!}`);
                 }
                 
                 if (dmg > 0) {
                     player.health -= dmg;
                     gameState.screenShake = 10;
+                    gameState.screenFlash = { color: '#ef4444', alpha: 0.2, decay: 0.05 };
                     
                     const wrapper = document.getElementById('gameCanvasWrapper');
                     if (wrapper) {
@@ -1305,7 +1325,7 @@ function processEnemyTurns() {
                     }
                     
                     triggerStatFlash(statDisplays.health, false);
-                    logMessage(`The ${enemy.name} shoots you for {red:${dmg}} damage!`);
+                    logMessage(`{red:The ${enemy.name} shoots you for ${dmg} damage!}`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
                     
                     if (player.health <= 0) {
@@ -1386,7 +1406,7 @@ function processEnemyTurns() {
                 }
 
                 if (moveType === 'flee') {
-                    if (Math.random() < 0.2) logMessage(`The ${enemy.name} retreats!`);
+                    if (Math.random() < 0.2) logMessage(`{gray:The ${enemy.name} retreats!}`);
                 }
             }
         }
@@ -1453,7 +1473,7 @@ async function runCompanionTurn() {
                 attacked = true;
 
                 if (enemy.health <= 0) {
-                    logMessage(`Your companion killed the ${enemy.name}!`);
+                    logMessage(`{green:Your ${companion.name} tears the ${enemy.name} apart!}`);
                     handleInstancedEnemyDeath(enemy, tx, ty);
                 }
             }
@@ -1493,7 +1513,7 @@ async function runCompanionTurn() {
                             }
 
                             if (!snapshot.exists()) {
-                                logMessage(`Your ${companion.name} vanquished the ${enemyData.name}!`);
+                                logMessage(`{green:Your ${companion.name} tears the ${enemyData.name} apart!}`);
                                 grantXp(Math.floor(enemyData.xp / 2));
                                 
                                 const droppedLoot = generateEnemyLoot(gameState.player, enemyData); 
@@ -1522,7 +1542,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
     const enemyRef = rtdb.ref(EnemyNetworkManager.getPath(newX, newY, enemyId));
 
     if (!gameState.sharedEnemies[enemyId]) {
-        logMessage("That enemy is already gone.");
+        logMessage("{gray:Dissipating a temporal echo... the enemy is gone.}");
         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
             chunkManager.setWorldTile(newX, newY, '.');
             gameState.mapDirty = true;
@@ -1573,6 +1593,9 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             if (finalEnemyState === null) {
                 logMessage(`The ${enemyInfo.name} was vanquished!`);
                 
+                // Bigger explosion on death!
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#ef4444', 15);
+                
                 try {
                     grantXp(enemyInfo.xp);
                     updateQuestProgress(newTile); 
@@ -1609,14 +1632,14 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             } 
         } 
         else {
-            logMessage("You swing at empty air... the enemy is already dead.");
+            logMessage("{gray:You swing at empty air... the enemy is already dead.}");
             chunkManager.setWorldTile(newX, newY, '.');
             if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
         }
 
     } catch (error) {
         console.error("Combat Error:", error);
-        logMessage(`Error: ${error.message || "Network Sync Failed"}`);
+        logMessage(`{gray:Error: ${error.message || "Network Sync Failed"}}`);
     }
 }
 
@@ -1639,8 +1662,8 @@ function registerKill(enemy) {
         const heal = 2;
         if (gameState.player.health < gameState.player.maxHealth) {
             gameState.player.health = Math.min(gameState.player.maxHealth, gameState.player.health + heal);
-            logMessage("Bloodlust heals you for 2 HP!");
-            triggerStatFlash(statDisplays.health, true);
+            logMessage("{green:Bloodlust heals you for 2 HP!}");
+            if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(statDisplays.health, true);
         }
     }
 
@@ -1648,12 +1671,12 @@ function registerKill(enemy) {
         const restore = 2;
         if (gameState.player.mana < gameState.player.maxMana) {
             gameState.player.mana = Math.min(gameState.player.maxMana, gameState.player.mana + restore);
-            logMessage("You siphon 2 Mana from the soul.");
-            triggerStatFlash(statDisplays.mana, true);
+            logMessage("{blue:You siphon 2 Mana from the soul.}");
+            if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(statDisplays.mana, true);
         }
     }
 
-    updateQuestProgress(tile);
+    if (typeof updateQuestProgress === 'function') updateQuestProgress(tile);
 }
 
 function calculateHitChance(player, enemy) {
@@ -1676,14 +1699,14 @@ function getPlayerDamageModifier(baseDamage) {
     if (player.talents && player.talents.includes('blood_rage')) {
         if ((player.health / player.maxHealth) < 0.5) {
             finalDamage = Math.floor(finalDamage * 2);
-            if (Math.random() < 0.2) logMessage("Blood Rage fuels your strike!");
+            if (Math.random() < 0.2) logMessage("{red:Blood Rage fuels your strike!}");
         }
     }
 
     if (player.talents && player.talents.includes('shadow_strike')) {
         if (player.stealthTurns > 0) {
             finalDamage = Math.floor(finalDamage * 4);
-            logMessage("Shadow Strike! (4x Damage)");
+            logMessage("{purple:Shadow Strike! (4x Damage)}");
         }
     }
 
@@ -1703,16 +1726,36 @@ function handlePlayerDeath() {
     const player = gameState.player;
 
     player.health = 0; 
-    logMessage("{red:You have perished!}");
-    triggerStatFlash(statDisplays.health, false);
+    
+    // JUICE WIN: Death is now a terrifying audiovisual event
+    gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 }; // Fade to blood red
+    if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playDeath === 'function') {
+        AudioSystem.playDeath();
+    }
+    
+    // LORE WIN: Random Atmospheric Death Quotes
+    const deathQuotes = [
+        "The world fades to black...",
+        "You feel your soul slipping away...",
+        "The shadows consume you.",
+        "Your vision swims, then goes dark.",
+        "Silence takes you."
+    ];
+    logMessage(`{red:${deathQuotes[Math.floor(Math.random() * deathQuotes.length)]}}`);
+    
+    if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(statDisplays.health, false);
 
-    if (player.equipment.weapon) applyStatBonuses(player.equipment.weapon, -1);
-    if (player.equipment.armor) applyStatBonuses(player.equipment.armor, -1);
+    if (player.equipment.weapon && typeof applyStatBonuses === 'function') applyStatBonuses(player.equipment.weapon, -1);
+    if (player.equipment.armor && typeof applyStatBonuses === 'function') applyStatBonuses(player.equipment.armor, -1);
 
     const goldLost = Math.floor(player.coins / 2);
-    document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
-    document.getElementById('finalCoinsDisplay').textContent = `Gold lost: ${goldLost}`;
-    gameOverModal.classList.remove('hidden');
+    const lvlDisplay = document.getElementById('finalLevelDisplay');
+    const coinDisplay = document.getElementById('finalCoinsDisplay');
+    const overModal = document.getElementById('gameOverModal');
+    
+    if (lvlDisplay) lvlDisplay.textContent = `Level: ${player.level}`;
+    if (coinDisplay) coinDisplay.textContent = `Gold lost: ${goldLost}`;
+    if (overModal) overModal.classList.remove('hidden');
 
     const deathX = player.x;
     const deathY = player.y;
@@ -1720,7 +1763,7 @@ function handlePlayerDeath() {
 
     let validFloor = '.';
     if (gameState.mapMode === 'dungeon') {
-        const theme = CAVE_THEMES[gameState.currentCaveTheme];
+        const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
         if (theme) validFloor = theme.floor;
     }
 
@@ -1729,7 +1772,7 @@ function handlePlayerDeath() {
         let placed = false;
         
         // --- Shatter magic items on death to prevent them reverting to base items ---
-        const template = ITEM_DATA[item.tile] || ITEM_DATA[item.templateId];
+        const template = (typeof ITEM_DATA !== 'undefined') ? (ITEM_DATA[item.tile] || ITEM_DATA[item.templateId]) : null;
         const isModified = item.statBonuses || (template && item.name !== template.name);
         
         let dropIcon = item.tile || item.templateId || '🎒';
@@ -1782,7 +1825,7 @@ function handlePlayerDeath() {
 
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         for (const [cId, updates] of Object.entries(pendingUpdates)) {
-            const safeUpdates = sanitizeForFirebase(updates);
+            const safeUpdates = typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(updates) : updates;
             
             // Allow for Multiverse and Underworld paths!
             let realmPrefix = '';
@@ -1809,14 +1852,16 @@ function handlePlayerDeath() {
     // Force the database to pull them out of any alternate dimensions or dungeons immediately
     // so if they close the browser on the Game Over screen, they don't load into a wall later!
     const deathUpdates = {
-        ...sanitizeForFirebase(player),
+        ... (typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player),
         currentRealm: 0,
         realmMutators: [],
         mapMode: 'overworld',
         mapId: null
     };
 
-    playerRef.set(deathUpdates, { merge: true }).catch(console.error);
+    if (typeof playerRef !== 'undefined' && playerRef) {
+        playerRef.set(deathUpdates, { merge: true }).catch(console.error);
+    }
 
     return true;
 }
@@ -1824,7 +1869,7 @@ function handlePlayerDeath() {
 function handleInstancedEnemyDeath(enemy, x, y) {
     registerKill(enemy);
 
-    const droppedLoot = generateEnemyLoot(gameState.player, enemy);
+    const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, enemy) : '$';
     gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
 
     let mapId = null;
@@ -1834,7 +1879,7 @@ function handleInstancedEnemyDeath(enemy, x, y) {
     if (gameState.mapMode === 'dungeon') {
         mapId = gameState.currentCaveId;
         mapArray = chunkManager.caveMaps[mapId];
-        if (CAVE_THEMES[gameState.currentCaveTheme]) {
+        if (typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
             validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
         }
         if (chunkManager.caveEnemies[mapId]) {
@@ -1878,7 +1923,7 @@ async function executeThrowTNT(dirX, dirY) {
         if (invIndex > -1) {
             player.inventory[invIndex].quantity--;
             if (player.inventory[invIndex].quantity <= 0) player.inventory.splice(invIndex, 1);
-            if (typeof playerRef !== 'undefined') playerRef.update({ inventory: getSanitizedInventory() });
+            if (typeof playerRef !== 'undefined') playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
         } else {
             return; // Safety catch
         }
@@ -1889,6 +1934,10 @@ async function executeThrowTNT(dirX, dirY) {
 
         logMessage("{orange:You lob the TNT! KABOOM!}");
         gameState.screenShake = 30; // Massive shake!
+        
+        // JUICE WIN: Massive orange flash on explosion
+        gameState.screenFlash = { color: '#f97316', alpha: 0.6, decay: 0.1 };
+        
         if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.4, 200);
 
         const explosionPromises = [];
@@ -1898,11 +1947,13 @@ async function executeThrowTNT(dirX, dirY) {
             for (let x = targetX - 1; x <= targetX + 1; x++) {
                 
                 // A. Deal 30 Damage to any enemies caught in the blast
-                explosionPromises.push(
-                    applySpellDamage(x, y, 30, 'fireball').then(hit => {
-                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f97316', 5);
-                    })
-                );
+                if (typeof applySpellDamage === 'function') {
+                    explosionPromises.push(
+                        applySpellDamage(x, y, 30, 'fireball').then(hit => {
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f97316', 5);
+                        })
+                    );
+                }
 
                 // B. Blow up Cracked Walls (🏚) to reveal rare gems and mithril!
                 let tileAt;
@@ -1930,7 +1981,7 @@ async function executeThrowTNT(dirX, dirY) {
         
         // Finalize Turn
         gameState.isAiming = false;
-        endPlayerTurn();
+        if (typeof endPlayerTurn === 'function') endPlayerTurn();
         if (typeof render === 'function') render();
         if (typeof renderInventory === 'function') renderInventory();
 
@@ -1938,3 +1989,5 @@ async function executeThrowTNT(dirX, dirY) {
         isProcessingMove = false;
     }
 }
+
+// --- END OF FILE combat.js ---
