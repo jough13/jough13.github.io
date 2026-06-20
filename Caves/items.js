@@ -660,8 +660,17 @@ function useInventoryItem(itemIndex) {
 
     // --- CONSTRUCTIBLES (Walls, Floors, Traps) ---
     else if (itemToUse.type === 'constructible') {
-        const currentTile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(player.x, player.y) : '.';
-        const invalidTiles = ['~', '≈', '🧱', '+', '☒', '▓', '^'];
+        let currentTile;
+        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+            currentTile = chunkManager.getTile(player.x, player.y);
+        } else if (gameState.mapMode === 'dungeon') {
+            currentTile = chunkManager.caveMaps[gameState.currentCaveId]?.[player.y]?.[player.x] || ' ';
+        } else if (gameState.mapMode === 'castle') {
+            currentTile = chunkManager.castleMaps[gameState.currentCastleId]?.[player.y]?.[player.x] || ' ';
+        }
+
+        // Added '<', '>', 'X', 'V', '🚪', and '⛰' to protect all entrances, exits, and stairs!
+        const invalidTiles = ['~', '≈', '🧱', '+', '☒', '▓', '▒', '^', '<', '>', 'X', 'V', '🚪', '⛰'];
 
         if (invalidTiles.includes(currentTile)) {
             logMessage("You cannot build here.");
