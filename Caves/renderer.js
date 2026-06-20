@@ -422,9 +422,9 @@ const TileRenderer = {
 
         if (rand < 0.02) { 
             TileRenderer.drawFlower(ctx, x, y, mapX, mapY);
-        } else if (rand < 0.10) {
+        } else if (rand < 0.25) { // Increased density to make plains look like grass!
             TileRenderer.drawGrassTuft(ctx, x, y, accentColor);
-        } else if ((mapX * 123 + mapY * 456) % 11 === 0) { 
+        } else if ((mapX * 123 + mapY * 456) % 7 === 0) { // Increased frequency
             ctx.strokeStyle = accentColor;
             ctx.lineWidth = 1;
             const tx = x * TILE_SIZE + TILE_SIZE / 2;
@@ -753,8 +753,9 @@ function renderTerrainCache(startX, startY) {
                     else if (baseTerrain === '💎c') bgColor = '#083344'; 
                 } else {
                     bgColor = '#22c55e'; 
-                    if (baseTerrain === 'F' || baseTerrain === '🌳e') bgColor = '#14532d';
-                    else if (baseTerrain === '🌲') bgColor = '#0f766e'; 
+                    // Include thickets and flowers so they blend into the dark forest!
+                    if (baseTerrain === 'F' || baseTerrain === '🌳e' || baseTerrain === '🌳' || baseTerrain === '🌲' || baseTerrain === '🌺') bgColor = '#14532d';
+                    else if (baseTerrain === '❄️') bgColor = '#e0f2fe';
                     else if (baseTerrain === '❄️') bgColor = '#e0f2fe'; 
                     else if (baseTerrain === '🍄') bgColor = '#4a044e'; 
                     else if (baseTerrain === '💎c') bgColor = '#083344'; 
