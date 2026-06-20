@@ -245,6 +245,7 @@ window.ENEMY_DATA = {
     // --- LEVEL 1 (Vermin & Weaklings) ---
     'r': {
         name: 'Giant Rat',
+        tags: ['beast'],
         maxHealth: 3, attack: 1, defense: 0, xp: 4,
         loot: '🐀', 
         color: '#a8a29e', 
@@ -252,6 +253,7 @@ window.ENEMY_DATA = {
     },
     '🦇': {
         name: 'Giant Bat',
+        tags: ['beast'],
         maxHealth: 2, attack: 1, defense: 0, xp: 5,
         loot: '🦇', 
         color: '#52525b', 
@@ -259,6 +261,7 @@ window.ENEMY_DATA = {
     },
     '🐍': {
         name: 'Viper',
+        tags: ['beast', 'reptile', 'poison'],
         maxHealth: 4, attack: 2, defense: 0, xp: 8,
         loot: '🦷', 
         color: '#22c55e', 
@@ -267,6 +270,7 @@ window.ENEMY_DATA = {
     },
     'R': {
         name: 'Bandit Recruit',
+        tags: ['humanoid'],
         maxHealth: 5, attack: 2, defense: 0, xp: 10,
         loot: '🧣', 
         color: '#fca5a5', 
@@ -275,6 +279,7 @@ window.ENEMY_DATA = {
     },
     '🍄s': {
         name: 'Sporeling',
+        tags: ['fungus', 'poison'],
         maxHealth: 4, attack: 1, defense: 1, xp: 6,
         loot: '🍄',
         color: '#d946ef',
@@ -283,6 +288,7 @@ window.ENEMY_DATA = {
     },
     '⚙️s': {
         name: 'Clockwork Spider',
+        tags: ['construct', 'metal'],
         maxHealth: 3, attack: 2, defense: 3, xp: 8,
         loot: '⚙️',
         color: '#b45309',
@@ -292,6 +298,7 @@ window.ENEMY_DATA = {
     // --- DESERT WILDLIFE ---
     '🦂s': { 
         name: 'Sand Scorpion',
+        tags: ['bug', 'poison'],
         maxHealth: 5, attack: 2, defense: 1, xp: 8,
         loot: '🦷',
         color: '#d97706', 
@@ -300,6 +307,7 @@ window.ENEMY_DATA = {
     },
     '🐍c': { 
         name: 'King Cobra',
+        tags: ['beast', 'reptile', 'poison'],
         maxHealth: 15, attack: 5, defense: 0, xp: 30,
         loot: '🦷',
         color: '#eab308', 
@@ -310,6 +318,7 @@ window.ENEMY_DATA = {
     // --- SWAMP WILDLIFE ---
     '🐸': {
         name: 'Giant Toad',
+        tags: ['beast'],
         maxHealth: 20, attack: 3, defense: 0, xp: 25,
         loot: '🍖', 
         color: '#15803d', 
@@ -317,6 +326,7 @@ window.ENEMY_DATA = {
     },
     '🦟': {
         name: 'Blood Mosquito',
+        tags: ['bug'],
         maxHealth: 2, attack: 1, defense: 5, xp: 10,
         loot: 'vd',
         color: '#be123c', 
@@ -326,6 +336,7 @@ window.ENEMY_DATA = {
     // --- AQUATIC WILDLIFE ---
     '🦈': {
         name: 'Great Shark',
+        tags: ['beast', 'aquatic'],
         maxHealth: 25, attack: 6, defense: 1, xp: 35,
         loot: '🐟', 
         color: '#94a3b8', 
@@ -333,6 +344,7 @@ window.ENEMY_DATA = {
     },
     '🦀': {
         name: 'Giant Crab',
+        tags: ['beast', 'aquatic', 'stone'],
         maxHealth: 18, attack: 4, defense: 5, xp: 25,
         loot: '🍖',
         color: '#ea580c', 
@@ -340,6 +352,7 @@ window.ENEMY_DATA = {
     },
     '🦑': {
         name: 'Kraken',
+        tags: ['beast', 'aquatic', 'monster'],
         maxHealth: 200, attack: 12, defense: 4, xp: 800,
         loot: '🐙', 
         color: '#7c3aed', 
@@ -350,6 +363,7 @@ window.ENEMY_DATA = {
     },
     '🧜‍♀️': {
         name: 'Siren',
+        tags: ['humanoid', 'aquatic', 'magic'],
         maxHealth: 30, attack: 5, defense: 1, xp: 80,
         loot: '🐚', 
         color: '#38bdf8', 
@@ -359,6 +373,7 @@ window.ENEMY_DATA = {
     },
     '🦕': {
         name: 'Abyssal Leviathan',
+        tags: ['beast', 'aquatic', 'monster'],
         maxHealth: 300, attack: 15, defense: 5, xp: 1500,
         loot: '💎b', 
         color: '#0284c7', 
@@ -368,6 +383,7 @@ window.ENEMY_DATA = {
     // --- FOREST WILDLIFE ---
     '🐻': {
         name: 'Cave Bear',
+        tags: ['beast'],
         maxHealth: 14, attack: 3, defense: 1, xp: 25, 
         loot: '❄️f', 
         color: '#78350f', 
@@ -375,6 +391,7 @@ window.ENEMY_DATA = {
     },
     '🦌': {
         name: 'Stag',
+        tags: ['beast'],
         maxHealth: 15, attack: 2, defense: 0, xp: 10,
         loot: '🍖',
         color: '#b45309', 
@@ -384,6 +401,7 @@ window.ENEMY_DATA = {
     // --- LEVEL 2-3 (Standard Threats) ---
     'g': {
         name: 'Goblin',
+        tags: ['humanoid', 'goblin'],
         maxHealth: 6, attack: 2, defense: 0, xp: 12,
         loot: 't',
         color: '#16a34a', 
@@ -391,6 +409,7 @@ window.ENEMY_DATA = {
     },
     'w': {
         name: 'Wolf',
+        tags: ['beast'],
         maxHealth: 8, attack: 3, defense: 0, xp: 15,
         loot: 'p',
         color: '#78716c', 
@@ -398,6 +417,7 @@ window.ENEMY_DATA = {
     },
     's': {
         name: 'Skeleton',
+        tags: ['undead', 'bone'],
         maxHealth: 10, attack: 3, defense: 1, xp: 18,
         loot: '(',
         color: '#e5e7eb', 
@@ -405,6 +425,7 @@ window.ENEMY_DATA = {
     },
     'b': {
         name: 'Bandit',
+        tags: ['humanoid'],
         maxHealth: 10, attack: 2, defense: 1, xp: 20,
         loot: 'i',
         color: '#ef4444', 
@@ -412,6 +433,7 @@ window.ENEMY_DATA = {
     },
     '👺': {
         name: 'Goblin Archer',
+        tags: ['humanoid', 'goblin'],
         maxHealth: 5, attack: 3, defense: 0, xp: 15,
         loot: '➹', 
         color: '#16a34a',
@@ -420,6 +442,7 @@ window.ENEMY_DATA = {
     },
     '👺m': {
         name: 'Goblin Shaman',
+        tags: ['humanoid', 'goblin', 'magic'],
         maxHealth: 8, attack: 1, defense: 0, xp: 25,
         loot: '🔮', 
         color: '#4ade80', 
@@ -429,6 +452,7 @@ window.ENEMY_DATA = {
     },
     '💀a': {
         name: 'Skeleton Archer',
+        tags: ['undead', 'bone'],
         maxHealth: 8, attack: 4, defense: 1, xp: 20,
         loot: '➹', 
         color: '#e5e7eb',
@@ -437,6 +461,7 @@ window.ENEMY_DATA = {
     },
     'k': {
         name: 'Kobold',
+        tags: ['humanoid', 'reptile'],
         maxHealth: 6, attack: 2, defense: 0, xp: 10,
         loot: '$',
         color: '#ea580c', 
@@ -444,6 +469,7 @@ window.ENEMY_DATA = {
     },
     '🐗': {
         name: 'Wild Boar',
+        tags: ['beast'],
         maxHealth: 12, attack: 3, defense: 0, xp: 20,
         loot: '🍖',
         color: '#57534e', 
@@ -451,6 +477,7 @@ window.ENEMY_DATA = {
     },
     'a': {
         name: 'Shadow Acolyte',
+        tags: ['humanoid', 'void', 'magic'],
         maxHealth: 8, attack: 1, defense: 0, xp: 15,
         loot: 'r',
         color: '#4f46e5', 
@@ -459,6 +486,7 @@ window.ENEMY_DATA = {
     },
     '👻i': {
         name: 'Ice Wraith',
+        tags: ['undead', 'ethereal', 'frost'],
         maxHealth: 10, attack: 3, defense: 2, xp: 20,
         loot: 'E',
         color: '#7dd3fc',
@@ -469,6 +497,7 @@ window.ENEMY_DATA = {
     // --- LEVEL 4-5 (Advanced Threats) ---
     '@': {
         name: 'Giant Spider',
+        tags: ['bug', 'poison'],
         maxHealth: 10, attack: 4, defense: 0, xp: 25,
         loot: '"',
         color: '#1f2937', 
@@ -477,6 +506,7 @@ window.ENEMY_DATA = {
     },
     '🦂': {
         name: 'Giant Scorpion',
+        tags: ['bug', 'poison'],
         maxHealth: 12, attack: 4, defense: 2, xp: 30,
         loot: 'i',
         color: '#b45309', 
@@ -485,6 +515,7 @@ window.ENEMY_DATA = {
     },
     'l': {
         name: 'Giant Leech',
+        tags: ['bug', 'aquatic'],
         maxHealth: 15, attack: 2, defense: 0, xp: 20,
         loot: 'p',
         color: '#111827', 
@@ -493,6 +524,7 @@ window.ENEMY_DATA = {
     },
     'o': {
         name: 'Orc Brute',
+        tags: ['humanoid', 'orc'],
         maxHealth: 20, attack: 5, defense: 1, xp: 40,
         loot: 'U',
         color: '#14532d', 
@@ -500,6 +532,7 @@ window.ENEMY_DATA = {
     },
     'Z': {
         name: 'Draugr',
+        tags: ['undead', 'frost'],
         maxHealth: 18, attack: 4, defense: 2, xp: 35,
         loot: 'E',
         color: '#38bdf8', 
@@ -508,6 +541,7 @@ window.ENEMY_DATA = {
     },
     '👷': {
         name: 'Undead Miner',
+        tags: ['undead'],
         maxHealth: 25, attack: 5, defense: 2, xp: 35,
         loot: '🧨', // Drops TNT!
         color: '#fcd34d', 
@@ -515,6 +549,7 @@ window.ENEMY_DATA = {
     },
     '👁️': {
         name: 'Void Watcher',
+        tags: ['void', 'monster', 'ethereal'],
         maxHealth: 15, attack: 1, defense: 0, xp: 45,
         loot: 'vd',
         color: '#c084fc',
@@ -525,6 +560,7 @@ window.ENEMY_DATA = {
     // --- LEVEL 6+ (Elites) ---
     '🐺': {
         name: 'Dire Wolf',
+        tags: ['beast'],
         maxHealth: 25, attack: 6, defense: 1, xp: 60,
         loot: '🐺',
         color: '#44403c', 
@@ -532,6 +568,7 @@ window.ENEMY_DATA = {
     },
     'Ø': { 
         name: 'Ogre',
+        tags: ['humanoid', 'giant'],
         maxHealth: 35, attack: 7, defense: 1, xp: 80,
         loot: '$',
         color: '#84cc16', 
@@ -539,6 +576,7 @@ window.ENEMY_DATA = {
     },
     'Y': {
         name: 'Yeti',
+        tags: ['beast', 'frost', 'giant'],
         maxHealth: 40, attack: 6, defense: 2, xp: 90,
         loot: '❄️f',
         color: '#f8fafc', 
@@ -547,6 +585,7 @@ window.ENEMY_DATA = {
     },
     'm': {
         name: 'Arcane Mage',
+        tags: ['humanoid', 'magic', 'void'],
         maxHealth: 15, attack: 2, defense: 0, xp: 50,
         loot: '&',
         color: '#c084fc', 
@@ -555,6 +594,7 @@ window.ENEMY_DATA = {
     },
     'C': {
         name: 'Bandit Chief',
+        tags: ['humanoid'],
         maxHealth: 25, attack: 5, defense: 2, xp: 50,
         loot: 'i',
         color: '#991b1b', 
@@ -562,6 +602,7 @@ window.ENEMY_DATA = {
     },
     'f': {
         name: 'Fire Elemental',
+        tags: ['elemental', 'fire', 'ethereal'],
         maxHealth: 20, attack: 5, defense: 3, xp: 60,
         loot: '🔥c',
         color: '#fb923c', 
@@ -571,6 +612,7 @@ window.ENEMY_DATA = {
     },
     '👻': {
         name: 'Lost Soul',
+        tags: ['undead', 'ethereal'],
         type: 'spirit', 
         maxHealth: 15, attack: 3, defense: 0, xp: 20,
         loot: 'ectoplasm',
@@ -579,6 +621,7 @@ window.ENEMY_DATA = {
     },
     '😈d': {
         name: 'Void Demon',
+        tags: ['demon', 'void', 'ethereal'],
         maxHealth: 50, attack: 8, defense: 4, xp: 200,
         loot: '😈',
         color: '#581c87', 
@@ -587,6 +630,7 @@ window.ENEMY_DATA = {
     },
     'v': {
         name: 'Void Stalker',
+        tags: ['void', 'monster'],
         maxHealth: 15, attack: 6, defense: 1, xp: 55,
         loot: 'vd',
         color: '#7c3aed', 
@@ -595,6 +639,7 @@ window.ENEMY_DATA = {
     },
     'M': {
         name: 'Mimic',
+        tags: ['monster', 'construct'],
         maxHealth: 20, attack: 6, defense: 2, xp: 50,
         loot: '💍',
         color: '#854d0e', 
@@ -603,6 +648,7 @@ window.ENEMY_DATA = {
     },
     '🧟': {
         name: 'Spore Zombie',
+        tags: ['undead', 'fungus', 'poison'],
         maxHealth: 18, attack: 4, defense: 0, xp: 25,
         loot: '🍄', 
         color: '#86efac', 
@@ -611,6 +657,7 @@ window.ENEMY_DATA = {
     },
     '🪨c': {
         name: 'Crystal Behemoth',
+        tags: ['elemental', 'stone'],
         maxHealth: 35, attack: 5, defense: 4, xp: 60,
         loot: '💎', 
         color: '#22d3ee', 
@@ -618,6 +665,7 @@ window.ENEMY_DATA = {
     },
     '🤖': {
         name: 'Clockwork Guardian',
+        tags: ['construct', 'metal'],
         maxHealth: 50, attack: 8, defense: 6, xp: 120,
         loot: '⚙️', 
         color: '#f59e0b', 
@@ -625,6 +673,7 @@ window.ENEMY_DATA = {
     },
     '🐛': {
         name: 'Dune Thresher',
+        tags: ['beast', 'monster', 'bug'],
         maxHealth: 120, attack: 12, defense: 2, xp: 400,
         loot: '🦷', 
         color: '#d97706', 
@@ -633,6 +682,7 @@ window.ENEMY_DATA = {
     },
     '🧙': {
         name: 'Necromancer Lord',
+        tags: ['humanoid', 'magic', 'undead', 'boss'],
         maxHealth: 80, attack: 7, defense: 3, xp: 1000,
         loot: '👑',
         color: '#000000', 
@@ -642,6 +692,7 @@ window.ENEMY_DATA = {
     },
     'c': {
         name: 'Cultist Initiate',
+        tags: ['humanoid', 'void', 'magic'],
         maxHealth: 12, attack: 3, defense: 0, xp: 25,
         loot: '📜', 
         color: '#be185d', 
@@ -649,6 +700,7 @@ window.ENEMY_DATA = {
     },
     'z': {
         name: 'Cultist Fanatic',
+        tags: ['humanoid', 'void', 'magic'],
         maxHealth: 15, attack: 6, defense: 0, xp: 35,
         loot: '🗡️', 
         color: '#9f1239', 
@@ -658,6 +710,7 @@ window.ENEMY_DATA = {
     // --- NEW BEASTS (Tanky & Dangerous) ---
     '🧌': { 
         name: 'Stone Golem',
+        tags: ['construct', 'stone', 'elemental'],
         maxHealth: 40, attack: 4, defense: 3, xp: 60,
         loot: '🪨', 
         color: '#a8a29e', 
@@ -665,6 +718,7 @@ window.ENEMY_DATA = {
     },
     '🐲': {
         name: 'Young Drake',
+        tags: ['beast', 'reptile', 'dragon', 'fire'],
         maxHealth: 50, attack: 7, defense: 2, xp: 100,
         loot: '🐉', 
         color: '#dc2626', 
@@ -674,6 +728,7 @@ window.ENEMY_DATA = {
     // --- TIER 4 (The Deep Wilds - 2500+ Distance) ---
     '🦖': {
         name: 'Ancient Rex',
+        tags: ['beast', 'reptile', 'giant'],
         maxHealth: 150, attack: 12, defense: 5, xp: 500,
         loot: '🦖', 
         color: '#14532d', 
@@ -681,6 +736,7 @@ window.ENEMY_DATA = {
     },
     '🧛': {
         name: 'Vampire Lord',
+        tags: ['undead', 'humanoid', 'magic'],
         maxHealth: 80, attack: 10, defense: 3, xp: 600,
         loot: '🩸', 
         color: '#e11d48', 
@@ -690,6 +746,7 @@ window.ENEMY_DATA = {
     },
     '👾': {
         name: 'Eldritch Horror',
+        tags: ['void', 'demon', 'ethereal', 'monster'],
         maxHealth: 200, attack: 15, defense: 0, xp: 800,
         loot: 'vd',
         color: '#8b5cf6', 
@@ -698,6 +755,7 @@ window.ENEMY_DATA = {
     },
     '🐉h': {
         name: 'Swamp Hydra',
+        tags: ['beast', 'reptile', 'dragon', 'poison'],
         maxHealth: 60, attack: 6, defense: 2, xp: 150,
         loot: '🐉',
         color: '#15803d', 
@@ -706,6 +764,7 @@ window.ENEMY_DATA = {
     },
     '🔥e': {
         name: 'Efreet',
+        tags: ['elemental', 'fire', 'demon', 'ethereal'],
         maxHealth: 60, attack: 8, defense: 1, xp: 150,
         loot: '🔥c',
         color: '#f97316', 
@@ -718,6 +777,7 @@ window.ENEMY_DATA = {
     // ==========================================
     '☠️': {
         name: 'Alaric, The Fallen King',
+        tags: ['undead', 'void', 'boss'],
         maxHealth: 1000, attack: 20, defense: 8, xp: 5000,
         loot: '🧿e', color: '#000000', isBoss: true,
         caster: true, castRange: 6, spellDamage: 12, inflicts: 'madness',
@@ -725,6 +785,7 @@ window.ENEMY_DATA = {
     },
     '🩸c': {
         name: 'Arena Champion',
+        tags: ['undead', 'bone', 'boss'],
         maxHealth: 350, attack: 18, defense: 5, xp: 2500,
         loot: '🏆', // Drops the Token!
         color: '#dc2626', 
@@ -739,7 +800,7 @@ window.PLAYER_BACKGROUNDS = {
         description: 'A master of martial combat, built to survive the frontline.',
         stats: { strength: 2, constitution: 1 },
         items: [
-            { templateId: '!', name: 'Rusty Sword', type: 'weapon', quantity: 1, tile: '!', damage: 2, slot: 'weapon' },
+            { templateId: '!', name: 'Rusty Sword', type: 'weapon', quantity: 1, tile: '!', damage: 2, slot: 'weapon', tags: ['blade'] },
             { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
             { templateId: '1', name: 'Conscript\'s Orders', type: 'journal', quantity: 1, tile: '1', title: 'Crumpled Orders' }
         ]
@@ -749,7 +810,7 @@ window.PLAYER_BACKGROUNDS = {
         description: 'Nimble and lethal, favoring speed, evasion, and critical strikes.',
         stats: { dexterity: 2, luck: 1 },
         items: [
-            { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon' },
+            { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon', tags: ['dagger', 'blade', 'bone'] },
             { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
             { templateId: '2', name: 'Thief\'s Map', type: 'journal', quantity: 1, tile: '2', title: 'Scribbled Map' }
         ]
@@ -768,7 +829,7 @@ window.PLAYER_BACKGROUNDS = {
         description: 'Commands the forces of life and death, raising minions from the grave.',
         stats: { wits: 1, willpower: 2 },
         items: [
-            { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon' },
+            { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon', tags: ['dagger', 'blade', 'bone'] },
             { templateId: '💀', name: 'Tome: Raise Dead', type: 'spellbook', quantity: 1, tile: '💀', spellId: 'raiseDead' },
             { templateId: '4', name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap' }
         ]
@@ -912,7 +973,7 @@ window.SPELL_DATA = {
     },
     "arcaneShield": {
         name: "Arcane Shield",
-        description: "Creates a temporary shield that absorbs damage. Scales with {blue:Wits}.",
+        description: "Creates a temporary shield that absorb damage. Scales with {blue:Wits}.",
         scalingStat: "wits",
         cost: 10, costType: "mana", requiredLevel: 3, target: "self", type: "buff", baseShield: 5, duration: 5,
         cooldown: 4
