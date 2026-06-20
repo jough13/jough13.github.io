@@ -155,7 +155,8 @@ function castSpell(spellId) {
                         else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[y]?.[x];
 
                         const eData = ENEMY_DATA[tileAt];
-                        if (eData && (eData.name.includes("Skeleton") || eData.name.includes("Demon") || eData.name.includes("Zombie") || eData.name.includes("Wraith") || eData.name.includes("Draugr") || eData.name.includes("Vampire"))) {
+                        const tags = eData ? (eData.tags || []) : [];
+                        if (eData && (tags.includes("undead") || tags.includes("demon"))) {
                             // Fire and forget spell damage applying to surrounding enemies
                             applySpellDamage(x, y, holyDamage, 'divineLight');
                             hitUnholy = true;
@@ -354,6 +355,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
     }
     
     const enemyData = ENEMY_DATA[tile];
+    const tags = enemyData ? (enemyData.tags || []) : [];
     const isTargetInWater = (tile === '~' || tile === '≈');
 
     // --- ELEMENTAL SYNERGY (ENVIRONMENT & ENEMY TYPES) ---
@@ -364,9 +366,9 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
             // JUICE: Electrocute the water visually
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#facc15', 5);
         }
-        if (enemyData && enemyData.name && enemyData.name.includes('Clockwork')) {
+        if (tags.includes('metal')) {
             finalDamage = Math.floor(finalDamage * 1.5);
-            logMessage(`{yellow:The mechanical guardian short-circuits! (Critical Damage)}`);
+            logMessage(`{yellow:The metallic enemy short-circuits! (Critical Damage)}`);
         }
     } 
     else if (spellId === 'fireball' || spellId === 'meteor') {
@@ -391,9 +393,9 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
     else if (spellId === 'frostBolt') {
         if (weather === 'snow') finalDamage = Math.floor(finalDamage * 1.5);
         
-        if (enemyData && enemyData.name && enemyData.name.includes('Fire')) {
+        if (tags.includes('fire')) {
             finalDamage = Math.floor(finalDamage * 1.5);
-            logMessage(`{cyan:The elemental flame recoils from the biting cold! (Critical Damage)}`);
+            logMessage(`{cyan:The fiery entity recoils from the biting cold! (Critical Damage)}`);
         }
         
         // ICE BRIDGE SYNERGY
