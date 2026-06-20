@@ -100,14 +100,14 @@ var NEW_FISHING_ITEMS = {
             const xpText = isMax ? `<span class="text-yellow-500 font-bold uppercase tracking-widest">MAXED</span>` : `XP: ${xp} / ${nextXp}`;
 
             let html = `
-            <div class="mb-4 bg-black bg-opacity-20 p-3 rounded-lg border border-gray-700">
+            <div class="mb-4 bg-black bg-opacity-20 p-3 rounded-lg border border-gray-700 shadow-inner">
                 <p class="text-lg font-bold text-blue-400 flex justify-between"><span>Fishing Level: ${lvl}</span> <span>${caughtCount}/${allFish.length}</span></p>
                 <p class="text-xs text-gray-400 mb-2">${xpText}</p>
                 <div class="stat-bar-container mb-2"><div class="stat-bar ${isMax ? 'bg-yellow-500' : 'bg-blue-500'}" style="width: ${xpBarWidth}%"></div></div>
                 ${perksHtml}
                 <div class="mt-2 text-xs text-gray-400 text-right italic">Total Trophy Weight: <span class="text-yellow-500 font-bold">${totalWeight} lbs</span></div>
             </div>
-            <h3 class="font-bold border-b border-gray-600 mb-2 flex justify-between text-sm">
+            <h3 class="font-bold border-b border-gray-600 mb-2 flex justify-between text-sm text-yellow-500">
                 <span>Fish Directory</span>
                 <span class="text-yellow-500">${completionPercent}% Complete</span>
             </h3>
@@ -174,6 +174,7 @@ var NEW_FISHING_ITEMS = {
                 if (existingPearl || state.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                     logMessage("{purple:You found a Black Pearl inside!}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, '💎', '#a855f7');
                     
                     if (existingPearl) existingPearl.quantity++;
                     else state.player.inventory.push({ templateId: '💎b', name: 'Black Pearl', type: 'junk', quantity: 1, tile: '💎' });
@@ -183,7 +184,7 @@ var NEW_FISHING_ITEMS = {
             } else {
                 logMessage("Just some slimy oyster meat. {yellow:(+15 Hunger)}");
                 state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 15);
-                triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
             }
             return true; // Consume Oyster
         }
@@ -236,7 +237,7 @@ var NEW_FISHING_ITEMS = {
                     logMessage(`{red:You found a ${prize}, but your inventory was full and it washed away!}`);
                 }
             }
-            triggerStatFlash(document.getElementById('coinsDisplay'), true);
+            if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('coinsDisplay'), true);
             return true; // Consumes the chest
         }
     },
@@ -434,7 +435,7 @@ function executeFishing() {
     }
     
     player.stamina -= 2;
-    triggerStatFlash(document.getElementById('staminaDisplay'), false);
+    if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('staminaDisplay'), false);
 
     if (typeof player.fishingLevel === 'undefined') player.fishingLevel = 1;
     if (typeof player.fishingXp === 'undefined') player.fishingXp = 0;
@@ -491,13 +492,21 @@ function executeFishing() {
         logMessage("{gray:(You are fishing without bait. Catch rates are lower.)}");
     }
 
-    // --- SYNERGIES: FEEDING FRENZY & NIGHT FISHING ---
+    // --- LORE & MECHANIC WIN: WEATHER SYNERGY ---
     const hour = gameState.time.hour;
     const isNight = hour >= 20 || hour <= 5;
     const isFrenzy = (hour >= 5 && hour <= 7) || (hour >= 18 && hour <= 20); // Dawn and Dusk
+    
+    // Blood Moon makes fishing incredibly dangerous but highly rewarding!
+    const isBloodMoon = gameState.isBloodMoon || false; 
 
     // --- DANGEROUS WATERS (Hostile Hooks!) ---
-    if (zone === 'deep' && Math.random() < 0.05) {
+    // If it's a thunderstorm or a blood moon, the chance to hook a monster skyrockets!
+    let hostilityChance = 0.05;
+    if (gameState.weather === 'storm') hostilityChance = 0.15;
+    if (isBloodMoon) hostilityChance = 0.30;
+
+    if (zone === 'deep' && Math.random() < hostilityChance) {
         playSplash();
         logMessage("{red:You hooked something massive... IT'S PULLING YOU IN!}");
         const dmg = isLeviathansBane ? 5 : 10;
@@ -508,7 +517,7 @@ function executeFishing() {
 
         player.health -= dmg;
         gameState.screenShake = 20; // JUICE
-        triggerStatFlash(document.getElementById('healthDisplay'), false);
+        if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('healthDisplay'), false);
         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#ef4444', 15);
         if (player.health <= 0) if (typeof handlePlayerDeath === 'function') handlePlayerDeath();
         return true; 
@@ -516,8 +525,8 @@ function executeFishing() {
 
     // CONTENT WIN: Ambush monsters based on biomes
     let ambushEnemy = null;
-    if (zone === 'swamp' && Math.random() < 0.05) ambushEnemy = 'l'; // Leech
-    if (zone === 'void' && Math.random() < 0.05) ambushEnemy = 'v';  // Void Stalker
+    if (zone === 'swamp' && Math.random() < hostilityChance) ambushEnemy = 'l'; // Leech
+    if (zone === 'void' && Math.random() < hostilityChance) ambushEnemy = 'v';  // Void Stalker
 
     if (ambushEnemy) {
         playSplash();
@@ -563,7 +572,10 @@ function executeFishing() {
     
     if (zone === 'deep' || zone === 'void') catchChance -= 0.15; 
     if (zone === 'lava') catchChance -= 0.10; 
+    
+    // WEATHER SYNERGY: Rain hides the line, making fish easier to catch!
     if (gameState.weather === 'rain' || gameState.weather === 'storm') catchChance += 0.15; 
+    
     if (isFrenzy) catchChance += 0.25; // Massive frenzy boost
     catchChance += baitCatchBoost; 
 
@@ -574,6 +586,9 @@ function executeFishing() {
     
     if (usedBaitName) flavorText += ` {${baitColor}:(Used ${usedBaitName})}`;
     if (isNight) flavorText += " The darkness is absolute.";
+    if (isBloodMoon) flavorText += " The water reflects the crimson moon.";
+    if (gameState.weather === 'rain') flavorText += " The rain pelts the surface of the water.";
+    
     if (isFrenzy) logMessage("{blue:The water is boiling with activity! (Feeding Frenzy)}");
     logMessage(`{gray:${flavorText}}`);
     
@@ -602,7 +617,12 @@ function executeFishing() {
         const luckBoost = player.luck * 0.01;
         const lvlBoost = isDeepSeaMaster ? (player.fishingLevel * 0.04) : (player.fishingLevel * 0.02);
         
-        const totalRareChance = roll + baitRareBoost + nightBoost + frenzyBoost + luckBoost + lvlBoost;
+        // WEATHER SYNERGY: Thunderstorms and Blood Moons massively boost rarity rolls
+        let weatherBoost = 0;
+        if (gameState.weather === 'storm') weatherBoost = 0.20;
+        if (isBloodMoon) weatherBoost = 0.35; 
+        
+        const totalRareChance = roll + baitRareBoost + nightBoost + frenzyBoost + luckBoost + lvlBoost + weatherBoost;
 
         if (totalRareChance > 0.98) { rarity = 'legendary'; xpGained = 150; }
         else if (totalRareChance > 0.85) { rarity = 'rare'; xpGained = 50; }
@@ -642,11 +662,11 @@ function executeFishing() {
                         playLineSnap();
                         logMessage(`{red:You are too exhausted to reel it in... The line snaps!}`);
                         player.stamina = 0;
-                        triggerStatFlash(document.getElementById('staminaDisplay'), false);
+                        if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('staminaDisplay'), false);
                         return true; 
                     } else {
                         player.stamina -= stamDrain;
-                        triggerStatFlash(document.getElementById('staminaDisplay'), false);
+                        if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('staminaDisplay'), false);
                     }
                 }
             }
