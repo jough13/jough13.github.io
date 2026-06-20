@@ -332,4 +332,52 @@ const gameState = {
     enemySpatialMap: new Map()// For optimized AI pathing
 };
 
+// ============================================================================
+// CENTRALIZED STATE DISPATCHER (Vitals Management)
+// ============================================================================
+
+/**
+ * Safely modifies a player's vital stat, handles UI flashes, and checks for death.
+ * @param {string} vital - 'health', 'mana', 'stamina', 'psyche', 'hunger', 'thirst'
+ * @param {number} amount - Positive to heal/restore, Negative to damage/spend
+ * @returns {number} The actual amount changed (after clamping to min/max)
+ */
+window.modifyVital = function(vital, amount) {
+    const p = gameState.player;
+    
+    // 1. Get the max cap for this vital
+    const maxKey = 'max' + vital.charAt(0).toUpperCase() + vital.slice(1);
+    const maxVal = p[maxKey] || 100; // Fallback to 100 for hunger/thirst
+    
+    // 2. Calculate new value with clamping
+    const oldVal = p[vital];
+    let newVal = oldVal + amount;
+    newVal = Math.max(0, Math.min(maxVal, newVal));
+    
+    p[vital] = newVal;
+    const actualChange = newVal - oldVal;
+
+    // 3. Handle UI Flashes automatically
+    if (actualChange !== 0 && typeof statDisplays !== 'undefined' && statDisplays[vital]) {
+        if (actualChange > 0) {
+            // Healing / Restoring
+            if (vital === 'health' || vital === 'hunger') triggerStatAnimation(statDisplays[vital], 'stat-pulse-green');
+            else if (vital === 'mana') triggerStatAnimation(statDisplays[vital], 'stat-pulse-blue');
+            else if (vital === 'stamina') triggerStatAnimation(statDisplays[vital], 'stat-pulse-yellow');
+            else if (vital === 'psyche') triggerStatAnimation(statDisplays[vital], 'stat-pulse-purple');
+            else if (vital === 'thirst') triggerStatAnimation(statDisplays[vital], 'stat-pulse-blue');
+        } else {
+            // Taking Damage / Spending
+            triggerStatFlash(statDisplays[vital], false);
+        }
+    }
+
+    // 4. Check for Death
+    if (vital === 'health' && p.health <= 0) {
+        if (typeof handlePlayerDeath === 'function') handlePlayerDeath();
+    }
+
+    return actualChange; // Returns exactly how much was healed/lost
+};
+
 // --- END OF FILE state.js ---
