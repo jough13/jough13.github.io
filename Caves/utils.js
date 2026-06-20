@@ -5,12 +5,12 @@
 // ==========================================
 
 window.withTimeout = function(promise, ms = 3000) {
-    return Promise.race([
-        promise,
-        new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Network Timeout")), ms)
-        )
-    ]);
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Network Timeout")), ms);
+    });
+    // Finally block ensures the timer is destroyed the millisecond the network responds
+    return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
 };
 
 // PERFORMANCE WIN: Generic Debounce & Throttle
