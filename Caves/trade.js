@@ -26,6 +26,7 @@ window.BASE_ITEM_VALUES = window.BASE_ITEM_VALUES || {
     'Golden Pocket Watch': 120, 'Jade Idol': 90, 'Black Pearl': 250,
     'Heart of the Forest': 300, 'Kraken Ink Sac': 150, 'Ancient Vase': 75,
     'Stone Head': 60, 'Fossilized Bone': 40, 'Drowned Skull': 30, 'Rusted Helm': 15,
+    'King\'s Sigil': 200, 'Petrified Egg': 150, 'Paradox Anomaly': 500,
     
     // Materials, Boss Drops & Rare Goods
     'Star-Metal Ore': 150, 'Obsidian Shard': 75, 'Void Dust': 40, 
@@ -356,7 +357,7 @@ function renderShop() {
     shopSellList.innerHTML = '';
 
     // 2. Update player's gold
-    shopPlayerCoins.innerHTML = `Your Gold: <span class="text-yellow-400">${gameState.player.coins}</span>`;
+    shopPlayerCoins.innerHTML = `Your Gold: <span class="text-yellow-400 drop-shadow-sm">${gameState.player.coins}</span>`;
 
     // 3. Extract Biome context for dynamic flavor text
     let biome = 'Plains';
@@ -431,13 +432,13 @@ function renderShop() {
         const outOfStockClass = item.stock <= 0 ? 'opacity-50 grayscale' : 'hover:border-green-500';
 
         const li = document.createElement('li');
-        li.className = `shop-item transition-colors duration-150 ${outOfStockClass}`;
+        li.className = `shop-item transition-colors duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 ${outOfStockClass}`;
         li.innerHTML = `
             <div>
-                <span class="shop-item-name">${item.name} <span class="text-xl">${itemTemplate?.tile || '?'}</span></span>
-                <span class="shop-item-details font-bold ${priceColorClass}">Price: ${priceHtml} <span class="text-xs text-gray-500 font-normal">(Stock: ${item.stock})</span></span>
+                <span class="shop-item-name font-bold text-lg">${item.name} <span class="text-2xl drop-shadow-md align-middle">${itemTemplate?.tile || '?'}</span></span>
+                <span class="shop-item-details font-bold block mt-1 ${priceColorClass}">Price: ${priceHtml} <span class="text-xs text-gray-500 font-normal ml-2 bg-black bg-opacity-30 px-1 rounded">(Stock: ${item.stock})</span></span>
             </div>
-            <div class="shop-item-actions flex items-center">
+            <div class="shop-item-actions flex items-center ml-2">
                 ${actionsHtml}
             </div>
         `;
@@ -451,7 +452,7 @@ function renderShop() {
 
     // 5. Populate "Sell" list
     if (gameState.player.inventory.length === 0) {
-        shopSellList.innerHTML = '<li class="shop-item-details italic text-sm text-gray-500 border border-gray-700 p-2 rounded">Your inventory is empty.</li>';
+        shopSellList.innerHTML = '<li class="shop-item-details italic text-sm text-gray-500 border border-gray-700 p-4 rounded-lg bg-black bg-opacity-20 text-center">Your bag is empty.</li>';
     } else {
         gameState.player.inventory.forEach((item, index) => {
             // DRY OPTIMIZATION: Use our helper
@@ -462,14 +463,14 @@ function renderShop() {
             let demandTag = "";
             if (regionMult > 1.0) {
                 sellPriceColor = "text-green-400";
-                demandTag = `<span class="text-[9px] bg-green-900 bg-opacity-40 text-green-400 px-1 rounded ml-1 uppercase border border-green-800">High Demand</span>`;
+                demandTag = `<span class="text-[9px] bg-green-900 bg-opacity-40 text-green-400 px-1 rounded ml-2 uppercase border border-green-800 shadow-inner block mt-1 w-max">High Demand</span>`;
             } else if (regionMult < 1.0) {
                 sellPriceColor = "text-red-400";
-                demandTag = `<span class="text-[9px] bg-red-900 bg-opacity-40 text-red-400 px-1 rounded ml-1 uppercase border border-red-800">Low Demand</span>`;
+                demandTag = `<span class="text-[9px] bg-red-900 bg-opacity-40 text-red-400 px-1 rounded ml-2 uppercase border border-red-800 shadow-inner block mt-1 w-max">Low Demand</span>`;
             }
 
             const li = document.createElement('li');
-            li.className = 'shop-item hover:border-blue-500 transition-colors duration-150';
+            li.className = 'shop-item hover:border-blue-500 transition-colors duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3';
             
             // UX WIN: Add a "Sell Stack" button if they have more than 1!
             let actionsHtml = `<button data-sell-index="${index}" data-amount="1" style="transform: translateZ(0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50" ${item.isEquipped ? 'disabled title="Unequip first"' : ''}>Sell 1</button>`;
@@ -477,15 +478,18 @@ function renderShop() {
             if (item.quantity > 1 && !item.isEquipped) {
                 actionsHtml += `<button data-sell-index="${index}" data-amount="all" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs">All (${item.quantity})</button>`;
             } else if (item.isEquipped) {
-                actionsHtml = `<span class="text-[10px] font-bold text-yellow-500 bg-black bg-opacity-30 px-2 py-1 rounded uppercase tracking-widest border border-yellow-800">Equipped</span>`;
+                actionsHtml = `<span class="text-[10px] font-bold text-yellow-500 bg-black bg-opacity-40 px-2 py-1 rounded uppercase tracking-widest border border-yellow-800 shadow-inner">Equipped</span>`;
             }
+            
+            const nameColor = item.statBonuses ? 'text-purple-400 font-bold' : 'text-gray-200';
 
             li.innerHTML = `
-                <div>
-                    <span class="shop-item-name">${item.name} <span class="text-xs text-gray-400">x${item.quantity}</span></span>
-                    <span class="shop-item-details font-bold ${sellPriceColor}">Sell for: ${sellPrice}g <span class="text-xs text-gray-500 font-normal">(ea)</span>${demandTag}</span>
+                <div class="flex-grow pr-2">
+                    <span class="shop-item-name block mb-1 ${nameColor}">${item.tile || '🎒'} ${item.name} <span class="text-[10px] text-gray-400 bg-black bg-opacity-30 px-1 rounded border border-gray-700 ml-1">x${item.quantity}</span></span>
+                    <span class="shop-item-details font-bold block ${sellPriceColor}">Sell for: ${sellPrice}g <span class="text-xs text-gray-500 font-normal">(ea)</span></span>
+                    ${demandTag}
                 </div>
-                <div class="shop-item-actions flex items-center">
+                <div class="shop-item-actions flex items-center ml-2">
                     ${actionsHtml}
                 </div>
             `;
@@ -503,12 +507,12 @@ function renderShop() {
     if (sellHeader) {
         // UX WIN: Smart-disable the button if there is no junk to sell
         const hasJunk = gameState.player.inventory.some(i => !i.isEquipped && (i.type === 'junk' || i.type === 'trade'));
-        const btnClass = hasJunk ? "bg-red-600 hover:bg-red-500 text-white cursor-pointer" : "bg-gray-800 text-gray-500 opacity-50 cursor-not-allowed border border-gray-700";
+        const btnClass = hasJunk ? "bg-red-700 hover:bg-red-600 text-white cursor-pointer shadow-md" : "bg-gray-800 text-gray-500 opacity-50 cursor-not-allowed border border-gray-700 shadow-inner";
 
         sellHeader.innerHTML = `
             <div class="flex justify-between items-center w-full">
-                <span>Your Bag <span class="text-[10px] text-gray-400 font-normal ml-1">(${gameState.player.inventory.length}/${window.MAX_INVENTORY_SLOTS || 9})</span></span>
-                <button id="sellAllBtn" style="transform: translateZ(0);" class="text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ${btnClass}" ${hasJunk ? '' : 'disabled'}>Sell All Junk</button>
+                <span>Your Bag <span class="text-[10px] text-gray-400 font-normal ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700">(${gameState.player.inventory.length}/${window.MAX_INVENTORY_SLOTS || 9})</span></span>
+                <button id="sellAllBtn" style="transform: translateZ(0);" class="text-[10px] uppercase font-bold tracking-widest px-2 py-1.5 rounded transition-transform active:scale-95 ${btnClass}" ${hasJunk ? '' : 'disabled'}>Sell All Junk</button>
             </div>
         `;
         // Ensure we assign the handler directly 
@@ -545,6 +549,7 @@ function getRegionalPriceMultiplier(itemType, itemName) {
     if (isAlternateRealm) {
         if (itemName === 'Clean Water' || itemName === 'Flask of Water' || itemName === 'Hardtack') multiplier = 2.0;
         if (itemName === 'Torch' || itemName === 'Campfire Kit') multiplier = 1.5;
+        if (itemName === 'Void Dust') multiplier = 0.5; // Very common here
     }
 
     // 2. DESERT: Pays huge for Water/Food/Herbs. Hates Sand/Cactus.
