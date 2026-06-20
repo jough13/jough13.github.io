@@ -459,24 +459,26 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                     damageDealt = Math.max(1, finalDamage);
                     enemy.health -= damageDealt;
 
-                    let color = '#3b82f6'; 
-                    if (spellId === 'fireball' || spellId === 'meteor') color = '#f97316'; 
-                    if (spellId === 'poisonBolt') color = '#22c55e'; 
-                    if (spellId === 'divineLight') color = '#facc15';
-
-                    if (typeof ParticleSystem !== 'undefined') {
-                        ParticleSystem.createExplosion(targetX, targetY, color);
-                        ParticleSystem.createFloatingText(targetX, targetY, `-${damageDealt}`, color);
-                    }
-
                     if (enemy.health <= 0) return null; 
                     return JSON.parse(JSON.stringify(enemy)); 
                 }),
                 3000 // Timeout in milliseconds
             );
 
-            // --- Only grant XP if OUR transaction succeeded ---
+            // --- Only grant XP & Show Visuals if OUR transaction succeeded ---
             if (transactionResult && transactionResult.committed) {
+                
+                // --- VISUAL EFFECTS (Moved outside transaction to prevent spam) ---
+                let color = '#3b82f6'; 
+                if (spellId === 'fireball' || spellId === 'meteor') color = '#f97316'; 
+                if (spellId === 'poisonBolt') color = '#22c55e'; 
+                if (spellId === 'divineLight') color = '#facc15';
+
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createExplosion(targetX, targetY, color);
+                    ParticleSystem.createFloatingText(targetX, targetY, `-${damageDealt}`, color);
+                }
+
                 const finalEnemyState = transactionResult.snapshot.val();
                 
                 if (finalEnemyState === null) {
