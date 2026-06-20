@@ -399,6 +399,7 @@ window.ITEM_DATA = {
     '⚔️star': {
         name: 'Star-Forged Blade',
         type: 'weapon',
+        tags: ['blade'],
         tile: '⚔️',
         damage: 12,
         slot: 'weapon',
@@ -690,10 +691,10 @@ window.ITEM_DATA = {
     '🐉s':   { name: 'Swamp Serpent Scale', type: 'junk', tile: '🐉', description: "You barely managed to reel this in before the beast snapped your line." },
     '🐟cod': { name: 'Deep Sea Cod', type: 'consumable', tile: '🐟', description: "A massive, meaty fish. {yellow:+30 Hunger}", effect: (s) => eatFish(s, 30) },
     '🐟tna': { name: 'Silver Tuna', type: 'consumable', tile: '🐟', description: "Swift and valuable. {yellow:+40 Hunger}, {green:+5 HP}", effect: (s) => eatFish(s, 40, 5) },
-    '🐟swd': { name: 'Swordfish', type: 'weapon', tile: '🗡️', damage: 4, slot: 'weapon', description: "{red:+4 Dmg}. The bill of a massive swordfish. Surprisingly sharp." },
+    '🐟swd': { name: 'Swordfish', type: 'weapon', tags: ['blade'], tile: '🗡️', damage: 4, slot: 'weapon', description: "{red:+4 Dmg}. The bill of a massive swordfish. Surprisingly sharp." },
     '🐟ang': { name: 'Abyssal Angler', type: 'tool', tile: '💡', statBonuses: { perception: 2 }, description: "{gold:+2 Per}. Its glowing lure still shines even in death." },
     '🌋crp': { name: 'Magma Carp', type: 'consumable', tile: '🐟', description: "It's already cooked perfectly! {yellow:+35 Hunger}, {green:+10 HP}", effect: (s) => eatFish(s, 35, 10) },
-    '🌋eel': { name: 'Obsidian Eel', type: 'weapon', tile: '🐍', damage: 6, slot: 'weapon', inflicts: 'burn', inflictChance: 0.3, description: "{red:+6 Dmg}. A living, whip-like eel that sears flesh. {orange:(Burns target)}" },
+    '🌋eel': { name: 'Obsidian Eel', type: 'weapon', tags: ['whip', 'fire'], tile: '🐍', damage: 6, slot: 'weapon', inflicts: 'burn', inflictChance: 0.3, description: "{red:+6 Dmg}. A living, whip-like eel that sears flesh. {orange:(Burns target)}" },
     '🌋hrt': { name: 'Heart of the Volcano', type: 'accessory', tile: '❤️', defense: 2, slot: 'accessory', statBonuses: { constitution: 5, strength: 3 }, description: "{blue:+2 Def}, {green:+5 Con, +3 Str}. It beats with volcanic fury." },
     '📦w': { 
         name: 'Waterlogged Chest', type: 'consumable', tile: '📦', 
@@ -733,6 +734,7 @@ window.ITEM_DATA = {
                         damage: template ? template.damage : null, 
                         slot: template ? template.slot : null,
                         statBonuses: template ? template.statBonuses : null,
+                        tags: template ? (template.tags || null) : null,
                         effect: template ? template.effect : null
                     });
                     logMessage(`{purple:You also found a ${prize} hidden inside!}`);
@@ -920,6 +922,7 @@ window.ITEM_DATA = {
     '⚔️r': {
         name: 'Rebel\'s Edge',
         type: 'weapon',
+        tags: ['blade'],
         damage: 4,
         slot: 'weapon',
         statBonuses: { strength: 1, dexterity: 1 },
@@ -1006,6 +1009,7 @@ window.ITEM_DATA = {
     '➹f': {
         name: 'Fire Arrow',
         type: 'ammo',
+        tags: ['fire'],
         tile: '➹',
         slot: 'ammo',
         damage: 3, 
@@ -1014,6 +1018,7 @@ window.ITEM_DATA = {
     '➹p': {
         name: 'Poison Arrow',
         type: 'ammo',
+        tags: ['poison'],
         tile: '➹',
         slot: 'ammo',
         damage: 1, 
@@ -1110,7 +1115,7 @@ window.ITEM_DATA = {
                 valid = true;
             }
             
-            // Ensure it only places on valid Dungeon/Castle floors, protecting the stairs!
+            // FIX: Ensure it only places on valid Dungeon/Castle floors, protecting the stairs!
             if (state.mapMode === 'dungeon') {
                 const theme = window.CAVE_THEMES[state.currentCaveTheme] || window.CAVE_THEMES['ROCK'];
                 if (currentTile === theme.floor) valid = true;
@@ -1173,6 +1178,7 @@ window.ITEM_DATA = {
     '⚔️l': {
         name: 'Longsword',
         type: 'weapon',
+        tags: ['blade'],
         tile: '⚔️',
         damage: 4, 
         slot: 'weapon',
@@ -1181,6 +1187,7 @@ window.ITEM_DATA = {
     '🔨': {
         name: 'Warhammer',
         type: 'weapon',
+        tags: ['blunt'],
         tile: '🔨',
         damage: 5, 
         isTwoHanded: true,
@@ -1191,6 +1198,7 @@ window.ITEM_DATA = {
     '🪓': {
         name: 'Greataxe',
         type: 'weapon',
+        tags: ['axe', 'blade'],
         tile: '🪓',
         damage: 6, 
         isTwoHanded: true,
@@ -1201,6 +1209,7 @@ window.ITEM_DATA = {
     '🏏': {
         name: 'Wooden Club',
         type: 'weapon',
+        tags: ['blunt'],
         tile: '🏏',
         damage: 2, 
         slot: 'weapon',
@@ -1209,6 +1218,7 @@ window.ITEM_DATA = {
     '🦯': { 
         name: 'Quarterstaff',
         type: 'weapon',
+        tags: ['staff', 'blunt'],
         tile: '🦯', 
         damage: 1,
         defense: 1,
@@ -1218,6 +1228,7 @@ window.ITEM_DATA = {
     '🏹': {
         name: 'Shortbow',
         type: 'weapon',
+        tags: ['bow'],
         tile: '🏹',
         damage: 2,
         range: 4, 
@@ -1230,6 +1241,7 @@ window.ITEM_DATA = {
     '🏹l': {
         name: 'Longbow',
         type: 'weapon',
+        tags: ['bow'],
         tile: '🏹',
         damage: 4,
         range: 6, 
@@ -1242,6 +1254,7 @@ window.ITEM_DATA = {
     '🏹c': {
         name: 'Heavy Crossbow',
         type: 'weapon',
+        tags: ['crossbow', 'armor_piercing', 'heavy_recoil'],
         tile: '🏹',
         damage: 6,
         range: 5,
@@ -1448,6 +1461,7 @@ window.ITEM_DATA = {
     '⚡': {
         name: 'Stormbringer',
         type: 'weapon',
+        tags: ['blade', 'lightning'],
         tile: '⚡',
         damage: 5,
         slot: 'weapon',
@@ -1458,6 +1472,7 @@ window.ITEM_DATA = {
     '🩸b': {
         name: 'Bloodthirster',
         type: 'weapon',
+        tags: ['blade'],
         tile: '🩸b',
         damage: 4,
         slot: 'weapon',
@@ -1468,6 +1483,7 @@ window.ITEM_DATA = {
     '❄️w': {
         name: 'Frostmourn',
         type: 'weapon',
+        tags: ['blade', 'frost'],
         tile: '⚔️',
         damage: 5,
         slot: 'weapon',
@@ -1665,6 +1681,7 @@ window.ITEM_DATA = {
     '🔱': {
         name: 'Trident',
         type: 'weapon',
+        tags: ['polearm', 'pierce'],
         tile: '🔱',
         damage: 4,
         slot: 'weapon',
@@ -1673,6 +1690,7 @@ window.ITEM_DATA = {
     '🔨h': { 
         name: 'Meteor Hammer',
         type: 'weapon',
+        tags: ['blunt'],
         tile: '🔨',
         damage: 7, 
         isTwoHanded: true,
@@ -1683,6 +1701,7 @@ window.ITEM_DATA = {
     '🗡️d': {
         name: 'Dragonbone Dagger',
         type: 'weapon',
+        tags: ['dagger', 'blade'],
         tile: '🗡️',
         damage: 4,
         slot: 'weapon',
@@ -1692,6 +1711,7 @@ window.ITEM_DATA = {
     '🗡️m': {
         name: 'Masterwork Dagger',
         type: 'weapon',
+        tags: ['dagger', 'blade'],
         damage: 5,
         slot: 'weapon',
         statBonuses: { dexterity: 2, luck: 1 },
@@ -1702,6 +1722,7 @@ window.ITEM_DATA = {
     '🛡️d': {
         name: 'Dragonscale Shield',
         type: 'armor',
+        tags: ['shield'],
         tile: '🛡️',
         defense: 4,
         slot: 'armor',
@@ -2093,6 +2114,7 @@ window.ITEM_DATA = {
     '⚔️k': {
         name: 'Blade of the Fallen King',
         type: 'weapon',
+        tags: ['blade'],
         tile: '⚔️',
         excludeFromLoot: true, 
         damage: 10,
@@ -2103,6 +2125,7 @@ window.ITEM_DATA = {
     '🛡️a': {
         name: 'Aegis of the Ancients',
         type: 'armor',
+        tags: ['shield'],
         tile: '🛡️',
         excludeFromLoot: true,
         defense: 8,
@@ -2136,11 +2159,13 @@ window.ITEM_DATA = {
     '⛏️d': {
         name: 'Diamond Tipped Pickaxe',
         type: 'tool',
+        tags: ['tool'],
         description: "Can break through the hardest of stones with ease."
     },
     '⚔️m': {
         name: 'Mithril Sword',
         type: 'weapon',
+        tags: ['blade'],
         tile: '⚔️',
         damage: 6,
         slot: 'weapon',
@@ -2161,6 +2186,7 @@ window.ITEM_DATA = {
     '🗡️v': {
         name: 'Void Blade',
         type: 'weapon',
+        tags: ['blade'],
         tile: '🗡️',
         damage: 8,
         slot: 'weapon',
@@ -2200,7 +2226,8 @@ window.ITEM_DATA = {
     },
     '\\': { 
         name: 'Stick',
-        type: 'weapon', 
+        type: 'weapon',
+        tags: ['blunt'],
         tile: '\\',
         damage: 1, 
         slot: 'weapon',
@@ -2218,6 +2245,7 @@ window.ITEM_DATA = {
     '🛡️w': {
         name: 'Wooden Shield',
         type: 'armor',
+        tags: ['shield'],
         tile: '🛡️',
         defense: 1,
         slot: 'offhand', 
@@ -2227,6 +2255,7 @@ window.ITEM_DATA = {
     '🛡️i': {
         name: 'Iron Heater Shield',
         type: 'armor',
+        tags: ['shield'],
         tile: '🛡️',
         defense: 2,
         slot: 'armor', 
@@ -2236,6 +2265,7 @@ window.ITEM_DATA = {
     '!': {
         name: 'Rusty Sword',
         type: 'weapon',
+        tags: ['blade'],
         damage: 2,
         slot: 'weapon',
         description: "{red:+2 Dmg}. The edge is pitted with age."
@@ -2266,6 +2296,7 @@ window.ITEM_DATA = {
     '†': { 
         name: 'Bone Dagger',
         type: 'weapon',
+        tags: ['dagger', 'blade', 'bone'],
         damage: 2, 
         slot: 'weapon',
         description: "{red:+2 Dmg}. Carved from a single femur."
@@ -2292,6 +2323,7 @@ window.ITEM_DATA = {
     '⚔️s': { 
         name: 'Steel Sword',
         type: 'weapon',
+        tags: ['blade'],
         tile: '⚔️', 
         damage: 4, 
         slot: 'weapon',
@@ -2307,6 +2339,7 @@ window.ITEM_DATA = {
     'Ψ': { 
         name: 'Warlock\'s Staff',
         type: 'weapon',
+        tags: ['staff', 'blunt'],
         damage: 3, 
         slot: 'weapon',
         statBonuses: { willpower: 2 },
@@ -2327,6 +2360,7 @@ window.ITEM_DATA = {
     '❄️b': {
         name: 'Cryo Blade',
         type: 'weapon',
+        tags: ['blade', 'frost'],
         damage: 3, 
         slot: 'weapon'
     },
@@ -2338,7 +2372,8 @@ window.ITEM_DATA = {
     },
     '-': {
         name: 'Machete',
-        type: 'tool' 
+        type: 'tool',
+        tags: ['blade'] 
     },
     'h': {
         name: 'Climbing Tools',
@@ -2347,6 +2382,7 @@ window.ITEM_DATA = {
     '★': {
         name: 'Sword of Strength',
         type: 'weapon',
+        tags: ['blade'],
         damage: 3, 
         slot: 'weapon',
         statBonuses: { strength: 2 }
@@ -2417,6 +2453,7 @@ window.ITEM_DATA = {
     '*': {
         name: 'Arcane Blade',
         type: 'weapon',
+        tags: ['blade'],
         damage: 5, 
         slot: 'weapon',
         statBonuses: { wits: 1, willpower: 1 } 
@@ -2472,6 +2509,7 @@ window.ITEM_DATA = {
     '‡': {
         name: 'Poisoned Dagger',
         type: 'weapon',
+        tags: ['dagger', 'blade', 'poison'],
         damage: 2,
         slot: 'weapon',
         inflicts: 'poison',
@@ -2515,6 +2553,7 @@ window.ITEM_DATA = {
     '¡': {
         name: 'Iron Sword',
         type: 'weapon',
+        tags: ['blade'],
         damage: 3, 
         slot: 'weapon'
     },
@@ -2538,6 +2577,7 @@ window.ITEM_DATA = {
     '⚔️o': {
         name: 'Obsidian Edge',
         type: 'weapon',
+        tags: ['blade'],
         tile: '🗡️',
         damage: 5, 
         slot: 'weapon',
