@@ -46,7 +46,7 @@ function renderTalentTree() {
                 <div class="flex items-center gap-4">
                     <div class="text-3xl" style="filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.5));">${talent.icon}</div>
                     <div>
-                        <div class="font-bold text-lg">${talent.name} <span class="text-[10px] text-gray-400 uppercase tracking-widest ml-2 bg-black bg-opacity-30 px-1 rounded">${talent.class}</span></div>
+                        <div class="font-bold text-lg">${talent.name} <span class="text-[10px] text-gray-400 uppercase tracking-widest ml-2 bg-black bg-opacity-30 px-1 rounded border border-gray-700">${talent.class}</span></div>
                         <div class="text-xs text-gray-300 mt-1">${talent.description}</div>
                     </div>
                 </div>
@@ -72,14 +72,14 @@ window.learnTalent = function (talentId) {
     player.talents.push(talentId);
     player.talentPoints--;
 
-    logMessage(`{purple:You mastered the ${TALENT_DATA[talentId].name} talent!}`);
+    logMessage(`{purple:You mastered the ${TALENT_DATA[talentId].name} technique!}`);
     triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
     
     // JUICE WIN: Powerful tactile feedback when learning a mastery skill!
     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
     if (typeof ParticleSystem !== 'undefined') {
         ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 20);
-        ParticleSystem.createFloatingText(player.x, player.y, "TALENT LEARNED", "#a855f7");
+        ParticleSystem.createFloatingText(player.x, player.y, "MASTERY!", "#a855f7");
     }
 
     if (typeof playerRef !== 'undefined') {
@@ -110,18 +110,18 @@ function openEvolutionModal() {
         const mechanicDesc = linkedTalent ? linkedTalent.description : evo.description;
 
         const div = document.createElement('div');
-        div.className = "panel p-5 rounded-xl border-2 border-gray-600 hover:border-yellow-500 cursor-pointer transition-all transform hover:-translate-y-1 shadow-lg";
+        div.className = "panel p-5 rounded-xl border-2 border-gray-600 hover:border-yellow-500 cursor-pointer transition-all transform hover:-translate-y-1 shadow-lg flex flex-col h-full";
         div.style.transform = "translate3d(0,0,0)";
         div.onclick = () => selectEvolution(evo);
         div.innerHTML = `
             <div class="text-5xl mb-3" style="filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.5));">${evo.icon}</div>
             <h3 class="text-2xl font-bold text-yellow-500 mb-1" style="font-family: 'Uncial Antiqua', cursive;">${evo.name}</h3>
-            <p class="text-xs text-gray-400 mb-2 h-8 italic">${evo.description}</p>
-            <div class="text-sm text-blue-300 mb-4 h-10 font-bold border-l-2 border-blue-500 pl-2 py-1 bg-black bg-opacity-30">
+            <p class="text-xs text-gray-400 mb-2 h-8 italic flex-shrink-0">${evo.description}</p>
+            <div class="text-sm text-blue-300 mb-4 flex-grow font-bold border-l-2 border-blue-500 pl-2 py-2 bg-black bg-opacity-30">
                 ${mechanicDesc}
             </div>
-            <div class="text-xs font-bold text-green-400 bg-black bg-opacity-30 p-2 rounded border border-gray-700">
-                ${Object.entries(evo.stats).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`).join(', ')}
+            <div class="text-xs font-bold text-green-400 bg-black bg-opacity-30 p-2 rounded border border-gray-700 flex-shrink-0 text-center uppercase tracking-widest">
+                ${Object.entries(evo.stats).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${k.substring(0,3)}`).join(' | ')}
             </div>
         `;
         fragment.appendChild(div);
@@ -133,8 +133,8 @@ function openEvolutionModal() {
 }
 
 function selectEvolution(evoData) {
-    // QoL WIN: Safety prompt to prevent accidental permanent choices
-    if (!confirm(`Are you sure you want to evolve into a ${evoData.name}? This choice is permanent and cannot be undone.`)) {
+    // LORE & QoL WIN: Safety prompt styled with gravity and atmosphere
+    if (!confirm(`Do you wish to forge your soul into a ${evoData.name}?\n\nThis path is permanent. The old world will fall away, and you cannot undo this ascension.`)) {
         return;
     }
 
@@ -170,9 +170,15 @@ function selectEvolution(evoData) {
     player.mana = player.maxMana;
 
     // 6. Save & Close
-    logMessage(`{yellow:You have evolved into a ${evoData.name}!}`);
+    logMessage(`{yellow:You have ascended! You are now a ${evoData.name}!}`);
     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
+    
+    // Massive Screen Shake and Particle Explosion for Evolution
+    gameState.screenShake = 30;
+    if (typeof ParticleSystem !== 'undefined') {
+        ParticleSystem.createLevelUp(player.x, player.y);
+        ParticleSystem.createExplosion(player.x, player.y, '#facc15', 40); // Huge golden burst
+    }
     
     if (typeof playerRef !== 'undefined') {
         playerRef.update({
@@ -228,11 +234,11 @@ function renderBountyBoard() {
             div.innerHTML = `
                 <div class="flex-grow pr-4">
                     <div class="text-lg font-bold text-yellow-500 mb-1">${quest.title}</div>
-                    <div class="text-xs text-gray-300 mb-2">${quest.description}</div>
-                    <div class="text-[10px] font-bold text-green-400 uppercase tracking-widest">Reward: ${quest.reward.xp} XP | ${quest.reward.coins} Gold ${itemRewardStr}</div>
+                    <div class="text-xs text-gray-300 mb-2 leading-relaxed">${quest.description}</div>
+                    <div class="text-[10px] font-bold text-green-400 uppercase tracking-widest bg-black bg-opacity-30 inline-block px-2 py-1 rounded border border-gray-700">Reward: ${quest.reward.xp} XP | ${quest.reward.coins} Gold ${itemRewardStr}</div>
                 </div>
                 <div class="flex-none">
-                    <button data-quest-id="${questId}" data-action="accept" style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold shadow transition-transform active:scale-95">Accept</button>
+                    <button data-quest-id="${questId}" data-action="accept" style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold shadow-lg transition-transform active:scale-95 border-b-2 border-blue-800">Accept</button>
                 </div>`;
         } else if (playerQuest.status === 'active') {
             // --- Scenario 2: Quest is In-Progress ---
@@ -242,28 +248,31 @@ function renderBountyBoard() {
             if (playerQuest.kills >= quest.needed) {
                 // --- 2a: Ready to Turn In ---
                 div.classList.add('border-green-500', 'bg-green-900', 'bg-opacity-20');
-                actionButton = `<button data-quest-id="${questId}" data-action="turnin" style="transform: translate3d(0,0,0);" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-sm font-bold shadow transition-transform active:scale-95 animate-pulse">Turn In</button>`;
+                actionButton = `<button data-quest-id="${questId}" data-action="turnin" style="transform: translate3d(0,0,0);" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded text-sm font-bold shadow-lg transition-transform active:scale-95 animate-pulse border-b-2 border-green-800">Claim</button>`;
             } else {
                 // --- 2b: Still in progress ---
-                actionButton = `<button disabled class="bg-gray-700 text-gray-400 px-4 py-2 rounded text-sm font-bold opacity-50 cursor-not-allowed">In Progress</button>`;
+                actionButton = `<button disabled class="bg-gray-700 text-gray-400 px-4 py-2 rounded text-sm font-bold opacity-50 cursor-not-allowed border border-gray-600">In Progress</button>`;
             }
 
             div.innerHTML = `
                 <div class="flex-grow pr-4">
                     <div class="text-lg font-bold text-yellow-500 mb-1">${quest.title}</div>
-                    <div class="text-sm font-bold text-gray-300">Progress: <span class="${playerQuest.kills >= quest.needed ? 'text-green-400' : 'text-blue-400'}">${progress}</span></div>
+                    <div class="text-sm font-bold text-gray-300">Target Progress: <span class="${playerQuest.kills >= quest.needed ? 'text-green-400' : 'text-blue-400'}">${progress}</span></div>
                 </div>
                 <div class="flex-none">${actionButton}</div>`;
         } else if (playerQuest.status === 'completed') {
-            // --- Scenario 3: Quest is Done ---
-            div.classList.add('opacity-50');
+            // --- Scenario 3: Quest is Done (Lore Win: Dynamic Sign-offs) ---
+            const signOffs = ["The realm is a little safer today.", "The Inquisitor sends his regards.", "Bounty paid in full.", "The Guild thanks you.", "Rest easy, traveler."];
+            const randomMsg = signOffs[Math.floor(Math.random() * signOffs.length)];
+            
+            div.classList.add('opacity-40');
             div.innerHTML = `
                 <div class="flex-grow pr-4">
                     <div class="text-lg font-bold text-gray-500 mb-1 line-through">${quest.title}</div>
-                    <div class="text-xs text-gray-500">Bounty collected.</div>
+                    <div class="text-xs text-gray-500 italic">${randomMsg}</div>
                 </div>
                 <div class="flex-none">
-                    <button disabled class="bg-gray-800 text-gray-600 px-4 py-2 rounded text-sm font-bold border border-gray-700 cursor-not-allowed">Completed</button>
+                    <button disabled class="bg-gray-800 text-gray-600 px-4 py-2 rounded text-sm font-bold border border-gray-700 cursor-not-allowed shadow-inner">Completed</button>
                 </div>`;
         }
         fragment.appendChild(div);
@@ -276,8 +285,16 @@ function acceptQuest(questId) {
     const quest = QUEST_DATA[questId];
     if (!quest) return;
 
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-    logMessage(`{yellow:New Quest Accepted: ${quest.title}}`);
+    // JUICE WIN: Heavy tactile feedback when stamping a contract
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); // Heavy thud
+    gameState.screenShake = 3; 
+    
+    // Spawn dust behind the modal to simulate a physical paper stamp
+    if (typeof ParticleSystem !== 'undefined') {
+        ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#d4d4d8', 10);
+    }
+    
+    logMessage(`{yellow:Contract Sealed: ${quest.title}}`);
     
     if (!gameState.player.quests) gameState.player.quests = {};
     
@@ -333,11 +350,18 @@ function turnInQuest(questId) {
     }
 
     // --- Give Rewards ---
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
-    logMessage(`{green:Quest Complete! You gained ${quest.reward.xp} XP and ${quest.reward.coins} Gold!}`);
+    // JUICE WIN: Triumphant Quest Complete Audio
+    if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playQuestComplete === 'function') {
+        AudioSystem.playQuestComplete();
+    } else if (typeof AudioSystem !== 'undefined') {
+        AudioSystem.playCoin();
+    }
+    
+    logMessage(`{green:Bounty Claimed! You gained ${quest.reward.xp} XP and ${quest.reward.coins} Gold!}`);
     
     if (typeof grantXp === 'function') grantXp(quest.reward.xp);
     player.coins += quest.reward.coins;
+    if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(quest.reward.coins);
 
     // EXPANDABILITY WIN: Track completed bounties in lifetime metrics!
     if (!player.metrics) player.metrics = {};
@@ -450,6 +474,7 @@ function renderBestiary() {
         const unlockedName = count > 0;
         const unlockedStats = count >= 5;
         const unlockedLore = count >= 10;
+        const unlockedLoot = count >= 20; // CONTENT WIN: Level 3 Mastery Unlock!
 
         const div = document.createElement('div');
 
@@ -464,7 +489,7 @@ function renderBestiary() {
         let statsHtml = `<div class="text-[10px] uppercase font-bold tracking-widest text-gray-400 mb-1">Kills: ${count}</div>`;
         
         if (unlockedStats) {
-            statsHtml += `<span class="text-green-500 font-bold text-xs mt-1 inline-block drop-shadow-sm">HP: ${data.maxHealth}</span> <span class="text-gray-600 mx-1">|</span> <span class="text-red-500 font-bold text-xs drop-shadow-sm">Atk: ${data.attack}</span> <span class="text-gray-600 mx-1">|</span> <span class="text-blue-400 font-bold text-xs drop-shadow-sm">Def: ${data.defense || 0}</span>`;
+            statsHtml += `<span class="text-green-500 font-bold text-xs mt-1 inline-block drop-shadow-sm bg-black bg-opacity-30 px-1 rounded">HP: ${data.maxHealth}</span> <span class="text-red-500 font-bold text-xs drop-shadow-sm bg-black bg-opacity-30 px-1 rounded ml-1">Atk: ${data.attack}</span> <span class="text-blue-400 font-bold text-xs drop-shadow-sm bg-black bg-opacity-30 px-1 rounded ml-1">Def: ${data.defense || 0}</span>`;
         } else {
             const pctStats = Math.min(100, (count / 5) * 100);
             statsHtml += `
@@ -485,6 +510,22 @@ function renderBestiary() {
                 </div>
                 <div class="text-[9px] italic text-gray-600 font-bold tracking-wide">Defeat 10 to reveal lore</div>`;
         }
+        
+        // CONTENT WIN: Loot Knowledge 
+        let lootHtml = '';
+        if (unlockedLoot) {
+            const lootItem = ITEM_DATA[data.loot];
+            const lootName = lootItem ? lootItem.name : (data.loot === '$' ? 'Gold Coins' : 'Unknown');
+            const lootTile = lootItem ? (lootItem.tile || data.loot) : '💰';
+            lootHtml = `<div class="text-[10px] mt-3 text-yellow-400 border border-yellow-700 bg-yellow-900 bg-opacity-20 px-2 py-1 rounded inline-block uppercase tracking-widest font-bold shadow-sm">Notable Drop: ${lootTile} ${lootName}</div>`;
+        } else if (unlockedLore) {
+            const pctLoot = Math.min(100, (count / 20) * 100);
+            lootHtml = `
+                <div class="w-full bg-gray-900 rounded h-1 mb-1 mt-3 border border-gray-700 shadow-inner">
+                    <div class="bg-yellow-500 h-full rounded transition-all duration-500" style="width: ${pctLoot}%"></div>
+                </div>
+                <div class="text-[9px] italic text-gray-600 font-bold tracking-wide">Defeat 20 to reveal drop tables</div>`;
+        }
 
         div.className = 'bestiary-entry p-3 mb-3 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-40 transition-colors hover:border-gray-500 relative overflow-hidden';
         div.innerHTML = `
@@ -494,6 +535,7 @@ function renderBestiary() {
                     <h4 class="font-bold text-lg text-yellow-500 leading-none mb-1 drop-shadow-sm">${data.name}</h4>
                     ${statsHtml}
                     ${loreHtml}
+                    ${lootHtml}
                 </div>
             </div>
             ${data.isBoss ? '<div class="absolute top-0 right-0 bg-red-900 bg-opacity-50 text-red-300 text-[9px] px-2 py-1 font-bold uppercase tracking-widest rounded-bl-lg border-b border-l border-red-700">Boss</div>' : ''}
@@ -742,6 +784,14 @@ function openSpellbook() {
         let costString = `${displayCost} ${spellData.costType}`;
         let costColorClass = canCast ? (spellData.costType === 'mana' ? "text-blue-400" : (spellData.costType === 'psyche' ? "text-purple-400" : "text-green-500")) : "text-red-500";
 
+        // JUICE WIN: Elemental/Stat Color Coding
+        let nameColorClass = "text-gray-200";
+        if (spellData.name.includes("Fire") || spellData.name.includes("Meteor")) nameColorClass = "text-orange-400";
+        if (spellData.name.includes("Frost")) nameColorClass = "text-cyan-300";
+        if (spellData.name.includes("Poison")) nameColorClass = "text-green-400";
+        if (spellData.name.includes("Divine") || spellData.name.includes("Heal")) nameColorClass = "text-yellow-400";
+        if (spellData.name.includes("Dark") || spellData.name.includes("Siphon")) nameColorClass = "text-red-500";
+
         const maxedBadge = spellLevel >= MAX_LEVEL 
             ? `<span class="text-[9px] bg-yellow-900 text-yellow-500 border border-yellow-700 px-1 rounded ml-2">MAXED</span>` 
             : '';
@@ -752,18 +802,18 @@ function openSpellbook() {
 
         li.innerHTML = `
             <div class="flex-grow pr-4">
-                <div class="font-bold text-lg mb-1 flex items-center gap-2 drop-shadow-sm">
+                <div class="font-bold text-lg mb-1 flex items-center gap-2 drop-shadow-sm ${nameColorClass}">
                     ${spellData.name} 
-                    <span class="text-[10px] bg-black bg-opacity-30 px-2 py-0.5 rounded text-gray-300">Lvl ${spellLevel}</span>
+                    <span class="text-[10px] bg-black bg-opacity-30 px-2 py-0.5 rounded text-gray-300 border border-gray-700">Lvl ${spellLevel}</span>
                     ${maxedBadge}
                 </div>
                 <div class="text-xs text-gray-400 leading-tight">${spellData.description}</div>
             </div>
             <div class="flex-none flex flex-col items-end gap-2">
-                <span class="text-xs font-bold uppercase tracking-widest ${costColorClass}">${costString}</span>
-                <button style="transform: translate3d(0,0,0);" class="text-[10px] bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded shadow-md uppercase font-bold transition-transform active:scale-95" 
+                <span class="text-xs font-bold uppercase tracking-widest bg-black bg-opacity-30 px-2 py-1 rounded border border-gray-700 shadow-inner ${costColorClass}">${costString}</span>
+                <button style="transform: translate3d(0,0,0);" class="text-[10px] bg-gray-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded shadow-md uppercase font-bold transition-colors active:scale-95" 
                     onclick="assignToHotbar('${spellId}'); event.stopPropagation();">
-                    Assign
+                    Bind
                 </button>
             </div>
         `;
@@ -823,18 +873,18 @@ function openSkillbook() {
 
         li.innerHTML = `
             <div class="flex-grow pr-4">
-                <div class="font-bold text-lg mb-1 flex items-center gap-2 drop-shadow-sm">
+                <div class="font-bold text-lg mb-1 flex items-center gap-2 drop-shadow-sm text-yellow-400">
                     ${skillData.name} 
-                    <span class="text-[10px] bg-black bg-opacity-30 px-2 py-0.5 rounded text-gray-300">Lvl ${skillLevel}</span>
+                    <span class="text-[10px] bg-black bg-opacity-30 px-2 py-0.5 rounded text-gray-300 border border-gray-700">Lvl ${skillLevel}</span>
                     ${maxedBadge}
                 </div>
                 <div class="text-xs text-gray-400 leading-tight">${skillData.description}</div>
             </div>
             <div class="flex-none flex flex-col items-end gap-2">
-                <span class="text-xs font-bold uppercase tracking-widest ${costColorClass}">${costString}</span>
-                <button style="transform: translate3d(0,0,0);" class="text-[10px] bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded shadow-md uppercase font-bold transition-transform active:scale-95" 
+                <span class="text-xs font-bold uppercase tracking-widest bg-black bg-opacity-30 px-2 py-1 rounded border border-gray-700 shadow-inner ${costColorClass}">${costString}</span>
+                <button style="transform: translate3d(0,0,0);" class="text-[10px] bg-gray-700 hover:bg-yellow-600 text-white px-3 py-1.5 rounded shadow-md uppercase font-bold transition-colors active:scale-95" 
                     onclick="assignToHotbar('${skillId}'); event.stopPropagation();">
-                    Assign
+                    Bind
                 </button>
             </div>
         `;
