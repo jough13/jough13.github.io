@@ -7,69 +7,69 @@
 window.LORE_SETS = {
     "wanderers_almanac": {
         name: "The Wanderer's Almanac",
-        description: "Scattered pages from a master cartographer.",
+        description: "Scattered pages from a master cartographer who went mad trying to map the shifting leylines.",
         bonus: "Eagle-Eyed: +1 Base Perception.",
         items: ["📄", "📜r", "📜m"] 
     },
     "king_fall": {
         name: "The Fall of Alaric",
-        description: "The firsthand account of the King's descent into madness.",
+        description: "The firsthand account of the King's descent into madness and the shattering of the crown.",
         bonus: "Authority: Shop prices reduced by 10%.",
         items: ["📜1", "📜2", "📜3", "📜4", "📜5"] 
     },
     "beastmaster_guide": {
         name: "The Beastmaster's Guide",
-        description: "A tattered guide to the creatures of this world.",
+        description: "A tattered, blood-stained guide to the creatures of this world.",
         bonus: "Tracker: +1 Base Perception.",
         items: ["🐾1", "🐾2", "🐾3"] 
     },
     "void_research": {
         name: "Notes from the Void",
-        description: "Research notes left by the First Mage.",
+        description: "Forbidden research notes left by the First Mage detailing the architecture of the multiverse.",
         bonus: "Clarity: +10 Max Mana.",
         items: ["3", "j", "4"] 
     },
     "adventurer_tips": {
         name: "The Survivalist's Guide",
-        description: "Scraps left by those who came before.",
+        description: "Scraps of practical advice left by those who came before and perished.",
         bonus: "Hardy: Hunger/Thirst drain 10% slower.",
         items: ["1", "2", "q"] 
     },
     "deep_delver": {
         name: "The Deep Delver",
-        description: "Accounts from the most dangerous corners of the world.",
+        description: "Accounts from the most dangerous, subterranean corners of the world.",
         bonus: "Tireless: +5 Max Stamina.",
         items: ["📘", "J", "L"] 
     },
     "anglers_almanac": {
         name: "The Old Mariner's Tale",
-        description: "The rantings of a sailor who saw too much.",
+        description: "The rantings of a sailor who saw what sleeps beneath the deep ocean.",
         bonus: "Sea Legs: +1 Base Luck.",
         items: ["⚓", "🍾", "🐚"] 
     },
     "architects_ledger": {
         name: "The Architect's Ledger",
-        description: "Blueprints of the ancient fortresses.",
+        description: "Blueprints detailing the true purpose of the ancient fortresses.",
         bonus: "Stalwart: +5 Max Health.",
         items: ["📜f", "🧱", "▤"] 
     },
     "mythos_of_the_stars": {
         name: "Mythos of the Stars",
-        description: "Constellations charted by a lonely stargazer.",
+        description: "Constellations charted by a lonely stargazer tracking the rifts in the firmament.",
         bonus: "Cosmic Insight: +2 Base Willpower.",
         items: ["constellation_1", "constellation_2", "constellation_3"] 
     },
     "the_shadowed_hand": {
         name: "The Shadowed Hand",
-        description: "A dossier compiled by the Inquisitor detailing the Cult's structure.",
+        description: "A dossier compiled by the Inquisitor detailing the Cult's structure and the Necromancer Lord.",
         bonus: "Zealot's Bane: +1 Base Strength.",
         items: ["📜c", "🧿s", "z"] 
     },
     "dwarven_mining_logs": {
         name: "Dwarven Mining Logs",
-        description: "Sturdy leather-bound notes on explosive excavations.",
+        description: "Sturdy leather-bound notes detailing exactly what the dwarves found when they dug too deep.",
         bonus: "Demolitionist: +1 Base Constitution.",
-        items: ["🧨", "⛏️", "💎"]
+        items: ["🧨", "⛏️", "💎r"] // Used Raw Diamond to complete the set!
     }
 };
 
@@ -258,13 +258,13 @@ window.VILLAGER_RUMORS = [
     "A {gray:Greataxe} is devastating, but it requires two hands. You'll have to put your shield away.",
     "I watched a Ranger take down a Drake before it even got close. A good bow relies entirely on your {green:Dexterity}.",
     "If a wild beast is badly wounded, try talking to it. You might just make a friend. Takes a lot of {gold:Charisma}, though.",
-    "If you want the best gear, you gotta make it yourself. Highly skilled crafters can make {gold:Masterwork} weapons that hit harder.",
+    "If you want the best gear, you gotta make it yourself. Highly skilled crafters can make {purple:Masterwork} weapons that hit harder.",
     
     // --- NEW MECHANICS TUTORIALS ---
     "A Heavy Crossbow is slow to load, but the bolts hit so hard they {red:pierce right through} targets! Try lining them up.",
     "If you're using the {orange:Whirlwind} technique, make sure you're holding a two-handed weapon. The sweep is absolutely devastating.",
     "I heard if you plant a {green:Cloudseed} under the open sky, it grows into a stalk that reaches the heavens. Imagine the view...",
-    "You can bind potions, tools, and food to your {blue:Quick-Slots} now! Just open your bag and hover over the item.",
+    "You can bind potions, tools, and food to your {blue:Quick-Slots} now! Just open your bag and click the 'Bind' button.",
     "If you ever need to clear a quick-slot on your hotbar, just {purple:right-click} it.",
     "They say throwing a stick of {orange:Dwarven TNT} at a cracked wall will blow it wide open. Might even find gems inside!",
     "If you find an {purple:Obsidian Fishing Rod}, don't throw it away. I hear you can cast it straight into the heart of a volcano.",
@@ -300,7 +300,7 @@ window.VILLAGER_RUMORS = [
     "Don't stand in the water during a thunderstorm. And definitely don't cast {yellow:Lightning} spells unless you want to fry everything in the pool!",
     "Those ruined Dark Castles are terrifying, but I hear they hold {gold:Loot Vaults} deep inside.",
     "If you ever find a {purple:Void Key}, take it to a rift. It's a one-way ticket to nightmare-land.",
-    "You can drop a Stash Box anywhere in the world and access your bank. Magic is convenient, isn't it?",
+    "You can drop a Stash Box anywhere in the world and access your dimensional vault. Magic is convenient, isn't it?",
     "If you plan on exploring deep into the wilds, you better rest in a {green:Cozy Bed} first. It beats walking back from the village.",
     "The deeper you go into a dungeon, the nastier the monsters get. But the loot gets shinier, too.",
     "A merchant told me he saw a man looking at the stars through a Brass Telescope. Sounds boring to me.",
@@ -396,7 +396,7 @@ window.VISIONS_OF_THE_PAST = [
     "A VISION: You see a dwarven forge deep underground. They are pouring molten gold over a writhing, shadowy entity to trap it.",
     "A VISION: The Sage, much younger, is writing furiously in a book. He looks up directly at you. 'You are too late,' he says.",
     "A VISION: A beautiful city floats in the sky. Slowly, it tilts, and then plummets to the earth, leaving a crater that will one day become a swamp.",
-    "A VISION: You watch as reality splits like a mirror. A thousand versions of the King make a thousand different choices. All end in ash.",
+    "A VISION: You watch as reality splits like a mirror. A thousand versions of the King make a thousand different choices. All end in ash. Perhaps another dimension survived?",
     "A VISION: You stand on a cloud of solid marble. Below you, the world is burning. A voice behind you says, 'We built this to escape, but we brought it with us.'",
     "A VISION: The Underworld expands endlessly. You see thousands of stone cocoons hanging from the cavern ceiling. One of them twitches."
 ];
@@ -412,280 +412,280 @@ window.RIDDLE_DATA = [
         question: "I have no mouth, but I always consume. I have no life, but I must be fed. What am I?",
         answers: ["fire", "flame", "campfire"],
         reward: "strength", 
-        message: "The statue's eyes glow red. You feel a surge of physical power."
+        message: "{red:The statue's eyes glow red. You feel a surge of physical power.}"
     },
     {
         id: "shadow",
         question: "The more of me there is, the less you see. What am I?",
         answers: ["darkness", "dark", "shadow", "night"],
         reward: "wits", 
-        message: "The statue seems to vanish for a moment. Your mind sharpens."
+        message: "{blue:The statue seems to vanish for a moment. Your mind sharpens.}"
     },
     {
         id: "echo",
         question: "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?",
         answers: ["echo", "an echo"],
         reward: "psyche", 
-        message: "A whisper surrounds you. Your will is strengthened."
+        message: "{purple:A whisper surrounds you. Your will is strengthened.}"
     },
     {
         id: "silence",
         question: "I am so fragile that if you say my name, you break me. What am I?",
         answers: ["silence", "a secret", "secret"],
         reward: "dexterity", 
-        message: "The world goes quiet. You feel lighter and faster."
+        message: "{green:The world goes quiet. You feel lighter and faster.}"
     },
     {
         id: "coin",
         question: "I have a head and a tail, but no body. What am I?",
         answers: ["coin", "a coin", "gold coin"],
         reward: "charisma", 
-        message: "The statue nods slowly. You feel more persuasive."
+        message: "{gold:The statue nods slowly. You feel more persuasive.}"
     },
     {
         id: "mountain",
         question: "What has roots as nobody sees, Is taller than trees, Up, up it goes, And yet never grows?",
         answers: ["mountain", "a mountain", "mountains"],
         reward: "constitution", 
-        message: "The stone beneath your feet trembles. You feel unyielding."
+        message: "{green:The stone beneath your feet trembles. You feel unyielding.}"
     },
     {
         id: "river",
         question: "I can run but never walk, have a mouth but never talk, have a head but never weep, have a bed but never sleep. What am I?",
         answers: ["river", "a river", "water", "stream"],
         reward: "endurance", 
-        message: "A rush of cool air washes over you. Your breath comes easier."
+        message: "{blue:A rush of cool air washes over you. Your breath comes easier.}"
     },
     {
         id: "map",
         question: "I have cities, but no houses. I have mountains, but no trees. I have water, but no fish. What am I?",
         answers: ["map", "a map", "maps"],
         reward: "perception", 
-        message: "The statue's blank eyes seem to focus. Your vision pierces the veil."
+        message: "{gold:The statue's blank eyes seem to focus. Your vision pierces the veil.}"
     },
     {
         id: "hole",
         question: "I am weightless, but you can see me. Put me in a bucket, and I'll make it lighter. What am I?",
         answers: ["hole", "a hole"],
         reward: "luck", 
-        message: "A faint, echoing chuckle comes from the stone. You feel oddly fortunate."
+        message: "{gold:A faint, echoing chuckle comes from the stone. You feel oddly fortunate.}"
     },
     {
         id: "footsteps",
         question: "The more you take, the more you leave behind. What am I?",
         answers: ["footsteps", "steps", "foot step", "step"],
         reward: "intuition", 
-        message: "The dust settles around the statue's base. Your instincts sharpen."
+        message: "{purple:The dust settles around the statue's base. Your instincts sharpen.}"
     },
     {
         id: "few",
         question: "I am a word of letters three, add two and fewer there will be. What am I?",
         answers: ["few"],
         reward: "wits", 
-        message: "The statue seems to smile. Your mind expands."
+        message: "{blue:The statue seems to smile. Your mind expands.}"
     },
     {
         id: "volcano",
         question: "I wear a stone coat and have a fiery heart. When I wake, the world trembles. What am I?",
         answers: ["volcano", "a volcano", "mountain"],
         reward: "constitution", 
-        message: "Heat radiates from the stone. You feel an inner fire ignite."
+        message: "{red:Heat radiates from the stone. You feel an inner fire ignite.}"
     },
     {
         id: "frost",
         question: "I build bridges of silver and crowns of ice. I halt the fastest river. What am I?",
         answers: ["cold", "frost", "winter", "ice", "freezing", "snow"],
         reward: "willpower", 
-        message: "A chill runs down your spine. Your resolve hardens like ice."
+        message: "{cyan:A chill runs down your spine. Your resolve hardens like ice.}"
     },
     {
         id: "wind",
         question: "I bite without teeth, I strike without hands, I howl without a voice. What am I?",
         answers: ["wind", "the wind", "a storm", "storm"],
         reward: "dexterity", 
-        message: "A gust of wind pushes you forward. You feel incredibly agile."
+        message: "{green:A gust of wind pushes you forward. You feel incredibly agile.}"
     },
     {
         id: "gold",
         question: "I have no sword, but I conquer kings. I have no voice, but I command armies. What am I?",
         answers: ["gold", "money", "coin", "wealth", "treasure"],
         reward: "charisma", 
-        message: "The statue bows slightly. You feel a commanding presence within."
+        message: "{gold:The statue bows slightly. You feel a commanding presence within.}"
     },
     {
         id: "rain",
         question: "I fall from the sky but never break. I weep constantly, though I have no eyes. What am I?",
         answers: ["rain", "the rain", "water", "a raindrop", "storm"],
         reward: "endurance", 
-        message: "A single drop of water falls on your brow. You feel refreshed and tireless."
+        message: "{blue:A single drop of water falls on your brow. You feel refreshed and tireless.}"
     },
     {
         id: "time",
         question: "This thing all things devours: Birds, beasts, trees, flowers; Gnaws iron, bites steel; Grinds hard stones to meal. What am I?",
         answers: ["time", "age"],
         reward: "intuition", 
-        message: "The stone seems to age a thousand years in an instant. You grasp the flow of eternity."
+        message: "{purple:The stone seems to age a thousand years in an instant. You grasp the flow of eternity.}"
     },
     {
         id: "memory",
         question: "I can bring back the dead. I can make you cry, make you laugh, make you young. Born in an instant, yet I last a lifetime. What am I?",
         answers: ["memory", "a memory", "memories"],
         reward: "psyche", 
-        message: "A forgotten face flashes in your mind. Your spirit fortifies."
+        message: "{purple:A forgotten face flashes in your mind. Your spirit fortifies.}"
     },
     {
         id: "breath",
         question: "I am light as a feather, yet the strongest man cannot hold me for much more than a minute. What am I?",
         answers: ["breath", "my breath", "air", "your breath"],
         reward: "constitution", 
-        message: "You draw in a deep, lung-expanding breath. Your vitality surges."
+        message: "{green:You draw in a deep, lung-expanding breath. Your vitality surges.}"
     },
     {
         id: "secret",
         question: "If you have me, you want to share me. If you share me, you haven't got me. What am I?",
         answers: ["secret", "a secret"],
         reward: "wits", 
-        message: "A sly smirk crosses the statue's face. Your cunning increases."
+        message: "{blue:A sly smirk crosses the statue's face. Your cunning increases.}"
     },
     {
         id: "promise",
         question: "What must be broken before you can use it?",
         answers: ["egg", "an egg", "promise", "a promise"],
         reward: "luck", 
-        message: "A small bird lands on the statue, then flies away. You feel fortuitous."
+        message: "{gold:A small bird lands on the statue, then flies away. You feel fortuitous.}"
     },
     {
         id: "stars",
         question: "We come at night without being fetched, and we are lost in the day without being stolen. What are we?",
         answers: ["stars", "the stars", "star"],
         reward: "perception", 
-        message: "The sky seems clearer. Your eyes pierce the darkness."
+        message: "{gold:The sky seems clearer. Your eyes pierce the darkness.}"
     },
     {
         id: "tree",
         question: "In spring I am gay in handsome array; in summer more clothing I wear; when colder it grows, I fling off my clothes; and in winter quite naked appear. What am I?",
         answers: ["tree", "a tree", "wood", "forest"],
         reward: "endurance", 
-        message: "You feel rooted to the earth. Your stamina expands."
+        message: "{green:You feel rooted to the earth. Your stamina expands.}"
     },
     {
         id: "anchor",
         question: "To use me you must throw me away. When you're done with me, you bring me back in. What am I?",
         answers: ["anchor", "an anchor"],
         reward: "strength", 
-        message: "You feel heavy and immovable. Your muscles swell with power."
+        message: "{red:You feel heavy and immovable. Your muscles swell with power.}"
     },
     {
         id: "sponge",
         question: "I am full of holes but still hold water. What am I?",
         answers: ["sponge", "a sponge"],
         reward: "luck", 
-        message: "The statue absorbs your answer eagerly. You feel lucky."
+        message: "{gold:The statue absorbs your answer eagerly. You feel lucky.}"
     },
     {
         id: "mirror",
         question: "I look at you, you look at me. I raise my right hand, you raise your left. What am I?",
         answers: ["mirror", "a mirror", "reflection"],
         reward: "charisma", 
-        message: "You see yourself in a new light. Your presence becomes magnetic."
+        message: "{gold:You see yourself in a new light. Your presence becomes magnetic.}"
     },
     {
         id: "name",
         question: "It belongs to you, but other people use it more than you do. What is it?",
         answers: ["name", "my name", "your name"],
         reward: "charisma", 
-        message: "The statue acknowledges you. You feel more influential."
+        message: "{gold:The statue acknowledges you. You feel more influential.}"
     },
     {
         id: "fire_2",
         question: "Feed me and I live, yet give me a drink and I die. What am I?",
         answers: ["fire", "flame"],
         reward: "strength", 
-        message: "A spark flares in the statue's eye. Your strength ignites."
+        message: "{red:A spark flares in the statue's eye. Your strength ignites.}"
     },
     {
         id: "needle",
         question: "I have an eye but cannot see. What am I?",
         answers: ["needle", "a needle", "hurricane", "storm"],
         reward: "perception", 
-        message: "Your focus narrows to a pinpoint. Your vision sharpens."
+        message: "{gold:Your focus narrows to a pinpoint. Your vision sharpens.}"
     },
     {
         id: "coffin",
         question: "The man who makes it, doesn't need it. The man who buys it, doesn't want it. The man who uses it, doesn't know it. What is it?",
         answers: ["coffin", "a coffin", "casket"],
         reward: "willpower",
-        message: "A cold draft blows past you. Your resolve to live hardens."
+        message: "{purple:A cold draft blows past you. Your resolve to live hardens.}"
     },
     {
         id: "cloud",
         question: "I fly without wings. I cry without eyes. Wherever I go, darkness follows me. What am I?",
         answers: ["cloud", "a cloud", "storm", "raincloud", "clouds"],
         reward: "intuition",
-        message: "You feel the moisture in the air before it rains. Your instincts sharpen."
+        message: "{cyan:You feel the moisture in the air before it rains. Your instincts sharpen.}"
     },
     {
         id: "glove",
         question: "What has four fingers and a thumb, but is not living?",
         answers: ["glove", "a glove", "gauntlet"],
         reward: "dexterity",
-        message: "Your hands feel nimble and quick."
+        message: "{green:Your hands feel nimble and quick.}"
     },
     {
         id: "towel",
         question: "What gets wet while drying?",
         answers: ["towel", "a towel"],
         reward: "endurance",
-        message: "The statue weeps a single tear. Your endurance improves."
+        message: "{blue:The statue weeps a single tear. Your endurance improves.}"
     },
     {
         id: "age",
         question: "What goes up but never comes down?",
         answers: ["age", "your age", "my age"],
         reward: "wits",
-        message: "You feel the weight of years, but also the wisdom they bring."
+        message: "{blue:You feel the weight of years, but also the wisdom they bring.}"
     },
     {
         id: "word",
         question: "I am a single word, but if you pronounce me right, I mean the exact opposite. What am I?",
         answers: ["wrong", "incorrect"],
         reward: "charisma",
-        message: "A clever trick of the tongue. You feel more eloquent."
+        message: "{gold:A clever trick of the tongue. You feel more eloquent.}"
     },
     {
         id: "keyboard",
         question: "I have keys but no doors. I have a space but no room. You can enter, but you cannot go outside. What am I?",
         answers: ["keyboard", "a keyboard", "piano"],
         reward: "perception",
-        message: "Your mind clicks the pieces together. Your awareness broadens."
+        message: "{gold:Your mind clicks the pieces together. Your awareness broadens.}"
     },
     {
         id: "onion",
         question: "Take off my skin and I won't cry, but you will! What am I?",
         answers: ["onion", "an onion"],
         reward: "constitution",
-        message: "The statue sheds a tear, but you remain stoic."
+        message: "{green:The statue sheds a tear, but you remain stoic.}"
     },
     {
         id: "teeth",
         question: "Thirty white horses on a red hill. First they champ, then they stamp, then they stand still.",
         answers: ["teeth", "my teeth"],
         reward: "strength",
-        message: "You clench your jaw. Your muscles feel dense."
+        message: "{red:You clench your jaw. Your muscles feel dense.}"
     },
     {
         id: "book",
         question: "I have leaves, but no branches. I have a spine, but no bones. What am I?",
         answers: ["book", "a book", "tome"],
         reward: "wits",
-        message: "Knowledge flows into your mind from the ancient stone."
+        message: "{blue:Knowledge flows into your mind from the ancient stone.}"
     },
     {
         id: "candle",
         question: "You measure my life in hours and I serve you by expiring. I'm quick when I'm thin and slow when I'm fat. The wind is my enemy. What am I?",
         answers: ["candle", "a candle"],
         reward: "luck",
-        message: "A flicker of light dances in the statue's eyes. You feel incredibly fortunate."
+        message: "{gold:A flicker of light dances in the statue's eyes. You feel incredibly fortunate.}"
     }
 ];
 
