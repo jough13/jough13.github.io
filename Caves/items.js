@@ -67,6 +67,9 @@ function rehydratePlayerState(data) {
             item.range = item.range || templateItem.range || null;
             item.isTwoHanded = (item.isTwoHanded !== undefined) ? item.isTwoHanded : (templateItem.isTwoHanded || false);
             
+            // ECS WIN: Rehydrate tags for old save files!
+            item.tags = item.tags || templateItem.tags || null;
+            
         } else {
             // Graceful degradation for removed items
             console.warn(`Converting corrupted/missing item to Ash: ${item.name}`);
@@ -76,6 +79,7 @@ function rehydratePlayerState(data) {
             item.tile = '💨';
             item.quantity = item.quantity || 1;
             item.isEquipped = false;
+            item.tags = null;
         }
         return item;
     });
@@ -304,7 +308,8 @@ function generateMagicItem(tier) {
         damage: template.damage || 0,
         defense: template.defense || 0,
         slot: template.slot,
-        statBonuses: template.statBonuses ? { ...template.statBonuses } : {}
+        statBonuses: template.statBonuses ? { ...template.statBonuses } : {},
+        tags: template.tags ? [...template.tags] : [] // Clone tags!
     };
 
     let hasPrefix = false;
@@ -412,6 +417,8 @@ function sanitizeItemForDB(item, forceEquipped = false) {
         spellId: item.spellId || null,
         skillId: item.skillId || null,
         stat: item.stat || null,
+        
+        tags: item.tags || null, // ECS WIN: Preserve tags!
         
         // QoL WIN: Explicitly preserve rarity so inventory borders persist across reloads!
         _rarity: item._rarity || null
@@ -719,10 +726,12 @@ function useInventoryItem(itemIndex) {
             // Remove old weapon skill if it was a weapon
             if (slot === 'weapon') {
                 const getWeaponSkill = (item) => {
-                    if (item.name.includes("Hammer") || item.name.includes("Club") || item.tile === '🔨' || item.tile === '🏏' || item.name.includes("Axe")) return 'crush';
-                    if (item.name.includes("Dagger") || item.tile === '†' || item.tile === '🗡️') return 'quickstep';
-                    if (item.name.includes("Sword") || item.name.includes("Blade") || item.tile === '⚔️' || item.tile === '!') return 'deflect';
-                    if (item.name.includes("Staff") || item.tile === 'Ψ' || item.tile === '🦯') return 'channel';
+                    const tags = item.tags || [];
+                    if (tags.includes("blunt") || tags.includes("axe")) return 'crush';
+                    if (tags.includes("dagger")) return 'quickstep';
+                    if (tags.includes("blade")) return 'deflect';
+                    if (tags.includes("staff")) return 'channel';
+                    if (tags.includes("bow") || tags.includes("crossbow")) return 'ranged_attack';
                     return null;
                 };
                 const oldSkill = getWeaponSkill(currentEquipped);
@@ -736,7 +745,7 @@ function useInventoryItem(itemIndex) {
         // 2. Equip New (Or finalize unequip)
         if (currentEquipped === itemToUse) {
             // Revert to defaults
-            player.equipment[slot] = (slot === 'weapon') ? { name: 'Fists', damage: 0 } : (slot === 'armor' ? { name: 'Tattered Rags', defense: 0 } : null);
+            player.equipment[slot] = (slot === 'weapon') ? { name: 'Fists', damage: 0, tags: ['blunt'] } : (slot === 'armor' ? { name: 'Tattered Rags', defense: 0 } : null);
             logMessage(`You unequip the ${itemToUse.name}.`);
         } else {
             // --- TWO-HANDED LOGIC SAFEGUARDS ---
@@ -797,11 +806,12 @@ function useInventoryItem(itemIndex) {
             // Grant new weapon skill
             if (slot === 'weapon') {
                 const getWeaponSkill = (item) => {
-                    if (item.name.includes("Hammer") || item.name.includes("Club") || item.tile === '🔨' || item.tile === '🏏' || item.name.includes("Axe")) return 'crush';
-                    if (item.name.includes("Dagger") || item.tile === '†' || item.tile === '🗡️') return 'quickstep';
-                    if (item.name.includes("Sword") || item.name.includes("Blade") || item.tile === '⚔️' || item.tile === '!') return 'deflect';
-                    if (item.name.includes("Staff") || item.tile === 'Ψ' || item.tile === '🦯') return 'channel';
-                    if (item.name.includes("Bow") || item.tile === '🏹') return 'ranged_attack';
+                    const tags = item.tags || [];
+                    if (tags.includes("blunt") || tags.includes("axe")) return 'crush';
+                    if (tags.includes("dagger")) return 'quickstep';
+                    if (tags.includes("blade")) return 'deflect';
+                    if (tags.includes("staff")) return 'channel';
+                    if (tags.includes("bow") || tags.includes("crossbow")) return 'ranged_attack';
                     return null;
                 };
                 const newSkill = getWeaponSkill(itemToUse);
