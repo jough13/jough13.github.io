@@ -414,10 +414,12 @@ const AudioSystem = {
             else if (gameState.mapMode === 'dungeon') tileAtX = chunkManager.caveMaps[gameState.currentCaveId]?.[gameState.player.y]?.[x];
             
             if (tileAtX && typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tileAtX]) {
-                const eName = ENEMY_DATA[tileAtX].name || "";
-                if (eName.includes("Skeleton") || eName.includes("Draugr") || eName.includes("Bone")) material = 'bone';
-                else if (eName.includes("Clockwork") || eName.includes("Golem")) material = 'metal';
-                else if (eName.includes("Wraith") || eName.includes("Void") || eName.includes("Spirit")) material = 'ethereal';
+                const enemyTemplate = ENEMY_DATA[tileAtX];
+                const tags = enemyTemplate.tags || []; // Safe fallback
+                
+                if (tags.includes("bone")) material = 'bone';
+                else if (tags.includes("metal") || tags.includes("stone")) material = 'metal';
+                else if (tags.includes("ethereal")) material = 'ethereal';
             }
         }
 
@@ -573,7 +575,7 @@ function forceUnlockAudio() {
     }
 }
 
-// QoL WIN: Bind to ALL major input vectors so tablet/stylus/keyboard players unlock audio flawlessly
+// Bind to ALL major input vectors so tablet/stylus/keyboard players unlock audio flawlessly
 document.addEventListener('click', forceUnlockAudio, { once: true });
 document.addEventListener('touchstart', forceUnlockAudio, { once: true });
 document.addEventListener('pointerdown', forceUnlockAudio, { once: true });
