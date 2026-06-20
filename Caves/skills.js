@@ -683,8 +683,10 @@ async function executeRangedAttack(dirX, dirY) {
                 // If it hits deep water or lava, it's gone. Otherwise, it sticks in the ground/wall!
                 if (['~', '≈', ' '].includes(dropTile)) validFloor = false; 
 
-                // --- Prevent arrows from overwriting items already on the ground! ---
-                if ((typeof ITEM_DATA !== 'undefined' && ITEM_DATA[dropTile]) || ['📦', '⚰️', '🏺', '🚪', '🔼'].includes(dropTile)) {
+                // --- Prevent arrows from overwriting items OR ENEMIES already on the ground! ---
+                if ((typeof ITEM_DATA !== 'undefined' && ITEM_DATA[dropTile]) || 
+                    (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[dropTile]) || 
+                    ['📦', '⚰️', '🏺', '🚪', '🔼'].includes(dropTile)) {
                     validFloor = false; 
                 }
 
