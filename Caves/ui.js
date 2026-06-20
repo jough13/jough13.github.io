@@ -12,7 +12,7 @@ let currentUser = null; // Store the firebase user object
 
 const charCreationModal = document.getElementById('charCreationModal');
 const timeDisplay = document.getElementById('timeDisplay');
-const weatherDisplay = document.getElementById('weatherDisplay'); // NEW UI Hook
+const weatherDisplay = document.getElementById('weatherDisplay'); 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -127,14 +127,14 @@ window.currentZoom = 20; // The absolute source of truth for TILE_SIZE
 // PERFORMANCE WIN: Cache Regexes so the V8 engine doesn't recompile them on every log
 const CRIT_REGEX = /\b(CRITICAL HIT!|CRITICAL|AMBUSH!|LEVEL UP!|NEW RECORD!|MAXED)\b/g;
 const FORMAT_REGEXES = [
-    { rx: /{red:(.*?)}/g, repl: '<span class="text-red-500 font-bold">$1</span>' },
-    { rx: /{green:(.*?)}/g, repl: '<span class="text-green-500 font-bold">$1</span>' },
-    { rx: /{blue:(.*?)}/g, repl: '<span class="text-blue-400 font-bold">$1</span>' },
-    { rx: /{gold:(.*?)}/g, repl: '<span class="text-yellow-500 font-bold">$1</span>' },
-    { rx: /{purple:(.*?)}/g, repl: '<span class="text-purple-400 font-bold">$1</span>' },
-    { rx: /{cyan:(.*?)}/g, repl: '<span class="text-cyan-400 font-bold">$1</span>' },
-    { rx: /{orange:(.*?)}/g, repl: '<span class="text-orange-400 font-bold">$1</span>' },
-    { rx: /{gray:(.*?)}/g, repl: '<span class="text-gray-500">$1</span>' }
+    { rx: /{red:(.*?)}/g, repl: '<span class="text-red-500 font-bold drop-shadow-md">$1</span>' },
+    { rx: /{green:(.*?)}/g, repl: '<span class="text-green-500 font-bold drop-shadow-md">$1</span>' },
+    { rx: /{blue:(.*?)}/g, repl: '<span class="text-blue-400 font-bold drop-shadow-md">$1</span>' },
+    { rx: /{gold:(.*?)}/g, repl: '<span class="text-yellow-500 font-bold drop-shadow-md">$1</span>' },
+    { rx: /{purple:(.*?)}/g, repl: '<span class="text-purple-400 font-bold drop-shadow-md">$1</span>' },
+    { rx: /{cyan:(.*?)}/g, repl: '<span class="text-cyan-400 font-bold drop-shadow-md">$1</span>' },
+    { rx: /{orange:(.*?)}/g, repl: '<span class="text-orange-400 font-bold drop-shadow-md">$1</span>' },
+    { rx: /{gray:(.*?)}/g, repl: '<span class="text-gray-500 italic">$1</span>' }
 ];
 
 const logMessage = (text) => {
@@ -154,11 +154,11 @@ const logMessage = (text) => {
     // --- ANTI-SPAM LOGIC ---
     if (text === lastLogText && messageLog.firstChild) {
         lastLogCount++;
-        messageLog.firstChild.innerHTML = `> ${formattedText} <span class="text-gray-500 ml-2 font-bold bg-black bg-opacity-30 px-1 rounded">(x${lastLogCount})</span>`;
+        messageLog.firstChild.innerHTML = `> ${formattedText} <span class="text-gray-400 ml-2 font-bold bg-black bg-opacity-40 px-1.5 py-0.5 rounded border border-gray-700 shadow-inner text-[10px]">(x${lastLogCount})</span>`;
         // JUICE: Small bump animation to show it updated
         messageLog.firstChild.style.animation = 'none';
         void messageLog.firstChild.offsetWidth; 
-        messageLog.firstChild.style.animation = 'pop-in 0.1s ease-out';
+        messageLog.firstChild.style.animation = 'pop-in 0.15s ease-out';
         return; 
     }
 
@@ -170,7 +170,7 @@ const logMessage = (text) => {
     messageElement.innerHTML = `> ${formattedText}`;
     
     // Slide down / fade in animation for new log messages
-    messageElement.style.animation = 'fade-in 0.2s ease-out';
+    messageElement.style.animation = 'fade-in 0.25s ease-out';
     messageElement.style.transformOrigin = 'top center';
     
     messageLog.prepend(messageElement);
@@ -196,8 +196,8 @@ const renderStats = () => {
             const label = statName.charAt(0).toUpperCase() + statName.slice(1);
 
             if (statName === 'level') {
-                // JUICE WIN: Display active titles below the player's level!
-                const titleStr = gameState.player.activeTitle ? `<span class="block text-[10px] uppercase tracking-widest text-purple-400 mt-1">${gameState.player.activeTitle}</span>` : '';
+                // LORE WIN: Display active titles with a shimmering magic effect!
+                const titleStr = gameState.player.activeTitle ? `<span class="block text-[10px] uppercase tracking-widest mt-1 font-bold text-magic-shimmer">${gameState.player.activeTitle}</span>` : '';
                 element.innerHTML = `Level: ${value}${titleStr}`;
             }
             else if (statName === 'xp') {
@@ -322,6 +322,41 @@ const renderStats = () => {
     if (gameState.mapMode && gameState.player && gameState.player.level) {
         document.title = `HP: ${Math.ceil(gameState.player.health)}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
     }
+    
+    // --- JUICE WIN: FULL SCREEN FILTERS & FLASHES ---
+    const canvasWrapper = document.getElementById('gameCanvasWrapper');
+    if (canvasWrapper) {
+        // Clear old persistent filters
+        canvasWrapper.classList.remove('frost-flash', 'void-distortion');
+        
+        // Apply persistent state filters
+        if (gameState.player.frostbiteTurns > 0) canvasWrapper.classList.add('frost-flash');
+        else if (gameState.player.madnessTurns > 0 || gameState.currentCaveTheme === 'VOID') canvasWrapper.classList.add('void-distortion');
+        
+        // Handle explosive one-time flashes (like lightning or level ups)
+        if (gameState.screenFlash && gameState.screenFlash.alpha > 0) {
+            // Apply a dynamic CSS filter overlay based on the requested color and alpha
+            const hex = gameState.screenFlash.color || '#ffffff';
+            const {r, g, b} = ColorUtils.hexToRgb(hex);
+            const shadow = `inset 0 0 150px 50px rgba(${r}, ${g}, ${b}, ${gameState.screenFlash.alpha})`;
+            const bg = `rgba(${r}, ${g}, ${b}, ${gameState.screenFlash.alpha * 0.3})`; // Subtle background tint
+            
+            // Override the standard box-shadow with our explosive one
+            canvasWrapper.style.boxShadow = shadow;
+            canvasWrapper.style.backgroundColor = bg;
+            
+            // Decay the flash for the next frame
+            gameState.screenFlash.alpha -= gameState.screenFlash.decay;
+            if (gameState.screenFlash.alpha <= 0) {
+                gameState.screenFlash = null;
+                canvasWrapper.style.boxShadow = ''; // Reset to default CSS
+                canvasWrapper.style.backgroundColor = '';
+            } else {
+                // Keep calling renderStats to animate the decay if the flash is still active
+                requestAnimationFrame(renderStats);
+            }
+        }
+    }
 };
 
 // --- DYNAMIC WEATHER & EVENT DISPLAY ---
@@ -335,6 +370,12 @@ function updateWeatherUI() {
         if (gameState.isBloodMoon) {
             displayString = '🩸 BLOOD MOON';
             colorClass = 'text-red-500 animate-pulse';
+        } else if (gameState.isEclipse) {
+            displayString = '🌑 TOTAL ECLIPSE';
+            colorClass = 'text-purple-500 font-bold';
+        } else if (gameState.isLeylineSurge) {
+            displayString = '⚡ LEYLINE SURGE';
+            colorClass = 'text-blue-400 animate-pulse';
         } else if (gameState.weather !== 'clear') {
             if (gameState.weather === 'rain') { displayString = '🌧️ Raining'; colorClass = 'text-blue-400'; }
             if (gameState.weather === 'storm') { displayString = '⛈️ Thunderstorm'; colorClass = 'text-yellow-400'; }
@@ -445,7 +486,7 @@ const renderInventory = () => {
             titleElement.innerHTML = `
                 <div class="flex justify-between items-center w-full">
                     <span id="invTitleText">${titleText}</span>
-                    <button id="sortInvBtn" onclick="sortInventory()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded shadow transition-all active:scale-95">Auto-Sort</button>
+                    <button id="sortInvBtn" onclick="sortInventory()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded shadow transition-all active:scale-95 border-b-2 border-blue-800 active:border-b-0 active:mt-0.5">Auto-Sort</button>
                 </div>
             `;
         }
@@ -453,7 +494,7 @@ const renderInventory = () => {
         const titleSpan = document.getElementById('invTitleText');
         if (gameState.isDroppingItem) {
             titleSpan.textContent = "SELECT ITEM TO DROP";
-            titleSpan.className = 'text-red-500 font-extrabold';
+            titleSpan.className = 'text-red-500 font-extrabold animate-pulse drop-shadow-md';
         } else {
             titleSpan.textContent = "Inventory";
             titleSpan.className = 'text-default font-bold';
@@ -483,9 +524,9 @@ const renderInventory = () => {
 
             // JUICE WIN: Dynamic Borders for Magical/Rare Items!
             if (!item.isEquipped && item._rarity) {
-                if (item._rarity === 'rare') slotClass += ' border-purple-500 shadow-[0_0_6px_rgba(168,85,247,0.3)]';
-                else if (item._rarity === 'epic') slotClass += ' border-red-500 shadow-[0_0_6px_rgba(239,68,68,0.3)]';
-                else if (item._rarity === 'legendary') slotClass += ' border-yellow-500 shadow-[0_0_6px_rgba(234,179,8,0.3)]';
+                if (item._rarity === 'rare') slotClass += ' rarity-rare border-purple-500 shadow-[0_0_6px_rgba(168,85,247,0.3)]';
+                else if (item._rarity === 'epic') slotClass += ' rarity-epic border-red-500 shadow-[0_0_6px_rgba(239,68,68,0.3)]';
+                else if (item._rarity === 'legendary') slotClass += ' rarity-legendary border-yellow-500 shadow-[0_0_6px_rgba(234,179,8,0.3)]';
             }
             
             itemDiv.className = slotClass;
@@ -501,12 +542,12 @@ const renderInventory = () => {
                 title += " (";
                 let bonuses = [];
                 for (const stat in item.statBonuses) {
-                    bonuses.push(`+${item.statBonuses[stat]} ${stat}`);
+                    bonuses.push(`${item.statBonuses[stat] > 0 ? '+' : ''}${item.statBonuses[stat]} ${stat}`);
                 }
                 title += bonuses.join(', ') + ")";
             }
 
-            // Dynamic Equipment Comparison!
+            // QoL WIN: Dynamic Equipment Comparison!
             if (!item.isEquipped && (item.type === 'weapon' || item.type === 'armor')) {
                 const isWpn = item.type === 'weapon';
                 const equippedItem = isWpn ? gameState.player.equipment.weapon : gameState.player.equipment.armor;
@@ -530,16 +571,16 @@ const renderInventory = () => {
             itemChar.textContent = item.tile || '🎒';
 
             const itemQuantity = document.createElement('span');
-            itemQuantity.className = 'item-quantity bg-black bg-opacity-60 text-white px-1 rounded';
+            itemQuantity.className = 'item-quantity bg-black bg-opacity-70 text-white px-1.5 rounded border border-gray-700 font-bold';
             itemQuantity.textContent = `x${item.quantity}`;
 
             const slotNumber = document.createElement('span');
-            slotNumber.className = 'absolute top-1 left-1.5 text-[10px] text-gray-400 font-bold';
+            slotNumber.className = 'absolute top-1 left-1.5 text-[10px] text-gray-500 font-bold';
             if (index < 9) slotNumber.textContent = index + 1;
 
             if (item.isEquipped) {
                 const equipBadge = document.createElement('span');
-                equipBadge.className = 'absolute top-0 right-0 bg-yellow-500 text-black text-[9px] px-1.5 py-0.5 font-bold rounded-bl-lg rounded-tr-xl';
+                equipBadge.className = 'absolute top-0 right-0 bg-yellow-500 text-black text-[9px] px-1.5 py-0.5 font-bold rounded-bl-lg rounded-tr-xl shadow-sm';
                 equipBadge.textContent = 'EQP';
                 itemDiv.appendChild(equipBadge);
             }
@@ -548,7 +589,7 @@ const renderInventory = () => {
             if (item.type === 'consumable' || item.type === 'instant' || item.type === 'tool') {
                 const assignBtn = document.createElement('button');
                 // Uses Tailwind group-hover to only appear when mousing over the item
-                assignBtn.className = 'absolute -bottom-2 right-0 bg-blue-600 hover:bg-blue-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity';
+                assignBtn.className = 'absolute -bottom-2 right-0 bg-blue-600 hover:bg-blue-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity border-b border-blue-800 active:border-b-0 active:translate-y-px';
                 assignBtn.textContent = 'Bind';
                 assignBtn.onclick = (e) => {
                     e.stopPropagation();
@@ -623,7 +664,7 @@ const renderEquipment = () => {
         if (isEmpty) {
             iconElement.className = 'equipment-slot text-3xl opacity-30 border-dashed border-gray-600 transition-all';
         } else {
-            iconElement.className = 'equipment-slot text-3xl border-solid border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)] transition-all';
+            iconElement.className = 'equipment-slot text-3xl border-solid border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)] transition-all bg-black bg-opacity-20';
         }
     };
 
@@ -644,7 +685,7 @@ const renderEquipment = () => {
         }
     }
     if (player.strengthBonus > 0) { 
-        weaponString += ` <span class="text-green-500">[+${player.strengthBonus} Str (${player.strengthBonusTurns}t)]</span>`;
+        weaponString += ` <span class="text-green-500 drop-shadow-sm">[+${player.strengthBonus} Str (${player.strengthBonusTurns}t)]</span>`;
     }
     equippedWeaponDisplay.innerHTML = weaponString;
     statDisplays.strength.textContent = `Strength: ${player.strength} (Dmg: ${totalDamage})`;
@@ -670,9 +711,9 @@ const renderEquipment = () => {
         }
     }
     if (buffDefense > 0) {
-        armorString += ` <span class="text-green-500">[+${buffDefense} Def (${player.defenseBonusTurns}t)]</span>`;
+        armorString += ` <span class="text-green-500 drop-shadow-sm">[+${buffDefense} Def (${player.defenseBonusTurns}t)]</span>`;
     }
-    equippedArmorDisplay.innerHTML = `${armorString} <br><span class="text-gray-500">(Total: ${totalDefense} Def)</span>`;
+    equippedArmorDisplay.innerHTML = `${armorString} <br><span class="text-gray-400 font-bold bg-black bg-opacity-30 px-2 py-0.5 rounded border border-gray-700 mt-1 inline-block">(Total: ${totalDefense} Def)</span>`;
 
     // --- MISC / ACC DISPLAY ---
     let miscString = "";
@@ -741,6 +782,13 @@ function updateRegionDisplay() {
 
         if (!gameState.discoveredRegions.has(regionId)) {
             logMessage(`{gold:Discovered: ${regionName}!}`); 
+            
+            // --- Procedural Regional Lore ---
+            const seed = stringToSeed(regionId);
+            const random = Alea(seed);
+            const history = window.REGION_HISTORY[Math.floor(random() * window.REGION_HISTORY.length)];
+            logMessage(`{gray:Codex: ${history}}`); // Prints the lore!
+
             gameState.discoveredRegions.add(regionId);
             if(typeof grantXp === 'function') grantXp(50);
             
@@ -770,8 +818,8 @@ function updateRegionDisplay() {
                 });
             }
             
-            if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playLevelUp === 'function') {
-                AudioSystem.playLevelUp();
+            if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playDiscovery === 'function') {
+                AudioSystem.playDiscovery();
             }
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#facc15', 30);
@@ -825,19 +873,22 @@ function renderStatusEffects() {
     let icons = ''; 
 
     if (player.shieldValue > 0) {
-        icons += `<span title="Arcane Shield (${Math.ceil(player.shieldValue)} points, ${player.shieldTurns}t)">💠</span>`;
+        icons += `<span title="Arcane Shield (${Math.ceil(player.shieldValue)} points, ${player.shieldTurns}t)" class="drop-shadow-md">💠</span>`;
     }
     if (player.defenseBonusTurns > 0) {
-        icons += `<span title="Braced (+${player.defenseBonus} Def, ${player.defenseBonusTurns}t)">🛡️</span>`;
+        icons += `<span title="Braced (+${player.defenseBonus} Def, ${player.defenseBonusTurns}t)" class="drop-shadow-md">🛡️</span>`;
     }
     if (player.strengthBonusTurns > 0) {
-        icons += `<span title="Strong (+${player.strengthBonus} Str, ${player.strengthBonusTurns}t)">💪</span>`;
+        icons += `<span title="Strong (+${player.strengthBonus} Str, ${player.strengthBonusTurns}t)" class="drop-shadow-md">💪</span>`;
     }
     if (player.poisonTurns > 0) {
-        icons += `<span title="Poisoned (${player.poisonTurns}t)" class="text-green-500 animate-pulse">☣️</span>`;
+        icons += `<span title="Poisoned (${player.poisonTurns}t)" class="text-green-500 animate-pulse drop-shadow-md">☣️</span>`;
     }
     if (player.frostbiteTurns > 0) {
-        icons += `<span title="Frostbitten (${player.frostbiteTurns}t)" class="text-cyan-400">❄️</span>`;
+        icons += `<span title="Frostbitten (${player.frostbiteTurns}t)" class="text-cyan-400 drop-shadow-md">❄️</span>`;
+    }
+    if (player.madnessTurns > 0) {
+        icons += `<span title="Void Madness (${player.madnessTurns}t)" class="text-purple-500 animate-spin drop-shadow-md inline-block">👁️</span>`;
     }
 
     statusEffectsPanel.innerHTML = icons;
