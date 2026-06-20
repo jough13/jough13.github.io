@@ -124,7 +124,7 @@ function castSpell(spellId) {
                 if (player.frostbiteTurns > 0) { logMessage("{gold:The supernatural chill leaves your bones.}"); ailmentsCured = true; }
                 if (player.burnTurns > 0) { logMessage("{gold:The searing flames are extinguished.}"); ailmentsCured = true; }
                 
-                player.health = player.maxHealth;
+                window.modifyVital('health', player.maxHealth);
                 player.poisonTurns = 0;
                 player.frostbiteTurns = 0;
                 player.madnessTurns = 0; 
@@ -132,7 +132,6 @@ function castSpell(spellId) {
                 player.burnTurns = 0;
 
                 logMessage("{gold:A holy light bathes you. You are fully restored!}");
-                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
                 
                 if (typeof ParticleSystem !== 'undefined') {
                     ParticleSystem.createExplosion(player.x, player.y, '#facc15', 30); // Massive golden explosion
@@ -178,13 +177,10 @@ function castSpell(spellId) {
             case 'lesserHeal':
                 const effectiveWits = player.wits + (player.witsBonus || 0);
                 const healAmount = spellData.baseHeal + (effectiveWits * spellLevel);
-                const oldHealth = player.health;
-                player.health = Math.min(player.maxHealth, player.health + healAmount);
-                const healedFor = player.health - oldHealth;
+                const healedFor = window.modifyVital('health', healAmount);
 
                 if (healedFor > 0) {
                     logMessage(`You cast Lesser Heal and recover {green:${healedFor} health}.`);
-                    if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+${healedFor}`, '#22c55e'); 
 
                 } else {
@@ -276,16 +272,13 @@ function castSpell(spellId) {
 
             case 'darkPact':
                 const manaRestored = spellData.baseRestore + (player.willpower * spellLevel);
-                const oldMana = player.mana;
-                player.mana = Math.min(player.maxMana, player.mana + manaRestored);
-                const actualRestore = player.mana - oldMana;
+                const actualRestore = window.modifyVital('mana', manaRestored);
 
                 if (actualRestore > 0) {
                     logMessage(`You sacrifice {red:${cost} health} to restore {blue:${actualRestore} mana}.`);
                     
                     if (typeof triggerStatAnimation !== 'undefined') {
                         triggerStatAnimation(statDisplays.health, 'stat-pulse-red'); 
-                        triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
                     }
                     
                     // JUICE WIN: Visceral feedback for dark magic
@@ -528,12 +521,9 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
     if (damageDealt > 0 && spellId === 'siphonLife') {
         const healedAmount = Math.floor(damageDealt * spellData.healPercent);
         if (healedAmount > 0) {
-            const oldHealth = player.health;
-            player.health = Math.min(player.maxHealth, player.health + healedAmount);
-            const actualHeal = player.health - oldHealth;
+            const actualHeal = window.modifyVital('health', healedAmount);
             if (actualHeal > 0) {
                 logMessage(`You drain {green:${actualHeal} health} from the ${enemyData.name}.`);
-                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
                 if (typeof playerRef !== 'undefined') playerRef.update({ health: player.health });
             }
         }
