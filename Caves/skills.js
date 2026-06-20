@@ -48,14 +48,16 @@ function useSkill(skillId) {
         return; 
     }
 
-    // --- ROBUSTNESS WIN: Hotbar Weapon Verification ---
-    const wpn = player.equipment.weapon ? player.equipment.weapon.name : '';
-    if (skillId === 'deflect' && (!wpn.includes('Sword') && !wpn.includes('Blade'))) {
-        logMessage("{red:You must equip a Sword or Blade to use Deflect.}");
+    // --- ROBUSTNESS WIN: Hotbar Weapon Verification via Tags ---
+    const wpn = player.equipment.weapon || {};
+    const wpnTags = wpn.tags || [];
+    
+    if (skillId === 'deflect' && !wpnTags.includes('blade')) {
+        logMessage("{red:You must equip a bladed weapon to use Deflect.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
-    if (skillId === 'channel' && !wpn.includes('Staff')) {
+    if (skillId === 'channel' && !wpnTags.includes('staff')) {
         logMessage("{red:You must equip a Staff to use Channel.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
@@ -272,8 +274,10 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
     
     // --- ROBUSTNESS WIN: Sub-skill requirements ---
     if (skillId === 'shieldBash') {
-        const offhand = player.equipment.offhand;
-        if (!offhand || !offhand.name.includes('Shield')) {
+        const offhand = player.equipment.offhand || {};
+        const offhandTags = offhand.tags || [];
+        
+        if (!offhandTags.includes('shield')) {
             logMessage("{red:You must have a Shield equipped in your off-hand to use Shield Bash!}");
             gameState.isAiming = false;
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -450,11 +454,11 @@ async function executeRangedAttack(dirX, dirY) {
         return;
     }
 
-    // --- WEAPON CHECK ---
-    const weapon = player.equipment.weapon;
+    // --- WEAPON CHECK VIA TAGS ---
+    const weapon = player.equipment.weapon || {};
+    const wpnTags = weapon.tags || [];
     
-    // Check if weapon exists FIRST. If it does, convert name to lowercase to check for "bow" or "crossbow".
-    if (!weapon || (!weapon.name.toLowerCase().includes("bow") && !weapon.name.toLowerCase().includes("crossbow"))) {
+    if (!wpnTags.includes('bow') && !wpnTags.includes('crossbow')) {
         logMessage("{red:You must have a bow or crossbow equipped to shoot!}");
         gameState.isAiming = false;
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -477,7 +481,7 @@ async function executeRangedAttack(dirX, dirY) {
         
         const isFire = ammo.name.includes('Fire');
         const isPoison = ammo.name.includes('Poison');
-        const isHeavyCrossbow = weapon.name.includes('Heavy Crossbow');
+        const isHeavyCrossbow = wpnTags.includes('armor_piercing');
 
         let arrowColor = '#d4d4d8'; // Default grey
         if (isFire) arrowColor = '#f97316';   // Orange
