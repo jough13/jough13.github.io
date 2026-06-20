@@ -156,17 +156,16 @@ async function attemptMovePlayer(newX, newY) {
             
             if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(1.0, 0.2, 300); // Wind rush
             
-            gameState.player.health -= 25; // Massive fall damage
             gameState.screenShake = 30;
-            triggerStatFlash(statDisplays.health, false);
+            window.modifyVital('health', -25);
             
             // Return to Overworld
             gameState.mapMode = 'overworld';
             gameState.mapDirty = true;
             render();
             
-            if (handlePlayerDeath()) return;
-            return; // Stop the move, you fell!
+            if (gameState.player.health <= 0) return; // Stop the move, you fell!
+            return;
         }
     }
 
@@ -255,21 +254,20 @@ async function attemptMovePlayer(newX, newY) {
             logMessage("{red:The Obelisk shrieks! A shockwave knocks you back!}");
             logMessage("{red:PUZZLE FAILED. Sequence Reset.}");
 
-            gameState.player.health -= 5;
             gameState.player.obeliskProgress = []; // Reset
+            
+            // Punishment damage visual
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444', 10);
+            
+            window.modifyVital('health', -5);
 
-            triggerStatFlash(statDisplays.health, false);
             playerRef.update({
                 health: gameState.player.health,
                 obeliskProgress: []
             });
 
-            // Punishment damage visual
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444', 10);
-            
-            // --- FIX: Check if the shockwave killed the player ---
-            if (handlePlayerDeath()) return;
+            if (gameState.player.health <= 0) return;
         }
         return;
     }
@@ -606,8 +604,7 @@ async function attemptMovePlayer(newX, newY) {
 
             // 3. Clear the treasure mark & apply stamina cost
             gameState.activeTreasure = null;
-            gameState.player.stamina = Math.max(0, gameState.player.stamina - 2);
-            if (typeof triggerStatFlash === 'function') triggerStatFlash(statDisplays.stamina, false);
+            window.modifyVital('stamina', -2);
             
             // 4. Save and Update
             if (typeof playerRef !== 'undefined') {
@@ -641,8 +638,7 @@ async function attemptMovePlayer(newX, newY) {
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#78350f', 15); // Dirt flying
 
             // 1. Stamina Cost
-            gameState.player.stamina = Math.max(0, gameState.player.stamina - 2);
-            triggerStatFlash(statDisplays.stamina, false);
+            window.modifyVital('stamina', -2);
 
             // 2. Loot Table
             const roll = Math.random();
@@ -1012,15 +1008,13 @@ async function attemptMovePlayer(newX, newY) {
             } else {
                 // Wrong
                 logMessage("{red:The statue remains silent. That is not the answer.}");
-                gameState.player.health -= 2; // Punishment
-                triggerStatFlash(statDisplays.health, false);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 loreModal.classList.add('hidden');
+                
+                window.modifyVital('health', -2); // Punishment
                 renderStats();
                 
-                // --- FIX: Check if the statue's punishment killed the player ---
-                if (handlePlayerDeath()) {
-                    // Sync the multiplayer server state immediately since this is an async callback
+                if (gameState.player.health <= 0) {
                     if (typeof syncPlayerState === 'function') syncPlayerState();
                     return; 
                 }
@@ -1162,22 +1156,16 @@ async function attemptMovePlayer(newX, newY) {
             const roll = Math.random();
             if (roll < 0.05) {
                 // JUICE & LORE WIN: The 5% Miracle Chance
-                logMessage("{gold:...the water glows brilliantly! A MIRACLE!}");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#facc15', 30);
-                
                 if (Math.random() > 0.5) {
                     gameState.player.bonusMaxHealth = (gameState.player.bonusMaxHealth || 0) + 1;
                     gameState.player.maxHealth += 1;
-                    gameState.player.health = gameState.player.maxHealth;
                     logMessage("{green:Permanent Effect: +1 Max HP!}");
-                    triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+                    window.modifyVital('health', gameState.player.maxHealth); // Fills to max
                 } else {
                     gameState.player.bonusMaxMana = (gameState.player.bonusMaxMana || 0) + 1;
                     gameState.player.maxMana += 1;
-                    gameState.player.mana = gameState.player.maxMana;
                     logMessage("{blue:Permanent Effect: +1 Max Mana!}");
-                    triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                    window.modifyVital('mana', gameState.player.maxMana);
                 }
             } else if (roll < 0.35) {
                 logMessage("{green:...and receive a Healing Potion!}");
@@ -1203,9 +1191,8 @@ async function attemptMovePlayer(newX, newY) {
             } else if (roll < 0.7) {
                 logMessage("{cyan:...and feel refreshed! (Full Heal)}");
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#22c55e', 15);
-                gameState.player.health = gameState.player.maxHealth;
-                gameState.player.mana = gameState.player.maxMana;
-                triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+                window.modifyVital('health', gameState.player.maxHealth);
+                window.modifyVital('mana', gameState.player.maxMana);
                 playerRef.update({
                     health: gameState.player.health,
                     mana: gameState.player.mana
@@ -1273,12 +1260,11 @@ async function attemptMovePlayer(newX, newY) {
 
     if (newTile === '🌵') {
         logMessage("{orange:Ouch! The thorns prick you, but you grab a fruit.}");
-        gameState.player.health -= 1;
         gameState.screenShake = 10; // Shake intensity
-        triggerStatFlash(statDisplays.health, false);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('pierce');
-
-        if (handlePlayerDeath()) return;
+        window.modifyVital('health', -1);
+        
+        if (gameState.player.health <= 0) return;
 
         if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
             gameState.player.inventory.push({
@@ -1324,13 +1310,11 @@ async function attemptMovePlayer(newX, newY) {
                 chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = 'M';
             }
 
-            gameState.player.health -= 3;
             gameState.screenShake = 15;
-            triggerStatFlash(statDisplays.health, false);
             logMessage("The Mimic bites you for 3 damage!");
+            window.modifyVital('health', -3);
             
-            // --- FIX: Check if the Mimic's ambush bite killed the player ---
-            if (handlePlayerDeath()) return; 
+            if (gameState.player.health <= 0) return; 
             
             render();
             return;
@@ -1360,6 +1344,7 @@ async function attemptMovePlayer(newX, newY) {
             inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
         });
         if (typeof renderInventory === 'function') renderInventory();
+        if (typeof renderStats === 'function') renderStats();
         return;
 
     } else if (newTile === '<') {
@@ -1383,12 +1368,11 @@ async function attemptMovePlayer(newX, newY) {
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(newX, newY, "TRAP!", "#ef4444");
 
                 const trapDamage = 3;
-                player.health -= trapDamage;
                 gameState.screenShake = 10;
-                triggerStatFlash(statDisplays.health, false);
                 gameState.lootedTiles.add(tileId);
+                window.modifyVital('health', -trapDamage);
 
-                if (handlePlayerDeath()) return;
+                if (player.health <= 0) return;
             }
         }
     }
@@ -2143,12 +2127,8 @@ async function attemptMovePlayer(newX, newY) {
                 }
 
                 if (gameState.player.mana < gameState.player.maxMana || gameState.player.psyche < gameState.player.maxPsyche) {
-                    gameState.player.mana = gameState.player.maxMana;
-                    gameState.player.psyche = gameState.player.maxPsyche;
-                    if (typeof triggerStatAnimation === 'function') {
-                        triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
-                        triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
-                    }
+                    window.modifyVital('mana', gameState.player.maxMana);
+                    window.modifyVital('psyche', gameState.player.maxPsyche);
                     logMessage("{cyan:The ancient stone restores your magical energy.}");
                     if (typeof playerRef !== 'undefined' && playerRef) {
                         playerRef.update({
@@ -2595,7 +2575,7 @@ async function attemptMovePlayer(newX, newY) {
             if (player.health < player.maxHealth || player.poisonTurns > 0 || player.frostbiteTurns > 0 || player.madnessTurns > 0) {
                 if (player.coins >= HEAL_COST) {
                     player.coins -= HEAL_COST;
-                    player.health = player.maxHealth;
+                    window.modifyVital('health', player.maxHealth);
                     
                     // Purge status effects!
                     player.poisonTurns = 0;
@@ -2605,7 +2585,6 @@ async function attemptMovePlayer(newX, newY) {
                     player.rootTurns = 0;
 
                     logMessage(`{green:The Healer restores your health and purges afflictions for ${HEAL_COST} gold.}`);
-                    if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#22c55e', 20);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal();
                     
@@ -3184,19 +3163,16 @@ async function attemptMovePlayer(newX, newY) {
     gameState.player.y = newY;
 
     if (gameState.player.stamina >= moveCost) {
-        gameState.player.stamina -= moveCost;
+        if (moveCost > 0) {
+            window.modifyVital('stamina', -moveCost);
+            if (moveCost > 1) logMessage(`{gray:Traversing the difficult terrain costs ${moveCost} stamina.}`);
+        }
     } else {
-        gameState.player.stamina = 0;
-        gameState.player.health -= staminaDeficit;
+        window.modifyVital('stamina', -gameState.player.stamina); // zero out
         gameState.screenShake = 10; // Shake intensity
-        triggerStatFlash(statDisplays.health, false);
         logMessage(`{red:You push yourself to the limit, costing ${staminaDeficit} health!}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-    }
-
-    if (moveCost > 0) {
-        triggerStatFlash(statDisplays.stamina, false);
-        if (moveCost > 1) logMessage(`{gray:Traversing the difficult terrain costs ${moveCost} stamina.}`);
+        window.modifyVital('health', -staminaDeficit);
     }
 
     if (newTile === '≈') {
@@ -3306,11 +3282,8 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     if (gameState.player.health <= 0) {
-        // Call the unified death handler (drops corpse, clears inventory, shows UI)
-        if (typeof handlePlayerDeath === 'function' && handlePlayerDeath()) {
-            if (typeof syncPlayerState === 'function') syncPlayerState(); 
-            return; // STOP! Do not run endPlayerTurn or it will overwrite the death state!
-        }
+        if (typeof syncPlayerState === 'function') syncPlayerState(); 
+        return; // STOP! Do not run endPlayerTurn or it will overwrite the death state!
     }
 
     // Pass the updates object in so Firebase actually saves your loot/exploration!
