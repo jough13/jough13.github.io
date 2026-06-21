@@ -69,7 +69,7 @@ window.LORE_SETS = {
         name: "Dwarven Mining Logs",
         description: "Sturdy leather-bound notes detailing exactly what the dwarves found when they dug too deep.",
         bonus: "Demolitionist: +1 Base Constitution.",
-        items: ["🧨", "⛏️", "💎r"] // Used Raw Diamond to complete the set!
+        items: ["🧨", "⛏️", "💎r"] 
     }
 };
 
@@ -98,7 +98,12 @@ window.LORE_STONE_MESSAGES = [
     "The astrolabe points not to the stars, but to the realms between them.",
     "Even the Kraken fears what sleeps in the deepest trench.",
     "The sky is not a ceiling, but an ocean waiting to be sailed.",
-    "If you stare into the chasm long enough, it will invite you inside."
+    "If you stare into the chasm long enough, it will invite you inside.",
+    "A dimensional vault is merely a fold in the fabric of the Akashic Records.",
+    "When the sky bleeds purple, close your eyes and cover your ears.",
+    "The clockwork guardians do not hate you. They simply do not care.",
+    "The Cult of the Shadowed Hand seeks to reforge the shattered crown.",
+    "Heed the Cartographer's warnings. There are places where the map ends for a reason."
 ];
 
 // ==========================================
@@ -268,6 +273,9 @@ window.VILLAGER_RUMORS = [
     "If you ever need to clear a quick-slot on your hotbar, just {purple:right-click} it.",
     "They say throwing a stick of {orange:Dwarven TNT} at a cracked wall will blow it wide open. Might even find gems inside!",
     "If you find an {purple:Obsidian Fishing Rod}, don't throw it away. I hear you can cast it straight into the heart of a volcano.",
+    "Have you used the {blue:Dimensional Vault}? If you place a Stash Box down, you can access your stored items from anywhere in the world.",
+    "I heard you can {gold:Quick Stack} your inventory directly into your stash with a single click. Saves a lot of sorting time!",
+    "The Cartographer's Guild pays handsomely if you explore enough {blue:Regions}. Check in with a guildmaster if you've been walking a lot.",
 
     // --- EXPLORATION & WORLD ---
     "If you find a pickaxe, try the mountains. Good {gray:Iron Ore} there.",
@@ -300,14 +308,14 @@ window.VILLAGER_RUMORS = [
     "Don't stand in the water during a thunderstorm. And definitely don't cast {yellow:Lightning} spells unless you want to fry everything in the pool!",
     "Those ruined Dark Castles are terrifying, but I hear they hold {gold:Loot Vaults} deep inside.",
     "If you ever find a {purple:Void Key}, take it to a rift. It's a one-way ticket to nightmare-land.",
-    "You can drop a Stash Box anywhere in the world and access your dimensional vault. Magic is convenient, isn't it?",
     "If you plan on exploring deep into the wilds, you better rest in a {green:Cozy Bed} first. It beats walking back from the village.",
     "The deeper you go into a dungeon, the nastier the monsters get. But the loot gets shinier, too.",
-    "A merchant told me he saw a man looking at the stars through a Brass Telescope. Sounds boring to me.",
+    "A merchant told me he saw a man looking at the stars through a {gold:Brass Telescope}. Sounds boring to me.",
     "I hear the Master Blacksmith can forge weapons out of {cyan:Star-Metal}... if you have the coin.",
     "Don't go to the Colosseum in the deadlands. I knew a warrior who went to fight in the Arena. He never came back.",
     "The Inquisitor pays top gold for Cultist amulets. He's trying to root out the Shadowed Hand.",
-    "Some say the Void Astrolabe doesn't just teleport you... it takes you to a {purple:parallel dimension} altogether."
+    "Some say the {purple:Void Astrolabe} doesn't just teleport you... it takes you to a {purple:parallel dimension} altogether.",
+    "If the Leylines ever go down, or you get trapped in an alternate dimension, just strike a {cyan:Prime Tuning Fork} to return home."
 ];
 
 // ==========================================
@@ -349,7 +357,10 @@ window.RANDOM_JOURNAL_PAGES = [
     "The deeper you go into the caves, the hotter it gets. At floor five, the rock turns to obsidian and the air to ash.",
     "The arena champion... he's not human. I watched him take a mace to the chest and not even flinch. I forfeit.",
     "Dwarven TNT is highly unstable. Threw a stick at a cracked wall and nearly blew my own arms off. Found a diamond though.",
-    "I climbed the beanstalk. The air was thin, and the clouds felt like marble beneath my feet. I saw a fountain that poured pure starlight."
+    "I climbed the beanstalk. The air was thin, and the clouds felt like marble beneath my feet. I saw a fountain that poured pure starlight.",
+    "If you stand on the edge of the world, where the map turns to nothing, you can hear the servers humming.",
+    "The Akashic Records remember every soul that has died here. Sometimes, when the wind is right, you can hear them updating.",
+    "I met a traveler who said he was from a 'Shattered Realm'. He looked exactly like me, but with a scar over his eye. Then he struck a tuning fork and vanished."
 ];
 
 window.LORE_FRAGMENTS = [
@@ -398,7 +409,8 @@ window.VISIONS_OF_THE_PAST = [
     "A VISION: A beautiful city floats in the sky. Slowly, it tilts, and then plummets to the earth, leaving a crater that will one day become a swamp.",
     "A VISION: You watch as reality splits like a mirror. A thousand versions of the King make a thousand different choices. All end in ash. Perhaps another dimension survived?",
     "A VISION: You stand on a cloud of solid marble. Below you, the world is burning. A voice behind you says, 'We built this to escape, but we brought it with us.'",
-    "A VISION: The Underworld expands endlessly. You see thousands of stone cocoons hanging from the cavern ceiling. One of them twitches."
+    "A VISION: The Underworld expands endlessly. You see thousands of stone cocoons hanging from the cavern ceiling. One of them twitches.",
+    "A VISION: You see an ancient archmage holding an astrolabe. He turns a dial, and the entire landscape dissolves into a grid of green numbers. Then, the Void takes him."
 ];
 
 // ==========================================
@@ -487,7 +499,7 @@ window.RIDDLE_DATA = [
     {
         id: "volcano",
         question: "I wear a stone coat and have a fiery heart. When I wake, the world trembles. What am I?",
-        answers: ["volcano", "a volcano", "mountain"],
+        answers: ["volcano", "a volcano", "mountain", "magma"],
         reward: "constitution", 
         message: "{red:Heat radiates from the stone. You feel an inner fire ignite.}"
     },
@@ -508,7 +520,7 @@ window.RIDDLE_DATA = [
     {
         id: "gold",
         question: "I have no sword, but I conquer kings. I have no voice, but I command armies. What am I?",
-        answers: ["gold", "money", "coin", "wealth", "treasure"],
+        answers: ["gold", "money", "coin", "wealth", "treasure", "coins"],
         reward: "charisma", 
         message: "{gold:The statue bows slightly. You feel a commanding presence within.}"
     },
@@ -686,6 +698,42 @@ window.RIDDLE_DATA = [
         answers: ["candle", "a candle"],
         reward: "luck",
         message: "{gold:A flicker of light dances in the statue's eyes. You feel incredibly fortunate.}"
+    },
+    // --- EXPANSION: 5 NEW FANTASY RIDDLES ---
+    {
+        id: "nothing",
+        question: "The rich need it, the poor have it, and if you eat it you die. What is it?",
+        answers: ["nothing"],
+        reward: "wits",
+        message: "{blue:The profound emptiness of the answer sharpens your mind.}"
+    },
+    {
+        id: "light",
+        question: "What can fill a room entirely, but takes up absolutely no space?",
+        answers: ["light", "the light"],
+        reward: "perception",
+        message: "{gold:A brilliant flash illuminates the statue. You see things clearly now.}"
+    },
+    {
+        id: "bottle",
+        question: "I have a neck but no head, and I wear a cap but have no hair. What am I?",
+        answers: ["bottle", "a bottle", "flask", "potion"],
+        reward: "endurance",
+        message: "{green:The sound of flowing water fills your ears. You feel refreshed.}"
+    },
+    {
+        id: "piano",
+        question: "I have many keys, but I cannot open a single lock. What am I?",
+        answers: ["piano", "a piano", "keyboard"],
+        reward: "dexterity",
+        message: "{cyan:Your fingers twitch with a sudden, practiced rhythm.}"
+    },
+    {
+        id: "bank",
+        question: "I have branches, but no fruit, trunk, or leaves. What am I?",
+        answers: ["bank", "a bank", "river", "a river", "stream"],
+        reward: "luck",
+        message: "{gold:The sound of clinking coins echoes faintly. Fortune smiles upon you.}"
     }
 ];
 
@@ -697,7 +745,22 @@ window.REGION_HISTORY = [
     "Nothing of note happened here, which in this world, is a blessing.",
     "The Cartographer's Guild warns that compasses behave strangely in this sector.",
     "A legendary beast is said to claim this territory as its own.",
-    "The ruins of a nameless village lie buried somewhere beneath the soil here."
+    "The ruins of a nameless village lie buried somewhere beneath the soil here.",
+    "The soil here is unusually rich, fertilized by the ash of a fallen empire.",
+    "A great schism in the leylines occurred here, rendering magic unpredictable for centuries.",
+    "The Cartographer's Guild designated this sector as 'Uninhabitable' three centuries ago.",
+    "Legends say an ancient dragon fell from the sky and crashed here, creating the terrain you see today.",
+    "This area was once completely submerged underwater before the tectonic plates shifted.",
+    "Shadow Acolytes frequently patrol these borders, searching for lost relics.",
+    "A massive, invisible magical ward supposedly protects this region from the worst of the Void.",
+    "The dwarves dug a massive tunnel network beneath this area, but collapsed it from the inside.",
+    "This was the site of the first successful Cloudseed planting, though the stalk withered long ago.",
+    "The air here always smells faintly of ozone, regardless of the weather.",
+    "A wandering sage claimed he found a staircase leading to the underworld here, but he never returned to prove it.",
+    "The merchants avoid this path. Too many caravans have vanished without a trace.",
+    "This region is entirely missing from the oldest maps in the royal archives. It simply did not exist.",
+    "You can sometimes find petrified wood here that burns with a blue flame.",
+    "The magnetic north fluctuates wildly the deeper you go into this sector."
 ];
 
 // --- END OF FILE data-lore.js ---
