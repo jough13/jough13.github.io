@@ -312,6 +312,7 @@ async function restoreCloudBackup(slotId = 'latest') {
                 templateId: '⏳', 
                 name: 'Paradox Anomaly',
                 type: 'junk',
+                tags: ['anomaly', 'magic'], // ECS WIN: Preserving our new tag architecture!
                 quantity: 1,
                 tile: '⏳',
                 description: "A crystallized fragment of a discarded timeline. You shouldn't have this.",
