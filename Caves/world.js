@@ -309,6 +309,7 @@ const chunkManager = {
                                 castRange: enemyTemplate.castRange || 0,
                                 spellDamage: Math.floor((enemyTemplate.spellDamage || 0) * (1 + (Math.floor(Math.sqrt(distSq) / 50) * 0.1))),
                                 inflicts: enemyTemplate.inflicts || null,
+                                tags: enemyTemplate.tags ? [...enemyTemplate.tags] : [], // ECS WIN
                                 madnessTurns: 0,
                                 frostbiteTurns: 0,
                                 poisonTurns: 0,
@@ -463,6 +464,7 @@ const chunkManager = {
                     castRange: enemyTemplate.castRange || 0,
                     spellDamage: enemyTemplate.spellDamage || 0,
                     inflicts: enemyTemplate.inflicts || null,
+                    tags: enemyTemplate.tags ? [...enemyTemplate.tags] : [], // ECS WIN
                     madnessTurns: 0,
                     frostbiteTurns: 0,
                     poisonTurns: 0,
@@ -577,7 +579,7 @@ const chunkManager = {
                         health: bossTemplate.maxHealth, maxHealth: bossTemplate.maxHealth,
                         attack: bossTemplate.attack, defense: bossTemplate.defense, xp: bossTemplate.xp,
                         loot: bossTemplate.loot, caster: true, castRange: bossTemplate.castRange, spellDamage: bossTemplate.spellDamage,
-                        isBoss: true, madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
+                        isBoss: true, tags: bossTemplate.tags ? [...bossTemplate.tags] : [], madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
                     });
                     bossPlaced = true;
                 }
@@ -615,7 +617,7 @@ const chunkManager = {
                     health: bossTemplate.maxHealth, maxHealth: bossTemplate.maxHealth,
                     attack: bossTemplate.attack, defense: bossTemplate.defense, xp: bossTemplate.xp,
                     loot: bossTemplate.loot, caster: true, castRange: bossTemplate.castRange, spellDamage: bossTemplate.spellDamage,
-                    isBoss: true, madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
+                    isBoss: true, tags: bossTemplate.tags ? [...bossTemplate.tags] : [], madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
                 });
             }
         }
@@ -780,7 +782,7 @@ const chunkManager = {
                             xp: scaledStats.xp, loot: enemyTemplate.loot,
                             caster: enemyTemplate.caster || false, castRange: enemyTemplate.castRange || 0,
                             spellDamage: enemyTemplate.spellDamage || 0, inflicts: enemyTemplate.inflicts || null,
-                            isBoss: enemyTemplate.isBoss || false,
+                            isBoss: enemyTemplate.isBoss || false, tags: enemyTemplate.tags ? [...enemyTemplate.tags] : [],
                             madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
                         });
                     }
@@ -826,6 +828,7 @@ const chunkManager = {
                         spellDamage: enemyTemplate.spellDamage || 0, 
                         inflicts: enemyTemplate.inflicts || null,
                         isBoss: enemyTemplate.isBoss || false,
+                        tags: enemyTemplate.tags ? [...enemyTemplate.tags] : [], // ECS WIN
                         isElite: scaledStats.isElite || false,
                         color: scaledStats.color || null,
                         madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
