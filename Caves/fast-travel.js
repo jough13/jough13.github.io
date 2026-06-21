@@ -8,6 +8,12 @@ const fastTravelModal = document.getElementById('fastTravelModal');
 const fastTravelList = document.getElementById('fastTravelList');
 const closeFastTravelButton = document.getElementById('closeFastTravelButton');
 
+// PERFORMANCE WIN: Cache DOM lookups used during active gameplay/validation loops
+const _ftDOMCache = {
+    manaDisplay: null,
+    getManaDisplay: () => _ftDOMCache.manaDisplay || (document.getElementById('manaDisplay') && (_ftDOMCache.manaDisplay = document.getElementById('manaDisplay')))
+};
+
 function openFastTravelModal() {
     if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
@@ -26,14 +32,14 @@ function openFastTravelModal() {
         if (title) title.className = "text-3xl font-bold mb-2 text-red-500 animate-pulse";
         if (subtitle) {
             subtitle.innerHTML = `The local grid is severed. Only Prime Anchors remain visible.<br><span class="text-xs text-red-300 font-bold">(Emergency Recall Cost: ${travelCost} Mana)</span>`;
-            subtitle.className = "text-sm text-gray-300 mb-6 bg-red-900 bg-opacity-20 p-2 rounded border border-red-800 text-center";
+            subtitle.className = "text-sm text-gray-300 mb-6 bg-red-900 bg-opacity-20 p-2 rounded border border-red-800 text-center shadow-inner";
         }
     } else {
         if (title) title.innerHTML = "Leyline Network";
-        if (title) title.className = "text-3xl font-bold mb-2 text-purple-400";
+        if (title) title.className = "text-3xl font-bold mb-2 text-purple-400 drop-shadow-md";
         if (subtitle) {
             subtitle.innerHTML = `Travel the leylines to an attuned Waystone?<br><span class="text-xs text-purple-300 font-bold">(Base Cost: ${travelCost} Mana)</span>`;
-            subtitle.className = "text-sm text-gray-300 mb-6 bg-purple-900 bg-opacity-20 p-2 rounded border border-purple-800 text-center";
+            subtitle.className = "text-sm text-gray-300 mb-6 bg-purple-900 bg-opacity-20 p-2 rounded border border-purple-800 text-center shadow-inner";
         }
     }
 
@@ -70,8 +76,8 @@ function renderFastTravelList() {
     // Base Cost Calculation
     const baseTravelCost = (player.talents && player.talents.includes('mana_flow')) ? 8 : 10;
 
-    // Helper: Calculate Distance
-    const getDist = (tx, ty) => Math.floor(Math.sqrt(Math.pow(tx - playerX, 2) + Math.pow(ty - playerY, 2)));
+    // PERFORMANCE WIN: Native Math.hypot is highly optimized compared to manual squaring
+    const getDist = (tx, ty) => Math.floor(Math.hypot(tx - playerX, ty - playerY));
 
     // Helper: Calculate Compass Direction (QoL WIN!)
     const getDir = (tx, ty) => {
@@ -107,22 +113,22 @@ function renderFastTravelList() {
         const cost = isFree ? 0 : baseTravelCost;
         const canAfford = player.mana >= cost;
         
-        const btnClass = canAfford ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-gray-700 text-gray-400 opacity-50 cursor-not-allowed";
+        const btnClass = canAfford ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-gray-700 text-gray-400 opacity-50 cursor-not-allowed border-gray-600";
         const btnText = canAfford ? (isFree ? 'Free' : `-${cost} MP`) : 'OOM';
 
         // QoL WIN: Show dimension shift warning if returning from an alternate realm
         const isCrossRealm = (gameState.currentRealm && gameState.currentRealm !== 0);
-        const dimensionBadge = isCrossRealm ? `<span class="ml-2 px-1 rounded bg-purple-900 text-purple-300 border border-purple-500 animate-pulse text-[9px]">DIMENSIONAL SHIFT</span>` : '';
+        const dimensionBadge = isCrossRealm ? `<span class="ml-2 px-1 rounded bg-purple-900 text-purple-300 border border-purple-500 animate-pulse text-[9px] drop-shadow-md">DIMENSIONAL SHIFT</span>` : '';
 
         const villageLi = document.createElement('li');
-        villageLi.className = 'shop-item bg-blue-900 bg-opacity-20 border-blue-700 hover:border-blue-400 transition-all transform hover:-translate-y-0.5';
+        villageLi.className = 'shop-item bg-blue-900 bg-opacity-20 border-blue-700 hover:border-blue-400 transition-all transform hover:-translate-y-0.5 shadow-sm hover:shadow-lg';
         villageLi.setAttribute('onmouseenter', "if(typeof AudioSystem !== 'undefined') AudioSystem.playHover()"); // JUICE
         villageLi.innerHTML = `
             <div>
-                <span class="font-bold text-blue-400">🛡️ Safe Haven Village</span>${dimensionBadge}
-                <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: 0, 0 <span class="ml-2 text-blue-300">(Dist: ${getDist(0, 0)}m${getDir(0, 0)})</span></div>
+                <span class="font-bold text-blue-400 drop-shadow-md">🛡️ Safe Haven Village</span>${dimensionBadge}
+                <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: 0, 0 <span class="ml-2 text-blue-300 font-bold bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Dist: ${getDist(0, 0)}m${getDir(0, 0)})</span></div>
             </div>
-            <button class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 ${btnClass}" ${canAfford ? '' : 'disabled'} onclick="handleFastTravel(0, 0)">${btnText}</button>
+            <button class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAfford ? 'border-blue-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass}" ${canAfford ? '' : 'disabled'} onclick="handleFastTravel(0, 0)">${btnText}</button>
         `;
         fragment.appendChild(villageLi);
     }
@@ -134,18 +140,18 @@ function renderFastTravelList() {
             const ry = player.respawnPoint.y;
             const canAfford = player.mana >= baseTravelCost;
             
-            const btnClass = canAfford ? "bg-green-600 hover:bg-green-500 text-white" : "bg-gray-700 text-gray-400 opacity-50 cursor-not-allowed";
+            const btnClass = canAfford ? "bg-green-600 hover:bg-green-500 text-white" : "bg-gray-700 text-gray-400 opacity-50 cursor-not-allowed border-gray-600";
             const btnText = canAfford ? `-${baseTravelCost} MP` : 'OOM';
 
             const bedLi = document.createElement('li');
-            bedLi.className = 'shop-item bg-green-900 bg-opacity-20 border-green-700 hover:border-green-400 transition-all transform hover:-translate-y-0.5';
+            bedLi.className = 'shop-item bg-green-900 bg-opacity-20 border-green-700 hover:border-green-400 transition-all transform hover:-translate-y-0.5 shadow-sm hover:shadow-lg';
             bedLi.setAttribute('onmouseenter', "if(typeof AudioSystem !== 'undefined') AudioSystem.playHover()");
             bedLi.innerHTML = `
                 <div>
-                    <span class="font-bold text-green-400">⛺ Personal Camp (Bed)</span>
-                    <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${rx}, ${-ry} <span class="ml-2 text-green-300">(Dist: ${getDist(rx, ry)}m${getDir(rx, ry)})</span></div>
+                    <span class="font-bold text-green-400 drop-shadow-md">⛺ Personal Camp (Bed)</span>
+                    <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${rx}, ${-ry} <span class="ml-2 text-green-300 font-bold bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Dist: ${getDist(rx, ry)}m${getDir(rx, ry)})</span></div>
                 </div>
-                <button class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 ${btnClass}" ${canAfford ? '' : 'disabled'} onclick="handleFastTravel(${rx}, ${ry})">${btnText}</button>
+                <button class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAfford ? 'border-green-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass}" ${canAfford ? '' : 'disabled'} onclick="handleFastTravel(${rx}, ${ry})">${btnText}</button>
             `;
             fragment.appendChild(bedLi);
         }
@@ -166,26 +172,29 @@ function renderFastTravelList() {
 
         if (availableWaypoints.length === 0) {
             const emptyLi = document.createElement('li');
-            emptyLi.className = 'italic text-gray-500 p-4 text-center border border-gray-700 rounded-lg text-xs';
+            emptyLi.className = 'italic text-gray-500 p-4 text-center border border-gray-700 rounded-lg text-xs bg-black bg-opacity-20 shadow-inner';
             emptyLi.textContent = "You haven't attuned to any Wilderness Waystones yet. Explore the world to find them!";
             fragment.appendChild(emptyLi);
         } else {
             const canAffordBase = player.mana >= baseTravelCost;
-            const btnClass = canAffordBase ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-gray-700 text-gray-400 opacity-50 cursor-not-allowed";
+            const btnClass = canAffordBase ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-gray-700 text-gray-400 opacity-50 cursor-not-allowed border-gray-600";
             const btnText = canAffordBase ? `-${baseTravelCost} MP` : 'OOM';
 
             availableWaypoints.forEach(wp => {
                 const icon = getBiomeIcon(wp.name);
                 
+                // JUICE & QoL WIN: Show danger warning for far-off waypoints
+                const dangerBadge = wp.dist > 1500 ? `<span title="Extreme Danger Zone!" class="ml-2 animate-pulse drop-shadow-md text-red-500">💀</span>` : '';
+                
                 const li = document.createElement('li');
-                li.className = 'shop-item bg-purple-900 bg-opacity-10 border-gray-700 hover:border-purple-500 transition-all transform hover:-translate-y-0.5';
+                li.className = 'shop-item bg-purple-900 bg-opacity-10 border-gray-700 hover:border-purple-500 transition-all transform hover:-translate-y-0.5 shadow-sm hover:shadow-lg';
                 li.setAttribute('onmouseenter', "if(typeof AudioSystem !== 'undefined') AudioSystem.playHover()");
                 li.innerHTML = `
                     <div>
-                        <span class="font-bold text-purple-400">${icon} ${wp.name}</span>
-                        <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${wp.x}, ${-wp.y} <span class="ml-2 text-purple-300">(Dist: ${wp.dist}m${wp.dir})</span></div>
+                        <span class="font-bold text-purple-400 drop-shadow-md">${icon} ${wp.name}${dangerBadge}</span>
+                        <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${wp.x}, ${-wp.y} <span class="ml-2 text-purple-300 font-bold bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Dist: ${wp.dist}m${wp.dir})</span></div>
                     </div>
-                    <button class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 ${btnClass}" ${canAffordBase ? '' : 'disabled'} onclick="handleFastTravel(${wp.x}, ${wp.y})">${btnText}</button>
+                    <button class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAffordBase ? 'border-purple-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass}" ${canAffordBase ? '' : 'disabled'} onclick="handleFastTravel(${wp.x}, ${wp.y})">${btnText}</button>
                 `;
                 fragment.appendChild(li);
             });
@@ -195,7 +204,7 @@ function renderFastTravelList() {
     fastTravelList.appendChild(fragment);
 }
 
-// JUICE WIN: Make the handler fully asynchronous so we can await particle animations!
+// JUICE WIN: Make the handler fully asynchronous so we can await particle animations and build tension!
 window.handleFastTravel = async function (targetX, targetY) {
     // Prevent double-clicking
     if (isProcessingMove) return;
@@ -207,7 +216,7 @@ window.handleFastTravel = async function (targetX, targetY) {
     const TRAVEL_COST = isFreeRecall ? 0 : ((player.talents && player.talents.includes('mana_flow')) ? 8 : 10);
 
     // Calculate physical distance for dynamic juice
-    const travelDist = Math.floor(Math.sqrt(Math.pow(targetX - player.x, 2) + Math.pow(targetY - player.y, 2)));
+    const travelDist = Math.floor(Math.hypot(targetX - player.x, targetY - player.y));
 
     // --- GAMEPLAY WIN: True Euclidean Anti-Combat Teleport ---
     // You cannot flee via leylines if enemies are too close! (5 tile radius)
@@ -251,7 +260,7 @@ window.handleFastTravel = async function (targetX, targetY) {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         
         // JUICE: Flash the mana bar red so they clearly see why it failed
-        const manaDisplay = document.getElementById('manaDisplay');
+        const manaDisplay = _ftDOMCache.getManaDisplay();
         if (manaDisplay) {
             manaDisplay.classList.remove('stat-flash-red');
             void manaDisplay.offsetWidth;
@@ -264,7 +273,7 @@ window.handleFastTravel = async function (targetX, targetY) {
     isProcessingMove = true;
     fastTravelModal.classList.add('hidden'); // Instantly hide so they can see the effect
 
-    // --- DEPARTURE FX (With Async Delay) ---
+    // --- DEPARTURE FX (With Async Delay & Tension Builder) ---
     if (typeof ParticleSystem !== 'undefined') {
         // Create a massive inward implosion effect
         for(let i = 0; i < 30; i++) {
@@ -284,12 +293,16 @@ window.handleFastTravel = async function (targetX, targetY) {
     
     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
     
-    // JUICE: Teleport Sickness Pre-Warp Screen Shake
-    gameState.screenShake = 10;
+    // JUICE WIN: Teleport Tension Builder
+    // Screen rumbles slightly as the portal opens, then shakes violently on transit!
+    gameState.screenShake = 3;
+    await new Promise(resolve => setTimeout(() => {
+        gameState.screenShake = 12;
+        resolve();
+    }, 200));
 
-    // --- TENSION BUILDER ---
     // Wait for the particles to suck into the player before snapping the coordinates!
-    await new Promise(resolve => setTimeout(resolve, 400));
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     // Deduct Cost
     player.mana -= TRAVEL_COST;
@@ -352,21 +365,29 @@ window.handleFastTravel = async function (targetX, targetY) {
     updates.x = targetX;
     updates.y = targetY;
 
-    // LORE WIN: Travel distance impacts the flavor text and screen shake!
+    // LORE WIN: Biome-Aware Arrival Messages!
+    const arrivalTile = chunkManager.getTile(targetX, targetY);
+    let arrivalFlavor = "You dissolve into pure energy and reappear at your destination.";
+    
+    if (isFreeRecall) arrivalFlavor = "The leylines gently carry you back to safety.";
+    else if (arrivalTile === 'F' || arrivalTile === '🌲') arrivalFlavor = "You step out of the leylines into the rustling canopy.";
+    else if (arrivalTile === 'D') arrivalFlavor = "The leylines deposit you into the scorching heat of the dunes.";
+    else if (arrivalTile === '^' || arrivalTile === '⛰') arrivalFlavor = "You arrive with a crack of thunder on the high peaks.";
+    else if (arrivalTile === '≈') arrivalFlavor = "The teleport drops you squarely into the fetid muck.";
+    else if (arrivalTile === '❄️' || arrivalTile === '🧊') arrivalFlavor = "A blast of freezing air greets your arrival.";
+    else if (arrivalTile === 'd') arrivalFlavor = "You materialize into a cloud of choking ash.";
+
     if (travelDist > 1000) {
-        logMessage("{purple:You cross a terrifying distance. The leylines scream as you re-enter reality!}");
+        logMessage(`{purple:You cross a terrifying distance. The leylines scream as you re-enter reality!}`);
         gameState.screenShake = 25;
         if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playBossSpawn === 'function') AudioSystem.playBossSpawn(); // Heavy impact
     } else {
-        if (isFreeRecall) {
-            logMessage("{cyan:The leylines gently carry you back to safety.}");
-        } else {
-            logMessage("{purple:You dissolve into pure energy and reappear at your destination.}");
-        }
-        gameState.screenShake = 15; // Standard landing impact
+        logMessage(`{cyan:${arrivalFlavor}}`);
+        gameState.screenShake = 10; // Standard landing impact
     }
     
-    if (typeof triggerStatAnimation === 'function') triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
+    const manaDisplay = _ftDOMCache.getManaDisplay();
+    if (typeof triggerStatAnimation === 'function') triggerStatAnimation(manaDisplay, 'stat-pulse-blue');
 
     // Ensure landing spot exists visually if it's not the village
     if (!isVillageBypass) {
