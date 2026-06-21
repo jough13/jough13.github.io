@@ -2373,6 +2373,9 @@ function clearSessionState() {
     gameState.discoveredRegions.clear();
     wokenEnemyTiles.clear();
     pendingSpawns.clear(); // Clear pending spawns
+    
+    // --- CLEAR SPATIAL BUCKETS TO PREVENT GHOST PATHING ---
+    if (gameState.enemySpatialMap) gameState.enemySpatialMap.clear(); 
 
     gameState.mapMode = null;
 
