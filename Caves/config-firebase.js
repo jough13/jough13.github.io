@@ -141,9 +141,9 @@ rtdb.ref('.info/connected').on('value', function(snap) {
         
         // Only show "Connection Lost" if we were actually connected in the first place
         if (hasInitiallyConnected && wasConnected) {
-            // Warning Banner (JUICE WIN: Added animate-pulse so the user knows it's actively trying to reconnect)
+            // Warning Banner (JUICE WIN: Added animate-pulse and greyscale/contrast filters for a "glitching" effect)
             connectionBanner.textContent = "⚠️ Leyline Connection Severed - Re-Attuning...";
-            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-red-900 bg-opacity-95 text-red-200 border-b-2 border-red-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase animate-pulse backdrop-blur-md';
+            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-red-900 bg-opacity-95 text-red-200 border-b-2 border-red-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase animate-pulse backdrop-blur-md grayscale contrast-125';
             
             if (typeof logMessage === 'function') logMessage("{red:The leylines have ruptured! Trying to re-attune...}");
             
@@ -163,64 +163,72 @@ rtdb.ref('.info/connected').on('value', function(snap) {
     window.dispatchEvent(new CustomEvent('firebase-connection-changed', { detail: { connected: isConnected } }));
 });
 
+// PERFORMANCE WIN: Cache DOM lookups for the auth error display
+let _authErrorCache = null;
+
 function handleAuthError(error) {
     let friendlyMessage = '';
+    
+    // LORE WIN: Thematic, universe-appropriate error messages
     switch (error.code) {
         case 'auth/invalid-email':
-            friendlyMessage = 'Please enter a valid email address.';
+            friendlyMessage = 'The Akashic Records cannot decipher this soul-signature. (Invalid Email)';
             break;
         case 'auth/user-not-found':
         case 'auth/wrong-password':
         case 'auth/invalid-credential':
-            friendlyMessage = 'Invalid credentials. Please check your email and password.';
+            friendlyMessage = 'The leylines reject your credentials. A mismatch in the weave.';
             break;
         case 'auth/email-already-in-use':
-            friendlyMessage = 'This email address is already in use.';
+            friendlyMessage = 'This soul-signature is already bound to the realm. (Email in use)';
             break;
         case 'auth/weak-password':
-            friendlyMessage = 'Password must be at least 6 characters long.';
+            friendlyMessage = 'Your anchor is too weak to withstand the Void. (Password must be 6+ chars)';
             break;
         case 'auth/too-many-requests':
-            friendlyMessage = 'Too many failed login attempts. Please try again later.';
+            friendlyMessage = 'The Weavers of Fate are exhausted by your repeated attempts. Wait a moment.';
             break;
         case 'auth/user-disabled':
-            friendlyMessage = 'This account has been disabled by an administrator.';
+            friendlyMessage = 'This soul has been banished by the Archmages. (Account Disabled)';
             break;
         case 'auth/network-request-failed':
-            friendlyMessage = 'Network error. Please check your internet connection.';
+            friendlyMessage = 'The leylines are silent. Check your connection to the physical world.';
             break;
         case 'auth/popup-closed-by-user':
-            friendlyMessage = 'Login popup was closed before completion.';
+            friendlyMessage = 'The scrying ritual was interrupted before completion.';
             break;
         case 'auth/operation-not-allowed':
-            friendlyMessage = 'Email/Password accounts are not enabled on this server.';
+            friendlyMessage = 'This magic is forbidden on this server. (Method Disabled)';
             break;
         case 'auth/user-token-expired':
-            friendlyMessage = 'Your session has expired. Please log in again.';
+            friendlyMessage = 'Your temporal tether has snapped. Please re-anchor your soul (Log in again).';
             break;
-        // EXPANDABILITY WIN: Handled Account Linking & Security Errors
         case 'auth/credential-already-in-use':
-            friendlyMessage = 'This credential is already linked to another account.';
+            friendlyMessage = 'This artifact is already attuned to another traveler.';
             break;
         case 'auth/requires-recent-login':
-            friendlyMessage = 'For your security, please log out and log back in to perform this action.';
+            friendlyMessage = 'The ancient wards require a fresh tether. Log out and return to proceed.';
             break;
         default:
-            friendlyMessage = 'An unexpected error occurred. Please try again.';
+            friendlyMessage = 'The Void stirs. An unexpected error occurred.';
             break;
     }
     
-    const authErrorElement = document.getElementById('authError');
-    if (authErrorElement) {
-        authErrorElement.textContent = friendlyMessage;
+    if (!_authErrorCache) _authErrorCache = document.getElementById('authError');
+    
+    if (_authErrorCache) {
+        _authErrorCache.textContent = friendlyMessage;
         
         // Add a slight shake animation to the error text for feedback
-        authErrorElement.classList.remove('shake');
-        void authErrorElement.offsetWidth; // trigger reflow
-        authErrorElement.classList.add('shake');
+        _authErrorCache.classList.remove('shake');
+        void _authErrorCache.offsetWidth; // trigger reflow
+        _authErrorCache.classList.add('shake');
     }
     
-    console.error("Authentication Error:", error); 
+    // JUICE WIN: Auditory feedback for login failure
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+    
+    console.error("Akashic Auth Error:", error); 
 }
 
 /**
@@ -295,16 +303,18 @@ function sanitizeForFirebase(obj, seen = new WeakSet()) {
     }
 
     // 6. Handle Plain Objects
+    // PERFORMANCE WIN: Object.keys() iteration is notably faster in V8 for object deep-cloning 
+    // than a traditional `for...in` loop with `hasOwnProperty` checks!
     const newObj = {};
-    for (const key in obj) {
-        if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            const val = obj[key];
-            
-            // PERFORMANCE: Skip functions immediately so they aren't processed at all
-            if (typeof val === 'function') continue;
-            
-            newObj[key] = sanitizeForFirebase(val, seen);
-        }
+    const keys = Object.keys(obj);
+    for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        const val = obj[key];
+        
+        // PERFORMANCE: Skip functions immediately so they aren't processed at all
+        if (typeof val === 'function') continue;
+        
+        newObj[key] = sanitizeForFirebase(val, seen);
     }
     return newObj;
 }
