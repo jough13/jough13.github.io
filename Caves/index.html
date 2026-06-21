@@ -16,10 +16,16 @@
     <!-- Resource Hints & Preloading for faster load times and no pop-in -->
     <link rel="preconnect" href="https://cdn.tailwindcss.com">
     <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
+    <!-- PERFORMANCE WIN: Preload heavy UI assets to prevent visual pop-in on first load -->
+    <link rel="preload" href="assets/bg_castle.png" as="image">
+    <link rel="preload" href="assets/frame_outer.png" as="image">
+    <link rel="preload" href="assets/btn_normal.png" as="image">
     <link rel="preload" href="assets/torch.gif" as="image">
+    
     <link href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=VT323&display=swap" rel="stylesheet">
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏰</text></svg>">
@@ -83,7 +89,7 @@
             Caves<br>& Castles
         </h1>
         <button id="startGameBtn" class="text-green-400 font-mono text-xl md:text-2xl font-bold tracking-widest text-center px-4 mt-8 cursor-pointer hover:text-green-300 transition-colors bg-transparent border-none outline-none" style="-webkit-text-stroke: 1px black; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(74, 222, 128, 0.8); animation: pulse 1.5s infinite;" aria-label="Click to start game">
-            - CLICK TO START -
+            - ENTER THE REALM -
         </button>
     </div>
 
@@ -100,7 +106,6 @@
                         <img src="assets/torch.gif" alt="Torch Animation" class="w-12 h-auto absolute left-4 top-2" style="image-rendering: pixelated; filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.5));">
                         <img src="assets/torch.gif" alt="Torch Animation" class="w-12 h-auto absolute right-4 top-2" style="image-rendering: pixelated; filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.5));">
                         
-                        <!-- LORE WIN: Renamed from boring "Login" to "Akashic Registry" -->
                         <h1 id="authTitle" class="gothic-title text-4xl text-center m-0 border-none pb-0 w-full px-12">Akashic Registry</h1>
                     </div>
                     
@@ -133,7 +138,6 @@
                                     </label>
                                 </div>
                             </div>
-                            <!-- LORE WIN: "Forge New Soul" instead of "Create Account" -->
                             <a href="#" id="authToggle" class="hover:text-green-400 font-bold underline underline-offset-4 mb-1 transition-colors">Forge New Soul</a>
                         </div>
 
@@ -141,7 +145,7 @@
                     </div>
 
                     <div class="mt-8 pt-2 border-t-2 border-dashed border-gray-600 w-full text-center text-xs pixel-text text-gray-400">
-                        <a href="devlog.html" class="hover:text-white transition-colors">Devlog</a> | Version 0.2.6 | Last Updated: June 2026
+                        <a href="devlog.html" class="hover:text-white transition-colors">Devlog</a> | Akashic Engine v0.2.7
                     </div>
                 </div>
             </div>
@@ -241,7 +245,6 @@
                                 <div id="timePanel" class="panel p-2 rounded-lg border text-center relative overflow-hidden shadow-sm">
                                     <span id="timeDisplay" class="font-bold block"></span>
                                     <h2 id="regionDisplay" class="text-sm muted-text inline-block"></h2>
-                                    <!-- Prepared UI hook for Elemental / Event display -->
                                     <div id="weatherDisplay" class="text-xs font-bold mt-1 tracking-widest uppercase hidden" aria-live="polite"></div>
                                 </div>
 
@@ -249,8 +252,8 @@
                                 <div id="gameCanvasWrapper" class="relative w-full h-[60vh] min-h-[350px] rounded-xl overflow-hidden border-2 shadow-inner" style="border-color: var(--border-color);">
                                     <canvas id="gameCanvas" class="w-full h-full" role="img" aria-label="Interactive Game Viewport"></canvas>
                                     
-                                    <!-- MOVED & RESTYLED: Smooth Auto-Save Corner Indicator -->
-                                    <div id="saveIndicator" class="absolute bottom-3 right-3 bg-black bg-opacity-60 text-gray-300 px-2 py-1 text-[10px] rounded-md backdrop-blur-sm z-50 flex items-center gap-1 pointer-events-none transition-opacity duration-1000 opacity-0 border border-gray-700">
+                                    <!-- JUICE WIN: Magical glow on the save indicator -->
+                                    <div id="saveIndicator" class="absolute bottom-3 right-3 bg-black bg-opacity-60 text-gray-300 px-2 py-1 text-[10px] rounded-md backdrop-blur-sm z-50 flex items-center gap-1 pointer-events-none transition-opacity duration-1000 opacity-0 border border-gray-700 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
                                         <span class="animate-pulse opacity-100 text-blue-400 drop-shadow-md">💾</span> <span class="opacity-75 tracking-widest uppercase font-bold text-[9px]">Anchoring</span>
                                     </div>
                                 </div>
@@ -308,7 +311,7 @@
                                     <span class="text-[10px] mt-1 muted-text font-bold uppercase tracking-widest">Ammo</span>
                                 </div>
                             </div>
-                            <div class="text-xs text-center mt-3 border-t border-gray-600 pt-2 space-y-1 bg-black bg-opacity-10 rounded p-2">
+                            <div class="text-xs text-center mt-3 border-t border-gray-600 pt-2 space-y-1 bg-black bg-opacity-10 rounded p-2 shadow-inner">
                                 <p id="equippedWeaponDisplay" class="highlight-text font-bold">Fists</p>
                                 <p id="equippedArmorDisplay" class="highlight-text font-bold">Simple Tunic</p>
                                 <p id="equippedMiscDisplay" class="text-gray-500 text-[10px] italic"></p>
@@ -316,7 +319,7 @@
                         </div>
                         
                         <!-- Vitals -->
-                        <div id="statusPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-3 shadow-sm" role="region" aria-label="Player Vitals">
+                        <div id="statusPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-3 shadow-sm transition-colors duration-300" role="region" aria-label="Player Vitals">
                             <div>
                                 <span id="healthDisplay" class="font-bold flex justify-between"><span>Health</span> <span>10/10</span></span>
                                 <div class="stat-bar-container"><div id="healthBar" class="stat-bar bar-health"></div></div>
@@ -355,7 +358,7 @@
                                 <span id="xpDisplay" class="font-bold text-xs flex justify-between text-gray-400 tracking-widest uppercase"><span>XP</span> <span>0 / 100</span></span>
                                 <div class="stat-bar-container !h-1.5"><div id="xpBar" class="stat-bar bar-xp"></div></div>
                             </div>
-                            <span id="statPointsDisplay" class="font-bold text-yellow-400 hidden text-center animate-pulse uppercase tracking-widest text-[10px] border border-yellow-600 bg-yellow-900 bg-opacity-30 rounded py-1"></span>
+                            <span id="statPointsDisplay" class="font-bold text-yellow-400 hidden text-center animate-pulse uppercase tracking-widest text-[10px] border border-yellow-600 bg-yellow-900 bg-opacity-30 rounded py-1 shadow-inner"></span>
                         </div>
                         
                         <!-- Core Attributes -->
@@ -414,7 +417,8 @@
                         <span class="mx-2">Map: <kbd class="font-bold text-white bg-gray-800 border-gray-600 px-1 py-0.5 rounded shadow-sm">M</kbd></span> | 
                         <span class="mx-2">Spells: <kbd class="font-bold text-white bg-gray-800 border-gray-600 px-1 py-0.5 rounded shadow-sm">B</kbd></span> | 
                         <span class="mx-2">Skills: <kbd class="font-bold text-white bg-gray-800 border-gray-600 px-1 py-0.5 rounded shadow-sm">K</kbd></span> |
-                        <span class="ml-2">Journal: <kbd class="font-bold text-white bg-gray-800 border-gray-600 px-1 py-0.5 rounded shadow-sm">J</kbd></span>
+                        <span class="mx-2">Journal: <kbd class="font-bold text-white bg-gray-800 border-gray-600 px-1 py-0.5 rounded shadow-sm">J</kbd></span> |
+                        <span class="ml-2">Zoom: <kbd class="font-bold text-white bg-gray-800 border-gray-600 px-1 py-0.5 rounded shadow-sm">+ / -</kbd></span>
                     </p>
                 </div>
             </div>
@@ -515,7 +519,7 @@
             </div>
 
             <!-- flex-shrink-0 ensures the button never gets squished out of view -->
-            <button id="closeSettingsButton" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 flex-shrink-0">Close Settings</button>
+            <button id="closeSettingsButton" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 flex-shrink-0 border-b-2 border-gray-800">Close Settings</button>
         </div>
     </div>
 
@@ -538,7 +542,7 @@
             <div class="absolute inset-0 bg-red-900 opacity-10 pointer-events-none" style="background-image: radial-gradient(circle, transparent 20%, #450a0a 100%);"></div>
             
             <h2 id="gameOverTitle" class="text-red-500 font-extrabold text-4xl mb-2 drop-shadow-md relative z-10" style="font-family: 'Uncial Antiqua', cursive; text-shadow: 2px 2px 0 #000;">YOU HAVE PERISHED</h2>
-            <p class="text-gray-400 mb-6 italic relative z-10">The darkness claims another soul...</p>
+            <p class="text-gray-400 mb-6 italic relative z-10 font-serif">The darkness claims another soul...</p>
             
             <div class="bg-black bg-opacity-60 p-4 rounded-xl border border-red-900 mb-8 inline-block w-full max-w-sm text-left relative z-10 shadow-inner">
                 <p id="finalLevelDisplay" class="text-lg font-bold text-white mb-2 pb-2 border-b border-red-900 flex justify-between"><span>Final Level:</span> <span>1</span></p>
@@ -569,7 +573,7 @@
             <div id="riddleContainer" class="hidden mb-6 bg-black bg-opacity-10 p-4 rounded-xl border border-yellow-800">
                 <p class="text-sm font-bold mb-2 italic">Speak your answer:</p>
                 <input type="text" id="riddleInput" aria-label="Riddle Answer" class="w-full p-3 border-2 border-yellow-800 rounded-lg mb-3 bg-white text-black font-bold focus:outline-none focus:ring-2 focus:ring-yellow-600 shadow-inner" placeholder="Type here...">
-                <button id="submitRiddle" class="bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg w-full shadow-md transition-transform active:scale-95 text-lg" style="font-family: 'Uncial Antiqua', cursive;">Speak</button>
+                <button id="submitRiddle" class="bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg w-full shadow-md transition-transform active:scale-95 text-lg border-b-2 border-yellow-900 active:border-b-0" style="font-family: 'Uncial Antiqua', cursive;">Speak</button>
             </div>
             
             <button id="closeLoreButton" class="mt-2 bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Close</button>
@@ -620,7 +624,7 @@
     <!-- SPELLBOOK MODAL -->
     <div id="spellModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="spellbookTitle">
         <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-blue-500 flex flex-col max-h-[85vh]">
-            <h2 id="spellbookTitle" class="text-3xl font-bold mb-2 text-blue-400 flex-shrink-0" style="font-family: 'Uncial Antiqua', cursive;">Spellbook</h2>
+            <h2 id="spellbookTitle" class="text-3xl font-bold mb-2 text-blue-400 flex-shrink-0 drop-shadow-md" style="font-family: 'Uncial Antiqua', cursive;">Spellbook</h2>
             <p class="text-xs text-gray-400 mb-4 bg-blue-900 bg-opacity-20 p-2 rounded border border-blue-800 flex-shrink-0 shadow-inner text-center">Click 'Bind' to assign a spell to your Hotbar for quick casting.</p>
             
             <ul id="spellList" class="space-y-3 overflow-y-auto pr-2 flex-grow custom-scrollbar min-h-[10rem]"></ul>
@@ -632,7 +636,7 @@
     <!-- SKILLBOOK MODAL -->
     <div id="skillModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="skillbookTitle">
         <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-yellow-500 flex flex-col max-h-[85vh]">
-            <h2 id="skillbookTitle" class="text-3xl font-bold mb-2 text-yellow-500 flex-shrink-0" style="font-family: 'Uncial Antiqua', cursive;">Techniques</h2>
+            <h2 id="skillbookTitle" class="text-3xl font-bold mb-2 text-yellow-500 flex-shrink-0 drop-shadow-md" style="font-family: 'Uncial Antiqua', cursive;">Techniques</h2>
             <p class="text-xs text-gray-400 mb-4 bg-yellow-900 bg-opacity-20 p-2 rounded border border-yellow-800 flex-shrink-0 shadow-inner text-center">Weapon skills require specific weapons equipped. Click 'Bind' to assign to Hotbar.</p>
             
             <ul id="skillList" class="space-y-3 overflow-y-auto pr-2 flex-grow custom-scrollbar min-h-[10rem]"></ul>
@@ -726,7 +730,7 @@
     <!-- STASH MODAL -->
     <div id="stashModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="stashTitle">
         <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-gray-500 max-w-4xl w-full h-[85vh] flex flex-col">
-            <h2 id="stashTitle" class="text-3xl font-bold mb-4 border-b-2 border-gray-600 pb-2 flex-shrink-0" style="font-family: 'Uncial Antiqua', cursive;">Dimensional Vault</h2>
+            <h2 id="stashTitle" class="text-3xl font-bold mb-4 border-b-2 border-gray-600 pb-2 flex-shrink-0 drop-shadow-md" style="font-family: 'Uncial Antiqua', cursive;">Dimensional Vault</h2>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow overflow-hidden min-h-0">
                 <div class="flex flex-col h-full bg-black bg-opacity-30 rounded-xl border border-gray-700 p-4 shadow-inner">
@@ -750,7 +754,7 @@
     <div id="mapModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="mapTitle">
         <div class="modal-content themed-container p-4 rounded-2xl shadow-2xl border-2 flex flex-col h-[85vh] w-[95vw] max-w-5xl">
             <div class="flex justify-between items-center mb-3 flex-shrink-0">
-                <h2 id="mapTitle" class="text-3xl font-bold" style="font-family: 'Uncial Antiqua', cursive;">World Map</h2>
+                <h2 id="mapTitle" class="text-3xl font-bold drop-shadow-md" style="font-family: 'Uncial Antiqua', cursive;">World Map</h2>
                 <div class="text-right flex items-center gap-4">
                     <span class="text-xs text-gray-400 block italic">Scroll to zoom. Drag to pan.</span>
                     <button id="closeMapButton" aria-label="Close Map" class="text-red-500 font-bold hover:text-red-400 bg-red-900 bg-opacity-30 px-3 py-1.5 rounded border border-red-800 transition-colors shadow-sm">Close Map ❌</button>
@@ -805,7 +809,7 @@
         <div class="d-pad-container" aria-label="Directional Pad">
             <button data-key="ArrowUp" aria-label="Move Up" title="Move Up (W)" class="d-pad-btn up">⬆️</button>
             <button data-key="ArrowLeft" aria-label="Move Left" title="Move Left (A)" class="d-pad-btn left">⬅️</button>
-            <button data-key="r" aria-label="Wait or Rest" title="Rest (R)" class="d-pad-btn center shadow-inner">💤</button> 
+            <button data-key="r" aria-label="Wait or Rest" title="Rest (R)" class="d-pad-btn center shadow-inner text-gray-700">💤</button> 
             <button data-key="ArrowRight" aria-label="Move Right" title="Move Right (D)" class="d-pad-btn right">➡️</button>
             <button data-key="ArrowDown" aria-label="Move Down" title="Move Down (S)" class="d-pad-btn down">⬇️</button>
         </div>
@@ -881,7 +885,7 @@
             
             let currentBlocks = 0;
             // LORE WIN: Updated Bootloader texts to match the game universe!
-            const statusTexts = ["Tuning Leylines...", "Summoning Eldritch Entities...", "Generating Multiverse...", "Reality Anchored."];
+            const statusTexts = ["Aligning the Akashic Records...", "Charting the Void Rifts...", "Awakening the First King...", "Reality Anchored."];
             
             // Phase 1: The Bootloader Animation
             const barAnimationComplete = new Promise((resolve) => {
@@ -969,7 +973,11 @@
                 "Reweaving the Timeline...",
                 "Sailing the Deep Ocean...",
                 "Forging Star-Metal...",
-                "Stashing paradox anomalies..."
+                "Stashing paradox anomalies...",
+                "Dodging the Leviathan...",
+                "Attuning Waystones...",
+                "Studying the Abyss...",
+                "Translating Dwarven Runes..."
             ];
             
             const loader = document.getElementById('loadingIndicator');
@@ -1017,3 +1025,4 @@
 
 </body>
 </html>
+<!-- --- END OF FILE index.html --- -->
