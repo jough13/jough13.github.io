@@ -1742,8 +1742,11 @@ function handlePlayerDeath() {
     
     if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(statDisplays.health, false);
 
+    // Safely unequip ALL gear to strip their stat bonuses before resetting
     if (player.equipment.weapon && typeof applyStatBonuses === 'function') applyStatBonuses(player.equipment.weapon, -1);
     if (player.equipment.armor && typeof applyStatBonuses === 'function') applyStatBonuses(player.equipment.armor, -1);
+    if (player.equipment.offhand && typeof applyStatBonuses === 'function') applyStatBonuses(player.equipment.offhand, -1);
+    if (player.equipment.accessory && typeof applyStatBonuses === 'function') applyStatBonuses(player.equipment.accessory, -1);
 
     const goldLost = Math.floor(player.coins / 2);
     const lvlDisplay = document.getElementById('finalLevelDisplay');
