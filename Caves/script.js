@@ -1,5 +1,7 @@
 // Globals
 
+let pendingSaveData = null;
+
 // Groups map coordinates into 50x50 chunk sectors for efficient Firestore Subcollections
 function getSectorId(coordString) {
     try {
@@ -281,8 +283,6 @@ async function manualSaveGame() {
         }
     }
 }
-
-let pendingSaveData = null; 
 
 // --- INPUT THROTTLE ---
 let lastActionTime = 0;
