@@ -23,12 +23,13 @@ function getStashItemKey(name) {
 // Helper to determine if an item is allowed to merge quantities
 window.isStackableItem = (type) => ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(type);
 
-// Helper for deep cloning items safely without JSON serialization overhead
+// PERFORMANCE WIN: High-speed, robust deep cloning for stash transfers
 window.cloneItemSafely = (item) => {
-    return {
-        ...item,
-        statBonuses: item.statBonuses ? { ...item.statBonuses } : null
-    };
+    if (typeof fastClone === 'function') {
+        return fastClone(item);
+    }
+    // Absolute safe fallback if fastClone isn't available
+    return JSON.parse(JSON.stringify(item));
 };
 
 // JUICE WIN: Dynamic Audio based on the item type being transferred
@@ -68,7 +69,8 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
 
         // Capacity Check (Only applies if it requires a new slot)
         if (!existingBankItem && player.bank.length >= window.MAX_STASH_SLOTS) {
-            logMessage(`{red:Your stash is full! (Max ${window.MAX_STASH_SLOTS} slots)}`);
+            // LORE WIN: Thematic overload warning
+            logMessage(`{red:The fabric of the vault groans under the weight of your possessions! (Max ${window.MAX_STASH_SLOTS} slots)}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
@@ -88,10 +90,11 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
         
         const qtyString = amountToMove > 1 ? `${amountToMove}x ` : '';
         const nameFormatted = item.statBonuses ? `{purple:${item.name}}` : item.name;
-        logMessage(`Deposited ${qtyString}${nameFormatted}.`);
+        logMessage(`You push ${qtyString}${nameFormatted} into the void.`);
         
         playStashAudio(item.type);
-        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '📦', '#ffffff');
+        // JUICE WIN: Purple particle effect representing the Void Vault receiving the item
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '📦', '#c084fc');
 
     }
     else if (action === 'withdraw') {
@@ -141,10 +144,11 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
         
         const qtyString = amountToMove > 1 ? `${amountToMove}x ` : '';
         const nameFormatted = item.statBonuses ? `{purple:${item.name}}` : item.name;
-        logMessage(`Withdrew ${qtyString}${nameFormatted}.`);
+        logMessage(`You pull ${qtyString}${nameFormatted} from the vault.`);
         
         playStashAudio(item.type);
-        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '🎒', '#ffffff');
+        // JUICE WIN: Blue particle effect representing the player's Bag receiving the item
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '🎒', '#60a5fa');
     }
 
     // Save and Render.
@@ -173,7 +177,7 @@ window.depositAllMaterials = function() {
         const existingBankItem = player.bank.find(bankItem => bankItem.name === item.name);
 
         if (!existingBankItem && player.bank.length >= window.MAX_STASH_SLOTS) {
-            logMessage("{red:Stash became full during mass deposit.}");
+            logMessage("{red:The vault became full during the mass deposit.}");
             break; 
         }
 
@@ -364,7 +368,8 @@ function renderStash() {
 
     // Render Player Inventory (Deposit)
     if (player.inventory.length === 0) {
-        stashPlayerList.innerHTML = '<li class="italic text-sm text-gray-500 p-2 border border-gray-700 rounded-lg">Your bag is empty.</li>';
+        // LORE WIN: Thematic empty states!
+        stashPlayerList.innerHTML = '<li class="italic text-sm text-gray-500 p-3 border border-gray-700 rounded-lg bg-black bg-opacity-20 text-center shadow-inner">Your pockets hold only dust.</li>';
     } else {
         player.inventory.forEach((item, index) => {
             const li = document.createElement('li');
@@ -409,7 +414,8 @@ function renderStash() {
 
     // Render Bank (Withdraw)
     if (bank.length === 0) {
-        stashBankList.innerHTML = '<li class="italic text-sm text-gray-500 p-2 border border-gray-700 rounded-lg">Stash is empty.</li>';
+        // LORE WIN: Thematic empty states!
+        stashBankList.innerHTML = '<li class="italic text-sm text-gray-500 p-3 border border-gray-700 rounded-lg bg-black bg-opacity-20 text-center shadow-inner">The dimensional vault echoes with emptiness.</li>';
     } else {
         bank.forEach((item, index) => {
             const li = document.createElement('li');
@@ -460,7 +466,7 @@ function renderStash() {
         // Inject Auto-Sort alongside capacity
         bankHeader.innerHTML = `
             <div class="flex justify-between items-center w-full">
-                <span>Dimensional Vault <span class="text-[10px] font-normal ${capColor} ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner">(${bank.length}/${window.MAX_STASH_SLOTS})</span></span>
+                <span class="drop-shadow-sm">Dimensional Vault <span class="text-[10px] font-normal ${capColor} ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner">(${bank.length}/${window.MAX_STASH_SLOTS})</span></span>
                 <button onclick="sortStash()" class="text-[10px] uppercase font-bold tracking-widest bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95" style="transform: translateZ(0);">Sort</button>
             </div>
         `;
@@ -471,7 +477,7 @@ function renderStash() {
     if (invHeader && !invHeader.querySelector('#massDepositBtn')) {
         invHeader.innerHTML = `
             <div class="flex justify-between items-center w-full">
-                <span>Your Bag</span>
+                <span class="drop-shadow-sm">Your Bag</span>
                 <div class="flex gap-2">
                     <button id="quickStackBtn" onclick="quickStackToStash()" class="text-[10px] uppercase font-bold tracking-widest bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-purple-800" style="transform: translateZ(0);">
                         Quick Stack
@@ -494,7 +500,7 @@ function openStashModal() {
     // LORE WIN: Flavor text explaining how stashes work globally
     const title = document.querySelector('#stashModal h2');
     if (title) {
-        title.innerHTML = `Dimensional Vault <span class='text-sm text-purple-400 block font-normal mt-1 italic font-serif'>Space and time fold inside this heavy iron box. Your items are safe across all realms.</span>`;
+        title.innerHTML = `Dimensional Vault <span class='text-sm text-purple-400 block font-normal mt-1 italic font-serif drop-shadow-none'>Space and time fold inside this heavy iron box. Your items are safe across all realms.</span>`;
     }
     
     const stashModal = document.getElementById('stashModal');
