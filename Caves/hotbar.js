@@ -8,6 +8,8 @@
 const hotbarContainerEl = document.getElementById('hotbarContainer');
 
 function renderHotbar() {
+    if (!hotbarContainerEl) return;
+    
     hotbarContainerEl.innerHTML = '';
 
     // Absolute positioned label that sits on the border/top-left
@@ -16,10 +18,12 @@ function renderHotbar() {
     label.textContent = 'Hotkeys';
     hotbarContainerEl.appendChild(label);
 
-    const hotbar = gameState.player.hotbar;
-    const cooldowns = gameState.player.cooldowns || {};
+    // PERFORMANCE WIN: Cache player object reference
+    const player = gameState.player;
+    const hotbar = player.hotbar || [null, null, null, null, null];
+    const cooldowns = player.cooldowns || {};
 
-    // PERFORMANCE: Use DocumentFragment to batch DOM inserts
+    // PERFORMANCE WIN: Use DocumentFragment to batch DOM inserts
     const fragment = document.createDocumentFragment();
 
     hotbar.forEach((abilityId, index) => {
@@ -28,10 +32,12 @@ function renderHotbar() {
         slotDiv.id = `hotbarSlot-${index}`;
         slotDiv.className = "relative w-12 h-12 border-2 rounded flex items-center justify-center cursor-pointer bg-[var(--bg-page)] hover:border-blue-500 transition-all shadow-sm";
 
+        const hotkeyNumber = index + 1;
+
         // Add keyboard number hint
         const keyHint = document.createElement('span');
         keyHint.className = "absolute top-0 left-1 text-[10px] font-bold text-[var(--text-muted)]";
-        keyHint.textContent = index + 1;
+        keyHint.textContent = hotkeyNumber;
         slotDiv.appendChild(keyHint);
 
         if (abilityId) {
@@ -65,14 +71,16 @@ function renderHotbar() {
 
                 abrv.className = `font-bold text-sm ${colorClass} drop-shadow-md`;
                 abrv.textContent = data.name.substring(0, 2).toUpperCase(); 
-                slotDiv.title = `${data.name} (Cost: ${data.cost} ${data.costType})`;
+                
+                // QoL WIN: Explicit instructions on hover
+                slotDiv.title = `Press [${hotkeyNumber}] to use:\n${data.name} (Cost: ${data.cost} ${data.costType})`;
                 slotDiv.appendChild(abrv);
 
-                // Cooldown Overlay
+                // JUICE WIN: Glassmorphism Cooldown Overlay
                 if (cooldowns[abilityId] > 0) {
-                    slotDiv.classList.add('opacity-50', 'cursor-not-allowed', 'border-red-900');
+                    slotDiv.classList.add('cursor-not-allowed', 'border-red-900');
                     const cdOverlay = document.createElement('div');
-                    cdOverlay.className = "absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 text-white font-bold text-lg rounded";
+                    cdOverlay.className = "absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-[2px] text-red-400 font-bold text-xl rounded shadow-inner";
                     cdOverlay.textContent = cooldowns[abilityId];
                     slotDiv.appendChild(cdOverlay);
                 }
@@ -83,15 +91,15 @@ function renderHotbar() {
                 iconSpan.textContent = itemData.tile || '🎒';
                 
                 // Get current quantity from inventory
-                const invItem = gameState.player.inventory.find(i => i.name === itemData.name || i.templateId === abilityId);
+                const invItem = player.inventory.find(i => i.name === itemData.name || i.templateId === abilityId);
                 const qty = invItem ? invItem.quantity : 0;
                 
-                slotDiv.title = `${itemData.name} (Qty: ${qty})`;
+                slotDiv.title = `Press [${hotkeyNumber}] to use:\n${itemData.name} (Qty: ${qty})`;
                 slotDiv.appendChild(iconSpan);
                 
                 // Show quantity badge
                 const qtyBadge = document.createElement('span');
-                qtyBadge.className = "absolute bottom-0 right-0 text-[10px] bg-black bg-opacity-70 text-white px-1 rounded-tl font-bold";
+                qtyBadge.className = "absolute bottom-0 right-0 text-[10px] bg-black bg-opacity-70 text-white px-1 rounded-tl font-bold border border-gray-700";
                 qtyBadge.textContent = qty;
                 slotDiv.appendChild(qtyBadge);
 
@@ -102,6 +110,7 @@ function renderHotbar() {
             }
         } else {
             slotDiv.classList.add('border-dashed', 'opacity-30', 'border-gray-600');
+            slotDiv.title = "Empty Slot (Right-click an item/spell to bind)";
         }
 
         // Left Click to Use
@@ -119,13 +128,13 @@ function renderHotbar() {
         slotDiv.oncontextmenu = (e) => {
             e.preventDefault();
             
-            if (gameState.player.hotbar[index]) {
+            if (player.hotbar[index]) {
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
-                logMessage(`{gray:Cleared Hotbar Slot ${index + 1}.}`);
+                logMessage(`{gray:Cleared Hotbar Slot ${hotkeyNumber}.}`);
             }
             
-            gameState.player.hotbar[index] = null;
-            if (typeof playerRef !== 'undefined') playerRef.update({ hotbar: gameState.player.hotbar });
+            player.hotbar[index] = null;
+            if (typeof playerRef !== 'undefined') playerRef.update({ hotbar: player.hotbar });
             renderHotbar();
         };
 
@@ -136,12 +145,22 @@ function renderHotbar() {
 }
 
 function useHotbarSlot(index) {
-    const abilityId = gameState.player.hotbar[index];
+    const player = gameState.player;
+    const abilityId = player.hotbar[index];
     if (!abilityId) return;
 
-    const cooldowns = gameState.player.cooldowns || {};
+    const cooldowns = player.cooldowns || {};
     if (cooldowns[abilityId] > 0) {
-        logMessage(`{gray:That ability is on cooldown! (${cooldowns[abilityId]} turns left)}`);
+        // LORE WIN: Thematic cooldown messages instead of generic errors
+        let cdMsg = `{gray:That ability is not ready yet! (${cooldowns[abilityId]} turns left)}`;
+        
+        if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) {
+            cdMsg = `{blue:The arcane energies are still gathering! (${cooldowns[abilityId]} turns left)}`;
+        } else if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) {
+            cdMsg = `{yellow:You need a moment to recover your breath! (${cooldowns[abilityId]} turns left)}`;
+        }
+        
+        logMessage(cdMsg);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         
         // JUICE WIN: Shake the slot to indicate it's blocked
@@ -155,9 +174,9 @@ function useHotbarSlot(index) {
     }
 
     if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) {
-        useSkill(abilityId);
+        if (typeof useSkill === 'function') useSkill(abilityId);
     } else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) {
-        castSpell(abilityId);
+        if (typeof castSpell === 'function') castSpell(abilityId);
     } else {
         // Assume it's an item, resolve its proper name
         let targetName = abilityId;
@@ -166,12 +185,12 @@ function useHotbarSlot(index) {
         }
 
         // Find the item in the inventory
-        const invIndex = gameState.player.inventory.findIndex(i => i.name === targetName || i.templateId === abilityId);
+        const invIndex = player.inventory.findIndex(i => i.name === targetName || i.templateId === abilityId);
         
         if (invIndex > -1) {
-            useInventoryItem(invIndex);
+            if (typeof useInventoryItem === 'function') useInventoryItem(invIndex);
         } else {
-            logMessage(`{gray:You don't have any more of that item.}`);
+            logMessage(`{gray:You don't have any more of that item in your bag.}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             
             // JUICE WIN: Shake the empty slot to indicate you've run out!
@@ -186,8 +205,10 @@ function useHotbarSlot(index) {
 }
 
 function assignToHotbar(abilityId) {
+    const player = gameState.player;
+    const hotbar = player.hotbar;
+    
     // Find first empty slot
-    const hotbar = gameState.player.hotbar;
     let index = hotbar.indexOf(null);
 
     // Get the readable name for the log message
