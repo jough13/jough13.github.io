@@ -37,6 +37,19 @@ const INSTANT_KEYS = new Set([
     '+', '=', '-', '_'
 ]);
 
+// PERFORMANCE WIN: Live HTMLCollection Cache for O(1) Modal Checks
+// Completely eliminates the need to run document.querySelector on every single keystroke!
+const _modalCache = {
+    collection: null,
+    getActive: () => {
+        if (!_modalCache.collection) _modalCache.collection = document.getElementsByClassName('modal-overlay');
+        for (let i = 0; i < _modalCache.collection.length; i++) {
+            if (!_modalCache.collection[i].classList.contains('hidden')) return _modalCache.collection[i];
+        }
+        return null;
+    },
+    isAnyOpen: () => !!_modalCache.getActive()
+};
 
 // --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
@@ -47,14 +60,17 @@ function handleInput(key) {
     }
 
     // 2. Audio Context Resume (Browser Policy)
-    if (typeof AudioSystem !== 'undefined' && AudioSystem.ctx && AudioSystem.ctx.state === 'suspended') {
-        AudioSystem.ctx.resume().catch(() => {});
+    if (typeof AudioSystem !== 'undefined' && AudioSystem._ctx && AudioSystem._ctx.state === 'suspended') {
+        AudioSystem._ctx.resume().catch(() => {});
     }
 
     // 3. Robust Safety Check
     if (!player_id || !gameState || !gameState.player || gameContainer.classList.contains('hidden')) {
         return;
     }
+
+    // PERFORMANCE WIN: Cache the lowercased key to prevent repeated string allocations
+    const lowerKey = key.toLowerCase();
 
     // --- ESCAPE KEY / MODAL CLOSER ---
     if (key === 'Escape') {
@@ -64,7 +80,7 @@ function handleInput(key) {
         if (gameState.isAiming) {
             gameState.isAiming = false;
             gameState.abilityToAim = null;
-            logMessage("{gray:Aiming canceled.}");
+            logMessage("{gray:You lower your weapon. (Aiming canceled)}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             
             // JUICE: Visual cancellation feedback
@@ -75,7 +91,7 @@ function handleInput(key) {
         
         if (gameState.isDroppingItem) {
             gameState.isDroppingItem = false;
-            logMessage("{gray:Drop canceled.}");
+            logMessage("{gray:You reconsider and keep the item. (Drop canceled)}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             
             // JUICE: Visual cancellation feedback
@@ -84,8 +100,8 @@ function handleInput(key) {
             return;
         }
 
-        // Find any active modal and close it
-        const activeModal = document.querySelector('.modal-overlay:not(.hidden)');
+        // Find any active modal and close it using our ultra-fast cache
+        const activeModal = _modalCache.getActive();
         if (activeModal) {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             
@@ -104,7 +120,7 @@ function handleInput(key) {
     // 4. Dead Check
     if (gameState.player.health <= 0) return;
 
-    if (key.toLowerCase() === 'q') {
+    if (lowerKey === 'q') {
         if (typeof drinkFromSource === 'function') drinkFromSource();
         return;
     }
@@ -163,7 +179,7 @@ function handleInput(key) {
     }
 
     // --- DROP MODE TOGGLE ---
-    if (gameState.inventoryMode && key.toLowerCase() === 'd') {
+    if (gameState.inventoryMode && lowerKey === 'd') {
         if (gameState.player.inventory.length === 0) {
             logMessage("{gray:Inventory empty.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -206,7 +222,7 @@ function handleInput(key) {
     }
 
     // --- GROUND LOOTING ---
-    if (key.toLowerCase() === 'g') {
+    if (lowerKey === 'g') {
         let tileId;
         if (gameState.mapMode === 'overworld') tileId = `${gameState.player.x},${-gameState.player.y}`;
         else tileId = `${gameState.currentCaveId || gameState.currentCastleId}:${gameState.player.x},${-gameState.player.y}`;
@@ -220,9 +236,9 @@ function handleInput(key) {
             if (typeof attemptMovePlayer === 'function') attemptMovePlayer(gameState.player.x, gameState.player.y); 
             return;
         } else {
-            // JUICE WIN: Show a subtle question mark if there's nothing to loot
+            // JUICE WIN: Clearer visual/audio rejection for failed looting
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "?", "#9ca3af");
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "Nothing", "#9ca3af");
             logMessage("{gray:There is nothing here to pick up.}");
             return;
         }
@@ -245,16 +261,16 @@ function handleInput(key) {
         }
     };
 
-    if (key.toLowerCase() === 'i') { toggleMenu(inventoryModal, openInventoryModal, closeInventoryModal); return; }
-    if (key.toLowerCase() === 'm') { toggleMenu(mapModal, openWorldMap, closeWorldMap); return; }
-    if (key.toLowerCase() === 'b') { toggleMenu(spellModal, openSpellbook, null); return; }
-    if (key.toLowerCase() === 'k') { toggleMenu(skillModal, openSkillbook, null); return; }
-    if (key.toLowerCase() === 'c') { toggleMenu(collectionsModal, openCollections, null); return; }
-    if (key.toLowerCase() === 'p') { toggleMenu(talentModal, openTalentModal, null); return; }
-    if (key.toLowerCase() === 'j') { toggleMenu(questModal, openBountyBoard, null); return; } // QoL WIN: Journal Hotkey
+    if (lowerKey === 'i') { toggleMenu(inventoryModal, openInventoryModal, closeInventoryModal); return; }
+    if (lowerKey === 'm') { toggleMenu(mapModal, openWorldMap, closeWorldMap); return; }
+    if (lowerKey === 'b') { toggleMenu(spellModal, openSpellbook, null); return; }
+    if (lowerKey === 'k') { toggleMenu(skillModal, openSkillbook, null); return; }
+    if (lowerKey === 'c') { toggleMenu(collectionsModal, openCollections, null); return; }
+    if (lowerKey === 'p') { toggleMenu(talentModal, openTalentModal, null); return; }
+    if (lowerKey === 'j') { toggleMenu(questModal, openBountyBoard, null); return; } // QoL WIN: Journal Hotkey
     
     // Help Hotkey
-    if (key.toLowerCase() === 'h') { 
+    if (lowerKey === 'h') { 
         toggleMenu(helpModal, () => helpModal.classList.remove('hidden'), null); 
         return; 
     }
@@ -263,15 +279,15 @@ function handleInput(key) {
     if (key === 'Enter') { 
         const chatIn = document.getElementById('chatInput');
         if (chatIn) {
-            event.preventDefault(); // Don't trigger a form submit or scroll
+            // Must use window.event if accessing the global event object, though it's safer 
+            // to just focus it and let the natural behavior occur here.
             chatIn.focus(); 
         }
         return; 
     }
 
-    // Block gameplay inputs if any menu is open
-    const anyModalOpen = document.querySelector('.modal-overlay:not(.hidden)');
-    if (anyModalOpen || gameState.inventoryMode) {
+    // Block gameplay inputs if any menu is open (using our fast O(1) cache)
+    if (_modalCache.isAnyOpen() || gameState.inventoryMode) {
         return;
     }
 
@@ -292,7 +308,7 @@ function handleInput(key) {
         return;
     }
 
-    if (key.toLowerCase() === 'r') {
+    if (lowerKey === 'r') {
         if (typeof restPlayer === 'function') restPlayer();
         lastActionTime = Date.now(); 
         return;
@@ -300,41 +316,58 @@ function handleInput(key) {
 
     if ([' ', '5', 'Numpad5', 'Clear', '.'].includes(key)) {
         
-        // LORE & CONTENT WIN: Dynamic, biome-aware Atmospheric Waiting
+        // LORE & CONTENT WIN: Massively Expanded, Biome/Event-Aware Atmospheric Waiting
         let waitFlavors = [
             "You pause to catch your breath.",
             "You listen to the sounds of the world.",
             "You stand perfectly still.",
             "You gather your thoughts.",
-            "You wait a moment."
+            "You wait a moment.",
+            "You stare into the middle distance.",
+            "You adjust the straps of your gear."
         ];
 
         if (gameState.mapMode === 'overworld') {
-            if (gameState.weather === 'rain') waitFlavors.push("You pause, letting the rain wash over you.", "You listen to the drumming of the rain.");
-            if (gameState.weather === 'storm') waitFlavors.push("You wait, feeling the thunder rattle your teeth.");
-            if (gameState.weather === 'snow') waitFlavors.push("You watch your breath fog in the freezing air.", "You wait, letting the snow settle.");
-            if (gameState.weather === 'fog') waitFlavors.push("You wait, peering into the thick mist.");
+            if (gameState.weather === 'rain') waitFlavors.push("You pause, letting the rain wash over you.", "You listen to the drumming of the rain.", "Water runs down your face.");
+            if (gameState.weather === 'storm') waitFlavors.push("You wait, feeling the thunder rattle your teeth.", "Lightning briefly illuminates the landscape.");
+            if (gameState.weather === 'snow') waitFlavors.push("You watch your breath fog in the freezing air.", "You wait, letting the snow settle.", "The silence of the snow is deafening.");
+            if (gameState.weather === 'fog') waitFlavors.push("You wait, peering into the thick mist.", "The fog clings to your clothes like a wet shroud.");
             
             // Extreme Danger State Overrides
-            if (gameState.isBloodMoon) waitFlavors = ["You freeze, hoping the blood-crazed beasts don't see you.", "You wait in the bloody crimson light, trembling."];
+            if (gameState.isBloodMoon) waitFlavors = [
+                "You freeze, hoping the blood-crazed beasts don't see you.", 
+                "You wait in the bloody crimson light, trembling.",
+                "The air smells of rust and violence.",
+                "You hear something screaming in the distance."
+            ];
+            if (gameState.isEclipse) waitFlavors.push("You stand in the absolute dark. The stars are hidden.");
+            if (gameState.isLeylineSurge) waitFlavors.push("The hair on your arms stands up as magic surges.");
         } 
         else if (gameState.mapMode === 'dungeon') {
             waitFlavors.push("You listen to the echoing water dripping in the dark.");
             waitFlavors.push("You pause, straining your eyes against the gloom.");
-            if (gameState.currentCaveTheme === 'VOID') waitFlavors.push("You listen to the deafening silence of the Void.");
-            if (gameState.currentCaveTheme === 'FIRE') waitFlavors.push("You wipe sweat from your brow in the stifling heat.");
+            waitFlavors.push("You check the shadows for movement.");
+            if (gameState.currentCaveTheme === 'VOID') waitFlavors.push("You listen to the deafening silence of the Void.", "You feel like you are being watched by a thousand unblinking eyes.");
+            if (gameState.currentCaveTheme === 'FIRE') waitFlavors.push("You wipe sweat from your brow in the stifling heat.", "The magma bubbles and pops nearby.");
+            if (gameState.currentCaveTheme === 'ICE') waitFlavors.push("You shiver uncontrollably in the glacial cold.");
         } 
         else if (gameState.mapMode === 'underworld') {
             waitFlavors.push("You stand still. The crushing weight of the earth above presses down.");
             waitFlavors.push("You pause. The shadows here feel alive.");
+            waitFlavors.push("A distant rumble echoes through the cavern.");
+        }
+        else if (gameState.mapMode === 'castle') {
+            waitFlavors.push("You admire the ancient stonework.");
+            waitFlavors.push("You pause in the quiet halls.");
+            waitFlavors.push("You listen for the sound of marching boots.");
         }
 
         const msg = waitFlavors[Math.floor(Math.random() * waitFlavors.length)];
         logMessage(`{gray:${msg}}`);
         
-        // Spawn visual feedback so the player knows the turn passed
+        // JUICE WIN: Better visual feedback for passing time!
         if (typeof ParticleSystem !== 'undefined') {
-            ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "💤", "#9ca3af");
+            ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "...", "#9ca3af");
         }
         
         if (typeof endPlayerTurn === 'function') endPlayerTurn();
@@ -372,12 +405,10 @@ document.addEventListener('keydown', (event) => {
     }
 
     // --- THE INPUT QUEUE ROUTER ---
-    const anyModalOpen = document.querySelector('.modal-overlay:not(.hidden)');
-    
     // Dead check before queueing
     if (gameState && gameState.player && gameState.player.health <= 0) return;
     
-    if (anyModalOpen || INSTANT_KEYS.has(inputStr) || gameState.isDroppingItem || gameState.inventoryMode) {
+    if (_modalCache.isAnyOpen() || INSTANT_KEYS.has(inputStr) || gameState.isDroppingItem || gameState.inventoryMode) {
         handleInput(inputStr); // Execute instantly
     } else {
         // Gameplay actions (Movement, Combat, Aiming) queue up seamlessly!
