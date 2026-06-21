@@ -445,6 +445,19 @@ window.TILE_DATA = {
                     if (inv.length < window.MAX_INVENTORY_SLOTS) {
                         const shieldKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === 'Aegis of the Ancients') || '🛡️a';
                         inv.push({ templateId: shieldKey, name: 'Aegis of the Ancients', type: 'armor', tile: '🛡️', quantity: 1, defense: 8, slot: 'armor' });
+                    } else {
+                        // --- FIX: DROP REWARD ON FULL INVENTORY ---
+                        const shieldKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === 'Aegis of the Ancients') || '🛡️a';
+                        logMessage("{red:Your inventory is full! The Aegis drops to the ground.}");
+                        
+                        if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
+                            chunkManager.setWorldTile(state.player.x, state.player.y, shieldKey, 24); // Drops for 24 hours
+                        } else if (state.mapMode === 'dungeon') {
+                            chunkManager.caveMaps[state.currentCaveId][state.player.y][state.player.x] = shieldKey;
+                        } else if (state.mapMode === 'castle') {
+                            chunkManager.castleMaps[state.currentCastleId][state.player.y][state.player.x] = shieldKey;
+                        }
+                        state.mapDirty = true;
                     }
                 } else {
                     html = `<p>"The Cultist Fanatics are hiding in the Dark Castles (🕍). Find one, defeat him, and bring me his Shadow Amulet."</p>`;
