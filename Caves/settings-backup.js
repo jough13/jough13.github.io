@@ -9,18 +9,21 @@ const BACKUP_SALT = "kEsMaI_v1_S3cR3t_s@lt"; // Change this to something random!
 // Concurrency lock to prevent mashing buttons and causing DB race conditions
 let isBackupOperationRunning = false;
 
-// --- SECURITY WIN: Deep Hashing ---
+// --- Deep Hashing ---
 // We now hash the exact sequence of item names, preventing players from modifying the save file
 // to swap 5 pieces of "Stone" into 5 "Legendary Swords" (which bypassed the old length check).
+
 function generateStrictSaveSignature(data) {
     // PERFORMANCE WIN: Fast string building for massive arrays
     let invStr = 'empty';
     if (data.inventory && data.inventory.length > 0) {
-        invStr = data.inventory.map(i => i.name).join('');
+        // FIX: Include quantity in the hash to prevent payload injection
+        invStr = data.inventory.map(i => `${i.name}:${i.quantity || 1}`).join('');
     }
     let bankStr = 'empty';
     if (data.bank && data.bank.length > 0) {
-        bankStr = data.bank.map(i => i.name).join('');
+        // Include quantity in the hash to prevent payload injection
+        bankStr = data.bank.map(i => `${i.name}:${i.quantity || 1}`).join('');
     }
     
     const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.maxHealth}_${invStr}_${bankStr}_${data.background}_${BACKUP_SALT}`;
