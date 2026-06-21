@@ -11,6 +11,16 @@ let creationState = {
     background: null
 };
 
+// PERFORMANCE WIN: Cache DOM elements that are queried repeatedly (like on every keystroke)
+const _DOMCache = {
+    nameInput: null,
+    summaryBox: null,
+    finalizeBtn: null,
+    getNameInput: () => _DOMCache.nameInput || (document.getElementById('charNameInput') && (_DOMCache.nameInput = document.getElementById('charNameInput'))),
+    getSummaryBox: () => _DOMCache.summaryBox || (document.getElementById('creationSummary') && (_DOMCache.summaryBox = document.getElementById('creationSummary'))),
+    getFinalizeBtn: () => _DOMCache.finalizeBtn || (document.getElementById('finalizeCreationBtn') && (_DOMCache.finalizeBtn = document.getElementById('finalizeCreationBtn')))
+};
+
 async function initCharacterSelect(user) {
     document.title = "Caves and Castles";
 
@@ -62,7 +72,7 @@ window.selectSlot = async function (slotId) {
     if (loadingIndicator) {
         loadingIndicator.classList.remove('hidden');
         const flavorText = document.getElementById('loadingFlavorText');
-        if (flavorText) flavorText.textContent = "Tethering Soul to Reality...";
+        if (flavorText) flavorText.textContent = "Tethering Soul to the Leylines..."; // LORE WIN
     }
 
     player_id = currentUser.uid; 
@@ -125,6 +135,7 @@ if (confirmDeleteButton) {
             // ROBUSTNESS: Disable buttons during deletion to prevent spamming
             btn.disabled = true;
             btn.textContent = "Erasing Soul...";
+            btn.classList.add('animate-pulse');
             if (cancelDeleteButton) cancelDeleteButton.disabled = true;
 
             try {
@@ -156,6 +167,7 @@ if (confirmDeleteButton) {
             // Restore buttons
             btn.disabled = false;
             btn.textContent = originalText;
+            btn.classList.remove('animate-pulse');
             if (cancelDeleteButton) cancelDeleteButton.disabled = false;
             
             if (deleteConfirmModal) deleteConfirmModal.classList.add('hidden');
@@ -202,9 +214,11 @@ function selectCreationOption(type, key, element) {
 }
 
 function updateCreationSummary() {
-    const summaryDiv = document.getElementById('creationSummary');
-    const nameInput = document.getElementById('charNameInput');
+    const summaryDiv = _DOMCache.getSummaryBox();
+    const nameInput = _DOMCache.getNameInput();
     
+    if (!nameInput) return;
+
     // Clean the input to prevent weird spacing or hidden HTML tags (including zero-width chars)
     let rawName = nameInput.value.replace(/[^a-zA-Z0-9 \-']/g, '').replace(/\s+/g, ' ').trimStart();
     
@@ -284,7 +298,7 @@ function updateCreationSummary() {
         `;
     }
 
-    const btn = document.getElementById('finalizeCreationBtn');
+    const btn = _DOMCache.getFinalizeBtn();
     if (!btn) return;
     
     // Dynamic button text tells the player exactly what is missing!
@@ -311,12 +325,14 @@ function updateCreationSummary() {
     }
 }
 
-// Attach listeners
-const charNameInput = document.getElementById('charNameInput');
-if (charNameInput) charNameInput.addEventListener('input', updateCreationSummary);
+// Attach listeners safely
+setTimeout(() => {
+    const nameInput = _DOMCache.getNameInput();
+    if (nameInput) nameInput.addEventListener('input', updateCreationSummary);
 
-const finalizeCreationBtn = document.getElementById('finalizeCreationBtn');
-if (finalizeCreationBtn) finalizeCreationBtn.addEventListener('click', finalizeCharacterCreation);
+    const finalizeCreationBtn = _DOMCache.getFinalizeBtn();
+    if (finalizeCreationBtn) finalizeCreationBtn.addEventListener('click', finalizeCharacterCreation);
+}, 0);
 
 // EXPANDABILITY & LORE WIN: Massive Name Generator Expansion
 window.generateRandomName = function() {
@@ -327,34 +343,36 @@ window.generateRandomName = function() {
         "Ael", "Val", "Dra", "Bael", "Xyl", "Quin", "Syl", "Or", "Ign", "Gloom",
         "Lu", "Cor", "Ash", "Sil", "Fen", "Grim", "Mal", "Ren", "Tav", "Zeph",
         "Aer", "Bryn", "Cael", "Dorn", "Ery", "Fael", "Gael", "Hald", "Ith", "Jor",
-        "Vor", "Kra", "Zin", "Thal", "Orik", "Ul", "Xan", "Yrr"
+        "Vor", "Kra", "Zin", "Thal", "Orik", "Ul", "Xan", "Yrr", "Aka", "Chro", "Ley"
     ];
     const suffixes = [
         "in", "ick", "ara", "en", "is", "os", "ia", "on", "us", "th",
         "ius", "dor", "mir", "vyn", "ryn", "las", "ric", "tar", "eth", "mont",
         "stone", "fire", "bane", "weaver", "shade", "moon", "sun", "heart", "blood",
         "forge", "smith", "strider", "whisper", "song", "wind", "storm",
-        "grip", "fist", "gaze", "step"
+        "grip", "fist", "gaze", "step", "mancer", "walker", "born"
     ];
     
     // Fun RPG Titles (20% chance to append)
     const titles = [
         " the Brave", " the Swift", " of the Void", " the Wise", " the Exile", 
         " Ironheart", " Shadow-walker", " the Lost", " the Cursed", " the Bold",
-        " the Unbroken", " the Star-Touched", " the Pale", " Giantsbane", " the Silent"
+        " the Unbroken", " the Star-Touched", " the Pale", " Giantsbane", " the Silent",
+        // LORE WIN: Thematic Multiverse/Akashic Titles
+        " the Ley-Walker", " of the Akashic Records", " the Void-Dancer", " the Unbound", " the Chronomancer"
     ];
     
     let p = prefixes[Math.floor(Math.random() * prefixes.length)];
     let s = suffixes[Math.floor(Math.random() * suffixes.length)];
     let t = (Math.random() < 0.20) ? titles[Math.floor(Math.random() * titles.length)] : "";
     
-    const nameInput = document.getElementById('charNameInput');
+    const nameInput = _DOMCache.getNameInput();
     if (nameInput) {
         nameInput.value = p + s + t;
         
         // JUICE WIN: Make the summary box "pop" so it feels like a tactile dice roll
-        const summaryBox = document.getElementById('creationSummary');
-        if (summaryBox) {
+        const summaryBox = _DOMCache.getSummaryBox();
+        if (summaryBox && summaryBox.parentElement) {
             summaryBox.parentElement.style.animation = 'none';
             void summaryBox.parentElement.offsetWidth; // Trigger reflow
             summaryBox.parentElement.style.animation = 'pop-in 0.2s ease-out';
@@ -383,13 +401,18 @@ window.quickRollCharacter = function() {
     const btnC = document.querySelector(`#classSelectionContainer div[data-key="${rC}"]`);
     if (btnC) btnC.click();
     
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+    // JUICE WIN: Tactile feedback for throwing the character dice
+    if (typeof AudioSystem !== 'undefined') {
+        AudioSystem.playClick();
+        setTimeout(() => AudioSystem.playTone(800, 'sine', 0.1, 0.05), 50);
+        setTimeout(() => AudioSystem.playMagic(), 150);
+    }
 };
 
 function initCreationUI() {
     creationState = { name: "", race: null, gender: "Non-Binary", background: null };
     
-    const nameInput = document.getElementById('charNameInput');
+    const nameInput = _DOMCache.getNameInput();
     if (nameInput) nameInput.value = "";
     
     // EASY WIN: Inject the dice buttons dynamically
@@ -479,7 +502,7 @@ function initCreationUI() {
 }
 
 async function finalizeCharacterCreation() {
-    const btn = document.getElementById('finalizeCreationBtn');
+    const btn = _DOMCache.getFinalizeBtn();
     if (!btn) return;
     
     // Failsafe: Prevent empty names from slipping through
@@ -490,6 +513,7 @@ async function finalizeCharacterCreation() {
     
     btn.disabled = true;
     btn.textContent = "Forging Destiny...";
+    btn.classList.add('animate-pulse');
     
     // JUICE WIN: Triumphant start sound!
     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp(); 
@@ -534,9 +558,10 @@ async function finalizeCharacterCreation() {
     player.psyche = player.maxPsyche;
 
     // 5. Apply Inventory (Class Kit)
-    // CRITICAL FIX: Deep clone items so consuming a starting potion doesn't erase it for future characters!
+    // PERFORMANCE WIN: Utilize fastClone utility over JSON.parse to prevent CPU blocking during load
     bgData.items.forEach(newItem => {
-        player.inventory.push(JSON.parse(JSON.stringify(newItem)));
+        const clonedItem = typeof fastClone === 'function' ? fastClone(newItem) : JSON.parse(JSON.stringify(newItem));
+        player.inventory.push(clonedItem);
     });
 
     // 6. Auto-Equip
@@ -576,6 +601,7 @@ async function finalizeCharacterCreation() {
         alert("Failed to finalize character creation. Check your connection.");
         btn.disabled = false;
         btn.innerHTML = "Begin Adventure <span>→</span>";
+        btn.classList.remove('animate-pulse');
     }
 }
 
