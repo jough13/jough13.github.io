@@ -49,18 +49,21 @@ const AudioSystem = {
             this._masterGain.connect(this._compressor);
             this._compressor.connect(this._ctx.destination);
         }
-        if (this._ctx.state === 'suspended') {
-            this._ctx.resume().catch(e => console.warn("AudioContext resume failed:", e));
-        }
         return this._ctx;
     },
 
     getCtx: function() {
-        return this.initAudioContext();
+        const ctx = this.initAudioContext();
+        // PERFORMANCE & ROBUSTNESS WIN: Only resume if explicitly suspended
+        if (ctx && ctx.state === 'suspended') {
+            ctx.resume().catch(e => console.warn("AudioContext resume failed:", e));
+        }
+        return ctx;
     },
 
     initNoise: function() {
         const ctx = this.getCtx();
+        if (!ctx) return;
         const bufferSize = ctx.sampleRate * 2.0; // 2 seconds of noise buffer
         this.noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = this.noiseBuffer.getChannelData(0);
@@ -93,8 +96,8 @@ const AudioSystem = {
     _getAcoustics: function() {
         if (typeof gameState !== 'undefined') {
             // LORE WIN: Void / Alternate Realms sound oppressive, distorted, and echoing
-            if (gameState.currentRealm !== 0 || gameState.currentCaveTheme === 'VOID') {
-                return { durationMult: 1.5, filterMult: 0.4, echoDelay: 0.3, echoFeedback: 0.5 };
+            if (gameState.currentRealm !== 0 || gameState.currentCaveTheme === 'VOID' || gameState.currentCaveTheme === 'ABYSS') {
+                return { durationMult: 1.5, filterMult: 0.35, echoDelay: 0.35, echoFeedback: 0.6 };
             }
             // Sky Realm: Thin air, high frequencies pass easily, massive open echo
             if (gameState.mapMode === 'skyrealm') {
@@ -138,6 +141,8 @@ const AudioSystem = {
             panner = sourceNode; // Fallback
         }
 
+        let finalNode = panner;
+
         // 2. Reverb (Delay Network)
         if (acoustics.echoDelay > 0) {
             const delay = ctx.createDelay();
@@ -152,11 +157,23 @@ const AudioSystem = {
             feedback.connect(delay);
             // Route delay to master
             delay.connect(this._masterGain);
+            
+            // Clean up hack: Web Audio nodes connected in a feedback loop don't garbage collect naturally.
+            // We attach the nodes to the panner object so they can be explicitly disconnected when the sound ends.
+            panner._delayNode = delay;
+            panner._feedbackNode = feedback;
         }
 
         // 3. Dry Signal to Master
         panner.connect(this._masterGain);
         return panner;
+    },
+
+    _cleanupRoute: function(pannerNode) {
+        if (!pannerNode) return;
+        if (pannerNode._delayNode) pannerNode._delayNode.disconnect();
+        if (pannerNode._feedbackNode) pannerNode._feedbackNode.disconnect();
+        pannerNode.disconnect();
     },
 
     // --- CORE GENERATORS ---
@@ -181,7 +198,8 @@ const AudioSystem = {
 
         const filter = ctx.createBiquadFilter();
         filter.type = 'lowpass';
-        // Apply acoustic cave muffling AND distance muffling
+        
+        // JUICE WIN: Aggressive muffling for distant/underground noise
         filter.frequency.value = (filterFreq + (Math.random() - 0.5) * 200) * acoustics.filterMult * spatial.distanceFilter;
 
         const gain = ctx.createGain();
@@ -193,13 +211,17 @@ const AudioSystem = {
         src.connect(filter);
         filter.connect(gain);
         
-        this._routeToMaster(ctx, gain, acoustics, spatial);
+        const panner = this._routeToMaster(ctx, gain, acoustics, spatial);
 
         src.start();
         src.stop(ctx.currentTime + actualDuration);
         
+        // PERFORMANCE WIN: Explicit cleanup prevents audio node memory leaks!
         src.onended = () => {
-            src.disconnect(); filter.disconnect(); gain.disconnect();
+            src.disconnect(); 
+            filter.disconnect(); 
+            gain.disconnect();
+            this._cleanupRoute(panner);
         };
     },
 
@@ -231,7 +253,7 @@ const AudioSystem = {
 
         osc.frequency.setValueAtTime(finalFreq, ctx.currentTime);
         if (slideTo) {
-            osc.frequency.exponentialRampToValueAtTime(slideTo * spatial.distanceFilter, ctx.currentTime + actualDuration);
+            osc.frequency.exponentialRampToValueAtTime(slideTo * Math.max(0.5, spatial.distanceFilter), ctx.currentTime + actualDuration);
         }
 
         // QoL WIN: Anti-Popping Envelopes
@@ -239,14 +261,16 @@ const AudioSystem = {
         gain.gain.exponentialRampToValueAtTime(actualVol, ctx.currentTime + 0.01);
         gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + actualDuration);
 
-        this._routeToMaster(ctx, gain, acoustics, spatial);
+        const panner = this._routeToMaster(ctx, gain, acoustics, spatial);
         osc.connect(gain);
 
         osc.start();
         osc.stop(ctx.currentTime + actualDuration);
         
         osc.onended = () => {
-            osc.disconnect(); gain.disconnect();
+            osc.disconnect(); 
+            gain.disconnect();
+            this._cleanupRoute(panner);
         };
     },
 
@@ -279,12 +303,16 @@ const AudioSystem = {
             gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + actualDuration);
 
             osc.connect(gain);
-            this._routeToMaster(ctx, gain, acoustics, this._getSpatialData());
+            const panner = this._routeToMaster(ctx, gain, acoustics, this._getSpatialData());
             
             osc.start();
             osc.stop(ctx.currentTime + actualDuration);
             
-            osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+            osc.onended = () => { 
+                osc.disconnect(); 
+                gain.disconnect(); 
+                this._cleanupRoute(panner);
+            };
         });
     },
 
@@ -319,11 +347,15 @@ const AudioSystem = {
         });
         
         osc.connect(gain);
-        this._routeToMaster(ctx, gain, acoustics, this._getSpatialData());
+        const panner = this._routeToMaster(ctx, gain, acoustics, this._getSpatialData());
         osc.start(now);
         osc.stop(now + totalDuration);
         
-        osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+        osc.onended = () => { 
+            osc.disconnect(); 
+            gain.disconnect(); 
+            this._cleanupRoute(panner);
+        };
     },
 
     // --- SPECIFIC SOUND EFFECTS ---
@@ -353,8 +385,9 @@ const AudioSystem = {
         if (type === 'heavy') {
             startFreq = 150; endFreq = 20; duration = 0.15; vol = 0.15;
             osc.type = 'triangle';
-            // Layer a crunch noise on top for physical impact feel
+            // JUICE WIN: Layer a crunch noise AND a bass-drop on top for physical impact feel
             this.playNoise(0.1, 0.08, 1200, x);
+            this.playTone(60, 'sine', 0.15, 0.1, false, 20, x); 
         } else if (type === 'light') {
             startFreq = 600; endFreq = 200; duration = 0.08; vol = 0.08;
             osc.type = 'sine';
@@ -385,12 +418,16 @@ const AudioSystem = {
         gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + actualDuration);
         
         osc.connect(gain);
-        this._routeToMaster(ctx, gain, acoustics, spatial);
+        const panner = this._routeToMaster(ctx, gain, acoustics, spatial);
 
         osc.start();
         osc.stop(ctx.currentTime + actualDuration);
         
-        osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+        osc.onended = () => { 
+            osc.disconnect(); 
+            gain.disconnect(); 
+            this._cleanupRoute(panner);
+        };
     },
 
     playBow: function(x) {
@@ -419,7 +456,7 @@ const AudioSystem = {
                 
                 if (tags.includes("bone")) material = 'bone';
                 else if (tags.includes("metal") || tags.includes("stone")) material = 'metal';
-                else if (tags.includes("ethereal")) material = 'ethereal';
+                else if (tags.includes("ethereal") || tags.includes("void")) material = 'ethereal';
             }
         }
 
