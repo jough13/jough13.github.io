@@ -390,8 +390,18 @@ window.ITEM_DATA = {
             
             chunkManager.setWorldTile(state.player.x, state.player.y, '🌿');
             
+            // PURGE OLD MAP MEMORY & LISTENERS ---
+            chunkManager.loadedChunks = {};
+            chunkManager.worldState = {};
+            Object.values(worldStateListeners).forEach(unsub => unsub());
+            worldStateListeners = {};
+            if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.clearAll();
+            
             state.mapMode = 'skyrealm';
             state.mapDirty = true;
+            
+            // Trigger a full map transition sync to load the sky correctly
+            if (typeof finalizeMapTransition === 'function') finalizeMapTransition();
             if (typeof render === 'function') render();
             return true;
         }
