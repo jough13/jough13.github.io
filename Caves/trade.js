@@ -4,7 +4,7 @@
 // TRADE & ECONOMY SYSTEM
 // ==========================================
 
-// O(1) Item Lookup Cache for Trading
+// PERFORMANCE WIN: O(1) Item Lookup Cache for Trading
 // Prevents O(N) string-matching scans against the massive ITEM_DATA dictionary every time you buy an item.
 // Attaching to window prevents hot-reload SyntaxErrors!
 window._tradeItemKeyCache = window._tradeItemKeyCache || {};
@@ -16,6 +16,18 @@ function getTradeItemKey(name) {
     if (key) window._tradeItemKeyCache[name] = key;
     return key;
 }
+
+// PERFORMANCE WIN: Cache DOM lookups for the shop UI
+const _tradeDOMCache = {
+    buyList: null,
+    sellList: null,
+    playerCoins: null,
+    shopTitle: null,
+    getBuyList: () => _tradeDOMCache.buyList || (document.getElementById('shopBuyList') && (_tradeDOMCache.buyList = document.getElementById('shopBuyList'))),
+    getSellList: () => _tradeDOMCache.sellList || (document.getElementById('shopSellList') && (_tradeDOMCache.sellList = document.getElementById('shopSellList'))),
+    getPlayerCoins: () => _tradeDOMCache.playerCoins || (document.getElementById('shopPlayerCoins') && (_tradeDOMCache.playerCoins = document.getElementById('shopPlayerCoins'))),
+    getShopTitle: () => _tradeDOMCache.shopTitle || (document.getElementById('shopTitle') && (_tradeDOMCache.shopTitle = document.getElementById('shopTitle')))
+};
 
 // --- Centralized Value Dictionary ---
 // For items that aren't natively sold in shops but have high intrinsic value to traders.
@@ -188,7 +200,10 @@ function handleBuyItem(itemName, amount = 1) {
     
     // JUICE: Gold particles in the background
     if (typeof ParticleSystem !== 'undefined') {
+        // Larger explosion for bulk buys!
+        const pSize = buyQty > 1 ? 15 : 5;
         ParticleSystem.createFloatingText(player.x, player.y, `-${totalCost}g`, "#ef4444");
+        ParticleSystem.createExplosion(player.x, player.y, '#facc15', pSize);
     }
     if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
@@ -263,7 +278,9 @@ function handleSellItem(itemIndex, amount = 1) {
     
     // JUICE: Gold particles in the background
     if (typeof ParticleSystem !== 'undefined') {
+        const pSize = qtyToSell > 1 ? 15 : 5;
         ParticleSystem.createFloatingText(player.x, player.y, `+${totalValue}g`, "#facc15");
+        ParticleSystem.createExplosion(player.x, player.y, '#facc15', pSize);
     }
     if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
@@ -324,9 +341,10 @@ function handleSellAllItems() {
     if (itemsSold > 0) {
         logMessage(`Mass Sold ${itemsSold} junk/trade items for {gold:${goldGained} gold}.`);
         
-        // JUICE: Gold particles in the background
+        // JUICE: Massive Gold Explosion
         if (typeof ParticleSystem !== 'undefined') {
             ParticleSystem.createFloatingText(player.x, player.y, `+${goldGained}g`, "#facc15");
+            ParticleSystem.createExplosion(player.x, player.y, '#facc15', 30);
         }
         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
@@ -348,10 +366,10 @@ function handleSellAllItems() {
 }
 
 function renderShop() {
-    const shopBuyList = document.getElementById('shopBuyList');
-    const shopSellList = document.getElementById('shopSellList');
-    const shopPlayerCoins = document.getElementById('shopPlayerCoins');
-    const shopTitle = document.getElementById('shopTitle');
+    const shopBuyList = _tradeDOMCache.getBuyList();
+    const shopSellList = _tradeDOMCache.getSellList();
+    const shopPlayerCoins = _tradeDOMCache.getPlayerCoins();
+    const shopTitle = _tradeDOMCache.getShopTitle();
 
     if (!shopBuyList || !shopSellList || !shopPlayerCoins) return;
 
@@ -381,19 +399,45 @@ function renderShop() {
         }
     }
 
-    // JUICE: Dynamic Shop Flavor Text
+    // LORE WIN: Dynamic Shop Flavor Quotes based on biome!
     if (shopTitle) {
-        let flavor = "A traveling merchant.";
-        if (gameState.currentRealm !== 0 && gameState.currentRealm) flavor = "I didn't expect to find a customer in this dimension.";
-        else if (biome === 'Desert') flavor = "Water is worth its weight in gold here.";
-        else if (biome === 'Deadlands') flavor = "I would trade my own soul for a sip of clean water.";
-        else if (biome === 'Mountain') flavor = "I'll pay top coin for wood and food.";
-        else if (biome === 'Swamp') flavor = "Antidotes are flying off the shelves.";
-        else if (biome === 'Underworld') flavor = "I collect things the surface dwellers fear.";
-        else if (biome === 'Sky Realm') flavor = "The air is thin, but the views are priceless.";
-        else if (gameState.mapMode === 'castle') flavor = "Luxury goods and rare artifacts accepted.";
+        let flavors = ["A traveling merchant with weary eyes."];
+        if (gameState.currentRealm !== 0 && gameState.currentRealm) flavors = [
+            "I trade in secrets, soul-shards, and silence. But mostly secrets.",
+            "I didn't expect to find a customer in this dimension.",
+            "Everything has a price here. Even your memories."
+        ];
+        else if (biome === 'Desert') flavors = [
+            "Water is worth its weight in gold here.",
+            "The sand gets into everything. Even the coin purses."
+        ];
+        else if (biome === 'Deadlands') flavors = [
+            "I would trade my own soul for a sip of clean water.",
+            "Do not linger here. The ash remembers the living."
+        ];
+        else if (biome === 'Mountain') flavors = [
+            "I'll pay top coin for wood and food.",
+            "The climb is steep, but the profits are steeper."
+        ];
+        else if (biome === 'Swamp') flavors = [
+            "Antidotes are flying off the shelves.",
+            "Smells like rot, but it pays like gold."
+        ];
+        else if (biome === 'Underworld') flavors = [
+            "I collect things the surface dwellers fear.",
+            "Down here, the only currency that matters is survival."
+        ];
+        else if (biome === 'Sky Realm') flavors = [
+            "The air is thin, but the views are priceless.",
+            "I caught a cloud in a jar once. Tasted like mint."
+        ];
+        else if (gameState.mapMode === 'castle') flavors = [
+            "Luxury goods and rare artifacts accepted.",
+            "The guards take their cut, but the trade is safe."
+        ];
         
-        shopTitle.innerHTML = `Merchant <span class="block text-xs font-normal text-gray-400 mt-1 italic tracking-normal font-sans">"${flavor}"</span>`;
+        const selectedFlavor = flavors[Math.floor(Math.random() * flavors.length)];
+        shopTitle.innerHTML = `Merchant <span class="block text-xs font-normal text-gray-400 mt-1 italic tracking-normal font-serif">"${selectedFlavor}"</span>`;
     }
 
     // PERFORMANCE: Use DocumentFragments
@@ -425,21 +469,21 @@ function renderShop() {
         const priceColorClass = canAffordItem ? 'text-yellow-500' : 'text-red-500';
 
         // QoL WIN: Buy Max Button for Stackables
-        let actionsHtml = `<button data-buy-item="${item.name}" data-amount="1" style="transform: translateZ(0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50">Buy 1</button>`;
+        let actionsHtml = `<button data-buy-item="${item.name}" data-amount="1" style="transform: translateZ(0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50 font-bold">Buy 1</button>`;
         const isStackable = itemTemplate && ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
         
         if (isStackable && item.stock > 1) {
-            actionsHtml += `<button data-buy-item="${item.name}" data-amount="all" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs">Max</button>`;
+            actionsHtml += `<button data-buy-item="${item.name}" data-amount="all" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs font-bold">Max</button>`;
         }
 
-        const outOfStockClass = item.stock <= 0 ? 'opacity-50 grayscale' : 'hover:border-green-500';
+        const outOfStockClass = item.stock <= 0 ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:border-green-500';
 
         const li = document.createElement('li');
         li.className = `shop-item transition-colors duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 ${outOfStockClass}`;
         li.innerHTML = `
             <div>
-                <span class="shop-item-name font-bold text-lg">${item.name} <span class="text-2xl drop-shadow-md align-middle">${itemTemplate?.tile || '?'}</span></span>
-                <span class="shop-item-details font-bold block mt-1 ${priceColorClass}">Price: ${priceHtml} <span class="text-xs text-gray-500 font-normal ml-2 bg-black bg-opacity-30 px-1 rounded">(Stock: ${item.stock})</span></span>
+                <span class="shop-item-name font-bold text-lg text-gray-200">${item.name} <span class="text-2xl drop-shadow-md align-middle">${itemTemplate?.tile || '?'}</span></span>
+                <span class="shop-item-details font-bold block mt-1 ${priceColorClass}">Price: ${priceHtml} <span class="text-xs text-gray-500 font-normal ml-2 bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Stock: ${item.stock})</span></span>
             </div>
             <div class="shop-item-actions flex items-center ml-2">
                 ${actionsHtml}
@@ -455,7 +499,7 @@ function renderShop() {
 
     // 5. Populate "Sell" list
     if (gameState.player.inventory.length === 0) {
-        shopSellList.innerHTML = '<li class="shop-item-details italic text-sm text-gray-500 border border-gray-700 p-4 rounded-lg bg-black bg-opacity-20 text-center">Your bag is empty.</li>';
+        shopSellList.innerHTML = '<li class="shop-item-details italic text-sm text-gray-500 border border-gray-700 p-4 rounded-lg bg-black bg-opacity-20 text-center shadow-inner font-serif">Your pockets hold only dust.</li>';
     } else {
         gameState.player.inventory.forEach((item, index) => {
             // DRY OPTIMIZATION: Use our helper
@@ -466,20 +510,20 @@ function renderShop() {
             let demandTag = "";
             if (regionMult > 1.0) {
                 sellPriceColor = "text-green-400";
-                demandTag = `<span class="text-[9px] bg-green-900 bg-opacity-40 text-green-400 px-1 rounded ml-2 uppercase border border-green-800 shadow-inner block mt-1 w-max">High Demand</span>`;
+                demandTag = `<span class="text-[9px] bg-green-900 bg-opacity-40 text-green-400 px-1 rounded ml-2 uppercase border border-green-800 shadow-inner block mt-1 w-max animate-pulse">High Demand</span>`;
             } else if (regionMult < 1.0) {
                 sellPriceColor = "text-red-400";
-                demandTag = `<span class="text-[9px] bg-red-900 bg-opacity-40 text-red-400 px-1 rounded ml-2 uppercase border border-red-800 shadow-inner block mt-1 w-max">Low Demand</span>`;
+                demandTag = `<span class="text-[9px] bg-red-900 bg-opacity-40 text-red-400 px-1 rounded ml-2 uppercase border border-red-800 shadow-inner block mt-1 w-max opacity-80">Low Demand</span>`;
             }
 
             const li = document.createElement('li');
             li.className = 'shop-item hover:border-blue-500 transition-colors duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3';
             
             // UX WIN: Add a "Sell Stack" button if they have more than 1!
-            let actionsHtml = `<button data-sell-index="${index}" data-amount="1" style="transform: translateZ(0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50" ${item.isEquipped ? 'disabled title="Unequip first"' : ''}>Sell 1</button>`;
+            let actionsHtml = `<button data-sell-index="${index}" data-amount="1" style="transform: translateZ(0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50 font-bold" ${item.isEquipped ? 'disabled title="Unequip first"' : ''}>Sell 1</button>`;
             
             if (item.quantity > 1 && !item.isEquipped) {
-                actionsHtml += `<button data-sell-index="${index}" data-amount="all" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs">All (${item.quantity})</button>`;
+                actionsHtml += `<button data-sell-index="${index}" data-amount="all" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs font-bold">All (${item.quantity})</button>`;
             } else if (item.isEquipped) {
                 actionsHtml = `<span class="text-[10px] font-bold text-yellow-500 bg-black bg-opacity-40 px-2 py-1 rounded uppercase tracking-widest border border-yellow-800 shadow-inner">Equipped</span>`;
             }
@@ -514,7 +558,7 @@ function renderShop() {
 
         sellHeader.innerHTML = `
             <div class="flex justify-between items-center w-full">
-                <span>Your Bag <span class="text-[10px] text-gray-400 font-normal ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700">(${gameState.player.inventory.length}/${window.MAX_INVENTORY_SLOTS || 9})</span></span>
+                <span>Your Bag <span class="text-[10px] text-gray-400 font-normal ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner">(${gameState.player.inventory.length}/${window.MAX_INVENTORY_SLOTS || 9})</span></span>
                 <button id="sellAllBtn" style="transform: translateZ(0);" class="text-[10px] uppercase font-bold tracking-widest px-2 py-1.5 rounded transition-transform active:scale-95 ${btnClass}" ${hasJunk ? '' : 'disabled'}>Sell All Junk</button>
             </div>
         `;
@@ -595,8 +639,8 @@ function getRegionalPriceMultiplier(itemType, itemName) {
 // --- FIX SHOP LISTENER DELEGATION ---
 // We need to intercept the newly added 'data-amount' parameter for the Sell Stack feature
 function initShopListeners() {
-    const shopBuyList = document.getElementById('shopBuyList');
-    const shopSellList = document.getElementById('shopSellList');
+    const shopBuyList = _tradeDOMCache.getBuyList();
+    const shopSellList = _tradeDOMCache.getSellList();
     const closeShopButton = document.getElementById('closeShopButton');
 
     if (closeShopButton) {
@@ -610,6 +654,7 @@ function initShopListeners() {
         // Remove existing listener to prevent duplicates
         const newBuyList = shopBuyList.cloneNode(false);
         shopBuyList.parentNode.replaceChild(newBuyList, shopBuyList);
+        _tradeDOMCache.buyList = newBuyList; // Update Cache
         
         newBuyList.addEventListener('click', (e) => {
             const btn = e.target.closest('button[data-buy-item]');
@@ -624,6 +669,7 @@ function initShopListeners() {
         // Remove existing listener to prevent duplicates
         const newSellList = shopSellList.cloneNode(false);
         shopSellList.parentNode.replaceChild(newSellList, shopSellList);
+        _tradeDOMCache.sellList = newSellList; // Update Cache
         
         newSellList.addEventListener('click', (e) => {
             const btn = e.target.closest('button[data-sell-index]');
