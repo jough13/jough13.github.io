@@ -19,6 +19,9 @@ const ctx = canvas.getContext('2d');
 const terrainCanvas = document.createElement('canvas');
 const terrainCtx = terrainCanvas.getContext('2d');
 
+// PERFORMANCE WIN: Cache the canvas wrapper used heavily in render layers for damage flashes
+const canvasWrapperEl = document.getElementById('gameCanvasWrapper');
+
 const darkModeToggle = document.getElementById('darkModeToggle');
 const messageLog = document.getElementById('messageLog');
 const inventoryList = document.getElementById('inventoryList');
@@ -126,6 +129,7 @@ window.currentZoom = 20; // The absolute source of truth for TILE_SIZE
 // --- CHAT & MESSAGE LOG SYSTEM ---
 // PERFORMANCE WIN: Cache Regexes so the V8 engine doesn't recompile them on every log
 const CRIT_REGEX = /\b(CRITICAL HIT!|CRITICAL|AMBUSH!|LEVEL UP!|NEW RECORD!|MAXED)\b/g;
+// LORE WIN: Added explicit Void and Ethereal parsing colors for future-proof lore formatting!
 const FORMAT_REGEXES = [
     { rx: /{red:(.*?)}/g, repl: '<span class="text-red-500 font-bold drop-shadow-md">$1</span>' },
     { rx: /{green:(.*?)}/g, repl: '<span class="text-green-500 font-bold drop-shadow-md">$1</span>' },
@@ -134,7 +138,9 @@ const FORMAT_REGEXES = [
     { rx: /{purple:(.*?)}/g, repl: '<span class="text-purple-400 font-bold drop-shadow-md">$1</span>' },
     { rx: /{cyan:(.*?)}/g, repl: '<span class="text-cyan-400 font-bold drop-shadow-md">$1</span>' },
     { rx: /{orange:(.*?)}/g, repl: '<span class="text-orange-400 font-bold drop-shadow-md">$1</span>' },
-    { rx: /{gray:(.*?)}/g, repl: '<span class="text-gray-500 italic">$1</span>' }
+    { rx: /{gray:(.*?)}/g, repl: '<span class="text-gray-500 italic">$1</span>' },
+    { rx: /{void:(.*?)}/g, repl: '<span class="text-fuchsia-600 font-bold drop-shadow-md animate-pulse">$1</span>' },
+    { rx: /{ethereal:(.*?)}/g, repl: '<span class="text-teal-300 italic drop-shadow-md">$1</span>' }
 ];
 
 const logMessage = (text) => {
@@ -233,29 +239,28 @@ const renderStats = () => {
                 element.innerHTML = healthString;
 
                 element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500', 'text-purple-500'); 
-                const canvasWrapper = document.getElementById('gameCanvasWrapper');
 
                 if (gameState.player.poisonTurns > 0) {
                     element.classList.add('text-purple-500');
                     statBarElements.health.style.backgroundColor = '#a855f7'; 
-                    if(canvasWrapper) canvasWrapper.classList.add('critical-health'); 
+                    if(canvasWrapperEl) canvasWrapperEl.classList.add('critical-health'); 
                     if(statusPanel) statusPanel.classList.remove('border-red-600', 'shadow-[0_0_15px_rgba(220,38,38,0.5)]');
                 } else {
                     if (percent > 60) {
                         element.classList.add('text-green-500');
                         statBarElements.health.style.backgroundColor = '#22c55e'; 
-                        if(canvasWrapper) canvasWrapper.classList.remove('critical-health'); 
+                        if(canvasWrapperEl) canvasWrapperEl.classList.remove('critical-health'); 
                         if(statusPanel) statusPanel.classList.remove('border-red-600', 'shadow-[0_0_15px_rgba(220,38,38,0.5)]');
                     } else if (percent > 25) {
                         element.classList.add('text-yellow-500');
                         statBarElements.health.style.backgroundColor = '#eab308'; 
-                        if(canvasWrapper) canvasWrapper.classList.remove('critical-health'); 
+                        if(canvasWrapperEl) canvasWrapperEl.classList.remove('critical-health'); 
                         if(statusPanel) statusPanel.classList.remove('border-red-600', 'shadow-[0_0_15px_rgba(220,38,38,0.5)]');
                     } else {
                         // JUICE WIN: Pulsing Red Vitals Panel on Critical Health
                         element.classList.add('text-red-500');
                         statBarElements.health.style.backgroundColor = '#ef4444'; 
-                        if(canvasWrapper) canvasWrapper.classList.add('critical-health'); 
+                        if(canvasWrapperEl) canvasWrapperEl.classList.add('critical-health'); 
                         if(statusPanel) statusPanel.classList.add('border-red-600', 'shadow-[0_0_15px_rgba(220,38,38,0.5)]', 'transition-all', 'duration-300');
                     }
                 }
@@ -324,14 +329,13 @@ const renderStats = () => {
     }
     
     // --- JUICE WIN: FULL SCREEN FILTERS & FLASHES ---
-    const canvasWrapper = document.getElementById('gameCanvasWrapper');
-    if (canvasWrapper) {
+    if (canvasWrapperEl) {
         // Clear old persistent filters
-        canvasWrapper.classList.remove('frost-flash', 'void-distortion');
+        canvasWrapperEl.classList.remove('frost-flash', 'void-distortion');
         
         // Apply persistent state filters
-        if (gameState.player.frostbiteTurns > 0) canvasWrapper.classList.add('frost-flash');
-        else if (gameState.player.madnessTurns > 0 || gameState.currentCaveTheme === 'VOID') canvasWrapper.classList.add('void-distortion');
+        if (gameState.player.frostbiteTurns > 0) canvasWrapperEl.classList.add('frost-flash');
+        else if (gameState.player.madnessTurns > 0 || gameState.currentCaveTheme === 'VOID') canvasWrapperEl.classList.add('void-distortion');
         
         // Handle explosive one-time flashes (like lightning or level ups)
         if (gameState.screenFlash && gameState.screenFlash.alpha > 0) {
@@ -342,15 +346,15 @@ const renderStats = () => {
             const bg = `rgba(${r}, ${g}, ${b}, ${gameState.screenFlash.alpha * 0.3})`; // Subtle background tint
             
             // Override the standard box-shadow with our explosive one
-            canvasWrapper.style.boxShadow = shadow;
-            canvasWrapper.style.backgroundColor = bg;
+            canvasWrapperEl.style.boxShadow = shadow;
+            canvasWrapperEl.style.backgroundColor = bg;
             
             // Decay the flash for the next frame
             gameState.screenFlash.alpha -= gameState.screenFlash.decay;
             if (gameState.screenFlash.alpha <= 0) {
                 gameState.screenFlash = null;
-                canvasWrapper.style.boxShadow = ''; // Reset to default CSS
-                canvasWrapper.style.backgroundColor = '';
+                canvasWrapperEl.style.boxShadow = ''; // Reset to default CSS
+                canvasWrapperEl.style.backgroundColor = '';
             } else {
                 // Keep calling renderStats to animate the decay if the flash is still active
                 requestAnimationFrame(renderStats);
@@ -365,22 +369,42 @@ function updateWeatherUI() {
 
     let displayString = '';
     let colorClass = 'text-gray-400';
+    let hoverTitle = ''; // LORE WIN: Mechanical hints on hover
 
     if (gameState.mapMode === 'overworld') {
         if (gameState.isBloodMoon) {
             displayString = '🩸 BLOOD MOON';
             colorClass = 'text-red-500 animate-pulse';
+            hoverTitle = "Monsters are frenzied, deal more damage, and grant double XP. Danger is extreme.";
         } else if (gameState.isEclipse) {
             displayString = '🌑 TOTAL ECLIPSE';
             colorClass = 'text-purple-500 font-bold';
+            hoverTitle = "Absolute darkness. Ancient terrors stalk the land.";
         } else if (gameState.isLeylineSurge) {
             displayString = '⚡ LEYLINE SURGE';
             colorClass = 'text-blue-400 animate-pulse';
+            hoverTitle = "Magic courses through the air. Spells cost less and hit harder.";
         } else if (gameState.weather !== 'clear') {
-            if (gameState.weather === 'rain') { displayString = '🌧️ Raining'; colorClass = 'text-blue-400'; }
-            if (gameState.weather === 'storm') { displayString = '⛈️ Thunderstorm'; colorClass = 'text-yellow-400'; }
-            if (gameState.weather === 'snow') { displayString = '❄️ Snowing'; colorClass = 'text-cyan-300'; }
-            if (gameState.weather === 'fog') { displayString = '🌫️ Foggy'; colorClass = 'text-gray-400'; }
+            if (gameState.weather === 'rain') { 
+                displayString = '🌧️ Downpour'; 
+                colorClass = 'text-blue-400'; 
+                hoverTitle = "Fire magic is weakened. Fish are biting."; 
+            }
+            if (gameState.weather === 'storm') { 
+                displayString = '⛈️ Thunderstorm'; 
+                colorClass = 'text-yellow-400'; 
+                hoverTitle = "Lightning magic is amplified. Beware of random lightning strikes."; 
+            }
+            if (gameState.weather === 'snow') { 
+                displayString = '❄️ Blizzard'; 
+                colorClass = 'text-cyan-300'; 
+                hoverTitle = "Frost magic is deadly. Movement requires more stamina."; 
+            }
+            if (gameState.weather === 'fog') { 
+                displayString = '🌫️ Dense Fog'; 
+                colorClass = 'text-gray-400'; 
+                hoverTitle = "Visibility is severely reduced. Ambush risk is high."; 
+            }
         }
     }
 
@@ -396,12 +420,14 @@ function updateWeatherUI() {
             }
             // Anomaly overrides color
             colorClass = 'text-purple-400 animate-pulse';
+            hoverTitle = "The fundamental rules of reality have been altered in this dimension.";
         }
     }
 
     if (displayString) {
         weatherDisplay.innerHTML = displayString;
-        weatherDisplay.className = `text-[10px] font-bold mt-1 tracking-widest uppercase block ${colorClass}`;
+        weatherDisplay.className = `text-[10px] font-bold mt-1 tracking-widest uppercase block cursor-help ${colorClass}`;
+        weatherDisplay.title = hoverTitle;
     } else {
         weatherDisplay.classList.add('hidden');
     }
@@ -486,7 +512,7 @@ const renderInventory = () => {
             titleElement.innerHTML = `
                 <div class="flex justify-between items-center w-full">
                     <span id="invTitleText">${titleText}</span>
-                    <button id="sortInvBtn" onclick="sortInventory()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded shadow transition-all active:scale-95 border-b-2 border-blue-800 active:border-b-0 active:mt-0.5">Auto-Sort</button>
+                    <button id="sortInvBtn" onclick="sortInventory()" title="Consolidate and sort inventory" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded shadow transition-all active:scale-95 border-b-2 border-blue-800 active:border-b-0 active:mt-0.5 drop-shadow-sm">Auto-Sort</button>
                 </div>
             `;
         }
@@ -502,7 +528,7 @@ const renderInventory = () => {
     }
 
     if (!gameState.player.inventory || gameState.player.inventory.length === 0) {
-        inventoryModalList.innerHTML = '<div class="w-full text-center mt-8 text-gray-500 italic">Your bag is empty.</div>';
+        inventoryModalList.innerHTML = '<div class="w-full text-center mt-8 text-gray-500 italic font-serif">Your bag is completely empty.</div>';
     } else {
         // PERFORMANCE: Batch DOM updates using DocumentFragment
         const fragment = document.createDocumentFragment();
@@ -538,6 +564,8 @@ const renderInventory = () => {
 
             // Build the Native Tooltip
             let title = item.name;
+            if (item.type === 'treasure_map') title = `🗺️ ${title}`; // QoL
+            
             if (item.statBonuses) {
                 title += " (";
                 let bonuses = [];
@@ -658,13 +686,13 @@ const renderEquipment = () => {
     const acc = equip.accessory;
     const ammo = equip.ammo;
 
-    // --- UI/UX WIN: Dynamic Empty Slot Styling ---
+    // --- UI/UX WIN: Dynamic Empty Slot Styling & Lore Hints ---
     const applySlotStyle = (iconElement, isEmpty) => {
         if (!iconElement) return;
         if (isEmpty) {
-            iconElement.className = 'equipment-slot text-3xl opacity-30 border-dashed border-gray-600 transition-all';
+            iconElement.className = 'equipment-slot text-3xl opacity-30 border-dashed border-gray-600 transition-all cursor-help';
         } else {
-            iconElement.className = 'equipment-slot text-3xl border-solid border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)] transition-all bg-black bg-opacity-20';
+            iconElement.className = 'equipment-slot text-3xl border-solid border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)] transition-all bg-black bg-opacity-20 cursor-pointer';
         }
     };
 
@@ -677,13 +705,17 @@ const renderEquipment = () => {
     let weaponString = `Wpn: ${weapon.name} (+${weaponDamage})`;
     // QoL WIN: Explicitly show base + bonus stats in the tooltip
     let weaponTooltip = `${weapon.name}\nBase Damage: +${weaponDamage}\n(Your Total: ${totalDamage})`;
-    if (weapon.statBonuses) {
+    
+    if (weapon.name === 'Fists') {
+        weaponTooltip = "Empty Main Hand: Your fists deal base damage based on Strength.";
+    } else if (weapon.statBonuses) {
         const bonusArr = Object.entries(weapon.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
         if (bonusArr.length > 0) {
             weaponString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
             weaponTooltip += `\nBonuses: ${Object.entries(weapon.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
         }
     }
+    
     if (player.strengthBonus > 0) { 
         weaponString += ` <span class="text-green-500 drop-shadow-sm">[+${player.strengthBonus} Str (${player.strengthBonusTurns}t)]</span>`;
     }
@@ -703,7 +735,10 @@ const renderEquipment = () => {
 
     let armorString = `Body: ${armor.name} (+${armorDefense})`;
     let armorTooltip = `${armor.name}\nBase Defense: +${armorDefense}\n(Your Total: ${totalDefense})`;
-    if (armor.statBonuses) {
+    
+    if (armor.name === 'Tattered Rags' || armor.name === 'Simple Tunic') {
+        armorTooltip = `${armor.name}\nEmpty Body: No robust armor equipped. You are vulnerable.`;
+    } else if (armor.statBonuses) {
         const bonusArr = Object.entries(armor.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
         if (bonusArr.length > 0) {
             armorString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
@@ -743,19 +778,19 @@ const renderEquipment = () => {
     if (oIcon) {
         oIcon.textContent = offhand ? offhand.tile.replace(/[a-zA-Z]/g, '') : '🛡️';
         applySlotStyle(oIcon, !offhand);
-        oIcon.title = offhand ? `${offhand.name}\nDefense: +${offhand.defense || 0}` : 'Empty Off-Hand';
+        oIcon.title = offhand ? `${offhand.name}\nDefense: +${offhand.defense || 0}` : 'Empty Off-Hand: Equip a shield to block or a secondary item.';
     }
     if (cIcon) {
         cIcon.textContent = acc ? acc.tile.replace(/[a-zA-Z]/g, '') : '💍';
         applySlotStyle(cIcon, !acc);
-        let accTooltip = acc ? acc.name : 'Empty Accessory';
+        let accTooltip = acc ? acc.name : 'Empty Accessory: Magic rings and amulets go here.';
         if (acc && acc.statBonuses) accTooltip += `\nBonuses: ${Object.entries(acc.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
         cIcon.title = accTooltip;
     }
     if (mIcon && ammoCount) {
         mIcon.childNodes[0].nodeValue = ammo ? ammo.tile.replace(/[a-zA-Z]/g, '') : '➹';
         applySlotStyle(mIcon, !ammo);
-        mIcon.title = ammo ? `${ammo.name}\nDamage: +${ammo.damage || 0}\nRemaining: ${ammo.quantity}` : 'No Ammo Equipped';
+        mIcon.title = ammo ? `${ammo.name}\nDamage: +${ammo.damage || 0}\nRemaining: ${ammo.quantity}` : 'Empty Ammo: Arrows and bolts for ranged weapons.';
         
         ammoCount.textContent = ammo ? ammo.quantity : '';
         ammoCount.style.display = ammo ? 'block' : 'none';
@@ -873,22 +908,22 @@ function renderStatusEffects() {
     let icons = ''; 
 
     if (player.shieldValue > 0) {
-        icons += `<span title="Arcane Shield (${Math.ceil(player.shieldValue)} points, ${player.shieldTurns}t)" class="drop-shadow-md">💠</span>`;
+        icons += `<span title="Arcane Shield (${Math.ceil(player.shieldValue)} points, ${player.shieldTurns}t)" class="drop-shadow-md cursor-help">💠</span>`;
     }
     if (player.defenseBonusTurns > 0) {
-        icons += `<span title="Braced (+${player.defenseBonus} Def, ${player.defenseBonusTurns}t)" class="drop-shadow-md">🛡️</span>`;
+        icons += `<span title="Braced (+${player.defenseBonus} Def, ${player.defenseBonusTurns}t)" class="drop-shadow-md cursor-help">🛡️</span>`;
     }
     if (player.strengthBonusTurns > 0) {
-        icons += `<span title="Strong (+${player.strengthBonus} Str, ${player.strengthBonusTurns}t)" class="drop-shadow-md">💪</span>`;
+        icons += `<span title="Strong (+${player.strengthBonus} Str, ${player.strengthBonusTurns}t)" class="drop-shadow-md cursor-help">💪</span>`;
     }
     if (player.poisonTurns > 0) {
-        icons += `<span title="Poisoned (${player.poisonTurns}t)" class="text-green-500 animate-pulse drop-shadow-md">☣️</span>`;
+        icons += `<span title="Poisoned (${player.poisonTurns}t)" class="text-green-500 animate-pulse drop-shadow-md cursor-help">☣️</span>`;
     }
     if (player.frostbiteTurns > 0) {
-        icons += `<span title="Frostbitten (${player.frostbiteTurns}t)" class="text-cyan-400 drop-shadow-md">❄️</span>`;
+        icons += `<span title="Frostbitten (${player.frostbiteTurns}t)" class="text-cyan-400 drop-shadow-md cursor-help">❄️</span>`;
     }
     if (player.madnessTurns > 0) {
-        icons += `<span title="Void Madness (${player.madnessTurns}t)" class="text-purple-500 animate-spin drop-shadow-md inline-block">👁️</span>`;
+        icons += `<span title="Void Madness (${player.madnessTurns}t)" class="text-purple-500 animate-spin drop-shadow-md inline-block cursor-help">👁️</span>`;
     }
 
     statusEffectsPanel.innerHTML = icons;
@@ -961,6 +996,10 @@ function resizeCanvas() {
 // LORE EXPANSION WIN: Inject RPG Tooltips into the Stat Panel
 (function initStatTooltips() {
     const statDescriptions = {
+        // Core Profile
+        level: "Level: Represents your overall power and experience. You gain Stat Points and occasionally Mastery Talents when leveling up.",
+        xp: "Experience: Earned by slaying monsters, exploring regions, and discovering lore. Fills to increase your Level.",
+        coins: "Gold Coins: The currency of the realm. Used for trading, camp upgrades, and magical fountains.",
         // Vitals
         health: "Health: The physical toll your body can endure. If it hits 0, you die and lose gold/items.",
         mana: "Mana: Magical essence channeled from the leylines. Used to cast Spells and Fast Travel.",
@@ -993,9 +1032,8 @@ function resizeCanvas() {
 })();
 
 // --- ZOOM EVENT LISTENER ---
-const canvasWrapper = document.getElementById('gameCanvasWrapper');
-if (canvasWrapper) {
-    canvasWrapper.addEventListener('wheel', (e) => {
+if (canvasWrapperEl) {
+    canvasWrapperEl.addEventListener('wheel', (e) => {
         e.preventDefault(); 
         
         const zoomDirection = Math.sign(e.deltaY);
@@ -1064,12 +1102,11 @@ function loadVisualSettings() {
 // Applies the CRT visual filter based on saved preferences
 function applyVisualSettings() {
     const settings = loadVisualSettings();
-    const wrapper = document.getElementById('gameCanvasWrapper');
-    if (wrapper) {
+    if (canvasWrapperEl) {
         if (settings.crt) {
-            wrapper.classList.add('crt');
+            canvasWrapperEl.classList.add('crt');
         } else {
-            wrapper.classList.remove('crt');
+            canvasWrapperEl.classList.remove('crt');
         }
     }
 }
