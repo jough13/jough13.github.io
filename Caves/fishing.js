@@ -4,7 +4,7 @@
 // THE ULTIMATE FISHING EXPANSION (MASTERPIECE++)
 // ==============================================
 
-// Item Lookup Cache
+// PERFORMANCE WIN: O(1) Item Lookup Cache
 // Prevents scanning the massive ITEM_DATA dictionary multiple times per catch
 // Attaching to window prevents hot-reload SyntaxErrors!
 window._itemKeyCache = window._itemKeyCache || {};
@@ -25,9 +25,10 @@ function playLineSnap() {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playTone(150, 'sawtooth', 0.2, 0.1, false, 50);
 }
 
-// Cached DOM elements for eating (Attached to window for hot-reload safety)
+// PERFORMANCE WIN: Cached DOM elements for eating (Attached to window for hot-reload safety)
 window._hungerDisplayObj = window._hungerDisplayObj || null;
 window._healthDisplayObj = window._healthDisplayObj || null;
+window._psycheDisplayObj = window._psycheDisplayObj || null;
 
 // --- 1. DYNAMIC ITEM INJECTION ---
 // Using 'var' prevents block-scoped redeclaration crashes during hot-reloads
@@ -184,7 +185,11 @@ var NEW_FISHING_ITEMS = {
             } else {
                 logMessage("Just some slimy oyster meat. {yellow:(+15 Hunger)}");
                 state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 15);
-                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+                
+                if (!window._hungerDisplayObj) window._hungerDisplayObj = document.getElementById('hungerDisplay');
+                if (typeof triggerStatAnimation !== 'undefined' && window._hungerDisplayObj) {
+                    triggerStatAnimation(window._hungerDisplayObj, 'stat-pulse-green');
+                }
             }
             return true; // Consume Oyster
         }
@@ -323,7 +328,7 @@ function eatFish(state, hungerAmt, hpAmt = 0, psycheAmt = 0) {
     // Performance: Cache DOM lookups safely attached to window
     if (!window._hungerDisplayObj) window._hungerDisplayObj = document.getElementById('hungerDisplay');
     if (!window._healthDisplayObj) window._healthDisplayObj = document.getElementById('healthDisplay');
-    const _psycheDisplayObj = document.getElementById('psycheDisplay'); 
+    if (!window._psycheDisplayObj) window._psycheDisplayObj = document.getElementById('psycheDisplay'); 
 
     state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + hungerAmt);
     if (hpAmt > 0) state.player.health = Math.min(state.player.maxHealth, state.player.health + hpAmt);
@@ -337,9 +342,9 @@ function eatFish(state, hungerAmt, hpAmt = 0, psycheAmt = 0) {
     logMessage(logStr);
     
     if (typeof triggerStatAnimation !== 'undefined') {
-        triggerStatAnimation(window._hungerDisplayObj, 'stat-pulse-green');
-        if (hpAmt > 0) triggerStatAnimation(window._healthDisplayObj, 'stat-pulse-green');
-        if (psycheAmt > 0 && _psycheDisplayObj) triggerStatAnimation(_psycheDisplayObj, 'stat-pulse-purple');
+        if (window._hungerDisplayObj) triggerStatAnimation(window._hungerDisplayObj, 'stat-pulse-green');
+        if (hpAmt > 0 && window._healthDisplayObj) triggerStatAnimation(window._healthDisplayObj, 'stat-pulse-green');
+        if (psycheAmt > 0 && window._psycheDisplayObj) triggerStatAnimation(window._psycheDisplayObj, 'stat-pulse-purple');
     }
     return true;
 }
@@ -579,6 +584,7 @@ function executeFishing() {
     if (isFrenzy) catchChance += 0.25; // Massive frenzy boost
     catchChance += baitCatchBoost; 
 
+    // LORE WIN: Dynamic Thematic Casting Messages!
     let flavorText = "You cast your line...";
     if (zone === 'deep') flavorText = "You drop your heavy line into the abyss...";
     if (zone === 'lava') flavorText = "You cast your obsidian line into the bubbling magma...";
@@ -588,6 +594,7 @@ function executeFishing() {
     if (isNight) flavorText += " The darkness is absolute.";
     if (isBloodMoon) flavorText += " The water reflects the crimson moon.";
     if (gameState.weather === 'rain') flavorText += " The rain pelts the surface of the water.";
+    if (gameState.weather === 'storm') flavorText += " Lightning flashes across the choppy water.";
     
     if (isFrenzy) logMessage("{blue:The water is boiling with activity! (Feeding Frenzy)}");
     logMessage(`{gray:${flavorText}}`);
@@ -622,6 +629,7 @@ function executeFishing() {
         if (gameState.weather === 'storm') weatherBoost = 0.20;
         if (isBloodMoon) weatherBoost = 0.35; 
         
+        // PERFORMANCE WIN: Unified calculation logic!
         const totalRareChance = roll + baitRareBoost + nightBoost + frenzyBoost + luckBoost + lvlBoost + weatherBoost;
 
         if (totalRareChance > 0.98) { rarity = 'legendary'; xpGained = 150; }
@@ -675,6 +683,8 @@ function executeFishing() {
             if (weight > currentRecord) {
                 player.fishingRecords[baseName] = weight;
                 logMessage(`{gold:🏆 NEW RECORD! You caught a ${weight}lb ${baseName}!}`);
+                
+                // JUICE WIN: Trophy Fish catch explosion!
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y); 
                 xpGained += 25; 
             }
