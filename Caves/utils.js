@@ -49,6 +49,10 @@ const WORLD_SEED = 'caves-and-castles-v1';
 // ==========================================
 // UNIVERSAL MATH & RPG TOOLKIT
 // ==========================================
+
+// PERFORMANCE WIN: Cached Regex for the dice parser
+const DICE_REGEX = /^(\d+)d(\d+)(?:([+-])(\d+))?$/i;
+
 window.MathUtils = {
     // Distance squared is much faster to compute than true distance (no Math.sqrt)
     distSq: (x1, y1, x2, y2) => (x2 - x1) ** 2 + (y2 - y1) ** 2,
@@ -67,6 +71,15 @@ window.MathUtils = {
     
     // Smooth linear interpolation for cameras and entity gliding
     lerp: (start, end, amt) => (1 - amt) * start + amt * end,
+
+    // JUICE WIN: Global Oscillation Helper
+    // Returns a smoothly waving value between min and max based on the current time. 
+    // Perfect for pulsing lights, hovering items, and breathing UI elements!
+    oscillate: (min, max, speed = 1, offset = 0) => {
+        const time = (performance.now() / 1000) * speed + offset;
+        const range = (max - min) / 2;
+        return min + range + Math.sin(time) * range;
+    },
 
     // JUICE WIN: Animation Easing Curves for UI & Cameras
     smoothstep: (min, max, value) => {
@@ -104,7 +117,7 @@ window.MathUtils = {
 
     // EXPANDABILITY WIN: Parses standard TTRPG strings like "2d6+4"
     rollDiceString: (notation) => {
-        const match = notation.match(/^(\d+)d(\d+)(?:([+-])(\d+))?$/i);
+        const match = notation.match(DICE_REGEX);
         if (!match) return 0;
         
         const count = parseInt(match[1], 10);
@@ -206,6 +219,12 @@ window.ColorUtils = {
     rgba: (hex, alpha) => {
         const {r, g, b} = window.ColorUtils.hexToRgb(hex);
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    },
+
+    // JUICE WIN: Instantly invert a hex color (Great for "Corrupted" void monsters!)
+    invertColor: (hex) => {
+        const {r, g, b} = window.ColorUtils.hexToRgb(hex);
+        return `#${(1 << 24 | (255 - r) << 16 | (255 - g) << 8 | (255 - b)).toString(16).slice(1)}`;
     }
 };
 
@@ -397,63 +416,131 @@ window.formatWorldTime = function(timeData) {
     return `${dayOfWeek}, the ${dayOfMonth}${daySuffix} of ${month}, Year ${timeData.year} ${timeData.era} | ${hour12}:${minutePadded} ${ampm}`;
 };
 
+// LORE WIN: Translates clinical 24h time into atmospheric "Times of Day"
+window.getLoreTimeOfDay = function(hour) {
+    if (hour === 0) return "The Witching Hour";
+    if (hour < 5) return "The Deep Dark";
+    if (hour === 5) return "The False Dawn";
+    if (hour < 8) return "The First Light";
+    if (hour < 12) return "The Morning Ascent";
+    if (hour === 12) return "High Noon";
+    if (hour < 17) return "The Long Afternoon";
+    if (hour < 20) return "The Crimson Dusk";
+    if (hour === 20) return "The Twilight Hour";
+    return "The Star-lit Night";
+};
+
+// LORE & UI WIN: Expanded Dictionary for Auto-Tagging
+const LORE_KEYWORDS = {
+    'Void': 'void', 'Void Rift': 'void', 'Shadowed Hand': 'purple',
+    'Old King': 'gold', 'First King': 'gold', 'Alaric': 'gold',
+    'Leylines': 'blue', 'Waystone': 'blue', 'Akashic': 'blue',
+    'Fae': 'green', 'Fairy': 'green', 'Elder Tree': 'green',
+    'Grand Fortress': 'red', 'Blood Moon': 'red'
+};
+
+/**
+ * LORE WIN: The Auto-Lore Tagger
+ * Scans raw text and automatically wraps crucial lore keywords in their appropriate {color:text} syntax.
+ * Essential for future-proofing dynamically generated quests and books!
+ */
+window.autoFormatLore = function(text) {
+    if (!text) return "";
+    let formatted = text;
+    for (const [keyword, color] of Object.entries(LORE_KEYWORDS)) {
+        // Use regex with word boundaries to avoid matching partial words
+        const regex = new RegExp(`\\b(${keyword})\\b`, 'g');
+        // Only wrap it if it isn't ALREADY inside a {tag}
+        formatted = formatted.replace(regex, (match, p1, offset, string) => {
+            const lookBehind = string.substring(Math.max(0, offset - 10), offset);
+            if (lookBehind.includes('{')) return match; 
+            return `{${color}:${match}}`;
+        });
+    }
+    return formatted;
+};
+
 /**
  * Converts a direction object {x, y} into a readable string.
  * @param {object} dir - An object with x and y properties (-1, 0, or 1)
+ * @param {boolean} atmospheric - If true, adds lore-friendly flavor to the cardinal direction
  * @returns {string} A compass direction, e.g., "north-west".
  */
-function getDirectionString(dir) {
+window.getDirectionString = function(dir, atmospheric = false) {
     if (!dir) return 'nearby';
 
     const { x, y } = dir;
+    let baseDir = '';
 
     if (y === -1) {
-        if (x === -1) return 'north-west';
-        if (x === 0)  return 'north';
-        if (x === 1)  return 'north-east';
+        if (x === -1) baseDir = 'north-west';
+        else if (x === 0)  baseDir = 'north';
+        else if (x === 1)  baseDir = 'north-east';
     } else if (y === 0) {
-        if (x === -1) return 'west';
-        if (x === 1)  return 'east';
+        if (x === -1) baseDir = 'west';
+        else if (x === 1)  baseDir = 'east';
     } else if (y === 1) {
-        if (x === -1) return 'south-west';
-        if (x === 0)  return 'south';
-        if (x === 1)  return 'south-east';
+        if (x === -1) baseDir = 'south-west';
+        else if (x === 0)  baseDir = 'south';
+        else if (x === 1)  baseDir = 'south-east';
+    } else {
+        return 'nearby';
     }
-    return 'nearby'; // Fallback
-}
+
+    // LORE WIN: Atmospheric Directions
+    if (atmospheric) {
+        if (baseDir.includes('north')) return `the Frozen ${capitalizeWords(baseDir)}`;
+        if (baseDir.includes('south')) return `the Scorched ${capitalizeWords(baseDir)}`;
+        if (baseDir.includes('east')) return `the Shattered ${capitalizeWords(baseDir)}`;
+        if (baseDir.includes('west')) return `the Endless ${capitalizeWords(baseDir)}`;
+    }
+
+    return baseDir;
+};
 
 /**
  * IMMERSION WIN: Calculates relative distance and direction for flavor text.
  * e.g. "a few steps to the North" or "far off to the South-West"
  */
-function getRelativePositionText(dx, dy) {
+window.getRelativePositionText = function(dx, dy, atmospheric = false) {
     const dist = Math.sqrt(dx * dx + dy * dy);
     let distStr = "nearby";
-    if (dist > 15) distStr = "far off to the";
-    else if (dist > 5) distStr = "some distance to the";
-    else distStr = "a few steps to the";
+    if (dist > 15) distStr = "far off towards";
+    else if (dist > 5) distStr = "some distance towards";
+    else distStr = "a few steps towards";
 
-    const dir = getDirectionString({ x: Math.sign(dx), y: Math.sign(dy) });
+    const dir = window.getDirectionString({ x: Math.sign(dx), y: Math.sign(dy) }, atmospheric);
     if (dir === 'nearby') return 'right on top of you';
     
-    return `${distStr} ${capitalizeWords(dir)}`;
-}
+    return `${distStr} ${atmospheric ? dir : capitalizeWords(dir)}`;
+};
 
 // ==========================================
 // DEEP OBJECT MANAGEMENT
 // ==========================================
 
 // PERFORMANCE WIN: High-speed recursive clone. 
-// Replaces JSON.parse(JSON.stringify()) in combat and save loops for massive speedups!
+// Completely replaces JSON.parse(JSON.stringify()) with a V8-optimized deep copy.
+// Uses Object.keys() and pre-allocated Arrays to bypass all prototype chain overhead!
 window.fastClone = function(obj) {
+    // Base case: null, undefined, strings, numbers, booleans
     if (obj === null || typeof obj !== 'object') return obj;
-    if (Array.isArray(obj)) return obj.map(window.fastClone);
     
-    const cloned = {};
-    for (const key in obj) {
-        if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            cloned[key] = window.fastClone(obj[key]);
+    // Fast-path for Arrays
+    if (Array.isArray(obj)) {
+        const arr = new Array(obj.length);
+        for(let i = 0; i < obj.length; i++) {
+            arr[i] = window.fastClone(obj[i]);
         }
+        return arr;
+    }
+    
+    // Fast-path for standard Objects
+    const cloned = {};
+    const keys = Object.keys(obj);
+    for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        cloned[key] = window.fastClone(obj[key]);
     }
     return cloned;
 };
