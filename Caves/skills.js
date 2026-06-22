@@ -84,7 +84,7 @@ function useSkill(skillId) {
 
         // --- 4. Execute Skill Effect ---
         switch (skillId) {
-            case 'brace':
+            case 'brace': {
                 if (player.defenseBonusTurns > 0) {
                     logMessage("{gray:You are already bracing!}");
                     break;
@@ -103,8 +103,8 @@ function useSkill(skillId) {
                 }
                 skillUsedSuccessfully = true;
                 break;
-
-            case 'channel':
+            }
+            case 'channel': {
                 let manaGain = 5 + (player.wits * 2);
                 
                 // --- EXPANSION WIN: Archmage Synergy ---
@@ -122,8 +122,8 @@ function useSkill(skillId) {
                 
                 skillUsedSuccessfully = true;
                 break;
-
-            case 'deflect':
+            }
+            case 'deflect': {
                 player.thornsValue = 100; // Reflect huge damage
                 player.thornsTurns = 1;   // Only for the very next turn/hit
                 logMessage("{gray:You raise your blade, ready to deflect the next blow.}");
@@ -140,8 +140,8 @@ function useSkill(skillId) {
                 
                 skillUsedSuccessfully = true;
                 break;
-
-            case 'vanish':
+            }
+            case 'vanish': {
                 player.stealthTurns = skillData.duration;
                 logMessage("{gray:You throw a smoke bomb and vanish from sight!}");
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 20);
@@ -149,8 +149,8 @@ function useSkill(skillId) {
                 if (typeof playerRef !== 'undefined') playerRef.update({ stealthTurns: player.stealthTurns });
                 skillUsedSuccessfully = true;
                 break;
-
-            case 'stealth':
+            }
+            case 'stealth': {
                 player.stealthTurns = skillData.duration;
                 logMessage("{gray:You fade into the shadows... (Invisible)}");
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 400);
@@ -158,8 +158,8 @@ function useSkill(skillId) {
                 if (typeof playerRef !== 'undefined') playerRef.update({ stealthTurns: player.stealthTurns });
                 skillUsedSuccessfully = true;
                 break;
-                
-            case 'adrenaline':
+            }
+            case 'adrenaline': {
                 const stamGain = 10;
                 player.stamina = Math.min(player.maxStamina, player.stamina + stamGain);
                 logMessage(`{green:You push past the pain! (+10 Stamina)}`);
@@ -168,11 +168,11 @@ function useSkill(skillId) {
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+10`, '#facc15');
                 skillUsedSuccessfully = true;
                 break;
-
-            case 'whirlwind':
+            }
+            case 'whirlwind': {
                 let baseDmg = (player.strength + player.dexterity) * skillLevel;
                 
-                // --- EXPANSION WIN: Two-Handed Whirlwind Synergy ---
+                // --- LORE & EXPANSION WIN: Two-Handed Whirlwind Synergy ---
                 if (player.equipment.weapon && player.equipment.weapon.isTwoHanded) {
                     baseDmg = Math.floor(baseDmg * 1.5);
                     logMessage("{orange:Your massive two-handed weapon creates a devastating sweep!}");
@@ -243,6 +243,7 @@ function useSkill(skillId) {
 
                 skillUsedSuccessfully = true;
                 break;
+            }
         }
 
         // --- 5. Finalize Self-Cast Turn ---
@@ -751,7 +752,7 @@ async function executeLunge(dirX, dirY) {
         }
         const playerBaseDamage = rawPower;
 
-        // Loop 2 and 3 tiles away
+        // PERFORMANCE WIN: Fast-path target loop breaks instantly on walls!
         for (let i = 2; i <= 3; i++) {
             const targetX = player.x + (dirX * i);
             const targetY = player.y + (dirY * i);
@@ -762,23 +763,33 @@ async function executeLunge(dirX, dirY) {
             }
 
             let tile;
+            let isSolid = false;
+            
             if (gameState.mapMode === 'dungeon') {
                 const map = chunkManager.caveMaps[gameState.currentCaveId];
                 tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+                const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
+                const wallTile = theme ? theme.wall : '▓';
+                if (tile === wallTile || tile === '▒' || tile === '+') isSolid = true;
             } else if (gameState.mapMode === 'castle') {
                 const map = chunkManager.castleMaps[gameState.currentCastleId];
                 tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+                if (tile === '▓' || tile === '▒' || tile === '+') isSolid = true;
             } else {
-                // --- Check for LIVE moving enemies first! ---
                 const enemyId = `overworld:${targetX},${-targetY}`;
                 const liveEnemy = gameState.sharedEnemies[enemyId];
                 tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
+                if (['^', 'F', '🧱', '+', '☒'].includes(tile) && !liveEnemy) isSolid = true;
+            }
+
+            if (isSolid) {
+                logMessage("{gray:Your lunge is blocked by a solid object.}");
+                break;
             }
 
             const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
 
             if (enemyData) {
-                // Found a target!
                 if (player.stealthTurns > 0) {
                     player.stealthTurns = 0;
                     logMessage("{gray:You strike from the shadows!}");
@@ -789,28 +800,24 @@ async function executeLunge(dirX, dirY) {
                 hit = true;
 
                 // --- 3. Calculate Final Damage ---
-                // Apply multipliers FIRST, then subtract Enemy Defense (Matches Cleave/Bash)
                 const baseLungeDamage = playerBaseDamage * skillData.baseDamageMultiplier;
                 const finalDmg = Math.max(1, Math.floor(baseLungeDamage + (player.strength * skillLevel)));
                 const totalLungeDamage = Math.max(1, finalDmg - (enemyData.defense || 0));
 
                 if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                    // Handle Overworld Combat
                     if (typeof handleOverworldCombat === 'function') {
                         await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
                     }
                 } else {
-                    // Handle Instanced Combat
                     let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
                     if (enemy) {
-                        // SAFEGUARD
                         enemy.health = Number(enemy.health);
                         if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
 
                         enemy.health -= totalLungeDamage;
                         logMessage(`You hit the ${enemy.name} for {red:${totalLungeDamage}} damage!`);
                         if (typeof ParticleSystem !== 'undefined') {
-                            ParticleSystem.createExplosion(targetX, targetY, '#ef4444', 4); // Blood
+                            ParticleSystem.createExplosion(targetX, targetY, '#ef4444', 4); 
                             ParticleSystem.createFloatingText(targetX, targetY, `-${totalLungeDamage}`, '#ef4444');
                         }
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('pierce');
@@ -821,7 +828,7 @@ async function executeLunge(dirX, dirY) {
                         }
                     }
                 }
-                break; // Stop looping, we hit our target
+                break; 
             }
         }
 
@@ -836,14 +843,13 @@ async function executeLunge(dirX, dirY) {
         if (typeof playerRef !== 'undefined') {
             playerRef.update({ stamina: player.stamina });
         }
-        if (typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
+        if (typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays.stamina, false); 
         
         triggerAbilityCooldown('lunge');
         if (typeof endPlayerTurn === 'function') endPlayerTurn(); 
         if (typeof render === 'function') render(); 
 
     } finally {
-        // --- 🚨 UNLOCK THE ENGINE ---
         isProcessingMove = false;
     }
 }
@@ -967,9 +973,11 @@ function executePacify(dirX, dirY) {
 
         const tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
         const enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+        
+        // PERFORMANCE WIN: Fast-path target loop breaks instantly on walls!
+        if (tile === '▓' || tile === '▒' || tile === '🧱') break;
 
         if (enemy) {
-
             if (enemy.isBoss) {
                 logMessage(`{red:The ${enemy.name} is immune to your charms!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -1006,9 +1014,6 @@ function executePacify(dirX, dirY) {
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             }
             break; // Stop looping, we found our target
-        } else if (tile !== theme.floor) {
-            // Hit a wall, stop the loop
-            break;
         }
     }
 
@@ -1162,6 +1167,9 @@ function executeInflictMadness(dirX, dirY) {
 
         const tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
         const enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+        
+        // PERFORMANCE WIN: Fast-path target loop breaks instantly on walls!
+        if (tile === '▓' || tile === '▒' || tile === '🧱') break;
 
         if (enemy) {
 
@@ -1191,9 +1199,6 @@ function executeInflictMadness(dirX, dirY) {
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             }
             break; // Stop looping, we found our target
-        } else if (tile !== theme.floor) {
-            // Hit a wall, stop the loop
-            break;
         }
     }
 
