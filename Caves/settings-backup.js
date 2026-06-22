@@ -14,16 +14,24 @@ let isBackupOperationRunning = false;
 // to swap 5 pieces of "Stone" into 5 "Legendary Swords" (which bypassed the old length check).
 
 function generateStrictSaveSignature(data) {
-    // PERFORMANCE WIN: Fast string building for massive arrays
+    // PERFORMANCE WIN: Bypassed .map().join() in favor of inline string building.
+    // This prevents massive memory allocation spikes during the save process!
     let invStr = 'empty';
     if (data.inventory && data.inventory.length > 0) {
-        // FIX: Include quantity in the hash to prevent payload injection
-        invStr = data.inventory.map(i => `${i.name}:${i.quantity || 1}`).join('');
+        invStr = '';
+        for (let i = 0; i < data.inventory.length; i++) {
+            const item = data.inventory[i];
+            invStr += `${item.name}:${item.quantity || 1}|`;
+        }
     }
+    
     let bankStr = 'empty';
     if (data.bank && data.bank.length > 0) {
-        // Include quantity in the hash to prevent payload injection
-        bankStr = data.bank.map(i => `${i.name}:${i.quantity || 1}`).join('');
+        bankStr = '';
+        for (let i = 0; i < data.bank.length; i++) {
+            const item = data.bank[i];
+            bankStr += `${item.name}:${item.quantity || 1}|`;
+        }
     }
     
     const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.maxHealth}_${invStr}_${bankStr}_${data.background}_${BACKUP_SALT}`;
@@ -153,7 +161,7 @@ async function createCloudBackup(slotId = 'latest') {
         logMessage("{green:Your timeline has been safely anchored.}");
         
         // LORE/JUICE: Tactile feedback for stamping the timeline
-        gameState.screenShake = 3; 
+        gameState.screenShake = 5; 
         if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
         if (typeof ParticleSystem !== 'undefined' && gameState.player) {
             ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "TIMELINE SECURED", "#22d3ee");
@@ -207,7 +215,7 @@ async function restoreCloudBackup(slotId = 'latest') {
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = "⏳ Searching the Void...";
-        btn.classList.add('opacity-75', 'cursor-wait');
+        btn.classList.add('opacity-75', 'cursor-wait', 'animate-pulse');
     }
 
     logMessage("{purple:Unraveling the current reality... seeking the anchor point.}");
@@ -256,7 +264,7 @@ async function restoreCloudBackup(slotId = 'latest') {
         
         // C. Block structural JSON injection (e.g. modifying the save file to bypass inventory limits)
         const invLimit = window.MAX_INVENTORY_SLOTS || 9;
-        const stashLimit = 50; // Defined in stash.js, hardcoded here as a secondary safety net
+        const stashLimit = window.MAX_STASH_SLOTS || 50; 
         
         if ((data.inventory && data.inventory.length > invLimit + 5) || (data.bank && data.bank.length > stashLimit + 5)) {
              console.error(`Suspicious Backup Blocked: Inventory/Stash size exceeds maximum limits. (Inv: ${data.inventory?.length}, Bank: ${data.bank?.length})`);
@@ -341,13 +349,19 @@ async function restoreCloudBackup(slotId = 'latest') {
             ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ffffff', 40);
             ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#a855f7', 20);
         }
+        
+        // Play the massive timeline shift audio!
+        if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playTimelineShift === 'function') {
+            AudioSystem.playTimelineShift();
+        } else if (typeof AudioSystem !== 'undefined') {
+            AudioSystem.playMagic();
+        }
+        
         logMessage("{purple:Reality violently shifts... the timeline has been rewritten.}");
         
         if (paradoxTriggered) {
             logMessage("{gold:The violent shift in time left something unnatural in your pocket...}");
         }
-        
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
         
         // Close modal
         const settingsModal = document.getElementById('settingsModal');
@@ -363,7 +377,7 @@ async function restoreCloudBackup(slotId = 'latest') {
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = originalText;
-            btn.classList.remove('opacity-75', 'cursor-wait');
+            btn.classList.remove('opacity-75', 'cursor-wait', 'animate-pulse');
         }
     }
 }
@@ -402,11 +416,12 @@ async function updateBackupUI(slotId = 'latest') {
 
             label.classList.remove('text-red-500', 'text-yellow-500', 'text-gray-400');
 
+            // LORE WIN: Thematic status text
             if (hoursOld > 24) {
-                label.innerHTML = `Timeline Anchored: ${dateString} at ${timeString} <br><span class="font-bold text-yellow-500">(Over 24h old!)</span>`;
+                label.innerHTML = `Timeline Anchored: ${dateString} at ${timeString} <br><span class="font-bold text-yellow-500 drop-shadow-md">(Over 24h old! Anchor weakening...)</span>`;
                 label.classList.add('text-yellow-500');
             } else {
-                label.innerHTML = `Timeline Anchored: ${dateString} at ${timeString} <br><span class="text-cyan-400 font-bold">(${relativeStr})</span>`;
+                label.innerHTML = `Timeline Anchored: ${dateString} at ${timeString} <br><span class="text-cyan-400 font-bold drop-shadow-sm">(${relativeStr})</span>`;
                 label.classList.add('text-gray-400');
             }
 
