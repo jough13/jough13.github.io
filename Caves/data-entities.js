@@ -137,13 +137,13 @@ window.QUEST_DATA = {
     },
     "cultistGenerals": {
         title: "The Hand's Fingers",
-        description: "\"The Cult is led by bloodthirsty Fanatics ('z'). Decapitate their leadership.\"",
+        description: "\"The Cult is led by bloodthirsty Fanatics ('z'). We cannot allow them to complete the ritual. Decapitate their leadership.\"",
         type: 'kill', enemy: 'z', needed: 15,
         reward: { xp: 800, coins: 500, item: 'Potion of Speed', itemQty: 3 }
     },
     "voidDemons": {
         title: "Banish the Demons",
-        description: "\"Rifts have opened in the Deadlands. Void Demons ('😈d') are pouring through. Close the breach!\"",
+        description: "\"Rifts have opened in the Deadlands. Void Demons ('😈d') are pouring through. Close the breach at all costs!\"",
         type: 'kill', enemy: '😈d', needed: 5,
         reward: { xp: 1200, coins: 800, item: 'Elixir of Life', itemQty: 1 }
     },
@@ -480,7 +480,7 @@ window.ENEMY_DATA = {
         tags: ['humanoid', 'void', 'magic'],
         maxHealth: 8, attack: 1, defense: 0, xp: 15,
         loot: 'r',
-        color: '#4f46e5', 
+        color: '#7c3aed', 
         caster: true, castRange: 4, spellDamage: 3,
         flavor: "They whisper ancient texts that physically hurt your ears to hear. Zealots of the Void."
     },
@@ -688,7 +688,7 @@ window.ENEMY_DATA = {
         color: '#000000', 
         caster: true, castRange: 7, spellDamage: 8,
         isBoss: true,
-        flavor: "He wears a crown of bone and commands the armies of the dead. Do not let him complete his incantations."
+        flavor: "He wears a crown of bone and commands the armies of the dead. Do not let him complete his incantation or all is lost."
     },
     'c': {
         name: 'Cultist Initiate',
@@ -704,7 +704,7 @@ window.ENEMY_DATA = {
         maxHealth: 15, attack: 6, defense: 0, xp: 35,
         loot: '🗡️', 
         color: '#9f1239', 
-        flavor: "He fights with reckless, terrifying abandon, eager to martyr himself."
+        flavor: "He fights with reckless, terrifying abandon, eager to martyr himself for the Void."
     },
 
     // --- NEW BEASTS (Tanky & Dangerous) ---
@@ -781,7 +781,7 @@ window.ENEMY_DATA = {
         maxHealth: 1000, attack: 20, defense: 8, xp: 5000,
         loot: '🧿e', color: '#000000', isBoss: true,
         caster: true, castRange: 6, spellDamage: 12, inflicts: 'madness',
-        flavor: "He is no longer a man. The crown is fused to his skull. He is a conduit for the Void itself."
+        flavor: "He is no longer a man. The golden crown is fused directly into his skull. He moves with a terrible, silent grace, serving as a conduit for the Void itself. The air around him screams."
     },
     '🩸c': {
         name: 'Arena Champion',
@@ -790,7 +790,7 @@ window.ENEMY_DATA = {
         loot: '🏆', // Drops the Token!
         color: '#dc2626', 
         isBoss: true,
-        flavor: "A towering gladiator constructed of bone and ash. Undefeated across a thousand lifetimes. Until now."
+        flavor: "A towering gladiator constructed of fossilized bone and volcanic ash. It has stood undefeated across a thousand lifetimes. It points its weapon directly at you."
     }
 };
 
@@ -1276,9 +1276,12 @@ window.SKILL_DATA = {
     }
 };
 
+// PERFORMANCE WIN: O(1) Data Compilation Loop
 window.ENEMY_NAME_TO_ID = {};
 for (const key in window.ENEMY_DATA) {
-    window.ENEMY_NAME_TO_ID[window.ENEMY_DATA[key].name] = key;
+    if (window.ENEMY_DATA.hasOwnProperty(key)) {
+        window.ENEMY_NAME_TO_ID[window.ENEMY_DATA[key].name] = key;
+    }
 }
 
 // --- END OF FILE data-entities.js ---
