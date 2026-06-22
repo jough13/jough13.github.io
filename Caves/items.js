@@ -506,12 +506,12 @@ function handleItemDrop(key) {
         if (itemToDrop.quantity <= 0) player.inventory.splice(itemIndex, 1);
         
         gameState.isDroppingItem = false;
-        playerRef.update({ inventory: getSanitizedInventory() });
-        renderInventory();
+        if (typeof playerRef !== 'undefined') playerRef.update({ inventory: getSanitizedInventory() });
+        if (typeof renderInventory === 'function') renderInventory();
         return;
         
     } else if (currentTile === 'Ω' || currentTile === '🕳️') {
-        logMessage(`{purple:You drop the ${itemToDrop.name} into the abyss. It ceases to exist.}`);
+        logMessage(`{void:You drop the ${itemToDrop.name} into the abyss. It ceases to exist.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 12);
         
@@ -519,8 +519,8 @@ function handleItemDrop(key) {
         if (itemToDrop.quantity <= 0) player.inventory.splice(itemIndex, 1);
         
         gameState.isDroppingItem = false;
-        playerRef.update({ inventory: getSanitizedInventory() });
-        renderInventory();
+        if (typeof playerRef !== 'undefined') playerRef.update({ inventory: getSanitizedInventory() });
+        if (typeof renderInventory === 'function') renderInventory();
         return;
     }
 
@@ -539,13 +539,12 @@ function handleItemDrop(key) {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 500); // Splash
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#3b82f6', 6);
             
-            // Consumed by the deep!
             itemToDrop.quantity--;
             if (itemToDrop.quantity <= 0) player.inventory.splice(itemIndex, 1);
             
             gameState.isDroppingItem = false;
-            playerRef.update({ inventory: getSanitizedInventory() });
-            renderInventory();
+            if (typeof playerRef !== 'undefined') playerRef.update({ inventory: getSanitizedInventory() });
+            if (typeof renderInventory === 'function') renderInventory();
             return;
         } else {
             logMessage("You can't drop items here. (Must be on open floor)");
@@ -560,7 +559,7 @@ function handleItemDrop(key) {
 
     // Place on Map
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-        // Items dropped manually by players despawn after 2 hours!
+        // PERFORMANCE WIN: Utilize chunk manager TTL directly
         chunkManager.setWorldTile(player.x, player.y, itemToDrop.tile, 2);
     } else if (gameState.mapMode === 'dungeon') {
         chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = itemToDrop.tile;
@@ -583,10 +582,12 @@ function handleItemDrop(key) {
     gameState.isDroppingItem = false;
     
     // Update DB & UI
-    playerRef.update({ 
-        inventory: getSanitizedInventory(),
-        lootedTiles: Object.fromEntries(gameState.lootedTiles)
-    });
+    if (typeof playerRef !== 'undefined') {
+        playerRef.update({ 
+            inventory: getSanitizedInventory(),
+            lootedTiles: Object.fromEntries(gameState.lootedTiles)
+        });
+    }
     
     // VISUAL JUICE WIN
     if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
@@ -595,9 +596,9 @@ function handleItemDrop(key) {
         ParticleSystem.createFloatingText(player.x, player.y, "Dropped", "#9ca3af");
     }
 
-    renderInventory();
+    if (typeof renderInventory === 'function') renderInventory();
     gameState.mapDirty = true; 
-    render(); 
+    if (typeof render === 'function') render(); 
 }
 
 function useInventoryItem(itemIndex) {
@@ -722,6 +723,9 @@ function useInventoryItem(itemIndex) {
         if (currentEquipped) {
             applyStatBonuses(currentEquipped, -1);
             currentEquipped.isEquipped = false;
+            
+            // QoL WIN: Tell the player exactly what they took off!
+            logMessage(`{gray:You unequip the ${currentEquipped.name}.}`);
 
             // Remove old weapon skill if it was a weapon
             if (slot === 'weapon') {
@@ -737,7 +741,7 @@ function useInventoryItem(itemIndex) {
                 const oldSkill = getWeaponSkill(currentEquipped);
                 if (oldSkill && player.skillbook[oldSkill]) {
                     delete player.skillbook[oldSkill];
-                    logMessage(`You unlearned ${SKILL_DATA[oldSkill] ? SKILL_DATA[oldSkill].name : 'a skill'}.`);
+                    logMessage(`{gray:You unlearned ${SKILL_DATA[oldSkill] ? SKILL_DATA[oldSkill].name : 'a skill'}.}`);
                 }
             }
         }
@@ -746,7 +750,6 @@ function useInventoryItem(itemIndex) {
         if (currentEquipped === itemToUse) {
             // Revert to defaults
             player.equipment[slot] = (slot === 'weapon') ? { name: 'Fists', damage: 0, tags: ['blunt'] } : (slot === 'armor' ? { name: 'Tattered Rags', defense: 0 } : null);
-            logMessage(`You unequip the ${itemToUse.name}.`);
         } else {
             // --- TWO-HANDED LOGIC SAFEGUARDS ---
             if (slot === 'offhand' && player.equipment.weapon && player.equipment.weapon.isTwoHanded) {
@@ -977,7 +980,10 @@ function useInventoryItem(itemIndex) {
         // Find the original item template to grab the text content
         const template = typeof window.ITEM_DATA !== 'undefined' ? (window.ITEM_DATA[itemToUse.templateId] || window.ITEM_DATA[itemToUse.tile] || {}) : {};
         const title = itemToUse.title || template.title || itemToUse.name;
-        const content = itemToUse.content || template.content || itemToUse.description || "The pages are illegible.";
+        
+        // LORE WIN: Pipe reading material directly through the autoFormatLore utility!
+        let content = itemToUse.content || template.content || itemToUse.description || "The pages are illegible.";
+        if (typeof autoFormatLore === 'function') content = autoFormatLore(content);
 
         // Grant the Codex Discovery (Used for Lore Set Collection bonuses!)
         if (typeof grantLoreDiscovery === 'function') {
@@ -990,7 +996,8 @@ function useInventoryItem(itemIndex) {
 
         if (loreTitle && loreContent && loreModal) {
             loreTitle.textContent = title;
-            loreContent.textContent = content; // Modal CSS handles the \n line breaks
+            // Since autoFormatLore injects HTML span tags, we must use innerHTML here
+            loreContent.innerHTML = `<div class="font-serif leading-relaxed text-gray-300">${content}</div>`;
             loreModal.classList.remove('hidden');
         }
 
