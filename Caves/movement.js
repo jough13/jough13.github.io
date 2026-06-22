@@ -1347,7 +1347,7 @@ async function attemptMovePlayer(newX, newY) {
         if (typeof renderStats === 'function') renderStats();
         return;
 
-    } else if (newTile === '<') {
+    } else if (newTile === '✴') {
         const player = gameState.player;
         const tileId = `${newX},${-newY}`;
         
