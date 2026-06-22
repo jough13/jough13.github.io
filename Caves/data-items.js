@@ -2510,7 +2510,7 @@ window.ITEM_DATA = {
         name: 'Iron Ore',
         type: 'junk'
     },
-    '<': {
+    '✴': {
         name: 'Spike Trap',
         type: 'constructible'
     },
