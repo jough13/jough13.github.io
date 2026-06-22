@@ -27,7 +27,7 @@ let lastMapTouchTime = 0; // For mobile double-tap detection
 
 // --- MINIMAP CACHE (With Memory Leak Protection) ---
 const mapChunkCache = new Map();
-const MAX_CACHED_CHUNKS = 400; // Increased slightly for smoother panning
+const MAX_CACHED_CHUNKS = 500; // Optimal limit for smooth panning on modern devices
 
 // PERFORMANCE WIN: Pre-compiled RGB Arrays
 // Bypasses the incredibly expensive parseInt(hex, 16) operation inside the 16x16 loop!
@@ -52,6 +52,7 @@ const MAP_COLORS = {
     DESERT: [253, 224, 71, 255],
     FOREST: [20, 83, 45, 255],
     PLAINS: [34, 197, 94, 255],
+    CRYSTAL: [34, 211, 238, 255], // Cyan
     EMPTY: [0, 0, 0, 0],
     
     // Lore Anomalies
@@ -67,13 +68,11 @@ function getCachedMapChunk(cx, cy) {
     const key = `${cx},${cy}`;
     if (mapChunkCache.has(key)) return mapChunkCache.get(key);
 
-    // PERFORMANCE WIN: Iterator-based Garbage Collection
-    // Deletes the oldest 50 chunks instantly without allocating new arrays
-    if (mapChunkCache.size > MAX_CACHED_CHUNKS) {
-        const iterator = mapChunkCache.keys();
-        for (let i = 0; i < 50; i++) {
-            mapChunkCache.delete(iterator.next().value);
-        }
+    // PERFORMANCE WIN: O(1) Memory Culling
+    // Pop exactly one old chunk off the map when we reach capacity to prevent stuttering
+    if (mapChunkCache.size >= MAX_CACHED_CHUNKS) {
+        const oldestKey = mapChunkCache.keys().next().value;
+        mapChunkCache.delete(oldestKey);
     }
 
     const c = document.createElement('canvas');
@@ -118,6 +117,7 @@ function getTileColorForMap(worldX, worldY) {
     if (tile === '∴') return MAP_COLORS.DIG; 
     if (tile === '~') return MAP_COLORS.DEEP_WATER;
     if (tile === '🧊' || tile === '❄️') return MAP_COLORS.ICE;
+    if (tile === '💎c') return MAP_COLORS.CRYSTAL;
     
     // Anomalies
     if (tile === '🌋') return MAP_COLORS.VOLCANO;
@@ -147,13 +147,21 @@ function getTileColorForMap(worldX, worldY) {
 
 function getMapTileName(x, y) {
     const chunkId = `${Math.floor(x / MAP_CHUNK_SIZE)},${Math.floor(y / MAP_CHUNK_SIZE)}`;
-    if (!gameState.exploredChunks.has(chunkId)) return "Uncharted Wilderness";
+    
+    // LORE WIN: Dynamic Uncharted labeling based on distance and dimension
+    if (!gameState.exploredChunks.has(chunkId)) {
+        if (gameState.currentRealm !== 0 && gameState.currentRealm) return "Unknown Dimensional Void";
+        const distSq = (x * x) + (y * y);
+        if (distSq > 2250000) return "The Deep Uncharted"; // > 1500 tiles away
+        return "Uncharted Wilderness";
+    }
 
     const tile = chunkManager.getTile(x, y);
     if (typeof TILE_DATA !== 'undefined' && TILE_DATA[tile] && TILE_DATA[tile].name) {
         return TILE_DATA[tile].name;
     } 
     
+    // LORE WIN: Deeply Expanded Biome Dictionary
     const names = {
         'V': "Safe Haven (The Last Settlement)", '🏰': "Fallen Castle Ruins", '♛': "The Grand Fortress (Danger)",
         '🛕': "Sunken Abyssal Temple", '🌋': "Infernal Volcanic Island", 
@@ -165,13 +173,16 @@ function getMapTileName(x, y) {
         'F': "Dense Overgrown Forest", 'D': "Scorching Sand Dunes", 'd': "Ashen Deadlands",
         '^': "Impassable Mountain Peaks", '~': "The Deep Ocean", '≈': "Fetid Swamp Waters",
         '.': "Open Plains", '#': "Magical Leyline Waystone", '🗺️': "Cartographer's Guild Station",
-        '🧊': "Slippery Glacial Ice", '❄️': "Deep Tundra Snow", '🌲': "Frozen Pine Forest"
+        '🧊': "Slippery Glacial Ice", '❄️': "Deep Tundra Snow", '🌲': "Frozen Pine Forest",
+        '💎c': "Crystalline Spires", '🍄': "Towering Fungal Jungle", '🕸': "Infested Spider Nest",
+        '⛺k': "Abandoned Campfire", '⚰️': "Forgotten Grave", '?': "Whispering Statue",
+        '|': "Ancient Obelisk", '⛲': "Wishing Well", '⛩️': "Ruined Shrine", 'V': "Village Wall"
     };
 
     if (names[tile]) return names[tile];
-    if (['🧱', '=', '+', '☒'].includes(tile)) return "Man-Made Structure";
+    if (['🧱', '=', '+', '☒', '▤'].includes(tile)) return "Man-Made Structure";
     
-    return "Uncharted Wilderness";
+    return "Explored Wilderness";
 }
 
 function openWorldMap() {
@@ -241,6 +252,7 @@ function renderWorldMap() {
     const logicalHeight = worldMapCanvas.clientHeight;
 
     // Deep dark blue background for a blueprint/parchment feel
+    // JUICE WIN: Darker, deeper blue for better contrast
     worldMapCtx.fillStyle = '#020617'; 
     worldMapCtx.fillRect(0, 0, logicalWidth, logicalHeight);
     worldMapCtx.imageSmoothingEnabled = false;
@@ -263,6 +275,7 @@ function renderWorldMap() {
     }
     worldMapCtx.stroke();
 
+    // PERFORMANCE WIN: Bitwise rounding is faster than Math.floor()
     const centerX = (logicalWidth / 2) | 0;
     const centerY = (logicalHeight / 2) | 0;
     const chunkSizeOnScreen = MAP_CHUNK_SIZE * currentMapScale;
@@ -321,7 +334,8 @@ function renderWorldMap() {
                 let icon = '🦑';
                 if (decorType < 0.3) icon = '🐋';
                 else if (decorType < 0.6) icon = '⛵';
-                else if (decorType < 0.8) icon = '🧜‍♀️';
+                else if (decorType < 0.75) icon = '🧜‍♀️';
+                else icon = '👁️'; // The Leviathan watches...
 
                 // Check if the center of this chunk is deep water
                 const centerWorldX = cx * MAP_CHUNK_SIZE + 8;
@@ -329,7 +343,7 @@ function renderWorldMap() {
                 const tile = chunkManager.getTile(centerWorldX, centerWorldY);
                 
                 if (tile === '~') {
-                    worldMapCtx.fillStyle = 'rgba(255, 255, 255, 0.2)'; // Faint ghostly opacity
+                    worldMapCtx.fillStyle = icon === '👁️' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.2)'; 
                     worldMapCtx.font = `${currentMapScale * 8}px monospace`;
                     worldMapCtx.textAlign = 'center';
                     worldMapCtx.textBaseline = 'middle';
@@ -561,23 +575,31 @@ function renderWorldMap() {
         worldMapCtx.strokeRect(hScreenX, hScreenY, currentMapScale, currentMapScale);
 
         const tileName = getMapTileName(hoverWorldX, hoverWorldY);
-        if (tileName !== "Uncharted Wilderness") {
-            const tooltipX = hScreenX + currentMapScale + 8;
-            const tooltipY = hScreenY + currentMapScale / 2;
-            
-            worldMapCtx.font = 'bold 12px monospace';
-            const metrics = worldMapCtx.measureText(tileName);
+        if (tileName && !tileName.includes("Unknown")) {
+            // JUICE WIN: Dynamic tooltip positioning prevents it from rendering off-screen!
             const padX = 8;
             const padY = 6;
+            worldMapCtx.font = 'bold 12px monospace';
+            const metrics = worldMapCtx.measureText(tileName);
+            const boxWidth = metrics.width + padX * 2;
+            const boxHeight = 24 + padY * 2;
             
-            worldMapCtx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+            let tooltipX = hScreenX + currentMapScale + 8;
+            let tooltipY = hScreenY + currentMapScale / 2;
+            
+            // Shift left if it hits the edge of the map bounds
+            if (tooltipX + boxWidth > logicalWidth) {
+                tooltipX = hScreenX - boxWidth - 8;
+            }
+            
+            worldMapCtx.fillStyle = 'rgba(15, 23, 42, 0.85)';
             worldMapCtx.strokeStyle = 'rgba(250, 204, 21, 0.5)';
             worldMapCtx.lineWidth = 1;
             worldMapCtx.beginPath();
             if (worldMapCtx.roundRect) {
-                worldMapCtx.roundRect(tooltipX, tooltipY - 12 - padY, metrics.width + padX * 2, 24 + padY * 2, 6);
+                worldMapCtx.roundRect(tooltipX, tooltipY - 12 - padY, boxWidth, boxHeight, 6);
             } else {
-                worldMapCtx.rect(tooltipX, tooltipY - 12 - padY, metrics.width + padX * 2, 24 + padY * 2);
+                worldMapCtx.rect(tooltipX, tooltipY - 12 - padY, boxWidth, boxHeight);
             }
             worldMapCtx.fill();
             worldMapCtx.stroke();
@@ -589,10 +611,10 @@ function renderWorldMap() {
         }
     }
 
-    // Map Vignette Shadow
+    // Map Vignette Shadow (Fades into the "unknown" void)
     const grad = worldMapCtx.createRadialGradient(centerX, centerY, centerY * 0.5, centerX, centerY, centerY * 1.2);
     grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.8)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.85)');
     worldMapCtx.fillStyle = grad;
     worldMapCtx.fillRect(0, 0, logicalWidth, logicalHeight);
 
@@ -686,7 +708,8 @@ function updateMapUI() {
         
         const dx = hoverWorldX - gameState.player.x;
         const dy = hoverWorldY - gameState.player.y;
-        const dist = Math.floor(Math.sqrt(dx * dx + dy * dy));
+        // PERFORMANCE WIN: Native Math.hypot
+        const dist = Math.floor(Math.hypot(dx, dy));
 
         let dangerTag = "";
         if (tileName === "Uncharted Wilderness" && dist > 1500) {
