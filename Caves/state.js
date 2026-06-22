@@ -53,7 +53,7 @@ const wokenEnemyTiles = new Set(); // Global set to track processed tiles this s
 
 const gameState = {
     // --- System & Engine State ---
-    saveVersion: "0.2.6",     // Useful for future DB migration scripts
+    saveVersion: "0.2.7",     // Useful for future DB migration scripts
     initialEnemiesLoaded: false,
     mapDirty: true,           // Flag to force canvas redraws
     
@@ -268,9 +268,9 @@ const gameState = {
             dungeonsCleared: 0,
             secretsFound: 0,
             spellsCast: 0,
-            timesRested: 0,       // New
-            cropsHarvested: 0,    // New (Agriculture Expansion)
-            leylinesUsed: 0       // New
+            timesRested: 0,       
+            cropsHarvested: 0,    
+            leylinesUsed: 0       
         }
     },
 
@@ -336,6 +336,16 @@ const gameState = {
 // CENTRALIZED STATE DISPATCHER (Vitals Management)
 // ============================================================================
 
+// PERFORMANCE WIN: Cache vital-to-max string maps to prevent repeated string concatenations
+const _statCapCache = {
+    health: 'maxHealth',
+    mana: 'maxMana',
+    stamina: 'maxStamina',
+    psyche: 'maxPsyche',
+    hunger: 'maxHunger',
+    thirst: 'maxThirst'
+};
+
 /**
  * Safely modifies a player's vital stat, handles UI flashes, and checks for death.
  * @param {string} vital - 'health', 'mana', 'stamina', 'psyche', 'hunger', 'thirst'
@@ -345,8 +355,8 @@ const gameState = {
 window.modifyVital = function(vital, amount) {
     const p = gameState.player;
     
-    // 1. Get the max cap for this vital
-    const maxKey = 'max' + vital.charAt(0).toUpperCase() + vital.slice(1);
+    // 1. Get the max cap for this vital from cache
+    const maxKey = _statCapCache[vital] || ('max' + vital.charAt(0).toUpperCase() + vital.slice(1));
     const maxVal = p[maxKey] || 100; // Fallback to 100 for hunger/thirst
     
     // 2. Calculate new value with clamping
@@ -374,6 +384,8 @@ window.modifyVital = function(vital, amount) {
 
     // 4. Check for Death
     if (vital === 'health' && p.health <= 0) {
+        // JUICE WIN: Force the screen to bleed out immediately if health drops to 0
+        gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 };
         if (typeof handlePlayerDeath === 'function') handlePlayerDeath();
     }
 
