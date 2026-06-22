@@ -101,9 +101,14 @@ async function attemptMovePlayer(newX, newY) {
         return;
     }
 
-    // Capture previous coordinates immediately at the top of the function to prevent ReferenceErrors
-    const prevX = gameState.player.x;
-    const prevY = gameState.player.y;
+    // 🚨 GLOBAL ENGINE LOCK
+    if (isProcessingMove) return;
+    isProcessingMove = true;
+
+    try {
+        // Capture previous coordinates immediately at the top of the function to prevent ReferenceErrors
+        const prevX = gameState.player.x;
+        const prevY = gameState.player.y;
 
     // --- DIAGONAL CLIPPING CHECK ---
     const dx = newX - gameState.player.x;
@@ -518,21 +523,11 @@ async function attemptMovePlayer(newX, newY) {
                 logMessage(`You attack the ${targetName} for {red:${playerDamage}} damage!`);
             }
 
-            // --- 🚨 LOCK THE ENGINE ---
-            isProcessingMove = true;
-            
             try {
-                // We await the network transaction. If it fails, execution jumps to 'catch' (if it exists) 
-                // and then ALWAYS executes the 'finally' block.
+                // We await the network transaction.
                 await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
             } catch (err) {
                 console.error("Combat transaction failed or timed out:", err);
-                // The handleOverworldCombat function also has its own catch, but this guarantees 
-                // that even if something breaks upstream, we catch it here and don't freeze the game.
-            } finally {
-                // --- 🚨 UNLOCK THE ENGINE ---
-                // This is guaranteed to run no matter what happens in the await above!
-                isProcessingMove = false;
             }
             
             endPlayerTurn();
@@ -1286,9 +1281,7 @@ async function attemptMovePlayer(newX, newY) {
     } else if (tileData && tileData.type === 'loot_chest') {
         
         // --- ANTI-DUPLICATION TRANSACTION ---
-        isProcessingMove = true;
         const claimed = await claimWorldTile(newX, newY, newTile);
-        isProcessingMove = false;
 
         if (!claimed) {
             logMessage("{gray:The chest has already been looted.}");
@@ -3031,9 +3024,7 @@ async function attemptMovePlayer(newX, newY) {
         } 
         else {
             // --- ANTI-DUPLICATION TRANSACTION ---
-            isProcessingMove = true;
             const claimed = await claimWorldTile(newX, newY, newTile);
-            isProcessingMove = false;
 
             if (!claimed) {
                 logMessage("{gray:Someone else grabbed that item before you!}");
@@ -3281,13 +3272,22 @@ async function attemptMovePlayer(newX, newY) {
         if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.syncChunks(gameState.player.x, gameState.player.y);
     }
 
-    if (gameState.player.health <= 0) {
-        if (typeof syncPlayerState === 'function') syncPlayerState(); 
-        return; // STOP! Do not run endPlayerTurn or it will overwrite the death state!
-    }
+if (gameState.player.health <= 0) {
+            if (typeof syncPlayerState === 'function') syncPlayerState(); 
+            return; // STOP! Do not run endPlayerTurn or it will overwrite the death state!
+        }
 
-    // Pass the updates object in so Firebase actually saves your loot/exploration!
-    if (typeof endPlayerTurn === 'function') endPlayerTurn(updates); 
+        // Pass the updates object in so Firebase actually saves your loot/exploration!
+        if (typeof endPlayerTurn === 'function') endPlayerTurn(updates); 
+
+    } catch (error) {
+        console.error("🚨 Critical movement error caught! Unlocking engine to prevent deadlock:", error);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+    } finally {
+        // GLOBAL ENGINE UNLOCK
+        // Guaranteed to run whether the move succeeds, returns early, or throws a fatal error!
+        isProcessingMove = false;
+    }
 }
 
 function exitToOverworld(exitMessage) {
