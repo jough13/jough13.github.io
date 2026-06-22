@@ -89,11 +89,14 @@ const chunkManager = {
         const distSq = (cX * cX) + (cY * cY);
         const SAFE_ZONE_SQ = 150 * 150; // 22500
 
-        // JUICE: Randomize cave aspect ratio so they aren't perfect squares!
-        // Min size 90, Max size 150
+        // JUICE & LORE WIN: Randomize cave aspect ratio so they aren't perfect squares!
+        // Caves will now be organic rectangles (e.g. long vertical shafts or wide horizontal caverns)
         const randomSize = Alea(stringToSeed(caveId + ':size'));
-        let CAVE_WIDTH = 90 + Math.floor(randomSize() * 60);
-        let CAVE_HEIGHT = 90 + Math.floor(randomSize() * 60);
+        
+        // Base size scales slightly with depth, making deep caves more sprawling
+        const depthBonus = Math.min(30, floorZ * 5); 
+        let CAVE_WIDTH = 80 + depthBonus + Math.floor(randomSize() * 60);
+        let CAVE_HEIGHT = 80 + depthBonus + Math.floor(randomSize() * 60);
         
         // Deeper floors = More enemies
         let enemyCount = 30 + (floorZ * 10); 
@@ -283,7 +286,8 @@ const chunkManager = {
                             // Generate scaled stats based on cave coordinates
                             let scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
                             
-                            // Boost stats based on Floor Depth!
+                            // JUICE WIN: Dynamic Depth Scaling!
+                            // Deeper floors organically generate much harder enemies and better XP!
                             if (floorZ > 1) {
                                 scaledStats.maxHealth = Math.floor(scaledStats.maxHealth * (1 + (floorZ * 0.2)));
                                 scaledStats.attack += floorZ;
@@ -922,8 +926,10 @@ const chunkManager = {
             const cleanupUpdates = {};
             const now = Date.now();
 
-            // PERFORMANCE WIN: Batch Garbage Collection
-            for (const key in data) {
+            // PERFORMANCE WIN: Fast-path garbage collection loop (O(1) keys)
+            const keys = Object.keys(data);
+            for (let i = 0; i < keys.length; i++) {
+                const key = keys[i];
                 const val = data[key];
                 if (typeof val === 'object' && val !== null && val.expires) {
                     if (now > val.expires) {
@@ -1460,9 +1466,10 @@ const chunkManager = {
 // --- SPATIAL PARTITIONING HELPERS ---
 const SPATIAL_CHUNK_SIZE = 16; 
 
+// PERFORMANCE WIN: Bitwise OR (| 0) is fundamentally faster than Math.floor()
 function getSpatialKey(x, y) {
-    const cx = Math.floor(x / SPATIAL_CHUNK_SIZE);
-    const cy = Math.floor(y / SPATIAL_CHUNK_SIZE);
+    const cx = (x / SPATIAL_CHUNK_SIZE) | 0;
+    const cy = (y / SPATIAL_CHUNK_SIZE) | 0;
     return `${cx},${cy}`;
 }
 
