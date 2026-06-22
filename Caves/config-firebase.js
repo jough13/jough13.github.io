@@ -61,8 +61,9 @@ let connectionBanner = document.getElementById('firebase-connection-banner');
 if (!connectionBanner) {
     connectionBanner = document.createElement('div');
     connectionBanner.id = 'firebase-connection-banner';
-    // JUICE WIN: Added backdrop-blur-md, deep shadows, and borders for a polished UI overlay
-    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-transform duration-500 transform -translate-y-full shadow-2xl font-mono tracking-widest uppercase text-shadow-sm backdrop-blur-md';
+    // JUICE WIN: Maximum Z-Index (50000) ensures this overlays EVERYTHING.
+    // Added backdrop-blur-md, deep shadows, and borders for a polished UI overlay.
+    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 transform -translate-y-full shadow-2xl font-mono tracking-widest uppercase text-shadow-sm backdrop-blur-md';
     connectionBanner.style.textShadow = "2px 2px 0px rgba(0,0,0,0.8)"; 
     document.body.appendChild(connectionBanner);
 }
@@ -82,7 +83,7 @@ try {
                 // LORE WIN: Themed Multiple-Tab warning
                 setTimeout(() => {
                     connectionBanner.innerHTML = "⚠️ Temporal Paradox Detected<br><span class='text-[9px] font-normal'>Multiple timelines open. Offline saving disabled for this instance.</span>";
-                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-purple-900 bg-opacity-95 text-purple-200 border-b-2 border-purple-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md';
+                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-purple-900 bg-opacity-95 text-purple-200 border-b-2 border-purple-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md';
                     
                     // Hide the banner 6 seconds after it appears
                     setTimeout(() => {
@@ -95,7 +96,7 @@ try {
                 // QoL WIN: Detect Incognito mode or incompatible browsers
                 setTimeout(() => {
                     connectionBanner.innerHTML = "⚠️ Akashic Records Unavailable<br><span class='text-[9px] font-normal'>Your browser (or Incognito Mode) blocks local saves. Cloud saving only.</span>";
-                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-gray-800 bg-opacity-95 text-gray-300 border-b-2 border-gray-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md';
+                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-gray-800 bg-opacity-95 text-gray-300 border-b-2 border-gray-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md';
                     
                     setTimeout(() => {
                         connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
@@ -117,13 +118,14 @@ rtdb.ref('.info/connected').on('value', function(snap) {
     window.FirebaseNetworkState.isConnected = isConnected;
     
     if (isConnected) {
-        console.log("🟢 Firebase: Leyline Resonance Stable.");
+        // JUICE WIN: Styled Console Outputs for Developers!
+        console.log("%c🟢 Firebase: Leyline Resonance Stable.", "color: #4ade80; font-weight: bold; font-size: 1.1em;");
         
         // Only show "Restored" if we already successfully connected once before and lost it
         if (hasInitiallyConnected && !wasConnected) {
             // Restore Banner
             connectionBanner.textContent = "✨ Leyline Resonance Restored";
-            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-green-900 bg-opacity-95 text-green-200 border-b-2 border-green-500 translate-y-0 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md';
+            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-green-900 bg-opacity-95 text-green-200 border-b-2 border-green-500 translate-y-0 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md';
             
             // Slide it away after 3 seconds
             setTimeout(() => {
@@ -137,13 +139,13 @@ rtdb.ref('.info/connected').on('value', function(snap) {
         hasInitiallyConnected = true;
         wasConnected = true;
     } else {
-        console.warn("🔴 Firebase: Disconnected (Offline / Reconnecting...).");
+        console.warn("%c🔴 Firebase: Disconnected (Offline / Reconnecting...).", "color: #ef4444; font-weight: bold; font-size: 1.1em;");
         
         // Only show "Connection Lost" if we were actually connected in the first place
         if (hasInitiallyConnected && wasConnected) {
             // Warning Banner (JUICE WIN: Added animate-pulse and greyscale/contrast filters for a "glitching" effect)
             connectionBanner.textContent = "⚠️ Leyline Connection Severed - Re-Attuning...";
-            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[20000] transition-all duration-500 bg-red-900 bg-opacity-95 text-red-200 border-b-2 border-red-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase animate-pulse backdrop-blur-md grayscale contrast-125';
+            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-red-900 bg-opacity-95 text-red-200 border-b-2 border-red-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase animate-pulse backdrop-blur-md grayscale contrast-125';
             
             if (typeof logMessage === 'function') logMessage("{red:The leylines have ruptured! Trying to re-attune...}");
             
@@ -254,9 +256,11 @@ function sanitizeForFirebase(obj, seen = new WeakSet()) {
     // 3. SAFETY & MINIFICATION FIX: 
     // Checking obj.constructor.name breaks when Javascript is minified (e.g., 'FieldValue' becomes 'e').
     // Using instanceof directly against the global firebase object is 100% minification safe!
+    // PERFORMANCE WIN: Added explicit bypass for firebase.firestore.Timestamp objects!
     if (obj instanceof Date) return obj;
-    if (typeof firebase !== 'undefined' && firebase.firestore && obj instanceof firebase.firestore.FieldValue) {
-        return obj;
+    if (typeof firebase !== 'undefined' && firebase.firestore) {
+        if (obj instanceof firebase.firestore.FieldValue) return obj;
+        if (obj instanceof firebase.firestore.Timestamp) return obj;
     }
 
     // 3.5 CIRCULAR REFERENCE PROTECTION
