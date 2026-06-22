@@ -558,7 +558,7 @@ window.TILE_DATA = {
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "🥥", "#fff");
                     if (typeof renderInventory === 'function') renderInventory();
                     
-                    return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory };
+                    return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles) };
                 } else {
                     logMessage("{red:A Coconut falls, but your inventory is full!}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
