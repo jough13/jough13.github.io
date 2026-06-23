@@ -172,7 +172,12 @@ var NEW_FISHING_ITEMS = {
             
             if (Math.random() < 0.20) {
                 const existingPearl = state.player.inventory.find(i => i.name === 'Black Pearl' && !i.isEquipped);
-                if (existingPearl || state.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                
+                // BUG FIX: Calculate if consuming this oyster frees up a slot for the pearl!
+                const oysterStack = state.player.inventory.find(i => i.name === 'Abyssal Oyster' && !i.isEquipped);
+                const freesSlot = (oysterStack && oysterStack.quantity === 1) ? 1 : 0;
+                
+                if (existingPearl || state.player.inventory.length - freesSlot < (window.MAX_INVENTORY_SLOTS || 9)) {
                     logMessage("{purple:You found a Black Pearl inside!}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, '💎', '#a855f7');
@@ -207,14 +212,14 @@ var NEW_FISHING_ITEMS = {
                 const lootTable = ['Black Pearl', 'Rainbow Shell', 'Brass Compass', 'Trident', 'Ancient Coin'];
                 const prize = lootTable[Math.floor(Math.random() * lootTable.length)];
                 
-                const prizeKey = getItemKeyByName(prize);
+                // Use our highly optimized O(1) item cache
+                const prizeKey = getItemKeyByName(prize) || prize;
                 const template = window.ITEM_DATA[prizeKey];
                 
                 const isStackable = template && ['junk', 'consumable', 'trade'].includes(template.type);
                 const existingPrize = state.player.inventory.find(i => i.name === prize && !i.isEquipped);
                 
                 // ADVANCED LOGIC: If this chest is the LAST item in its stack, it will free up a slot as it gets consumed.
-                // We calculate this dynamically so we don't accidentally block the player's reward!
                 const chestStack = state.player.inventory.find(i => i.name === 'Waterlogged Chest' && !i.isEquipped);
                 const freesSlot = (chestStack && chestStack.quantity === 1) ? 1 : 0;
                 
@@ -234,6 +239,8 @@ var NEW_FISHING_ITEMS = {
                         damage: template ? template.damage : null, 
                         slot: template ? template.slot : null,
                         statBonuses: template ? template.statBonuses : null,
+                        tags: template ? (template.tags || null) : null,           // 🛡️ FIX: Hydrate tags so weapons work!
+                        _rarity: template ? (template._rarity || null) : null,     // 🛡️ FIX: Hydrate rarity so borders glow!
                         effect: template ? template.effect : null
                     });
                     logMessage(`{purple:You also found a ${prize} hidden inside!}`);
@@ -263,7 +270,7 @@ var NEW_FISHING_ITEMS = {
                     logMessage(`{gold:It's a Tattered Map! X marks the spot!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                     
-                    const mapKey = getItemKeyByName('Tattered Map');
+                    const mapKey = getItemKeyByName('Tattered Map') || '🗺️';
                     const mapTemplate = window.ITEM_DATA[mapKey];
                     state.player.inventory.push({
                         templateId: mapKey,
@@ -319,7 +326,12 @@ if (window.CASTLE_SHOP_INVENTORY && !window.CASTLE_SHOP_INVENTORY.some(i => i.na
 
 // EXPANSION WIN: Support for Psyche restoration from Void Fish
 function eatFish(state, hungerAmt, hpAmt = 0, psycheAmt = 0) {
-    if (state.player.hunger >= state.player.maxHunger && state.player.health >= state.player.maxHealth && state.player.psyche >= state.player.maxPsyche) {
+    // Only block eating if all the stats the fish *actually provides* are completely full.
+    const needsHunger = hungerAmt > 0 && state.player.hunger < state.player.maxHunger;
+    const needsHp = hpAmt > 0 && state.player.health < state.player.maxHealth;
+    const needsPsyche = psycheAmt > 0 && state.player.psyche < state.player.maxPsyche;
+    
+    if (!needsHunger && !needsHp && !needsPsyche) {
         logMessage("You are completely full and refreshed.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return false;
@@ -410,8 +422,9 @@ function executeFishing() {
     
     const isLava = currentTile === '🌋' || (currentTile === '~' && gameState.mapMode === 'dungeon' && gameState.currentCaveTheme === 'FIRE');
     
-    // You can fish in the void if you are in an alternate dimension or in a corrupted cave
-    const isVoid = (gameState.currentRealm !== 0) || (gameState.mapMode === 'dungeon' && ['VOID', 'ABYSS', 'CORRUPTED'].includes(gameState.currentCaveTheme));
+    // SAFEGUARD: Ensure realm is valid before checking
+    const isVoid = (gameState.currentRealm && gameState.currentRealm !== 0) || 
+                   (gameState.mapMode === 'dungeon' && ['VOID', 'ABYSS', 'CORRUPTED'].includes(gameState.currentCaveTheme));
 
     if (currentTile !== '~' && currentTile !== '≈' && currentTile !== '🌋') {
         logMessage("You need to be standing in water, lava, or sailing to fish.");
@@ -651,9 +664,10 @@ function executeFishing() {
 
         // --- TROPHY FISH CALCULATION ---
         if (catchData.minW && catchData.maxW) {
-            // Apply bait weight multiplier to upper bound
-            const effMaxW = Math.floor(catchData.maxW * baitWeightMult);
+            // 🧮 MATH SAFEGUARD: Apply bait weight multiplier to upper bound safely
+            const effMaxW = Math.max(catchData.minW, Math.floor(catchData.maxW * baitWeightMult));
             const weight = Math.floor(Math.random() * (effMaxW - catchData.minW + 1)) + catchData.minW;
+            
             finalItemName = `[${weight}lb] ${baseName}`;
             isTrophy = true;
 
@@ -668,6 +682,7 @@ function executeFishing() {
                     
                     if (player.stamina < stamDrain) {
                         playLineSnap();
+                        gameState.screenShake = 10; // JUICE: Pulls the screen hard
                         logMessage(`{red:You are too exhausted to reel it in... The line snaps!}`);
                         player.stamina = 0;
                         if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('staminaDisplay'), false);
@@ -690,7 +705,7 @@ function executeFishing() {
             }
         }
 
-        const baseKey = getItemKeyByName(baseName);
+        const baseKey = getItemKeyByName(baseName) || baseName;
         const template = window.ITEM_DATA[baseKey];
         const catchTile = template ? (template.tile || '🐟') : '🐟';
 
@@ -734,6 +749,8 @@ function executeFishing() {
                 damage: template ? template.damage : null,
                 slot: template ? template.slot : null,
                 statBonuses: template ? template.statBonuses : null,
+                tags: template ? (template.tags || null) : null,           // 🛡️ FIX: Hydrate tags so weapons work!
+                _rarity: template ? (template._rarity || null) : null,     // 🛡️ FIX: Hydrate rarity so borders glow!
                 effect: template ? template.effect : null
             });
         } else {
