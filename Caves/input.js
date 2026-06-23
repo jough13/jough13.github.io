@@ -22,7 +22,7 @@ const MOVEMENT_MAP = {
     '3': [1, 1], 'Numpad3': [1, 1], 'PageDown': [1, 1]
 };
 
-// PERFORMANCE & QoL WIN: O(1) Key Lookups & Expanded Browser Protections
+// O(1) Key Lookups & Expanded Browser Protections
 // Moved out of the event listener so they aren't instantiated on every single keystroke.
 // Added Tab and Enter to prevent unwanted browser scrolling/focus-shifting while playing.
 const BLOCKED_SCROLL_KEYS = new Set([
@@ -30,14 +30,13 @@ const BLOCKED_SCROLL_KEYS = new Set([
     'Home', 'End', 'PageUp', 'PageDown', 'Tab', 'Enter'
 ]);
 
-// Added the new J (Journal) and Zoom (+ / -) hotkeys to the spam guard
 const INSTANT_KEYS = new Set([
-    'Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'h', 'd', 'g', 'q', 'j',
-    'I', 'M', 'B', 'K', 'C', 'P', 'H', 'D', 'G', 'Q', 'J',
+    'Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'h', 'd', 'g', 'q', 'j', 'z',
+    'I', 'M', 'B', 'K', 'C', 'P', 'H', 'D', 'G', 'Q', 'J', 'Z',
     '+', '=', '-', '_'
 ]);
 
-// PERFORMANCE WIN: Live HTMLCollection Cache for O(1) Modal Checks
+// Live HTMLCollection Cache for O(1) Modal Checks
 // Completely eliminates the need to run document.querySelector on every single keystroke!
 const _modalCache = {
     collection: null,
@@ -125,7 +124,13 @@ function handleInput(key) {
         return;
     }
 
-    // --- ACCESSIBILITY WIN: Keyboard Zoom Controls ---
+        // --- MOUNT EXPANSION ---
+    if (lowerKey === 'z') {
+        if (typeof window.toggleMount === 'function') window.toggleMount();
+        return;
+    }
+
+    // Keyboard Zoom Controls ---
     if (key === '=' || key === '+') {
         window.currentZoom = Math.min(40, window.currentZoom + 2);
         if (typeof resizeCanvas === 'function') resizeCanvas();
