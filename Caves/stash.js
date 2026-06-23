@@ -55,7 +55,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
     if (action === 'deposit') {
         const item = player.inventory[index];
 
-        if (item.isEquipped) {
+        if (!item || item.isEquipped) {
             logMessage("{red:You must unequip that item before stashing it.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
@@ -99,6 +99,8 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
     }
     else if (action === 'withdraw') {
         const item = player.bank[index];
+        if (!item) return;
+
         const isStackable = isStackableItem(item.type);
         const existingInvItem = isStackable ? player.inventory.find(i => i.name === item.name) : null;
 
@@ -314,6 +316,10 @@ window.sortStash = function(playSound = true) {
 };
 
 function renderStash() {
+    const stashPlayerList = document.getElementById('stashPlayerList');
+    const stashBankList = document.getElementById('stashBankList');
+    if (!stashPlayerList || !stashBankList) return;
+
     stashPlayerList.innerHTML = '';
     stashBankList.innerHTML = '';
 
@@ -386,17 +392,17 @@ function renderStash() {
                 extraInfo += ` <span class="text-[9px] text-yellow-500 font-bold bg-black bg-opacity-40 px-1 rounded ml-1 uppercase tracking-widest border border-yellow-800 shadow-inner relative -top-0.5">[EQP]</span>`;
             }
 
-            // QoL: Split Stack Buttons
+            // PERFORMANCE WIN: Event Delegation Data Attributes
             let buttonsHtml = '';
             if (item.isEquipped) {
                 buttonsHtml = `<button class="text-xs bg-gray-800 text-gray-500 px-3 py-1 rounded shadow-sm opacity-50 cursor-not-allowed border border-gray-700" disabled>Equipped</button>`;
             } else if (item.quantity > 1) {
                 buttonsHtml = `
-                    <button class="text-[10px] bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold" style="transform: translateZ(0);" onclick="handleStashTransfer('deposit', ${index}, 1)">Dep 1</button>
-                    <button class="text-[10px] bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold ml-1" style="transform: translateZ(0);" onclick="handleStashTransfer('deposit', ${index}, 'all')">All</button>
+                    <button data-action="deposit" data-index="${index}" data-amount="1" class="text-[10px] bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold" style="transform: translateZ(0);">Dep 1</button>
+                    <button data-action="deposit" data-index="${index}" data-amount="all" class="text-[10px] bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold ml-1" style="transform: translateZ(0);">All</button>
                 `;
             } else {
-                buttonsHtml = `<button class="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-all active:scale-95" style="transform: translateZ(0);" onclick="handleStashTransfer('deposit', ${index}, 'all')">Deposit</button>`;
+                buttonsHtml = `<button data-action="deposit" data-index="${index}" data-amount="all" class="text-xs bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-all active:scale-95" style="transform: translateZ(0);">Deposit</button>`;
             }
 
             li.innerHTML = `
@@ -428,15 +434,15 @@ function renderStash() {
             let extraInfo = item.statBonuses ? ` <span class="text-xs text-purple-400 drop-shadow-md">✨</span>` : '';
             extraInfo += generateTypeTag(item.type);
 
-            // QoL: Split Stack Buttons
+            // PERFORMANCE WIN: Event Delegation Data Attributes
             let buttonsHtml = '';
             if (item.quantity > 1) {
                 buttonsHtml = `
-                    <button class="text-[10px] bg-blue-700 hover:bg-blue-600 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold" style="transform: translateZ(0);" onclick="handleStashTransfer('withdraw', ${index}, 1)">Take 1</button>
-                    <button class="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold ml-1" style="transform: translateZ(0);" onclick="handleStashTransfer('withdraw', ${index}, 'all')">All</button>
+                    <button data-action="withdraw" data-index="${index}" data-amount="1" class="text-[10px] bg-blue-700 hover:bg-blue-600 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold" style="transform: translateZ(0);">Take 1</button>
+                    <button data-action="withdraw" data-index="${index}" data-amount="all" class="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow-sm transition-all active:scale-95 uppercase font-bold ml-1" style="transform: translateZ(0);">All</button>
                 `;
             } else {
-                buttonsHtml = `<button class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-all active:scale-95" style="transform: translateZ(0);" onclick="handleStashTransfer('withdraw', ${index}, 'all')">Withdraw</button>`;
+                buttonsHtml = `<button data-action="withdraw" data-index="${index}" data-amount="all" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-all active:scale-95" style="transform: translateZ(0);">Withdraw</button>`;
             }
 
             li.innerHTML = `
@@ -463,26 +469,26 @@ function renderStash() {
         if (capacityPct > 0.95) capColor = "text-red-500 animate-pulse";
         else if (capacityPct > 0.8) capColor = "text-yellow-500";
 
-        // Inject Auto-Sort alongside capacity
+        // Inject Auto-Sort alongside capacity (using Event Delegation)
         bankHeader.innerHTML = `
             <div class="flex justify-between items-center w-full">
                 <span class="drop-shadow-sm">Dimensional Vault <span class="text-[10px] font-normal ${capColor} ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner">(${bank.length}/${window.MAX_STASH_SLOTS})</span></span>
-                <button onclick="sortStash()" class="text-[10px] uppercase font-bold tracking-widest bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95" style="transform: translateZ(0);">Sort</button>
+                <button data-action="sortStash" class="text-[10px] uppercase font-bold tracking-widest bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95" style="transform: translateZ(0);">Sort</button>
             </div>
         `;
     }
 
     // Inject Mass Deposit & Quick Stack Buttons into Player Inventory Header
     const invHeader = stashPlayerList.parentElement.querySelector('h3');
-    if (invHeader && !invHeader.querySelector('#massDepositBtn')) {
+    if (invHeader) {
         invHeader.innerHTML = `
             <div class="flex justify-between items-center w-full">
                 <span class="drop-shadow-sm">Your Bag</span>
                 <div class="flex gap-2">
-                    <button id="quickStackBtn" onclick="quickStackToStash()" class="text-[10px] uppercase font-bold tracking-widest bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-purple-800" style="transform: translateZ(0);">
+                    <button data-action="quickStack" class="text-[10px] uppercase font-bold tracking-widest bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-purple-800" style="transform: translateZ(0);">
                         Quick Stack
                     </button>
-                    <button id="massDepositBtn" onclick="depositAllMaterials()" class="text-[10px] uppercase font-bold tracking-widest bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-gray-800" style="transform: translateZ(0);">
+                    <button data-action="massDeposit" class="text-[10px] uppercase font-bold tracking-widest bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-gray-800" style="transform: translateZ(0);">
                         Deposit Mats
                     </button>
                 </div>
@@ -505,6 +511,52 @@ function openStashModal() {
     
     const stashModal = document.getElementById('stashModal');
     if (stashModal) stashModal.classList.remove('hidden');
+}
+
+// ==========================================
+// SECURITY & PERFORMANCE WIN: Event Delegation
+// ==========================================
+// Attaches exactly ONE event listener to the entire modal to handle all Stash clicks.
+const stashModalEl = document.getElementById('stashModal');
+if (stashModalEl && !stashModalEl.dataset.listenersBound) {
+    
+    stashModalEl.addEventListener('click', (e) => {
+        // Did we click a button with a data-action?
+        const btn = e.target.closest('button[data-action]');
+        if (!btn || btn.disabled) return;
+
+        const action = btn.dataset.action;
+
+        // --- Header Actions ---
+        if (action === 'sortStash') {
+            if (typeof window.sortStash === 'function') window.sortStash();
+        } 
+        else if (action === 'quickStack') {
+            if (typeof window.quickStackToStash === 'function') window.quickStackToStash();
+        } 
+        else if (action === 'massDeposit') {
+            if (typeof window.depositAllMaterials === 'function') window.depositAllMaterials();
+        } 
+        // --- List Transfer Actions ---
+        else if (action === 'deposit' || action === 'withdraw') {
+            const index = parseInt(btn.dataset.index, 10);
+            const amount = btn.dataset.amount;
+            if (!isNaN(index) && typeof window.handleStashTransfer === 'function') {
+                window.handleStashTransfer(action, index, amount);
+            }
+        }
+    });
+
+    // Handle closing the modal
+    const closeBtn = document.getElementById('closeStashButton');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            stashModalEl.classList.add('hidden');
+        });
+    }
+
+    stashModalEl.dataset.listenersBound = 'true';
 }
 
 // --- END OF FILE stash.js ---
