@@ -352,6 +352,7 @@ const _statCapCache = {
  * @param {number} amount - Positive to heal/restore, Negative to damage/spend
  * @returns {number} The actual amount changed (after clamping to min/max)
  */
+
 window.modifyVital = function(vital, amount) {
     const p = gameState.player;
     
@@ -366,6 +367,17 @@ window.modifyVital = function(vital, amount) {
     
     p[vital] = newVal;
     const actualChange = newVal - oldVal;
+
+    // --- MOUNT EXPANSION: KNOCK-OFF ---
+    if (actualChange < -5 && vital === 'health' && p.isMounted) {
+        // 30% chance to be violently dismounted on a heavy hit!
+        if (Math.random() < 0.30) {
+            p.isMounted = false;
+            logMessage("{red:The heavy blow knocks you off your mount!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            if (typeof render !== 'undefined') render();
+        }
+    }
 
     // 3. Handle UI Flashes automatically
     if (actualChange !== 0 && typeof statDisplays !== 'undefined' && statDisplays[vital]) {
