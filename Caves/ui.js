@@ -161,7 +161,7 @@ const logMessage = (text) => {
     if (text === lastLogText && messageLog.firstChild) {
         lastLogCount++;
         messageLog.firstChild.innerHTML = `> ${formattedText} <span class="text-gray-400 ml-2 font-bold bg-black bg-opacity-40 px-1.5 py-0.5 rounded border border-gray-700 shadow-inner text-[10px]">(x${lastLogCount})</span>`;
-        // JUICE: Small bump animation to show it updated
+        // JUICE: Small bump animation to show it updated physically
         messageLog.firstChild.style.animation = 'none';
         void messageLog.firstChild.offsetWidth; 
         messageLog.firstChild.style.animation = 'pop-in 0.15s ease-out';
@@ -410,8 +410,8 @@ function updateWeatherUI() {
 
     // GAMEPLAY WIN: Multiverse UI Indication
     // If the player steps into an alternate dimension, display its rules immediately!
-    if (gameState.currentRealm !== 0 && gameState.realmMutators && gameState.realmMutators.length > 0) {
-        if (typeof window.REALM_MUTATORS !== 'undefined') {
+    if (gameState.currentRealm !== 0 && gameState.currentRealm) {
+        if (typeof window.REALM_MUTATORS !== 'undefined' && gameState.realmMutators && gameState.realmMutators.length > 0) {
             const mutatorNames = gameState.realmMutators.map(m => window.REALM_MUTATORS[m]?.name || "Unknown").join(", ");
             if (displayString) {
                 displayString += ` | 🌌 [${mutatorNames}]`;
@@ -421,6 +421,12 @@ function updateWeatherUI() {
             // Anomaly overrides color
             colorClass = 'text-purple-400 animate-pulse';
             hoverTitle = "The fundamental rules of reality have been altered in this dimension.";
+        } else {
+            // Failsafe string for pure procedural dimensions
+            if (displayString) displayString += ` | 🌌 DIMENSION #${gameState.currentRealm}`;
+            else displayString = `🌌 DIMENSION #${gameState.currentRealm}`;
+            colorClass = 'text-purple-400';
+            hoverTitle = "You are far from home. Proceed with extreme caution.";
         }
     }
 
@@ -556,11 +562,9 @@ const renderInventory = () => {
             }
             
             itemDiv.className = slotClass;
-
-            itemDiv.onclick = (e) => {
-                e.stopPropagation(); 
-                if (typeof handleInput === 'function') handleInput((index + 1).toString());
-            };
+            
+            // SECURITY & PERFORMANCE WIN: Removed inline onclick for event delegation logic!
+            itemDiv.dataset.index = index;
 
             // Build the Native Tooltip
             let title = item.name;
@@ -619,10 +623,11 @@ const renderInventory = () => {
                 // Uses Tailwind group-hover to only appear when mousing over the item
                 assignBtn.className = 'absolute -bottom-2 right-0 bg-blue-600 hover:bg-blue-500 text-white text-[9px] px-1.5 py-0.5 rounded shadow z-20 font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity border-b border-blue-800 active:border-b-0 active:translate-y-px';
                 assignBtn.textContent = 'Bind';
-                assignBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    assignToHotbar(item.templateId || item.name);
-                };
+                
+                // SECURITY & PERFORMANCE WIN: Event Delegation data attributes
+                assignBtn.dataset.action = 'bind';
+                assignBtn.dataset.id = item.templateId || item.name;
+                
                 itemDiv.classList.add('group'); // Attach group class to parent
                 itemDiv.appendChild(assignBtn);
             }
@@ -640,6 +645,32 @@ const renderInventory = () => {
 function initInventoryListeners() {
     const btn = document.getElementById('closeInventoryButton');
     const modal = document.getElementById('inventoryModal');
+    const listEl = document.getElementById('inventoryModalList');
+
+    // SECURITY & PERFORMANCE WIN: Universal Event Delegation for the Inventory List!
+    // We attach exactly ONE listener to the list container instead of 9+ listeners every render cycle.
+    if (listEl && !listEl.dataset.listenersBound) {
+        listEl.addEventListener('click', (e) => {
+            // Check if they clicked the 'Bind' button first
+            const bindBtn = e.target.closest('button[data-action="bind"]');
+            if (bindBtn) {
+                e.stopPropagation();
+                if (typeof assignToHotbar === 'function') assignToHotbar(bindBtn.dataset.id);
+                return;
+            }
+
+            // Otherwise, check if they clicked an inventory slot
+            const itemDiv = e.target.closest('.inventory-slot');
+            if (itemDiv) {
+                e.stopPropagation();
+                const idx = parseInt(itemDiv.dataset.index, 10);
+                if (!isNaN(idx) && typeof handleInput === 'function') {
+                    handleInput((idx + 1).toString()); // Safely route interaction through central input handler
+                }
+            }
+        });
+        listEl.dataset.listenersBound = 'true';
+    }
 
     if (btn) {
         btn.onclick = (e) => {
@@ -708,11 +739,15 @@ const renderEquipment = () => {
     
     if (weapon.name === 'Fists') {
         weaponTooltip = "Empty Main Hand: Your fists deal base damage based on Strength.";
-    } else if (weapon.statBonuses) {
-        const bonusArr = Object.entries(weapon.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
-        if (bonusArr.length > 0) {
-            weaponString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
-            weaponTooltip += `\nBonuses: ${Object.entries(weapon.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
+    } else {
+        if (weapon.isTwoHanded) weaponTooltip += "\n(Two-Handed Weapon)";
+        
+        if (weapon.statBonuses) {
+            const bonusArr = Object.entries(weapon.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
+            if (bonusArr.length > 0) {
+                weaponString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
+                weaponTooltip += `\nBonuses: ${Object.entries(weapon.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
+            }
         }
     }
     
@@ -778,7 +813,10 @@ const renderEquipment = () => {
     if (oIcon) {
         oIcon.textContent = offhand ? offhand.tile.replace(/[a-zA-Z]/g, '') : '🛡️';
         applySlotStyle(oIcon, !offhand);
-        oIcon.title = offhand ? `${offhand.name}\nDefense: +${offhand.defense || 0}` : 'Empty Off-Hand: Equip a shield to block or a secondary item.';
+        
+        let oTip = offhand ? `${offhand.name}\nDefense: +${offhand.defense || 0}` : 'Empty Off-Hand: Equip a shield to block or a secondary item.';
+        if (weapon.isTwoHanded && !offhand) oTip = `(Blocked: Wielding a Two-Handed Weapon)`;
+        oIcon.title = oTip;
     }
     if (cIcon) {
         cIcon.textContent = acc ? acc.tile.replace(/[a-zA-Z]/g, '') : '💍';
@@ -811,12 +849,18 @@ function updateRegionDisplay() {
             };
         }
         
-        const regionName = window.lastRegionCache.name;
+        let regionName = window.lastRegionCache.name;
+        
+        // LORE WIN: Dynamic vehicle flavor text
+        if (gameState.player.isMounted && gameState.player.companion) regionName = `Riding through ${regionName}`;
+        if (gameState.player.isBoating) regionName = `Paddling through ${regionName}`;
+        if (gameState.player.isSailing) regionName = `Sailing the coast of ${regionName}`;
+        
         const playerCoords = `(${gameState.player.x}, ${-gameState.player.y})`; 
         regionDisplay.textContent = `${regionName} ${playerCoords}`; 
 
         if (!gameState.discoveredRegions.has(regionId)) {
-            logMessage(`{gold:Discovered: ${regionName}!}`); 
+            logMessage(`{gold:Discovered: ${window.lastRegionCache.name}!}`); 
             
             // --- Procedural Regional Lore ---
             const seed = stringToSeed(regionId);
@@ -836,7 +880,7 @@ function updateRegionDisplay() {
                     x: gameState.player.x, 
                     y: gameState.player.y, 
                     icon: currentTile, 
-                    name: regionName
+                    name: window.lastRegionCache.name
                 });
                 
                 logMessage(`{blue:Point of Interest added to your map.}`);
@@ -907,6 +951,17 @@ function renderStatusEffects() {
     const player = gameState.player;
     let icons = ''; 
 
+    // --- MOUNTS & VEHICLES ---
+    if (player.isMounted && player.companion) {
+        icons += `<span title="Mounted: ${player.companion.name}" class="drop-shadow-md cursor-help text-orange-400 relative top-[-2px]">${player.companion.tile || '🐎'}</span>`;
+    }
+    if (player.isSailing) {
+        icons += `<span title="Sailing Ship" class="drop-shadow-md cursor-help text-blue-400">⛵</span>`;
+    } else if (player.isBoating) {
+        icons += `<span title="Canoe" class="drop-shadow-md cursor-help text-green-600">🛶</span>`;
+    }
+
+    // --- BUFFS & DEBUFFS ---
     if (player.shieldValue > 0) {
         icons += `<span title="Arcane Shield (${Math.ceil(player.shieldValue)} points, ${player.shieldTurns}t)" class="drop-shadow-md cursor-help">💠</span>`;
     }
@@ -1008,12 +1063,12 @@ function resizeCanvas() {
         hunger: "Hunger: Determines natural healing. If empty, you stop regenerating Health over time.",
         thirst: "Thirst: Determines physical recovery. If empty, you stop regenerating Stamina over time.",
         // Attributes
-        strength: "Strength: Modifies raw Melee Damage. Also improves mining yield and carry capacity.",
+        strength: "Strength: Modifies raw Melee Damage. Also improves mining yield, carry capacity, and unarmed damage.",
         wits: "Wits: Increases Spell Damage, Arcane Shield strength, and expands maximum Mana reserves.",
         constitution: "Constitution: Hardens the body. Increases base Defense and expands maximum Health.",
-        dexterity: "Dexterity: Enhances reflexes. Increases Dodge chance, Stealth duration, and Ranged Damage.",
-        charisma: "Charisma: The art of influence. Grants better Shop Prices and improves the chance to Tame/Pacify.",
-        luck: "Luck: Bends fate. Increases Critical Hit chance, Dodge chance, and rare Magic Loot drops.",
+        dexterity: "Dexterity: Enhances reflexes. Increases Dodge chance, Stealth duration, Ranged Damage, and Fishing catch rate.",
+        charisma: "Charisma: The art of influence. Grants better Shop Prices and improves the chance to Tame/Pacify beasts and Mount success.",
+        luck: "Luck: Bends fate. Increases Critical Hit chance, Dodge chance, rare Magic Loot drops, and Trophy Fish rates.",
         willpower: "Willpower: Dark resilience. Increases Max Psyche, Dark/Frost spell damage, and summon health.",
         perception: "Perception: Keen senses. Improves combat Accuracy and the chance to passively spot Secret Doors.",
         endurance: "Endurance: Tireless resolve. Increases Max Stamina and improves resistance to Swamp Sickness.",
