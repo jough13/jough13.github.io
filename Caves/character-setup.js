@@ -11,14 +11,18 @@ let creationState = {
     background: null
 };
 
-// PERFORMANCE WIN: Cache DOM elements that are queried repeatedly (like on every keystroke)
+// PERFORMANCE WIN: Expanded Cache for DOM elements queried repeatedly (like on every keystroke)
 const _DOMCache = {
     nameInput: null,
     summaryBox: null,
     finalizeBtn: null,
+    raceContainer: null,
+    classContainer: null,
     getNameInput: () => _DOMCache.nameInput || (document.getElementById('charNameInput') && (_DOMCache.nameInput = document.getElementById('charNameInput'))),
     getSummaryBox: () => _DOMCache.summaryBox || (document.getElementById('creationSummary') && (_DOMCache.summaryBox = document.getElementById('creationSummary'))),
-    getFinalizeBtn: () => _DOMCache.finalizeBtn || (document.getElementById('finalizeCreationBtn') && (_DOMCache.finalizeBtn = document.getElementById('finalizeCreationBtn')))
+    getFinalizeBtn: () => _DOMCache.finalizeBtn || (document.getElementById('finalizeCreationBtn') && (_DOMCache.finalizeBtn = document.getElementById('finalizeCreationBtn'))),
+    getRaceContainer: () => _DOMCache.raceContainer || (document.getElementById('raceSelectionContainer') && (_DOMCache.raceContainer = document.getElementById('raceSelectionContainer'))),
+    getClassContainer: () => _DOMCache.classContainer || (document.getElementById('classSelectionContainer') && (_DOMCache.classContainer = document.getElementById('classSelectionContainer')))
 };
 
 async function initCharacterSelect(user) {
@@ -89,7 +93,11 @@ window.selectSlot = async function (slotId) {
         } else {
             // It's a completely empty slot. Setup the default state.
             const defaultState = createDefaultPlayerState();
-            Object.assign(gameState.player, defaultState);
+            
+            // 🐛 BUG FIX: Deep clone the default state so nested arrays (like inventory/equipment) 
+            // don't carry over memory references from previously deleted characters in the same session!
+            gameState.player = typeof fastClone === 'function' ? fastClone(defaultState) : JSON.parse(JSON.stringify(defaultState));
+            
             initCreationUI(); 
         }
     } catch (e) {
@@ -276,6 +284,25 @@ function updateCreationSummary() {
             <span class="text-purple-400 font-bold">Psych: ${projPsyche}</span>
         </div>
     ` : '';
+    
+    // LORE WIN: Dynamic "Omen" Flavor Text based on the combination chosen!
+    let omenHtml = '';
+    if (creationState.name && creationState.race && creationState.background && typeof stringToSeed === 'function') {
+        const omens = [
+            "The leylines hum with anticipation.",
+            "A cold wind blows from the Void.",
+            "The Akashic Records open to a blank page.",
+            "The stars align in a precarious pattern.",
+            "The shadow of the Old King looms over this one.",
+            "Born of ash, destined for the deep.",
+            "The Weavers of Fate thread a new needle.",
+            "A distant raven caws. An omen of change."
+        ];
+        // Use a mathematical hash of the player's choices to ensure the omen remains stable for that combo!
+        const omenSeed = stringToSeed(creationState.name + creationState.race + creationState.background);
+        const selectedOmen = omens[Math.abs(omenSeed) % omens.length];
+        omenHtml = `<div class="mt-3 pt-2 border-t border-gray-700 text-[10px] text-purple-400 italic text-center animate-pulse drop-shadow-sm">"${selectedOmen}"</div>`;
+    }
 
     if (summaryDiv) {
         summaryDiv.innerHTML = `
@@ -295,6 +322,7 @@ function updateCreationSummary() {
                 ${stats.length > 0 ? stats.join('<br>') : "<span class='italic opacity-50 font-normal'>Select Race & Class to see bonuses.</span>"}
             </div>
             ${vitalsHtml}
+            ${omenHtml}
         `;
     }
 
@@ -328,7 +356,13 @@ function updateCreationSummary() {
 // Attach listeners safely
 setTimeout(() => {
     const nameInput = _DOMCache.getNameInput();
-    if (nameInput) nameInput.addEventListener('input', updateCreationSummary);
+    if (nameInput) {
+        // PERFORMANCE & SEC WIN: Sanitize the input actively while typing
+        nameInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^a-zA-Z0-9 \-']/g, '');
+            updateCreationSummary();
+        });
+    }
 
     const finalizeCreationBtn = _DOMCache.getFinalizeBtn();
     if (finalizeCreationBtn) finalizeCreationBtn.addEventListener('click', finalizeCharacterCreation);
@@ -343,7 +377,8 @@ window.generateRandomName = function() {
         "Ael", "Val", "Dra", "Bael", "Xyl", "Quin", "Syl", "Or", "Ign", "Gloom",
         "Lu", "Cor", "Ash", "Sil", "Fen", "Grim", "Mal", "Ren", "Tav", "Zeph",
         "Aer", "Bryn", "Cael", "Dorn", "Ery", "Fael", "Gael", "Hald", "Ith", "Jor",
-        "Vor", "Kra", "Zin", "Thal", "Orik", "Ul", "Xan", "Yrr", "Aka", "Chro", "Ley"
+        "Vor", "Kra", "Zin", "Thal", "Orik", "Ul", "Xan", "Yrr", "Aka", "Chro", "Ley",
+        "Voss", "Thorne", "Aethel", "Kaelen", "Zael", "Vane", "Kast", "Maer"
     ];
     const suffixes = [
         "in", "ick", "ara", "en", "is", "os", "ia", "on", "us", "th",
@@ -358,6 +393,7 @@ window.generateRandomName = function() {
         " the Brave", " the Swift", " of the Void", " the Wise", " the Exile", 
         " Ironheart", " Shadow-walker", " the Lost", " the Cursed", " the Bold",
         " the Unbroken", " the Star-Touched", " the Pale", " Giantsbane", " the Silent",
+        " the Shattered", " the Undying", " Seeker of the Deep", " the Ashen", " of the Fallen Star",
         // LORE WIN: Thematic Multiverse/Akashic Titles
         " the Ley-Walker", " of the Akashic Records", " the Void-Dancer", " the Unbound", " the Chronomancer"
     ];
@@ -443,7 +479,7 @@ function initCreationUI() {
     }
     
     // PERFORMANCE WIN: Use DocumentFragments to prevent layout thrashing
-    const raceContainer = document.getElementById('raceSelectionContainer');
+    const raceContainer = _DOMCache.getRaceContainer();
     if (raceContainer) {
         raceContainer.innerHTML = '';
         const raceFrag = document.createDocumentFragment();
@@ -459,7 +495,7 @@ function initCreationUI() {
         raceContainer.appendChild(raceFrag);
     }
 
-    const classContainer = document.getElementById('classSelectionContainer');
+    const classContainer = _DOMCache.getClassContainer();
     if (classContainer) {
         classContainer.innerHTML = '';
         const classFrag = document.createDocumentFragment();
