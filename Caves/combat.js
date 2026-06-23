@@ -1449,6 +1449,9 @@ function processFriendlyTurns() {
 async function runCompanionTurn() {
     const companion = gameState.player.companion;
     if (!companion) return;
+    
+    // Mounts are occupied carrying you, they don't auto-attack!
+    if (gameState.player.isMounted) return;
 
     const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
     let attacked = false;
