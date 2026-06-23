@@ -1027,10 +1027,19 @@ function useInventoryItem(itemIndex) {
  * @param {object} item - The item object (from equipment).
  * @param {number} operation - 1 to add, -1 to subtract.
  */
+
 function applyStatBonuses(item, operation) {
     if (!item || !item.statBonuses) return;
 
     const player = gameState.player;
+
+    // 1. CAPTURE OLD MAX VITALS (To calculate the delta later)
+    const oldMaxes = {
+        health: player.maxHealth || 10,
+        mana: player.maxMana || 10,
+        stamina: player.maxStamina || 10,
+        psyche: player.maxPsyche || 10
+    };
 
     for (const stat in item.statBonuses) {
         if (player.hasOwnProperty(stat)) {
@@ -1055,9 +1064,32 @@ function applyStatBonuses(item, operation) {
         }
     }
 
-    // Leverage the global recalculator to safely enforce Max HP/Mana bounds
+    // 2. RECALCULATE NEW MAX VITALS
     if (typeof recalculateDerivedStats === 'function') {
         recalculateDerivedStats();
+
+        // 3. APPLY DELTAS TO CURRENT VITALS
+        // If Max HP went up by 5, Current HP goes up by 5. 
+        // If Max HP went down by 5, Current HP goes down by 5 (But never below 1 so you don't die from changing clothes!)
+        const hpDelta = player.maxHealth - oldMaxes.health;
+        if (hpDelta !== 0) {
+            player.health = Math.max(1, Math.min(player.maxHealth, player.health + hpDelta));
+        }
+        
+        const manaDelta = player.maxMana - oldMaxes.mana;
+        if (manaDelta !== 0) {
+            player.mana = Math.max(0, Math.min(player.maxMana, player.mana + manaDelta));
+        }
+
+        const stamDelta = player.maxStamina - oldMaxes.stamina;
+        if (stamDelta !== 0) {
+            player.stamina = Math.max(0, Math.min(player.maxStamina, player.stamina + stamDelta));
+        }
+
+        const psycheDelta = player.maxPsyche - oldMaxes.psyche;
+        if (psycheDelta !== 0) {
+            player.psyche = Math.max(0, Math.min(player.maxPsyche, player.psyche + psycheDelta));
+        }
     }
 }
 
