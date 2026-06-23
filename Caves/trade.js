@@ -433,7 +433,8 @@ function renderShop() {
         ];
         else if (gameState.mapMode === 'castle') flavors = [
             "Luxury goods and rare artifacts accepted.",
-            "The guards take their cut, but the trade is safe."
+            "The guards take their cut, but the trade is safe.",
+            "I've got apples for your horse... or raw meat for your wolf, if you ride one."
         ];
         
         const selectedFlavor = flavors[Math.floor(Math.random() * flavors.length)];
@@ -476,10 +477,10 @@ function renderShop() {
             actionsHtml += `<button data-buy-item="${item.name}" data-amount="all" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs font-bold">Max</button>`;
         }
 
-        const outOfStockClass = item.stock <= 0 ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:border-green-500';
+        const outOfStockClass = item.stock <= 0 ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:border-green-500 hover:-translate-y-0.5 hover:shadow-md';
 
         const li = document.createElement('li');
-        li.className = `shop-item transition-colors duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 ${outOfStockClass}`;
+        li.className = `shop-item transition-all duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 ${outOfStockClass}`;
         li.innerHTML = `
             <div>
                 <span class="shop-item-name font-bold text-lg text-gray-200">${item.name} <span class="text-2xl drop-shadow-md align-middle">${itemTemplate?.tile || '?'}</span></span>
@@ -517,7 +518,7 @@ function renderShop() {
             }
 
             const li = document.createElement('li');
-            li.className = 'shop-item hover:border-blue-500 transition-colors duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3';
+            li.className = 'shop-item hover:border-blue-500 hover:-translate-y-0.5 hover:shadow-md transition-all duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3';
             
             // UX WIN: Add a "Sell Stack" button if they have more than 1!
             let actionsHtml = `<button data-sell-index="${index}" data-amount="1" style="transform: translateZ(0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50 font-bold" ${item.isEquipped ? 'disabled title="Unequip first"' : ''}>Sell 1</button>`;
@@ -562,8 +563,6 @@ function renderShop() {
                 <button id="sellAllBtn" style="transform: translateZ(0);" class="text-[10px] uppercase font-bold tracking-widest px-2 py-1.5 rounded transition-transform active:scale-95 ${btnClass}" ${hasJunk ? '' : 'disabled'}>Sell All Junk</button>
             </div>
         `;
-        // Ensure we assign the handler directly 
-        document.getElementById('sellAllBtn').onclick = handleSellAllItems;
     }
 }
 
@@ -636,48 +635,47 @@ function getRegionalPriceMultiplier(itemType, itemName) {
     return multiplier;
 }
 
-// --- FIX SHOP LISTENER DELEGATION ---
-// We need to intercept the newly added 'data-amount' parameter for the Sell Stack feature
+// ==========================================
+// SECURITY & PERFORMANCE WIN: Event Delegation
+// ==========================================
 function initShopListeners() {
-    const shopBuyList = _tradeDOMCache.getBuyList();
-    const shopSellList = _tradeDOMCache.getSellList();
     const closeShopButton = document.getElementById('closeShopButton');
+    const shopModalEl = document.getElementById('shopModal');
 
     if (closeShopButton) {
         closeShopButton.addEventListener('click', () => {
-            const shopModal = document.getElementById('shopModal');
-            if (shopModal) shopModal.classList.add('hidden');
+            if (shopModalEl) shopModalEl.classList.add('hidden');
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
         });
     }
 
-    if (shopBuyList) {
-        // Remove existing listener to prevent duplicates
-        const newBuyList = shopBuyList.cloneNode(false);
-        shopBuyList.parentNode.replaceChild(newBuyList, shopBuyList);
-        _tradeDOMCache.buyList = newBuyList; // Update Cache
-        
-        newBuyList.addEventListener('click', (e) => {
-            const btn = e.target.closest('button[data-buy-item]');
-            if (btn) {
-                const amount = btn.dataset.amount || 1;
-                handleBuyItem(btn.dataset.buyItem, amount);
+    // Attach exactly ONE listener to the entire modal to handle all trading clicks
+    if (shopModalEl && !shopModalEl.dataset.listenersBound) {
+        shopModalEl.addEventListener('click', (e) => {
+            
+            // Buy Button
+            const buyBtn = e.target.closest('button[data-buy-item]');
+            if (buyBtn && !buyBtn.disabled) {
+                handleBuyItem(buyBtn.dataset.buyItem, buyBtn.dataset.amount || 1);
+                return;
             }
-        });
-    }
 
-    if (shopSellList) {
-        // Remove existing listener to prevent duplicates
-        const newSellList = shopSellList.cloneNode(false);
-        shopSellList.parentNode.replaceChild(newSellList, shopSellList);
-        _tradeDOMCache.sellList = newSellList; // Update Cache
-        
-        newSellList.addEventListener('click', (e) => {
-            const btn = e.target.closest('button[data-sell-index]');
-            if (btn) {
-                const amount = btn.dataset.amount || 1;
-                handleSellItem(parseInt(btn.dataset.sellIndex, 10), amount);
+            // Sell Button
+            const sellBtn = e.target.closest('button[data-sell-index]');
+            if (sellBtn && !sellBtn.disabled) {
+                handleSellItem(parseInt(sellBtn.dataset.sellIndex, 10), sellBtn.dataset.amount || 1);
+                return;
+            }
+
+            // Sell All Junk Button
+            const sellAllBtn = e.target.closest('#sellAllBtn');
+            if (sellAllBtn && !sellAllBtn.disabled) {
+                handleSellAllItems();
+                return;
             }
         });
+        
+        shopModalEl.dataset.listenersBound = 'true';
     }
 }
 
