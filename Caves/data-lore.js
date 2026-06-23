@@ -83,10 +83,10 @@ window.LORE_STONE_MESSAGES = [
     "If the stone weeps, the Void is near.",
     "The Elves knew the truth, and so they burned their own cities.",
     "Do not dig too deep. The earth is a cage, not a mother.",
-    "The phase walls of the Void Sanctum cannot be broken, only walked through.",
+    "The phase walls of the {purple:Void Sanctum} cannot be broken, only walked through.",
     "A true master of the blade deflects the blow before it falls.",
-    "Seek the Fairy Rings in the forest. They offer a gamble with the Fae.",
-    "The Blood Moon is the eye of the dead god opening.",
+    "Seek the {purple:Fairy Rings} in the forest. They offer a gamble with the Fae.",
+    "The {red:Blood Moon} is the eye of the dead god opening.",
     "Time flows differently where the shadows pool.",
     "He who wields the Stormbringer must fear the rain.",
     "A mirror reflects the body, but the Void reflects the mind.",
@@ -95,7 +95,7 @@ window.LORE_STONE_MESSAGES = [
     "To tame a beast, one must first break its will. To break a man, simply give him gold.",
     "The ashes of the Oracle still speak, if you know how to listen.",
     "A world built on glass cannot withstand a falling star.",
-    "The astrolabe points not to the stars, but to the realms between them.",
+    "The astrolabe points not to the stars, but to the {purple:realms between them}.",
     "Even the Kraken fears what sleeps in the deepest trench.",
     "The sky is not a ceiling, but an ocean waiting to be sailed.",
     "If you stare into the chasm long enough, it will invite you inside.",
@@ -103,7 +103,8 @@ window.LORE_STONE_MESSAGES = [
     "When the sky bleeds purple, close your eyes and cover your ears.",
     "The clockwork guardians do not hate you. They simply do not care.",
     "The Cult of the Shadowed Hand seeks to reforge the shattered crown.",
-    "Heed the Cartographer's warnings. There are places where the map ends for a reason."
+    "Heed the Cartographer's warnings. There are places where the map ends for a reason.",
+    "Some dimensions were abandoned by their creators. Do not linger in them."
 ];
 
 // ==========================================
@@ -190,7 +191,8 @@ window.LORE_MOUNTAIN = [
     "A cairn of stones marks the resting place of an unknown climber.",
     "The stars seem unnaturally close at this altitude.",
     "You find a patch of star-metal embedded in a crater.",
-    "A giant feather, hard as steel, is wedged between two boulders."
+    "A giant feather, hard as steel, is wedged between two boulders.",
+    "You spot a massive, perfect circle bored straight through a peak."
 ];
 
 window.LORE_SWAMP = [
@@ -277,6 +279,13 @@ window.VILLAGER_RUMORS = [
     "I heard you can {gold:Quick Stack} your inventory directly into your stash with a single click. Saves a lot of sorting time!",
     "The Cartographer's Guild pays handsomely if you explore enough {blue:Regions}. Check in with a guildmaster if you've been walking a lot.",
 
+    // --- MOUNTS TUTORIALS ---
+    "I saw a woman riding a {gray:Stone Golem} yesterday! It smashed right through a thicket like it was made of paper!",
+    "If you manage to tame a massive beast like an Ogre or a Drake, you can ride it! Just press {blue:[Z]} if you make a big friend.",
+    "A tamed Dire Wolf is faster than the wind. Ride one if you want to cross the plains in a hurry.",
+    "Careful in combat while riding a beast. If you take a heavy hit, you might get {red:violently knocked off}!",
+    "You can't swing a sword while riding a bear. If you use an attack or a spell, you'll {orange:leap off your mount} directly into combat!",
+
     // --- EXPLORATION & WORLD ---
     "If you find a pickaxe, try the mountains. Good {gray:Iron Ore} there.",
     "The castle guards are tough, but they protect good loot.",
@@ -287,7 +296,7 @@ window.VILLAGER_RUMORS = [
     "{blue:Wits} will help you find hidden doors in the caves. Knock on every wall!",
     "They say the Old King isn't dead, just... waiting.",
     "The shopkeeper cheats at cards. Don't play him.",
-    "If you see a rift in the world, jump in! What's the worst that could happen?",
+    "If you see a {purple:rift in the world}, jump in! What's the worst that could happen?",
     "A {gold:Golden Apple} can bring a man back from the brink of death.",
     "My grandad says if you're drowning, a {blue:Gill Potion} is better than a prayer.",
     "Don't go into the Deadlands without a way to light the dark. The shadows there bite.",
@@ -350,7 +359,7 @@ window.RANDOM_JOURNAL_PAGES = [
     "The Obsidian Rod is the only thing that won't melt in the volcano. I just hope the Magma Carps are biting.",
     "We found a Fairy Ring today. Elara stepped inside and vanished. I'm going in after her.",
     "I hooked something off the starboard bow. It dragged the ship for three leagues before snapping a steel cable. I am never sailing again.",
-    "If you see the sky turn red, run for the village. The Blood Moon is not a myth.",
+    "If you see the sky turn red, run for the village. The {red:Blood Moon} is not a myth.",
     "They call it the Abyssal Leviathan. It's not a fish. It's a natural disaster with teeth.",
     "I threw a firebomb into the swamp just to watch it burn. The resulting gas explosion leveled an entire thicket. Fascinating.",
     "My companion, a loyal dire wolf, took down a goblin brute by itself. I gave it a steak. It's better company than most men.",
@@ -360,7 +369,8 @@ window.RANDOM_JOURNAL_PAGES = [
     "I climbed the beanstalk. The air was thin, and the clouds felt like marble beneath my feet. I saw a fountain that poured pure starlight.",
     "If you stand on the edge of the world, where the map turns to nothing, you can hear the servers humming.",
     "The Akashic Records remember every soul that has died here. Sometimes, when the wind is right, you can hear them updating.",
-    "I met a traveler who said he was from a 'Shattered Realm'. He looked exactly like me, but with a scar over his eye. Then he struck a tuning fork and vanished."
+    "I met a traveler who said he was from a 'Shattered Realm'. He looked exactly like me, but with a scar over his eye. Then he struck a tuning fork and vanished.",
+    "Do not trust the alternate dimensions. I spent a week in one where the oceans were lava. I barely made it back to the Prime Realm alive."
 ];
 
 window.LORE_FRAGMENTS = [
@@ -410,7 +420,10 @@ window.VISIONS_OF_THE_PAST = [
     "A VISION: You watch as reality splits like a mirror. A thousand versions of the King make a thousand different choices. All end in ash. Perhaps another dimension survived?",
     "A VISION: You stand on a cloud of solid marble. Below you, the world is burning. A voice behind you says, 'We built this to escape, but we brought it with us.'",
     "A VISION: The Underworld expands endlessly. You see thousands of stone cocoons hanging from the cavern ceiling. One of them twitches.",
-    "A VISION: You see an ancient archmage holding an astrolabe. He turns a dial, and the entire landscape dissolves into a grid of green numbers. Then, the Void takes him."
+    "A VISION: You see an ancient archmage holding an astrolabe. He turns a dial, and the entire landscape dissolves into a grid of green numbers. Then, the Void takes him.",
+    "A VISION: The sky cracks like glass. A colossal eye stares through the fissure. You cannot look away.",
+    "A VISION: A woman rides a monstrous wolf across the plains, outrunning a storm of black ash.",
+    "A VISION: You see the roots of the world. They are not wood, but thick cables of humming purple light."
 ];
 
 // ==========================================
@@ -734,6 +747,20 @@ window.RIDDLE_DATA = [
         answers: ["bank", "a bank", "river", "a river", "stream"],
         reward: "luck",
         message: "{gold:The sound of clinking coins echoes faintly. Fortune smiles upon you.}"
+    },
+    {
+        id: "meteor",
+        question: "I drop from the sky but I am not rain. I have a core but I am not fruit. What am I?",
+        answers: ["meteor", "star", "a star", "a meteor", "shooting star", "falling star"],
+        reward: "luck",
+        message: "{gold:The statue glows with starlight. You feel incredibly lucky.}"
+    },
+    {
+        id: "cold",
+        question: "What can you catch but never throw?",
+        answers: ["cold", "a cold", "sickness", "disease"],
+        reward: "constitution",
+        message: "{green:The stone chills your hand. You feel physically hardier.}"
     }
 ];
 
@@ -760,7 +787,10 @@ window.REGION_HISTORY = [
     "The merchants avoid this path. Too many caravans have vanished without a trace.",
     "This region is entirely missing from the oldest maps in the royal archives. It simply did not exist.",
     "You can sometimes find petrified wood here that burns with a blue flame.",
-    "The magnetic north fluctuates wildly the deeper you go into this sector."
+    "The magnetic north fluctuates wildly the deeper you go into this sector.",
+    "Scholars believe this exact spot is the focal point of a massive, inter-dimensional overlap.",
+    "The wind here never blows from the north. Only from the east.",
+    "A massive clockwork machine lies buried just beneath the topsoil here, ticking faintly."
 ];
 
 // --- END OF FILE data-lore.js ---
