@@ -3047,7 +3047,21 @@ function gameLoop(timestamp) {
     if (typeof ParticleSystem !== 'undefined') ParticleSystem.update();
 
     // 3. Process Input Queue
-    if (window.inputQueue && window.inputQueue.length > 0 && Date.now() - lastActionTime >= ACTION_COOLDOWN) {
+    let currentCooldown = ACTION_COOLDOWN;
+    
+    // --- MOUNT EXPANSION: SPEED BOOSTS ---
+    if (gameState.player.isMounted && gameState.player.companion) {
+        const mountTile = gameState.player.companion.tile;
+        if (['w', '🐺', '🦌'].includes(mountTile)) {
+            currentCooldown = 75; // Fast Mounts (Wolves/Stags)
+        } else if (['🦖'].includes(mountTile)) {
+            currentCooldown = 90; // Epic Mounts
+        } else {
+            currentCooldown = 110; // Heavy Mounts (Bears/Ogres)
+        }
+    }
+
+    if (window.inputQueue && window.inputQueue.length > 0 && Date.now() - lastActionTime >= currentCooldown) {
         const key = window.inputQueue.shift(); // Pulls the oldest key pressed
         handleInput(key);
     }
