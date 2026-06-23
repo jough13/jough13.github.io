@@ -4,10 +4,45 @@
 // MOVEMENT & MAP TRANSITIONS
 // ==========================================
 
+window.toggleMount = function() {
+    const p = gameState.player;
+    
+    // Dismount
+    if (p.isMounted) {
+        p.isMounted = false;
+        logMessage(`You dismount your ${p.companion.name}.`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+        gameState.mapDirty = true;
+        if (typeof render === 'function') render();
+        return;
+    }
+
+    // Mount Checks
+    if (!p.companion) {
+        logMessage("{gray:You don't have a companion to ride.}");
+        return;
+    }
+    if (!p.companion.isRideable) {
+        logMessage("{gray:Your companion is too small to ride.}");
+        return;
+    }
+    if (p.isBoating || p.isSailing) {
+        logMessage("{gray:You can't mount up while on a boat.}");
+        return;
+    }
+
+    p.isMounted = true;
+    logMessage(`{green:You mount your ${p.companion.name}!}`);
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic(); 
+    gameState.mapDirty = true;
+    if (typeof render === 'function') render();
+};
+
 /**
  * Helper function to execute critical chunk loading, enemy syncing, and saving
  * when a player teleports, enters a dungeon, or shifts between world layers.
  */
+
 function finalizeMapTransition() {
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
@@ -1370,7 +1405,30 @@ async function attemptMovePlayer(newX, newY) {
         }
     }
 
-    let moveCost = TERRAIN_COST[newTile] ?? 0;
+    // --- MOUNT EXPANSION: STAMINA & SIEGE PERKS ---
+    if (gameState.player.isMounted && gameState.player.companion) {
+        moveCost = 0; // Mounts take the stamina hit (free for player)
+        
+        const mountTile = gameState.player.companion.tile;
+        
+        // Siege Mounts SMASH obstacles!
+        if (['Ø', '🦖', '🧌', '🐲'].includes(mountTile)) {
+            if (newTile === '🏚' || newTile === '🏚️' || newTile === '🌳' || newTile === '🕸') {
+                logMessage(`{orange:Your ${gameState.player.companion.name} SMASHES through the obstacle!}`);
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#d4d4d8', 15);
+                
+                // Clear the obstacle permanently
+                if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '.');
+                else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = '.';
+                else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
+                
+                newTile = '.'; 
+                tileData = TILE_DATA['.']; // Refresh interaction data
+                gameState.mapDirty = true;
+            }
+        }
+    }
 
     if ((newTile === '~' || newTile === '≈') && gameState.player.waterBreathingTurns > 0) {
         moveCost = 0; // Swim effortlessly
