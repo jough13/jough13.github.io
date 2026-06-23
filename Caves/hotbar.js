@@ -28,9 +28,12 @@ function renderHotbar() {
 
     hotbar.forEach((abilityId, index) => {
         const slotDiv = document.createElement('div');
-        // Added an ID so we can target specific slots for animations later
+        // Added an ID and data-index so we can target specific slots for event delegation and animations
         slotDiv.id = `hotbarSlot-${index}`;
-        slotDiv.className = "relative w-12 h-12 border-2 rounded flex items-center justify-center cursor-pointer bg-[var(--bg-page)] hover:border-blue-500 transition-all shadow-sm";
+        slotDiv.dataset.index = index;
+        
+        // Add specific 'hotbar-slot' class to easily identify it during event bubbling
+        slotDiv.className = "hotbar-slot relative w-12 h-12 border-2 rounded flex items-center justify-center cursor-pointer bg-[var(--bg-page)] hover:border-blue-500 transition-all shadow-sm";
 
         const hotkeyNumber = index + 1;
 
@@ -73,7 +76,7 @@ function renderHotbar() {
                 abrv.textContent = data.name.substring(0, 2).toUpperCase(); 
                 
                 // QoL WIN: Explicit instructions on hover
-                slotDiv.title = `Press [${hotkeyNumber}] to use:\n${data.name} (Cost: ${data.cost} ${data.costType})`;
+                slotDiv.title = `[${hotkeyNumber}] ${data.name}\nCost: ${data.cost} ${data.costType}\n(Right-click to unbind)`;
                 slotDiv.appendChild(abrv);
 
                 // JUICE WIN: Glassmorphism Cooldown Overlay
@@ -94,7 +97,7 @@ function renderHotbar() {
                 const invItem = player.inventory.find(i => i.name === itemData.name || i.templateId === abilityId);
                 const qty = invItem ? invItem.quantity : 0;
                 
-                slotDiv.title = `Press [${hotkeyNumber}] to use:\n${itemData.name} (Qty: ${qty})`;
+                slotDiv.title = `[${hotkeyNumber}] ${itemData.name} (Qty: ${qty})\n(Right-click to unbind)`;
                 slotDiv.appendChild(iconSpan);
                 
                 // Show quantity badge
@@ -110,33 +113,8 @@ function renderHotbar() {
             }
         } else {
             slotDiv.classList.add('border-dashed', 'opacity-30', 'border-gray-600');
-            slotDiv.title = "Empty Slot (Right-click an item/spell to bind)";
+            slotDiv.title = "Empty Slot\n(Open Inventory/Spellbook and click 'Bind')";
         }
-
-        // Left Click to Use
-        slotDiv.onclick = () => {
-            if (gameState.inventoryMode) return; 
-            
-            // JUICE: Visual "button press" feedback on click
-            slotDiv.style.transform = 'scale(0.9)';
-            setTimeout(() => { slotDiv.style.transform = 'scale(1)'; }, 100);
-            
-            useHotbarSlot(index);
-        };
-        
-        // Right Click to unbind a slot!
-        slotDiv.oncontextmenu = (e) => {
-            e.preventDefault();
-            
-            if (player.hotbar[index]) {
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
-                logMessage(`{gray:Cleared Hotbar Slot ${hotkeyNumber}.}`);
-            }
-            
-            player.hotbar[index] = null;
-            if (typeof playerRef !== 'undefined') playerRef.update({ hotbar: player.hotbar });
-            renderHotbar();
-        };
 
         fragment.appendChild(slotDiv);
     });
@@ -173,9 +151,22 @@ function useHotbarSlot(index) {
         return;
     }
 
-    if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) {
+    const isSkill = typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId];
+    const isSpell = typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId];
+
+    // --- MOUNT EXPANSION: AUTO-DISMOUNT ---
+    // If you use a combat ability while riding a beast, you leap off dynamically!
+    if (player.isMounted && (isSkill || isSpell)) {
+        player.isMounted = false;
+        logMessage(`{orange:You leap from your mount into combat!}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+        gameState.mapDirty = true;
+        if (typeof render === 'function') render();
+    }
+
+    if (isSkill) {
         if (typeof useSkill === 'function') useSkill(abilityId);
-    } else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) {
+    } else if (isSpell) {
         if (typeof castSpell === 'function') castSpell(abilityId);
     } else {
         // Assume it's an item, resolve its proper name
@@ -208,17 +199,25 @@ function assignToHotbar(abilityId) {
     const player = gameState.player;
     const hotbar = player.hotbar;
     
-    // Find first empty slot
-    let index = hotbar.indexOf(null);
-
     // Get the readable name for the log message
     let readableName = abilityId;
     if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) readableName = SKILL_DATA[abilityId].name;
     else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) readableName = SPELL_DATA[abilityId].name;
     else if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) readableName = ITEM_DATA[abilityId].name;
 
+    // QoL / BUG FIX: Prevent binding the exact same spell to multiple slots
+    const existingIndex = hotbar.indexOf(abilityId);
+    if (existingIndex !== -1) {
+        logMessage(`{gray:${readableName} is already bound to Slot ${existingIndex + 1}.}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
+    }
+
+    // Find first empty slot
+    let index = hotbar.indexOf(null);
+
     if (index === -1) {
-        // Full? Replace slot 1 or just notify
+        // Full? Replace slot 1
         index = 0;
         logMessage(`{blue:Hotbar full. Replaced Slot 1 with ${readableName}.}`);
     } else {
@@ -247,6 +246,53 @@ function assignToHotbar(abilityId) {
             }, 50);
         }
     }, 0);
+}
+
+// --- SECURITY & PERFORMANCE WIN: Event Delegation ---
+// We attach the listeners to the parent container exactly ONCE.
+// This prevents memory leaks and V8 garbage collection stutters when the hotbar re-renders every turn!
+if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
+    
+    // Left Click (Use Ability)
+    hotbarContainerEl.addEventListener('click', (e) => {
+        if (gameState.inventoryMode) return; 
+        
+        const slotDiv = e.target.closest('.hotbar-slot');
+        if (slotDiv) {
+            const index = parseInt(slotDiv.dataset.index, 10);
+            if (!isNaN(index)) {
+                // JUICE: Visual "button press" feedback on click
+                slotDiv.style.transform = 'scale(0.9)';
+                setTimeout(() => { slotDiv.style.transform = ''; }, 100); // Clear inline style so CSS classes take over
+                
+                useHotbarSlot(index);
+            }
+        }
+    });
+
+    // Right Click (Clear Slot)
+    hotbarContainerEl.addEventListener('contextmenu', (e) => {
+        const slotDiv = e.target.closest('.hotbar-slot');
+        if (slotDiv) {
+            e.preventDefault(); // Stop standard browser right-click menu
+            
+            const index = parseInt(slotDiv.dataset.index, 10);
+            if (!isNaN(index)) {
+                const player = gameState.player;
+                
+                if (player.hotbar[index]) {
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+                    logMessage(`{gray:Cleared Hotbar Slot ${index + 1}.}`);
+                }
+                
+                player.hotbar[index] = null;
+                if (typeof playerRef !== 'undefined') playerRef.update({ hotbar: player.hotbar });
+                renderHotbar();
+            }
+        }
+    });
+
+    hotbarContainerEl.dataset.listenersBound = 'true';
 }
 
 // --- END OF FILE hotbar.js ---
