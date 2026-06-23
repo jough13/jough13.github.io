@@ -1557,13 +1557,14 @@ window.ITEM_DATA = {
             
             const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle' && !i.isEquipped);
             
-            if (!existingBottle && state.player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
-                const hasLargeWaterStack = state.player.inventory.some(i => i.name === 'Clean Water' && i.quantity > 1);
-                if (hasLargeWaterStack) {
-                    logMessage("{red:Your inventory is full. Clear a slot to hold the empty bottle before drinking.}");
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                    return false; 
-                }
+            // Calculate if consuming this water frees up a slot!
+            const waterStack = state.player.inventory.find(i => i.name === 'Clean Water' && !i.isEquipped);
+            const freesSlot = (waterStack && waterStack.quantity === 1) ? 1 : 0;
+            
+            if (!existingBottle && state.player.inventory.length - freesSlot >= (window.MAX_INVENTORY_SLOTS || 9)) {
+                logMessage("{red:Your inventory is full. Clear a slot to hold the empty bottle before drinking.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return false; 
             }
 
             window.modifyVital('thirst', 40);
@@ -1598,13 +1599,14 @@ window.ITEM_DATA = {
 
             const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle' && !i.isEquipped);
             
-            if (!existingBottle && state.player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
-                const hasLargeWaterStack = state.player.inventory.some(i => i.name === 'Dirty Water' && i.quantity > 1);
-                if (hasLargeWaterStack) {
-                    logMessage("{red:Your inventory is full. Clear a slot to hold the empty bottle before drinking.}");
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                    return false; 
-                }
+            // Calculate if consuming this water frees up a slot!
+            const waterStack = state.player.inventory.find(i => i.name === 'Dirty Water' && !i.isEquipped);
+            const freesSlot = (waterStack && waterStack.quantity === 1) ? 1 : 0;
+            
+            if (!existingBottle && state.player.inventory.length - freesSlot >= (window.MAX_INVENTORY_SLOTS || 9)) {
+                logMessage("{red:Your inventory is full. Clear a slot to hold the empty bottle before drinking.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return false; 
             }
             
             window.modifyVital('thirst', 15);
