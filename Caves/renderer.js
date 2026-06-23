@@ -1025,13 +1025,38 @@ const render = () => {
         }
     }
 
-    // --- DRAW PLAYER ---
+    // --- DRAW PLAYER & MOUNTS ---
     const playerChar = gameState.player.isSailing ? '⛵' : (gameState.player.isBoating ? 'c' : gameState.player.character);
-    ctx.font = `bold ${TILE_SIZE}px monospace`;
     
     const playerBreath = Math.sin(now / 300 + (p.x * 12.3 + p.y * 7.1)) * (TILE_SIZE * 0.08);
     const pScreenX = (visX - startX) * TILE_SIZE + TILE_SIZE / 2;
     const pScreenY = (visY - startY) * TILE_SIZE + TILE_SIZE / 2 + playerBreath;
+
+    TileRenderer.drawShadow(ctx, visX - startX, visY - startY);
+
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+
+    if (gameState.player.isMounted && gameState.player.companion) {
+        // 1. Draw the Mount at normal size
+        ctx.font = `bold ${TILE_SIZE}px monospace`;
+        ctx.strokeText(gameState.player.companion.tile, pScreenX, pScreenY);
+        ctx.fillStyle = '#ffffff'; 
+        ctx.fillText(gameState.player.companion.tile, pScreenX, pScreenY);
+
+        // 2. Draw the Player slightly smaller and shifted upwards!
+        ctx.font = `bold ${TILE_SIZE * 0.6}px monospace`;
+        ctx.strokeText(playerChar, pScreenX, pScreenY - (TILE_SIZE * 0.35));
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillText(playerChar, pScreenX, pScreenY - (TILE_SIZE * 0.35));
+    } else {
+        // Normal rendering
+        ctx.font = `bold ${TILE_SIZE}px monospace`;
+        ctx.strokeText(playerChar, pScreenX, pScreenY);
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillText(playerChar, pScreenX, pScreenY);
+    }
 
     TileRenderer.drawShadow(ctx, visX - startX, visY - startY);
 
