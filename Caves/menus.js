@@ -260,7 +260,7 @@ function renderBountyBoard() {
     sortedQuests.forEach(data => {
         const { questId, quest, playerQuest } = data;
         const div = document.createElement('div');
-        div.className = 'quest-item p-4 mb-3 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-50 transition-colors shadow-sm';
+        div.className = 'quest-item p-4 mb-3 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-50 transition-colors shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-gray-500';
 
         if (!playerQuest) {
             // --- Scenario 1: Quest is Available ---
@@ -309,7 +309,7 @@ function renderBountyBoard() {
             ];
             const randomMsg = signOffs[Math.floor(Math.random() * signOffs.length)];
             
-            div.classList.add('opacity-40');
+            div.classList.add('opacity-40', 'hover:opacity-60');
             div.innerHTML = `
                 <div class="flex-grow pr-4">
                     <div class="text-lg font-bold text-gray-500 mb-1 line-through">${quest.title}</div>
@@ -594,7 +594,7 @@ function renderBestiary() {
                 <div class="text-[9px] italic text-gray-600 font-bold tracking-wide">Defeat 20 to reveal drop tables</div>`;
         }
 
-        div.className = 'bestiary-entry p-3 mb-3 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-40 transition-colors hover:border-gray-500 relative overflow-hidden shadow-sm';
+        div.className = 'bestiary-entry p-3 mb-3 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-40 transition-colors hover:border-gray-500 relative overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5';
         div.innerHTML = `
             <div class="flex items-start gap-4 z-10 relative">
                 <div class="text-4xl w-12 text-center" style="filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.6));">${key}</div>
@@ -631,25 +631,26 @@ function renderLibrary() {
         const totalCount = set.items.length;
 
         const setDiv = document.createElement('div');
-        setDiv.className = `panel p-4 mb-3 rounded-lg border-2 transition-colors duration-200 shadow-sm ${isComplete ? 'border-yellow-500 bg-yellow-900 bg-opacity-10' : 'border-gray-600 hover:border-gray-500'}`;
+        setDiv.className = `panel p-4 mb-3 rounded-lg border-2 transition-colors duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${isComplete ? 'border-yellow-500 bg-yellow-900 bg-opacity-10' : 'border-gray-600 hover:border-gray-500'}`;
         
         // Progress Bar
         const pct = (foundCount / totalCount) * 100;
         const barColor = isComplete ? 'bg-yellow-400' : 'bg-blue-500';
 
+        // SECURITY & PERFORMANCE WIN: Event Delegation Data Attributes
         let headerHtml = `
-            <div class="flex justify-between items-center cursor-pointer mb-1" onclick="toggleSetDetails('${setKey}')" title="Click to view entries">
-                <h3 class="font-bold text-lg m-0 p-0 border-none drop-shadow-md ${isComplete ? 'text-yellow-500' : 'text-gray-200'}">${set.name}</h3>
-                <span class="text-xs font-bold bg-black bg-opacity-40 px-2 py-1 rounded border border-gray-700 shadow-inner">${foundCount} / ${totalCount}</span>
+            <div class="flex justify-between items-center cursor-pointer mb-1" data-action="toggle-set" data-target="set-content-${setKey}" title="Click to view entries">
+                <h3 class="font-bold text-lg m-0 p-0 border-none drop-shadow-md pointer-events-none ${isComplete ? 'text-yellow-500' : 'text-gray-200'}">${set.name}</h3>
+                <span class="text-xs font-bold bg-black bg-opacity-40 px-2 py-1 rounded border border-gray-700 shadow-inner pointer-events-none">${foundCount} / ${totalCount}</span>
             </div>
-            <div class="w-full bg-gray-900 rounded h-1 mb-2 border border-gray-700 shadow-inner">
+            <div class="w-full bg-gray-900 rounded h-1 mb-2 border border-gray-700 shadow-inner pointer-events-none">
                 <div class="${barColor} h-full rounded transition-all duration-500 shadow-sm" style="width: ${pct}%"></div>
             </div>
-            <div class="text-xs text-gray-400 italic mb-2 font-serif">${set.description}</div>
-            ${isComplete ? `<div class="text-[10px] uppercase tracking-widest font-bold text-green-400 mt-2 bg-green-900 bg-opacity-20 p-2 rounded border border-green-800 shadow-sm text-center">Bonus Active: ${set.bonus}</div>` : ''}
+            <div class="text-xs text-gray-400 italic mb-2 font-serif pointer-events-none">${set.description}</div>
+            ${isComplete ? `<div class="text-[10px] uppercase tracking-widest font-bold text-green-400 mt-2 bg-green-900 bg-opacity-20 p-2 rounded border border-green-800 shadow-sm text-center pointer-events-none">Bonus Active: ${set.bonus}</div>` : ''}
         `;
 
-        let entriesHtml = '<div class="mt-3 space-y-1 pl-3 border-l-2 border-gray-600 hidden transition-all" id="set-content-' + setKey + '">';
+        let entriesHtml = `<div class="mt-3 space-y-1 pl-3 border-l-2 border-gray-600 hidden transition-all" id="set-content-${setKey}">`;
         
         set.items.forEach(itemId => {
             const itemData = typeof ITEM_DATA !== 'undefined' ? (ITEM_DATA[itemId] || { name: 'Unknown Fragment', title: 'Unknown' }) : { name: 'Unknown Fragment', title: 'Unknown' };
@@ -658,7 +659,7 @@ function renderLibrary() {
             if (hasFound) {
                 entriesHtml += `
                     <div class="text-sm p-2 hover:bg-gray-800 cursor-pointer rounded transition-colors text-blue-300 font-bold hover:text-blue-200" 
-                         onclick="openSpecificLore('${itemId}')">
+                         data-action="open-lore" data-target="${itemId}">
                         📄 ${itemData.title || itemData.name}
                     </div>`;
             } else {
@@ -675,14 +676,26 @@ function renderLibrary() {
     }
     
     listDiv.appendChild(fragment);
+    
+    // Attach Event Delegation Listener
+    if (!listDiv.dataset.listenersBound) {
+        listDiv.addEventListener('click', (e) => {
+            const toggleBtn = e.target.closest('[data-action="toggle-set"]');
+            if (toggleBtn) {
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                const el = document.getElementById(toggleBtn.dataset.target);
+                if (el) el.classList.toggle('hidden');
+                return;
+            }
+            
+            const loreBtn = e.target.closest('[data-action="open-lore"]');
+            if (loreBtn) {
+                if (typeof window.openSpecificLore === 'function') window.openSpecificLore(loreBtn.dataset.target);
+            }
+        });
+        listDiv.dataset.listenersBound = 'true';
+    }
 }
-
-// Global helpers for HTML onclicks
-window.toggleSetDetails = function(setKey) {
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-    const el = document.getElementById('set-content-' + setKey);
-    if (el) el.classList.toggle('hidden');
-};
 
 window.openSpecificLore = function(itemId) {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
@@ -766,7 +779,7 @@ function renderSkillTrainerModal() {
         }
 
         const li = document.createElement('li');
-        li.className = `panel p-3 mb-2 rounded-lg border-2 shadow-sm ${currentLevel >= MAX_LEVEL ? 'border-yellow-600 bg-yellow-900 bg-opacity-10' : 'border-gray-600 hover:border-gray-500'} transition-colors flex justify-between items-center`;
+        li.className = `panel p-3 mb-2 rounded-lg border-2 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${currentLevel >= MAX_LEVEL ? 'border-yellow-600 bg-yellow-900 bg-opacity-10' : 'border-gray-600 hover:border-gray-500'} transition-all flex justify-between items-center`;
         li.innerHTML = `
             <div class="flex-grow pr-4">
                 <div class="font-bold text-lg text-yellow-500 mb-1 drop-shadow-sm">${skillData.name}</div>
