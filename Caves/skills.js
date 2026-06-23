@@ -1079,6 +1079,14 @@ function executeTame(dirX, dirY) {
             const tameChance = 0.3 + (player.charisma * 0.05); // Base 30% + 5% per Charisma
             if (Math.random() < tameChance) {
                 logMessage(`{green:You calm the ${enemy.name}... It accepts you as its master!}`);
+                
+                // --- MOUNT EXPANSION ---
+                const rideableBeasts = ['w', '🐺', '🐻', 'Ø', '🦖', '🐗', '@', '🕷️', '🧌', '🐲'];
+                const isRideable = rideableBeasts.includes(enemy.tile);
+                if (isRideable) {
+                    setTimeout(() => logMessage(`{cyan:This beast is large enough to ride! Press [Z] to Mount.}`), 500);
+                }
+
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(targetX, targetY, "TAMED!", "#4ade80");
 
