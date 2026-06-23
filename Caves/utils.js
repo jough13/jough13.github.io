@@ -72,6 +72,12 @@ window.MathUtils = {
     // Smooth linear interpolation for cameras and entity gliding
     lerp: (start, end, amt) => (1 - amt) * start + amt * end,
 
+    // PERFORMANCE WIN: Axis-Aligned Bounding Box (AABB)
+    // The absolute fastest way to check if a point is within an area of effect!
+    inBounds: (x, y, rectX, rectY, rectW, rectH) => {
+        return x >= rectX && x <= rectX + rectW && y >= rectY && y <= rectY + rectH;
+    },
+
     // JUICE WIN: Global Oscillation Helper
     // Returns a smoothly waving value between min and max based on the current time. 
     // Perfect for pulsing lights, hovering items, and breathing UI elements!
@@ -105,6 +111,18 @@ window.MathUtils = {
     
     // Returns a random integer between min and max (inclusive)
     randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
+    
+    // EXPANDABILITY WIN: Gaussian/Bell Curve Random
+    // Uses the Box-Muller transform. Perfect for natural loot distribution and clustering trees!
+    randomGaussian: (min, max) => {
+        let u = 0, v = 0;
+        while(u === 0) u = Math.random(); 
+        while(v === 0) v = Math.random();
+        let num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        num = num / 10.0 + 0.5; // Translate to 0 -> 1
+        if (num > 1 || num < 0) return window.MathUtils.randomGaussian(min, max); // resample
+        return Math.floor(num * (max - min + 1)) + min;
+    },
     
     // Standard RPG Dice Roller (e.g., rollDice(6, 2) rolls 2d6)
     rollDice: (sides, count = 1) => {
@@ -419,9 +437,10 @@ window.formatWorldTime = function(timeData) {
 // LORE WIN: Translates clinical 24h time into atmospheric "Times of Day"
 window.getLoreTimeOfDay = function(hour) {
     if (hour === 0) return "The Witching Hour";
-    if (hour < 5) return "The Deep Dark";
-    if (hour === 5) return "The False Dawn";
-    if (hour < 8) return "The First Light";
+    if (hour < 4) return "The Deep Dark";
+    if (hour === 4) return "The False Dawn";
+    if (hour === 5) return "The First Light";
+    if (hour < 8) return "The Early Morning";
     if (hour < 12) return "The Morning Ascent";
     if (hour === 12) return "High Noon";
     if (hour < 17) return "The Long Afternoon";
@@ -436,7 +455,11 @@ const LORE_KEYWORDS = {
     'Old King': 'gold', 'First King': 'gold', 'Alaric': 'gold',
     'Leylines': 'blue', 'Waystone': 'blue', 'Akashic': 'blue',
     'Fae': 'green', 'Fairy': 'green', 'Elder Tree': 'green',
-    'Grand Fortress': 'red', 'Blood Moon': 'red'
+    'Grand Fortress': 'red', 'Blood Moon': 'red',
+    // Expanded Monsters & Artifacts
+    'Leviathan': 'blue', 'Kraken': 'red', 'Drake': 'orange',
+    'Abyss': 'void', 'Star-Metal': 'cyan', 'Mithril': 'cyan',
+    'Ogre': 'orange', 'Dire Wolf': 'gray'
 };
 
 /**
@@ -525,6 +548,10 @@ window.getRelativePositionText = function(dx, dy, atmospheric = false) {
 window.fastClone = function(obj) {
     // Base case: null, undefined, strings, numbers, booleans
     if (obj === null || typeof obj !== 'object') return obj;
+    
+    // 🐛 BUG FIX: Explicit Date support
+    // Prevents timestamps from being parsed as empty objects during deep cloning!
+    if (obj instanceof Date) return new Date(obj.getTime());
     
     // Fast-path for Arrays
     if (Array.isArray(obj)) {
