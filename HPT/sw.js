@@ -2,7 +2,7 @@
 // --- Progressive Web App Service Worker Engine
 //==============================================================================
 
-const CACHE_NAME = 'rad-tools-v0.9.4'; // Synchronized to match application metadata
+const CACHE_NAME = 'rad-tools-v0.9.5'; // Bump this version!
 
 const urlsToCache = [
   './',
