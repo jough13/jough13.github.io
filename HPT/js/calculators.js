@@ -3060,7 +3060,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
 
-    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] :['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
+    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
 
     // Updated to current 49 CFR 173.443 limits (4 Bq/cm2 and 0.4 Bq/cm2)
     const CONTAM_LIMITS = {
@@ -3068,9 +3068,9 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         alpha: { dpm_100cm2: 2400, bq_cm2: 0.4, label: 'Other Alpha' }
     };
 
-    const FISSILE_ISOTOPES =['U-233', 'U-235', 'Pu-239', 'Pu-241'];
+    const FISSILE_ISOTOPES = ['U-233', 'U-235', 'Pu-239', 'Pu-241'];
 
-    const PSN_OPTIONS =[
+    const PSN_OPTIONS = [
         "UN2910, Radioactive material, excepted package - limited quantity of material, 7",
         "UN2911, Radioactive material, excepted package - instruments or articles, 7",
         "UN2908, Radioactive material, excepted package - empty packaging, 7",
@@ -3090,75 +3090,76 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     ];
 
     // --- 2. STATE ---
-    const[packageItems, setPackageItems] = React.useState([]);
+    const [packageItems, setPackageItems] = React.useState([]);
 
     // Add New Item State
     const [newItemSymbol, setNewItemSymbol] = React.useState('');
     const [newItemForm, setNewItemForm] = React.useState('A2');
-    const[newItemState, setNewItemState] = React.useState('solid');
-    const[newItemCategory, setNewItemCategory] = React.useState('instrument');
+    const [newItemState, setNewItemState] = React.useState('solid');
+    const [newItemCategory, setNewItemCategory] = React.useState('instrument');
+    const [newItemQuantity, setNewItemQuantity] = React.useState('1'); // NEW: Quantity multiplier
     const [newItemActivity, setNewItemActivity] = React.useState('1');
-    const[newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
+    const [newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
     const [newItemMass, setNewItemMass] = React.useState(''); // Mass for LSA hinting
     const [itemManualPSN, setItemManualPSN] = React.useState('');
 
     // Package Level Inputs
-    const[fissileMass, setFissileMass] = React.useState(''); // Fissile exception check
-    const[doseRateAt1m, setDoseRateAt1m] = React.useState('');
-    const[doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
-    const[surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
-    const[surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
+    const [fissileMass, setFissileMass] = React.useState(''); // Fissile exception check
+    const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
+    const [doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
+    const [surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
+    const [surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
 
     // Exclusive Use Vehicle Inputs
-    const[vehSurfaceDose, setVehSurfaceDose] = React.useState('');
-    const[veh2mDose, setVeh2mDose] = React.useState('');
-    const[cabDose, setCabDose] = React.useState('');
+    const [vehSurfaceDose, setVehSurfaceDose] = React.useState('');
+    const [veh2mDose, setVeh2mDose] = React.useState('');
+    const [cabDose, setCabDose] = React.useState('');
     const [vehDoseUnit, setVehDoseUnit] = React.useState('mrem/hr');
 
     // BOL specific inputs
     const [emergencyContact, setEmergencyContact] = React.useState('');
     const [bolComments, setBolComments] = React.useState('');
-    const[shipperName, setShipperName] = React.useState('');
-    const[shipperAddress, setShipperAddress] = React.useState('');
+    const [shipperName, setShipperName] = React.useState('');
+    const [shipperAddress, setShipperAddress] = React.useState('');
     const [consigneeName, setConsigneeName] = React.useState('');
     const [consigneeAddress, setConsigneeAddress] = React.useState('');
-    const[packageDimensions, setPackageDimensions] = React.useState('');
+    const [packageDimensions, setPackageDimensions] = React.useState('');
 
-    const[checkContam, setCheckContam] = React.useState(false);
-    const[contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
-    const[removableContam, setRemovableContam] = React.useState('');
+    const [checkContam, setCheckContam] = React.useState(false);
+    const [contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
+    const [removableContam, setRemovableContam] = React.useState('');
 
     const [labelResult, setLabelResult] = React.useState(null);
     const [contamResult, setContamResult] = React.useState(null);
-    const[classificationResult, setClassificationResult] = React.useState(null);
-    const[error, setError] = React.useState('');
+    const [classificationResult, setClassificationResult] = React.useState(null);
+    const [error, setError] = React.useState('');
 
     // --- Print Modal State ---
-    const[isPrintModalOpen, setIsPrintModalOpen] = React.useState(false);
-    const[dontShowPrintWarning, setDontShowPrintWarning] = React.useState(false);
+    const [isPrintModalOpen, setIsPrintModalOpen] = React.useState(false);
+    const [dontShowPrintWarning, setDontShowPrintWarning] = React.useState(false);
 
     // --- 3. HELPERS ---
     const activityFactorsTBq = React.useMemo(() => ({ 
         'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12, 
         'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8, 'uCi': 3.7e-8 
-    }),[]);
+    }), []);
 
     const transportNuclides = React.useMemo(() => radionuclides.filter(n => n.shipping && n.shipping.A1 !== undefined && n.shipping.A2 !== undefined).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
 
     const selectedNuclideData = React.useMemo(() => 
-        transportNuclides.find(n => n.symbol === newItemSymbol),[newItemSymbol, transportNuclides]);
+        transportNuclides.find(n => n.symbol === newItemSymbol), [newItemSymbol, transportNuclides]);
 
     React.useEffect(() => {
         if (preselectedNuclide && transportNuclides.some(n => n.symbol === preselectedNuclide)) {
             setNewItemSymbol(preselectedNuclide);
         }
-    },[preselectedNuclide, transportNuclides]);
+    }, [preselectedNuclide, transportNuclides]);
 
     React.useEffect(() => {
         if (!activityUnits.includes(newItemUnit)) {
             setNewItemUnit(activityUnits[activityUnits.length - 1]);
         }
-    },[activityUnits, newItemUnit]);
+    }, [activityUnits, newItemUnit]);
 
     const toMremHr = (val, unit) => {
         if (unit === 'mrem/hr') return val;
@@ -3170,14 +3171,17 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     // Calculate live math, auto-suggested PSN, and LSA hints for the current item
     const liveItemDetails = React.useMemo(() => {
-        const defaultResult = { suggestedPSN: PSN_OPTIONS[15], lsaHint: null, actTBq: 0, actBq: 0, specActivityBq_g: Infinity };
+        const defaultResult = { suggestedPSN: PSN_OPTIONS[15], lsaHint: null, actTBq: 0, actBq: 0, specActivityBq_g: Infinity, singleItemActTBq: 0 };
         
         if (!selectedNuclideData || !newItemSymbol) return defaultResult;
         
         const val = safeParseFloat(newItemActivity);
-        if (isNaN(val) || val <= 0) return defaultResult;
+        const qty = parseInt(newItemQuantity, 10) || 1;
+        
+        if (isNaN(val) || val <= 0 || qty < 1) return defaultResult;
 
-        const actTBq = val * activityFactorsTBq[newItemUnit];
+        const singleItemActTBq = val * activityFactorsTBq[newItemUnit];
+        const actTBq = singleItemActTBq * qty; // Total package activity for this entry
         const actBq = actTBq * 1e12;
         const massGrams = safeParseFloat(newItemMass);
         const specActivityBq_g = massGrams > 0 ? actBq / massGrams : Infinity;
@@ -3190,7 +3194,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const exceedsConcentration = exemptConcLimitBq_g === 0 || specActivityBq_g > exemptConcLimitBq_g;
         
         if (!(exceedsConsignment && exceedsConcentration)) {
-            return { ...defaultResult, suggestedPSN: PSN_OPTIONS[15], actTBq, actBq, specActivityBq_g }; // Not Regulated
+            return { ...defaultResult, suggestedPSN: PSN_OPTIONS[15], actTBq, actBq, specActivityBq_g, singleItemActTBq }; // Not Regulated
         }
 
         let rawLimit = selectedNuclideData.shipping[newItemForm];
@@ -3235,7 +3239,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
 
         // --- Routing Logic ---
-        if (actTBq <= pkgLimitExc && actTBq <= itemLimitExc) {
+        // NEW: Check `actTBq` for the package limit, but `singleItemActTBq` for the instrument limit
+        if (actTBq <= pkgLimitExc && singleItemActTBq <= itemLimitExc) {
             suggestedPSN = isInstrument ? PSN_OPTIONS[1] : PSN_OPTIONS[0];
         } 
         else if (lsaHint === 'LSA-II') {
@@ -3249,8 +3254,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             suggestedPSN = hasFissile ? PSN_OPTIONS[12] : PSN_OPTIONS[10];
         }
 
-        return { suggestedPSN, lsaHint, actTBq, actBq, specActivityBq_g };
-    },[selectedNuclideData, newItemSymbol, newItemActivity, newItemUnit, newItemForm, newItemState, newItemCategory, newItemMass, activityFactorsTBq]);
+        return { suggestedPSN, lsaHint, actTBq, actBq, specActivityBq_g, singleItemActTBq };
+    }, [selectedNuclideData, newItemSymbol, newItemActivity, newItemQuantity, newItemUnit, newItemForm, newItemState, newItemCategory, newItemMass, activityFactorsTBq]);
 
     // --- 4. LOGIC ---
 
@@ -3258,13 +3263,14 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         if (!newItemSymbol) { setError('Select a nuclide.'); return; }
 
         const val = safeParseFloat(newItemActivity);
-        if (isNaN(val) || val <= 0) { setError('Invalid activity.'); return; }
+        const qty = parseInt(newItemQuantity, 10) || 1;
+        if (isNaN(val) || val <= 0 || qty < 1) { setError('Invalid activity or quantity.'); return; }
 
         const nuclideData = transportNuclides.find(n => n.symbol === newItemSymbol);
         if(!nuclideData) return;
 
         // Extract pre-calculated logic
-        const { actTBq, actBq, specActivityBq_g, lsaHint, suggestedPSN } = liveItemDetails;
+        const { actTBq, actBq, specActivityBq_g, lsaHint, suggestedPSN, singleItemActTBq } = liveItemDetails;
 
         let rawLimit = nuclideData.shipping[newItemForm];
         let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
@@ -3312,11 +3318,13 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             form: newItemForm,
             state: newItemState,
             category: newItemCategory, 
-            activityDisplay: `${val} ${newItemUnit}`,
+            qty: qty,
+            activityDisplay: qty > 1 ? `${qty}x ${val} ${newItemUnit}` : `${val} ${newItemUnit}`,
             actTBq: actTBq,
             typeALimit: limitTBq,
             fracTypeA: limitTBq === Infinity ? 0 : actTBq / limitTBq,
-            fracExcItem: (limitTBq === Infinity || itemLimitExc === 0) ? 0 : actTBq / itemLimitExc,
+            // NEW: Use singleItemActTBq for the item fraction check
+            fracExcItem: (limitTBq === Infinity || itemLimitExc === 0) ? 0 : singleItemActTBq / itemLimitExc,
             fracExcPkg: (limitTBq === Infinity || pkgLimitExc === 0) ? 0 : actTBq / pkgLimitExc,
             
             ratioExemptAct: exemptLimitBq === 0 ? (actBq > 0 ? Infinity : 0) : actBq / exemptLimitBq,
@@ -3330,9 +3338,10 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             psn: itemManualPSN || suggestedPSN
         };
 
-        setPackageItems(prev =>[...prev, item]);
+        setPackageItems(prev => [...prev, item]);
         
         // Reset Inputs after add
+        setNewItemQuantity('1');
         setNewItemActivity('');
         setNewItemMass('');
         setItemManualPSN('');
@@ -3465,10 +3474,10 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 });
             }
         }
-    },[doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType, settings.unitSystem, classificationResult]);
+    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType, settings.unitSystem, classificationResult]);
 
     const handleClear = () => {
-        setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemCategory('instrument'); setNewItemMass('');
+        setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemQuantity('1'); setNewItemCategory('instrument'); setNewItemMass('');
         setDoseRateAt1m(''); setSurfaceDoseRate(''); setCheckContam(false); setRemovableContam(''); setError('');
         setFissileMass(''); setVehSurfaceDose(''); setVeh2mDose(''); setCabDose('');
         setEmergencyContact(''); setBolComments(''); setItemManualPSN('');
@@ -3613,11 +3622,17 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                             </div>
                             
                             <div className="space-y-3">
-                                <div>
-                                    <label className="block text-xs font-medium mb-1">Activity</label>
-                                    <div className="flex">
-                                        <input type="number" inputMode="decimal" min="0" value={newItemActivity} onChange={e => setNewItemActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-800 border dark:border-slate-600 text-sm" />
-                                        <select value={newItemUnit} onChange={e => setNewItemUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                                <div className="flex gap-2">
+                                    <div className="w-1/3">
+                                        <label className="block text-xs font-medium mb-1">Qty</label>
+                                        <input type="number" min="1" value={newItemQuantity} onChange={e => setNewItemQuantity(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border dark:border-slate-600 text-sm" />
+                                    </div>
+                                    <div className="w-2/3">
+                                        <label className="block text-xs font-medium mb-1">Act. (per item)</label>
+                                        <div className="flex">
+                                            <input type="number" inputMode="decimal" min="0" value={newItemActivity} onChange={e => setNewItemActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-800 border dark:border-slate-600 text-sm" />
+                                            <select value={newItemUnit} onChange={e => setNewItemUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                                        </div>
                                     </div>
                                 </div>
                                 <div>
