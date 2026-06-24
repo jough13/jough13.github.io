@@ -127,6 +127,12 @@ window.QUEST_DATA = {
         type: 'kill', enemy: '🧌', needed: 3,
         reward: { xp: 300, coins: 200 }
     },
+    "alphaHide": {
+        title: "The Alpha's Hide",
+        description: "\"A monstrous Dire Wolf has been stalking the southern tree line. Bring me its pelt to prove you are a true hunter.\"",
+        type: 'collect', itemNeeded: 'Alpha Pelt', needed: 1,
+        reward: { xp: 350, coins: 250, item: 'Potion of Speed', itemQty: 1 }
+    },
     
     // --- LATE GAME & INQUISITOR ---
     "starMetalCrafter": {
@@ -164,6 +170,12 @@ window.QUEST_DATA = {
         description: "\"A horror from beyond the stars ('👾') has taken root in the wilds. Do not look directly at it.\"",
         type: 'kill', enemy: '👾', needed: 1,
         reward: { xp: 4000, coins: 3000, item: 'Elixir of Power', itemQty: 1 }
+    },
+    "astralFishing": {
+        title: "The Astral Catch",
+        description: "\"They say fish swim in the void between dimensions. I must study them! Bring me 3 Astral Jellies.\"",
+        type: 'collect', itemNeeded: 'Astral Jelly', needed: 3,
+        reward: { xp: 1500, coins: 1000, item: 'Mana Orb', itemQty: 5 }
     }
 };
 
@@ -241,11 +253,12 @@ window.ENEMY_PREFIXES = {
     }
 };
 
+// PERFORMANCE WIN: Unified object shapes. Explicitly declaring `defense: 0` stabilizes the V8 hidden class.
 window.ENEMY_DATA = {
     // --- LEVEL 1 (Vermin & Weaklings) ---
     'r': {
         name: 'Giant Rat',
-        tags: ['beast'],
+        tags: ['beast', 'vermin'],
         maxHealth: 3, attack: 1, defense: 0, xp: 4,
         loot: '🐀', 
         color: '#a8a29e', 
@@ -253,7 +266,7 @@ window.ENEMY_DATA = {
     },
     '🦇': {
         name: 'Giant Bat',
-        tags: ['beast'],
+        tags: ['beast', 'vermin'],
         maxHealth: 2, attack: 1, defense: 0, xp: 5,
         loot: '🦇', 
         color: '#52525b', 
@@ -383,7 +396,8 @@ window.ENEMY_DATA = {
     // --- FOREST WILDLIFE ---
     '🐻': {
         name: 'Cave Bear',
-        tags: ['beast'],
+        tags: ['beast', 'mountable'],
+        mountable: true,
         maxHealth: 14, attack: 3, defense: 1, xp: 25, 
         loot: '❄️f', 
         color: '#78350f', 
@@ -409,7 +423,8 @@ window.ENEMY_DATA = {
     },
     'w': {
         name: 'Wolf',
-        tags: ['beast'],
+        tags: ['beast', 'mountable'],
+        mountable: true,
         maxHealth: 8, attack: 3, defense: 0, xp: 15,
         loot: 'p',
         color: '#78716c', 
@@ -469,7 +484,8 @@ window.ENEMY_DATA = {
     },
     '🐗': {
         name: 'Wild Boar',
-        tags: ['beast'],
+        tags: ['beast', 'mountable'],
+        mountable: true,
         maxHealth: 12, attack: 3, defense: 0, xp: 20,
         loot: '🍖',
         color: '#57534e', 
@@ -497,7 +513,8 @@ window.ENEMY_DATA = {
     // --- LEVEL 4-5 (Advanced Threats) ---
     '@': {
         name: 'Giant Spider',
-        tags: ['bug', 'poison'],
+        tags: ['bug', 'poison', 'mountable'],
+        mountable: true,
         maxHealth: 10, attack: 4, defense: 0, xp: 25,
         loot: '"',
         color: '#1f2937', 
@@ -560,7 +577,8 @@ window.ENEMY_DATA = {
     // --- LEVEL 6+ (Elites) ---
     '🐺': {
         name: 'Dire Wolf',
-        tags: ['beast'],
+        tags: ['beast', 'mountable'],
+        mountable: true,
         maxHealth: 25, attack: 6, defense: 1, xp: 60,
         loot: '🐺',
         color: '#44403c', 
@@ -568,7 +586,8 @@ window.ENEMY_DATA = {
     },
     'Ø': { 
         name: 'Ogre',
-        tags: ['humanoid', 'giant'],
+        tags: ['humanoid', 'giant', 'mountable'],
+        mountable: true,
         maxHealth: 35, attack: 7, defense: 1, xp: 80,
         loot: '$',
         color: '#84cc16', 
@@ -710,7 +729,8 @@ window.ENEMY_DATA = {
     // --- NEW BEASTS (Tanky & Dangerous) ---
     '🧌': { 
         name: 'Stone Golem',
-        tags: ['construct', 'stone', 'elemental'],
+        tags: ['construct', 'stone', 'elemental', 'mountable'],
+        mountable: true,
         maxHealth: 40, attack: 4, defense: 3, xp: 60,
         loot: '🪨', 
         color: '#a8a29e', 
@@ -718,7 +738,8 @@ window.ENEMY_DATA = {
     },
     '🐲': {
         name: 'Young Drake',
-        tags: ['beast', 'reptile', 'dragon', 'fire'],
+        tags: ['beast', 'reptile', 'dragon', 'fire', 'mountable'],
+        mountable: true,
         maxHealth: 50, attack: 7, defense: 2, xp: 100,
         loot: '🐉', 
         color: '#dc2626', 
@@ -728,7 +749,8 @@ window.ENEMY_DATA = {
     // --- TIER 4 (The Deep Wilds - 2500+ Distance) ---
     '🦖': {
         name: 'Ancient Rex',
-        tags: ['beast', 'reptile', 'giant'],
+        tags: ['beast', 'reptile', 'giant', 'mountable'],
+        mountable: true,
         maxHealth: 150, attack: 12, defense: 5, xp: 500,
         loot: '🦖', 
         color: '#14532d', 
@@ -801,7 +823,7 @@ window.PLAYER_BACKGROUNDS = {
         stats: { strength: 2, constitution: 1 },
         items: [
             { templateId: '!', name: 'Rusty Sword', type: 'weapon', quantity: 1, tile: '!', damage: 2, slot: 'weapon', tags: ['blade'] },
-            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
+            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] },
             { templateId: '1', name: 'Conscript\'s Orders', type: 'journal', quantity: 1, tile: '1', title: 'Crumpled Orders' }
         ]
     },
@@ -811,7 +833,7 @@ window.PLAYER_BACKGROUNDS = {
         stats: { dexterity: 2, luck: 1 },
         items: [
             { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon', tags: ['dagger', 'blade', 'bone'] },
-            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
+            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] },
             { templateId: '2', name: 'Thief\'s Map', type: 'journal', quantity: 1, tile: '2', title: 'Scribbled Map' }
         ]
     },
@@ -839,8 +861,8 @@ window.PLAYER_BACKGROUNDS = {
         description: 'Naked, afraid, and penniless. A true challenge for veterans.',
         stats: { luck: 2, endurance: 2 }, 
         items: [
-            { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor' },
-            { templateId: '4', name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap' }
+            { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', tags: ['clothing'] },
+            { templateId: 'idol', name: 'Strange Idol', type: 'trade', quantity: 1, tile: '🗿' }
         ]
     }
 };
@@ -934,12 +956,14 @@ window.SPELL_DATA = {
     "candlelight": {
         name: "Candlelight",
         description: "Summons a floating light. Huge vision radius (+6) for a long time.",
+        flavor: "A simple cantrip taught to every apprentice. It smells faintly of ozone and old wax.",
         cost: 15, costType: "mana", requiredLevel: 1, target: "self", type: "buff", duration: 100,
         cooldown: 5 
     },
     "chainLightning": {
         name: "Chain Lightning",
         description: "Strikes a target, then jumps to a nearby enemy. Scales with {blue:Wits}.",
+        flavor: "Arcane energy leaps violently between grounded targets.",
         scalingStat: "wits",
         cost: 18, costType: "mana", requiredLevel: 6, target: "aimed", baseDamage: 6,
         cooldown: 4
@@ -947,6 +971,7 @@ window.SPELL_DATA = {
     "stoneSkin": {
         name: "Stone Skin",
         description: "Greatly increases Defense but lowers Dexterity. Scales with {green:Constitution}.",
+        flavor: "Your flesh hardens into granite, turning blades and absorbing impacts.",
         scalingStat: "constitution",
         cost: 20, costType: "mana", requiredLevel: 3, target: "self", type: "buff", duration: 15,
         cooldown: 5
@@ -954,6 +979,7 @@ window.SPELL_DATA = {
     "lesserHeal": {
         name: "Lesser Heal",
         description: "Heals for a small amount. Scales with {blue:Wits}.",
+        flavor: "A warm, golden light knits flesh and mends bone.",
         scalingStat: "wits",
         cost: 5, costType: "mana", requiredLevel: 1, target: "self", baseHeal: 5,
         cooldown: 3
@@ -961,12 +987,14 @@ window.SPELL_DATA = {
     "clarity": {
         name: "Clarity",
         description: "Focus your mind to reveal adjacent {purple:secret walls}.",
+        flavor: "Your eyes pierce the physical world, viewing the underlying structure of reality.",
         cost: 8, costType: "psyche", requiredLevel: 1, target: "self", type: "utility",
         cooldown: 2
     },
     "raiseDead": {
         name: "Raise Dead",
         description: "Summons a Skeleton from a corpse (or bone pile) to fight for you. Scales with {purple:Willpower}.",
+        flavor: "A forbidden incantation that forces a fractured soul back into a physical vessel.",
         scalingStat: "willpower",
         cost: 15, costType: "mana", requiredLevel: 1, target: "aimed", range: 3,
         cooldown: 5
@@ -974,6 +1002,7 @@ window.SPELL_DATA = {
     "arcaneShield": {
         name: "Arcane Shield",
         description: "Creates a temporary shield that absorb damage. Scales with {blue:Wits}.",
+        flavor: "A shimmering barrier of pure energy that shatters upon taking too much force.",
         scalingStat: "wits",
         cost: 10, costType: "mana", requiredLevel: 3, target: "self", type: "buff", baseShield: 5, duration: 5,
         cooldown: 4
@@ -981,6 +1010,7 @@ window.SPELL_DATA = {
     "fireball": {
         name: "Fireball",
         description: "An explosive orb damages enemies in a 3x3 area. Scales with {blue:Wits}.",
+        flavor: "A volatile sphere of pyromantic fury. Do not cast indoors.",
         scalingStat: "wits",
         cost: 15, costType: "mana", requiredLevel: 5, target: "aimed", baseDamage: 8, radius: 1,
         cooldown: 3
@@ -988,6 +1018,7 @@ window.SPELL_DATA = {
     "siphonLife": {
         name: "Siphon Life",
         description: "Drains life from a target, healing you. Scales with {purple:Willpower}.",
+        flavor: "The darkest art. To drink the life force of another is to damn your own soul.",
         scalingStat: "willpower",
         cost: 12, costType: "psyche", requiredLevel: 4, target: "aimed", baseDamage: 4, healPercent: 0.5,
         cooldown: 2
@@ -995,6 +1026,7 @@ window.SPELL_DATA = {
     "thunderbolt": {
         name: "Thunderbolt",
         description: "Strikes a target with massive lightning damage. Scales with {blue:Wits}.",
+        flavor: "A single, devastating strike from the heavens. Deafening and absolute.",
         scalingStat: "wits",
         cost: 20, costType: "mana", requiredLevel: 6, target: "aimed", baseDamage: 12,
         cooldown: 3
@@ -1002,6 +1034,7 @@ window.SPELL_DATA = {
     "meteor": {
         name: "Meteor",
         description: "Summons a meteor from the heavens. Large AoE (5x5). Scales with {blue:Wits}.",
+        flavor: "Pull a falling star from its orbit and hurl it at your enemies.",
         scalingStat: "wits",
         cost: 30, costType: "mana", requiredLevel: 8, target: "aimed", baseDamage: 10, radius: 2,
         cooldown: 6
@@ -1009,12 +1042,14 @@ window.SPELL_DATA = {
     "divineLight": {
         name: "Divine Light",
         description: "Fully restores Health and {gold:cures all status effects}.",
+        flavor: "A blinding flash of holy energy that scours away all corruption and pain.",
         cost: 25, costType: "psyche", requiredLevel: 5, target: "self", type: "utility",
         cooldown: 8
     },
     "magicBolt": {
         name: "Magic Bolt",
         description: "Hurls a bolt of arcane energy. Scales with {blue:Wits}.",
+        flavor: "A simple but reliable projectile of raw magical force.",
         scalingStat: "wits",
         cost: 8, costType: "mana", requiredLevel: 1, target: "aimed", baseDamage: 5,
         cooldown: 1 
@@ -1022,6 +1057,7 @@ window.SPELL_DATA = {
     "psychicBlast": {
         name: "Psychic Blast",
         description: "Assaults a target's mind. Scales with {purple:Willpower}.",
+        flavor: "A direct telepathic strike. It bypasses physical armor entirely.",
         scalingStat: "willpower",
         cost: 10, costType: "psyche", requiredLevel: 2, target: "aimed", baseDamage: 6,
         cooldown: 2
@@ -1029,6 +1065,7 @@ window.SPELL_DATA = {
     "frostBolt": {
         name: "Frost Bolt",
         description: "Hurls a shard of ice. Has a chance to inflict {cyan:Frostbite}. Scales with {purple:Willpower}.",
+        flavor: "A jagged icicle that bites into the flesh and slows the blood.",
         scalingStat: "willpower",
         cost: 10, costType: "mana", requiredLevel: 1, target: "aimed", baseDamage: 5, inflicts: "frostbite", inflictChance: 0.25,
         cooldown: 2
@@ -1036,6 +1073,7 @@ window.SPELL_DATA = {
     "poisonBolt": {
         name: "Poison Bolt",
         description: "Launches a bolt of acid. Has a chance to inflict {green:Poison}. Scales with {purple:Willpower}.",
+        flavor: "A sickening glob of corrosive magic that melts through armor and flesh alike.",
         scalingStat: "willpower",
         cost: 10, costType: "psyche", requiredLevel: 2, target: "aimed", baseDamage: 4, inflicts: "poison", inflictChance: 0.50,
         cooldown: 2
@@ -1043,6 +1081,7 @@ window.SPELL_DATA = {
     "darkPact": {
         name: "Dark Pact",
         description: "Sacrifice 5 Health to restore 10 Mana. Scales with {purple:Willpower}.",
+        flavor: "You offer a piece of your own vitality to the Void in exchange for raw power.",
         scalingStat: "willpower",
         cost: 5, costType: "health", requiredLevel: 4, target: "self", baseRestore: 10,
         cooldown: 2
@@ -1050,6 +1089,7 @@ window.SPELL_DATA = {
     "entangle": {
         name: "Entangle",
         description: "Roots an enemy in place, preventing movement and attacks. Scales with {yellow:Intuition}.",
+        flavor: "Vines and roots burst from the soil, answering your call to bind your foes.",
         scalingStat: "intuition",
         cost: 12, costType: "mana", requiredLevel: 3, target: "aimed", baseDamage: 2, inflicts: "root", inflictChance: 1.0,
         cooldown: 4
@@ -1057,6 +1097,7 @@ window.SPELL_DATA = {
     "thornSkin": {
         name: "Thorn Skin",
         description: "Reflects damage back to attackers. Scales with {yellow:Intuition}.",
+        flavor: "Your skin becomes a briar patch of razor-sharp thorns.",
         scalingStat: "intuition",
         cost: 15, costType: "mana", requiredLevel: 4, target: "self", type: "buff", baseReflect: 2, duration: 5,
         cooldown: 5
@@ -1068,60 +1109,70 @@ window.TALENT_DATA = {
     "bloodlust": {
         name: "Bloodlust",
         description: "Heal {green:2 HP} whenever you kill an enemy.",
+        flavor: "The sight of blood invigorates you.",
         class: "warrior",
         icon: "🩸"
     },
     "iron_skin": {
         name: "Iron Skin",
         description: "Permanent {blue:+1 Bonus} to Base Defense.",
+        flavor: "Your flesh is tough and unyielding.",
         class: "warrior",
         icon: "🛡️"
     },
     "backstab": {
         name: "Backstab",
         description: "Critical hits deal {red:3x damage} instead of 1.5x.",
+        flavor: "You know exactly where to slip the blade.",
         class: "rogue",
         icon: "🗡️"
     },
     "evasion": {
         name: "Evasion",
         description: "{gold:+10% chance} to dodge enemy attacks.",
+        flavor: "You move like smoke on the wind.",
         class: "rogue",
         icon: "💨"
     },
     "arcane_potency": {
         name: "Arcane Potency",
         description: "All spells deal {blue:+2 Bonus Damage}.",
+        flavor: "Your magic strikes with devastating force.",
         class: "mage",
         icon: "✨"
     },
     "scholar": {
         name: "Scholar",
         description: "Gain {yellow:+20% more XP} from all sources.",
+        flavor: "You learn quickly from every encounter.",
         class: "mage",
         icon: "📖"
     },
     "soul_siphon": {
         name: "Soul Siphon",
         description: "Restore {purple:2 Mana} whenever you kill an enemy.",
+        flavor: "You draw power from the fading life of your foes.",
         class: "necromancer",
         icon: "💀"
     },
     "survivalist": {
         name: "Survivalist",
         description: "Foraging (Wildberries/Herbs) restores {green:double HP/Mana}.",
+        flavor: "You know how to live off the land.",
         class: "general",
         icon: "🌿"
     },
     "pathfinder": {
         name: "Pathfinder",
         description: "Move through forests and brush {gold:without losing stamina}.",
+        flavor: "The woods are your true home.",
         class: "ranger",
         icon: "🌲"
     },
     "eagle_eye": {
         name: "Eagle Eye",
         description: "Ranged attacks deal {red:+50% Damage}.",
+        flavor: "Your aim is true and your arrows strike deep.",
         class: "ranger",
         icon: "👁️"
     },
@@ -1129,48 +1180,56 @@ window.TALENT_DATA = {
     "blood_rage": {
         name: "Blood Rage",
         description: "Deal {red:double damage} when below 50% Health.",
+        flavor: "Pain only fuels your fury.",
         class: "berserker",
         icon: "💢"
     },
     "holy_aura": {
         name: "Holy Aura",
         description: "Passively {green:heals you and your companion} when low on health.",
+        flavor: "A divine light surrounds and protects you.",
         class: "paladin",
         icon: "👼"
     },
     "shadow_strike": {
         name: "Shadow Strike",
         description: "Attacks from stealth deal {purple:4x massive damage}.",
+        flavor: "You strike from the darkness with lethal precision.",
         class: "assassin",
         icon: "🥷"
     },
     "mana_flow": {
         name: "Mana Flow",
         description: "Reduces spell Mana costs and Leyline travel costs by {blue:20%}.",
+        flavor: "You are a living conduit for the world's magic.",
         class: "archmage",
         icon: "🌌"
     },
     "arcane_steel": {
         name: "Arcane Steel",
         description: "{gray:Negates the Dexterity and movement penalties} of Heavy Armor.",
+        flavor: "Your magic lifts the weight of your armor.",
         class: "battlemage",
         icon: "🛡️"
     },
     "undeath": {
         name: "Undeath",
         description: "You {gray:no longer require food or water} to survive.",
+        flavor: "You have shed the frailties of mortal life.",
         class: "lich",
         icon: "🧟"
     },
     "legend": {
         name: "Living Legend",
         description: "Your mere presence inspires awe. You have survived the impossible.",
+        flavor: "Your name will be sung in songs for centuries.",
         class: "hero",
         icon: "👑"
     },
     "void_walker": { 
         name: "Void Walker",
         description: "Step through {purple:Phase Walls} without taking damage.",
+        flavor: "You walk between the worlds.",
         class: "void_touched",
         icon: "👁️"
     }
@@ -1181,96 +1240,113 @@ window.SKILL_DATA = {
     "kick": {
         name: "Kick",
         description: "Stun an enemy for 2 turns. Deals low damage.",
+        flavor: "A swift, disruptive blow to throw the enemy off balance.",
         cost: 8, costType: "stamina", requiredLevel: 1, target: "aimed", baseDamageMultiplier: 0.2, cooldown: 8,
     },
     "vanish": {
         name: "Vanish",
         description: "Instantly drop all enemy aggro and enter {gray:Stealth}.",
+        flavor: "A puff of smoke, a sudden distraction, and you are gone.",
         cost: 15, costType: "stamina", requiredLevel: 4, target: "self", cooldown: 30, type: "utility"
     },
     "brace": {
         name: "Brace",
         description: "Gain temporary Defense. Scales with {green:Constitution}.",
+        flavor: "You ready yourself for the incoming blow, hardening your muscles.",
         scalingStat: "constitution",
         cost: 6, costType: "stamina", requiredLevel: 2, target: "self", type: "buff", baseDefense: 1, duration: 3, cooldown: 5 
     },
     "tame": {
         name: "Tame Beast",
         description: "Attempt to bond with a weakened animal (HP < 30%). Scales with {gold:Charisma}.",
+        flavor: "You project an aura of calm dominance, seeking to make the beast your ally.",
         scalingStat: "charisma",
         cost: 15, costType: "psyche", requiredLevel: 3, target: "aimed", cooldown: 20
     },
     "lunge": {
         name: "Lunge",
         description: "Attack an enemy 2-3 tiles away. Scales with {red:Strength}.",
+        flavor: "A sudden, explosive forward thrust.",
         scalingStat: "strength",
         cost: 5, costType: "stamina", requiredLevel: 2, target: "aimed", baseDamageMultiplier: 1.0, cooldown: 3 
     },
     "shieldBash": {
         name: "Shield Bash",
         description: "Strike an enemy with your shield, {yellow:stunning them}. Scales with {green:Constitution}.",
+        flavor: "A brutal, staggering blow with the flat of your shield.",
         scalingStat: "constitution",
         cost: 10, costType: "stamina", requiredLevel: 3, target: "aimed", baseDamageMultiplier: 0.5, cooldown: 5
     },
     "cleave": {
         name: "Cleave",
-        description: "Strike the target and {red:enemies adjacent to it}. Scales with Strength.",
+        description: "Strike the target and {red:enemies adjacent to it}. Scales with {red:Strength}.",
+        flavor: "A wide, sweeping arc that cuts through multiple foes.",
         scalingStat: "strength",
         cost: 12, costType: "stamina", requiredLevel: 5, target: "aimed", baseDamageMultiplier: 0.8, cooldown: 4
     },
     "adrenaline": {
         name: "Adrenaline",
         description: "Instantly restore {yellow:10 Stamina}.",
+        flavor: "You tap into your body's deepest reserves to keep fighting.",
         cost: 5, costType: "health", requiredLevel: 2, target: "self", cooldown: 10
     },
     "pacify": {
         name: "Pacify",
         description: "Attempt to calm a hostile target. Scales with {gold:Charisma}.",
+        flavor: "A soothing word and a gentle gesture to end the hostility.",
         scalingStat: "charisma",
         cost: 10, costType: "psyche", requiredLevel: 3, target: "aimed", cooldown: 5 
     },
     "inflictMadness": {
         name: "Inflict Madness",
         description: "Assault a target's mind. Scales with {gold:Charisma}.",
+        flavor: "You project terrifying visions into the mind of your enemy.",
         scalingStat: "charisma",
         cost: 12, costType: "psyche", requiredLevel: 5, target: "aimed", cooldown: 8 
     },
     "whirlwind": {
         name: "Whirlwind",
-        description: "Strike {red:all adjacent enemies}. Scales with Strength and Dexterity.",
+        description: "Strike {red:all adjacent enemies}. Scales with {red:Strength} and {green:Dexterity}.",
+        flavor: "You become a deadly spinning vortex of steel.",
         scalingStat: "strength", 
         cost: 15, costType: "stamina", requiredLevel: 4, target: "self", cooldown: 6
     },
     "stealth": {
         name: "Stealth",
         description: "Become {gray:invisible} to enemies for 5 turns or until you attack.",
+        flavor: "You blend seamlessly into the shadows.",
         cost: 10, costType: "stamina", requiredLevel: 3, target: "self", duration: 5, cooldown: 10
     },
     // --- WEAPON TECHNIQUES ---
     "crush": {
         name: "Crush",
-        description: "A heavy blow that {yellow:stuns} the target. Scales with Strength. (Hammer/Club only)",
+        description: "A heavy blow that {yellow:stuns} the target. Scales with {red:Strength}. (Hammer/Club only)",
+        flavor: "An overhead smash designed to break bones and shatter armor.",
         scalingStat: "strength",
         cost: 8, costType: "stamina", requiredLevel: 1, target: "aimed", baseDamageMultiplier: 1.2, cooldown: 6
     },
     "quickstep": {
         name: "Quickstep",
         description: "Dash {cyan:2 tiles} instantly. (Dagger only)",
+        flavor: "A burst of speed so fast you seem to blur.",
         cost: 5, costType: "stamina", requiredLevel: 1, target: "aimed", cooldown: 4, type: "movement"
     },
     "deflect": {
         name: "Deflect",
         description: "Enter a defensive stance, {blue:reflecting the next attack}. (Sword only)",
+        flavor: "A practiced parry that uses the enemy's momentum against them.",
         cost: 6, costType: "stamina", requiredLevel: 1, target: "self", duration: 2, cooldown: 5
     },
     "channel": {
         name: "Channel",
         description: "Focus your energy to restore {blue:Mana}. (Staff only)",
+        flavor: "You draw raw magic from the leylines through your staff.",
         cost: 0, costType: "stamina", requiredLevel: 1, target: "self", cooldown: 10
     },
     "ranged_attack": {
         name: "Shoot",
         description: "Fire an arrow at a distant target. Scales with {green:Dexterity}.",
+        flavor: "A steady breath, a drawn string, and a sudden release.",
         scalingStat: "dexterity",
         cost: 4, costType: "stamina", requiredLevel: 1, target: "aimed", baseDamageMultiplier: 1.0, cooldown: 0 
     }
