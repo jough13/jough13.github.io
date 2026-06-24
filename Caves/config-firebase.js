@@ -23,7 +23,11 @@ const firebaseConfig = {
 // Initialize Firebase (Prevent multiple instances on hot-reloads)
 let app;
 if (!firebase.apps.length) {
-    app = firebase.initializeApp(firebaseConfig);
+    try {
+        app = firebase.initializeApp(firebaseConfig);
+    } catch (err) {
+        console.error("Akashic Leylines failed to initialize:", err);
+    }
 } else {
     app = firebase.app();
 }
@@ -83,7 +87,7 @@ try {
                 // LORE WIN: Themed Multiple-Tab warning
                 setTimeout(() => {
                     connectionBanner.innerHTML = "⚠️ Temporal Paradox Detected<br><span class='text-[9px] font-normal'>Multiple timelines open. Offline saving disabled for this instance.</span>";
-                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-purple-900 bg-opacity-95 text-purple-200 border-b-2 border-purple-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md';
+                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-purple-900 bg-opacity-95 text-purple-200 border-b-2 border-purple-600 translate-y-0 shadow-[0_0_15px_rgba(168,85,247,0.5)] font-mono tracking-widest uppercase backdrop-blur-md';
                     
                     // Hide the banner 6 seconds after it appears
                     setTimeout(() => {
@@ -124,13 +128,13 @@ rtdb.ref('.info/connected').on('value', function(snap) {
         // Only show "Restored" if we already successfully connected once before and lost it
         if (hasInitiallyConnected && !wasConnected) {
             // Restore Banner
-            connectionBanner.textContent = "✨ Leyline Resonance Restored";
-            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-green-900 bg-opacity-95 text-green-200 border-b-2 border-green-500 translate-y-0 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md';
+            connectionBanner.innerHTML = "✨ Leyline Resonance Restored<br><span class='text-[9px] font-normal'>Connection to the physical world re-established.</span>";
+            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-green-900 bg-opacity-95 text-green-200 border-b-2 border-green-500 translate-y-0 shadow-[0_0_20px_rgba(34,197,94,0.4)] font-mono tracking-widest uppercase backdrop-blur-md';
             
-            // Slide it away after 3 seconds
+            // Slide it away after 4 seconds
             setTimeout(() => {
                 connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
-            }, 3000);
+            }, 4000);
 
             if (typeof logMessage === 'function') logMessage("{green:The leylines stabilize. Connection to the realm restored.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
@@ -144,8 +148,8 @@ rtdb.ref('.info/connected').on('value', function(snap) {
         // Only show "Connection Lost" if we were actually connected in the first place
         if (hasInitiallyConnected && wasConnected) {
             // Warning Banner (JUICE WIN: Added animate-pulse and greyscale/contrast filters for a "glitching" effect)
-            connectionBanner.textContent = "⚠️ Leyline Connection Severed - Re-Attuning...";
-            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-red-900 bg-opacity-95 text-red-200 border-b-2 border-red-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase animate-pulse backdrop-blur-md grayscale contrast-125';
+            connectionBanner.innerHTML = "⚠️ Leyline Connection Severed<br><span class='text-[9px] font-normal'>Re-attuning to the Akashic Records... Please wait.</span>";
+            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-red-950 bg-opacity-95 text-red-200 border-b-2 border-red-600 translate-y-0 shadow-[0_0_20px_rgba(220,38,38,0.8)] font-mono tracking-widest uppercase animate-pulse backdrop-blur-md grayscale contrast-125';
             
             if (typeof logMessage === 'function') logMessage("{red:The leylines have ruptured! Trying to re-attune...}");
             
@@ -171,7 +175,7 @@ let _authErrorCache = null;
 function handleAuthError(error) {
     let friendlyMessage = '';
     
-    // LORE WIN: Thematic, universe-appropriate error messages
+    // LORE WIN: Thematic, universe-appropriate error messages, vastly expanded!
     switch (error.code) {
         case 'auth/invalid-email':
             friendlyMessage = 'The Akashic Records cannot decipher this soul-signature. (Invalid Email)';
@@ -211,8 +215,11 @@ function handleAuthError(error) {
         case 'auth/requires-recent-login':
             friendlyMessage = 'The ancient wards require a fresh tether. Log out and return to proceed.';
             break;
+        case 'auth/account-exists-with-different-credential':
+            friendlyMessage = 'A fractured soul detected. You must unify your identities (Sign in with original provider).';
+            break;
         default:
-            friendlyMessage = 'The Void stirs. An unexpected error occurred.';
+            friendlyMessage = 'The Void stirs. An unexpected error occurred: ' + (error.message || '');
             break;
     }
     
@@ -221,7 +228,7 @@ function handleAuthError(error) {
     if (_authErrorCache) {
         _authErrorCache.textContent = friendlyMessage;
         
-        // Add a slight shake animation to the error text for feedback
+        // Add a slight shake animation to the error text for tactile feedback
         _authErrorCache.classList.remove('shake');
         void _authErrorCache.offsetWidth; // trigger reflow
         _authErrorCache.classList.add('shake');
@@ -237,8 +244,9 @@ function handleAuthError(error) {
  * High-Performance Recursive object cleaner.
  * Strips 'undefined', 'function', and safely converts Sets/Maps to Arrays/Objects.
  * 
- * PERFORMANCE & ROBUSTNESS WIN: Added `seen` WeakSet to prevent Maximum Call Stack 
- * Exceeded crashes caused by accidental Circular References in game state!
+ * 🚨 SECURITY & STABILITY WIN: Added strict protection against `NaN` and `Infinity`.
+ * Firebase SDKs will critically crash and permanently halt all database writes if fed 
+ * a NaN or Infinity value. This intercepts them and neutralizes them before the crash.
  * 
  * @param {any} obj The variable to clean.
  * @param {WeakSet} seen Tracks visited objects to prevent infinite loops.
@@ -248,6 +256,19 @@ function sanitizeForFirebase(obj, seen = new WeakSet()) {
     // 1. Convert undefined to null immediately
     if (obj === undefined) return null; 
     
+    // 1.5 FIREBASE CRASH PREVENTION: NaN and Infinity
+    if (typeof obj === 'number') {
+        if (isNaN(obj)) {
+            console.warn("Void Anomaly (NaN) detected and neutralized before DB save.");
+            return 0; // Safest fallback to prevent DB explosion
+        }
+        if (!isFinite(obj)) {
+            console.warn("Infinite Loop (Infinity) detected and neutralized before DB save.");
+            return 999999; // Safe clamp
+        }
+        return obj;
+    }
+    
     // 2. Base cases: primitives, null
     if (obj === null || typeof obj !== 'object') {
         return obj;
@@ -256,11 +277,12 @@ function sanitizeForFirebase(obj, seen = new WeakSet()) {
     // 3. SAFETY & MINIFICATION FIX: 
     // Checking obj.constructor.name breaks when Javascript is minified (e.g., 'FieldValue' becomes 'e').
     // Using instanceof directly against the global firebase object is 100% minification safe!
-    // PERFORMANCE WIN: Added explicit bypass for firebase.firestore.Timestamp objects!
     if (obj instanceof Date) return obj;
-    if (typeof firebase !== 'undefined' && firebase.firestore) {
-        if (obj instanceof firebase.firestore.FieldValue) return obj;
-        if (obj instanceof firebase.firestore.Timestamp) return obj;
+    if (typeof firebase !== 'undefined') {
+        if (firebase.firestore && obj instanceof firebase.firestore.FieldValue) return obj;
+        if (firebase.firestore && obj instanceof firebase.firestore.Timestamp) return obj;
+        // EXPANDABILITY WIN: Add support for RTDB Server Values too!
+        if (firebase.database && obj instanceof Object && Object.keys(obj).includes('.sv')) return obj; 
     }
 
     // 3.5 CIRCULAR REFERENCE PROTECTION
