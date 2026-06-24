@@ -3269,7 +3269,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const nuclideData = transportNuclides.find(n => n.symbol === newItemSymbol);
         if(!nuclideData) return;
 
-        // Extract pre-calculated logic
+        // Extract pre-calculated logic from the live preview
         const { actTBq, actBq, specActivityBq_g, lsaHint, suggestedPSN, singleItemActTBq } = liveItemDetails;
 
         let rawLimit = nuclideData.shipping[newItemForm];
@@ -3323,12 +3323,12 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             actTBq: actTBq,
             typeALimit: limitTBq,
             fracTypeA: limitTBq === Infinity ? 0 : actTBq / limitTBq,
-            // NEW: Use singleItemActTBq for the item fraction check
             fracExcItem: (limitTBq === Infinity || itemLimitExc === 0) ? 0 : singleItemActTBq / itemLimitExc,
             fracExcPkg: (limitTBq === Infinity || pkgLimitExc === 0) ? 0 : actTBq / pkgLimitExc,
             
-            ratioExemptAct: exemptLimitBq === 0 ? (actBq > 0 ? Infinity : 0) : actBq / exemptLimitBq,
-            ratioExemptConc: exemptConcLimitBq_g === 0 ? (specActivityBq_g > 0 ? Infinity : 0) : (massGrams > 0 ? specActivityBq_g / exemptConcLimitBq_g : Infinity),
+            // Wire the calculatedFracExempt hack into the package summation!
+            ratioExemptAct: isRegulated ? calculatedFracExempt : (exemptLimitBq === 0 ? 0 : actBq / exemptLimitBq),
+            ratioExemptConc: isRegulated ? calculatedFracExempt : (exemptConcLimitBq_g === 0 || !massGrams ? 0 : specActivityBq_g / exemptConcLimitBq_g),
             
             fracRQ: rqLimitTBq === Infinity ? 0 : actTBq / rqLimitTBq,
             fracHRCQ: hrcqLimitTBq === 0 ? 0 : actTBq / hrcqLimitTBq,
