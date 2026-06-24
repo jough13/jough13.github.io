@@ -150,13 +150,20 @@ if (confirmDeleteButton) {
                 // Delete the main character document
                 await db.collection('players').doc(currentUser.uid).collection('characters').doc(slotPendingDeletion).delete();
                 
-                // PERFORMANCE/CLEANUP: Also delete any attached backups to save database space!
-                const backupsRef = db.collection('players').doc(currentUser.uid).collection('characters').doc(slotPendingDeletion).collection('backups');
-                const backups = await backupsRef.get();
                 const batch = db.batch();
-                backups.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
+                const charRef = db.collection('players').doc(currentUser.uid).collection('characters').doc(slotPendingDeletion);
+
+                // 🧹 CRITICAL MEMORY LEAK FIX: Firestore does not cascade-delete subcollections!
+                // We must manually fetch and delete backups AND map_data to prevent database bloat!
+                
+                // 1. Delete Backups
+                const backups = await charRef.collection('backups').get();
+                backups.forEach(doc => batch.delete(doc.ref));
+                
+                // 2. Delete Map Data
+                const mapData = await charRef.collection('map_data').get();
+                mapData.forEach(doc => batch.delete(doc.ref));
+
                 await batch.commit();
 
                 // JUICE WIN: Play the heavy death dirge to signify permanent erasure
@@ -227,8 +234,8 @@ function updateCreationSummary() {
     
     if (!nameInput) return;
 
-    // Clean the input to prevent weird spacing or hidden HTML tags (including zero-width chars)
-    let rawName = nameInput.value.replace(/[^a-zA-Z0-9 \-']/g, '').replace(/\s+/g, ' ').trimStart();
+    // Clean the input, strip special characters, and strictly enforce length limit
+    let rawName = nameInput.value.replace(/[^a-zA-Z0-9 \-']/g, '').replace(/\s+/g, ' ').trimStart().slice(0, 16);
     
     // QoL WIN: Auto Title-Case the name (e.g. "gandalf the grey" -> "Gandalf The Grey")
     let formattedName = rawName.split(' ')
@@ -285,19 +292,26 @@ function updateCreationSummary() {
         </div>
     ` : '';
     
-    // LORE WIN: Dynamic "Omen" Flavor Text based on the combination chosen!
+    // LORE WIN: Context-Aware "Omen" Flavor Text based on the combination chosen!
     let omenHtml = '';
     if (creationState.name && creationState.race && creationState.background && typeof stringToSeed === 'function') {
         const omens = [
             "The leylines hum with anticipation.",
-            "A cold wind blows from the Void.",
             "The Akashic Records open to a blank page.",
-            "The stars align in a precarious pattern.",
-            "The shadow of the Old King looms over this one.",
-            "Born of ash, destined for the deep.",
             "The Weavers of Fate thread a new needle.",
             "A distant raven caws. An omen of change."
         ];
+        
+        // Inject class/race specific flavor texts into the pool!
+        if (creationState.background === 'necromancer') omens.push("The shadows cling to you eagerly.", "A cold wind blows from the Void.");
+        if (creationState.background === 'mage') omens.push("Arcane sparks dance at your fingertips.");
+        if (creationState.background === 'warrior') omens.push("The clash of steel echoes in your fate.");
+        if (creationState.background === 'rogue') omens.push("You step lightly, unseen by the stars.");
+        if (creationState.background === 'wretch') omens.push("The world pities you. Prove it wrong.");
+        if (creationState.race === 'elf') omens.push("The ancient woods remember your bloodline.");
+        if (creationState.race === 'dwarf') omens.push("The earth rumbles in greeting.");
+        if (creationState.race === 'orc') omens.push("Your ancestors roar in approval.");
+        
         // Use a mathematical hash of the player's choices to ensure the omen remains stable for that combo!
         const omenSeed = stringToSeed(creationState.name + creationState.race + creationState.background);
         const selectedOmen = omens[Math.abs(omenSeed) % omens.length];
@@ -357,9 +371,9 @@ function updateCreationSummary() {
 setTimeout(() => {
     const nameInput = _DOMCache.getNameInput();
     if (nameInput) {
-        // PERFORMANCE & SEC WIN: Sanitize the input actively while typing
+        // SECURITY & PERFORMANCE WIN: Sanitize the input actively while typing and enforce absolute length limit
         nameInput.addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/[^a-zA-Z0-9 \-']/g, '');
+            e.target.value = e.target.value.replace(/[^a-zA-Z0-9 \-']/g, '').slice(0, 16);
             updateCreationSummary();
         });
     }
@@ -394,6 +408,7 @@ window.generateRandomName = function() {
         " Ironheart", " Shadow-walker", " the Lost", " the Cursed", " the Bold",
         " the Unbroken", " the Star-Touched", " the Pale", " Giantsbane", " the Silent",
         " the Shattered", " the Undying", " Seeker of the Deep", " the Ashen", " of the Fallen Star",
+        " Blood-drinker", " the Mad", " the Unforgiven", " the Returned",
         // LORE WIN: Thematic Multiverse/Akashic Titles
         " the Ley-Walker", " of the Akashic Records", " the Void-Dancer", " the Unbound", " the Chronomancer"
     ];
@@ -402,9 +417,15 @@ window.generateRandomName = function() {
     let s = suffixes[Math.floor(Math.random() * suffixes.length)];
     let t = (Math.random() < 0.20) ? titles[Math.floor(Math.random() * titles.length)] : "";
     
+    // Ensure the generated name doesn't exceed our strict 16 character limit
+    let generated = p + s + t;
+    if (generated.length > 16) {
+        generated = p + s; // Drop title if it's too long
+    }
+    
     const nameInput = _DOMCache.getNameInput();
     if (nameInput) {
-        nameInput.value = p + s + t;
+        nameInput.value = generated;
         
         // JUICE WIN: Make the summary box "pop" so it feels like a tactile dice roll
         const summaryBox = _DOMCache.getSummaryBox();
@@ -541,11 +562,13 @@ async function finalizeCharacterCreation() {
     const btn = _DOMCache.getFinalizeBtn();
     if (!btn) return;
     
-    // Failsafe: Prevent empty names from slipping through
-    if (!creationState.name || creationState.name.trim() === "") {
+    // SECURITY WIN: Failsafe to guarantee name is clean and bounded before saving to state
+    const cleanName = creationState.name ? creationState.name.replace(/[^a-zA-Z0-9 \-']/g, '').slice(0, 16).trim() : "";
+    if (cleanName === "") {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
+    creationState.name = cleanName;
     
     btn.disabled = true;
     btn.textContent = "Forging Destiny...";
