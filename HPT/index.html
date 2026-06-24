@@ -1240,25 +1240,26 @@
             
         </script>
         <script>
-            // 1. Setup a global variable to catch the install prompt
-            window.deferredPwaPrompt = null;
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault(); // Prevent the default mini-infobar
-                window.deferredPwaPrompt = e; // Stash it for the SettingsPanel to use
-            });
 
-            // 2. Register the Service Worker
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('./sw.js')
-                        .then(registration => {
-                            console.log('Offline Service Worker registered successfully!');
-                        })
-                        .catch(err => {
-                            console.log('Service Worker registration failed: ', err);
-                        });
-                });
-            }
-        </script>
+        // 1. Setup a global variable to catch the install prompt
+        window.deferredPwaPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); 
+            window.deferredPwaPrompt = e; 
+        });
+
+        // 2. Register the Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+                    .then(registration => {
+                        console.log('Offline Service Worker registered successfully!');
+                    })
+                    .catch(err => {
+                        console.log('Service Worker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
     </body>
 </html>
