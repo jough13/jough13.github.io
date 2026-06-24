@@ -162,10 +162,12 @@ const ParticleSystem = {
         const minY = -TILE_SIZE;
         const maxY = ctx.canvas.height + TILE_SIZE;
 
-        for(let i=0; i<this.activeParticles.length; i++) {
+        // PERFORMANCE WIN: Converted .forEach to a fast `for` loop to prevent GC allocation overhead
+        const len = this.activeParticles.length;
+        for (let i = 0; i < len; i++) {
             const p = this.activeParticles[i];
-            const screenX = (p.x - startX) * TILE_SIZE;
-            const screenY = (p.y - startY) * TILE_SIZE;
+            const screenX = ((p.x - startX) * TILE_SIZE) | 0; // Fast bitwise floor
+            const screenY = ((p.y - startY) * TILE_SIZE) | 0;
 
             if (screenX < minX || screenX > maxX || screenY < minY || screenY > maxY) continue;
 
@@ -177,7 +179,7 @@ const ParticleSystem = {
                 
                 // Pop effect: Scales up slightly as it appears, bounces back
                 const scale = 1 + (Math.sin(p.life * Math.PI) * 0.3);
-                ctx.font = `bold ${p.size * scale}px monospace`;
+                ctx.font = `bold ${(p.size * scale) | 0}px monospace`;
                 
                 // Draw stroke FIRST (behind the text) for thicker, cleaner outlines
                 // Set miterLimit to prevent spiky stroke corners on some letters
@@ -222,7 +224,7 @@ const TileRenderer = {
 
     drawBase: (ctx, x, y, color) => {
         ctx.fillStyle = color;
-        // Draw slightly larger than 1 tile to prevent hairline seam tearing on sub-pixel zooms
+        // PERFORMANCE & VISUAL WIN: Draw slightly larger than 1 tile to prevent hairline seam tearing on sub-pixel zooms
         ctx.fillRect(x * TILE_SIZE - 0.5, y * TILE_SIZE - 0.5, TILE_SIZE + 1, TILE_SIZE + 1);
     },
 
@@ -734,8 +736,9 @@ function renderTerrainCache(startX, startY) {
             else { 
                 tile = chunkManager.getTile(mapX, mapY);
                 
-                const cX = Math.floor(mapX / 16);
-                const cY = Math.floor(mapY / 16);
+                // PERFORMANCE WIN: Fast-path for Bitwise math
+                const cX = (mapX / 16) | 0;
+                const cY = (mapY / 16) | 0;
                 const lX = (mapX % 16 + 16) % 16;
                 const lY = (mapY % 16 + 16) % 16;
                 const chunkId = `${cX},${cY}`;
@@ -849,11 +852,11 @@ const render = () => {
     const visX = p.visualX !== undefined ? p.visualX : p.x;
     const visY = p.visualY !== undefined ? p.visualY : p.y;
 
-    const viewportCenterX = Math.floor(VIEWPORT_WIDTH / 2);
-    const viewportCenterY = Math.floor(VIEWPORT_HEIGHT / 2);
+    const viewportCenterX = (VIEWPORT_WIDTH / 2) | 0;
+    const viewportCenterY = (VIEWPORT_HEIGHT / 2) | 0;
     
-    const startX = Math.floor(visX) - viewportCenterX;
-    const startY = Math.floor(visY) - viewportCenterY;
+    const startX = (visX | 0) - viewportCenterX;
+    const startY = (visY | 0) - viewportCenterY;
 
     if (gameState.lastStartX !== startX || gameState.lastStartY !== startY) {
         gameState.mapDirty = true;
@@ -861,8 +864,9 @@ const render = () => {
         gameState.lastStartY = startY;
     }
 
-    const offsetX = (visX - Math.floor(visX)) * TILE_SIZE;
-    const offsetY = (visY - Math.floor(visY)) * TILE_SIZE;
+    // Smooth panning offset
+    const offsetX = (visX - (visX | 0)) * TILE_SIZE;
+    const offsetY = (visY - (visY | 0)) * TILE_SIZE;
     
     ctx.translate(Math.round(shakeX - offsetX), Math.round(shakeY - offsetY));
 
@@ -881,13 +885,20 @@ const render = () => {
 
     // --- EFFICIENT ANIMATED TILE LOOP ---
     if (gameState.visibleAnimatedTiles) {
-        gameState.visibleAnimatedTiles.forEach(anim => {
-            const { screenX: x, screenY: y, mapX, mapY, tile } = anim;
+        // Use a fast for-loop instead of .forEach to prevent GC thrashing
+        const len = gameState.visibleAnimatedTiles.length;
+        for (let i = 0; i < len; i++) {
+            const anim = gameState.visibleAnimatedTiles[i];
+            const x = anim.screenX;
+            const y = anim.screenY;
+            const mapX = anim.mapX;
+            const mapY = anim.mapY;
+            const tile = anim.tile;
 
             if (tile === '👻k') {
                 if (hasLens) {
                     const floatY = Math.sin(now / 500 + mapX) * 3;
-                    TileRenderer.drawShadow(ctx, x, y); // Ground shadow
+                    TileRenderer.drawShadow(ctx, x, y); 
                     ctx.fillStyle = 'rgba(168, 85, 247, 0.6)'; 
                     ctx.font = `bold ${TILE_SIZE}px monospace`;
                     ctx.fillText('👻', x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2 + floatY);
@@ -897,7 +908,7 @@ const render = () => {
                 const isDeep = tile === '~';
                 TileRenderer.drawWater(ctx, x, y, mapX, mapY, isDeep ? '#1e3a8a' : '#422006', isDeep ? '#3b82f6' : '#16a34a', isDeep);
             } else if (tile === '🔥' || tile === 'D') {
-                const flicker = Math.floor(performance.now() / 100) % 3;
+                const flicker = ((now / 100) | 0) % 3;
                 let fgColor = flicker === 0 ? '#ef4444' : (flicker === 1 ? '#f97316' : '#facc15');
                 if (tile === '🔥') {
                     TileRenderer.drawFire(ctx, x, y, null, mapX, mapY);
@@ -908,7 +919,7 @@ const render = () => {
             } else if (tile === 'Ω') {
                 TileRenderer.drawVoid(ctx, x, y, mapX, mapY);
             }
-        });
+        }
     }
 
     // --- ENTITIES & PLAYERS ---
@@ -916,17 +927,19 @@ const render = () => {
     // Attack Telegraphs
     const allEnemies = gameState.mapMode === 'overworld' ? Object.values(gameState.sharedEnemies) : gameState.instancedEnemies;
     if (allEnemies) {
-        allEnemies.forEach(enemy => {
+        for (let i = 0; i < allEnemies.length; i++) {
+            const enemy = allEnemies[i];
             if (enemy.pendingAttacks) {
-                enemy.pendingAttacks.forEach(t => {
+                for (let j = 0; j < enemy.pendingAttacks.length; j++) {
+                    const t = enemy.pendingAttacks[j];
                     const screenX = t.x - startX;
                     const screenY = t.y - startY;
                     if (screenX >= 0 && screenX < VIEWPORT_WIDTH && screenY >= 0 && screenY < VIEWPORT_HEIGHT) {
                         TileRenderer.drawTelegraph(ctx, screenX, screenY);
                     }
-                });
+                }
             }
-        });
+        }
     }
 
     const drawEntity = (entity, x, y) => {
@@ -979,18 +992,20 @@ const render = () => {
 
     const enemyList = gameState.mapMode === 'overworld' ? Object.values(gameState.sharedEnemies) : gameState.instancedEnemies;
     
-    enemyList.forEach(enemy => {
+    for (let i = 0; i < enemyList.length; i++) {
+        const enemy = enemyList[i];
         const { vx, vy } = lerpEntity(enemy);
         const screenX = vx - startX;
         const screenY = vy - startY;
         if (screenX >= -2 && screenX <= VIEWPORT_WIDTH && screenY >= -2 && screenY <= VIEWPORT_HEIGHT) {
             drawEntity(enemy, screenX, screenY);
         }
-    });
+    }
 
     if (gameState.mapMode !== 'dungeon') {
-        for (const id in otherPlayers) {
-            const op = otherPlayers[id];
+        const opKeys = Object.keys(otherPlayers);
+        for (let i = 0; i < opKeys.length; i++) {
+            const op = otherPlayers[opKeys[i]];
             if (op.mapMode !== gameState.mapMode || op.mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
             
             const { vx, vy } = lerpEntity(op);
@@ -1046,7 +1061,7 @@ const render = () => {
         ctx.fillText(gameState.player.companion.tile, pScreenX, pScreenY);
 
         // 2. Draw the Player slightly smaller and shifted upwards!
-        ctx.font = `bold ${TILE_SIZE * 0.6}px monospace`;
+        ctx.font = `bold ${(TILE_SIZE * 0.6) | 0}px monospace`;
         ctx.strokeText(playerChar, pScreenX, pScreenY - (TILE_SIZE * 0.35));
         ctx.fillStyle = '#3b82f6';
         ctx.fillText(playerChar, pScreenX, pScreenY - (TILE_SIZE * 0.35));
@@ -1057,15 +1072,6 @@ const render = () => {
         ctx.fillStyle = '#3b82f6';
         ctx.fillText(playerChar, pScreenX, pScreenY);
     }
-
-    TileRenderer.drawShadow(ctx, visX - startX, visY - startY);
-
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 3;
-    ctx.lineJoin = 'round';
-    ctx.strokeText(playerChar, pScreenX, pScreenY);
-    ctx.fillStyle = '#3b82f6';
-    ctx.fillText(playerChar, pScreenX, pScreenY);
 
     if (gameState.player.chatBubble && Date.now() < gameState.player.chatTimer) {
         ctx.font = `bold 12px monospace`;
@@ -1290,13 +1296,16 @@ const render = () => {
         if (bosses.length > 0) {
             let activeBoss = bosses[0];
             let minDist = Infinity;
-            bosses.forEach(b => {
+            
+            for (let i = 0; i < bosses.length; i++) {
+                const b = bosses[i];
                 const d = Math.sqrt(Math.pow(b.x - gameState.player.x, 2) + Math.pow(b.y - gameState.player.y, 2));
                 if (d < minDist) {
                     minDist = d;
                     activeBoss = b;
                 }
-            });
+            }
+
             if (minDist < 20 || bosses.length === 1) {
                 ctx.setTransform(1, 0, 0, 1, 0, 0); 
                 ctx.scale(dpr, dpr);
