@@ -985,33 +985,27 @@ function triggerAbilityCooldown(abilityId) {
     }
 }
 
-// --- UI LISTENERS FOR SKILLS ---
-function initSkillbookListeners() {
-    const closeSkillBtn = document.getElementById('closeSkillButton');
-    const skillListEl = document.getElementById('skillList');
-    const skillModalEl = document.getElementById('skillModal');
+// --- SECURITY & PERFORMANCE WIN: Event Delegation ---
+// Attaches exactly ONE listener to the spellbook list, bypassing inline DOM bindings.
+const spellListEl = document.getElementById('spellList');
+if (spellListEl && !spellListEl.dataset.listenersBound) {
+    spellListEl.addEventListener('click', (e) => {
+        const spellItem = e.target.closest('.spell-item');
+        if (spellItem && spellItem.dataset.spell) {
+            castSpell(spellItem.dataset.spell);
+        }
+    });
+    spellListEl.dataset.listenersBound = 'true';
+}
 
-    if (closeSkillBtn) {
-        closeSkillBtn.addEventListener('click', () => {
-            if (skillModalEl) skillModalEl.classList.add('hidden');
-            // Return focus to the game so you can keep walking immediately
-            if (document.activeElement) document.activeElement.blur(); 
-        });
-    }
-
-    if (skillListEl) {
-        // Remove old listener to prevent duplicate fires
-        const newList = skillListEl.cloneNode(false);
-        skillListEl.parentNode.replaceChild(newList, skillListEl);
-        
-        newList.addEventListener('click', (e) => {
-            const skillItem = e.target.closest('.skill-item');
-            if (skillItem && skillItem.dataset.skill) {
-                // Pass the skill's ID to your routing function
-                useSkill(skillItem.dataset.skill);
-            }
-        });
-    }
+const closeSpellBtn = document.getElementById('closeSpellButton');
+if (closeSpellBtn && !closeSpellBtn.dataset.listenerBound) {
+    closeSpellBtn.addEventListener('click', () => {
+        const spellModal = document.getElementById('spellModal');
+        if (spellModal) spellModal.classList.add('hidden');
+        if (document.activeElement) document.activeElement.blur(); 
+    });
+    closeSpellBtn.dataset.listenerBound = 'true';
 }
 
 // --- END OF FILE magic.js ---
