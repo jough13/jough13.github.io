@@ -1262,33 +1262,27 @@ function triggerAbilityCooldown(abilityId) {
     }
 }
 
-// --- UI LISTENERS FOR SKILLS ---
-function initSkillbookListeners() {
-    const closeSkillBtn = document.getElementById('closeSkillButton');
-    const skillListEl = document.getElementById('skillList');
-    const skillModalEl = document.getElementById('skillModal');
+// --- SECURITY & PERFORMANCE WIN: Event Delegation ---
+// Attaches exactly ONE listener to the skillbook list, bypassing inline DOM bindings.
+const skillListEl = document.getElementById('skillList');
+if (skillListEl && !skillListEl.dataset.listenersBound) {
+    skillListEl.addEventListener('click', (e) => {
+        const skillItem = e.target.closest('.skill-item');
+        if (skillItem && skillItem.dataset.skill) {
+            useSkill(skillItem.dataset.skill);
+        }
+    });
+    skillListEl.dataset.listenersBound = 'true';
+}
 
-    if (closeSkillBtn) {
-        closeSkillBtn.addEventListener('click', () => {
-            if (skillModalEl) skillModalEl.classList.add('hidden');
-            // Return focus to the game so you can keep walking immediately
-            if (document.activeElement) document.activeElement.blur(); 
-        });
-    }
-
-    if (skillListEl) {
-        // Remove old listener to prevent duplicate fires
-        const newList = skillListEl.cloneNode(false);
-        skillListEl.parentNode.replaceChild(newList, skillListEl);
-        
-        newList.addEventListener('click', (e) => {
-            const skillItem = e.target.closest('.skill-item');
-            if (skillItem && skillItem.dataset.skill) {
-                // Pass the skill's ID to your routing function
-                useSkill(skillItem.dataset.skill);
-            }
-        });
-    }
+const closeSkillBtn = document.getElementById('closeSkillButton');
+if (closeSkillBtn && !closeSkillBtn.dataset.listenerBound) {
+    closeSkillBtn.addEventListener('click', () => {
+        const skillModal = document.getElementById('skillModal');
+        if (skillModal) skillModal.classList.add('hidden');
+        if (document.activeElement) document.activeElement.blur(); 
+    });
+    closeSkillBtn.dataset.listenerBound = 'true';
 }
 
 // --- END OF FILE skills.js ---
