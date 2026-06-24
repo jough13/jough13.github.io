@@ -752,11 +752,33 @@ function useInventoryItem(itemIndex) {
             player.equipment[slot] = (slot === 'weapon') ? { name: 'Fists', damage: 0, tags: ['blunt'] } : (slot === 'armor' ? { name: 'Tattered Rags', defense: 0 } : null);
         } else {
             // --- TWO-HANDED LOGIC SAFEGUARDS ---
+            // If trying to equip a shield while holding a 2H weapon
             if (slot === 'offhand' && player.equipment.weapon && player.equipment.weapon.isTwoHanded) {
-                logMessage("{red:You cannot equip an off-hand while wielding a two-handed weapon!}");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                return;
+                // 🐛 BUG FIX: Do not throw an error! Just unequip the 2H weapon automatically!
+                const oldWeapon = player.equipment.weapon;
+                applyStatBonuses(oldWeapon, -1);
+                oldWeapon.isEquipped = false;
+                player.equipment.weapon = { name: 'Fists', damage: 0, tags: ['blunt'] }; // Revert to fists
+                logMessage(`{gray:You stow away the ${oldWeapon.name} to hold your off-hand.}`);
+                
+                // Remove the old 2H weapon skill from the hotbar
+                const getWeaponSkill = (item) => {
+                    const tags = item.tags || [];
+                    if (tags.includes("blunt") || tags.includes("axe")) return 'crush';
+                    if (tags.includes("dagger")) return 'quickstep';
+                    if (tags.includes("blade")) return 'deflect';
+                    if (tags.includes("staff")) return 'channel';
+                    if (tags.includes("bow") || tags.includes("crossbow")) return 'ranged_attack';
+                    return null;
+                };
+                const oldSkill = getWeaponSkill(oldWeapon);
+                if (oldSkill && player.skillbook[oldSkill]) {
+                    delete player.skillbook[oldSkill];
+                    logMessage(`{gray:You unlearned ${SKILL_DATA[oldSkill] ? SKILL_DATA[oldSkill].name : 'a skill'}.}`);
+                }
             }
+            
+            // If trying to equip a 2H weapon while holding a shield
             if (slot === 'weapon' && itemToUse.isTwoHanded && player.equipment.offhand) {
                 applyStatBonuses(player.equipment.offhand, -1);
                 player.equipment.offhand.isEquipped = false;
