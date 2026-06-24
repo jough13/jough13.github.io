@@ -56,7 +56,10 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Service Worker: Ingesting static assets to cache storage...');
-        return cache.addAll(urlsToCache);
+        
+        // Map URLs to Request objects that strictly bypass the HTTP cache
+        const noCacheRequests = urlsToCache.map(url => new Request(url, { cache: 'reload' }));
+        return cache.addAll(noCacheRequests);
       })
       .catch(err => {
         console.error('Service Worker: Fatal caching crash during install sequence!', err);
