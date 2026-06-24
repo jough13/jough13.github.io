@@ -3328,7 +3328,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             fracExcPkg: (limitTBq === Infinity || pkgLimitExc === 0) ? 0 : actTBq / pkgLimitExc,
             
             ratioExemptAct: exemptLimitBq === 0 ? (actBq > 0 ? Infinity : 0) : actBq / exemptLimitBq,
-            ratioExemptConc: exemptConcLimitBq_g === 0 ? (specActivityBq_g > 0 ? Infinity : 0) : (massGrams > 0 ? specActivityBq_g / exemptConcLimitBq_g : 0),
+            ratioExemptConc: exemptConcLimitBq_g === 0 ? (specActivityBq_g > 0 ? Infinity : 0) : (massGrams > 0 ? specActivityBq_g / exemptConcLimitBq_g : Infinity),
             
             fracRQ: rqLimitTBq === Infinity ? 0 : actTBq / rqLimitTBq,
             fracHRCQ: hrcqLimitTBq === 0 ? 0 : actTBq / hrcqLimitTBq,
