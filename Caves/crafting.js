@@ -204,6 +204,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
                     _rarity: isMasterwork ? 'rare' : null 
                 });
             } else {
+                // Failsafe: Should theoretically never hit due to getMaxCraftable checks, but protects edge cases
                 const dropTile = itemTemplate.tile || '🎒';
                 logMessage(`{red:Your pack is full! The ${craftedName} drops to the floor.}`);
                 
@@ -446,10 +447,10 @@ function renderCraftingModal() {
         const ownedHtml = (ownedCount > 0 && !isObscured) ? `<span class="text-[9px] bg-black bg-opacity-40 border border-gray-600 text-gray-400 px-1.5 py-0.5 rounded ml-2 font-bold uppercase tracking-widest shadow-inner">Owned: ${ownedCount}</span>` : '';
 
         const actionText = gameState.currentCraftingMode === 'cooking' ? 'Cook 1' : 'Craft 1';
-        let actionHtml = `<button data-craft-item="${recipeName}" style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed font-bold border-b-2 border-blue-800 active:border-b-0 active:mt-0.5" ${canCraft ? '' : 'disabled'}>${actionText}</button>`;
+        let actionHtml = `<button data-craft-item="${recipeName}" style="transform: translateZ(0);" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed font-bold border-b-2 border-blue-800 active:border-b-0 active:mt-0.5" ${canCraft ? '' : 'disabled'}>${actionText}</button>`;
         
         if (maxCraftable > 1 && levelMet && !isObscured) {
-            actionHtml += `<button data-craft-all="${recipeName}" style="transform: translate3d(0,0,0);" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded shadow-md transition-transform active:scale-95 ml-2 font-bold text-xs flex flex-col items-center border-b-2 border-purple-800 active:border-b-0 active:mt-0.5">
+            actionHtml += `<button data-craft-all="${recipeName}" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded shadow-md transition-transform active:scale-95 ml-2 font-bold text-xs flex flex-col items-center border-b-2 border-purple-800 active:border-b-0 active:mt-0.5">
                 <span>All</span>
                 <span class="text-[10px] font-normal opacity-80">(x${maxCraftable})</span>
             </button>`;
@@ -481,21 +482,20 @@ function renderCraftingModal() {
     craftingRecipeList.appendChild(fragment);
 }
 
+// SECURITY & PERFORMANCE WIN: Event Delegation
 function initCraftingListeners() {
     const closeBtn = document.getElementById('closeCraftingButton');
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
             const modal = document.getElementById('craftingModal');
             if (modal) modal.classList.add('hidden');
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
         });
     }
 
     const recipeList = document.getElementById('craftingRecipeList');
-    if (recipeList) {
-        const newList = recipeList.cloneNode(false);
-        recipeList.parentNode.replaceChild(newList, recipeList);
-
-        newList.addEventListener('click', (e) => {
+    if (recipeList && !recipeList.dataset.listenersBound) {
+        recipeList.addEventListener('click', (e) => {
             const craftBtn = e.target.closest('button[data-craft-item]');
             const batchBtn = e.target.closest('button[data-craft-all]');
             
@@ -505,11 +505,10 @@ function initCraftingListeners() {
                 handleCraftItem(batchBtn.dataset.craftAll, true);
             }
         });
+        recipeList.dataset.listenersBound = 'true';
     }
 }
 
-if (typeof areGlobalListenersInitialized !== 'undefined' && !areGlobalListenersInitialized) {
-    initCraftingListeners();
-}
+initCraftingListeners();
 
 // --- END OF FILE crafting.js ---
