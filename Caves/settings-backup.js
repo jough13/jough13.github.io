@@ -302,7 +302,7 @@ async function restoreCloudBackup(slotId = 'latest') {
             }
         }
 
-        // ROBUSTNESS WIN: Deep Clean Current State
+        // 🧹 ROBUSTNESS WIN: Deep Clean Current State
         // Arrays merged via Object.assign can leave ghost items if the new array is shorter than the old one.
         gameState.player.inventory = [];
         gameState.player.bank = [];
@@ -323,7 +323,7 @@ async function restoreCloudBackup(slotId = 'latest') {
                 templateId: '⏳', 
                 name: 'Paradox Anomaly',
                 type: 'junk',
-                tags: ['anomaly', 'magic'], // ECS WIN: Preserving our new tag architecture!
+                tags: ['anomaly', 'magic'], // 🛡️ ECS WIN: Added tags to the generated paradox!
                 quantity: 1,
                 tile: '⏳',
                 description: "A crystallized fragment of a discarded timeline. You shouldn't have this.",
