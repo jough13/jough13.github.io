@@ -563,13 +563,12 @@ async function processOverworldEnemyTurns() {
                 if (tile.x === playerX && tile.y === playerY) {
                     if (gameState.godMode) return;
                     const dmg = Math.floor(enemy.attack * 1.5); 
-                    gameState.player.health -= dmg;
+                    window.modifyVital('health', -dmg);
                     gameState.screenShake = 15;
                     
                     // JUICE: Full screen red flash for heavy telegraph damage
                     gameState.screenFlash = { color: '#ef4444', alpha: 0.4, decay: 0.05 };
                     
-                    triggerStatFlash(statDisplays.health, false);
                     logMessage(`{red:You are caught in the ${enemy.name}'s blast! (-${dmg} HP)}`);
                     hitPlayer = true;
                 }
@@ -582,10 +581,7 @@ async function processOverworldEnemyTurns() {
             movesQueued = true;
             processedIdsThisFrame.add(enemyId);
             
-            if (gameState.player.health <= 0) {
-                handlePlayerDeath();
-                break; // Stop processing any more enemies!
-            }
+            if (gameState.player.health <= 0) break; // Death handled by modifyVital
             continue; // Skip the rest of this turn
         }
 
@@ -622,7 +618,7 @@ async function processOverworldEnemyTurns() {
                     logMessage(`{cyan:Shield absorbs ${absorb} magic damage!}`);
                 }
                 if (dmg > 0) {
-                    gameState.player.health -= dmg;
+                    window.modifyVital('health', -dmg);
                     gameState.screenShake = 10; 
                     gameState.screenFlash = { color: '#be123c', alpha: 0.3, decay: 0.1 };
                     
@@ -633,16 +629,12 @@ async function processOverworldEnemyTurns() {
                         wrapper.classList.add('damage-flash');
                     }
 
-                    triggerStatFlash(statDisplays.health, false);
                     logMessage(`{red:The ${enemy.name} casts ${spellName} for ${dmg} damage!}`);
 
                     if (enemy.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
                     if (enemy.inflicts === 'poison') gameState.player.poisonTurns = 5;
 
-                    if (gameState.player.health <= 0) {
-                        handlePlayerDeath();
-                        break;
-                    }
+                    if (gameState.player.health <= 0) break;
                 }
             }
             
@@ -692,7 +684,7 @@ async function processOverworldEnemyTurns() {
                 }
                 
                 if (dmg > 0) {
-                    gameState.player.health -= dmg;
+                    window.modifyVital('health', -dmg);
                     gameState.screenShake = 10;
                     gameState.screenFlash = { color: '#ef4444', alpha: 0.2, decay: 0.05 };
                     
@@ -703,14 +695,10 @@ async function processOverworldEnemyTurns() {
                         wrapper.classList.add('damage-flash');
                     }
                     
-                    triggerStatFlash(statDisplays.health, false);
                     logMessage(`{red:The ${enemy.name} shoots you for ${dmg} damage!}`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
                     
-                    if (gameState.player.health <= 0) {
-                        handlePlayerDeath();
-                        break;
-                    }
+                    if (gameState.player.health <= 0) break;
                 }
             }
             
@@ -802,7 +790,7 @@ async function processOverworldEnemyTurns() {
                         }
 
                         if (dmg > 0) {
-                            gameState.player.health -= dmg;
+                            window.modifyVital('health', -dmg);
                             gameState.screenShake = 10;
 
                             const wrapper = document.getElementById('gameCanvasWrapper');
@@ -813,13 +801,9 @@ async function processOverworldEnemyTurns() {
                             }
 
                             logMessage(`{red:A ${enemy.name} attacks you for ${dmg} damage!}`);
-                            triggerStatFlash(statDisplays.health, false);
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
                             
-                            if (gameState.player.health <= 0) {
-                                handlePlayerDeath();
-                                break;
-                            }
+                            if (gameState.player.health <= 0) break;
                         }
 
                         // --- OVERWORLD THORNS ---
@@ -1145,12 +1129,11 @@ function processEnemyTurns() {
                 if (tile.x === player.x && tile.y === player.y) {
                     if (gameState.godMode) return;
                     const dmg = Math.floor(enemy.attack * 1.5); 
-                    player.health -= dmg;
-                    
+                    window.modifyVital('health', -dmg);
+
                     gameState.screenShake = 15;
                     gameState.screenFlash = { color: '#ef4444', alpha: 0.4, decay: 0.05 };
-                    
-                    triggerStatFlash(statDisplays.health, false);
+
                     logMessage(`{red:You are caught in the ${enemy.name}'s blast! (-${dmg} HP)}`);
                     hitPlayer = true;
                 }
@@ -1159,7 +1142,7 @@ function processEnemyTurns() {
             if (!hitPlayer) logMessage(`{gray:The ${enemy.name}'s attack strikes the ground!}`);
 
             enemy.pendingAttacks = null;
-            if (handlePlayerDeath()) return;
+            if (player.health <= 0) return; // Death handled by modifyVital
             return; 
         }
 
@@ -1217,13 +1200,12 @@ function processEnemyTurns() {
                     if (player.shieldValue === 0) logMessage("{cyan:Your Arcane Shield shatters!}");
                 }
                 if (dmg > 0) {
-                    player.health -= dmg;
+                    window.modifyVital('health', -dmg);
                     gameState.screenShake = 10; 
-                    triggerStatFlash(statDisplays.health, false);
                     logMessage(`{red:The ${enemy.name} hits you for ${dmg} damage!}`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
 
-                    if (handlePlayerDeath()) return;
+                    if (player.health <= 0) return;
                 }
                 
                 if (player.thornsValue > 0) {
@@ -1261,17 +1243,16 @@ function processEnemyTurns() {
                     logMessage(`{cyan:Shield absorbs ${absorb} magic damage!}`);
                 }
                 if (dmg > 0) {
-                    player.health -= dmg;
+                    window.modifyVital('health', -dmg);
                     gameState.screenShake = 10; 
                     gameState.screenFlash = { color: '#be123c', alpha: 0.3, decay: 0.1 };
-                    
-                    triggerStatFlash(statDisplays.health, false);
+
                     logMessage(`{red:The ${enemy.name} casts ${spellName} for ${dmg} damage!}`);
 
                     if (enemy.inflicts === 'frostbite') player.frostbiteTurns = 5;
                     if (enemy.inflicts === 'poison') player.poisonTurns = 5;
 
-                    if (handlePlayerDeath()) return;
+                    if (player.health <= 0) return;
                 }
             }
             return;
@@ -1313,25 +1294,21 @@ function processEnemyTurns() {
                 }
                 
                 if (dmg > 0) {
-                    player.health -= dmg;
+                    window.modifyVital('health', -dmg);
                     gameState.screenShake = 10;
                     gameState.screenFlash = { color: '#ef4444', alpha: 0.2, decay: 0.05 };
-                    
+
                     const wrapper = document.getElementById('gameCanvasWrapper');
                     if (wrapper) {
                         wrapper.classList.remove('damage-flash'); 
                         void wrapper.offsetWidth; 
                         wrapper.classList.add('damage-flash');
                     }
-                    
-                    triggerStatFlash(statDisplays.health, false);
+
                     logMessage(`{red:The ${enemy.name} shoots you for ${dmg} damage!}`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
                     
-                    if (player.health <= 0) {
-                        handlePlayerDeath();
-                        return;
-                    }
+                    if (player.health <= 0) return;
                 }
             }
             return; // End this enemy's turn
