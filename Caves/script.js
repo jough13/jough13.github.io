@@ -1421,12 +1421,11 @@ function endPlayerTurn(turnUpdates = {}) {
 
         if (!hasArmor && !hasPotion && !gameState.godMode) {
             logMessage("The lava burns you! (2 Dmg)");
-            player.health -= 2;
+            window.modifyVital('health', -2);
             gameState.screenShake = 10;
-            triggerStatFlash(statDisplays.health, false);
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "BURN", "#ef4444");
 
-            if (handlePlayerDeath()) return;
+            if (gameState.player.health <= 0) return;
         }
     }
 
@@ -1442,10 +1441,9 @@ function endPlayerTurn(turnUpdates = {}) {
             logMessage("The deep water swallows you whole!");
             logMessage("You have drowned.");
 
-            player.health = 0;
+            window.modifyVital('health', -gameState.player.maxHealth); // Lethal damage triggers death logic
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "☠️", "#1e3a8a");
 
-            handlePlayerDeath();
             return;
         }
     }
@@ -1604,9 +1602,8 @@ function endPlayerTurn(turnUpdates = {}) {
 
             if (rx === gameState.player.x && ry === gameState.player.y) {
                 logMessage("You were struck by lightning!! (10 Dmg)");
-                gameState.player.health -= 10;
+                window.modifyVital('health', -10);
                 gameState.screenShake = 10;
-                triggerStatFlash(statDisplays.health, false);
             }
             else {
                 applySpellDamage(rx, ry, 10, 'thunderbolt');
@@ -1617,11 +1614,10 @@ function endPlayerTurn(turnUpdates = {}) {
     // --- 1. Tick Status Effects ---
     if (player.poisonTurns > 0) {
         player.poisonTurns--;
-        player.health -= 1;
+        window.modifyVital('health', -1);
         gameState.screenShake = 10;
         logMessage("You take 1 poison damage...");
-        triggerStatFlash(statDisplays.health, false);
-        ParticleSystem.createFloatingText(player.x, player.y, "-1", "#22c55e");
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "-1", "#22c55e");
 
         updates.health = player.health;
         updates.poisonTurns = player.poisonTurns;
