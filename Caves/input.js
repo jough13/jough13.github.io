@@ -25,14 +25,15 @@ const MOVEMENT_MAP = {
 // O(1) Key Lookups & Expanded Browser Protections
 // Moved out of the event listener so they aren't instantiated on every single keystroke.
 // Added Tab and Enter to prevent unwanted browser scrolling/focus-shifting while playing.
+// QoL WIN: Added '/' to block Firefox's default "Quick Find" feature!
 const BLOCKED_SCROLL_KEYS = new Set([
     'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', ' ',
-    'Home', 'End', 'PageUp', 'PageDown', 'Tab', 'Enter'
+    'Home', 'End', 'PageUp', 'PageDown', 'Tab', 'Enter', '/'
 ]);
 
 const INSTANT_KEYS = new Set([
-    'Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'h', 'd', 'g', 'q', 'j', 'z',
-    'I', 'M', 'B', 'K', 'C', 'P', 'H', 'D', 'G', 'Q', 'J', 'Z',
+    'Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'h', 'd', 'g', 'q', 'j', 'z', 'l', '/',
+    'I', 'M', 'B', 'K', 'C', 'P', 'H', 'D', 'G', 'Q', 'J', 'Z', 'L',
     '+', '=', '-', '_'
 ]);
 
@@ -66,6 +67,20 @@ function handleInput(key) {
     // 3. Robust Safety Check
     if (!player_id || !gameState || !gameState.player || gameContainer.classList.contains('hidden')) {
         return;
+    }
+
+    // 4. Dead Check
+    if (gameState.player.health <= 0) return;
+
+    // --- 🚨 INCAPACITATION GUARD (STUNS) ---
+    // Prevent players from queueing up movements while stunned!
+    if (gameState.player.stunTurns > 0) {
+        if (MOVEMENT_MAP[key] || [' ', '5', 'Numpad5', 'Clear', '.', 'r'].includes(key) || (!isNaN(parseInt(key)) && parseInt(key) <= 9)) {
+            logMessage("{yellow:You are stunned and cannot act!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            window.inputQueue.length = 0; // Force clear the queue so they don't sprint into lava after stun ends!
+            return;
+        }
     }
 
     // PERFORMANCE WIN: Cache the lowercased key to prevent repeated string allocations
@@ -116,15 +131,12 @@ function handleInput(key) {
         return; 
     }
 
-    // 4. Dead Check
-    if (gameState.player.health <= 0) return;
-
     if (lowerKey === 'q') {
         if (typeof drinkFromSource === 'function') drinkFromSource();
         return;
     }
 
-        // --- MOUNT EXPANSION ---
+    // --- MOUNT EXPANSION ---
     if (lowerKey === 'z') {
         if (typeof window.toggleMount === 'function') window.toggleMount();
         return;
@@ -270,9 +282,9 @@ function handleInput(key) {
     if (lowerKey === 'm') { toggleMenu(mapModal, openWorldMap, closeWorldMap); return; }
     if (lowerKey === 'b') { toggleMenu(spellModal, openSpellbook, null); return; }
     if (lowerKey === 'k') { toggleMenu(skillModal, openSkillbook, null); return; }
-    if (lowerKey === 'c') { toggleMenu(collectionsModal, openCollections, null); return; }
+    if (lowerKey === 'c' || lowerKey === 'l') { toggleMenu(collectionsModal, openCollections, null); return; } // QoL WIN: L opens Library
     if (lowerKey === 'p') { toggleMenu(talentModal, openTalentModal, null); return; }
-    if (lowerKey === 'j') { toggleMenu(questModal, openBountyBoard, null); return; } // QoL WIN: Journal Hotkey
+    if (lowerKey === 'j') { toggleMenu(questModal, openBountyBoard, null); return; } 
     
     // Help Hotkey
     if (lowerKey === 'h') { 
@@ -283,12 +295,19 @@ function handleInput(key) {
     // Direct Chat Input focus wrapper
     if (key === 'Enter') { 
         const chatIn = document.getElementById('chatInput');
-        if (chatIn) {
-            // Must use window.event if accessing the global event object, though it's safer 
-            // to just focus it and let the natural behavior occur here.
-            chatIn.focus(); 
-        }
+        if (chatIn) chatIn.focus(); 
         return; 
+    }
+
+    // QoL WIN: MMO Chat Slash-Command Shortcut
+    if (key === '/') {
+        const chatIn = document.getElementById('chatInput');
+        if (chatIn) {
+            // Focus and pre-fill the slash for them!
+            chatIn.focus();
+            chatIn.value = '/';
+        }
+        return;
     }
 
     // Block gameplay inputs if any menu is open (using our fast O(1) cache)
@@ -332,7 +351,19 @@ function handleInput(key) {
             "You adjust the straps of your gear."
         ];
 
-        if (gameState.mapMode === 'overworld') {
+        // --- VEHICLE & MOUNT SYNERGIES ---
+        if (gameState.player.isMounted && gameState.player.companion) {
+            waitFlavors = [
+                `You pat the neck of your ${gameState.player.companion.name}.`,
+                `Your ${gameState.player.companion.name} huffs restlessly.`,
+                `Your ${gameState.player.companion.name} shifts its weight.`
+            ];
+        } else if (gameState.player.isSailing) {
+            waitFlavors = ["The ship rocks gently on the waves.", "You check the rigging.", "The sea breeze fills the sails."];
+        } else if (gameState.player.isBoating) {
+            waitFlavors = ["Your canoe drifts slightly.", "You rest your paddle across your lap.", "Water ripples against the hull."];
+        } 
+        else if (gameState.mapMode === 'overworld') {
             if (gameState.weather === 'rain') waitFlavors.push("You pause, letting the rain wash over you.", "You listen to the drumming of the rain.", "Water runs down your face.");
             if (gameState.weather === 'storm') waitFlavors.push("You wait, feeling the thunder rattle your teeth.", "Lightning briefly illuminates the landscape.");
             if (gameState.weather === 'snow') waitFlavors.push("You watch your breath fog in the freezing air.", "You wait, letting the snow settle.", "The silence of the snow is deafening.");
