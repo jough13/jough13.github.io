@@ -1195,12 +1195,31 @@ const SettingsPanel = () => {
 
     const handleManualUpdate = () => {
         if ('serviceWorker' in navigator) {
-            addToast("Checking for updates and refreshing...");
+            addToast("Checking for updates...");
+            
+            let refreshed = false;
+            
+            // 1. Listen for the exact moment the NEW service worker takes over
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshed) {
+                    refreshed = true;
+                    addToast("Update found! Refreshing...");
+                    window.location.reload();
+                }
+            });
+
+            // 2. Trigger the update check
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let registration of registrations) {
                     registration.update();
                 }
-                setTimeout(() => window.location.reload(true), 1500);
+                
+                // 3. Fallback: If no update is found (controller never changes), notify the user
+                setTimeout(() => {
+                    if (!refreshed) {
+                        addToast("You are already on the latest version.");
+                    }
+                }, 4000); // 4 seconds is a safe buffer to let the network check complete
             });
         } else {
             window.location.reload(true);
