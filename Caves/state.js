@@ -53,7 +53,7 @@ const wokenEnemyTiles = new Set(); // Global set to track processed tiles this s
 
 const gameState = {
     // --- System & Engine State ---
-    saveVersion: "0.2.7",     // Useful for future DB migration scripts
+    saveVersion: "0.2.8",     // Incremented version for safety
     initialEnemiesLoaded: false,
     mapDirty: true,           // Flag to force canvas redraws
     
@@ -120,7 +120,7 @@ const gameState = {
         // EXPANSION HOOKS: Mounts & Vehicles
         isBoating: false,     // Canoe state
         isSailing: false,     // Deep sea ship state
-        isMounted: false,     // Land mount state (Future expansion)
+        isMounted: false,     // Land mount state!
         mountName: null,      // Flavor text for current mount
         
         // Multiplayer UI
