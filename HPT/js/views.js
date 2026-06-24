@@ -1176,10 +1176,27 @@ const SettingsPanel = () => {
         updateSettings({ [key]: value });
     };
 
-    const handleResetDefaults = () => {
+    const handleResetDefaults = async () => {
+        // 1. Clear local browser storage
         localStorage.clear();
         sessionStorage.setItem('showResetToast', 'true');
-        window.location.reload();
+        
+        // 2. Nuke all Service Worker Caches
+        if ('caches' in window) {
+            const cacheNames = await caches.keys();
+            await Promise.all(cacheNames.map(name => caches.delete(name)));
+        }
+
+        // 3. Unregister the Service Worker entirely
+        if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (let reg of registrations) {
+                await reg.unregister();
+            }
+        }
+        
+        // 4. Force a hard reload from the server
+        window.location.reload(true);
     };
 
     const handleInstallClick = async () => {
