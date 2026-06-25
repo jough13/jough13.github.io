@@ -4,7 +4,7 @@
 // CRAFTING & COOKING SYSTEM
 // ==========================================
 
-// PERFORMANCE WIN: O(1) Item Lookup Cache for Crafting
+// O(1) Item Lookup Cache for Crafting
 // Prevents O(N) string-matching scans against the massive ITEM_DATA dictionary every render frame.
 const _craftItemKeyCache = {};
 function getCraftItemKey(name) {
@@ -15,7 +15,7 @@ function getCraftItemKey(name) {
     return key;
 }
 
-// PERFORMANCE WIN: Cache the Regex used for stripping color tags so it doesn't recompile in loops!
+// Cache the Regex used for stripping color tags so it doesn't recompile in loops!
 const COLOR_TAG_REGEX = /\{[a-zA-Z]+:(.*?)\}/ig;
 
 /**
@@ -37,6 +37,7 @@ function getAvailableMaterials(inventory) {
  * Calculates the maximum number of times a recipe can be crafted,
  * capped by both available materials AND available inventory slots.
  */
+
 function getMaxCraftable(recipeName, availableMats, currentInventoryLength, isStackable, hasExistingStack) {
     const recipe = CRAFTING_RECIPES[recipeName] || COOKING_RECIPES[recipeName];
     if (!recipe) return 0;
@@ -73,6 +74,7 @@ function getMaxCraftable(recipeName, availableMats, currentInventoryLength, isSt
  * @param {string} recipeName - The name of the item to craft.
  * @param {boolean} requestBatch - If true, crafts as many as possible.
  */
+
 function handleCraftItem(recipeName, requestBatch = false) {
     const recipe = CRAFTING_RECIPES[recipeName] || COOKING_RECIPES[recipeName];
     if (!recipe) return;
@@ -112,7 +114,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
     const batchSize = requestBatch ? Math.floor(maxCraftable) : 1;
     if (batchSize < 1) return;
 
-    // 4. Consume Materials (Backward loop for safe array mutation)
+    // 4. Consume Materials
     for (const matName in recipe.materials) {
         let needed = recipe.materials[matName] * batchSize;
         
@@ -124,13 +126,13 @@ function handleCraftItem(recipeName, requestBatch = false) {
                 const take = Math.min(item.quantity, needed);
                 item.quantity -= take;
                 needed -= take;
-                
-                if (item.quantity <= 0) {
-                    player.inventory.splice(i, 1);
-                }
             }
         }
     }
+
+    // PERFORMANCE WIN: Clean up empty stacks in one fast pass using .filter()
+    // This prevents the V8 engine from thrashing memory by repeatedly re-indexing via .splice()
+    player.inventory = player.inventory.filter(item => item.quantity > 0);
 
     // 5. Generate Items
     let masterworksCrafted = 0;
@@ -308,9 +310,9 @@ function handleCraftItem(recipeName, requestBatch = false) {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
     }
 
-    // 8. Finalize & Save
-    if (typeof playerRef !== 'undefined' && playerRef) {
-        playerRef.update({
+    // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer instead of instantaneous save!
+    if (typeof triggerDebouncedSave === 'function') {
+        triggerDebouncedSave({
             inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
             craftingLevel: player.craftingLevel,
             craftingXp: player.craftingXp,
