@@ -246,7 +246,8 @@ var NEW_FISHING_ITEMS = {
                     logMessage(`{purple:You also found a ${prize} hidden inside!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                 } else {
-                    logMessage(`{red:You found a ${prize}, but your inventory was full and it washed away!}`);
+                    logMessage(`{red:You found a ${prize}, but your inventory was full! It sinks into the water.}`);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 500); // Splash sound
                 }
             }
             if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('coinsDisplay'), true);
