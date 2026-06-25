@@ -1471,7 +1471,7 @@ async function runCompanionTurn() {
 
                 try {
                     const txResult = await window.withTimeout(enemyRef.transaction(currentData => {
-                        // Return null instead of undefined
+                        // 🚨 THE FIX: Return null instead of undefined
                         if (currentData === null) return null;
                         
                         let enemy = JSON.parse(JSON.stringify(currentData));
@@ -1537,22 +1537,22 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
     try {
         const doTransaction = () => enemyRef.transaction(currentData => {
-        // Return null instead of undefined. 
-        // This forces Firebase to ping the server to see if the enemy actually exists!
-        if (currentData === null) return null; 
-        
-        // DEEP CLONE to absolutely prevent Firebase maxretry mutation bugs
-        let enemy = JSON.parse(JSON.stringify(currentData));
-        
-        enemy.health = Number(enemy.health);
-        if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
-        
-        enemy.health -= safeDamage;
-        
-        if (enemy.health <= 0) return null; 
-        
-        return enemy; 
-    });
+            // 🚨 THE FIX: Return null instead of undefined. 
+            // This forces Firebase to ping the server to see if the enemy actually exists!
+            if (currentData === null) return null; 
+            
+            // DEEP CLONE to absolutely prevent Firebase maxretry mutation bugs
+            let enemy = JSON.parse(JSON.stringify(currentData));
+            
+            enemy.health = Number(enemy.health);
+            if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+            
+            enemy.health -= safeDamage;
+            
+            if (enemy.health <= 0) return null; 
+            
+            return enemy; 
+        });
 
         let transactionResult;
         if (typeof window.withTimeout === 'function') {
