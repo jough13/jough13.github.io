@@ -1,4 +1,4 @@
- //--- START OF FILE data-items.js ---
+// --- START OF FILE data-items.js ---
 
 window.COOKING_RECIPES = {
     "Oracle's Broth": {
@@ -373,6 +373,33 @@ window.ITEM_DATA = {
             return false; 
         }
     },
+    '💣': {
+        name: 'Black Powder Bomb',
+        type: 'consumable',
+        tile: '💣',
+        description: "Ignites instantly! Deals 15 damage to adjacent enemies, but hurts you (-5 HP).",
+        effect: (state) => {
+            logMessage("{red:BOOM!} The explosion blasts everything nearby!");
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#f97316', 20);
+            
+            // Deal massive AoE damage around the player
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    if (typeof applySpellDamage === 'function') applySpellDamage(state.player.x + dx, state.player.y + dy, 15, 'fireball');
+                }
+            }
+            
+            // Recoil damage safely applied via modifyVital
+            window.modifyVital('health', -5);
+            state.screenShake = 15;
+            
+            if (state.player.health <= 0) {
+                if (typeof handlePlayerDeath === 'function') handlePlayerDeath();
+            }
+            return true;
+        }
+    },
     '📜c': { name: 'Cultist Orders', type: 'quest', description: "Plans detailing an attack on the village." },
     '🧿s': { name: 'Shadow Amulet', type: 'quest', description: "It hums with dark energy. A key for high-ranking cultists." },
     '🌱': {
@@ -400,10 +427,16 @@ window.ITEM_DATA = {
             state.mapMode = 'skyrealm';
             state.mapDirty = true;
             
-            // Trigger a full map transition sync to load the sky correctly
+            // BUG FIX: Manually consume the seed here and return false to prevent items.js from double-turning!
+            const seedIdx = state.player.inventory.findIndex(i => i.name === 'Cloudseed' && !i.isEquipped);
+            if (seedIdx > -1) {
+                state.player.inventory[seedIdx].quantity--;
+                if (state.player.inventory[seedIdx].quantity <= 0) state.player.inventory.splice(seedIdx, 1);
+            }
+
             if (typeof finalizeMapTransition === 'function') finalizeMapTransition();
             if (typeof render === 'function') render();
-            return true;
+            return false; 
         }
     },
     '⚔️star': {
@@ -595,6 +628,19 @@ window.ITEM_DATA = {
             return true;
         }
     },
+    '🍐': {
+        name: 'Cactus Fruit',
+        type: 'consumable',
+        tile: '🍐',
+        description: "Prickly but sweet. {yellow:+15 Hunger}, {blue:+10 Thirst}",
+        effect: (state) => {
+            if (state.player.hunger >= state.player.maxHunger && state.player.thirst >= state.player.maxThirst) return false;
+            window.modifyVital('hunger', 15);
+            window.modifyVital('thirst', 10);
+            logMessage("Sweet and juicy. {yellow:(+15 Hunger)}, {blue:(+10 Thirst)}");
+            return true;
+        }
+    },
 
     // ==========================================
     // --- FISHING EXPANSION ---
@@ -738,7 +784,8 @@ window.ITEM_DATA = {
                         damage: template ? template.damage : null, 
                         slot: template ? template.slot : null,
                         statBonuses: template ? template.statBonuses : null,
-                        tags: template ? (template.tags || null) : null,
+                        tags: template && template.tags ? [...template.tags] : null, // BUG FIX: Safe clone array
+                        _rarity: template ? (template._rarity || null) : null,
                         effect: template ? template.effect : null
                     });
                     logMessage(`{purple:You also found a ${prize} hidden inside!}`);
@@ -1737,28 +1784,23 @@ window.ITEM_DATA = {
     },
 
     // --- NEW CONSUMABLES ---
-    '🧪s': {
-        name: 'Potion of Speed',
-        type: 'buff_potion',
-        buff: 'dexterity',
-        amount: 5,
-        duration: 10,
+    '🧪st': {
+        name: 'Ironskin Potion',
+        type: 'consumable', // BUG FIX: Bypasses items.js forcing strengthBonus
         tile: '🧪',
-        description: "You feel light as a feather. {green:(+5 Dex for 10 turns)}"
-    },
-    '💣': {
-        name: 'Black Powder Bomb',
-        type: 'consumable',
-        tile: '💣',
-        description: "Throw it! Deals 15 damage to a target.",
+        description: "Your skin hardens into iron. {blue:(+5 Def for 20 turns)}",
         effect: (state) => {
-            logMessage("{red:BOOM!} The explosion blasts everything nearby! (-5 HP)");
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#f97316', 15);
-            window.modifyVital('health', -5);
+            if (state.player.defenseBonusTurns > 0) {
+                logMessage("Effect already active.");
+                return false;
+            }
+            state.player.defenseBonus = 5;
+            state.player.defenseBonusTurns = 20;
+            logMessage("{blue:Your skin turns to iron! (+5 Def)}");
+            if (typeof renderEquipment === 'function') renderEquipment();
             return true;
         }
     },
-
     // --- STARTER ARMOR ---
     '👕': {
         name: 'Padded Armor',
@@ -1925,8 +1967,13 @@ window.ITEM_DATA = {
         description: "Food of the gods. {gold:Permanently increases Max HP by 1.}",
         effect: (state) => {
             state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 1;
-            state.player.maxHealth += 1;
-            state.player.health = state.player.maxHealth;
+            
+            // BUG FIX: Clean update of max vitals without raw concatenation
+            if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
+            else state.player.maxHealth += 1;
+            
+            window.modifyVital('health', 1);
+            
             logMessage("{gold:You feel divine power course through you! (+1 Max HP)}");
             if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
             return true;
@@ -2482,13 +2529,6 @@ window.ITEM_DATA = {
         inflictChance: 0.25,  
         statBonuses: { dexterity: 1 }
     },
-    '🧪st': {
-        name: 'Potion of Strength',
-        type: 'buff_potion',
-        buff: 'strength',
-        amount: 5,
-        duration: 5 
-    },
     '💀': {
         name: 'Tome: Dark Pact',
         type: 'spellbook',
@@ -2567,8 +2607,12 @@ window.ITEM_DATA = {
         description: "A legendary elixir. {gold:Permanently +5 Max HP.}",
         effect: (state) => {
             state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 5;
-            state.player.maxHealth += 5;
-            state.player.health += 5;
+            
+            // BUG FIX: Clean update of max vitals without raw concatenation
+            if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
+            else state.player.maxHealth += 5;
+            
+            window.modifyVital('health', 5);
             window.modifyVital('thirst', 20);
             logMessage("You drink the thick red liquid. {gold:(+5 Max HP)}, {blue:(+20 Thirst)}");
             if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
@@ -2581,8 +2625,12 @@ window.ITEM_DATA = {
         description: "A legendary elixir. {gold:Permanently +5 Max Mana.}",
         effect: (state) => {
             state.player.bonusMaxMana = (state.player.bonusMaxMana || 0) + 5;
-            state.player.maxMana += 5;
-            state.player.mana += 5;
+            
+            // BUG FIX: Clean update of max vitals
+            if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
+            else state.player.maxMana += 5;
+            
+            window.modifyVital('mana', 5);
             window.modifyVital('thirst', 20);
             logMessage("You drink the glowing blue liquid. {gold:(+5 Max Mana)}, {blue:(+20 Thirst)}");
             if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
