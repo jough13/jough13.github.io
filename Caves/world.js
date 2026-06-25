@@ -506,9 +506,10 @@ const chunkManager = {
             if (stairsAttempts > 800) minStairsDistSq = 0;
         }
         
-        // Final ultimate failsafe
+        // Final ultimate failsafe (THE FIX: Force walkable floor beside it so player doesn't get soft-locked)
         if (!stairsPlaced) {
             map[startPos.y + 1][startPos.x] = '<';
+            if (map[startPos.y + 1][startPos.x + 1]) map[startPos.y + 1][startPos.x + 1] = theme.floor;
         }
 
         // --- 7. Secret Wall Generation ---
@@ -698,9 +699,8 @@ const chunkManager = {
         for (let y = 0; y < map.length; y++) {
             const diff = maxWidth - map[y].length;
             if (diff > 0) {
-                for (let i = 0; i < diff; i++) {
-                    map[y].push('▓');
-                }
+                map[y].length = maxWidth;
+                map[y].fill('▓', map[y].length - diff);
             }
         }
 
@@ -1418,9 +1418,17 @@ const chunkManager = {
         // Always check WorldState first (Diff overrides procedural)
         if (this.worldState[chunkId] && this.worldState[chunkId][tileKey] !== undefined) {
             const val = this.worldState[chunkId][tileKey];
-            // If it's a TTL object, return the 't' (tile) property. Otherwise, return the string.
-            return (typeof val === 'object' && val !== null) ? val.t : val;
+            
+            // THE FIX: Check if it's a TTL object, and explicitly hide it if it expired
+            if (typeof val === 'object' && val !== null) {
+                if (val.expires && Date.now() > val.expires) {
+                    return '.'; // Fallback if expired but Firebase hasn't purged it yet
+                }
+                return val.t;
+            }
+            return val;
         }
+        
         if (!this.loadedChunks[chunkId]) {
             this.generateChunk(chunkX, chunkY);
         }
@@ -1446,30 +1454,16 @@ const chunkManager = {
                 if (this.worldState[chunkId]) delete this.worldState[chunkId];
             }
         }
-        
-        // PERFORMANCE WIN: Clean up distant spatial buckets to prevent memory leaks
-        if (typeof gameState !== 'undefined' && gameState.enemySpatialMap) {
-            for (const [key, set] of gameState.enemySpatialMap.entries()) {
-                const parts = key.split(',');
-                const cx = Number(parts[0]);
-                const cy = Number(parts[1]);
-                
-                // If bucket is more than 3 spatial chunks away, purge it
-                if (Math.abs(cx - playerChunkX) > 3 || Math.abs(cy - playerChunkY) > 3) {
-                    gameState.enemySpatialMap.delete(key);
-                }
-            }
-        }
     }
 };
 
 // --- SPATIAL PARTITIONING HELPERS ---
 const SPATIAL_CHUNK_SIZE = 16; 
 
-// PERFORMANCE WIN: Bitwise OR (| 0) is fundamentally faster than Math.floor()
+// THE FIX: Using Math.floor directly correctly maps negative coordinates into distinct buckets!
 function getSpatialKey(x, y) {
-    const cx = (x / SPATIAL_CHUNK_SIZE) | 0;
-    const cy = (y / SPATIAL_CHUNK_SIZE) | 0;
+    const cx = Math.floor(x / SPATIAL_CHUNK_SIZE);
+    const cy = Math.floor(y / SPATIAL_CHUNK_SIZE);
     return `${cx},${cy}`;
 }
 
