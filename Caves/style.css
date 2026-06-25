@@ -22,6 +22,10 @@
     --mtn-shadow: #44403c; /* Darker grey for depth */
     --mtn-cap: #f9fafb;    /* Bright snow */
 
+    /* Scrollbar Theming */
+    --scrollbar-track: rgba(0, 0, 0, 0.05);
+    --scrollbar-thumb: rgba(17, 24, 39, 0.2);
+
     /* LIGHT MODE PARCHMENT (Asset-Ready UI) */
     --asset-parchment: #e7e5e4; 
     --title-color: #1c1917;
@@ -51,6 +55,10 @@
     --terrain-color: #d1d5db;
 
     --pattern-color: rgba(255, 255, 255, 0.05);
+
+    /* Scrollbar Theming */
+    --scrollbar-track: rgba(0, 0, 0, 0.15);
+    --scrollbar-thumb: rgba(255, 255, 255, 0.2);
         
     /* Dark Mode specific map glows */
     --vine-dark:  rgba(22, 163, 74, 0.15); 
@@ -68,6 +76,10 @@
 /* ==========================================================================
    GLOBAL STYLES & ACCESSIBILITY
    ========================================================================== */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 body {
     font-family: 'Courier New', Courier, monospace;
     background-color: var(--bg-page);
@@ -112,6 +124,10 @@ button {
     /* PERFORMANCE WIN: backface-visibility prevents text blurring during transforms */
     transform: translateZ(0); 
     backface-visibility: hidden;
+    /* MOBILE WIN: Prevent tooltips/selection on rapid fire tapping */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 button:active:not(:disabled) {
     transform: scale(0.95) translateZ(0);
@@ -215,6 +231,9 @@ button:disabled {
     /* Cross-browser Firefox support */
     scrollbar-width: thin;
     scrollbar-color: var(--border-color) transparent;
+    
+    /* PERFORMANCE/UX WIN: Trap scroll momentum inside the modal */
+    overscroll-behavior: contain; 
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -222,12 +241,12 @@ button:disabled {
     height: 8px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.15);
+    background: var(--scrollbar-track);
     border-radius: 4px;
     box-shadow: inset 0 0 6px rgba(0,0,0,0.4);
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: var(--border-color);
+    background: var(--scrollbar-thumb);
     border-radius: 4px;
     border: 1px solid rgba(0,0,0,0.3);
     transition: background 0.2s ease;
@@ -349,7 +368,8 @@ canvas {
     background: linear-gradient(145deg, var(--bg-page), var(--bg-panel)); 
     border-radius: 8px;
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    will-change: transform, border-color, box-shadow;
+    /* PERFORMANCE WIN: Stripped box-shadow and border-color from will-change */
+    will-change: transform; 
     transform: translateZ(0); 
     backface-visibility: hidden;
 }
@@ -418,7 +438,8 @@ canvas {
     box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.2); 
     color: var(--text-default);
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    will-change: transform, border-color, box-shadow;
+    /* PERFORMANCE WIN: Stripped box-shadow and border-color from will-change */
+    will-change: transform;
     transform: translateZ(0);
     backface-visibility: hidden;
 }
@@ -445,11 +466,12 @@ canvas {
     100% { opacity: 1; transform: scale(1) translateY(0); } 
 }
 
+/* PERFORMANCE WIN: Hardware Accelerated Shake using translate3d */
 @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-6px) rotate(-1deg); }
-    50% { transform: translateX(6px) rotate(1deg); }
-    75% { transform: translateX(-6px) rotate(-1deg); }
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    25% { transform: translate3d(-6px, 0, 0) rotate(-1deg); }
+    50% { transform: translate3d(6px, 0, 0) rotate(1deg); }
+    75% { transform: translate3d(-6px, 0, 0) rotate(-1deg); }
 }
 .shake { animation: shake 0.35s ease-in-out; }
 
@@ -554,6 +576,8 @@ canvas {
     transform: translateZ(0); 
     display: flex;
     flex-direction: column;
+    /* FIX: Force content boundaries to prevent corner overlap on round modales */
+    overflow: hidden; 
     /* PERFORMANCE WIN: Ensure internal DOM changes don't lag the page */
     contain: paint;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
@@ -584,7 +608,8 @@ kbd {
     border-left-width: 5px; /* JUICE WIN: Thicker left edge for selection feel */
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     transform: translateZ(0);
-    will-change: transform, border-color, box-shadow;
+    /* PERFORMANCE WIN: Stripped border-color and box-shadow from will-change */
+    will-change: transform;
     /* PERFORMANCE WIN: Strict containment for list items accelerates DOM updates */
     contain: layout paint;
 }
