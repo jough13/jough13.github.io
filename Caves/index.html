@@ -88,7 +88,7 @@
         <h1 class="gothic-title text-white text-center drop-shadow-2xl text-6xl md:text-8xl lg:text-[6rem]" style="line-height: 1.1; margin-bottom: 1.5rem; -webkit-text-stroke: 2px black;">
             Caves<br>& Castles
         </h1>
-        <button id="startGameBtn" class="text-green-400 font-mono text-xl md:text-2xl font-bold tracking-widest text-center px-4 mt-8 cursor-pointer hover:text-green-300 transition-colors bg-transparent border-none outline-none" style="-webkit-text-stroke: 1px black; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(74, 222, 128, 0.8); animation: pulse 1.5s infinite;" aria-label="Click to start game">
+        <button type="button" id="startGameBtn" class="text-green-400 font-mono text-xl md:text-2xl font-bold tracking-widest text-center px-4 mt-8 cursor-pointer hover:text-green-300 transition-colors bg-transparent border-none outline-none" style="-webkit-text-stroke: 1px black; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(74, 222, 128, 0.8); animation: pulse 1.5s infinite;" aria-label="Click to start game">
             - ENTER THE REALM -
         </button>
     </div>
@@ -109,16 +109,17 @@
                         <h1 id="authTitle" class="gothic-title text-4xl text-center m-0 border-none pb-0 w-full px-12">Akashic Registry</h1>
                     </div>
                     
-                    <div class="w-full space-y-4 px-4 mt-2">
+                    <!-- UX WIN: Form wrapper allows "Enter" key to submit and supports password managers -->
+                    <form id="authForm" class="w-full space-y-4 px-4 mt-2" onsubmit="event.preventDefault(); document.getElementById('authButton').click();">
                         <div class="ui-input-asset">
-                            <input type="email" id="emailInput" autocomplete="email" aria-label="Email Address" placeholder="Email" class="w-full bg-transparent outline-none terminal-text">
+                            <input type="email" id="emailInput" autocomplete="email" aria-label="Email Address" placeholder="Email" class="w-full bg-transparent outline-none terminal-text text-base md:text-lg">
                         </div>
                         <div class="ui-input-asset">
-                            <input type="password" id="passwordInput" autocomplete="current-password" aria-label="Password" placeholder="Password" class="w-full bg-transparent outline-none terminal-text">
+                            <input type="password" id="passwordInput" autocomplete="current-password" aria-label="Password" placeholder="Password" class="w-full bg-transparent outline-none terminal-text text-base md:text-lg">
                         </div>
 
                         <div class="pt-2">
-                            <button id="authButton" class="ui-btn-asset w-full text-2xl tracking-widest transition-transform hover:brightness-110 active:scale-95" aria-label="Authenticate">
+                            <button type="button" id="authButton" class="ui-btn-asset w-full text-2xl tracking-widest transition-transform hover:brightness-110 active:scale-95" aria-label="Authenticate">
                                 LOGIN
                             </button>
                         </div>
@@ -142,7 +143,7 @@
                         </div>
 
                         <p id="authError" class="text-red-500 text-center text-sm min-h-[1.5rem] pixel-text font-bold" aria-live="assertive"></p>
-                    </div>
+                    </form>
 
                     <div class="mt-8 pt-2 border-t-2 border-dashed border-gray-600 w-full text-center text-xs pixel-text text-gray-400">
                         <a href="devlog.html" class="hover:text-white transition-colors">Devlog</a> | Akashic Engine v0.2.7
@@ -162,7 +163,7 @@
                         <!-- Javascript populates character slots here -->
                     </div>
                     <div class="text-center mt-4 w-full border-t-2 border-dashed border-gray-600 pt-4">
-                        <button id="logoutFromSelectButton" class="text-sm text-red-400 hover:text-red-300 font-bold tracking-widest uppercase transition-colors">← Return to Registry</button>
+                        <button type="button" id="logoutFromSelectButton" class="text-sm text-red-400 hover:text-red-300 font-bold tracking-widest uppercase transition-colors">← Return to Registry</button>
                     </div>
                 </div>
             </div>
@@ -177,7 +178,8 @@
                         <div class="space-y-6">
                             <div>
                                 <label class="block text-sm font-bold mb-2" for="charNameInput">Name</label>
-                                <input type="text" id="charNameInput" autocomplete="off" class="themed-input w-full p-3 border-2 rounded-xl font-bold text-lg focus:border-blue-500 transition-colors" placeholder="Enter Character Name..." maxlength="16">
+                                <!-- UX WIN: text-base prevents iOS zooming -->
+                                <input type="text" id="charNameInput" autocomplete="off" class="themed-input w-full p-3 border-2 rounded-xl font-bold text-base md:text-lg focus:border-blue-500 transition-colors" placeholder="Enter Character Name..." maxlength="16">
                             </div>
                             <div>
                                 <label class="block text-sm font-bold mb-2">Gender</label>
@@ -211,7 +213,7 @@
                                     <p>Stats: <span class="text-green-600">Base stats only</span></p>
                                 </div>
                             </div>
-                            <button id="finalizeCreationBtn" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border-b-4 border-green-800 active:border-b-0 active:mt-1">
+                            <button type="button" id="finalizeCreationBtn" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border-b-4 border-green-800 active:border-b-0 active:mt-1">
                                 Enter the World
                             </button>
                         </div>
@@ -229,10 +231,10 @@
                 <header class="relative flex justify-between items-center mb-4 border-b border-gray-600 pb-2">
                     <h1 class="gothic-title text-4xl m-0 border-none md:text-5xl">Caves & Castles</h1>
                     <nav class="flex items-center gap-2">
-                        <button id="settingsButton" aria-label="Game Settings" title="Settings" class="p-2 text-sm font-bold highlight-text transition-transform hover:scale-110">⚙️</button>
-                        <button id="helpButton" aria-label="Game Help" title="Help Guide" class="p-2 text-sm font-bold highlight-text transition-transform hover:scale-110">Help</button>
-                        <button id="logoutButton" aria-label="Log Out" title="Save & Logout" class="p-2 text-sm font-bold highlight-text transition-transform hover:scale-110">Logout</button>
-                        <button id="darkModeToggle" aria-label="Toggle Dark Mode" title="Toggle Theme" class="p-2 text-2xl transition-transform hover:scale-110">🌙</button>
+                        <button type="button" id="settingsButton" aria-label="Game Settings" title="Settings" class="p-2 text-sm font-bold highlight-text transition-transform hover:scale-110">⚙️</button>
+                        <button type="button" id="helpButton" aria-label="Game Help" title="Help Guide" class="p-2 text-sm font-bold highlight-text transition-transform hover:scale-110">Help</button>
+                        <button type="button" id="logoutButton" aria-label="Log Out" title="Save & Logout" class="p-2 text-sm font-bold highlight-text transition-transform hover:scale-110">Logout</button>
+                        <button type="button" id="darkModeToggle" aria-label="Toggle Dark Mode" title="Toggle Theme" class="p-2 text-2xl transition-transform hover:scale-110">🌙</button>
                     </nav>
                 </header>
             
@@ -273,7 +275,8 @@
                             <div id="chatContainer" class="panel p-4 w-full rounded-2xl border-2 shadow-sm flex flex-col">
                                 <h2 class="text-lg font-bold mb-2 border-b border-gray-500 pb-1 text-blue-500">Global Chat</h2>
                                 <div id="chatMessages" class="h-24 overflow-y-auto flex flex-col-reverse text-sm pr-2 custom-scrollbar flex-grow" aria-live="polite"></div>
-                                <input type="text" id="chatInput" aria-label="Global Chat Input" class="themed-input w-full p-2 border rounded text-sm mt-2 focus:border-blue-500 transition-colors" placeholder="Say something...">
+                                <!-- UX WIN: text-base prevents iOS zooming -->
+                                <input type="text" id="chatInput" aria-label="Global Chat Input" autocomplete="off" class="themed-input w-full p-2 border rounded text-base md:text-sm mt-2 focus:border-blue-500 transition-colors" placeholder="Say something...">
                             </div>
                         </div>
                     </div>
@@ -365,43 +368,43 @@
                         <div id="coreStatsPanel" class="panel grid grid-cols-2 gap-x-4 w-full p-4 rounded-2xl border-2 text-xs shadow-sm bg-black bg-opacity-10" role="region" aria-label="Core Attributes">
                             <span class="flex justify-between items-center mb-1">
                                 <span id="strengthDisplay" class="font-bold">Strength: 1</span>
-                                <button id="addStrBtn" aria-label="Increase Strength" title="Increase Strength" class="stat-add-btn" data-stat="strength">+</button>
+                                <button type="button" id="addStrBtn" aria-label="Increase Strength" title="Increase Strength" class="stat-add-btn" data-stat="strength">+</button>
                             </span>
                             <span class="flex justify-between items-center mb-1">
                                 <span id="witsDisplay" class="font-bold">Wits: 1</span>
-                                <button id="addWitsBtn" aria-label="Increase Wits" title="Increase Wits" class="stat-add-btn" data-stat="wits">+</button>
+                                <button type="button" id="addWitsBtn" aria-label="Increase Wits" title="Increase Wits" class="stat-add-btn" data-stat="wits">+</button>
                             </span>
                             <span class="flex justify-between items-center mb-1">
                                 <span id="constitutionDisplay" class="font-bold">Constitution: 1</span>
-                                <button id="addConBtn" aria-label="Increase Constitution" title="Increase Constitution" class="stat-add-btn" data-stat="constitution">+</button>
+                                <button type="button" id="addConBtn" aria-label="Increase Constitution" title="Increase Constitution" class="stat-add-btn" data-stat="constitution">+</button>
                             </span>
                             <span class="flex justify-between items-center mb-1">
                                 <span id="dexterityDisplay" class="font-bold">Dexterity: 1</span>
-                                <button id="addDexBtn" aria-label="Increase Dexterity" title="Increase Dexterity" class="stat-add-btn" data-stat="dexterity">+</button>
+                                <button type="button" id="addDexBtn" aria-label="Increase Dexterity" title="Increase Dexterity" class="stat-add-btn" data-stat="dexterity">+</button>
                             </span>
                             <span class="flex justify-between items-center mb-1">
                                 <span id="charismaDisplay" class="font-bold">Charisma: 1</span>
-                                <button id="addChaBtn" aria-label="Increase Charisma" title="Increase Charisma" class="stat-add-btn" data-stat="charisma">+</button>
+                                <button type="button" id="addChaBtn" aria-label="Increase Charisma" title="Increase Charisma" class="stat-add-btn" data-stat="charisma">+</button>
                             </span>
                             <span class="flex justify-between items-center mb-1">
                                 <span id="luckDisplay" class="font-bold">Luck: 1</span>
-                                <button id="addLuckBtn" aria-label="Increase Luck" title="Increase Luck" class="stat-add-btn" data-stat="luck">+</button>
+                                <button type="button" id="addLuckBtn" aria-label="Increase Luck" title="Increase Luck" class="stat-add-btn" data-stat="luck">+</button>
                             </span>
                             <span class="flex justify-between items-center mb-1">
                                 <span id="willpowerDisplay" class="font-bold">Willpower: 1</span>
-                                <button id="addWillBtn" aria-label="Increase Willpower" title="Increase Willpower" class="stat-add-btn" data-stat="willpower">+</button>
+                                <button type="button" id="addWillBtn" aria-label="Increase Willpower" title="Increase Willpower" class="stat-add-btn" data-stat="willpower">+</button>
                             </span>
                             <span class="flex justify-between items-center mb-1">
                                 <span id="perceptionDisplay" class="font-bold">Perception: 1</span>
-                                <button id="addPercBtn" aria-label="Increase Perception" title="Increase Perception" class="stat-add-btn" data-stat="perception">+</button>
+                                <button type="button" id="addPercBtn" aria-label="Increase Perception" title="Increase Perception" class="stat-add-btn" data-stat="perception">+</button>
                             </span>
                             <span class="flex justify-between items-center">
                                 <span id="enduranceDisplay" class="font-bold">Endurance: 1</span>
-                                <button id="addEndBtn" aria-label="Increase Endurance" title="Increase Endurance" class="stat-add-btn" data-stat="endurance">+</button>
+                                <button type="button" id="addEndBtn" aria-label="Increase Endurance" title="Increase Endurance" class="stat-add-btn" data-stat="endurance">+</button>
                             </span>
                             <span class="flex justify-between items-center">
                                 <span id="intuitionDisplay" class="font-bold">Intuition: 1</span>
-                                <button id="addIntuiBtn" aria-label="Increase Intuition" title="Increase Intuition" class="stat-add-btn" data-stat="intuition">+</button>
+                                <button type="button" id="addIntuiBtn" aria-label="Increase Intuition" title="Increase Intuition" class="stat-add-btn" data-stat="intuition">+</button>
                             </span>
                         </div>
                         
@@ -446,19 +449,16 @@
                 <p><strong class="highlight-text">Chat:</strong> Click the chat box and press <kbd>Enter</kbd> to send messages.</p>
                 <p><strong class="highlight-text">Exploration:</strong> Look for landmarks like signposts (<span class="font-bold text-lg leading-none align-middle">☗</span>), castles (<span class="font-bold text-lg leading-none align-middle">🏰</span>), caves (<span class="font-bold text-lg leading-none align-middle">⛰</span>), and even secret passages!</p>
             </div>
-            <button id="closeHelpButton" class="mt-6 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full transition-transform active:scale-95 shadow-md">Close Guide</button>
+            <button type="button" id="closeHelpButton" class="mt-6 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full transition-transform active:scale-95 shadow-md">Close Guide</button>
         </div>
     </div>
     
     <!-- SETTINGS MODAL -->
     <div id="settingsModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-        <!-- Added flex-col and max-h-[90vh] to ensure the box stays within the screen -->
         <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-gray-500 flex flex-col max-h-[90vh]">
             <h2 id="settingsTitle" class="text-2xl font-bold mb-4 border-b border-gray-500 pb-2 flex-shrink-0">Game Settings</h2>
             
-            <!-- THE FIX: Wrap the settings in a scrollable, growing container -->
             <div class="overflow-y-auto pr-2 custom-scrollbar flex-grow space-y-6">
-                
                 <!-- Audio Section -->
                 <div class="space-y-4">
                     <h3 class="font-bold border-b border-gray-700 pb-1 text-gray-300">Audio</h3>
@@ -499,15 +499,15 @@
                 <div>
                     <h3 class="font-bold border-b border-gray-700 pb-1 text-gray-300 mb-3">The Akashic Records</h3>
                     <div class="text-center bg-black bg-opacity-30 p-4 rounded-xl border border-gray-700 shadow-inner">
-                        <button id="btnManualSave" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg text-lg mb-3 shadow-md transition-transform active:scale-95 border-b-2 border-green-800">
+                        <button type="button" id="btnManualSave" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg text-lg mb-3 shadow-md transition-transform active:scale-95 border-b-2 border-green-800">
                             💾 Manual Save
                         </button>
                         <p id="lastBackupLabel" class="text-[11px] text-gray-400 mb-3 font-mono border border-gray-700 bg-gray-900 bg-opacity-50 py-1 rounded" aria-live="polite">Checking status...</p>
                         <div class="flex gap-2">
-                            <button id="btnBackup" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded shadow-sm transition-transform active:scale-95 text-xs border-b-2 border-blue-800">
+                            <button type="button" id="btnBackup" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded shadow-sm transition-transform active:scale-95 text-xs border-b-2 border-blue-800">
                                 ☁️ Anchor Timeline
                             </button>
-                            <button id="btnRestore" class="flex-1 bg-purple-900 hover:bg-purple-700 text-purple-200 font-bold py-2 px-4 rounded shadow-sm transition-transform active:scale-95 text-xs border-b-2 border-purple-950">
+                            <button type="button" id="btnRestore" class="flex-1 bg-purple-900 hover:bg-purple-700 text-purple-200 font-bold py-2 px-4 rounded shadow-sm transition-transform active:scale-95 text-xs border-b-2 border-purple-950">
                                 ↺ Reweave Fate
                             </button>
                         </div>
@@ -518,8 +518,7 @@
                 </div>
             </div>
 
-            <!-- flex-shrink-0 ensures the button never gets squished out of view -->
-            <button id="closeSettingsButton" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 flex-shrink-0 border-b-2 border-gray-800">Close Settings</button>
+            <button type="button" id="closeSettingsButton" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 flex-shrink-0 border-b-2 border-gray-800">Close Settings</button>
         </div>
     </div>
 
@@ -529,8 +528,8 @@
             <h2 id="deleteConfirmTitle" class="text-2xl font-bold mb-4 text-red-500 border-b border-red-900 pb-2">Delete Character?</h2>
             <p class="text-sm text-gray-300 mb-6">Are you sure you want to delete this character? This action is <strong class="text-red-400 font-bold uppercase tracking-widest">permanent</strong> and cannot be undone.</p>
             <div class="flex gap-4">
-                <button id="cancelDeleteButton" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl flex-1 shadow-md transition-transform active:scale-95">Cancel</button>
-                <button id="confirmDeleteButton" class="bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl flex-1 shadow-md transition-transform active:scale-95 border border-red-400">Delete</button>
+                <button type="button" id="cancelDeleteButton" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl flex-1 shadow-md transition-transform active:scale-95">Cancel</button>
+                <button type="button" id="confirmDeleteButton" class="bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl flex-1 shadow-md transition-transform active:scale-95 border border-red-400">Delete</button>
             </div>
         </div>
     </div>
@@ -551,10 +550,10 @@
             </div>
             
             <div class="flex flex-col sm:flex-row gap-4 relative z-10">
-                <button id="restartButton" class="bg-red-700 hover:bg-red-600 text-white font-bold py-4 px-6 rounded-xl flex-1 shadow-lg transition-transform transform active:scale-95 border-b-4 border-red-900 active:border-b-0 active:mt-1">
+                <button type="button" id="restartButton" class="bg-red-700 hover:bg-red-600 text-white font-bold py-4 px-6 rounded-xl flex-1 shadow-lg transition-transform transform active:scale-95 border-b-4 border-red-900 active:border-b-0 active:mt-1">
                     Respawn
                 </button>
-                <button id="mainMenuButton" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-6 rounded-xl flex-1 shadow-lg transition-transform transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">
+                <button type="button" id="mainMenuButton" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 px-6 rounded-xl flex-1 shadow-lg transition-transform transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">
                     Main Menu
                 </button>
             </div>
@@ -563,20 +562,21 @@
 
     <!-- REUSABLE LORE / NPC MODAL -->
     <div id="loreModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="loreTitle">
-        <!-- V V V CHANGE THIS LINE V V V -->
         <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-yellow-700" style="background-color: var(--asset-parchment); color: var(--title-color);">
             
             <h2 id="loreTitle" class="text-3xl font-bold mb-4 border-b-2 border-yellow-800 pb-2" style="font-family: 'Uncial Antiqua', cursive;">Title</h2>
             
             <div id="loreContent" class="space-y-3 text-base leading-relaxed whitespace-pre-wrap mb-6 max-h-[50vh] overflow-y-auto custom-scrollbar font-serif"></div>
             
-            <div id="riddleContainer" class="hidden mb-6 bg-black bg-opacity-10 p-4 rounded-xl border border-yellow-800">
+            <!-- UX WIN: Form wrapper allows "Enter" key to submit the riddle -->
+            <form id="riddleContainer" class="hidden mb-6 bg-black bg-opacity-10 p-4 rounded-xl border border-yellow-800" onsubmit="event.preventDefault(); document.getElementById('submitRiddle').click();">
                 <p class="text-sm font-bold mb-2 italic">Speak your answer:</p>
-                <input type="text" id="riddleInput" aria-label="Riddle Answer" class="w-full p-3 border-2 border-yellow-800 rounded-lg mb-3 bg-white text-black font-bold focus:outline-none focus:ring-2 focus:ring-yellow-600 shadow-inner" placeholder="Type here...">
-                <button id="submitRiddle" class="bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg w-full shadow-md transition-transform active:scale-95 text-lg border-b-2 border-yellow-900 active:border-b-0" style="font-family: 'Uncial Antiqua', cursive;">Speak</button>
-            </div>
+                <!-- UX WIN: text-base prevents iOS zooming -->
+                <input type="text" id="riddleInput" autocomplete="off" aria-label="Riddle Answer" class="w-full p-3 border-2 border-yellow-800 rounded-lg mb-3 bg-white text-black font-bold text-base focus:outline-none focus:ring-2 focus:ring-yellow-600 shadow-inner" placeholder="Type here...">
+                <button type="button" id="submitRiddle" class="bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg w-full shadow-md transition-transform active:scale-95 text-lg border-b-2 border-yellow-900 active:border-b-0" style="font-family: 'Uncial Antiqua', cursive;">Speak</button>
+            </form>
             
-            <button id="closeLoreButton" class="mt-2 bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Close</button>
+            <button type="button" id="closeLoreButton" class="mt-2 bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Close</button>
         </div>
     </div>
 
@@ -588,7 +588,7 @@
             
             <ul id="fastTravelList" class="space-y-3 overflow-y-auto pr-2 flex-grow custom-scrollbar min-h-[10rem]"></ul>
             
-            <button id="closeFastTravelButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Cancel</button>
+            <button type="button" id="closeFastTravelButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Cancel</button>
         </div>
     </div>
 
@@ -617,7 +617,7 @@
                 </div>
             </div>
             
-            <button id="closeShopButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Leave Store</button>
+            <button type="button" id="closeShopButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Leave Store</button>
         </div>
     </div>
 
@@ -629,7 +629,7 @@
             
             <ul id="spellList" class="space-y-3 overflow-y-auto pr-2 flex-grow custom-scrollbar min-h-[10rem]"></ul>
             
-            <button id="closeSpellButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Close Spellbook</button>
+            <button type="button" id="closeSpellButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Close Spellbook</button>
         </div>
     </div>
 
@@ -641,7 +641,7 @@
             
             <ul id="skillList" class="space-y-3 overflow-y-auto pr-2 flex-grow custom-scrollbar min-h-[10rem]"></ul>
             
-            <button id="closeSkillButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Close Techniques</button>
+            <button type="button" id="closeSkillButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Close Techniques</button>
         </div>
     </div>
 
@@ -660,7 +660,7 @@
                     Click an item, or press <kbd class="bg-gray-800 border-gray-600 text-white px-1 rounded mx-1">1-9</kbd> to Use/Equip.<br>
                     Press <kbd class="bg-gray-800 border-gray-600 text-white px-1 rounded mx-1">D</kbd> to toggle Drop Mode.
                 </p>
-                <button id="closeInventoryButton" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-blue-800 active:border-b-0 active:mt-1">Close Inventory</button>
+                <button type="button" id="closeInventoryButton" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-blue-800 active:border-b-0 active:mt-1">Close Inventory</button>
             </div>
         </div>
     </div>
@@ -672,7 +672,7 @@
             
             <div id="questList" class="space-y-4 overflow-y-auto pr-2 flex-grow custom-scrollbar min-h-[10rem]"></div>
             
-            <button id="closeQuestButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Leave Board</button>
+            <button type="button" id="closeQuestButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Leave Board</button>
         </div>
     </div>
 
@@ -683,7 +683,7 @@
             
             <ul id="craftingRecipeList" class="space-y-3 overflow-y-auto pr-2 flex-grow custom-scrollbar min-h-[10rem]"></ul>
             
-            <button id="closeCraftingButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Leave Workbench</button>
+            <button type="button" id="closeCraftingButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Leave Workbench</button>
         </div>
     </div>
 
@@ -698,7 +698,7 @@
             
             <div id="talentList" class="grid grid-cols-1 gap-3 overflow-y-auto pr-2 flex-grow custom-scrollbar min-h-[10rem]"></div>
             
-            <button id="closeTalentButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Close</button>
+            <button type="button" id="closeTalentButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Close</button>
         </div>
     </div>
 
@@ -723,7 +723,7 @@
             
             <ul id="skillTrainerList" class="space-y-3 overflow-y-auto pr-2 flex-grow custom-scrollbar min-h-[10rem]"></ul>
             
-            <button id="closeSkillTrainerButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Leave Trainer</button>
+            <button type="button" id="closeSkillTrainerButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Leave Trainer</button>
         </div>
     </div>
 
@@ -746,7 +746,7 @@
                 </div>
             </div>
             
-            <button id="closeStashButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Close Vault</button>
+            <button type="button" id="closeStashButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Close Vault</button>
         </div>
     </div>
 
@@ -757,7 +757,7 @@
                 <h2 id="mapTitle" class="text-3xl font-bold drop-shadow-md" style="font-family: 'Uncial Antiqua', cursive;">World Map</h2>
                 <div class="text-right flex items-center gap-4">
                     <span class="text-xs text-gray-400 block italic">Scroll to zoom. Drag to pan.</span>
-                    <button id="closeMapButton" aria-label="Close Map" class="text-red-500 font-bold hover:text-red-400 bg-red-900 bg-opacity-30 px-3 py-1.5 rounded border border-red-800 transition-colors shadow-sm">Close Map ❌</button>
+                    <button type="button" id="closeMapButton" aria-label="Close Map" class="text-red-500 font-bold hover:text-red-400 bg-red-900 bg-opacity-30 px-3 py-1.5 rounded border border-red-800 transition-colors shadow-sm">Close Map ❌</button>
                 </div>
             </div>
             
@@ -788,8 +788,8 @@
                 
                 <!-- Custom Tabs -->
                 <div class="flex gap-1" role="tablist">
-                    <button id="tabBestiary" role="tab" aria-selected="true" aria-controls="bestiaryView" class="text-sm font-bold bg-blue-900 bg-opacity-40 text-blue-300 border border-blue-700 px-4 py-2 rounded-t-lg transition-colors shadow-inner">Bestiary</button>
-                    <button id="tabLibrary" role="tab" aria-selected="false" aria-controls="libraryView" class="text-sm font-bold bg-black bg-opacity-30 text-gray-500 border border-transparent hover:text-gray-300 px-4 py-2 rounded-t-lg transition-colors">Library</button>
+                    <button type="button" id="tabBestiary" role="tab" aria-selected="true" aria-controls="bestiaryView" class="text-sm font-bold bg-blue-900 bg-opacity-40 text-blue-300 border border-blue-700 px-4 py-2 rounded-t-lg transition-colors shadow-inner">Bestiary</button>
+                    <button type="button" id="tabLibrary" role="tab" aria-selected="false" aria-controls="libraryView" class="text-sm font-bold bg-black bg-opacity-30 text-gray-500 border border-transparent hover:text-gray-300 px-4 py-2 rounded-t-lg transition-colors">Library</button>
                 </div>
             </div>
             
@@ -797,7 +797,7 @@
             <div id="bestiaryView" role="tabpanel" class="overflow-y-auto pr-2 flex-grow space-y-3 custom-scrollbar min-h-[10rem]"></div>
             <div id="libraryView" role="tabpanel" class="overflow-y-auto pr-2 flex-grow space-y-3 custom-scrollbar hidden min-h-[10rem]"></div>
             
-            <button id="closeCollectionsButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Close Collections</button>
+            <button type="button" id="closeCollectionsButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Close Collections</button>
         </div>
     </div>
 
@@ -807,19 +807,19 @@
     <div id="mobileControls" class="mobile-controls lg:hidden" aria-hidden="true">
         
         <div class="d-pad-container" aria-label="Directional Pad">
-            <button data-key="ArrowUp" aria-label="Move Up" title="Move Up (W)" class="d-pad-btn up">⬆️</button>
-            <button data-key="ArrowLeft" aria-label="Move Left" title="Move Left (A)" class="d-pad-btn left">⬅️</button>
-            <button data-key="r" aria-label="Wait or Rest" title="Rest (R)" class="d-pad-btn center shadow-inner text-gray-700">💤</button> 
-            <button data-key="ArrowRight" aria-label="Move Right" title="Move Right (D)" class="d-pad-btn right">➡️</button>
-            <button data-key="ArrowDown" aria-label="Move Down" title="Move Down (S)" class="d-pad-btn down">⬇️</button>
+            <button type="button" data-key="ArrowUp" aria-label="Move Up" title="Move Up (W)" class="d-pad-btn up">⬆️</button>
+            <button type="button" data-key="ArrowLeft" aria-label="Move Left" title="Move Left (A)" class="d-pad-btn left">⬅️</button>
+            <button type="button" data-key="r" aria-label="Wait or Rest" title="Rest (R)" class="d-pad-btn center shadow-inner text-gray-700">💤</button> 
+            <button type="button" data-key="ArrowRight" aria-label="Move Right" title="Move Right (D)" class="d-pad-btn right">➡️</button>
+            <button type="button" data-key="ArrowDown" aria-label="Move Down" title="Move Down (S)" class="d-pad-btn down">⬇️</button>
         </div>
         
         <div class="action-buttons-container" aria-label="Action Buttons">
-            <button data-key="i" aria-label="Inventory" title="Inventory (I)" class="action-btn">🎒</button> 
-            <button data-key="b" aria-label="Spellbook" title="Spellbook (B)" class="action-btn">🔮</button> 
-            <button data-key="k" aria-label="Skills" title="Skills (K)" class="action-btn">⚔️</button> 
-            <button data-key="q" aria-label="Drink" title="Drink Water (Q)" class="action-btn blue border-b-4 border-blue-900 active:border-b-0 active:translate-y-1">💧</button>
-            <button data-key="Escape" aria-label="Escape/Cancel" title="Cancel/Close Menu (Esc)" class="action-btn red shadow-red-900 border-b-4 border-red-900 active:border-b-0 active:translate-y-1">❌</button> 
+            <button type="button" data-key="i" aria-label="Inventory" title="Inventory (I)" class="action-btn">🎒</button> 
+            <button type="button" data-key="b" aria-label="Spellbook" title="Spellbook (B)" class="action-btn">🔮</button> 
+            <button type="button" data-key="k" aria-label="Skills" title="Skills (K)" class="action-btn">⚔️</button> 
+            <button type="button" data-key="q" aria-label="Drink" title="Drink Water (Q)" class="action-btn blue border-b-4 border-blue-900 active:border-b-0 active:translate-y-1">💧</button>
+            <button type="button" data-key="Escape" aria-label="Escape/Cancel" title="Cancel/Close Menu (Esc)" class="action-btn red shadow-red-900 border-b-4 border-red-900 active:border-b-0 active:translate-y-1">❌</button> 
         </div>
 
     </div>
@@ -829,48 +829,48 @@
     <!-- ========================================== -->
     
     <!-- FIREBASE SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     
     <!-- DATA MODULES -->
-<script defer src="utils.js?v=9"></script>   
-<script defer src="renderer.js?v=9"></script>
-<script defer src="data-maps.js?v=9"></script>
-<script defer src="data-items.js?v=9"></script>
-<script defer src="data-entities.js?v=9"></script>
-<script defer src="data-lore.js?v=9"></script>
+    <script defer src="utils.js?v=9"></script>   
+    <script defer src="renderer.js?v=9"></script>
+    <script defer src="data-maps.js?v=9"></script>
+    <script defer src="data-items.js?v=9"></script>
+    <script defer src="data-entities.js?v=9"></script>
+    <script defer src="data-lore.js?v=9"></script>
 
-<!-- ENGINE LOGIC -->
-<script defer src="state.js?v=9"></script>
-<script defer src="config-firebase.js?v=9"></script>
-<script defer src="world.js?v=9"></script>
-<script defer src="hotbar.js?v=9"></script> 
-<script defer src="ui.js?v=9"></script>
-<script defer src="audio.js?v=9"></script> 
-<script defer src="input.js?v=9"></script>
-<script defer src="movement.js?v=9"></script> 
-<script defer src="combat.js?v=9"></script>
-<script defer src="skills.js?v=9"></script>
-<script defer src="magic.js?v=9"></script>
-<script defer src="items.js?v=9"></script>
+    <!-- ENGINE LOGIC -->
+    <script defer src="state.js?v=9"></script>
+    <script defer src="config-firebase.js?v=9"></script>
+    <script defer src="world.js?v=9"></script>
+    <script defer src="hotbar.js?v=9"></script> 
+    <script defer src="ui.js?v=9"></script>
+    <script defer src="audio.js?v=9"></script> 
+    <script defer src="input.js?v=9"></script>
+    <script defer src="movement.js?v=9"></script> 
+    <script defer src="combat.js?v=9"></script>
+    <script defer src="skills.js?v=9"></script>
+    <script defer src="magic.js?v=9"></script>
+    <script defer src="items.js?v=9"></script>
 
-<!-- EXPANSIONS -->
-<script defer src="fishing.js?v=9"></script>
-<script defer src="worldmap.js?v=9"></script>
-<script defer src="settings-backup.js?v=9"></script>
-<script defer src="fast-travel.js?v=9"></script>
-<script defer src="character-setup.js?v=9"></script>
+    <!-- EXPANSIONS -->
+    <script defer src="fishing.js?v=9"></script>
+    <script defer src="worldmap.js?v=9"></script>
+    <script defer src="settings-backup.js?v=9"></script>
+    <script defer src="fast-travel.js?v=9"></script>
+    <script defer src="character-setup.js?v=9"></script>
 
-<!-- MENUS & ECONOMY -->
-<script defer src="menus.js?v=9"></script>
-<script defer src="trade.js?v=9"></script>
-<script defer src="crafting.js?v=9"></script>
-<script defer src="stash.js?v=9"></script>
+    <!-- MENUS & ECONOMY -->
+    <script defer src="menus.js?v=9"></script>
+    <script defer src="trade.js?v=9"></script>
+    <script defer src="crafting.js?v=9"></script>
+    <script defer src="stash.js?v=9"></script>
 
-<!-- MAIN ENTRY POINT -->
-<script defer src="script.js?v=9"></script>
+    <!-- MAIN ENTRY POINT -->
+    <script defer src="script.js?v=9"></script>
 
     <!-- ========================================== -->
     <!-- INLINE BOOTLOADER LOGIC                    -->
