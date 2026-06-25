@@ -2402,10 +2402,9 @@ function clearSessionState() {
     areGlobalListenersInitialized = false; 
 }
 
-logoutButton.addEventListener('click', () => {
+logoutButton.addEventListener('click', async () => { // <--- Added async
 
-    // 0. Cancel any pending saves immediately
-
+    // 0. Cancel any pending background saves immediately
     if (saveTimeout) {
         clearTimeout(saveTimeout);
         saveTimeout = null;
@@ -2418,24 +2417,24 @@ logoutButton.addEventListener('click', () => {
             lootedTiles: Object.fromEntries(gameState.lootedTiles)
         };
 
-        // Create a clean version of the inventory before saving
         if (finalState.inventory) {
             finalState.inventory = getSanitizedInventory();
         }
 
-        // Remove ephemeral visual properties
         delete finalState.color;
         delete finalState.character;
 
-        // Save to Firestore
-        playerRef.set(sanitizeForFirebase(finalState), { merge: true }).catch(err => {
+        // 🚨 THE FIX: Await the save so it finishes BEFORE authentication is revoked!
+        try {
+            await playerRef.set(sanitizeForFirebase(finalState), { merge: true });
+        } catch (err) {
             console.error("Error saving on logout:", err);
-        });
+        }
     }
 
     // 2. Remove from Online Players list (Realtime DB)
     if (onlinePlayerRef) {
-        onlinePlayerRef.remove().catch(err => console.error(err));
+        try { await onlinePlayerRef.remove(); } catch (err) { console.error(err); }
     }
 
     // 3. Detach Firebase Listeners
@@ -2447,12 +2446,10 @@ logoutButton.addEventListener('click', () => {
     Object.values(worldStateListeners).forEach(unsubscribe => unsubscribe());
     worldStateListeners = {};
     
-    // Kill ghost listeners to prevent RTDB connection exhaustion!
     if (typeof EnemyNetworkManager !== 'undefined') {
         EnemyNetworkManager.clearAll();
     }
     
-    // Also disconnect from global chat
     if (chatListener) {
         rtdb.ref('chat').off('child_added', chatListener);
         chatListener = null;
@@ -2464,7 +2461,6 @@ logoutButton.addEventListener('click', () => {
     // 5. Sign Out
     auth.signOut().then(() => {
         console.log("Signed out successfully.");
-        // UI reset is handled by onAuthStateChanged, but we can force hide here to be snappy
         gameContainer.classList.add('hidden');
         authContainer.classList.remove('hidden');
     });
