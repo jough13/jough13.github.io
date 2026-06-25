@@ -510,7 +510,7 @@ async function processOverworldEnemyTurns() {
                         gameState.mapDirty = true;
                     }
                 }
-                return;
+                continue;
             }
             if (enemy.poisonTurns === 0) logMessage(`{gray:The ${enemy.name} is no longer poisoned.}`);
         }
