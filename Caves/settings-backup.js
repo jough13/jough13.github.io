@@ -246,7 +246,7 @@ async function restoreCloudBackup(slotId = 'latest') {
         // 2. Anti-Cheat & Injection Checks
         
         // A. Actively block restores that feature massive impossible gold/xp disparities 
-        if (data.coins > gameState.player.coins + 5000 && data.xp === gameState.player.xp) {
+        if (data.coins > gameState.player.coins + 500000 && data.xp === gameState.player.xp) {
              console.error("Suspicious Backup Blocked: Massive gold discrepancy without XP gain.");
              logMessage("{red:Reality Violation Failed.} Anomalous gold detected.");
              if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
