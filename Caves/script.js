@@ -3053,7 +3053,7 @@ function gameLoop(timestamp) {
         }
     }
 
-    if (window.inputQueue && window.inputQueue.length > 0 && Date.now() - lastActionTime >= currentCooldown) {
+    if (!isProcessingMove && window.inputQueue && window.inputQueue.length > 0 && Date.now() - lastActionTime >= currentCooldown) {
         const key = window.inputQueue.shift(); // Pulls the oldest key pressed
         handleInput(key);
     }
