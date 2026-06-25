@@ -4,7 +4,7 @@
 // TRADE & ECONOMY SYSTEM
 // ==========================================
 
-// PERFORMANCE WIN: O(1) Item Lookup Cache for Trading
+// O(1) Item Lookup Cache for Trading
 // Prevents O(N) string-matching scans against the massive ITEM_DATA dictionary every time you buy an item.
 // Attaching to window prevents hot-reload SyntaxErrors!
 window._tradeItemKeyCache = window._tradeItemKeyCache || {};
@@ -17,7 +17,7 @@ function getTradeItemKey(name) {
     return key;
 }
 
-// PERFORMANCE WIN: Cache DOM lookups for the shop UI
+// Cache DOM lookups for the shop UI
 const _tradeDOMCache = {
     buyList: null,
     sellList: null,
@@ -225,8 +225,9 @@ function handleBuyItem(itemName, amount = 1) {
         });
     }
 
-    if (typeof playerRef !== 'undefined') {
-        playerRef.update({
+    // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer instead of instantaneous save!
+    if (typeof triggerDebouncedSave === 'function') {
+        triggerDebouncedSave({
             coins: player.coins,
             inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
         });
@@ -290,9 +291,9 @@ function handleSellItem(itemIndex, amount = 1) {
         player.inventory.splice(itemIndex, 1);
     }
 
-    // Update database and UI
-    if (typeof playerRef !== 'undefined') {
-        playerRef.update({
+    // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer instead of instantaneous save!
+    if (typeof triggerDebouncedSave === 'function') {
+        triggerDebouncedSave({
             coins: player.coins,
             inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
         });
@@ -348,9 +349,9 @@ function handleSellAllItems() {
         }
         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
-        // Save and Update UI
-        if (typeof playerRef !== 'undefined') {
-            playerRef.update({
+        // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer instead of instantaneous save!
+        if (typeof triggerDebouncedSave === 'function') {
+            triggerDebouncedSave({
                 coins: player.coins,
                 inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
             });
