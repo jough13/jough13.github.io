@@ -153,13 +153,14 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '🎒', '#60a5fa');
     }
 
-    // Save and Render.
-    if (typeof playerRef !== 'undefined' && playerRef) {
-        playerRef.update({ 
+    // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer instead of instantaneous save!
+    if (typeof triggerDebouncedSave === 'function') {
+        triggerDebouncedSave({ 
             inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
             bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
         });
     }
+
     renderStash();
     renderInventory();
 };
@@ -206,12 +207,14 @@ window.depositAllMaterials = function() {
         // Auto-sort the stash cleanly after a mass dump
         window.sortStash(false); // pass false to skip playing the step sound again
         
-        if (typeof playerRef !== 'undefined' && playerRef) {
-            playerRef.update({ 
+        // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer
+        if (typeof triggerDebouncedSave === 'function') {
+            triggerDebouncedSave({ 
                 inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
                 bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
             });
         }
+
         renderStash();
         renderInventory();
     } else {
@@ -257,12 +260,14 @@ window.quickStackToStash = function() {
         
         window.sortStash(false);
         
-        if (typeof playerRef !== 'undefined' && playerRef) {
-            playerRef.update({ 
+        // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer
+        if (typeof triggerDebouncedSave === 'function') {
+            triggerDebouncedSave({ 
                 inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
                 bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
             });
         }
+
         renderStash();
         renderInventory();
     } else {
@@ -309,9 +314,11 @@ window.sortStash = function(playSound = true) {
         AudioSystem.playStep();
     }
 
-    if (typeof playerRef !== 'undefined' && playerRef) {
-        playerRef.update({ bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank });
+    // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer
+    if (typeof triggerDebouncedSave === 'function') {
+        triggerDebouncedSave({ bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank });
     }
+
     renderStash();
 };
 
