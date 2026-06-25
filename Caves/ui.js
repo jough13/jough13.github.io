@@ -1123,7 +1123,6 @@ attachCloseFocus(closeQuestButton);
 attachCloseFocus(closeShopButton);
 attachCloseFocus(closeCraftingButton);
 attachCloseFocus(closeSkillTrainerButton);
-attachCloseFocus(document.getElementById('closeStashButton'));
 attachCloseFocus(document.getElementById('closeCollectionsButton'));
 attachCloseFocus(closeLoreButton);
 attachCloseFocus(document.getElementById('closeMapButton'));
