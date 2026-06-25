@@ -290,6 +290,13 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
     isProcessingMove = true;
 
     try {
+        // 🚨 SECURITY FIX: Re-verify resource cost!
+        if (player[skillData.costType] < skillData.cost) {
+            logMessage(`{red:You lack the ${skillData.costType} to execute this skill!}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
         // Calculate Damage
         const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
         const playerStrength = player.strength + (player.strengthBonus || 0);
@@ -470,6 +477,13 @@ async function executeRangedAttack(dirX, dirY) {
     isProcessingMove = true;
 
     try {
+        // 🚨 SECURITY FIX: Re-verify resource cost!
+        if (player.stamina < skillData.cost) {
+            logMessage(`{red:You lack the stamina to draw the string!}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
         // --- 1. Deduct Cost ---
         player.stamina -= skillData.cost;
         let hitSomething = false;
@@ -737,6 +751,13 @@ async function executeLunge(dirX, dirY) {
     isProcessingMove = true;
 
     try {
+        // 🚨 SECURITY FIX: Re-verify resource cost!
+        if (player.stamina < skillData.cost) {
+            logMessage(`{red:You lack the stamina to lunge!}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
         // --- 1. Deduct Cost ---
         player.stamina -= skillData.cost;
 
@@ -859,6 +880,13 @@ function executeQuickstep(dirX, dirY) {
     const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA['quickstep'] : null;
     if (!skillData) return;
 
+    // 🚨 SECURITY FIX: Re-verify resource cost!
+    if (player.stamina < skillData.cost) {
+        logMessage(`{red:You are too exhausted to quickstep!}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
+    }
+
     // Move 2 tiles
     const targetX = player.x + (dirX * 2);
     const targetY = player.y + (dirY * 2);
@@ -943,6 +971,13 @@ function executePacify(dirX, dirY) {
     const player = gameState.player;
     const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA["pacify"] : null;
     if (!skillData) return;
+
+    // 🚨 SECURITY FIX: Re-verify resource cost!
+    if (player.psyche < skillData.cost) {
+        logMessage(`{red:Your mind is too clouded to cast this. (Not enough Psyche)}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
+    }
 
     // --- 1. Deduct Cost ---
     player.psyche -= skillData.cost;
@@ -1035,6 +1070,13 @@ function executeTame(dirX, dirY) {
     const player = gameState.player;
     const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA["tame"] : null;
     if (!skillData) return;
+
+    // 🚨 SECURITY FIX: Re-verify resource cost!
+    if (player.psyche < skillData.cost) {
+        logMessage(`{red:Your mind is too clouded to tame this beast. (Not enough Psyche)}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
+    }
 
     // 1. Deduct Cost
     player.psyche -= skillData.cost;
@@ -1146,6 +1188,13 @@ function executeInflictMadness(dirX, dirY) {
     const player = gameState.player;
     const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA["inflictMadness"] : null;
     if (!skillData) return;
+
+    // 🚨 SECURITY FIX: Re-verify resource cost!
+    if (player.psyche < skillData.cost) {
+        logMessage(`{red:Your mind is too clouded to assault another's. (Not enough Psyche)}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
+    }
 
     // --- 1. Deduct Cost ---
     player.psyche -= skillData.cost;
