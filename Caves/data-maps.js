@@ -86,11 +86,22 @@ window.TILE_DATA = {
 
             if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 500); // Rummage sound
             
-            // Drop the thematic loot!
             const itemTemplate = window.ITEM_DATA[loot];
             if (state.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
-                state.player.inventory.push({ ...itemTemplate, quantity: 1 });
+                // BUG FIX: Create a clean copy instead of using spread operator
+                state.player.inventory.push({ 
+                    templateId: loot,
+                    name: itemTemplate.name,
+                    type: itemTemplate.type,
+                    quantity: 1,
+                    tile: itemTemplate.tile || loot
+                });
                 logMessage(`{purple:You salvaged a ${itemTemplate.name}.}`);
+            } else {
+                // BUG FIX: Drop the item if inventory is full to prevent deleting it
+                logMessage(`{red:You salvaged a ${itemTemplate.name}, but your pack is full! It drops to the ground.}`);
+                if (state.mapMode === 'overworld') chunkManager.setWorldTile(x, y, loot, 24);
+                state.mapDirty = true;
             }
 
             state.lootedTiles.add(tileId);
@@ -273,6 +284,10 @@ window.TILE_DATA = {
                 state.mapMode = 'dungeon';
                 state.currentCaveId = 'tomb_of_alaric';
                 state.currentCaveTheme = 'VOID'; // Dark, corrupted room
+                
+                // BUG FIX: Inject the theme explicitly so renderer.js doesn't crash!
+                chunkManager.caveThemes['tomb_of_alaric'] = 'VOID'; 
+                
                 state.overworldExit = { x: state.player.x, y: state.player.y };
 
                 // Generate a custom 9x9 Boss Arena
@@ -359,7 +374,8 @@ window.TILE_DATA = {
                 };
 
                 const starBtn = document.getElementById('forgeStar');
-                if (starBtn) starBtn.onclick = () => {
+                if (starBtn) starBtn.onclick = (e) => {
+                    e.target.disabled = true; // BUG FIX: Prevent Double Clicks
                     if (inv.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
                         logMessage("{red:Inventory Full!}"); 
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -383,7 +399,8 @@ window.TILE_DATA = {
                 };
 
                 const abyssBtn = document.getElementById('forgeAbyss');
-                if (abyssBtn) abyssBtn.onclick = () => {
+                if (abyssBtn) abyssBtn.onclick = (e) => {
+                    e.target.disabled = true; // BUG FIX: Prevent Double Clicks
                     if (inv.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
                         logMessage("{red:Inventory Full!}"); 
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -446,7 +463,6 @@ window.TILE_DATA = {
                         const shieldKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === 'Aegis of the Ancients') || '🛡️a';
                         inv.push({ templateId: shieldKey, name: 'Aegis of the Ancients', type: 'armor', tile: '🛡️', quantity: 1, defense: 8, slot: 'armor' });
                     } else {
-                        // --- FIX: DROP REWARD ON FULL INVENTORY ---
                         const shieldKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === 'Aegis of the Ancients') || '🛡️a';
                         logMessage("{red:Your inventory is full! The Aegis drops to the ground.}");
                         
@@ -1016,7 +1032,8 @@ window.TILE_DATA = {
                 if (loreModal) loreModal.classList.remove('hidden');
                 
                 setTimeout(() => {
-                    document.getElementById('claimMapReward').onclick = () => {
+                    document.getElementById('claimMapReward').onclick = (e) => {
+                        e.target.disabled = true; // BUG FIX: Prevent Double Click Exploit
                         state.player.cartographerProgress = (state.player.cartographerProgress || 0) + 1;
                         state.player.coins += 100;
                         if (typeof grantXp === 'function') grantXp(150);
@@ -1080,8 +1097,36 @@ window.TILE_DATA = {
             // 10% Trickster Teleport
             if (Math.random() < 0.10) {
                 logMessage("{red:The Fae play a trick on you! You are swept away through the leylines!}");
-                state.player.x += (Math.floor(Math.random() * 100) - 50);
-                state.player.y += (Math.floor(Math.random() * 100) - 50);
+                
+                // BUG FIX: Ensure the Fairy Ring doesn't teleport players inside a mountain or into deep water!
+                let nx = state.player.x + (Math.floor(Math.random() * 100) - 50);
+                let ny = state.player.y + (Math.floor(Math.random() * 100) - 50);
+                
+                let foundSafeSpot = false;
+                for (let r = 0; r <= 5; r++) {
+                    if (foundSafeSpot) break;
+                    for (let dy = -r; dy <= r; dy++) {
+                        for (let dx = -r; dx <= r; dx++) {
+                            let t = chunkManager.getTile(nx + dx, ny + dy);
+                            // Valid landing zones
+                            if (['.', 'F', 'd', 'D'].includes(t)) {
+                                state.player.x = nx + dx;
+                                state.player.y = ny + dy;
+                                foundSafeSpot = true;
+                                break;
+                            }
+                        }
+                        if (foundSafeSpot) break;
+                    }
+                }
+                
+                // Absolute Failsafe
+                if (!foundSafeSpot) {
+                    state.player.x = 0;
+                    state.player.y = 0;
+                }
+                
+                state.mapDirty = true;
             }
 
             state.lootedTiles.add(tileId);
