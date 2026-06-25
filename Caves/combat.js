@@ -1471,7 +1471,8 @@ async function runCompanionTurn() {
 
                 try {
                     const txResult = await window.withTimeout(enemyRef.transaction(currentData => {
-                        if (!currentData) return undefined;
+                        // Return null instead of undefined
+                        if (currentData === null) return null;
                         
                         let enemy = JSON.parse(JSON.stringify(currentData));
                         enemy.health = Number(enemy.health);
@@ -1536,20 +1537,22 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
     try {
         const doTransaction = () => enemyRef.transaction(currentData => {
-            if (!currentData) return undefined; 
-            
-            // DEEP CLONE to absolutely prevent Firebase maxretry mutation bugs
-            let enemy = JSON.parse(JSON.stringify(currentData));
-            
-            enemy.health = Number(enemy.health);
-            if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
-            
-            enemy.health -= safeDamage;
-            
-            if (enemy.health <= 0) return null; 
-            
-            return enemy; 
-        });
+        // Return null instead of undefined. 
+        // This forces Firebase to ping the server to see if the enemy actually exists!
+        if (currentData === null) return null; 
+        
+        // DEEP CLONE to absolutely prevent Firebase maxretry mutation bugs
+        let enemy = JSON.parse(JSON.stringify(currentData));
+        
+        enemy.health = Number(enemy.health);
+        if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+        
+        enemy.health -= safeDamage;
+        
+        if (enemy.health <= 0) return null; 
+        
+        return enemy; 
+    });
 
         let transactionResult;
         if (typeof window.withTimeout === 'function') {
