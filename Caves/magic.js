@@ -588,6 +588,19 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             cost = Math.floor(cost * 0.8);
         }
 
+        // Re-verify the player still has the resources to cast this!
+        // This prevents the exploit where a player aims, drops their mana gear, and fires into negative mana.
+        if (player[spellData.costType] < cost) {
+            logMessage(`{red:You no longer have the ${spellData.costType} required to cast this!}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            
+            // Flash the specific UI bar so they know why it failed
+            const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[spellData.costType] : document.getElementById(`${spellData.costType}Display`);
+            if (displayEl && typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false);
+            
+            return; // Abort execution
+        }
+
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
 
         let hitSomething = false;
