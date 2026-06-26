@@ -1405,6 +1405,9 @@ async function attemptMovePlayer(newX, newY) {
         }
     }
 
+    // Calculate the base stamina cost of the tile we are stepping onto
+    let moveCost = (typeof TERRAIN_COST !== 'undefined' && TERRAIN_COST[newTile] !== undefined) ? TERRAIN_COST[newTile] : 1;
+
     // --- MOUNT EXPANSION: STAMINA & SIEGE PERKS ---
     if (gameState.player.isMounted && gameState.player.companion) {
         moveCost = 0; // Mounts take the stamina hit (free for player)
