@@ -47,7 +47,10 @@ function renderHotbar() {
             const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[abilityId] : null;
             const spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[abilityId] : null;
             
-            // Check if the ID belongs to an item
+            // THE FIX: Check actual player inventory first for dynamically generated items (like magic weapons)
+            let invItem = player.inventory.find(i => i.name === abilityId || i.templateId === abilityId);
+            
+            // Fallback to raw database check if not in inventory
             let itemData = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[abilityId] : null;
             if (!itemData && typeof ITEM_DATA !== 'undefined') {
                 const itemKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === abilityId);
@@ -87,17 +90,18 @@ function renderHotbar() {
                     cdOverlay.textContent = cooldowns[abilityId];
                     slotDiv.appendChild(cdOverlay);
                 }
-            } else if (itemData) {
+            } else if (invItem || itemData) {
+                // Determine the best name and icon to use
+                const displayName = invItem ? invItem.name : itemData.name;
+                const displayTile = invItem ? (invItem.tile || '🎒') : (itemData.tile || '🎒');
+                const qty = invItem ? invItem.quantity : 0;
+                
                 // It's an item! Show the emoji icon
                 const iconSpan = document.createElement('span');
                 iconSpan.className = "font-bold text-2xl drop-shadow-md";
-                iconSpan.textContent = itemData.tile || '🎒';
+                iconSpan.textContent = displayTile;
                 
-                // Get current quantity from inventory
-                const invItem = player.inventory.find(i => i.name === itemData.name || i.templateId === abilityId);
-                const qty = invItem ? invItem.quantity : 0;
-                
-                slotDiv.title = `[${hotkeyNumber}] ${itemData.name} (Qty: ${qty})\n(Right-click to unbind)`;
+                slotDiv.title = `[${hotkeyNumber}] ${displayName} (Qty: ${qty})\n(Right-click to unbind)`;
                 slotDiv.appendChild(iconSpan);
                 
                 // Show quantity badge
@@ -127,6 +131,17 @@ function useHotbarSlot(index) {
     const abilityId = player.hotbar[index];
     if (!abilityId) return;
 
+    // THE FIX: Safe shake animation trigger
+    const triggerSlotShake = () => {
+        const slotEl = document.getElementById(`hotbarSlot-${index}`);
+        if (slotEl) {
+            slotEl.classList.remove('shake');
+            void slotEl.offsetWidth; // Trigger reflow
+            slotEl.classList.add('shake');
+            slotEl.onanimationend = () => slotEl.classList.remove('shake');
+        }
+    };
+
     const cooldowns = player.cooldowns || {};
     if (cooldowns[abilityId] > 0) {
         // LORE WIN: Thematic cooldown messages instead of generic errors
@@ -141,13 +156,7 @@ function useHotbarSlot(index) {
         logMessage(cdMsg);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         
-        // JUICE WIN: Shake the slot to indicate it's blocked
-        const slotEl = document.getElementById(`hotbarSlot-${index}`);
-        if (slotEl) {
-            slotEl.classList.remove('shake');
-            void slotEl.offsetWidth; // Trigger reflow
-            slotEl.classList.add('shake');
-        }
+        triggerSlotShake();
         return;
     }
 
@@ -184,13 +193,7 @@ function useHotbarSlot(index) {
             logMessage(`{gray:You don't have any more of that item in your bag.}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             
-            // JUICE WIN: Shake the empty slot to indicate you've run out!
-            const slotEl = document.getElementById(`hotbarSlot-${index}`);
-            if (slotEl) {
-                slotEl.classList.remove('shake');
-                void slotEl.offsetWidth; 
-                slotEl.classList.add('shake');
-            }
+            triggerSlotShake();
         }
     }
 }
@@ -204,6 +207,11 @@ function assignToHotbar(abilityId) {
     if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) readableName = SKILL_DATA[abilityId].name;
     else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) readableName = SPELL_DATA[abilityId].name;
     else if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) readableName = ITEM_DATA[abilityId].name;
+    else {
+        // Fallback for custom magic items generated in the player's inventory
+        const invItem = player.inventory.find(i => i.templateId === abilityId || i.name === abilityId);
+        if (invItem) readableName = invItem.name;
+    }
 
     // QoL / BUG FIX: Prevent binding the exact same spell to multiple slots
     const existingIndex = hotbar.indexOf(abilityId);
@@ -255,7 +263,10 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
     
     // Left Click (Use Ability)
     hotbarContainerEl.addEventListener('click', (e) => {
-        if (gameState.inventoryMode) return; 
+        
+        // THE FIX: Check for ANY open modal, not just inventory!
+        // Prevents accidentally throwing a bomb while trying to buy something in a shop!
+        if (typeof _modalCache !== 'undefined' && _modalCache.isAnyOpen()) return; 
         
         const slotDiv = e.target.closest('.hotbar-slot');
         if (slotDiv) {
