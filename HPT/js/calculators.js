@@ -1758,13 +1758,26 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     const effective_inv_sq = (4 * geoFraction) / Math.pow(r_det_m, 2);
                     const doseRate_uR_hr = (gamma * A_Ci * effective_inv_sq) * 1e6;
 
-                    // A. Determine primary gamma energy FIRST so we can use it for shielding
+                    // A. Determine dominant gamma energy FIRST so we can use it for shielding
                     let primaryGamma_keV = 662; 
                     if (selectedNuclide.emissionEnergies?.gamma?.length > 0) {
-                        const match = selectedNuclide.emissionEnergies.gamma[0].match(/([\d.]+)\s*(MeV|keV)/i);
-                        if (match) {
-                            primaryGamma_keV = safeParseFloat(match[1]) * (match[2].toLowerCase() === 'mev' ? 1000 : 1);
-                        }
+                        let maxWeight = -1;
+                        selectedNuclide.emissionEnergies.gamma.forEach(gStr => {
+                            const match = gStr.match(/([\d.]+)\s*(MeV|keV)/i);
+                            if (match) {
+                                let e_keV = safeParseFloat(match[1]) * (match[2].toLowerCase() === 'mev' ? 1000 : 1);
+                                let yieldPct = 100; // default if not specified
+                                const yieldMatch = gStr.match(/\(([\d.]+)%\)/);
+                                if (yieldMatch) yieldPct = safeParseFloat(yieldMatch[1]);
+                                
+                                // Weight by Energy * Yield (rough approximation of dose contribution)
+                                let weight = e_keV * yieldPct;
+                                if (weight > maxWeight) {
+                                    maxWeight = weight;
+                                    primaryGamma_keV = e_keV;
+                                }
+                            }
+                        });
                     }
 
                     // B. Shielding transmission with Dynamic HVL scaling
