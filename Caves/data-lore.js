@@ -27,13 +27,13 @@ window.LORE_SETS = {
         name: "Notes from the Void",
         description: "Forbidden research notes left by the First Mage detailing the architecture of the multiverse.",
         bonus: "Clarity: +10 Max Mana.",
-        items: ["3", "j", "4"] 
+        items: ["3", "j", "4"] // Refers to Burned Scroll, Acolyte's Scribblings, Mad Scrawlings
     },
     "adventurer_tips": {
         name: "The Survivalist's Guide",
         description: "Scraps of practical advice left by those who came before and perished.",
         bonus: "Hardy: Hunger/Thirst drain 10% slower.",
-        items: ["1", "2", "q"] 
+        items: ["1", "2", "q"] // Refers to Conscript's Orders, Thief's Map, Bandit's Note
     },
     "deep_delver": {
         name: "The Deep Delver",
@@ -104,7 +104,12 @@ window.LORE_STONE_MESSAGES = [
     "The clockwork guardians do not hate you. They simply do not care.",
     "The Cult of the Shadowed Hand seeks to reforge the shattered crown.",
     "Heed the Cartographer's warnings. There are places where the map ends for a reason.",
-    "Some dimensions were abandoned by their creators. Do not linger in them."
+    "Some dimensions were abandoned by their creators. Do not linger in them.",
+    "The stars you see are not suns. They are the campfires of the gods who abandoned us.",
+    "Only a fool plants a Cloudseed indoors. The heavens cannot be contained.",
+    "Death is not an end here, merely a shift in the leylines. The Void spits us back out.",
+    "Before there were castles, there were the Crystal Spires. The dwarves shattered them out of greed.",
+    "The fairies trade in memories, not gold. A Memory Shard is worth a fortune in the Deep Woods."
 ];
 
 // ==========================================
@@ -136,7 +141,12 @@ window.LORE_PLAINS = [
     "The grass here is entirely grey, drained of all color.",
     "A flock of crows takes off suddenly, startled by something unseen.",
     "You step on a cracked shield bearing an unrecognized crest.",
-    "The air smells sweet, like blooming clover and old ozone."
+    "The air smells sweet, like blooming clover and old ozone.",
+    "A shattered compass lies in the dirt. The needle spins wildly.",
+    "The grass is neatly trampled in a path leading nowhere.",
+    "You find a solitary, beautifully carved wooden chair sitting in the middle of nowhere.",
+    "A faint, spectral chime echoes across the plain, then fades.",
+    "A ring of white stones surrounds a patch of dead earth."
 ];
 
 window.LORE_FOREST = [
@@ -164,7 +174,12 @@ window.LORE_FOREST = [
     "The wind whistling through the branches sounds like a choir.",
     "A massive web stretches between two oaks. The weaver is nowhere to be seen.",
     "You see a pair of glowing yellow eyes fade into the brush.",
-    "A single Moonbloom petal rests on a fern, faintly glowing."
+    "A single Moonbloom petal rests on a fern, faintly glowing.",
+    "The bark of the tree beside you resembles a screaming human face.",
+    "You find a campsite. The fire is still warm, but the packs are slashed to ribbons.",
+    "The trees here are entirely petrified, their leaves made of sharp, brittle stone.",
+    "A beautiful, melancholy humming emanates from a hollow stump.",
+    "A trail of golden pollen leads into the thicket, then suddenly ends."
 ];
 
 window.LORE_MOUNTAIN = [
@@ -192,7 +207,12 @@ window.LORE_MOUNTAIN = [
     "The stars seem unnaturally close at this altitude.",
     "You find a patch of star-metal embedded in a crater.",
     "A giant feather, hard as steel, is wedged between two boulders.",
-    "You spot a massive, perfect circle bored straight through a peak."
+    "You spot a massive, perfect circle bored straight through a peak.",
+    "The rocks here are highly magnetic. Your weapons feel heavier.",
+    "A rusted iron cage hangs suspended over a terrifying gorge.",
+    "You find an enormous shedding of reptilian skin, glittering with frost.",
+    "An ancient, massive chain is bolted to the cliff face, leading up into the clouds.",
+    "The wind carries the faint scent of sulfur and roasting meat."
 ];
 
 window.LORE_SWAMP = [
@@ -216,7 +236,11 @@ window.LORE_SWAMP = [
     "The water here is perfectly reflective, but it shows someone else's face.",
     "You see the silhouette of a massive serpent gliding just beneath the surface.",
     "A willow tree weeps black sap into the stagnant water.",
-    "The buzzing of insects here is loud enough to drown out your own thoughts."
+    "The buzzing of insects here is loud enough to drown out your own thoughts.",
+    "A bloated, floating corpse drifts past you. It is wearing royal armor.",
+    "The mud begins to bubble violently, releasing a cloud of purple spores.",
+    "A half-sunken chest is chained to a heavy anvil at the bottom of a pool.",
+    "The fireflies here pulse in unison, like a single beating heart."
 ];
 
 window.LORE_DESERT = [
@@ -234,7 +258,12 @@ window.LORE_DESERT = [
     "A massive shadow sweeps over the dunes, but there are no clouds.",
     "Half of an ancient stone tablet juts from the sand.",
     "You step on a scorpion shell the size of a shield.",
-    "The wind hisses through a hollow, fossilized ribcage."
+    "The wind hisses through a hollow, fossilized ribcage.",
+    "A colossal, half-buried statue of a jackal stares blankly at the sky.",
+    "You find a perfect circle of sand that is freezing cold to the touch.",
+    "A dead oasis lies ahead. The palm trees are petrified into black stone.",
+    "The sand here shifts colors, fading from red to deep purple as you step on it.",
+    "You hear the faint, melodic sound of bells chiming over the next dune."
 ];
 
 window.LORE_DEADLANDS = [
@@ -251,7 +280,13 @@ window.LORE_DEADLANDS = [
     "A torn banner bearing an unknown crest flutters weakly.",
     "You hear the faint, haunting sound of a weeping child. You dare not follow it.",
     "A colossal sword, big as a watchtower, is embedded in the plains.",
-    "The sky above the deadlands is always a bruising, bruised purple."
+    "The sky above the deadlands is always a bruising, bruised purple.",
+    "The shadows here point towards the sun, defying the light.",
+    "A pool of standing water here reflects a starry night sky, even at noon.",
+    "You step on a brittle skull that shatters into perfectly square fragments.",
+    "An unlit campfire. The logs are made of bone instead of wood.",
+    "A colossal, rusted chain links the blasted earth directly to a low-hanging cloud.",
+    "The ash drifts upward, falling back toward the sky from whence it came."
 ];
 
 // ==========================================
@@ -324,7 +359,8 @@ window.VILLAGER_RUMORS = [
     "Don't go to the Colosseum in the deadlands. I knew a warrior who went to fight in the Arena. He never came back.",
     "The Inquisitor pays top gold for Cultist amulets. He's trying to root out the Shadowed Hand.",
     "Some say the {purple:Void Astrolabe} doesn't just teleport you... it takes you to a {purple:parallel dimension} altogether.",
-    "If the Leylines ever go down, or you get trapped in an alternate dimension, just strike a {cyan:Prime Tuning Fork} to return home."
+    "If the Leylines ever go down, or you get trapped in an alternate dimension, just strike a {cyan:Prime Tuning Fork} to return home.",
+    "I hear if your bags are completely full and you try to pull a soggy chest from the ocean, whatever is inside drops right into the water. Poof. Gone."
 ];
 
 // ==========================================
@@ -370,7 +406,10 @@ window.RANDOM_JOURNAL_PAGES = [
     "If you stand on the edge of the world, where the map turns to nothing, you can hear the servers humming.",
     "The Akashic Records remember every soul that has died here. Sometimes, when the wind is right, you can hear them updating.",
     "I met a traveler who said he was from a 'Shattered Realm'. He looked exactly like me, but with a scar over his eye. Then he struck a tuning fork and vanished.",
-    "Do not trust the alternate dimensions. I spent a week in one where the oceans were lava. I barely made it back to the Prime Realm alive."
+    "Do not trust the alternate dimensions. I spent a week in one where the oceans were lava. I barely made it back to the Prime Realm alive.",
+    "The {purple:Void Blade} whispers to me when I hold it. It tells me to strike my friends. It promises me the world.",
+    "We breached the vault, but it was empty. Only a hovering mirror remained, and my reflection was smiling while I frowned.",
+    "I drank the Elixir of Power. My veins feel like they are filled with lightning. I can see the magic pulsing through the trees."
 ];
 
 window.LORE_FRAGMENTS = [
@@ -388,7 +427,8 @@ window.LORE_FRAGMENTS = [
     "I saw a man in robes freeze the river and walk across it. Witchcraft.",
     "To whom it may concern: The chest in the dark castle is trapped. Signed, Lefty.",
     "We dug up an ancient idol in the deadlands. It hums. I can't sleep.",
-    "The tuning fork resonates with a frequency that gives me a migraine. It points nowhere."
+    "The tuning fork resonates with a frequency that gives me a migraine. It points nowhere.",
+    "Deliver this sealed package to the Inquisitor immediately. Do not open it. Do not look inside. - R."
 ];
 
 // ==========================================
@@ -423,264 +463,267 @@ window.VISIONS_OF_THE_PAST = [
     "A VISION: You see an ancient archmage holding an astrolabe. He turns a dial, and the entire landscape dissolves into a grid of green numbers. Then, the Void takes him.",
     "A VISION: The sky cracks like glass. A colossal eye stares through the fissure. You cannot look away.",
     "A VISION: A woman rides a monstrous wolf across the plains, outrunning a storm of black ash.",
-    "A VISION: You see the roots of the world. They are not wood, but thick cables of humming purple light."
+    "A VISION: You see the roots of the world. They are not wood, but thick cables of humming purple light.",
+    "A VISION: You are underwater, sinking into the abyss. A massive, glowing eye opens beneath you. It is larger than a city.",
+    "A VISION: A hooded figure places the Sun Shard, the Moon Tear, and the Void Crystal on a pedestal. Reality shatters with a sound like breaking glass."
 ];
 
 // ==========================================
 // RIDDLE DATA (Statues)
 // ==========================================
 // PERFORMANCE: All answers are strictly lowercase to prevent case-conversion misses!
+// BUG FIX: Massively expanded synonym arrays to prevent unfair player punishment!
 
 window.RIDDLE_DATA = [
     {
         id: "fire",
         question: "I have no mouth, but I always consume. I have no life, but I must be fed. What am I?",
-        answers: ["fire", "flame", "campfire"],
+        answers: ["fire", "a fire", "the fire", "flame", "a flame", "the flame", "campfire"],
         reward: "strength", 
         message: "{red:The statue's eyes glow red. You feel a surge of physical power.}"
     },
     {
         id: "shadow",
         question: "The more of me there is, the less you see. What am I?",
-        answers: ["darkness", "dark", "shadow", "night"],
+        answers: ["darkness", "the darkness", "dark", "the dark", "shadow", "a shadow", "shadows", "the shadows", "night", "the night"],
         reward: "wits", 
         message: "{blue:The statue seems to vanish for a moment. Your mind sharpens.}"
     },
     {
         id: "echo",
         question: "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?",
-        answers: ["echo", "an echo"],
+        answers: ["echo", "an echo", "the echo", "echoes"],
         reward: "psyche", 
         message: "{purple:A whisper surrounds you. Your will is strengthened.}"
     },
     {
         id: "silence",
         question: "I am so fragile that if you say my name, you break me. What am I?",
-        answers: ["silence", "a secret", "secret"],
+        answers: ["silence", "the silence", "quiet", "the quiet", "a secret", "secret", "the secret"],
         reward: "dexterity", 
         message: "{green:The world goes quiet. You feel lighter and faster.}"
     },
     {
         id: "coin",
         question: "I have a head and a tail, but no body. What am I?",
-        answers: ["coin", "a coin", "gold coin"],
+        answers: ["coin", "a coin", "the coin", "gold coin", "a gold coin", "money", "penny"],
         reward: "charisma", 
         message: "{gold:The statue nods slowly. You feel more persuasive.}"
     },
     {
         id: "mountain",
         question: "What has roots as nobody sees, Is taller than trees, Up, up it goes, And yet never grows?",
-        answers: ["mountain", "a mountain", "mountains"],
+        answers: ["mountain", "a mountain", "the mountain", "mountains", "the mountains", "hill", "a hill"],
         reward: "constitution", 
         message: "{green:The stone beneath your feet trembles. You feel unyielding.}"
     },
     {
         id: "river",
         question: "I can run but never walk, have a mouth but never talk, have a head but never weep, have a bed but never sleep. What am I?",
-        answers: ["river", "a river", "water", "stream"],
+        answers: ["river", "a river", "the river", "water", "the water", "stream", "a stream", "brook", "creek"],
         reward: "endurance", 
         message: "{blue:A rush of cool air washes over you. Your breath comes easier.}"
     },
     {
         id: "map",
         question: "I have cities, but no houses. I have mountains, but no trees. I have water, but no fish. What am I?",
-        answers: ["map", "a map", "maps"],
+        answers: ["map", "a map", "the map", "maps", "atlas", "an atlas", "globe", "a globe"],
         reward: "perception", 
         message: "{gold:The statue's blank eyes seem to focus. Your vision pierces the veil.}"
     },
     {
         id: "hole",
         question: "I am weightless, but you can see me. Put me in a bucket, and I'll make it lighter. What am I?",
-        answers: ["hole", "a hole"],
+        answers: ["hole", "a hole", "the hole", "holes"],
         reward: "luck", 
         message: "{gold:A faint, echoing chuckle comes from the stone. You feel oddly fortunate.}"
     },
     {
         id: "footsteps",
         question: "The more you take, the more you leave behind. What am I?",
-        answers: ["footsteps", "steps", "foot step", "step"],
+        answers: ["footsteps", "steps", "foot step", "step", "a step", "footprints", "footprint", "prints"],
         reward: "intuition", 
         message: "{purple:The dust settles around the statue's base. Your instincts sharpen.}"
     },
     {
         id: "few",
         question: "I am a word of letters three, add two and fewer there will be. What am I?",
-        answers: ["few"],
+        answers: ["few", "a few", "the word few"],
         reward: "wits", 
         message: "{blue:The statue seems to smile. Your mind expands.}"
     },
     {
         id: "volcano",
         question: "I wear a stone coat and have a fiery heart. When I wake, the world trembles. What am I?",
-        answers: ["volcano", "a volcano", "mountain", "magma"],
+        answers: ["volcano", "a volcano", "the volcano", "mountain", "magma", "lava"],
         reward: "constitution", 
         message: "{red:Heat radiates from the stone. You feel an inner fire ignite.}"
     },
     {
         id: "frost",
         question: "I build bridges of silver and crowns of ice. I halt the fastest river. What am I?",
-        answers: ["cold", "frost", "winter", "ice", "freezing", "snow"],
+        answers: ["cold", "the cold", "frost", "the frost", "winter", "ice", "the ice", "freezing", "snow"],
         reward: "willpower", 
         message: "{cyan:A chill runs down your spine. Your resolve hardens like ice.}"
     },
     {
         id: "wind",
         question: "I bite without teeth, I strike without hands, I howl without a voice. What am I?",
-        answers: ["wind", "the wind", "a storm", "storm"],
+        answers: ["wind", "the wind", "a storm", "storm", "the storm", "breeze", "air", "the air", "gale"],
         reward: "dexterity", 
         message: "{green:A gust of wind pushes you forward. You feel incredibly agile.}"
     },
     {
         id: "gold",
         question: "I have no sword, but I conquer kings. I have no voice, but I command armies. What am I?",
-        answers: ["gold", "money", "coin", "wealth", "treasure", "coins"],
+        answers: ["gold", "money", "coin", "wealth", "treasure", "coins", "greed"],
         reward: "charisma", 
         message: "{gold:The statue bows slightly. You feel a commanding presence within.}"
     },
     {
         id: "rain",
         question: "I fall from the sky but never break. I weep constantly, though I have no eyes. What am I?",
-        answers: ["rain", "the rain", "water", "a raindrop", "storm"],
+        answers: ["rain", "the rain", "water", "a raindrop", "storm", "tears", "raindrops"],
         reward: "endurance", 
         message: "{blue:A single drop of water falls on your brow. You feel refreshed and tireless.}"
     },
     {
         id: "time",
         question: "This thing all things devours: Birds, beasts, trees, flowers; Gnaws iron, bites steel; Grinds hard stones to meal. What am I?",
-        answers: ["time", "age"],
+        answers: ["time", "age", "aging", "the passing of time"],
         reward: "intuition", 
         message: "{purple:The stone seems to age a thousand years in an instant. You grasp the flow of eternity.}"
     },
     {
         id: "memory",
         question: "I can bring back the dead. I can make you cry, make you laugh, make you young. Born in an instant, yet I last a lifetime. What am I?",
-        answers: ["memory", "a memory", "memories"],
+        answers: ["memory", "a memory", "memories", "the past"],
         reward: "psyche", 
         message: "{purple:A forgotten face flashes in your mind. Your spirit fortifies.}"
     },
     {
         id: "breath",
         question: "I am light as a feather, yet the strongest man cannot hold me for much more than a minute. What am I?",
-        answers: ["breath", "my breath", "air", "your breath"],
+        answers: ["breath", "my breath", "air", "your breath", "a breath", "breathing"],
         reward: "constitution", 
         message: "{green:You draw in a deep, lung-expanding breath. Your vitality surges.}"
     },
     {
         id: "secret",
         question: "If you have me, you want to share me. If you share me, you haven't got me. What am I?",
-        answers: ["secret", "a secret"],
+        answers: ["secret", "a secret", "secrets", "the secret"],
         reward: "wits", 
         message: "{blue:A sly smirk crosses the statue's face. Your cunning increases.}"
     },
     {
         id: "promise",
         question: "What must be broken before you can use it?",
-        answers: ["egg", "an egg", "promise", "a promise"],
+        answers: ["egg", "an egg", "the egg", "promise", "a promise", "coconut"],
         reward: "luck", 
         message: "{gold:A small bird lands on the statue, then flies away. You feel fortuitous.}"
     },
     {
         id: "stars",
         question: "We come at night without being fetched, and we are lost in the day without being stolen. What are we?",
-        answers: ["stars", "the stars", "star"],
+        answers: ["stars", "the stars", "star", "a star", "constellations"],
         reward: "perception", 
         message: "{gold:The sky seems clearer. Your eyes pierce the darkness.}"
     },
     {
         id: "tree",
         question: "In spring I am gay in handsome array; in summer more clothing I wear; when colder it grows, I fling off my clothes; and in winter quite naked appear. What am I?",
-        answers: ["tree", "a tree", "wood", "forest"],
+        answers: ["tree", "a tree", "the tree", "wood", "forest", "trees"],
         reward: "endurance", 
         message: "{green:You feel rooted to the earth. Your stamina expands.}"
     },
     {
         id: "anchor",
         question: "To use me you must throw me away. When you're done with me, you bring me back in. What am I?",
-        answers: ["anchor", "an anchor"],
+        answers: ["anchor", "an anchor", "the anchor", "fishing net", "net"],
         reward: "strength", 
         message: "{red:You feel heavy and immovable. Your muscles swell with power.}"
     },
     {
         id: "sponge",
         question: "I am full of holes but still hold water. What am I?",
-        answers: ["sponge", "a sponge"],
+        answers: ["sponge", "a sponge", "the sponge"],
         reward: "luck", 
         message: "{gold:The statue absorbs your answer eagerly. You feel lucky.}"
     },
     {
         id: "mirror",
         question: "I look at you, you look at me. I raise my right hand, you raise your left. What am I?",
-        answers: ["mirror", "a mirror", "reflection"],
+        answers: ["mirror", "a mirror", "the mirror", "reflection", "a reflection", "glass", "looking glass"],
         reward: "charisma", 
         message: "{gold:You see yourself in a new light. Your presence becomes magnetic.}"
     },
     {
         id: "name",
         question: "It belongs to you, but other people use it more than you do. What is it?",
-        answers: ["name", "my name", "your name"],
+        answers: ["name", "my name", "your name", "a name"],
         reward: "charisma", 
         message: "{gold:The statue acknowledges you. You feel more influential.}"
     },
     {
         id: "fire_2",
         question: "Feed me and I live, yet give me a drink and I die. What am I?",
-        answers: ["fire", "flame"],
+        answers: ["fire", "a fire", "flame", "a flame", "campfire"],
         reward: "strength", 
         message: "{red:A spark flares in the statue's eye. Your strength ignites.}"
     },
     {
         id: "needle",
         question: "I have an eye but cannot see. What am I?",
-        answers: ["needle", "a needle", "hurricane", "storm"],
+        answers: ["needle", "a needle", "the needle", "hurricane", "a hurricane", "storm", "a storm", "potato"],
         reward: "perception", 
         message: "{gold:Your focus narrows to a pinpoint. Your vision sharpens.}"
     },
     {
         id: "coffin",
         question: "The man who makes it, doesn't need it. The man who buys it, doesn't want it. The man who uses it, doesn't know it. What is it?",
-        answers: ["coffin", "a coffin", "casket"],
+        answers: ["coffin", "a coffin", "casket", "a casket", "grave", "a grave"],
         reward: "willpower",
         message: "{purple:A cold draft blows past you. Your resolve to live hardens.}"
     },
     {
         id: "cloud",
         question: "I fly without wings. I cry without eyes. Wherever I go, darkness follows me. What am I?",
-        answers: ["cloud", "a cloud", "storm", "raincloud", "clouds"],
+        answers: ["cloud", "a cloud", "the cloud", "storm", "raincloud", "clouds"],
         reward: "intuition",
         message: "{cyan:You feel the moisture in the air before it rains. Your instincts sharpen.}"
     },
     {
         id: "glove",
         question: "What has four fingers and a thumb, but is not living?",
-        answers: ["glove", "a glove", "gauntlet"],
+        answers: ["glove", "a glove", "gauntlet", "a gauntlet"],
         reward: "dexterity",
         message: "{green:Your hands feel nimble and quick.}"
     },
     {
         id: "towel",
         question: "What gets wet while drying?",
-        answers: ["towel", "a towel"],
+        answers: ["towel", "a towel", "the towel"],
         reward: "endurance",
         message: "{blue:The statue weeps a single tear. Your endurance improves.}"
     },
     {
         id: "age",
         question: "What goes up but never comes down?",
-        answers: ["age", "your age", "my age"],
+        answers: ["age", "your age", "my age", "getting older"],
         reward: "wits",
         message: "{blue:You feel the weight of years, but also the wisdom they bring.}"
     },
     {
         id: "word",
         question: "I am a single word, but if you pronounce me right, I mean the exact opposite. What am I?",
-        answers: ["wrong", "incorrect"],
+        answers: ["wrong", "incorrect", "wrongly", "incorrectly"],
         reward: "charisma",
         message: "{gold:A clever trick of the tongue. You feel more eloquent.}"
     },
     {
         id: "keyboard",
         question: "I have keys but no doors. I have a space but no room. You can enter, but you cannot go outside. What am I?",
-        answers: ["keyboard", "a keyboard", "piano"],
+        answers: ["keyboard", "a keyboard", "piano", "a piano"],
         reward: "perception",
         message: "{gold:Your mind clicks the pieces together. Your awareness broadens.}"
     },
@@ -694,50 +737,50 @@ window.RIDDLE_DATA = [
     {
         id: "teeth",
         question: "Thirty white horses on a red hill. First they champ, then they stamp, then they stand still.",
-        answers: ["teeth", "my teeth"],
+        answers: ["teeth", "my teeth", "your teeth", "tooth"],
         reward: "strength",
         message: "{red:You clench your jaw. Your muscles feel dense.}"
     },
     {
         id: "book",
         question: "I have leaves, but no branches. I have a spine, but no bones. What am I?",
-        answers: ["book", "a book", "tome"],
+        answers: ["book", "a book", "tome", "a tome", "journal", "a journal"],
         reward: "wits",
         message: "{blue:Knowledge flows into your mind from the ancient stone.}"
     },
     {
         id: "candle",
         question: "You measure my life in hours and I serve you by expiring. I'm quick when I'm thin and slow when I'm fat. The wind is my enemy. What am I?",
-        answers: ["candle", "a candle"],
+        answers: ["candle", "a candle", "the candle"],
         reward: "luck",
         message: "{gold:A flicker of light dances in the statue's eyes. You feel incredibly fortunate.}"
     },
-    // --- EXPANSION: 5 NEW FANTASY RIDDLES ---
+    // --- EXPANSION: NEW FANTASY RIDDLES ---
     {
         id: "nothing",
         question: "The rich need it, the poor have it, and if you eat it you die. What is it?",
-        answers: ["nothing"],
+        answers: ["nothing", "absolutely nothing"],
         reward: "wits",
         message: "{blue:The profound emptiness of the answer sharpens your mind.}"
     },
     {
         id: "light",
         question: "What can fill a room entirely, but takes up absolutely no space?",
-        answers: ["light", "the light"],
+        answers: ["light", "the light", "sunlight", "brightness"],
         reward: "perception",
         message: "{gold:A brilliant flash illuminates the statue. You see things clearly now.}"
     },
     {
         id: "bottle",
         question: "I have a neck but no head, and I wear a cap but have no hair. What am I?",
-        answers: ["bottle", "a bottle", "flask", "potion"],
+        answers: ["bottle", "a bottle", "flask", "potion", "a potion"],
         reward: "endurance",
         message: "{green:The sound of flowing water fills your ears. You feel refreshed.}"
     },
     {
         id: "piano",
         question: "I have many keys, but I cannot open a single lock. What am I?",
-        answers: ["piano", "a piano", "keyboard"],
+        answers: ["piano", "a piano", "keyboard", "a keyboard"],
         reward: "dexterity",
         message: "{cyan:Your fingers twitch with a sudden, practiced rhythm.}"
     },
@@ -751,16 +794,44 @@ window.RIDDLE_DATA = [
     {
         id: "meteor",
         question: "I drop from the sky but I am not rain. I have a core but I am not fruit. What am I?",
-        answers: ["meteor", "star", "a star", "a meteor", "shooting star", "falling star"],
+        answers: ["meteor", "star", "a star", "a meteor", "shooting star", "falling star", "asteroid", "comet"],
         reward: "luck",
         message: "{gold:The statue glows with starlight. You feel incredibly lucky.}"
     },
     {
         id: "cold",
         question: "What can you catch but never throw?",
-        answers: ["cold", "a cold", "sickness", "disease"],
+        answers: ["cold", "a cold", "sickness", "disease", "illness", "fever", "the cold"],
         reward: "constitution",
         message: "{green:The stone chills your hand. You feel physically hardier.}"
+    },
+    {
+        id: "blood",
+        question: "I am always hungry, I must always be fed. The finger I touch, will soon turn red. What am I?",
+        answers: ["fire", "a fire", "flame", "a flame"],
+        reward: "strength",
+        message: "{red:Flames erupt from the statue's hands. Your raw power swells.}"
+    },
+    {
+        id: "fence",
+        question: "What runs around the whole yard without moving?",
+        answers: ["fence", "a fence", "wall", "a wall"],
+        reward: "perception",
+        message: "{gold:You suddenly understand the boundaries of the space around you.}"
+    },
+    {
+        id: "match",
+        question: "Tear one off and scratch my head, what was red is black instead. What am I?",
+        answers: ["match", "a match", "matchstick"],
+        reward: "wits",
+        message: "{blue:The smell of sulfur fills the air. Your intellect sparks.}"
+    },
+    {
+        id: "tomorrow",
+        question: "I never was, am always to be. No one ever saw me, nor ever will. And yet I am the confidence of all. What am I?",
+        answers: ["tomorrow", "the future", "future", "next day"],
+        reward: "psyche",
+        message: "{purple:You peer into the infinite paths of destiny. Your mental fortitude deepens.}"
     }
 ];
 
@@ -790,7 +861,10 @@ window.REGION_HISTORY = [
     "The magnetic north fluctuates wildly the deeper you go into this sector.",
     "Scholars believe this exact spot is the focal point of a massive, inter-dimensional overlap.",
     "The wind here never blows from the north. Only from the east.",
-    "A massive clockwork machine lies buried just beneath the topsoil here, ticking faintly."
+    "A massive clockwork machine lies buried just beneath the topsoil here, ticking faintly.",
+    "The grass here grows in perfect concentric circles. No one knows why.",
+    "A famous archmage built a tower here, but it vanished overnight, leaving only a perfectly flat stone foundation.",
+    "The bones of a creature larger than a mountain are scattered across this sector, buried under the dirt."
 ];
 
 // --- END OF FILE data-lore.js ---
