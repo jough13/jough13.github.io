@@ -534,6 +534,19 @@
         </div>
     </div>
 
+    <!-- EVOLUTION CONFIRM MODAL -->
+    <div id="evolutionConfirmModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="evoConfirmTitle">
+        <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-yellow-500 text-center max-w-md bg-[var(--bg-container)] relative overflow-hidden">
+            <div class="absolute inset-0 bg-yellow-900 opacity-10 pointer-events-none" style="background-image: radial-gradient(circle, transparent 20%, #713f12 100%);"></div>
+            <h2 id="evoConfirmTitle" class="text-3xl font-bold mb-4 text-yellow-500 border-b border-yellow-900 pb-2 relative z-10" style="font-family: 'Uncial Antiqua', cursive;">Ascension</h2>
+            <p id="evoConfirmDesc" class="text-sm text-gray-300 mb-6 relative z-10 leading-relaxed">Are you sure?</p>
+            <div class="flex gap-4 relative z-10">
+                <button type="button" id="cancelEvoButton" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl flex-1 shadow-md transition-transform active:scale-95">Reconsider</button>
+                <button type="button" id="confirmEvoButton" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 px-4 rounded-xl flex-1 shadow-md transition-transform active:scale-95 border-b-4 border-yellow-800 active:border-b-0 active:mt-1">Ascend</button>
+            </div>
+        </div>
+    </div>
+
     <!-- GAME OVER MODAL -->
     <div id="gameOverModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
         <div class="modal-content themed-container p-8 rounded-2xl shadow-2xl border-4 border-red-600 text-center bg-[var(--bg-container)] relative overflow-hidden">
