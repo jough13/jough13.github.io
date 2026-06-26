@@ -2289,63 +2289,86 @@ function activateFocusTrap(modalElement) {
 function processData(baseData, customData) {
    const processed = [];
    let uniqueId = 0;
+   
+   // Keep the base items intact
    baseData.forEach(item => {
-      if (item.nuclides && item.nuclides.length > 0) {
-         item.nuclides.forEach(nuclide => {
-            const flatItem = {
-               name: item.name,
-               nsn: item.nsn,
-               radionuclide: nuclide.id,
-               activity: nuclide.activity,
-               units: nuclide.units
-            };
-            processed.push(createRowObject(flatItem, uniqueId++, false));
-         });
-      }
+      processed.push(createRowObject(item, uniqueId++, false));
    });
+   
+   // Standardize custom items to match the baseData structure
    customData.forEach(item => {
-      processed.push(createRowObject(item, item.id, true));
+      const formattedCustomItem = {
+         name: item.name,
+         nsn: item.nsn,
+         niin: item.niin,
+         nuclides: [{
+            id: item.radionuclide,
+            activity: item.activity,
+            units: item.units
+         }]
+      };
+      processed.push(createRowObject(formattedCustomItem, item.id, true));
    });
+   
    return processed;
 }
 
 function createRowObject(item, id, isCustom = false) {
-   // Normalize radionuclide to match dictionary keys (case-insensitive lookup)
-   const rawNuclide = item.radionuclide.trim();
-   // Find the matching key in your data object, ignoring case
-   const radionuclide = Object.keys(nrcExemptionValues).find(key =>
-      key.toLowerCase() === rawNuclide.toLowerCase()
-   ) || rawNuclide; // Fallback to original if not found
+   // Process all nuclides belonging to this single physical item
+   const processedNuclides = (item.nuclides || []).map(nuclide => {
+      const rawNuclide = nuclide.id.trim();
+      const radionuclide = Object.keys(nrcExemptionValues).find(key =>
+         key.toLowerCase() === rawNuclide.toLowerCase()
+      ) || rawNuclide;
 
-   const activityVal = parseValueToCi(`${item.activity} ${item.units}`);
-   const nrcExemptionVal = parseValueToCi(nrcExemptionValues[radionuclide]);
-   const dotExemptionVal = parseValueToCi(dotExemptionValues[radionuclide]);
-   const un2911LimitVal = parseValueToCi(un2911Limits[radionuclide]);
-   const un2911PkgLimitVal = parseValueToCi(un2911PkgLimits[radionuclide]);
-   const dotA2Val = parseValueToCi(dotA2Values[radionuclide]);
+      return {
+         id: radionuclide,
+         activity_val: parseValueToCi(`${nuclide.activity} ${nuclide.units}`),
+         nrc_exemption_val: parseValueToCi(nrcExemptionValues[radionuclide]),
+         dot_exemption_val: parseValueToCi(dotExemptionValues[radionuclide]),
+         un2911_limit_val: parseValueToCi(un2911Limits[radionuclide]),
+         un2911_pkg_limit_val: parseValueToCi(un2911PkgLimits[radionuclide]),
+         dot_a2_val: parseValueToCi(dotA2Values[radionuclide])
+      };
+   });
+
+   // Helper to generate stacked HTML strings for the table cells
+   const buildString = (key, formatFn, fallbackDict) => {
+      return processedNuclides.map(n => {
+         if (n[key] !== null && n[key] !== undefined) {
+            return formatFn(n[key]);
+         }
+         return fallbackDict ? (fallbackDict[n.id] || 'N/A') : 'Unlimited';
+      }).join('<br>');
+   };
+
    return {
       id: id,
       isCustom: isCustom,
       name: item.name,
       nsn: item.nsn,
       niin: item.niin || (item.nsn ? item.nsn.substring(5).replace(/-/g, '') : ''),
-      radionuclide: radionuclide,
-      activity_val: activityVal,
-      nrc_exemption_val: nrcExemptionVal,
-      dot_exemption_val: dotExemptionVal,
-      un2911_limit_val: un2911LimitVal,
-      un2911_pkg_limit_val: un2911PkgLimitVal,
-      dot_a2_val: dotA2Val,
-      activity_ci_str: formatCi(activityVal),
-      nrc_exemption_ci_str: nrcExemptionVal !== null ? formatCi(nrcExemptionVal) : (nrcExemptionValues[radionuclide] || 'N/A'),
-      dot_exemption_ci_str: dotExemptionVal !== null ? formatCi(dotExemptionVal) : (dotExemptionValues[radionuclide] || 'N/A'),
-      un2911_limit_ci_str: un2911LimitVal !== null ? formatCi(un2911LimitVal) : 'Unlimited',
-      un2911_pkg_limit_ci_str: un2911PkgLimitVal !== null ? formatCi(un2911PkgLimitVal) : 'Unlimited',
-      activity_bq_str: formatBq(activityVal),
-      nrc_exemption_bq_str: nrcExemptionVal !== null ? formatBq(nrcExemptionVal) : (nrcExemptionValues[radionuclide] || 'N/A'),
-      dot_exemption_bq_str: dotExemptionVal !== null ? formatBq(dotExemptionVal) : (dotExemptionValues[radionuclide] || 'N/A'),
-      un2911_limit_bq_str: un2911LimitVal !== null ? formatBq(un2911LimitVal) : 'Unlimited',
-      un2911_pkg_limit_bq_str: un2911PkgLimitVal !== null ? formatBq(un2911PkgLimitVal) : 'Unlimited',
+      
+      // Store the raw array for accurate math in the disposal analysis
+      nuclides: processedNuclides, 
+      
+      // Plain text for CSV exports
+      radionuclide: processedNuclides.map(n => n.id).join(', '),
+      
+      // HTML for interactive table rendering
+      radionuclide_html: processedNuclides.map(n => `<span class="radionuclide-link text-blue-500 hover:underline cursor-pointer" data-radionuclide="${n.id}">${n.id}</span>`).join('<br>'),
+      
+      activity_ci_str: buildString('activity_val', formatCi),
+      nrc_exemption_ci_str: buildString('nrc_exemption_val', formatCi, nrcExemptionValues),
+      dot_exemption_ci_str: buildString('dot_exemption_val', formatCi, dotExemptionValues),
+      un2911_limit_ci_str: buildString('un2911_limit_val', formatCi),
+      un2911_pkg_limit_ci_str: buildString('un2911_pkg_limit_val', formatCi),
+      
+      activity_bq_str: buildString('activity_val', formatBq),
+      nrc_exemption_bq_str: buildString('nrc_exemption_val', formatBq, nrcExemptionValues),
+      dot_exemption_bq_str: buildString('dot_exemption_val', formatBq, dotExemptionValues),
+      un2911_limit_bq_str: buildString('un2911_limit_val', formatBq),
+      un2911_pkg_limit_bq_str: buildString('un2911_pkg_limit_val', formatBq),
    };
 }
 
@@ -2426,7 +2449,7 @@ function populateTable(data) {
                 <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left" data-label="Name">${highlightedName}${customIcon}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-center expandable" data-label="NSN">${highlightedNsn || ''}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-center expandable" data-label="NIIN">${highlightedNiin || ''}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-center radionuclide-link text-blue-500 hover:underline cursor-pointer" data-label="Radionuclide" data-radionuclide="${item.radionuclide}">${item.radionuclide}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-center" data-label="Radionuclide">${item.radionuclide_html}</td>
                 <td class="px-6 py-4 text-center whitespace-nowrap" data-label="Activity">${activity}</td>
                 <td class="px-6 py-4 text-center whitespace-nowrap expandable" data-label="NRC Exemption">${nrcExemption}</td>
                 <td class="px-6 py-4 text-center whitespace-nowrap expandable" data-label="DOT Exemption">${dotExemption}</td>
@@ -2543,26 +2566,27 @@ function getFilteredData() {
    const dotExemptOnly = document.getElementById('dotExemptFilter').checked;
 
    return tableData.filter(item => {
-      const nuclideMatch = nuclideFilter === 'all' || item.radionuclide === nuclideFilter;
-      const nrcExemptMatch = !nrcExemptOnly || (item.nrc_exemption_val !== null && item.activity_val <= item.nrc_exemption_val);
-      const dotExemptMatch = !dotExemptOnly || (item.dot_exemption_val !== null && item.activity_val <= item.dot_exemption_val);
+      const nuclideMatch = nuclideFilter === 'all' || item.nuclides.some(n => n.id === nuclideFilter);
+      const nrcExemptMatch = !nrcExemptOnly || item.nuclides.every(n => n.nrc_exemption_val !== null && n.activity_val <= n.nrc_exemption_val);
+      const dotExemptMatch = !dotExemptOnly || item.nuclides.every(n => n.dot_exemption_val !== null && n.activity_val <= n.dot_exemption_val);
 
       let textMatch = false;
+      
       if (textFilter === "") {
          textMatch = true;
       } else {
-         // 1. Check Name normally (using the original textFilter so spaces/hyphens in names still matter)
-         const nameMatch = item.name && item.name.toUpperCase().includes(textFilter);
+         // Split the search query into individual words/terms
+         const terms = textFilter.split(/\s+/).filter(t => t);
+         
+         // Create a master string of all searchable text for this item
+         const searchableText = `${item.name} ${item.nsn} ${item.niin}`.toUpperCase();
+         const cleanSearchableText = searchableText.replace(/[-\s]/g, '');
 
-         // 2. Check NSN: Strip hyphens/spaces from the item's NSN data, compare to clean search term
-         const nsnClean = item.nsn ? item.nsn.replace(/[-\s]/g, '') : '';
-         const nsnMatch = nsnClean.includes(cleanFilter);
-
-         // 3. Check NIIN: Compare cleaned NIIN data to cleaned search term
-         const niinClean = item.niin ? item.niin.replace(/[-\s]/g, '') : '';
-         const niinMatch = niinClean.includes(cleanFilter);
-
-         textMatch = nameMatch || nsnMatch || niinMatch;
+         // Ensure EVERY term typed by the user exists somewhere in the item data
+         textMatch = terms.every(term => {
+             const cleanTerm = term.replace(/[-\s]/g, '');
+             return cleanSearchableText.includes(cleanTerm);
+         });
       }
       return nuclideMatch && textMatch && nrcExemptMatch && dotExemptMatch;
    });
@@ -2587,9 +2611,19 @@ function filterTable() {
 }
 
 function updateSelectionState() {
-   const allVisibleCheckboxes = document.querySelectorAll('#lookupTable tbody tr .row-checkbox');
-   const allVisibleChecked = Array.from(allVisibleCheckboxes).every(cb => cb.checked);
-   document.getElementById('selectAllCheckbox').checked = allVisibleCheckboxes.length > 0 && allVisibleChecked;
+   const currentFilteredData = getFilteredData();
+   const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+   
+   // If the filter returns no results, uncheck and bail out
+   if (currentFilteredData.length === 0) {
+      selectAllCheckbox.checked = false;
+      return;
+   }
+   
+   // The header checkbox should only be checked if EVERY item in the current filter is in the Set
+   const allFilteredAreSelected = currentFilteredData.every(item => selectedIds.has(String(item.id)));
+   
+   selectAllCheckbox.checked = allFilteredAreSelected;
 }
 
 function debounce(func, delay) {
@@ -2863,12 +2897,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
    });
 
-   // --- Slash (/) to Search ---
+   // --- Keyboard Shortcuts ---
    document.addEventListener('keydown', (e) => {
-      // Don't trigger if user is already typing in an input
+      // '/' to Focus Search
       if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-         e.preventDefault(); // Prevent the '/' character from being typed
+         e.preventDefault(); 
          searchInput.focus();
+      }
+      
+      // 'Esc' to Clear Search
+      if (e.key === 'Escape' && document.activeElement === searchInput) {
+         e.preventDefault();
+         searchInput.value = '';
+         searchInput.blur(); // Remove focus
+         clearSearchBtn.classList.add('hidden');
+         filterTable();
+         saveState();
       }
    });
 
@@ -3427,47 +3471,45 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
          }
 
-         const totalActivity = itemData.activity_val * quantity;
-
-         // (Check against UN2911 Pkg Limit as a proxy for "is this nuclide in our DB?")
-         if (itemData.un2911_pkg_limit_val === null && itemData.name !== 'SIGHT KIT') {
-            missingLimitData = true;
-         }
-
-         const activityPerItem = itemData.activity_val; // NEW: Track single item activity
-
-         // Check Regulatory Item Limit for UN2911
          let itemStatus2911 = 'OK';
-         if (itemData.un2911_limit_val && activityPerItem > itemData.un2911_limit_val) {
-            anyItemExceeds2911 = true;
-            itemStatus2911 = 'EXCEEDS ITEM LIMIT';
-         }
+         let itemDotFraction = 0;
+         let itemUn2911PkgFraction = 0;
+         let itemTypeAFraction = 0;
+
+         // Iterate through all nuclides in this single physical item
+         itemData.nuclides.forEach(n => {
+            const totalActivity = n.activity_val * quantity;
+            const activityPerItem = n.activity_val;
+            
+            // Strictly flag ANY nuclide missing from the UN2911 regulatory dictionary
+            if (n.un2911_pkg_limit_val === null) {
+               missingLimitData = true;
+            }
+
+            if (n.un2911_limit_val && activityPerItem > n.un2911_limit_val) {
+               anyItemExceeds2911 = true;
+               itemStatus2911 = 'EXCEEDS ITEM LIMIT';
+            }
+
+            if (n.dot_exemption_val) itemDotFraction += (totalActivity / n.dot_exemption_val);
+            if (n.un2911_pkg_limit_val) itemUn2911PkgFraction += (totalActivity / n.un2911_pkg_limit_val);
+            if (n.dot_a2_val) itemTypeAFraction += (totalActivity / n.dot_a2_val);
+         });
+
+         dotExemptSum += itemDotFraction;
+         un2911PkgSum += itemUn2911PkgFraction;
+         typeASum += itemTypeAFraction;
 
          let detailRow = {
             name: itemData.name,
             qty: quantity,
-            activity: formatCi(totalActivity),
-            dot: 'N/A',
-            un2911: 'N/A',
-            typeA: 'N/A',
-            itemStatus: itemStatus2911 // NEW: Pass status to table
+            activity: itemData.activity_ci_str.replace(/<br>/g, ', '), // Clean up the breaks for the table
+            dot: itemDotFraction > 0 ? itemDotFraction.toFixed(3) : 'N/A',
+            un2911: itemUn2911PkgFraction > 0 ? itemUn2911PkgFraction.toFixed(3) : 'N/A',
+            typeA: itemTypeAFraction > 0 ? itemTypeAFraction.toFixed(3) : 'N/A',
+            itemStatus: itemStatus2911
          };
-
-         if (itemData.dot_exemption_val) {
-            const fraction = totalActivity / itemData.dot_exemption_val;
-            dotExemptSum += fraction;
-            detailRow.dot = fraction.toFixed(3);
-         }
-         if (itemData.un2911_pkg_limit_val) {
-            const fraction = totalActivity / itemData.un2911_pkg_limit_val;
-            un2911PkgSum += fraction;
-            detailRow.un2911 = fraction.toFixed(3);
-         }
-         if (itemData.dot_a2_val) {
-            const fraction = totalActivity / itemData.dot_a2_val;
-            typeASum += fraction;
-            detailRow.typeA = fraction.toFixed(3);
-         }
+         
          analysisDetails.push(detailRow);
       });
 
@@ -3748,19 +3790,32 @@ loadSelectionBtn.addEventListener('click', () => {
          showToast('Saved selection cleared.', 'success');
       });
    });
+
    selectAllCheckbox.addEventListener('change', () => {
       const isChecked = selectAllCheckbox.checked;
-      const visibleCheckboxes = document.querySelectorAll('#lookupTable tbody tr .row-checkbox');
-      visibleCheckboxes.forEach(checkbox => {
-         if (checkbox.checked !== isChecked) {
-            checkbox.checked = isChecked;
-            const changeEvent = new Event('change', {
-               bubbles: true
-            });
-            checkbox.dispatchEvent(changeEvent);
-         }
-      });
+      
+      // 1. Get the full filtered dataset (not just the visible page)
+      const currentFilteredData = getFilteredData();
+      
+      // 2. Update the global Set directly
+      if (isChecked) {
+         currentFilteredData.forEach(item => selectedIds.add(String(item.id)));
+      } else {
+         currentFilteredData.forEach(item => selectedIds.delete(String(item.id)));
+      }
+      
+      // 3. Re-render the current page to visually update checkboxes and highlighting
+      performSort(); 
+      
+      // 4. Update the bottom action buttons based on the new total selection size
+      const selectedCount = selectedIds.size;
+      compareBtn.disabled = selectedCount < 2;
+      exportSelectionBtn.disabled = selectedCount === 0;
+      clearSelectionBtn.disabled = selectedCount === 0;
+      disposalRequestBtn.disabled = selectedCount === 0;
+      saveSelectionBtn.disabled = selectedCount === 0;
    });
+
    addItemForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const newItemData = {
