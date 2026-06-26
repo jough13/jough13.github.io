@@ -136,11 +136,21 @@ function openEvolutionModal() {
     const fragment = document.createDocumentFragment();
 
     options.forEach(evo => {
-        // UX WIN: Pull the exact mechanics of the new talent so the player knows what it does!
+        // Pull the exact mechanics of the new talent so the player knows what it does!
         const linkedTalent = TALENT_DATA[evo.talent];
-        const mechanicDesc = linkedTalent ? linkedTalent.description : evo.description;
+        let mechanicDesc = linkedTalent ? linkedTalent.description : evo.description;
+
+        // Parse the color tags so they look beautiful instead of showing raw brackets!
+        mechanicDesc = mechanicDesc
+            .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
+            .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
+            .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
+            .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
+            .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
+            .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
 
         const div = document.createElement('div');
+
         div.className = "panel p-5 rounded-xl border-2 border-gray-600 hover:border-yellow-500 cursor-pointer transition-all transform hover:-translate-y-1 shadow-lg flex flex-col h-full bg-black bg-opacity-20 hover:bg-opacity-40";
         div.style.transform = "translate3d(0,0,0)";
         div.onclick = () => selectEvolution(evo);
@@ -175,9 +185,14 @@ function selectEvolution(evoData) {
     if (confirmModal && confirmTitle && confirmDesc) {
         confirmTitle.innerHTML = `Become a ${evoData.name}?`;
         confirmDesc.innerHTML = `This path is <strong class="text-yellow-400 font-bold uppercase tracking-widest border border-yellow-800 bg-black bg-opacity-40 px-1 rounded shadow-inner">permanent</strong>.<br><br>The old world will fall away, and you cannot undo this ascension.`;
+        
+        // Hide the selection modal so the confirm modal isn't trapped behind it!
+        const evoModal = document.getElementById('evolutionModal');
+        if (evoModal) evoModal.classList.add('hidden');
+
         confirmModal.classList.remove('hidden');
         if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
-    } else {
+        } else {
         // Fallback just in case HTML isn't updated
         if (confirm(`Do you wish to forge your soul into a ${evoData.name}?\n\nThis path is permanent. The old world will fall away, and you cannot undo this ascension.`)) {
             executeEvolution(evoData);
@@ -257,6 +272,11 @@ setTimeout(() => {
         cancelEvoBtn.addEventListener('click', () => {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             if (evoConfirmModal) evoConfirmModal.classList.add('hidden');
+            
+            // Bring back the selection modal if they cancel!
+            const evoModal = document.getElementById('evolutionModal');
+            if (evoModal) evoModal.classList.remove('hidden');
+            
             pendingEvolution = null;
         });
     }
