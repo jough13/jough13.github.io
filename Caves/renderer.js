@@ -734,18 +734,24 @@ function renderTerrainCache(startX, startY) {
                 }
             } 
             else { 
-                tile = chunkManager.getTile(mapX, mapY);
-                
-                // Must use Math.floor to properly handle negative coordinate chunks!
+                // Calculate the chunk coordinates ONCE and use them for both lookups!
                 const cX = Math.floor(mapX / 16);
                 const cY = Math.floor(mapY / 16);
                 const lX = (mapX % 16 + 16) % 16;
                 const lY = (mapY % 16 + 16) % 16;
                 const chunkId = `${cX},${cY}`;
+                const tileKey = `${lX},${lY}`;
 
                 let baseTerrain = '.';
                 if (chunkManager.loadedChunks[chunkId] && chunkManager.loadedChunks[chunkId][lY]) {
                     baseTerrain = chunkManager.loadedChunks[chunkId][lY][lX];
+                }
+
+                // Inline the getTile logic to skip doing the exact same math twice
+                tile = baseTerrain;
+                if (chunkManager.worldState[chunkId] && chunkManager.worldState[chunkId][tileKey] !== undefined) {
+                    const val = chunkManager.worldState[chunkId][tileKey];
+                    tile = (typeof val === 'object' && val !== null) ? val.t : val;
                 }
                 
                 if (activeMapMode === 'underworld') {
