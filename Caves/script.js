@@ -1492,13 +1492,13 @@ function endPlayerTurn(turnUpdates = {}) {
     }
 
     if (gameState.mapMode === 'overworld') {
-        wakeUpNearbyEnemies();
+        // Throttle the massive 841-tile radar sweep!
+        if (gameState.playerTurnCount % 3 === 0) {
+            wakeUpNearbyEnemies();
+        }
     }
 
     // --- UPDATED AMBUSH LOGIC ---
-    // Was: % 60 and < 0.20 (Avg every 300 turns)
-    // Now: % 150 and < 0.05 (Avg every 3000 turns) -> Much rarer!
-     // --- UPDATED AMBUSH LOGIC ---
     if (gameState.mapMode === 'overworld' && gameState.playerTurnCount % 150 === 0) {
         
         // --- 1. CALCULATE SAFETY METRICS ---
