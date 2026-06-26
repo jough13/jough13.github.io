@@ -936,10 +936,25 @@ const render = () => {
     // --- ENTITIES & PLAYERS ---
     
     // Attack Telegraphs
-    const allEnemies = gameState.mapMode === 'overworld' ? Object.values(gameState.sharedEnemies) : gameState.instancedEnemies;
-    if (allEnemies) {
-        for (let i = 0; i < allEnemies.length; i++) {
-            const enemy = allEnemies[i];
+    if (gameState.mapMode === 'overworld') {
+        // PERFORMANCE WIN: Iterate object directly instead of creating an array 60x a second
+        for (const key in gameState.sharedEnemies) {
+            const enemy = gameState.sharedEnemies[key];
+            if (enemy.pendingAttacks) {
+                for (let j = 0; j < enemy.pendingAttacks.length; j++) {
+                    const t = enemy.pendingAttacks[j];
+                    const screenX = t.x - startX;
+                    const screenY = t.y - startY;
+                    if (screenX >= 0 && screenX < VIEWPORT_WIDTH && screenY >= 0 && screenY < VIEWPORT_HEIGHT) {
+                        TileRenderer.drawTelegraph(ctx, screenX, screenY);
+                    }
+                }
+            }
+        }
+    } else if (gameState.instancedEnemies) {
+        const len = gameState.instancedEnemies.length;
+        for (let i = 0; i < len; i++) {
+            const enemy = gameState.instancedEnemies[i];
             if (enemy.pendingAttacks) {
                 for (let j = 0; j < enemy.pendingAttacks.length; j++) {
                     const t = enemy.pendingAttacks[j];
@@ -1001,15 +1016,27 @@ const render = () => {
         return { vx: entity.visualX, vy: entity.visualY };
     };
 
-    const enemyList = gameState.mapMode === 'overworld' ? Object.values(gameState.sharedEnemies) : gameState.instancedEnemies;
-    
-    for (let i = 0; i < enemyList.length; i++) {
-        const enemy = enemyList[i];
-        const { vx, vy } = lerpEntity(enemy);
-        const screenX = vx - startX;
-        const screenY = vy - startY;
-        if (screenX >= -2 && screenX <= VIEWPORT_WIDTH && screenY >= -2 && screenY <= VIEWPORT_HEIGHT) {
-            drawEntity(enemy, screenX, screenY);
+    if (gameState.mapMode === 'overworld') {
+        // PERFORMANCE WIN: Iterate object directly instead of creating an array 60x a second
+        for (const key in gameState.sharedEnemies) {
+            const enemy = gameState.sharedEnemies[key];
+            const { vx, vy } = lerpEntity(enemy);
+            const screenX = vx - startX;
+            const screenY = vy - startY;
+            if (screenX >= -2 && screenX <= VIEWPORT_WIDTH && screenY >= -2 && screenY <= VIEWPORT_HEIGHT) {
+                drawEntity(enemy, screenX, screenY);
+            }
+        }
+    } else if (gameState.instancedEnemies) {
+        const len = gameState.instancedEnemies.length;
+        for (let i = 0; i < len; i++) {
+            const enemy = gameState.instancedEnemies[i];
+            const { vx, vy } = lerpEntity(enemy);
+            const screenX = vx - startX;
+            const screenY = vy - startY;
+            if (screenX >= -2 && screenX <= VIEWPORT_WIDTH && screenY >= -2 && screenY <= VIEWPORT_HEIGHT) {
+                drawEntity(enemy, screenX, screenY);
+            }
         }
     }
 
