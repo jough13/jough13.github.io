@@ -244,20 +244,23 @@ function executeEvolution(evoData) {
         ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 20); // Secondary purple burst
     }
     
-    if (typeof playerRef !== 'undefined') {
-        playerRef.update({
-            ...player, 
-            classEvolved: true
-        });
-    }
-
-    // Safely hide both Modals
+    // Hide the modals IMMEDIATELY for a snappy UI response
     const evoModal = document.getElementById('evolutionModal');
     if (evoModal) evoModal.classList.add('hidden');
     
     const confirmModal = document.getElementById('evolutionConfirmModal');
     if (confirmModal) confirmModal.classList.add('hidden');
+
+    // Sanitize the player object so Firebase doesn't crash the script!
+    if (typeof playerRef !== 'undefined') {
+        const safeData = typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player;
+        playerRef.update({
+            ...safeData, 
+            classEvolved: true
+        }).catch(err => console.error("Evolution save error:", err)); // Catch errors so they don't break the game
+    }
     
+    // Update the screen to show off your new class sprite and max health!
     if (typeof renderStats === 'function') renderStats();
     if (typeof render === 'function') render(); 
 }
