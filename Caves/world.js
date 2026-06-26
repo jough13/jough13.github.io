@@ -134,8 +134,8 @@ const chunkManager = {
         } else {
             // Normal procedural cave
             const randomTheme = Alea(stringToSeed(caveId + ':theme'));
-            // Filter out special themes
-            const themeKeys = Object.keys(CAVE_THEMES).filter(k => k !== 'ABYSS' && k !== 'VOID');
+            // Exclude ARENA so it doesn't get picked for normal caves!
+            const themeKeys = Object.keys(CAVE_THEMES).filter(k => k !== 'ABYSS' && k !== 'VOID' && k !== 'ARENA');
             chosenThemeKey = themeKeys[Math.floor(randomTheme() * themeKeys.length)];
         }
 
@@ -419,7 +419,8 @@ const chunkManager = {
         }
 
         // --- 5. Place procedural enemies ---
-        let enemyTypes = theme.enemies || Object.keys(ENEMY_DATA);
+        // Ensure the array actually has items in it before accepting it!
+        let enemyTypes = (theme.enemies && theme.enemies.length > 0) ? theme.enemies : Object.keys(ENEMY_DATA);
 
         // --- SAFE ZONE CAVE NERF ---
         // If within 250 tiles of spawn, remove "Hard" enemies from the spawn pool
