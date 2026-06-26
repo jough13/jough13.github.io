@@ -3237,13 +3237,13 @@ async function attemptMovePlayer(newX, newY) {
         }
     }
 
-    if (gameState.mapMode === 'overworld') {
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
         const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
         const prevChunkX = Math.floor(prevX / chunkManager.CHUNK_SIZE);
         const prevChunkY = Math.floor(prevY / chunkManager.CHUNK_SIZE);
 
-        // PERFORMANCE WIN: Only trigger heavy network syncs IF we crossed a chunk boundary!
+        // Only trigger heavy network syncs IF we crossed a chunk boundary!
         if (currentChunkX !== prevChunkX || currentChunkY !== prevChunkY) {
             // Load 3x3 chunk area around player
             for (let y = -1; y <= 1; y++) {
@@ -3317,22 +3317,6 @@ async function attemptMovePlayer(newX, newY) {
         if (typeof renderInventory === 'function') renderInventory();
     }
 
-    // Secondary chunk loading pass to ensure instanced layers (Underworld) load correctly
-    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-        const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
-        const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
-
-        for (let y = -1; y <= 1; y++) {
-            for (let x = -1; x <= 1; x++) {
-                chunkManager.listenToChunkState(currentChunkX + x, currentChunkY + y);
-            }
-        }
-
-        chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
-
-        if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.syncChunks(gameState.player.x, gameState.player.y);
-    }
-
 if (gameState.player.health <= 0) {
             if (typeof syncPlayerState === 'function') syncPlayerState(); 
             return; // STOP! Do not run endPlayerTurn or it will overwrite the death state!
@@ -3345,8 +3329,10 @@ if (gameState.player.health <= 0) {
         console.error("🚨 Critical movement error caught! Unlocking engine to prevent deadlock:", error);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     } finally {
+
         // GLOBAL ENGINE UNLOCK
         // Guaranteed to run whether the move succeeds, returns early, or throws a fatal error!
+        
         isProcessingMove = false;
     }
 }
