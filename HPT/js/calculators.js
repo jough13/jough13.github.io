@@ -1662,6 +1662,11 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
 
+        <ContextualNote type="info">
+                <strong>Geometry:</strong> Calculates solid angle efficiency based on detector radius. Gamma response follows the Inverse Square Law.<br/>
+                <strong>Warning:</strong> Unless a shield material (e.g., Plastic) is selected, calculations assume a completely bare, weightless point source. Bare sources will produce massive Beta/Alpha count rates compared to typical encapsulated check sources.
+        </ContextualNote>
+
     // --- CONFIG ---
     const DETECTORS = React.useMemo(() => ({
         'nai_1x1': { label: '1" x 1" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 175, radius_cm: 1.27 },
@@ -1743,13 +1748,22 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             let cpmGamma = 0, cpmBeta = 0, cpmAlpha = 0;
             let attenuationMsg = [];
 
-            // 1. Gamma Calculation (Point Source Inverse Square)
+            // 1. Gamma Calculation (Point Source Inverse Square with Solid Angle Cap)
             if (detInfo.type !== 'alpha_only' && selectedNuclide.gammaConstant) {
                 const gamma = safeParseFloat(selectedNuclide.gammaConstant);
                 
                 if (gamma > 0) {
-                    // Dose Rate in uR/hr = (Gamma * A) / d^2
-                    const doseRate_uR_hr = ((gamma * A_Ci) / Math.pow(d_m, 2)) * 1e6;
+                    // Prevent inverse square law from blowing up at near-contact distances
+                    // by calculating the effective solid angle fraction of the detector face.
+                    const r_det_m = detInfo.radius_cm / 100;
+                    const geoFraction = 0.5 * (1 - (d_m / Math.sqrt(Math.pow(d_m, 2) + Math.pow(r_det_m, 2))));
+                    
+                    // 4 * geoFraction / r^2 mathematically limits to exactly 1/d^2 at far distances, 
+                    // but smoothly caps at 2/r^2 at contact.
+                    const effective_inv_sq = (4 * geoFraction) / Math.pow(r_det_m, 2);
+                    
+                    // Effective Dose Rate over the specific detector volume in uR/hr
+                    const doseRate_uR_hr = (gamma * A_Ci * effective_inv_sq) * 1e6;
                     
                     let transmission = 1;
                     if (shieldMaterial !== 'None' && t_cm > 0) {
@@ -1762,6 +1776,25 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     }
 
                     const responseFactor = detInfo.refCpmPerMicroR || detInfo.gammaCpmPerMicroR;
+
+                    // Determine primary gamma energy to estimate detector energy dependence
+                    let primaryGamma_keV = 662; // Default to Cs-137 standard
+                    if (selectedNuclide.emissionEnergies?.gamma?.length > 0) {
+                        const match = selectedNuclide.emissionEnergies.gamma[0].match(/([\d.]+)\s*(MeV|keV)/i);
+                        if (match) {
+                            primaryGamma_keV = safeParseFloat(match[1]) * (match[2].toLowerCase() === 'mev' ? 1000 : 1);
+                        }
+                    }
+
+                    let responseFactor = detInfo.refCpmPerMicroR || detInfo.gammaCpmPerMicroR;
+                    
+                    // Apply an empirical response curve modifier for Scintillators
+                    if (detInfo.label.includes('NaI')) {
+                        if (primaryGamma_keV < 150) responseFactor *= 3.5;       // E.g., Am-241
+                        else if (primaryGamma_keV < 400) responseFactor *= 1.5;  // E.g., I-131
+                        else if (primaryGamma_keV > 800) responseFactor *= 0.45; // E.g., Co-60, Ra-226
+                    }
+
                     cpmGamma = doseRate_uR_hr * transmission * responseFactor;
                 }
             }
@@ -1783,36 +1816,31 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                 const geoScalingFactor = geoEff / geoEff_contact;
 
                 if (detInfo.type === 'mix' && selectedNuclide.emissionEnergies?.beta?.length > 0) {
-                    const eMax = parseE(selectedNuclide.emissionEnergies.beta[0]);
+                    const betaStr = selectedNuclide.emissionEnergies.beta[0];
+                    const eMax = parseE(betaStr);
 
-                    // Katz-Penfold Range Calculation
+                    // Extract beta yield (e.g., from "1.17 MeV (99.8%)")
+                    let betaYield = 1.0; 
+                    const yieldMatch = betaStr.match(/\(([\d.]+)%\)/);
+                    if (yieldMatch) betaYield = safeParseFloat(yieldMatch[1]) / 100.0;
+
                     const range_g_cm2 = calculateBetaRange(eMax);
-
-                    // A. Calculate Shield Mass-Density Thickness (g/cm²)
                     const shield_g_cm2 = shieldMaterial !== 'None' ? t_cm * shieldDensity : 0;
-
-                    // B. Calculate Air Mass-Density Thickness (g/cm³)
                     const densityAir = 0.0012; 
                     const air_g_cm2 = d_cm * densityAir;
-                    
-                    // C. Combine mass-thicknesses
                     const total_g_cm2 = shield_g_cm2 + air_g_cm2;
                     
                     if (total_g_cm2 > range_g_cm2) {
-                        if (shieldMaterial !== 'None' && shield_g_cm2 > range_g_cm2) {
-                            attenuationMsg.push("Betas blocked by shield.");
-                        } else if (air_g_cm2 > range_g_cm2) {
-                            attenuationMsg.push("Betas ranged out in air.");
-                        } else {
-                            attenuationMsg.push("Betas ranged out in combined shield and air.");
-                        }
+                        // (Keep existing range out logic here...)
+                        if (shieldMaterial !== 'None' && shield_g_cm2 > range_g_cm2) attenuationMsg.push("Betas blocked by shield.");
+                        else if (air_g_cm2 > range_g_cm2) attenuationMsg.push("Betas ranged out in air.");
+                        else attenuationMsg.push("Betas ranged out in combined shield and air.");
                     } else {
-                        // Apply empirical exponential attenuation for the beta spectrum
                         const mu_rho = 17 / Math.pow(eMax, 1.14);
                         const transmissionBeta = Math.exp(-mu_rho * total_g_cm2);
                         
-                        // Derived response applying the distance scaling factor to the 4pi source efficiency
-                        cpmBeta = A_dpm * (detInfo.refBetaEff || 0.2) * geoScalingFactor * eff_surf * transmissionBeta;
+                        // Apply the extracted betaYield here!
+                        cpmBeta = A_dpm * betaYield * (detInfo.refBetaEff || 0.2) * geoScalingFactor * eff_surf * transmissionBeta;
                         
                         if (transmissionBeta < 0.99) {
                             attenuationMsg.push(`Beta flux attenuated to ${(transmissionBeta * 100).toFixed(1)}% by mass-thickness.`);
@@ -1821,12 +1849,16 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                 }
 
                 if (detInfo.alphaEff && selectedNuclide.emissionEnergies?.alpha?.length > 0) {
-                    // Alphas blocked by almost anything or > 5cm air
                     if (shieldMaterial !== 'None' || d_cm > 5.0) { 
                         attenuationMsg.push("Alphas blocked.");
                     } else {
-                        // Scale alpha efficiency cleanly across sub-contact gaps
-                        cpmAlpha = A_dpm * geoScalingFactor * detInfo.alphaEff * eff_surf;
+                        const alphaStr = selectedNuclide.emissionEnergies.alpha[0];
+                        let alphaYield = 1.0;
+                        const aYieldMatch = alphaStr.match(/\(([\d.]+)%\)/);
+                        if (aYieldMatch) alphaYield = safeParseFloat(aYieldMatch[1]) / 100.0;
+
+                        // Apply the extracted alphaYield here!
+                        cpmAlpha = A_dpm * alphaYield * geoScalingFactor * detInfo.alphaEff * eff_surf;
                     }
                 }
             }
