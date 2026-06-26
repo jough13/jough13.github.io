@@ -169,8 +169,9 @@ function renderFastTravelList() {
         waystoneHeader.innerHTML = `<span>Attuned Leyline Nodes</span> <span>${waypoints.length} Unlocked</span>`;
         fragment.appendChild(waystoneHeader);
 
+        // BUG FIX: Filter out completely corrupted waypoints before processing math
         const availableWaypoints = waypoints
-            .filter(wp => wp.x !== playerX || wp.y !== playerY) // Filter out current spot
+            .filter(wp => wp && typeof wp.x === 'number' && typeof wp.y === 'number' && (wp.x !== playerX || wp.y !== playerY)) 
             .map(wp => ({ ...wp, dist: getDist(wp.x, wp.y), dir: getDir(wp.x, wp.y) }))
             .sort((a, b) => a.dist - b.dist); // Sort by distance ascending
 
@@ -252,7 +253,8 @@ window.handleFastTravel = async function (targetX, targetY) {
 
         // --- OBSTRUCTION CHECK ---
         const tile = chunkManager.getTile(targetX, targetY);
-        const invalidTiles = ['^', '~', '≈', '▓', '▒']; // Mountains, Water, Walls
+        // BUG FIX: Added dynamically built/destructible blocks to invalid list
+        const invalidTiles = ['^', '~', '≈', '▓', '▒', '🧱', '🏚', '🏚️', '🌳']; 
 
         // Override if we are teleporting exactly to the village coords and they got corrupted somehow
         const isVillageBypass = (targetX === 0 && targetY === 0);
@@ -420,18 +422,30 @@ window.handleFastTravel = async function (targetX, targetY) {
             }
         }
         
+        // --- CRITICAL NETWORK SYNC FIX ---
+        // Ensure the new chunks and enemies are loaded from Firebase before rendering!
+        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+            const currentChunkX = Math.floor(player.x / chunkManager.CHUNK_SIZE);
+            const currentChunkY = Math.floor(player.y / chunkManager.CHUNK_SIZE);
+            
+            for (let cy = -1; cy <= 1; cy++) {
+                for (let cx = -1; cx <= 1; cx++) {
+                    chunkManager.listenToChunkState(currentChunkX + cx, currentChunkY + cy);
+                }
+            }
+            if (typeof chunkManager.unloadOutOfRangeChunks === 'function') {
+                chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
+            }
+            if (typeof EnemyNetworkManager !== 'undefined') {
+                EnemyNetworkManager.syncChunks(player.x, player.y);
+            }
+        }
+        
         // Force complete redraw
         gameState.mapDirty = true;
         if (typeof render === 'function') render();
         if (typeof syncPlayerState === 'function') syncPlayerState();
 
-        // Unload far chunks to prevent memory leaks after huge jumps
-        const currentChunkX = Math.floor(player.x / chunkManager.CHUNK_SIZE);
-        const currentChunkY = Math.floor(player.y / chunkManager.CHUNK_SIZE);
-        if (typeof chunkManager.unloadOutOfRangeChunks === 'function') {
-            chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
-        }
-        
         // Save state completely to Firebase
         if (typeof playerRef !== 'undefined' && playerRef) {
             playerRef.update(updates).catch(e => console.error("Fast travel sync error:", e));
@@ -455,6 +469,7 @@ if (fastTravelList) {
     fastTravelList.addEventListener('click', (e) => {
         const btn = e.target.closest('button[data-x]');
         if (btn && !btn.disabled) {
+            btn.disabled = true; // UX & SECURITY: Prevent double-click mana drain exploit
             const tx = parseInt(btn.dataset.x, 10);
             const ty = parseInt(btn.dataset.y, 10);
             if (!isNaN(tx) && !isNaN(ty)) {
