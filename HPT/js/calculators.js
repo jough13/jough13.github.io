@@ -1753,30 +1753,13 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                 const gamma = safeParseFloat(selectedNuclide.gammaConstant);
                 
                 if (gamma > 0) {
-                    // Prevent inverse square law from blowing up at near-contact distances
-                    // by calculating the effective solid angle fraction of the detector face.
                     const r_det_m = detInfo.radius_cm / 100;
                     const geoFraction = 0.5 * (1 - (d_m / Math.sqrt(Math.pow(d_m, 2) + Math.pow(r_det_m, 2))));
-                    
-                    // 4 * geoFraction / r^2 mathematically limits to exactly 1/d^2 at far distances, 
-                    // but smoothly caps at 2/r^2 at contact.
                     const effective_inv_sq = (4 * geoFraction) / Math.pow(r_det_m, 2);
-                    
-                    // Effective Dose Rate over the specific detector volume in uR/hr
                     const doseRate_uR_hr = (gamma * A_Ci * effective_inv_sq) * 1e6;
-                    
-                    let transmission = 1;
-                    if (shieldMaterial !== 'None' && t_cm > 0) {
-                        const mapTo = shieldProp.mapTo;
-                        const hvl = (typeof HVL_DATA !== 'undefined' && HVL_DATA[selectedNuclide.symbol]?.[mapTo]) 
-                                    || FALLBACK_HVL[mapTo] 
-                                    || 1.2; 
-                        
-                        transmission = Math.pow(0.5, t_cm / hvl);
-                    }
 
-                    // Determine primary gamma energy to estimate detector energy dependence
-                    let primaryGamma_keV = 662; // Default to Cs-137 standard
+                    // A. Determine primary gamma energy FIRST so we can use it for shielding
+                    let primaryGamma_keV = 662; 
                     if (selectedNuclide.emissionEnergies?.gamma?.length > 0) {
                         const match = selectedNuclide.emissionEnergies.gamma[0].match(/([\d.]+)\s*(MeV|keV)/i);
                         if (match) {
@@ -1784,13 +1767,38 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                         }
                     }
 
+                    // B. Shielding transmission with Dynamic HVL scaling
+                    let transmission = 1;
+                    if (shieldMaterial !== 'None' && t_cm > 0) {
+                        const mapTo = shieldProp.mapTo;
+                        let hvl = typeof HVL_DATA !== 'undefined' ? HVL_DATA[selectedNuclide.symbol]?.[mapTo] : null;
+                        
+                        // If exact HVL not in DB, dynamically estimate it using the primary gamma energy
+                        if (!hvl) {
+                            let baseHvl = FALLBACK_HVL[mapTo] || 1.2; // Base HVL is tuned to Co-60 (~1.25 MeV)
+                            let e_MeV = primaryGamma_keV / 1000;
+                            
+                            // Empirical scaling curve: HVLs shrink significantly at lower energies
+                            let energyMod = Math.pow(e_MeV / 1.25, 0.6); 
+                            
+                            // Lead drops off much sharper at low energies due to the photoelectric effect
+                            if (mapTo === 'Lead' && e_MeV < 0.4) {
+                                energyMod = Math.pow(e_MeV / 1.25, 1.5); 
+                            }
+                            
+                            energyMod = Math.max(0.05, Math.min(energyMod, 1.5)); // Clamp boundaries
+                            hvl = baseHvl * energyMod;
+                        }
+                        
+                        transmission = Math.pow(0.5, t_cm / hvl);
+                    }
+
+                    // C. Response Factor
                     let responseFactor = detInfo.refCpmPerMicroR || detInfo.gammaCpmPerMicroR;
-                    
-                    // Apply an empirical response curve modifier for Scintillators
                     if (detInfo.label.includes('NaI')) {
-                        if (primaryGamma_keV < 150) responseFactor *= 3.5;       // E.g., Am-241
-                        else if (primaryGamma_keV < 400) responseFactor *= 1.5;  // E.g., I-131
-                        else if (primaryGamma_keV > 800) responseFactor *= 0.45; // E.g., Co-60, Ra-226
+                        if (primaryGamma_keV < 150) responseFactor *= 3.5;       
+                        else if (primaryGamma_keV < 400) responseFactor *= 1.5;  
+                        else if (primaryGamma_keV > 800) responseFactor *= 0.45; 
                     }
 
                     cpmGamma = doseRate_uR_hr * transmission * responseFactor;
