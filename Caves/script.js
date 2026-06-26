@@ -2365,6 +2365,10 @@ chatInput.addEventListener('keydown', (event) => {
 });
 
 function clearSessionState() {
+    // Hide mobile controls when logging out
+    const mobileContainer = document.getElementById('mobileControls');
+    if (mobileContainer) mobileContainer.classList.add('hidden');
+
     gameState.lootedTiles.clear();
     gameState.discoveredRegions.clear();
     wokenEnemyTiles.clear();
