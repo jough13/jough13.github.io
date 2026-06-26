@@ -755,19 +755,24 @@ function renderTerrainCache(startX, startY) {
                     else if (baseTerrain === '🍄') bgColor = '#4a044e'; 
                     else if (baseTerrain === '💎c') bgColor = '#083344'; 
                 } else {
-                    bgColor = '#22c55e'; 
+                     bgColor = '#22c55e'; 
                     // Include thickets and flowers so they blend into the dark forest!
-                    if (baseTerrain === 'F' || baseTerrain === '🌳e' || baseTerrain === '🌳' || baseTerrain === '🌲' || baseTerrain === '🌺') bgColor = '#14532d';
-                    else if (baseTerrain === '❄️') bgColor = '#e0f2fe';
-                    else if (baseTerrain === '❄️') bgColor = '#e0f2fe'; 
-                    else if (baseTerrain === '🍄') bgColor = '#4a044e'; 
-                    else if (baseTerrain === '💎c') bgColor = '#083344'; 
+                    // Using 'tile' instead of 'baseTerrain' ensures worldState overrides get the correct background!
+                    if (tile === 'F' || tile === '🌳e' || tile === '🌳' || tile === '🌲' || tile === '🌺') bgColor = '#14532d';
+                    else if (tile === '❄️') bgColor = '#e0f2fe';
+                    else if (tile === '🍄') bgColor = '#4a044e'; 
+                    else if (tile === '💎c') bgColor = '#083344'; 
+                    else if (tile === 'd') bgColor = '#2d2d2d';
+                    else if (tile === 'D') bgColor = '#fde047';
+                    else if (tile === '≈') bgColor = '#422006';
+                    else if (tile === '^' || tile === '⛰') bgColor = '#57534e';
+                    else if (tile === '~') bgColor = '#1e3a8a';
+                    else if (tile === '🌋') bgColor = '#450a0a';
+                    // Fallback just in case an enemy/item is standing on a dark tile
+                    else if (baseTerrain === 'F' || baseTerrain === '🌳e' || baseTerrain === '🌳' || baseTerrain === '🌲' || baseTerrain === '🌺') bgColor = '#14532d';
                     else if (baseTerrain === 'd') bgColor = '#2d2d2d';
                     else if (baseTerrain === 'D') bgColor = '#fde047';
-                    else if (baseTerrain === '≈') bgColor = '#422006';
-                    else if (baseTerrain === '^' || baseTerrain === '⛰') bgColor = '#57534e';
-                    else if (baseTerrain === '~') bgColor = '#1e3a8a';
-                    else if (baseTerrain === '🌋') bgColor = '#450a0a';
+                    else if (baseTerrain === '^') bgColor = '#57534e';
                 }
 
                 TileRenderer.drawBase(terrainCtx, x, y, bgColor);
