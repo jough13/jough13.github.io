@@ -1311,27 +1311,29 @@ function triggerAbilityCooldown(abilityId) {
     }
 }
 
-// --- SECURITY & PERFORMANCE WIN: Event Delegation ---
+// --- SECURITY & PERFORMANCE: Event Delegation ---
 // Attaches exactly ONE listener to the skillbook list, bypassing inline DOM bindings.
-const skillListEl = document.getElementById('skillList');
-if (skillListEl && !skillListEl.dataset.listenersBound) {
-    skillListEl.addEventListener('click', (e) => {
-        const skillItem = e.target.closest('.skill-item');
-        if (skillItem && skillItem.dataset.skill) {
-            useSkill(skillItem.dataset.skill);
-        }
-    });
-    skillListEl.dataset.listenersBound = 'true';
-}
+window.initSkillbookListeners = function() {
+    const skillListEl = document.getElementById('skillList');
+    if (skillListEl && !skillListEl.dataset.listenersBound) {
+        skillListEl.addEventListener('click', (e) => {
+            const skillItem = e.target.closest('.skill-item');
+            if (skillItem && skillItem.dataset.skill) {
+                useSkill(skillItem.dataset.skill);
+            }
+        });
+        skillListEl.dataset.listenersBound = 'true';
+    }
 
-const closeSkillBtn = document.getElementById('closeSkillButton');
-if (closeSkillBtn && !closeSkillBtn.dataset.listenerBound) {
-    closeSkillBtn.addEventListener('click', () => {
-        const skillModal = document.getElementById('skillModal');
-        if (skillModal) skillModal.classList.add('hidden');
-        if (document.activeElement) document.activeElement.blur(); 
-    });
-    closeSkillBtn.dataset.listenerBound = 'true';
-}
+    const closeSkillBtn = document.getElementById('closeSkillButton');
+    if (closeSkillBtn && !closeSkillBtn.dataset.listenerBound) {
+        closeSkillBtn.addEventListener('click', () => {
+            const skillModal = document.getElementById('skillModal');
+            if (skillModal) skillModal.classList.add('hidden');
+            if (document.activeElement) document.activeElement.blur(); 
+        });
+        closeSkillBtn.dataset.listenerBound = 'true';
+    }
+};
 
 // --- END OF FILE skills.js ---
