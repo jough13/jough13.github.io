@@ -736,9 +736,9 @@ function renderTerrainCache(startX, startY) {
             else { 
                 tile = chunkManager.getTile(mapX, mapY);
                 
-                // PERFORMANCE WIN: Fast-path for Bitwise math
-                const cX = (mapX / 16) | 0;
-                const cY = (mapY / 16) | 0;
+                // Must use Math.floor to properly handle negative coordinate chunks!
+                const cX = Math.floor(mapX / 16);
+                const cY = Math.floor(mapY / 16);
                 const lX = (mapX % 16 + 16) % 16;
                 const lY = (mapY % 16 + 16) % 16;
                 const chunkId = `${cX},${cY}`;
