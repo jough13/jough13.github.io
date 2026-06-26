@@ -1775,8 +1775,6 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                         transmission = Math.pow(0.5, t_cm / hvl);
                     }
 
-                    const responseFactor = detInfo.refCpmPerMicroR || detInfo.gammaCpmPerMicroR;
-
                     // Determine primary gamma energy to estimate detector energy dependence
                     let primaryGamma_keV = 662; // Default to Cs-137 standard
                     if (selectedNuclide.emissionEnergies?.gamma?.length > 0) {
