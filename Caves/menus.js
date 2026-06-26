@@ -1,6 +1,6 @@
 // --- START OF FILE menus.js ---
 
-// PERFORMANCE WIN: Cache DOM lookups used frequently by the menu rendering loops
+// Cache DOM lookups used frequently by the menu rendering loops
 const _menuDOMCache = {
     talentList: null,
     talentPoints: null,
@@ -163,12 +163,29 @@ function openEvolutionModal() {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
 }
 
-function selectEvolution(evoData) {
-    // LORE & QoL WIN: Safety prompt styled with gravity and atmosphere
-    if (!confirm(`Do you wish to forge your soul into a ${evoData.name}?\n\nThis path is permanent. The old world will fall away, and you cannot undo this ascension.`)) {
-        return;
-    }
+let pendingEvolution = null;
 
+function selectEvolution(evoData) {
+    pendingEvolution = evoData;
+    
+    const confirmModal = document.getElementById('evolutionConfirmModal');
+    const confirmTitle = document.getElementById('evoConfirmTitle');
+    const confirmDesc = document.getElementById('evoConfirmDesc');
+    
+    if (confirmModal && confirmTitle && confirmDesc) {
+        confirmTitle.innerHTML = `Become a ${evoData.name}?`;
+        confirmDesc.innerHTML = `This path is <strong class="text-yellow-400 font-bold uppercase tracking-widest border border-yellow-800 bg-black bg-opacity-40 px-1 rounded shadow-inner">permanent</strong>.<br><br>The old world will fall away, and you cannot undo this ascension.`;
+        confirmModal.classList.remove('hidden');
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
+    } else {
+        // Fallback just in case HTML isn't updated
+        if (confirm(`Do you wish to forge your soul into a ${evoData.name}?\n\nThis path is permanent. The old world will fall away, and you cannot undo this ascension.`)) {
+            executeEvolution(evoData);
+        }
+    }
+}
+
+function executeEvolution(evoData) {
     const player = gameState.player;
 
     // 1. Apply Stats
@@ -219,10 +236,40 @@ function selectEvolution(evoData) {
         });
     }
 
-    evolutionModal.classList.add('hidden');
+    // Safely hide both Modals
+    const evoModal = document.getElementById('evolutionModal');
+    if (evoModal) evoModal.classList.add('hidden');
+    
+    const confirmModal = document.getElementById('evolutionConfirmModal');
+    if (confirmModal) confirmModal.classList.add('hidden');
+    
     if (typeof renderStats === 'function') renderStats();
     if (typeof render === 'function') render(); 
 }
+
+// Attach listeners for the custom confirm modal safely
+setTimeout(() => {
+    const cancelEvoBtn = document.getElementById('cancelEvoButton');
+    const confirmEvoBtn = document.getElementById('confirmEvoButton');
+    const evoConfirmModal = document.getElementById('evolutionConfirmModal');
+    
+    if (cancelEvoBtn) {
+        cancelEvoBtn.addEventListener('click', () => {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            if (evoConfirmModal) evoConfirmModal.classList.add('hidden');
+            pendingEvolution = null;
+        });
+    }
+    
+    if (confirmEvoBtn) {
+        confirmEvoBtn.addEventListener('click', () => {
+            if (pendingEvolution) {
+                executeEvolution(pendingEvolution);
+                pendingEvolution = null;
+            }
+        });
+    }
+}, 100);
 
 function openBountyBoard() {
     if (window.inputQueue) window.inputQueue.length = 0;
