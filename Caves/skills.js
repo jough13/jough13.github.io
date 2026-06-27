@@ -45,6 +45,10 @@ function useSkill(skillId) {
     if (player[costType] < cost) {
         logMessage(`{red:You don't have enough ${costType} to use that.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        
+        // JUICE & PERFORMANCE: Cached DOM lookup for flashing
+        const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[costType] : document.getElementById(`${costType}Display`);
+        if (displayEl && typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false);
         return; 
     }
 
@@ -101,6 +105,11 @@ function useSkill(skillId) {
                         defenseBonusTurns: player.defenseBonusTurns
                     });
                 }
+                
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createFloatingText(player.x, player.y, "🛡️", "#9ca3af");
+                }
+                
                 skillUsedSuccessfully = true;
                 break;
             }
@@ -206,10 +215,12 @@ function useSkill(skillId) {
                             const liveEnemy = gameState.sharedEnemies[enemyId];
                             const tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(tx, ty);
                             
-                            const enemyData = ENEMY_DATA[tile];
+                            const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
                             if (enemyData) {
                                 const finalDmg = Math.max(1, baseDmg - (enemyData.defense || 0));
-                                whirlwindPromises.push(handleOverworldCombat(tx, ty, enemyData, tile, finalDmg));
+                                if (typeof handleOverworldCombat === 'function') {
+                                    whirlwindPromises.push(handleOverworldCombat(tx, ty, enemyData, tile, finalDmg));
+                                }
                             }
                         } else {
                             let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
@@ -260,6 +271,9 @@ function useSkill(skillId) {
         } else {
             // Refund stamina if skill failed 
             player[costType] += cost;
+            // Flash the bar red to show it failed
+            const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[costType] : document.getElementById(`${costType}Display`);
+            if (displayEl && typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false); 
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         }
     }
@@ -609,8 +623,8 @@ async function executeRangedAttack(dirX, dirY) {
             
             if (isFire && gameState.mapMode === 'dungeon' && tile === '🕸') {
                 const map = chunkManager.caveMaps[gameState.currentCaveId];
-                const theme = CAVE_THEMES[gameState.currentCaveTheme];
-                if (map && map[targetY]) {
+                const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
+                if (map && map[targetY] && theme) {
                     map[targetY][targetX] = theme.floor;
                     logMessage("{orange:Your Fire Arrow burns away the spider web!}");
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#f97316', 3);
@@ -653,6 +667,8 @@ async function executeRangedAttack(dirX, dirY) {
                         // --- ELEMENTAL STATUS EFFECTS ---
                         if (isFire) {
                             logMessage(`{orange:The ${enemy.name} is scorched by the flames!}`);
+                            if (enemy.burnTurns === undefined) enemy.burnTurns = 0;
+                            enemy.burnTurns += 3;
                         }
                         if (isPoison && enemy.poisonTurns <= 0) {
                             enemy.poisonTurns = 3;
@@ -925,7 +941,9 @@ function executeQuickstep(dirX, dirY) {
         
         // Wrap this inside a small timeout to let the dash finish visually before the damage registers
         setTimeout(async () => {
-            await applySpellDamage(targetX, targetY, flurryDamage, 'quickstep');
+            if (typeof applySpellDamage === 'function') {
+                await applySpellDamage(targetX, targetY, flurryDamage, 'quickstep');
+            }
             
             // Add poison if we have a poisoned dagger
             if (player.equipment.weapon?.inflicts === 'poison') {
