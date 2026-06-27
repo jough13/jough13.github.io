@@ -918,6 +918,7 @@ window.TILE_DATA = {
 
             if (!upg.includes('stash')) addBtn('stash', 'Stash Box', '10 Wood, 5 Stone', wood >= 10 && stone >= 5);
             if (!upg.includes('workbench')) addBtn('workbench', 'Workbench', '15 Wood, 5 Iron', wood >= 15 && iron >= 5);
+            if (!upg.includes('enchanter')) addBtn('enchanter', 'Enchanting Altar', '10 Stone, 5 Void Dust', stone >= 10 && dust >= 5);
             if (!upg.includes('tent')) addBtn('tent', 'Large Tent (Aesthetic)', '20 Wood, 10 Wolf Pelt', wood >= 20 && countMat('Wolf Pelt') >= 10);
             if (!upg.includes('waystone')) addBtn('waystone', 'Leyline Waystone', '10 Void Dust, 500 Gold', dust >= 10 && p.coins >= 500);
 
@@ -968,6 +969,7 @@ window.TILE_DATA = {
 
                 bindUpgrade('stash', () => { consume('Wood Log', 10); consume('Stone', 5); }, () => {});
                 bindUpgrade('workbench', () => { consume('Wood Log', 15); consume('Iron Ore', 5); }, () => {});
+                bindUpgrade('enchanter', () => { consume('Stone', 10); consume('Void Dust', 5); }, () => {});
                 bindUpgrade('tent', () => { consume('Wood Log', 20); consume('Wolf Pelt', 10); }, () => {});
                 bindUpgrade('waystone', () => { consume('Void Dust', 10); p.coins -= 500; }, () => {});
 
