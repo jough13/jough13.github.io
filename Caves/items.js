@@ -1,6 +1,7 @@
 // --- START OF FILE items.js ---
 
-// PERFORMANCE WIN: O(1) Cache for Item Name Lookups during Rehydration
+// O(1) Cache for Item Name Lookups during Rehydration
+// Prevents the engine from scanning the massive ITEM_DATA dictionary thousands of times when loading a save.
 const _itemTemplateCache = {};
 function resolveTemplateIdByName(name) {
     if (_itemTemplateCache[name]) return _itemTemplateCache[name];
@@ -56,8 +57,8 @@ function rehydratePlayerState(data) {
             item.inflictChance = templateItem.inflictChance;
 
             // Heal Missing Stats (Keep existing ones if present)
-            if (item.damage === undefined || item.damage === null) item.damage = templateItem.damage;
-            if (item.defense === undefined || item.defense === null) item.defense = templateItem.defense;
+            if (item.damage === undefined || item.damage === null) item.damage = templateItem.damage || 0;
+            if (item.defense === undefined || item.defense === null) item.defense = templateItem.defense || 0;
             
             // ROBUSTNESS WIN: Force the slot to match the template to prevent save-file hacking
             item.slot = templateItem.slot; 
@@ -72,14 +73,15 @@ function rehydratePlayerState(data) {
             
         } else {
             // Graceful degradation for removed items
-            console.warn(`Converting corrupted/missing item to Ash: ${item.name}`);
+            console.warn(`[AKASHIC ENGINE] Converting corrupted/missing item to Ash: ${item.name}`);
             item.name = `Crumbling Ash`;
-            item.description = "Dust from a forgotten age. This item no longer exists.";
+            item.description = "Dust from a forgotten age. This item no longer exists in the timeline.";
             item.type = 'junk';
             item.tile = '💨';
             item.quantity = item.quantity || 1;
             item.isEquipped = false;
             item.tags = null;
+            item._rarity = null;
         }
         return item;
     });
@@ -260,14 +262,18 @@ function generateEnemyLoot(player, enemy) {
         tier3Chance = 0.05;
     }
 
-    if (scaledRoll < tier5Chance) return tier5Loot[Math.floor(Math.random() * tier5Loot.length)];
-    if (scaledRoll < tier5Chance + tier4Chance) return tier4Loot[Math.floor(Math.random() * tier4Loot.length)];
-    if (scaledRoll < tier5Chance + tier4Chance + tier3Chance) return tier3Loot[Math.floor(Math.random() * tier3Loot.length)];
-    if (scaledRoll < tier5Chance + tier4Chance + tier3Chance + tier2Chance) return tier2Loot[Math.floor(Math.random() * tier2Loot.length)];
-    if (scaledRoll < tier5Chance + tier4Chance + tier3Chance + tier2Chance + tier1Chance) return tier1Loot[Math.floor(Math.random() * tier1Loot.length)];
+    // SAFEGUARD: Provide a default fallback of '$' to ensure the drop array never returns undefined
+    if (scaledRoll < tier5Chance) return tier5Loot[Math.floor(Math.random() * tier5Loot.length)] || '$';
+    if (scaledRoll < tier5Chance + tier4Chance) return tier4Loot[Math.floor(Math.random() * tier4Loot.length)] || '$';
+    if (scaledRoll < tier5Chance + tier4Chance + tier3Chance) return tier3Loot[Math.floor(Math.random() * tier3Loot.length)] || '$';
+    if (scaledRoll < tier5Chance + tier4Chance + tier3Chance + tier2Chance) return tier2Loot[Math.floor(Math.random() * tier2Loot.length)] || '$';
+    if (scaledRoll < tier5Chance + tier4Chance + tier3Chance + tier2Chance + tier1Chance) return tier1Loot[Math.floor(Math.random() * tier1Loot.length)] || '$';
 
-    return commonLoot[Math.floor(Math.random() * commonLoot.length)];
+    return commonLoot[Math.floor(Math.random() * commonLoot.length)] || '$';
 }
+
+// PERFORMANCE WIN: Static Cache for Magic Item Base Templates
+window._cachedBaseItemKeys = null;
 
 function generateMagicItem(tier) {
     // MECHANIC WIN: Luck drastically affects your chance to roll multiple affixes!
@@ -275,9 +281,13 @@ function generateMagicItem(tier) {
     const luckBonus = playerLuck * 0.01; // 1% extra chance per luck point
 
     // 1. Pick a base item (Weapons or Armor)
-    const baseKeys = Object.keys(ITEM_DATA).filter(k =>
-        ITEM_DATA[k].type === 'weapon' || ITEM_DATA[k].type === 'armor'
-    );
+    // Build the cache exactly once to save CPU cycles during mass-identifications
+    if (!window._cachedBaseItemKeys) {
+        window._cachedBaseItemKeys = Object.keys(ITEM_DATA).filter(k =>
+            ITEM_DATA[k].type === 'weapon' || ITEM_DATA[k].type === 'armor'
+        );
+    }
+    const baseKeys = window._cachedBaseItemKeys;
     
     // Strict Tier Filtering
     const validBaseKeys = baseKeys.filter(k => {
@@ -308,26 +318,34 @@ function generateMagicItem(tier) {
         damage: template.damage || 0,
         defense: template.defense || 0,
         slot: template.slot,
-        statBonuses: template.statBonuses ? { ...template.statBonuses } : {},
-        tags: template.tags ? [...template.tags] : [] // Clone tags!
+        // BUG FIX: Deep clone stat bonuses so we don't accidentally mutate the global template dictionary!
+        statBonuses: template.statBonuses ? JSON.parse(JSON.stringify(template.statBonuses)) : {},
+        tags: template.tags ? [...template.tags] : [] 
     };
 
     let hasPrefix = false;
     let hasSuffix = false;
 
-    // --- CONTENT WIN: Cursed Items ---
+    // --- CONTENT & LORE WIN: Expanded Cursed Items ---
     // 5% chance at Tier 3+ to roll a Cursed item with massive stats but heavy penalties
     if (tier >= 3 && Math.random() < 0.05) {
-        newItem.name = `Cursed ${newItem.name}`;
+        const curses = ["Cursed", "Doomed", "Forsaken", "Blood-Starved", "Whispering", "Blighted"];
+        const curseWord = curses[Math.floor(Math.random() * curses.length)];
+        
+        newItem.name = `${curseWord} ${newItem.name}`;
         hasPrefix = true;
         
         // Massive offensive/defensive buffs
-        if (newItem.type === 'weapon') newItem.damage += 4;
-        if (newItem.type === 'armor') newItem.defense += 4;
+        if (newItem.type === 'weapon') newItem.damage += (3 + Math.floor(Math.random() * 3)); // +3 to +5
+        if (newItem.type === 'armor') newItem.defense += (3 + Math.floor(Math.random() * 3));
         
-        // Terrible stat drains
+        // Terrible stat drains (Always drains luck and willpower, plus one other)
         newItem.statBonuses.luck = (newItem.statBonuses.luck || 0) - 2;
-        newItem.statBonuses.willpower = (newItem.statBonuses.willpower || 0) - 1;
+        newItem.statBonuses.willpower = (newItem.statBonuses.willpower || 0) - 2;
+        
+        const drains = ['constitution', 'strength', 'wits'];
+        const extraDrain = drains[Math.floor(Math.random() * drains.length)];
+        newItem.statBonuses[extraDrain] = (newItem.statBonuses[extraDrain] || 0) - 1;
         
         newItem._rarity = 'epic'; // Treated as epic for border colors
     } else {
@@ -468,8 +486,15 @@ function handleItemDrop(key) {
 
     if (!itemToDrop) return; // Empty slot
 
+    // --- BUG FIX & UX WIN: Protection against dropping crucial items! ---
     if (itemToDrop.isEquipped) {
         logMessage("{red:You cannot drop an item you are wearing!}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
+    }
+    
+    if (itemToDrop.type === 'quest') {
+        logMessage("{red:You cannot drop crucial quest artifacts!}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
@@ -510,7 +535,7 @@ function handleItemDrop(key) {
         if (typeof renderInventory === 'function') renderInventory();
         return;
         
-    } else if (currentTile === 'Ω' || currentTile === '🕳️') {
+    } else if (currentTile === 'Ω' || currentTile === '🕳️' || gameState.mapMode === 'skyrealm') {
         logMessage(`{void:You drop the ${itemToDrop.name} into the abyss. It ceases to exist.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 12);
@@ -547,7 +572,8 @@ function handleItemDrop(key) {
             if (typeof renderInventory === 'function') renderInventory();
             return;
         } else {
-            logMessage("You can't drop items here. (Must be on open floor)");
+            // BUG FIX: Prevent players from hiding items inside solid walls!
+            logMessage("{red:You can't drop items here. (Must be on open floor)}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
@@ -616,7 +642,8 @@ function useInventoryItem(itemIndex) {
     if (itemToUse.name === 'Unidentified Magic Item' || itemToUse.tile === '✨') {
         
         // Block identification if it's stacked and inventory is full!
-        if (itemToUse.quantity > 1 && player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+        if (itemToUse.quantity > 1 && player.inventory.length >= invCap) {
             logMessage("{red:Inventory full! Make space before identifying stacked items.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
@@ -630,7 +657,7 @@ function useInventoryItem(itemIndex) {
 
         const identifiedItem = generateMagicItem(tier);
         
-        // JUICE WIN: Colorful Identification Fanfare
+        // LORE & JUICE WIN: Colorful Identification Fanfare
         let colorTag = 'blue';
         let rarityLabel = 'Uncommon';
         
@@ -638,8 +665,8 @@ function useInventoryItem(itemIndex) {
         if (identifiedItem._rarity === 'epic') { colorTag = 'red'; rarityLabel = 'Epic'; }
         if (identifiedItem._rarity === 'legendary') { colorTag = 'gold'; rarityLabel = 'Legendary'; }
         
-        if (identifiedItem.name.includes("Cursed")) {
-            logMessage(`{red:The item radiates malice... You identified a Cursed item: ${identifiedItem.name}!}`);
+        if (identifiedItem.name.includes("Cursed") || identifiedItem.name.includes("Doomed") || identifiedItem.name.includes("Forsaken")) {
+            logMessage(`{red:The item radiates malice... You identified a Cursed artifact: ${identifiedItem.name}!}`);
             gameState.screenShake = 15;
             if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); // Ominous tone
         } else {
@@ -908,20 +935,25 @@ function useInventoryItem(itemIndex) {
         const stat = itemToUse.stat;
         if (stat && player.hasOwnProperty(stat)) {
             player[stat]++;
-            logMessage(`{gold:You consume the tome. ${stat.toUpperCase()} +1!}`);
             
-            // JUICE WIN: Match particle color to stat consumed
+            // LORE & JUICE WIN: Dynamic text and particle colors for stat tomes!
             let color = '#facc15';
-            if (stat === 'strength') color = '#ef4444';
-            if (stat === 'wits') color = '#3b82f6';
-            if (stat === 'constitution') color = '#22c55e';
+            let statText = stat.substring(0,3).toUpperCase();
+            
+            if (stat === 'strength') { color = '#ef4444'; statText = "Strength"; }
+            if (stat === 'wits') { color = '#3b82f6'; statText = "Wits"; }
+            if (stat === 'constitution') { color = '#22c55e'; statText = "Constitution"; }
+            if (stat === 'dexterity') { color = '#84cc16'; statText = "Dexterity"; }
+            if (stat === 'willpower') { color = '#a855f7'; statText = "Willpower"; }
+            
+            logMessage(`{gold:You consume the tome. Your ${statText} permanently increases!}`);
             
             if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined') {
                 triggerStatAnimation(statDisplays[stat], 'stat-pulse-green');
             }
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createExplosion(player.x, player.y, color, 20);
-                ParticleSystem.createFloatingText(player.x, player.y, `+1 ${stat.substring(0,3).toUpperCase()}`, color);
+                ParticleSystem.createFloatingText(player.x, player.y, `+1 ${statText}`, color);
             }
             if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
             
