@@ -6,7 +6,7 @@
 
 const mapModal = document.getElementById('mapModal');
 const worldMapCanvas = document.getElementById('worldMapCanvas');
-const worldMapCtx = worldMapCanvas.getContext('2d');
+const worldMapCtx = worldMapCanvas.getContext('2d', { alpha: false }); // PERFORMANCE WIN: Disable alpha buffer for the main canvas!
 const mapCoordsDisplay = document.getElementById('mapCoords');
 
 // Settings & State
@@ -52,7 +52,7 @@ const MAP_COLORS = {
     DESERT: [253, 224, 71, 255],
     FOREST: [20, 83, 45, 255],
     PLAINS: [34, 197, 94, 255],
-    CRYSTAL: [34, 211, 238, 255], // Cyan
+    CRYSTAL: [34, 211, 238, 255], 
     EMPTY: [0, 0, 0, 0],
     
     // Lore Anomalies
@@ -61,16 +61,18 @@ const MAP_COLORS = {
     CLOCKWORK: [180, 83, 9, 255],     
     MINE: [68, 64, 60, 255],          
     VOID: [46, 2, 73, 255],           
-    ICE: [186, 230, 253, 255]         
+    ICE: [186, 230, 253, 255],
+    BARD: [250, 204, 21, 255] // Yellow for the Wandering Bard       
 };
 
 function getCachedMapChunk(cx, cy) {
     const key = `${cx},${cy}`;
     if (mapChunkCache.has(key)) return mapChunkCache.get(key);
 
-    // PERFORMANCE WIN: O(1) Memory Culling
-    // Pop exactly one old chunk off the map when we reach capacity to prevent stuttering
+    // PERFORMANCE & MEMORY LEAK WIN: Strict Culling
+    // Ensure we don't blow out the browser's GPU memory with thousands of cached canvases
     if (mapChunkCache.size >= MAX_CACHED_CHUNKS) {
+        // Iterator trick to quickly pop the oldest (first) item from the Map
         const oldestKey = mapChunkCache.keys().next().value;
         mapChunkCache.delete(oldestKey);
     }
@@ -78,10 +80,10 @@ function getCachedMapChunk(cx, cy) {
     const c = document.createElement('canvas');
     c.width = MAP_CHUNK_SIZE;
     c.height = MAP_CHUNK_SIZE;
-    const ctx = c.getContext('2d', { alpha: false }); // PERFORMANCE: Disable alpha channel for faster rendering
+    const ctx = c.getContext('2d', { alpha: false }); 
 
     // PERFORMANCE WIN: ImageData Buffer (Massively faster than ctx.fillRect)
-    // Writing directly to the byte array is 10x faster than issuing 256 drawing commands
+    // Writing directly to the byte array is roughly 10x faster than issuing 256 vector drawing commands
     const imgData = ctx.createImageData(MAP_CHUNK_SIZE, MAP_CHUNK_SIZE);
     const data = imgData.data;
 
@@ -119,6 +121,7 @@ function getTileColorForMap(worldX, worldY) {
     if (tile === '~') return MAP_COLORS.DEEP_WATER;
     if (tile === '🧊' || tile === '❄️') return MAP_COLORS.ICE;
     if (tile === '💎c') return MAP_COLORS.CRYSTAL;
+    if (tile === '🎵') return MAP_COLORS.BARD;
     
     // Anomalies
     if (tile === '🌋') return MAP_COLORS.VOLCANO;
@@ -177,7 +180,8 @@ function getMapTileName(x, y) {
         '🧊': "Slippery Glacial Ice", '❄️': "Deep Tundra Snow", '🌲': "Frozen Pine Forest",
         '💎c': "Crystalline Spires", '🍄': "Towering Fungal Jungle", '🕸': "Infested Spider Nest",
         '⛺k': "Abandoned Campfire", '⚰️': "Forgotten Grave", '?': "Whispering Statue",
-        '|': "Ancient Obelisk", '⛲': "Wishing Well", '⛩️': "Ruined Shrine", 'V': "Village Wall"
+        '|': "Ancient Obelisk", '⛲': "Wishing Well", '⛩️': "Ruined Shrine", 'V': "Village Wall",
+        '🎵': "Wandering Bard", '⛺a': "Abandoned Campsite"
     };
 
     if (names[tile]) return names[tile];
@@ -210,6 +214,7 @@ function closeWorldMap() {
         mapAnimFrame = null;
     }
     
+    // Memory release for chunks outside our immediate view
     if (typeof chunkManager !== 'undefined' && chunkManager.unloadOutOfRangeChunks && gameState.player) {
         const currentChunkX = Math.floor(gameState.player.x / MAP_CHUNK_SIZE);
         const currentChunkY = Math.floor(gameState.player.y / MAP_CHUNK_SIZE);
