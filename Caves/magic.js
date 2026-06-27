@@ -85,6 +85,7 @@ function castSpell(spellId) {
 
                 logMessage(`{gray:Your skin turns to granite! (+${skinBonus} Defense)}`);
                 if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-gray'); 
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "🛡️", "#9ca3af");
 
                 updates.defenseBonus = player.defenseBonus;
                 updates.defenseBonusTurns = player.defenseBonusTurns;
@@ -97,6 +98,7 @@ function castSpell(spellId) {
                 player.thornsValue = reflectAmount;
                 player.thornsTurns = spellData.duration;
                 logMessage(`{green:Your skin hardens into iron-like thorns! (Reflect ${reflectAmount} dmg)}`);
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "🌿", "#4ade80");
 
                 updates.thornsValue = reflectAmount;
                 updates.thornsTurns = spellData.duration;
@@ -213,6 +215,7 @@ function castSpell(spellId) {
 
                 logMessage(`{blue:You conjure an Arcane Shield, absorbing ${shieldAmount} damage!}`);
                 if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.health, 'stat-pulse-blue');
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "💠", "#3b82f6");
 
                 updates.shieldValue = player.shieldValue;
                 updates.shieldTurns = player.shieldTurns;
@@ -272,7 +275,7 @@ function castSpell(spellId) {
                 if (foundWall) {
                     logMessage("{purple:You focus your mind... and a hidden passage is revealed!}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-                    render();
+                    if (typeof render === 'function') render();
                 } else {
                     logMessage("{gray:You focus, but the stone around you holds no secrets.}");
                 }
@@ -321,7 +324,7 @@ function castSpell(spellId) {
 
             triggerAbilityCooldown(spellId);
 
-            endPlayerTurn();
+            if (typeof endPlayerTurn === 'function') endPlayerTurn();
             if (typeof renderStats === 'function') renderStats();
         } else {
             // Refund the cost if the spell failed (e.g., shield already active)
@@ -429,8 +432,8 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 chunkManager.setWorldTile(targetX, targetY, '.');
                 gameState.mapDirty = true;
             } else if (gameState.mapMode === 'dungeon') {
-                const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
-                chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = theme.floor;
+                const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
+                if (theme) chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = theme.floor;
             }
         }
     }
@@ -451,10 +454,14 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         const enemyId = `overworld:${targetX},${-targetY}`;
+        
+        // BUG FIX: Prevent crash if EnemyNetworkManager isn't fully loaded
+        if (typeof EnemyNetworkManager === 'undefined') return false;
+        
         const enemyRef = rtdb.ref(EnemyNetworkManager.getPath(targetX, targetY, enemyId));
 
         const liveEnemy = gameState.sharedEnemies[enemyId];
-        const enemyInfo = liveEnemy || getScaledEnemy(enemyData, targetX, targetY);
+        const enemyInfo = liveEnemy || (typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, targetX, targetY) : enemyData);
   
         try {
             // Wrap the spell transaction in a 3-second timeout
@@ -494,12 +501,12 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 
                 if (finalEnemyState === null) {
                     logMessage(`The ${enemyInfo.name} was vanquished!`);
-                    registerKill(enemyInfo);
+                    if (typeof registerKill === 'function') registerKill(enemyInfo);
 
                     const lootData = { ...enemyData, isElite: enemyInfo.isElite };
-                    const droppedLoot = generateEnemyLoot(player, lootData);
+                    const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(player, lootData) : '$';
 
-                    chunkManager.setWorldTile(targetX, targetY, droppedLoot || '.');
+                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(targetX, targetY, droppedLoot || '.');
                 }
             } else {
                 // The transaction aborted because the enemy was already dead
@@ -778,7 +785,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     }
 
                     // Stop early if we hit a solid object, wall, or an enemy!
-                    if (ENEMY_DATA[tileAt] || ['▓', '▒', '🧱'].includes(tileAt)) {
+                    if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tileAt] || ['▓', '▒', '🧱'].includes(tileAt)) {
                         break;
                     }
                 }
@@ -885,7 +892,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         let hasEnemy = false;
                         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                             const tile = chunkManager.getTile(x, y);
-                            if (ENEMY_DATA[tile]) hasEnemy = true;
+                            if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) hasEnemy = true;
                         } else {
                             if (gameState.instancedEnemies.some(e => e.x === x && e.y === y)) hasEnemy = true;
                         }
@@ -953,7 +960,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
 
         triggerAbilityCooldown(spellId);
 
-        endPlayerTurn();
+        if (typeof endPlayerTurn === 'function') endPlayerTurn();
         if (typeof render === 'function') render();
 
     } finally {
