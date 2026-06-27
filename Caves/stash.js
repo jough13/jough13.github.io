@@ -8,7 +8,7 @@
 // and breaking Firebase document size limits.
 window.MAX_STASH_SLOTS = 50; 
 
-// O(1) Item Lookup Cache for Withdrawing
+// PERFORMANCE WIN: O(1) Item Lookup Cache for Withdrawing
 // Attaching directly to 'window' makes it 100% immune to hot-reload SyntaxErrors!
 window._stashItemKeyCache = window._stashItemKeyCache || {};
 
@@ -23,7 +23,9 @@ function getStashItemKey(name) {
 // Helper to determine if an item is allowed to merge quantities
 window.isStackableItem = (type) => ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(type);
 
-// PERFORMANCE WIN: High-speed, robust deep cloning for stash transfers
+// PERFORMANCE & BUG FIX WIN: High-speed, robust deep cloning for stash transfers
+// Prevents accidentally copying an item Reference which would cause deleting it from 
+// the stash to also delete it from the player's inventory!
 window.cloneItemSafely = (item) => {
     if (typeof fastClone === 'function') {
         return fastClone(item);
@@ -38,7 +40,7 @@ function playStashAudio(itemType) {
     
     if (['weapon', 'armor', 'tool'].includes(itemType)) {
         AudioSystem.playHit(); // Heavy metallic clank
-    } else if (['consumable', 'ammo', 'ingredient'].includes(itemType)) {
+    } else if (['consumable', 'ammo', 'ingredient', 'scroll', 'spellbook'].includes(itemType)) {
         AudioSystem.playNoise(0.1, 0.1, 800); // Rustling/paper sound
     } else if (['trade'].includes(itemType)) {
         AudioSystem.playCoin(); // Wealth jingle
@@ -61,7 +63,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
             return;
         }
 
-        const isStackable = isStackableItem(item.type);
+        const isStackable = window.isStackableItem(item.type);
         const existingBankItem = isStackable ? player.bank.find(i => i.name === item.name) : null;
         
         // Determine transfer amount
@@ -78,7 +80,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
         if (existingBankItem) {
             existingBankItem.quantity += amountToMove;
         } else {
-            const newItem = cloneItemSafely(item);
+            const newItem = window.cloneItemSafely(item);
             newItem.quantity = amountToMove;
             player.bank.push(newItem); 
         }
@@ -93,6 +95,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
         logMessage(`You push ${qtyString}${nameFormatted} into the void.`);
         
         playStashAudio(item.type);
+        
         // JUICE WIN: Purple particle effect representing the Void Vault receiving the item
         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '📦', '#c084fc');
 
@@ -101,14 +104,15 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
         const item = player.bank[index];
         if (!item) return;
 
-        const isStackable = isStackableItem(item.type);
+        const isStackable = window.isStackableItem(item.type);
         const existingInvItem = isStackable ? player.inventory.find(i => i.name === item.name) : null;
 
         // Determine transfer amount
         const amountToMove = (amountStr === 'all') ? item.quantity : 1;
 
         // Inventory Capacity Check
-        if (!existingInvItem && player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) { 
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+        if (!existingInvItem && player.inventory.length >= invCap) { 
             logMessage("{red:Your inventory is full!}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
@@ -117,7 +121,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
         if (existingInvItem) {
             existingInvItem.quantity += amountToMove;
         } else {
-            let withdrawnItem = cloneItemSafely(item);
+            let withdrawnItem = window.cloneItemSafely(item);
             withdrawnItem.quantity = amountToMove;
 
             // PERFORMANCE & ROBUSTNESS: O(1) Cached Rebind Effect Logic
@@ -149,6 +153,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
         logMessage(`You pull ${qtyString}${nameFormatted} from the vault.`);
         
         playStashAudio(item.type);
+        
         // JUICE WIN: Blue particle effect representing the player's Bag receiving the item
         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '🎒', '#60a5fa');
     }
@@ -162,7 +167,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
     }
 
     renderStash();
-    renderInventory();
+    if (typeof renderInventory === 'function') renderInventory();
 };
 
 window.depositAllMaterials = function() {
@@ -187,7 +192,7 @@ window.depositAllMaterials = function() {
         if (existingBankItem) {
             existingBankItem.quantity += item.quantity;
         } else {
-            player.bank.push(cloneItemSafely(item));
+            player.bank.push(window.cloneItemSafely(item));
         }
 
         player.inventory.splice(i, 1);
@@ -216,7 +221,7 @@ window.depositAllMaterials = function() {
         }
 
         renderStash();
-        renderInventory();
+        if (typeof renderInventory === 'function') renderInventory();
     } else {
         logMessage("{gray:No materials found to deposit.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -237,7 +242,7 @@ window.quickStackToStash = function() {
         const item = player.inventory[i];
         
         if (item.isEquipped) continue;
-        if (!isStackableItem(item.type)) continue;
+        if (!window.isStackableItem(item.type)) continue;
 
         // Check if this item already exists in the stash
         const existingBankItem = player.bank.find(bankItem => bankItem.name === item.name);
@@ -269,7 +274,7 @@ window.quickStackToStash = function() {
         }
 
         renderStash();
-        renderInventory();
+        if (typeof renderInventory === 'function') renderInventory();
     } else {
         logMessage("{gray:No matching stackable items found to quick-stack.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -284,7 +289,7 @@ window.sortStash = function(playSound = true) {
     // 1. Consolidate stacks in case there are duplicates
     const consolidated = [];
     player.bank.forEach(item => {
-        const isStackable = isStackableItem(item.type);
+        const isStackable = window.isStackableItem(item.type);
         const existing = consolidated.find(i => i.name === item.name && isStackable);
         
         if (existing) {
@@ -364,7 +369,7 @@ function renderStash() {
         return tooltip;
     };
 
-    // QoL WIN: Generate visually pleasing category tags for the list
+    // UI/UX WIN: Generate visually pleasing category tags for the list
     const generateTypeTag = (type) => {
         if (!type) return '';
         const tagMap = {
@@ -488,9 +493,10 @@ function renderStash() {
     // Inject Mass Deposit & Quick Stack Buttons into Player Inventory Header
     const invHeader = stashPlayerList.parentElement.querySelector('h3');
     if (invHeader) {
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
         invHeader.innerHTML = `
             <div class="flex justify-between items-center w-full">
-                <span class="drop-shadow-sm">Your Bag</span>
+                <span class="drop-shadow-sm">Your Bag <span class="text-[10px] text-gray-400 font-normal ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner">(${player.inventory.length}/${invCap})</span></span>
                 <div class="flex gap-2">
                     <button data-action="quickStack" class="text-[10px] uppercase font-bold tracking-widest bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-purple-800" style="transform: translateZ(0);">
                         Quick Stack
