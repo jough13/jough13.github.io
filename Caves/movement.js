@@ -48,9 +48,8 @@ function finalizeMapTransition() {
         const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
         const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
 
-        // Load 3x3 chunk area around player
-        for (let y = -1; y <= 1; y++) {
-            for (let x = -1; x <= 1; x++) {
+        for (let y = -2; y <= 2; y++) {
+            for (let x = -2; x <= 2; x++) {
                 chunkManager.listenToChunkState(currentChunkX + x, currentChunkY + y);
             }
         }
@@ -3245,9 +3244,9 @@ async function attemptMovePlayer(newX, newY) {
 
         // Only trigger heavy network syncs IF we crossed a chunk boundary!
         if (currentChunkX !== prevChunkX || currentChunkY !== prevChunkY) {
-            // Load 3x3 chunk area around player
-            for (let y = -1; y <= 1; y++) {
-                for (let x = -1; x <= 1; x++) {
+            
+            for (let y = -2; y <= 2; y++) {
+                for (let x = -2; x <= 2; x++) {
                     chunkManager.listenToChunkState(currentChunkX + x, currentChunkY + y);
                 }
             }
