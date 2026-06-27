@@ -657,6 +657,7 @@ const chunkManager = {
         // Dynamic Upgrades
         if (upgrades.includes('stash')) map[3][8] = '☒';
         if (upgrades.includes('workbench')) map[5][2] = 'W';
+        if (upgrades.includes('enchanter')) map[4][8] = '🔮';
         if (upgrades.includes('waystone')) map[5][8] = '#';
         if (upgrades.includes('tent')) {
             map[2][4] = '⛺'; map[2][5] = '⛺'; map[2][6] = '⛺';
