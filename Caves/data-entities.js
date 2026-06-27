@@ -180,638 +180,532 @@ window.QUEST_DATA = {
 };
 
 // LORE & MECHANIC WIN: Deeply flavorful elite affixes that wildly alter combat
+// Now strictly defining base properties to prevent NaN math errors during generation
 window.ENEMY_PREFIXES = {
     "Savage": {
         description: "Fights with terrifying ferocity. Deals extra damage.",
-        statModifiers: { attack: 2 },
+        statModifiers: { attack: 2, defense: 0, maxHealth: 0 },
         xpMult: 1.2,
         color: '#ef4444' 
     },
     "Armored": {
         description: "Covered in thick plates. Highly resistant to physical damage.",
-        statModifiers: { defense: 2 },
+        statModifiers: { attack: 0, defense: 2, maxHealth: 0 },
         xpMult: 1.2,
         color: '#9ca3af' 
     },
     "Swift": {
         description: "Moves with blinding speed. Hard to hit.",
-        statModifiers: { defense: 1 }, 
+        statModifiers: { attack: 0, defense: 1, maxHealth: 0 }, 
         xpMult: 1.1,
         color: '#facc15' 
     },
     "Massive": {
         description: "A mutated giant among its kind.",
-        statModifiers: { maxHealth: 10, attack: 1 },
+        statModifiers: { attack: 1, defense: 0, maxHealth: 10 },
         xpMult: 1.5,
         color: '#ea580c' 
     },
     "Plagued": {
         description: "Oozes with sickness. Its attacks poison the blood.",
-        statModifiers: { maxHealth: 5 },
+        statModifiers: { attack: 0, defense: 0, maxHealth: 5 },
         special: 'poison',
         xpMult: 1.3,
         color: '#22c55e' 
     },
     "Spectral": {
         description: "Phases between realms. Hard to hurt with physical weapons.",
-        statModifiers: { defense: 3, maxHealth: -5 }, 
+        statModifiers: { attack: 0, defense: 3, maxHealth: -5 }, 
         xpMult: 1.4,
         color: '#a855f7' 
     },
     "Vampiric": {
         description: "Drains the life from its victims to heal itself.",
-        statModifiers: { maxHealth: 5 },
+        statModifiers: { attack: 0, defense: 0, maxHealth: 5 },
         special: 'poison', // Proxy for life drain mechanics
         xpMult: 1.5,
         color: '#be123c' 
     },
     "Frenzied": {
         description: "Attacks wildly and without warning, abandoning defense.",
-        statModifiers: { attack: 3, defense: -1 },
+        statModifiers: { attack: 3, defense: -1, maxHealth: 0 },
         xpMult: 1.3,
         color: '#f97316' 
     },
     "Crystalline": {
         description: "Covered in jagged, hardened crystal that deflects blows.",
-        statModifiers: { defense: 4, maxHealth: 5 },
+        statModifiers: { attack: 0, defense: 4, maxHealth: 5 },
         xpMult: 1.6,
         color: '#22d3ee' 
     },
     "Infernal": {
         description: "Wreathed in unholy flames. Searing to the touch.",
-        statModifiers: { attack: 2 },
+        statModifiers: { attack: 2, defense: 0, maxHealth: 0 },
         special: 'burn',
         xpMult: 1.4,
         color: '#f97316' 
     },
     "Void-Corrupted": {
         description: "Touched by the outside. It teleports erratically and shatters minds.",
-        statModifiers: { maxHealth: 10, attack: 1 },
+        statModifiers: { attack: 1, defense: 0, maxHealth: 10 },
         special: 'madness',
         xpMult: 2.0,
         color: '#581c87' 
     }
 };
 
-// PERFORMANCE WIN: Unified object shapes. Explicitly declaring `defense: 0` stabilizes the V8 hidden class.
+// PERFORMANCE WIN: Unified object shapes. 
+// Explicitly declaring every possible combat stat prevents the V8 engine from having to constantly 
+// resize the hidden class shape of the object in memory, stopping massive micro-stutters during enemy iteration!
 window.ENEMY_DATA = {
     // --- LEVEL 1 (Vermin & Weaklings) ---
     'r': {
-        name: 'Giant Rat',
-        tags: ['beast', 'vermin'],
+        name: 'Giant Rat', tags: ['beast', 'vermin'],
         maxHealth: 3, attack: 1, defense: 0, xp: 4,
-        loot: '🐀', 
-        color: '#a8a29e', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🐀', color: '#a8a29e', isBoss: false,
         flavor: "It has survived ages in the dark by eating what others leave behind. Its yellow teeth are filed sharp from gnawing on bones."
     },
     '🦇': {
-        name: 'Giant Bat',
-        tags: ['beast', 'vermin'],
+        name: 'Giant Bat', tags: ['beast', 'vermin'],
         maxHealth: 2, attack: 1, defense: 0, xp: 5,
-        loot: '🦇', 
-        color: '#52525b', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🦇', color: '#52525b', isBoss: false,
         flavor: "It swoops down from the darkness, hunting by the sound of your heartbeat."
     },
     '🐍': {
-        name: 'Viper',
-        tags: ['beast', 'reptile', 'poison'],
+        name: 'Viper', tags: ['beast', 'reptile', 'poison'],
         maxHealth: 4, attack: 2, defense: 0, xp: 8,
-        loot: '🦷', 
-        color: '#22c55e', 
-        inflicts: 'poison', inflictChance: 0.2,
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'poison', inflictChance: 0.2,
+        loot: '🦷', color: '#22c55e', isBoss: false,
         flavor: "Its emerald scales blend perfectly with the undergrowth. You usually feel the fangs before you see the snake."
     },
     'R': {
-        name: 'Bandit Recruit',
-        tags: ['humanoid'],
+        name: 'Bandit Recruit', tags: ['humanoid'],
         maxHealth: 5, attack: 2, defense: 0, xp: 10,
-        loot: '🧣', 
-        color: '#fca5a5', 
-        excludeFromLoot: true, 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🧣', color: '#fca5a5', isBoss: false, excludeFromLoot: true, 
         flavor: "He looks nervous, holding a rusted dagger with shaking hands. Hunger drove him to this."
     },
     '🍄s': {
-        name: 'Sporeling',
-        tags: ['fungus', 'poison'],
+        name: 'Sporeling', tags: ['fungus', 'poison'],
         maxHealth: 4, attack: 1, defense: 1, xp: 6,
-        loot: '🍄',
-        color: '#d946ef',
-        inflicts: 'poison', inflictChance: 0.15,
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'poison', inflictChance: 0.15,
+        loot: '🍄', color: '#d946ef', isBoss: false,
         flavor: "A tiny, aggressive walking mushroom. It releases a cloud of choking dust when threatened."
     },
     '⚙️s': {
-        name: 'Clockwork Spider',
-        tags: ['construct', 'metal'],
+        name: 'Clockwork Spider', tags: ['construct', 'metal'],
         maxHealth: 3, attack: 2, defense: 3, xp: 8,
-        loot: '⚙️',
-        color: '#b45309',
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '⚙️', color: '#b45309', isBoss: false,
         flavor: "Ticking brass and rusted gears. It bleeds black oil instead of blood, yet fights with unnatural ferocity."
     },
 
     // --- DESERT WILDLIFE ---
     '🦂s': { 
-        name: 'Sand Scorpion',
-        tags: ['bug', 'poison'],
+        name: 'Sand Scorpion', tags: ['bug', 'poison'],
         maxHealth: 5, attack: 2, defense: 1, xp: 8,
-        loot: '🦷',
-        color: '#d97706', 
-        inflicts: 'poison', inflictChance: 0.3,
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'poison', inflictChance: 0.3,
+        loot: '🦷', color: '#d97706', isBoss: false,
         flavor: "It burrows perfectly into the dunes, leaving only its venomous stinger exposed to the sun."
     },
     '🐍c': { 
-        name: 'King Cobra',
-        tags: ['beast', 'reptile', 'poison'],
+        name: 'King Cobra', tags: ['beast', 'reptile', 'poison'],
         maxHealth: 15, attack: 5, defense: 0, xp: 30,
-        loot: '🦷',
-        color: '#eab308', 
-        inflicts: 'poison', inflictChance: 0.5,
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'poison', inflictChance: 0.5,
+        loot: '🦷', color: '#eab308', isBoss: false,
         flavor: "It rears up, hood flared, hissing loudly. A single bite can drop a warhorse in minutes."
     },
 
     // --- SWAMP WILDLIFE ---
     '🐸': {
-        name: 'Giant Toad',
-        tags: ['beast'],
+        name: 'Giant Toad', tags: ['beast'],
         maxHealth: 20, attack: 3, defense: 0, xp: 25,
-        loot: '🍖', 
-        color: '#15803d', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🍖', color: '#15803d', isBoss: false,
         flavor: "It sits perfectly still in the muck, waiting to swallow careless travelers whole."
     },
     '🦟': {
-        name: 'Blood Mosquito',
-        tags: ['bug'],
+        name: 'Blood Mosquito', tags: ['bug'],
         maxHealth: 2, attack: 1, defense: 5, xp: 10,
-        loot: 'vd',
-        color: '#be123c', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: 'vd', color: '#be123c', isBoss: false,
         flavor: "An annoying, high-pitched whine follows it. It is swollen and red with stolen blood."
     },
 
     // --- AQUATIC WILDLIFE ---
     '🦈': {
-        name: 'Great Shark',
-        tags: ['beast', 'aquatic'],
+        name: 'Great Shark', tags: ['beast', 'aquatic'],
         maxHealth: 25, attack: 6, defense: 1, xp: 35,
-        loot: '🐟', 
-        color: '#94a3b8', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🐟', color: '#94a3b8', isBoss: false,
         flavor: "A massive, scarred dorsal fin slices through the water. It has smelled you."
     },
     '🦀': {
-        name: 'Giant Crab',
-        tags: ['beast', 'aquatic', 'stone'],
+        name: 'Giant Crab', tags: ['beast', 'aquatic', 'stone'],
         maxHealth: 18, attack: 4, defense: 5, xp: 25,
-        loot: '🍖',
-        color: '#ea580c', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🍖', color: '#ea580c', isBoss: false,
         flavor: "Its heavily armored shell is nearly impenetrable, and its claws can snap a ship's oar in half."
     },
     '🦑': {
-        name: 'Kraken',
-        tags: ['beast', 'aquatic', 'monster'],
+        name: 'Kraken', tags: ['beast', 'aquatic', 'monster', 'boss'],
         maxHealth: 200, attack: 12, defense: 4, xp: 800,
-        loot: '🐙', 
-        color: '#7c3aed', 
-        isBoss: true,
-        inflicts: 'root', inflictChance: 0.5,
-        caster: true, castRange: 4, spellDamage: 8,
+        caster: true, castRange: 4, spellDamage: 8, inflicts: 'root', inflictChance: 0.5,
+        loot: '🐙', color: '#7c3aed', isBoss: true,
         flavor: "Massive, writhing tentacles burst from the deep ocean! It pulls entire galleons into the abyss."
     },
     '🧜‍♀️': {
-        name: 'Siren',
-        tags: ['humanoid', 'aquatic', 'magic'],
+        name: 'Siren', tags: ['humanoid', 'aquatic', 'magic'],
         maxHealth: 30, attack: 5, defense: 1, xp: 80,
-        loot: '🐚', 
-        color: '#38bdf8', 
-        caster: true, castRange: 4, spellDamage: 6,
-        inflicts: 'madness', inflictChance: 0.3,
+        caster: true, castRange: 4, spellDamage: 6, inflicts: 'madness', inflictChance: 0.3,
+        loot: '🐚', color: '#38bdf8', isBoss: false,
         flavor: "Her song is beautiful and tragic, but beneath the water, her eyes are pitch black and hungry."
     },
     '🦕': {
-        name: 'Abyssal Leviathan',
-        tags: ['beast', 'aquatic', 'monster'],
+        name: 'Abyssal Leviathan', tags: ['beast', 'aquatic', 'monster', 'boss'],
         maxHealth: 300, attack: 15, defense: 5, xp: 1500,
-        loot: '💎b', 
-        color: '#0284c7', 
-        isBoss: true,
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '💎b', color: '#0284c7', isBoss: true,
         flavor: "A prehistoric terror of the deep. It is a natural disaster with teeth. Run."
     },
+
     // --- FOREST WILDLIFE ---
     '🐻': {
-        name: 'Cave Bear',
-        tags: ['beast', 'mountable'],
-        mountable: true,
+        name: 'Cave Bear', tags: ['beast', 'mountable'], mountable: true,
         maxHealth: 14, attack: 3, defense: 1, xp: 25, 
-        loot: '❄️f', 
-        color: '#78350f', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '❄️f', color: '#78350f', isBoss: false,
         flavor: "A towering wall of muscle and fur. It fiercely defends its territory."
     },
     '🦌': {
-        name: 'Stag',
-        tags: ['beast'],
+        name: 'Stag', tags: ['beast'],
         maxHealth: 15, attack: 2, defense: 0, xp: 10,
-        loot: '🍖',
-        color: '#b45309', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🍖', color: '#b45309', isBoss: false,
         flavor: "It watches you warily, heavy antlers lowered in a defensive stance."
     },
 
     // --- LEVEL 2-3 (Standard Threats) ---
     'g': {
-        name: 'Goblin',
-        tags: ['humanoid', 'goblin'],
+        name: 'Goblin', tags: ['humanoid', 'goblin'],
         maxHealth: 6, attack: 2, defense: 0, xp: 12,
-        loot: 't',
-        color: '#16a34a', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: 't', color: '#16a34a', isBoss: false,
         flavor: "Scavengers who worship the scrap metal left behind by the Great Fall. Cowards alone, deadly in packs."
     },
     'w': {
-        name: 'Wolf',
-        tags: ['beast', 'mountable'],
-        mountable: true,
+        name: 'Wolf', tags: ['beast', 'mountable'], mountable: true,
         maxHealth: 8, attack: 3, defense: 0, xp: 15,
-        loot: 'p',
-        color: '#78716c', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: 'p', color: '#78716c', isBoss: false,
         flavor: "A lean, hungry predator of the wilds. It circles you, waiting for an opening."
     },
     's': {
-        name: 'Skeleton',
-        tags: ['undead', 'bone'],
+        name: 'Skeleton', tags: ['undead', 'bone'],
         maxHealth: 10, attack: 3, defense: 1, xp: 18,
-        loot: '(',
-        color: '#e5e7eb', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '(', color: '#e5e7eb', isBoss: false,
         flavor: "Once the King's elite guard. Even in death, their bones are bound by an oath to protect the ruins."
     },
     'b': {
-        name: 'Bandit',
-        tags: ['humanoid'],
+        name: 'Bandit', tags: ['humanoid'],
         maxHealth: 10, attack: 2, defense: 1, xp: 20,
-        loot: 'i',
-        color: '#ef4444', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: 'i', color: '#ef4444', isBoss: false,
         flavor: "Desperate men driven to crime by a dying world. They fight dirty."
     },
     '👺': {
-        name: 'Goblin Archer',
-        tags: ['humanoid', 'goblin'],
+        name: 'Goblin Archer', tags: ['humanoid', 'goblin'],
         maxHealth: 5, attack: 3, defense: 0, xp: 15,
-        loot: '➹', 
-        color: '#16a34a',
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
         isRanged: true, range: 5,
+        loot: '➹', color: '#16a34a', isBoss: false,
         flavor: "It draws back a crudely strung shortbow, giggling as it aims for your knees."
     },
     '👺m': {
-        name: 'Goblin Shaman',
-        tags: ['humanoid', 'goblin', 'magic'],
+        name: 'Goblin Shaman', tags: ['humanoid', 'goblin', 'magic'],
         maxHealth: 8, attack: 1, defense: 0, xp: 25,
-        loot: '🔮', 
-        color: '#4ade80', 
-        caster: true, castRange: 4, spellDamage: 4,
-        inflicts: 'root', inflictChance: 0.3,
+        caster: true, castRange: 4, spellDamage: 4, inflicts: 'root', inflictChance: 0.3,
+        loot: '🔮', color: '#4ade80', isBoss: false,
         flavor: "It wears a skull mask and chants in a guttural tongue, commanding the roots of the earth."
     },
     '💀a': {
-        name: 'Skeleton Archer',
-        tags: ['undead', 'bone'],
+        name: 'Skeleton Archer', tags: ['undead', 'bone'],
         maxHealth: 8, attack: 4, defense: 1, xp: 20,
-        loot: '➹', 
-        color: '#e5e7eb',
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
         isRanged: true, range: 6,
+        loot: '➹', color: '#e5e7eb', isBoss: false,
         flavor: "Its aim is supernaturally steady, completely unaffected by breath, heartbeat, or fear."
     },
     'k': {
-        name: 'Kobold',
-        tags: ['humanoid', 'reptile'],
+        name: 'Kobold', tags: ['humanoid', 'reptile'],
         maxHealth: 6, attack: 2, defense: 0, xp: 10,
-        loot: '$',
-        color: '#ea580c', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '$', color: '#ea580c', isBoss: false,
         flavor: "Yip yip! A reptilian hoarder of shiny things. They steal anything not nailed down."
     },
     '🐗': {
-        name: 'Wild Boar',
-        tags: ['beast', 'mountable'],
-        mountable: true,
+        name: 'Wild Boar', tags: ['beast', 'mountable'], mountable: true,
         maxHealth: 12, attack: 3, defense: 0, xp: 20,
-        loot: '🍖',
-        color: '#57534e', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🍖', color: '#57534e', isBoss: false,
         flavor: "It scrapes its razor-sharp tusks against the ground, preparing to charge in a blind rage."
     },
     'a': {
-        name: 'Shadow Acolyte',
-        tags: ['humanoid', 'void', 'magic'],
+        name: 'Shadow Acolyte', tags: ['humanoid', 'void', 'magic'],
         maxHealth: 8, attack: 1, defense: 0, xp: 15,
-        loot: 'r',
-        color: '#7c3aed', 
-        caster: true, castRange: 4, spellDamage: 3,
+        caster: true, castRange: 4, spellDamage: 3, inflicts: null, inflictChance: 0,
+        loot: 'r', color: '#7c3aed', isBoss: false,
         flavor: "They whisper ancient texts that physically hurt your ears to hear. Zealots of the Void."
     },
     '👻i': {
-        name: 'Ice Wraith',
-        tags: ['undead', 'ethereal', 'frost'],
+        name: 'Ice Wraith', tags: ['undead', 'ethereal', 'frost'],
         maxHealth: 10, attack: 3, defense: 2, xp: 20,
-        loot: 'E',
-        color: '#7dd3fc',
         caster: true, castRange: 4, spellDamage: 4, inflicts: 'frostbite', inflictChance: 0.3,
+        loot: 'E', color: '#7dd3fc', isBoss: false,
         flavor: "A screaming soul trapped forever in the biting cold. To touch it is to feel the grave."
     },
 
     // --- LEVEL 4-5 (Advanced Threats) ---
     '@': {
-        name: 'Giant Spider',
-        tags: ['bug', 'poison', 'mountable'],
-        mountable: true,
+        name: 'Giant Spider', tags: ['bug', 'poison', 'mountable'], mountable: true,
         maxHealth: 10, attack: 4, defense: 0, xp: 25,
-        loot: '"',
-        color: '#1f2937', 
-        inflicts: 'poison',
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'poison', inflictChance: 0.2,
+        loot: '"', color: '#1f2937', isBoss: false,
         flavor: "It moves with terrifying, silent speed, its eight eyes reflecting the moonlight."
     },
     '🦂': {
-        name: 'Giant Scorpion',
-        tags: ['bug', 'poison'],
+        name: 'Giant Scorpion', tags: ['bug', 'poison'],
         maxHealth: 12, attack: 4, defense: 2, xp: 30,
-        loot: 'i',
-        color: '#b45309', 
-        inflicts: 'poison',
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'poison', inflictChance: 0.2,
+        loot: 'i', color: '#b45309', isBoss: false,
         flavor: "Its carapace deflects blades, and its stinger drips with neurotoxin."
     },
     'l': {
-        name: 'Giant Leech',
-        tags: ['bug', 'aquatic'],
+        name: 'Giant Leech', tags: ['bug', 'aquatic'],
         maxHealth: 15, attack: 2, defense: 0, xp: 20,
-        loot: 'p',
-        color: '#111827', 
-        inflicts: 'poison',
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'poison', inflictChance: 0.1,
+        loot: 'p', color: '#111827', isBoss: false,
         flavor: "A writhing mass of blind hunger from the deep swamps. It seeks warmth and blood."
     },
     'o': {
-        name: 'Orc Brute',
-        tags: ['humanoid', 'orc'],
+        name: 'Orc Brute', tags: ['humanoid', 'orc'],
         maxHealth: 20, attack: 5, defense: 1, xp: 40,
-        loot: 'U',
-        color: '#14532d', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: 'U', color: '#14532d', isBoss: false,
         flavor: "A towering wall of muscle and rage. They respect nothing but overwhelming violence."
     },
     'Z': {
-        name: 'Draugr',
-        tags: ['undead', 'frost'],
+        name: 'Draugr', tags: ['undead', 'frost'],
         maxHealth: 18, attack: 4, defense: 2, xp: 35,
-        loot: 'E',
-        color: '#38bdf8', 
-        inflicts: 'frostbite',
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'frostbite', inflictChance: 0.2,
+        loot: 'E', color: '#38bdf8', isBoss: false,
         flavor: "Ancient northmen, preserved perfectly by the biting frost. Their eyes glow with pale blue light."
     },
     '👷': {
-        name: 'Undead Miner',
-        tags: ['undead'],
+        name: 'Undead Miner', tags: ['undead'],
         maxHealth: 25, attack: 5, defense: 2, xp: 35,
-        loot: '🧨', // Drops TNT!
-        color: '#fcd34d', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🧨', color: '#fcd34d', isBoss: false,
         flavor: "He still swings his rusted pickaxe, long after his final shift ended centuries ago."
     },
     '👁️': {
-        name: 'Void Watcher',
-        tags: ['void', 'monster', 'ethereal'],
+        name: 'Void Watcher', tags: ['void', 'monster', 'ethereal'],
         maxHealth: 15, attack: 1, defense: 0, xp: 45,
-        loot: 'vd',
-        color: '#c084fc',
         caster: true, castRange: 6, spellDamage: 5, inflicts: 'madness', inflictChance: 0.5,
+        loot: 'vd', color: '#c084fc', isBoss: false,
         flavor: "A floating, unblinking eye born from the cosmic tear. It sees your darkest regrets."
     },
 
     // --- LEVEL 6+ (Elites) ---
     '🐺': {
-        name: 'Dire Wolf',
-        tags: ['beast', 'mountable'],
-        mountable: true,
+        name: 'Dire Wolf', tags: ['beast', 'mountable'], mountable: true,
         maxHealth: 25, attack: 6, defense: 1, xp: 60,
-        loot: '🐺',
-        color: '#44403c', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🐺', color: '#44403c', isBoss: false,
         flavor: "An enormous beast with eyes like burning coals. The unquestioned alpha of the woods."
     },
     'Ø': { 
-        name: 'Ogre',
-        tags: ['humanoid', 'giant', 'mountable'],
-        mountable: true,
+        name: 'Ogre', tags: ['humanoid', 'giant', 'mountable'], mountable: true,
         maxHealth: 35, attack: 7, defense: 1, xp: 80,
-        loot: '$',
-        color: '#84cc16', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '$', color: '#84cc16', isBoss: false,
         flavor: "Dull-witted but incredibly destructive. It uses entire tree trunks as clubs."
     },
     'Y': {
-        name: 'Yeti',
-        tags: ['beast', 'frost', 'giant'],
+        name: 'Yeti', tags: ['beast', 'frost', 'giant'],
         maxHealth: 40, attack: 6, defense: 2, xp: 90,
-        loot: '❄️f',
-        color: '#f8fafc', 
-        inflicts: 'frostbite',
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'frostbite', inflictChance: 0.2,
+        loot: '❄️f', color: '#f8fafc', isBoss: false,
         flavor: "The undisputed apex predator of the frozen peaks. It blends perfectly into the blizzards."
     },
     'm': {
-        name: 'Arcane Mage',
-        tags: ['humanoid', 'magic', 'void'],
+        name: 'Arcane Mage', tags: ['humanoid', 'magic', 'void'],
         maxHealth: 15, attack: 2, defense: 0, xp: 50,
-        loot: '&',
-        color: '#c084fc', 
-        caster: true, castRange: 6, spellDamage: 6,
+        caster: true, castRange: 6, spellDamage: 6, inflicts: null, inflictChance: 0,
+        loot: '&', color: '#c084fc', isBoss: false,
         flavor: "A scholar who stared too long into the Void. Their body is now just a crumbling vessel for forbidden math."
     },
     'C': {
-        name: 'Bandit Chief',
-        tags: ['humanoid'],
+        name: 'Bandit Chief', tags: ['humanoid'],
         maxHealth: 25, attack: 5, defense: 2, xp: 50,
-        loot: 'i',
-        color: '#991b1b', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: 'i', color: '#991b1b', isBoss: false,
         flavor: "A ruthless leader clad in stolen armor, demanding heavy tolls in blood and gold."
     },
     'f': {
-        name: 'Fire Elemental',
-        tags: ['elemental', 'fire', 'ethereal'],
+        name: 'Fire Elemental', tags: ['elemental', 'fire', 'ethereal'],
         maxHealth: 20, attack: 5, defense: 3, xp: 60,
-        loot: '🔥c',
-        color: '#fb923c', 
-        caster: true, castRange: 4, spellDamage: 5,
-        inflicts: 'burn',
+        caster: true, castRange: 4, spellDamage: 5, inflicts: 'burn', inflictChance: 0.5,
+        loot: '🔥c', color: '#fb923c', isBoss: false,
         flavor: "A walking inferno of pure elemental rage. The ground turns to glass where it walks."
     },
     '👻': {
-        name: 'Lost Soul',
-        tags: ['undead', 'ethereal'],
-        type: 'spirit', 
+        name: 'Lost Soul', tags: ['undead', 'ethereal'], type: 'spirit', 
         maxHealth: 15, attack: 3, defense: 0, xp: 20,
-        loot: 'ectoplasm',
-        color: '#8b5cf6', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: 'ectoplasm', color: '#8b5cf6', isBoss: false,
         flavor: "It wails silently, trapped between realms. A tragic echo of the Fall."
     },
     '😈d': {
-        name: 'Void Demon',
-        tags: ['demon', 'void', 'ethereal'],
+        name: 'Void Demon', tags: ['demon', 'void', 'ethereal'],
         maxHealth: 50, attack: 8, defense: 4, xp: 200,
-        loot: '😈',
-        color: '#581c87', 
-        teleporter: true, inflicts: 'madness',
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'madness', inflictChance: 0.2, teleporter: true, 
+        loot: '😈', color: '#581c87', isBoss: false,
         flavor: "A fragment of the nothingness that existed before the First Age. It hates all life."
     },
     'v': {
-        name: 'Void Stalker',
-        tags: ['void', 'monster'],
+        name: 'Void Stalker', tags: ['void', 'monster'],
         maxHealth: 15, attack: 6, defense: 1, xp: 55,
-        loot: 'vd',
-        color: '#7c3aed', 
-        teleporter: true,
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0, teleporter: true,
+        loot: 'vd', color: '#7c3aed', isBoss: false,
         flavor: "It phases in and out of reality, tracking your scent through higher dimensions."
     },
     'M': {
-        name: 'Mimic',
-        tags: ['monster', 'construct'],
+        name: 'Mimic', tags: ['monster', 'construct'],
         maxHealth: 20, attack: 6, defense: 2, xp: 50,
-        loot: '💍',
-        color: '#854d0e', 
-        inflicts: 'root',
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'root', inflictChance: 0.3,
+        loot: '💍', color: '#854d0e', isBoss: false,
         flavor: "A monstrous shape-shifter hoping for a greedy victim. Its tongue is sticky with acid."
     },
     '🧟': {
-        name: 'Spore Zombie',
-        tags: ['undead', 'fungus', 'poison'],
+        name: 'Spore Zombie', tags: ['undead', 'fungus', 'poison'],
         maxHealth: 18, attack: 4, defense: 0, xp: 25,
-        loot: '🍄', 
-        color: '#86efac', 
-        inflicts: 'poison', inflictChance: 0.4,
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'poison', inflictChance: 0.4,
+        loot: '🍄', color: '#86efac', isBoss: false,
         flavor: "It was once an adventurer. Now, glowing fungal networks control its nervous system."
     },
     '🪨c': {
-        name: 'Crystal Behemoth',
-        tags: ['elemental', 'stone'],
+        name: 'Crystal Behemoth', tags: ['elemental', 'stone'],
         maxHealth: 35, attack: 5, defense: 4, xp: 60,
-        loot: '💎', 
-        color: '#22d3ee', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '💎', color: '#22d3ee', isBoss: false,
         flavor: "Its crystalline hide reflects the ambient light... and deflects your attacks with ease."
     },
     '🤖': {
-        name: 'Clockwork Guardian',
-        tags: ['construct', 'metal'],
+        name: 'Clockwork Guardian', tags: ['construct', 'metal'],
         maxHealth: 50, attack: 8, defense: 6, xp: 120,
-        loot: '⚙️', 
-        color: '#f59e0b', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '⚙️', color: '#f59e0b', isBoss: false,
         flavor: "A relic of the Second Age. It still ruthlessly executes its final programmed order: ELIMINATE."
     },
     '🐛': {
-        name: 'Dune Thresher',
-        tags: ['beast', 'monster', 'bug'],
+        name: 'Dune Thresher', tags: ['beast', 'monster', 'bug', 'boss'],
         maxHealth: 120, attack: 12, defense: 2, xp: 400,
-        loot: '🦷', 
-        color: '#d97706', 
-        isBoss: true,
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🦷', color: '#d97706', isBoss: true,
         flavor: "The ground shakes before it erupts from the sand, a massive maw of a thousand spinning teeth."
     },
     '🧙': {
-        name: 'Necromancer Lord',
-        tags: ['humanoid', 'magic', 'undead', 'boss'],
+        name: 'Necromancer Lord', tags: ['humanoid', 'magic', 'undead', 'boss'],
         maxHealth: 80, attack: 7, defense: 3, xp: 1000,
-        loot: '👑',
-        color: '#000000', 
-        caster: true, castRange: 7, spellDamage: 8,
-        isBoss: true,
+        caster: true, castRange: 7, spellDamage: 8, inflicts: null, inflictChance: 0,
+        loot: '👑', color: '#000000', isBoss: true,
         flavor: "He wears a crown of bone and commands the armies of the dead. Do not let him complete his incantation or all is lost."
     },
     'c': {
-        name: 'Cultist Initiate',
-        tags: ['humanoid', 'void', 'magic'],
+        name: 'Cultist Initiate', tags: ['humanoid', 'void', 'magic'],
         maxHealth: 12, attack: 3, defense: 0, xp: 25,
-        loot: '📜', 
-        color: '#be185d', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '📜', color: '#be185d', isBoss: false,
         flavor: "He mutters fanatical prayers to a sleeping god in the dark."
     },
     'z': {
-        name: 'Cultist Fanatic',
-        tags: ['humanoid', 'void', 'magic'],
+        name: 'Cultist Fanatic', tags: ['humanoid', 'void', 'magic'],
         maxHealth: 15, attack: 6, defense: 0, xp: 35,
-        loot: '🗡️', 
-        color: '#9f1239', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🗡️', color: '#9f1239', isBoss: false,
         flavor: "He fights with reckless, terrifying abandon, eager to martyr himself for the Void."
     },
 
     // --- NEW BEASTS (Tanky & Dangerous) ---
     '🧌': { 
-        name: 'Stone Golem',
-        tags: ['construct', 'stone', 'elemental', 'mountable'],
-        mountable: true,
+        name: 'Stone Golem', tags: ['construct', 'stone', 'elemental', 'mountable'], mountable: true,
         maxHealth: 40, attack: 4, defense: 3, xp: 60,
-        loot: '🪨', 
-        color: '#a8a29e', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🪨', color: '#a8a29e', isBoss: false,
         flavor: "A walking boulder, animated by ancient earth magic. Blades skitter harmlessly off its hide."
     },
     '🐲': {
-        name: 'Young Drake',
-        tags: ['beast', 'reptile', 'dragon', 'fire', 'mountable'],
-        mountable: true,
+        name: 'Young Drake', tags: ['beast', 'reptile', 'dragon', 'fire', 'mountable'], mountable: true,
         maxHealth: 50, attack: 7, defense: 2, xp: 100,
-        loot: '🐉', 
-        color: '#dc2626', 
-        inflicts: 'burn', inflictChance: 0.3,
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'burn', inflictChance: 0.3,
+        loot: '🐉', color: '#dc2626', isBoss: false,
         flavor: "Smoke curls from its nostrils as it eyes you hungrily. It is small for a dragon, but still lethal."
     },
     // --- TIER 4 (The Deep Wilds - 2500+ Distance) ---
     '🦖': {
-        name: 'Ancient Rex',
-        tags: ['beast', 'reptile', 'giant', 'mountable'],
-        mountable: true,
+        name: 'Ancient Rex', tags: ['beast', 'reptile', 'giant', 'mountable'], mountable: true,
         maxHealth: 150, attack: 12, defense: 5, xp: 500,
-        loot: '🦖', 
-        color: '#14532d', 
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🦖', color: '#14532d', isBoss: false,
         flavor: "The earth physically shakes with every heavy step. It is the king of the deep jungles."
     },
     '🧛': {
-        name: 'Vampire Lord',
-        tags: ['undead', 'humanoid', 'magic'],
+        name: 'Vampire Lord', tags: ['undead', 'humanoid', 'magic'],
         maxHealth: 80, attack: 10, defense: 3, xp: 600,
-        loot: '🩸', 
-        color: '#e11d48', 
-        caster: true, castRange: 5, spellDamage: 8,
-        inflicts: 'siphon', 
+        caster: true, castRange: 5, spellDamage: 8, inflicts: 'siphon', inflictChance: 1.0,
+        loot: '🩸', color: '#e11d48', isBoss: false,
         flavor: "He moves faster than your eyes can follow, elegant, aristocratic, and completely merciless."
     },
     '👾': {
-        name: 'Eldritch Horror',
-        tags: ['void', 'demon', 'ethereal', 'monster'],
+        name: 'Eldritch Horror', tags: ['void', 'demon', 'ethereal', 'monster'],
         maxHealth: 200, attack: 15, defense: 0, xp: 800,
-        loot: 'vd',
-        color: '#8b5cf6', 
-        inflicts: 'madness', inflictChance: 0.5,
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'madness', inflictChance: 0.5,
+        loot: 'vd', color: '#8b5cf6', isBoss: false,
         flavor: "Its geometry makes no sense. To look directly at it is to invite your own mind to shatter."
     },
     '🐉h': {
-        name: 'Swamp Hydra',
-        tags: ['beast', 'reptile', 'dragon', 'poison'],
+        name: 'Swamp Hydra', tags: ['beast', 'reptile', 'dragon', 'poison'],
         maxHealth: 60, attack: 6, defense: 2, xp: 150,
-        loot: '🐉',
-        color: '#15803d', 
-        inflicts: 'poison',
+        caster: false, castRange: 0, spellDamage: 0, inflicts: 'poison', inflictChance: 0.4,
+        loot: '🐉', color: '#15803d', isBoss: false,
         flavor: "Multiple venomous heads snap at you from the toxic muck."
     },
     '🔥e': {
-        name: 'Efreet',
-        tags: ['elemental', 'fire', 'demon', 'ethereal'],
+        name: 'Efreet', tags: ['elemental', 'fire', 'demon', 'ethereal'],
         maxHealth: 60, attack: 8, defense: 1, xp: 150,
-        loot: '🔥c',
-        color: '#f97316', 
-        caster: true, castRange: 5, spellDamage: 6,
-        inflicts: 'burn',
+        caster: true, castRange: 5, spellDamage: 6, inflicts: 'burn', inflictChance: 0.6,
+        loot: '🔥c', color: '#f97316', isBoss: false,
         flavor: "A malicious spirit of smoke and flame, bound to this plane by ancient chains."
     },
     // ==========================================
     // --- THE FINAL BOSS ---
     // ==========================================
     '☠️': {
-        name: 'Alaric, The Fallen King',
-        tags: ['undead', 'void', 'boss'],
+        name: 'Alaric, The Fallen King', tags: ['undead', 'void', 'boss'],
         maxHealth: 1000, attack: 20, defense: 8, xp: 5000,
+        caster: true, castRange: 6, spellDamage: 12, inflicts: 'madness', inflictChance: 0.3,
         loot: '🧿e', color: '#000000', isBoss: true,
-        caster: true, castRange: 6, spellDamage: 12, inflicts: 'madness',
         flavor: "He is no longer a man. The golden crown is fused directly into his skull. He moves with a terrible, silent grace, serving as a conduit for the Void itself. The air around him screams."
     },
     '🩸c': {
-        name: 'Arena Champion',
-        tags: ['undead', 'bone', 'boss'],
+        name: 'Arena Champion', tags: ['undead', 'bone', 'boss'],
         maxHealth: 350, attack: 18, defense: 5, xp: 2500,
-        loot: '🏆', // Drops the Token!
-        color: '#dc2626', 
-        isBoss: true,
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '🏆', color: '#dc2626', isBoss: true,
         flavor: "A towering gladiator constructed of fossilized bone and volcanic ash. It has stood undefeated across a thousand lifetimes. It points its weapon directly at you."
     }
 };
@@ -1352,7 +1246,7 @@ window.SKILL_DATA = {
     }
 };
 
-// PERFORMANCE WIN: O(1) Data Compilation Loop
+// O(1) Data Compilation Loop
 window.ENEMY_NAME_TO_ID = {};
 for (const key in window.ENEMY_DATA) {
     if (window.ENEMY_DATA.hasOwnProperty(key)) {
