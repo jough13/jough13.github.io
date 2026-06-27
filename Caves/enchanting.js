@@ -7,6 +7,23 @@
 const DUST_YIELDS = { 'uncommon': 1, 'rare': 3, 'epic': 8, 'legendary': 25 };
 const UPGRADE_COSTS = { 'normal': 5, 'uncommon': 15, 'rare': 30, 'epic': 75 };
 
+// PERFORMANCE & BUG FIX WIN: Operation Lock
+// Prevents players from double-clicking the upgrade/destroy buttons and corrupting 
+// the inventory array or draining their dust into negative numbers!
+let isEnchantingBusy = false;
+
+// LORE WIN: The Altar Whispers
+// Adds dynamic, randomized atmospheric text to the UI to make the world feel alive.
+const ALTAR_WHISPERS = [
+    "The obsidian stone feels unnaturally cold.",
+    "Faint whispers echo from the cracks in the altar.",
+    "The smell of ozone and burnt ozone lingers here.",
+    "A faint purple mist clings to the surface of the stone.",
+    "It demands a sacrifice of power.",
+    "The leylines converge directly beneath this block.",
+    "You feel a strange urge to shatter everything you own."
+];
+
 function openEnchantingModal() {
     if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
@@ -18,6 +35,7 @@ function renderEnchantingModal() {
     const disenchantList = document.getElementById('disenchantList');
     const enchantList = document.getElementById('enchantList');
     const dustDisplay = document.getElementById('enchantingDustDisplay');
+    const enchantingTitle = document.getElementById('enchantingTitle');
     if (!disenchantList || !enchantList) return;
 
     disenchantList.innerHTML = '';
@@ -27,8 +45,17 @@ function renderEnchantingModal() {
     const dustItem = player.inventory.find(i => i.name === 'Arcane Dust');
     const dustAmount = dustItem ? dustItem.quantity : 0;
 
-    dustDisplay.innerHTML = `Arcane Dust: <span class="text-purple-400 drop-shadow-md">${dustAmount}</span>`;
+    // LORE WIN: Dynamic Altar UI Flavor
+    if (enchantingTitle) {
+        const whisper = ALTAR_WHISPERS[Math.floor(Math.random() * ALTAR_WHISPERS.length)];
+        enchantingTitle.innerHTML = `Enchanting Altar <span class="block text-xs font-normal text-gray-400 mt-1 italic tracking-normal font-serif">"${whisper}"</span>`;
+    }
 
+    // JUICE WIN: Pulsing color if you have a lot of dust
+    const dustColorClass = dustAmount > 50 ? 'text-fuchsia-400 animate-pulse' : 'text-purple-400';
+    dustDisplay.innerHTML = `Arcane Dust: <span class="${dustColorClass} drop-shadow-md">${dustAmount}</span>`;
+
+    // PERFORMANCE WIN: DocumentFragments prevent layout thrashing
     const disFrag = document.createDocumentFragment();
     const enchFrag = document.createDocumentFragment();
 
@@ -40,7 +67,6 @@ function renderEnchantingModal() {
         const isGear = item.type === 'weapon' || item.type === 'armor';
 
         // --- DISENCHANT LIST ---
-        // Only show magical items that have a rarity tag
         if (isGear && item._rarity) {
             const yieldAmt = DUST_YIELDS[item._rarity] || 1;
             const li = document.createElement('li');
@@ -48,15 +74,14 @@ function renderEnchantingModal() {
             li.innerHTML = `
                 <div>
                     <span class="font-bold text-lg text-purple-400">${item.tile || '🎒'} ${item.name}</span>
-                    <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Yields: <span class="text-purple-300 font-bold">${yieldAmt} Dust</span></span>
+                    <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Yields: <span class="text-purple-300 font-bold">+${yieldAmt} Dust</span></span>
                 </div>
-                <button data-disenchant="${index}" class="bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 border-red-900 active:border-b-0 active:mt-0.5">Destroy</button>
+                <button data-disenchant="${index}" style="transform: translateZ(0);" class="bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 border-red-900 active:border-b-0 active:mt-0.5">Shatter</button>
             `;
             disFrag.appendChild(li);
         }
 
         // --- ENCHANT LIST ---
-        // Only show gear that hasn't reached Legendary yet
         if (isGear && item._rarity !== 'legendary') {
             const currentRarity = item._rarity || 'normal';
             const cost = UPGRADE_COSTS[currentRarity];
@@ -70,126 +95,171 @@ function renderEnchantingModal() {
             li.innerHTML = `
                 <div>
                     <span class="font-bold text-lg ${nameColor}">${item.tile || '🎒'} ${item.name}</span>
-                    <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Cost: <span class="${canAfford ? 'text-purple-300' : 'text-red-400'} font-bold">${cost} Dust</span></span>
+                    <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Cost: <span class="${canAfford ? 'text-purple-300' : 'text-red-400'} font-bold">-${cost} Dust</span></span>
                 </div>
-                <button data-enchant="${index}" class="${btnClass} text-white px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 border-gray-900 active:border-b-0 active:mt-0.5" ${canAfford ? '' : 'disabled'}>Upgrade</button>
+                <button data-enchant="${index}" style="transform: translateZ(0);" class="${btnClass} text-white px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 border-gray-900 active:border-b-0 active:mt-0.5" ${canAfford ? '' : 'disabled'}>Infuse</button>
             `;
             enchFrag.appendChild(li);
         }
     });
 
-    if (disFrag.childNodes.length === 0) disenchantList.innerHTML = '<li class="italic text-gray-500 text-sm p-4 text-center">No unequipped magical items to destroy.</li>';
+    if (disFrag.childNodes.length === 0) disenchantList.innerHTML = '<li class="italic text-gray-500 text-sm p-4 text-center border border-gray-700 rounded-lg bg-black bg-opacity-20 shadow-inner">No unequipped magical items to destroy.</li>';
     else disenchantList.appendChild(disFrag);
 
-    if (enchFrag.childNodes.length === 0) enchantList.innerHTML = '<li class="italic text-gray-500 text-sm p-4 text-center">No unequipped weapons or armor to enchant.</li>';
+    if (enchFrag.childNodes.length === 0) enchantList.innerHTML = '<li class="italic text-gray-500 text-sm p-4 text-center border border-gray-700 rounded-lg bg-black bg-opacity-20 shadow-inner">No unequipped weapons or armor to enchant.</li>';
     else enchantList.appendChild(enchFrag);
 }
 
 function handleDisenchant(index) {
-    const player = gameState.player;
-    const item = player.inventory[index];
-    if (!item || !item._rarity) return;
+    if (isEnchantingBusy) return;
+    isEnchantingBusy = true;
 
-    const yieldAmt = DUST_YIELDS[item._rarity] || 1;
+    try {
+        const player = gameState.player;
+        const item = player.inventory[index];
+        if (!item || !item._rarity) return;
 
-    // Remove the item
-    player.inventory.splice(index, 1);
+        const yieldAmt = DUST_YIELDS[item._rarity] || 1;
+        const oldName = item.name;
+        const oldRarity = item._rarity;
 
-    // Give Dust
-    const existingDust = player.inventory.find(i => i.name === 'Arcane Dust');
-    if (existingDust) {
-        existingDust.quantity += yieldAmt;
-    } else {
-        player.inventory.push({
-            templateId: '&', name: 'Arcane Dust', type: 'junk', quantity: yieldAmt, tile: '✨'
-        });
+        // Remove the item
+        player.inventory.splice(index, 1);
+
+        // Give Dust
+        const existingDust = player.inventory.find(i => i.name === 'Arcane Dust');
+        if (existingDust) {
+            existingDust.quantity += yieldAmt;
+        } else {
+            player.inventory.push({
+                templateId: '&', name: 'Arcane Dust', type: 'junk', quantity: yieldAmt, tile: '✨'
+            });
+        }
+
+        // LORE WIN: Dynamic Destruction Flavor Text based on rarity!
+        let flavorText = `You shattered the ${oldName} into ${yieldAmt} Arcane Dust.`;
+        if (oldRarity === 'rare') flavorText = `The ${oldName} shatters with a sharp crack, releasing ${yieldAmt} Arcane Dust.`;
+        else if (oldRarity === 'epic') flavorText = `A miniature shockwave ripples out as the ${oldName} is unmade. (+${yieldAmt} Dust)`;
+        else if (oldRarity === 'legendary') flavorText = `The world holds its breath as the legendary relic is crushed into pure Void dust. (+${yieldAmt} Dust)`;
+
+        logMessage(`{purple:${flavorText}}`);
+        
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createExplosion(player.x, player.y, '#a855f7', oldRarity === 'legendary' ? 30 : 15);
+            ParticleSystem.createFloatingText(player.x, player.y, `+${yieldAmt} Dust`, "#c084fc");
+        }
+        
+        gameState.screenShake = oldRarity === 'legendary' ? 12 : 5;
+        saveEnchantingState();
+
+    } finally {
+        isEnchantingBusy = false;
     }
-
-    logMessage(`{purple:You shattered the ${item.name} into ${yieldAmt} Arcane Dust.}`);
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
-    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 15);
-    gameState.screenShake = 5;
-
-    saveEnchantingState();
 }
 
 function handleEnchant(index) {
-    const player = gameState.player;
-    const item = player.inventory[index];
-    if (!item) return;
+    if (isEnchantingBusy) return;
+    isEnchantingBusy = true;
 
-    const currentRarity = item._rarity || 'normal';
-    const cost = UPGRADE_COSTS[currentRarity];
+    try {
+        const player = gameState.player;
+        const item = player.inventory[index];
+        if (!item) return;
 
-    const dustIdx = player.inventory.findIndex(i => i.name === 'Arcane Dust');
-    if (dustIdx === -1 || player.inventory[dustIdx].quantity < cost) {
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
+        const currentRarity = item._rarity || 'normal';
+        const cost = UPGRADE_COSTS[currentRarity];
+
+        const dustIdx = player.inventory.findIndex(i => i.name === 'Arcane Dust');
+        if (dustIdx === -1 || player.inventory[dustIdx].quantity < cost) {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        // Deduct Dust
+        player.inventory[dustIdx].quantity -= cost;
+        if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
+
+        // --- UPGRADE LOGIC ---
+        if (!item.statBonuses) item.statBonuses = {};
+
+        let newRarity = 'uncommon';
+        if (currentRarity === 'uncommon') newRarity = 'rare';
+        else if (currentRarity === 'rare') newRarity = 'epic';
+        else if (currentRarity === 'epic') newRarity = 'legendary';
+
+        item._rarity = newRarity;
+
+        // LORE WIN: Dynamic Upgrade Messages
+        let upgradeMsg = "";
+
+        if (newRarity === 'uncommon') {
+            item.name = `Fine ${item.name}`;
+            if (item.type === 'weapon') item.damage += 1;
+            if (item.type === 'armor') item.defense += 1;
+            
+            const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
+            const randomStat = stats[Math.floor(Math.random() * stats.length)];
+            item.statBonuses[randomStat] = (item.statBonuses[randomStat] || 0) + 1;
+            
+            upgradeMsg = `The altar breathes arcane life into the mundane. You forged a ${item.name}!`;
+        } 
+        else if (newRarity === 'rare') {
+            // BUG FIX: Safer Regex string replacement ensures we only replace "Fine " if it's at the very beginning of the string!
+            item.name = item.name.replace(/^Fine /, ''); 
+            
+            const validPrefixes = Object.keys(typeof LOOT_PREFIXES !== 'undefined' ? LOOT_PREFIXES : {}).filter(p => LOOT_PREFIXES[p].type === item.type);
+            if (validPrefixes.length > 0) {
+                const prefixName = validPrefixes[Math.floor(Math.random() * validPrefixes.length)];
+                const prefixData = LOOT_PREFIXES[prefixName];
+                
+                item.name = `${prefixName} ${item.name}`;
+                for (const stat in prefixData.bonus) {
+                    if (stat === 'damage') item.damage += prefixData.bonus[stat];
+                    else if (stat === 'defense') item.defense += prefixData.bonus[stat];
+                    else item.statBonuses[stat] = (item.statBonuses[stat] || 0) + prefixData.bonus[stat];
+                }
+            }
+            upgradeMsg = `Arcane runes brand themselves into the surface. It is now a ${item.name}!`;
+        } 
+        else if (newRarity === 'epic') {
+            const suffixKeys = Object.keys(typeof LOOT_SUFFIXES !== 'undefined' ? LOOT_SUFFIXES : {});
+            if (suffixKeys.length > 0) {
+                const suffixName = suffixKeys[Math.floor(Math.random() * suffixKeys.length)];
+                const suffixData = LOOT_SUFFIXES[suffixName];
+                
+                item.name = `${item.name} ${suffixName}`;
+                for (const stat in suffixData.bonus) {
+                    if (stat === 'damage') item.damage += suffixData.bonus[stat];
+                    else if (stat === 'defense') item.defense += suffixData.bonus[stat];
+                    else item.statBonuses[stat] = (item.statBonuses[stat] || 0) + suffixData.bonus[stat];
+                }
+            }
+            upgradeMsg = `The item hums with a terrifying new power. It is now ${item.name}!`;
+        } 
+        else if (newRarity === 'legendary') {
+            if (item.type === 'weapon') item.damage += 2;
+            if (item.type === 'armor') item.defense += 2;
+            for (const stat in item.statBonuses) {
+                item.statBonuses[stat] += 1; // Bump every single existing stat
+            }
+            upgradeMsg = `The heavens tremble! You have forged a weapon of myth: ${item.name}!`;
+        }
+
+        logMessage(`{gold:${upgradeMsg}}`);
+        
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createLevelUp(player.x, player.y);
+            ParticleSystem.createFloatingText(player.x, player.y, "UPGRADED", "#facc15");
+        }
+        gameState.screenShake = newRarity === 'legendary' ? 15 : 8;
+
+        saveEnchantingState();
+
+    } finally {
+        isEnchantingBusy = false;
     }
-
-    // Deduct Dust
-    player.inventory[dustIdx].quantity -= cost;
-    if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
-
-    // --- UPGRADE LOGIC ---
-    if (!item.statBonuses) item.statBonuses = {};
-
-    let newRarity = 'uncommon';
-    if (currentRarity === 'uncommon') newRarity = 'rare';
-    else if (currentRarity === 'rare') newRarity = 'epic';
-    else if (currentRarity === 'epic') newRarity = 'legendary';
-
-    item._rarity = newRarity;
-
-    if (newRarity === 'uncommon') {
-        item.name = `Fine ${item.name}`;
-        if (item.type === 'weapon') item.damage += 1;
-        if (item.type === 'armor') item.defense += 1;
-        const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
-        const randomStat = stats[Math.floor(Math.random() * stats.length)];
-        item.statBonuses[randomStat] = (item.statBonuses[randomStat] || 0) + 1;
-    } 
-    else if (newRarity === 'rare') {
-        const validPrefixes = Object.keys(LOOT_PREFIXES).filter(p => LOOT_PREFIXES[p].type === item.type);
-        const prefixName = validPrefixes[Math.floor(Math.random() * validPrefixes.length)];
-        const prefixData = LOOT_PREFIXES[prefixName];
-        
-        item.name = item.name.replace('Fine ', ''); // Remove previous tier flavor
-        item.name = `${prefixName} ${item.name}`;
-        
-        for (const stat in prefixData.bonus) {
-            if (stat === 'damage') item.damage += prefixData.bonus[stat];
-            else if (stat === 'defense') item.defense += prefixData.bonus[stat];
-            else item.statBonuses[stat] = (item.statBonuses[stat] || 0) + prefixData.bonus[stat];
-        }
-    } 
-    else if (newRarity === 'epic') {
-        const suffixKeys = Object.keys(LOOT_SUFFIXES);
-        const suffixName = suffixKeys[Math.floor(Math.random() * suffixKeys.length)];
-        const suffixData = LOOT_SUFFIXES[suffixName];
-        
-        item.name = `${item.name} ${suffixName}`;
-        
-        for (const stat in suffixData.bonus) {
-            if (stat === 'damage') item.damage += suffixData.bonus[stat];
-            else if (stat === 'defense') item.defense += suffixData.bonus[stat];
-            else item.statBonuses[stat] = (item.statBonuses[stat] || 0) + suffixData.bonus[stat];
-        }
-    } 
-    else if (newRarity === 'legendary') {
-        if (item.type === 'weapon') item.damage += 2;
-        if (item.type === 'armor') item.defense += 2;
-        for (const stat in item.statBonuses) {
-            item.statBonuses[stat] += 1; // Bump every single existing stat
-        }
-    }
-
-    logMessage(`{gold:Success! The item has been enchanted into a ${item.name}!}`);
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
-    gameState.screenShake = 8;
-
-    saveEnchantingState();
 }
 
 function saveEnchantingState() {
@@ -200,24 +270,38 @@ function saveEnchantingState() {
     }
 }
 
-// Event Listeners
+// PERFORMANCE & SECURITY WIN: Event Delegation
 document.addEventListener('DOMContentLoaded', () => {
     const enchantModal = document.getElementById('enchantingModal');
     const closeBtn = document.getElementById('closeEnchantingButton');
 
-    if (closeBtn) closeBtn.addEventListener('click', () => {
-        enchantModal.classList.add('hidden');
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-        if (document.activeElement) document.activeElement.blur(); // Focus fix
-    });
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            enchantModal.classList.add('hidden');
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            if (document.activeElement) document.activeElement.blur(); 
+        });
+    }
 
     if (enchantModal) {
+        // One listener to rule them all
         enchantModal.addEventListener('click', (e) => {
+            // Ignore clicks if the engine is already processing an upgrade
+            if (isEnchantingBusy) return;
+
             const disBtn = e.target.closest('button[data-disenchant]');
-            if (disBtn) handleDisenchant(parseInt(disBtn.dataset.disenchant, 10));
+            if (disBtn) {
+                const idx = parseInt(disBtn.dataset.disenchant, 10);
+                if (!isNaN(idx)) handleDisenchant(idx);
+                return;
+            }
 
             const enchBtn = e.target.closest('button[data-enchant]');
-            if (enchBtn && !enchBtn.disabled) handleEnchant(parseInt(enchBtn.dataset.enchant, 10));
+            if (enchBtn && !enchBtn.disabled) {
+                const idx = parseInt(enchBtn.dataset.enchant, 10);
+                if (!isNaN(idx)) handleEnchant(idx);
+                return;
+            }
         });
     }
 });
