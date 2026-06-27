@@ -23,6 +23,20 @@ function renderHotbar() {
     const hotbar = player.hotbar || [null, null, null, null, null];
     const cooldowns = player.cooldowns || {};
 
+    // PERFORMANCE WIN: O(N) Pre-Mapped Inventory Cache
+    // Instead of calling .find() on the inventory 5 separate times (O(N*5)), 
+    // we map the inventory once into an instantly searchable dictionary (O(N) + O(1)*5).
+    // This scales flawlessly even if you expand the inventory size to 100 slots later!
+    const inventoryMap = new Map();
+    if (player.inventory) {
+        for (let i = 0; i < player.inventory.length; i++) {
+            const item = player.inventory[i];
+            // Prefer items that actually have quantity > 0 in case of ghost stacks
+            if (!inventoryMap.has(item.name) || item.quantity > 0) inventoryMap.set(item.name, item);
+            if (item.templateId && (!inventoryMap.has(item.templateId) || item.quantity > 0)) inventoryMap.set(item.templateId, item);
+        }
+    }
+
     // PERFORMANCE WIN: Use DocumentFragment to batch DOM inserts
     const fragment = document.createDocumentFragment();
 
@@ -47,8 +61,8 @@ function renderHotbar() {
             const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[abilityId] : null;
             const spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[abilityId] : null;
             
-            // THE FIX: Check actual player inventory first for dynamically generated items (like magic weapons)
-            let invItem = player.inventory.find(i => i.name === abilityId || i.templateId === abilityId);
+            // Fast O(1) Dictionary Lookup
+            let invItem = inventoryMap.get(abilityId);
             
             // Fallback to raw database check if not in inventory
             let itemData = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[abilityId] : null;
@@ -64,22 +78,24 @@ function renderHotbar() {
                 // LORE & UI WIN: Color-code the spell abbreviations based on magic type!
                 let colorClass = "text-gray-200";
                 if (spellData) {
-                    if (data.name.includes("Fire") || data.name.includes("Meteor")) colorClass = "text-orange-400";
-                    else if (data.name.includes("Frost")) colorClass = "text-cyan-300";
-                    else if (data.name.includes("Poison") || data.name.includes("Entangle")) colorClass = "text-green-400";
-                    else if (data.name.includes("Divine") || data.name.includes("Heal")) colorClass = "text-yellow-400";
-                    else if (data.name.includes("Dark") || data.name.includes("Siphon")) colorClass = "text-red-500";
-                    else if (data.name.includes("Lightning") || data.name.includes("Thunder")) colorClass = "text-yellow-300";
+                    const sName = data.name || "";
+                    if (sName.includes("Fire") || sName.includes("Meteor")) colorClass = "text-orange-400";
+                    else if (sName.includes("Frost")) colorClass = "text-cyan-300";
+                    else if (sName.includes("Poison") || sName.includes("Entangle")) colorClass = "text-green-400";
+                    else if (sName.includes("Divine") || sName.includes("Heal")) colorClass = "text-yellow-400";
+                    else if (sName.includes("Dark") || sName.includes("Siphon")) colorClass = "text-red-500";
+                    else if (sName.includes("Lightning") || sName.includes("Thunder")) colorClass = "text-yellow-300";
                     else colorClass = "text-blue-300"; // Generic arcane
                 } else if (skillData) {
                     colorClass = "text-yellow-500"; // Skills are yellow
                 }
 
                 abrv.className = `font-bold text-sm ${colorClass} drop-shadow-md`;
-                abrv.textContent = data.name.substring(0, 2).toUpperCase(); 
+                // BUG FIX: Provide a safe fallback if data.name is inexplicably undefined
+                abrv.textContent = (data.name || '??').substring(0, 2).toUpperCase(); 
                 
                 // QoL WIN: Explicit instructions on hover
-                slotDiv.title = `[${hotkeyNumber}] ${data.name}\nCost: ${data.cost} ${data.costType}\n(Right-click to unbind)`;
+                slotDiv.title = `[${hotkeyNumber}] ${data.name || 'Unknown'}\nCost: ${data.cost || 0} ${data.costType || 'Resource'}\n(Right-click to unbind)`;
                 slotDiv.appendChild(abrv);
 
                 // JUICE WIN: Glassmorphism Cooldown Overlay
@@ -92,8 +108,8 @@ function renderHotbar() {
                 }
             } else if (invItem || itemData) {
                 // Determine the best name and icon to use
-                const displayName = invItem ? invItem.name : itemData.name;
-                const displayTile = invItem ? (invItem.tile || '🎒') : (itemData.tile || '🎒');
+                const displayName = invItem ? invItem.name : (itemData ? itemData.name : 'Unknown Item');
+                const displayTile = invItem ? (invItem.tile || '🎒') : (itemData ? (itemData.tile || '🎒') : '🎒');
                 const qty = invItem ? invItem.quantity : 0;
                 
                 // It's an item! Show the emoji icon
@@ -160,8 +176,8 @@ function useHotbarSlot(index) {
         return;
     }
 
-    const isSkill = typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId];
-    const isSpell = typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId];
+    const isSkill = typeof SKILL_DATA !== 'undefined' && !!SKILL_DATA[abilityId];
+    const isSpell = typeof SPELL_DATA !== 'undefined' && !!SPELL_DATA[abilityId];
 
     // --- MOUNT EXPANSION: AUTO-DISMOUNT ---
     // If you use a combat ability while riding a beast, you leap off dynamically!
@@ -184,8 +200,10 @@ function useHotbarSlot(index) {
             targetName = ITEM_DATA[abilityId].name;
         }
 
-        // Find the item in the inventory
-        const invIndex = player.inventory.findIndex(i => i.name === targetName || i.templateId === abilityId);
+        // Find the item in the inventory prioritizing non-depleted stacks
+        const invIndex = player.inventory.findIndex(i => 
+            (i.name === targetName || i.templateId === abilityId) && i.quantity > 0
+        );
         
         if (invIndex > -1) {
             if (typeof useInventoryItem === 'function') useInventoryItem(invIndex);
@@ -204,9 +222,19 @@ function assignToHotbar(abilityId) {
     
     // Get the readable name for the log message
     let readableName = abilityId;
-    if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) readableName = SKILL_DATA[abilityId].name;
-    else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) readableName = SPELL_DATA[abilityId].name;
-    else if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) readableName = ITEM_DATA[abilityId].name;
+    let bindType = 'item'; // Used for Lore Flavor
+    
+    if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) {
+        readableName = SKILL_DATA[abilityId].name;
+        bindType = 'skill';
+    }
+    else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) {
+        readableName = SPELL_DATA[abilityId].name;
+        bindType = 'spell';
+    }
+    else if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) {
+        readableName = ITEM_DATA[abilityId].name;
+    }
     else {
         // Fallback for custom magic items generated in the player's inventory
         const invItem = player.inventory.find(i => i.templateId === abilityId || i.name === abilityId);
@@ -224,12 +252,27 @@ function assignToHotbar(abilityId) {
     // Find first empty slot
     let index = hotbar.indexOf(null);
 
+    // LORE WIN: Flavor text based on what is being bound!
+    let flavorColor = 'gray';
+    let verb = 'attached';
+    
+    if (bindType === 'spell') {
+        verb = 'memorized the incantation for';
+        flavorColor = 'blue';
+    } else if (bindType === 'skill') {
+        verb = 'practiced the forms for';
+        flavorColor = 'yellow';
+    } else {
+        verb = 'secured the';
+        flavorColor = 'green';
+    }
+
     if (index === -1) {
         // Full? Replace slot 1
         index = 0;
-        logMessage(`{blue:Hotbar full. Replaced Slot 1 with ${readableName}.}`);
+        logMessage(`{${flavorColor}:Hotbar full. Overwrote Slot 1 and ${verb} ${readableName}.}`);
     } else {
-        logMessage(`{green:Bound ${readableName} to Hotbar Slot ${index + 1}.}`);
+        logMessage(`{${flavorColor}:You ${verb} ${readableName} to Hotbar Slot ${index + 1}.}`);
     }
 
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
@@ -239,13 +282,20 @@ function assignToHotbar(abilityId) {
     
     renderHotbar();
     
-    // JUICE WIN: Make the slot "pop" so the user knows exactly where it went
+    // JUICE WIN: Dynamic Glow color based on the type of ability bound!
     setTimeout(() => {
         const slotEl = document.getElementById(`hotbarSlot-${index}`);
         if (slotEl) {
+            let glowColor = 'rgba(209, 213, 219, 1)'; // Gray
+            let borderColor = '#d1d5db';
+            
+            if (bindType === 'spell') { glowColor = 'rgba(59, 130, 246, 1)'; borderColor = '#3b82f6'; }
+            if (bindType === 'skill') { glowColor = 'rgba(234, 179, 8, 1)'; borderColor = '#eab308'; }
+            if (bindType === 'item')  { glowColor = 'rgba(34, 197, 94, 1)'; borderColor = '#22c55e'; }
+
             slotEl.style.transition = 'none';
-            slotEl.style.boxShadow = '0 0 15px rgba(59, 130, 246, 1)';
-            slotEl.style.borderColor = '#3b82f6';
+            slotEl.style.boxShadow = `0 0 15px ${glowColor}`;
+            slotEl.style.borderColor = borderColor;
             
             setTimeout(() => {
                 slotEl.style.transition = 'all 0.5s ease-out';
@@ -267,6 +317,9 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
         // THE FIX: Check for ANY open modal, not just inventory!
         // Prevents accidentally throwing a bomb while trying to buy something in a shop!
         if (typeof _modalCache !== 'undefined' && _modalCache.isAnyOpen()) return; 
+        
+        // BUG FIX: Prevent hotbar clicks from executing while in Drop Mode
+        if (typeof gameState !== 'undefined' && gameState.isDroppingItem) return;
         
         const slotDiv = e.target.closest('.hotbar-slot');
         if (slotDiv) {
