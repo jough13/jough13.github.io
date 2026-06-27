@@ -135,33 +135,35 @@ async function createCloudBackup(slotId = 'latest') {
         await playerRef.collection('backups').doc(slotId).set(backupState);
         
         // B. Backup the Map Subcollection safely using chunked batches (Max 500 ops per batch)
-        const mapSnap = await playerRef.collection('map_data').get();
-        if (!mapSnap.empty) {
-            let batch = db.batch();
-            let operationCount = 0;
-            
-            for (const doc of mapSnap.docs) {
-                const backupMapRef = playerRef.collection('backups').doc(slotId).collection('map_data').doc(doc.id);
-                batch.set(backupMapRef, doc.data());
-                operationCount++;
+        if (typeof db !== 'undefined') {
+            const mapSnap = await playerRef.collection('map_data').get();
+            if (!mapSnap.empty) {
+                let batch = db.batch();
+                let operationCount = 0;
                 
-                // Firestore limit is 500 writes per batch
-                if (operationCount >= 450) {
-                    await batch.commit();
-                    batch = db.batch();
-                    operationCount = 0;
+                for (const doc of mapSnap.docs) {
+                    const backupMapRef = playerRef.collection('backups').doc(slotId).collection('map_data').doc(doc.id);
+                    batch.set(backupMapRef, doc.data());
+                    operationCount++;
+                    
+                    // Firestore limit is 500 writes per batch
+                    if (operationCount >= 450) {
+                        await batch.commit();
+                        batch = db.batch();
+                        operationCount = 0;
+                    }
                 }
-            }
-            // Commit any remaining writes
-            if (operationCount > 0) {
-                await batch.commit();
+                // Commit any remaining writes
+                if (operationCount > 0) {
+                    await batch.commit();
+                }
             }
         }
 
         logMessage("{green:Your timeline has been safely anchored.}");
         
         // LORE/JUICE: Tactile feedback for stamping the timeline
-        gameState.screenShake = 5; 
+        if (typeof gameState !== 'undefined') gameState.screenShake = 5; 
         if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
         if (typeof ParticleSystem !== 'undefined' && gameState.player) {
             ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "TIMELINE SECURED", "#22d3ee");
@@ -281,24 +283,26 @@ async function restoreCloudBackup(slotId = 'latest') {
         delete data.timestamp;
 
         // Restore Map Subcollection (with chunking for massive maps)
-        const backupMapSnap = await playerRef.collection('backups').doc(slotId).collection('map_data').get();
-        if (!backupMapSnap.empty) {
-            let batch = db.batch();
-            let operationCount = 0;
-            
-            for (const doc of backupMapSnap.docs) {
-                const liveMapRef = playerRef.collection('map_data').doc(doc.id);
-                batch.set(liveMapRef, doc.data(), { merge: true });
-                operationCount++;
+        if (typeof db !== 'undefined') {
+            const backupMapSnap = await playerRef.collection('backups').doc(slotId).collection('map_data').get();
+            if (!backupMapSnap.empty) {
+                let batch = db.batch();
+                let operationCount = 0;
                 
-                if (operationCount >= 450) {
-                    await batch.commit();
-                    batch = db.batch();
-                    operationCount = 0;
+                for (const doc of backupMapSnap.docs) {
+                    const liveMapRef = playerRef.collection('map_data').doc(doc.id);
+                    batch.set(liveMapRef, doc.data(), { merge: true });
+                    operationCount++;
+                    
+                    if (operationCount >= 450) {
+                        await batch.commit();
+                        batch = db.batch();
+                        operationCount = 0;
+                    }
                 }
-            }
-            if (operationCount > 0) {
-                await batch.commit();
+                if (operationCount > 0) {
+                    await batch.commit();
+                }
             }
         }
 
