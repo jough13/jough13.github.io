@@ -5,6 +5,18 @@
 // ============================================================================
 window.MAX_INVENTORY_SLOTS = 9;
 
+// EXPANDABILITY WIN: Centralized Capacity Check
+// This allows you to easily add Backpacks or Mount Saddlebags in the future!
+window.getInventoryCap = function(player) {
+    let cap = window.MAX_INVENTORY_SLOTS;
+    
+    // Future Expansion Hooks:
+    // if (player.equipment.accessory && player.equipment.accessory.name === 'Leather Backpack') cap += 5;
+    // if (player.isMounted && player.companion && player.companion.tile === '🐻') cap += 5;
+    
+    return cap;
+};
+
 // ============================================================================
 // GLOBAL VARIABLES & SYSTEM REFERENCES
 // ============================================================================
@@ -42,6 +54,16 @@ let pendingSpawnData = {};         // Buffer for network sync
 let activeShopInventory = [];      // Currently viewed merchant inventory
 const wokenEnemyTiles = new Set(); // Global set to track processed tiles this session
 
+// PERFORMANCE WIN: Shared String/Object Caches
+// Centralizes all frequently used string allocations to prevent garbage collection stutters
+window._statCapCache = {
+    health: 'maxHealth',
+    mana: 'maxMana',
+    stamina: 'maxStamina',
+    psyche: 'maxPsyche',
+    hunger: 'maxHunger',
+    thirst: 'maxThirst'
+};
 
 // ============================================================================
 // MASTER GAME STATE (THE "SINGLE SOURCE OF TRUTH")
@@ -53,7 +75,7 @@ const wokenEnemyTiles = new Set(); // Global set to track processed tiles this s
 
 const gameState = {
     // --- System & Engine State ---
-    saveVersion: "0.2.8",     // Incremented version for safety
+    saveVersion: "0.2.9",     // Incremented version for safety
     initialEnemiesLoaded: false,
     mapDirty: true,           // Flag to force canvas redraws
     
@@ -244,9 +266,12 @@ const gameState = {
         fishingLevel: 1,
         fishingXp: 0,
         fishingRecords: {},    // Best catches weight
-        farmingLevel: 1,       // EXPANSION HOOK: Agriculture
+        
+        // EXPANSION WIN: Full Memory Schema for Farming & Agriculture
+        farmingLevel: 1,       
         farmingXp: 0,
         farmingXpToNext: 50,
+        gardenPlots: [],       // Tracks seeds planted at the campsite [{x, y, seedType, plantedTime}]
 
         // Map & Exploration Data
         unlockedWaypoints: [], // Fast travel nodes { x, y, name }
@@ -336,16 +361,6 @@ const gameState = {
 // CENTRALIZED STATE DISPATCHER (Vitals Management)
 // ============================================================================
 
-// PERFORMANCE WIN: Cache vital-to-max string maps to prevent repeated string concatenations
-const _statCapCache = {
-    health: 'maxHealth',
-    mana: 'maxMana',
-    stamina: 'maxStamina',
-    psyche: 'maxPsyche',
-    hunger: 'maxHunger',
-    thirst: 'maxThirst'
-};
-
 /**
  * Safely modifies a player's vital stat, handles UI flashes, and checks for death.
  * @param {string} vital - 'health', 'mana', 'stamina', 'psyche', 'hunger', 'thirst'
@@ -357,7 +372,7 @@ window.modifyVital = function(vital, amount) {
     const p = gameState.player;
     
     // 1. Get the max cap for this vital from cache
-    const maxKey = _statCapCache[vital] || ('max' + vital.charAt(0).toUpperCase() + vital.slice(1));
+    const maxKey = window._statCapCache[vital] || ('max' + vital.charAt(0).toUpperCase() + vital.slice(1));
     const maxVal = p[maxKey] || 100; // Fallback to 100 for hunger/thirst
     
     // 2. Calculate new value with clamping
@@ -390,7 +405,7 @@ window.modifyVital = function(vital, amount) {
             else if (vital === 'thirst') triggerStatAnimation(statDisplays[vital], 'stat-pulse-blue');
         } else {
             // Taking Damage / Spending
-            triggerStatFlash(statDisplays[vital], false);
+            if (typeof triggerStatFlash === 'function') triggerStatFlash(statDisplays[vital], false);
         }
     }
 
