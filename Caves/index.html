@@ -700,6 +700,34 @@
         </div>
     </div>
 
+    <!-- ENCHANTING MODAL -->
+    <div id="enchantingModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="enchantingTitle">
+        <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-purple-600 max-w-4xl w-full h-[85vh] flex flex-col">
+            
+            <div class="flex justify-between items-end mb-4 border-b-2 border-purple-700 pb-3 flex-shrink-0">
+                <h2 id="enchantingTitle" class="text-4xl font-bold text-purple-400 drop-shadow-md" style="font-family: 'Uncial Antiqua', cursive;">Enchanting Altar</h2>
+                <div id="enchantingDustDisplay" class="font-bold text-xl bg-black bg-opacity-40 px-4 py-2 rounded-lg border border-purple-800 shadow-inner">Arcane Dust: <span class="text-purple-400">0</span></div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow overflow-hidden min-h-0">
+                <!-- DISENCHANT Column -->
+                <div class="flex flex-col h-full bg-black bg-opacity-30 rounded-xl border border-gray-700 p-4 shadow-inner">
+                    <h3 class="text-xl font-bold mb-3 border-b border-gray-600 pb-2 text-red-400 flex-shrink-0">Disenchant (Destroy Item)</h3>
+                    <p class="text-xs text-gray-400 mb-2 italic">Extract Arcane Dust from magical items.</p>
+                    <ul id="disenchantList" class="space-y-2 overflow-y-auto pr-2 flex-grow custom-scrollbar"></ul>
+                </div>
+                <!-- ENCHANT Column -->
+                <div class="flex flex-col h-full bg-black bg-opacity-30 rounded-xl border border-gray-700 p-4 shadow-inner">
+                    <h3 class="text-xl font-bold mb-3 border-b border-gray-600 pb-2 text-green-400 flex-shrink-0">Enchant (Upgrade Item)</h3>
+                    <p class="text-xs text-gray-400 mb-2 italic">Infuse Arcane Dust to upgrade rarity and stats.</p>
+                    <ul id="enchantList" class="space-y-2 overflow-y-auto pr-2 flex-grow custom-scrollbar"></ul>
+                </div>
+            </div>
+            
+            <button type="button" id="closeEnchantingButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Step Away</button>
+        </div>
+    </div>
+
     <!-- TALENT / MASTERY MODAL -->
     <div id="talentModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="talentTitle">
         <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-purple-600 flex flex-col max-h-[85vh]">
