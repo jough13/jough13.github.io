@@ -1122,6 +1122,7 @@ attachCloseFocus(closeSkillButton);
 attachCloseFocus(closeQuestButton);
 attachCloseFocus(closeShopButton);
 attachCloseFocus(closeCraftingButton);
+attachCloseFocus(document.getElementById('closeEnchantingButton'));
 attachCloseFocus(closeSkillTrainerButton);
 attachCloseFocus(document.getElementById('closeCollectionsButton'));
 attachCloseFocus(closeLoreButton);
