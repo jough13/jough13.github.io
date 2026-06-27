@@ -4,7 +4,7 @@
 // TRADE & ECONOMY SYSTEM
 // ==========================================
 
-// O(1) Item Lookup Cache for Trading
+// PERFORMANCE WIN: O(1) Item Lookup Cache for Trading
 // Prevents O(N) string-matching scans against the massive ITEM_DATA dictionary every time you buy an item.
 // Attaching to window prevents hot-reload SyntaxErrors!
 window._tradeItemKeyCache = window._tradeItemKeyCache || {};
@@ -17,7 +17,7 @@ function getTradeItemKey(name) {
     return key;
 }
 
-// Cache DOM lookups for the shop UI
+// PERFORMANCE WIN: Cache DOM lookups for the shop UI
 const _tradeDOMCache = {
     buyList: null,
     sellList: null,
@@ -182,7 +182,8 @@ function handleBuyItem(itemName, amount = 1) {
     const existingStack = player.inventory.find(item => item.name === itemName && !item.isEquipped);
     const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
 
-    if (!existingStack && player.inventory.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
+    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+    if (!existingStack && player.inventory.length >= invCap) {
         logMessage("{red:Your inventory is full!}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
@@ -210,6 +211,7 @@ function handleBuyItem(itemName, amount = 1) {
     if (existingStack && isStackable) {
         existingStack.quantity += buyQty;
     } else {
+        // Safe Cloning to prevent reference mutation
         player.inventory.push({
             templateId: itemKey,
             name: itemTemplate.name,
@@ -219,7 +221,7 @@ function handleBuyItem(itemName, amount = 1) {
             damage: itemTemplate.damage || null,
             defense: itemTemplate.defense || null,
             slot: itemTemplate.slot || null,
-            statBonuses: itemTemplate.statBonuses || null,
+            statBonuses: itemTemplate.statBonuses ? { ...itemTemplate.statBonuses } : null,
             effect: itemTemplate.effect || null,
             isEquipped: false
         });
@@ -554,13 +556,15 @@ function renderShop() {
     const sellHeader = sellListContainer.querySelector('h3');
 
     if (sellHeader) {
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+        
         // UX WIN: Smart-disable the button if there is no junk to sell
         const hasJunk = gameState.player.inventory.some(i => !i.isEquipped && (i.type === 'junk' || i.type === 'trade'));
         const btnClass = hasJunk ? "bg-red-700 hover:bg-red-600 text-white cursor-pointer shadow-md" : "bg-gray-800 text-gray-500 opacity-50 cursor-not-allowed border border-gray-700 shadow-inner";
 
         sellHeader.innerHTML = `
             <div class="flex justify-between items-center w-full">
-                <span>Your Bag <span class="text-[10px] text-gray-400 font-normal ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner">(${gameState.player.inventory.length}/${window.MAX_INVENTORY_SLOTS || 9})</span></span>
+                <span>Your Bag <span class="text-[10px] text-gray-400 font-normal ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner">(${gameState.player.inventory.length}/${invCap})</span></span>
                 <button id="sellAllBtn" style="transform: translateZ(0);" class="text-[10px] uppercase font-bold tracking-widest px-2 py-1.5 rounded transition-transform active:scale-95 ${btnClass}" ${hasJunk ? '' : 'disabled'}>Sell All Junk</button>
             </div>
         `;
