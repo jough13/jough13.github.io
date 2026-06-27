@@ -4,7 +4,7 @@
 // CRAFTING & COOKING SYSTEM
 // ==========================================
 
-// O(1) Item Lookup Cache for Crafting
+// PERFORMANCE WIN: O(1) Item Lookup Cache for Crafting
 // Prevents O(N) string-matching scans against the massive ITEM_DATA dictionary every render frame.
 const _craftItemKeyCache = {};
 function getCraftItemKey(name) {
@@ -26,7 +26,7 @@ function getAvailableMaterials(inventory) {
     const matCount = {};
     for (let i = 0; i < inventory.length; i++) {
         const item = inventory[i];
-        if (!item.isEquipped) {
+        if (!item.isEquipped && item.quantity > 0) {
             matCount[item.name] = (matCount[item.name] || 0) + item.quantity;
         }
     }
@@ -39,7 +39,9 @@ function getAvailableMaterials(inventory) {
  */
 
 function getMaxCraftable(recipeName, availableMats, currentInventoryLength, isStackable, hasExistingStack) {
-    const recipe = CRAFTING_RECIPES[recipeName] || COOKING_RECIPES[recipeName];
+    // Determine which cookbook we are reading from
+    const isCooking = (typeof gameState !== 'undefined' && gameState.currentCraftingMode === 'cooking');
+    const recipe = isCooking ? COOKING_RECIPES[recipeName] : CRAFTING_RECIPES[recipeName];
     if (!recipe) return 0;
     
     let max = Infinity;
@@ -48,8 +50,8 @@ function getMaxCraftable(recipeName, availableMats, currentInventoryLength, isSt
     for (const mat in recipe.materials) {
         const req = recipe.materials[mat];
         const has = availableMats[mat] || 0;
-        if (has < req) return 0;
-        max = Math.min(max, Math.floor(has / req));
+        if (has < req) return 0; // Missing materials completely
+        max = Math.min(max, Math.floor(has / req)); // Bound by the rarest required material
     }
     
     if (max === Infinity || max <= 0) return 0;
@@ -60,7 +62,7 @@ function getMaxCraftable(recipeName, availableMats, currentInventoryLength, isSt
     
     // If it stacks but we DON'T have a stack, we need exactly 1 empty slot
     // If it DOESN'T stack (weapons/armor), we need 1 empty slot per craft
-    const emptySlots = (window.MAX_INVENTORY_SLOTS || 9) - currentInventoryLength;
+    const emptySlots = (typeof getInventoryCap === 'function' ? getInventoryCap() : 9) - currentInventoryLength;
     
     if (isStackable) {
         return emptySlots > 0 ? max : 0;
@@ -76,14 +78,16 @@ function getMaxCraftable(recipeName, availableMats, currentInventoryLength, isSt
  */
 
 function handleCraftItem(recipeName, requestBatch = false) {
-    const recipe = CRAFTING_RECIPES[recipeName] || COOKING_RECIPES[recipeName];
+    const isCooking = (gameState.currentCraftingMode === 'cooking');
+    const recipe = isCooking ? COOKING_RECIPES[recipeName] : CRAFTING_RECIPES[recipeName];
     if (!recipe) return;
 
     const player = gameState.player;
     const playerCraftLevel = player.craftingLevel || 1;
 
     // 1. Check Level Requirement
-    if (CRAFTING_RECIPES[recipeName] && playerCraftLevel < recipe.level) {
+    // Only normal crafting checks level. Cooking is currently level-agnostic.
+    if (!isCooking && playerCraftLevel < recipe.level) {
         logMessage(`{red:You need Crafting Level ${recipe.level} to make this.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
@@ -139,7 +143,6 @@ function handleCraftItem(recipeName, requestBatch = false) {
     let culinaryCrits = 0;
     let totalYield = 0;
     
-    const isCooking = (gameState.currentCraftingMode === 'cooking');
     let lastCraftedName = itemTemplate.name;
 
     for (let i = 0; i < batchSize; i++) {
@@ -186,7 +189,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
             curStack.quantity += craftYield; 
         } else {
             // --- ANTI-CHEAT & EXPLOIT FIX ---
-            if (player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+            if (player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap() : 9)) {
                 // Safely clone tags array
                 const safeTags = itemTemplate.tags ? [...itemTemplate.tags] : null;
 
@@ -399,6 +402,7 @@ function renderCraftingModal() {
         
         let displayName = recipeName;
         let displayTile = outputItemKey || '?';
+        // BUG FIX: Fallback string to prevent .replace() crashing on undefined descriptions
         let baseDescription = itemTemplate.description || "A crafted item.";
         
         // PERFORMANCE WIN: Utilize cached Regex for rapid string replacement
