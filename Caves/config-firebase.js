@@ -20,13 +20,16 @@ const firebaseConfig = {
     measurementId: "G-E2QZTWE6N6"
 };
 
+// JUICE WIN: Thematic Developer Console Boot Sequence
+console.log("%c[AKASHIC ENGINE] Initializing Leyline Network...", "color: #a855f7; font-weight: bold; font-family: monospace;");
+
 // Initialize Firebase (Prevent multiple instances on hot-reloads)
 let app;
 if (!firebase.apps.length) {
     try {
         app = firebase.initializeApp(firebaseConfig);
     } catch (err) {
-        console.error("Akashic Leylines failed to initialize:", err);
+        console.error("%c[AKASHIC ENGINE] FATAL: Network Initialization Failed:", "color: #ef4444; font-weight: bold;", err);
     }
 } else {
     app = firebase.app();
@@ -65,11 +68,31 @@ let connectionBanner = document.getElementById('firebase-connection-banner');
 if (!connectionBanner) {
     connectionBanner = document.createElement('div');
     connectionBanner.id = 'firebase-connection-banner';
-    // JUICE WIN: Maximum Z-Index (50000) ensures this overlays EVERYTHING.
-    // Added backdrop-blur-md, deep shadows, and borders for a polished UI overlay.
+    // PERFORMANCE WIN: Added will-change and transform/translateZ for hardware-accelerated sliding
     connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 transform -translate-y-full shadow-2xl font-mono tracking-widest uppercase text-shadow-sm backdrop-blur-md';
     connectionBanner.style.textShadow = "2px 2px 0px rgba(0,0,0,0.8)"; 
+    connectionBanner.style.willChange = "transform";
+    connectionBanner.style.transform = "translateZ(0)";
     document.body.appendChild(connectionBanner);
+}
+
+// BUG FIX: Prevent banner timeout race-conditions
+// If a user disconnected and reconnected rapidly, the old hide timeout would trigger 
+// and accidentally hide the "Restored" banner instantly.
+let _bannerTimeout = null;
+
+function showNetworkBanner(htmlContent, colorClasses, durationMs) {
+    if (_bannerTimeout) clearTimeout(_bannerTimeout);
+    
+    // Base classes applied to all banners
+    const baseClasses = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 font-mono tracking-widest uppercase backdrop-blur-md translate-y-0';
+    
+    connectionBanner.innerHTML = htmlContent;
+    connectionBanner.className = `${baseClasses} ${colorClasses}`;
+    
+    _bannerTimeout = setTimeout(() => {
+        connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
+    }, durationMs);
 }
 
 // Apply settings only if not already configured to avoid "Overriding host" error
@@ -82,34 +105,32 @@ try {
     db.enablePersistence()
         .catch((err) => {
             if (err.code === 'failed-precondition') {
-                console.warn("Multiple tabs open. Offline persistence enabled in the first tab only.");
+                console.warn("%c[AKASHIC ENGINE] Multiple timelines detected. Offline persistence limited to primary tab.", "color: #facc15;");
                 
                 // LORE WIN: Themed Multiple-Tab warning
                 setTimeout(() => {
-                    connectionBanner.innerHTML = "⚠️ Temporal Paradox Detected<br><span class='text-[9px] font-normal'>Multiple timelines open. Offline saving disabled for this instance.</span>";
-                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-purple-900 bg-opacity-95 text-purple-200 border-b-2 border-purple-600 translate-y-0 shadow-[0_0_15px_rgba(168,85,247,0.5)] font-mono tracking-widest uppercase backdrop-blur-md';
-                    
-                    // Hide the banner 6 seconds after it appears
-                    setTimeout(() => {
-                        connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
-                    }, 6000);
+                    showNetworkBanner(
+                        "⚠️ Temporal Paradox Detected<br><span class='text-[9px] font-normal'>Multiple timelines open. Offline saving disabled for this instance.</span>",
+                        "bg-purple-900 bg-opacity-95 text-purple-200 border-b-2 border-purple-600 shadow-[0_0_15px_rgba(168,85,247,0.5)]",
+                        6000
+                    );
                 }, 3000);
 
             } else if (err.code === 'unimplemented') {
-                console.warn("Browser does not support offline persistence.");
+                console.warn("%c[AKASHIC ENGINE] Browser lacks local storage support (Incognito?).", "color: #facc15;");
+                
                 // QoL WIN: Detect Incognito mode or incompatible browsers
                 setTimeout(() => {
-                    connectionBanner.innerHTML = "⚠️ Akashic Records Unavailable<br><span class='text-[9px] font-normal'>Your browser (or Incognito Mode) blocks local saves. Cloud saving only.</span>";
-                    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-gray-800 bg-opacity-95 text-gray-300 border-b-2 border-gray-600 translate-y-0 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md';
-                    
-                    setTimeout(() => {
-                        connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
-                    }, 6000);
+                    showNetworkBanner(
+                        "⚠️ Akashic Records Unavailable<br><span class='text-[9px] font-normal'>Your browser (or Incognito Mode) blocks local saves. Cloud saving only.</span>",
+                        "bg-gray-800 bg-opacity-95 text-gray-300 border-b-2 border-gray-600 shadow-2xl",
+                        6000
+                    );
                 }, 3000);
             }
         });
 } catch (e) {
-    console.log("Firestore settings already applied, skipping.");
+    // Expected behavior on hot-reloads
 }
 
 // --- CONNECTION MONITOR ---
@@ -123,18 +144,15 @@ rtdb.ref('.info/connected').on('value', function(snap) {
     
     if (isConnected) {
         // JUICE WIN: Styled Console Outputs for Developers!
-        console.log("%c🟢 Firebase: Leyline Resonance Stable.", "color: #4ade80; font-weight: bold; font-size: 1.1em;");
+        console.log("%c🟢 Leyline Resonance Stable. [Connection Established]", "color: #4ade80; font-weight: bold; font-family: monospace;");
         
         // Only show "Restored" if we already successfully connected once before and lost it
         if (hasInitiallyConnected && !wasConnected) {
-            // Restore Banner
-            connectionBanner.innerHTML = "✨ Leyline Resonance Restored<br><span class='text-[9px] font-normal'>Connection to the physical world re-established.</span>";
-            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-green-900 bg-opacity-95 text-green-200 border-b-2 border-green-500 translate-y-0 shadow-[0_0_20px_rgba(34,197,94,0.4)] font-mono tracking-widest uppercase backdrop-blur-md';
-            
-            // Slide it away after 4 seconds
-            setTimeout(() => {
-                connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
-            }, 4000);
+            showNetworkBanner(
+                "✨ Leyline Resonance Restored<br><span class='text-[9px] font-normal'>Connection to the physical world re-established.</span>",
+                "bg-green-900 bg-opacity-95 text-green-200 border-b-2 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]",
+                4000
+            );
 
             if (typeof logMessage === 'function') logMessage("{green:The leylines stabilize. Connection to the realm restored.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
@@ -143,13 +161,16 @@ rtdb.ref('.info/connected').on('value', function(snap) {
         hasInitiallyConnected = true;
         wasConnected = true;
     } else {
-        console.warn("%c🔴 Firebase: Disconnected (Offline / Reconnecting...).", "color: #ef4444; font-weight: bold; font-size: 1.1em;");
+        console.warn("%c🔴 Leyline Connection Severed. [Offline / Reconnecting...]", "color: #ef4444; font-weight: bold; font-family: monospace;");
         
         // Only show "Connection Lost" if we were actually connected in the first place
         if (hasInitiallyConnected && wasConnected) {
             // Warning Banner (JUICE WIN: Added animate-pulse and greyscale/contrast filters for a "glitching" effect)
-            connectionBanner.innerHTML = "⚠️ Leyline Connection Severed<br><span class='text-[9px] font-normal'>Re-attuning to the Akashic Records... Please wait.</span>";
-            connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-all duration-500 bg-red-950 bg-opacity-95 text-red-200 border-b-2 border-red-600 translate-y-0 shadow-[0_0_20px_rgba(220,38,38,0.8)] font-mono tracking-widest uppercase animate-pulse backdrop-blur-md grayscale contrast-125';
+            showNetworkBanner(
+                "⚠️ Leyline Connection Severed<br><span class='text-[9px] font-normal'>Re-attuning to the Akashic Records... Please wait.</span>",
+                "bg-red-950 bg-opacity-95 text-red-200 border-b-2 border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.8)] animate-pulse grayscale contrast-125",
+                8000 // Holds on screen longer to let them know it's trying to reconnect
+            );
             
             if (typeof logMessage === 'function') logMessage("{red:The leylines have ruptured! Trying to re-attune...}");
             
@@ -237,7 +258,7 @@ function handleAuthError(error) {
     // JUICE WIN: Auditory feedback for login failure
     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     
-    console.error("Akashic Auth Error:", error); 
+    console.error("%c[AKASHIC ENGINE] Auth Rejection:", "color: #ef4444; font-weight: bold;", error); 
 }
 
 /**
@@ -258,12 +279,12 @@ function sanitizeForFirebase(obj, seen = new WeakSet()) {
     
     // 1.5 FIREBASE CRASH PREVENTION: NaN and Infinity
     if (typeof obj === 'number') {
-        if (isNaN(obj)) {
-            console.warn("Void Anomaly (NaN) detected and neutralized before DB save.");
+        if (Number.isNaN(obj)) {
+            console.warn("%c[AKASHIC ENGINE] Void Anomaly (NaN) detected and neutralized before DB save.", "color: #facc15;");
             return 0; // Safest fallback to prevent DB explosion
         }
-        if (!isFinite(obj)) {
-            console.warn("Infinite Loop (Infinity) detected and neutralized before DB save.");
+        if (!Number.isFinite(obj)) {
+            console.warn("%c[AKASHIC ENGINE] Infinite Loop (Infinity) detected and neutralized before DB save.", "color: #facc15;");
             return 999999; // Safe clamp
         }
         return obj;
@@ -287,7 +308,7 @@ function sanitizeForFirebase(obj, seen = new WeakSet()) {
 
     // 3.5 CIRCULAR REFERENCE PROTECTION
     if (seen.has(obj)) {
-        console.warn("Circular reference detected and severed during Firebase sanitization.");
+        console.warn("%c[AKASHIC ENGINE] Circular reference detected and severed during Firebase sanitization.", "color: #facc15;");
         return null; 
     }
     seen.add(obj);
@@ -329,7 +350,7 @@ function sanitizeForFirebase(obj, seen = new WeakSet()) {
     }
 
     // 6. Handle Plain Objects
-    // PERFORMANCE WIN: Object.keys() iteration is notably faster in V8 for object deep-cloning 
+    // Object.keys() iteration is notably faster in V8 for object deep-cloning 
     // than a traditional `for...in` loop with `hasOwnProperty` checks!
     const newObj = {};
     const keys = Object.keys(obj);
@@ -337,7 +358,7 @@ function sanitizeForFirebase(obj, seen = new WeakSet()) {
         const key = keys[i];
         const val = obj[key];
         
-        // PERFORMANCE: Skip functions immediately so they aren't processed at all
+        // Skip functions immediately so they aren't processed at all
         if (typeof val === 'function') continue;
         
         newObj[key] = sanitizeForFirebase(val, seen);
