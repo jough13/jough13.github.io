@@ -428,8 +428,8 @@ window.handleFastTravel = async function (targetX, targetY) {
             const currentChunkX = Math.floor(player.x / chunkManager.CHUNK_SIZE);
             const currentChunkY = Math.floor(player.y / chunkManager.CHUNK_SIZE);
             
-            for (let cy = -1; cy <= 1; cy++) {
-                for (let cx = -1; cx <= 1; cx++) {
+            for (let cy = -2; cy <= 2; cy++) {
+                for (let cx = -2; cx <= 2; cx++) {
                     chunkManager.listenToChunkState(currentChunkX + cx, currentChunkY + cy);
                 }
             }
