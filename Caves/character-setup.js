@@ -11,7 +11,7 @@ let creationState = {
     background: null
 };
 
-// PERFORMANCE WIN: Expanded Cache for DOM elements queried repeatedly (like on every keystroke)
+// Expanded Cache for DOM elements queried repeatedly (like on every keystroke)
 const _DOMCache = {
     nameInput: null,
     summaryBox: null,
@@ -30,10 +30,16 @@ async function initCharacterSelect(user) {
 
     currentUser = user;
     
-    authContainer.classList.add('hidden');
-    gameContainer.classList.add('hidden'); 
-    charCreationModal.classList.add('hidden'); 
-    characterSelectModal.classList.remove('hidden');
+    // UI flow handling
+    const authContainer = document.getElementById('authContainer');
+    const gameContainer = document.getElementById('gameContainer');
+    const charCreationModal = document.getElementById('charCreationModal');
+    const characterSelectModal = document.getElementById('characterSelectModal');
+    
+    if (authContainer) authContainer.classList.add('hidden');
+    if (gameContainer) gameContainer.classList.add('hidden'); 
+    if (charCreationModal) charCreationModal.classList.add('hidden'); 
+    if (characterSelectModal) characterSelectModal.classList.remove('hidden');
     
     const loadingIndicator = document.getElementById('loadingIndicator');
     // Only show the interim loading screen if the page has fully loaded
@@ -48,7 +54,7 @@ async function initCharacterSelect(user) {
         const oldDoc = await oldRootRef.get();
 
         if (oldDoc.exists && oldDoc.data().level) {
-            console.log("Migrating legacy save to Slot 1...");
+            console.log("%c[AKASHIC ENGINE] Migrating legacy save to Slot 1...", "color: #facc15;");
             const legacyData = oldDoc.data();
             await oldRootRef.collection('characters').doc('slot1').set(legacyData);
             await oldRootRef.delete();
@@ -57,7 +63,7 @@ async function initCharacterSelect(user) {
         console.warn("Legacy migration check bypassed.", e);
     }
 
-    renderSlots();
+    if (typeof renderSlots === 'function') renderSlots();
 }
 
 let isEnteringGame = false; // Global lock to prevent double-clicks
@@ -84,26 +90,29 @@ window.selectSlot = async function (slotId) {
 
     try {
         const doc = await playerRef.get();
-
-        characterSelectModal.classList.add('hidden');
+        const characterSelectModal = document.getElementById('characterSelectModal');
+        if (characterSelectModal) characterSelectModal.classList.add('hidden');
 
         // Robust check: doc exists AND actually has data (not an empty placeholder)
         if (doc.exists && doc.data().level) {
-            enterGame(doc.data());
+            if (typeof enterGame === 'function') enterGame(doc.data());
         } else {
             // It's a completely empty slot. Setup the default state.
-            const defaultState = createDefaultPlayerState();
+            const defaultState = typeof createDefaultPlayerState === 'function' ? createDefaultPlayerState() : {};
             
             // 🐛 BUG FIX: Deep clone the default state so nested arrays (like inventory/equipment) 
             // don't carry over memory references from previously deleted characters in the same session!
-            gameState.player = typeof fastClone === 'function' ? fastClone(defaultState) : JSON.parse(JSON.stringify(defaultState));
+            if (typeof gameState !== 'undefined') {
+                gameState.player = typeof fastClone === 'function' ? fastClone(defaultState) : JSON.parse(JSON.stringify(defaultState));
+            }
             
             initCreationUI(); 
         }
     } catch (e) {
         console.error("Failed to load character slot:", e);
         if (loadingIndicator) loadingIndicator.classList.add('hidden');
-        characterSelectModal.classList.remove('hidden');
+        const characterSelectModal = document.getElementById('characterSelectModal');
+        if (characterSelectModal) characterSelectModal.classList.remove('hidden');
         alert("Network error loading character. Please try again.");
     } finally {
         // Unlock after a short delay to ensure modal hides safely and prevents ghost clicks
@@ -114,14 +123,13 @@ window.selectSlot = async function (slotId) {
 // --- SLOT DELETION LOGIC ---
 let slotPendingDeletion = null; 
 
-const deleteConfirmModal = document.getElementById('deleteConfirmModal');
-const confirmDeleteButton = document.getElementById('confirmDeleteButton');
-const cancelDeleteButton = document.getElementById('cancelDeleteButton');
-
+// Evaluated dynamically inside functions to prevent DOM parsing errors on initial load
 window.deleteSlot = function (slotId) {
     // JUICE & LORE WIN: Ominous warning sound and atmospheric text update
     if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); 
     slotPendingDeletion = slotId;
+    
+    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
     
     if (deleteConfirmModal) {
         const title = document.getElementById('deleteConfirmTitle');
@@ -134,82 +142,89 @@ window.deleteSlot = function (slotId) {
     }
 };
 
-if (confirmDeleteButton) {
-    confirmDeleteButton.onclick = async () => {
-        if (slotPendingDeletion) {
-            const btn = confirmDeleteButton;
-            const originalText = btn.textContent;
-            
-            // ROBUSTNESS: Disable buttons during deletion to prevent spamming
-            btn.disabled = true;
-            btn.textContent = "Erasing Soul...";
-            btn.classList.add('animate-pulse');
-            if (cancelDeleteButton) cancelDeleteButton.disabled = true;
-
-            try {
-                // Delete the main character document
-                await db.collection('players').doc(currentUser.uid).collection('characters').doc(slotPendingDeletion).delete();
+// Bind Confirmation Buttons
+document.addEventListener('DOMContentLoaded', () => {
+    const confirmDeleteButton = document.getElementById('confirmDeleteButton');
+    const cancelDeleteButton = document.getElementById('cancelDeleteButton');
+    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+    
+    if (confirmDeleteButton) {
+        confirmDeleteButton.onclick = async () => {
+            if (slotPendingDeletion) {
+                const btn = confirmDeleteButton;
+                const originalText = btn.textContent;
                 
-                const batch = db.batch();
-                const charRef = db.collection('players').doc(currentUser.uid).collection('characters').doc(slotPendingDeletion);
+                // ROBUSTNESS: Disable buttons during deletion to prevent spamming
+                btn.disabled = true;
+                btn.textContent = "Erasing Soul...";
+                btn.classList.add('animate-pulse');
+                if (cancelDeleteButton) cancelDeleteButton.disabled = true;
 
-                // 🧹 CRITICAL MEMORY LEAK FIX: Firestore does not cascade-delete subcollections!
-                // We must manually fetch and delete backups AND map_data to prevent database bloat!
-                
-                // 1. Delete Backups
-                const backups = await charRef.collection('backups').get();
-                backups.forEach(doc => batch.delete(doc.ref));
-                
-                // 2. Delete Map Data
-                const mapData = await charRef.collection('map_data').get();
-                mapData.forEach(doc => batch.delete(doc.ref));
+                try {
+                    // Delete the main character document
+                    await db.collection('players').doc(currentUser.uid).collection('characters').doc(slotPendingDeletion).delete();
+                    
+                    const batch = db.batch();
+                    const charRef = db.collection('players').doc(currentUser.uid).collection('characters').doc(slotPendingDeletion);
 
-                await batch.commit();
+                    // 🧹 CRITICAL MEMORY LEAK FIX: Firestore does not cascade-delete subcollections!
+                    // We must manually fetch and delete backups AND map_data to prevent database bloat!
+                    
+                    // 1. Delete Backups
+                    const backups = await charRef.collection('backups').get();
+                    backups.forEach(doc => batch.delete(doc.ref));
+                    
+                    // 2. Delete Map Data
+                    const mapData = await charRef.collection('map_data').get();
+                    mapData.forEach(doc => batch.delete(doc.ref));
 
-                // JUICE WIN: Play the heavy death dirge to signify permanent erasure
-                if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playDeath === 'function') {
-                    AudioSystem.playDeath();
-                } else if (typeof AudioSystem !== 'undefined') {
-                    AudioSystem.playStep();
+                    await batch.commit();
+
+                    // JUICE WIN: Play the heavy death dirge to signify permanent erasure
+                    if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playDeath === 'function') {
+                        AudioSystem.playDeath();
+                    } else if (typeof AudioSystem !== 'undefined') {
+                        AudioSystem.playStep();
+                    }
+                    
+                    if (typeof renderSlots === 'function') await renderSlots(); 
+                } catch (e) {
+                    console.error("Error deleting slot:", e);
+                    alert("Failed to delete character. Check console.");
                 }
-                
-                await renderSlots(); 
-            } catch (e) {
-                console.error("Error deleting slot:", e);
-                alert("Failed to delete character. Check console.");
-            }
 
-            // Restore buttons
-            btn.disabled = false;
-            btn.textContent = originalText;
-            btn.classList.remove('animate-pulse');
-            if (cancelDeleteButton) cancelDeleteButton.disabled = false;
-            
+                // Restore buttons
+                btn.disabled = false;
+                btn.textContent = originalText;
+                btn.classList.remove('animate-pulse');
+                if (cancelDeleteButton) cancelDeleteButton.disabled = false;
+                
+                if (deleteConfirmModal) deleteConfirmModal.classList.add('hidden');
+                slotPendingDeletion = null;
+            }
+        };
+    }
+
+    if (cancelDeleteButton) {
+        cancelDeleteButton.onclick = () => {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             if (deleteConfirmModal) deleteConfirmModal.classList.add('hidden');
             slotPendingDeletion = null;
-        }
-    };
-}
+        };
+    }
 
-if (cancelDeleteButton) {
-    cancelDeleteButton.onclick = () => {
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-        if (deleteConfirmModal) deleteConfirmModal.classList.add('hidden');
-        slotPendingDeletion = null;
-    };
-}
-
-if (deleteConfirmModal) {
-    deleteConfirmModal.addEventListener('click', (e) => {
-        // Prevent closing if we are currently deleting
-        if (confirmDeleteButton && confirmDeleteButton.disabled) return;
-        
-        if (e.target === deleteConfirmModal) {
-            deleteConfirmModal.classList.add('hidden');
-            slotPendingDeletion = null;
-        }
-    });
-}
+    if (deleteConfirmModal) {
+        deleteConfirmModal.addEventListener('click', (e) => {
+            // Prevent closing if we are currently deleting
+            if (confirmDeleteButton && confirmDeleteButton.disabled) return;
+            
+            if (e.target === deleteConfirmModal) {
+                deleteConfirmModal.classList.add('hidden');
+                slotPendingDeletion = null;
+            }
+        });
+    }
+});
 
 // ==========================================
 // CHARACTER CREATION LOGIC
@@ -244,19 +259,20 @@ function updateCreationSummary() {
         
     creationState.name = formattedName.trim();
 
-    const raceName = creationState.race ? PLAYER_RACES[creationState.race].name : "???";
-    const className = creationState.background ? PLAYER_BACKGROUNDS[creationState.background].name : "???";
+    // Safe Lookups
+    const raceName = (creationState.race && typeof PLAYER_RACES !== 'undefined' && PLAYER_RACES[creationState.race]) ? PLAYER_RACES[creationState.race].name : "???";
+    const className = (creationState.background && typeof PLAYER_BACKGROUNDS !== 'undefined' && PLAYER_BACKGROUNDS[creationState.background]) ? PLAYER_BACKGROUNDS[creationState.background].name : "???";
     
-    const raceDesc = creationState.race ? PLAYER_RACES[creationState.race].description : "";
-    const classDesc = creationState.background ? PLAYER_BACKGROUNDS[creationState.background].description : "";
+    const raceDesc = (creationState.race && typeof PLAYER_RACES !== 'undefined' && PLAYER_RACES[creationState.race]) ? PLAYER_RACES[creationState.race].description : "";
+    const classDesc = (creationState.background && typeof PLAYER_BACKGROUNDS !== 'undefined' && PLAYER_BACKGROUNDS[creationState.background]) ? PLAYER_BACKGROUNDS[creationState.background].description : "";
     
     // JUICE WIN: Dynamic Avatar Preview
-    const raceIcon = creationState.race ? PLAYER_RACES[creationState.race].icon : "👤";
+    const raceIcon = (creationState.race && typeof PLAYER_RACES !== 'undefined' && PLAYER_RACES[creationState.race]) ? PLAYER_RACES[creationState.race].icon : "👤";
     
     let stats = [];
     let calcCon = 1, calcWits = 1, calcEnd = 1, calcWill = 1;
 
-    if (creationState.race) {
+    if (creationState.race && typeof PLAYER_RACES !== 'undefined') {
         const rStats = PLAYER_RACES[creationState.race].stats;
         for(let s in rStats) {
             stats.push(`+${rStats[s]} ${s.charAt(0).toUpperCase() + s.slice(1)} (Race)`);
@@ -266,7 +282,7 @@ function updateCreationSummary() {
             if (s === 'willpower') calcWill += rStats[s];
         }
     }
-    if (creationState.background) {
+    if (creationState.background && typeof PLAYER_BACKGROUNDS !== 'undefined') {
         const cStats = PLAYER_BACKGROUNDS[creationState.background].stats;
         for(let s in cStats) {
             stats.push(`+${cStats[s]} ${s.charAt(0).toUpperCase() + s.slice(1)} (Class)`);
@@ -304,13 +320,13 @@ function updateCreationSummary() {
         
         // Inject class/race specific flavor texts into the pool!
         if (creationState.background === 'necromancer') omens.push("The shadows cling to you eagerly.", "A cold wind blows from the Void.");
-        if (creationState.background === 'mage') omens.push("Arcane sparks dance at your fingertips.");
-        if (creationState.background === 'warrior') omens.push("The clash of steel echoes in your fate.");
-        if (creationState.background === 'rogue') omens.push("You step lightly, unseen by the stars.");
-        if (creationState.background === 'wretch') omens.push("The world pities you. Prove it wrong.");
-        if (creationState.race === 'elf') omens.push("The ancient woods remember your bloodline.");
-        if (creationState.race === 'dwarf') omens.push("The earth rumbles in greeting.");
-        if (creationState.race === 'orc') omens.push("Your ancestors roar in approval.");
+        if (creationState.background === 'mage') omens.push("Arcane sparks dance at your fingertips.", "The air smells faintly of ozone.");
+        if (creationState.background === 'warrior') omens.push("The clash of steel echoes in your fate.", "Your grip tightens instinctively.");
+        if (creationState.background === 'rogue') omens.push("You step lightly, unseen by the stars.", "A sudden chill drafts through the room.");
+        if (creationState.background === 'wretch') omens.push("The world pities you. Prove it wrong.", "You have nothing left to lose.");
+        if (creationState.race === 'elf') omens.push("The ancient woods remember your bloodline.", "A forgotten song echoes in your ears.");
+        if (creationState.race === 'dwarf') omens.push("The earth rumbles in greeting.", "Stone recognizes stone.");
+        if (creationState.race === 'orc') omens.push("Your ancestors roar in approval.", "Blood calls to blood.");
         
         // Use a mathematical hash of the player's choices to ensure the omen remains stable for that combo!
         const omenSeed = stringToSeed(creationState.name + creationState.race + creationState.background);
@@ -448,15 +464,19 @@ window.quickRollCharacter = function() {
     const btnG = document.querySelector(`.gender-btn[data-value="${rG}"]`);
     if (btnG) btnG.click();
 
-    const races = Object.keys(PLAYER_RACES);
-    const rR = races[Math.floor(Math.random() * races.length)];
-    const btnR = document.querySelector(`#raceSelectionContainer div[data-key="${rR}"]`);
-    if (btnR) btnR.click();
+    if (typeof PLAYER_RACES !== 'undefined') {
+        const races = Object.keys(PLAYER_RACES);
+        const rR = races[Math.floor(Math.random() * races.length)];
+        const btnR = document.querySelector(`#raceSelectionContainer div[data-key="${rR}"]`);
+        if (btnR) btnR.click();
+    }
 
-    const classes = Object.keys(PLAYER_BACKGROUNDS);
-    const rC = classes[Math.floor(Math.random() * classes.length)];
-    const btnC = document.querySelector(`#classSelectionContainer div[data-key="${rC}"]`);
-    if (btnC) btnC.click();
+    if (typeof PLAYER_BACKGROUNDS !== 'undefined') {
+        const classes = Object.keys(PLAYER_BACKGROUNDS);
+        const rC = classes[Math.floor(Math.random() * classes.length)];
+        const btnC = document.querySelector(`#classSelectionContainer div[data-key="${rC}"]`);
+        if (btnC) btnC.click();
+    }
     
     // JUICE WIN: Tactile feedback for throwing the character dice
     if (typeof AudioSystem !== 'undefined') {
@@ -501,7 +521,7 @@ function initCreationUI() {
     
     // PERFORMANCE WIN: Use DocumentFragments to prevent layout thrashing
     const raceContainer = _DOMCache.getRaceContainer();
-    if (raceContainer) {
+    if (raceContainer && typeof PLAYER_RACES !== 'undefined') {
         raceContainer.innerHTML = '';
         const raceFrag = document.createDocumentFragment();
         for (const key in PLAYER_RACES) {
@@ -517,16 +537,20 @@ function initCreationUI() {
     }
 
     const classContainer = _DOMCache.getClassContainer();
-    if (classContainer) {
+    if (classContainer && typeof PLAYER_BACKGROUNDS !== 'undefined') {
         classContainer.innerHTML = '';
         const classFrag = document.createDocumentFragment();
         for (const key in PLAYER_BACKGROUNDS) {
             const bg = PLAYER_BACKGROUNDS[key];
             const div = document.createElement('div');
             div.className = 'creation-option p-3 rounded-lg border-gray-600 border-2 transition-all';
+            
+            // Safe array access in case items array is malformed
+            const startItemName = (bg.items && bg.items[0]) ? bg.items[0].name : "Nothing";
+            
             div.innerHTML = `
                 <div class="font-bold text-lg text-yellow-500" style="font-family: 'Uncial Antiqua', cursive;">${bg.name}</div>
-                <div class="text-xs text-gray-400 mt-1 truncate">Start: ${bg.items[0].name}</div>
+                <div class="text-xs text-gray-400 mt-1 truncate">Start: ${startItemName}</div>
             `;
             div.onclick = () => selectCreationOption('background', key, div);
             div.dataset.key = key;
@@ -548,11 +572,12 @@ function initCreationUI() {
         });
         
         // Default select Non-Binary
-        genderBtns[2].click(); 
+        if (genderBtns[2]) genderBtns[2].click(); 
     }
 
     updateCreationSummary();
     
+    const charCreationModal = document.getElementById('charCreationModal');
     if (charCreationModal) charCreationModal.classList.remove('hidden');
     const loadingIndicator = document.getElementById('loadingIndicator');
     if (loadingIndicator) loadingIndicator.classList.add('hidden');
@@ -578,8 +603,16 @@ async function finalizeCharacterCreation() {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp(); 
 
     const player = gameState.player;
-    const bgData = PLAYER_BACKGROUNDS[creationState.background];
-    const raceData = PLAYER_RACES[creationState.race];
+    
+    // Safe lookup
+    const bgData = typeof PLAYER_BACKGROUNDS !== 'undefined' ? PLAYER_BACKGROUNDS[creationState.background] : null;
+    const raceData = typeof PLAYER_RACES !== 'undefined' ? PLAYER_RACES[creationState.race] : null;
+
+    if (!bgData || !raceData) {
+        console.error("Missing Class or Race data during creation!");
+        alert("Game data error. Please reload the page.");
+        return;
+    }
 
     // 1. Apply Base Data
     player.name = creationState.name;
@@ -618,10 +651,12 @@ async function finalizeCharacterCreation() {
 
     // 5. Apply Inventory (Class Kit)
     // PERFORMANCE WIN: Utilize fastClone utility over JSON.parse to prevent CPU blocking during load
-    bgData.items.forEach(newItem => {
-        const clonedItem = typeof fastClone === 'function' ? fastClone(newItem) : JSON.parse(JSON.stringify(newItem));
-        player.inventory.push(clonedItem);
-    });
+    if (bgData.items) {
+        bgData.items.forEach(newItem => {
+            const clonedItem = typeof fastClone === 'function' ? fastClone(newItem) : JSON.parse(JSON.stringify(newItem));
+            player.inventory.push(clonedItem);
+        });
+    }
 
     // 6. Auto-Equip
     const weapon = player.inventory.find(i => i.type === 'weapon');
@@ -633,6 +668,10 @@ async function finalizeCharacterCreation() {
     try {
         await playerRef.set(typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player);
 
+        const charCreationModal = document.getElementById('charCreationModal');
+        const gameContainer = document.getElementById('gameContainer');
+        const canvas = document.getElementById('gameCanvas');
+        
         if (charCreationModal) charCreationModal.classList.add('hidden');
         if (gameContainer) gameContainer.classList.remove('hidden');
         if (canvas) canvas.style.visibility = 'visible';
@@ -640,8 +679,10 @@ async function finalizeCharacterCreation() {
         gameState.mapMode = 'overworld';
         
         // LORE & JUICE WIN: Majestic spawn-in sequence!
-        logMessage(`{cyan:The leylines converge. A new destiny begins...}`);
-        logMessage(`{green:Welcome, ${player.name} the ${raceData.name} ${bgData.name}.}`);
+        if (typeof logMessage === 'function') {
+            logMessage(`{cyan:The leylines converge. A new destiny begins...}`);
+            logMessage(`{green:Welcome, ${player.name} the ${raceData.name} ${bgData.name}.}`);
+        }
         
         gameState.screenShake = 20; // Massive world-entry thud
         if (typeof ParticleSystem !== 'undefined') {
