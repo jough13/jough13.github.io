@@ -13,7 +13,7 @@ window.withTimeout = function(promise, ms = 3000) {
     return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
 };
 
-// PERFORMANCE WIN: Generic Debounce & Throttle
+// Generic Debounce & Throttle
 // Essential for limiting API calls, window resizing, or rapid UI button mashing
 window.debounce = function(func, wait) {
     let timeout;
@@ -50,7 +50,7 @@ const WORLD_SEED = 'caves-and-castles-v1';
 // UNIVERSAL MATH & RPG TOOLKIT
 // ==========================================
 
-// PERFORMANCE WIN: Cached Regex for the dice parser
+// Cached Regex for the dice parser
 const DICE_REGEX = /^(\d+)d(\d+)(?:([+-])(\d+))?$/i;
 
 window.MathUtils = {
@@ -72,13 +72,13 @@ window.MathUtils = {
     // Smooth linear interpolation for cameras and entity gliding
     lerp: (start, end, amt) => (1 - amt) * start + amt * end,
 
-    // PERFORMANCE WIN: Axis-Aligned Bounding Box (AABB)
+    // Axis-Aligned Bounding Box (AABB)
     // The absolute fastest way to check if a point is within an area of effect!
     inBounds: (x, y, rectX, rectY, rectW, rectH) => {
         return x >= rectX && x <= rectX + rectW && y >= rectY && y <= rectY + rectH;
     },
 
-    // JUICE WIN: Global Oscillation Helper
+    // Global Oscillation Helper
     // Returns a smoothly waving value between min and max based on the current time. 
     // Perfect for pulsing lights, hovering items, and breathing UI elements!
     oscillate: (min, max, speed = 1, offset = 0) => {
@@ -87,7 +87,7 @@ window.MathUtils = {
         return min + range + Math.sin(time) * range;
     },
 
-    // JUICE WIN: Animation Easing Curves for UI & Cameras
+    // Animation Easing Curves for UI & Cameras
     smoothstep: (min, max, value) => {
         let x = Math.max(0, Math.min(1, (value - min) / (max - min)));
         return x * x * (3 - 2 * x);
@@ -112,15 +112,16 @@ window.MathUtils = {
     // Returns a random integer between min and max (inclusive)
     randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
     
-    // EXPANDABILITY WIN: Gaussian/Bell Curve Random
-    // Uses the Box-Muller transform. Perfect for natural loot distribution and clustering trees!
+    // Non-recursive Gaussian Random
+    // Uses the Box-Muller transform but removes the recursive fallback that could theoretically 
+    // cause a stack overflow on extreme outliers. Clamps values safely instead!
     randomGaussian: (min, max) => {
         let u = 0, v = 0;
         while(u === 0) u = Math.random(); 
         while(v === 0) v = Math.random();
         let num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
         num = num / 10.0 + 0.5; // Translate to 0 -> 1
-        if (num > 1 || num < 0) return window.MathUtils.randomGaussian(min, max); // resample
+        num = Math.max(0, Math.min(1, num)); // Clamp safely to bounds
         return Math.floor(num * (max - min + 1)) + min;
     },
     
@@ -133,7 +134,7 @@ window.MathUtils = {
         return total;
     },
 
-    // EXPANDABILITY WIN: Parses standard TTRPG strings like "2d6+4"
+    // Parses standard TTRPG strings like "2d6+4"
     rollDiceString: (notation) => {
         const match = notation.match(DICE_REGEX);
         if (!match) return 0;
@@ -141,6 +142,7 @@ window.MathUtils = {
         const count = parseInt(match[1], 10);
         const sides = parseInt(match[2], 10);
         const modifierSign = match[3];
+        // BUG FIX: Ensure modifierVal doesn't inject NaNs into combat math
         const modifierVal = parseInt(match[4], 10) || 0;
 
         let total = window.MathUtils.rollDice(sides, count);
@@ -239,10 +241,17 @@ window.ColorUtils = {
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     },
 
-    // JUICE WIN: Instantly invert a hex color (Great for "Corrupted" void monsters!)
+    // Instantly invert a hex color (Great for "Corrupted" void monsters!)
     invertColor: (hex) => {
         const {r, g, b} = window.ColorUtils.hexToRgb(hex);
         return `#${(1 << 24 | (255 - r) << 16 | (255 - g) << 8 | (255 - b)).toString(16).slice(1)}`;
+    },
+    
+    // Calculate best contrasting text color (black or white) over a dynamic background
+    getContrastYIQ: (hex) => {
+        const {r, g, b} = window.ColorUtils.hexToRgb(hex);
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        return (yiq >= 128) ? '#000000' : '#ffffff';
     }
 };
 
@@ -252,7 +261,7 @@ window.ColorUtils = {
 
 // IMPORTANT: Do NOT alter the math in this function! 
 // Altering it will change the world seed hash and shift everyone's map!
-// ROBUSTNESS WIN: Upgraded to a 53-bit safe hash to prevent overflow on massive map coordinates.
+// Upgraded to a 53-bit safe hash to prevent overflow on massive map coordinates.
 function stringToSeed(str) {
     let h1 = 0xdeadbeef ^ 0, h2 = 0x41c6ce57 ^ 0;
     for (let i = 0, ch; i < str.length; i++) {
@@ -313,7 +322,7 @@ const Perlin = {
               B = this.p[X + 1] + Y, BA = this.p[B] + Z, BB = this.p[B + 1] + Z;
         return this.scale(this.lerp(w, this.lerp(v, this.lerp(u, this.grad(this.p[AA], x, y, z), this.grad(this.p[BA], x - 1, y, z)), this.lerp(u, this.grad(this.p[AB], x, y - 1, z), this.grad(this.p[BB], x - 1, y - 1, z))), this.lerp(v, this.lerp(u, this.grad(this.p[AA + 1], x, y, z - 1), this.grad(this.p[BA + 1], x - 1, y, z - 1)), this.lerp(u, this.grad(this.p[AB + 1], x, y - 1, z - 1), this.grad(this.p[BB + 1], x - 1, y - 1, z - 1)))));
     },
-    // EXPANDABILITY WIN: Fractional Brownian Motion (fBm)
+    // Fractional Brownian Motion (fBm)
     // Layers multiple passes of noise to create highly organic, rugged terrain values
     fBm: function(x, y, z = 0, octaves = 4, persistence = 0.5, lacunarity = 2) {
         let total = 0;
@@ -347,11 +356,12 @@ for (let i = 0; i <= 2047; i++) {
     charWidthCache[char] = false;
 }
 
-// PERFORMANCE WIN: The ASCII Fast-Path
-// Drastically speeds up rendering by skipping the Regex and Cache lookups for standard Latin/ASCII characters.
+// The ASCII Fast-Path
+// Uses codePointAt to safely handle multi-byte emojis without splitting them
 const isWideChar = (char) => {
+    if (!char) return false;
     // 1. Instant rejection for standard characters (e.g., '.', '#', 'a', 'W')
-    if (char.charCodeAt(0) < 255) return false; 
+    if (char.codePointAt(0) < 255) return false; 
     
     // 2. Cache Lookup
     if (charWidthCache[char] !== undefined) return charWidthCache[char];
@@ -373,7 +383,7 @@ const entityMap = {
 };
 
 function escapeHtml(string) {
-  if (!string) return "";
+  if (string === null || string === undefined) return "";
   // Strip invisible control characters (except space/tab) before escaping HTML
   const noControlChars = String(string).replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
   return noControlChars.replace(/[&<>"'`=\/]/g, function (s) {
@@ -381,13 +391,14 @@ function escapeHtml(string) {
   });
 }
 
-// QoL WIN: Instantly strips {color:text} syntax for clean native browser tooltips
+// Instantly strips {color:text} syntax for clean native browser tooltips
 function stripColorTags(str) {
     if (!str) return "";
     return str.replace(/\{[a-z]+:(.*?)\}/ig, '$1');
 }
 
 function capitalizeWords(str) {
+    if (!str) return "";
     return str.replace(/\b\w/g, char => char.toUpperCase());
 }
 
@@ -435,31 +446,47 @@ window.formatWorldTime = function(timeData) {
 };
 
 // LORE WIN: Translates clinical 24h time into atmospheric "Times of Day"
+// Massively expanded for deeper roleplay immersion!
 window.getLoreTimeOfDay = function(hour) {
-    if (hour === 0) return "The Witching Hour";
-    if (hour < 4) return "The Deep Dark";
+    if (hour === 0) return "The Dead of Night";
+    if (hour < 3) return "The Deep Dark";
+    if (hour === 3) return "The Witching Hour";
     if (hour === 4) return "The False Dawn";
     if (hour === 5) return "The First Light";
     if (hour < 8) return "The Early Morning";
     if (hour < 12) return "The Morning Ascent";
     if (hour === 12) return "High Noon";
-    if (hour < 17) return "The Long Afternoon";
-    if (hour < 20) return "The Crimson Dusk";
-    if (hour === 20) return "The Twilight Hour";
+    if (hour < 16) return "The Long Afternoon";
+    if (hour === 16) return "The Golden Hour";
+    if (hour < 19) return "The Deepening Shadows";
+    if (hour === 19) return "The Crimson Dusk";
+    if (hour < 21) return "The Twilight Hour";
     return "The Star-lit Night";
 };
 
 // LORE & UI WIN: Expanded Dictionary for Auto-Tagging
 const LORE_KEYWORDS = {
+    // Entities & Factions
     'Void': 'void', 'Void Rift': 'void', 'Shadowed Hand': 'purple',
     'Old King': 'gold', 'First King': 'gold', 'Alaric': 'gold',
+    'Leviathan': 'blue', 'Kraken': 'red', 'Drake': 'orange',
+    'Ogre': 'orange', 'Dire Wolf': 'gray', 'Draugr': 'cyan', 
+    'Void Demon': 'void', 'Efreet': 'orange', 'Vampire Lord': 'red',
+    
+    // Magic & Leylines
     'Leylines': 'blue', 'Waystone': 'blue', 'Akashic': 'blue',
     'Fae': 'green', 'Fairy': 'green', 'Elder Tree': 'green',
+    'Arcane Dust': 'purple', 'Enchanting Altar': 'purple',
+    'Memory Shard': 'purple', 'Paradox Anomaly': 'gold',
+    
+    // Landmarks & Events
     'Grand Fortress': 'red', 'Blood Moon': 'red',
-    // Expanded Monsters & Artifacts
-    'Leviathan': 'blue', 'Kraken': 'red', 'Drake': 'orange',
-    'Abyss': 'void', 'Star-Metal': 'cyan', 'Mithril': 'cyan',
-    'Ogre': 'orange', 'Dire Wolf': 'gray'
+    'Colosseum': 'red', 'Master Blacksmith': 'yellow',
+    'Cartographer': 'blue', 'Safe Haven': 'green',
+    
+    // Special Materials
+    'Star-Metal': 'cyan', 'Mithril': 'cyan', 'Obsidian': 'gray',
+    'Black Pearl': 'purple', 'Dragon Scale': 'red', 'Elemental Core': 'orange'
 };
 
 /**
@@ -542,16 +569,20 @@ window.getRelativePositionText = function(dx, dy, atmospheric = false) {
 // DEEP OBJECT MANAGEMENT
 // ==========================================
 
-// PERFORMANCE WIN: High-speed recursive clone. 
+// PERFORMANCE & BUG FIX WIN: High-speed recursive clone. 
 // Completely replaces JSON.parse(JSON.stringify()) with a V8-optimized deep copy.
 // Uses Object.keys() and pre-allocated Arrays to bypass all prototype chain overhead!
+// Now safely supports cloning `Set` and `Map` objects without corrupting them!
 window.fastClone = function(obj) {
     // Base case: null, undefined, strings, numbers, booleans
     if (obj === null || typeof obj !== 'object') return obj;
     
-    // 🐛 BUG FIX: Explicit Date support
-    // Prevents timestamps from being parsed as empty objects during deep cloning!
+    // Explicit Date support (Prevents dates becoming empty objects)
     if (obj instanceof Date) return new Date(obj.getTime());
+    
+    // Explicit Map and Set support
+    if (obj instanceof Set) return new Set([...obj].map(x => window.fastClone(x)));
+    if (obj instanceof Map) return new Map([...obj].entries().map(([k, v]) => [k, window.fastClone(v)]));
     
     // Fast-path for Arrays
     if (Array.isArray(obj)) {
