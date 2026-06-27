@@ -65,8 +65,8 @@ const EnemyNetworkManager = {
             const val = snapshot.val();
             if (val && val.health > 0) {
                 gameState.sharedEnemies[key] = val;
-                updateSpatialMap(key, null, null, val.x, val.y);
-                if (pendingSpawnData && pendingSpawnData[key]) delete pendingSpawnData[key];
+                if (typeof updateSpatialMap === 'function') updateSpatialMap(key, null, null, val.x, val.y);
+                if (typeof pendingSpawnData !== 'undefined' && pendingSpawnData[key]) delete pendingSpawnData[key];
                 gameState.mapDirty = true;
             }
         });
@@ -86,7 +86,7 @@ const EnemyNetworkManager = {
                 const oldX = oldEnemy ? oldEnemy.x : null;
                 const oldY = oldEnemy ? oldEnemy.y : null;
                 gameState.sharedEnemies[key] = val;
-                updateSpatialMap(key, oldX, oldY, val.x, val.y);
+                if (typeof updateSpatialMap === 'function') updateSpatialMap(key, oldX, oldY, val.x, val.y);
                 gameState.mapDirty = true;
             }
         });
@@ -95,7 +95,7 @@ const EnemyNetworkManager = {
             const key = snapshot.key;
             if (gameState.sharedEnemies[key]) {
                 const enemy = gameState.sharedEnemies[key];
-                updateSpatialMap(key, enemy.x, enemy.y, null, null);
+                if (typeof updateSpatialMap === 'function') updateSpatialMap(key, enemy.x, enemy.y, null, null);
                 delete gameState.sharedEnemies[key];
                 gameState.mapDirty = true;
             }
@@ -116,7 +116,7 @@ const EnemyNetworkManager = {
         Object.entries(gameState.sharedEnemies).forEach(([eId, enemy]) => {
             const eChunk = this.getChunkId(enemy.x, enemy.y);
             if (eChunk === chunkId) {
-                updateSpatialMap(eId, enemy.x, enemy.y, null, null);
+                if (typeof updateSpatialMap === 'function') updateSpatialMap(eId, enemy.x, enemy.y, null, null);
                 delete gameState.sharedEnemies[eId];
             }
         });
@@ -205,7 +205,7 @@ function getScaledEnemy(enemyTemplate, x, y) {
 
     // --- DISABLE ELITES NEAR SPAWN ---
     // Elites can only spawn if distance > 150. 
-    if ((dist > 150 || gameState.mapMode === 'underworld') && !enemy.isBoss && Math.random() < eliteChance) {
+    if ((dist > 150 || gameState.mapMode === 'underworld') && !enemy.isBoss && Math.random() < eliteChance && typeof ENEMY_PREFIXES !== 'undefined') {
         const prefixKeys = Object.keys(ENEMY_PREFIXES);
         const prefixKey = prefixKeys[Math.floor(Math.random() * prefixKeys.length)];
         const affix = ENEMY_PREFIXES[prefixKey];
@@ -225,6 +225,12 @@ function getScaledEnemy(enemyTemplate, x, y) {
             enemy.inflictChance = 0.5;
         } else if (affix.special === 'frostbite') {
             enemy.inflicts = 'frostbite';
+            enemy.inflictChance = 0.5;
+        } else if (affix.special === 'burn') {
+            enemy.inflicts = 'burn';
+            enemy.inflictChance = 0.5;
+        } else if (affix.special === 'madness') {
+            enemy.inflicts = 'madness';
             enemy.inflictChance = 0.5;
         }
 
@@ -260,7 +266,6 @@ async function wakeUpNearbyEnemies() {
     const WAKE_RADIUS = 14; // Increased slightly to ensure they spawn before you see them
 
     // Use a batch update for map tiles to prevent excessive rendering/saving
-    let mapUpdates = {}; 
     let spawnUpdates = {};
     let enemiesSpawnedCount = 0;
     let visualUpdateNeeded = false;
@@ -274,14 +279,14 @@ async function wakeUpNearbyEnemies() {
             // Optimization: Only check logic if it looks like an enemy tile
             if (tile === '.' || tile === 'F' || tile === 'd' || tile === 'D' || tile === '^' || tile === '~' || tile === '≈' || tile === '🍄' || tile === '💎c' || tile === '🌋') continue;
 
-            const enemyData = ENEMY_DATA[tile];
+            const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
 
             // 2. If it's a valid enemy tile, we "Wake" it
             if (enemyData) {
                 const enemyId = `overworld:${x},${-y}`;
 
                 // Only spawn if it doesn't already exist in the live world
-                if (!gameState.sharedEnemies[enemyId] && !pendingSpawnData[enemyId]) {
+                if (!gameState.sharedEnemies[enemyId] && (!window.pendingSpawnData || !window.pendingSpawnData[enemyId])) {
                     
                     // A. Create the Live Entity
                     const scaledStats = getScaledEnemy(enemyData, x, y);
@@ -298,11 +303,11 @@ async function wakeUpNearbyEnemies() {
                     spawnUpdates[EnemyNetworkManager.getPath(x, y, enemyId)] = JSON.parse(JSON.stringify(newEnemy));
                     
                     // C. Add to local pending (Immediate Visual Feedback)
-                    pendingSpawnData[enemyId] = newEnemy;
+                    if (typeof pendingSpawnData !== 'undefined') pendingSpawnData[enemyId] = newEnemy;
                     gameState.sharedEnemies[enemyId] = newEnemy; 
                     
                     // D. Update Spatial Map immediately so AI knows it exists
-                    updateSpatialMap(enemyId, null, null, x, y);
+                    if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, null, null, x, y);
 
                     // E. CONSUME THE MAP TILE
                     chunkManager.setWorldTile(x, y, '.'); 
@@ -316,15 +321,17 @@ async function wakeUpNearbyEnemies() {
 
     // 3. Send Batch to Firebase (Atomic Operation)
     if (enemiesSpawnedCount > 0) {
-        rtdb.ref().update(spawnUpdates).catch(err => {
-            console.error("Mass Spawn Error:", err);
-        });
+        if (typeof rtdb !== 'undefined') {
+            rtdb.ref().update(spawnUpdates).catch(err => {
+                console.error("Mass Spawn Error:", err);
+            });
+        }
     }
 
     // 4. Force Render if we changed anything
     if (visualUpdateNeeded) {
         gameState.mapDirty = true; 
-        render(); 
+        if (typeof render === 'function') render(); 
     }
 }
 
@@ -355,6 +362,7 @@ async function runSharedAiTurns() {
         realmPrefix += 'underworld/';
     }
     
+    if (typeof rtdb === 'undefined') return;
     const heartbeatRef = rtdb.ref(`worldState/${realmPrefix}aiHeartbeat`);
 
     try {
@@ -373,7 +381,7 @@ async function runSharedAiTurns() {
                 const player = gameState.player;
                 const intuitChance = Math.min(player.intuition * 0.005, 0.5);
                 if (Math.random() < intuitChance) {
-                    const dirString = getDirectionString(nearestEnemyDir);
+                    const dirString = typeof getDirectionString === 'function' ? getDirectionString(nearestEnemyDir) : "nearby";
                     logMessage(`{gray:You sense a hostile presence to the ${dirString}!}`);
                 }
             }
@@ -397,16 +405,17 @@ async function processOverworldEnemyTurns() {
     let multiPathUpdate = {};
     let movesQueued = false;
     const processedIdsThisFrame = new Set();
+    const SPATIAL_CHUNK_SIZE = 16; 
 
     // 1. Gather candidates from local buckets
-    const activeEnemyIds =[];
+    const activeEnemyIds = [];
     const pChunkX = Math.floor(playerX / SPATIAL_CHUNK_SIZE);
     const pChunkY = Math.floor(playerY / SPATIAL_CHUNK_SIZE);
 
     for (let y = pChunkY - 1; y <= pChunkY + 1; y++) {
         for (let x = pChunkX - 1; x <= pChunkX + 1; x++) {
             const key = `${x},${y}`;
-            if (gameState.enemySpatialMap.has(key)) {
+            if (gameState.enemySpatialMap && gameState.enemySpatialMap.has(key)) {
                 gameState.enemySpatialMap.get(key).forEach(id => activeEnemyIds.push(id));
             }
         }
@@ -454,7 +463,7 @@ async function processOverworldEnemyTurns() {
                 multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
                 
                 delete gameState.sharedEnemies[enemyId];
-                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
+                if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
                 processedIdsThisFrame.add(enemyId);
                 movesQueued = true;
                 continue; 
@@ -484,6 +493,35 @@ async function processOverworldEnemyTurns() {
             statusChanged = true; 
             if (Math.random() < 0.25) skipTurn = true; 
         }
+        if (enemy.burnTurns > 0) {
+            enemy.burnTurns--;
+            enemy.health -= 2; // Fire burns hotter than poison!
+            logMessage(`{orange:The ${enemy.name} takes burn damage.}`);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-2", "#f97316");
+            
+            if (enemy.health <= 0) {
+                logMessage(`{red:The ${enemy.name} burns to ash!}`);
+                
+                registerKill(enemy);
+                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
+                delete gameState.sharedEnemies[enemyId];
+                if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
+                processedIdsThisFrame.add(enemyId);
+                movesQueued = true;
+                
+                const baseEnemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemy.tile] : null;
+                if (baseEnemyData) {
+                    const lootData = { ...baseEnemyData, isElite: enemy.isElite };
+                    const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
+                    const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
+                    if (currentTerrain !== '~' && currentTerrain !== '🌋') {
+                        chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', 2); 
+                        gameState.mapDirty = true;
+                    }
+                }
+                continue;
+            }
+        }
         if (enemy.poisonTurns > 0) {
             enemy.poisonTurns--;
             enemy.health -= 1;
@@ -496,14 +534,14 @@ async function processOverworldEnemyTurns() {
                 registerKill(enemy);
                 multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
                 delete gameState.sharedEnemies[enemyId];
-                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
+                if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
                 processedIdsThisFrame.add(enemyId);
                 movesQueued = true;
                 
-                const baseEnemyData = ENEMY_DATA[enemy.tile];
+                const baseEnemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemy.tile] : null;
                 if (baseEnemyData) {
                     const lootData = { ...baseEnemyData, isElite: enemy.isElite };
-                    const droppedLoot = generateEnemyLoot(gameState.player, lootData);
+                    const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
                     const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
                     if (currentTerrain !== '~' && currentTerrain !== '🌋') {
                         chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', 2); 
@@ -603,6 +641,7 @@ async function processOverworldEnemyTurns() {
             if (enemy.tile === 'm') spellName = "Arcane Bolt";
             if (enemy.tile === 'Z') spellName = "Frost Shard";
             if (enemy.tile === '@') spellName = "Poison Spit";
+            if (enemy.tile === 'f') spellName = "Fireball";
 
             let dodgeChance = Math.min(gameState.player.luck * 0.002, 0.25);
             if (gameState.player.talents && gameState.player.talents.includes('evasion')) dodgeChance += 0.10;
@@ -633,6 +672,7 @@ async function processOverworldEnemyTurns() {
 
                     if (enemy.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
                     if (enemy.inflicts === 'poison') gameState.player.poisonTurns = 5;
+                    if (enemy.inflicts === 'burn') gameState.player.burnTurns = 5;
 
                     if (gameState.player.health <= 0) break;
                 }
@@ -803,6 +843,13 @@ async function processOverworldEnemyTurns() {
                             logMessage(`{red:A ${enemy.name} attacks you for ${dmg} damage!}`);
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
                             
+                            // Apply physical on-hit status effects (like Scorpion Poison)
+                            if (enemy.inflicts && Math.random() < (enemy.inflictChance || 0.25)) {
+                                if (enemy.inflicts === 'poison') gameState.player.poisonTurns = 5;
+                                if (enemy.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
+                                if (enemy.inflicts === 'burn') gameState.player.burnTurns = 5;
+                            }
+
                             if (gameState.player.health <= 0) break;
                         }
 
@@ -823,17 +870,17 @@ async function processOverworldEnemyTurns() {
                                 
                                 // 3. Clean up local state
                                 delete gameState.sharedEnemies[enemyId];
-                                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
+                                if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
                                 
                                 // 4. Mark as processed & trigger the Firebase batch update
                                 processedIdsThisFrame.add(enemyId);
                                 movesQueued = true;
 
                                 // 5. Drop Loot on the Overworld Map
-                                const baseEnemyData = ENEMY_DATA[enemy.tile];
+                                const baseEnemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemy.tile] : null;
                                 if (baseEnemyData) {
                                     const lootData = { ...baseEnemyData, isElite: enemy.isElite };
-                                    const droppedLoot = generateEnemyLoot(gameState.player, lootData);
+                                    const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
                                     const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
                                     
                                     // Don't drop loot into deep ocean water
@@ -866,7 +913,7 @@ async function processOverworldEnemyTurns() {
                 if (newDist < oldDist && isChasing && newDist > 10 && newDist < 16) {
                     if (Math.random() < 0.10) {
                         const soundDir = { x: Math.sign(enemy.x - playerX), y: Math.sign(enemy.y - playerY) };
-                        const dirStr = getDirectionString(soundDir); 
+                        const dirStr = typeof getDirectionString === 'function' ? getDirectionString(soundDir) : "nearby"; 
                         logMessage(`{gray:You hear twigs snapping to the ${dirStr}...}`);
                     }
                 }
@@ -889,8 +936,10 @@ async function processOverworldEnemyTurns() {
                 delete gameState.sharedEnemies[enemyId];
                 gameState.sharedEnemies[newId] = updatedEnemy;
 
-                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null); 
-                updateSpatialMap(newId, null, null, finalX, finalY);     
+                if (typeof updateSpatialMap === 'function') {
+                    updateSpatialMap(enemyId, enemy.x, enemy.y, null, null); 
+                    updateSpatialMap(newId, null, null, finalX, finalY);     
+                }
 
                 processedIdsThisFrame.add(newId);
                 movesQueued = true;
@@ -908,7 +957,7 @@ async function processOverworldEnemyTurns() {
     }
 
     if (movesQueued) {
-        rtdb.ref().update(multiPathUpdate).catch(err => console.error("AI Sync Error:", err));
+        if (typeof rtdb !== 'undefined') rtdb.ref().update(multiPathUpdate).catch(err => console.error("AI Sync Error:", err));
     }
 
     return nearestEnemyDir;
@@ -920,7 +969,7 @@ function processEnemyTurns() {
     let map, theme;
     if (gameState.mapMode === 'dungeon') {
         map = chunkManager.caveMaps[gameState.currentCaveId];
-        theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+        theme = typeof CAVE_THEMES !== 'undefined' ? (CAVE_THEMES[gameState.currentCaveTheme] || {floor: '.'}) : {floor: '.'};
     } else {
         map = chunkManager.castleMaps[gameState.currentCastleId];
         theme = { floor: '.' };
@@ -981,6 +1030,20 @@ function processEnemyTurns() {
             }
         }
 
+        // Add burn tick to dungeons
+        if (enemy.burnTurns > 0) {
+            enemy.burnTurns--;
+            enemy.health -= 2; // Fire burns hotter than poison!
+            logMessage(`{orange:The ${enemy.name} takes burn damage.}`);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-2", "#f97316");
+            
+            if (enemy.health <= 0) {
+                logMessage(`{red:The ${enemy.name} burns to ash!}`);
+                if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
+                return;
+            }
+        }
+
         if (enemy.poisonTurns > 0) {
             enemy.poisonTurns--;
             enemy.health -= 1;
@@ -989,7 +1052,7 @@ function processEnemyTurns() {
             
             if (enemy.health <= 0) {
                 logMessage(`{green:The ${enemy.name} succumbs to poison!}`);
-                handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
+                if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
                 return;
             }
             if (enemy.poisonTurns === 0) logMessage(`{gray:The ${enemy.name} is no longer poisoned.}`);
@@ -1029,7 +1092,7 @@ function processEnemyTurns() {
                         const sy = enemy.y + ofs[1];
                         if (isWalkable(sx, sy)) {
                             map[sy][sx] = 's';
-                            const t = ENEMY_DATA['s'];
+                            const t = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA['s'] : {maxHealth:10, attack:3, defense:1};
                             gameState.instancedEnemies.push({
                                 id: `${gameState.currentCaveId}:minion_${Date.now()}_${spawned}`,
                                 x: sx, y: sy, tile: 's', name: "Enraged Skeleton",
@@ -1077,7 +1140,7 @@ function processEnemyTurns() {
                     const sy = enemy.y + ofs[1];
                     if (isWalkable(sx, sy)) {
                         map[sy][sx] = 's';
-                        const t = ENEMY_DATA['s'];
+                        const t = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA['s'] : {maxHealth:10, attack:3, defense:1};
                         gameState.instancedEnemies.push({
                             id: `${gameState.currentCaveId}:minion_${Date.now()}`,
                             x: sx, y: sy, tile: 's', name: "Summoned Skeleton",
@@ -1205,6 +1268,13 @@ function processEnemyTurns() {
                     logMessage(`{red:The ${enemy.name} hits you for ${dmg} damage!}`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
 
+                    // Apply physical on-hit status effects
+                    if (enemy.inflicts && Math.random() < (enemy.inflictChance || 0.25)) {
+                        if (enemy.inflicts === 'poison') gameState.player.poisonTurns = 5;
+                        if (enemy.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
+                        if (enemy.inflicts === 'burn') gameState.player.burnTurns = 5;
+                    }
+
                     if (player.health <= 0) return;
                 }
                 
@@ -1215,7 +1285,7 @@ function processEnemyTurns() {
 
                     if (enemy.health <= 0) {
                         logMessage(`{green:The ${enemy.name} dies upon your thorns!}`);
-                        handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
+                        if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, enemy.x, enemy.y);
                     }
                 }
             }
@@ -1231,6 +1301,7 @@ function processEnemyTurns() {
             if (enemy.tile === 'm') spellName = "Arcane Bolt";
             if (enemy.tile === 'Z') spellName = "Frost Shard";
             if (enemy.tile === '@') spellName = "Poison Spit";
+            if (enemy.tile === 'f') spellName = "Fireball";
 
             if (Math.random() < Math.min(player.luck * 0.002, 0.25)) {
                 logMessage(`{blue:The ${enemy.name} fires a ${spellName}, but you dodge!}`);
@@ -1251,6 +1322,7 @@ function processEnemyTurns() {
 
                     if (enemy.inflicts === 'frostbite') player.frostbiteTurns = 5;
                     if (enemy.inflicts === 'poison') player.poisonTurns = 5;
+                    if (enemy.inflicts === 'burn') player.burnTurns = 5;
 
                     if (player.health <= 0) return;
                 }
@@ -1454,17 +1526,18 @@ async function runCompanionTurn() {
 
                 if (enemy.health <= 0) {
                     logMessage(`{green:Your ${companion.name} tears the ${enemy.name} apart!}`);
-                    handleInstancedEnemyDeath(enemy, tx, ty);
+                    if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, tx, ty);
                 }
             }
         }
         else if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
             const tile = chunkManager.getTile(tx, ty);
-            const enemyData = ENEMY_DATA[tile];
+            const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
 
             if (enemyData && enemyData.maxHealth) {
                 attacked = true;
                 const enemyId = `overworld:${tx},${-ty}`;
+                if (typeof rtdb === 'undefined') return;
                 const enemyRef = rtdb.ref(EnemyNetworkManager.getPath(tx, ty, enemyId));
 
                 const visualDmg = Math.max(1, companion.attack - (enemyData.defense || 0));
@@ -1501,7 +1574,7 @@ async function runCompanionTurn() {
                             if (gameState.sharedEnemies[enemyId]) {
                                 delete gameState.sharedEnemies[enemyId];
                             }
-                            render(); 
+                            if (typeof render === 'function') render(); 
                         } else {
                             logMessage(`Your ${companion.name} hits the ${enemyData.name}!`);
                         }
@@ -1517,6 +1590,7 @@ async function runCompanionTurn() {
 async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage) { 
     const player = gameState.player;
     const enemyId = `overworld:${newX},${-newY}`; 
+    if (typeof rtdb === 'undefined') return;
     const enemyRef = rtdb.ref(EnemyNetworkManager.getPath(newX, newY, enemyId));
 
     if (!gameState.sharedEnemies[enemyId]) {
@@ -1524,13 +1598,13 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
             chunkManager.setWorldTile(newX, newY, '.');
             gameState.mapDirty = true;
-            render();
+            if (typeof render === 'function') render();
         }
         return;
     }
 
     const liveEnemy = gameState.sharedEnemies[enemyId];
-    const enemyInfo = liveEnemy || getScaledEnemy(enemyData, newX, newY);
+    const enemyInfo = liveEnemy || (typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, newX, newY) : enemyData);
     
     // Ensure damage is a valid number to prevent NaN database corruption
     const safeDamage = (typeof playerDamage === 'number' && !isNaN(playerDamage)) ? playerDamage : 1;
@@ -1577,8 +1651,8 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#ef4444', 15);
                 
                 try {
-                    grantXp(enemyInfo.xp);
-                    updateQuestProgress(newTile); 
+                    if (typeof grantXp === 'function') grantXp(enemyInfo.xp);
+                    if (typeof updateQuestProgress === 'function') updateQuestProgress(newTile); 
                 } catch (rewardErr) {
                     console.error("Reward Logic Error:", rewardErr);
                 }
@@ -1594,7 +1668,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
                 try {
                     const lootData = { ...enemyData, isElite: enemyInfo.isElite };
-                    const droppedLoot = generateEnemyLoot(player, lootData);
+                    const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(player, lootData) : '$';
                     const currentTerrain = chunkManager.getTile(newX, newY);
                     const isProtectedTile = ['📦', '⚰️', '🏺', '🚪', '✨', '∴', 'c', '⛵'].includes(currentTerrain);
                     const isItemTile = typeof ITEM_DATA !== 'undefined' && ITEM_DATA[currentTerrain];
@@ -1628,15 +1702,20 @@ function registerKill(enemy) {
     
     let amount = 0;
     if (enemy.xp !== undefined && enemy.xp !== null) amount = Number(enemy.xp);
-    else if (tile && ENEMY_DATA[tile]) amount = ENEMY_DATA[tile].xp || 0;
+    else if (tile && typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) amount = ENEMY_DATA[tile].xp || 0;
 
-    if (amount > 0) grantXp(amount);
+    if (amount > 0 && typeof grantXp === 'function') grantXp(amount);
 
     let baseName = enemy.name;
-    if (tile && ENEMY_DATA[tile]) baseName = ENEMY_DATA[tile].name;
+    if (tile && typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) baseName = ENEMY_DATA[tile].name;
 
     if (!gameState.player.killCounts) gameState.player.killCounts = {};
     gameState.player.killCounts[baseName] = (gameState.player.killCounts[baseName] || 0) + 1;
+
+    // --- METRICS WIN: Track Total Kills ---
+    if (!gameState.player.metrics) gameState.player.metrics = {};
+    gameState.player.metrics.totalKills = (gameState.player.metrics.totalKills || 0) + 1;
+    if (enemy.isBoss) gameState.player.metrics.bossesDefeated = (gameState.player.metrics.bossesDefeated || 0) + 1;
 
     if (gameState.player.talents && gameState.player.talents.includes('bloodlust')) {
         const heal = 2;
@@ -1706,6 +1785,10 @@ function handlePlayerDeath() {
     const player = gameState.player;
 
     player.health = 0; 
+    
+    // --- METRICS WIN: Track Total Deaths ---
+    if (!player.metrics) player.metrics = {};
+    player.metrics.totalDeaths = (player.metrics.totalDeaths || 0) + 1;
     
     // JUICE WIN: Death is now a terrifying audiovisual event
     gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 }; // Fade to blood red
@@ -1819,15 +1902,17 @@ function handlePlayerDeath() {
                 realmPrefix += 'underworld/';
             }
             
-            rtdb.ref(`worldState/${realmPrefix}${cId}`).update(safeUpdates)
-                .catch(err => console.error("Failed to drop corpse loot:", err));
+            if (typeof rtdb !== 'undefined') {
+                rtdb.ref(`worldState/${realmPrefix}${cId}`).update(safeUpdates)
+                    .catch(err => console.error("Failed to drop corpse loot:", err));
+            }
         }
     }
 
     player.coins -= goldLost;
     
     player.inventory = []; 
-    player.equipment = { weapon: { name: 'Fists', damage: 0 }, armor: { name: 'Simple Tunic', defense: 0 } };
+    player.equipment = { weapon: { name: 'Fists', damage: 0, tags: ['blunt'] }, armor: { name: 'Simple Tunic', defense: 0 } };
     
     // Reset Arena progress so they aren't permanently locked out of the Colosseum if they return
     player.arenaWave = 0; 
