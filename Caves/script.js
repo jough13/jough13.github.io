@@ -2918,17 +2918,17 @@ async function enterGame(playerData) {
 
     // --- FINAL RENDER & INIT ---
 
-    // --- Pre-warm data loading (Load ALL 3x3 chunks, not just the center!) ---
+    // --- Pre-warm data loading (Load ALL chunks, not just the center!) ---
     const waitForWorldData = new Promise((resolve) => {
         if (gameState.mapMode === 'overworld') {
             const cX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
             const cY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
             
             let chunksLoaded = 0;
-            const totalChunks = 9;
+            const totalChunks = 25;
 
-            for(let y = -1; y <= 1; y++) {
-                for(let x = -1; x <= 1; x++) {
+            for(let y = -2; y <= 2; y++) {
+                for(let x = -2; x <= 2; x++) {
                     const targetX = cX + x;
                     const targetY = cY + y;
                     
