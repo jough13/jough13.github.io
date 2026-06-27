@@ -2168,7 +2168,7 @@ function restPlayer() {
     // 1. Check Survival Constraints
     if (gameState.player.hunger <= 0 || gameState.player.thirst <= 0) {
         logMessage("You are too weak from hunger or thirst to rest effectively.");
-        endPlayerTurn(); 
+        if (typeof endPlayerTurn === 'function') endPlayerTurn(); 
         return;
     }
 
@@ -2176,14 +2176,20 @@ function restPlayer() {
     let logMsg = "You rest for a moment. ";
 
     // 2. Check Location
+    let currentTile;
+    if (gameState.mapMode === 'overworld') currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
+    else if (gameState.mapMode === 'dungeon') currentTile = chunkManager.caveMaps[gameState.currentCaveId]?.[gameState.player.y]?.[gameState.player.x];
+    else if (gameState.mapMode === 'castle') currentTile = chunkManager.castleMaps[gameState.currentCastleId]?.[gameState.player.y]?.[gameState.player.x];
+
     const inSafeZone = (gameState.mapMode === 'castle');
-    const restAmount = inSafeZone ? 5 : 1;
+    const byFire = (currentTile === '🔥' || currentTile === '⛺');
+    const restAmount = (inSafeZone || byFire) ? 5 : 1;
 
     // 3. Regenerate Stamina
     if (gameState.player.stamina < gameState.player.maxStamina) {
         const amountToAdd = Math.min(gameState.player.maxStamina - gameState.player.stamina, restAmount);
         gameState.player.stamina += amountToAdd;
-        triggerStatFlash(statDisplays.stamina, true);
+        if (typeof triggerStatFlash === 'function') triggerStatFlash(statDisplays.stamina, true);
         logMsg += `Recovered ${amountToAdd} stamina. `;
         rested = true;
     }
@@ -2192,37 +2198,70 @@ function restPlayer() {
     if (gameState.player.health < gameState.player.maxHealth) {
         const amountToAdd = Math.min(gameState.player.maxHealth - gameState.player.health, restAmount);
         gameState.player.health += amountToAdd;
-        triggerStatFlash(statDisplays.health, true);
+        if (typeof triggerStatFlash === 'function') triggerStatFlash(statDisplays.health, true);
         logMsg += `Recovered ${amountToAdd} health.`;
         rested = true;
     }
 
     // 5. WELL RESTED BONUS
-    if (inSafeZone && !rested) {
+    if ((inSafeZone || byFire) && !rested) {
         if (gameState.player.strengthBonusTurns < 10) {
             gameState.player.strengthBonus = 2;
             gameState.player.strengthBonusTurns = 50;
             logMessage("{gold:You feel Well Rested! (+2 Strength for 50 turns)}");
-            triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
-            
-            renderEquipment(); 
-            endPlayerTurn(); // Saves everything
-            return;
+            if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
+            if (typeof renderEquipment === 'function') renderEquipment(); 
         } else {
-            logMessage("You are already well rested.");
+            // --- DYNAMIC THOUGHTS & DREAMS ---
+            const hour = gameState.time.hour;
+            const isNight = hour >= 20 || hour < 5;
+            
+            // 20% chance to trigger a lore thought if you rest while fully healed
+            if (Math.random() < 0.20) {
+                if (gameState.currentRealm !== 0 || gameState.currentCaveTheme === 'VOID') {
+                    // Void Nightmares
+                    const nightmares = [
+                        "You close your eyes, but you only see a crown of black glass.",
+                        "You try to rest, but the shadows stretch towards you like grasping hands.",
+                        "A whisper echoes in your mind: 'You cannot save them.'",
+                        "You dream of the sky shattering into a million purple fragments."
+                    ];
+                    logMessage(`{purple:Nightmare: ${nightmares[Math.floor(Math.random() * nightmares.length)]}}`);
+                    gameState.player.madnessTurns = (gameState.player.madnessTurns || 0) + 1; // Mild penalty for resting in the void!
+                } else if (byFire && isNight) {
+                    // Campfire thoughts
+                    const campThoughts = [
+                        "You stare into the flames. They remind you of the burning of the Mage Tower.",
+                        "The crackle of the fire is the only comfort in this broken world.",
+                        "You fashion a small wooden carving as you rest by the fire.",
+                        "You look up at the stars. The 'Empty Throne' constellation shines brightly tonight."
+                    ];
+                    logMessage(`{gold:${campThoughts[Math.floor(Math.random() * campThoughts.length)]}}`);
+                } else {
+                    // Generic reflections
+                    const reflections = [
+                        "You take a moment to oil your blade and check your gear.",
+                        "You write down the day's events in a small, weathered journal.",
+                        "You bandage a lingering scratch. It will scar.",
+                        "You wonder what happened to the First King. Is he truly dead?"
+                    ];
+                    logMessage(`{gray:${reflections[Math.floor(Math.random() * reflections.length)]}}`);
+                }
+            } else {
+                logMessage("You are already fully rested.");
+            }
         }
     }
 
     // 6. Feedback
-    if (!rested && !inSafeZone) {
-        logMessage("You are already at full health and stamina.");
-    } else if (rested) {
+    if (rested) {
         if (inSafeZone) logMessage(`You rest comfortably in the haven. (+${restAmount} HP/Stamina)`);
+        else if (byFire) logMessage(`The warmth of the fire soothes your wounds. (+${restAmount} HP/Stamina)`);
         else logMessage(logMsg);
     }
     
     // 7. End Turn (This saves Health, Stamina, AND your pending XP)
-    endPlayerTurn();
+    if (typeof endPlayerTurn === 'function') endPlayerTurn();
 }
 
 function triggerRaidBossSpawn(playerX, playerY) {
