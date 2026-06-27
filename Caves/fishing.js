@@ -177,7 +177,8 @@ var NEW_FISHING_ITEMS = {
                 const oysterStack = state.player.inventory.find(i => i.name === 'Abyssal Oyster' && !i.isEquipped);
                 const freesSlot = (oysterStack && oysterStack.quantity === 1) ? 1 : 0;
                 
-                if (existingPearl || state.player.inventory.length - freesSlot < (window.MAX_INVENTORY_SLOTS || 9)) {
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                if (existingPearl || state.player.inventory.length - freesSlot < invCap) {
                     logMessage("{purple:You found a Black Pearl inside!}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, '💎', '#a855f7');
@@ -223,12 +224,14 @@ var NEW_FISHING_ITEMS = {
                 const chestStack = state.player.inventory.find(i => i.name === 'Waterlogged Chest' && !i.isEquipped);
                 const freesSlot = (chestStack && chestStack.quantity === 1) ? 1 : 0;
                 
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                
                 if (existingPrize && isStackable) {
                     existingPrize.quantity++;
                     logMessage(`{purple:You also found a ${prize} hidden inside!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                 } 
-                else if (state.player.inventory.length - freesSlot < (window.MAX_INVENTORY_SLOTS || 9)) {
+                else if (state.player.inventory.length - freesSlot < invCap) {
                     state.player.inventory.push({
                         templateId: prizeKey,
                         name: prize, 
@@ -239,15 +242,14 @@ var NEW_FISHING_ITEMS = {
                         damage: template ? template.damage : null, 
                         slot: template ? template.slot : null,
                         statBonuses: template ? template.statBonuses : null,
-                        tags: template ? (template.tags || null) : null,           // 🛡️ FIX: Hydrate tags so weapons work!
-                        _rarity: template ? (template._rarity || null) : null,     // 🛡️ FIX: Hydrate rarity so borders glow!
+                        tags: template && template.tags ? [...template.tags] : null, // BUG FIX: Safe clone array
+                        _rarity: template ? (template._rarity || null) : null,
                         effect: template ? template.effect : null
                     });
                     logMessage(`{purple:You also found a ${prize} hidden inside!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                 } else {
-                    logMessage(`{red:You found a ${prize}, but your inventory was full! It sinks into the water.}`);
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 500); // Splash sound
+                    logMessage(`{red:You found a ${prize}, but your inventory was full and it washed away!}`);
                 }
             }
             if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('coinsDisplay'), true);
@@ -267,7 +269,9 @@ var NEW_FISHING_ITEMS = {
                 const bottleStack = state.player.inventory.find(i => i.name === 'Message in a Bottle' && !i.isEquipped);
                 const freesSlot = (bottleStack && bottleStack.quantity === 1) ? 1 : 0;
                 
-                if (state.player.inventory.length - freesSlot < (window.MAX_INVENTORY_SLOTS || 9)) {
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                
+                if (state.player.inventory.length - freesSlot < invCap) {
                     logMessage(`{gold:It's a Tattered Map! X marks the spot!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                     
@@ -736,9 +740,11 @@ function executeFishing() {
         const existingStack = player.inventory.find(i => i.name === finalItemName && !i.isEquipped);
         const isStackable = template && ['junk', 'consumable', 'trade'].includes(template.type) && !isTrophy;
 
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+
         if (existingStack && isStackable) {
             existingStack.quantity++;
-        } else if (player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+        } else if (player.inventory.length < invCap) {
             // Inject the templateId here so the effect binds correctly on re-hydration!
             player.inventory.push({
                 templateId: baseKey, 
@@ -778,15 +784,18 @@ function executeFishing() {
     }
 
     if (typeof playerRef !== 'undefined' && playerRef) {
-        playerRef.update({
-            stamina: player.stamina,
-            health: player.health,
-            psyche: player.psyche, // Added for new jelly fish
-            fishingLevel: player.fishingLevel,
-            fishingXp: player.fishingXp,
-            fishingRecords: player.fishingRecords,
-            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
-        });
+        // Debounce this to save database bandwidth!
+        if (typeof triggerDebouncedSave === 'function') {
+            triggerDebouncedSave({
+                stamina: player.stamina,
+                health: player.health,
+                psyche: player.psyche, 
+                fishingLevel: player.fishingLevel,
+                fishingXp: player.fishingXp,
+                fishingRecords: player.fishingRecords,
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
+            });
+        }
     }
 
     if (typeof renderInventory === 'function') renderInventory();
