@@ -7,7 +7,7 @@
 // --- GLOBALS & SAFETY ---
 window.inputQueue = window.inputQueue || []; // Guarantee queue exists regardless of load order
 
-// O(1) Directional Mapping
+// PERFORMANCE WIN: O(1) Directional Mapping
 // Replaces massive if/else and switch statements with a single instant dictionary lookup
 const MOVEMENT_MAP = {
     // Cardinals
@@ -37,7 +37,10 @@ const INSTANT_KEYS = new Set([
     '+', '=', '-', '_'
 ]);
 
-// Live HTMLCollection Cache for O(1) Modal Checks
+// UI Keys that should automatically cancel combat/aiming states if pressed
+const UI_TOGGLE_KEYS = new Set(['i', 'm', 'b', 'k', 'c', 'l', 'p', 'j', 'h', 'q', 'z']);
+
+// PERFORMANCE WIN: Live HTMLCollection Cache for O(1) Modal Checks
 // Completely eliminates the need to run document.querySelector on every single keystroke!
 const _modalCache = {
     collection: null,
@@ -86,33 +89,39 @@ function handleInput(key) {
     // PERFORMANCE WIN: Cache the lowercased key to prevent repeated string allocations
     const lowerKey = key.toLowerCase();
 
+    // --- BUG FIX & UX WIN: STATE CANCELLATION ---
+    // If the player is aiming or dropping an item, but presses a UI hotkey (like 'I' for inventory),
+    // automatically cancel the active state so the game doesn't get soft-locked!
+    if (UI_TOGGLE_KEYS.has(lowerKey) || key === 'Escape') {
+        let stateCanceled = false;
+        
+        if (gameState.isAiming) {
+            gameState.isAiming = false;
+            gameState.abilityToAim = null;
+            stateCanceled = true;
+        }
+        if (gameState.isDroppingItem) {
+            gameState.isDroppingItem = false;
+            stateCanceled = true;
+        }
+
+        if (stateCanceled) {
+            logMessage("{gray:Action aborted.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "Canceled", "#9ca3af");
+            
+            if (typeof render === 'function') render(); // Clear telegraphs instantly
+            if (typeof renderInventory === 'function') renderInventory();
+            
+            // If they just pressed Escape, stop here. If they pressed 'I', continue to open the inventory!
+            if (key === 'Escape') return; 
+        }
+    }
+
     // --- ESCAPE KEY / MODAL CLOSER ---
     if (key === 'Escape') {
         // PERFORMANCE & SAFETY WIN: Aggressively clear the queue if the user panics and mashes Escape
         window.inputQueue.length = 0; 
-
-        if (gameState.isAiming) {
-            gameState.isAiming = false;
-            gameState.abilityToAim = null;
-            logMessage("{gray:You lower your weapon. (Aiming canceled)}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-            
-            // JUICE: Visual cancellation feedback
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "Canceled", "#9ca3af");
-            if (typeof render === 'function') render(); // Clear telegraphs instantly
-            return;
-        }
-        
-        if (gameState.isDroppingItem) {
-            gameState.isDroppingItem = false;
-            logMessage("{gray:You reconsider and keep the item. (Drop canceled)}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-            
-            // JUICE: Visual cancellation feedback
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "Canceled", "#9ca3af");
-            if (typeof renderInventory === 'function') renderInventory(); 
-            return;
-        }
 
         // Find any active modal and close it using our ultra-fast cache
         const activeModal = _modalCache.getActive();
@@ -156,7 +165,13 @@ function handleInput(key) {
 
     // --- DROP MODE ---
     if (gameState.isDroppingItem) {
-        if (typeof handleItemDrop === 'function') handleItemDrop(key);
+        // Ensure they only drop items via numbers 1-9
+        if (!isNaN(parseInt(key))) {
+            if (typeof handleItemDrop === 'function') handleItemDrop(key);
+        } else {
+            logMessage("{gray:Press 1-9 to drop an item, or Esc to cancel.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        }
         return;
     }
 
@@ -220,12 +235,6 @@ function handleInput(key) {
     // --- NUMBER KEYS (1-9) ---
     const keyNum = parseInt(key);
     if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
-        
-        if (gameState.isDroppingItem) {
-            if (typeof handleItemDrop === 'function') handleItemDrop(key); 
-            return;
-        }
-
         if (gameState.inventoryMode) {
             if (typeof useInventoryItem === 'function') useInventoryItem(keyNum - 1);
             return;
@@ -241,12 +250,12 @@ function handleInput(key) {
     // --- GROUND LOOTING ---
     if (lowerKey === 'g') {
         let tileId;
-        if (gameState.mapMode === 'overworld') tileId = `${gameState.player.x},${-gameState.player.y}`;
+        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileId = `${gameState.player.x},${-gameState.player.y}`;
         else tileId = `${gameState.currentCaveId || gameState.currentCastleId}:${gameState.player.x},${-gameState.player.y}`;
 
-        const currentTile = (gameState.mapMode === 'overworld') 
+        const currentTile = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
             ? chunkManager.getTile(gameState.player.x, gameState.player.y)
-            : (gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] : chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x]);
+            : (gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId]?.[gameState.player.y]?.[gameState.player.x] : chunkManager.castleMaps[gameState.currentCastleId]?.[gameState.player.y]?.[gameState.player.x]);
 
         if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[currentTile]) {
             logMessage("You scour the ground for items...");
@@ -363,6 +372,19 @@ function handleInput(key) {
         } else if (gameState.player.isBoating) {
             waitFlavors = ["Your canoe drifts slightly.", "You rest your paddle across your lap.", "Water ripples against the hull."];
         } 
+        // --- MULTIVERSE LORE ---
+        else if (gameState.currentRealm !== 0 && gameState.currentRealm) {
+            waitFlavors = [
+                "You wait, feeling the alien gravity of this dimension.",
+                "The sky above fractures and reforms as you rest.",
+                "You catch your breath. The air here tastes like static.",
+                "The silence of this realm is utterly unnatural."
+            ];
+            // Mutator specifics
+            if (gameState.realmMutators && gameState.realmMutators.includes('frozen_wastes')) {
+                waitFlavors.push("Your breath freezes before it leaves your lips.");
+            }
+        }
         else if (gameState.mapMode === 'overworld') {
             if (gameState.weather === 'rain') waitFlavors.push("You pause, letting the rain wash over you.", "You listen to the drumming of the rain.", "Water runs down your face.");
             if (gameState.weather === 'storm') waitFlavors.push("You wait, feeling the thunder rattle your teeth.", "Lightning briefly illuminates the landscape.");
