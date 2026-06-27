@@ -5,29 +5,12 @@
 // ==========================================
 
 window.LORE_SETS = {
+    // --- EARLY GAME SETS ---
     "wanderers_almanac": {
         name: "The Wanderer's Almanac",
         description: "Scattered pages from a master cartographer who went mad trying to map the shifting leylines.",
         bonus: "Eagle-Eyed: +1 Base Perception.",
         items: ["📄", "📜r", "📜m"] 
-    },
-    "king_fall": {
-        name: "The Fall of Alaric",
-        description: "The firsthand account of the King's descent into madness and the shattering of the crown.",
-        bonus: "Authority: Shop prices reduced by 10%.",
-        items: ["📜1", "📜2", "📜3", "📜4", "📜5"] 
-    },
-    "beastmaster_guide": {
-        name: "The Beastmaster's Guide",
-        description: "A tattered, blood-stained guide to the creatures of this world.",
-        bonus: "Tracker: +1 Base Perception.",
-        items: ["🐾1", "🐾2", "🐾3"] 
-    },
-    "void_research": {
-        name: "Notes from the Void",
-        description: "Forbidden research notes left by the First Mage detailing the architecture of the multiverse.",
-        bonus: "Clarity: +10 Max Mana.",
-        items: ["3", "j", "4"] // Refers to Burned Scroll, Acolyte's Scribblings, Mad Scrawlings
     },
     "adventurer_tips": {
         name: "The Survivalist's Guide",
@@ -35,11 +18,19 @@ window.LORE_SETS = {
         bonus: "Hardy: Hunger/Thirst drain 10% slower.",
         items: ["1", "2", "q"] // Refers to Conscript's Orders, Thief's Map, Bandit's Note
     },
-    "deep_delver": {
-        name: "The Deep Delver",
-        description: "Accounts from the most dangerous, subterranean corners of the world.",
-        bonus: "Tireless: +5 Max Stamina.",
-        items: ["📘", "J", "L"] 
+    "beastmaster_guide": {
+        name: "The Beastmaster's Guide",
+        description: "A tattered, blood-stained guide to the creatures of this world.",
+        bonus: "Tracker: +1 Base Perception.",
+        items: ["🐾1", "🐾2", "🐾3"] 
+    },
+    
+    // --- MID GAME SETS ---
+    "king_fall": {
+        name: "The Fall of Alaric",
+        description: "The firsthand account of the King's descent into madness and the shattering of the crown.",
+        bonus: "Authority: Shop prices reduced by 10%.",
+        items: ["📜1", "📜2", "📜3", "📜4", "📜5"] 
     },
     "anglers_almanac": {
         name: "The Old Mariner's Tale",
@@ -47,11 +38,31 @@ window.LORE_SETS = {
         bonus: "Sea Legs: +1 Base Luck.",
         items: ["⚓", "🍾", "🐚"] 
     },
+    "deep_delver": {
+        name: "The Deep Delver",
+        description: "Accounts from the most dangerous, subterranean corners of the world.",
+        bonus: "Tireless: +5 Max Stamina.",
+        items: ["📘", "J", "L"] 
+    },
     "architects_ledger": {
         name: "The Architect's Ledger",
         description: "Blueprints detailing the true purpose of the ancient fortresses.",
         bonus: "Stalwart: +5 Max Health.",
         items: ["📜f", "🧱", "▤"] 
+    },
+    "dwarven_mining_logs": {
+        name: "Dwarven Mining Logs",
+        description: "Sturdy leather-bound notes detailing exactly what the dwarves found when they dug too deep.",
+        bonus: "Demolitionist: +1 Base Constitution.",
+        items: ["🧨", "⛏️", "💎r"] 
+    },
+
+    // --- LATE GAME / MULTIVERSE SETS ---
+    "void_research": {
+        name: "Notes from the Void",
+        description: "Forbidden research notes left by the First Mage detailing the architecture of the multiverse.",
+        bonus: "Clarity: +10 Max Mana.",
+        items: ["3", "j", "4"] // Refers to Burned Scroll, Acolyte's Scribblings, Mad Scrawlings
     },
     "mythos_of_the_stars": {
         name: "Mythos of the Stars",
@@ -65,15 +76,30 @@ window.LORE_SETS = {
         bonus: "Zealot's Bane: +1 Base Strength.",
         items: ["📜c", "🧿s", "z"] 
     },
-    "dwarven_mining_logs": {
-        name: "Dwarven Mining Logs",
-        description: "Sturdy leather-bound notes detailing exactly what the dwarves found when they dug too deep.",
-        bonus: "Demolitionist: +1 Base Constitution.",
-        items: ["🧨", "⛏️", "💎r"] 
+    
+    // --- BRAND NEW LORE SETS ---
+    "fae_tales": {
+        name: "Tales of the Feywild",
+        description: "Accounts of those who stepped into the Fairy Rings and returned... changed.",
+        bonus: "Trickster's Grace: +2 Base Dexterity.",
+        items: ["fae_1", "fae_2", "fae_3"] // Need to add these to ITEM_DATA
+    },
+    "infernal_mechanics": {
+        name: "Infernal Mechanics",
+        description: "The blueprints of the Clockwork Guardians and the Efreet that power them.",
+        bonus: "Engineer: +1 Base Wits.",
+        items: ["⚙️", "🔥c", "📜l"] 
+    },
+    "chronicles_of_the_abyss": {
+        name: "Chronicles of the Abyss",
+        description: "The final, waterlogged journal of the explorer who discovered the Leviathan's trench.",
+        bonus: "Deep Lung: +5 Max Stamina.",
+        items: ["📦w", "💎b", "💀d"]
     }
 };
 
 window.LORE_STONE_MESSAGES = [
+    // Original Messages
     "The stars align when the five thrones are empty.",
     "Iron rots, but obsidian remembers.",
     "Do not trust the water in the deep grotto.",
@@ -109,7 +135,21 @@ window.LORE_STONE_MESSAGES = [
     "Only a fool plants a Cloudseed indoors. The heavens cannot be contained.",
     "Death is not an end here, merely a shift in the leylines. The Void spits us back out.",
     "Before there were castles, there were the Crystal Spires. The dwarves shattered them out of greed.",
-    "The fairies trade in memories, not gold. A Memory Shard is worth a fortune in the Deep Woods."
+    "The fairies trade in memories, not gold. A Memory Shard is worth a fortune in the Deep Woods.",
+    
+    // BRAND NEW LORE EXPANSION
+    "The {orange:Meteor} spell is not a creation of fire, but of gravity. You are pulling the sky down.",
+    "To enchant a weapon is to force an agreement between metal and the Void.",
+    "The Colosseum was built over a Leyline Convergence. The blood spilled there feeds the network.",
+    "The 'Safe Haven' is a lie. It is merely the last place He hasn't looked.",
+    "The {cyan:Prime Tuning Fork} does not teleport you; it simply reminds the universe where you belong.",
+    "If you kill the Necromancer Lord, another will take the crown. The cycle is unbreakable.",
+    "The giant spiders are not beasts. They are the immune system of the corrupted earth.",
+    "The First Mage did not discover the Void. He created it by trying to erase a mistake.",
+    "A {blue:Sailing Ship} cannot cross the edge of the world. It simply wraps around to the beginning of the nightmare.",
+    "The wandering Bard knows the end of the story, but he refuses to sing the final verse.",
+    "The {red:Mimics} were created by paranoid kings to guard their treasuries. Now, they are the only treasuries left.",
+    "Do not fish in the lava unless your rod is forged of {gray:Obsidian}. The magma carps bite back."
 ];
 
 // ==========================================
@@ -302,6 +342,12 @@ window.VILLAGER_RUMORS = [
     "If a wild beast is badly wounded, try talking to it. You might just make a friend. Takes a lot of {gold:Charisma}, though.",
     "If you want the best gear, you gotta make it yourself. Highly skilled crafters can make {purple:Masterwork} weapons that hit harder.",
     
+    // --- ENCHANTING TUTORIALS ---
+    "The Blacksmith told me that if you have {purple:Arcane Dust}, you can use the Enchanting Altar at a fully upgraded camp.",
+    "If you find magical gear you don't need, shatter it at an Altar! You get dust that you can use to upgrade your favorite sword.",
+    "They say {gold:Legendary} weapons glow with their own light. I've only ever seen an Epic one.",
+    "I found a {red:Cursed} helmet in the swamp. It made me incredibly strong, but I lost my mind while wearing it. I sold it.",
+    
     // --- NEW MECHANICS TUTORIALS ---
     "A Heavy Crossbow is slow to load, but the bolts hit so hard they {red:pierce right through} targets! Try lining them up.",
     "If you're using the {orange:Whirlwind} technique, make sure you're holding a two-handed weapon. The sweep is absolutely devastating.",
@@ -428,7 +474,12 @@ window.LORE_FRAGMENTS = [
     "To whom it may concern: The chest in the dark castle is trapped. Signed, Lefty.",
     "We dug up an ancient idol in the deadlands. It hums. I can't sleep.",
     "The tuning fork resonates with a frequency that gives me a migraine. It points nowhere.",
-    "Deliver this sealed package to the Inquisitor immediately. Do not open it. Do not look inside. - R."
+    "Deliver this sealed package to the Inquisitor immediately. Do not open it. Do not look inside. - R.",
+    
+    // NEW FAE & DIMENSIONAL LORE FRAGMENTS
+    "I stepped into the ring of purple mushrooms. The music was so loud. When I stepped out, my hair was white.",
+    "The Efreet are not demons. They are the trapped souls of the first mages, bound to the clockwork machines.",
+    "I saw the Leviathan's eye today. It was larger than the moon. It looked right through me."
 ];
 
 // ==========================================
@@ -836,6 +887,7 @@ window.RIDDLE_DATA = [
 ];
 
 window.REGION_HISTORY = [
+    // Original Regions
     "A great battle was fought here in the Second Age. The earth still remembers the blood.",
     "Once a thriving trade route, now abandoned to the wilds.",
     "The Old King used to hunt in these lands before the madness took him.",
@@ -864,7 +916,23 @@ window.REGION_HISTORY = [
     "A massive clockwork machine lies buried just beneath the topsoil here, ticking faintly.",
     "The grass here grows in perfect concentric circles. No one knows why.",
     "A famous archmage built a tower here, but it vanished overnight, leaving only a perfectly flat stone foundation.",
-    "The bones of a creature larger than a mountain are scattered across this sector, buried under the dirt."
+    "The bones of a creature larger than a mountain are scattered across this sector, buried under the dirt.",
+    
+    // NEW REGION LORE EXPANSION
+    "This sector is prone to intense temporal anomalies. Some travelers report seeing themselves walking in the distance.",
+    "The rivers here occasionally flow backward for exactly three minutes at midnight.",
+    "A massive, perfect cube of obsidian sits at the center of this region. It is entirely indestructible.",
+    "The local flora here has adapted to feed on magic rather than sunlight.",
+    "This is the impact site of the First Mage's greatest failure.",
+    "A legendary bandit crew buried their entire hoard somewhere in this sector before turning on each other.",
+    "The wind here carries the faint, unmistakable smell of baking bread, even though the nearest village is miles away.",
+    "Every tree in this region was struck by lightning on the exact same night fifty years ago.",
+    "The Cartographer's Guild simply notes this area as 'Do Not Enter' with no further explanation.",
+    "A massive stone bridge spans a dry canyon here, but both ends of the bridge end abruptly in solid rock.",
+    "The animals in this sector display an unsettling level of coordination and intelligence.",
+    "This area was cursed by a dying witch. The rain here always tastes like salt and tears.",
+    "An ancient amphitheater lies buried beneath the topsoil here. The blood spilled there still stains the dirt red.",
+    "The stars above this sector are slightly misaligned compared to the rest of the world."
 ];
 
 // --- END OF FILE data-lore.js ---
