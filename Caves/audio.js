@@ -10,7 +10,7 @@ const AudioSystem = {
     _compressor: null,
     noiseBuffer: null, 
     
-    // PERFORMANCE WIN: Audio Throttling
+    // Audio Throttling
     // Prevents audio blowout/CPU spikes if 20 enemies move/attack on the exact same frame.
     _lastPlayed: {},
 
@@ -32,35 +32,50 @@ const AudioSystem = {
     // triggered directly by a user gesture. This wrapper guarantees it unlocks.
     initAudioContext: function() {
         if (!this._ctx) {
-            this._ctx = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // AUDIO QUALITY WIN: Studio-grade Mastering Chain
-            this._masterGain = this._ctx.createGain();
-            this._masterGain.gain.value = 0.7; // Leave 30% headroom
-            
-            this._compressor = this._ctx.createDynamicsCompressor();
-            this._compressor.threshold.value = -12; // Start compressing at -12dB
-            this._compressor.knee.value = 30;       // Smooth transition
-            this._compressor.ratio.value = 12;      // Hard limiting
-            this._compressor.attack.value = 0.003;  // React instantly
-            this._compressor.release.value = 0.25;  // Let go naturally
+            // BUG FIX & COMPATIBILITY WIN: Fallback for older Safari versions
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) {
+                console.warn("Web Audio API not supported in this browser.");
+                return null;
+            }
 
-            this._masterGain.connect(this._compressor);
-            this._compressor.connect(this._ctx.destination);
+            try {
+                this._ctx = new AudioContextClass();
+                
+                // Studio-grade Mastering Chain
+                this._masterGain = this._ctx.createGain();
+                this._masterGain.gain.value = 0.65; // Safe headroom to prevent clipping on massive AoE spells
+                
+                this._compressor = this._ctx.createDynamicsCompressor();
+                this._compressor.threshold.value = -15; // Start compressing earlier for a thicker mix
+                this._compressor.knee.value = 30;       // Smooth transition
+                this._compressor.ratio.value = 12;      // Hard limiting
+                this._compressor.attack.value = 0.003;  // React instantly
+                this._compressor.release.value = 0.25;  // Let go naturally
+
+                this._masterGain.connect(this._compressor);
+                this._compressor.connect(this._ctx.destination);
+            } catch (e) {
+                console.error("Failed to initialize AudioContext:", e);
+                return null;
+            }
         }
         return this._ctx;
     },
 
     getCtx: function() {
         const ctx = this.initAudioContext();
-        // PERFORMANCE & ROBUSTNESS WIN: Only resume if explicitly suspended
+        // Only resume if explicitly suspended, 
+        // wrapped in a try/catch because Safari sometimes throws errors if resumed too aggressively.
         if (ctx && ctx.state === 'suspended') {
-            ctx.resume().catch(e => console.warn("AudioContext resume failed:", e));
+            try {
+                ctx.resume().catch(() => {});
+            } catch (e) {}
         }
         return ctx;
     },
 
-    // AUDIO QUALITY WIN: Pink Noise Generator
+    // Pink Noise Generator
     // White noise is harsh. Pink noise sounds like natural wind, water, and deep impacts!
     initNoise: function() {
         const ctx = this.getCtx();
@@ -85,9 +100,10 @@ const AudioSystem = {
         }
     },
 
-    // Internal Throttler
+    // Internal Throttler (Highly optimized for V8)
     _throttle: function(id, msCooldown) {
         const now = Date.now();
+        // Occasional passive garbage collection of the tracker object to prevent memory leaks
         if (Math.random() < 0.05) {
             for (const key in this._lastPlayed) {
                 if (now - this._lastPlayed[key] > 5000) delete this._lastPlayed[key];
@@ -101,21 +117,35 @@ const AudioSystem = {
     // --- IMMERSION: DYNAMIC ACOUSTICS & DISTANCE ATTENUATION ---
     _getAcoustics: function() {
         if (typeof gameState !== 'undefined') {
+            // LORE WIN: Deeply immersive acoustic profiles based on the environment!
+            
+            // 1. The Void & Abyss (Eerie, endless echoes)
             if (gameState.currentRealm !== 0 || gameState.currentCaveTheme === 'VOID' || gameState.currentCaveTheme === 'ABYSS') {
-                return { durationMult: 1.5, filterMult: 0.35, echoDelay: 0.35, echoFeedback: 0.6, dampening: 1000 };
+                return { durationMult: 1.6, filterMult: 0.35, echoDelay: 0.35, echoFeedback: 0.65, dampening: 1000 };
             }
+            // 2. Crystal Caves (High resonance, bright ringing)
+            if (gameState.currentCaveTheme === 'CRYSTAL') {
+                return { durationMult: 2.0, filterMult: 1.2, echoDelay: 0.2, echoFeedback: 0.7, dampening: 8000 };
+            }
+            // 3. Sunken Temples & Grottos (Underwater muffling)
+            if (gameState.currentCaveTheme === 'SUNKEN' || gameState.currentCaveTheme === 'GROTTO') {
+                return { durationMult: 0.8, filterMult: 0.25, echoDelay: 0.1, echoFeedback: 0.2, dampening: 600 };
+            }
+            // 4. Sky Realm (Wind swept, quick decay)
             if (gameState.mapMode === 'skyrealm') {
-                return { durationMult: 0.8, filterMult: 1.5, echoDelay: 0.4, echoFeedback: 0.4, dampening: 4000 };
+                return { durationMult: 0.8, filterMult: 1.5, echoDelay: 0.4, echoFeedback: 0.3, dampening: 4000 };
             }
+            // 5. Deep Caves (Muffled highs, heavy slapback)
             if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'underworld') {
-                // Deep caves: Heavy echo, heavily muffled highs
                 return { durationMult: 1.2, filterMult: 0.6, echoDelay: 0.15, echoFeedback: 0.4, dampening: 1500 }; 
-            } else if (gameState.mapMode === 'castle') {
-                // Castles/Ruins: Slapback echo
-                return { durationMult: 1.1, filterMult: 0.85, echoDelay: 0.08, echoFeedback: 0.25, dampening: 3000 }; 
+            } 
+            // 6. Castles & Ruins (Stone halls, tight reverb)
+            if (gameState.mapMode === 'castle') {
+                return { durationMult: 1.1, filterMult: 0.85, echoDelay: 0.08, echoFeedback: 0.3, dampening: 3000 }; 
             }
         }
-        return { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 }; // Open air
+        // Open air default
+        return { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 }; 
     },
 
     _getSpatialData: function(x) {
@@ -132,15 +162,19 @@ const AudioSystem = {
         };
     },
 
-    // AUDIO QUALITY WIN: Dampened Delay Network (True Reverb)
+    // Dampened Delay Network (True Reverb)
     _routeToMaster: function(ctx, sourceNode, acoustics, spatial) {
         let panner = null;
+        
+        // Older Safari/iOS versions don't support StereoPannerNode.
+        // We gracefully fallback to a standard GainNode if it's missing to prevent crashes.
         if (ctx.createStereoPanner) {
             panner = ctx.createStereoPanner();
             panner.pan.value = spatial.pan;
             sourceNode.connect(panner);
         } else {
-            panner = sourceNode; 
+            panner = ctx.createGain(); 
+            sourceNode.connect(panner);
         }
 
         if (acoustics.echoDelay > 0) {
@@ -169,12 +203,14 @@ const AudioSystem = {
         return panner;
     },
 
+    // PERFORMANCE WIN: Strict memory cleanup for Web Audio API nodes.
     _cleanupRoute: function(pannerNode) {
         if (!pannerNode) return;
-        if (pannerNode._delayNode) pannerNode._delayNode.disconnect();
-        if (pannerNode._feedbackNode) pannerNode._feedbackNode.disconnect();
-        if (pannerNode._dampFilter) pannerNode._dampFilter.disconnect();
-        pannerNode.disconnect();
+        // Wrapped in try-catches because sometimes the browser's GC beats us to it
+        try { if (pannerNode._delayNode) pannerNode._delayNode.disconnect(); } catch (e) {}
+        try { if (pannerNode._feedbackNode) pannerNode._feedbackNode.disconnect(); } catch (e) {}
+        try { if (pannerNode._dampFilter) pannerNode._dampFilter.disconnect(); } catch (e) {}
+        try { pannerNode.disconnect(); } catch (e) {}
     },
 
     // --- CORE GENERATORS ---
@@ -189,7 +225,8 @@ const AudioSystem = {
         const spatial = this._getSpatialData(x);
         
         const actualDuration = duration * acoustics.durationMult;
-        const actualVol = vol * spatial.distanceVol;
+        // BUG FIX: Prevent log(0) errors in exponentialRampToValueAtTime by enforcing a tiny minimum
+        const actualVol = Math.max(0.001, vol * spatial.distanceVol);
 
         const src = ctx.createBufferSource();
         src.buffer = this.noiseBuffer; 
@@ -198,7 +235,7 @@ const AudioSystem = {
 
         const filter = ctx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.value = (filterFreq + (Math.random() - 0.5) * 200) * acoustics.filterMult * spatial.distanceFilter;
+        filter.frequency.value = Math.max(10, (filterFreq + (Math.random() - 0.5) * 200) * acoustics.filterMult * spatial.distanceFilter);
 
         const gain = ctx.createGain();
         const now = ctx.currentTime + 0.01; // AUDIO QUALITY WIN: Lookahead prevents envelope popping!
@@ -213,10 +250,10 @@ const AudioSystem = {
         const panner = this._routeToMaster(ctx, gain, acoustics, spatial);
 
         src.start(now);
-        src.stop(now + actualDuration + 0.1); // Add slight pad to stop time
+        src.stop(now + actualDuration + 0.1); 
         
         src.onended = () => {
-            src.disconnect(); filter.disconnect(); gain.disconnect();
+            try { src.disconnect(); filter.disconnect(); gain.disconnect(); } catch(e) {}
             this._cleanupRoute(panner);
         };
     },
@@ -229,7 +266,7 @@ const AudioSystem = {
         const spatial = this._getSpatialData(x);
         
         const actualDuration = duration * acoustics.durationMult;
-        const actualVol = vol * spatial.distanceVol;
+        const actualVol = Math.max(0.001, vol * spatial.distanceVol);
 
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -241,7 +278,7 @@ const AudioSystem = {
 
         const now = ctx.currentTime + 0.01; 
 
-        osc.frequency.setValueAtTime(finalFreq, now);
+        osc.frequency.setValueAtTime(Math.max(1, finalFreq), now);
         if (slideTo) {
             osc.frequency.exponentialRampToValueAtTime(Math.max(10, slideTo * spatial.distanceFilter), now + actualDuration);
         }
@@ -257,7 +294,7 @@ const AudioSystem = {
         osc.stop(now + actualDuration + 0.1);
         
         osc.onended = () => {
-            osc.disconnect(); gain.disconnect();
+            try { osc.disconnect(); gain.disconnect(); } catch(e) {}
             this._cleanupRoute(panner);
         };
     },
@@ -267,7 +304,7 @@ const AudioSystem = {
         const ctx = this._ctx;
         const acoustics = this._getAcoustics();
         const actualDuration = duration * acoustics.durationMult;
-        const noteVol = vol / notes.length;
+        const noteVol = Math.max(0.001, vol / notes.length);
         const now = ctx.currentTime + 0.01;
 
         notes.forEach((freq, index) => {
@@ -275,7 +312,7 @@ const AudioSystem = {
             const gain = ctx.createGain();
             
             osc.type = type;
-            const startFreq = (freq * acoustics.filterMult) + (index * detune);
+            const startFreq = Math.max(1, (freq * acoustics.filterMult) + (index * detune));
             osc.frequency.setValueAtTime(startFreq, now);
             
             if (slideDown) {
@@ -293,7 +330,7 @@ const AudioSystem = {
             osc.stop(now + actualDuration + 0.1);
             
             osc.onended = () => { 
-                osc.disconnect(); gain.disconnect(); 
+                try { osc.disconnect(); gain.disconnect(); } catch(e) {}
                 this._cleanupRoute(panner);
             };
         });
@@ -311,15 +348,16 @@ const AudioSystem = {
         osc.type = type;
         
         let totalDuration = notes.length * speed * acoustics.durationMult;
+        const actualVol = Math.max(0.001, vol);
         
         notes.forEach((freq, index) => {
             const noteTime = now + (index * speed);
             if (freq > 0) {
-                const adjFreq = freq * (freq > 500 ? acoustics.filterMult : 1.0);
+                const adjFreq = Math.max(1, freq * (freq > 500 ? acoustics.filterMult : 1.0));
                 osc.frequency.setValueAtTime(adjFreq, noteTime);
                 
                 gain.gain.setValueAtTime(0.0001, noteTime);
-                gain.gain.exponentialRampToValueAtTime(vol, noteTime + 0.02);
+                gain.gain.exponentialRampToValueAtTime(actualVol, noteTime + 0.02);
                 gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + (speed * acoustics.durationMult) - 0.01);
             } else {
                 gain.gain.setValueAtTime(0.0001, noteTime);
@@ -332,7 +370,7 @@ const AudioSystem = {
         osc.stop(now + totalDuration + 0.1);
         
         osc.onended = () => { 
-            osc.disconnect(); gain.disconnect(); 
+            try { osc.disconnect(); gain.disconnect(); } catch(e) {}
             this._cleanupRoute(panner);
         };
     },
@@ -429,13 +467,13 @@ const AudioSystem = {
         if (!this.settings.magic) return;
         if (!this._throttle('magic', 100)) return;
         // Rich Major 7th chord for magic casting instead of random tones
-        this.playChord([440, 554.37, 659.25, 830.61], 'sine', 0.3, 0.08, 2.0, true);
+        this.playChord([440, 554.37, 659.25, 830.61], 'sine', 0.3, 0.08, 2.0, true, x);
     },
 
     playHeal: function(x) {
         if (!this.settings.magic) return;
         // Warm, swelling chord
-        this.playChord([261.63, 329.63, 392.00], 'sine', 0.6, 0.1, 1.0);
+        this.playChord([261.63, 329.63, 392.00], 'sine', 0.6, 0.1, 1.0, false, x);
     },
     
     playCoin: function() { 
@@ -444,8 +482,14 @@ const AudioSystem = {
         this.playMelody([987.77, 1318.51], 'sine', 0.05, 0.06); 
     },
     
+    // JUICE WIN: Improved UI Error feedback
     playError: function() {
-        if (this.settings.ui) this.playTone(150, 'sawtooth', 0.15, 0.05, false, 100);
+        if (this.settings.ui) {
+            if (!this._throttle('error', 100)) return;
+            // Dull, staccato thud instead of a harsh screech
+            this.playTone(100, 'triangle', 0.1, 0.05, false, 50);
+            this.playNoise(0.05, 0.02, 300);
+        }
     },
 
     playClick: function() {
@@ -462,6 +506,31 @@ const AudioSystem = {
         }
     },
     
+    // --- LORE EXPANSION SOUNDS ---
+
+    playConsume: function() {
+        if (!this.settings.ui) return;
+        // Glug/Crunch sound for eating/drinking
+        this.playNoise(0.1, 0.05, 800);
+        setTimeout(() => { this.playTone(300, 'triangle', 0.05, 0.05, true, 200); }, 50);
+    },
+
+    playEnchant: function() {
+        if (!this.settings.magic) return;
+        // Rising, magical arpeggio
+        this.playMelody([440, 554.37, 659.25, 880], 'sine', 0.1, 0.15);
+        this.playNoise(0.5, 0.05, 2000); // Shimmering background dust
+    },
+
+    playDisenchant: function() {
+        if (!this.settings.magic) return;
+        // Shattering glass + discordant descending chord
+        this.playNoise(0.2, 0.15, 4000); // Crack!
+        this.playChord([880, 659.25, 622.25, 440], 'sawtooth', 0.4, 0.1, 5.0, true);
+    },
+    
+    // --- EPIC/FANFARE SOUNDS ---
+
     playLevelUp: function() {
         this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 0.8, 0.15, 1.5);
     },
