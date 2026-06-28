@@ -21,7 +21,7 @@ function updateThemeColors() {
 const ParticleSystem = {
     pool: [],
     activeParticles: [],
-    MAX_PARTICLES: 1500, // INCREASED to 1500 to support MMO chaos and massive AoE spells!
+    MAX_PARTICLES: 1500, // Supports MMO chaos and massive AoE spells
 
     // Initialize the pool
     init: function() {
@@ -54,6 +54,14 @@ const ParticleSystem = {
             p.gravity = 0;
             p.lifeFade = 0.015; // Fades slowly
             p.size = Math.random() * 4 + 2;
+        } else if (type === 'sparkle') {
+            // EXPANDABILITY WIN: Magical twinkling particles
+            p.vx = (Math.random() - 0.5) * 0.03;
+            p.vy = (Math.random() - 0.5) * 0.03;
+            p.gravity = -0.005; // Drifts upward
+            p.lifeFade = 0.02 + Math.random() * 0.02;
+            p.friction = 0.95;
+            p.size = Math.random() * 2 + 1;
         } else {
             // 'dust' / 'blood' / 'explosion'
             // JUICE: Explosive radial burst with heavy friction for a "Punchy" feel
@@ -109,8 +117,10 @@ const ParticleSystem = {
     createLevelUp: function(x, y) {
         this.createFloatingText(x, y, "LEVEL UP!", "#facc15");
         for(let i=0; i<30; i++) {
-            const colors = ['#facc15', '#ef4444', '#3b82f6', '#22c55e'];
+            const colors = ['#facc15', '#ef4444', '#3b82f6', '#22c55e', '#a855f7'];
             this.spawn(x, y, colors[Math.floor(Math.random()*colors.length)], 'dust', '', Math.random()*3+2);
+            // Throw in some magical sparkles
+            if (i % 3 === 0) this.spawn(x, y, colors[Math.floor(Math.random()*colors.length)], 'sparkle', '', Math.random()*2+1);
         }
     },
 
@@ -120,69 +130,56 @@ const ParticleSystem = {
         const windX = Math.sin(time) * 0.005;
 
         // PERFORMANCE WIN: Swap-and-Pop Garbage Collection
-        // Avoids .splice() array re-indexing which causes V8 CPU stuttering.
         for (let i = 0; i < this.activeParticles.length; i++) {
             const p = this.activeParticles[i];
             
             // Physics
             p.x += p.vx; 
             p.y += p.vy;
-            p.vx *= p.friction; // Apply air resistance
+            p.vx *= p.friction; 
             p.vy *= p.friction;
             
             if(p.gravity) p.vy += p.gravity;
             
-            // Apply wind drift to smoke and floating text!
-            if (p.type === 'smoke' || p.type === 'text') p.x += windX;
+            // Apply wind drift to smoke, text, and sparkles!
+            if (p.type === 'smoke' || p.type === 'text' || p.type === 'sparkle') p.x += windX;
 
             p.life -= p.lifeFade; 
             
-            // If the particle is dead...
             if (p.life <= 0) {
                 p.active = false;
-                this.pool.push(p); // Recycle back to pool
+                this.pool.push(p); 
                 
-                // Swap the dead particle with the LAST particle in the array, then pop it.
-                // This is an O(1) operation compared to splice's O(N) operation!
                 const lastParticle = this.activeParticles[this.activeParticles.length - 1];
                 this.activeParticles[i] = lastParticle;
                 this.activeParticles.pop();
-                
-                // Because we swapped the current index with a new particle from the end,
-                // we must decrement 'i' so we don't skip processing the swapped particle!
                 i--; 
             }
         }
     },
 
     draw: function(ctx, startX, startY) {
-        // Simple culling bounds
         const minX = -TILE_SIZE;
         const maxX = ctx.canvas.width + TILE_SIZE;
         const minY = -TILE_SIZE;
         const maxY = ctx.canvas.height + TILE_SIZE;
 
-        // PERFORMANCE WIN: Converted .forEach to a fast `for` loop to prevent GC allocation overhead
         const len = this.activeParticles.length;
         for (let i = 0; i < len; i++) {
             const p = this.activeParticles[i];
-            const screenX = ((p.x - startX) * TILE_SIZE) | 0; // Fast bitwise floor
+            const screenX = ((p.x - startX) * TILE_SIZE) | 0; 
             const screenY = ((p.y - startY) * TILE_SIZE) | 0;
 
             if (screenX < minX || screenX > maxX || screenY < minY || screenY > maxY) continue;
 
             const alpha = p.life > 0 ? p.life : 0;
 
-            // PERFORMANCE WIN: Bypassing save/restore matrix pushes for static particles
             if (p.type === 'text') {
                 ctx.globalAlpha = alpha;
                 
-                // Pop effect: Scales up slightly as it appears, bounces back
                 const scale = 1 + (Math.sin(p.life * Math.PI) * 0.3);
                 ctx.font = `bold ${(p.size * scale) | 0}px monospace`;
                 
-                // Draw stroke FIRST (behind the text) for thicker, cleaner outlines
-                // Set miterLimit to prevent spiky stroke corners on some letters
                 ctx.strokeStyle = 'rgba(0,0,0,0.85)';
                 ctx.lineWidth = 3;
                 ctx.lineJoin = 'miter';
@@ -191,21 +188,25 @@ const ParticleSystem = {
                 
                 ctx.fillStyle = p.color;
                 ctx.fillText(p.text, screenX, screenY);
-                ctx.globalAlpha = 1.0; // Reset manually
+                ctx.globalAlpha = 1.0; 
             } else if (p.type === 'smoke') {
                 ctx.globalAlpha = alpha;
                 ctx.fillStyle = p.color;
                 ctx.beginPath();
                 ctx.arc(screenX, screenY, p.size * p.life, 0, TWO_PI);
                 ctx.fill();
-                ctx.globalAlpha = 1.0; // Reset manually
+                ctx.globalAlpha = 1.0; 
+            } else if (p.type === 'sparkle') {
+                // JUICE WIN: Twinkling effect via sine wave tied to remaining life
+                ctx.globalAlpha = alpha * Math.abs(Math.sin(p.life * 15)); 
+                ctx.fillStyle = p.color;
+                ctx.fillRect(screenX, screenY, p.size, p.size);
+                ctx.globalAlpha = 1.0;
             } else {
-                // Dust uses Rotation, which necessitates a fast save/restore matrix shift
                 ctx.save();
                 ctx.globalAlpha = alpha;
                 ctx.fillStyle = p.color;
                 const currentSize = Math.max(0.5, p.size * p.life);
-                // Rotate dust particles based on their X velocity for extra juice
                 ctx.translate(screenX, screenY);
                 ctx.rotate(p.vx * 10);
                 ctx.fillRect(-currentSize/2, -currentSize/2, currentSize, currentSize);
@@ -224,7 +225,7 @@ const TileRenderer = {
 
     drawBase: (ctx, x, y, color) => {
         ctx.fillStyle = color;
-        // PERFORMANCE & VISUAL WIN: Draw slightly larger than 1 tile to prevent hairline seam tearing on sub-pixel zooms
+        // Draws slightly larger than 1 tile to prevent hairline seam tearing on sub-pixel zooms
         ctx.fillRect(x * TILE_SIZE - 0.5, y * TILE_SIZE - 0.5, TILE_SIZE + 1, TILE_SIZE + 1);
     },
 
@@ -271,6 +272,72 @@ const TileRenderer = {
 
     // --- BIOME RENDERERS ---
 
+    // 🍄 Fungal Jungle (LORE WIN: Beautiful procedural glowing mushrooms)
+    drawFungal: (ctx, x, y, mapX, mapY, baseColor) => {
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
+        const rand = seed - Math.floor(seed);
+        
+        const tx = x * TILE_SIZE;
+        const ty = y * TILE_SIZE;
+        
+        // Draw 1 or 2 mushrooms organically
+        const count = rand > 0.5 ? 2 : 1;
+        for(let i=0; i<count; i++) {
+            const ox = tx + 4 + (rand * 8) + (i * 6);
+            const oy = ty + 10 + (rand * 6) - (i * 4);
+            
+            // Fungal Stalk
+            ctx.fillStyle = '#f3f4f6';
+            ctx.fillRect(ox + 2, oy, 2, 6);
+            
+            // Fungal Cap (Pinkish or Deep Purple)
+            ctx.fillStyle = rand > 0.8 ? '#f0abfc' : '#d946ef'; 
+            ctx.beginPath();
+            ctx.arc(ox + 3, oy, 4, Math.PI, TWO_PI);
+            ctx.fill();
+            
+            // Fungal Ambient Glow
+            ctx.fillStyle = 'rgba(217, 70, 239, 0.2)';
+            ctx.beginPath();
+            ctx.arc(ox + 3, oy, 8, 0, TWO_PI);
+            ctx.fill();
+        }
+    },
+
+    // 💎 Crystal Peaks (LORE WIN: Jagged procedural crystal formations)
+    drawCrystal: (ctx, x, y, mapX, mapY, baseColor) => {
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
+        const rand = seed - Math.floor(seed);
+        
+        const tx = x * TILE_SIZE;
+        const ty = y * TILE_SIZE;
+        
+        // Crystal Ambient Glow
+        ctx.fillStyle = 'rgba(34, 211, 238, 0.2)'; 
+        ctx.beginPath();
+        ctx.arc(tx + TILE_SIZE/2, ty + TILE_SIZE/2, 10 + (rand * 2), 0, TWO_PI);
+        ctx.fill();
+
+        // Jagged Crystal Geometry
+        ctx.fillStyle = '#06b6d4'; // Deep cyan
+        ctx.beginPath();
+        ctx.moveTo(tx + 10, ty + 18);
+        ctx.lineTo(tx + 6, ty + 10);
+        ctx.lineTo(tx + 10, ty + 2);
+        ctx.lineTo(tx + 14, ty + 10);
+        ctx.fill();
+        
+        // Bright edge highlight to sell the crystalline material
+        ctx.fillStyle = '#67e8f9';
+        ctx.beginPath();
+        ctx.moveTo(tx + 10, ty + 18);
+        ctx.lineTo(tx + 6, ty + 10);
+        ctx.lineTo(tx + 10, ty + 2);
+        ctx.fill();
+    },
+
     // 🐊 Swamp (Static - Stagnant Muck)
     drawSwamp: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
@@ -297,8 +364,6 @@ const TileRenderer = {
         const rand = seed - Math.floor(seed);
 
         const treeCount = rand > 0.7 ? 2 : 1;
-
-        // Dynamic Wind Calculation
         const time = performance.now() / 1500;
         const windSway = Math.sin(time + mapX * 0.1 + mapY * 0.1) * 1.5;
 
@@ -324,15 +389,15 @@ const TileRenderer = {
 
             const treeColor = (rand > 0.95) ? '#b45309' : ((mapX + mapY) % 2 === 0 ? '#166534' : '#15803d');
 
-            // Draw Foliage (With Wind Sway at the top vertex!)
+            // Draw Foliage (With Wind Sway at the top vertex)
             ctx.fillStyle = treeColor;
             ctx.beginPath();
-            ctx.moveTo(tx + windSway, ty - height); // Swaying Top
+            ctx.moveTo(tx + windSway, ty - height); 
             ctx.lineTo(tx + (width / 2), ty - (height * 0.2)); 
             ctx.lineTo(tx - (width / 2), ty - (height * 0.2)); 
             ctx.fill();
 
-            // Foliage Shadow (Right side of tree)
+            // Foliage Shadow
             ctx.fillStyle = 'rgba(0,0,0,0.15)';
             ctx.beginPath();
             ctx.moveTo(tx + windSway, ty - height);
@@ -371,12 +436,11 @@ const TileRenderer = {
             const baseRight = peakX + (width / 2);
             const baseBottom = ty + TILE_SIZE;
 
-            // Subtle gradient rendering on the lit side of the mountain
             const gradient = ctx.createLinearGradient(peakX, peakY, peakX, baseBottom);
-            gradient.addColorStop(0, '#78716c'); // Light peak
-            gradient.addColorStop(1, '#57534e'); // Darker base
+            gradient.addColorStop(0, '#78716c'); 
+            gradient.addColorStop(1, '#57534e'); 
 
-            // Shadow Side (Right)
+            // Shadow Side
             ctx.fillStyle = '#292524';
             ctx.beginPath();
             ctx.moveTo(peakX, peakY);
@@ -384,7 +448,7 @@ const TileRenderer = {
             ctx.lineTo(peakX, baseBottom);
             ctx.fill();
 
-            // Sunlit Side (Left - Now with Gradient)
+            // Sunlit Side
             ctx.fillStyle = gradient;
             ctx.beginPath();
             ctx.moveTo(peakX, peakY);
@@ -424,9 +488,9 @@ const TileRenderer = {
 
         if (rand < 0.02) { 
             TileRenderer.drawFlower(ctx, x, y, mapX, mapY);
-        } else if (rand < 0.25) { // Increased density to make plains look like grass!
+        } else if (rand < 0.25) { 
             TileRenderer.drawGrassTuft(ctx, x, y, accentColor);
-        } else if ((mapX * 123 + mapY * 456) % 7 === 0) { // Increased frequency
+        } else if ((mapX * 123 + mapY * 456) % 7 === 0) { 
             ctx.strokeStyle = accentColor;
             ctx.lineWidth = 1;
             const tx = x * TILE_SIZE + TILE_SIZE / 2;
@@ -457,14 +521,12 @@ const TileRenderer = {
     },
 
     // 🌊 Water (Animated - Organic Flow + Glints)
-    // JUICE WIN: Now accepts 'isDeep' to alter wave speed and intensity
     drawWater: (ctx, x, y, mapX, mapY, baseColor, accentColor, isDeep = false) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
 
-        // Deep water rolls slower than shallow water
         const time = performance.now() / (isDeep ? 2500 : 1500);
         
         const wavePhase1 = time + (Math.sin(mapX * 0.2) + Math.cos(mapY * 0.2));
@@ -475,7 +537,7 @@ const TileRenderer = {
         // Primary Wave
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        const yOffset1 = Math.sin(wavePhase1) * (isDeep ? 4 : 2); // Deep water has higher peaks
+        const yOffset1 = Math.sin(wavePhase1) * (isDeep ? 4 : 2);
         ctx.moveTo(tx + 2, ty + TILE_SIZE / 2 + yOffset1);
         ctx.bezierCurveTo(tx + 8, ty + TILE_SIZE / 2 + yOffset1 - 2, tx + 12, ty + TILE_SIZE / 2 + yOffset1 + 2, tx + TILE_SIZE - 2, ty + TILE_SIZE / 2 + yOffset1);
         ctx.stroke();
@@ -488,19 +550,17 @@ const TileRenderer = {
         ctx.moveTo(tx + 4, ty + TILE_SIZE / 2 + yOffset2);
         ctx.bezierCurveTo(tx + 10, ty + TILE_SIZE / 2 + yOffset2 + 2, tx + 14, ty + TILE_SIZE / 2 + yOffset2 - 2, tx + TILE_SIZE - 4, ty + TILE_SIZE / 2 + yOffset2);
         ctx.stroke();
-        ctx.globalAlpha = 1.0; // Reset
+        ctx.globalAlpha = 1.0; 
 
-        // Sunlight Glints (Sparkles randomly appearing on waves)
         const seed = Math.sin(mapX * 12.98 + mapY * 78.23);
         if (seed > 0.8) {
-            // Glint pulses in and out based on time
             const glintAlpha = (Math.sin(time * 5 + mapX) + 1) / 2; 
             ctx.fillStyle = `rgba(255, 255, 255, ${glintAlpha * 0.6})`;
             ctx.fillRect(tx + (seed * 10 % TILE_SIZE), ty + (seed * 20 % TILE_SIZE), 2, 2);
         }
     },
 
-    // 🔥 Fire (Animated + Auto Smoke Generation)
+    // 🔥 Fire
     drawFire: (ctx, x, y, baseColor, mapX, mapY) => { 
         TileRenderer.drawBase(ctx, x, y, baseColor || '#451a03'); 
 
@@ -509,26 +569,21 @@ const TileRenderer = {
         const time = performance.now();
         const flicker = Math.sin(time / 100) * 3;
 
-        // Outer Orange Glow
         ctx.fillStyle = 'rgba(249, 115, 22, 0.4)'; 
         ctx.beginPath(); ctx.arc(tx, ty - 4, 8 + (flicker * 0.5), 0, TWO_PI); ctx.fill();
         
-        // Mid Red Flame
         ctx.fillStyle = '#ef4444'; 
         ctx.beginPath(); ctx.arc(tx, ty - 4, 4 + (flicker * 0.2), 0, TWO_PI); ctx.fill();
         
-        // Inner Yellow Core
         ctx.fillStyle = '#facc15'; 
         ctx.beginPath(); ctx.arc(tx, ty - 4, 2 + (flicker * 0.1), 0, TWO_PI); ctx.fill();
 
-        // Environmental Smoke Particle Emission
         if (Math.random() < 0.05 && typeof mapX !== 'undefined') {
             ParticleSystem.spawn(mapX, mapY - 0.2, 'rgba(156, 163, 175, 0.4)', 'smoke');
         }
     },
 
-    // Ω Void Rift (Animated Vortex)
-    // LORE WIN: The Void now actively tears and spins like a vortex!
+    // Ω Void Rift
     drawVoid: (ctx, x, y, mapX, mapY) => {
         TileRenderer.drawBase(ctx, x, y, '#000');
         const tx = x * TILE_SIZE + TILE_SIZE / 2;
@@ -540,25 +595,22 @@ const TileRenderer = {
 
         ctx.save();
         ctx.translate(tx, ty);
-        ctx.rotate((now / 500) + (mapX * 0.1)); // Spin!
+        ctx.rotate((now / 500) + (mapX * 0.1)); 
 
-        // Outer Glow
         ctx.fillStyle = 'rgba(168, 85, 247, 0.4)';
         ctx.beginPath(); ctx.arc(0, 0, size + 4, 0, TWO_PI); ctx.fill();
         
-        // Ring
         ctx.strokeStyle = '#a855f7';
         ctx.lineWidth = 2;
         ctx.beginPath(); ctx.arc(0, 0, size, 0, TWO_PI); ctx.stroke();
         
-        // Inner Core
         ctx.fillStyle = '#581c87';
         ctx.beginPath(); ctx.arc(0, 0, size / 2, 0, TWO_PI); ctx.fill();
         
         ctx.restore();
     },
 
-    // 🧱 Enhanced Wall Renderer
+    // 🧱 Walls
     drawWall: (ctx, x, y, baseColor, accentColor, style = 'rough') => {
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
@@ -608,14 +660,16 @@ const TileRenderer = {
         ctx.moveTo(tx + TILE_SIZE, ty); ctx.lineTo(tx, ty + TILE_SIZE);
         ctx.stroke();
 
-        ctx.globalAlpha = 1.0; // Reset for engine
+        ctx.globalAlpha = 1.0; 
     },
 
     // 🩸 UI: High-Fidelity Health Bars
     drawHealthBar: (ctx, x, y, current, max) => {
-        if (max <= 0 || current >= max) return; 
+        // Prevent NaN logic crashes on drawing bars for dead/ghost enemies
+        const safeMax = max || 1;
+        if (safeMax <= 0 || current >= safeMax) return; 
         
-        const percent = Math.max(0, current / max);
+        const percent = Math.max(0, current / safeMax);
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
 
@@ -649,7 +703,6 @@ const TileRenderer = {
     drawShadow: (ctx, x, y) => {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.beginPath();
-        // Draw an ellipse slightly below the center of the tile
         ctx.ellipse(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE - 3, TILE_SIZE / 3, TILE_SIZE / 6, 0, 0, TWO_PI);
         ctx.fill();
     }
@@ -685,7 +738,11 @@ function renderTerrainCache(startX, startY) {
     let activeMapMode = gameState.mapMode;
 
     if (activeMapMode === 'dungeon') {
+        // BUG FIX: Provide robust fallback if colors aren't defined in the theme object
         currentCaveThemeObj = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+        if (!currentCaveThemeObj.colors) {
+            currentCaveThemeObj.colors = { floor: '#000', wall: '#333' };
+        }
         currentCaveMap = chunkManager.caveMaps[gameState.currentCaveId];
     } else if (activeMapMode === 'castle') {
         currentCastleMap = chunkManager.castleMaps[gameState.currentCastleId];
@@ -735,10 +792,11 @@ function renderTerrainCache(startX, startY) {
             } 
             else { 
                 // Calculate the chunk coordinates ONCE and use them for both lookups!
+                // PERFORMANCE WIN: Math.trunc is identical to floor for positive, faster in some V8 paths. We stick to floor to handle negatives correctly.
                 const cX = Math.floor(mapX / 16);
                 const cY = Math.floor(mapY / 16);
-                const lX = (mapX % 16 + 16) % 16;
-                const lY = (mapY % 16 + 16) % 16;
+                const lX = ((mapX % 16) + 16) % 16;
+                const lY = ((mapY % 16) + 16) % 16;
                 const chunkId = `${cX},${cY}`;
                 const tileKey = `${lX},${lY}`;
 
@@ -747,7 +805,6 @@ function renderTerrainCache(startX, startY) {
                     baseTerrain = chunkManager.loadedChunks[chunkId][lY][lX];
                 }
 
-                // Inline the getTile logic to skip doing the exact same math twice
                 tile = baseTerrain;
                 if (chunkManager.worldState[chunkId] && chunkManager.worldState[chunkId][tileKey] !== undefined) {
                     const val = chunkManager.worldState[chunkId][tileKey];
@@ -762,8 +819,7 @@ function renderTerrainCache(startX, startY) {
                     else if (baseTerrain === '💎c') bgColor = '#083344'; 
                 } else {
                      bgColor = '#22c55e'; 
-                    // Include thickets and flowers so they blend into the dark forest!
-                    // Using 'tile' instead of 'baseTerrain' ensures worldState overrides get the correct background!
+                    // Use 'tile' instead of 'baseTerrain' so worldState overrides (like Player built camps) get the correct background!
                     if (tile === 'F' || tile === '🌳e' || tile === '🌳' || tile === '🌲' || tile === '🌺') bgColor = '#14532d';
                     else if (tile === '❄️') bgColor = '#e0f2fe';
                     else if (tile === '🍄') bgColor = '#4a044e'; 
@@ -774,7 +830,6 @@ function renderTerrainCache(startX, startY) {
                     else if (tile === '^' || tile === '⛰') bgColor = '#57534e';
                     else if (tile === '~') bgColor = '#1e3a8a';
                     else if (tile === '🌋') bgColor = '#450a0a';
-                    // Fallback just in case an enemy/item is standing on a dark tile
                     else if (baseTerrain === 'F' || baseTerrain === '🌳e' || baseTerrain === '🌳' || baseTerrain === '🌲' || baseTerrain === '🌺') bgColor = '#14532d';
                     else if (baseTerrain === 'd') bgColor = '#2d2d2d';
                     else if (baseTerrain === 'D') bgColor = '#fde047';
@@ -783,14 +838,17 @@ function renderTerrainCache(startX, startY) {
 
                 TileRenderer.drawBase(terrainCtx, x, y, bgColor);
 
-                // Animation sorting
-                if (['~', '≈', '🔥', 'Ω', '👻k'].includes(tile) || (tile === 'D' && gameState.currentCaveTheme === 'FIRE') || (tile === '🌋' && activeMapMode === 'underworld')) {
+                // Add mystical components to animated loop so we can attach custom particle emitters
+                if (['~', '≈', '🔥', 'Ω', '👻k', '#', '✨'].includes(tile) || (tile === 'D' && gameState.currentCaveTheme === 'FIRE') || (tile === '🌋' && activeMapMode === 'underworld')) {
                     gameState.visibleAnimatedTiles.push({ screenX: x, screenY: y, mapX: mapX, mapY: mapY, tile: tile });
-                } else {
+                }
+
+                // If not an animated tile, do static rendering
+                if (!['~', '≈', '🔥', 'Ω'].includes(tile) && !(tile === 'D' && gameState.currentCaveTheme === 'FIRE')) {
                     switch (tile) {
                         case '▓': TileRenderer.drawWall(terrainCtx, x, y, '#1e293b', 'rgba(0,0,0,0.5)', 'rough'); break;
-                        case '🍄': fgChar = '🍄'; fgColor = '#d946ef'; break;
-                        case '💎c': fgChar = '💎'; fgColor = '#22d3ee'; break;
+                        case '🍄': TileRenderer.drawFungal(terrainCtx, x, y, mapX, mapY, bgColor); break;
+                        case '💎c': TileRenderer.drawCrystal(terrainCtx, x, y, mapX, mapY, bgColor); break;
                         case '🪜': fgChar = '🪜'; fgColor = '#fbbf24'; break;
                         case '.': if(activeMapMode === 'overworld') TileRenderer.drawPlains(terrainCtx, x, y, mapX, mapY, bgColor, '#15803d'); break;
                         case 'F': TileRenderer.drawForest(terrainCtx, x, y, mapX, mapY, bgColor); break;
@@ -856,18 +914,18 @@ const render = () => {
         if (gameState.screenShake < 0.5) gameState.screenShake = 0;
     }
 
-    ctx.save(); // Start Scene Transform
+    ctx.save(); 
     
     // --- 1. SMOOTH CAMERA MATH ---
     const p = gameState.player;
     const visX = p.visualX !== undefined ? p.visualX : p.x;
     const visY = p.visualY !== undefined ? p.visualY : p.y;
 
-    const viewportCenterX = (VIEWPORT_WIDTH / 2) | 0;
-    const viewportCenterY = (VIEWPORT_HEIGHT / 2) | 0;
+    const viewportCenterX = Math.trunc(VIEWPORT_WIDTH / 2);
+    const viewportCenterY = Math.trunc(VIEWPORT_HEIGHT / 2);
     
-    const startX = (visX | 0) - viewportCenterX;
-    const startY = (visY | 0) - viewportCenterY;
+    const startX = Math.trunc(visX) - viewportCenterX;
+    const startY = Math.trunc(visY) - viewportCenterY;
 
     if (gameState.lastStartX !== startX || gameState.lastStartY !== startY) {
         gameState.mapDirty = true;
@@ -876,8 +934,8 @@ const render = () => {
     }
 
     // Smooth panning offset
-    const offsetX = (visX - (visX | 0)) * TILE_SIZE;
-    const offsetY = (visY - (visY | 0)) * TILE_SIZE;
+    const offsetX = (visX - Math.trunc(visX)) * TILE_SIZE;
+    const offsetY = (visY - Math.trunc(visY)) * TILE_SIZE;
     
     ctx.translate(Math.round(shakeX - offsetX), Math.round(shakeY - offsetY));
 
@@ -896,7 +954,6 @@ const render = () => {
 
     // --- EFFICIENT ANIMATED TILE LOOP ---
     if (gameState.visibleAnimatedTiles) {
-        // Use a fast for-loop instead of .forEach to prevent GC thrashing
         const len = gameState.visibleAnimatedTiles.length;
         for (let i = 0; i < len; i++) {
             const anim = gameState.visibleAnimatedTiles[i];
@@ -929,6 +986,15 @@ const render = () => {
                 }
             } else if (tile === 'Ω') {
                 TileRenderer.drawVoid(ctx, x, y, mapX, mapY);
+            } else if (tile === '#' || tile === '✨') {
+                // LORE WIN: Waystones and Loot passively draw the eye by emitting sparkles!
+                if (Math.random() < 0.03 && typeof ParticleSystem !== 'undefined') {
+                    const sparkColor = tile === '#' ? '#a855f7' : '#facc15';
+                    ParticleSystem.spawn(mapX, mapY, sparkColor, 'sparkle', '', 2);
+                }
+                ctx.fillStyle = tile === '#' ? '#a855f7' : '#facc15';
+                ctx.font = `bold ${TILE_SIZE}px monospace`;
+                ctx.fillText(tile, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
             }
         }
     }
@@ -937,7 +1003,6 @@ const render = () => {
     
     // Attack Telegraphs
     if (gameState.mapMode === 'overworld') {
-        // PERFORMANCE WIN: Iterate object directly instead of creating an array 60x a second
         for (const key in gameState.sharedEnemies) {
             const enemy = gameState.sharedEnemies[key];
             if (enemy.pendingAttacks) {
@@ -977,7 +1042,6 @@ const render = () => {
 
         if (entity.type === 'spirit') ctx.globalAlpha = 0.6;
 
-        // JUICE WIN: Draw Ground Shadow BEFORE the entity
         if (entity.type !== 'spirit') TileRenderer.drawShadow(ctx, x, y);
 
         ctx.fillStyle = entity.color || '#ef4444';
@@ -1017,7 +1081,6 @@ const render = () => {
     };
 
     if (gameState.mapMode === 'overworld') {
-        // PERFORMANCE WIN: Iterate object directly instead of creating an array 60x a second
         for (const key in gameState.sharedEnemies) {
             const enemy = gameState.sharedEnemies[key];
             const { vx, vy } = lerpEntity(enemy);
@@ -1091,25 +1154,27 @@ const render = () => {
     ctx.lineWidth = 3;
     ctx.lineJoin = 'round';
 
+    const isStealthy = gameState.player.stealthTurns > 0;
+    if (isStealthy) ctx.globalAlpha = 0.4;
+
     if (gameState.player.isMounted && gameState.player.companion) {
-        // 1. Draw the Mount at normal size
         ctx.font = `bold ${TILE_SIZE}px monospace`;
         ctx.strokeText(gameState.player.companion.tile, pScreenX, pScreenY);
         ctx.fillStyle = '#ffffff'; 
         ctx.fillText(gameState.player.companion.tile, pScreenX, pScreenY);
 
-        // 2. Draw the Player slightly smaller and shifted upwards!
         ctx.font = `bold ${(TILE_SIZE * 0.6) | 0}px monospace`;
         ctx.strokeText(playerChar, pScreenX, pScreenY - (TILE_SIZE * 0.35));
         ctx.fillStyle = '#3b82f6';
         ctx.fillText(playerChar, pScreenX, pScreenY - (TILE_SIZE * 0.35));
     } else {
-        // Normal rendering
         ctx.font = `bold ${TILE_SIZE}px monospace`;
         ctx.strokeText(playerChar, pScreenX, pScreenY);
         ctx.fillStyle = '#3b82f6';
         ctx.fillText(playerChar, pScreenX, pScreenY);
     }
+
+    if (isStealthy) ctx.globalAlpha = 1.0;
 
     if (gameState.player.chatBubble && Date.now() < gameState.player.chatTimer) {
         ctx.font = `bold 12px monospace`;
@@ -1124,16 +1189,16 @@ const render = () => {
     // --- UX WIN: AIMING RETICLES ---
     if (gameState.isAiming) {
         const pulse = (Math.sin(now / 150) + 1) / 2;
-        ctx.fillStyle = `rgba(234, 179, 8, ${0.4 + pulse * 0.4})`; // Pulsing Yellow
+        ctx.fillStyle = `rgba(234, 179, 8, ${0.4 + pulse * 0.4})`; 
         ctx.font = `bold ${TILE_SIZE}px monospace`;
         
         const purePxX = (visX - startX) * TILE_SIZE + TILE_SIZE / 2;
         const purePxY = (visY - startY) * TILE_SIZE + TILE_SIZE / 2;
 
-        ctx.fillText('✛', purePxX, purePxY - TILE_SIZE); // North
-        ctx.fillText('✛', purePxX, purePxY + TILE_SIZE); // South
-        ctx.fillText('✛', purePxX + TILE_SIZE, purePxY); // East
-        ctx.fillText('✛', purePxX - TILE_SIZE, purePxY); // West
+        ctx.fillText('✛', purePxX, purePxY - TILE_SIZE); 
+        ctx.fillText('✛', purePxX, purePxY + TILE_SIZE); 
+        ctx.fillText('✛', purePxX + TILE_SIZE, purePxY); 
+        ctx.fillText('✛', purePxX - TILE_SIZE, purePxY); 
     }
 
     // --- 4. OPTIMIZED LIGHTING OVERLAY ---
@@ -1143,17 +1208,19 @@ const render = () => {
     const torchBonus = hasTorch ? 6 : 0;
     const candleBonus = (gameState.player.candlelightTurns > 0) ? 8 : 0;
 
-    // ATMOSPHERE WIN: Dynamic Biome Lighting Tints
-    let r = 255, g = 140, b = 0; // Default Warm Torch
+    let r = 255, g = 140, b = 0; 
 
     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'underworld') {
         ambientLight = 0.85; 
         baseRadius = 6 + Math.floor(gameState.player.perception / 2) + torchBonus + candleBonus;
         
-        // Dungeon Tints
         const themeName = chunkManager.caveThemes[gameState.currentCaveId];
         if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
-        else if (themeName === 'VOID' || gameState.mapMode === 'underworld') { r = 168; g = 85; b = 247; }
+        else if (themeName === 'VOID' || gameState.mapMode === 'underworld') { 
+            r = 168; g = 85; b = 247; 
+            // VOID PULSE: The darkness breathes organically
+            ambientLight = 0.85 + (Math.sin(now / 800) * 0.05); 
+        }
         
     } else { 
         const timeInMinutes = (gameState.time.hour * 60) + gameState.time.minute;
@@ -1161,15 +1228,13 @@ const render = () => {
         ambientLight = timeWave * 0.85;
         baseRadius = (ambientLight > 0.3) ? 8 + torchBonus + candleBonus : 25;
 
-        // Overworld Biome Tints (Only active at night when holding a light source)
         if (ambientLight > 0.4 && (hasTorch || candleBonus > 0)) {
             const centerTile = chunkManager.getTile(p.x, p.y);
-            if (centerTile === '🍄') { r = 168; g = 85; b = 247; } // Fungal
-            else if (centerTile === '≈') { r = 134; g = 239; b = 172; } // Swamp Gas
-            else if (centerTile === '❄️' || centerTile === '🌲') { r = 186; g = 230; b = 253; } // Snow
+            if (centerTile === '🍄') { r = 168; g = 85; b = 247; } 
+            else if (centerTile === '≈') { r = 134; g = 239; b = 172; } 
+            else if (centerTile === '❄️' || centerTile === '🌲') { r = 186; g = 230; b = 253; } 
         }
         
-        // Event Overrides
         if (gameState.isBloodMoon) { r = 220; g = 38; b = 38; } 
         else if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
     }
@@ -1210,7 +1275,6 @@ const render = () => {
             const fy = p.y + (Math.random() * VIEWPORT_HEIGHT) - (VIEWPORT_HEIGHT / 2);
             
             if (centerTile === 'F' && isNight) {
-                // Fireflies
                 ParticleSystem.spawn(fx, fy, '#86efac', 'dust', '', 2); 
                 const bug = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
                 if (bug) {
@@ -1219,16 +1283,14 @@ const render = () => {
                     bug.gravity = 0; bug.lifeFade = 0.01; 
                 }
             } else if (centerTile === 'd' || centerTile === '🌋') {
-                // Grey Ash
                 ParticleSystem.spawn(fx, fy, '#9ca3af', 'dust', '', Math.random()*2 + 1); 
                 const ash = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
                 if (ash) {
-                    ash.vy = -0.03 - (Math.random() * 0.03); // Drifts up
+                    ash.vy = -0.03 - (Math.random() * 0.03); 
                     ash.vx = (Math.random() - 0.5) * 0.08;
                     ash.gravity = 0; ash.lifeFade = 0.015;
                 }
             } else if (centerTile === '🍄') {
-                // Glowing Spores
                 ParticleSystem.spawn(fx, fy, '#d946ef', 'dust', '', Math.random()*2 + 1); 
                 const spore = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
                 if (spore) {
@@ -1237,13 +1299,12 @@ const render = () => {
                     spore.gravity = 0; spore.lifeFade = 0.01;
                 }
             } else if (centerTile === 'D') {
-                // Blowing Sand
                 ParticleSystem.spawn(fx, fy, '#fde047', 'dust', '', 1); 
                 const sand = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length - 1];
                 if (sand) {
                     sand.vy = 0; 
-                    sand.vx = 0.1 + (Math.random() * 0.1); // Blows hard right
-                    sand.gravity = 0; sand.lifeFade = 0.05; // Short life
+                    sand.vx = 0.1 + (Math.random() * 0.1); 
+                    sand.gravity = 0; sand.lifeFade = 0.05; 
                 }
             }
         }
@@ -1264,17 +1325,17 @@ const render = () => {
             ctx.lineWidth = 1;
             
             const dropCount = Math.floor(200 * intensity);
+            const windShift = Math.sin(now / 1500) * 5; 
             for (let i = 0; i < dropCount; i++) {
                 const rx = Math.random() * (canvas.width / dpr);
                 const ry = Math.random() * (canvas.height / dpr);
                 const len = 10 + Math.random() * 10;
-                ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + len); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5 + windShift, ry + len); ctx.stroke();
                 
-                // JUICE: Occasional Rain Splashes on the ground
                 if (Math.random() < 0.1 * intensity) {
                     ctx.strokeStyle = 'rgba(255,255,255,0.2)';
                     ctx.beginPath();
-                    ctx.ellipse(rx - 5, ry + len, 4, 1.5, 0, 0, TWO_PI);
+                    ctx.ellipse(rx - 5 + windShift, ry + len, 4, 1.5, 0, 0, TWO_PI);
                     ctx.stroke();
                 }
             }
@@ -1289,7 +1350,6 @@ const render = () => {
                 const rx = Math.random() * (canvas.width / dpr);
                 const ry = Math.random() * (canvas.height / dpr);
                 const size = Math.random() * 2 + 1;
-                // JUICE: Dynamic Wind Drift
                 const drift = Math.sin(now / 2000 + ry) * 10;
                 ctx.fillRect(rx + drift, ry, size, size);
             }
@@ -1300,18 +1360,17 @@ const render = () => {
             ctx.strokeStyle = 'rgba(150, 150, 255, 0.5)';
             ctx.lineWidth = 2;
             const dropCount = Math.floor(300 * intensity);
+            const windShift = Math.sin(now / 1000) * 8;
             for (let i = 0; i < dropCount; i++) {
                 const rx = Math.random() * (canvas.width / dpr);
                 const ry = Math.random() * (canvas.height / dpr);
-                ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 8, ry + 15); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 8 + windShift, ry + 15); ctx.stroke();
             }
             
-            // JUICE WIN: Lightning Flashes
             if (Math.random() < 0.02 * intensity) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
                 ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             } else if (Math.random() < 0.05 * intensity) {
-                // Secondary dull flash
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
                 ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             }
@@ -1349,29 +1408,41 @@ const render = () => {
                 ctx.scale(dpr, dpr);
                 
                 const barWidth = (canvas.width / dpr) * 0.6;
-                const barHeight = 20;
+                const barHeight = 24;
                 const barX = ((canvas.width / dpr) - barWidth) / 2;
                 const barY = 40;
 
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                ctx.fillRect(barX, barY - 20, barWidth, barHeight + 20);
-
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 16px monospace';
-                ctx.textAlign = 'center';
-                ctx.fillText(activeBoss.name, (canvas.width / dpr) / 2, barY - 5);
-
-                ctx.strokeStyle = '#ffffff';
+                // UX WIN: Highly polished MMO-style boss frame
+                ctx.strokeStyle = '#facc15'; 
                 ctx.lineWidth = 2;
-                ctx.strokeRect(barX, barY, barWidth, barHeight);
+                ctx.strokeRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4);
+                
+                ctx.fillStyle = '#450a0a'; 
+                ctx.fillRect(barX, barY, barWidth, barHeight);
 
-                const healthPercent = Math.max(0, activeBoss.health / activeBoss.maxHealth);
-                ctx.fillStyle = '#dc2626';
-                ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * healthPercent, barHeight - 4);
+                const safeMaxHealth = activeBoss.maxHealth || 1; // Fallback to prevent NaN explosions
+                const healthPercent = Math.max(0, activeBoss.health / safeMaxHealth);
+                
+                const grad = ctx.createLinearGradient(barX, barY, barX, barY + barHeight);
+                grad.addColorStop(0, '#ef4444');
+                grad.addColorStop(1, '#991b1b');
+                
+                ctx.fillStyle = grad;
+                ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
 
                 ctx.fillStyle = '#ffffff';
-                ctx.font = '12px monospace';
-                ctx.fillText(`${activeBoss.health} / ${activeBoss.maxHealth}`, (canvas.width / dpr) / 2, barY + 14);
+                ctx.font = 'bold 18px monospace';
+                ctx.textAlign = 'center';
+                // Double text stroke for perfect legibility over backgrounds
+                ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+                ctx.lineWidth = 4;
+                ctx.lineJoin = 'round';
+                ctx.strokeText(activeBoss.name, (canvas.width / dpr) / 2, barY - 10);
+                ctx.fillText(activeBoss.name, (canvas.width / dpr) / 2, barY - 10);
+
+                ctx.font = 'bold 12px monospace';
+                ctx.strokeText(`${activeBoss.health} / ${safeMaxHealth}`, (canvas.width / dpr) / 2, barY + 16);
+                ctx.fillText(`${activeBoss.health} / ${safeMaxHealth}`, (canvas.width / dpr) / 2, barY + 16);
             }
         }
     }
