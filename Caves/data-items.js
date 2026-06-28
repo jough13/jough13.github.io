@@ -2810,6 +2810,28 @@ window.ITEM_DATA = {
             }
         }
     },
+    // --- FAE LORE EXPANSION ---
+    'fae_1': {
+        name: 'Fae-Touched Note',
+        type: 'journal',
+        title: 'A Curious Phenomenon',
+        tile: '📄',
+        content: "I found a ring of purple mushrooms today. The air inside felt warmer, and I swear I heard music. I'll just take a quick step inside to investigate, I should be back in time for dinner."
+    },
+    'fae_2': {
+        name: 'Rambling Bark-Scrap',
+        type: 'journal',
+        title: 'The Music Never Stops',
+        tile: '📜',
+        content: "The music... it is so beautiful but it never stops. I danced with the tall, pale ones. They took my name in exchange for a cup of silver dew. I am so thirsty, but the dew tastes like ash now."
+    },
+    'fae_3': {
+        name: 'Weathered Warning',
+        type: 'journal',
+        title: 'Do Not Step In',
+        tile: '📄',
+        content: "If you see the purple rings, close your ears and walk away. My brother stepped into one for just a minute. When he walked out, fifty years had passed. He looks exactly the same, but his eyes are completely black."
+    },
     '📜1': {
         name: 'Chronicle Vol. I',
         type: 'journal',
