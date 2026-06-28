@@ -132,6 +132,7 @@ function renderHotbar() {
                 }
             }
         } else {
+            // JUICE WIN: Empty slots are ghosted out to visually prioritize active abilities
             slotDiv.classList.add('border-dashed', 'opacity-30', 'border-gray-600');
             slotDiv.title = "Empty Slot\n(Open Inventory/Spellbook and click 'Bind')";
         }
