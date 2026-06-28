@@ -126,7 +126,10 @@ function handleCraftItem(recipeName, requestBatch = false) {
             if (needed <= 0) break; // Optimization: Stop looping if we've taken enough
             
             const item = player.inventory[i];
-            if (item.name === matName && !item.isEquipped) {
+            
+            // This forces the loop to completely ignore ghost stacks, 
+            // guaranteeing that 'take' is always a valid, positive number!
+            if (item.name === matName && !item.isEquipped && item.quantity > 0) {
                 const take = Math.min(item.quantity, needed);
                 item.quantity -= take;
                 needed -= take;
@@ -134,7 +137,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
         }
     }
 
-    // PERFORMANCE WIN: Clean up empty stacks in one fast pass using .filter()
+    // Clean up empty stacks in one fast pass using .filter()
     // This prevents the V8 engine from thrashing memory by repeatedly re-indexing via .splice()
     player.inventory = player.inventory.filter(item => item.quantity > 0);
 
@@ -174,7 +177,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
             if (itemTemplate.type === 'armor') finalDefense = (finalDefense || 0) + 1;
         }
 
-        // --- CONTENT WIN: Culinary Criticals! ---
+        // --- Culinary Criticals! ---
         if (isCooking && Math.random() < 0.10 + (player.luck * 0.02)) {
             culinaryCrits++;
             craftYield += 1; 
@@ -188,7 +191,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
         if (curStack && isStackable) {
             curStack.quantity += craftYield; 
         } else {
-            // --- ANTI-CHEAT & EXPLOIT FIX ---
+            // --- ANTI-CHEAT ---
             if (player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap() : 9)) {
                 // Safely clone tags array
                 const safeTags = itemTemplate.tags ? [...itemTemplate.tags] : null;
@@ -213,7 +216,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
                 const dropTile = itemTemplate.tile || '🎒';
                 logMessage(`{red:Your pack is full! The ${craftedName} drops to the floor.}`);
                 
-                // JUICE & QoL WIN: Metallic Thud and visual explosion so they don't miss the drop!
+                // Metallic Thud and visual explosion so they don't miss the drop!
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 8);
                 
@@ -238,19 +241,19 @@ function handleCraftItem(recipeName, requestBatch = false) {
     }
 
     // 6. Flavor & Juice Logging
-    // EXPANDABILITY WIN: Track lifetime metrics!
+    // Track lifetime metrics!
     if (!player.metrics) player.metrics = {};
     if (isCooking) player.metrics.potionsBrewed = (player.metrics.potionsBrewed || 0) + totalYield;
     else player.metrics.itemsCrafted = (player.metrics.itemsCrafted || 0) + totalYield;
     
-    // JUICE WIN: Floating World Particles for Crafting!
+    // Floating World Particles for Crafting!
     if (typeof ParticleSystem !== 'undefined') {
         const floatText = masterworksCrafted > 0 ? `+${masterworksCrafted} ${lastCraftedName}` : `+${totalYield} ${lastCraftedName}`;
         const floatColor = masterworksCrafted > 0 ? '#a855f7' : (culinaryCrits > 0 ? '#facc15' : '#4ade80');
         ParticleSystem.createFloatingText(player.x, player.y, floatText, floatColor);
     }
 
-    // LORE WIN: Dynamic Randomized Crafting Messages
+    // Dynamic Randomized Crafting Messages
     if (masterworksCrafted > 0) {
         const mwFlavors = [
             "Critical Success! You forged",
@@ -488,7 +491,7 @@ function renderCraftingModal() {
     craftingRecipeList.appendChild(fragment);
 }
 
-// SECURITY & PERFORMANCE WIN: Event Delegation
+// Event Delegation
 function initCraftingListeners() {
     const closeBtn = document.getElementById('closeCraftingButton');
     if (closeBtn) {
