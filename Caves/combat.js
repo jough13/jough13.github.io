@@ -1544,8 +1544,8 @@ async function runCompanionTurn() {
 
                 try {
                     const txResult = await window.withTimeout(enemyRef.transaction(currentData => {
-                        // 🚨 THE FIX: Return null instead of undefined
-                        if (currentData === null) return null;
+                        // Return undefined to ABORT
+                        if (currentData === null) return undefined;
                         
                         let enemy = JSON.parse(JSON.stringify(currentData));
                         enemy.health = Number(enemy.health);
@@ -1554,6 +1554,7 @@ async function runCompanionTurn() {
                         const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
                         enemy.health -= dmg;
 
+                        // Return null to legitimately delete the enemy upon death
                         if (enemy.health <= 0) return null;
                         return enemy;
                     }), 3000);
@@ -1611,9 +1612,9 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
     try {
         const doTransaction = () => enemyRef.transaction(currentData => {
-            // 🚨 THE FIX: Return null instead of undefined. 
-            // This forces Firebase to ping the server to see if the enemy actually exists!
-            if (currentData === null) return null; 
+            // Return undefined instead of null to ABORT the transaction
+            // If another player already killed it, this stops the XP exploit instantly.
+            if (currentData === null) return undefined; 
             
             // DEEP CLONE to absolutely prevent Firebase maxretry mutation bugs
             let enemy = JSON.parse(JSON.stringify(currentData));
@@ -1623,6 +1624,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             
             enemy.health -= safeDamage;
             
+            // If health drops to 0, returning null tells Firebase to officially DELETE the node.
             if (enemy.health <= 0) return null; 
             
             return enemy; 
