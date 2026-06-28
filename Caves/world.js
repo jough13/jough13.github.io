@@ -259,6 +259,10 @@ const chunkManager = {
 
                         const mapX = roomX + rx;
                         const mapY = roomY + ry;
+                        
+                        // ROBUSTNESS WIN: Absolute bounds checking to prevent array out-of-bounds crashes
+                        if (mapY < 0 || mapY >= CAVE_HEIGHT || mapX < 0 || mapX >= CAVE_WIDTH) continue;
+
                         const templateTile = room.map[ry][rx];
 
                         // Skip empty spaces or undefined tiles
@@ -425,15 +429,14 @@ const chunkManager = {
         // --- SAFE ZONE CAVE NERF ---
         // If within 250 tiles of spawn, remove "Hard" enemies from the spawn pool
         if (distSq < SAFE_ZONE_SQ && floorZ === 1) {
-            // Added Golems (🧌), Draugr (Z), Scorpions (🦂), and Spiders (@) to the ban list!
             const hardEnemies =['C', 'm', 'o', 'Ø', 'Y', 'D', '🐲', '🧙', 'v', 'f', '🧌', 'Z', '🦂', '@'];
             enemyTypes = enemyTypes.filter(e => !hardEnemies.includes(e));
             
             // Safety fallback: If we filtered everything out, add basics
             if (enemyTypes.length === 0) enemyTypes = ['r', 'b', 'g'];
         }
+        
         for (let i = 0; i < enemyCount; i++) {
-
             const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
             const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
 
@@ -469,7 +472,7 @@ const chunkManager = {
                     castRange: enemyTemplate.castRange || 0,
                     spellDamage: enemyTemplate.spellDamage || 0,
                     inflicts: enemyTemplate.inflicts || null,
-                    tags: enemyTemplate.tags ? [...enemyTemplate.tags] : [], // ECS WIN
+                    tags: enemyTemplate.tags ? [...enemyTemplate.tags] : [], 
                     madnessTurns: 0,
                     frostbiteTurns: 0,
                     poisonTurns: 0,
@@ -603,8 +606,8 @@ const chunkManager = {
                 const by = Math.floor(CAVE_HEIGHT / 2);
 
                 // FIX: Carve an arena safely so the boss doesn't spawn entombed in walls!
-                for(let oy=-3; oy<=3; oy++) {
-                    for(let ox=-3; ox<=3; ox++) {
+                for(let oy=-4; oy<=4; oy++) {
+                    for(let ox=-4; ox<=4; ox++) {
                         // Check bounds to be absolutely safe
                         if(by+oy > 0 && by+oy < CAVE_HEIGHT-1 && bx+ox > 0 && bx+ox < CAVE_WIDTH-1) {
                             map[by+oy][bx+ox] = theme.floor;
@@ -648,11 +651,11 @@ const chunkManager = {
             '🌳.........🌳',
             '🌳....X....🌳',
             '🌳🌳🌳🌳🌳🌳🌳🌳🌳🌳🌳'
-        ].map(row => row.split('')); // Convert strings to arrays so we can inject tiles
+        ].map(row => row.split('')); 
 
         // Default Features
-        map[4][3] = '🛏️'; // Always have a bed to set spawn & heal
-        map[3][2] = '📋'; // The Ledger to buy upgrades
+        map[4][3] = '🛏️'; 
+        map[3][2] = '📋'; 
 
         // Dynamic Upgrades
         if (upgrades.includes('stash')) map[3][8] = '☒';
@@ -664,7 +667,6 @@ const chunkManager = {
             map[3][4] = '⛺'; map[3][5] = '⛺'; map[3][6] = '⛺';
         }
 
-        // Save into castle maps so the engine treats it as a safe zone
         this.castleMaps['player_camp'] = map;
         return map;
     },
@@ -683,7 +685,8 @@ const chunkManager = {
             if (isDark) {
                 chosenLayoutKey = 'FORTRESS'; 
             } else {
-                const safeLayouts = ['COURTYARD', 'LIBRARY_WING', 'TOWER'];
+                // EXPANSION WIN: Dynamically read available safe layouts instead of hardcoding
+                const safeLayouts = Object.keys(CASTLE_LAYOUTS).filter(k => k !== 'FORTRESS');
                 chosenLayoutKey = safeLayouts[Math.floor(random() * safeLayouts.length)];
             }
         }
@@ -1174,7 +1177,11 @@ const chunkManager = {
                         chunkData[y][x] = '🕳️';
                     }
                     // --- 2. BIOME ANOMALIES (Very Rare) ---
-                    else if (tile === 'F' && featureRoll < 0.0001) {
+                    // The Wandering Bard! (Very rare spawn in open terrain)
+                    else if ((tile === '.' || tile === 'F') && featureRoll < 0.00005) {
+                        chunkData[y][x] = '🎵';
+                    }
+                    else if (tile === 'F' && featureRoll >= 0.00005 && featureRoll < 0.0001) {
                         chunkData[y][x] = '🌳e';
                     }
                     else if (tile === 'F' && featureRoll > 0.0001 && featureRoll < 0.00015) {
@@ -1185,6 +1192,10 @@ const chunkManager = {
                     }
                     else if (tile === 'D' && featureRoll < 0.0001) {
                         chunkData[y][x] = '🦴d';
+                    }
+                    // --- EXPANSION WIN: Smoking Meteorites ---
+                    else if ((tile === '^' || tile === 'd') && featureRoll > 0.0004 && featureRoll < 0.00045) {
+                        chunkData[y][x] = '🌠'; 
                     }
                     // --- Minor Environment Additions ---
                     else if (tile === '.' && featureRoll > 0.0003 && featureRoll < 0.0004) {
@@ -1409,12 +1420,13 @@ const chunkManager = {
     },
 
     getTile(worldX, worldY) {
+        // PERFORMANCE WIN: Math.floor correctly maps negative coordinates over bitwise shifts
         const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
         const chunkY = Math.floor(worldY / this.CHUNK_SIZE);
         const chunkId = `${chunkX},${chunkY}`;
 
-        const localX = (worldX % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
-        const localY = (worldY % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
+        const localX = ((worldX % this.CHUNK_SIZE) + this.CHUNK_SIZE) % this.CHUNK_SIZE;
+        const localY = ((worldY % this.CHUNK_SIZE) + this.CHUNK_SIZE) % this.CHUNK_SIZE;
         const tileKey = `${localX},${localY}`;
         
         // Always check WorldState first (Diff overrides procedural)
