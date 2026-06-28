@@ -28,7 +28,8 @@ function openEnchantingModal() {
     if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
     renderEnchantingModal();
-    document.getElementById('enchantingModal').classList.remove('hidden');
+    const modal = document.getElementById('enchantingModal');
+    if (modal) modal.classList.remove('hidden');
 }
 
 function renderEnchantingModal() {
@@ -53,7 +54,9 @@ function renderEnchantingModal() {
 
     // JUICE WIN: Pulsing color if you have a lot of dust
     const dustColorClass = dustAmount > 50 ? 'text-fuchsia-400 animate-pulse' : 'text-purple-400';
-    dustDisplay.innerHTML = `Arcane Dust: <span class="${dustColorClass} drop-shadow-md">${dustAmount}</span>`;
+    if (dustDisplay) {
+        dustDisplay.innerHTML = `Arcane Dust: <span class="${dustColorClass} drop-shadow-md">${dustAmount}</span>`;
+    }
 
     // PERFORMANCE WIN: DocumentFragments prevent layout thrashing
     const disFrag = document.createDocumentFragment();
@@ -69,11 +72,18 @@ function renderEnchantingModal() {
         // --- DISENCHANT LIST ---
         if (isGear && item._rarity) {
             const yieldAmt = DUST_YIELDS[item._rarity] || 1;
+            
+            // JUICE WIN: Dynamic text colors matching rarity
+            let rarityColor = 'text-green-400';
+            if (item._rarity === 'rare') rarityColor = 'text-purple-400';
+            if (item._rarity === 'epic') rarityColor = 'text-red-400';
+            if (item._rarity === 'legendary') rarityColor = 'text-yellow-400';
+
             const li = document.createElement('li');
-            li.className = 'shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-red-500 transition-all duration-150';
+            li.className = `shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-red-500 transition-all duration-150`;
             li.innerHTML = `
                 <div>
-                    <span class="font-bold text-lg text-purple-400">${item.tile || '🎒'} ${item.name}</span>
+                    <span class="font-bold text-lg ${rarityColor} drop-shadow-sm">${item.tile || '🎒'} ${item.name}</span>
                     <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Yields: <span class="text-purple-300 font-bold">+${yieldAmt} Dust</span></span>
                 </div>
                 <button data-disenchant="${index}" style="transform: translateZ(0);" class="bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 border-red-900 active:border-b-0 active:mt-0.5">Shatter</button>
@@ -87,26 +97,37 @@ function renderEnchantingModal() {
             const cost = UPGRADE_COSTS[currentRarity];
             const canAfford = dustAmount >= cost;
             
-            const btnClass = canAfford ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-700 opacity-50 cursor-not-allowed';
-            const nameColor = item._rarity ? 'text-purple-400' : 'text-gray-200';
+            // UX WIN: Upgrade Button color matches the tier you are stepping INTO
+            let targetColorTheme = 'green';
+            if (currentRarity === 'uncommon') targetColorTheme = 'purple';
+            if (currentRarity === 'rare') targetColorTheme = 'red';
+            if (currentRarity === 'epic') targetColorTheme = 'yellow';
+            
+            const btnClass = canAfford ? `bg-${targetColorTheme}-600 hover:bg-${targetColorTheme}-500 border-${targetColorTheme}-900 text-white` : 'bg-gray-700 border-gray-900 opacity-50 cursor-not-allowed text-gray-400';
+            
+            // Text color matches the tier it CURRENTLY is
+            let nameColor = 'text-gray-200';
+            if (currentRarity === 'uncommon') nameColor = 'text-green-400';
+            if (currentRarity === 'rare') nameColor = 'text-purple-400';
+            if (currentRarity === 'epic') nameColor = 'text-red-400';
 
             const li = document.createElement('li');
-            li.className = 'shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-green-500 transition-all duration-150';
+            li.className = `shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-${targetColorTheme}-500 transition-all duration-150`;
             li.innerHTML = `
                 <div>
-                    <span class="font-bold text-lg ${nameColor}">${item.tile || '🎒'} ${item.name}</span>
+                    <span class="font-bold text-lg ${nameColor} drop-shadow-sm">${item.tile || '🎒'} ${item.name}</span>
                     <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Cost: <span class="${canAfford ? 'text-purple-300' : 'text-red-400'} font-bold">-${cost} Dust</span></span>
                 </div>
-                <button data-enchant="${index}" style="transform: translateZ(0);" class="${btnClass} text-white px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 border-gray-900 active:border-b-0 active:mt-0.5" ${canAfford ? '' : 'disabled'}>Infuse</button>
+                <button data-enchant="${index}" style="transform: translateZ(0);" class="${btnClass} px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 active:border-b-0 active:mt-0.5" ${canAfford ? '' : 'disabled'}>Infuse</button>
             `;
             enchFrag.appendChild(li);
         }
     });
 
-    if (disFrag.childNodes.length === 0) disenchantList.innerHTML = '<li class="italic text-gray-500 text-sm p-4 text-center border border-gray-700 rounded-lg bg-black bg-opacity-20 shadow-inner">No unequipped magical items to destroy.</li>';
+    if (disFrag.childNodes.length === 0) disenchantList.innerHTML = '<li class="italic text-gray-500 text-sm p-4 text-center border border-gray-700 rounded-lg bg-black bg-opacity-20 shadow-inner font-serif">No unequipped magical items to destroy.</li>';
     else disenchantList.appendChild(disFrag);
 
-    if (enchFrag.childNodes.length === 0) enchantList.innerHTML = '<li class="italic text-gray-500 text-sm p-4 text-center border border-gray-700 rounded-lg bg-black bg-opacity-20 shadow-inner">No unequipped weapons or armor to enchant.</li>';
+    if (enchFrag.childNodes.length === 0) enchantList.innerHTML = '<li class="italic text-gray-500 text-sm p-4 text-center border border-gray-700 rounded-lg bg-black bg-opacity-20 shadow-inner font-serif">No unequipped weapons or armor to enchant.</li>';
     else enchantList.appendChild(enchFrag);
 }
 
@@ -123,11 +144,20 @@ function handleDisenchant(index) {
         const oldName = item.name;
         const oldRarity = item._rarity;
 
+        // --- ROBUSTNESS WIN: Capacity Check ---
+        // Ensure we actually have space for the dust if we don't already have a stack!
+        const existingDust = player.inventory.find(i => i.name === 'Arcane Dust');
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+        if (!existingDust && player.inventory.length >= invCap) {
+            logMessage("{red:You must have an empty inventory slot to receive the Arcane Dust!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return; // Abort shattering!
+        }
+
         // Remove the item
         player.inventory.splice(index, 1);
 
         // Give Dust
-        const existingDust = player.inventory.find(i => i.name === 'Arcane Dust');
         if (existingDust) {
             existingDust.quantity += yieldAmt;
         } else {
@@ -146,7 +176,13 @@ function handleDisenchant(index) {
         
         if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
         if (typeof ParticleSystem !== 'undefined') {
-            ParticleSystem.createExplosion(player.x, player.y, '#a855f7', oldRarity === 'legendary' ? 30 : 15);
+            // JUICE WIN: Particles color-match the item being destroyed!
+            let explosionColor = '#4ade80'; // Uncommon Green
+            if (oldRarity === 'rare') explosionColor = '#a855f7';
+            if (oldRarity === 'epic') explosionColor = '#ef4444';
+            if (oldRarity === 'legendary') explosionColor = '#facc15';
+            
+            ParticleSystem.createExplosion(player.x, player.y, explosionColor, oldRarity === 'legendary' ? 30 : 15);
             ParticleSystem.createFloatingText(player.x, player.y, `+${yieldAmt} Dust`, "#c084fc");
         }
         
@@ -271,10 +307,13 @@ function saveEnchantingState() {
 }
 
 // PERFORMANCE & SECURITY WIN: Event Delegation
-document.addEventListener('DOMContentLoaded', () => {
+// Use an IIFE to ensure bindings are applied safely and exactly once, 
+// protecting against hot-reload duplication.
+(function initEnchantingListeners() {
     const enchantModal = document.getElementById('enchantingModal');
-    const closeBtn = document.getElementById('closeEnchantingButton');
+    if (!enchantModal || enchantModal.dataset.listenersBound) return;
 
+    const closeBtn = document.getElementById('closeEnchantingButton');
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
             enchantModal.classList.add('hidden');
@@ -283,27 +322,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (enchantModal) {
-        // One listener to rule them all
-        enchantModal.addEventListener('click', (e) => {
-            // Ignore clicks if the engine is already processing an upgrade
-            if (isEnchantingBusy) return;
+    // One listener to rule them all
+    enchantModal.addEventListener('click', (e) => {
+        // Ignore clicks if the engine is already processing an upgrade
+        if (isEnchantingBusy) return;
 
-            const disBtn = e.target.closest('button[data-disenchant]');
-            if (disBtn) {
-                const idx = parseInt(disBtn.dataset.disenchant, 10);
-                if (!isNaN(idx)) handleDisenchant(idx);
-                return;
-            }
+        const disBtn = e.target.closest('button[data-disenchant]');
+        if (disBtn) {
+            const idx = parseInt(disBtn.dataset.disenchant, 10);
+            if (!isNaN(idx)) handleDisenchant(idx);
+            return;
+        }
 
-            const enchBtn = e.target.closest('button[data-enchant]');
-            if (enchBtn && !enchBtn.disabled) {
-                const idx = parseInt(enchBtn.dataset.enchant, 10);
-                if (!isNaN(idx)) handleEnchant(idx);
-                return;
-            }
-        });
-    }
-});
+        const enchBtn = e.target.closest('button[data-enchant]');
+        if (enchBtn && !enchBtn.disabled) {
+            const idx = parseInt(enchBtn.dataset.enchant, 10);
+            if (!isNaN(idx)) handleEnchant(idx);
+            return;
+        }
+    });
+    
+    enchantModal.dataset.listenersBound = 'true';
+})();
 
 // --- END OF FILE enchanting.js ---
