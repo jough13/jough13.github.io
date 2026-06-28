@@ -1012,7 +1012,14 @@ function useInventoryItem(itemIndex) {
 
     // --- TREASURE MAPS ---
     } else if (itemToUse.type === 'treasure_map') {
-        if (!gameState.activeTreasure) {
+        
+        // Prevent reading maps indoors or in alternate dimensions
+        if (gameState.mapMode !== 'overworld') {
+            logMessage("{red:You must be under the open sky in the Overworld to chart these coordinates.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            itemUsed = false; // Prevents turn-ending and keeps the map in inventory
+        } 
+        else if (!gameState.activeTreasure) {
             const dist = 50 + Math.floor(Math.random() * 100);
             const angle = Math.random() * 2 * Math.PI;
             const tx = Math.floor(player.x + Math.cos(angle) * dist);
@@ -1023,9 +1030,17 @@ function useInventoryItem(itemIndex) {
 
             logMessage(`{gold:The map reveals a hidden mark! Location: (${tx}, ${-ty}).}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            
+            // Actually consume the map so they don't have infinite treasures!
+            itemToUse.quantity--;
+            if (itemToUse.quantity <= 0) player.inventory.splice(itemIndex, 1);
+            
             itemUsed = true;
         } else {
-            logMessage(`The map marks a location at (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y}).`);
+            // They already have an active treasure, remind them of the coordinates
+            logMessage(`You are already tracking a treasure at (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y}).`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            itemUsed = false;
         }
 
     // --- JOURNALS & LORE ---
