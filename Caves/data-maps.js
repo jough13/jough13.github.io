@@ -29,7 +29,6 @@ window.REALM_MUTATORS = {
         apply: (tile) => (Math.random() < 0.05 && tile === '.') ? 'Ω' : tile,
         enemyBuff: 3.0
     },
-    // --- EXPANSION WIN: New Mutators ---
     'frozen_wastes': {
         name: "Glacial",
         description: "An eternal, magical winter grips this realm.",
@@ -45,10 +44,55 @@ window.REALM_MUTATORS = {
         description: "The very earth has crystallized under immense pressure.",
         apply: (tile) => (tile === '^' || tile === '⛰') ? '💎c' : tile,
         enemyBuff: 1.4
+    },
+    // --- EXPANSION WIN: Wild Magic ---
+    'wild_magic': {
+        name: "Chaotic",
+        description: "Raw mana leaks from the earth. The flora is heavily mutated.",
+        apply: (tile) => (tile === '.' && Math.random() < 0.3) ? '🍄' : tile,
+        enemyBuff: 1.5
     }
 };
 
 window.TILE_DATA = {
+    '🎵': {
+        type: 'anomaly',
+        name: 'Wandering Bard',
+        flavor: "You hear the faint strumming of a lute on the wind.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("The bard nods at you silently, tuning his lute.");
+                return null;
+            }
+
+            const songs = [
+                "He sings a sorrowful ballad about the Fall of Alaric. The melody is haunting.",
+                "He strums a fast, upbeat tavern song about a dwarf who dug too deep.",
+                "He sings of the Leviathan that sleeps beneath the eastern waves. You feel a chill.",
+                "He hums an ancient Elven lullaby. You feel your exhaustion fade away.",
+                "He sings a riddle-song about the Shadowed Hand. The lyrics contain hidden warnings."
+            ];
+            const song = songs[Math.floor(Math.random() * songs.length)];
+
+            loreTitle.textContent = "The Wandering Bard";
+            loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">A traveler sits on a rock, resting a lute on his knee. He smiles as you approach.</p><p class="font-serif leading-relaxed text-blue-200">"${song}"</p>`;
+            loreModal.classList.remove('hidden');
+
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic(); 
+            
+            state.player.charisma += 2;
+            logMessage("{gold:The music lifts your spirits! (+2 Charisma)}");
+            
+            if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined') {
+                triggerStatAnimation(statDisplays.charisma, 'stat-pulse-green');
+            }
+            if (typeof grantXp === 'function') grantXp(50);
+
+            state.lootedTiles.add(tileId);
+            return { charisma: state.player.charisma, lootedTiles: Object.fromEntries(state.lootedTiles) };
+        }
+    },
     '⛺a': {
         type: 'anomaly',
         name: 'Abandoned Campsite',
@@ -61,34 +105,38 @@ window.TILE_DATA = {
             }
 
             let biome = 'Plains';
-            const t = chunkManager.getTile(x, y);
+            let t = '.';
+            // BUG FIX & ROBUSTNESS: Ensure we pull the chunk correctly
+            if (typeof chunkManager !== 'undefined') {
+                t = chunkManager.getTile(x, y);
+            }
+            
             if (t === 'D') biome = 'Desert';
             if (t === '^') biome = 'Mountain';
             if (t === '≈') biome = 'Swamp';
 
             let story = "You find a journal: 'The wolves are circling. We are out of arrows.'";
-            let loot = '➹'; // Wooden Arrow
+            let loot = '➹'; 
 
             if (biome === 'Desert') {
                 story = "You find a skeleton clutching an empty water flask. 'The heat... the mirages lie.'";
-                loot = '🫙'; // Empty Bottle
+                loot = '🫙'; 
             } else if (biome === 'Mountain') {
                 story = "A frozen corpse huddles in the tent. 'The cold took my fingers. I cannot strike a spark.'";
-                loot = '🪵'; // Wood Log
+                loot = '🪵'; 
             } else if (biome === 'Swamp') {
                 story = "The tent is covered in slime. A note reads: 'Do not trust the glowing lights in the fog.'";
-                loot = '🧪a'; // Antidote
+                loot = '🧪a'; 
             }
 
             loreTitle.textContent = "A Grim Discovery";
             loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">You search the ruined camp...</p><p class="font-serif text-gray-300 leading-relaxed">${story}</p>`;
             loreModal.classList.remove('hidden');
 
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 500); // Rummage sound
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 500); 
             
             const itemTemplate = window.ITEM_DATA[loot];
             if (state.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
-                // BUG FIX: Create a clean copy instead of using spread operator
                 state.player.inventory.push({ 
                     templateId: loot,
                     name: itemTemplate.name,
@@ -98,14 +146,84 @@ window.TILE_DATA = {
                 });
                 logMessage(`{purple:You salvaged a ${itemTemplate.name}.}`);
             } else {
-                // BUG FIX: Drop the item if inventory is full to prevent deleting it
                 logMessage(`{red:You salvaged a ${itemTemplate.name}, but your pack is full! It drops to the ground.}`);
-                if (state.mapMode === 'overworld') chunkManager.setWorldTile(x, y, loot, 24);
+                if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
+                    chunkManager.setWorldTile(x, y, loot, 24);
+                }
                 state.mapDirty = true;
             }
 
             state.lootedTiles.add(tileId);
             return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles) };
+        }
+    },
+    // --- LORE WIN: New Overworld Event Anomaly ---
+    '🌠': {
+        type: 'anomaly',
+        name: 'Smoking Meteorite',
+        flavor: "A chunk of star-metal, still radiating intense heat and strange magic.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("Only a scorched crater remains.");
+                return null;
+            }
+
+            const hasPickaxe = state.player.inventory.some(i => i.name === 'Pickaxe' || i.name === 'Diamond Tipped Pickaxe');
+            if (!hasPickaxe) {
+                logMessage("{red:The metal is searing hot and impossibly hard. You need a Pickaxe to break it.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return null;
+            }
+
+            logMessage("{cyan:You strike the meteorite! Sparks and raw magic erupt into the air!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); 
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#38bdf8', 20);
+            
+            state.player.stamina = Math.max(0, state.player.stamina - 5);
+            if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('staminaDisplay'), false);
+
+            // 15% Chance a Void Demon hitched a ride on the meteorite!
+            if (Math.random() < 0.15) {
+                logMessage("{red:The meteorite shatters... AND SOMETHING HORRIFIC PULLS ITSELF OUT!}");
+                state.screenShake = 20;
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                
+                const enemyTemplate = window.ENEMY_DATA['😈d'];
+                const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, x, y) : enemyTemplate;
+                
+                // Spawn it adjacent to the rock
+                const spawnX = x + 1;
+                const enemyId = `overworld:${spawnX},${-y}`;
+                state.sharedEnemies[enemyId] = { ...scaledStats, tile: '😈d', x: spawnX, y: y, spawnTime: Date.now() };
+                
+                if (typeof EnemyNetworkManager !== 'undefined') {
+                    rtdb.ref(EnemyNetworkManager.getPath(spawnX, y, enemyId)).set(state.sharedEnemies[enemyId]);
+                }
+            }
+
+            if (state.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                state.player.inventory.push({
+                    name: 'Star-Metal Ore', type: 'junk', quantity: 1, tile: '☄️'
+                });
+                logMessage("{purple:You successfully harvested Star-Metal Ore!}");
+                if (typeof grantXp === 'function') grantXp(100);
+            } else {
+                logMessage("{red:You mined the Star-Metal, but your inventory is full! It drops to the ground.}");
+                if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(x, y, '☄️', 24);
+            }
+
+            // Consume the rock visually
+            if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(x, y, 'd');
+            state.mapDirty = true;
+            if (typeof renderInventory === 'function') renderInventory();
+            
+            state.lootedTiles.add(tileId);
+            return { 
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, 
+                lootedTiles: Object.fromEntries(state.lootedTiles),
+                stamina: state.player.stamina
+            };
         }
     },
     '🏟️': {
@@ -120,7 +238,6 @@ window.TILE_DATA = {
         onInteract: (state, x, y) => {
             const mapId = state.currentCaveId;
             
-            // Check if enemies are still alive
             const liveEnemies = state.instancedEnemies.filter(e => e.health > 0);
             if (liveEnemies.length > 0) {
                 logMessage("{red:You must defeat the current wave first!}");
@@ -139,35 +256,31 @@ window.TILE_DATA = {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); 
             state.screenShake = 15;
 
-            // Define the waves
             const waveData = [
-                ['s', 's', 's', 's'],               // Wave 1: Skeletons
-                ['b', 'b', 'b', 'C'],               // Wave 2: Bandits & Chief
-                ['o', 'o', 'w', 'w'],               // Wave 3: Orcs & Wolves
-                ['🧌', '🧌', 'f', 'f'],               // Wave 4: Golems & Fire Elementals
-                ['🩸c']                              // Wave 5: THE CHAMPION
+                ['s', 's', 's', 's'],               
+                ['b', 'b', 'b', 'C'],               
+                ['o', 'o', 'w', 'w'],               
+                ['🧌', '🧌', 'f', 'f'],               
+                ['🩸c']                              
             ];
 
             const spawns = waveData[state.player.arenaWave - 1];
-            
-            // Spawn them in the corners of the 15x15 arena
             const spawnPoints = [ [3,3], [11,3], [3,11], [11,11] ]; 
 
             spawns.forEach((enemyChar, index) => {
                 const pt = spawnPoints[index % spawnPoints.length];
                 const t = window.ENEMY_DATA[enemyChar];
                 
-                // Scale them as if they are in the deep endgame (Distance 2500)
                 let scaled = typeof getScaledEnemy === 'function' ? getScaledEnemy(t, 2500, 2500) : t;
 
                 state.instancedEnemies.push({
                     id: `${mapId}:wave_${state.player.arenaWave}_${index}`,
                     x: pt[0], y: pt[1], tile: enemyChar, name: scaled.name,
                     health: scaled.maxHealth, maxHealth: scaled.maxHealth,
-                    attack: scaled.attack, defense: scaled.defense, xp: scaled.xp,
-                    loot: t.loot, isBoss: t.isBoss, isElite: scaled.isElite,
-                    color: scaled.color, caster: t.caster, castRange: t.castRange, 
-                    spellDamage: t.spellDamage, inflicts: t.inflicts,
+                    attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp || 0,
+                    loot: t.loot, isBoss: t.isBoss || false, isElite: scaled.isElite || false,
+                    color: scaled.color || null, caster: t.caster || false, castRange: t.castRange || 0, 
+                    spellDamage: t.spellDamage || 0, inflicts: t.inflicts || null,
                     madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
                 });
                 
@@ -175,9 +288,8 @@ window.TILE_DATA = {
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(pt[0], pt[1], '#ef4444');
             });
 
-            // LOCK THE PLAYER IN FOR THE FINAL BOSS
             if (state.player.arenaWave === 5) {
-                chunkManager.caveMaps[mapId][13][7] = '▓'; // Delete the exit stairs
+                chunkManager.caveMaps[mapId][13][7] = '▓'; 
                 logMessage("{red:The gates slam shut! You are trapped with the Champion!}");
             }
 
@@ -199,7 +311,6 @@ window.TILE_DATA = {
             let landX = x;
             let landY = y;
             
-            // Slide up to 15 tiles in the direction pushed
             for(let i=1; i<=15; i++) {
                 const checkX = x + (dx * i);
                 const checkY = y + (dy * i);
@@ -209,14 +320,13 @@ window.TILE_DATA = {
                 else if (state.mapMode === 'dungeon') tile = chunkManager.caveMaps[state.currentCaveId][checkY][checkX];
                 else if (state.mapMode === 'castle') tile = chunkManager.castleMaps[state.currentCastleId][checkY][checkX];
 
-                // Stop if we hit a wall, water, or an enemy
                 if (['^', '▓', '▒', '🧱', '🏚', '🏚️', '~', '🌋'].includes(tile) || (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile])) {
                     break;
                 }
                 
                 landX = checkX;
                 landY = checkY;
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(landX, landY, '#facc15', 2); // Spark trail!
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(landX, landY, '#facc15', 2); 
             }
 
             state.player.x = landX;
@@ -243,14 +353,12 @@ window.TILE_DATA = {
             
             state.screenShake = 10;
             
-            // Fling the player 4 tiles in the direction they were walking
             let landX = x;
             let landY = y;
             for(let i=1; i<=4; i++) {
                 const checkX = x + (dx * i);
                 const checkY = y + (dy * i);
                 const tile = chunkManager.getTile(checkX, checkY);
-                // Stop if we hit a solid wall or mountain
                 if (['^', '▓', '▒', '🧱'].includes(tile)) break;
                 landX = checkX;
                 landY = checkY;
@@ -280,17 +388,14 @@ window.TILE_DATA = {
                 logMessage("{purple:The Crown hums. Stormbringer glows. The obsidian doors grind open...}");
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                 
-                // Teleport to the Boss Room!
                 state.mapMode = 'dungeon';
                 state.currentCaveId = 'tomb_of_alaric';
-                state.currentCaveTheme = 'VOID'; // Dark, corrupted room
+                state.currentCaveTheme = 'VOID'; 
                 
-                // BUG FIX: Inject the theme explicitly so renderer.js doesn't crash!
                 chunkManager.caveThemes['tomb_of_alaric'] = 'VOID'; 
                 
                 state.overworldExit = { x: state.player.x, y: state.player.y };
 
-                // Generate a custom 9x9 Boss Arena
                 const arena = [
                     '▓▓▓▓▓▓▓▓▓',
                     '▓.......▓',
@@ -305,17 +410,16 @@ window.TILE_DATA = {
                 state.player.x = 4;
                 state.player.y = 5;
 
-                // Spawn Alaric!
                 const bossTemplate = window.ENEMY_DATA['☠️'];
                 if (bossTemplate) {
                     state.instancedEnemies = [{
                         id: `alaric_boss`, x: 4, y: 3, tile: '☠️',
                         name: bossTemplate.name, isBoss: true,
                         health: bossTemplate.maxHealth, maxHealth: bossTemplate.maxHealth,
-                        attack: bossTemplate.attack, defense: bossTemplate.defense,
+                        attack: bossTemplate.attack, defense: bossTemplate.defense || 0,
                         xp: bossTemplate.xp, loot: bossTemplate.loot,
                         caster: true, castRange: 6, spellDamage: 12, inflicts: 'madness',
-                        madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
+                        madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0, tags: []
                     }];
                 }
 
@@ -339,21 +443,18 @@ window.TILE_DATA = {
             const p = state.player;
             const inv = p.inventory;
             
-            // Material checks
             const hasStarMetal = inv.some(i => i.name === 'Star-Metal Ore');
             const hasKrakenInk = inv.some(i => i.name === 'Kraken Ink Sac');
 
             loreTitle.textContent = "Master Blacksmith Thorne";
             let html = `<p>"Hah! The stuff you make on that wooden workbench is garbage! Bring me real materials, and I'll forge you weapons of legend!"</p><hr class="my-4 border-gray-600">`;
 
-            // Recipe 1: Star-Forged Greatsword
             if (hasStarMetal && p.coins >= 1000) {
                 html += `<button id="forgeStar" class="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded mb-2 shadow transition-transform active:scale-95">Forge Star-Metal Blade (1x Ore, 1000g)</button>`;
             } else {
                 html += `<button disabled class="w-full bg-gray-700 text-gray-500 font-bold py-2 px-4 rounded mb-2 cursor-not-allowed">Requires: Star-Metal Ore & 1000g</button>`;
             }
 
-            // Recipe 2: Abyssal Cloak
             if (hasKrakenInk && p.coins >= 1500) {
                 html += `<button id="forgeAbyss" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded mb-2 shadow transition-transform active:scale-95">Weave Abyssal Cloak (1x Kraken Ink, 1500g)</button>`;
             } else {
@@ -363,7 +464,6 @@ window.TILE_DATA = {
             loreContent.innerHTML = html;
             loreModal.classList.remove('hidden');
 
-            // Button Binds
             setTimeout(() => {
                 const consumeItem = (name) => {
                     const idx = inv.findIndex(i => i.name === name && !i.isEquipped);
@@ -375,7 +475,7 @@ window.TILE_DATA = {
 
                 const starBtn = document.getElementById('forgeStar');
                 if (starBtn) starBtn.onclick = (e) => {
-                    e.target.disabled = true; // BUG FIX: Prevent Double Clicks
+                    e.target.disabled = true; 
                     if (inv.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
                         logMessage("{red:Inventory Full!}"); 
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -400,7 +500,7 @@ window.TILE_DATA = {
 
                 const abyssBtn = document.getElementById('forgeAbyss');
                 if (abyssBtn) abyssBtn.onclick = (e) => {
-                    e.target.disabled = true; // BUG FIX: Prevent Double Clicks
+                    e.target.disabled = true; 
                     if (inv.length >= (window.MAX_INVENTORY_SLOTS || 9)) {
                         logMessage("{red:Inventory Full!}"); 
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -459,7 +559,7 @@ window.TILE_DATA = {
                     player.shadowQuestStage = 2;
                     if (typeof grantXp === 'function') grantXp(1000);
                     
-                    if (inv.length < window.MAX_INVENTORY_SLOTS) {
+                    if (inv.length < (window.MAX_INVENTORY_SLOTS || 9)) {
                         const shieldKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === 'Aegis of the Ancients') || '🛡️a';
                         inv.push({ templateId: shieldKey, name: 'Aegis of the Ancients', type: 'armor', tile: '🛡️', quantity: 1, defense: 8, slot: 'armor' });
                     } else {
@@ -467,7 +567,7 @@ window.TILE_DATA = {
                         logMessage("{red:Your inventory is full! The Aegis drops to the ground.}");
                         
                         if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
-                            chunkManager.setWorldTile(state.player.x, state.player.y, shieldKey, 24); // Drops for 24 hours
+                            chunkManager.setWorldTile(state.player.x, state.player.y, shieldKey, 24); 
                         } else if (state.mapMode === 'dungeon') {
                             chunkManager.caveMaps[state.currentCaveId][state.player.y][state.player.x] = shieldKey;
                         } else if (state.mapMode === 'castle') {
@@ -483,7 +583,6 @@ window.TILE_DATA = {
                 html = `<p>"The Light protects us, thanks to you. If you wish to hunt standard bounties, check the board."</p>`;
             }
 
-            // Always allow bounty board access
             html += `<button id="viewInqBounties" class="mt-4 bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded w-full shadow">View Bounties</button>`;
 
             loreContent.innerHTML = html;
@@ -1035,7 +1134,7 @@ window.TILE_DATA = {
                 
                 setTimeout(() => {
                     document.getElementById('claimMapReward').onclick = (e) => {
-                        e.target.disabled = true; // BUG FIX: Prevent Double Click Exploit
+                        e.target.disabled = true; 
                         state.player.cartographerProgress = (state.player.cartographerProgress || 0) + 1;
                         state.player.coins += 100;
                         if (typeof grantXp === 'function') grantXp(150);
@@ -1087,7 +1186,6 @@ window.TILE_DATA = {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#a855f7', 15);
             
-            // Restore Magic
             state.player.mana = state.player.maxMana;
             state.player.psyche = state.player.maxPsyche;
             
@@ -1096,11 +1194,9 @@ window.TILE_DATA = {
                 triggerStatAnimation(document.getElementById('psycheDisplay'), 'stat-pulse-purple');
             }
             
-            // 10% Trickster Teleport
             if (Math.random() < 0.10) {
                 logMessage("{red:The Fae play a trick on you! You are swept away through the leylines!}");
                 
-                // BUG FIX: Ensure the Fairy Ring doesn't teleport players inside a mountain or into deep water!
                 let nx = state.player.x + (Math.floor(Math.random() * 100) - 50);
                 let ny = state.player.y + (Math.floor(Math.random() * 100) - 50);
                 
@@ -1110,7 +1206,6 @@ window.TILE_DATA = {
                     for (let dy = -r; dy <= r; dy++) {
                         for (let dx = -r; dx <= r; dx++) {
                             let t = chunkManager.getTile(nx + dx, ny + dy);
-                            // Valid landing zones
                             if (['.', 'F', 'd', 'D'].includes(t)) {
                                 state.player.x = nx + dx;
                                 state.player.y = ny + dy;
@@ -1122,7 +1217,6 @@ window.TILE_DATA = {
                     }
                 }
                 
-                // Absolute Failsafe
                 if (!foundSafeSpot) {
                     state.player.x = 0;
                     state.player.y = 0;
@@ -1335,21 +1429,21 @@ window.CAVE_THEMES = {
         wall: '▓', floor: '.', secretWall: '🏚',
         colors: { wall: '#451a03', floor: '#57534e' },
         decorations: ['🛤️', '🛤️', '🛒', '⛏️', '🛢'],
-        enemies: ['s', '🦇', '👷', '🧌'] // Skeletons, Bats, Miners, Golems
+        enemies: ['s', '🦇', '👷', '🧌'] 
     },
     CLOCKWORK: {
         name: 'An Ancient Machine',
         wall: '⚙️', floor: '▤', secretWall: '▒',
         colors: { wall: '#b45309', floor: '#44403c' },
-        decorations: ['🛢', '⛓️', '💡'], // Oil Barrels, Chains, Bulbs
-        enemies: ['🤖', 'k', '🧌'] // Clockwork Guardians, Kobold Scavengers, Golems
+        decorations: ['🛢', '⛓️', '💡'], 
+        enemies: ['🤖', 'k', '🧌'] 
     },
     FUNGAL: {
         name: 'The Mycelium Depths',
         wall: '▓', floor: '.', secretWall: '▒',
         colors: { wall: '#4a1d96', floor: '#7e22ce' },
         decorations: ['🍄', '🍄', '🌿', '🏺', 'S'], 
-        enemies: ['@', 'l', 's'] 
+        enemies: ['@', 'l', 's', '🧟'] 
     },
     GOLDEN: {
         name: 'The Glimmering Vault',
@@ -1376,7 +1470,15 @@ window.CAVE_THEMES = {
         name: 'A Glacial Cavern',
         wall: '▒', secretWall: '▓', floor: '.',
         colors: { wall: '#99f6e4', floor: '#e0f2fe' },
-        enemies: ['s', 'w', 'Z', 'Y']
+        enemies: ['s', 'w', 'Z', 'Y', '👻i']
+    },
+    // --- EXPANSION WIN: Frozen Ruins ---
+    FROZEN_RUIN: {
+        name: 'Frostbitten Keep',
+        wall: '🧱', secretWall: '🏚', floor: '.',
+        colors: { wall: '#1e3a8a', floor: '#7dd3fc' },
+        decorations: ['🧊', '❄️', '🏺', '📦', '💀'],
+        enemies: ['Z', 'Y', '👻i', 'm']
     },
     FIRE: {
         name: 'A Volcanic Fissure',
@@ -1397,14 +1499,14 @@ window.CAVE_THEMES = {
         wall: '▒', secretWall: '▓', floor: '.',
         colors: { wall: '#67e8f9', floor: '#22d3ee' },
         decorations: ['💜', '🔮', '$', 'K'],
-        enemies: ['g', '🧌']
+        enemies: ['g', '🧌', '🪨c']
     },
     VOID: {
         name: 'The Void Sanctum',
         wall: '▓', floor: '.', phaseWall: '▒',    
         colors: { wall: '#2e0249', floor: '#0f0518' },
         decorations: ['✨', '💀', 'Ω'],
-        enemies: ['v', 'a', 'm', 'v', '😈d']
+        enemies: ['v', 'a', 'm', 'v', '😈d', '👁️']
     },
     ABYSS: {
         name: 'The Maw',
@@ -1441,7 +1543,6 @@ window.CAVE_THEMES = {
         decorations: ['🌿', '🍄', '🌳e'],
         enemies: ['@', '🐍', '🐸']
     },
-    // --- EXPANSION WIN: Sand Tombs ---
     SAND_TOMB: {
         name: 'A Sand-swept Tomb',
         wall: '🧱', floor: 'D', secretWall: '🏚',
@@ -1536,7 +1637,6 @@ window.CAVE_ROOM_TEMPLATES = {
         width: 7, height: 7,
         map: [' WWWWW ', 'W..~..W', 'W.~~~.W', 'W~🔥~.W', 'W.~~~.W', 'W..~..W', ' WWWWW ']
     },
-    // --- EXPANSION WIN: 5 New Dungeon Rooms ---
     "The Forgotten Library": {
         width: 7, height: 7,
         map: [' WWWWW ', 'W.📚.📚.W', 'W.📜...W', 'W...👻p.W', 'W.....W', 'W.📚.📚.W', ' WWWWW ']
@@ -1556,6 +1656,19 @@ window.CAVE_ROOM_TEMPLATES = {
     "Void Altar": {
         width: 5, height: 5,
         map: ['WWWWW', 'WvdvdW', 'W.⛩️.W', 'W....W', 'WWWWW']
+    },
+    // --- EXPANSION WIN: New Cave Rooms ---
+    "The Botanist's Enclave": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W🌿...W', 'W..🍄.W', 'W.🌺..W', 'W...🌿W', 'W.....W', ' WWWWW ']
+    },
+    "Spider Queen's Lair": {
+        width: 9, height: 7,
+        map: [' WWWWWWW ', 'W🕸️.🕸️.🕸️W', 'W.🕷️.🕷️.W', 'W🕸️.📦.🕸️W', 'W...🦴..W', 'W.......W', ' WWWWWWW ']
+    },
+    "Frozen Armory": {
+        width: 7, height: 5,
+        map: [' WWWWW ', 'W🧊.🧊.W', 'W.❄️b..W', 'W..Z..W', ' WWWWW ']
     }
 };
 
@@ -1769,6 +1882,54 @@ window.CASTLE_LAYOUTS = {
         ]
     },
 
+    // --- EXPANSION WIN: New Castle Layouts ---
+    OBSERVATORY: {
+        spawn: { x: 10, y: 18 },
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓........🔭.........▓',
+            '▓.▓▓▓▓.▓▓▓▓▓▓▓.▓▓▓▓.▓',
+            '▓.▓L▓...▓O...▓...▓L▓.▓',
+            '▓.▓▓▓...▓▓▓▓▓▓...▓▓▓.▓',
+            '▓...................▓',
+            '▓.▓▓▓▓▓.▓▓▓▓▓▓▓.▓▓▓▓▓.▓',
+            '▓.▓L▓...▓.....▓...▓L▓.▓',
+            '▓.▓▓▓...▓..W..▓...▓▓▓.▓',
+            '▓.......▓.....▓.......▓',
+            '▓.......▓▓▓+▓▓▓.......▓',
+            '▓.▓▓▓▓▓.........▓▓▓▓▓.▓',
+            '▓.▓L▓.............▓L▓.▓',
+            '▓.▓▓▓......⛲......▓▓▓.▓',
+            '▓...................▓',
+            '▓..▓▓▓▓.........▓▓▓▓..▓',
+            '▓..▓🛏️▓.........▓T▓..▓',
+            '▓..▓▓▓▓.........▓▓▓▓..▓',
+            '▓.........X.........▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓'
+        ]
+    },
+    OVERGROWN_KEEP: {
+        spawn: { x: 10, y: 18 },
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓.F.F.F.F.▓.F.F.F.F.▓',
+            '▓.▓▓▓🌳▓▓.▓.▓▓🌳▓▓▓.▓',
+            '▓.F.F.F.🌳..🌳.F.F.F.▓',
+            '▓.▓▓▓▓▓.▓▓.▓▓.▓▓▓▓▓.▓',
+            '▓.🌳.................▓',
+            '▓.▓.▓▓▓.▓▓.▓▓.▓▓▓.▓.▓',
+            '▓.▓.▓F🌳..🌳..🌳F▓.▓.▓',
+            '▓...🌳..🌳🌳e🌳..🌳...▓',
+            '▓.▓.▓F🌳..🌳..🌳F▓.▓.▓',
+            '▓.▓.▓▓▓.▓▓.▓▓.▓▓▓.▓.▓',
+            '▓.🌳.................▓',
+            '▓.▓▓▓▓▓.▓▓.▓▓.▓▓▓▓▓.▓',
+            '▓.F.F.F.🌳..🌳.F.F.F.▓',
+            '▓.▓▓▓🌳▓▓.▓.▓▓🌳▓▓▓.▓',
+            '▓.F.F.F.F.B.F.F.F.F.▓',
+            '▓▓▓▓▓▓▓▓▓.X.▓▓▓▓▓▓▓▓▓'
+        ]
+    }
 };
 
 window.ATMOSPHERE_TEXT = {
@@ -1837,7 +1998,6 @@ window.ATMOSPHERE_TEXT = {
         "The air smells of ancient dust and copper.",
         "A cold draft whistles through the crumbling masonry."
     ],
-    // --- EXPANSION WIN: Missing Atmosphere Arrays ---
     DEADLANDS: [
         "A gust of wind kicks up a cloud of choking ash.",
         "The silence here is absolute. Not a single insect buzzes.",
@@ -1865,6 +2025,21 @@ window.ATMOSPHERE_TEXT = {
         "The air ripples and warps with the intense heat.",
         "You wipe sweat from your eyes. It stings.",
         "A distant crack of rock alerts you to shifting magma flows."
+    ],
+    // --- Atmosphere Tags ---
+    CASTLE: [
+        "Your footsteps echo loudly against the cold stone.",
+        "The tapestries on the walls are moth-eaten and faded.",
+        "A draft chills the air, carrying the faint scent of old iron.",
+        "The silence of these halls feels oppressive.",
+        "You notice deep claw marks gouged into the masonry."
+    ],
+    SKYREALM: [
+        "The air is dangerously thin here.",
+        "You look down and see the curve of the world.",
+        "The clouds below look like an ocean of white.",
+        "A sudden, freezing wind threatens to push you over the edge.",
+        "The stars above feel close enough to touch."
     ]
 };
 
