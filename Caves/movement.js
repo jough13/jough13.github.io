@@ -31,6 +31,13 @@ window.toggleMount = function() {
         return;
     }
 
+    // Prevent mounting in tight indoor corridors!
+    if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+        logMessage("{gray:It is too cramped to ride your mount indoors.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
+    }
+
     p.isMounted = true;
     logMessage(`{green:You mount your ${p.companion.name}!}`);
     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic(); 
@@ -44,6 +51,14 @@ window.toggleMount = function() {
  */
 
 function finalizeMapTransition() {
+    // Automatically dismount players squeezing through doors
+    if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+        if (gameState.player.isMounted) {
+            gameState.player.isMounted = false;
+            logMessage("{gray:You dismount your companion to fit through the entrance.}");
+        }
+    }
+
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
         const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
