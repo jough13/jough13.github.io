@@ -72,6 +72,14 @@ window.MathUtils = {
     // Smooth linear interpolation for cameras and entity gliding
     lerp: (start, end, amt) => (1 - amt) * start + amt * end,
 
+    // PERFORMANCE & UX WIN: Safely interpolate between two angles (in radians) without doing a 360 spin
+    lerpAngle: (start, end, amt) => {
+        let diff = end - start;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        return start + diff * amt;
+    },
+
     // Axis-Aligned Bounding Box (AABB)
     // The absolute fastest way to check if a point is within an area of effect!
     inBounds: (x, y, rectX, rectY, rectW, rectH) => {
@@ -112,6 +120,9 @@ window.MathUtils = {
     // Returns a random integer between min and max (inclusive)
     randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
     
+    // QoL WIN: Instantly grab a random item from an array
+    randomChoice: (arr) => arr[Math.floor(Math.random() * arr.length)],
+
     // Non-recursive Gaussian Random
     // Uses the Box-Muller transform but removes the recursive fallback that could theoretically 
     // cause a stack overflow on extreme outliers. Clamps values safely instead!
@@ -478,14 +489,14 @@ const LORE_KEYWORDS = {
     'Fae': 'green', 'Fairy': 'green', 'Elder Tree': 'green',
     'Arcane Dust': 'purple', 'Enchanting Altar': 'purple',
     'Memory Shard': 'purple', 'Paradox Anomaly': 'gold',
+    'Star-Metal': 'cyan', 'Mithril': 'cyan', 'Obsidian': 'gray',
     
     // Landmarks & Events
     'Grand Fortress': 'red', 'Blood Moon': 'red',
     'Colosseum': 'red', 'Master Blacksmith': 'yellow',
     'Cartographer': 'blue', 'Safe Haven': 'green',
     
-    // Special Materials
-    'Star-Metal': 'cyan', 'Mithril': 'cyan', 'Obsidian': 'gray',
+    // Special Materials & Valuables
     'Black Pearl': 'purple', 'Dragon Scale': 'red', 'Elemental Core': 'orange'
 };
 
@@ -573,32 +584,48 @@ window.getRelativePositionText = function(dx, dy, atmospheric = false) {
 // Completely replaces JSON.parse(JSON.stringify()) with a V8-optimized deep copy.
 // Uses Object.keys() and pre-allocated Arrays to bypass all prototype chain overhead!
 // Now safely supports cloning `Set` and `Map` objects without corrupting them!
-window.fastClone = function(obj) {
+window.fastClone = function(obj, seen = new WeakMap()) {
     // Base case: null, undefined, strings, numbers, booleans
     if (obj === null || typeof obj !== 'object') return obj;
     
     // Explicit Date support (Prevents dates becoming empty objects)
     if (obj instanceof Date) return new Date(obj.getTime());
     
+    // ROBUSTNESS WIN: Circular Reference Protection!
+    // Prevents infinite loops if an object accidentally references itself
+    if (seen.has(obj)) return seen.get(obj);
+    
     // Explicit Map and Set support
-    if (obj instanceof Set) return new Set([...obj].map(x => window.fastClone(x)));
-    if (obj instanceof Map) return new Map([...obj].entries().map(([k, v]) => [k, window.fastClone(v)]));
+    if (obj instanceof Set) {
+        const clonedSet = new Set();
+        seen.set(obj, clonedSet);
+        obj.forEach(x => clonedSet.add(window.fastClone(x, seen)));
+        return clonedSet;
+    }
+    if (obj instanceof Map) {
+        const clonedMap = new Map();
+        seen.set(obj, clonedMap);
+        obj.forEach((v, k) => clonedMap.set(k, window.fastClone(v, seen)));
+        return clonedMap;
+    }
     
     // Fast-path for Arrays
     if (Array.isArray(obj)) {
         const arr = new Array(obj.length);
+        seen.set(obj, arr);
         for(let i = 0; i < obj.length; i++) {
-            arr[i] = window.fastClone(obj[i]);
+            arr[i] = window.fastClone(obj[i], seen);
         }
         return arr;
     }
     
     // Fast-path for standard Objects
     const cloned = {};
+    seen.set(obj, cloned);
     const keys = Object.keys(obj);
     for (let i = 0; i < keys.length; i++) {
         const key = keys[i];
-        cloned[key] = window.fastClone(obj[key]);
+        cloned[key] = window.fastClone(obj[key], seen);
     }
     return cloned;
 };
