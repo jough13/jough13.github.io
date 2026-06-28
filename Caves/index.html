@@ -4,7 +4,14 @@
 <html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- UX WIN: PWA & Mobile Native App Behavior -->
+    <!-- Prevents pinch-to-zoom and allows the game to be installed as a fullscreen Home Screen App -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Caves & Castles">
     
     <!-- SEO, Social & Mobile Polish -->
     <meta name="description" content="Caves and Castles - A retro browser-based ASCII MMO. Explore, craft, and survive the Shattered Realms.">
@@ -36,6 +43,14 @@
 </head>
 
 <body class="flex flex-col items-center justify-center min-h-screen p-4 font-mono login-bg">
+
+    <!-- UX WIN: Graceful degradation for users without JS enabled -->
+    <noscript>
+        <div class="fixed inset-0 z-[100000] bg-black flex flex-col items-center justify-center text-red-500 font-mono text-center p-8">
+            <h1 class="text-4xl mb-4 font-bold" style="font-family: 'Uncial Antiqua', cursive;">The Leylines are Silent</h1>
+            <p class="text-xl text-gray-300">This realm requires JavaScript to manifest.<br>Please enable JavaScript to enter Caves & Castles.</p>
+        </div>
+    </noscript>
 
     <!-- ========================================== -->
     <!-- GLOBAL INTERIM LOADING SCREEN              -->
@@ -91,6 +106,8 @@
         <button type="button" id="startGameBtn" class="text-green-400 font-mono text-xl md:text-2xl font-bold tracking-widest text-center px-4 mt-8 cursor-pointer hover:text-green-300 transition-colors bg-transparent border-none outline-none" style="-webkit-text-stroke: 1px black; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(74, 222, 128, 0.8); animation: pulse 1.5s infinite;" aria-label="Click to start game">
             - ENTER THE REALM -
         </button>
+        <!-- LORE WIN: Subtle versioning and subtitle -->
+        <p class="absolute bottom-4 text-xs text-gray-400 font-mono tracking-widest uppercase opacity-50">Akashic Engine v0.2.9</p>
     </div>
 
     <main class="container w-full max-w-[1400px]">
@@ -103,8 +120,8 @@
                 <div class="ui-parchment-asset flex flex-col items-center p-6 pb-4">
                     
                     <div class="flex flex-col items-center justify-center gap-2 mb-6 w-full relative">
-                        <img src="assets/torch.gif" alt="Torch Animation" class="w-12 h-auto absolute left-4 top-2" style="image-rendering: pixelated; filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.5));">
-                        <img src="assets/torch.gif" alt="Torch Animation" class="w-12 h-auto absolute right-4 top-2" style="image-rendering: pixelated; filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.5));">
+                        <img src="assets/torch.gif" alt="" aria-hidden="true" class="w-12 h-auto absolute left-4 top-2" style="image-rendering: pixelated; filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.5));">
+                        <img src="assets/torch.gif" alt="" aria-hidden="true" class="w-12 h-auto absolute right-4 top-2" style="image-rendering: pixelated; filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.5));">
                         
                         <h1 id="authTitle" class="gothic-title text-4xl text-center m-0 border-none pb-0 w-full px-12">Akashic Registry</h1>
                     </div>
@@ -146,7 +163,7 @@
                     </form>
 
                     <div class="mt-8 pt-2 border-t-2 border-dashed border-gray-600 w-full text-center text-xs pixel-text text-gray-400">
-                        <a href="devlog.html" class="hover:text-white transition-colors">Devlog</a> | Akashic Engine v0.2.7
+                        <a href="devlog.html" class="hover:text-white transition-colors">Devlog</a> | Akashic Engine v0.2.9
                     </div>
                 </div>
             </div>
@@ -251,7 +268,8 @@
                                 </div>
 
                                 <!-- The Game World Canvas -->
-                                <div id="gameCanvasWrapper" class="relative w-full h-[60vh] min-h-[350px] rounded-xl overflow-hidden border-2 shadow-inner" style="border-color: var(--border-color);">
+                                <!-- UX WIN: touch-action: none prevents mobile browsers from attempting to scroll when interacting with the canvas -->
+                                <div id="gameCanvasWrapper" class="relative w-full h-[60vh] min-h-[350px] rounded-xl overflow-hidden border-2 shadow-inner" style="border-color: var(--border-color); touch-action: none;">
                                     <canvas id="gameCanvas" class="w-full h-full" role="img" aria-label="Interactive Game Viewport"></canvas>
                                     
                                     <!-- JUICE WIN: Magical glow on the save indicator -->
@@ -323,29 +341,29 @@
                         
                         <!-- Vitals -->
                         <div id="statusPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-3 shadow-sm transition-colors duration-300" role="region" aria-label="Player Vitals">
-                            <div>
+                            <div title="Your physical lifeforce. Reach 0 and the Void takes you." class="cursor-help">
                                 <span id="healthDisplay" class="font-bold flex justify-between"><span>Health</span> <span>10/10</span></span>
                                 <div class="stat-bar-container"><div id="healthBar" class="stat-bar bar-health"></div></div>
                             </div>
-                            <div>
+                            <div title="Magical essence channeled from the leylines. Used to cast Spells." class="cursor-help">
                                 <span id="manaDisplay" class="font-bold text-blue-500 flex justify-between"><span>Mana</span> <span>10/10</span></span>
                                 <div class="stat-bar-container"><div id="manaBar" class="stat-bar bar-mana"></div></div>
                             </div>
-                            <div>
+                            <div title="Physical energy. Used to perform powerful Weapon Skills." class="cursor-help">
                                 <span id="staminaDisplay" class="font-bold text-green-500 flex justify-between"><span>Stamina</span> <span>10/10</span></span>
                                 <div class="stat-bar-container"><div id="staminaBar" class="stat-bar bar-stamina"></div></div>
                             </div>
-                            <div>
+                            <div title="Mental fortitude. Required to tame beasts and resist Void madness." class="cursor-help">
                                 <span id="psycheDisplay" class="font-bold text-indigo-500 flex justify-between"><span>Psyche</span> <span>10/10</span></span>
                                 <div class="stat-bar-container"><div id="psycheBar" class="stat-bar bar-psyche"></div></div>
                             </div>
                             
                             <div class="border-t border-gray-600 pt-2 space-y-2 mt-1">
-                                <div>
+                                <div title="If empty, you stop regenerating Health." class="cursor-help">
                                     <span id="hungerDisplay" class="font-bold text-orange-500 text-sm flex justify-between"><span>Hunger</span> <span>100%</span></span>
                                     <div class="stat-bar-container !h-1.5"><div id="hungerBar" class="stat-bar" style="background-color: #f97316;"></div></div>
                                 </div>
-                                <div>
+                                <div title="If empty, you stop regenerating Stamina." class="cursor-help">
                                     <span id="thirstDisplay" class="font-bold text-cyan-500 text-sm flex justify-between"><span>Thirst</span> <span>100%</span></span>
                                     <div class="stat-bar-container !h-1.5"><div id="thirstBar" class="stat-bar" style="background-color: #06b6d4;"></div></div>
                                 </div>
@@ -354,14 +372,21 @@
                             <div id="statusEffectsPanel" class="flex gap-2 justify-center pt-2 min-h-[2rem] text-xl" aria-live="polite"></div>
                             
                             <div class="flex justify-between items-end border-t border-gray-600 pt-2 mt-1">
-                                <span id="coinsDisplay" class="font-bold text-yellow-500 text-lg drop-shadow-sm">Coins: 0</span>
-                                <span id="levelDisplay" class="font-bold highlight-text text-lg drop-shadow-sm">Level: 1</span>
+                                <span id="coinsDisplay" title="The currency of the realm." class="font-bold text-yellow-500 text-lg drop-shadow-sm cursor-help">Coins: 0</span>
+                                <span id="levelDisplay" title="Your overall power and experience." class="font-bold highlight-text text-lg drop-shadow-sm cursor-help">Level: 1</span>
                             </div>
-                            <div>
+                            <div title="Experience: Fills to increase your Level." class="cursor-help">
                                 <span id="xpDisplay" class="font-bold text-xs flex justify-between text-gray-400 tracking-widest uppercase"><span>XP</span> <span>0 / 100</span></span>
                                 <div class="stat-bar-container !h-1.5"><div id="xpBar" class="stat-bar bar-xp"></div></div>
                             </div>
                             <span id="statPointsDisplay" class="font-bold text-yellow-400 hidden text-center animate-pulse uppercase tracking-widest text-[10px] border border-yellow-600 bg-yellow-900 bg-opacity-30 rounded py-1 shadow-inner"></span>
+                        </div>
+                        
+                        <!-- EXPANDABILITY WIN: Party & Group Framework Hook -->
+                        <!-- Kept hidden until the grouping system is fully implemented in state.js -->
+                        <div id="partyContainer" class="panel hidden w-full p-4 rounded-2xl border-2 shadow-sm bg-black bg-opacity-20" role="region" aria-label="Party Members">
+                            <h3 class="text-sm font-bold text-blue-400 border-b border-blue-900 pb-1 mb-2">Companions</h3>
+                            <div id="partyList" class="space-y-2"></div>
                         </div>
                         
                         <!-- Core Attributes -->
@@ -1020,7 +1045,10 @@
                 "Dodging the Leviathan...",
                 "Attuning Waystones...",
                 "Studying the Abyss...",
-                "Translating Dwarven Runes..."
+                "Translating Dwarven Runes...",
+                "Calibrating the Astrolabe...",
+                "Smuggling Dwarven TNT...",
+                "Feeding the Abyssal Leviathan..."
             ];
             
             const loader = document.getElementById('loadingIndicator');
@@ -1046,7 +1074,8 @@
                                     if (blocks < 10) blocks++;
                                     const filled = '█'.repeat(blocks);
                                     const empty = '.'.repeat(10 - blocks);
-                                    barEl.textContent = `[${filled}${empty}]`;
+                                    // Make the loading bar look cooler
+                                    barEl.textContent = `[${filled === '' ? '' : filled.slice(0, -1) + '>'}${empty}]`;
                                     
                                     if (blocks >= 10) clearInterval(interimInterval);
                                 }, 80); 
