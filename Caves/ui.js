@@ -984,7 +984,7 @@ function renderStatusEffects() {
     statusEffectsPanel.innerHTML = icons;
 }
 
-// --- FIX: INFINITE RESIZE LOOP & OVERSTRETCHING ---
+// --- INFINITE RESIZE LOOP & OVERSTRETCHING ---
 function resizeCanvas() {
     const canvasContainer = canvas.parentElement;
     if (!canvasContainer) return;
@@ -997,58 +997,62 @@ function resizeCanvas() {
     const containerWidth = canvasContainer.clientWidth;
     const containerHeight = canvasContainer.clientHeight;
     
-    canvas.style.display = 'block';
+    // Wrap the restoration and rendering in requestAnimationFrame
+    // This prevents the browser from accidentally painting the "hidden" frame to the screen!
+    requestAnimationFrame(() => {
+        canvas.style.display = 'block';
 
-    if (containerWidth === 0 || containerHeight === 0) return; // Prevent crashes when hidden
+        if (containerWidth === 0 || containerHeight === 0) return; // Prevent crashes when hidden
 
-    // Directly sync TILE_SIZE to our global zoom state
-    TILE_SIZE = window.currentZoom;
+        // Directly sync TILE_SIZE to our global zoom state
+        TILE_SIZE = window.currentZoom;
 
-    // 3. Calculate Logical Viewport (The number of tiles that fit on screen)
-    // Add a safe buffer of +2 to ensure scrolling never exposes empty pixels at the edges
-    VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 2; 
-    VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 2;
+        // 3. Calculate Logical Viewport (The number of tiles that fit on screen)
+        // Add a safe buffer of +2 to ensure scrolling never exposes empty pixels at the edges
+        VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 2; 
+        VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 2;
 
-    const dpr = window.devicePixelRatio || 1;
+        const dpr = window.devicePixelRatio || 1;
 
-    // 4. Set HTML5 Canvas back-buffer resolution (The actual pixel density)
-    canvas.width = containerWidth * dpr;
-    canvas.height = containerHeight * dpr;
+        // 4. Set HTML5 Canvas back-buffer resolution (The actual pixel density)
+        canvas.width = containerWidth * dpr;
+        canvas.height = containerHeight * dpr;
 
-    // 5. Force CSS width/height to match container exactly
-    canvas.style.width = `${containerWidth}px`;
-    canvas.style.height = `${containerHeight}px`;
+        // 5. Force CSS width/height to match container exactly
+        canvas.style.width = `${containerWidth}px`;
+        canvas.style.height = `${containerHeight}px`;
 
-    // 6. Configure Main Context
-    ctx.setTransform(1, 0, 0, 1, 0, 0); 
-    ctx.scale(dpr, dpr); 
-    ctx.imageSmoothingEnabled = false; 
-    ctx.font = `${TILE_SIZE}px monospace`; 
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+        // 6. Configure Main Context
+        ctx.setTransform(1, 0, 0, 1, 0, 0); 
+        ctx.scale(dpr, dpr); 
+        ctx.imageSmoothingEnabled = false; 
+        ctx.font = `${TILE_SIZE}px monospace`; 
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
 
-    // 7. Resize Offscreen Canvas (Added +4 Buffer for camera panning)
-    const logicalWidth = (VIEWPORT_WIDTH + 4) * TILE_SIZE; 
-    const logicalHeight = (VIEWPORT_HEIGHT + 4) * TILE_SIZE; 
+        // 7. Resize Offscreen Canvas (Added +4 Buffer for camera panning)
+        const logicalWidth = (VIEWPORT_WIDTH + 4) * TILE_SIZE; 
+        const logicalHeight = (VIEWPORT_HEIGHT + 4) * TILE_SIZE; 
 
-    terrainCanvas.width = logicalWidth * dpr;
-    terrainCanvas.height = logicalHeight * dpr;
-    
-    // 8. Configure Offscreen Context
-    terrainCtx.setTransform(1, 0, 0, 1, 0, 0); 
-    terrainCtx.scale(dpr, dpr); 
-    terrainCtx.font = `${TILE_SIZE}px monospace`; 
-    terrainCtx.textAlign = 'center';
-    terrainCtx.textBaseline = 'middle';
+        terrainCanvas.width = logicalWidth * dpr;
+        terrainCanvas.height = logicalHeight * dpr;
+        
+        // 8. Configure Offscreen Context
+        terrainCtx.setTransform(1, 0, 0, 1, 0, 0); 
+        terrainCtx.scale(dpr, dpr); 
+        terrainCtx.font = `${TILE_SIZE}px monospace`; 
+        terrainCtx.textAlign = 'center';
+        terrainCtx.textBaseline = 'middle';
 
-    // 9. Force Redraw
-    if (typeof gameState !== 'undefined') {
-        gameState.mapDirty = true; 
-        if (typeof render === 'function') render();
-    }
+        // 9. Force Redraw
+        if (typeof gameState !== 'undefined') {
+            gameState.mapDirty = true; 
+            if (typeof render === 'function') render();
+        }
+    });
 }
 
-// LORE EXPANSION WIN: Inject RPG Tooltips into the Stat Panel
+// Inject RPG Tooltips into the Stat Panel
 (function initStatTooltips() {
     const statDescriptions = {
         // Core Profile
