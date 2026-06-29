@@ -25,6 +25,54 @@ const _DOMCache = {
     getClassContainer: () => _DOMCache.classContainer || (document.getElementById('classSelectionContainer') && (_DOMCache.classContainer = document.getElementById('classSelectionContainer')))
 };
 
+// ==========================================
+// EXPANSION WIN: GUEST MODE INJECTOR
+// ==========================================
+function initGuestLogin() {
+    const authButtonContainer = document.getElementById('authButton')?.parentElement;
+    
+    // Ensure we only inject the button once!
+    if (authButtonContainer && !document.getElementById('guestLoginBtn')) {
+        const guestBtn = document.createElement('button');
+        guestBtn.id = 'guestLoginBtn';
+        guestBtn.type = 'button';
+        guestBtn.className = 'w-full mt-4 py-3 border-2 border-dashed border-gray-600 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 hover:border-gray-400 font-bold uppercase tracking-widest text-sm transition-all active:scale-95 shadow-inner';
+        guestBtn.innerHTML = '👻 Play As Guest';
+        
+        guestBtn.onclick = async () => {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            
+            // LORE WIN: Thematic warning prompt
+            const proceed = confirm("⚠️ FRAGILE SOUL WARNING\n\nPlaying as a Guest means your character is tethered to this specific browser. If you clear your browser cache or change devices, your character will be lost to the Void forever.\n\nDo you wish to enter the realm as a Guest?");
+            
+            if (proceed) {
+                guestBtn.disabled = true;
+                guestBtn.innerHTML = '⏳ Summoning...';
+                guestBtn.classList.add('animate-pulse');
+                
+                try {
+                    // Firebase Anonymous Auth perfectly mimics a real user, meaning 
+                    // your database and MMO sync code requires ZERO rewrites to support this!
+                    await auth.signInAnonymously();
+                    // script.js will catch the onAuthStateChanged and automatically pull them in!
+                } catch (e) {
+                    console.error("Guest login error:", e);
+                    alert("The leylines rejected your guest connection. Please try again.");
+                    guestBtn.disabled = false;
+                    guestBtn.innerHTML = '👻 Play As Guest';
+                    guestBtn.classList.remove('animate-pulse');
+                }
+            }
+        };
+        
+        authButtonContainer.appendChild(guestBtn);
+    }
+}
+
+// Inject the guest button when the script loads
+setTimeout(initGuestLogin, 100);
+
+
 async function initCharacterSelect(user) {
     document.title = "Caves and Castles";
 
@@ -46,6 +94,22 @@ async function initCharacterSelect(user) {
     // and the user has bypassed the Title Screen, preventing overlap!
     if (loadingIndicator && document.body.classList.contains('is-loaded')) {
         loadingIndicator.classList.remove('hidden'); 
+    }
+
+    // --- GUEST MODE UI WARNING ---
+    if (user.isAnonymous) {
+        const titleEl = document.getElementById('charSelectTitle');
+        if (titleEl && !document.getElementById('guestWarningBanner')) {
+            const warning = document.createElement('div');
+            warning.id = 'guestWarningBanner';
+            warning.className = "w-full max-w-md mx-auto bg-yellow-900 bg-opacity-30 border-l-4 border-yellow-500 text-yellow-300 p-3 text-center text-xs font-bold uppercase tracking-widest rounded mb-6 shadow-inner";
+            warning.innerHTML = "⚠️ Guest Account Active<br><span class='text-[10px] text-yellow-500 font-normal normal-case'>Characters will be lost if browser data is cleared.</span>";
+            titleEl.parentNode.insertBefore(warning, titleEl.nextSibling);
+        }
+    } else {
+        // Clean up banner if they log in normally later
+        const existingBanner = document.getElementById('guestWarningBanner');
+        if (existingBanner) existingBanner.remove();
     }
 
     // 1. Legacy Migration Check
