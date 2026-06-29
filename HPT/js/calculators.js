@@ -3145,12 +3145,13 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     // --- 2. STATE ---
     const [packageItems, setPackageItems] = React.useState([]);
 
-    // Add New Item State
+    const [forceRegulated, setForceRegulated] = React.useState(false);
+
     const [newItemSymbol, setNewItemSymbol] = React.useState('');
     const [newItemForm, setNewItemForm] = React.useState('A2');
     const [newItemState, setNewItemState] = React.useState('solid');
     const [newItemCategory, setNewItemCategory] = React.useState('instrument');
-    const [newItemQuantity, setNewItemQuantity] = React.useState('1'); // NEW: Quantity multiplier
+    const [newItemQuantity, setNewItemQuantity] = React.useState('1'); // Quantity multiplier
     const [newItemActivity, setNewItemActivity] = React.useState('1');
     const [newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
     const [newItemMass, setNewItemMass] = React.useState(''); // Mass for LSA hinting
@@ -3448,31 +3449,42 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     let methodology = '';
     const isRQ = sumFracRQ >= 1.0;
 
-    const isExemptConsignment = sumExemptAct <= 1.0 || sumExemptConc <= 1.0;
+    let classification = '';
+        let methodology = '';
+        const isRQ = sumFracRQ >= 1.0;
 
-    if (isExemptConsignment) {
-        classification = 'EXEMPT';
-        methodology = 'Not Regulated as Class 7 (Consignment mixture satisfies the unity rule for exemptions under 49 CFR 173.433).';
-    } else if (sumFracExcPkg <= 1.0 && !anyItemFailsExc) {
-        classification = 'EXCEPTED';
-        methodology = 'Sum of Fractions ≤ 1.0 (Excepted Limits) AND all individual items meet Item Limits.';
-    } else if (sumFracTypeA <= 1.0) {
-        classification = 'TYPE_A';
-        methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)';
-    } else {
+        const isExemptConsignment = sumExemptAct <= 1.0 || sumExemptConc <= 1.0;
+        const qualifiesExcepted = sumFracExcPkg <= 1.0 && !anyItemFailsExc;
+        const allItemsLSA = packageItems.length > 0 && packageItems.every(item => item.lsaHint !== null);
 
-        if (sumFracHRCQ > 1.0) {
+        // --- ROUTING LOGIC ---
+        if (isExemptConsignment && !forceRegulated) {
+            classification = 'EXEMPT';
+            methodology = 'Not Regulated as Class 7 (Consignment mixture satisfies the unity rule for exemptions under 49 CFR 173.433).';
+        } else if (qualifiesExcepted && !forceRegulated) {
+            classification = 'EXCEPTED';
+            methodology = 'Sum of Fractions ≤ 1.0 (Excepted Limits) AND all individual items meet Item Limits.';
+        } else if (allItemsLSA) {
+            classification = 'LSA';
+            // Find highest LSA level for display (LSA-III > LSA-II > LSA-I)
+            const hasLSA3 = packageItems.some(i => i.lsaHint === 'LSA-III');
+            const hasLSA2 = packageItems.some(i => i.lsaHint === 'LSA-II');
+            const highestLSA = hasLSA3 ? 'LSA-III' : (hasLSA2 ? 'LSA-II' : 'LSA-I');
+            methodology = `Specific activity meets concentration limits for ${highestLSA}. Shipped in Industrial Packaging (Type IP).`;
+        } else if (sumFracTypeA <= 1.0) {
+            classification = 'TYPE_A';
+            methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)';
+        } else if (sumFracHRCQ > 1.0) {
             classification = 'HRCQ';
             methodology = 'Activity exceeds the cumulative Highway Route Controlled Quantity unity rule threshold under 49 CFR 173.403.';
         } else {
             classification = 'TYPE_B';
             methodology = 'Activity exceeds Type A limits but remains below HRCQ criteria.';
         }
-    }
 
-    setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, isRQ, hasFissile });
+        setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, isRQ, hasFissile });
 
-}, [packageItems]);
+    }, [packageItems, forceRegulated]);
 
     React.useEffect(() => {
         if (!doseRateAt1m && !surfaceDoseRate) { setLabelResult(null); }
@@ -3545,6 +3557,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         setFissileMass(''); setVehSurfaceDose(''); setVeh2mDose(''); setCabDose('');
         setEmergencyContact(''); setBolComments(''); setItemManualPSN('');
         setShipperName(''); setShipperAddress(''); setConsigneeName(''); setConsigneeAddress(''); setPackageDimensions('');
+        setForceRegulated(false); 
     };
 
     const handleSave = () => {
@@ -3587,6 +3600,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const resultStyles = {
         EXEMPT: { container: 'bg-slate-100 dark:bg-slate-700/50', title: 'text-slate-600 dark:text-slate-300', display: 'Exempt (Not Class 7)' },
         EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
+        LSA: { container: 'bg-teal-100 dark:bg-teal-900/50', title: 'text-teal-700 dark:text-teal-400', display: 'Low Specific Activity (LSA)' },
         TYPE_A: { container: 'bg-sky-100 dark:bg-sky-900/50', title: 'text-sky-600 dark:text-sky-400', display: 'Type A Package' },
         TYPE_B: { container: 'bg-amber-100 dark:bg-amber-900/50', title: 'text-amber-600 dark:text-amber-400', display: 'Type B Package' },
         HRCQ: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', display: 'HRCQ (Type B)' }
@@ -3786,6 +3800,18 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     </tr>
                                 </tfoot>
                             </table>
+                            <div className="p-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                                <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={forceRegulated} 
+                                        onChange={e => setForceRegulated(e.target.checked)} 
+                                        className="form-checkbox h-4 w-4 rounded text-sky-600" 
+                                    />
+                                    Force Regulated / LSA Classification (Bypass Exempt & Excepted)
+                                </label>
+                            </div>
+                            
                         </div>
                     )}
                 </div>
