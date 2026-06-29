@@ -103,8 +103,8 @@ const AudioSystem = {
     // Internal Throttler (Highly optimized for V8)
     _throttle: function(id, msCooldown) {
         const now = Date.now();
-        // Occasional passive garbage collection of the tracker object to prevent memory leaks
-        if (Math.random() < 0.05) {
+        // PERFORMANCE WIN: Smarter garbage collection for the throttle object
+        if (Object.keys(this._lastPlayed).length > 50) {
             for (const key in this._lastPlayed) {
                 if (now - this._lastPlayed[key] > 5000) delete this._lastPlayed[key];
             }
@@ -123,23 +123,27 @@ const AudioSystem = {
             if (gameState.currentRealm !== 0 || gameState.currentCaveTheme === 'VOID' || gameState.currentCaveTheme === 'ABYSS') {
                 return { durationMult: 1.6, filterMult: 0.35, echoDelay: 0.35, echoFeedback: 0.65, dampening: 1000 };
             }
-            // 2. Crystal Caves (High resonance, bright ringing)
-            if (gameState.currentCaveTheme === 'CRYSTAL') {
+            // 2. Crystal Caves & Frozen Ruins (High resonance, bright ringing)
+            if (gameState.currentCaveTheme === 'CRYSTAL' || gameState.currentCaveTheme === 'FROZEN_RUIN') {
                 return { durationMult: 2.0, filterMult: 1.2, echoDelay: 0.2, echoFeedback: 0.7, dampening: 8000 };
             }
-            // 3. Sunken Temples & Grottos (Underwater muffling)
+            // 3. Sand Tombs (Dry, dusty, heavily muffled)
+            if (gameState.currentCaveTheme === 'SAND_TOMB') {
+                return { durationMult: 0.6, filterMult: 0.5, echoDelay: 0.02, echoFeedback: 0.1, dampening: 800 };
+            }
+            // 4. Sunken Temples & Grottos (Underwater muffling)
             if (gameState.currentCaveTheme === 'SUNKEN' || gameState.currentCaveTheme === 'GROTTO') {
                 return { durationMult: 0.8, filterMult: 0.25, echoDelay: 0.1, echoFeedback: 0.2, dampening: 600 };
             }
-            // 4. Sky Realm (Wind swept, quick decay)
+            // 5. Sky Realm (Wind swept, quick decay)
             if (gameState.mapMode === 'skyrealm') {
                 return { durationMult: 0.8, filterMult: 1.5, echoDelay: 0.4, echoFeedback: 0.3, dampening: 4000 };
             }
-            // 5. Deep Caves (Muffled highs, heavy slapback)
+            // 6. Deep Caves (Muffled highs, heavy slapback)
             if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'underworld') {
                 return { durationMult: 1.2, filterMult: 0.6, echoDelay: 0.15, echoFeedback: 0.4, dampening: 1500 }; 
             } 
-            // 6. Castles & Ruins (Stone halls, tight reverb)
+            // 7. Castles & Ruins (Stone halls, tight reverb)
             if (gameState.mapMode === 'castle') {
                 return { durationMult: 1.1, filterMult: 0.85, echoDelay: 0.08, echoFeedback: 0.3, dampening: 3000 }; 
             }
@@ -203,7 +207,7 @@ const AudioSystem = {
         return panner;
     },
 
-    // PERFORMANCE WIN: Strict memory cleanup for Web Audio API nodes.
+    // PERFORMANCE & MEMORY LEAK WIN: Strict memory cleanup for Web Audio API nodes.
     _cleanupRoute: function(pannerNode) {
         if (!pannerNode) return;
         // Wrapped in try-catches because sometimes the browser's GC beats us to it
@@ -211,6 +215,12 @@ const AudioSystem = {
         try { if (pannerNode._feedbackNode) pannerNode._feedbackNode.disconnect(); } catch (e) {}
         try { if (pannerNode._dampFilter) pannerNode._dampFilter.disconnect(); } catch (e) {}
         try { pannerNode.disconnect(); } catch (e) {}
+    },
+
+    // BUG FIX & STABILITY: Safely validate oscillator types so typos don't crash the context
+    _getSafeOscType: function(type) {
+        const valid = ['sine', 'square', 'sawtooth', 'triangle'];
+        return valid.includes(type) ? type : 'sine';
     },
 
     // --- CORE GENERATORS ---
@@ -252,10 +262,14 @@ const AudioSystem = {
         src.start(now);
         src.stop(now + actualDuration + 0.1); 
         
-        src.onended = () => {
+        // MEMORY LEAK FIX: Browser tabs suspended in the background sometimes fail to fire onended.
+        // We use a timeout as a guaranteed cleanup fallback.
+        const cleanup = () => {
             try { src.disconnect(); filter.disconnect(); gain.disconnect(); } catch(e) {}
             this._cleanupRoute(panner);
         };
+        src.onended = cleanup;
+        setTimeout(cleanup, (actualDuration + 0.5) * 1000);
     },
 
     playTone: function(freq, type, duration, vol = 0.1, pitchShift = true, slideTo = null, x) {
@@ -270,7 +284,7 @@ const AudioSystem = {
 
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = type;
+        osc.type = this._getSafeOscType(type);
         
         let finalFreq = freq;
         if (pitchShift) finalFreq = freq * (0.92 + Math.random() * 0.16); 
@@ -293,13 +307,15 @@ const AudioSystem = {
         osc.start(now);
         osc.stop(now + actualDuration + 0.1);
         
-        osc.onended = () => {
+        const cleanup = () => {
             try { osc.disconnect(); gain.disconnect(); } catch(e) {}
             this._cleanupRoute(panner);
         };
+        osc.onended = cleanup;
+        setTimeout(cleanup, (actualDuration + 0.5) * 1000);
     },
 
-    playChord: function(notes, type = 'sine', duration = 0.5, vol = 0.1, detune = 0, slideDown = false) {
+    playChord: function(notes, type = 'sine', duration = 0.5, vol = 0.1, detune = 0, slideDown = false, x) {
         if (!this.settings.master || !this.getCtx()) return;
         const ctx = this._ctx;
         const acoustics = this._getAcoustics();
@@ -311,7 +327,7 @@ const AudioSystem = {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             
-            osc.type = type;
+            osc.type = this._getSafeOscType(type);
             const startFreq = Math.max(1, (freq * acoustics.filterMult) + (index * detune));
             osc.frequency.setValueAtTime(startFreq, now);
             
@@ -324,15 +340,17 @@ const AudioSystem = {
             gain.gain.exponentialRampToValueAtTime(0.0001, now + actualDuration);
 
             osc.connect(gain);
-            const panner = this._routeToMaster(ctx, gain, acoustics, this._getSpatialData());
+            const panner = this._routeToMaster(ctx, gain, acoustics, this._getSpatialData(x));
             
             osc.start(now);
             osc.stop(now + actualDuration + 0.1);
             
-            osc.onended = () => { 
+            const cleanup = () => { 
                 try { osc.disconnect(); gain.disconnect(); } catch(e) {}
                 this._cleanupRoute(panner);
             };
+            osc.onended = cleanup;
+            setTimeout(cleanup, (actualDuration + 0.5) * 1000);
         });
     },
 
@@ -345,7 +363,7 @@ const AudioSystem = {
         
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = type;
+        osc.type = this._getSafeOscType(type);
         
         let totalDuration = notes.length * speed * acoustics.durationMult;
         const actualVol = Math.max(0.001, vol);
@@ -369,10 +387,12 @@ const AudioSystem = {
         osc.start(now);
         osc.stop(now + totalDuration + 0.1);
         
-        osc.onended = () => { 
+        const cleanup = () => { 
             try { osc.disconnect(); gain.disconnect(); } catch(e) {}
             this._cleanupRoute(panner);
         };
+        osc.onended = cleanup;
+        setTimeout(cleanup, (totalDuration + 0.5) * 1000);
     },
 
     // --- SPECIFIC SOUND EFFECTS ---
@@ -391,6 +411,20 @@ const AudioSystem = {
         
         this.playNoise(0.08 * weight, 0.04 * weight, 500 / weight, x); 
         this.playTone(80 / weight, 'sine', 0.05 * weight, 0.05 * weight, true, 40 / weight, x);
+    },
+    
+    // NEW: Shovel digging sound
+    playDig: function(x) {
+        if (!this.settings.steps) return; // Fallback to step settings for environmental actions
+        this.playNoise(0.15, 0.1, 400, x);
+        this.playTone(80, 'triangle', 0.1, 0.1, true, 40, x);
+    },
+
+    // NEW: Fishing bite sound
+    playFishBite: function(x) {
+        if (!this.settings.ui) return;
+        this.playTone(1200, 'sine', 0.05, 0.15, false, 800, x);
+        setTimeout(() => this.playNoise(0.05, 0.05, 2000, x), 20);
     },
     
     playAttack: function(type = 'normal', x) { 
@@ -582,7 +616,7 @@ const AudioSystem = {
 // ==========================================
 // BROWSER AUDIO HARDWARE UNLOCKER
 // ==========================================
-// Forces the audio context to initialize the very first time the player clicks anywhere.
+// Forces the audio context to initialize the very first time the player interacts anywhere.
 // iOS Safari specifically requires sound to be played during this event!
 
 function forceUnlockAudio() {
@@ -600,14 +634,18 @@ function forceUnlockAudio() {
         
         document.removeEventListener('click', forceUnlockAudio);
         document.removeEventListener('touchstart', forceUnlockAudio);
+        document.removeEventListener('touchend', forceUnlockAudio);
         document.removeEventListener('pointerdown', forceUnlockAudio);
         document.removeEventListener('keydown', forceUnlockAudio);
+        document.removeEventListener('mouseup', forceUnlockAudio);
     }
 }
 
 document.addEventListener('click', forceUnlockAudio, { once: true });
 document.addEventListener('touchstart', forceUnlockAudio, { once: true });
+document.addEventListener('touchend', forceUnlockAudio, { once: true });
 document.addEventListener('pointerdown', forceUnlockAudio, { once: true });
 document.addEventListener('keydown', forceUnlockAudio, { once: true });
+document.addEventListener('mouseup', forceUnlockAudio, { once: true });
 
 // --- END OF FILE audio.js ---
