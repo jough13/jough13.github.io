@@ -3408,48 +3408,41 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     // Calculate Package Totals
     React.useEffect(() => {
-    if (packageItems.length === 0) { 
-        setClassificationResult(null); 
-        return; 
-    }
-
-    let totalTBq = 0;
-    let sumFracTypeA = 0;
-    let sumFracExcPkg = 0;
-    
-    // This variable remains the same
-    let sumFracHRCQ = 0; 
-    
-    let sumFracRQ = 0;
-    let sumExemptAct = 0;
-    let sumExemptConc = 0;
-    let anyItemFailsExc = false;
-    let hasFissile = false;
-
-    packageItems.forEach(item => {
-        totalTBq += item.actTBq;
-        sumFracTypeA += item.fracTypeA;
-        sumFracExcPkg += item.fracExcPkg;
-        
-        sumFracHRCQ += item.fracHRCQ;
-        
-        sumFracRQ += item.fracRQ;
-        sumExemptAct += item.ratioExemptAct;
-        sumExemptConc += item.ratioExemptConc;
-
-        if (item.category === 'instrument' && item.fracExcItem > 1.0) {
-            anyItemFailsExc = true;
+        if (packageItems.length === 0) { 
+            setClassificationResult(null); 
+            return; 
         }
-        if (FISSILE_ISOTOPES.includes(item.symbol)) {
-            hasFissile = true;
-        }
-    });
 
-    let classification = '';
-    let methodology = '';
-    const isRQ = sumFracRQ >= 1.0;
+        let totalTBq = 0;
+        let sumFracTypeA = 0;
+        let sumFracExcPkg = 0;
+        let sumFracHRCQ = 0; 
+        let sumFracRQ = 0;
+        let sumExemptAct = 0;
+        let sumExemptConc = 0;
+        let anyItemFailsExc = false;
+        let hasFissile = false;
 
-    let classification = '';
+        packageItems.forEach(item => {
+            totalTBq += item.actTBq;
+            sumFracTypeA += item.fracTypeA;
+            sumFracExcPkg += item.fracExcPkg;
+            
+            sumFracHRCQ += item.fracHRCQ;
+            
+            sumFracRQ += item.fracRQ;
+            sumExemptAct += item.ratioExemptAct;
+            sumExemptConc += item.ratioExemptConc;
+
+            if (item.category === 'instrument' && item.fracExcItem > 1.0) {
+                anyItemFailsExc = true;
+            }
+            if (FISSILE_ISOTOPES.includes(item.symbol)) {
+                hasFissile = true;
+            }
+        });
+
+        let classification = '';
         let methodology = '';
         const isRQ = sumFracRQ >= 1.0;
 
