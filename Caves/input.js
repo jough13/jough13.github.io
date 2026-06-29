@@ -37,8 +37,19 @@ const INSTANT_KEYS = new Set([
     '+', '=', '-', '_'
 ]);
 
-// UI Keys that should automatically cancel combat/aiming states if pressed
-const UI_TOGGLE_KEYS = new Set(['i', 'm', 'b', 'k', 'c', 'l', 'p', 'j', 'h', 'q', 'z']);
+// EXPANDABILITY & PERFORMANCE WIN: Dynamic Hotkey Mapping
+// Radically simplifies adding new UI panels without writing messy if/else chains.
+const HOTKEY_MAPPINGS = {
+    'i': { modal: 'inventoryModal',   openFunc: 'openInventoryModal',  closeFunc: 'closeInventoryModal' },
+    'm': { modal: 'mapModal',         openFunc: 'openWorldMap',        closeFunc: 'closeWorldMap' },
+    'b': { modal: 'spellModal',       openFunc: 'openSpellbook',       closeFunc: null },
+    'k': { modal: 'skillModal',       openFunc: 'openSkillbook',       closeFunc: null },
+    'c': { modal: 'collectionsModal', openFunc: 'openCollections',     closeFunc: null },
+    'l': { modal: 'collectionsModal', openFunc: 'openCollections',     closeFunc: null }, // QoL Alias for Library
+    'p': { modal: 'talentModal',      openFunc: 'openTalentModal',     closeFunc: null },
+    'j': { modal: 'questModal',       openFunc: 'openBountyBoard',     closeFunc: null },
+    'h': { modal: 'helpModal',        openFunc: null,                  closeFunc: null } 
+};
 
 // PERFORMANCE WIN: Live HTMLCollection Cache for O(1) Modal Checks
 // Completely eliminates the need to run document.querySelector on every single keystroke!
@@ -58,19 +69,22 @@ const _modalCache = {
 function handleInput(key) {
 
     // 1. INPUT LOCK: Prevent spamming while network/animations are processing
-    if (isProcessingMove) {
+    if (typeof isProcessingMove !== 'undefined' && isProcessingMove) {
         return;
     }
 
     // 2. Audio Context Resume (Browser Policy)
     if (typeof AudioSystem !== 'undefined' && AudioSystem._ctx && AudioSystem._ctx.state === 'suspended') {
-        AudioSystem._ctx.resume().catch(() => {});
+        try { AudioSystem._ctx.resume().catch(() => {}); } catch(e){}
     }
 
     // 3. Robust Safety Check
-    if (!player_id || !gameState || !gameState.player || gameContainer.classList.contains('hidden')) {
+    if (typeof player_id === 'undefined' || !player_id || typeof gameState === 'undefined' || !gameState.player) {
         return;
     }
+    
+    const gc = document.getElementById('gameContainer');
+    if (!gc || gc.classList.contains('hidden')) return;
 
     // 4. Dead Check
     if (gameState.player.health <= 0) return;
@@ -92,7 +106,7 @@ function handleInput(key) {
     // --- BUG FIX & UX WIN: STATE CANCELLATION ---
     // If the player is aiming or dropping an item, but presses a UI hotkey (like 'I' for inventory),
     // automatically cancel the active state so the game doesn't get soft-locked!
-    if (UI_TOGGLE_KEYS.has(lowerKey) || key === 'Escape') {
+    if (HOTKEY_MAPPINGS[lowerKey] || key === 'Escape') {
         let stateCanceled = false;
         
         if (gameState.isAiming) {
@@ -177,26 +191,32 @@ function handleInput(key) {
 
     // --- AIMING MODE ---
     if (gameState.isAiming) {
+        // 🚨 BUG FIX: Guard against missing abilities if they somehow aimed without an ID
+        const abilityId = gameState.abilityToAim;
+        if (!abilityId) {
+            gameState.isAiming = false;
+            return;
+        }
+        
         const dir = MOVEMENT_MAP[key];
         
         if (dir) {
             const [dirX, dirY] = dir;
             lastActionTime = Date.now(); 
-            const abilityId = gameState.abilityToAim;
             
             // JUICE WIN: Make the player physically turn to face the direction they are aiming!
             if (dirX > 0) gameState.player.facing = 'right';
             else if (dirX < 0) gameState.player.facing = 'left';
 
-            if (abilityId === 'lunge') executeLunge(dirX, dirY);
-            else if (abilityId === 'ranged_attack') executeRangedAttack(dirX, dirY);
-            else if (['shieldBash', 'cleave', 'kick', 'crush'].includes(abilityId)) executeMeleeSkill(abilityId, dirX, dirY);
-            else if (abilityId === 'quickstep') executeQuickstep(dirX, dirY);
-            else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) executeAimedSpell(abilityId, dirX, dirY);
-            else if (abilityId === 'pacify') executePacify(dirX, dirY);
-            else if (abilityId === 'inflictMadness') executeInflictMadness(dirX, dirY);
-            else if (abilityId === 'tame') executeTame(dirX, dirY);
-            else if (abilityId === 'throwTNT') executeThrowTNT(dirX, dirY);
+            if (abilityId === 'lunge') { if (typeof executeLunge === 'function') executeLunge(dirX, dirY); }
+            else if (abilityId === 'ranged_attack') { if (typeof executeRangedAttack === 'function') executeRangedAttack(dirX, dirY); }
+            else if (['shieldBash', 'cleave', 'kick', 'crush'].includes(abilityId)) { if (typeof executeMeleeSkill === 'function') executeMeleeSkill(abilityId, dirX, dirY); }
+            else if (abilityId === 'quickstep') { if (typeof executeQuickstep === 'function') executeQuickstep(dirX, dirY); }
+            else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) { if (typeof executeAimedSpell === 'function') executeAimedSpell(abilityId, dirX, dirY); }
+            else if (abilityId === 'pacify') { if (typeof executePacify === 'function') executePacify(dirX, dirY); }
+            else if (abilityId === 'inflictMadness') { if (typeof executeInflictMadness === 'function') executeInflictMadness(dirX, dirY); }
+            else if (abilityId === 'tame') { if (typeof executeTame === 'function') executeTame(dirX, dirY); }
+            else if (abilityId === 'throwTNT') { if (typeof executeThrowTNT === 'function') executeThrowTNT(dirX, dirY); }
             else logMessage("{red:Unknown ability. Aiming canceled.}");
 
             gameState.isAiming = false;
@@ -270,35 +290,32 @@ function handleInput(key) {
         }
     }
 
-    // --- MENU TOGGLES (With Centralized UI Hooks) ---
-    const toggleMenu = (modalEl, openFunc, closeFunc) => {
-        if (typeof window.toggleModal === 'function') {
-            window.toggleModal(modalEl, openFunc, closeFunc);
-        } else {
-            // Fallback just in case ui.js hasn't hooked up yet
-            window.inputQueue.length = 0; 
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-            if (!modalEl.classList.contains('hidden')) {
-                if (closeFunc) closeFunc();
-                else modalEl.classList.add('hidden');
+    // --- MENU TOGGLES (With Centralized Dynamic Hooks) ---
+    const mapping = HOTKEY_MAPPINGS[lowerKey];
+    if (mapping) {
+        const modalEl = document.getElementById(mapping.modal);
+        if (modalEl) {
+            // Locate the functions dynamically via the window object
+            const openFunc = typeof window[mapping.openFunc] === 'function' ? window[mapping.openFunc] : null;
+            const closeFunc = mapping.closeFunc && typeof window[mapping.closeFunc] === 'function' ? window[mapping.closeFunc] : null;
+            
+            if (typeof window.toggleModal === 'function') {
+                window.toggleModal(modalEl, openFunc, closeFunc);
             } else {
-                openFunc();
+                // Fallback just in case ui.js hasn't hooked up yet
+                window.inputQueue.length = 0; 
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                if (!modalEl.classList.contains('hidden')) {
+                    if (closeFunc) closeFunc();
+                    else modalEl.classList.add('hidden');
+                } else if (openFunc) {
+                    openFunc();
+                } else {
+                    modalEl.classList.remove('hidden');
+                }
             }
         }
-    };
-
-    if (lowerKey === 'i') { toggleMenu(inventoryModal, openInventoryModal, closeInventoryModal); return; }
-    if (lowerKey === 'm') { toggleMenu(mapModal, openWorldMap, closeWorldMap); return; }
-    if (lowerKey === 'b') { toggleMenu(spellModal, openSpellbook, null); return; }
-    if (lowerKey === 'k') { toggleMenu(skillModal, openSkillbook, null); return; }
-    if (lowerKey === 'c' || lowerKey === 'l') { toggleMenu(collectionsModal, openCollections, null); return; } // QoL WIN: L opens Library
-    if (lowerKey === 'p') { toggleMenu(talentModal, openTalentModal, null); return; }
-    if (lowerKey === 'j') { toggleMenu(questModal, openBountyBoard, null); return; } 
-    
-    // Help Hotkey
-    if (lowerKey === 'h') { 
-        toggleMenu(helpModal, () => helpModal.classList.remove('hidden'), null); 
-        return; 
+        return;
     }
 
     // Direct Chat Input focus wrapper
@@ -436,8 +453,8 @@ function handleInput(key) {
 
 // --- EVENT LISTENERS ---
 document.addEventListener('keydown', (event) => {
-    // 1. MODIFIER KEY GUARD (Bug Fix)
-    // Prevents shortcuts like Ctrl+R from triggering a "Rest" action in-game!
+    // 1. MAC OS & WINDOWS MODIFIER KEY GUARD
+    // Prevents shortcuts like Ctrl+R, Cmd+W, or Alt+Tab from triggering game actions!
     if (event.ctrlKey || event.altKey || event.metaKey) return;
 
     // 2. UNIVERSAL INPUT PROTECTOR
@@ -450,6 +467,7 @@ document.addEventListener('keydown', (event) => {
     }
 
     // --- Differentiate Numpad from Top Row ---
+    // ROBUSTNESS WIN: Safely handles bluetooth tablet keyboards that sometimes lack .code properties
     let inputStr = event.key;
     if (event.code && event.code.startsWith('Numpad') && !isNaN(parseInt(event.key))) {
         inputStr = 'Numpad' + event.key;
@@ -466,7 +484,10 @@ document.addEventListener('keydown', (event) => {
     // Dead check before queueing
     if (gameState && gameState.player && gameState.player.health <= 0) return;
     
-    if (_modalCache.isAnyOpen() || INSTANT_KEYS.has(inputStr) || gameState.isDroppingItem || gameState.inventoryMode) {
+    // Check if the key matches a menu toggle
+    const isMenuKey = !!HOTKEY_MAPPINGS[inputStr.toLowerCase()];
+    
+    if (_modalCache.isAnyOpen() || INSTANT_KEYS.has(inputStr) || isMenuKey || gameState.isDroppingItem || gameState.inventoryMode) {
         handleInput(inputStr); // Execute instantly
     } else {
         // Gameplay actions (Movement, Combat, Aiming) queue up seamlessly!
