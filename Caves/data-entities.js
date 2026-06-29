@@ -176,6 +176,14 @@ window.QUEST_DATA = {
         description: "\"They say fish swim in the void between dimensions. I must study them! Bring me 3 Astral Jellies.\"",
         type: 'collect', itemNeeded: 'Astral Jelly', needed: 3,
         reward: { xp: 1500, coins: 1000, item: 'Mana Orb', itemQty: 5 }
+    },
+    
+    // --- EXPANSION WIN: New Quests ---
+    "faeGamble": {
+        title: "The Fae's Gamble",
+        description: "\"My brother stepped into a Fairy Ring and never returned. I need to know what happened to him. Bring me any notes you find.\"",
+        type: 'collect', itemNeeded: 'Weathered Warning', needed: 1,
+        reward: { xp: 600, coins: 400, item: 'Mana Orb', itemQty: 2 }
     }
 };
 
