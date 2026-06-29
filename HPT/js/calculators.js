@@ -1818,7 +1818,7 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                 }
             }
 
-           // 2. Beta/Alpha Geometry (Solid Angle)
+           // 2. Beta/Alpha Geometry (Solid Angle & Spectrum Summation)
             if (detInfo.type === 'mix' || detInfo.type === 'alpha_only') {
                 const r_det = detInfo.radius_cm;
                 const d_cm = d_m * 100;
@@ -1834,54 +1834,56 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                 // Geometry scaling factor prevents double-accounting geometry built into source calibrations
                 const geoScalingFactor = geoEff / geoEff_contact;
 
+                // --- Sum all Beta Emissions ---
                 if (detInfo.type === 'mix' && selectedNuclide.emissionEnergies?.beta?.length > 0) {
-                    const betaStr = selectedNuclide.emissionEnergies.beta[0];
-                    const eMax = parseE(betaStr);
-
-                    // Extract beta yield (e.g., from "1.17 MeV (99.8%)")
-                    let betaYield = 1.0; 
-                    const yieldMatch = betaStr.match(/\(([\d.]+)%\)/);
-                    if (yieldMatch) betaYield = safeParseFloat(yieldMatch[1]) / 100.0;
-
-                    const range_g_cm2 = calculateBetaRange(eMax);
                     const shield_g_cm2 = shieldMaterial !== 'None' ? t_cm * shieldDensity : 0;
                     const densityAir = 0.0012; 
                     const air_g_cm2 = d_cm * densityAir;
                     const total_g_cm2 = shield_g_cm2 + air_g_cm2;
-                    
-                    if (total_g_cm2 > range_g_cm2) {
-                        // (Keep existing range out logic here...)
-                        if (shieldMaterial !== 'None' && shield_g_cm2 > range_g_cm2) attenuationMsg.push("Betas blocked by shield.");
-                        else if (air_g_cm2 > range_g_cm2) attenuationMsg.push("Betas ranged out in air.");
-                        else attenuationMsg.push("Betas ranged out in combined shield and air.");
-                    } else {
-                        const mu_rho = 17 / Math.pow(eMax, 1.14);
-                        const transmissionBeta = Math.exp(-mu_rho * total_g_cm2);
+                    let betasBlocked = 0;
+
+                    selectedNuclide.emissionEnergies.beta.forEach(betaStr => {
+                        const eMax = parseE(betaStr);
+                        let betaYield = 1.0; 
+                        const yieldMatch = betaStr.match(/\(([\d.]+)%\)/);
+                        if (yieldMatch) betaYield = safeParseFloat(yieldMatch[1]) / 100.0;
+
+                        const range_g_cm2 = calculateBetaRange(eMax);
                         
-                        // Apply the extracted betaYield here!
-                        cpmBeta = A_dpm * betaYield * (detInfo.refBetaEff || 0.2) * geoScalingFactor * eff_surf * transmissionBeta;
-                        
-                        if (transmissionBeta < 0.99) {
-                            attenuationMsg.push(`Beta flux attenuated to ${(transmissionBeta * 100).toFixed(1)}% by mass-thickness.`);
+                        if (total_g_cm2 > range_g_cm2) {
+                            betasBlocked++;
+                        } else {
+                            const mu_rho = 17 / Math.pow(eMax, 1.14);
+                            const transmissionBeta = Math.exp(-mu_rho * total_g_cm2);
+                            cpmBeta += A_dpm * betaYield * (detInfo.refBetaEff || 0.2) * geoScalingFactor * eff_surf * transmissionBeta;
+                        }
+                    });
+
+                    if (betasBlocked > 0) {
+                        if (betasBlocked === selectedNuclide.emissionEnergies.beta.length) {
+                            attenuationMsg.push("All betas ranged out or blocked by shield/air.");
+                        } else {
+                            attenuationMsg.push("Some lower-energy betas in the spectrum were blocked.");
                         }
                     }
                 }
 
+                // --- Sum all Alpha Emissions ---
                 if (detInfo.alphaEff && selectedNuclide.emissionEnergies?.alpha?.length > 0) {
                     if (shieldMaterial !== 'None' || d_cm > 5.0) { 
-                        attenuationMsg.push("Alphas blocked.");
+                        attenuationMsg.push("Alphas blocked by shielding or air distance.");
                     } else {
-                        const alphaStr = selectedNuclide.emissionEnergies.alpha[0];
-                        let alphaYield = 1.0;
-                        const aYieldMatch = alphaStr.match(/\(([\d.]+)%\)/);
-                        if (aYieldMatch) alphaYield = safeParseFloat(aYieldMatch[1]) / 100.0;
+                        selectedNuclide.emissionEnergies.alpha.forEach(alphaStr => {
+                            let alphaYield = 1.0;
+                            const aYieldMatch = alphaStr.match(/\(([\d.]+)%\)/);
+                            if (aYieldMatch) alphaYield = safeParseFloat(aYieldMatch[1]) / 100.0;
 
-                        // Apply the extracted alphaYield here!
-                        cpmAlpha = A_dpm * alphaYield * geoScalingFactor * detInfo.alphaEff * eff_surf;
+                            cpmAlpha += A_dpm * alphaYield * geoScalingFactor * detInfo.alphaEff * eff_surf;
+                        });
                     }
                 }
             }
-
+            
             const totalCpm = cpmGamma + cpmBeta + cpmAlpha;
 
             setResult({
@@ -3487,21 +3489,25 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 else TI = Math.ceil(mremAt1m * 10) / 10;
             }
 
-            let labelCategory = "Unknown";
             const surfMrem = !isNaN(rateSurface) ? toMremHr(rateSurface, surfaceDoseRateUnit) : 0;
 
+            // 1. Calculate the standard label FIRST
+            let standardLabel = "Check Limits";
+            if (surfMrem <= 0.5 && TI === 0) standardLabel = "White-I";
+            else if (surfMrem <= 50 && TI <= 1) standardLabel = "Yellow-II";
+            else if (surfMrem <= 200 && TI <= 10) standardLabel = "Yellow-III";
+            else if (surfMrem > 200 || TI > 10) standardLabel = "Yellow-III (Exclusive Use)";
+
+            let labelCategory = standardLabel;
+
+            // 2. Apply Excepted Package overrides
             if (classificationResult?.classification === 'EXCEPTED') {
                 if (surfMrem > 0.5) {
-                    labelCategory = "INVALID EXCEPTED (Surface > 0.5 mrem/h. Ship Type A / White-I)";
+                    // Dynamically insert the correct standard label into the warning
+                    labelCategory = `INVALID EXCEPTED (Surface > 0.5 mrem/h. Ship Type A / ${standardLabel})`;
                 } else {
                     labelCategory = "Excepted Marking (No Label)";
                 }
-            } else {
-                if (surfMrem <= 0.5 && TI === 0) labelCategory = "White-I";
-                else if (surfMrem <= 50 && TI <= 1) labelCategory = "Yellow-II";
-                else if (surfMrem <= 200 && TI <= 10) labelCategory = "Yellow-III";
-                else if (surfMrem > 200 || TI > 10) labelCategory = "Yellow-III (Exclusive Use)";
-                else labelCategory = "Check Limits";
             }
 
             setLabelResult({ TI, labelCategory });
