@@ -432,10 +432,10 @@ window.modifyVital = function(vital, rawAmount) {
 
     // 4. Check for Death
     if (vital === 'health' && p.health <= 0) {
-        // JUICE WIN: Force the screen to bleed out immediately if health drops to 0
+        // Force the screen to bleed out immediately if health drops to 0
         gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 };
         
-        // BUG FIX: Prevent call stack crashes by queuing the death handler 
+        // Prevent call stack crashes by queuing the death handler 
         // to run *after* the current combat/move function finishes resolving!
         if (typeof handlePlayerDeath === 'function') {
             setTimeout(handlePlayerDeath, 0); 
