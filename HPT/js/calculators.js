@@ -3491,7 +3491,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
             const surfMrem = !isNaN(rateSurface) ? toMremHr(rateSurface, surfaceDoseRateUnit) : 0;
 
-            // 1. Calculate the standard label FIRST
+            // 1. Calculate the standard label FIRST based purely on dose rates
             let standardLabel = "Check Limits";
             if (surfMrem <= 0.5 && TI === 0) standardLabel = "White-I";
             else if (surfMrem <= 50 && TI <= 1) standardLabel = "Yellow-II";
@@ -3500,13 +3500,19 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
             let labelCategory = standardLabel;
 
-            // 2. Apply Excepted Package overrides
+            // 2. Apply Regulatory Overrides (Excepted & HRCQ)
             if (classificationResult?.classification === 'EXCEPTED') {
                 if (surfMrem > 0.5) {
-                    // Dynamically insert the correct standard label into the warning
                     labelCategory = `INVALID EXCEPTED (Surface > 0.5 mrem/h. Ship Type A / ${standardLabel})`;
                 } else {
                     labelCategory = "Excepted Marking (No Label)";
+                }
+            } else if (classificationResult?.classification === 'HRCQ') {
+                // 49 CFR 172.403 dictates HRCQ is always Yellow-III minimum
+                if (surfMrem > 200 || TI > 10) {
+                    labelCategory = "Yellow-III (Exclusive Use)";
+                } else {
+                    labelCategory = "Yellow-III (HRCQ Mandatory)";
                 }
             }
 
