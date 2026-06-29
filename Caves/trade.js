@@ -51,10 +51,14 @@ window.BASE_ITEM_VALUES = window.BASE_ITEM_VALUES || {
     'Swamp Serpent Scale': 200, 'Minnow': 1, 'River Trout': 4, 
     'Leaping Salmon': 15, 'Mudcat': 2, 'Abyssal Angler': 180, 'Swordfish': 60,
     'Abyssal Oyster': 45, 
-    'Astral Jelly': 80, 'Void Ray': 150, 'Star-Eater': 500, // Void Fish
+    'Astral Jelly': 80, 'Void Ray': 150, 'Star-Eater': 500, 
 
     // High-Tier Tools & Magic
-    'Diamond Tipped Pickaxe': 300, 'Cloudseed': 500, 'Void Astrolabe': 750
+    'Diamond Tipped Pickaxe': 300, 'Cloudseed': 500, 'Void Astrolabe': 750,
+    'Prime Tuning Fork': 350, 'Scroll of Homing': 75, 'Tattered Map': 50,
+    
+    // Crops & Homestead
+    'Wood Log': 2, 'Stone': 1, 'Iron Ore': 4
 };
 
 /**
@@ -65,15 +69,12 @@ function calculateItemValue(item, player) {
     // 1. Try to find the item in the current shop to get its native buy price
     let shopItem = activeShopInventory.find(sItem => sItem.name === item.name);
 
-    // Fallback: Check Template ID match (for modified/magic items)
+    // BUG FIX & ROBUSTNESS: 
+    // If we are trying to sell a magical/crafted item (e.g. "Masterwork Iron Sword"),
+    // it won't perfectly match "Iron Sword" in the shop. We must fall back to its template!
     if (!shopItem && item.templateId && window.ITEM_DATA && window.ITEM_DATA[item.templateId]) {
         const baseName = window.ITEM_DATA[item.templateId].name;
         shopItem = activeShopInventory.find(sItem => sItem.name === baseName);
-    }
-
-    // Fallback: Check string suffix (e.g. "Sharp Steel Sword" -> "Steel Sword")
-    if (!shopItem) {
-        shopItem = activeShopInventory.find(sItem => item.name.endsWith(sItem.name));
     }
 
     // 2. Establish Base Price
@@ -84,6 +85,9 @@ function calculateItemValue(item, player) {
         // Bonus value if the item has magical affixes (Prefix/Suffix)
         if (item.name !== shopItem.name) {
             basePrice = Math.floor(basePrice * 1.5);
+            // Further boost for Epic/Legendary gear
+            if (item._rarity === 'epic') basePrice = Math.floor(basePrice * 1.5);
+            if (item._rarity === 'legendary') basePrice = Math.floor(basePrice * 2.0);
         }
     } else {
         // Look up against our central dictionary
@@ -93,6 +97,12 @@ function calculateItemValue(item, player) {
         }
         if (window.BASE_ITEM_VALUES[lookupName]) basePrice = window.BASE_ITEM_VALUES[lookupName];
         else if (window.BASE_ITEM_VALUES[item.name]) basePrice = window.BASE_ITEM_VALUES[item.name];
+        
+        // Apply magical multipliers to items not explicitly sold in shops (like Monster Drops)
+        if (item._rarity === 'uncommon') basePrice = Math.floor(basePrice * 1.5);
+        if (item._rarity === 'rare') basePrice = Math.floor(basePrice * 2.0);
+        if (item._rarity === 'epic') basePrice = Math.floor(basePrice * 3.0);
+        if (item._rarity === 'legendary') basePrice = Math.floor(basePrice * 5.0);
     }
 
     // 3. Calculate Modifiers
@@ -103,7 +113,7 @@ function calculateItemValue(item, player) {
     const SELL_MODIFIER = 0.5; // Base 50% markdown when selling to shops
     let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
 
-    // 4. Economy Caps (Prevent infinite money loops)
+    // 4. Economy Caps (Prevent infinite money loops where you buy low and sell high instantly)
     if (shopItem) {
         // Calculate what the player would currently BUY this for right now
         let discountPercent = player.charisma * 0.005;
@@ -115,8 +125,8 @@ function calculateItemValue(item, player) {
         const absoluteMaxSell = Math.max(1, Math.floor(currentBuyPrice * 0.80));
         calculatedSellPrice = Math.min(calculatedSellPrice, absoluteMaxSell);
     } else {
-        // General cap for non-shop items
-        const maxSellPrice = Math.floor(basePrice * 0.8);
+        // General cap for non-shop items to prevent insane gold drops
+        const maxSellPrice = Math.floor(basePrice * 1.5);
         calculatedSellPrice = Math.min(calculatedSellPrice, maxSellPrice);
     }
 
@@ -127,7 +137,6 @@ function calculateItemValue(item, player) {
     };
 }
 
-// QoL WIN: Added 'amount' parameter for stack buying!
 function handleBuyItem(itemName, amount = 1) {
     const player = gameState.player;
     const shopItem = activeShopInventory.find(item => item.name === itemName);
@@ -211,7 +220,9 @@ function handleBuyItem(itemName, amount = 1) {
     if (existingStack && isStackable) {
         existingStack.quantity += buyQty;
     } else {
-        // Safe Cloning to prevent reference mutation
+        // ROBUSTNESS WIN: Safe Cloning to prevent reference mutation!
+        // If we don't clone the arrays/objects inside the template, enchanting this item later
+        // will permanently enchant the base template for all future shop purchases!
         player.inventory.push({
             templateId: itemKey,
             name: itemTemplate.name,
@@ -222,7 +233,9 @@ function handleBuyItem(itemName, amount = 1) {
             defense: itemTemplate.defense || null,
             slot: itemTemplate.slot || null,
             statBonuses: itemTemplate.statBonuses ? { ...itemTemplate.statBonuses } : null,
+            tags: itemTemplate.tags ? [...itemTemplate.tags] : null,
             effect: itemTemplate.effect || null,
+            _rarity: itemTemplate._rarity || null,
             isEquipped: false
         });
     }
@@ -324,6 +337,9 @@ function handleSellAllItems() {
 
             // Skip magically enhanced junk just in case (edge cases)
             if (item.statBonuses && Object.keys(item.statBonuses).length > 0) continue;
+            
+            // Skip the Paradox Anomaly!
+            if (item.name === 'Paradox Anomaly') continue;
 
             // DRY OPTIMIZATION: Use our helper
             const { sellPrice } = calculateItemValue(item, player);
@@ -509,7 +525,7 @@ function renderShop() {
             // DRY OPTIMIZATION: Use our helper
             const { sellPrice, regionMult } = calculateItemValue(item, gameState.player);
 
-            // JUICE WIN: Color-code the market demand so the player doesn't have to guess!
+            // LORE & JUICE WIN: Color-code the market demand so the player doesn't have to guess!
             let sellPriceColor = "text-yellow-500";
             let demandTag = "";
             if (regionMult > 1.0) {
@@ -532,7 +548,12 @@ function renderShop() {
                 actionsHtml = `<span class="text-[10px] font-bold text-yellow-500 bg-black bg-opacity-40 px-2 py-1 rounded uppercase tracking-widest border border-yellow-800 shadow-inner">Equipped</span>`;
             }
             
-            const nameColor = item.statBonuses ? 'text-purple-400 font-bold' : 'text-gray-200';
+            let nameColor = 'text-gray-200';
+            if (item._rarity === 'uncommon') nameColor = 'text-green-400 font-bold';
+            else if (item._rarity === 'rare') nameColor = 'text-purple-400 font-bold';
+            else if (item._rarity === 'epic') nameColor = 'text-red-400 font-bold';
+            else if (item._rarity === 'legendary') nameColor = 'text-yellow-400 font-bold';
+            else if (item.statBonuses && Object.keys(item.statBonuses).length > 0) nameColor = 'text-fuchsia-400 font-bold';
 
             li.innerHTML = `
                 <div class="flex-grow pr-2">
@@ -571,6 +592,7 @@ function renderShop() {
     }
 }
 
+// LORE WIN: MASSIVELY EXPANDED SUPPLY/DEMAND LOGIC
 function getRegionalPriceMultiplier(itemType, itemName) {
     let multiplier = 1.0;
 
@@ -598,43 +620,48 @@ function getRegionalPriceMultiplier(itemType, itemName) {
 
     // 1. MULTIVERSE / ALTERNATE DIMENSIONS: Survival items are priceless
     if (isAlternateRealm) {
-        if (itemName === 'Clean Water' || itemName === 'Flask of Water' || itemName === 'Hardtack') multiplier = 2.0;
-        if (itemName === 'Torch' || itemName === 'Campfire Kit') multiplier = 1.5;
-        if (itemName === 'Void Dust') multiplier = 0.5; // Very common here
+        if (itemName === 'Clean Water' || itemName === 'Flask of Water' || itemName === 'Hardtack') multiplier = 3.0; // Tripled!
+        if (itemName === 'Torch' || itemName === 'Campfire Kit') multiplier = 2.0;
+        if (itemName === 'Void Dust' || itemName === 'Memory Shard') multiplier = 0.5; // Very common here
     }
 
     // 2. DESERT: Pays huge for Water/Food/Herbs. Hates Sand/Cactus.
     if (biome === 'Desert') {
         if (itemName === 'Cactus Fruit') multiplier = 0.5; // Supply is high
         if (itemName === 'Wildberry' || itemName === 'Healing Potion') multiplier = 2.0; // Demand is high
+        if (itemName === 'Clean Water' || itemName === 'Flask of Water') multiplier = 2.5; 
         if (itemName === 'Obsidian Shard') multiplier = 1.5;
     }
     
     // 3. DEADLANDS & UNDERWORLD: Will pay extraordinary sums for basic survival gear!
     if (biome === 'Deadlands' || isUnderworld) {
-        if (itemName === 'Clean Water' || itemName === 'Flask of Water' || itemName === 'Healing Potion') multiplier = 2.5; 
-        if (itemName === 'Torch' || itemName === 'Ever-Burning Candle' || itemName === 'Campfire Kit') multiplier = 2.0;
-        if (itemName === 'Void Dust' || itemName === 'Demon Horn') multiplier = 0.8; // Common drops here
+        if (itemName === 'Clean Water' || itemName === 'Flask of Water' || itemName === 'Healing Potion') multiplier = 3.0; 
+        if (itemName === 'Torch' || itemName === 'Ever-Burning Candle' || itemName === 'Campfire Kit') multiplier = 2.5;
+        if (itemName === 'Void Dust' || itemName === 'Demon Horn' || itemName === 'Bone Shard') multiplier = 0.5; // Common drops here
+        if (itemName === 'Wood Log') multiplier = 2.0; // No trees down here!
     }
 
     // 4. MOUNTAIN & VOLCANO: Pays for Wood/Food. Hates Ore/Stone.
     if (biome === 'Mountain' || (isDungeon && gameState.currentCaveTheme === 'ROCK') || (isDungeon && gameState.currentCaveTheme === 'FIRE')) {
-        if (itemName === 'Iron Ore' || itemName === 'Stone' || itemName === 'Obsidian Shard') multiplier = 0.5;
-        if (itemName === 'Stick' || itemName === 'Wood Log' || itemName === 'Machete') multiplier = 1.5;
+        if (itemName === 'Iron Ore' || itemName === 'Stone' || itemName === 'Obsidian Shard' || itemName === 'Star-Metal Ore') multiplier = 0.5;
+        if (itemName === 'Stick' || itemName === 'Wood Log' || itemName === 'Machete') multiplier = 2.0;
     }
 
     // 5. FOREST/SWAMP: Pays for Metal/Tech. Hates Wood/Herbs.
     if (biome === 'Forest' || biome === 'Swamp') {
         if (itemName === 'Medicinal Herb' || itemName === 'Stick' || itemName === 'Wood Log') multiplier = 0.5;
-        if (itemName === 'Iron Ore' || itemName === 'Steel Sword') multiplier = 1.3;
-        if (itemName === 'Antidote') multiplier = 2.0; // High demand in swamps!
+        if (itemName === 'Iron Ore' || itemName === 'Steel Sword') multiplier = 1.5;
+        if (itemName === 'Antidote') multiplier = 2.5; // Extreme demand in swamps!
+        if (itemName === 'Spider Silk') multiplier = 0.5;
     }
 
     // 6. CASTLES/VILLAGES: Pay extra for Luxury, Relics, and Exotic Fish
     if (isCastle || biome === 'Safe Haven') {
         if (itemType === 'junk' || itemType === 'quest' || itemType === 'trade') multiplier = 1.2; 
-        if (itemName === 'Shattered Crown' || itemName === 'Signet Ring') multiplier = 1.5;
-        if (['Golden Koi', 'Black Pearl', 'Rainbow Shell', 'Abyssal Oyster', 'Astral Jelly', 'Void Ray'].includes(itemName)) multiplier = 1.3;
+        if (itemName === 'Shattered Crown' || itemName === 'Signet Ring' || itemName === 'Golden Pocket Watch') multiplier = 2.0; // Doubled!
+        if (['Golden Koi', 'Black Pearl', 'Rainbow Shell', 'Abyssal Oyster', 'Astral Jelly', 'Void Ray', 'Star-Eater'].includes(itemName)) multiplier = 1.5;
+        // Villagers hate monster parts
+        if (['Rat Tail', 'Bat Wing', 'Sludge Eel', 'Bone Shard', 'Dirty Water'].includes(itemName)) multiplier = 0.5;
     }
 
     return multiplier;
@@ -643,7 +670,8 @@ function getRegionalPriceMultiplier(itemType, itemName) {
 // ==========================================
 // SECURITY & PERFORMANCE WIN: Event Delegation
 // ==========================================
-function initShopListeners() {
+// Wraps in an IIFE to ensure bindings are applied safely and exactly once.
+(function initShopListeners() {
     const closeShopButton = document.getElementById('closeShopButton');
     const shopModalEl = document.getElementById('shopModal');
 
@@ -654,7 +682,6 @@ function initShopListeners() {
         });
     }
 
-    // Attach exactly ONE listener to the entire modal to handle all trading clicks
     if (shopModalEl && !shopModalEl.dataset.listenersBound) {
         shopModalEl.addEventListener('click', (e) => {
             
@@ -682,6 +709,6 @@ function initShopListeners() {
         
         shopModalEl.dataset.listenersBound = 'true';
     }
-}
+})();
 
 // --- END OF FILE trade.js ---
