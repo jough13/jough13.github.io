@@ -128,7 +128,7 @@ function getTileColorForMap(worldX, worldY) {
     if (tile === '🛕') return MAP_COLORS.TEMPLE;
     if (tile === '🛟' || tile === '🚢') return MAP_COLORS.FLOTSAM;
     if (tile === '🌺') return MAP_COLORS.MOONBLOOM;
-    if (tile === '☄️') return MAP_COLORS.STAR;
+    if (tile === '☄️' || tile === '🌠') return MAP_COLORS.STAR; // Added Meteorite
     if (tile === '🌳e') return MAP_COLORS.ELDER_TREE;
     if (tile === '🍄r') return MAP_COLORS.FAIRY_RING;
     if (tile === '⚙️d') return MAP_COLORS.CLOCKWORK;
@@ -167,13 +167,14 @@ function getMapTileName(x, y) {
     
     // LORE WIN: Deeply Expanded Biome Dictionary
     const names = {
-        'V': "Safe Haven (The Last Settlement)", '🏰': "Fallen Castle Ruins", '♛': "The Grand Fortress (Danger)",
+        'V': "Safe Haven (The Last Settlement)", '🏰': "Fallen Castle Ruins", '♛': "The Grand Fortress",
         '🛕': "Sunken Abyssal Temple", '🌋': "Infernal Volcanic Island", 
         '⛰': "Dark Cavern Entrance", '🌳e': "Ancient Elder Tree",
         '🍄r': "Fae Territory (Fairy Ring)", '⚙️d': "Clockwork Vault (Second Age)",
         '⛰️m': "Abandoned Dwarven Mines", 'Ω': "Tear in the Firmament (Void Rift)",
         '🕳️': "Abyssal Chasm (Underworld Entrance)", '🚢': "Barnacle-Encrusted Shipwreck",
         '🛟': "Ocean Flotsam", '🌺': "Rare Moonbloom Patch", '☄️': "Star-Metal Crater",
+        '🌠': "Smoking Meteorite",
         'F': "Dense Overgrown Forest", 'D': "Scorching Sand Dunes", 'd': "Ashen Deadlands",
         '^': "Impassable Mountain Peaks", '~': "The Deep Ocean", '≈': "Fetid Swamp Waters",
         '.': "Open Plains", '#': "Magical Leyline Waystone", '🗺️': "Cartographer's Guild Station",
@@ -181,7 +182,7 @@ function getMapTileName(x, y) {
         '💎c': "Crystalline Spires", '🍄': "Towering Fungal Jungle", '🕸': "Infested Spider Nest",
         '⛺k': "Abandoned Campfire", '⚰️': "Forgotten Grave", '?': "Whispering Statue",
         '|': "Ancient Obelisk", '⛲': "Wishing Well", '⛩️': "Ruined Shrine", 'V': "Village Wall",
-        '🎵': "Wandering Bard", '⛺a': "Abandoned Campsite"
+        '🎵': "Wandering Bard", '⛺a': "Abandoned Campsite", '🕍': "Dark Castle Ruins"
     };
 
     if (names[tile]) return names[tile];
@@ -214,6 +215,9 @@ function closeWorldMap() {
         mapAnimFrame = null;
     }
     
+    // UX & PERFORMANCE WIN: Clear cache explicitly on close to free up GPU memory 
+    mapChunkCache.clear(); 
+
     // Memory release for chunks outside our immediate view
     if (typeof chunkManager !== 'undefined' && chunkManager.unloadOutOfRangeChunks && gameState.player) {
         const currentChunkX = Math.floor(gameState.player.x / MAP_CHUNK_SIZE);
@@ -257,14 +261,13 @@ function renderWorldMap() {
     const logicalWidth = worldMapCanvas.clientWidth;
     const logicalHeight = worldMapCanvas.clientHeight;
 
-    // Deep dark blue background for a blueprint/parchment feel
-    // JUICE WIN: Darker, deeper blue for better contrast
-    worldMapCtx.fillStyle = '#020617'; 
+    // UX WIN: Thematic Cartography Background
+    worldMapCtx.fillStyle = '#e7e5e4'; // Parchment
     worldMapCtx.fillRect(0, 0, logicalWidth, logicalHeight);
     worldMapCtx.imageSmoothingEnabled = false;
 
-    // Draw panning cartography grid
-    worldMapCtx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    // Draw panning cartography grid (Darker lines for parchment background)
+    worldMapCtx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
     worldMapCtx.lineWidth = 1;
     const gridSpacing = 50;
     const gridOffset_X = (mapCamera.x * currentMapScale) % gridSpacing;
@@ -311,15 +314,15 @@ function renderWorldMap() {
             worldMapCtx.drawImage(chunkCanvas, screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
         }
 
-        // Chunk Grid Lines
-        worldMapCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        // Chunk Grid Lines (Darker for contrast)
+        worldMapCtx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
         worldMapCtx.lineWidth = 1;
         worldMapCtx.strokeRect(screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
 
         // Fine Tile Grid at high zoom levels
         if (currentMapScale >= 10) {
             worldMapCtx.beginPath();
-            worldMapCtx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+            worldMapCtx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
             for (let i = 1; i < MAP_CHUNK_SIZE; i++) {
                 worldMapCtx.moveTo(screenX + i * currentMapScale, screenY);
                 worldMapCtx.lineTo(screenX + i * currentMapScale, screenY + chunkSizeOnScreen);
@@ -372,7 +375,8 @@ function renderWorldMap() {
     const startRegY = Math.floor(startWorldY / regSize);
     const endRegY = Math.floor(endWorldY / regSize);
 
-    worldMapCtx.fillStyle = 'rgba(255, 255, 255, 0.15)'; // Highly transparent text
+    // Dark ink look for the parchment
+    worldMapCtx.fillStyle = 'rgba(0, 0, 0, 0.25)'; 
     worldMapCtx.font = `italic bold ${Math.max(16, currentMapScale * 6)}px "Uncial Antiqua", serif, cursive`;
     worldMapCtx.textAlign = 'center';
     worldMapCtx.textBaseline = 'middle';
@@ -403,7 +407,7 @@ function renderWorldMap() {
     // VISUAL WIN: THE LEYLINE NETWORK (Flowing Animation!)
     // ========================================================================
     if (gameState.player.unlockedWaypoints && gameState.player.unlockedWaypoints.length > 0) {
-        worldMapCtx.strokeStyle = `rgba(168, 85, 247, 0.4)`; // Electric Purple
+        worldMapCtx.strokeStyle = `rgba(168, 85, 247, 0.6)`; // Electric Purple
         worldMapCtx.lineWidth = Math.max(1.5, currentMapScale * 0.2);
         
         // Animated flowing dashes
@@ -462,7 +466,7 @@ function renderWorldMap() {
     if (gameState.player.unlockedWaypoints && gameState.player.unlockedWaypoints.length > 0) {
         const wpPulse = (Math.sin(now / 200) + 1) / 2; 
         worldMapCtx.fillStyle = '#a855f7'; // Purple
-        worldMapCtx.globalAlpha = 0.4 + wpPulse * 0.6;
+        worldMapCtx.globalAlpha = 0.6 + wpPulse * 0.4;
         
         worldMapCtx.beginPath(); 
         gameState.player.unlockedWaypoints.forEach(wp => {
@@ -565,7 +569,7 @@ function renderWorldMap() {
     worldMapCtx.lineWidth = 2;
     worldMapCtx.stroke();
     
-    worldMapCtx.fillStyle = '#ffffff';
+    worldMapCtx.fillStyle = '#0f172a';
     worldMapCtx.font = `bold ${Math.max(12, currentMapScale * 1.5)}px monospace`;
     worldMapCtx.fillText('You', playerScreenX + currentMapScale/2, playerScreenY - currentMapScale - 5);
 
@@ -574,9 +578,9 @@ function renderWorldMap() {
         const hScreenX = Math.floor((hoverWorldX - mapCamera.x) * currentMapScale + centerX);
         const hScreenY = Math.floor((hoverWorldY - mapCamera.y) * currentMapScale + centerY);
         
-        worldMapCtx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        worldMapCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         worldMapCtx.fillRect(hScreenX, hScreenY, currentMapScale, currentMapScale);
-        worldMapCtx.strokeStyle = '#facc15';
+        worldMapCtx.strokeStyle = '#1e3a8a';
         worldMapCtx.lineWidth = 1;
         worldMapCtx.strokeRect(hScreenX, hScreenY, currentMapScale, currentMapScale);
 
@@ -586,7 +590,12 @@ function renderWorldMap() {
             const padX = 8;
             const padY = 6;
             worldMapCtx.font = 'bold 12px monospace';
-            const metrics = worldMapCtx.measureText(tileName);
+            
+            // Format the string through the auto-lore tagger to extract any colored strings!
+            const rawTooltip = typeof autoFormatLore === 'function' ? autoFormatLore(tileName) : tileName;
+            const strippedText = typeof stripColorTags === 'function' ? stripColorTags(rawTooltip) : tileName;
+            
+            const metrics = worldMapCtx.measureText(strippedText);
             const boxWidth = metrics.width + padX * 2;
             const boxHeight = 24 + padY * 2;
             
@@ -598,8 +607,8 @@ function renderWorldMap() {
                 tooltipX = hScreenX - boxWidth - 8;
             }
             
-            worldMapCtx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-            worldMapCtx.strokeStyle = 'rgba(250, 204, 21, 0.5)';
+            worldMapCtx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            worldMapCtx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
             worldMapCtx.lineWidth = 1;
             worldMapCtx.beginPath();
             if (worldMapCtx.roundRect) {
@@ -610,9 +619,9 @@ function renderWorldMap() {
             worldMapCtx.fill();
             worldMapCtx.stroke();
             
-            worldMapCtx.fillStyle = '#facc15';
+            worldMapCtx.fillStyle = '#000000';
             worldMapCtx.textAlign = 'left';
-            worldMapCtx.fillText(tileName, tooltipX + padX, tooltipY);
+            worldMapCtx.fillText(strippedText, tooltipX + padX, tooltipY);
             worldMapCtx.textAlign = 'center'; 
         }
     }
@@ -635,7 +644,7 @@ function renderWorldMap() {
         needleAngle = Math.atan2(gameState.activeTreasure.y - mapCamera.y, gameState.activeTreasure.x - mapCamera.x);
     }
 
-    worldMapCtx.strokeStyle = 'rgba(250, 204, 21, 0.3)';
+    worldMapCtx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
     worldMapCtx.lineWidth = 1;
     worldMapCtx.beginPath();
     worldMapCtx.arc(cx, cy, 30, 0, TWO_PI);
@@ -662,7 +671,7 @@ function renderWorldMap() {
     worldMapCtx.rotate(needleAngle + Math.PI / 2);
 
     // The Golden Needle (Forward)
-    worldMapCtx.fillStyle = gameState.activeTreasure ? 'rgba(239, 68, 68, 0.9)' : 'rgba(250, 204, 21, 0.8)'; // Turns red if tracking
+    worldMapCtx.fillStyle = gameState.activeTreasure ? 'rgba(239, 68, 68, 0.9)' : 'rgba(217, 119, 6, 0.8)'; // Turns red if tracking
     worldMapCtx.beginPath();
     worldMapCtx.moveTo(0, -35); 
     worldMapCtx.lineTo(-6, 0); 
@@ -680,7 +689,7 @@ function renderWorldMap() {
     worldMapCtx.restore();
 
     // Letter 'N'
-    worldMapCtx.fillStyle = '#facc15';
+    worldMapCtx.fillStyle = '#b45309';
     worldMapCtx.font = 'bold 22px "Uncial Antiqua", cursive';
     worldMapCtx.textAlign = 'center';
     worldMapCtx.textBaseline = 'middle';
@@ -688,9 +697,9 @@ function renderWorldMap() {
     
     // Realm Banner (If not in the Prime Realm)
     if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) {
-        worldMapCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        worldMapCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         worldMapCtx.fillRect(10, 10, 260, 30);
-        worldMapCtx.fillStyle = '#facc15';
+        worldMapCtx.fillStyle = '#a855f7';
         worldMapCtx.font = 'bold 16px monospace';
         worldMapCtx.textAlign = 'left';
         worldMapCtx.fillText(`Shattered Realm #${gameState.currentRealm}`, 20, 25);
@@ -701,10 +710,12 @@ function renderWorldMap() {
 
 function updateMapUI() {
     let hoverText = '';
-    let actionHint = ' | <span class="text-gray-500">Right-Click to Pin</span>';
+    let actionHint = ' | <span class="text-gray-400">Right-Click to Pin</span>';
     
     if (hoverWorldX !== null && hoverWorldY !== null) {
-        const tileName = getMapTileName(hoverWorldX, hoverWorldY);
+        const rawTileName = getMapTileName(hoverWorldX, hoverWorldY);
+        // Clean any potential HTML tags just in case
+        const tileName = typeof stripColorTags === 'function' ? stripColorTags(rawTileName) : rawTileName;
         
         if (tileName === "Magical Leyline Waystone") {
             const isUnlocked = gameState.player.unlockedWaypoints && gameState.player.unlockedWaypoints.some(wp => wp.x === hoverWorldX && wp.y === hoverWorldY);
@@ -817,6 +828,9 @@ worldMapCanvas.addEventListener('contextmenu', (e) => {
     if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ customPins: gameState.player.customPins });
 });
 
+// UX WIN: Touch Support for Mobile Pan/Zoom
+let initialPinchDist = null;
+
 worldMapCanvas.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) {
         startMapDrag(e.touches[0].clientX, e.touches[0].clientY);
@@ -824,7 +838,6 @@ worldMapCanvas.addEventListener('touchstart', (e) => {
         // UX WIN: Mobile Double-Tap Detection
         const now = Date.now();
         if (now - lastMapTouchTime < 300) {
-            // Trigger the same double-click logic
             if (hoverWorldX !== null && hoverWorldY !== null && gameState.player.unlockedWaypoints) {
                 const isUnlocked = gameState.player.unlockedWaypoints.some(wp => wp.x === hoverWorldX && wp.y === hoverWorldY);
                 if (isUnlocked && typeof handleFastTravel === 'function') {
@@ -841,39 +854,40 @@ worldMapCanvas.addEventListener('touchstart', (e) => {
     }
     
     if (e.touches.length === 2) {
-        const rect = worldMapCanvas.getBoundingClientRect();
-        const touch = e.touches[0];
-        const mouseX = touch.clientX - rect.left;
-        const mouseY = touch.clientY - rect.top;
-        const centerX = Math.floor(worldMapCanvas.clientWidth / 2);
-        const centerY = Math.floor(worldMapCanvas.clientHeight / 2);
-        
-        const pinX = Math.floor((mouseX - centerX) / currentMapScale + mapCamera.x);
-        const pinY = Math.floor((mouseY - centerY) / currentMapScale + mapCamera.y);
-        
-        if (!gameState.player.customPins) gameState.player.customPins = [];
-        
-        const existingIdx = gameState.player.customPins.findIndex(p => Math.abs(p.x - pinX) < 3 && Math.abs(p.y - pinY) < 3);
-        if (existingIdx > -1) {
-            gameState.player.customPins.splice(existingIdx, 1);
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        } else {
-            gameState.player.customPins.push({ x: pinX, y: pinY });
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
-        }
-        if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ customPins: gameState.player.customPins });
+        // Prepare for pinch zoom
+        isDraggingMap = false; 
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        initialPinchDist = Math.sqrt(dx * dx + dy * dy);
     }
     hoverWorldX = null; 
 }, { passive: false });
 
 worldMapCanvas.addEventListener('touchmove', (e) => {
+    e.preventDefault(); 
+    
     if (isDraggingMap && e.touches.length === 1) {
-        e.preventDefault(); 
         doMapDrag(e.touches[0].clientX, e.touches[0].clientY);
+    }
+    
+    // Multi-touch Pinch to Zoom
+    if (e.touches.length === 2 && initialPinchDist !== null) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const currentDist = Math.sqrt(dx * dx + dy * dy);
+        
+        const zoomDelta = currentDist / initialPinchDist;
+        initialPinchDist = currentDist; // Reset for smooth continuous zooming
+
+        targetMapScale *= zoomDelta;
+        targetMapScale = Math.max(0.5, Math.min(32, targetMapScale));
     }
 }, { passive: false });
 
-window.addEventListener('touchend', stopMapDrag);
+window.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) initialPinchDist = null;
+    if (e.touches.length === 0) stopMapDrag();
+});
 
 // Ultra-Smooth Zoom-to-Cursor Logic
 worldMapCanvas.addEventListener('wheel', (e) => {
