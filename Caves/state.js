@@ -194,6 +194,7 @@ const gameState = {
 
         // Modifiers & Status Effects
         lastCombatTime: 0,    // Out-of-combat regeneration timer
+        lastHitTime: 0,       // Invulnerability frame tracker!
         strengthBonus: 0,
         strengthBonusTurns: 0,
         witsBonus: 0,
@@ -227,7 +228,9 @@ const gameState = {
             guild: 0,         // Cartographers/Merchants
             crown: 0,         // Kingdom Guards
             shadowed_hand: -10, // Default hostile
-            fae: 0            // The Feywild tricksters
+            fae: 0,           // The Feywild tricksters
+            dwarves: 0,       // Deep miners
+            cult_of_the_abyss: -5 // Cultists of the Leviathan
         },
 
         // Storage & Items
@@ -364,12 +367,30 @@ const gameState = {
 /**
  * Safely modifies a player's vital stat, handles UI flashes, and checks for death.
  * @param {string} vital - 'health', 'mana', 'stamina', 'psyche', 'hunger', 'thirst'
- * @param {number} amount - Positive to heal/restore, Negative to damage/spend
+ * @param {number} rawAmount - Positive to heal/restore, Negative to damage/spend
  * @returns {number} The actual amount changed (after clamping to min/max)
  */
 
-window.modifyVital = function(vital, amount) {
+window.modifyVital = function(vital, rawAmount) {
     const p = gameState.player;
+    
+    // BUG FIX & ROBUSTNESS WIN: Type Coercion!
+    // Ensures a string "5" passed from a sloppy DB read doesn't accidentally 
+    // concatenate into "105" health instead of adding 5.
+    const amount = Number(rawAmount) || 0;
+    if (amount === 0) return 0;
+    
+    // --- INVULNERABILITY FRAMES (i-Frames) ---
+    // Prevent the player from taking damage from 5 different sources on the exact same millisecond
+    // (e.g., getting hit by a bomb, an arrow, and lava on the exact same tick)
+    if (vital === 'health' && amount < 0) {
+        const now = Date.now();
+        // 100ms grace period. Prevents instakills but allows standard combat flow!
+        if (now - (p.lastHitTime || 0) < 100) { 
+            return 0; // Ignore this damage tick!
+        }
+        p.lastHitTime = now;
+    }
     
     // 1. Get the max cap for this vital from cache
     const maxKey = window._statCapCache[vital] || ('max' + vital.charAt(0).toUpperCase() + vital.slice(1));
@@ -388,7 +409,7 @@ window.modifyVital = function(vital, amount) {
         // 30% chance to be violently dismounted on a heavy hit!
         if (Math.random() < 0.30) {
             p.isMounted = false;
-            logMessage("{red:The heavy blow knocks you off your mount!}");
+            if (typeof logMessage !== 'undefined') logMessage("{red:The heavy blow knocks you off your mount!}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             if (typeof render !== 'undefined') render();
         }
@@ -413,7 +434,12 @@ window.modifyVital = function(vital, amount) {
     if (vital === 'health' && p.health <= 0) {
         // JUICE WIN: Force the screen to bleed out immediately if health drops to 0
         gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 };
-        if (typeof handlePlayerDeath === 'function') handlePlayerDeath();
+        
+        // BUG FIX: Prevent call stack crashes by queuing the death handler 
+        // to run *after* the current combat/move function finishes resolving!
+        if (typeof handlePlayerDeath === 'function') {
+            setTimeout(handlePlayerDeath, 0); 
+        }
     }
 
     return actualChange; // Returns exactly how much was healed/lost
