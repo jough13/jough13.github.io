@@ -105,7 +105,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
         if (!item) return;
 
         const isStackable = window.isStackableItem(item.type);
-        const existingInvItem = isStackable ? player.inventory.find(i => i.name === item.name) : null;
+        const existingInvItem = isStackable ? player.inventory.find(i => i.name === item.name && !i.isEquipped) : null;
 
         // Determine transfer amount
         const amountToMove = (amountStr === 'all') ? item.quantity : 1;
@@ -131,13 +131,16 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
                 if (templateKey) withdrawnItem.templateId = templateKey; 
             }
             
-            if (templateKey && window.ITEM_DATA && window.ITEM_DATA[templateKey]) {
+            // Rehydrate properties that can't be saved in the database
+            if (templateKey && typeof window.ITEM_DATA !== 'undefined' && window.ITEM_DATA[templateKey]) {
                 const t = window.ITEM_DATA[templateKey];
                 withdrawnItem.effect = t.effect;
                 withdrawnItem.onHit = t.onHit;
                 withdrawnItem.procChance = t.procChance;
                 withdrawnItem.inflicts = t.inflicts;
                 withdrawnItem.inflictChance = t.inflictChance;
+                // BUG FIX: Hydrate tags so weapons function correctly!
+                if (t.tags) withdrawnItem.tags = [...t.tags]; 
             }
             
             player.inventory.push(withdrawnItem); 
@@ -179,6 +182,7 @@ window.depositAllMaterials = function() {
     for (let i = player.inventory.length - 1; i >= 0; i--) {
         const item = player.inventory[i];
         
+        // BUG FIX: Prevent depositing equipped ammo/consumables!
         if (item.isEquipped) continue;
         if (!['junk', 'ingredient', 'trade'].includes(item.type)) continue;
 
@@ -241,6 +245,7 @@ window.quickStackToStash = function() {
     for (let i = player.inventory.length - 1; i >= 0; i--) {
         const item = player.inventory[i];
         
+        // BUG FIX: Prevent quick-stacking equipped items (like arrows!)
         if (item.isEquipped) continue;
         if (!window.isStackableItem(item.type)) continue;
 
@@ -347,10 +352,10 @@ function renderStash() {
         
         // Grab base lore if available
         let tKey = item.templateId || getStashItemKey(item.name);
-        const template = window.ITEM_DATA && tKey ? window.ITEM_DATA[tKey] : null;
+        const template = typeof window.ITEM_DATA !== 'undefined' && tKey ? window.ITEM_DATA[tKey] : null;
         if (template && template.description) {
             // ROBUSTNESS: Strip out internal {color:} tags for a completely clean native tooltip
-            const cleanDesc = template.description.replace(/\{[a-zA-Z]+:(.*?)\}/g, '$1');
+            const cleanDesc = typeof stripColorTags === 'function' ? stripColorTags(template.description) : template.description.replace(/\{[a-zA-Z]+:(.*?)\}/g, '$1');
             tooltip += `\n\n${cleanDesc}`;
         }
 
@@ -370,24 +375,32 @@ function renderStash() {
     };
 
     // UI/UX WIN: Generate visually pleasing category tags for the list
-    const generateTypeTag = (type) => {
+    const generateTypeTag = (item) => {
+        const type = item.type;
         if (!type) return '';
+        
+        // Magical items get a special tag override!
+        if (item.statBonuses && Object.keys(item.statBonuses).length > 0) {
+            return `<span class="text-[8px] uppercase tracking-widest text-fuchsia-300 bg-fuchsia-900 border-fuchsia-800 bg-opacity-30 px-1.5 py-0.5 rounded border ml-2 shadow-inner inline-block relative -top-0.5">MAGIC</span>`;
+        }
+        
         const tagMap = {
             'weapon': { color: 'text-red-400', bg: 'bg-red-900 border-red-800' },
             'armor': { color: 'text-blue-400', bg: 'bg-blue-900 border-blue-800' },
             'consumable': { color: 'text-green-400', bg: 'bg-green-900 border-green-800' },
             'trade': { color: 'text-yellow-400', bg: 'bg-yellow-900 border-yellow-800' },
             'ammo': { color: 'text-orange-400', bg: 'bg-orange-900 border-orange-800' },
-            'junk': { color: 'text-gray-400', bg: 'bg-gray-800 border-gray-700' }
+            'junk': { color: 'text-gray-400', bg: 'bg-gray-800 border-gray-700' },
+            'quest': { color: 'text-purple-400', bg: 'bg-purple-900 border-purple-800' }
         };
-        const style = tagMap[type] || { color: 'text-purple-400', bg: 'bg-purple-900 border-purple-800' };
+        const style = tagMap[type] || { color: 'text-gray-300', bg: 'bg-gray-800 border-gray-600' };
         return `<span class="text-[8px] uppercase tracking-widest ${style.color} ${style.bg} bg-opacity-30 px-1.5 py-0.5 rounded border ml-2 shadow-inner inline-block relative -top-0.5">${type}</span>`;
     };
 
     // Render Player Inventory (Deposit)
     if (player.inventory.length === 0) {
         // LORE WIN: Thematic empty states!
-        stashPlayerList.innerHTML = '<li class="italic text-sm text-gray-500 p-3 border border-gray-700 rounded-lg bg-black bg-opacity-20 text-center shadow-inner">Your pockets hold only dust.</li>';
+        stashPlayerList.innerHTML = '<li class="italic text-sm text-gray-500 p-3 border border-gray-700 rounded-lg bg-black bg-opacity-20 text-center shadow-inner font-serif">Your pockets hold only dust.</li>';
     } else {
         player.inventory.forEach((item, index) => {
             const li = document.createElement('li');
@@ -395,10 +408,15 @@ function renderStash() {
             li.title = generateTooltip(item); 
             
             // JUICE: Highlight Magic Items
-            const nameColor = item.statBonuses ? 'text-purple-400 font-bold' : 'text-gray-200';
+            let nameColor = item.statBonuses ? 'text-fuchsia-400 font-bold' : 'text-gray-200';
+            
+            // Rarity overriding color
+            if (item._rarity === 'rare') nameColor = 'text-purple-400 font-bold';
+            if (item._rarity === 'epic') nameColor = 'text-red-400 font-bold';
+            if (item._rarity === 'legendary') nameColor = 'text-yellow-400 font-bold';
 
             let extraInfo = item.statBonuses ? ` <span class="text-xs text-purple-400 drop-shadow-md">✨</span>` : '';
-            extraInfo += generateTypeTag(item.type);
+            extraInfo += generateTypeTag(item);
             
             if (item.isEquipped) {
                 extraInfo += ` <span class="text-[9px] text-yellow-500 font-bold bg-black bg-opacity-40 px-1 rounded ml-1 uppercase tracking-widest border border-yellow-800 shadow-inner relative -top-0.5">[EQP]</span>`;
@@ -433,7 +451,7 @@ function renderStash() {
     // Render Bank (Withdraw)
     if (bank.length === 0) {
         // LORE WIN: Thematic empty states!
-        stashBankList.innerHTML = '<li class="italic text-sm text-gray-500 p-3 border border-gray-700 rounded-lg bg-black bg-opacity-20 text-center shadow-inner">The dimensional vault echoes with emptiness.</li>';
+        stashBankList.innerHTML = '<li class="italic text-sm text-gray-500 p-3 border border-gray-700 rounded-lg bg-black bg-opacity-20 text-center shadow-inner font-serif">The dimensional vault echoes with emptiness.</li>';
     } else {
         bank.forEach((item, index) => {
             const li = document.createElement('li');
@@ -441,10 +459,14 @@ function renderStash() {
             li.title = generateTooltip(item); 
             
             // JUICE: Highlight Magic Items
-            const nameColor = item.statBonuses ? 'text-purple-400 font-bold' : 'text-gray-200';
+            let nameColor = item.statBonuses ? 'text-fuchsia-400 font-bold' : 'text-gray-200';
+            
+            if (item._rarity === 'rare') nameColor = 'text-purple-400 font-bold';
+            if (item._rarity === 'epic') nameColor = 'text-red-400 font-bold';
+            if (item._rarity === 'legendary') nameColor = 'text-yellow-400 font-bold';
             
             let extraInfo = item.statBonuses ? ` <span class="text-xs text-purple-400 drop-shadow-md">✨</span>` : '';
-            extraInfo += generateTypeTag(item.type);
+            extraInfo += generateTypeTag(item);
 
             // PERFORMANCE WIN: Event Delegation Data Attributes
             let buttonsHtml = '';
@@ -485,7 +507,7 @@ function renderStash() {
         bankHeader.innerHTML = `
             <div class="flex justify-between items-center w-full">
                 <span class="drop-shadow-sm">Dimensional Vault <span class="text-[10px] font-normal ${capColor} ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner">(${bank.length}/${window.MAX_STASH_SLOTS})</span></span>
-                <button data-action="sortStash" class="text-[10px] uppercase font-bold tracking-widest bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95" style="transform: translateZ(0);">Sort</button>
+                <button data-action="sortStash" class="text-[10px] uppercase font-bold tracking-widest bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-blue-800 active:border-b-0 active:mt-0.5" style="transform: translateZ(0);">Sort</button>
             </div>
         `;
     }
@@ -498,10 +520,10 @@ function renderStash() {
             <div class="flex justify-between items-center w-full">
                 <span class="drop-shadow-sm">Your Bag <span class="text-[10px] text-gray-400 font-normal ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner">(${player.inventory.length}/${invCap})</span></span>
                 <div class="flex gap-2">
-                    <button data-action="quickStack" class="text-[10px] uppercase font-bold tracking-widest bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-purple-800" style="transform: translateZ(0);">
+                    <button data-action="quickStack" class="text-[10px] uppercase font-bold tracking-widest bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-purple-800 active:border-b-0 active:mt-0.5" style="transform: translateZ(0);">
                         Quick Stack
                     </button>
-                    <button data-action="massDeposit" class="text-[10px] uppercase font-bold tracking-widest bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-gray-800" style="transform: translateZ(0);">
+                    <button data-action="massDeposit" class="text-[10px] uppercase font-bold tracking-widest bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-gray-800 active:border-b-0 active:mt-0.5" style="transform: translateZ(0);">
                         Deposit Mats
                     </button>
                 </div>
@@ -530,8 +552,9 @@ function openStashModal() {
 // SECURITY & PERFORMANCE WIN: Event Delegation
 // ==========================================
 // Attaches exactly ONE event listener to the entire modal to handle all Stash clicks.
-const stashModalEl = document.getElementById('stashModal');
-if (stashModalEl && !stashModalEl.dataset.listenersBound) {
+(function initStashListeners() {
+    const stashModalEl = document.getElementById('stashModal');
+    if (!stashModalEl || stashModalEl.dataset.listenersBound) return;
     
     stashModalEl.addEventListener('click', (e) => {
         // Did we click a button with a data-action?
@@ -570,6 +593,6 @@ if (stashModalEl && !stashModalEl.dataset.listenersBound) {
     }
 
     stashModalEl.dataset.listenersBound = 'true';
-}
+})();
 
 // --- END OF FILE stash.js ---
