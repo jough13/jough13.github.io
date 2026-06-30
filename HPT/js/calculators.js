@@ -2969,7 +2969,9 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
                     </thead>
                     <tbody>
                         {items.length > 0 ? items.map((item, idx) => {
-                            const isItemRegulated = item.fracExempt >= 1.0;
+                            // FIXED: Now correctly reads the boolean flag injected during handleAddItem
+                            const isItemRegulated = item.isRegulated; 
+                            
                             return (
                                 <tr key={item.id || idx}>
                                     <td className="border border-black p-2 text-center font-bold text-lg">{isItemRegulated ? 'X' : ''}</td>
@@ -3380,6 +3382,10 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             fracRQ: rqLimitTBq === Infinity ? 0 : actTBq / rqLimitTBq,
             fracHRCQ: hrcqLimitTBq === 0 ? 0 : actTBq / hrcqLimitTBq,
             psnOverride: itemManualPSN,
+            
+            suggestedPSN: suggestedPSN,
+            psn: itemManualPSN || suggestedPSN,
+            isRegulated: !((exemptLimitBq === 0 || actBq <= exemptLimitBq) && (exemptConcLimitBq_g === 0 || specActivityBq_g <= exemptConcLimitBq_g)),
             lsaHint: lsaHint
         };
 
@@ -3819,8 +3825,17 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                                 <span className="text-[10px] font-normal text-slate-500 block">{item.form}, {item.state} | {item.category === 'instrument' ? 'Inst/Art' : 'Material'}</span>
                                             </td>
                                             <td className="p-2 font-mono whitespace-nowrap">{item.activityDisplay}</td>
-                                            <td className="p-2 text-xs truncate max-w-[200px]" title={item.psnOverride}>{item.psnOverride || 'Auto'}</td>
-                                            <td className="p-2 text-right"><button onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:text-red-700"><Icon path={ICONS.trash || "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"} className="w-4 h-4"/></button></td>
+                                            
+                                            {/* --- Display the actual PSN instead of 'Auto' --- */}
+                                            <td className="p-2 text-xs truncate max-w-[250px]" title={item.psn}>
+                                                {item.psnOverride ? (
+                                                    <span className="text-amber-600 font-bold" title="Manual Override">Override: {item.psn}</span>
+                                                ) : (
+                                                    <span className="text-slate-500" title="Auto-Calculated">Auto: {item.psn}</span>
+                                                )}
+                                            </td>
+                                            
+                                            <td className="p-2 text-right"><button onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:text-red-700"><Icon path={ICONS.trash} className="w-4 h-4"/></button></td>
                                         </tr>
                                     ))}
                                 </tbody>
