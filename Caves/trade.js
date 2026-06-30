@@ -670,16 +670,16 @@ function getRegionalPriceMultiplier(itemType, itemName) {
 // ==========================================
 // SECURITY & PERFORMANCE WIN: Event Delegation
 // ==========================================
-// Wraps in an IIFE to ensure bindings are applied safely and exactly once.
-(function initShopListeners() {
+function initShopListeners() {
     const closeShopButton = document.getElementById('closeShopButton');
     const shopModalEl = document.getElementById('shopModal');
 
-    if (closeShopButton) {
+    if (closeShopButton && !closeShopButton.dataset.listenerBound) {
         closeShopButton.addEventListener('click', () => {
             if (shopModalEl) shopModalEl.classList.add('hidden');
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
         });
+        closeShopButton.dataset.listenerBound = 'true';
     }
 
     if (shopModalEl && !shopModalEl.dataset.listenersBound) {
@@ -709,6 +709,6 @@ function getRegionalPriceMultiplier(itemType, itemName) {
         
         shopModalEl.dataset.listenersBound = 'true';
     }
-})();
+}
 
 // --- END OF FILE trade.js ---
