@@ -307,19 +307,20 @@ function saveEnchantingState() {
 }
 
 // PERFORMANCE & SECURITY WIN: Event Delegation
-// Use an IIFE to ensure bindings are applied safely and exactly once, 
+// Ensures bindings are applied safely and exactly once, 
 // protecting against hot-reload duplication.
-(function initEnchantingListeners() {
+function initEnchantingListeners() {
     const enchantModal = document.getElementById('enchantingModal');
     if (!enchantModal || enchantModal.dataset.listenersBound) return;
 
     const closeBtn = document.getElementById('closeEnchantingButton');
-    if (closeBtn) {
+    if (closeBtn && !closeBtn.dataset.listenerBound) {
         closeBtn.addEventListener('click', () => {
             enchantModal.classList.add('hidden');
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             if (document.activeElement) document.activeElement.blur(); 
         });
+        closeBtn.dataset.listenerBound = 'true';
     }
 
     // One listener to rule them all
@@ -343,6 +344,6 @@ function saveEnchantingState() {
     });
     
     enchantModal.dataset.listenersBound = 'true';
-})();
+}
 
 // --- END OF FILE enchanting.js ---
