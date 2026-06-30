@@ -3791,13 +3791,26 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                             </div>
 
                             <div className="md:col-span-2 pt-2 mt-2 border-t border-slate-200 dark:border-slate-700">
-                                <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Proper Shipping Name (PSN) Override</label>
+                                <div className="flex justify-between items-center mb-1">
+                                    <div className="flex items-center gap-2">
+                                        <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400">Proper Shipping Name (PSN) for this Item</label>
+                                        {liveItemDetails.lsaHint && !itemManualPSN && (
+                                            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 rounded text-[9px] font-bold border border-emerald-200 dark:border-emerald-800 animate-fade-in">
+                                                May Qualify: {liveItemDetails.lsaHint}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {itemManualPSN && (
+                                        <button onClick={() => setItemManualPSN('')} className="text-[10px] text-sky-600 dark:text-sky-400 hover:underline font-semibold">
+                                            Reset to Auto-Suggested
+                                        </button>
+                                    )}
+                                </div>
                                 <select 
-                                    value={itemManualPSN} 
+                                    value={itemManualPSN || liveItemDetails.suggestedPSN} 
                                     onChange={e => setItemManualPSN(e.target.value)} 
                                     className="w-full p-2 rounded bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-600 focus:ring-sky-500"
                                 >
-                                    <option value="">-- Auto-Suggest Based on Limits --</option>
                                     {PSN_OPTIONS.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
                                 </select>
                             </div>
@@ -3813,7 +3826,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     <tr>
                                         <th className="p-2">Nuclide</th>
                                         <th className="p-2">Activity</th>
-                                        <th className="p-2">PSN Override</th>
+                                        <th className="p-2">PSN</th>
                                         <th className="p-2"></th>
                                     </tr>
                                 </thead>
