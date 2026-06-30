@@ -148,12 +148,12 @@ var NEW_FISHING_ITEMS = {
     // --- Deep Sea Fish ---
     '🐟cod': { name: 'Deep Sea Cod', type: 'consumable', tile: '🐟', description: "A massive, meaty fish. {yellow:+30 Hunger}", effect: (s) => eatFish(s, 30) },
     '🐟tna': { name: 'Silver Tuna', type: 'consumable', tile: '🐟', description: "Swift and valuable. {yellow:+40 Hunger}, {green:+5 HP}", effect: (s) => eatFish(s, 40, 5) },
-    '🐟swd': { name: 'Swordfish', type: 'weapon', tile: '🗡️', damage: 4, slot: 'weapon', description: "{red:+4 Dmg}. The bill of a massive swordfish. Surprisingly sharp." },
+    '🐟swd': { name: 'Swordfish', type: 'weapon', tags: ['blade'], tile: '🗡️', damage: 4, slot: 'weapon', description: "{red:+4 Dmg}. The bill of a massive swordfish. Surprisingly sharp." },
     '🐟ang': { name: 'Abyssal Angler', type: 'tool', tile: '💡', statBonuses: { perception: 2 }, description: "{gold:+2 Per}. Its glowing lure still shines even in death." },
     
     // --- Lava Fish ---
     '🌋crp': { name: 'Magma Carp', type: 'consumable', tile: '🐟', description: "It's already cooked perfectly! {yellow:+35 Hunger}, {green:+10 HP}", effect: (s) => eatFish(s, 35, 10) },
-    '🌋eel': { name: 'Obsidian Eel', type: 'weapon', tile: '🐍', damage: 6, slot: 'weapon', inflicts: 'burn', inflictChance: 0.3, description: "{red:+6 Dmg}. A living, whip-like eel that sears flesh. {orange:(Burns target)}" },
+    '🌋eel': { name: 'Obsidian Eel', type: 'weapon', tags: ['whip', 'fire'], tile: '🐍', damage: 6, slot: 'weapon', inflicts: 'burn', inflictChance: 0.3, description: "{red:+6 Dmg}. A living, whip-like eel that sears flesh. {orange:(Burns target)}" },
     '🌋hrt': { name: 'Heart of the Volcano', type: 'accessory', tile: '❤️', defense: 2, slot: 'accessory', statBonuses: { constitution: 5, strength: 3 }, description: "{blue:+2 Def}, {green:+5 Con, +3 Str}. It beats with volcanic fury." },
 
     // --- Void/Astral Fish (NEW) ---
@@ -351,7 +351,7 @@ function eatFish(state, hungerAmt, hpAmt = 0, psycheAmt = 0) {
     if (hpAmt > 0) state.player.health = Math.min(state.player.maxHealth, state.player.health + hpAmt);
     if (psycheAmt > 0) state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + psycheAmt);
     
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Munch sound
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playConsume(); // JUICE: New Consume Sound
     
     let logStr = `You eat the fish. {yellow:(+${hungerAmt} Hunger)}`;
     if (hpAmt > 0) logStr += `, {green:(+${hpAmt} HP)}`;
@@ -678,6 +678,8 @@ function executeFishing() {
 
             // The Line-Snap Stamina Battle!
             if (weight > 100) {
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playFishBite(); // JUICE
+                
                 logMessage(`{orange:It's a monster! It fights the line!}`);
                 if (isLeviathansBane) {
                     logMessage("{purple:Leviathan's Bane: You effortlessly tire out the beast!}");
@@ -722,11 +724,17 @@ function executeFishing() {
         }
 
         if (rarity === 'legendary') {
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+            if (typeof AudioSystem !== 'undefined') {
+                AudioSystem.playLevelUp();
+                AudioSystem.playFishBite();
+            }
             logMessage(`{gold:A MASSIVE TUG! You hauled up a ${finalItemName}!}`);
             gameState.screenShake = 5; // JUICE
         } else if (rarity === 'rare') {
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+            if (typeof AudioSystem !== 'undefined') {
+                AudioSystem.playCoin();
+                AudioSystem.playFishBite();
+            }
             logMessage(`{purple:A strong bite! You caught a ${finalItemName}!}`);
         } else if (rarity === 'trash') {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
