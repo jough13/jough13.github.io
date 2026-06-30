@@ -8,7 +8,7 @@
 
 function castSpell(spellId) {
     const player = gameState.player;
-    const spellData = SPELL_DATA[spellId];
+    const spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[spellId] : null;
 
     if (!spellData) {
         logMessage("{red:Unknown spell. (No spell data found)}");
@@ -133,7 +133,8 @@ function castSpell(spellId) {
                 if (player.frostbiteTurns > 0) { logMessage("{gold:The supernatural chill leaves your bones.}"); ailmentsCured = true; }
                 if (player.burnTurns > 0) { logMessage("{gold:The searing flames are extinguished.}"); ailmentsCured = true; }
                 
-                window.modifyVital('health', player.maxHealth);
+                if (typeof window.modifyVital === 'function') window.modifyVital('health', player.maxHealth);
+                
                 player.poisonTurns = 0;
                 player.frostbiteTurns = 0;
                 player.madnessTurns = 0; 
@@ -158,15 +159,19 @@ function castSpell(spellId) {
                         if (x === player.x && y === player.y) continue;
                         
                         let tileAt;
-                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(x, y);
-                        else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[y]?.[x];
-                        else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[y]?.[x];
+                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                            if (typeof chunkManager !== 'undefined') tileAt = chunkManager.getTile(x, y);
+                        } else if (gameState.mapMode === 'dungeon') {
+                            if (typeof chunkManager !== 'undefined') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[y]?.[x];
+                        } else if (gameState.mapMode === 'castle') {
+                            if (typeof chunkManager !== 'undefined') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[y]?.[x];
+                        }
 
-                        const eData = ENEMY_DATA[tileAt];
+                        const eData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tileAt] : null;
                         const tags = eData ? (eData.tags || []) : [];
                         if (eData && (tags.includes("undead") || tags.includes("demon"))) {
                             // Fire and forget spell damage applying to surrounding enemies
-                            applySpellDamage(x, y, holyDamage, 'divineLight');
+                            if (typeof applySpellDamage === 'function') applySpellDamage(x, y, holyDamage, 'divineLight');
                             hitUnholy = true;
                         }
                     }
@@ -187,7 +192,7 @@ function castSpell(spellId) {
             case 'lesserHeal': {
                 const effectiveWits = player.wits + (player.witsBonus || 0);
                 const healAmount = spellData.baseHeal + (effectiveWits * spellLevel);
-                const healedFor = window.modifyVital('health', healAmount);
+                const healedFor = typeof window.modifyVital === 'function' ? window.modifyVital('health', healAmount) : 0;
 
                 if (healedFor > 0) {
                     logMessage(`You cast Lesser Heal and recover {green:${healedFor} health}.`);
@@ -245,8 +250,8 @@ function castSpell(spellId) {
                     }
                 }
 
-                const map = chunkManager.caveMaps[gameState.currentCaveId];
-                const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+                const map = typeof chunkManager !== 'undefined' ? chunkManager.caveMaps[gameState.currentCaveId] : null;
+                const theme = (typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null) || { floor: '.' };
                 const secretWallTile = theme.secretWall;
                 let foundWall = false;
 
@@ -258,16 +263,18 @@ function castSpell(spellId) {
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
                 }
 
-                for (let y = -1; y <= 1; y++) {
-                    for (let x = -1; x <= 1; x++) {
-                        if (x === 0 && y === 0) continue;
-                        const checkX = player.x + x;
-                        const checkY = player.y + y;
+                if (map && secretWallTile) {
+                    for (let y = -1; y <= 1; y++) {
+                        for (let x = -1; x <= 1; x++) {
+                            if (x === 0 && y === 0) continue;
+                            const checkX = player.x + x;
+                            const checkY = player.y + y;
 
-                        if (map[checkY] && map[checkY][checkX] === secretWallTile) {
-                            map[checkY][checkX] = theme.floor;
-                            foundWall = true;
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(checkX, checkY, '#a855f7', 10);
+                            if (map[checkY] && map[checkY][checkX] === secretWallTile) {
+                                map[checkY][checkX] = theme.floor;
+                                foundWall = true;
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(checkX, checkY, '#a855f7', 10);
+                            }
                         }
                     }
                 }
@@ -279,19 +286,19 @@ function castSpell(spellId) {
                 } else {
                     logMessage("{gray:You focus, but the stone around you holds no secrets.}");
                 }
-                if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+                if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
                 spellCastSuccessfully = true;
                 break;
             }
 
             case 'darkPact': {
                 const manaRestored = spellData.baseRestore + (player.willpower * spellLevel);
-                const actualRestore = window.modifyVital('mana', manaRestored);
+                const actualRestore = typeof window.modifyVital === 'function' ? window.modifyVital('mana', manaRestored) : 0;
 
                 if (actualRestore > 0) {
                     logMessage(`You sacrifice {red:${cost} health} to restore {blue:${actualRestore} mana}.`);
                     
-                    if (typeof triggerStatAnimation !== 'undefined') {
+                    if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined') {
                         triggerStatAnimation(statDisplays.health, 'stat-pulse-red'); 
                     }
                     
@@ -317,7 +324,7 @@ function castSpell(spellId) {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
 
             updates[costType] = player[costType]; 
-            if (typeof playerRef !== 'undefined') playerRef.update(updates); 
+            if (typeof playerRef !== 'undefined' && playerRef) playerRef.update(updates); 
             
             const spellModal = document.getElementById('spellModal');
             if (spellModal) spellModal.classList.add('hidden');
@@ -345,7 +352,9 @@ function castSpell(spellId) {
 
 async function applySpellDamage(targetX, targetY, damage, spellId) {
     const player = gameState.player;
-    const spellData = SPELL_DATA[spellId] || { healPercent: 0, inflicts: null };
+    const spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[spellId] : null;
+    if (!spellData) return false;
+    
     const weather = gameState.weather; 
     let finalDamage = damage;
 
@@ -358,14 +367,14 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
     let tile;
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         const enemyId = `overworld:${targetX},${-targetY}`;
-        const liveEnemy = gameState.sharedEnemies[enemyId];
-        tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
+        const liveEnemy = gameState.sharedEnemies ? gameState.sharedEnemies[enemyId] : null;
+        tile = liveEnemy ? liveEnemy.tile : (typeof chunkManager !== 'undefined' ? chunkManager.getTile(targetX, targetY) : '.');
     } else {
-        const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
+        const map = (gameState.mapMode === 'dungeon' && typeof chunkManager !== 'undefined') ? chunkManager.caveMaps[gameState.currentCaveId] : (typeof chunkManager !== 'undefined' ? chunkManager.castleMaps[gameState.currentCastleId] : null);
         tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
     }
     
-    const enemyData = ENEMY_DATA[tile];
+    const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
     const tags = enemyData ? (enemyData.tags || []) : [];
     const isTargetInWater = (tile === '~' || tile === '≈');
 
@@ -410,7 +419,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         }
         
         // ICE BRIDGE SYNERGY
-        if (isTargetInWater && gameState.mapMode === 'overworld') {
+        if (isTargetInWater && gameState.mapMode === 'overworld' && typeof chunkManager !== 'undefined') {
             chunkManager.setWorldTile(targetX, targetY, '❄️', 1); // Melts in 1 hour
             logMessage(`{cyan:The water freezes into a solid path!}`);
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#e0f2fe', 8);
@@ -420,7 +429,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         if (tile === '🌋') {
             logMessage(`{cyan:The intense cold solidifies the magma into Obsidian!}`);
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#1f2937', 15);
-            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+            if ((gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') && typeof chunkManager !== 'undefined') {
                 chunkManager.setWorldTile(targetX, targetY, '▲', 2); // Drop an obsidian shard that lasts for 2 hours
                 gameState.mapDirty = true;
             }
@@ -428,18 +437,14 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         if (tile === '🔥') {
             logMessage(`{cyan:The frost extinguishes the flames.}`);
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#d4d4d8', 8);
-            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+            if ((gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') && typeof chunkManager !== 'undefined') {
                 chunkManager.setWorldTile(targetX, targetY, '.');
                 gameState.mapDirty = true;
-            } else if (gameState.mapMode === 'dungeon') {
+            } else if (gameState.mapMode === 'dungeon' && typeof chunkManager !== 'undefined') {
                 const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
                 if (theme) chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = theme.floor;
             }
         }
-    }
-    else if (spellId === 'divineLight') {
-        // Flavor for hitting unholy enemies with Holy Nova
-        if (enemyData) logMessage(`{gold:The holy light sears the ${enemyData.name}!}`);
     }
 
     if (!enemyData) return false; // No enemy here
@@ -456,11 +461,11 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         const enemyId = `overworld:${targetX},${-targetY}`;
         
         // BUG FIX: Prevent crash if EnemyNetworkManager isn't fully loaded
-        if (typeof EnemyNetworkManager === 'undefined') return false;
+        if (typeof EnemyNetworkManager === 'undefined' || typeof rtdb === 'undefined') return false;
         
         const enemyRef = rtdb.ref(EnemyNetworkManager.getPath(targetX, targetY, enemyId));
 
-        const liveEnemy = gameState.sharedEnemies[enemyId];
+        const liveEnemy = gameState.sharedEnemies ? gameState.sharedEnemies[enemyId] : null;
         const enemyInfo = liveEnemy || (typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, targetX, targetY) : enemyData);
   
         try {
@@ -469,7 +474,6 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 enemyRef.transaction(currentData => {
 
                     // If the enemy is already dead (null), ABORT the transaction.
-                    // Do NOT recreate the enemy!
                     if (currentData === null) {
                         return undefined; 
                     }
@@ -507,10 +511,13 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                     const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(player, lootData) : '$';
 
                     if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(targetX, targetY, droppedLoot || '.');
+                } else {
+                    // LORE WIN: Flavorful hit confirmation using actual entity name
+                    logMessage(`You hit the ${enemyInfo.name} for ${damageDealt} magic damage!`);
                 }
             } else {
                 // The transaction aborted because the enemy was already dead
-                if (gameState.sharedEnemies[enemyId]) {
+                if (gameState.sharedEnemies && gameState.sharedEnemies[enemyId]) {
                     delete gameState.sharedEnemies[enemyId];
                 }
             }
@@ -520,7 +527,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
     } else {
         // Handle Instanced Combat
-        let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+        let enemy = gameState.instancedEnemies ? gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY) : null;
         if (enemy) {
             damageDealt = Math.max(1, finalDamage);
             enemy.health -= damageDealt;
@@ -542,17 +549,17 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
     if (damageDealt > 0 && spellId === 'siphonLife') {
         const healedAmount = Math.floor(damageDealt * spellData.healPercent);
         if (healedAmount > 0) {
-            const actualHeal = window.modifyVital('health', healedAmount);
+            const actualHeal = typeof window.modifyVital === 'function' ? window.modifyVital('health', healedAmount) : 0;
             if (actualHeal > 0) {
-                logMessage(`You drain {green:${actualHeal} health} from the ${enemyData.name}.`);
-                if (typeof playerRef !== 'undefined') playerRef.update({ health: player.health });
+                logMessage(`You drain {green:${actualHeal} health} from the target.`);
+                if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ health: player.health });
             }
         }
     }
 
     else if (damageDealt > 0 && spellData.inflicts && Math.random() < spellData.inflictChance) {
         if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-            let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+            let enemy = gameState.instancedEnemies ? gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY) : null;
 
             if (enemy && spellData.inflicts === 'frostbite' && enemy.frostbiteTurns <= 0) {
                 logMessage(`{cyan:The ${enemy.name} is afflicted with Frostbite!}`);
@@ -582,7 +589,8 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
 async function executeAimedSpell(spellId, dirX, dirY) {
     const player = gameState.player;
-    const spellData = SPELL_DATA[spellId];
+    const spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[spellId] : null;
+    if (!spellData) return;
     const spellLevel = player.spellbook[spellId] || 1;
 
     // --- 🚨 LOCK THE ENGINE ---
@@ -696,19 +704,19 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     let isSolid = false;
                     
                     if (gameState.mapMode === 'dungeon') {
-                        const map = chunkManager.caveMaps[gameState.currentCaveId];
+                        const map = typeof chunkManager !== 'undefined' ? chunkManager.caveMaps[gameState.currentCaveId] : null;
                         tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
                         const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
                         const wallTile = theme ? theme.wall : '▓';
                         if (tile === wallTile || tile === '▒' || tile === '+') isSolid = true;
                     } else if (gameState.mapMode === 'castle') {
-                        const map = chunkManager.castleMaps[gameState.currentCastleId];
+                        const map = typeof chunkManager !== 'undefined' ? chunkManager.castleMaps[gameState.currentCastleId] : null;
                         tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
                         if (tile === '▓' || tile === '▒' || tile === '+') isSolid = true;
                     } else {
                         const enemyId = `overworld:${targetX},${-targetY}`;
-                        const liveEnemy = gameState.sharedEnemies[enemyId];
-                        tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(targetX, targetY);
+                        const liveEnemy = gameState.sharedEnemies ? gameState.sharedEnemies[enemyId] : null;
+                        tile = liveEnemy ? liveEnemy.tile : (typeof chunkManager !== 'undefined' ? chunkManager.getTile(targetX, targetY) : '.');
                         if (['^', 'F', '🧱', '+', '☒'].includes(tile) && !liveEnemy) isSolid = true;
                     }
 
@@ -760,12 +768,12 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     let tileAt;
                     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                         const enemyId = `overworld:${mx},${-my}`;
-                        const liveEnemy = gameState.sharedEnemies[enemyId];
-                        tileAt = liveEnemy ? liveEnemy.tile : chunkManager.getTile(mx, my);
+                        const liveEnemy = gameState.sharedEnemies ? gameState.sharedEnemies[enemyId] : null;
+                        tileAt = liveEnemy ? liveEnemy.tile : (typeof chunkManager !== 'undefined' ? chunkManager.getTile(mx, my) : '.');
                     } else if (gameState.mapMode === 'dungeon') {
-                        tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[my]?.[mx];
+                        tileAt = typeof chunkManager !== 'undefined' ? chunkManager.caveMaps[gameState.currentCaveId]?.[my]?.[mx] : ' ';
                     } else {
-                        tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[my]?.[mx];
+                        tileAt = typeof chunkManager !== 'undefined' ? chunkManager.castleMaps[gameState.currentCastleId]?.[my]?.[mx] : ' ';
                     }
 
                     // CONTENT WIN: Meteor Mining!
@@ -773,14 +781,14 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         // If it hits an empty mountain, 5% chance to extract Star-Metal!
                         if (Math.random() < 0.05) {
                             logMessage("{gold:The meteor shatters the mountain, revealing a glowing core!}");
-                            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(mx, my, '☄️');
+                            if (gameState.mapMode === 'overworld' && typeof chunkManager !== 'undefined') chunkManager.setWorldTile(mx, my, '☄️');
                         }
                         break; // Stop at the mountain
                     }
                     // CONTENT WIN: Deforestation
                     if (tileAt === '🌳') {
                         logMessage("{orange:The thicket goes up in flames!}");
-                        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(mx, my, '🔥', 0.5); // Burns for 30 minutes
+                        if (gameState.mapMode === 'overworld' && typeof chunkManager !== 'undefined') chunkManager.setWorldTile(mx, my, '🔥', 0.5); // Burns for 30 minutes
                         break;
                     }
 
@@ -793,6 +801,9 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 logMessage("{orange:A meteor crashes down from the heavens!}");
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.8, 0.5, 100);
                 gameState.screenShake = 25; // Massive shake
+                
+                // JUICE WIN: Massive screen flash via unified renderer system
+                gameState.screenFlash = { color: '#f97316', alpha: 0.6, decay: 0.05 };
                 
                 // Epicenter visual
                 if (typeof ParticleSystem !== 'undefined') {
@@ -822,11 +833,11 @@ async function executeAimedSpell(spellId, dirX, dirY) {
 
                 let tileType;
                 if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                    tileType = chunkManager.getTile(targetX, targetY);
+                    tileType = typeof chunkManager !== 'undefined' ? chunkManager.getTile(targetX, targetY) : '.';
                 } else if (gameState.mapMode === 'dungeon') {
-                    tileType = chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX];
+                    tileType = typeof chunkManager !== 'undefined' ? chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] : '.';
                 } else {
-                    tileType = chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX];
+                    tileType = typeof chunkManager !== 'undefined' ? chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] : '.';
                 }
 
                 if (tileType === '(' || tileType === '⚰️') {
@@ -835,16 +846,18 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     } else {
                         logMessage("{purple:You chant the words of unlife... The bones assemble and rise to serve you!}");
 
-                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(targetX, targetY, '.');
-                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
-                        else chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] = '.';
+                        if (typeof chunkManager !== 'undefined') {
+                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(targetX, targetY, '.');
+                            else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
+                            else chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] = '.';
+                        }
 
                         // LORE WIN: Dynamic Minion Naming based on origin
                         let minionName = "Risen Skeleton";
                         if (tileType === '⚰️') minionName = "Awakened Warrior";
                         else if (gameState.mapMode === 'underworld') minionName = "Abyssal Thrall";
                         else if (gameState.currentRealm !== 0) minionName = "Void-Tethered Husk";
-                        else if (chunkManager.getTile(targetX, targetY) === 'D') minionName = "Desiccated Mummy";
+                        else if (typeof chunkManager !== 'undefined' && chunkManager.getTile(targetX, targetY) === 'D') minionName = "Desiccated Mummy";
 
                         gameState.player.companion = {
                             name: minionName,
@@ -858,7 +871,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                             y: targetY
                         };
 
-                        if (typeof playerRef !== 'undefined') playerRef.update({ companion: gameState.player.companion });
+                        if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ companion: gameState.player.companion });
                         hitSomething = true;
                         if (typeof render === 'function') render();
                     }
@@ -891,10 +904,10 @@ async function executeAimedSpell(spellId, dirX, dirY) {
 
                         let hasEnemy = false;
                         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                            const tile = chunkManager.getTile(x, y);
+                            const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(x, y) : '.';
                             if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) hasEnemy = true;
                         } else {
-                            if (gameState.instancedEnemies.some(e => e.x === x && e.y === y)) hasEnemy = true;
+                            if (gameState.instancedEnemies && gameState.instancedEnemies.some(e => e.x === x && e.y === y)) hasEnemy = true;
                         }
 
                         if (hasEnemy) potentialJumpTargets.push({ x, y });
@@ -943,7 +956,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         }
 
         // --- 3. Finalize Turn ---
-        if (typeof playerRef !== 'undefined') {
+        if (typeof playerRef !== 'undefined' && playerRef) {
             playerRef.update({
                 [spellData.costType]: player[spellData.costType] // Update mana or psyche
             });
@@ -997,7 +1010,7 @@ function triggerAbilityCooldown(abilityId) {
         gameState.player.cooldowns[abilityId] = cd;
 
         // Update Database
-        if (typeof playerRef !== 'undefined') {
+        if (typeof playerRef !== 'undefined' && playerRef) {
             playerRef.update({ cooldowns: gameState.player.cooldowns });
         }
 
@@ -1007,25 +1020,27 @@ function triggerAbilityCooldown(abilityId) {
 
 // --- SECURITY & PERFORMANCE WIN: Event Delegation ---
 // Attaches exactly ONE listener to the spellbook list, bypassing inline DOM bindings.
-const spellListEl = document.getElementById('spellList');
-if (spellListEl && !spellListEl.dataset.listenersBound) {
-    spellListEl.addEventListener('click', (e) => {
-        const spellItem = e.target.closest('.spell-item');
-        if (spellItem && spellItem.dataset.spell) {
-            castSpell(spellItem.dataset.spell);
-        }
-    });
-    spellListEl.dataset.listenersBound = 'true';
-}
+(function initSpellbookDelegation() {
+    const spellListEl = document.getElementById('spellList');
+    if (spellListEl && !spellListEl.dataset.listenersBound) {
+        spellListEl.addEventListener('click', (e) => {
+            const spellItem = e.target.closest('.spell-item');
+            if (spellItem && spellItem.dataset.spell) {
+                castSpell(spellItem.dataset.spell);
+            }
+        });
+        spellListEl.dataset.listenersBound = 'true';
+    }
 
-const closeSpellBtn = document.getElementById('closeSpellButton');
-if (closeSpellBtn && !closeSpellBtn.dataset.listenerBound) {
-    closeSpellBtn.addEventListener('click', () => {
-        const spellModal = document.getElementById('spellModal');
-        if (spellModal) spellModal.classList.add('hidden');
-        if (document.activeElement) document.activeElement.blur(); 
-    });
-    closeSpellBtn.dataset.listenerBound = 'true';
-}
+    const closeSpellBtn = document.getElementById('closeSpellButton');
+    if (closeSpellBtn && !closeSpellBtn.dataset.listenerBound) {
+        closeSpellBtn.addEventListener('click', () => {
+            const spellModal = document.getElementById('spellModal');
+            if (spellModal) spellModal.classList.add('hidden');
+            if (document.activeElement) document.activeElement.blur(); 
+        });
+        closeSpellBtn.dataset.listenerBound = 'true';
+    }
+})();
 
 // --- END OF FILE magic.js ---
