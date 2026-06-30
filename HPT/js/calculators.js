@@ -3240,15 +3240,39 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const actBq = actTBq * 1e12;
         const massGrams = safeParseFloat(newItemMass);
         const specActivityBq_g = massGrams > 0 ? actBq / massGrams : Infinity;
+
+        const isInstrument = newItemCategory === 'instrument';
+        const isSpecialForm = newItemForm === 'A1';
+        const hasFissile = FISSILE_ISOTOPES.includes(newItemSymbol);
+
+        // --- Calculate LSA Status & Hint FIRST ---
+        const a2Raw = selectedNuclideData.shipping.A2;
+        const a2Val = (typeof a2Raw === 'string' && a2Raw.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(a2Raw);
         
+        let lsaHint = null;
+        let suggestedPSN = '';
+        
+        if (massGrams > 0 && a2Val !== Infinity && !isInstrument) {
+            const specActivityTBq_g = actTBq / massGrams;
+            const lsa2LimitMultiplier = newItemState === 'liquid' ? 1e-5 : 1e-4;
+
+            if (specActivityTBq_g <= lsa2LimitMultiplier * a2Val) {
+                lsaHint = 'LSA-II';
+            } else if (specActivityTBq_g <= 2e-3 * a2Val && newItemState === 'solid') {
+                lsaHint = 'LSA-III';
+            }
+        }
+        
+        // --- DOT Exemption Check ---
         const exemptLimitBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
         const exemptConcLimitBq_g = selectedNuclideData.shipping.exemptConcLimitBq_g || 0; 
 
         const exceedsConsignment = exemptLimitBq === 0 || actBq > exemptLimitBq;
         const exceedsConcentration = exemptConcLimitBq_g === 0 || specActivityBq_g > exemptConcLimitBq_g;
         
+        // Return early if exempt, BUT include the newly calculated lsaHint!
         if (!(exceedsConsignment && exceedsConcentration)) {
-            return { ...defaultResult, suggestedPSN: PSN_OPTIONS[15], actTBq, actBq, specActivityBq_g, singleItemActTBq }; 
+            return { ...defaultResult, suggestedPSN: PSN_OPTIONS[15], actTBq, actBq, specActivityBq_g, singleItemActTBq, lsaHint }; 
         }
 
         let rawLimit = selectedNuclideData.shipping[newItemForm];
@@ -3266,30 +3290,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             matPkgMult = 1e-3; instItemMult = 1e-2; instPkgMult = 1; 
         }
 
-        const isInstrument = newItemCategory === 'instrument';
-        const isSpecialForm = newItemForm === 'A1';
-        const hasFissile = FISSILE_ISOTOPES.includes(newItemSymbol);
-
         const pkgLimitExc = limitTBq * (isInstrument ? instPkgMult : matPkgMult);
         const itemLimitExc = isInstrument ? limitTBq * instItemMult : Infinity;
-
-        // --- Calculate LSA Status & Hint ---
-        const a2Raw = selectedNuclideData.shipping.A2;
-        const a2Val = (typeof a2Raw === 'string' && a2Raw.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(a2Raw);
-        
-        let lsaHint = null;
-        let suggestedPSN = '';
-        
-        if (massGrams > 0 && a2Val !== Infinity && !isInstrument) {
-            const specActivityTBq_g = actTBq / massGrams;
-            const lsa2LimitMultiplier = newItemState === 'liquid' ? 1e-5 : 1e-4;
-
-            if (specActivityTBq_g <= lsa2LimitMultiplier * a2Val) {
-                lsaHint = 'LSA-II';
-            } else if (specActivityTBq_g <= 2e-3 * a2Val && newItemState === 'solid') {
-                lsaHint = 'LSA-III';
-            }
-        }
 
         // --- Routing Logic ---
         if (actTBq <= pkgLimitExc && singleItemActTBq <= itemLimitExc) {
@@ -3404,6 +3406,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
 
         let totalTBq = 0;
+        let totalMass = 0;
         let sumFracTypeA = 0;
         let sumFracExcPkg = 0;
         let sumFracHRCQ = 0; 
@@ -3415,6 +3418,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         packageItems.forEach(item => {
             totalTBq += item.actTBq;
+            totalMass += (item.mass > 0 ? item.mass : 0);
             sumFracTypeA += item.fracTypeA;
             sumFracExcPkg += item.fracExcPkg;
             
@@ -3464,7 +3468,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             methodology = 'Activity exceeds Type A limits but remains below HRCQ criteria.';
         }
 
-        setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, isRQ, hasFissile });
+        setClassificationResult({ count: packageItems.length, totalTBq, totalMass, classification, methodology, sumFracTypeA, isRQ, hasFissile });
 
     }, [packageItems, forceRegulated]);
 
@@ -3752,6 +3756,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     <tr>
                                         <th className="p-2">Nuclide</th>
                                         <th className="p-2">Activity</th>
+                                        <th className="p-2">Mass</th>
                                         <th className="p-2">PSN</th>
                                         <th className="p-2"></th>
                                     </tr>
@@ -3765,6 +3770,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                                 {item.lsaHint && <span className="inline-block mt-0.5 px-1 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 rounded text-[9px] font-bold border border-emerald-200 dark:border-emerald-800">May Qualify: {item.lsaHint}</span>}
                                             </td>
                                             <td className="p-2 font-mono whitespace-nowrap">{item.activityDisplay}</td>
+                                            <td className="p-2 font-mono whitespace-nowrap">{item.mass > 0 ? `${item.mass.toLocaleString()} g` : '-'}</td>
                                             <td className="p-2 text-xs truncate max-w-[200px]" title={item.psn}>{item.psn}</td>
                                             <td className="p-2 text-right"><button onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:text-red-700"><Icon path={ICONS.trash || "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"} className="w-4 h-4"/></button></td>
                                         </tr>
@@ -3773,9 +3779,16 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                 <tfoot className="bg-slate-50 dark:bg-slate-800/50 text-xs font-bold border-t border-slate-200 dark:border-slate-700">
                                     <tr>
                                         <td className="p-2" colSpan="2">TOTAL FRACTION (Sum of A1/A2):</td>
-                                        <td className="p-2 font-mono text-base text-sky-600 dark:text-sky-400">{classificationResult ? classificationResult.sumFracTypeA.toFixed(3) : '0.000'}</td>
+                                        <td className="p-2 font-mono text-base text-sky-600 dark:text-sky-400" colSpan="2">{classificationResult ? classificationResult.sumFracTypeA.toFixed(3) : '0.000'}</td>
                                         <td></td>
                                     </tr>
+                                    {classificationResult && classificationResult.totalMass > 0 && (
+                                    <tr>
+                                        <td className="p-2" colSpan="2">TOTAL PACKAGE MASS:</td>
+                                        <td className="p-2 font-mono text-slate-600 dark:text-slate-400" colSpan="2">{classificationResult.totalMass.toLocaleString()} g</td>
+                                        <td></td>
+                                    </tr>
+                                    )}
                                 </tfoot>
                             </table>
                         </div>
