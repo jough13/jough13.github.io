@@ -461,6 +461,8 @@ document.addEventListener('keydown', (event) => {
     // Ignore WASD and Hotkeys if the user is typing in ANY input field (Chat, Riddle, Character Name)
     if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
 
+    if (!event.key) return; 
+
     // 3. Prevent default scrolling for game keys
     if (BLOCKED_SCROLL_KEYS.has(event.key)) {
         event.preventDefault();
