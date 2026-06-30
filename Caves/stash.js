@@ -552,7 +552,7 @@ function openStashModal() {
 // SECURITY & PERFORMANCE WIN: Event Delegation
 // ==========================================
 // Attaches exactly ONE event listener to the entire modal to handle all Stash clicks.
-(function initStashListeners() {
+function initStashListeners() {
     const stashModalEl = document.getElementById('stashModal');
     if (!stashModalEl || stashModalEl.dataset.listenersBound) return;
     
@@ -585,14 +585,15 @@ function openStashModal() {
 
     // Handle closing the modal
     const closeBtn = document.getElementById('closeStashButton');
-    if (closeBtn) {
+    if (closeBtn && !closeBtn.dataset.listenerBound) {
         closeBtn.addEventListener('click', () => {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             stashModalEl.classList.add('hidden');
         });
+        closeBtn.dataset.listenerBound = 'true';
     }
 
     stashModalEl.dataset.listenersBound = 'true';
-})();
+}
 
 // --- END OF FILE stash.js ---
