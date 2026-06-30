@@ -1435,7 +1435,7 @@ function triggerAbilityCooldown(abilityId) {
 
 // --- SECURITY & PERFORMANCE: Event Delegation ---
 // Attaches exactly ONE listener to the skillbook list, bypassing inline DOM bindings.
-(function initSkillbookListeners() {
+function initSkillbookListeners() {
     const skillListEl = document.getElementById('skillList');
     if (skillListEl && !skillListEl.dataset.listenersBound) {
         skillListEl.addEventListener('click', (e) => {
@@ -1456,6 +1456,6 @@ function triggerAbilityCooldown(abilityId) {
         });
         closeSkillBtn.dataset.listenerBound = 'true';
     }
-})();
+}
 
 // --- END OF FILE skills.js ---
