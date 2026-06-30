@@ -70,6 +70,19 @@ function renderTalentTree() {
         } else {
             btnHtml = `<span class="text-gray-500 text-[10px] tracking-widest uppercase font-bold bg-black bg-opacity-30 px-2 py-1 rounded border border-gray-700 shadow-inner">Locked</span>`;
         }
+        
+        // LORE WIN: Format talent descriptions dynamically
+        let formattedDesc = talent.flavor || talent.description;
+        if (typeof autoFormatLore === 'function') formattedDesc = autoFormatLore(formattedDesc);
+        if (typeof escapeHtml === 'function') {
+            formattedDesc = escapeHtml(formattedDesc)
+                .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
+                .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
+                .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
+                .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
+                .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
+                .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
+        }
 
         div.innerHTML = `
             <div class="flex justify-between items-center">
@@ -77,7 +90,7 @@ function renderTalentTree() {
                     <div class="text-4xl drop-shadow-md bg-black bg-opacity-30 p-2 rounded-lg border border-gray-600">${talent.icon}</div>
                     <div>
                         <div class="font-bold text-lg text-gray-200">${talent.name} <span class="text-[9px] ${isLearned ? 'text-purple-300' : 'text-gray-400'} uppercase tracking-widest ml-2 bg-black bg-opacity-40 px-1.5 py-0.5 rounded border border-gray-600 shadow-inner relative -top-0.5">${talent.class}</span></div>
-                        <div class="text-xs ${isLearned ? 'text-purple-200' : 'text-gray-400'} mt-1 italic font-serif">"${talent.flavor || talent.description}"</div>
+                        <div class="text-xs ${isLearned ? 'text-purple-200' : 'text-gray-400'} mt-1 italic font-serif">"${formattedDesc}"</div>
                     </div>
                 </div>
                 <div>${btnHtml}</div>
@@ -350,6 +363,19 @@ function renderBountyBoard() {
         const div = document.createElement('div');
         div.className = 'quest-item p-4 mb-3 border-2 border-gray-700 rounded-lg bg-gray-900 bg-opacity-40 transition-colors shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-red-500';
 
+        // LORE WIN: Format quest descriptions dynamically
+        let formattedDesc = quest.description;
+        if (typeof autoFormatLore === 'function') formattedDesc = autoFormatLore(formattedDesc);
+        if (typeof escapeHtml === 'function') {
+            formattedDesc = escapeHtml(formattedDesc)
+                .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
+                .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
+                .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
+                .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
+                .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
+                .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
+        }
+
         if (!playerQuest) {
             // --- Scenario 1: Quest is Available ---
             let itemRewardStr = quest.reward.item ? `<span class="text-purple-400 font-bold ml-1">| + ${quest.reward.item}</span>` : '';
@@ -357,7 +383,7 @@ function renderBountyBoard() {
             div.innerHTML = `
                 <div class="flex-grow pr-4">
                     <div class="text-lg font-bold text-red-500 mb-1 drop-shadow-sm" style="font-family: 'Uncial Antiqua', cursive;">${quest.title}</div>
-                    <div class="text-xs text-gray-300 mb-3 leading-relaxed font-serif italic border-l-2 border-gray-600 pl-2 bg-black bg-opacity-20 py-1 rounded-r">"${quest.description}"</div>
+                    <div class="text-xs text-gray-300 mb-3 leading-relaxed font-serif italic border-l-2 border-gray-600 pl-2 bg-black bg-opacity-20 py-1 rounded-r">"${formattedDesc}"</div>
                     <div class="text-[10px] font-bold text-green-400 uppercase tracking-widest bg-black bg-opacity-40 inline-block px-2 py-1 rounded border border-gray-700 shadow-inner">Reward: ${quest.reward.xp} XP | ${quest.reward.coins} Gold ${itemRewardStr}</div>
                 </div>
                 <div class="flex-none">
@@ -673,7 +699,19 @@ function renderBestiary() {
 
         let loreHtml = '';
         if (unlockedLore && data.flavor) {
-            loreHtml = `<div class="text-xs mt-3 italic text-gray-400 border-l-2 border-gray-600 pl-3 py-1 bg-black bg-opacity-20 rounded-r leading-relaxed font-serif">"${data.flavor}"</div>`;
+            // LORE WIN: Format bestiary flavor text dynamically
+            let formattedDesc = data.flavor;
+            if (typeof autoFormatLore === 'function') formattedDesc = autoFormatLore(formattedDesc);
+            if (typeof escapeHtml === 'function') {
+                formattedDesc = escapeHtml(formattedDesc)
+                    .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
+                    .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
+                    .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
+                    .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
+                    .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
+                    .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
+            }
+            loreHtml = `<div class="text-xs mt-3 italic text-gray-400 border-l-2 border-gray-600 pl-3 py-1 bg-black bg-opacity-20 rounded-r leading-relaxed font-serif">"${formattedDesc}"</div>`;
         } else if (!unlockedLore) {
             const pctLore = Math.min(100, (count / 10) * 100);
             loreHtml = `
@@ -784,7 +822,8 @@ function renderLibrary() {
 }
 
 // SECURITY & PERFORMANCE WIN: Event Delegation Listener for the Library
-document.addEventListener('DOMContentLoaded', () => {
+// Uses IIFE to prevent hot-reload memory leaks in SPAs
+(function initCollectionsListeners() {
     const libDiv = document.getElementById('libraryView');
     if (libDiv && !libDiv.dataset.listenersBound) {
         libDiv.addEventListener('click', (e) => {
@@ -803,8 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         libDiv.dataset.listenersBound = 'true';
     }
-});
-
+})();
 
 window.openSpecificLore = function(itemId) {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
@@ -890,13 +928,26 @@ function renderSkillTrainerModal() {
             levelText = `<span class="text-[10px] uppercase font-bold tracking-widest text-blue-400">Level: ${currentLevel} / ${MAX_LEVEL}</span>`;
             buttonHtml = `<button style="transform: translate3d(0,0,0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 border-b-2 border-green-800 active:border-b-0 active:mt-0.5" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Upgrade (1 SP)</button>`;
         }
+        
+        // LORE WIN: Format skill descriptions dynamically
+        let formattedDesc = skillData.flavor || skillData.description;
+        if (typeof autoFormatLore === 'function') formattedDesc = autoFormatLore(formattedDesc);
+        if (typeof escapeHtml === 'function') {
+            formattedDesc = escapeHtml(formattedDesc)
+                .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
+                .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
+                .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
+                .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
+                .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
+                .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
+        }
 
         const li = document.createElement('li');
         li.className = `panel p-3 mb-2 rounded-lg border-2 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${currentLevel >= MAX_LEVEL ? 'border-yellow-600 bg-yellow-900 bg-opacity-10' : 'border-gray-600 hover:border-gray-500'} transition-all flex justify-between items-center`;
         li.innerHTML = `
             <div class="flex-grow pr-4">
                 <div class="font-bold text-lg text-yellow-500 mb-1 drop-shadow-sm">${skillData.name}</div>
-                <div class="text-xs text-gray-300 leading-tight italic font-serif">"${skillData.flavor || skillData.description}"</div>
+                <div class="text-xs text-gray-300 leading-tight italic font-serif">"${formattedDesc}"</div>
             </div>
             <div class="flex-none flex flex-col items-end gap-2">
                 ${levelText}
@@ -910,7 +961,7 @@ function renderSkillTrainerModal() {
 }
 
 // SECURITY & PERFORMANCE WIN: Event Delegation Listener for Skill Trainer
-document.addEventListener('DOMContentLoaded', () => {
+(function initSkillTrainerListeners() {
     const stList = document.getElementById('skillTrainerList');
     if (stList && !stList.dataset.listenersBound) {
         stList.addEventListener('click', (e) => {
@@ -921,7 +972,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         stList.dataset.listenersBound = 'true';
     }
-});
+})();
 
 /**
  * Handles the logic of spending a stat point to learn or level up a skill.
@@ -1005,6 +1056,8 @@ function openSpellbook() {
     const sortedSpells = Object.keys(playerSpells).map(spellId => {
         const spellLevel = playerSpells[spellId];
         const spellData = window.SPELL_DATA[spellId];
+        
+        // BUG FIX: Ensure the spell data exists before attempting to map it!
         if (!spellData) return null;
 
         let displayCost = spellData.cost;
@@ -1036,6 +1089,19 @@ function openSpellbook() {
         if (spellData.name.includes("Poison")) nameColorClass = "text-green-400";
         if (spellData.name.includes("Divine") || spellData.name.includes("Heal")) nameColorClass = "text-yellow-400";
         if (spellData.name.includes("Dark") || spellData.name.includes("Siphon")) nameColorClass = "text-red-500";
+        
+        // LORE WIN: Format spell descriptions dynamically
+        let formattedDesc = spellData.flavor || spellData.description;
+        if (typeof autoFormatLore === 'function') formattedDesc = autoFormatLore(formattedDesc);
+        if (typeof escapeHtml === 'function') {
+            formattedDesc = escapeHtml(formattedDesc)
+                .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
+                .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
+                .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
+                .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
+                .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
+                .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
+        }
 
         const maxedBadge = spellLevel >= MAX_LEVEL 
             ? `<span class="text-[9px] bg-yellow-900 text-yellow-500 border border-yellow-700 px-1 rounded ml-2 shadow-inner">MAXED</span>` 
@@ -1052,7 +1118,7 @@ function openSpellbook() {
                     <span class="text-[10px] bg-black bg-opacity-40 px-2 py-0.5 rounded text-gray-300 border border-gray-700 shadow-inner">Lvl ${spellLevel}</span>
                     ${maxedBadge}
                 </div>
-                <div class="text-xs text-gray-400 leading-tight italic font-serif">"${spellData.flavor || spellData.description}"</div>
+                <div class="text-xs text-gray-400 leading-tight italic font-serif">"${formattedDesc}"</div>
             </div>
             <div class="flex-none flex flex-col items-end gap-2">
                 <span class="text-xs font-bold uppercase tracking-widest bg-black bg-opacity-40 px-2 py-1 rounded border border-gray-700 shadow-inner ${costColorClass}">${costString}</span>
@@ -1096,6 +1162,8 @@ function openSkillbook() {
     const sortedSkills = Object.keys(playerSkills).map(skillId => {
         const skillLevel = playerSkills[skillId];
         const skillData = window.SKILL_DATA[skillId];
+        
+        // BUG FIX: Ensure the skill data exists before attempting to map it!
         if (!skillData) return null;
 
         let canUse = false;
@@ -1117,6 +1185,19 @@ function openSkillbook() {
         const maxedBadge = skillLevel >= MAX_LEVEL 
             ? `<span class="text-[9px] bg-yellow-900 text-yellow-500 border border-yellow-700 px-1 rounded ml-2 shadow-inner">MAXED</span>` 
             : '';
+            
+        // LORE WIN: Format skill descriptions dynamically
+        let formattedDesc = skillData.flavor || skillData.description;
+        if (typeof autoFormatLore === 'function') formattedDesc = autoFormatLore(formattedDesc);
+        if (typeof escapeHtml === 'function') {
+            formattedDesc = escapeHtml(formattedDesc)
+                .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
+                .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
+                .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
+                .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
+                .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
+                .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
+        }
 
         const li = document.createElement('li');
         li.className = `skill-item p-3 mb-2 rounded-lg border-2 transition-all cursor-pointer ${canUse ? 'border-gray-600 hover:border-yellow-500 hover:-translate-y-0.5 shadow-sm hover:shadow-md' : 'border-gray-800 opacity-60 bg-black bg-opacity-20'}`;
@@ -1129,7 +1210,7 @@ function openSkillbook() {
                     <span class="text-[10px] bg-black bg-opacity-40 px-2 py-0.5 rounded text-gray-300 border border-gray-700 shadow-inner">Lvl ${skillLevel}</span>
                     ${maxedBadge}
                 </div>
-                <div class="text-xs text-gray-400 leading-tight italic font-serif">"${skillData.flavor || skillData.description}"</div>
+                <div class="text-xs text-gray-400 leading-tight italic font-serif">"${formattedDesc}"</div>
             </div>
             <div class="flex-none flex flex-col items-end gap-2">
                 <span class="text-xs font-bold uppercase tracking-widest bg-black bg-opacity-40 px-2 py-1 rounded border border-gray-700 shadow-inner ${costColorClass}">${costString}</span>
