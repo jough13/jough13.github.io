@@ -82,7 +82,7 @@ window.LORE_SETS = {
         name: "Tales of the Feywild",
         description: "Accounts of those who stepped into the Fairy Rings and returned... changed.",
         bonus: "Trickster's Grace: +2 Base Dexterity.",
-        items: ["fae_1", "fae_2", "fae_3"] // Need to add these to ITEM_DATA
+        items: ["fae_1", "fae_2", "fae_3"] // Perfectly mapped to data-items.js!
     },
     "infernal_mechanics": {
         name: "Infernal Mechanics",
@@ -95,6 +95,18 @@ window.LORE_SETS = {
         description: "The final, waterlogged journal of the explorer who discovered the Leviathan's trench.",
         bonus: "Deep Lung: +5 Max Stamina.",
         items: ["📦w", "💎b", "💀d"]
+    },
+    "explorers_guild": {
+        name: "The Cartographer's Notes",
+        description: "The sprawling, often inaccurate field notes of the Guild's most ambitious trailblazers.",
+        bonus: "Wayfarer: Leyline travel costs reduced by 10%.",
+        items: ["🗺️", "🧭", "🧭v"]
+    },
+    "bard_songs": {
+        name: "Songs of the Wandering Bard",
+        description: "Transcribed lyrics of the songs heard echoing across the empty plains.",
+        bonus: "Silver Tongue: +2 Base Charisma.",
+        items: ["🎵", "📜r", "📜c"] // The Bard isn't a collectible item, but discovering him logs the event!
     }
 };
 
@@ -529,7 +541,7 @@ window.RIDDLE_DATA = [
     {
         id: "fire",
         question: "I have no mouth, but I always consume. I have no life, but I must be fed. What am I?",
-        answers: ["fire", "a fire", "the fire", "flame", "a flame", "the flame", "campfire"],
+        answers: ["fire", "a fire", "the fire", "flame", "a flame", "the flame", "campfire", "a campfire", "the campfire", "it is fire", "it is a fire"],
         reward: "strength", 
         message: "{red:The statue's eyes glow red. You feel a surge of physical power.}"
     },
@@ -543,21 +555,21 @@ window.RIDDLE_DATA = [
     {
         id: "echo",
         question: "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?",
-        answers: ["echo", "an echo", "the echo", "echoes"],
+        answers: ["echo", "an echo", "the echo", "echoes", "it is an echo"],
         reward: "psyche", 
         message: "{purple:A whisper surrounds you. Your will is strengthened.}"
     },
     {
         id: "silence",
         question: "I am so fragile that if you say my name, you break me. What am I?",
-        answers: ["silence", "the silence", "quiet", "the quiet", "a secret", "secret", "the secret"],
+        answers: ["silence", "the silence", "quiet", "the quiet", "a secret", "secret", "the secret", "peace and quiet"],
         reward: "dexterity", 
         message: "{green:The world goes quiet. You feel lighter and faster.}"
     },
     {
         id: "coin",
         question: "I have a head and a tail, but no body. What am I?",
-        answers: ["coin", "a coin", "the coin", "gold coin", "a gold coin", "money", "penny"],
+        answers: ["coin", "a coin", "the coin", "gold coin", "a gold coin", "money", "penny", "coins"],
         reward: "charisma", 
         message: "{gold:The statue nods slowly. You feel more persuasive.}"
     },
@@ -934,5 +946,46 @@ window.REGION_HISTORY = [
     "An ancient amphitheater lies buried beneath the topsoil here. The blood spilled there still stains the dirt red.",
     "The stars above this sector are slightly misaligned compared to the rest of the world."
 ];
+
+// Dynamic history overrides based on the active Mutator in a Shattered Realm
+window.getMutatorHistoryOverride = function(mutatorKey, baseHistory) {
+    const mutatorHistory = {
+        'lava_oceans': [
+            "The air here burns your lungs. The oceans boiled away centuries ago.",
+            "A civilization of fire elementals once built castles on the magma lakes here.",
+            "You find a ship made entirely of obsidian, stranded on a cooling basalt flow."
+        ],
+        'eternal_night': [
+            "You cannot tell if it is day or night. The stars do not move.",
+            "The shadows here seem to stretch toward you, regardless of the light.",
+            "A kingdom of vampires ruled this sector until they starved to death."
+        ],
+        'frozen_wastes': [
+            "The ice here is blue and harder than steel. It will never melt.",
+            "You find a massive dire wolf perfectly preserved mid-leap in a glacier.",
+            "The wind carries the sound of shattering glass as trees snap in the cold."
+        ],
+        'overgrown': [
+            "The vines here grow visibly, inching forward while you watch.",
+            "A ruined keep is completely choked by massive, thorny brambles.",
+            "The smell of blooming flowers is so thick it makes you dizzy."
+        ],
+        'wild_magic': [
+            "The laws of physics are merely a suggestion in this sector.",
+            "You see a rock fall upward into the sky.",
+            "The grass here glows with an unnatural, pulsating light."
+        ],
+        'crystalline': [
+            "The ground chimes like a bell with every step you take.",
+            "Massive quartz pillars pierce the clouds above.",
+            "The reflection in the crystals shows a world that isn't this one."
+        ]
+    };
+    
+    if (mutatorHistory[mutatorKey]) {
+        return mutatorHistory[mutatorKey][Math.floor(Math.random() * mutatorHistory[mutatorKey].length)];
+    }
+    return baseHistory;
+};
 
 // --- END OF FILE data-lore.js ---
