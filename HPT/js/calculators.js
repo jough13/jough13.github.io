@@ -3465,8 +3465,15 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         const allItemsLSA = qualifiesLSA2 || qualifiesLSA3;
 
-        // Check if Fissile material exceeds the 15g Exception (forces fully regulated Type A/B)
-        const isFissileRegulated = hasFissile && safeParseFloat(fissileMass) > 15;
+        // Check 49 CFR 173.453 Fissile Exceptions (a) and (b)
+        const fMass = safeParseFloat(fissileMass);
+        const nonFissileMass = Math.max(0, pMass - fMass);
+        
+        const qualifiesFor2g = fMass > 0 && fMass <= 2;
+        const qualifiesFor15g = fMass > 2 && fMass <= 15 && nonFissileMass >= (200 * fMass);
+        const isFissileExcepted = qualifiesFor2g || qualifiesFor15g;
+        
+        const isFissileRegulated = hasFissile && fMass > 0 && !isFissileExcepted;
 
         // --- NEW ROUTING LOGIC ---
         if (isExemptConsignment && !forceRegulated && !isFissileRegulated) {
@@ -3867,24 +3874,45 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                         <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Total Fissile Mass (g):</label>
                                         <input type="number" inputMode="decimal" min="0" value={fissileMass} onChange={e => setFissileMass(e.target.value)} className="w-24 p-1 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm" />
                                     </div>
-                                    {fissileMass && safeParseFloat(fissileMass) <= 15 && (
-                                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-2">✅ Fissile Excepted (≤ 15g per package)</p>
-                                    )}
-                                    {fissileMass && safeParseFloat(fissileMass) > 15 && (
-                                        <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-700/50">
-                                            <p className="text-xs text-red-600 dark:text-red-400 font-bold mb-2">❌ Exceeds 15g Exception - Fully Regulated Fissile</p>
-                                            <div className="flex items-center gap-3">
-                                                <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Criticality Safety Index (CSI):</label>
-                                                <input type="number" inputMode="decimal" min="0" value={csi} onChange={e => setCsi(e.target.value)} className="w-24 p-1 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm" />
-                                            </div>
-                                            {csi && safeParseFloat(csi) > 50 && safeParseFloat(csi) <= 100 && (
-                                                <p className="text-[10px] text-amber-700 font-bold mt-1">⚠️ CSI {'>'} 50 requires Exclusive Use vehicle.</p>
-                                            )}
-                                            {csi && safeParseFloat(csi) > 100 && (
-                                                <p className="text-[10px] text-red-600 font-bold mt-1">❌ CSI {'>'} 100 is prohibited on a single conveyance.</p>
-                                            )}
-                                        </div>
-                                    )}
+                                    
+                                    {/* 173.453(a) and (b) Evaluation */}
+                                    {fissileMass && safeParseFloat(fissileMass) > 0 && (() => {
+                                        const fMass = safeParseFloat(fissileMass);
+                                        const nonFissileMass = Math.max(0, safeParseFloat(packageMass) - fMass);
+                                        const qualifiesFor2g = fMass <= 2;
+                                        const qualifiesFor15g = fMass > 2 && fMass <= 15 && nonFissileMass >= (200 * fMass);
+                                        
+                                        if (qualifiesFor2g || qualifiesFor15g) {
+                                            return (
+                                                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-2">
+                                                    ✅ Fissile Excepted {qualifiesFor2g ? '(≤ 2g limit)' : '(≤ 15g limit with 200:1 mass ratio)'}
+                                                </p>
+                                            );
+                                        } else {
+                                            return (
+                                                <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-700/50">
+                                                    <p className="text-xs text-red-600 dark:text-red-400 font-bold mb-2">
+                                                        ❌ Exceeds 173.453 Mass Exceptions - Fully Regulated Fissile
+                                                    </p>
+                                                    {fMass <= 15 && (
+                                                        <p className="text-[10px] text-amber-700 dark:text-amber-400 italic mb-2 leading-tight">
+                                                            Note: To use the 15g exception, the package requires at least {Math.ceil(fMass * 200).toLocaleString()}g of solid nonfissile material.
+                                                        </p>
+                                                    )}
+                                                    <div className="flex items-center gap-3">
+                                                        <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Criticality Safety Index (CSI):</label>
+                                                        <input type="number" inputMode="decimal" min="0" value={csi} onChange={e => setCsi(e.target.value)} className="w-24 p-1 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm" />
+                                                    </div>
+                                                    {csi && safeParseFloat(csi) > 50 && safeParseFloat(csi) <= 100 && (
+                                                        <p className="text-[10px] text-amber-700 font-bold mt-1">⚠️ CSI {'>'} 50 requires Exclusive Use vehicle.</p>
+                                                    )}
+                                                    {csi && safeParseFloat(csi) > 100 && (
+                                                        <p className="text-[10px] text-red-600 font-bold mt-1">❌ CSI {'>'} 100 is prohibited on a single conveyance.</p>
+                                                    )}
+                                                </div>
+                                            );
+                                        }
+                                    })()}
                                 </div>
                             )}
                         </div>
