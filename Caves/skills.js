@@ -382,7 +382,15 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
                 // Apply Damage
                 if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                    const enemyId = `overworld:${coords.x},${-coords.y}`;
+                    const liveEnemy = gameState.sharedEnemies[enemyId];
+                    const enemyInfo = liveEnemy || enemyData;
+                    
                     const mitigatedDmg = Math.max(1, finalDmg - (enemyData.defense || 0));
+                    
+                    // LORE WIN: Flavorful combat log
+                    logMessage(`You hit the ${enemyInfo.name} for {red:${mitigatedDmg}} damage!`);
+                    
                     if (typeof handleOverworldCombat === 'function') {
                         combatPromises.push(handleOverworldCombat(coords.x, coords.y, enemyData, tile, mitigatedDmg));
                     }
@@ -395,7 +403,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                         // ▼ Subtract Defense ▼
                         const mitigatedDmg = Math.max(1, finalDmg - (enemy.defense || 0));
                         enemy.health -= mitigatedDmg;
-                        logMessage(`You hit ${enemy.name} for {red:${mitigatedDmg}} damage!`);
+                        logMessage(`You hit the ${enemy.name} for {red:${mitigatedDmg}} damage!`);
                         
                         if (typeof ParticleSystem !== 'undefined') {
                             // JUICE WIN: Unique particle color based on the skill
@@ -423,7 +431,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                         }
 
                         if (enemy.health <= 0) {
-                            logMessage(`You defeated ${enemy.name}!`);
+                            logMessage(`You defeated the ${enemy.name}!`);
                             if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, coords.x, coords.y);
                         }
                     }
@@ -644,7 +652,14 @@ async function executeRangedAttack(dirX, dirY) {
                 hitSomething = true;
                 
                 if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                    const enemyId = `overworld:${targetX},${-targetY}`;
+                    const liveEnemy = gameState.sharedEnemies[enemyId];
+                    const enemyInfo = liveEnemy || enemyData;
+                    
                     const finalDmg = Math.max(1, totalDamage - (enemyData.defense || 0));
+                    
+                    logMessage(`You shoot the ${enemyInfo.name} for {red:${finalDmg}} damage!`);
+                    
                     if (typeof handleOverworldCombat === 'function') {
                         await handleOverworldCombat(targetX, targetY, enemyData, tile, finalDmg);
                     }
@@ -657,7 +672,7 @@ async function executeRangedAttack(dirX, dirY) {
 
                         const finalDmg = Math.max(1, totalDamage - (enemy.defense || 0));
                         enemy.health -= finalDmg;
-                        logMessage(`You shoot ${enemy.name} for {red:${finalDmg}} damage!`);
+                        logMessage(`You shoot the ${enemy.name} for {red:${finalDmg}} damage!`);
                         if (typeof ParticleSystem !== 'undefined') {
                             ParticleSystem.createExplosion(targetX, targetY, arrowColor, 3);
                             ParticleSystem.createFloatingText(targetX, targetY, `-${finalDmg}`, '#ef4444');
@@ -676,7 +691,7 @@ async function executeRangedAttack(dirX, dirY) {
                         }
 
                         if (enemy.health <= 0) {
-                            logMessage(`You defeated ${enemy.name}!`);
+                            logMessage(`You defeated the ${enemy.name}!`);
                             if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, targetX, targetY);
                         }
                     }
@@ -833,7 +848,6 @@ async function executeLunge(dirX, dirY) {
                     if (typeof playerRef !== 'undefined') playerRef.update({ stealthTurns: 0 });
                 }
 
-                logMessage(`You lunge and attack the ${enemyData.name}!`);
                 hit = true;
 
                 // --- 3. Calculate Final Damage ---
@@ -842,6 +856,12 @@ async function executeLunge(dirX, dirY) {
                 const totalLungeDamage = Math.max(1, finalDmg - (enemyData.defense || 0));
 
                 if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                    const enemyId = `overworld:${targetX},${-targetY}`;
+                    const liveEnemy = gameState.sharedEnemies[enemyId];
+                    const enemyInfo = liveEnemy || enemyData;
+                    
+                    logMessage(`You lunge and attack the ${enemyInfo.name} for {red:${totalLungeDamage}} damage!`);
+                    
                     if (typeof handleOverworldCombat === 'function') {
                         await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
                     }
@@ -1294,6 +1314,90 @@ function executeInflictMadness(dirX, dirY) {
 }
 
 /**
+ * Throws a stick of Dwarven TNT. Deals massive damage and destroys cracked walls.
+ */
+async function executeThrowTNT(dirX, dirY) {
+    const player = gameState.player;
+    
+    // --- 🚨 LOCK THE ENGINE ---
+    isProcessingMove = true;
+
+    try {
+        // 1. Consume the TNT from Inventory
+        const invIndex = player.inventory.findIndex(i => i.name === 'Dwarven TNT' && !i.isEquipped);
+        if (invIndex > -1) {
+            player.inventory[invIndex].quantity--;
+            if (player.inventory[invIndex].quantity <= 0) player.inventory.splice(invIndex, 1);
+            if (typeof playerRef !== 'undefined') playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+        } else {
+            logMessage("{red:You are out of Dwarven TNT.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return; 
+        }
+
+        // 2. Calculate Landing Zone (Throw it 3 tiles away)
+        const targetX = player.x + (dirX * 3);
+        const targetY = player.y + (dirY * 3);
+
+        logMessage("{orange:You lob the TNT! KABOOM!}");
+        gameState.screenShake = 30; // Massive shake!
+        
+        // JUICE WIN: Massive orange flash on explosion
+        gameState.screenFlash = { color: '#f97316', alpha: 0.6, decay: 0.1 };
+        
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.4, 200);
+
+        const explosionPromises = [];
+
+        // 3. Detonate in a 3x3 Area
+        for (let y = targetY - 1; y <= targetY + 1; y++) {
+            for (let x = targetX - 1; x <= targetX + 1; x++) {
+                
+                // A. Deal 30 Damage to any enemies caught in the blast
+                if (typeof applySpellDamage === 'function') {
+                    explosionPromises.push(
+                        applySpellDamage(x, y, 30, 'fireball').then(hit => {
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f97316', 5);
+                        })
+                    );
+                }
+
+                // B. Blow up Cracked Walls (🏚) to reveal rare gems and mithril!
+                let tileAt;
+                if (gameState.mapMode === 'overworld') tileAt = chunkManager.getTile(x, y);
+                else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[y]?.[x];
+                else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[y]?.[x];
+
+                if (tileAt === '🏚' || tileAt === '🏚️') {
+                    // 20% Mithril, 40% Diamond, 40% Massive Gold Cache
+                    const roll = Math.random();
+                    let loot = '$';
+                    if (roll < 0.20) loot = '💠';
+                    else if (roll < 0.60) loot = '💎';
+
+                    if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(x, y, loot);
+                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][y][x] = loot;
+                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][y][x] = loot; 
+                    
+                    logMessage("{yellow:The explosion shatters a cracked wall, revealing hidden treasure!}");
+                }
+            }
+        }
+        
+        await Promise.all(explosionPromises);
+        
+        // Finalize Turn
+        gameState.isAiming = false;
+        if (typeof endPlayerTurn === 'function') endPlayerTurn();
+        if (typeof render === 'function') render();
+        if (typeof renderInventory === 'function') renderInventory();
+
+    } finally {
+        isProcessingMove = false;
+    }
+}
+
+/**
  * Sets the cooldown for a skill or spell and updates the DB/UI.
  */
 function triggerAbilityCooldown(abilityId) {
@@ -1331,7 +1435,7 @@ function triggerAbilityCooldown(abilityId) {
 
 // --- SECURITY & PERFORMANCE: Event Delegation ---
 // Attaches exactly ONE listener to the skillbook list, bypassing inline DOM bindings.
-window.initSkillbookListeners = function() {
+(function initSkillbookListeners() {
     const skillListEl = document.getElementById('skillList');
     if (skillListEl && !skillListEl.dataset.listenersBound) {
         skillListEl.addEventListener('click', (e) => {
@@ -1352,6 +1456,6 @@ window.initSkillbookListeners = function() {
         });
         closeSkillBtn.dataset.listenerBound = 'true';
     }
-};
+})();
 
 // --- END OF FILE skills.js ---
