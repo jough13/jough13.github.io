@@ -3158,7 +3158,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [packageMass, setPackageMass] = React.useState(''); 
     const [forceRegulated, setForceRegulated] = React.useState(false); 
     const [fissileMass, setFissileMass] = React.useState(''); 
-    const [csi, setCsi] = React.useState(''); // NEW: Criticality Safety Index
+    const [csi, setCsi] = React.useState(''); 
     
     // Dose Rates
     const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
@@ -3281,7 +3281,9 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
         
         let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
-        if (newItemSymbol === 'H-3') { 
+        
+        // FIXED: H-3 multipliers specifically apply to gaseous Tritium
+        if (newItemSymbol === 'H-3' && newItemState === 'gas') { 
             matPkgMult = 2e-2; instItemMult = 2e-2; instPkgMult = 2e-1; 
         } else if (newItemState === 'liquid') { 
             matPkgMult = 1e-4; instItemMult = 1e-3; instPkgMult = 1e-1; 
@@ -3337,7 +3339,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
 
-        if (newItemSymbol === 'H-3') { 
+        // FIXED: H-3 multipliers specifically apply to gaseous Tritium
+        if (newItemSymbol === 'H-3' && newItemState === 'gas') { 
             matPkgMult = 2e-2; instItemMult = 2e-2; instPkgMult = 2e-1; 
         } else if (newItemState === 'liquid') { 
             matPkgMult = 1e-4; instItemMult = 1e-3; instPkgMult = 1e-1; 
@@ -3446,11 +3449,12 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let lsaMethodologyNote = '';
         const isRQ = sumFracRQ >= 1.0;
 
-        const isExemptConsignment = sumExemptAct <= 1.0 || (pMass > 0 && (sumExemptConc / pMass) <= 1.0);
-        const qualifiesExcepted = sumFracExcPkg <= 1.0 && !anyItemFailsExc;
+        // FIXED: Added Float rounding wrapper (.toFixed(5)) to protect against JS math drift 
+        const isExemptConsignment = Number(sumExemptAct.toFixed(5)) <= 1.0 || (pMass > 0 && Number((sumExemptConc / pMass).toFixed(5)) <= 1.0);
+        const qualifiesExcepted = Number(sumFracExcPkg.toFixed(5)) <= 1.0 && !anyItemFailsExc;
         
-        let qualifiesLSA2 = pMass > 0 && (sumLSA2 / pMass) <= 1.0 && !packageItems.some(i => i.category === 'instrument');
-        let qualifiesLSA3 = pMass > 0 && (sumLSA3 / pMass) <= 1.0 && !packageItems.some(i => i.category === 'instrument');
+        let qualifiesLSA2 = pMass > 0 && Number((sumLSA2 / pMass).toFixed(5)) <= 1.0 && !packageItems.some(i => i.category === 'instrument');
+        let qualifiesLSA3 = pMass > 0 && Number((sumLSA3 / pMass).toFixed(5)) <= 1.0 && !packageItems.some(i => i.category === 'instrument');
 
         // 49 CFR 173.427(a)(1) - Unshielded Limit Prohibition
         if (unshieldedMrem > 1000) {
@@ -3461,7 +3465,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         const allItemsLSA = qualifiesLSA2 || qualifiesLSA3;
 
-        // NEW: Check if Fissile material exceeds the 15g Exception (forces fully regulated Type A/B)
+        // Check if Fissile material exceeds the 15g Exception (forces fully regulated Type A/B)
         const isFissileRegulated = hasFissile && safeParseFloat(fissileMass) > 15;
 
         // --- NEW ROUTING LOGIC ---
@@ -3484,7 +3488,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             }
 
             methodology = `Specific activity meets concentration mixture rules for ${highestLSA}. Minimum packaging: ${requiredIP}. Note: Type A packaging exceeds IP standards and is acceptable.`;
-        } else if (sumFracTypeA <= 1.0) {
+        // FIXED: Apply float rounding wrapper
+        } else if (Number(sumFracTypeA.toFixed(5)) <= 1.0) {
             classification = 'TYPE_A';
             methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)' + lsaMethodologyNote;
             if (isFissileRegulated) methodology += ' (Fissile material must be shipped in certified Type A/B packaging).';
@@ -3519,7 +3524,10 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             const surfMrem = !isNaN(rateSurface) ? toMremHr(rateSurface, surfaceDoseRateUnit) : 0;
 
             let standardLabel = "Check Limits";
-            if (surfMrem <= 0.5 && TI === 0) standardLabel = "White-I";
+            
+            // FIXED: Added 1000 mrem/h trap for absolute maximum
+            if (surfMrem > 1000) standardLabel = "❌ INVALID (Surface > 1000 mrem/h limit per 173.441)";
+            else if (surfMrem <= 0.5 && TI === 0) standardLabel = "White-I";
             else if (surfMrem <= 50 && TI <= 1) standardLabel = "Yellow-II";
             else if (surfMrem <= 200 && TI <= 10) standardLabel = "Yellow-III";
             else if (surfMrem > 200 || TI > 10) standardLabel = "Yellow-III (Exclusive Use)";
@@ -3687,7 +3695,9 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
                                     
                                     let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
-                                    if (newItemSymbol === 'H-3') { 
+                                    
+                                    // FIXED: Tritium Exception properly scoped to gas
+                                    if (newItemSymbol === 'H-3' && newItemState === 'gas') { 
                                         matPkgMult = 2e-2; instItemMult = 2e-2; instPkgMult = 2e-1; 
                                     } else if (newItemState === 'liquid') { 
                                         matPkgMult = 1e-4; instItemMult = 1e-3; instPkgMult = 1e-1; 
@@ -3724,7 +3734,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                                 </div>
                                                 {newItemSymbol === 'H-3' && (
                                                     <div className="mt-2 p-1.5 bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-300 rounded border border-sky-200 dark:border-sky-700 text-[10px] leading-tight">
-                                                        <strong>* Tritium Exception:</strong> H-3 has unique excepted package multiplier criteria under 49 CFR 173.425.
+                                                        <strong>* Tritium Exception:</strong> H-3 gas has unique excepted package multiplier criteria under 49 CFR 173.425.
                                                     </div>
                                                 )}
                                             </div>
