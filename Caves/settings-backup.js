@@ -6,6 +6,10 @@
 
 const BACKUP_SALT = "kEsMaI_v1_S3cR3t_s@lt"; // Change this to something random!
 
+// EXPANDABILITY WIN: Centralized Subcollection definitions.
+// When you add player housing, farming, or mailboxes, just add the collection name here!
+const SUBCOLLECTIONS_TO_BACKUP = ['map_data'];
+
 // Concurrency lock to prevent mashing buttons and causing DB race conditions
 let isBackupOperationRunning = false;
 
@@ -21,7 +25,12 @@ function generateStrictSaveSignature(data) {
         invStr = '';
         for (let i = 0; i < data.inventory.length; i++) {
             const item = data.inventory[i];
-            invStr += `${item.name}:${item.quantity || 1}|`;
+            // 🚨 SECURITY WIN: Hash the stats and rarity too! Prevents players from manually 
+            // editing the DB to give a basic dagger 999 damage without getting caught!
+            const rar = item._rarity || 'n';
+            const dmg = item.damage || 0;
+            const def = item.defense || 0;
+            invStr += `${item.name}:${item.quantity || 1}:${rar}:${dmg}:${def}|`;
         }
     }
     
@@ -30,7 +39,10 @@ function generateStrictSaveSignature(data) {
         bankStr = '';
         for (let i = 0; i < data.bank.length; i++) {
             const item = data.bank[i];
-            bankStr += `${item.name}:${item.quantity || 1}|`;
+            const rar = item._rarity || 'n';
+            const dmg = item.damage || 0;
+            const def = item.defense || 0;
+            bankStr += `${item.name}:${item.quantity || 1}:${rar}:${dmg}:${def}|`;
         }
     }
     
@@ -77,6 +89,7 @@ function generateLegacySaveSignature(data) {
 // --- BACKUP SYSTEM ---
 
 let lastBackupTime = 0; // Anti-Spam Timer
+let backupTextInterval = null; // UI poller
 
 // EXPANDABILITY: Added slotId parameter so you can easily implement multiple save slots later
 async function createCloudBackup(slotId = 'latest') {
@@ -100,12 +113,16 @@ async function createCloudBackup(slotId = 'latest') {
     const originalText = btn ? btn.innerHTML : "☁️ Anchor Timeline";
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = "⏳ Consulting Akashic Records...";
         btn.classList.add('opacity-75', 'cursor-wait');
         
-        // Phase UI texts for tactile feedback
-        setTimeout(() => { if (btn.disabled) btn.innerHTML = "⏳ Weaving Fate..."; }, 400);
-        setTimeout(() => { if (btn.disabled) btn.innerHTML = "⏳ Sealing Anomaly..."; }, 1200);
+        // UX WIN: Dynamic poller keeps the text alive during long network calls
+        const phases = ["⏳ Consulting Akashic Records...", "⏳ Weaving Fate...", "⏳ Sealing Anomaly..."];
+        let pIdx = 0;
+        btn.innerHTML = phases[0];
+        backupTextInterval = setInterval(() => {
+            pIdx = (pIdx + 1) % phases.length;
+            if (btn.disabled) btn.innerHTML = phases[pIdx];
+        }, 800);
     }
 
     logMessage("{cyan:Inscribing your current timeline into the Akashic Records...}");
@@ -134,28 +151,30 @@ async function createCloudBackup(slotId = 'latest') {
         // A. Save the main player document backup
         await playerRef.collection('backups').doc(slotId).set(backupState);
         
-        // B. Backup the Map Subcollection safely using chunked batches (Max 500 ops per batch)
+        // B. Backup the Subcollections safely using chunked batches (Max 500 ops per batch)
         if (typeof db !== 'undefined') {
-            const mapSnap = await playerRef.collection('map_data').get();
-            if (!mapSnap.empty) {
-                let batch = db.batch();
-                let operationCount = 0;
-                
-                for (const doc of mapSnap.docs) {
-                    const backupMapRef = playerRef.collection('backups').doc(slotId).collection('map_data').doc(doc.id);
-                    batch.set(backupMapRef, doc.data());
-                    operationCount++;
+            for (const collectionName of SUBCOLLECTIONS_TO_BACKUP) {
+                const mapSnap = await playerRef.collection(collectionName).get();
+                if (!mapSnap.empty) {
+                    let batch = db.batch();
+                    let operationCount = 0;
                     
-                    // Firestore limit is 500 writes per batch
-                    if (operationCount >= 450) {
-                        await batch.commit();
-                        batch = db.batch();
-                        operationCount = 0;
+                    for (const doc of mapSnap.docs) {
+                        const backupMapRef = playerRef.collection('backups').doc(slotId).collection(collectionName).doc(doc.id);
+                        batch.set(backupMapRef, doc.data());
+                        operationCount++;
+                        
+                        // Firestore limit is 500 writes per batch
+                        if (operationCount >= 450) {
+                            await batch.commit();
+                            batch = db.batch();
+                            operationCount = 0;
+                        }
                     }
-                }
-                // Commit any remaining writes
-                if (operationCount > 0) {
-                    await batch.commit();
+                    // Commit any remaining writes
+                    if (operationCount > 0) {
+                        await batch.commit();
+                    }
                 }
             }
         }
@@ -190,6 +209,10 @@ async function createCloudBackup(slotId = 'latest') {
     } finally {
         // Reset Button State and Locks
         isBackupOperationRunning = false;
+        if (backupTextInterval) {
+            clearInterval(backupTextInterval);
+            backupTextInterval = null;
+        }
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = originalText;
@@ -216,8 +239,15 @@ async function restoreCloudBackup(slotId = 'latest') {
     const originalText = btn ? btn.innerHTML : "↺ Reweave Fate";
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = "⏳ Searching the Void...";
         btn.classList.add('opacity-75', 'cursor-wait', 'animate-pulse');
+        
+        const phases = ["⏳ Searching the Void...", "⏳ Extracting Anchor...", "⏳ Reweaving Leylines..."];
+        let pIdx = 0;
+        btn.innerHTML = phases[0];
+        backupTextInterval = setInterval(() => {
+            pIdx = (pIdx + 1) % phases.length;
+            if (btn.disabled) btn.innerHTML = phases[pIdx];
+        }, 800);
     }
 
     logMessage("{purple:Unraveling the current reality... seeking the anchor point.}");
@@ -282,35 +312,52 @@ async function restoreCloudBackup(slotId = 'latest') {
         delete data.signature; 
         delete data.timestamp;
 
-        // Restore Map Subcollection (with chunking for massive maps)
+        // Restore Subcollections (with chunking for massive maps)
         if (typeof db !== 'undefined') {
-            const backupMapSnap = await playerRef.collection('backups').doc(slotId).collection('map_data').get();
-            if (!backupMapSnap.empty) {
-                let batch = db.batch();
-                let operationCount = 0;
-                
-                for (const doc of backupMapSnap.docs) {
-                    const liveMapRef = playerRef.collection('map_data').doc(doc.id);
-                    batch.set(liveMapRef, doc.data(), { merge: true });
-                    operationCount++;
+            for (const collectionName of SUBCOLLECTIONS_TO_BACKUP) {
+                const backupMapSnap = await playerRef.collection('backups').doc(slotId).collection(collectionName).get();
+                if (!backupMapSnap.empty) {
+                    let batch = db.batch();
+                    let operationCount = 0;
                     
-                    if (operationCount >= 450) {
-                        await batch.commit();
-                        batch = db.batch();
-                        operationCount = 0;
+                    for (const doc of backupMapSnap.docs) {
+                        const liveMapRef = playerRef.collection(collectionName).doc(doc.id);
+                        batch.set(liveMapRef, doc.data(), { merge: true });
+                        operationCount++;
+                        
+                        if (operationCount >= 450) {
+                            await batch.commit();
+                            batch = db.batch();
+                            operationCount = 0;
+                        }
                     }
-                }
-                if (operationCount > 0) {
-                    await batch.commit();
+                    if (operationCount > 0) {
+                        await batch.commit();
+                    }
                 }
             }
         }
 
-        // 🧹 ROBUSTNESS WIN: Deep Clean Current State
-        // Arrays merged via Object.assign can leave ghost items if the new array is shorter than the old one.
+        // 🧹 ROBUSTNESS WIN: Deep Clean Current State ("State Bleed" Fix)
+        // Without this, the memory of the aborted timeline (map chunks, un-looted tiles) 
+        // will bleed directly into the restored timeline until the player refreshes the page!
         gameState.player.inventory = [];
         gameState.player.bank = [];
         gameState.player.equipment = { weapon: null, armor: null, offhand: null, accessory: null, ammo: null };
+        
+        if (typeof chunkManager !== 'undefined') {
+            chunkManager.loadedChunks = {};
+            chunkManager.worldState = {};
+            chunkManager.caveMaps = {};
+            chunkManager.castleMaps = {};
+        }
+        
+        if (gameState.lootedTiles) gameState.lootedTiles.clear();
+        if (gameState.exploredChunks) gameState.exploredChunks.clear();
+        if (gameState.discoveredRegions) gameState.discoveredRegions.clear();
+        if (gameState.foundLore) gameState.foundLore.clear();
+        if (gameState.foundCodexEntries) gameState.foundCodexEntries.clear();
+        if (gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
 
         // Apply to Game State (Reuse your enterGame logic structure)
         if (typeof enterGame === 'function') {
@@ -378,6 +425,10 @@ async function restoreCloudBackup(slotId = 'latest') {
     } finally {
         // Reset Button State and Lock
         isBackupOperationRunning = false;
+        if (backupTextInterval) {
+            clearInterval(backupTextInterval);
+            backupTextInterval = null;
+        }
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = originalText;
