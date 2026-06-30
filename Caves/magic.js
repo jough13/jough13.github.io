@@ -1020,7 +1020,7 @@ function triggerAbilityCooldown(abilityId) {
 
 // --- SECURITY & PERFORMANCE WIN: Event Delegation ---
 // Attaches exactly ONE listener to the spellbook list, bypassing inline DOM bindings.
-(function initSpellbookDelegation() {
+function initSpellbookListeners() {
     const spellListEl = document.getElementById('spellList');
     if (spellListEl && !spellListEl.dataset.listenersBound) {
         spellListEl.addEventListener('click', (e) => {
@@ -1041,6 +1041,6 @@ function triggerAbilityCooldown(abilityId) {
         });
         closeSpellBtn.dataset.listenerBound = 'true';
     }
-})();
+}
 
 // --- END OF FILE magic.js ---
