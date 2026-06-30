@@ -3455,7 +3455,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let lsaMethodologyNote = '';
         const isRQ = sumFracRQ >= 1.0;
 
-        // FIXED: Added Float rounding wrapper (.toFixed(5)) to protect against JS math drift 
         const isExemptConsignment = Number(sumExemptAct.toFixed(5)) <= 1.0 || (pMass > 0 && Number((sumExemptConc / pMass).toFixed(5)) <= 1.0);
         const qualifiesExcepted = Number(sumFracExcPkg.toFixed(5)) <= 1.0 && !anyItemFailsExc;
         
@@ -3481,7 +3480,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         
         const isFissileRegulated = hasFissile && fMass > 0 && !isFissileExcepted;
 
-        // --- NEW ROUTING LOGIC ---
+        // --- ROUTING LOGIC ---
         if (isExemptConsignment && !forceRegulated && !isFissileRegulated) {
             classification = 'EXEMPT';
             methodology = 'Not Regulated as Class 7 (Consignment mixture satisfies the unity rule for exemptions under 49 CFR 173.433).';
@@ -3490,18 +3489,20 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             methodology = 'Sum of Fractions ≤ 1.0 (Excepted Limits) AND all individual items meet Item Limits.';
         } else if (allItemsLSA && !isFissileRegulated) {
             classification = 'LSA';
-            const highestLSA = qualifiesLSA3 ? 'LSA-III' : 'LSA-II'; 
+            
+            // Check qualifiesLSA2 FIRST to prioritize the less restrictive tier
+            const assignedLSA = qualifiesLSA2 ? 'LSA-II' : 'LSA-III'; 
+            
             const hasLiquidGas = packageItems.some(i => i.state === 'liquid' || i.state === 'gas');
             
             let requiredIP = 'IP-1';
-            if (highestLSA === 'LSA-III') {
+            if (assignedLSA === 'LSA-III') {
                 requiredIP = 'IP-3 (or IP-2 if Exclusive Use)';
-            } else if (highestLSA === 'LSA-II') {
+            } else if (assignedLSA === 'LSA-II') {
                 requiredIP = hasLiquidGas ? 'IP-3 (or IP-2 if Exclusive Use)' : 'IP-2';
             }
 
-            methodology = `Specific activity meets concentration mixture rules for ${highestLSA}. Minimum packaging: ${requiredIP}. Note: Type A packaging exceeds IP standards and is acceptable.`;
-        // FIXED: Apply float rounding wrapper
+            methodology = `Specific activity meets concentration mixture rules for ${assignedLSA}. Minimum packaging: ${requiredIP}. Note: Type A packaging exceeds IP standards and is acceptable.`;
         } else if (Number(sumFracTypeA.toFixed(5)) <= 1.0) {
             classification = 'TYPE_A';
             methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)' + lsaMethodologyNote;
@@ -3839,12 +3840,11 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                             </td>
                                             <td className="p-2 font-mono whitespace-nowrap">{item.activityDisplay}</td>
                                             
-                                            {/* --- Display the actual PSN instead of 'Auto' --- */}
                                             <td className="p-2 text-xs truncate max-w-[250px]" title={item.psn}>
                                                 {item.psnOverride ? (
-                                                    <span className="text-amber-600 font-bold" title="Manual Override">Override: {item.psn}</span>
+                                                    <span className="text-amber-600 font-bold" title="Manual Override">{item.psn}</span>
                                                 ) : (
-                                                    <span className="text-slate-500" title="Auto-Calculated">Auto: {item.psn}</span>
+                                                    <span title="Auto-Calculated">{item.psn}</span>
                                                 )}
                                             </td>
                                             
