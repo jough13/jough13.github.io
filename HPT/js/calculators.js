@@ -3,6 +3,13 @@
  * Visualizes the decay curve and the intersection point.
  */
 
+const CALCULATION_MODE_LABELS = {
+    findRemaining: 'Remaining Activity',
+    findTime: 'Time Elapsed',
+    findInitial: 'Initial Activity',
+    findDaughterActivity: 'Daughter Activity'
+};
+
 const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuclide, initialActivity, setInitialActivity, initialUnit, setInitialUnit, finalActivity, setFinalActivity, finalUnit, setFinalUnit, result, setResult, error, setError, activityUnits, theme }) => {
     
     const { addHistory } = useCalculationHistory();
@@ -433,6 +440,9 @@ return (
 // This component is a source correction calculator that computes the activity of a radioactive source on a future date by applying the principle of radioactive decay. It requires the original activity, the calibration date, and the radionuclide's half-life to perform the calculation.
 
 const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, originalActivity, setOriginalActivity, originalActivityUnit, setOriginalActivityUnit, originalDate, setOriginalDate, targetDate, setTargetDate, activityUnits }) => {
+
+    const [useUTC, setUseUTC] = React.useState(false);
+
     const [result, setResult] = React.useState(null);
     const [error, setError] = React.useState('');
     
@@ -458,8 +468,10 @@ const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             if (isNaN(A0) || A0 < 0) throw new Error("Activity must be a positive number.");
 
             // 2. Validate Dates
-            const start = new Date(originalDate + 'Z');
-            const end = new Date(targetDate + 'Z');
+            const startStr = useUTC ? originalDate + 'Z' : originalDate;
+            const endStr = useUTC ? targetDate + 'Z' : targetDate;
+            const start = new Date(startStr);
+            const end = new Date(endStr);
 
             if (isNaN(start.getTime()) || isNaN(end.getTime())) {
                 // Fail silently while user is typing/selecting dates
@@ -506,7 +518,7 @@ const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             setError(e.message);
             setResult(null);
         }
-    }, [selectedNuclide, originalActivity, originalActivityUnit, originalDate, targetDate]);
+    }, [selectedNuclide, originalActivity, originalActivityUnit, originalDate, targetDate, useUTC]);
 
     const handleSaveToHistory = () => {
         if (result && selectedNuclide) {
@@ -849,7 +861,10 @@ const StandardDecayCalculator = ({
                 
                 const activePath = decayPaths[selectedPathIndex];
                 const daughterName = activePath ? activePath.name : selectedNuclide.daughter.split('(')[0].trim();
-                const daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
+                const daughter = radionuclides.find(n => 
+                    normalizeString(n.symbol) === normalizeString(daughterName) || 
+                    normalizeString(n.name) === normalizeString(daughterName)
+                );
                 if (!daughter) throw new Error('Daughter nuclide data not found.');
 
                 const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife);
@@ -960,10 +975,6 @@ const StandardDecayCalculator = ({
     }, [selectedNuclide, calculationMode, initialActivity, initialUnit, remainingActivity, remainingUnit, timeElapsed, timeUnit, initialDaughterActivity, daughterUnit, branchingFraction, timeMode, targetDate, referenceDate, useUTC, radionuclides, activityFactors, useLogScale, decayPaths, selectedPathIndex]);
 
     React.useEffect(() => {
-        if (timeMode === 'date' && initialActivity && referenceDate && targetDate) { handleCalculate(); }
-    }, [referenceDate, targetDate, timeMode, useUTC]);
-
-    React.useEffect(() => {
         if (selectedNuclide) { handleCalculate(); } 
         else { setResult(null); setChartData(null); setError(''); }
     }, [handleCalculate, selectedNuclide]);
@@ -1017,7 +1028,7 @@ const StandardDecayCalculator = ({
                     {[MODE_REMAINING, MODE_TIME, MODE_INITIAL, MODE_DAUGHTER].map(mode => (
                         <label key={mode} className="flex items-center gap-2 cursor-pointer">
                             <input type="radio" name="calcMode" value={mode} checked={calculationMode === mode} onChange={() => setCalculationMode(mode)} className="form-radio h-4 w-4 text-sky-600" />
-                            <span className="text-sm">{{ [MODE_REMAINING]: 'Remaining Activity', [MODE_TIME]: 'Time Elapsed', [MODE_INITIAL]: 'Initial Activity', [MODE_DAUGHTER]: 'Daughter Activity' }[mode]}</span>
+                            <span className="text-sm">{CALCULATION_MODE_LABELS[mode]}</span>
                         </label>
                     ))}
                 </div>
@@ -1077,7 +1088,7 @@ const StandardDecayCalculator = ({
                             </div>
                         ) : (
                             <div className="flex flex-col gap-2">
-                                <div className="flex justify-end">
+                                <div className="flex justify-end mb-2">
                                     <label className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400 cursor-pointer">
                                         <input type="checkbox" checked={useUTC} onChange={e => setUseUTC(e.target.checked)} className="form-checkbox h-3 w-3 rounded text-sky-600" />
                                         Calculate in UTC (Ignore DST)
@@ -1662,11 +1673,6 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
 
-        <ContextualNote type="info">
-                <strong>Geometry:</strong> Calculates solid angle efficiency based on detector radius. Gamma response follows the Inverse Square Law.<br/>
-                <strong>Warning:</strong> Unless a shield material (e.g., Plastic) is selected, calculations assume a completely bare, weightless point source. Bare sources will produce massive Beta/Alpha count rates compared to typical encapsulated check sources.
-        </ContextualNote>
-
     // --- CONFIG ---
     const DETECTORS = React.useMemo(() => ({
         'nai_1x1': { label: '1" x 1" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 175, radius_cm: 1.27 },
@@ -1727,8 +1733,10 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             const rawSurf = safeParseFloat(surfaceEff);
             const eff_surf_pct = isNaN(rawSurf) ? 100 : rawSurf;
 
-            if (isNaN(A_val) || isNaN(d_val) || A_val <= 0 || d_val <= 0) {
-                if (activity && distance) setError("Inputs must be positive.");
+            if (isNaN(A_val) || isNaN(d_val) || A_val <= 0 || d_val <= 0 || (shieldMaterial !== 'None' && isNaN(t_val))) {
+                if (activity && distance && (shieldMaterial === 'None' || shieldThickness)) {
+                    setError("Inputs must be valid positive numbers.");
+                }
                 setResult(null);
                 return;
             }
@@ -1934,7 +1942,7 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     }
                 </div>
                 
-                {/* FIX: Expanded Grid to 3 Columns to fit Emission Yield/Surface Efficiency */}
+                {/* Expanded Grid to 3 Columns to fit Emission Yield/Surface Efficiency */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label className="block text-sm font-medium">Activity</label>
@@ -1954,10 +1962,10 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                             </select>
                         </div>
                     </div>
-                    {/* NEW UI ELEMENT */}
+
                     <div>
-                        <Tooltip text="Percentage of particles emitted toward the detector (Yield / Surface factor). Defaults to 100%.">
-                            <label className="block text-sm font-medium cursor-help underline decoration-dotted">Emission Yield (%)</label>
+                        <Tooltip text="Accounting for 2π vs 4π geometry or source self-absorption. Defaults to 100% for a clean point source.">
+                            <label className="block text-sm font-medium cursor-help underline decoration-dotted">Surface Efficiency (%)</label>
                         </Tooltip>
                         <div className="flex mt-1">
                             <input type="number" inputMode="decimal" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} placeholder="100" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
@@ -2009,7 +2017,7 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
     
-    // NEW: Access global settings to check for SI vs Conventional unit preference
+    // Access global settings to check for SI vs Conventional unit preference
     const { settings } = React.useContext(SettingsContext);
     const isSI = settings?.unitSystem === 'si';
     
