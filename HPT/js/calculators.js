@@ -3444,7 +3444,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const qualifiesExcepted = sumFracExcPkg <= 1.0 && !anyItemFailsExc;
         const allItemsLSA = packageItems.length > 0 && packageItems.every(item => item.lsaHint !== null);
 
-        // --- NEW ROUTING LOGIC ---
+        // --- ROUTING LOGIC ---
         if (isExemptConsignment && !forceRegulated) {
             classification = 'EXEMPT';
             methodology = 'Not Regulated as Class 7 (Consignment mixture satisfies the unity rule for exemptions under 49 CFR 173.433).';
@@ -3453,10 +3453,25 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             methodology = 'Sum of Fractions ≤ 1.0 (Excepted Limits) AND all individual items meet Item Limits.';
         } else if (allItemsLSA) {
             classification = 'LSA';
+            // Find highest LSA level for display
             const hasLSA3 = packageItems.some(i => i.lsaHint === 'LSA-III');
             const hasLSA2 = packageItems.some(i => i.lsaHint === 'LSA-II');
             const highestLSA = hasLSA3 ? 'LSA-III' : (hasLSA2 ? 'LSA-II' : 'LSA-I');
-            methodology = `Specific activity meets concentration limits for ${highestLSA}. Shipped in Industrial Packaging (Type IP).`;
+            
+            // Evaluate state (Liquids/Gases demand stronger IP packaging under Table 6)
+            const hasLiquidGas = packageItems.some(i => i.state === 'liquid' || i.state === 'gas');
+            
+            // 49 CFR 173.427 Table 6 Logic
+            let requiredIP = 'IP-1';
+            if (highestLSA === 'LSA-III') {
+                requiredIP = 'IP-3 (or IP-2 if Exclusive Use)';
+            } else if (highestLSA === 'LSA-II') {
+                requiredIP = hasLiquidGas ? 'IP-3 (or IP-2 if Exclusive Use)' : 'IP-2';
+            } else if (highestLSA === 'LSA-I') {
+                requiredIP = hasLiquidGas ? 'IP-2 (or IP-1 if Exclusive Use)' : 'IP-1';
+            }
+
+            methodology = `Specific activity meets concentration limits for ${highestLSA}. Minimum packaging: ${requiredIP}. Note: Type A packaging exceeds IP standards and is always acceptable.`;
         } else if (sumFracTypeA <= 1.0) {
             classification = 'TYPE_A';
             methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)';
