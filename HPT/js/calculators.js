@@ -2203,24 +2203,9 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
     );
 };
 
-const SimpleEfficiencyCalculator = ({
-    mode, setMode,
-    counts, setCounts,
-    time, setTime,
-    cpm, setCpm,
-    dpm, setDpm,
-    efficiency, setEfficiency,
-    result, setResult,
-    error, setError
-}) => {
-
-    // Access global settings for SI/Conventional units
+const SimpleEfficiencyCalculator = ({ mode, setMode, counts, setCounts, time, setTime, cpm, setCpm, dpm, setDpm, efficiency, setEfficiency, bkgCounts, setBkgCounts, bkgTime, setBkgTime, result, setResult, error, setError }) => {
     const { settings } = React.useContext(SettingsContext);
     const isSI = settings?.unitSystem === 'si';
-
-    // --- NEW LOCAL STATE FOR BACKGROUND SEPARATION ---
-    const [bkgCounts, setBkgCounts] = React.useState('');
-    const [bkgTime, setBkgTime] = React.useState('1'); // Default to 1 min to prevent division by zero
 
     // Auto-Calculate Effect
     React.useEffect(() => {
@@ -2564,6 +2549,8 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
     const [eff_mode, setEff_mode] = React.useState('scaler');
     const [eff_counts, setEff_counts] = React.useState('');
     const [eff_time, setEff_time] = React.useState('');
+    const [eff_bkgCounts, setEff_bkgCounts] = React.useState('');
+    const [eff_bkgTime, setEff_bkgTime] = React.useState('1');
     const [eff_cpm, setEff_cpm] = React.useState('');
     const [eff_dpm, setEff_dpm] = React.useState('');
     const [eff_efficiency, setEff_efficiency] = React.useState('');
@@ -2614,7 +2601,7 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
             setLt_grossCpm('150'); setLt_backgroundCpm('50'); setLt_instrumentEff('25'); setLt_result(null); setLt_error('');
         }
         if(activeCalculator === 'efficiency') {
-            setEff_counts(''); setEff_time(''); setEff_cpm(''); setEff_dpm(''); setEff_efficiency(''); setEff_result(null); setEff_error('');
+            setEff_counts(''); setEff_time(''); setEff_cpm(''); setEff_dpm(''); setEff_efficiency(''); setEff_result(null); setEff_error(''); setEff_bkgCounts(''); setEff_bkgTime('1');
         }
         if(activeCalculator === 'inverseSquare') {
             setInv_i1(''); setInv_d1(''); setInv_i2(''); setInv_d2(''); setInv_result(null); setInv_error('');
@@ -2676,6 +2663,9 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
                         cpm={eff_cpm} setCpm={setEff_cpm}
                         dpm={eff_dpm} setDpm={setEff_dpm}
                         efficiency={eff_efficiency} setEfficiency={setEff_efficiency}
+                        // PASS THE NEW PROPS HERE:
+                        bkgCounts={eff_bkgCounts} setBkgCounts={setEff_bkgCounts}
+                        bkgTime={eff_bkgTime} setBkgTime={setEff_bkgTime}
                         result={eff_result} setResult={setEff_result}
                         error={eff_error} setError={setEff_error}
                     />}
