@@ -3123,6 +3123,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     const FISSILE_ISOTOPES = ['U-233', 'U-235', 'Pu-239', 'Pu-241'];
 
+    // Cleaned up PSN_OPTIONS to remove optional italicized text
     const PSN_OPTIONS = [
         "UN2910, Radioactive material, excepted package - limited quantity of material, 7",
         "UN2911, Radioactive material, excepted package - instruments or articles, 7",
@@ -3145,20 +3146,20 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     // --- 2. STATE ---
     const [packageItems, setPackageItems] = React.useState([]);
 
-    const [forceRegulated, setForceRegulated] = React.useState(false);
-
+    // Add New Item State
     const [newItemSymbol, setNewItemSymbol] = React.useState('');
     const [newItemForm, setNewItemForm] = React.useState('A2');
     const [newItemState, setNewItemState] = React.useState('solid');
     const [newItemCategory, setNewItemCategory] = React.useState('instrument');
-    const [newItemQuantity, setNewItemQuantity] = React.useState('1'); // Quantity multiplier
+    const [newItemQuantity, setNewItemQuantity] = React.useState('1'); 
     const [newItemActivity, setNewItemActivity] = React.useState('1');
     const [newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
-    const [newItemMass, setNewItemMass] = React.useState(''); // Mass for LSA hinting
+    const [newItemMass, setNewItemMass] = React.useState(''); 
     const [itemManualPSN, setItemManualPSN] = React.useState('');
 
     // Package Level Inputs
-    const [fissileMass, setFissileMass] = React.useState(''); // Fissile exception check
+    const [forceRegulated, setForceRegulated] = React.useState(false); // The LSA / Regulated Override Toggle
+    const [fissileMass, setFissileMass] = React.useState(''); 
     const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
     const [doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
     const [surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
@@ -3235,7 +3236,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         if (isNaN(val) || val <= 0 || qty < 1) return defaultResult;
 
         const singleItemActTBq = val * activityFactorsTBq[newItemUnit];
-        const actTBq = singleItemActTBq * qty; // Total package activity for this entry
+        const actTBq = singleItemActTBq * qty; 
         const actBq = actTBq * 1e12;
         const massGrams = safeParseFloat(newItemMass);
         const specActivityBq_g = massGrams > 0 ? actBq / massGrams : Infinity;
@@ -3243,12 +3244,11 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const exemptLimitBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
         const exemptConcLimitBq_g = selectedNuclideData.shipping.exemptConcLimitBq_g || 0; 
 
-        // DOT rules: Exceeds limits ONLY if the limit is 0 (unknown) or strictly greater
         const exceedsConsignment = exemptLimitBq === 0 || actBq > exemptLimitBq;
         const exceedsConcentration = exemptConcLimitBq_g === 0 || specActivityBq_g > exemptConcLimitBq_g;
         
         if (!(exceedsConsignment && exceedsConcentration)) {
-            return { ...defaultResult, suggestedPSN: PSN_OPTIONS[15], actTBq, actBq, specActivityBq_g, singleItemActTBq }; // Not Regulated
+            return { ...defaultResult, suggestedPSN: PSN_OPTIONS[15], actTBq, actBq, specActivityBq_g, singleItemActTBq }; 
         }
 
         let rawLimit = selectedNuclideData.shipping[newItemForm];
@@ -3280,7 +3280,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let lsaHint = null;
         let suggestedPSN = '';
         
-        // Only evaluate LSA if it's bulk material (not instruments) and has a valid mass
         if (massGrams > 0 && a2Val !== Infinity && !isInstrument) {
             const specActivityTBq_g = actTBq / massGrams;
             const lsa2LimitMultiplier = newItemState === 'liquid' ? 1e-5 : 1e-4;
@@ -3293,7 +3292,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
 
         // --- Routing Logic ---
-        // NEW: Check `actTBq` for the package limit, but `singleItemActTBq` for the instrument limit
         if (actTBq <= pkgLimitExc && singleItemActTBq <= itemLimitExc) {
             suggestedPSN = isInstrument ? PSN_OPTIONS[1] : PSN_OPTIONS[0];
         } 
@@ -3323,7 +3321,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const nuclideData = transportNuclides.find(n => n.symbol === newItemSymbol);
         if(!nuclideData) return;
 
-        // Extract pre-calculated logic from the live preview
         const { actTBq, actBq, specActivityBq_g, lsaHint, suggestedPSN, singleItemActTBq } = liveItemDetails;
 
         let rawLimit = nuclideData.shipping[newItemForm];
@@ -3340,7 +3337,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         } else if (newItemState === 'gas') {
             matPkgMult = newItemForm === 'A1' ? 1e-3 : 1e-4; 
             instItemMult = 1e-3; instPkgMult = 1e-2;
-        } else { // Solid
+        } else { 
             matPkgMult = 1e-3; instItemMult = 1e-2; instPkgMult = 1; 
         }
 
@@ -3350,18 +3347,13 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const itemLimitExc = newItemCategory === 'instrument' ? limitTBq * instItemMult : Infinity;
         const pkgLimitExc = limitTBq * (newItemCategory === 'instrument' ? instPkgMult : matPkgMult);
 
-        // --- DOT EXEMPTION LOGIC ---
         const exemptLimitBq = nuclideData.shipping.exemptConsignmentBq || 0;
         const exemptConcLimitBq_g = nuclideData.shipping.exemptConcLimitBq_g || 0;
         
         const exceedsConsignment = exemptLimitBq === 0 || actBq > exemptLimitBq;
         const exceedsConcentration = exemptConcLimitBq_g === 0 || specActivityBq_g > exemptConcLimitBq_g;
         
-        // Under DOT rules, it is ONLY regulated if it exceeds BOTH limits.
         const isRegulated = exceedsConsignment && exceedsConcentration;
-        
-        // Hack the fraction so the downstream package logic knows if it failed the exemption test
-        // If it is regulated, we force a 2.0 (causing the package sum to fail). If exempt, it adds 0.0.
         const calculatedFracExempt = isRegulated ? 2.0 : 0.0;
 
         const massGrams = safeParseFloat(newItemMass);
@@ -3380,7 +3372,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             fracExcItem: (limitTBq === Infinity || itemLimitExc === 0) ? 0 : singleItemActTBq / itemLimitExc,
             fracExcPkg: (limitTBq === Infinity || pkgLimitExc === 0) ? 0 : actTBq / pkgLimitExc,
             
-            // Wire the calculatedFracExempt hack into the package summation!
             ratioExemptAct: isRegulated ? calculatedFracExempt : (exemptLimitBq === 0 ? 0 : actBq / exemptLimitBq),
             ratioExemptConc: isRegulated ? calculatedFracExempt : (exemptConcLimitBq_g === 0 || !massGrams ? 0 : specActivityBq_g / exemptConcLimitBq_g),
             
@@ -3394,7 +3385,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         setPackageItems(prev => [...prev, item]);
         
-        // Reset Inputs after add
         setNewItemQuantity('1');
         setNewItemActivity('');
         setNewItemMass('');
@@ -3450,7 +3440,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const qualifiesExcepted = sumFracExcPkg <= 1.0 && !anyItemFailsExc;
         const allItemsLSA = packageItems.length > 0 && packageItems.every(item => item.lsaHint !== null);
 
-        // --- ROUTING LOGIC ---
+        // --- NEW ROUTING LOGIC ---
         if (isExemptConsignment && !forceRegulated) {
             classification = 'EXEMPT';
             methodology = 'Not Regulated as Class 7 (Consignment mixture satisfies the unity rule for exemptions under 49 CFR 173.433).';
@@ -3459,7 +3449,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             methodology = 'Sum of Fractions ≤ 1.0 (Excepted Limits) AND all individual items meet Item Limits.';
         } else if (allItemsLSA) {
             classification = 'LSA';
-            // Find highest LSA level for display (LSA-III > LSA-II > LSA-I)
             const hasLSA3 = packageItems.some(i => i.lsaHint === 'LSA-III');
             const hasLSA2 = packageItems.some(i => i.lsaHint === 'LSA-II');
             const highestLSA = hasLSA3 ? 'LSA-III' : (hasLSA2 ? 'LSA-II' : 'LSA-I');
@@ -3479,6 +3468,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     }, [packageItems, forceRegulated]);
 
+    // Label Estimation
     React.useEffect(() => {
         if (!doseRateAt1m && !surfaceDoseRate) { setLabelResult(null); }
         else {
@@ -3496,7 +3486,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
             const surfMrem = !isNaN(rateSurface) ? toMremHr(rateSurface, surfaceDoseRateUnit) : 0;
 
-            // 1. Calculate the standard label FIRST based purely on dose rates
             let standardLabel = "Check Limits";
             if (surfMrem <= 0.5 && TI === 0) standardLabel = "White-I";
             else if (surfMrem <= 50 && TI <= 1) standardLabel = "Yellow-II";
@@ -3505,7 +3494,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
             let labelCategory = standardLabel;
 
-            // 2. Apply Regulatory Overrides (Excepted & HRCQ)
             if (classificationResult?.classification === 'EXCEPTED') {
                 if (surfMrem > 0.5) {
                     labelCategory = `INVALID EXCEPTED (Surface > 0.5 mrem/h. Ship Type A / ${standardLabel})`;
@@ -3513,7 +3501,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     labelCategory = "Excepted Marking (No Label)";
                 }
             } else if (classificationResult?.classification === 'HRCQ') {
-                // 49 CFR 172.403 dictates HRCQ is always Yellow-III minimum
                 if (surfMrem > 200 || TI > 10) {
                     labelCategory = "Yellow-III (Exclusive Use)";
                 } else {
@@ -3550,7 +3537,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         setFissileMass(''); setVehSurfaceDose(''); setVeh2mDose(''); setCabDose('');
         setEmergencyContact(''); setBolComments(''); setItemManualPSN('');
         setShipperName(''); setShipperAddress(''); setConsigneeName(''); setConsigneeAddress(''); setPackageDimensions('');
-        setForceRegulated(false); 
+        setForceRegulated(false); // Resets the override toggle
     };
 
     const handleSave = () => {
@@ -3569,7 +3556,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         addToast("Saved to history!");
     };
 
-    // --- Print Modal Handlers ---
     const handlePrintClick = () => {
         const hideWarning = localStorage.getItem('hideBolPrintWarning') === 'true';
         if (hideWarning) {
@@ -3584,7 +3570,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             localStorage.setItem('hideBolPrintWarning', 'true');
         }
         setIsPrintModalOpen(false);
-        // Small delay ensures the modal animation finishes removing it from the DOM
         setTimeout(() => {
             window.print();
         }, 150);
@@ -3793,51 +3778,53 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     </tr>
                                 </tfoot>
                             </table>
-                            <div className="p-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                                <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={forceRegulated} 
-                                        onChange={e => setForceRegulated(e.target.checked)} 
-                                        className="form-checkbox h-4 w-4 rounded text-sky-600" 
-                                    />
-                                    Force Regulated / LSA Classification (Bypass Exempt & Excepted)
-                                </label>
-                            </div>
-                            
                         </div>
                     )}
                 </div>
 
                 {/* --- 2. CLASSIFICATION RESULT --- */}
                 {classificationResult && (
-                    <div className={`p-4 rounded-lg text-center mb-6 animate-fade-in ${resultStyles[classificationResult.classification].container}`}>
-                        <p className="text-xs uppercase font-bold opacity-70 mb-1">Package Classification</p>
-                        <p className={`text-2xl font-extrabold flex items-center justify-center gap-2 ${resultStyles[classificationResult.classification].title}`}>
-                            {resultStyles[classificationResult.classification].display}
-                            {classificationResult.isRQ && (
-                                <span className="text-rose-600 dark:text-rose-400 border-2 border-rose-600 px-1.5 py-0.5 rounded text-sm font-black">RQ</span>
-                            )}
-                        </p>
-                        <p className="text-xs mt-2 opacity-80">{classificationResult.methodology}</p>
-                        
-                        {classificationResult.hasFissile && (
-                            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded text-left">
-                                <h4 className="text-sm font-bold text-amber-800 dark:text-amber-400 flex items-center gap-2">⚠️ Fissile Material Detected</h4>
-                                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1 mb-2">Package contains fissile isotopes. Provide total fissile mass to verify 49 CFR 173.453 exceptions.</p>
-                                <div className="flex items-center gap-3">
-                                    <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Total Fissile Mass (g):</label>
-                                    <input type="number" inputMode="decimal" min="0" value={fissileMass} onChange={e => setFissileMass(e.target.value)} className="w-24 p-1 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm" />
+                    <>
+                        <div className="mb-4 flex justify-end animate-fade-in">
+                            <label className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer p-2 bg-slate-100 dark:bg-slate-700/50 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                                <input 
+                                    type="checkbox" 
+                                    checked={forceRegulated} 
+                                    onChange={e => setForceRegulated(e.target.checked)} 
+                                    className="form-checkbox h-4 w-4 rounded text-sky-600 focus:ring-sky-500 focus:ring-offset-slate-100 dark:focus:ring-offset-slate-800" 
+                                />
+                                Force Regulated / LSA (Bypass Exemptions)
+                            </label>
+                        </div>
+
+                        <div className={`p-4 rounded-lg text-center mb-6 animate-fade-in ${resultStyles[classificationResult.classification].container}`}>
+                            <p className="text-xs uppercase font-bold opacity-70 mb-1">Package Classification</p>
+                            <p className={`text-2xl font-extrabold flex items-center justify-center gap-2 ${resultStyles[classificationResult.classification].title}`}>
+                                {resultStyles[classificationResult.classification].display}
+                                {classificationResult.isRQ && (
+                                    <span className="text-rose-600 dark:text-rose-400 border-2 border-rose-600 px-1.5 py-0.5 rounded text-sm font-black">RQ</span>
+                                )}
+                            </p>
+                            <p className="text-xs mt-2 opacity-80">{classificationResult.methodology}</p>
+                            
+                            {classificationResult.hasFissile && (
+                                <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded text-left">
+                                    <h4 className="text-sm font-bold text-amber-800 dark:text-amber-400 flex items-center gap-2">⚠️ Fissile Material Detected</h4>
+                                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-1 mb-2">Package contains fissile isotopes. Provide total fissile mass to verify 49 CFR 173.453 exceptions.</p>
+                                    <div className="flex items-center gap-3">
+                                        <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Total Fissile Mass (g):</label>
+                                        <input type="number" inputMode="decimal" min="0" value={fissileMass} onChange={e => setFissileMass(e.target.value)} className="w-24 p-1 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm" />
+                                    </div>
+                                    {fissileMass && safeParseFloat(fissileMass) <= 15 && (
+                                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-2">✅ Fissile Excepted (≤ 15g)</p>
+                                    )}
+                                    {fissileMass && safeParseFloat(fissileMass) > 15 && (
+                                        <p className="text-xs text-red-600 dark:text-red-400 font-bold mt-2">❌ Exceeds 15g Exception - Requires CSI & Fissile Labels</p>
+                                    )}
                                 </div>
-                                {fissileMass && safeParseFloat(fissileMass) <= 15 && (
-                                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-2">✅ Fissile Excepted (≤ 15g)</p>
-                                )}
-                                {fissileMass && safeParseFloat(fissileMass) > 15 && (
-                                    <p className="text-xs text-red-600 dark:text-red-400 font-bold mt-2">❌ Exceeds 15g Exception - Requires CSI & Fissile Labels</p>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                            )}
+                        </div>
+                    </>
                 )}
 
                 {/* --- 3. MEASUREMENTS & LABEL --- */}
