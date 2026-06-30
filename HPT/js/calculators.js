@@ -3115,7 +3115,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
 
-    // Updated to current 49 CFR 173.443 limits (4 Bq/cm2 and 0.4 Bq/cm2)
     const CONTAM_LIMITS = {
         beta_gamma: { dpm_100cm2: 24000, bq_cm2: 4, label: 'Beta/Gamma/Low-Tox Alpha' },
         alpha: { dpm_100cm2: 2400, bq_cm2: 0.4, label: 'Other Alpha' }
@@ -3123,7 +3122,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     const FISSILE_ISOTOPES = ['U-233', 'U-235', 'Pu-239', 'Pu-241'];
 
-    // Cleaned up PSN_OPTIONS to remove optional italicized text
     const PSN_OPTIONS = [
         "UN2910, Radioactive material, excepted package - limited quantity of material, 7",
         "UN2911, Radioactive material, excepted package - instruments or articles, 7",
@@ -3154,16 +3152,20 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [newItemQuantity, setNewItemQuantity] = React.useState('1'); 
     const [newItemActivity, setNewItemActivity] = React.useState('1');
     const [newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
-    const [newItemMass, setNewItemMass] = React.useState(''); 
     const [itemManualPSN, setItemManualPSN] = React.useState('');
 
     // Package Level Inputs
-    const [forceRegulated, setForceRegulated] = React.useState(false); // The LSA / Regulated Override Toggle
+    const [packageMass, setPackageMass] = React.useState(''); 
+    const [forceRegulated, setForceRegulated] = React.useState(false); 
     const [fissileMass, setFissileMass] = React.useState(''); 
+    
+    // Dose Rates
     const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
     const [doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
     const [surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
     const [surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
+    const [unshieldedDose3m, setUnshieldedDose3m] = React.useState(''); 
+    const [unshieldedDoseUnit, setUnshieldedDoseUnit] = React.useState('mrem/hr');
 
     // Exclusive Use Vehicle Inputs
     const [vehSurfaceDose, setVehSurfaceDose] = React.useState('');
@@ -3189,7 +3191,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [classificationResult, setClassificationResult] = React.useState(null);
     const [error, setError] = React.useState('');
 
-    // --- Print Modal State ---
     const [isPrintModalOpen, setIsPrintModalOpen] = React.useState(false);
     const [dontShowPrintWarning, setDontShowPrintWarning] = React.useState(false);
 
@@ -3238,7 +3239,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const singleItemActTBq = val * activityFactorsTBq[newItemUnit];
         const actTBq = singleItemActTBq * qty; 
         const actBq = actTBq * 1e12;
-        const massGrams = safeParseFloat(newItemMass);
+        
+        const massGrams = safeParseFloat(packageMass);
         const specActivityBq_g = massGrams > 0 ? actBq / massGrams : Infinity;
 
         const isInstrument = newItemCategory === 'instrument';
@@ -3270,7 +3272,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         const exceedsConsignment = exemptLimitBq === 0 || actBq > exemptLimitBq;
         const exceedsConcentration = exemptConcLimitBq_g === 0 || specActivityBq_g > exemptConcLimitBq_g;
         
-        // Return early if exempt, BUT include the newly calculated lsaHint!
         if (!(exceedsConsignment && exceedsConcentration)) {
             return { ...defaultResult, suggestedPSN: PSN_OPTIONS[15], actTBq, actBq, specActivityBq_g, singleItemActTBq, lsaHint }; 
         }
@@ -3309,7 +3310,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
 
         return { suggestedPSN, lsaHint, actTBq, actBq, specActivityBq_g, singleItemActTBq };
-    }, [selectedNuclideData, newItemSymbol, newItemActivity, newItemQuantity, newItemUnit, newItemForm, newItemState, newItemCategory, newItemMass, activityFactorsTBq]);
+    }, [selectedNuclideData, newItemSymbol, newItemActivity, newItemQuantity, newItemUnit, newItemForm, newItemState, newItemCategory, packageMass, activityFactorsTBq]);
 
     // --- 4. LOGIC ---
 
@@ -3327,6 +3328,9 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         let rawLimit = nuclideData.shipping[newItemForm];
         let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
+
+        const a2Raw = nuclideData.shipping.A2;
+        const a2Val = (typeof a2Raw === 'string' && a2Raw.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(a2Raw);
 
         const hrcqLimitTBq = Math.min(3000 * limitTBq, 1000);
 
@@ -3351,14 +3355,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         const exemptLimitBq = nuclideData.shipping.exemptConsignmentBq || 0;
         const exemptConcLimitBq_g = nuclideData.shipping.exemptConcLimitBq_g || 0;
-        
-        const exceedsConsignment = exemptLimitBq === 0 || actBq > exemptLimitBq;
-        const exceedsConcentration = exemptConcLimitBq_g === 0 || specActivityBq_g > exemptConcLimitBq_g;
-        
-        const isRegulated = exceedsConsignment && exceedsConcentration;
-        const calculatedFracExempt = isRegulated ? 2.0 : 0.0;
-
-        const massGrams = safeParseFloat(newItemMass);
 
         const item = {
             id: Date.now(),
@@ -3369,27 +3365,24 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             qty: qty,
             activityDisplay: qty > 1 ? `${qty}x ${val} ${newItemUnit}` : `${val} ${newItemUnit}`,
             actTBq: actTBq,
+            actBq: actBq,
             typeALimit: limitTBq,
+            A2Val: a2Val,
+            exemptLimitBq: exemptLimitBq,
+            exemptConcLimitBq_g: exemptConcLimitBq_g,
             fracTypeA: limitTBq === Infinity ? 0 : actTBq / limitTBq,
             fracExcItem: (limitTBq === Infinity || itemLimitExc === 0) ? 0 : singleItemActTBq / itemLimitExc,
             fracExcPkg: (limitTBq === Infinity || pkgLimitExc === 0) ? 0 : actTBq / pkgLimitExc,
-            
-            ratioExemptAct: isRegulated ? calculatedFracExempt : (exemptLimitBq === 0 ? 0 : actBq / exemptLimitBq),
-            ratioExemptConc: isRegulated ? calculatedFracExempt : (exemptConcLimitBq_g === 0 || !massGrams ? 0 : specActivityBq_g / exemptConcLimitBq_g),
-            
             fracRQ: rqLimitTBq === Infinity ? 0 : actTBq / rqLimitTBq,
             fracHRCQ: hrcqLimitTBq === 0 ? 0 : actTBq / hrcqLimitTBq,
-
-            mass: massGrams,
-            lsaHint: lsaHint,
-            psn: itemManualPSN || suggestedPSN
+            psnOverride: itemManualPSN,
+            lsaHint: lsaHint
         };
 
         setPackageItems(prev => [...prev, item]);
         
         setNewItemQuantity('1');
         setNewItemActivity('');
-        setNewItemMass('');
         setItemManualPSN('');
         setError('');
     };
@@ -3398,7 +3391,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         setPackageItems(prev => prev.filter(i => i.id !== id));
     };
 
-    // Calculate Package Totals
+    // Calculate Package Totals (Including Mixture Rules)
     React.useEffect(() => {
         if (packageItems.length === 0) { 
             setClassificationResult(null); 
@@ -3406,27 +3399,38 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         }
 
         let totalTBq = 0;
-        let totalMass = 0;
         let sumFracTypeA = 0;
         let sumFracExcPkg = 0;
         let sumFracHRCQ = 0; 
         let sumFracRQ = 0;
+        
         let sumExemptAct = 0;
         let sumExemptConc = 0;
+        let sumLSA2 = 0;
+        let sumLSA3 = 0;
+        
         let anyItemFailsExc = false;
         let hasFissile = false;
 
+        const pMass = safeParseFloat(packageMass);
+        const unshieldedMrem = !isNaN(safeParseFloat(unshieldedDose3m)) ? toMremHr(safeParseFloat(unshieldedDose3m), unshieldedDoseUnit) : 0;
+
         packageItems.forEach(item => {
             totalTBq += item.actTBq;
-            totalMass += (item.mass > 0 ? item.mass : 0);
             sumFracTypeA += item.fracTypeA;
             sumFracExcPkg += item.fracExcPkg;
-            
             sumFracHRCQ += item.fracHRCQ;
-            
             sumFracRQ += item.fracRQ;
-            sumExemptAct += item.ratioExemptAct;
-            sumExemptConc += item.ratioExemptConc;
+
+            sumExemptAct += item.exemptLimitBq === 0 ? Infinity : item.actBq / item.exemptLimitBq;
+            sumExemptConc += item.exemptConcLimitBq_g === 0 ? Infinity : item.actBq / item.exemptConcLimitBq_g;
+
+            const lsa2Mult = item.state === 'liquid' ? 1e-5 : 1e-4;
+            const lsa2Limit = item.A2Val * lsa2Mult;
+            sumLSA2 += (lsa2Limit === 0 || lsa2Limit === Infinity) ? 0 : item.actTBq / lsa2Limit;
+
+            const lsa3Limit = item.A2Val * 2e-3;
+            sumLSA3 += (item.state !== 'solid' || lsa3Limit === 0) ? Infinity : (lsa3Limit === Infinity ? 0 : item.actTBq / lsa3Limit);
 
             if (item.category === 'instrument' && item.fracExcItem > 1.0) {
                 anyItemFailsExc = true;
@@ -3438,13 +3442,25 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         let classification = '';
         let methodology = '';
+        let lsaMethodologyNote = '';
         const isRQ = sumFracRQ >= 1.0;
 
-        const isExemptConsignment = sumExemptAct <= 1.0 || sumExemptConc <= 1.0;
+        const isExemptConsignment = sumExemptAct <= 1.0 || (pMass > 0 && (sumExemptConc / pMass) <= 1.0);
         const qualifiesExcepted = sumFracExcPkg <= 1.0 && !anyItemFailsExc;
-        const allItemsLSA = packageItems.length > 0 && packageItems.every(item => item.lsaHint !== null);
+        
+        let qualifiesLSA2 = pMass > 0 && (sumLSA2 / pMass) <= 1.0 && !packageItems.some(i => i.category === 'instrument');
+        let qualifiesLSA3 = pMass > 0 && (sumLSA3 / pMass) <= 1.0 && !packageItems.some(i => i.category === 'instrument');
 
-        // --- ROUTING LOGIC ---
+        // 49 CFR 173.427(a)(1) - Unshielded Limit Prohibition
+        if (unshieldedMrem > 1000) {
+            qualifiesLSA2 = false;
+            qualifiesLSA3 = false;
+            lsaMethodologyNote = ' (LSA classification prohibited: Unshielded 3m dose rate exceeds 10 mSv/h per 173.427(a)(1))';
+        }
+
+        const allItemsLSA = qualifiesLSA2 || qualifiesLSA3;
+
+        // --- NEW ROUTING LOGIC ---
         if (isExemptConsignment && !forceRegulated) {
             classification = 'EXEMPT';
             methodology = 'Not Regulated as Class 7 (Consignment mixture satisfies the unity rule for exemptions under 49 CFR 173.433).';
@@ -3453,39 +3469,31 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             methodology = 'Sum of Fractions ≤ 1.0 (Excepted Limits) AND all individual items meet Item Limits.';
         } else if (allItemsLSA) {
             classification = 'LSA';
-            // Find highest LSA level for display
-            const hasLSA3 = packageItems.some(i => i.lsaHint === 'LSA-III');
-            const hasLSA2 = packageItems.some(i => i.lsaHint === 'LSA-II');
-            const highestLSA = hasLSA3 ? 'LSA-III' : (hasLSA2 ? 'LSA-II' : 'LSA-I');
-            
-            // Evaluate state (Liquids/Gases demand stronger IP packaging under Table 6)
+            const highestLSA = qualifiesLSA3 ? 'LSA-III' : 'LSA-II'; 
             const hasLiquidGas = packageItems.some(i => i.state === 'liquid' || i.state === 'gas');
             
-            // 49 CFR 173.427 Table 6 Logic
             let requiredIP = 'IP-1';
             if (highestLSA === 'LSA-III') {
                 requiredIP = 'IP-3 (or IP-2 if Exclusive Use)';
             } else if (highestLSA === 'LSA-II') {
                 requiredIP = hasLiquidGas ? 'IP-3 (or IP-2 if Exclusive Use)' : 'IP-2';
-            } else if (highestLSA === 'LSA-I') {
-                requiredIP = hasLiquidGas ? 'IP-2 (or IP-1 if Exclusive Use)' : 'IP-1';
             }
 
-            methodology = `Specific activity meets concentration limits for ${highestLSA}. Minimum packaging: ${requiredIP}. Note: Type A packaging exceeds IP standards and is always acceptable.`;
+            methodology = `Specific activity meets concentration mixture rules for ${highestLSA}. Minimum packaging: ${requiredIP}. Note: Type A packaging exceeds IP standards and is acceptable.`;
         } else if (sumFracTypeA <= 1.0) {
             classification = 'TYPE_A';
-            methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)';
+            methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)' + lsaMethodologyNote;
         } else if (sumFracHRCQ > 1.0) {
             classification = 'HRCQ';
-            methodology = 'Activity exceeds the cumulative Highway Route Controlled Quantity unity rule threshold under 49 CFR 173.403.';
+            methodology = 'Activity exceeds HRCQ threshold under 49 CFR 173.403.' + lsaMethodologyNote;
         } else {
             classification = 'TYPE_B';
-            methodology = 'Activity exceeds Type A limits but remains below HRCQ criteria.';
+            methodology = 'Activity exceeds Type A limits but remains below HRCQ criteria.' + lsaMethodologyNote;
         }
 
-        setClassificationResult({ count: packageItems.length, totalTBq, totalMass, classification, methodology, sumFracTypeA, isRQ, hasFissile });
+        setClassificationResult({ count: packageItems.length, totalTBq, totalMass: pMass, classification, methodology, sumFracTypeA, isRQ, hasFissile });
 
-    }, [packageItems, forceRegulated]);
+    }, [packageItems, forceRegulated, packageMass, unshieldedDose3m, unshieldedDoseUnit]);
 
     // Label Estimation
     React.useEffect(() => {
@@ -3551,12 +3559,13 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType, settings.unitSystem, classificationResult]);
 
     const handleClear = () => {
-        setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemQuantity('1'); setNewItemCategory('instrument'); setNewItemMass('');
+        setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemQuantity('1'); setNewItemCategory('instrument');
+        setPackageMass(''); setUnshieldedDose3m(''); 
         setDoseRateAt1m(''); setSurfaceDoseRate(''); setCheckContam(false); setRemovableContam(''); setError('');
         setFissileMass(''); setVehSurfaceDose(''); setVeh2mDose(''); setCabDose('');
         setEmergencyContact(''); setBolComments(''); setItemManualPSN('');
         setShipperName(''); setShipperAddress(''); setConsigneeName(''); setConsigneeAddress(''); setPackageDimensions('');
-        setForceRegulated(false); // Resets the override toggle
+        setForceRegulated(false);
     };
 
     const handleSave = () => {
@@ -3618,6 +3627,12 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 <div className="space-y-4 mb-6 border-b border-slate-200 dark:border-slate-700 pb-6">
                     <h3 className="font-bold text-sm text-slate-500 uppercase">1. Add Package Contents</h3>
                     
+                    {/* Global Package Mass Input */}
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
+                        <label className="block text-xs font-bold text-blue-800 dark:text-blue-300 mb-1">Total Material/Package Net Mass (g)</label>
+                        <input type="number" inputMode="decimal" min="0" value={packageMass} onChange={e => setPackageMass(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-700 text-sm" placeholder="Required for Exempt/LSA Mixture calculations..." />
+                    </div>
+
                     <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg space-y-3 border border-slate-200 dark:border-slate-700">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
@@ -3633,6 +3648,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     )}
                                 </div>
                                 
+                                {/* --- RESTORED REGULATORY LIMITS BOX --- */}
                                 {selectedNuclideData && (() => {
                                     const isSi = settings.unitSystem === 'si';
                                     const unitBig = isSi ? 'TBq' : 'Ci';
@@ -3709,12 +3725,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                         </div>
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-medium mb-1 flex justify-between">
-                                        Mass (g) <span className="text-[9px] text-slate-400 font-normal italic">Optional (LSA Check)</span>
-                                    </label>
-                                    <input type="number" inputMode="decimal" min="0" value={newItemMass} onChange={e => setNewItemMass(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border dark:border-slate-600 text-sm" placeholder="e.g. 150" />
-                                </div>
+                                
                                 <div>
                                     <label className="block text-xs font-medium mb-1">Form & State</label>
                                     <div className="flex gap-2 mb-2">
@@ -3734,28 +3745,14 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                 </div>
                             </div>
 
-                            {/* --- PER ITEM PSN OVERRIDE --- */}
                             <div className="md:col-span-2 pt-2 mt-2 border-t border-slate-200 dark:border-slate-700">
-                                <div className="flex justify-between items-center mb-1">
-                                    <div className="flex items-center gap-2">
-                                        <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400">Proper Shipping Name (PSN) for this Item</label>
-                                        {liveItemDetails.lsaHint && !itemManualPSN && (
-                                            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 rounded text-[9px] font-bold border border-emerald-200 dark:border-emerald-800 animate-fade-in">
-                                                May Qualify: {liveItemDetails.lsaHint}
-                                            </span>
-                                        )}
-                                    </div>
-                                    {itemManualPSN && (
-                                        <button onClick={() => setItemManualPSN('')} className="text-[10px] text-sky-600 dark:text-sky-400 hover:underline font-semibold">
-                                            Reset to Auto-Suggested
-                                        </button>
-                                    )}
-                                </div>
+                                <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Proper Shipping Name (PSN) Override</label>
                                 <select 
-                                    value={itemManualPSN || liveItemDetails.suggestedPSN} 
+                                    value={itemManualPSN} 
                                     onChange={e => setItemManualPSN(e.target.value)} 
                                     className="w-full p-2 rounded bg-white dark:bg-slate-800 text-xs border border-slate-300 dark:border-slate-600 focus:ring-sky-500"
                                 >
+                                    <option value="">-- Auto-Suggest Based on Limits --</option>
                                     {PSN_OPTIONS.map((opt, i) => <option key={i} value={opt}>{opt}</option>)}
                                 </select>
                             </div>
@@ -3771,8 +3768,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     <tr>
                                         <th className="p-2">Nuclide</th>
                                         <th className="p-2">Activity</th>
-                                        <th className="p-2">Mass</th>
-                                        <th className="p-2">PSN</th>
+                                        <th className="p-2">PSN Override</th>
                                         <th className="p-2"></th>
                                     </tr>
                                 </thead>
@@ -3782,11 +3778,9 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                             <td className="p-2 font-bold whitespace-nowrap">
                                                 {item.symbol} 
                                                 <span className="text-[10px] font-normal text-slate-500 block">{item.form}, {item.state} | {item.category === 'instrument' ? 'Inst/Art' : 'Material'}</span>
-                                                {item.lsaHint && <span className="inline-block mt-0.5 px-1 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 rounded text-[9px] font-bold border border-emerald-200 dark:border-emerald-800">May Qualify: {item.lsaHint}</span>}
                                             </td>
                                             <td className="p-2 font-mono whitespace-nowrap">{item.activityDisplay}</td>
-                                            <td className="p-2 font-mono whitespace-nowrap">{item.mass > 0 ? `${item.mass.toLocaleString()} g` : '-'}</td>
-                                            <td className="p-2 text-xs truncate max-w-[200px]" title={item.psn}>{item.psn}</td>
+                                            <td className="p-2 text-xs truncate max-w-[200px]" title={item.psnOverride}>{item.psnOverride || 'Auto'}</td>
                                             <td className="p-2 text-right"><button onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:text-red-700"><Icon path={ICONS.trash || "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"} className="w-4 h-4"/></button></td>
                                         </tr>
                                     ))}
@@ -3795,13 +3789,11 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     <tr>
                                         <td className="p-2" colSpan="2">TOTAL FRACTION (Sum of A1/A2):</td>
                                         <td className="p-2 font-mono text-base text-sky-600 dark:text-sky-400" colSpan="2">{classificationResult ? classificationResult.sumFracTypeA.toFixed(3) : '0.000'}</td>
-                                        <td></td>
                                     </tr>
                                     {classificationResult && classificationResult.totalMass > 0 && (
                                     <tr>
                                         <td className="p-2" colSpan="2">TOTAL PACKAGE MASS:</td>
                                         <td className="p-2 font-mono text-slate-600 dark:text-slate-400" colSpan="2">{classificationResult.totalMass.toLocaleString()} g</td>
-                                        <td></td>
                                     </tr>
                                     )}
                                 </tfoot>
@@ -3843,12 +3835,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                         <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Total Fissile Mass (g):</label>
                                         <input type="number" inputMode="decimal" min="0" value={fissileMass} onChange={e => setFissileMass(e.target.value)} className="w-24 p-1 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm" />
                                     </div>
-                                    {fissileMass && safeParseFloat(fissileMass) <= 15 && (
-                                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-2">✅ Fissile Excepted (≤ 15g)</p>
-                                    )}
-                                    {fissileMass && safeParseFloat(fissileMass) > 15 && (
-                                        <p className="text-xs text-red-600 dark:text-red-400 font-bold mt-2">❌ Exceeds 15g Exception - Requires CSI & Fissile Labels</p>
-                                    )}
                                 </div>
                             )}
                         </div>
@@ -3858,7 +3844,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 {/* --- 3. MEASUREMENTS & LABEL --- */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
-                        <h3 className="font-bold text-sm text-slate-500 uppercase">2. Label Estimation</h3>
+                        <h3 className="font-bold text-sm text-slate-500 uppercase">2. Radiation Measurements & Labels</h3>
                         <div>
                             <label className="block text-[10px] font-bold mb-1">Max Dose Rate @ 1m (TI)</label>
                             <div className="flex"><input type="number" inputMode="decimal" min="0" value={doseRateAt1m} onChange={e => setDoseRateAt1m(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" /><select value={doseRateUnit} onChange={e => setDoseRateUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select></div>
@@ -3866,6 +3852,14 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                         <div>
                             <label className="block text-[10px] font-bold mb-1">Max Surface Dose Rate</label>
                             <div className="flex"><input type="number" inputMode="decimal" min="0" value={surfaceDoseRate} onChange={e => setSurfaceDoseRate(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" /><select value={surfaceDoseRateUnit} onChange={e => setSurfaceDoseRateUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select></div>
+                        </div>
+                        
+                        <div className="pt-2 border-t border-slate-200 dark:border-slate-700 mt-2">
+                            <label className="block text-[10px] font-bold mb-1">Unshielded Dose Rate @ 3m <span className="font-normal italic">(For LSA Check)</span></label>
+                            <div className="flex"><input type="number" inputMode="decimal" min="0" value={unshieldedDose3m} onChange={e => setUnshieldedDose3m(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" /><select value={unshieldedDoseUnit} onChange={e => setUnshieldedDoseUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select></div>
+                            {unshieldedDose3m && toMremHr(safeParseFloat(unshieldedDose3m), unshieldedDoseUnit) > 1000 && (
+                                <p className="text-[10px] font-bold text-red-600 dark:text-red-400 mt-1">❌ Exceeds 10 mSv/h LSA Limit</p>
+                            )}
                         </div>
                         
                         {labelResult ? (
