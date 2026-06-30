@@ -3158,6 +3158,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [packageMass, setPackageMass] = React.useState(''); 
     const [forceRegulated, setForceRegulated] = React.useState(false); 
     const [fissileMass, setFissileMass] = React.useState(''); 
+    const [csi, setCsi] = React.useState(''); // NEW: Criticality Safety Index
     
     // Dose Rates
     const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
@@ -3460,14 +3461,17 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         const allItemsLSA = qualifiesLSA2 || qualifiesLSA3;
 
+        // NEW: Check if Fissile material exceeds the 15g Exception (forces fully regulated Type A/B)
+        const isFissileRegulated = hasFissile && safeParseFloat(fissileMass) > 15;
+
         // --- NEW ROUTING LOGIC ---
-        if (isExemptConsignment && !forceRegulated) {
+        if (isExemptConsignment && !forceRegulated && !isFissileRegulated) {
             classification = 'EXEMPT';
             methodology = 'Not Regulated as Class 7 (Consignment mixture satisfies the unity rule for exemptions under 49 CFR 173.433).';
-        } else if (qualifiesExcepted && !forceRegulated) {
+        } else if (qualifiesExcepted && !forceRegulated && !isFissileRegulated) {
             classification = 'EXCEPTED';
             methodology = 'Sum of Fractions ≤ 1.0 (Excepted Limits) AND all individual items meet Item Limits.';
-        } else if (allItemsLSA) {
+        } else if (allItemsLSA && !isFissileRegulated) {
             classification = 'LSA';
             const highestLSA = qualifiesLSA3 ? 'LSA-III' : 'LSA-II'; 
             const hasLiquidGas = packageItems.some(i => i.state === 'liquid' || i.state === 'gas');
@@ -3483,6 +3487,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         } else if (sumFracTypeA <= 1.0) {
             classification = 'TYPE_A';
             methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)' + lsaMethodologyNote;
+            if (isFissileRegulated) methodology += ' (Fissile material must be shipped in certified Type A/B packaging).';
         } else if (sumFracHRCQ > 1.0) {
             classification = 'HRCQ';
             methodology = 'Activity exceeds HRCQ threshold under 49 CFR 173.403.' + lsaMethodologyNote;
@@ -3493,7 +3498,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
         setClassificationResult({ count: packageItems.length, totalTBq, totalMass: pMass, classification, methodology, sumFracTypeA, isRQ, hasFissile });
 
-    }, [packageItems, forceRegulated, packageMass, unshieldedDose3m, unshieldedDoseUnit]);
+    }, [packageItems, forceRegulated, packageMass, unshieldedDose3m, unshieldedDoseUnit, fissileMass]);
 
     // Label Estimation
     React.useEffect(() => {
@@ -3519,20 +3524,37 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             else if (surfMrem <= 200 && TI <= 10) standardLabel = "Yellow-III";
             else if (surfMrem > 200 || TI > 10) standardLabel = "Yellow-III (Exclusive Use)";
 
-            let labelCategory = standardLabel;
+            // Determine if FISSILE label is required
+            const isFissileRegulated = classificationResult?.hasFissile && safeParseFloat(fissileMass) > 15;
+            const csiVal = safeParseFloat(csi);
+            const fissileAppend = isFissileRegulated ? ` + FISSILE (CSI: ${isNaN(csiVal) ? '?' : csiVal.toFixed(1)})` : '';
+
+            // Automatically upgrade label to Exclusive Use if CSI > 50
+            if (isFissileRegulated && csiVal > 50 && !standardLabel.includes('Exclusive Use')) {
+                standardLabel += " (Exclusive Use)";
+            }
+
+            let labelCategory = standardLabel + fissileAppend;
 
             if (classificationResult?.classification === 'EXCEPTED') {
-                if (surfMrem > 0.5) {
+                if (isFissileRegulated) {
+                    labelCategory = `INVALID EXCEPTED (Fissile > 15g requires Type A/B packaging and FISSILE label)`;
+                } else if (surfMrem > 0.5) {
                     labelCategory = `INVALID EXCEPTED (Surface > 0.5 mrem/h. Ship Type A / ${standardLabel})`;
                 } else {
                     labelCategory = "Excepted Marking (No Label)";
                 }
             } else if (classificationResult?.classification === 'HRCQ') {
                 if (surfMrem > 200 || TI > 10) {
-                    labelCategory = "Yellow-III (Exclusive Use)";
+                    labelCategory = "Yellow-III (Exclusive Use)" + fissileAppend;
                 } else {
-                    labelCategory = "Yellow-III (HRCQ Mandatory)";
+                    labelCategory = "Yellow-III (HRCQ Mandatory)" + fissileAppend;
                 }
+            }
+
+            // CSI Conveyance Limit Verification
+            if (isFissileRegulated && csiVal > 100) {
+                labelCategory = "❌ INVALID (CSI > 100 per conveyance prohibited)";
             }
 
             setLabelResult({ TI, labelCategory });
@@ -3556,13 +3578,13 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 });
             }
         }
-    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType, settings.unitSystem, classificationResult]);
+    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType, settings.unitSystem, classificationResult, fissileMass, csi]);
 
     const handleClear = () => {
         setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1'); setNewItemQuantity('1'); setNewItemCategory('instrument');
         setPackageMass(''); setUnshieldedDose3m(''); 
         setDoseRateAt1m(''); setSurfaceDoseRate(''); setCheckContam(false); setRemovableContam(''); setError('');
-        setFissileMass(''); setVehSurfaceDose(''); setVeh2mDose(''); setCabDose('');
+        setFissileMass(''); setCsi(''); setVehSurfaceDose(''); setVeh2mDose(''); setCabDose('');
         setEmergencyContact(''); setBolComments(''); setItemManualPSN('');
         setShipperName(''); setShipperAddress(''); setConsigneeName(''); setConsigneeAddress(''); setPackageDimensions('');
         setForceRegulated(false);
@@ -3835,6 +3857,24 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                         <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Total Fissile Mass (g):</label>
                                         <input type="number" inputMode="decimal" min="0" value={fissileMass} onChange={e => setFissileMass(e.target.value)} className="w-24 p-1 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm" />
                                     </div>
+                                    {fissileMass && safeParseFloat(fissileMass) <= 15 && (
+                                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-2">✅ Fissile Excepted (≤ 15g per package)</p>
+                                    )}
+                                    {fissileMass && safeParseFloat(fissileMass) > 15 && (
+                                        <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-700/50">
+                                            <p className="text-xs text-red-600 dark:text-red-400 font-bold mb-2">❌ Exceeds 15g Exception - Fully Regulated Fissile</p>
+                                            <div className="flex items-center gap-3">
+                                                <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Criticality Safety Index (CSI):</label>
+                                                <input type="number" inputMode="decimal" min="0" value={csi} onChange={e => setCsi(e.target.value)} className="w-24 p-1 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm" />
+                                            </div>
+                                            {csi && safeParseFloat(csi) > 50 && safeParseFloat(csi) <= 100 && (
+                                                <p className="text-[10px] text-amber-700 font-bold mt-1">⚠️ CSI {'>'} 50 requires Exclusive Use vehicle.</p>
+                                            )}
+                                            {csi && safeParseFloat(csi) > 100 && (
+                                                <p className="text-[10px] text-red-600 font-bold mt-1">❌ CSI {'>'} 100 is prohibited on a single conveyance.</p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -3905,7 +3945,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                         })()}
                     </div>
 
-                    {labelResult?.labelCategory === "Yellow-III (Exclusive Use)" && (
+                    {labelResult?.labelCategory && labelResult.labelCategory.includes("Exclusive Use") && (
                         <div className="p-4 border border-rose-200 dark:border-rose-800/50 bg-rose-50/50 dark:bg-rose-900/10 rounded-lg space-y-3 md:col-span-2 animate-fade-in">
                             <h3 className="font-bold text-sm text-rose-700 dark:text-rose-400 uppercase">Exclusive Use Vehicle Limits</h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
