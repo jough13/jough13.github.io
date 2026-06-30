@@ -2995,15 +2995,22 @@ async function enterGame(playerData) {
 
             if (!areGlobalListenersInitialized) {
                 console.log("Initializing Global UI Listeners...");
-                initShopListeners();
-                initSpellbookListeners();
-                initInventoryListeners();
-                initSkillbookListeners();
-                initQuestListeners();
-                initCraftingListeners();
-                initSkillTrainerListeners();
-                initMobileControls();
-                initSettingsListeners();
+                
+                // Safely initialize all UI listeners using typeof checks
+                if (typeof initShopListeners === 'function') initShopListeners();
+                if (typeof initSpellbookListeners === 'function') initSpellbookListeners();
+                if (typeof initInventoryListeners === 'function') initInventoryListeners();
+                if (typeof initSkillbookListeners === 'function') initSkillbookListeners();
+                if (typeof initQuestListeners === 'function') initQuestListeners();
+                if (typeof initCraftingListeners === 'function') initCraftingListeners();
+                if (typeof initSkillTrainerListeners === 'function') initSkillTrainerListeners();
+                if (typeof initMobileControls === 'function') initMobileControls();
+                if (typeof initSettingsListeners === 'function') initSettingsListeners();
+                
+                if (typeof initStashListeners === 'function') initStashListeners();
+                if (typeof initEnchantingListeners === 'function') initEnchantingListeners();
+                if (typeof initCollectionsListeners === 'function') initCollectionsListeners();
+                
                 areGlobalListenersInitialized = true; 
             } else {
                 const mobileContainer = document.getElementById('mobileControls');
