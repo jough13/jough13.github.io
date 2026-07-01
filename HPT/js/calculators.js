@@ -2740,15 +2740,7 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
     );
 };
 
-/**
- * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B, RQ)
- * based on the nuclide, activity, form, and mass, according to DOT/IAEA A1/A2 and RQ values.
- * Includes a print-ready Bill of Lading generator with automatic ERG Guide attachment.
- */
-
-const ShippingPaper = ({ items, classification, label, doseRates, emergencyContact, comments, shipper, consignee, dimensions }) => {
-    
-    // --- ERG 2024 REFERENCE DATA ---
+// --- ERG 2024 REFERENCE DATA ---
     const ERG_DATA = {
         '161': {
             guide: '161',
@@ -2918,17 +2910,24 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
         }
     };
 
+/**
+ * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B, RQ)
+ * based on the nuclide, activity, form, and mass, according to DOT/IAEA A1/A2 and RQ values.
+ * Includes a print-ready Bill of Lading generator with automatic ERG Guide attachment.
+ */
+
+const ShippingPaper = ({ items, classification, label, doseRates, emergencyContact, comments, shipper, consignee, dimensions }) => {
+    
     const getERGGuide = () => {
         if (!classification || classification.classification === 'EXEMPT') return null;
-        if (classification.hasFissile) return ERG_DATA['165'];
-        if (classification.classification === 'EXCEPTED') return ERG_DATA['161'];
+        if (classification.hasFissile) return ERG_DATA_REFERENCE['165'];
+        if (classification.classification === 'EXCEPTED') return ERG_DATA_REFERENCE['161'];
         
-        // Special Form Check
         const isSpecialForm = items.length > 0 && items.every(i => i.form === 'A1');
-        if (isSpecialForm) return ERG_DATA['164'];
+        if (isSpecialForm) return ERG_DATA_REFERENCE['164'];
         
-        if (classification.classification === 'TYPE_A') return ERG_DATA['162'];
-        return ERG_DATA['163']; // Default to 163 for Type B / HRCQ
+        if (classification.classification === 'TYPE_A') return ERG_DATA_REFERENCE['162'];
+        return ERG_DATA_REFERENCE['163'];
     };
 
     const isRegulated = classification?.classification !== 'EXEMPT';
