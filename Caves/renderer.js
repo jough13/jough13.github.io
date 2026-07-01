@@ -792,13 +792,17 @@ function renderTerrainCache(startX, startY) {
             } 
             else { 
                 // Calculate the chunk coordinates ONCE and use them for both lookups!
-                // PERFORMANCE WIN: Math.trunc is identical to floor for positive, faster in some V8 paths. We stick to floor to handle negatives correctly.
                 const cX = Math.floor(mapX / 16);
                 const cY = Math.floor(mapY / 16);
                 const lX = ((mapX % 16) + 16) % 16;
                 const lY = ((mapY % 16) + 16) % 16;
                 const chunkId = `${cX},${cY}`;
                 const tileKey = `${lX},${lY}`;
+
+                // Generate the chunk on the fly if the screen is wider than our pre-loaded bounds!
+                if (!chunkManager.loadedChunks[chunkId]) {
+                    chunkManager.generateChunk(cX, cY);
+                }
 
                 let baseTerrain = '.';
                 if (chunkManager.loadedChunks[chunkId] && chunkManager.loadedChunks[chunkId][lY]) {
