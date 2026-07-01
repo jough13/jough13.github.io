@@ -39,30 +39,11 @@ function initGuestLogin() {
         guestBtn.className = 'w-full mt-4 py-3 border-2 border-dashed border-gray-600 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 hover:border-gray-400 font-bold uppercase tracking-widest text-sm transition-all active:scale-95 shadow-inner';
         guestBtn.innerHTML = '👻 Play As Guest';
         
-        guestBtn.onclick = async () => {
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-            
-            // LORE WIN: Thematic warning prompt
-            const proceed = confirm("⚠️ FRAGILE SOUL WARNING\n\nPlaying as a Guest means your character is tethered to this specific browser. If you clear your browser cache or change devices, your character will be lost to the Void forever.\n\nDo you wish to enter the realm as a Guest?");
-            
-            if (proceed) {
-                guestBtn.disabled = true;
-                guestBtn.innerHTML = '⏳ Summoning...';
-                guestBtn.classList.add('animate-pulse');
-                
-                try {
-                    // Firebase Anonymous Auth perfectly mimics a real user, meaning 
-                    // your database and MMO sync code requires ZERO rewrites to support this!
-                    await auth.signInAnonymously();
-                    // script.js will catch the onAuthStateChanged and automatically pull them in!
-                } catch (e) {
-                    console.error("Guest login error:", e);
-                    alert("The leylines rejected your guest connection. Please try again.");
-                    guestBtn.disabled = false;
-                    guestBtn.innerHTML = '👻 Play As Guest';
-                    guestBtn.classList.remove('animate-pulse');
-                }
-            }
+        // Trigger the shiny new HTML modal instead of the browser alert
+        guestBtn.onclick = () => {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); // Ominous tone
+            const guestModal = document.getElementById('guestConfirmModal');
+            if (guestModal) guestModal.classList.remove('hidden');
         };
         
         authButtonContainer.appendChild(guestBtn);
@@ -72,6 +53,51 @@ function initGuestLogin() {
 // Inject the guest button when the script loads
 setTimeout(initGuestLogin, 100);
 
+// Bind the new HTML Modal Buttons
+document.addEventListener('DOMContentLoaded', () => {
+    const guestModal = document.getElementById('guestConfirmModal');
+    const cancelGuestBtn = document.getElementById('cancelGuestButton');
+    const confirmGuestBtn = document.getElementById('confirmGuestButton');
+
+    if (cancelGuestBtn) {
+        cancelGuestBtn.onclick = () => {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            if (guestModal) guestModal.classList.add('hidden');
+        };
+    }
+
+    if (confirmGuestBtn) {
+        confirmGuestBtn.onclick = async () => {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            if (guestModal) guestModal.classList.add('hidden');
+
+            const guestBtn = document.getElementById('guestLoginBtn');
+            if (guestBtn) {
+                guestBtn.disabled = true;
+                guestBtn.innerHTML = '⏳ Summoning...';
+                guestBtn.classList.add('animate-pulse');
+            }
+            
+            try {
+                // Firebase Anonymous Auth perfectly mimics a real user!
+                await auth.signInAnonymously();
+            } catch (e) {
+                console.error("Guest login error:", e);
+                const errEl = document.getElementById('authError');
+                if (errEl) errEl.textContent = "The leylines rejected your guest connection.";
+                
+                if (guestBtn) {
+                    guestBtn.disabled = false;
+                    guestBtn.innerHTML = '👻 Play As Guest';
+                    guestBtn.classList.remove('animate-pulse');
+                }
+            }
+        };
+    }
+});
+
+// Inject the guest button when the script loads
+setTimeout(initGuestLogin, 100);
 
 async function initCharacterSelect(user) {
     document.title = "Caves and Castles";
