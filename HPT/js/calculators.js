@@ -839,8 +839,8 @@ const StandardDecayCalculator = ({
                     });
                     
                     // Sync the state variables so the UI updates
-                    setTimeElapsed(convertedTime);
-                    setTimeUnit(bestUnit.toLowerCase());
+                    if (timeElapsed !== convertedTime) setTimeElapsed(convertedTime);
+                    if (timeUnit !== bestUnit.toLowerCase()) setTimeUnit(bestUnit.toLowerCase());
                     
                     timeForChart_seconds = timeInSeconds;
                 }
@@ -910,13 +910,32 @@ const StandardDecayCalculator = ({
             const tenHalfLives = 15 * T_half_seconds;
             const effectivePlotTime = Math.min(plotTimeAbs, tenHalfLives);
 
+            // Pre-calculate daughter metadata OUTSIDE the 101-iteration loop
+            let daughter = null;
+            let lambda2 = 0;
+            let A0_daughter_Bq_Chart = 0;
+
+            if (calculationMode === MODE_DAUGHTER) {
+                const activePath = decayPaths[selectedPathIndex];
+                const daughterName = activePath ? activePath.name : selectedNuclide.daughter.split('(')[0].trim();
+                daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
+                
+                if (daughter) {
+                    const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife);
+                    lambda2 = T_half_daughter_seconds === Infinity ? 0 : Math.log(2) / T_half_daughter_seconds;
+                    
+                    const rawDaughterInput = safeParseFloat(initialDaughterActivity);
+                    A0_daughter_Bq_Chart = (isNaN(rawDaughterInput) ? 0 : rawDaughterInput) * getFactor(daughterUnit);
+                }
+            }
+
             for (let i = 0; i <= steps; i++) {
                 let timePoint_seconds = (effectivePlotTime / steps) * i;
                 if (i === steps) timePoint_seconds = plotTimeAbs; 
 
                 const timePoint_display = timePoint_seconds / unitConversions[bestChartUnit];
-        
-                // FIX 3: Apply the 4-tier smoothing logic for X-Axis labels
+                
+                // Dynamic X-Axis Labels 4-tier smoothing
                 let label;
                 if (plotTimeConverted < 0.1) {
                     label = timePoint_display.toExponential(2);
@@ -930,37 +949,30 @@ const StandardDecayCalculator = ({
                 
                 labels.push(label);
 
+                // Parent Decay Plotting
                 let p_val_bq = (plotA0_Bq * Math.exp(-lambda * timePoint_seconds));
                 p_val_bq = Math.max(0, p_val_bq);
                 if (useLogScale && p_val_bq < CUTOFF) p_val_bq = CUTOFF;
                 parentData.push(p_val_bq / plotFactor);
 
-                if (calculationMode === MODE_DAUGHTER) {
-                     const activePath = decayPaths[selectedPathIndex];
-                     const daughterName = activePath ? activePath.name : selectedNuclide.daughter.split('(')[0].trim();
-                     const daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
-                     
-                     if (daughter) {
-                        const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife);
-                        const lambda2 = T_half_daughter_seconds === Infinity ? 0 : Math.log(2) / T_half_daughter_seconds;
-                        
-                        const rawDaughterInput = safeParseFloat(initialDaughterActivity);
-                        const A0_daughter_Bq_Chart = (isNaN(rawDaughterInput) ? 0 : rawDaughterInput) * getFactor(daughterUnit);
-                        let d_val_bq;
+                // Daughter Accumulation Plotting (Now using lightweight scalar variables)
+                if (calculationMode === MODE_DAUGHTER && daughter) {
+                    let d_val_bq;
 
-                        if (Math.abs(lambda - lambda2) < 1e-12 * lambda) {
-                            d_val_bq = (A0_daughter_Bq_Chart * Math.exp(-lambda2 * timePoint_seconds)) + (br * plotA0_Bq * lambda2 * timePoint_seconds * Math.exp(-lambda2 * timePoint_seconds));
-                        } else {
-                            d_val_bq = (A0_daughter_Bq_Chart * Math.exp(-lambda2 * timePoint_seconds)) + (br * (lambda2 / (lambda2 - lambda)) * plotA0_Bq * (Math.exp(-lambda * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds)));
-                        }
-                        
-                        if (!isFinite(d_val_bq)) d_val_bq = 0;
-                        d_val_bq = Math.max(0, d_val_bq);
+                    if (Math.abs(lambda - lambda2) < 1e-12 * lambda) {
+                        d_val_bq = (A0_daughter_Bq_Chart * Math.exp(-lambda2 * timePoint_seconds)) + 
+                                (br * plotA0_Bq * lambda2 * timePoint_seconds * Math.exp(-lambda2 * timePoint_seconds));
+                    } else {
+                        d_val_bq = (A0_daughter_Bq_Chart * Math.exp(-lambda2 * timePoint_seconds)) + 
+                                (br * (lambda2 / (lambda2 - lambda)) * plotA0_Bq * (Math.exp(-lambda * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds)));
+                    }
+                    
+                    if (!isFinite(d_val_bq)) d_val_bq = 0;
+                    d_val_bq = Math.max(0, d_val_bq);
 
-                        if (useLogScale && d_val_bq < CUTOFF) d_val_bq = CUTOFF;
-                        
-                        daughterData.push(d_val_bq / plotFactor);
-                     }
+                    if (useLogScale && d_val_bq < CUTOFF) d_val_bq = CUTOFF;
+                    
+                    daughterData.push(d_val_bq / plotFactor);
                 }
             }
 
@@ -1407,7 +1419,7 @@ const SurfaceContaminationCalculator = ({
 
     // --- Derived Data ---
     const surveyNuclides = React.useMemo(() => 
-        radionuclides.filter(n => n.regGuideCategory && n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), 
+        radionuclides.filter(n => n.regGuideCategory || n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), 
     [radionuclides]);
 
     const selectedNuclide = React.useMemo(() => 
@@ -1523,7 +1535,22 @@ const SurfaceContaminationCalculator = ({
             setError(e.message);
             setResult(null);
         }
-    }, [selectedNuclide, staticData, wipeGrossCpm, wipeBackgroundCpm, staticBackgroundCpm, staticEff, wipeEff, smearEff, probeArea, setResult, setError]);
+        }, [
+            selectedNuclide, 
+            staticData, 
+            wipeGrossCpm, 
+            wipeBackgroundCpm, 
+            staticBackgroundCpm, 
+            staticEff, 
+            wipeEff, 
+            smearEff, 
+            probeArea, 
+            setResult, 
+            setError,
+            // Explicitly include external limit references to satisfy standard linting rules
+            typeof REG_GUIDE_1_86_LIMITS !== 'undefined' ? REG_GUIDE_1_86_LIMITS : null,
+            typeof ANSI_13_12_LIMITS !== 'undefined' ? ANSI_13_12_LIMITS : null
+        ]);
 
     const handleSaveToHistory = () => {
         if (result) {
