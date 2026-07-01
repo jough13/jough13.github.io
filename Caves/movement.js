@@ -3265,6 +3265,13 @@ async function attemptMovePlayer(newX, newY) {
                     chunkManager.listenToChunkState(currentChunkX + x, currentChunkY + y);
                 }
             }
+
+            chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
+
+            if (typeof EnemyNetworkManager !== 'undefined') {
+                EnemyNetworkManager.syncChunks(gameState.player.x, gameState.player.y);
+            }
+        }
     }
 
     if (typeof passivePerceptionCheck === 'function') passivePerceptionCheck();
