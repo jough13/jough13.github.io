@@ -547,6 +547,22 @@
         </div>
     </div>
 
+    <!-- GUEST CONFIRM MODAL -->
+    <div id="guestConfirmModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="guestConfirmTitle">
+        <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-yellow-500 text-center max-w-sm">
+            <h2 id="guestConfirmTitle" class="text-2xl font-bold mb-4 text-yellow-500 border-b border-yellow-900 pb-2">Fragile Soul Warning</h2>
+            
+            <p class="text-sm text-gray-300 mb-4 leading-relaxed">Playing as a Guest means your character is tethered to this specific browser.</p>
+            <p class="text-sm text-red-400 font-bold mb-6 leading-relaxed">If you clear your browser cache or change devices, your character will be lost to the Void forever.</p>
+            <p class="text-sm text-gray-400 mb-6 italic">Do you wish to enter the realm as a Guest?</p>
+            
+            <div class="flex gap-4">
+                <button type="button" id="cancelGuestButton" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl flex-1 shadow-md transition-transform active:scale-95">Cancel</button>
+                <button type="button" id="confirmGuestButton" class="bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-xl flex-1 shadow-md transition-transform active:scale-95 border border-yellow-400">Proceed</button>
+            </div>
+        </div>
+    </div>
+
     <!-- DELETE CONFIRM MODAL -->
     <div id="deleteConfirmModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle">
         <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-red-600 text-center max-w-sm">
@@ -1075,7 +1091,7 @@
                                     const filled = '█'.repeat(blocks);
                                     const empty = '.'.repeat(10 - blocks);
                                     // Make the loading bar look cooler
-                                    barEl.textContent = `[${filled === '' ? '' : filled.slice(0, -1) + '>'}${empty}]`;
+                                    barEl.textContent = `[${filled}${empty}]`;
                                     
                                     if (blocks >= 10) clearInterval(interimInterval);
                                 }, 80); 
