@@ -2925,17 +2925,19 @@ async function enterGame(playerData) {
             const cY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
             
             let chunksLoaded = 0;
-            const totalChunks = 25;
+            // Expand radius to 3 (7x7 chunks = 49 total) to cover wide monitors
+            const RADIUS = 3;
+            const totalChunks = Math.pow((RADIUS * 2) + 1, 2);
 
-            for(let y = -2; y <= 2; y++) {
-                for(let x = -2; x <= 2; x++) {
+            for(let y = -RADIUS; y <= RADIUS; y++) {
+                for(let x = -RADIUS; x <= RADIUS; x++) {
                     const targetX = cX + x;
                     const targetY = cY + y;
                     
                     // 1. Force procedural generation in local memory
                     chunkManager.getTile(targetX * chunkManager.CHUNK_SIZE, targetY * chunkManager.CHUNK_SIZE);
                     
-                    // 2. Attach Firebase listener and wait for ALL 9 to return their initial snapshot
+                    // 2. Attach Firebase listener and wait for ALL to return their initial snapshot
                     chunkManager.listenToChunkState(targetX, targetY, () => {
                         chunksLoaded++;
                         if (chunksLoaded === totalChunks) resolve();
