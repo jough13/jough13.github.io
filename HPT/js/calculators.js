@@ -3013,10 +3013,14 @@ const ShippingPaper = ({
                             const exceedsConcentration = item.exemptConcLimitBq_g === 0 || itemSpecActivity > item.exemptConcLimitBq_g;
                             const isItemRegulatedLive = forceRegulated || (exceedsConsignment && exceedsConcentration);
                             
+                            const displayRQ = item.fracRQ >= 1.0 || (classification.isRQ && idx === 0);
+
                             return (
                                 <tr key={item.id || idx}>
-                                    <td className="border border-black p-2 text-center font-bold text-lg">
-                                        {isItemRegulatedLive ? 'X' : ''}
+                                    <td className="border border-black p-2 text-center font-bold text-lg">{isItemRegulatedLive ? 'X' : ''}</td>
+                                    <td className="border border-black p-2 font-bold">
+                                        {displayRQ && <span className="mr-1 text-red-600">RQ,</span>}
+                                        {item.psn}
                                     </td>
                                     <td className="border border-black p-2 font-bold">
                                         {item.fracRQ >= 1.0 && <span className="mr-1 text-red-600">RQ,</span>}
@@ -3053,8 +3057,8 @@ const ShippingPaper = ({
                         {ergData && <p className="mt-2 font-bold italic text-red-600">See Attached ERG Guide {ergData.guide}</p>}
                     </div>
                     <div>
-                        <p><span className="font-bold">Max Surface Dose Rate:</span> {doseRates?.surface || '___'} {doseRates?.unit}</p>
-                        <p><span className="font-bold">Max 1m Dose Rate:</span> {doseRates?.at1m || '___'} {doseRates?.unit}</p>
+                        <p><span className="font-bold">Max Surface Dose Rate:</span> {doseRates?.surface || '___'} {doseRates?.surfaceUnit}</p>
+                        <p><span className="font-bold">Max 1m Dose Rate:</span> {doseRates?.at1m || '___'} {doseRates?.unit1m}</p>
                         <p><span className="font-bold">Dimensions/Weight:</span> {dimensions || '___________________'}</p>
                     </div>
                 </div>
@@ -3754,7 +3758,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     )}
                                 </div>
                                 
-                                {/* --- RESTORED REGULATORY LIMITS BOX --- */}
+                                {/* --- REGULATORY LIMITS BOX --- */}
                                 {selectedNuclideData && (() => {
                                     const isSi = settings.unitSystem === 'si';
                                     const unitBig = isSi ? 'TBq' : 'Ci';
@@ -4168,7 +4172,12 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     items={packageItems}
                     classification={classificationResult}
                     label={labelResult}
-                    doseRates={{ surface: surfaceDoseRate, at1m: doseRateAt1m, unit: doseRateUnit }}
+                    doseRates={{ 
+                        surface: surfaceDoseRate, 
+                        surfaceUnit: surfaceDoseRateUnit, // Pass specific surface unit
+                        at1m: doseRateAt1m, 
+                        unit1m: doseRateUnit              // Pass specific 1m unit
+                    }}
                     emergencyContact={emergencyContact}
                     comments={bolComments}
                     shipper={{ name: shipperName, address: shipperAddress }}
@@ -4553,9 +4562,9 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             let basisText = '';
             
             if (!isNaN(rateCheck) && rateCheck > 0) {
-                
                 const rate_mrem_hr_at_1m = rateCheck; 
-                rate_R_hr = (rate_mrem_hr_at_1m / 1000) * Math.pow(1 / d_m, 2);
+                // Simply convert mrem to rem (R)
+                rate_R_hr = rate_mrem_hr_at_1m / 1000; 
                 basisText = 'Measured 1m rate basis';
             } else {
                 // Fall back to theoretical calculation using the nuclide's gamma constant
