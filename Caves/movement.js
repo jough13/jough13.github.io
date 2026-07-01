@@ -63,8 +63,8 @@ function finalizeMapTransition() {
         const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
         const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
 
-        for (let y = -2; y <= 2; y++) {
-            for (let x = -2; x <= 2; x++) {
+        for (let y = -3; y <= 3; y++) {
+            for (let x = -3; x <= 3; x++) {
                 chunkManager.listenToChunkState(currentChunkX + x, currentChunkY + y);
             }
         }
@@ -3260,18 +3260,11 @@ async function attemptMovePlayer(newX, newY) {
         // Only trigger heavy network syncs IF we crossed a chunk boundary!
         if (currentChunkX !== prevChunkX || currentChunkY !== prevChunkY) {
             
-            for (let y = -2; y <= 2; y++) {
-                for (let x = -2; x <= 2; x++) {
+            for (let y = -3; y <= 3; y++) {
+                for (let x = -3; x <= 3; x++) {
                     chunkManager.listenToChunkState(currentChunkX + x, currentChunkY + y);
                 }
             }
-
-            chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
-
-            if (typeof EnemyNetworkManager !== 'undefined') {
-                EnemyNetworkManager.syncChunks(gameState.player.x, gameState.player.y);
-            }
-        }
     }
 
     if (typeof passivePerceptionCheck === 'function') passivePerceptionCheck();
