@@ -2916,7 +2916,19 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
  * Includes a print-ready Bill of Lading generator with automatic ERG Guide attachment.
  */
 
-const ShippingPaper = ({ items, classification, label, doseRates, emergencyContact, comments, shipper, consignee, dimensions }) => {
+const ShippingPaper = ({ 
+    items, 
+    classification, 
+    label, 
+    doseRates, 
+    emergencyContact, 
+    comments, 
+    shipper, 
+    consignee, 
+    dimensions,
+    packageMass, 
+    forceRegulated 
+}) => {
     
     const getERGGuide = () => {
         if (!classification || classification.classification === 'EXEMPT') return null;
@@ -2993,25 +3005,41 @@ const ShippingPaper = ({ items, classification, label, doseRates, emergencyConta
                     </thead>
                     <tbody>
                         {items.length > 0 ? items.map((item, idx) => {
-                            // FIXED: Now correctly reads the boolean flag injected during handleAddItem
-                            const isItemRegulated = item.isRegulated; 
+                            // Calculate live status using the newly passed parent props
+                            const massGrams = safeParseFloat(packageMass);
+                            const itemSpecActivity = massGrams > 0 ? item.actBq / massGrams : Infinity;
+                            
+                            const exceedsConsignment = item.exemptLimitBq === 0 || item.actBq > item.exemptLimitBq;
+                            const exceedsConcentration = item.exemptConcLimitBq_g === 0 || itemSpecActivity > item.exemptConcLimitBq_g;
+                            const isItemRegulatedLive = forceRegulated || (exceedsConsignment && exceedsConcentration);
                             
                             return (
                                 <tr key={item.id || idx}>
-                                    <td className="border border-black p-2 text-center font-bold text-lg">{isItemRegulated ? 'X' : ''}</td>
+                                    <td className="border border-black p-2 text-center font-bold text-lg">
+                                        {isItemRegulatedLive ? 'X' : ''}
+                                    </td>
                                     <td className="border border-black p-2 font-bold">
                                         {item.fracRQ >= 1.0 && <span className="mr-1 text-red-600">RQ,</span>}
                                         {item.psn}
                                     </td>
                                     <td className="border border-black p-2">{item.symbol}</td>
-                                    <td className="border border-black p-2 capitalize">{item.form === 'A1' ? 'Special' : 'Normal'}, {item.state}</td>
-                                    <td className="border border-black p-2 text-right">{item.actTBq.toExponential(2)} TBq</td>
+                                    <td className="border border-black p-2 capitalize">
+                                        {item.form === 'A1' ? 'Special' : 'Normal'}, {item.state}
+                                    </td>
+                                    <td className="border border-black p-2 text-right">
+                                        {item.actTBq.toExponential(2)} TBq
+                                    </td>
                                 </tr>
                             );
                         }) : (
-                            <tr><td colSpan="5" className="border border-black p-2 text-center italic text-slate-500">No items added</td></tr>
+                            <tr>
+                                <td colSpan="5" className="border border-black p-2 text-center italic text-slate-500">
+                                    No items added
+                                </td>
+                            </tr>
                         )}
                     </tbody>
+
                 </table>
             </div>
 
@@ -3539,7 +3567,17 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             methodology = 'Activity exceeds Type A limits but remains below HRCQ criteria.' + lsaMethodologyNote;
         }
 
-        setClassificationResult({ count: packageItems.length, totalTBq, totalMass: pMass, classification, methodology, sumFracTypeA, isRQ, hasFissile });
+        setClassificationResult({ 
+            count: packageItems.length, 
+            totalTBq, 
+            totalMass: pMass, 
+            classification, 
+            methodology, 
+            sumFracTypeA, 
+            isRQ, 
+            hasFissile,
+            isFissileRegulated
+        });
 
     }, [packageItems, forceRegulated, packageMass, unshieldedDose3m, unshieldedDoseUnit, fissileMass]);
 
@@ -3563,15 +3601,15 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
             let standardLabel = "Check Limits";
             
-            // FIXED: Added 1000 mrem/h trap for absolute maximum
+            // Added 1000 mrem/h trap for absolute maximum
             if (surfMrem > 1000) standardLabel = "❌ INVALID (Surface > 1000 mrem/h limit per 173.441)";
             else if (surfMrem <= 0.5 && TI === 0) standardLabel = "White-I";
             else if (surfMrem <= 50 && TI <= 1) standardLabel = "Yellow-II";
             else if (surfMrem <= 200 && TI <= 10) standardLabel = "Yellow-III";
             else if (surfMrem > 200 || TI > 10) standardLabel = "Yellow-III (Exclusive Use)";
 
-            // Determine if FISSILE label is required
-            const isFissileRegulated = classificationResult?.hasFissile && safeParseFloat(fissileMass) > 15;
+            // Pull regulatory status directly from the verified source of truth
+            const isFissileRegulated = classificationResult?.isFissileRegulated;
             const csiVal = safeParseFloat(csi);
             const fissileAppend = isFissileRegulated ? ` + FISSILE (CSI: ${isNaN(csiVal) ? '?' : csiVal.toFixed(1)})` : '';
 
