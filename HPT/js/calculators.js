@@ -2741,174 +2741,174 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
 };
 
 // --- ERG 2024 REFERENCE DATA ---
-    const ERG_DATA = {
-        '161': {
-            guide: '161',
-            title: 'RADIOACTIVE MATERIALS (Low Level Radiation)',
-            hazards: {
-                health:[
-                    "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
-                    "Very low levels of contained radioactive materials and low radiation levels outside packages result in low risks to people. Damaged packages may release measurable amounts of radioactive material, but risks are expected to be low.",
-                    "Some radioactive materials cannot be detected by commonly available instruments."
-                ],
-                fire:[
-                    "Some of these materials may burn, but most do not ignite readily.",
-                    "Radioactivity does not change flammability or other properties of materials."
-                ]
-            },
-            response: {
-                isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
-                fire:[
-                    "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
-                    "Do not move damaged packages; move undamaged packages out of fire zone.",
-                    "Small Fire: Dry chemical, CO2, water spray or regular foam.",
-                    "Large Fire: Water spray, fog (flooding amounts)."
-                ],
-                spill:[
-                    "Do not touch damaged packages or spilled material.",
-                    "Cover liquid spill with sand, earth or other non-combustible absorbent material.",
-                    "Cover powder spill with plastic sheet or tarp to minimize spreading."
-                ],
-                firstAid:[
-                    "Medical problems take priority over radiological concerns.",
-                    "Use first aid treatment according to the nature of the injury.",
-                    "Do not delay care and transport of a seriously injured person.",
-                    "Injured persons contaminated by contact with released material are not a serious hazard to health care personnel or facilities."
-                ]
-            }
+    const ERG_DATA_REFERENCE = {
+    '161': {
+        guide: '161',
+        title: 'RADIOACTIVE MATERIALS (Low Level Radiation)',
+        hazards: {
+            health:[
+                "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
+                "Very low levels of contained radioactive materials and low radiation levels outside packages result in low risks to people. Damaged packages may release measurable amounts of radioactive material, but risks are expected to be low.",
+                "Some radioactive materials cannot be detected by commonly available instruments."
+            ],
+            fire:[
+                "Some of these materials may burn, but most do not ignite readily.",
+                "Radioactivity does not change flammability or other properties of materials."
+            ]
         },
-        '162': {
-            guide: '162',
-            title: 'RADIOACTIVE MATERIALS (Low to Moderate Level Radiation)',
-            hazards: {
-                health:[
-                    "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
-                    "Undamaged packages are safe. Contents of damaged packages may cause higher external radiation exposure, or both external and internal radiation exposure if released.",
-                    "Low radiation hazard when material is inside container. If material is released from package or bulk container, hazard will vary from low to moderate."
-                ],
-                fire:[
-                    "Some of these materials may burn, but most do not ignite readily.",
-                    "Uranium and Thorium metal cuttings may ignite spontaneously if exposed to air."
-                ]
-            },
-            response: {
-                isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
-                fire:[
-                    "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
-                    "If it can be done safely, move undamaged containers away from the area around the fire.",
-                    "Small Fire: Dry chemical, CO2, water spray or regular foam.",
-                    "Large Fire: Water spray, fog (flooding amounts). Dike runoff."
-                ],
-                spill:[
-                    "Do not touch damaged packages or spilled material.",
-                    "Cover liquid spill with sand, earth or other non-combustible absorbent material. Dike to collect large liquid spills.",
-                    "Cover powder spill with plastic sheet or tarp to minimize spreading."
-                ],
-                firstAid:[
-                    "Medical problems take priority over radiological concerns.",
-                    "In case of contact with substance, wipe from skin immediately; flush skin or eyes with running water for at least 20 minutes.",
-                    "Injured persons contaminated by contact with released material are not a serious hazard to health care personnel."
-                ]
-            }
-        },
-        '163': {
-            guide: '163',
-            title: 'RADIOACTIVE MATERIALS (Low to High Level Radiation)',
-            hazards: {
-                health:[
-                    "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
-                    "Damaged packages may cause life-threatening external and/or internal radiation exposure.",
-                    "Type B packages are designed and evaluated to withstand severe conditions including high impact and fire. Releases are not expected."
-                ],
-                fire:[
-                    "Some of these materials may burn, but most do not ignite readily.",
-                    "Radioactivity does not change flammability or other properties of materials."
-                ]
-            },
-            response: {
-                isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
-                fire:[
-                    "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
-                    "If it can be done safely, move undamaged containers away from the area around the fire. Do not move damaged packages.",
-                    "Small Fire: Dry chemical, CO2, water spray or regular foam. Large Fire: Water spray, fog (flooding amounts). Dike runoff."
-                ],
-                spill:[
-                    "Do not touch damaged packages or spilled material.",
-                    "Cover liquid spill with sand, earth or other non-combustible absorbent material. Dike to collect large liquid spills.",
-                    "Cover powder spill with plastic sheet or tarp to minimize spreading."
-                ],
-                firstAid:[
-                    "Medical problems take priority over radiological concerns.",
-                    "In case of contact with substance, wipe from skin immediately; flush skin or eyes with running water for at least 20 minutes."
-                ]
-            }
-        },
-        '164': {
-            guide: '164',
-            title: 'RADIOACTIVE MATERIALS (Special Form / Low to High Level External Radiation)',
-            hazards: {
-                health:[
-                    "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
-                    "Damaged packages may cause life-threatening external radiation exposure.",
-                    "Radioactive material is encapsulated in proper containers and will not be released under normal or severe accident conditions.",
-                    "Low radiation hazard when material is inside container."
-                ],
-                fire:[
-                    "Some of these materials may burn, but most do not ignite readily.",
-                    "Radioactivity does not change flammability or other properties of materials."
-                ]
-            },
-            response: {
-                isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
-                fire:[
-                    "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
-                    "If it can be done safely, move undamaged containers away from the area around the fire. Do not move damaged packages.",
-                    "Small Fire: Dry chemical, CO2, water spray or regular foam. Large Fire: Water spray, fog (flooding amounts)."
-                ],
-                spill:[
-                    "Do not touch damaged packages or spilled material.",
-                    "Packages are not expected to leak due to the robust design of the capsule."
-                ],
-                firstAid:[
-                    "Medical problems take priority over radiological concerns.",
-                    "Use first aid treatment according to the nature of the injury.",
-                    "Injured persons are not a contamination hazard to health care personnel."
-                ]
-            }
-        },
-        '165': {
-            guide: '165',
-            title: 'RADIOACTIVE MATERIALS (Fissile / Low to High Level Radiation)',
-            hazards: {
-                health:[
-                    "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
-                    "Damaged packages may cause life-threatening external and/or internal radiation exposure.",
-                    "Type B packages are designed to withstand severe conditions. Releases are not expected.",
-                    "Water and fire may compromise criticality safety. This could result in a localized criticality (energy release or pulse)."
-                ],
-                fire:[
-                    "Some of these materials may burn, but most do not ignite readily."
-                ]
-            },
-            response: {
-                isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
-                fire:[
-                    "DO NOT USE WATER OR FOAM ON DAMAGED PACKAGES. Use dry chemical or CO2.",
-                    "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
-                    "If it can be done safely, move undamaged containers away from the area around the fire. Do not move damaged packages."
-                ],
-                spill:[
-                    "Do not touch damaged packages or spilled material.",
-                    "DO NOT USE WATER OR FOAM ON SPILLED MATERIAL.",
-                    "Cover liquid spill with sand, earth or other non-combustible absorbent material. Dike to collect large liquid spills."
-                ],
-                firstAid:[
-                    "Medical problems take priority over radiological concerns.",
-                    "In case of contact with substance, wipe from skin immediately; flush skin or eyes with running water for at least 20 minutes."
-                ]
-            }
+        response: {
+            isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
+            fire:[
+                "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
+                "Do not move damaged packages; move undamaged packages out of fire zone.",
+                "Small Fire: Dry chemical, CO2, water spray or regular foam.",
+                "Large Fire: Water spray, fog (flooding amounts)."
+            ],
+            spill:[
+                "Do not touch damaged packages or spilled material.",
+                "Cover liquid spill with sand, earth or other non-combustible absorbent material.",
+                "Cover powder spill with plastic sheet or tarp to minimize spreading."
+            ],
+            firstAid:[
+                "Medical problems take priority over radiological concerns.",
+                "Use first aid treatment according to the nature of the injury.",
+                "Do not delay care and transport of a seriously injured person.",
+                "Injured persons contaminated by contact with released material are not a serious hazard to health care personnel or facilities."
+            ]
         }
-    };
+    },
+    '162': {
+        guide: '162',
+        title: 'RADIOACTIVE MATERIALS (Low to Moderate Level Radiation)',
+        hazards: {
+            health:[
+                "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
+                "Undamaged packages are safe. Contents of damaged packages may cause higher external radiation exposure, or both external and internal radiation exposure if released.",
+                "Low radiation hazard when material is inside container. If material is released from package or bulk container, hazard will vary from low to moderate."
+            ],
+            fire:[
+                "Some of these materials may burn, but most do not ignite readily.",
+                "Uranium and Thorium metal cuttings may ignite spontaneously if exposed to air."
+            ]
+        },
+        response: {
+            isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
+            fire:[
+                "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
+                "If it can be done safely, move undamaged containers away from the area around the fire.",
+                "Small Fire: Dry chemical, CO2, water spray or regular foam.",
+                "Large Fire: Water spray, fog (flooding amounts). Dike runoff."
+            ],
+            spill:[
+                "Do not touch damaged packages or spilled material.",
+                "Cover liquid spill with sand, earth or other non-combustible absorbent material. Dike to collect large liquid spills.",
+                "Cover powder spill with plastic sheet or tarp to minimize spreading."
+            ],
+            firstAid:[
+                "Medical problems take priority over radiological concerns.",
+                "In case of contact with substance, wipe from skin immediately; flush skin or eyes with running water for at least 20 minutes.",
+                "Injured persons contaminated by contact with released material are not a serious hazard to health care personnel."
+            ]
+        }
+    },
+    '163': {
+        guide: '163',
+        title: 'RADIOACTIVE MATERIALS (Low to High Level Radiation)',
+        hazards: {
+            health:[
+                "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
+                "Damaged packages may cause life-threatening external and/or internal radiation exposure.",
+                "Type B packages are designed and evaluated to withstand severe conditions including high impact and fire. Releases are not expected."
+            ],
+            fire:[
+                "Some of these materials may burn, but most do not ignite readily.",
+                "Radioactivity does not change flammability or other properties of materials."
+            ]
+        },
+        response: {
+            isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
+            fire:[
+                "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
+                "If it can be done safely, move undamaged containers away from the area around the fire. Do not move damaged packages.",
+                "Small Fire: Dry chemical, CO2, water spray or regular foam. Large Fire: Water spray, fog (flooding amounts). Dike runoff."
+            ],
+            spill:[
+                "Do not touch damaged packages or spilled material.",
+                "Cover liquid spill with sand, earth or other non-combustible absorbent material. Dike to collect large liquid spills.",
+                "Cover powder spill with plastic sheet or tarp to minimize spreading."
+            ],
+            firstAid:[
+                "Medical problems take priority over radiological concerns.",
+                "In case of contact with substance, wipe from skin immediately; flush skin or eyes with running water for at least 20 minutes."
+            ]
+        }
+    },
+    '164': {
+        guide: '164',
+        title: 'RADIOACTIVE MATERIALS (Special Form / Low to High Level External Radiation)',
+        hazards: {
+            health:[
+                "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
+                "Damaged packages may cause life-threatening external radiation exposure.",
+                "Radioactive material is encapsulated in proper containers and will not be released under normal or severe accident conditions.",
+                "Low radiation hazard when material is inside container."
+            ],
+            fire:[
+                "Some of these materials may burn, but most do not ignite readily.",
+                "Radioactivity does not change flammability or other properties of materials."
+            ]
+        },
+        response: {
+            isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
+            fire:[
+                "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
+                "If it can be done safely, move undamaged containers away from the area around the fire. Do not move damaged packages.",
+                "Small Fire: Dry chemical, CO2, water spray or regular foam. Large Fire: Water spray, fog (flooding amounts)."
+            ],
+            spill:[
+                "Do not touch damaged packages or spilled material.",
+                "Packages are not expected to leak due to the robust design of the capsule."
+            ],
+            firstAid:[
+                "Medical problems take priority over radiological concerns.",
+                "Use first aid treatment according to the nature of the injury.",
+                "Injured persons are not a contamination hazard to health care personnel."
+            ]
+        }
+    },
+    '165': {
+        guide: '165',
+        title: 'RADIOACTIVE MATERIALS (Fissile / Low to High Level Radiation)',
+        hazards: {
+            health:[
+                "Radiation presents minimal risk to transport workers, emergency response personnel and the public during transportation accidents.",
+                "Damaged packages may cause life-threatening external and/or internal radiation exposure.",
+                "Type B packages are designed to withstand severe conditions. Releases are not expected.",
+                "Water and fire may compromise criticality safety. This could result in a localized criticality (energy release or pulse)."
+            ],
+            fire:[
+                "Some of these materials may burn, but most do not ignite readily."
+            ]
+        },
+        response: {
+            isolation: "Isolate spill or leak area for at least 25 meters (75 feet) in all directions. For large spills, consider initial downwind evacuation for at least 100 meters (330 feet).",
+            fire:[
+                "DO NOT USE WATER OR FOAM ON DAMAGED PACKAGES. Use dry chemical or CO2.",
+                "Presence of radioactive material will not influence the fire control processes and should not influence selection of techniques.",
+                "If it can be done safely, move undamaged containers away from the area around the fire. Do not move damaged packages."
+            ],
+            spill:[
+                "Do not touch damaged packages or spilled material.",
+                "DO NOT USE WATER OR FOAM ON SPILLED MATERIAL.",
+                "Cover liquid spill with sand, earth or other non-combustible absorbent material. Dike to collect large liquid spills."
+            ],
+            firstAid:[
+                "Medical problems take priority over radiological concerns.",
+                "In case of contact with substance, wipe from skin immediately; flush skin or eyes with running water for at least 20 minutes."
+            ]
+        }
+    }
+};
 
 /**
  * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B, RQ)
@@ -3336,7 +3336,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         
         let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
         
-        // FIXED: H-3 multipliers specifically apply to gaseous Tritium
+        // H-3 multipliers specifically apply to gaseous Tritium
         if (newItemSymbol === 'H-3' && newItemState === 'gas') { 
             matPkgMult = 2e-2; instItemMult = 2e-2; instPkgMult = 2e-1; 
         } else if (newItemState === 'liquid') { 
@@ -3772,7 +3772,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     
                                     let matPkgMult = 0; let instItemMult = 0; let instPkgMult = 0;
                                     
-                                    // FIXED: Tritium Exception properly scoped to gas
+                                    // Tritium Exception properly scoped to gas
                                     if (newItemSymbol === 'H-3' && newItemState === 'gas') { 
                                         matPkgMult = 2e-2; instItemMult = 2e-2; instPkgMult = 2e-1; 
                                     } else if (newItemState === 'liquid') { 
