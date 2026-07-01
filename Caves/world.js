@@ -1450,7 +1450,7 @@ const chunkManager = {
     },
     
     unloadOutOfRangeChunks: function (playerChunkX, playerChunkY) {
-        const VIEW_RADIUS_CHUNKS = 2;
+        const VIEW_RADIUS_CHUNKS = 3;
         const visibleChunkIds = new Set();
         
         for (let y = -VIEW_RADIUS_CHUNKS; y <= VIEW_RADIUS_CHUNKS; y++) {
