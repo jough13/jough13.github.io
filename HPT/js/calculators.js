@@ -4725,14 +4725,33 @@ const EffectiveHalfLifeCalculator = ({ radionuclides }) => {
     const [result, setResult] = React.useState(null);
     const [error, setError] = React.useState('');
 
-    const toHours = (val, unit) => { const factors = { 'seconds': 1/3600, 'minutes': 1/60, 'hours': 1, 'days': 24, 'years': 8760 }; return val * (factors[unit] || 1); };
+    const toHours = (val, unit) => { 
+        const factors = { 
+            'seconds': 1/3600, 
+            'minutes': 1/60, 
+            'hours': 1, 
+            'days': 24, 
+            'months': 730.5, // Added to prevent silent hour fallbacks
+            'years': 8766    // Updated from 8760 for cross-component consistency
+        }; 
+        return val * (factors[unit] || 1); 
+    };
     const formatTime = (hours) => { if (hours < 1) return `${(hours * 60).toFixed(2)} min`; if (hours > 48) return `${(hours / 24).toFixed(2)} days`; return `${hours.toFixed(2)} hours`; };
     const parseDbHalfLife = (hlString) => {
         if (!hlString || hlString === 'Stable') return null;
-        const parts = hlString.split(' '); if (parts.length < 2) return null;
-        const val = safeParseFloat(parts[0]); const unit = parts[1].toLowerCase();
+        const parts = hlString.split(' '); 
+        if (parts.length < 2) return null;
+        const val = safeParseFloat(parts[0]); 
+        const unit = parts[1].toLowerCase();
         let normUnit = 'hours';
-        if (unit.startsWith('s')) normUnit = 'seconds'; else if (unit.startsWith('m') && !unit.startsWith('mo')) normUnit = 'minutes'; else if (unit.startsWith('h')) normUnit = 'hours'; else if (unit.startsWith('d')) normUnit = 'days'; else if (unit.startsWith('y')) normUnit = 'years';
+        
+        if (unit.startsWith('s')) normUnit = 'seconds'; 
+        else if (unit.startsWith('m') && !unit.startsWith('mo')) normUnit = 'minutes'; 
+        else if (unit.startsWith('mo')) normUnit = 'months'; // Fix: Intercept month units cleanly
+        else if (unit.startsWith('h')) normUnit = 'hours'; 
+        else if (unit.startsWith('d')) normUnit = 'days'; 
+        else if (unit.startsWith('y')) normUnit = 'years';
+        
         return toHours(val, normUnit);
     };
 
@@ -5185,14 +5204,30 @@ const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
                             <div className="mb-6 bg-slate-100 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden">
                                 <h3 className="text-xs font-bold text-slate-500 uppercase p-3 border-b border-slate-200 dark:border-slate-600">Artifact Analysis</h3>
                                 
-                                {/* FIX: Split Artifact UI into Forward (Causes) and Reverse (Caused By) */}
+                                {/* Split Artifact UI into Forward (Causes) and Reverse (Caused By) */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-600">
                                     <div className="p-3">
-                                        <p className="text-[10px] uppercase font-bold text-sky-600 dark:text-sky-400 mb-2">If Photopeak, expect artifacts at:</p>
+                                        <p className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 mb-2">If Artifact, the parent was:</p>
                                         <div className="space-y-1 text-xs">
-                                            <div className="flex justify-between"><span className="text-slate-500">Compton Edge:</span><span className="font-mono font-medium">{analysis.comptonEdge} keV</span></div>
-                                            {analysis.singleEscape && <div className="flex justify-between"><span className="text-slate-500">Single Escape:</span><span className="font-mono font-medium">{analysis.singleEscape} keV</span></div>}
-                                            {analysis.doubleEscape && <div className="flex justify-between"><span className="text-slate-500">Double Escape:</span><span className="font-mono font-medium">{analysis.doubleEscape} keV</span></div>}
+                                            {/* Compton Edge parent is always calculated, so this can stay bare */}
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-500">from Compton Edge:</span>
+                                                <span className="font-mono font-medium">{analysis.parentFromCE} keV</span>
+                                            </div>
+                                            
+                                            {/* Conditional guards stop 'null keV' from printing to the screen */}
+                                            {analysis.parentFromSE && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-500">from Single Escape:</span>
+                                                    <span className="font-mono font-medium">{analysis.parentFromSE} keV</span>
+                                                </div>
+                                            )}
+                                            {analysis.parentFromDE && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-500">from Double Escape:</span>
+                                                    <span className="font-mono font-medium">{analysis.parentFromDE} keV</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="p-3">
@@ -5464,28 +5499,27 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData, theme, onNuclid
             
                 for (let i = 0; i <= steps; i++) {
                     const timePoint = (t_input / steps) * i;
-            
-                    if (t_input > 10) chartLabels.push(Math.round(timePoint).toString());
-                    else chartLabels.push(timePoint.toPrecision(2));
-            
+                    
+                    // Push pure numeric points instead of custom rounded strings
+                    chartLabels.push(timePoint); 
+                    
                     const timePoint_seconds = timePoint * unitConversionsTime[timeUnit];
-            
                     const actsAtT_Bq = runBatemanWithBranching(flatChain, A0_Bq, timePoint_seconds);
-            
+                    
                     let sum = 0;
-                    const rowValues = [timePoint]; // For CSV
-            
+                    const rowValues = [timePoint]; 
+
                     actsAtT_Bq.forEach((act_Bq, j) => {
                         const val = act_Bq * displayFactor;
                         datasets[j].data.push(val);
                         sum += val;
                         rowValues.push(val); 
                     });
-            
+
                     totalData.push(sum);
                     rawCsvRows.push([timePoint, sum, ...actsAtT_Bq.map(v => v * displayFactor)].join(','));
                 }
-            
+
                 datasets.push({
                     label: 'Total Activity',
                     data: totalData,
