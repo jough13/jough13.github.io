@@ -391,6 +391,28 @@ async function runSharedAiTurns() {
     }
 }
 
+// PERFORMANCE & DRY WIN: Centralized Defense & Dodge Calculator
+function getPlayerDefenseStats() {
+    const p = gameState.player;
+    if (!p) return { totalDefense: 0, dodgeChance: 0 };
+    
+    const armorDefense = p.equipment?.armor?.defense || 0;
+    const offhandDefense = p.equipment?.offhand?.defense || 0;
+    const accDefense = p.equipment?.accessory?.defense || 0;
+
+    const baseDefense = Math.floor((p.dexterity || 1) / 3);
+    const buffDefense = p.defenseBonus || 0;
+    const talentDefense = (p.talents && p.talents.includes('iron_skin')) ? 1 : 0;
+    const conBonus = Math.floor((p.constitution || 1) * 0.1);
+    
+    const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
+
+    let dodgeChance = Math.min((p.luck || 1) * 0.002, 0.25);
+    if (p.talents && p.talents.includes('evasion')) dodgeChance += 0.10;
+
+    return { totalDefense, dodgeChance };
+}
+
 async function processOverworldEnemyTurns() {
     if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') return;
 
@@ -471,6 +493,21 @@ async function processOverworldEnemyTurns() {
         }
 
         if (distSq > searchDistSq) continue;
+
+        // LORE & JUICE WIN: Combat Barks!
+        // Gives humanoid enemies a personality as they close in on the player
+        if (distSq < 25 && Math.random() < 0.05) {
+            const barks = {
+                'b': ["Your gold or your life!", "Get 'em!", "You're dead meat!"],
+                'C': ["I'll drink from your skull!", "Another fool comes to die."],
+                'c': ["For the Void!", "Blood for the dark altar!"],
+                'z': ["He awakens!", "We are eternal!"]
+            };
+            if (barks[enemy.tile]) {
+                const bark = barks[enemy.tile][Math.floor(Math.random() * barks[enemy.tile].length)];
+                logMessage(`{red:${enemy.name} yells: "${bark}"}`);
+            }
+        }
 
         // ==========================================
         // OVERWORLD STATUS EFFECTS
@@ -643,8 +680,7 @@ async function processOverworldEnemyTurns() {
             if (enemy.tile === '@') spellName = "Poison Spit";
             if (enemy.tile === 'f') spellName = "Fireball";
 
-            let dodgeChance = Math.min(gameState.player.luck * 0.002, 0.25);
-            if (gameState.player.talents && gameState.player.talents.includes('evasion')) dodgeChance += 0.10;
+            const { dodgeChance } = getPlayerDefenseStats();
 
             if (Math.random() < dodgeChance) {
                 logMessage(`{blue:The ${enemy.name} fires a ${spellName}, but you dodge!}`);
@@ -691,8 +727,7 @@ async function processOverworldEnemyTurns() {
         if (enemy.isRanged && distSq <= shootRangeSq && Math.random() < 0.35) {
             if (gameState.godMode) continue;
 
-            let dodgeChance = Math.min(gameState.player.luck * 0.002, 0.25);
-            if (gameState.player.talents && gameState.player.talents.includes('evasion')) dodgeChance += 0.10;
+            const { totalDefense, dodgeChance } = getPlayerDefenseStats();
 
             if (typeof ParticleSystem !== 'undefined') {
                 // Shoot a gray arrow particle at the player
@@ -703,17 +738,6 @@ async function processOverworldEnemyTurns() {
                 logMessage(`{blue:The ${enemy.name} shoots an arrow, but you dodge!}`);
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, "Dodge!", "#3b82f6");
             } else {
-                // Use physical defense calculation (including shields!)
-                const armorDefense = gameState.player.equipment.armor ? (gameState.player.equipment.armor.defense || 0) : 0;
-                const offhandDefense = gameState.player.equipment.offhand ? (gameState.player.equipment.offhand.defense || 0) : 0;
-                const accDefense = gameState.player.equipment.accessory ? (gameState.player.equipment.accessory.defense || 0) : 0;
-                const baseDefense = Math.floor(gameState.player.dexterity / 3);
-                const buffDefense = gameState.player.defenseBonus || 0;
-                const talentDefense = (gameState.player.talents && gameState.player.talents.includes('iron_skin')) ? 1 : 0;
-                const conBonus = Math.floor(gameState.player.constitution * 0.1);
-                
-                const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
-
                 let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
                 
                 if (gameState.player.shieldValue > 0) {
@@ -796,22 +820,7 @@ async function processOverworldEnemyTurns() {
                 if (finalX === playerX && finalY === playerY) {
                     if (gameState.godMode) continue; 
                     
-                    // Calculate Total Defense & Dodge
-                    const armorDefense = gameState.player.equipment.armor ? (gameState.player.equipment.armor.defense || 0) : 0;
-                    const offhandDefense = gameState.player.equipment.offhand ? (gameState.player.equipment.offhand.defense || 0) : 0;
-                    const accDefense = gameState.player.equipment.accessory ? (gameState.player.equipment.accessory.defense || 0) : 0;
-
-                    const baseDefense = Math.floor(gameState.player.dexterity / 3);
-                    const buffDefense = gameState.player.defenseBonus || 0;
-                    const talentDefense = (gameState.player.talents && gameState.player.talents.includes('iron_skin')) ? 1 : 0;
-                    const conBonus = Math.floor(gameState.player.constitution * 0.1);
-                    
-                    const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
-
-                    let dodgeChance = Math.min(gameState.player.luck * 0.002, 0.25);
-                    if (gameState.player.talents && gameState.player.talents.includes('evasion')) {
-                        dodgeChance += 0.10;
-                    }
+                    const { totalDefense, dodgeChance } = getPlayerDefenseStats();
 
                     if (Math.random() < dodgeChance) {
                         logMessage(`{blue:The ${enemy.name} attacks, but you dodge!}`);
@@ -1065,6 +1074,21 @@ function processEnemyTurns() {
 
         if (dist > 25) return;
 
+        // LORE & JUICE WIN: Combat Barks!
+        // Gives humanoid enemies a personality as they close in on the player
+        if (distSq < 25 && Math.random() < 0.05) {
+            const barks = {
+                'b': ["Your gold or your life!", "Get 'em!", "You're dead meat!"],
+                'C': ["I'll drink from your skull!", "Another fool comes to die."],
+                'c': ["For the Void!", "Blood for the dark altar!"],
+                'z': ["He awakens!", "We are eternal!"]
+            };
+            if (barks[enemy.tile]) {
+                const bark = barks[enemy.tile][Math.floor(Math.random() * barks[enemy.tile].length)];
+                logMessage(`{red:${enemy.name} yells: "${bark}"}`);
+            }
+        }
+
         if (enemy.isBoss) {
             if ((enemy.poisonTurns > 0 || enemy.rootTurns > 0) && Math.random() < 0.5) {
                 enemy.poisonTurns = 0; enemy.rootTurns = 0;
@@ -1235,19 +1259,7 @@ function processEnemyTurns() {
         if (distSq <= 2) {
             if (gameState.godMode) return;
 
-            const armorDefense = player.equipment.armor ? (player.equipment.armor.defense || 0) : 0;
-            const offhandDefense = player.equipment.offhand ? (player.equipment.offhand.defense || 0) : 0;
-            const accDefense = player.equipment.accessory ? (player.equipment.accessory.defense || 0) : 0;
-
-            const baseDefense = Math.floor(player.dexterity / 3);
-            const buffDefense = player.defenseBonus || 0;
-            const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
-            const conBonus = Math.floor(player.constitution * 0.1);
-            
-            const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
-
-            let dodgeChance = Math.min(player.luck * 0.002, 0.25);
-            if (player.talents && player.talents.includes('evasion')) dodgeChance += 0.10;
+            const { totalDefense, dodgeChance } = getPlayerDefenseStats();
 
             if (Math.random() < dodgeChance) {
                 logMessage(`{blue:The ${enemy.name} attacks, but you dodge!}`);
@@ -1303,7 +1315,9 @@ function processEnemyTurns() {
             if (enemy.tile === '@') spellName = "Poison Spit";
             if (enemy.tile === 'f') spellName = "Fireball";
 
-            if (Math.random() < Math.min(player.luck * 0.002, 0.25)) {
+            const { dodgeChance } = getPlayerDefenseStats();
+
+            if (Math.random() < dodgeChance) {
                 logMessage(`{blue:The ${enemy.name} fires a ${spellName}, but you dodge!}`);
             } else {
                 let dmg = spellDmg;
@@ -1335,8 +1349,7 @@ function processEnemyTurns() {
         if (enemy.isRanged && distSq <= shootRangeSq && Math.random() < 0.35) {
             if (gameState.godMode) return;
 
-            let dodgeChance = Math.min(player.luck * 0.002, 0.25);
-            if (player.talents && player.talents.includes('evasion')) dodgeChance += 0.10;
+            const { totalDefense, dodgeChance } = getPlayerDefenseStats();
 
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.spawn(player.x, player.y, '#d4d4d8', 'dust', '', 4);
@@ -1346,16 +1359,6 @@ function processEnemyTurns() {
                 logMessage(`{blue:The ${enemy.name} shoots an arrow, but you dodge!}`);
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "Dodge!", "#3b82f6");
             } else {
-                const armorDefense = player.equipment.armor ? (player.equipment.armor.defense || 0) : 0;
-                const offhandDefense = player.equipment.offhand ? (player.equipment.offhand.defense || 0) : 0;
-                const accDefense = player.equipment.accessory ? (player.equipment.accessory.defense || 0) : 0;
-                const baseDefense = Math.floor(player.dexterity / 3);
-                const buffDefense = player.defenseBonus || 0;
-                const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
-                const conBonus = Math.floor(player.constitution * 0.1);
-                
-                const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
-
                 let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
                 
                 if (player.shieldValue > 0) {
@@ -1570,7 +1573,9 @@ async function runCompanionTurn() {
                             if (typeof grantXp === 'function') grantXp(Math.floor(enemyData.xp / 2));
                             
                             const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, enemyData) : '.'; 
-                            chunkManager.setWorldTile(tx, ty, droppedLoot);
+                            
+                            // BUG FIX WIN: Ensure companion loot drops with a TTL so it doesn't stay on the map forever
+                            chunkManager.setWorldTile(tx, ty, droppedLoot || '.', 2);
                             
                             if (gameState.sharedEnemies[enemyId]) {
                                 delete gameState.sharedEnemies[enemyId];
@@ -1835,6 +1840,9 @@ function handlePlayerDeath() {
         if (theme) validFloor = theme.floor;
     }
 
+    // BUG FIX WIN: Ensure scattered death loot doesn't overwrite itself!
+    const usedDropTiles = new Set();
+
     for (let i = player.inventory.length - 1; i >= 0; i--) {
         const item = player.inventory[i];
         let placed = false;
@@ -1849,19 +1857,26 @@ function handlePlayerDeath() {
             dropIcon = '&'; // Shatters into Arcane Dust because the floor cannot hold magic JSON data
         }
         
-        for (let r = 0; r <= 2 && !placed; r++) {
+        // Loop progressively outwards to find an empty tile
+        for (let r = 0; r <= 3 && !placed; r++) {
             for (let dy = -r; dy <= r && !placed; dy++) {
                 for (let dx = -r; dx <= r && !placed; dx++) {
                     const tx = deathX + dx;
                     const ty = deathY + dy;
-                    let tile;
+                    const tKey = `${tx},${ty}`;
+                    
+                    // Skip if we already dropped something here!
+                    if (usedDropTiles.has(tKey)) continue;
 
+                    let tile;
                     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tile = chunkManager.getTile(tx, ty);
                     else if (gameState.mapMode === 'dungeon') tile = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
                     else tile = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
                     // Check both generic plains floor and specific dungeon floor
                     if (tile === validFloor || tile === '.') {
+                        
+                        usedDropTiles.add(tKey);
                         
                         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                             const cX = Math.floor(tx / chunkManager.CHUNK_SIZE);
