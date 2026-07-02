@@ -46,8 +46,10 @@ const AudioSystem = {
                 this._masterGain = this._ctx.createGain();
                 this._masterGain.gain.value = 0.65; // Safe headroom to prevent clipping on massive AoE spells
                 
+                // AUDIO QUALITY WIN: Upgraded Compressor settings
+                // Prevents ear-bleeding distortion when 15 monsters all attack at the exact same millisecond!
                 this._compressor = this._ctx.createDynamicsCompressor();
-                this._compressor.threshold.value = -15; // Start compressing earlier for a thicker mix
+                this._compressor.threshold.value = -24; // Start compressing much earlier
                 this._compressor.knee.value = 30;       // Smooth transition
                 this._compressor.ratio.value = 12;      // Hard limiting
                 this._compressor.attack.value = 0.003;  // React instantly
@@ -55,6 +57,9 @@ const AudioSystem = {
 
                 this._masterGain.connect(this._compressor);
                 this._compressor.connect(this._ctx.destination);
+                
+                // PERFORMANCE WIN: Generate the heavy pink noise buffer ONCE here instead of every step!
+                this.initNoise();
             } catch (e) {
                 console.error("Failed to initialize AudioContext:", e);
                 return null;
@@ -78,8 +83,9 @@ const AudioSystem = {
     // Pink Noise Generator
     // White noise is harsh. Pink noise sounds like natural wind, water, and deep impacts!
     initNoise: function() {
-        const ctx = this.getCtx();
-        if (!ctx) return;
+        const ctx = this._ctx;
+        if (!ctx || this.noiseBuffer) return;
+        
         const bufferSize = ctx.sampleRate * 2.0; // 2 seconds of noise buffer
         this.noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = this.noiseBuffer.getChannelData(0);
@@ -198,12 +204,14 @@ const AudioSystem = {
             feedback.connect(delay);
             dampFilter.connect(this._masterGain);
             
+            // Expose the nodes for explicit garbage collection
             panner._delayNode = delay;
             panner._feedbackNode = feedback;
             panner._dampFilter = dampFilter;
+        } else {
+            panner.connect(this._masterGain);
         }
-
-        panner.connect(this._masterGain);
+        
         return panner;
     },
 
@@ -250,6 +258,7 @@ const AudioSystem = {
         const gain = ctx.createGain();
         const now = ctx.currentTime + 0.01; // AUDIO QUALITY WIN: Lookahead prevents envelope popping!
 
+        // AUDIO QUALITY WIN: Dynamic Envelope Generation
         gain.gain.setValueAtTime(0.0001, now);
         gain.gain.exponentialRampToValueAtTime(actualVol, now + 0.02); 
         gain.gain.exponentialRampToValueAtTime(0.0001, now + actualDuration); 
@@ -263,7 +272,7 @@ const AudioSystem = {
         src.stop(now + actualDuration + 0.1); 
         
         // MEMORY LEAK FIX: Browser tabs suspended in the background sometimes fail to fire onended.
-        // We use a timeout as a guaranteed cleanup fallback.
+        // We use a timeout as a guaranteed cleanup fallback to unhook the nodes from the graph!
         const cleanup = () => {
             try { src.disconnect(); filter.disconnect(); gain.disconnect(); } catch(e) {}
             this._cleanupRoute(panner);
@@ -301,8 +310,8 @@ const AudioSystem = {
         gain.gain.exponentialRampToValueAtTime(actualVol, now + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + actualDuration);
 
-        const panner = this._routeToMaster(ctx, gain, acoustics, spatial);
         osc.connect(gain);
+        const panner = this._routeToMaster(ctx, gain, acoustics, spatial);
 
         osc.start(now);
         osc.stop(now + actualDuration + 0.1);
@@ -319,6 +328,8 @@ const AudioSystem = {
         if (!this.settings.master || !this.getCtx()) return;
         const ctx = this._ctx;
         const acoustics = this._getAcoustics();
+        const spatial = this._getSpatialData(x);
+        
         const actualDuration = duration * acoustics.durationMult;
         const noteVol = Math.max(0.001, vol / notes.length);
         const now = ctx.currentTime + 0.01;
@@ -340,7 +351,7 @@ const AudioSystem = {
             gain.gain.exponentialRampToValueAtTime(0.0001, now + actualDuration);
 
             osc.connect(gain);
-            const panner = this._routeToMaster(ctx, gain, acoustics, this._getSpatialData(x));
+            const panner = this._routeToMaster(ctx, gain, acoustics, spatial);
             
             osc.start(now);
             osc.stop(now + actualDuration + 0.1);
