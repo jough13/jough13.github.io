@@ -242,16 +242,6 @@ async function attemptMovePlayer(newX, newY) {
         newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
     }
 
-    // --- SPAWN LOCK CHECK ---
-    const spawnLockId = `${newX},${newY}`;
-    const enemyKey = `overworld:${newX},${-newY}`;
-
-    if (processingSpawnTiles.has(spawnLockId) && !gameState.sharedEnemies[enemyKey]) {
-        console.log("Blocked move: Enemy spawning...");
-        isProcessingMove = false;
-        return;
-    }
-
     let inventoryWasUpdated = false;
     let tileData = TILE_DATA[newTile];
 
