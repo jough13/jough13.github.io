@@ -191,8 +191,12 @@ function handleBuyItem(itemName, amount = 1) {
     const existingStack = player.inventory.find(item => item.name === itemName && !item.isEquipped);
     const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
 
+    // BUG FIX: Accurate Capacity Checking
+    // If the item stacks and we ALREADY have a stack, it won't consume a new inventory slot!
+    const slotNeeded = (existingStack && isStackable) ? 0 : 1;
     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-    if (!existingStack && player.inventory.length >= invCap) {
+    
+    if (player.inventory.length + slotNeeded > invCap) {
         logMessage("{red:Your inventory is full!}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
@@ -275,8 +279,10 @@ function handleSellItem(itemIndex, amount = 1) {
         }
     }
 
-    if (regionMult > 1.0) logMessage(`Market demand is high here! {green:(x${regionMult})}`);
-    else if (regionMult < 1.0) logMessage(`Market flooded. Low demand. {red:(x${regionMult})}`);
+    if (regionMult >= 2.0) logMessage(`{green:Incredible demand! The merchant practically begs for it!}`);
+    else if (regionMult > 1.0) logMessage(`{green:Market demand is high here!}`);
+    else if (regionMult <= 0.5) logMessage(`{red:The merchant sneers. Complete market oversaturation.}`);
+    else if (regionMult < 1.0) logMessage(`{red:Market flooded. Low demand.}`);
 
     // Determine quantity to sell
     const qtyToSell = amount === 'all' ? itemToSell.quantity : 1;
@@ -324,27 +330,36 @@ function handleSellAllItems() {
     let itemsSold = 0;
     let goldGained = 0;
 
-    // Iterate backwards so we can remove items safely while looping
-    for (let i = player.inventory.length - 1; i >= 0; i--) {
+    // PERFORMANCE WIN: Replace manual `.splice()` looping with a clean `.filter()` block
+    // Splice forces array re-indexing on every deletion, causing micro-stutters.
+    
+    const remainingInventory = [];
+
+    for (let i = 0; i < player.inventory.length; i++) {
         const item = player.inventory[i];
 
-        // 1. CRITICAL: Skip equipped items
-        if (item.isEquipped) continue;
+        // 1. Keep equipped items
+        if (item.isEquipped) {
+            remainingInventory.push(item);
+            continue;
+        }
 
         // 2. Filter: Only sell 'junk' (Loot/Fish) and 'trade' goods
-        // ROBUSTNESS: Explicitly protect 'ingredient' and 'consumable' so they don't sell their crafting mats or potions!
         if (item.type === 'junk' || item.type === 'trade') {
+            // BUG FIX: Strict exclusion for Anomaly and story items!
+            if (item.name === 'Paradox Anomaly' || item.tags?.includes('anomaly')) {
+                remainingInventory.push(item);
+                continue;
+            }
 
-            // Skip magically enhanced junk just in case (edge cases)
-            if (item.statBonuses && Object.keys(item.statBonuses).length > 0) continue;
-            
-            // Skip the Paradox Anomaly!
-            if (item.name === 'Paradox Anomaly') continue;
-
-            // DRY OPTIMIZATION: Use our helper
-            const { sellPrice } = calculateItemValue(item, player);
+            // Skip magically enhanced junk
+            if (item.statBonuses && Object.keys(item.statBonuses).length > 0) {
+                remainingInventory.push(item);
+                continue;
+            }
 
             // Execute Sale
+            const { sellPrice } = calculateItemValue(item, player);
             const totalValue = sellPrice * item.quantity;
             player.coins += totalValue;
             goldGained += totalValue;
@@ -352,12 +367,16 @@ function handleSellAllItems() {
             
             if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(totalValue);
 
-            // Remove from inventory
-            player.inventory.splice(i, 1);
+        } else {
+            // It's a potion, armor, weapon, tool, etc. Keep it!
+            remainingInventory.push(item);
         }
     }
 
     if (itemsSold > 0) {
+        // Swap arrays
+        player.inventory = remainingInventory;
+        
         logMessage(`Mass Sold ${itemsSold} junk/trade items for {gold:${goldGained} gold}.`);
         
         // JUICE: Massive Gold Explosion
