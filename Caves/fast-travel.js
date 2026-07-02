@@ -422,7 +422,6 @@ window.handleFastTravel = async function (targetX, targetY) {
             }
         }
         
-        // --- CRITICAL NETWORK SYNC FIX ---
         // Ensure the new chunks and enemies are loaded from Firebase before rendering!
         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
             const currentChunkX = Math.floor(player.x / chunkManager.CHUNK_SIZE);
@@ -446,8 +445,10 @@ window.handleFastTravel = async function (targetX, targetY) {
         if (typeof render === 'function') render();
         if (typeof syncPlayerState === 'function') syncPlayerState();
 
-        // Save state completely to Firebase
-        if (typeof playerRef !== 'undefined' && playerRef) {
+        // Save state completely to Firebase (Routed through debouncer to prevent data loss!)
+        if (typeof triggerDebouncedSave === 'function') {
+            triggerDebouncedSave(updates);
+        } else if (typeof playerRef !== 'undefined' && playerRef) {
             playerRef.update(updates).catch(e => console.error("Fast travel sync error:", e));
         }
         
