@@ -62,9 +62,7 @@ function rehydratePlayerState(data) {
             
             // ROBUSTNESS WIN: Force the slot to match the template to prevent save-file hacking
             item.slot = templateItem.slot; 
-            
-            item.tile = item.tile || templateItem.tile; // Ensure icon
-            
+            item.tile = item.tile || templateItem.tile; 
             item.range = item.range || templateItem.range || null;
             item.isTwoHanded = (item.isTwoHanded !== undefined) ? item.isTwoHanded : (templateItem.isTwoHanded || false);
             
@@ -79,6 +77,9 @@ function rehydratePlayerState(data) {
             item.type = 'junk';
             item.tile = '💨';
             item.quantity = item.quantity || 1;
+            
+            // BUG FIX: Strip equip data so corrupted items don't break the combat renderer
+            item.slot = null; 
             item.isEquipped = false;
             item.tags = null;
             item._rarity = null;
@@ -90,35 +91,25 @@ function rehydratePlayerState(data) {
 /**
  * Generates loot when an enemy is defeated.
  * Drops a mix of Junk, Gold, or Level-Scaled Loot.
- * @param {object} player - The player's full state object.
- * @param {object} enemy - The enemy data (from ENEMY_DATA or RTDB).
- * @returns {string} The tile character of the dropped item.
  */
-
 function generateEnemyLoot(player, enemy) {
     // --- 0. QUEST ITEM DROPS ---
-    // 1. Sun Shard (Desert, 5% chance)
     if (gameState.player.relicQuestStage === 1 && (enemy.tile === '🦂' || enemy.tile === 'm') && Math.random() < 0.05) {
         logMessage("{gold:You found the Sun Shard!}");
         return '💎s';
     }
-    // 2. Moon Tear (Swamp, 5% chance)
     if (gameState.player.relicQuestStage === 2 && (enemy.tile === 'l' || enemy.tile === '🐉h') && Math.random() < 0.05) {
         logMessage("{blue:You found the Moon Tear!}");
         return '💎m';
     }
-    // 3. Void Crystal (Mountain, 5% chance)
     if (gameState.player.relicQuestStage === 3 && (enemy.tile === 'Y' || enemy.tile === '🐲') && Math.random() < 0.05) {
         logMessage("{purple:You found the Void Crystal!}");
         return '💎v';
     }
-
-    // Shadowed Hand Quest Stage 0 -> 1
     if ((gameState.player.shadowQuestStage || 0) === 0 && enemy.name.includes('Cultist') && Math.random() < 0.20) {
         logMessage("{purple:You found Cultist Orders on the body!}");
         return '📜c';
     }
-    // Shadowed Hand Quest Stage 1 -> 2
     if (gameState.player.shadowQuestStage === 1 && enemy.name === 'Cultist Fanatic' && Math.random() < 0.25) {
         logMessage("{purple:You found a Shadow Amulet!}");
         return '🧿s';
@@ -145,25 +136,17 @@ function generateEnemyLoot(player, enemy) {
     let dist;
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         dist = Math.sqrt(player.x * player.x + player.y * player.y);
-        
-        // Multipliers for alternate realms
-        if (gameState.currentRealm && gameState.currentRealm !== 0) {
-            dist += 1000; // Flat boost to loot quality in alternate dimensions
-        }
+        if (gameState.currentRealm && gameState.currentRealm !== 0) dist += 1000; 
     } else {
         const instanceId = gameState.currentCaveId || gameState.currentCastleId || "";
-        
-        // --- ENDGAME BOSS SCALING ---
         if (instanceId === 'cave_landmark' || instanceId.includes('tomb_of_alaric')) {
             dist = 5000; 
         } else {
             const parts = instanceId.split('_').map(Number).filter(n => !isNaN(n));
             if (parts.length >= 2) {
-                const wX = parts[0]; 
-                const wY = parts[1];
-                dist = Math.sqrt(wX * wX + wY * wY);
+                dist = Math.sqrt(parts[0] * parts[0] + parts[1] * parts[1]);
             } else {
-                dist = 100; // Safe fallback
+                dist = 100;
             }
         }
     }
@@ -171,61 +154,49 @@ function generateEnemyLoot(player, enemy) {
     // --- 3. Determine Drop Tables ---
     const JUNK_DROP_CHANCE = Math.max(0.05, 0.25 - (player.luck * 0.001));
     const GOLD_DROP_CHANCE = 0.50;
-
     const roll = Math.random();
 
-    // Junk / Specific Loot
     if (roll < JUNK_DROP_CHANCE) {
         if (enemy.tile === 'l' || enemy.name === 'Giant Leech') return '🐟';
         if (enemy.tile === '🐗' || enemy.name === 'Wild Boar') return '🍖';
         return enemy.loot || '$';
     }
 
-    // Gold
-    if (roll < JUNK_DROP_CHANCE + GOLD_DROP_CHANCE) {
-        return '$';
-    }
+    if (roll < JUNK_DROP_CHANCE + GOLD_DROP_CHANCE) return '$';
 
     // --- 4. Magic Item Chance ---
-    let magicChance = 0.01; // 1% Base
-    if (dist > 1500) magicChance = 0.15; // 15% in extreme endgame
-    else if (dist > 500) magicChance = 0.10; // 10% in endgame
-    else if (dist > 250) magicChance = 0.05; // 5% in midgame
+    let magicChance = 0.01; 
+    if (dist > 1500) magicChance = 0.15; 
+    else if (dist > 500) magicChance = 0.10; 
+    else if (dist > 250) magicChance = 0.05; 
 
-    // Luck Bonus (0.5% per luck point)
     magicChance += (player.luck * 0.005);
 
-    if (enemy.isElite) {
-        magicChance += 0.20; // Elites drop magic items very frequently
+    // CONTENT WIN: Guaranteed Loot for Bosses
+    if (enemy.isBoss) {
+        magicChance = 1.0; 
+        logMessage(`{gold:The ${enemy.name} collapses, leaving behind a powerful artifact...}`);
+    } else if (enemy.isElite) {
+        magicChance += 0.20; 
         logMessage(`{purple:The ${enemy.name} leaves behind a glowing essence...}`);
     }
 
-    if (Math.random() < magicChance) {
-        return '✨'; // Drop Unidentified Magic Item!
-    }
+    if (Math.random() < magicChance) return '✨'; 
 
     // --- 4.5 LEGENDARY ARTIFACT DROPS (Tier 6 Only) ---
-    if (dist > 2500 && Math.random() < 0.05) { // 5% chance per kill in deep wilds
+    if (dist > 2500 && Math.random() < 0.05) { 
         const legendaries = ['⚔️k', '🛡️a', '👢w', '👑v', '🍎', '🗡️v', '👹'];
         const drop = legendaries[Math.floor(Math.random() * legendaries.length)];
-
         const item = ITEM_DATA[drop];
         logMessage(`{gold:The enemy dropped a Legendary Artifact: ${item.name}!}`);
-
-        // Visual fanfare
-        if (typeof ParticleSystem !== 'undefined') {
-            ParticleSystem.createLevelUp(player.x, player.y);
-        }
-        if (typeof AudioSystem !== 'undefined') {
-            AudioSystem.playLootRare();
-        }
-
+        
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
         return drop;
     }
 
     // --- 5. Standard Equipment Drops ---
     const scaledRoll = Math.random();
-
     const commonLoot = ['♥', '🔮', 'S', '💜', '🐀', '🦇w', '🦷', '🧣'];
     const tier1Loot = ['\\', '%', '🏏', '🦯', '🏹', '👕', '👘'];
     const tier2Loot = ['!', '[', '📚', '🛡️s', '🛡️w', 'P', '8'];
@@ -233,36 +204,13 @@ function generateEnemyLoot(player, enemy) {
     const tier4Loot = ['🪓', '🔨', '🛡️p', '*'];
     const tier5Loot = ['⚔️o', '🛡️o', '❄️b', '❄️m', '⚔️m', '🛡️m']; 
 
-    let tier1Chance = 0.30;
-    let tier2Chance = 0.0;
-    let tier3Chance = 0.0;
-    let tier4Chance = 0.0;
-    let tier5Chance = 0.0;
+    let tier1Chance = 0.30, tier2Chance = 0.0, tier3Chance = 0.0, tier4Chance = 0.0, tier5Chance = 0.0;
 
-    if (dist > 1500) { // The Abyss
-        tier1Chance = 0.0;
-        tier2Chance = 0.05;
-        tier3Chance = 0.20;
-        tier4Chance = 0.40;
-        tier5Chance = 0.35;
-    } else if (dist > 500) { // Endgame Zone
-        tier1Chance = 0.0;
-        tier2Chance = 0.20;
-        tier3Chance = 0.40;
-        tier4Chance = 0.20;
-        tier5Chance = 0.05;
-    } else if (dist > 250) { // Midgame Zone
-        tier1Chance = 0.10;
-        tier2Chance = 0.40;
-        tier3Chance = 0.30;
-        tier4Chance = 0.05;
-    } else if (dist > 100) { // Adventure Zone
-        tier1Chance = 0.30;
-        tier2Chance = 0.30;
-        tier3Chance = 0.05;
-    }
+    if (dist > 1500) { tier1Chance = 0.0; tier2Chance = 0.05; tier3Chance = 0.20; tier4Chance = 0.40; tier5Chance = 0.35; } 
+    else if (dist > 500) { tier1Chance = 0.0; tier2Chance = 0.20; tier3Chance = 0.40; tier4Chance = 0.20; tier5Chance = 0.05; } 
+    else if (dist > 250) { tier1Chance = 0.10; tier2Chance = 0.40; tier3Chance = 0.30; tier4Chance = 0.05; } 
+    else if (dist > 100) { tier1Chance = 0.30; tier2Chance = 0.30; tier3Chance = 0.05; }
 
-    // SAFEGUARD: Provide a default fallback of '$' to ensure the drop array never returns undefined
     if (scaledRoll < tier5Chance) return tier5Loot[Math.floor(Math.random() * tier5Loot.length)] || '$';
     if (scaledRoll < tier5Chance + tier4Chance) return tier4Loot[Math.floor(Math.random() * tier4Loot.length)] || '$';
     if (scaledRoll < tier5Chance + tier4Chance + tier3Chance) return tier3Loot[Math.floor(Math.random() * tier3Loot.length)] || '$';
@@ -276,36 +224,29 @@ function generateEnemyLoot(player, enemy) {
 window._cachedBaseItemKeys = null;
 
 function generateMagicItem(tier) {
-    // MECHANIC WIN: Luck drastically affects your chance to roll multiple affixes!
     const playerLuck = (gameState && gameState.player && gameState.player.luck) ? gameState.player.luck : 1;
-    const luckBonus = playerLuck * 0.01; // 1% extra chance per luck point
+    const luckBonus = playerLuck * 0.01; 
 
-    // 1. Pick a base item (Weapons or Armor)
-    // Build the cache exactly once to save CPU cycles during mass-identifications
     if (!window._cachedBaseItemKeys) {
         window._cachedBaseItemKeys = Object.keys(ITEM_DATA).filter(k =>
             ITEM_DATA[k].type === 'weapon' || ITEM_DATA[k].type === 'armor'
         );
     }
-    const baseKeys = window._cachedBaseItemKeys;
     
-    // Strict Tier Filtering
-    const validBaseKeys = baseKeys.filter(k => {
+    const validBaseKeys = window._cachedBaseItemKeys.filter(k => {
         const item = ITEM_DATA[k];
         if (item.excludeFromLoot) return false;
         
         const power = Math.max(item.damage || 0, item.defense || 0);
-        
         if (tier === 1 && power > 2) return false;
         if (tier === 2 && (power < 2 || power > 3)) return false;
         if (tier === 3 && (power < 3 || power > 5)) return false;
         if (tier === 4 && (power < 5 || power > 7)) return false;
         if (tier >= 5 && power < 7) return false;
-        
         return true;
     });
 
-    const finalKeys = validBaseKeys.length > 0 ? validBaseKeys : baseKeys.filter(k => !ITEM_DATA[k].excludeFromLoot);
+    const finalKeys = validBaseKeys.length > 0 ? validBaseKeys : window._cachedBaseItemKeys.filter(k => !ITEM_DATA[k].excludeFromLoot);
     const baseKey = finalKeys[Math.floor(Math.random() * finalKeys.length)];
     const template = ITEM_DATA[baseKey];
 
@@ -318,7 +259,6 @@ function generateMagicItem(tier) {
         damage: template.damage || 0,
         defense: template.defense || 0,
         slot: template.slot,
-        // BUG FIX: Deep clone stat bonuses so we don't accidentally mutate the global template dictionary!
         statBonuses: template.statBonuses ? JSON.parse(JSON.stringify(template.statBonuses)) : {},
         tags: template.tags ? [...template.tags] : [] 
     };
@@ -326,8 +266,23 @@ function generateMagicItem(tier) {
     let hasPrefix = false;
     let hasSuffix = false;
 
-    // --- CONTENT & LORE WIN: Expanded Cursed Items ---
-    // 5% chance at Tier 3+ to roll a Cursed item with massive stats but heavy penalties
+    // LORE WIN: Dynamic Named Artifacts
+    // At max tiers, there is a small chance to roll a completely unique Named Artifact!
+    if (tier >= 5 && Math.random() < 0.05) {
+        const prefixes = ['Aegis', 'Wrath', 'Whisper', 'Sorrow', 'Echo', 'Vanguard'];
+        const suffixes = ['the Void', 'the Forgotten King', 'the Deep', 'the Shattered Sky'];
+        
+        newItem.name = `${prefixes[Math.floor(Math.random() * prefixes.length)]} of ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
+        newItem._rarity = 'legendary';
+        
+        if (newItem.type === 'weapon') newItem.damage += 4;
+        if (newItem.type === 'armor') newItem.defense += 4;
+        newItem.statBonuses.luck = (newItem.statBonuses.luck || 0) + 2;
+        
+        return newItem; // Bypass standard generation
+    }
+
+    // Expanded Cursed Items
     if (tier >= 3 && Math.random() < 0.05) {
         const curses = ["Cursed", "Doomed", "Forsaken", "Blood-Starved", "Whispering", "Blighted"];
         const curseWord = curses[Math.floor(Math.random() * curses.length)];
@@ -335,11 +290,9 @@ function generateMagicItem(tier) {
         newItem.name = `${curseWord} ${newItem.name}`;
         hasPrefix = true;
         
-        // Massive offensive/defensive buffs
-        if (newItem.type === 'weapon') newItem.damage += (3 + Math.floor(Math.random() * 3)); // +3 to +5
+        if (newItem.type === 'weapon') newItem.damage += (3 + Math.floor(Math.random() * 3)); 
         if (newItem.type === 'armor') newItem.defense += (3 + Math.floor(Math.random() * 3));
         
-        // Terrible stat drains (Always drains luck and willpower, plus one other)
         newItem.statBonuses.luck = (newItem.statBonuses.luck || 0) - 2;
         newItem.statBonuses.willpower = (newItem.statBonuses.willpower || 0) - 2;
         
@@ -347,9 +300,8 @@ function generateMagicItem(tier) {
         const extraDrain = drains[Math.floor(Math.random() * drains.length)];
         newItem.statBonuses[extraDrain] = (newItem.statBonuses[extraDrain] || 0) - 1;
         
-        newItem._rarity = 'epic'; // Treated as epic for border colors
+        newItem._rarity = 'epic'; 
     } else {
-        // 2. Roll for Normal Prefix (50% chance + tier bonus + luck)
         if (Math.random() < 0.5 + (tier * 0.1) + luckBonus) {
             const validPrefixes = Object.keys(LOOT_PREFIXES).filter(p => LOOT_PREFIXES[p].type === newItem.type);
             if (validPrefixes.length > 0) {
@@ -368,7 +320,6 @@ function generateMagicItem(tier) {
         }
     }
 
-    // 3. Roll for Suffix (30% chance + tier bonus + luck)
     if (Math.random() < 0.3 + (tier * 0.1) + (luckBonus * 0.5)) {
         const suffixKeys = Object.keys(LOOT_SUFFIXES);
         const suffixName = suffixKeys[Math.floor(Math.random() * suffixKeys.length)];
@@ -384,24 +335,20 @@ function generateMagicItem(tier) {
         }
     }
 
-    // 4. Scale base stats slightly by tier
     const tierBuff = Math.floor(Math.random() * tier) + 1;
     if (newItem.type === 'weapon') newItem.damage += tierBuff;
     if (newItem.type === 'armor') newItem.defense += tierBuff;
 
-    // Ensure "Magic" status visually if no affixes were added
     if (!hasPrefix && !hasSuffix) {
-        newItem.name = `Fine ${newItem.name}`; // Flavor change from 'Reinforced'
+        newItem.name = `Fine ${newItem.name}`; 
         if (newItem.type === 'weapon') newItem.damage += 1;
         if (newItem.type === 'armor') newItem.defense += 1;
     }
 
-    // Assign internal rarity tag for identification fanfare and UI borders
     if (!newItem._rarity) {
         if (hasPrefix && hasSuffix) newItem._rarity = 'epic';
         else if (hasPrefix || hasSuffix) newItem._rarity = 'rare';
         else newItem._rarity = 'uncommon';
-        
         if (tier >= 5) newItem._rarity = 'legendary';
     }
 
@@ -412,7 +359,6 @@ function generateMagicItem(tier) {
 // DB SANITIZATION (FIREBASE SAFE)
 // ==========================================
 
-// Centralized safe-clone for DB writes. Explicitly strips ALL functions.
 function sanitizeItemForDB(item, forceEquipped = false) {
     if (!item) return null;
     
@@ -423,32 +369,25 @@ function sanitizeItemForDB(item, forceEquipped = false) {
         quantity: item.quantity || 1,
         tile: item.tile || '?',
         isEquipped: forceEquipped ? true : (item.isEquipped || false),
-        
         damage: (item.damage !== undefined) ? item.damage : null,
         defense: (item.defense !== undefined) ? item.defense : null,
-        
         range: (item.range !== undefined) ? item.range : null,
         isTwoHanded: item.isTwoHanded || false,
-
         slot: item.slot || null,
         statBonuses: item.statBonuses ? { ...item.statBonuses } : null,
         spellId: item.spellId || null,
         skillId: item.skillId || null,
         stat: item.stat || null,
-        
-        tags: item.tags || null, // ECS WIN: Preserve tags!
-        
-        // QoL WIN: Explicitly preserve rarity so inventory borders persist across reloads!
-        _rarity: item._rarity || null
+        tags: item.tags || null, 
+        _rarity: item._rarity || null,
+        _negatedDex: item._negatedDex || null // BUG FIX: Retain negated dex state across reloads
     };
 }
 
 function getSanitizedEquipment() {
     const equip = gameState.player.equipment;
-
     let weapon = sanitizeItemForDB(equip.weapon, true);
     if (!weapon) weapon = { name: 'Fists', type: 'weapon', tile: '👊', damage: 0, isEquipped: true };
-
     let armor = sanitizeItemForDB(equip.armor, true);
     if (!armor) armor = { name: 'Simple Tunic', type: 'armor', tile: '👕', defense: 0, isEquipped: true };
 
@@ -484,9 +423,8 @@ function handleItemDrop(key) {
     const itemIndex = keyNum - 1;
     const itemToDrop = player.inventory[itemIndex];
 
-    if (!itemToDrop) return; // Empty slot
+    if (!itemToDrop) return; 
 
-    // --- BUG FIX & UX WIN: Protection against dropping crucial items! ---
     if (itemToDrop.isEquipped) {
         logMessage("{red:You cannot drop an item you are wearing!}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -499,7 +437,6 @@ function handleItemDrop(key) {
         return;
     }
 
-    // --- MAGIC ITEM CHECK ---
     const template = ITEM_DATA[itemToDrop.tile] || ITEM_DATA[itemToDrop.templateId];
     const isModified = itemToDrop.statBonuses || (template && itemToDrop.name !== template.name);
     
@@ -509,22 +446,18 @@ function handleItemDrop(key) {
         return;
     }
 
-    // --- TILE VALIDATION ---
     let currentTile;
     if (gameState.mapMode === 'dungeon') {
-        const map = chunkManager.caveMaps[gameState.currentCaveId];
-        currentTile = (map && map[player.y]) ? map[player.y][player.x] : ' ';
+        currentTile = chunkManager.caveMaps[gameState.currentCaveId]?.[player.y]?.[player.x] || ' ';
     } else if (gameState.mapMode === 'castle') {
-        const map = chunkManager.castleMaps[gameState.currentCastleId];
-        currentTile = (map && map[player.y]) ? map[player.y][player.x] : ' ';
+        currentTile = chunkManager.castleMaps[gameState.currentCastleId]?.[player.y]?.[player.x] || ' ';
     } else {
         currentTile = chunkManager.getTile(player.x, player.y);
     }
 
-    // LORE WIN: Environmental Item Destruction
     if (currentTile === '🌋' || currentTile === '🔥') {
         logMessage(`{orange:You toss the ${itemToDrop.name} into the flames. It turns to ash instantly.}`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.2, 800); // sizzle
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.2, 800); 
         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#f97316', 8);
         
         itemToDrop.quantity--;
@@ -549,7 +482,6 @@ function handleItemDrop(key) {
         return;
     }
 
-    // Validate Standard Floor Drop
     let isValidDropTile = false;
     if (gameState.mapMode === 'overworld' && currentTile === '.') isValidDropTile = true;
     else if (gameState.mapMode === 'castle' && currentTile === '.') isValidDropTile = true;
@@ -561,7 +493,7 @@ function handleItemDrop(key) {
     if (!isValidDropTile) {
         if (currentTile === '~' || currentTile === '≈') {
             logMessage(`{gray:You toss the ${itemToDrop.name} into the water. It sinks out of sight.}`);
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 500); // Splash
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 500); 
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#3b82f6', 6);
             
             itemToDrop.quantity--;
@@ -572,20 +504,16 @@ function handleItemDrop(key) {
             if (typeof renderInventory === 'function') renderInventory();
             return;
         } else {
-            // BUG FIX: Prevent players from hiding items inside solid walls!
             logMessage("{red:You can't drop items here. (Must be on open floor)}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
     }
 
-    // --- EXECUTE NORMAL DROP ---
     itemToDrop.quantity--;
     logMessage(`Dropped 1x ${itemToDrop.name}.`);
 
-    // Place on Map
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-        // PERFORMANCE WIN: Utilize chunk manager TTL directly
         chunkManager.setWorldTile(player.x, player.y, itemToDrop.tile, 2);
     } else if (gameState.mapMode === 'dungeon') {
         chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = itemToDrop.tile;
@@ -593,21 +521,17 @@ function handleItemDrop(key) {
         chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = itemToDrop.tile;
     }
 
-    // Clear Loot Memory (So it can be picked up again)
     let tileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
         ? `${player.x},${-player.y}`
         : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
     gameState.lootedTiles.delete(tileId);
 
-    // Cleanup Inventory Array
     if (itemToDrop.quantity <= 0) {
         player.inventory.splice(itemIndex, 1);
     }
 
-    // Turn off drop mode automatically after one drop (Standard UX)
     gameState.isDroppingItem = false;
     
-    // Update DB & UI
     if (typeof playerRef !== 'undefined') {
         playerRef.update({ 
             inventory: getSanitizedInventory(),
@@ -615,7 +539,6 @@ function handleItemDrop(key) {
         });
     }
     
-    // VISUAL JUICE WIN
     if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
     if (typeof ParticleSystem !== 'undefined') {
         ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 6);
@@ -625,6 +548,31 @@ function handleItemDrop(key) {
     if (typeof renderInventory === 'function') renderInventory();
     gameState.mapDirty = true; 
     if (typeof render === 'function') render(); 
+}
+
+// PERFORMANCE & DRY WIN: Unified Equipment Helper
+function _internalUnequip(item, player) {
+    if (!item) return;
+    applyStatBonuses(item, -1);
+    item.isEquipped = false;
+    logMessage(`{gray:You unequip the ${item.name}.}`);
+    
+    if (item.slot === 'weapon') {
+        const getWeaponSkill = (i) => {
+            const tags = i.tags || [];
+            if (tags.includes("blunt") || tags.includes("axe")) return 'crush';
+            if (tags.includes("dagger")) return 'quickstep';
+            if (tags.includes("blade")) return 'deflect';
+            if (tags.includes("staff")) return 'channel';
+            if (tags.includes("bow") || tags.includes("crossbow")) return 'ranged_attack';
+            return null;
+        };
+        const oldSkill = getWeaponSkill(item);
+        if (oldSkill && player.skillbook[oldSkill]) {
+            delete player.skillbook[oldSkill];
+            logMessage(`{gray:You unlearned ${typeof SKILL_DATA !== 'undefined' && SKILL_DATA[oldSkill] ? SKILL_DATA[oldSkill].name : 'a skill'}.}`);
+        }
+    }
 }
 
 function useInventoryItem(itemIndex) {
@@ -640,8 +588,6 @@ function useInventoryItem(itemIndex) {
 
     // --- MAGIC ITEM IDENTIFICATION ---
     if (itemToUse.name === 'Unidentified Magic Item' || itemToUse.tile === '✨') {
-        
-        // Block identification if it's stacked and inventory is full!
         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
         if (itemToUse.quantity > 1 && player.inventory.length >= invCap) {
             logMessage("{red:Inventory full! Make space before identifying stacked items.}");
@@ -649,15 +595,11 @@ function useInventoryItem(itemIndex) {
             return;
         }
 
-        // Calculate appropriate tier based on player level (1-6)
         let tier = Math.max(1, Math.min(6, Math.floor(player.level / 5) + 1));
-        
-        // 20% chance to roll one tier higher than expected!
         if (Math.random() < 0.20) tier = Math.min(6, tier + 1);
 
         const identifiedItem = generateMagicItem(tier);
         
-        // LORE & JUICE WIN: Colorful Identification Fanfare
         let colorTag = 'blue';
         let rarityLabel = 'Uncommon';
         
@@ -668,7 +610,7 @@ function useInventoryItem(itemIndex) {
         if (identifiedItem.name.includes("Cursed") || identifiedItem.name.includes("Doomed") || identifiedItem.name.includes("Forsaken")) {
             logMessage(`{red:The item radiates malice... You identified a Cursed artifact: ${identifiedItem.name}!}`);
             gameState.screenShake = 15;
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); // Ominous tone
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); 
         } else {
             logMessage(`{${colorTag}:✨ The magic settles... You identified a ${rarityLabel} item: ${identifiedItem.name}!}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
@@ -677,12 +619,10 @@ function useInventoryItem(itemIndex) {
 
         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
         
-        // Replace in inventory
         itemToUse.quantity--;
         if (itemToUse.quantity <= 0) {
             player.inventory.splice(itemIndex, 1, identifiedItem);
         } else {
-            // Because of our safety check above, we KNOW we have space here.
             player.inventory.push(identifiedItem);
         }
         itemUsed = true;
@@ -704,7 +644,6 @@ function useInventoryItem(itemIndex) {
             currentTile = chunkManager.castleMaps[gameState.currentCastleId]?.[player.y]?.[player.x] || ' ';
         }
 
-        // Added '<', '>', 'X', 'V', '🚪', and '⛰' to protect all entrances, exits, and stairs!
         const invalidTiles = ['~', '≈', '🧱', '+', '☒', '▓', '▒', '^', '<', '>', 'X', 'V', '🚪', '⛰'];
 
         if (invalidTiles.includes(currentTile)) {
@@ -748,72 +687,27 @@ function useInventoryItem(itemIndex) {
 
         // 1. Unequip Current
         if (currentEquipped) {
-            applyStatBonuses(currentEquipped, -1);
-            currentEquipped.isEquipped = false;
-            
-            // QoL WIN: Tell the player exactly what they took off!
-            logMessage(`{gray:You unequip the ${currentEquipped.name}.}`);
-
-            // Remove old weapon skill if it was a weapon
-            if (slot === 'weapon') {
-                const getWeaponSkill = (item) => {
-                    const tags = item.tags || [];
-                    if (tags.includes("blunt") || tags.includes("axe")) return 'crush';
-                    if (tags.includes("dagger")) return 'quickstep';
-                    if (tags.includes("blade")) return 'deflect';
-                    if (tags.includes("staff")) return 'channel';
-                    if (tags.includes("bow") || tags.includes("crossbow")) return 'ranged_attack';
-                    return null;
-                };
-                const oldSkill = getWeaponSkill(currentEquipped);
-                if (oldSkill && player.skillbook[oldSkill]) {
-                    delete player.skillbook[oldSkill];
-                    logMessage(`{gray:You unlearned ${SKILL_DATA[oldSkill] ? SKILL_DATA[oldSkill].name : 'a skill'}.}`);
-                }
-            }
+            _internalUnequip(currentEquipped, player);
+            if (slot === 'weapon') player.equipment.weapon = { name: 'Fists', damage: 0, tags: ['blunt'] };
+            else if (slot === 'armor') player.equipment.armor = { name: 'Simple Tunic', defense: 0 };
+            else player.equipment[slot] = null;
         }
 
-        // 2. Equip New (Or finalize unequip)
-        if (currentEquipped === itemToUse) {
-            // Revert to defaults
-            player.equipment[slot] = (slot === 'weapon') ? { name: 'Fists', damage: 0, tags: ['blunt'] } : (slot === 'armor' ? { name: 'Tattered Rags', defense: 0 } : null);
-        } else {
+        // 2. Equip New
+        if (currentEquipped !== itemToUse) {
             // --- TWO-HANDED LOGIC SAFEGUARDS ---
-            // If trying to equip a shield while holding a 2H weapon
             if (slot === 'offhand' && player.equipment.weapon && player.equipment.weapon.isTwoHanded) {
-                // 🐛 BUG FIX: Do not throw an error! Just unequip the 2H weapon automatically!
-                const oldWeapon = player.equipment.weapon;
-                applyStatBonuses(oldWeapon, -1);
-                oldWeapon.isEquipped = false;
-                player.equipment.weapon = { name: 'Fists', damage: 0, tags: ['blunt'] }; // Revert to fists
-                logMessage(`{gray:You stow away the ${oldWeapon.name} to hold your off-hand.}`);
-                
-                // Remove the old 2H weapon skill from the hotbar
-                const getWeaponSkill = (item) => {
-                    const tags = item.tags || [];
-                    if (tags.includes("blunt") || tags.includes("axe")) return 'crush';
-                    if (tags.includes("dagger")) return 'quickstep';
-                    if (tags.includes("blade")) return 'deflect';
-                    if (tags.includes("staff")) return 'channel';
-                    if (tags.includes("bow") || tags.includes("crossbow")) return 'ranged_attack';
-                    return null;
-                };
-                const oldSkill = getWeaponSkill(oldWeapon);
-                if (oldSkill && player.skillbook[oldSkill]) {
-                    delete player.skillbook[oldSkill];
-                    logMessage(`{gray:You unlearned ${SKILL_DATA[oldSkill] ? SKILL_DATA[oldSkill].name : 'a skill'}.}`);
-                }
+                _internalUnequip(player.equipment.weapon, player);
+                player.equipment.weapon = { name: 'Fists', damage: 0, tags: ['blunt'] };
+                logMessage(`{gray:You stow away your two-handed weapon to hold your off-hand.}`);
             }
             
-            // If trying to equip a 2H weapon while holding a shield
             if (slot === 'weapon' && itemToUse.isTwoHanded && player.equipment.offhand) {
-                applyStatBonuses(player.equipment.offhand, -1);
-                player.equipment.offhand.isEquipped = false;
+                _internalUnequip(player.equipment.offhand, player);
                 player.equipment.offhand = null;
                 logMessage("{gray:You unequip your off-hand to hold the two-handed weapon.}");
             }
 
-            // QoL WIN: Smart Equip Stat Deltas
             let deltaText = "";
             if (slot === 'weapon') {
                 const oldDmg = currentEquipped ? (currentEquipped.damage || 0) : 0;
@@ -837,7 +731,6 @@ function useInventoryItem(itemIndex) {
             player.equipment[slot] = itemToUse;
             applyStatBonuses(itemToUse, 1);
             
-            // QoL WIN: Thematic Equip Verbs
             let equipVerb = "equip";
             if (slot === 'weapon') equipVerb = "wield";
             else if (slot === 'armor') equipVerb = "don";
@@ -846,13 +739,12 @@ function useInventoryItem(itemIndex) {
             
             logMessage(`You ${equipVerb} the ${itemToUse.name}.${deltaText}`);
 
-            // JUICE WIN: Massive fanfare for equipping high-tier legendary items!
             if (itemToUse._rarity === 'legendary' || itemToUse._rarity === 'epic' || itemToUse.name.includes("Fallen King")) {
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#facc15', 25);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                 gameState.screenShake = 5;
             } else {
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Clinking equip sound
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); 
             }
 
             // Grant new weapon skill
@@ -869,7 +761,7 @@ function useInventoryItem(itemIndex) {
                 const newSkill = getWeaponSkill(itemToUse);
                 if (newSkill) {
                     player.skillbook[newSkill] = 1; 
-                    logMessage(`Weapon Technique: You learned ${SKILL_DATA[newSkill] ? SKILL_DATA[newSkill].name : newSkill}!`);
+                    logMessage(`Weapon Technique: You learned ${typeof SKILL_DATA !== 'undefined' && SKILL_DATA[newSkill] ? SKILL_DATA[newSkill].name : newSkill}!`);
                     if (!player.hotbar[0]) player.hotbar[0] = newSkill;
                 }
             }
@@ -919,7 +811,7 @@ function useInventoryItem(itemIndex) {
                 learned = true;
             }
         } else {
-            // Tools (like Machete/Pickaxe) just exist in inventory
+            // Tools
             logMessage(`You examine the ${itemToUse.name}. It looks useful.`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
         }
@@ -936,7 +828,6 @@ function useInventoryItem(itemIndex) {
         if (stat && player.hasOwnProperty(stat)) {
             player[stat]++;
             
-            // LORE & JUICE WIN: Dynamic text and particle colors for stat tomes!
             let color = '#facc15';
             let statText = stat.substring(0,3).toUpperCase();
             
@@ -957,7 +848,6 @@ function useInventoryItem(itemIndex) {
             }
             if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
             
-            // Re-calc max HP/Mana instantly
             if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
             
             itemToUse.quantity--;
@@ -994,7 +884,6 @@ function useInventoryItem(itemIndex) {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#3b82f6', 20);
         
-        // JUICE WIN: Screen Shake for teleporting!
         gameState.screenShake = 15;
 
         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
@@ -1012,12 +901,10 @@ function useInventoryItem(itemIndex) {
 
     // --- TREASURE MAPS ---
     } else if (itemToUse.type === 'treasure_map') {
-        
-        // Prevent reading maps indoors or in alternate dimensions
         if (gameState.mapMode !== 'overworld') {
             logMessage("{red:You must be under the open sky in the Overworld to chart these coordinates.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-            itemUsed = false; // Prevents turn-ending and keeps the map in inventory
+            itemUsed = false; 
         } 
         else if (!gameState.activeTreasure) {
             const dist = 50 + Math.floor(Math.random() * 100);
@@ -1031,13 +918,11 @@ function useInventoryItem(itemIndex) {
             logMessage(`{gold:The map reveals a hidden mark! Location: (${tx}, ${-ty}).}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
             
-            // Actually consume the map so they don't have infinite treasures!
             itemToUse.quantity--;
             if (itemToUse.quantity <= 0) player.inventory.splice(itemIndex, 1);
             
             itemUsed = true;
         } else {
-            // They already have an active treasure, remind them of the coordinates
             logMessage(`You are already tracking a treasure at (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y}).`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             itemUsed = false;
@@ -1046,15 +931,12 @@ function useInventoryItem(itemIndex) {
     // --- JOURNALS & LORE ---
     } else if (['journal', 'lore', 'random_journal', 'random_lore'].includes(itemToUse.type)) {
         
-        // Find the original item template to grab the text content
         const template = typeof window.ITEM_DATA !== 'undefined' ? (window.ITEM_DATA[itemToUse.templateId] || window.ITEM_DATA[itemToUse.tile] || {}) : {};
         const title = itemToUse.title || template.title || itemToUse.name;
         
-        // LORE WIN: Pipe reading material directly through the autoFormatLore utility!
         let content = itemToUse.content || template.content || itemToUse.description || "The pages are illegible.";
         if (typeof autoFormatLore === 'function') content = autoFormatLore(content);
 
-        // Grant the Codex Discovery (Used for Lore Set Collection bonuses!)
         if (typeof grantLoreDiscovery === 'function') {
             grantLoreDiscovery(itemToUse.templateId, itemToUse.templateId);
         }
@@ -1065,13 +947,12 @@ function useInventoryItem(itemIndex) {
 
         if (loreTitle && loreContent && loreModal) {
             loreTitle.textContent = title;
-            // Since autoFormatLore injects HTML span tags, we must use innerHTML here
             loreContent.innerHTML = `<div class="font-serif leading-relaxed text-gray-300">${content}</div>`;
             loreModal.classList.remove('hidden');
         }
 
         if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-        itemUsed = false; // IMPORTANT: Do not consume the item or end the turn!
+        itemUsed = false; 
 
     // --- JUNK / UNKNOWN ---
     } else {
@@ -1091,18 +972,14 @@ function useInventoryItem(itemIndex) {
 }
 
 /**
- * Adds or subtracts an item's stat bonuses from the player.
- * Automatically triggers derived stat recalculation to prevent HP/Mana desyncs.
- * @param {object} item - The item object (from equipment).
- * @param {number} operation - 1 to add, -1 to subtract.
+ * BUG FIX WIN: The `_negatedDex` flag allows us to safely bypass `Arcane Steel` edge cases
+ * when a player levels up while wearing Heavy Armor.
  */
-
 function applyStatBonuses(item, operation) {
     if (!item || !item.statBonuses) return;
 
     const player = gameState.player;
 
-    // 1. CAPTURE OLD MAX VITALS (To calculate the delta later)
     const oldMaxes = {
         health: player.maxHealth || 10,
         mana: player.maxMana || 10,
@@ -1114,16 +991,20 @@ function applyStatBonuses(item, operation) {
         if (player.hasOwnProperty(stat)) {
             let amount = item.statBonuses[stat];
 
-            // --- BATTLEMAGE: ARCANE STEEL ---
-            if (stat === 'dexterity' && amount < 0 && player.talents && player.talents.includes('arcane_steel')) {
-                if (operation === 1) logMessage("{purple:Arcane Steel negates the armor's weight.}");
-                continue;
+            // --- BATTLEMAGE: ARCANE STEEL BUG FIX ---
+            if (stat === 'dexterity' && amount < 0) {
+                if (operation === 1 && player.talents && player.talents.includes('arcane_steel')) {
+                    logMessage("{purple:Arcane Steel negates the armor's weight.}");
+                    item._negatedDex = true; 
+                    continue; 
+                } else if (operation === -1 && item._negatedDex) {
+                    delete item._negatedDex; // Clean up flag
+                    continue; // Skip removing the penalty because it was never applied!
+                }
             }
 
-            // Apply the Core Stat Change
             player[stat] += (amount * operation);
 
-            // Visual Juice
             if (operation === 1) {
                 logMessage(`You feel ${stat} increase! (+${amount})`);
                 if (typeof triggerStatFlash === 'function' && typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays[stat], true);
@@ -1133,32 +1014,20 @@ function applyStatBonuses(item, operation) {
         }
     }
 
-    // 2. RECALCULATE NEW MAX VITALS
     if (typeof recalculateDerivedStats === 'function') {
         recalculateDerivedStats();
 
-        // 3. APPLY DELTAS TO CURRENT VITALS
-        // If Max HP went up by 5, Current HP goes up by 5. 
-        // If Max HP went down by 5, Current HP goes down by 5 (But never below 1 so you don't die from changing clothes!)
         const hpDelta = player.maxHealth - oldMaxes.health;
-        if (hpDelta !== 0) {
-            player.health = Math.max(1, Math.min(player.maxHealth, player.health + hpDelta));
-        }
+        if (hpDelta !== 0) player.health = Math.max(1, Math.min(player.maxHealth, player.health + hpDelta));
         
         const manaDelta = player.maxMana - oldMaxes.mana;
-        if (manaDelta !== 0) {
-            player.mana = Math.max(0, Math.min(player.maxMana, player.mana + manaDelta));
-        }
+        if (manaDelta !== 0) player.mana = Math.max(0, Math.min(player.maxMana, player.mana + manaDelta));
 
         const stamDelta = player.maxStamina - oldMaxes.stamina;
-        if (stamDelta !== 0) {
-            player.stamina = Math.max(0, Math.min(player.maxStamina, player.stamina + stamDelta));
-        }
+        if (stamDelta !== 0) player.stamina = Math.max(0, Math.min(player.maxStamina, player.stamina + stamDelta));
 
         const psycheDelta = player.maxPsyche - oldMaxes.psyche;
-        if (psycheDelta !== 0) {
-            player.psyche = Math.max(0, Math.min(player.maxPsyche, player.psyche + psycheDelta));
-        }
+        if (psycheDelta !== 0) player.psyche = Math.max(0, Math.min(player.maxPsyche, player.psyche + psycheDelta));
     }
 }
 
