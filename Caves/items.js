@@ -16,9 +16,10 @@ function resolveTemplateIdByName(name) {
  * ensuring items have effects, correct stats, and valid IDs.
  */
 function rehydratePlayerState(data) {
-    if (!data.inventory) return [];
+    if (!data.inventory || !Array.isArray(data.inventory)) return [];
 
-    return data.inventory.map(item => {
+    // 🚨 BUG FIX: Filter out null/undefined ghost slots from Firebase sparse arrays BEFORE mapping!
+    return data.inventory.filter(item => item !== null && item !== undefined).map(item => {
         let templateItem = null;
         let templateKey = null;
 
@@ -267,7 +268,6 @@ function generateMagicItem(tier) {
     let hasSuffix = false;
 
     // LORE WIN: Dynamic Named Artifacts
-    // At max tiers, there is a small chance to roll a completely unique Named Artifact!
     if (tier >= 5 && Math.random() < 0.05) {
         const prefixes = ['Aegis', 'Wrath', 'Whisper', 'Sorrow', 'Echo', 'Vanguard'];
         const suffixes = ['the Void', 'the Forgotten King', 'the Deep', 'the Shattered Sky'];
@@ -279,7 +279,7 @@ function generateMagicItem(tier) {
         if (newItem.type === 'armor') newItem.defense += 4;
         newItem.statBonuses.luck = (newItem.statBonuses.luck || 0) + 2;
         
-        return newItem; // Bypass standard generation
+        return newItem; 
     }
 
     // Expanded Cursed Items
@@ -380,7 +380,7 @@ function sanitizeItemForDB(item, forceEquipped = false) {
         stat: item.stat || null,
         tags: item.tags || null, 
         _rarity: item._rarity || null,
-        _negatedDex: item._negatedDex || null // BUG FIX: Retain negated dex state across reloads
+        _negatedDex: item._negatedDex || null 
     };
 }
 
@@ -400,13 +400,19 @@ function getSanitizedEquipment() {
     };
 }
 
+// 🚨 BUG FIX: Filter out null values before they hit Firebase!
 function getSanitizedInventory() {
-    return gameState.player.inventory.map(item => sanitizeItemForDB(item, false));
+    if (!gameState.player.inventory) return [];
+    return gameState.player.inventory
+        .filter(item => item !== null && item !== undefined)
+        .map(item => sanitizeItemForDB(item, false));
 }
 
 function getSanitizedBank() {
     if (!gameState.player.bank) return [];
-    return gameState.player.bank.map(item => sanitizeItemForDB(item, false));
+    return gameState.player.bank
+        .filter(item => item !== null && item !== undefined)
+        .map(item => sanitizeItemForDB(item, false));
 }
 
 function rehydrateInventory(savedInventory) {
