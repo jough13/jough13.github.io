@@ -90,6 +90,18 @@ const statusPanel = document.getElementById('statusPanel'); // Vitals container
 let lastLogText = "";
 let lastLogCount = 1;
 
+// PERFORMANCE WIN: High-Speed DOM Caching Dictionary
+// Prevents `.innerHTML` thrashing on every single frame/turn
+const _uiCache = {
+    stats: {},
+    weather: '',
+    region: '',
+    effects: '',
+    equipMain: '',
+    equipBody: '',
+    equipMisc: ''
+};
+
 const statDisplays = {
     health: document.getElementById('healthDisplay'),
     mana: document.getElementById('manaDisplay'),
@@ -200,6 +212,11 @@ const renderStats = () => {
         if (element && gameState.player.hasOwnProperty(statName)) {
             const value = gameState.player[statName];
             const label = statName.charAt(0).toUpperCase() + statName.slice(1);
+            
+            // Generate a unique fingerprint for this stat's state to prevent DOM thrashing
+            const cacheKey = `${value}_${gameState.player.shieldValue}_${gameState.player.poisonTurns}_${gameState.player.activeTitle}_${gameState.player.statPoints}`;
+            if (_uiCache.stats[statName] === cacheKey) continue; // PERFORMANCE WIN: Skip DOM update!
+            _uiCache.stats[statName] = cacheKey;
 
             if (statName === 'level') {
                 // LORE WIN: Display active titles with a shimmering magic effect!
@@ -323,9 +340,13 @@ const renderStats = () => {
         }
     }
     
-    // Update Browser Tab Title
+    // LORE & UX WIN: Update Browser Tab Title dynamically
     if (gameState.mapMode && gameState.player && gameState.player.level) {
-        document.title = `HP: ${Math.ceil(gameState.player.health)}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
+        const regionName = window.lastRegionCache ? window.lastRegionCache.name : "Wilderness";
+        const locationStr = gameState.mapMode === 'overworld' ? regionName : (gameState.mapMode === 'dungeon' ? 'Dungeon' : 'Castle');
+        const realmStr = (gameState.currentRealm !== 0 && gameState.currentRealm) ? ` [Realm ${gameState.currentRealm}]` : '';
+        
+        document.title = `HP: ${Math.ceil(gameState.player.health)}/${gameState.player.maxHealth} | ${locationStr}${realmStr} - Caves & Castles`;
     }
     
     // --- JUICE WIN: FULL SCREEN FILTERS & FLASHES ---
@@ -429,6 +450,11 @@ function updateWeatherUI() {
             hoverTitle = "You are far from home. Proceed with extreme caution.";
         }
     }
+    
+    // PERFORMANCE WIN: Prevent DOM thrashing by caching the weather HTML
+    const cacheKey = `${displayString}_${colorClass}_${hoverTitle}`;
+    if (_uiCache.weather === cacheKey) return;
+    _uiCache.weather = cacheKey;
 
     if (displayString) {
         weatherDisplay.innerHTML = displayString;
@@ -734,7 +760,6 @@ const renderEquipment = () => {
     const totalDamage = playerStrength + weaponDamage + ammoDamage;
 
     let weaponString = `Wpn: ${weapon.name} (+${weaponDamage})`;
-    // QoL WIN: Explicitly show base + bonus stats in the tooltip
     let weaponTooltip = `${weapon.name}\nBase Damage: +${weaponDamage}\n(Your Total: ${totalDamage})`;
     
     if (weapon.name === 'Fists') {
@@ -754,7 +779,14 @@ const renderEquipment = () => {
     if (player.strengthBonus > 0) { 
         weaponString += ` <span class="text-green-500 drop-shadow-sm">[+${player.strengthBonus} Str (${player.strengthBonusTurns}t)]</span>`;
     }
-    equippedWeaponDisplay.innerHTML = weaponString;
+    
+    // PERFORMANCE WIN: Cache innerHTML check
+    if (_uiCache.equipMain !== weaponString) {
+        equippedWeaponDisplay.innerHTML = weaponString;
+        _uiCache.equipMain = weaponString;
+    }
+    
+    // Explicitly update strength text to display calculated damage total
     statDisplays.strength.textContent = `Strength: ${player.strength} (Dmg: ${totalDamage})`;
 
     // --- DEFENSE CALCULATION ---
@@ -783,14 +815,25 @@ const renderEquipment = () => {
     if (buffDefense > 0) {
         armorString += ` <span class="text-green-500 drop-shadow-sm">[+${buffDefense} Def (${player.defenseBonusTurns}t)]</span>`;
     }
-    equippedArmorDisplay.innerHTML = `${armorString} <br><span class="text-gray-400 font-bold bg-black bg-opacity-30 px-2 py-0.5 rounded border border-gray-700 mt-1 inline-block">(Total: ${totalDefense} Def)</span>`;
+    
+    const finalArmorHtml = `${armorString} <br><span class="text-gray-400 font-bold bg-black bg-opacity-30 px-2 py-0.5 rounded border border-gray-700 mt-1 inline-block">(Total: ${totalDefense} Def)</span>`;
+    
+    // PERFORMANCE WIN: Cache innerHTML check
+    if (_uiCache.equipBody !== finalArmorHtml) {
+        equippedArmorDisplay.innerHTML = finalArmorHtml;
+        _uiCache.equipBody = finalArmorHtml;
+    }
 
     // --- MISC / ACC DISPLAY ---
     let miscString = "";
     if (offhand) miscString += `Off: ${offhand.name} | `;
     if (acc) miscString += `Acc: ${acc.name}`;
     if (!offhand && !acc) miscString = "Off-Hand & Accessory Empty";
-    document.getElementById('equippedMiscDisplay').textContent = miscString;
+    
+    if (_uiCache.equipMisc !== miscString) {
+        document.getElementById('equippedMiscDisplay').textContent = miscString;
+        _uiCache.equipMisc = miscString;
+    }
 
     // --- UPDATE ICONS & HOVER TOOLTIPS ---
     const wIcon = document.getElementById('slotWeaponIcon');
@@ -836,6 +879,8 @@ const renderEquipment = () => {
 };
 
 function updateRegionDisplay() {
+    let finalRegionHtml = '';
+    
     if (gameState.mapMode === 'overworld') {
         const currentRegionX = Math.floor(gameState.player.x / REGION_SIZE);
         const currentRegionY = Math.floor(gameState.player.y / REGION_SIZE);
@@ -857,7 +902,7 @@ function updateRegionDisplay() {
         if (gameState.player.isSailing) regionName = `Sailing the coast of ${regionName}`;
         
         const playerCoords = `(${gameState.player.x}, ${-gameState.player.y})`; 
-        regionDisplay.textContent = `${regionName} ${playerCoords}`; 
+        finalRegionHtml = `${regionName} ${playerCoords}`; 
 
         if (!gameState.discoveredRegions.has(regionId)) {
             logMessage(`{gold:Discovered: ${window.lastRegionCache.name}!}`); 
@@ -914,13 +959,21 @@ function updateRegionDisplay() {
             displayName += ` (Floor ${floorZ})`;
         }
         
-        regionDisplay.textContent = displayName;
+        finalRegionHtml = displayName;
     } else if (gameState.mapMode === 'castle') {
-        regionDisplay.textContent = typeof getCastleName === 'function' ? getCastleName(gameState.currentCastleId) : 'Castle Ruins'; 
+        finalRegionHtml = typeof getCastleName === 'function' ? getCastleName(gameState.currentCastleId) : 'Castle Ruins'; 
+    }
+    
+    // PERFORMANCE WIN: Cache DOM check
+    if (_uiCache.region !== finalRegionHtml) {
+        regionDisplay.textContent = finalRegionHtml;
+        _uiCache.region = finalRegionHtml;
     }
 }
 
-// JUICE: Reflow DOM to ensure rapid flashes restart their animations properly!
+// BUG FIX & MEMORY LEAK PREVENTION: 
+// Replaced `.onanimationend =` assignment with self-cleaning `addEventListener` 
+// to prevent overwriting other animations and leaking closure scopes!
 function triggerStatFlash(statElement, positive = true) {
     if (!statElement) return;
     const animationClass = positive ? 'stat-flash-green' : 'stat-flash-red';
@@ -929,9 +982,10 @@ function triggerStatFlash(statElement, positive = true) {
     void statElement.offsetWidth; 
     statElement.classList.add(animationClass);
     
-    statElement.onanimationend = () => {
+    statElement.addEventListener('animationend', function handler() {
         statElement.classList.remove(animationClass);
-    };
+        statElement.removeEventListener('animationend', handler);
+    }, { once: true });
 }
 
 function triggerStatAnimation(statElement, animationClass) {
@@ -940,9 +994,10 @@ function triggerStatAnimation(statElement, animationClass) {
     void statElement.offsetWidth; 
     statElement.classList.add(animationClass);
     
-    statElement.onanimationend = () => {
+    statElement.addEventListener('animationend', function handler() {
         statElement.classList.remove(animationClass);
-    };
+        statElement.removeEventListener('animationend', handler);
+    }, { once: true });
 }
 
 function renderStatusEffects() {
@@ -981,7 +1036,11 @@ function renderStatusEffects() {
         icons += `<span title="Void Madness (${player.madnessTurns}t)" class="text-purple-500 animate-spin drop-shadow-md inline-block cursor-help">👁️</span>`;
     }
 
-    statusEffectsPanel.innerHTML = icons;
+    // PERFORMANCE WIN: Prevent DOM thrashing by checking HTML diff
+    if (_uiCache.effects !== icons) {
+        statusEffectsPanel.innerHTML = icons;
+        _uiCache.effects = icons;
+    }
 }
 
 // --- INFINITE RESIZE LOOP & OVERSTRETCHING ---
@@ -1191,7 +1250,8 @@ function initSettingsListeners() {
     const btnBackup = document.getElementById('btnBackup');
     const btnRestore = document.getElementById('btnRestore');
 
-    if (settingsBtn && settingsModal) {
+    // BUG FIX WIN: Ensure we only bind the open button ONCE!
+    if (settingsBtn && settingsModal && !settingsBtn.dataset.bound) {
         settingsBtn.addEventListener('click', () => {
             // Sync modal UI checkboxes to the actual engine state
             if (typeof AudioSystem !== 'undefined') {
@@ -1210,18 +1270,21 @@ function initSettingsListeners() {
 
             settingsModal.classList.remove('hidden');
         });
+        settingsBtn.dataset.bound = "true";
     }
 
-    if (closeSettingsBtn && settingsModal) {
+    // Ensure we only bind the close handlers ONCE!
+    if (closeSettingsBtn && settingsModal && !closeSettingsBtn.dataset.bound) {
         closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
         
         // Let players close settings with the Escape key or clicking outside
         settingsModal.addEventListener('click', (e) => {
             if (e.target === settingsModal) settingsModal.classList.add('hidden');
         });
+        closeSettingsBtn.dataset.bound = "true";
     }
 
-    // Audio Handlers
+    // Audio Handlers (Bind safely once)
     const updateAudioSettings = () => {
         if (typeof AudioSystem !== 'undefined') {
             AudioSystem.settings.master = settingMaster.checked;
@@ -1233,39 +1296,43 @@ function initSettingsListeners() {
         }
     };
 
-    if (settingMaster) settingMaster.addEventListener('change', updateAudioSettings);
-    if (settingSteps) settingSteps.addEventListener('change', updateAudioSettings);
-    if (settingCombat) settingCombat.addEventListener('change', updateAudioSettings);
-    if (settingMagic) settingMagic.addEventListener('change', updateAudioSettings);
-    if (settingUI) settingUI.addEventListener('change', updateAudioSettings);
+    if (settingMaster && !settingMaster.dataset.bound) { settingMaster.addEventListener('change', updateAudioSettings); settingMaster.dataset.bound = "true"; }
+    if (settingSteps && !settingSteps.dataset.bound) { settingSteps.addEventListener('change', updateAudioSettings); settingSteps.dataset.bound = "true"; }
+    if (settingCombat && !settingCombat.dataset.bound) { settingCombat.addEventListener('change', updateAudioSettings); settingCombat.dataset.bound = "true"; }
+    if (settingMagic && !settingMagic.dataset.bound) { settingMagic.addEventListener('change', updateAudioSettings); settingMagic.dataset.bound = "true"; }
+    if (settingUI && !settingUI.dataset.bound) { settingUI.addEventListener('change', updateAudioSettings); settingUI.dataset.bound = "true"; }
 
     // Visual Handlers
-    if (settingCRT) {
+    if (settingCRT && !settingCRT.dataset.bound) {
         settingCRT.addEventListener('change', (e) => {
             const visualSettings = loadVisualSettings();
             visualSettings.crt = e.target.checked;
             localStorage.setItem('visualSettings', JSON.stringify(visualSettings));
             applyVisualSettings();
         });
+        settingCRT.dataset.bound = "true";
     }
 
     // Save & Backup Handlers
-    if (btnManualSave) {
+    if (btnManualSave && !btnManualSave.dataset.bound) {
         btnManualSave.addEventListener('click', () => {
             if (typeof manualSaveGame === 'function') manualSaveGame();
         });
+        btnManualSave.dataset.bound = "true";
     }
 
-    if (btnBackup) {
+    if (btnBackup && !btnBackup.dataset.bound) {
         btnBackup.addEventListener('click', () => {
             if (typeof createCloudBackup === 'function') createCloudBackup();
         });
+        btnBackup.dataset.bound = "true";
     }
 
-    if (btnRestore) {
+    if (btnRestore && !btnRestore.dataset.bound) {
         btnRestore.addEventListener('click', () => {
             if (typeof restoreCloudBackup === 'function') restoreCloudBackup();
         });
+        btnRestore.dataset.bound = "true";
     }
 }
 
