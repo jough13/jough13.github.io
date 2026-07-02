@@ -669,16 +669,19 @@ function executeFishing() {
 
         // --- TROPHY FISH CALCULATION ---
         if (catchData.minW && catchData.maxW) {
-            // 🧮 MATH SAFEGUARD: Apply bait weight multiplier to upper bound safely
+            // 🧮 MATH SEAFOOD: Apply bait weight multiplier to upper bound safely
             const effMaxW = Math.max(catchData.minW, Math.floor(catchData.maxW * baitWeightMult));
             const weight = Math.floor(Math.random() * (effMaxW - catchData.minW + 1)) + catchData.minW;
             
-            finalItemName = `[${weight}lb] ${baseName}`;
-            isTrophy = true;
+            // Only force unique unstackable names for legendary catches to prevent inventory bloat!
+            if (rarity === 'legendary') {
+                finalItemName = `[${weight}lb] ${baseName}`;
+                isTrophy = true;
+            }
 
             // The Line-Snap Stamina Battle!
             if (weight > 100) {
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playFishBite(); // JUICE
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playFishBite();
                 
                 logMessage(`{orange:It's a monster! It fights the line!}`);
                 if (isLeviathansBane) {
