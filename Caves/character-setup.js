@@ -257,14 +257,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     const batch = db.batch();
                     const charRef = db.collection('players').doc(currentUser.uid).collection('characters').doc(slotPendingDeletion);
 
-                    // 🧹 CRITICAL MEMORY LEAK FIX: Firestore does not cascade-delete subcollections!
+                    // Firestore does not cascade-delete subcollections!
                     // We must manually fetch and delete backups AND map_data to prevent database bloat!
                     
-                    // 1. Delete Backups
+                    // 1. Delete Backups & their nested Subcollections
                     const backups = await charRef.collection('backups').get();
-                    backups.forEach(doc => batch.delete(doc.ref));
+                    for (const doc of backups.docs) {
+                        const backupMapData = await doc.ref.collection('map_data').get();
+                        backupMapData.forEach(mapDoc => batch.delete(mapDoc.ref));
+                        batch.delete(doc.ref);
+                    }
                     
-                    // 2. Delete Map Data
+                    // 2. Delete Main Map Data
                     const mapData = await charRef.collection('map_data').get();
                     mapData.forEach(doc => batch.delete(doc.ref));
 
