@@ -128,7 +128,7 @@ function getTileColorForMap(worldX, worldY) {
     if (tile === '🛕') return MAP_COLORS.TEMPLE;
     if (tile === '🛟' || tile === '🚢') return MAP_COLORS.FLOTSAM;
     if (tile === '🌺') return MAP_COLORS.MOONBLOOM;
-    if (tile === '☄️' || tile === '🌠') return MAP_COLORS.STAR; // Added Meteorite
+    if (tile === '☄️' || tile === '🌠') return MAP_COLORS.STAR;
     if (tile === '🌳e') return MAP_COLORS.ELDER_TREE;
     if (tile === '🍄r') return MAP_COLORS.FAIRY_RING;
     if (tile === '⚙️d') return MAP_COLORS.CLOCKWORK;
@@ -149,6 +149,9 @@ function getTileColorForMap(worldX, worldY) {
     return MAP_COLORS.PLAINS;
 }
 
+// PERFORMANCE WIN: Static Cache for Tile Names
+const _mapTileNameCache = new Map();
+
 function getMapTileName(x, y) {
     const chunkId = `${Math.floor(x / MAP_CHUNK_SIZE)},${Math.floor(y / MAP_CHUNK_SIZE)}`;
     
@@ -161,7 +164,12 @@ function getMapTileName(x, y) {
     }
 
     const tile = chunkManager.getTile(x, y);
+    
+    // Pull from High-Speed Cache first
+    if (_mapTileNameCache.has(tile)) return _mapTileNameCache.get(tile);
+
     if (typeof TILE_DATA !== 'undefined' && TILE_DATA[tile] && TILE_DATA[tile].name) {
+        _mapTileNameCache.set(tile, TILE_DATA[tile].name);
         return TILE_DATA[tile].name;
     } 
     
@@ -185,9 +193,16 @@ function getMapTileName(x, y) {
         '🎵': "Wandering Bard", '⛺a': "Abandoned Campsite", '🕍': "Dark Castle Ruins"
     };
 
-    if (names[tile]) return names[tile];
-    if (['🧱', '=', '+', '☒', '▤'].includes(tile)) return "Man-Made Structure";
+    if (names[tile]) {
+        _mapTileNameCache.set(tile, names[tile]);
+        return names[tile];
+    }
+    if (['🧱', '=', '+', '☒', '▤'].includes(tile)) {
+        _mapTileNameCache.set(tile, "Man-Made Structure");
+        return "Man-Made Structure";
+    }
     
+    _mapTileNameCache.set(tile, "Explored Wilderness");
     return "Explored Wilderness";
 }
 
@@ -290,11 +305,13 @@ function renderWorldMap() {
     const chunkSizeOnScreen = MAP_CHUNK_SIZE * currentMapScale;
     const now = Date.now(); 
 
-    // Render Explored Chunks
+    // PERFORMANCE WIN: Removed massive string splitting logic during the loop
     gameState.exploredChunks.forEach(chunkId => {
-        const parts = chunkId.split(',');
-        const cx = parseInt(parts[0], 10);
-        const cy = parseInt(parts[1], 10);
+        // Highly optimized string parsing bypasses array allocation
+        const commaIdx = chunkId.indexOf(',');
+        const cx = parseInt(chunkId.substring(0, commaIdx), 10);
+        const cy = parseInt(chunkId.substring(commaIdx + 1), 10);
+        
         if (isNaN(cx) || isNaN(cy)) return; 
 
         const chunkWorldX = cx * MAP_CHUNK_SIZE;
@@ -611,6 +628,8 @@ function renderWorldMap() {
             worldMapCtx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
             worldMapCtx.lineWidth = 1;
             worldMapCtx.beginPath();
+            
+            // ROBUSTNESS WIN: Fallback for older Safari versions that don't support roundRect
             if (worldMapCtx.roundRect) {
                 worldMapCtx.roundRect(tooltipX, tooltipY - 12 - padY, boxWidth, boxHeight, 6);
             } else {
@@ -664,6 +683,25 @@ function renderWorldMap() {
     }
     worldMapCtx.stroke();
 
+    // The Celestial Astrolabe (Sun & Moon Tracker)
+    if (typeof gameState !== 'undefined' && gameState.time) {
+        const timeInMinutes = gameState.time.hour * 60 + gameState.time.minute;
+        // Map 0-1440 minutes to a 360 degree circle. Offset by -90 deg so Noon is at the top (North)
+        const celestialAngle = (timeInMinutes / 1440) * TWO_PI - (Math.PI / 2);
+        
+        // Draw the Sun
+        worldMapCtx.fillStyle = '#facc15'; 
+        worldMapCtx.beginPath();
+        worldMapCtx.arc(cx + Math.cos(celestialAngle) * 30, cy + Math.sin(celestialAngle) * 30, 4, 0, TWO_PI);
+        worldMapCtx.fill();
+        
+        // Draw the Moon (Opposite the Sun)
+        worldMapCtx.fillStyle = '#e2e8f0'; 
+        worldMapCtx.beginPath();
+        worldMapCtx.arc(cx + Math.cos(celestialAngle + Math.PI) * 30, cy + Math.sin(celestialAngle + Math.PI) * 30, 3, 0, TWO_PI);
+        worldMapCtx.fill();
+    }
+
     // Draw Rotated Needle
     worldMapCtx.save();
     worldMapCtx.translate(cx, cy);
@@ -704,11 +742,34 @@ function renderWorldMap() {
         worldMapCtx.textAlign = 'left';
         worldMapCtx.fillText(`Shattered Realm #${gameState.currentRealm}`, 20, 25);
     }
+    
+    // UX WIN: Dynamic Scale Bar
+    const scaleBarWidth = 50 * currentMapScale; // Represents 50 tiles
+    worldMapCtx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+    worldMapCtx.lineWidth = 2;
+    worldMapCtx.beginPath();
+    worldMapCtx.moveTo(20, logicalHeight - 20);
+    worldMapCtx.lineTo(20 + scaleBarWidth, logicalHeight - 20);
+    worldMapCtx.moveTo(20, logicalHeight - 25);
+    worldMapCtx.lineTo(20, logicalHeight - 15);
+    worldMapCtx.moveTo(20 + scaleBarWidth, logicalHeight - 25);
+    worldMapCtx.lineTo(20 + scaleBarWidth, logicalHeight - 15);
+    worldMapCtx.stroke();
+    
+    worldMapCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    worldMapCtx.font = 'bold 10px monospace';
+    worldMapCtx.textAlign = 'center';
+    worldMapCtx.fillText('50m', 20 + scaleBarWidth/2, logicalHeight - 28);
 
     updateMapUI();
 }
 
+// PERFORMANCE WIN: Cache the DOM string to prevent expensive layout recalculations
+let _lastMapCoordsHTML = "";
+
 function updateMapUI() {
+    if (typeof gameState === 'undefined' || !gameState.player) return;
+
     let hoverText = '';
     let actionHint = ' | <span class="text-gray-400">Right-Click to Pin</span>';
     
@@ -738,7 +799,13 @@ function updateMapUI() {
         hoverText = ` | Hover: <span class="text-yellow-400 font-bold">${tileName}</span>${dangerTag} (${hoverWorldX}, ${-hoverWorldY}) <span class="text-gray-500">[${dist}m]</span>`;
     }
     
-    mapCoordsDisplay.innerHTML = `Player: (${gameState.player.x}, ${-gameState.player.y})${hoverText}${actionHint}`;
+    const finalHTML = `Player: (${gameState.player.x}, ${-gameState.player.y})${hoverText}${actionHint}`;
+    
+    // Only touch the DOM if the text actually changed!
+    if (_lastMapCoordsHTML !== finalHTML) {
+        mapCoordsDisplay.innerHTML = finalHTML;
+        _lastMapCoordsHTML = finalHTML;
+    }
 }
 
 // --- INPUT EVENTS ---
