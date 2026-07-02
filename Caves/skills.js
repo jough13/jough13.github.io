@@ -6,9 +6,13 @@
  * @param {string} skillId - The ID of the skill to use (e.g., "brace").
  */
 
-function useSkill(skillId) {
-    const player = gameState.player;
-    const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[skillId] : null; 
+async function useSkill(skillId) {
+    if (isProcessingMove) return;
+    isProcessingMove = true;
+
+    try {
+        const player = gameState.player;
+        const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[skillId] : null;
 
     if (!skillData) {
         logMessage("{red:Unknown skill. (No skill data found)}");
@@ -247,7 +251,7 @@ function useSkill(skillId) {
                 }
 
                 if (whirlwindPromises.length > 0) {
-                    Promise.all(whirlwindPromises).catch(e => console.error("Whirlwind Sync Error:", e));
+                    await Promise.all(whirlwindPromises).catch(e => console.error("Whirlwind Sync Error:", e));
                 } else if (gameState.mapMode === 'overworld') {
                     logMessage("{gray:You whirl through empty air.}");
                 }
@@ -276,6 +280,9 @@ function useSkill(skillId) {
             if (displayEl && typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false); 
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         }
+    }
+    } finally {
+        isProcessingMove = false;
     }
 }
 
