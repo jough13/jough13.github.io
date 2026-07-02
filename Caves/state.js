@@ -53,7 +53,7 @@ let lastLocalAIAttempt = 0;
 let lastSortAudio = 0;        
 
 let cachedThemeColors = {};
-const processingSpawnTiles = new Set();
+
 let pendingSpawns = new Set();     
 let pendingSpawnData = {};         
 let activeShopInventory = [];      
