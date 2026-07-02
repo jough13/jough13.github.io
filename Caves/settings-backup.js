@@ -27,10 +27,12 @@ function generateStrictSaveSignature(data) {
             const item = data.inventory[i];
             // 🚨 SECURITY WIN: Hash the stats and rarity too! Prevents players from manually 
             // editing the DB to give a basic dagger 999 damage without getting caught!
+            // Strictly coerce values to prevent undefined/null bypasses
             const rar = item._rarity || 'n';
-            const dmg = item.damage || 0;
-            const def = item.defense || 0;
-            invStr += `${item.name}:${item.quantity || 1}:${rar}:${dmg}:${def}|`;
+            const qty = Number(item.quantity) || 1;
+            const dmg = Number(item.damage) || 0;
+            const def = Number(item.defense) || 0;
+            invStr += `${item.name}:${qty}:${rar}:${dmg}:${def}|`;
         }
     }
     
@@ -40,9 +42,10 @@ function generateStrictSaveSignature(data) {
         for (let i = 0; i < data.bank.length; i++) {
             const item = data.bank[i];
             const rar = item._rarity || 'n';
-            const dmg = item.damage || 0;
-            const def = item.defense || 0;
-            bankStr += `${item.name}:${item.quantity || 1}:${rar}:${dmg}:${def}|`;
+            const qty = Number(item.quantity) || 1;
+            const dmg = Number(item.damage) || 0;
+            const def = Number(item.defense) || 0;
+            bankStr += `${item.name}:${qty}:${rar}:${dmg}:${def}|`;
         }
     }
     
@@ -241,7 +244,8 @@ async function restoreCloudBackup(slotId = 'latest') {
         btn.disabled = true;
         btn.classList.add('opacity-75', 'cursor-wait', 'animate-pulse');
         
-        const phases = ["⏳ Searching the Void...", "⏳ Extracting Anchor...", "⏳ Reweaving Leylines..."];
+        // LORE WIN: Added "Purging Alternate Futures" to match the new subcollection deletion phase!
+        const phases = ["⏳ Searching the Void...", "⏳ Extracting Anchor...", "⏳ Purging Alternate Futures...", "⏳ Reweaving Leylines..."];
         let pIdx = 0;
         btn.innerHTML = phases[0];
         backupTextInterval = setInterval(() => {
@@ -312,8 +316,35 @@ async function restoreCloudBackup(slotId = 'latest') {
         delete data.signature; 
         delete data.timestamp;
 
-        // Restore Subcollections (with chunking for massive maps)
+        // 🚨 CRITICAL FIX: The Subcollection "State Bleed" Purge
+        // We MUST delete the live timeline's map data before copying the backup over it!
+        // Otherwise, chunks explored AFTER the backup was created will remain in the restored timeline!
         if (typeof db !== 'undefined') {
+            
+            // Phase A: Purge Live Subcollections
+            for (const collectionName of SUBCOLLECTIONS_TO_BACKUP) {
+                const liveMapSnap = await playerRef.collection(collectionName).get();
+                if (!liveMapSnap.empty) {
+                    let delBatch = db.batch();
+                    let delOpCount = 0;
+                    
+                    for (const doc of liveMapSnap.docs) {
+                        delBatch.delete(doc.ref);
+                        delOpCount++;
+                        
+                        if (delOpCount >= 450) {
+                            await delBatch.commit();
+                            delBatch = db.batch();
+                            delOpCount = 0;
+                        }
+                    }
+                    if (delOpCount > 0) {
+                        await delBatch.commit();
+                    }
+                }
+            }
+
+            // Phase B: Copy Backup Subcollections
             for (const collectionName of SUBCOLLECTIONS_TO_BACKUP) {
                 const backupMapSnap = await playerRef.collection('backups').doc(slotId).collection(collectionName).get();
                 if (!backupMapSnap.empty) {
@@ -322,7 +353,9 @@ async function restoreCloudBackup(slotId = 'latest') {
                     
                     for (const doc of backupMapSnap.docs) {
                         const liveMapRef = playerRef.collection(collectionName).doc(doc.id);
-                        batch.set(liveMapRef, doc.data(), { merge: true });
+                        
+                        // BUG FIX: Removed {merge: true}. We want an absolute, pure overwrite of the document!
+                        batch.set(liveMapRef, doc.data());
                         operationCount++;
                         
                         if (operationCount >= 450) {
@@ -338,7 +371,7 @@ async function restoreCloudBackup(slotId = 'latest') {
             }
         }
 
-        // 🧹 ROBUSTNESS WIN: Deep Clean Current State ("State Bleed" Fix)
+        // 🧹 ROBUSTNESS WIN: Deep Clean Current Local State ("State Bleed" Fix)
         // Without this, the memory of the aborted timeline (map chunks, un-looted tiles) 
         // will bleed directly into the restored timeline until the player refreshes the page!
         gameState.player.inventory = [];
