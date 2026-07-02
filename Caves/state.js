@@ -59,7 +59,7 @@ let pendingSpawnData = {};
 let activeShopInventory = [];      
 const wokenEnemyTiles = new Set(); 
 
-// PERFORMANCE WIN: Shared String Caches
+// Shared String Caches
 window._statCapCache = {
     health: 'maxHealth',
     mana: 'maxMana',
