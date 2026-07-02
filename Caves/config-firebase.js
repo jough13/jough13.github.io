@@ -36,7 +36,7 @@ if (typeof firebase === 'undefined') {
         app: () => ({}), 
         firestore: () => ({ collection: () => ({ doc: () => ({ collection: () => ({ doc: () => ({ get: async () => ({ exists: false }) }) }) }) }) }), 
         auth: () => ({ onAuthStateChanged: () => {} }), 
-        database: () => ({ ref: () => ({ on: () => {} }) }) 
+        database: () => ({ ref: () => ({ on: () => {}, update: () => Promise.resolve(), set: () => Promise.resolve() }) }) 
     };
 
     // Inject a critical UI banner instantly
