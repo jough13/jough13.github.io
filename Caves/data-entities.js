@@ -475,6 +475,22 @@ window.ENEMY_DATA = {
         loot: 'E', color: '#7dd3fc', isBoss: false,
         flavor: "A screaming soul trapped forever in the biting cold. To touch it is to feel the grave."
     },
+    
+    // --- BUG FIX & LORE WIN: New Fae & Flying Enemies ---
+    '🧚': {
+        name: 'Fae Trickster', tags: ['humanoid', 'fae', 'magic'],
+        maxHealth: 15, attack: 2, defense: 0, xp: 35,
+        caster: true, castRange: 5, spellDamage: 4, inflicts: 'madness', inflictChance: 0.3, teleporter: true,
+        loot: 'fae_1', color: '#d946ef', isBoss: false,
+        flavor: "A beautiful, ethereal being that giggles as it tears at the edges of your sanity."
+    },
+    '🦅': {
+        name: 'Giant Eagle', tags: ['beast', 'flying', 'mountable'], mountable: true,
+        maxHealth: 18, attack: 5, defense: 1, xp: 30,
+        caster: false, castRange: 0, spellDamage: 0, inflicts: null, inflictChance: 0,
+        loot: '"', color: '#fcd34d', isBoss: false,
+        flavor: "It circles high above the peaks, its massive talons capable of lifting a grown man."
+    },
 
     // --- LEVEL 4-5 (Advanced Threats) ---
     '@': {
@@ -854,12 +870,14 @@ window.EVOLUTION_DATA = {
     ]
 };
 
+// --- EXPANDABILITY WIN: Added `element` property to spells for future resistance mechanics! ---
+// Also added `AoE: true` where applicable to make combat scripting much cleaner.
 window.SPELL_DATA = {
     "candlelight": {
         name: "Candlelight",
         description: "Summons a floating light. Huge vision radius (+6) for a long time.",
         flavor: "A simple cantrip taught to every apprentice. It smells faintly of ozone and old wax.",
-        cost: 15, costType: "mana", requiredLevel: 1, target: "self", type: "buff", duration: 100,
+        cost: 15, costType: "mana", requiredLevel: 1, target: "self", type: "buff", duration: 100, element: "magic",
         cooldown: 5 
     },
     "chainLightning": {
@@ -867,7 +885,7 @@ window.SPELL_DATA = {
         description: "Strikes a target, then jumps to a nearby enemy. Scales with {blue:Wits}.",
         flavor: "Arcane energy leaps violently between grounded targets.",
         scalingStat: "wits",
-        cost: 18, costType: "mana", requiredLevel: 6, target: "aimed", baseDamage: 6,
+        cost: 18, costType: "mana", requiredLevel: 6, target: "aimed", baseDamage: 6, element: "lightning",
         cooldown: 4
     },
     "stoneSkin": {
@@ -875,7 +893,7 @@ window.SPELL_DATA = {
         description: "Greatly increases Defense but lowers Dexterity. Scales with {green:Constitution}.",
         flavor: "Your flesh hardens into granite, turning blades and absorbing impacts.",
         scalingStat: "constitution",
-        cost: 20, costType: "mana", requiredLevel: 3, target: "self", type: "buff", duration: 15,
+        cost: 20, costType: "mana", requiredLevel: 3, target: "self", type: "buff", duration: 15, element: "earth",
         cooldown: 5
     },
     "lesserHeal": {
@@ -883,14 +901,14 @@ window.SPELL_DATA = {
         description: "Heals for a small amount. Scales with {blue:Wits}.",
         flavor: "A warm, golden light knits flesh and mends bone.",
         scalingStat: "wits",
-        cost: 5, costType: "mana", requiredLevel: 1, target: "self", baseHeal: 5,
+        cost: 5, costType: "mana", requiredLevel: 1, target: "self", baseHeal: 5, element: "holy",
         cooldown: 3
     },
     "clarity": {
         name: "Clarity",
         description: "Focus your mind to reveal adjacent {purple:secret walls}.",
         flavor: "Your eyes pierce the physical world, viewing the underlying structure of reality.",
-        cost: 8, costType: "psyche", requiredLevel: 1, target: "self", type: "utility",
+        cost: 8, costType: "psyche", requiredLevel: 1, target: "self", type: "utility", element: "magic",
         cooldown: 2
     },
     "raiseDead": {
@@ -898,7 +916,7 @@ window.SPELL_DATA = {
         description: "Summons a Skeleton from a corpse (or bone pile) to fight for you. Scales with {purple:Willpower}.",
         flavor: "A forbidden incantation that forces a fractured soul back into a physical vessel.",
         scalingStat: "willpower",
-        cost: 15, costType: "mana", requiredLevel: 1, target: "aimed", range: 3,
+        cost: 15, costType: "mana", requiredLevel: 1, target: "aimed", range: 3, element: "dark",
         cooldown: 5
     },
     "arcaneShield": {
@@ -906,7 +924,7 @@ window.SPELL_DATA = {
         description: "Creates a temporary shield that absorb damage. Scales with {blue:Wits}.",
         flavor: "A shimmering barrier of pure energy that shatters upon taking too much force.",
         scalingStat: "wits",
-        cost: 10, costType: "mana", requiredLevel: 3, target: "self", type: "buff", baseShield: 5, duration: 5,
+        cost: 10, costType: "mana", requiredLevel: 3, target: "self", type: "buff", baseShield: 5, duration: 5, element: "magic",
         cooldown: 4
     },
     "fireball": {
@@ -914,7 +932,7 @@ window.SPELL_DATA = {
         description: "An explosive orb damages enemies in a 3x3 area. Scales with {blue:Wits}.",
         flavor: "A volatile sphere of pyromantic fury. Do not cast indoors.",
         scalingStat: "wits",
-        cost: 15, costType: "mana", requiredLevel: 5, target: "aimed", baseDamage: 8, radius: 1,
+        cost: 15, costType: "mana", requiredLevel: 5, target: "aimed", baseDamage: 8, radius: 1, element: "fire", AoE: true,
         cooldown: 3
     },
     "siphonLife": {
@@ -922,7 +940,7 @@ window.SPELL_DATA = {
         description: "Drains life from a target, healing you. Scales with {purple:Willpower}.",
         flavor: "The darkest art. To drink the life force of another is to damn your own soul.",
         scalingStat: "willpower",
-        cost: 12, costType: "psyche", requiredLevel: 4, target: "aimed", baseDamage: 4, healPercent: 0.5,
+        cost: 12, costType: "psyche", requiredLevel: 4, target: "aimed", baseDamage: 4, healPercent: 0.5, element: "dark",
         cooldown: 2
     },
     "thunderbolt": {
@@ -930,7 +948,7 @@ window.SPELL_DATA = {
         description: "Strikes a target with massive lightning damage. Scales with {blue:Wits}.",
         flavor: "A single, devastating strike from the heavens. Deafening and absolute.",
         scalingStat: "wits",
-        cost: 20, costType: "mana", requiredLevel: 6, target: "aimed", baseDamage: 12,
+        cost: 20, costType: "mana", requiredLevel: 6, target: "aimed", baseDamage: 12, element: "lightning",
         cooldown: 3
     },
     "meteor": {
@@ -938,14 +956,14 @@ window.SPELL_DATA = {
         description: "Summons a meteor from the heavens. Large AoE (5x5). Scales with {blue:Wits}.",
         flavor: "Pull a falling star from its orbit and hurl it at your enemies.",
         scalingStat: "wits",
-        cost: 30, costType: "mana", requiredLevel: 8, target: "aimed", baseDamage: 10, radius: 2,
+        cost: 30, costType: "mana", requiredLevel: 8, target: "aimed", baseDamage: 10, radius: 2, element: "fire", AoE: true,
         cooldown: 6
     },
     "divineLight": {
         name: "Divine Light",
         description: "Fully restores Health and {gold:cures all status effects}.",
         flavor: "A blinding flash of holy energy that scours away all corruption and pain.",
-        cost: 25, costType: "psyche", requiredLevel: 5, target: "self", type: "utility",
+        cost: 25, costType: "psyche", requiredLevel: 5, target: "self", type: "utility", element: "holy", AoE: true,
         cooldown: 8
     },
     "magicBolt": {
@@ -953,7 +971,7 @@ window.SPELL_DATA = {
         description: "Hurls a bolt of arcane energy. Scales with {blue:Wits}.",
         flavor: "A simple but reliable projectile of raw magical force.",
         scalingStat: "wits",
-        cost: 8, costType: "mana", requiredLevel: 1, target: "aimed", baseDamage: 5,
+        cost: 8, costType: "mana", requiredLevel: 1, target: "aimed", baseDamage: 5, element: "magic",
         cooldown: 1 
     },
     "psychicBlast": {
@@ -961,7 +979,7 @@ window.SPELL_DATA = {
         description: "Assaults a target's mind. Scales with {purple:Willpower}.",
         flavor: "A direct telepathic strike. It bypasses physical armor entirely.",
         scalingStat: "willpower",
-        cost: 10, costType: "psyche", requiredLevel: 2, target: "aimed", baseDamage: 6,
+        cost: 10, costType: "psyche", requiredLevel: 2, target: "aimed", baseDamage: 6, element: "psychic",
         cooldown: 2
     },
     "frostBolt": {
@@ -969,7 +987,7 @@ window.SPELL_DATA = {
         description: "Hurls a shard of ice. Has a chance to inflict {cyan:Frostbite}. Scales with {purple:Willpower}.",
         flavor: "A jagged icicle that bites into the flesh and slows the blood.",
         scalingStat: "willpower",
-        cost: 10, costType: "mana", requiredLevel: 1, target: "aimed", baseDamage: 5, inflicts: "frostbite", inflictChance: 0.25,
+        cost: 10, costType: "mana", requiredLevel: 1, target: "aimed", baseDamage: 5, inflicts: "frostbite", inflictChance: 0.25, element: "frost",
         cooldown: 2
     },
     "poisonBolt": {
@@ -977,7 +995,7 @@ window.SPELL_DATA = {
         description: "Launches a bolt of acid. Has a chance to inflict {green:Poison}. Scales with {purple:Willpower}.",
         flavor: "A sickening glob of corrosive magic that melts through armor and flesh alike.",
         scalingStat: "willpower",
-        cost: 10, costType: "psyche", requiredLevel: 2, target: "aimed", baseDamage: 4, inflicts: "poison", inflictChance: 0.50,
+        cost: 10, costType: "psyche", requiredLevel: 2, target: "aimed", baseDamage: 4, inflicts: "poison", inflictChance: 0.50, element: "poison",
         cooldown: 2
     },
     "darkPact": {
@@ -985,7 +1003,7 @@ window.SPELL_DATA = {
         description: "Sacrifice 5 Health to restore 10 Mana. Scales with {purple:Willpower}.",
         flavor: "You offer a piece of your own vitality to the Void in exchange for raw power.",
         scalingStat: "willpower",
-        cost: 5, costType: "health", requiredLevel: 4, target: "self", baseRestore: 10,
+        cost: 5, costType: "health", requiredLevel: 4, target: "self", baseRestore: 10, element: "dark",
         cooldown: 2
     },
     "entangle": {
@@ -993,7 +1011,7 @@ window.SPELL_DATA = {
         description: "Roots an enemy in place, preventing movement and attacks. Scales with {yellow:Intuition}.",
         flavor: "Vines and roots burst from the soil, answering your call to bind your foes.",
         scalingStat: "intuition",
-        cost: 12, costType: "mana", requiredLevel: 3, target: "aimed", baseDamage: 2, inflicts: "root", inflictChance: 1.0,
+        cost: 12, costType: "mana", requiredLevel: 3, target: "aimed", baseDamage: 2, inflicts: "root", inflictChance: 1.0, element: "earth",
         cooldown: 4
     },
     "thornSkin": {
@@ -1001,7 +1019,7 @@ window.SPELL_DATA = {
         description: "Reflects damage back to attackers. Scales with {yellow:Intuition}.",
         flavor: "Your skin becomes a briar patch of razor-sharp thorns.",
         scalingStat: "intuition",
-        cost: 15, costType: "mana", requiredLevel: 4, target: "self", type: "buff", baseReflect: 2, duration: 5,
+        cost: 15, costType: "mana", requiredLevel: 4, target: "self", type: "buff", baseReflect: 2, duration: 5, element: "earth",
         cooldown: 5
     }
 };
@@ -1137,6 +1155,7 @@ window.TALENT_DATA = {
     }
 };
 
+// --- EXPANDABILITY WIN: Added `weaponTags` to decouple logic from the combat engine! ---
 window.SKILL_DATA = {
     // --- BASIC TECHNIQUES ---
     "kick": {
@@ -1177,14 +1196,14 @@ window.SKILL_DATA = {
         description: "Strike an enemy with your shield, {yellow:stunning them}. Scales with {green:Constitution}.",
         flavor: "A brutal, staggering blow with the flat of your shield.",
         scalingStat: "constitution",
-        cost: 10, costType: "stamina", requiredLevel: 3, target: "aimed", baseDamageMultiplier: 0.5, cooldown: 5
+        cost: 10, costType: "stamina", requiredLevel: 3, target: "aimed", baseDamageMultiplier: 0.5, cooldown: 5, weaponTags: ['shield']
     },
     "cleave": {
         name: "Cleave",
         description: "Strike the target and {red:enemies adjacent to it}. Scales with {red:Strength}.",
         flavor: "A wide, sweeping arc that cuts through multiple foes.",
         scalingStat: "strength",
-        cost: 12, costType: "stamina", requiredLevel: 5, target: "aimed", baseDamageMultiplier: 0.8, cooldown: 4
+        cost: 12, costType: "stamina", requiredLevel: 5, target: "aimed", baseDamageMultiplier: 0.8, cooldown: 4, AoE: true
     },
     "adrenaline": {
         name: "Adrenaline",
@@ -1211,7 +1230,7 @@ window.SKILL_DATA = {
         description: "Strike {red:all adjacent enemies}. Scales with {red:Strength} and {green:Dexterity}.",
         flavor: "You become a deadly spinning vortex of steel.",
         scalingStat: "strength", 
-        cost: 15, costType: "stamina", requiredLevel: 4, target: "self", cooldown: 6
+        cost: 15, costType: "stamina", requiredLevel: 4, target: "self", cooldown: 6, AoE: true
     },
     "stealth": {
         name: "Stealth",
@@ -1225,32 +1244,32 @@ window.SKILL_DATA = {
         description: "A heavy blow that {yellow:stuns} the target. Scales with {red:Strength}. (Hammer/Club only)",
         flavor: "An overhead smash designed to break bones and shatter armor.",
         scalingStat: "strength",
-        cost: 8, costType: "stamina", requiredLevel: 1, target: "aimed", baseDamageMultiplier: 1.2, cooldown: 6
+        cost: 8, costType: "stamina", requiredLevel: 1, target: "aimed", baseDamageMultiplier: 1.2, cooldown: 6, weaponTags: ['blunt', 'axe']
     },
     "quickstep": {
         name: "Quickstep",
         description: "Dash {cyan:2 tiles} instantly. (Dagger only)",
         flavor: "A burst of speed so fast you seem to blur.",
-        cost: 5, costType: "stamina", requiredLevel: 1, target: "aimed", cooldown: 4, type: "movement"
+        cost: 5, costType: "stamina", requiredLevel: 1, target: "aimed", cooldown: 4, type: "movement", weaponTags: ['dagger']
     },
     "deflect": {
         name: "Deflect",
         description: "Enter a defensive stance, {blue:reflecting the next attack}. (Sword only)",
         flavor: "A practiced parry that uses the enemy's momentum against them.",
-        cost: 6, costType: "stamina", requiredLevel: 1, target: "self", duration: 2, cooldown: 5
+        cost: 6, costType: "stamina", requiredLevel: 1, target: "self", duration: 2, cooldown: 5, weaponTags: ['blade']
     },
     "channel": {
         name: "Channel",
         description: "Focus your energy to restore {blue:Mana}. (Staff only)",
         flavor: "You draw raw magic from the leylines through your staff.",
-        cost: 0, costType: "stamina", requiredLevel: 1, target: "self", cooldown: 10
+        cost: 0, costType: "stamina", requiredLevel: 1, target: "self", cooldown: 10, weaponTags: ['staff']
     },
     "ranged_attack": {
         name: "Shoot",
         description: "Fire an arrow at a distant target. Scales with {green:Dexterity}.",
         flavor: "A steady breath, a drawn string, and a sudden release.",
         scalingStat: "dexterity",
-        cost: 4, costType: "stamina", requiredLevel: 1, target: "aimed", baseDamageMultiplier: 1.0, cooldown: 0 
+        cost: 4, costType: "stamina", requiredLevel: 1, target: "aimed", baseDamageMultiplier: 1.0, cooldown: 0, weaponTags: ['bow', 'crossbow'] 
     }
 };
 
