@@ -77,7 +77,8 @@ const gameState = {
     // --- System & Engine State ---
     saveVersion: "0.2.9",     
     initialEnemiesLoaded: false,
-    mapDirty: true,           
+    mapDirty: true,
+    isDead: false, 
     
     screenShake: 0,           
     cameraShake: {
