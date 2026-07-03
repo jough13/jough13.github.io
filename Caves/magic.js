@@ -133,13 +133,20 @@ function castSpell(spellId) {
                 if (player.frostbiteTurns > 0) { logMessage("{gold:The supernatural chill leaves your bones.}"); ailmentsCured = true; }
                 if (player.burnTurns > 0) { logMessage("{gold:The searing flames are extinguished.}"); ailmentsCured = true; }
                 
-                if (typeof window.modifyVital === 'function') window.modifyVital('health', player.maxHealth);
+                const healedFor = typeof window.modifyVital === 'function' ? window.modifyVital('health', player.maxHealth) : 0;
                 
                 player.poisonTurns = 0;
                 player.frostbiteTurns = 0;
                 player.madnessTurns = 0; 
                 player.rootTurns = 0;
                 player.burnTurns = 0;
+
+                // BUG FIX: Only cast if you actually NEED healing or curing!
+                if (healedFor === 0 && !ailmentsCured) {
+                    logMessage("{gray:The Light shines brightly, but you are already perfectly whole.}");
+                    spellCastSuccessfully = false;
+                    break;
+                }
 
                 logMessage("{gold:A holy light bathes you. You are fully restored!}");
                 
@@ -197,12 +204,12 @@ function castSpell(spellId) {
                 if (healedFor > 0) {
                     logMessage(`You cast Lesser Heal and recover {green:${healedFor} health}.`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+${healedFor}`, '#22c55e'); 
-
+                    updates.health = player.health;
+                    spellCastSuccessfully = true;
                 } else {
                     logMessage("{gray:You cast Lesser Heal, but you're already at full health.}");
+                    spellCastSuccessfully = false;
                 }
-                updates.health = player.health;
-                spellCastSuccessfully = true;
                 break;
             }
 
@@ -245,7 +252,7 @@ function castSpell(spellId) {
                         break;
                     } else {
                         logMessage("{gray:You can only feel for secret walls in enclosed caves.}");
-                        spellCastSuccessfully = true;
+                        spellCastSuccessfully = false;
                         break;
                     }
                 }
@@ -286,8 +293,9 @@ function castSpell(spellId) {
                 } else {
                     logMessage("{gray:You focus, but the stone around you holds no secrets.}");
                 }
+                
                 if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
-                spellCastSuccessfully = true;
+                spellCastSuccessfully = true; // Still costs mana even if you didn't find anything
                 break;
             }
 
@@ -309,12 +317,13 @@ function castSpell(spellId) {
                         ParticleSystem.createFloatingText(player.x, player.y, `-${cost}`, '#ef4444');
                     }
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); // Add a crunch!
+                    spellCastSuccessfully = true;
                 } else {
                     logMessage("{gray:You cast Dark Pact, but your mana is already full.}");
+                    spellCastSuccessfully = false;
                 }
                 updates.health = player.health; 
                 updates.mana = player.mana;   
-                spellCastSuccessfully = true;
                 break;
             }
         }
@@ -379,19 +388,20 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
     const isTargetInWater = (tile === '~' || tile === '≈');
 
     // --- ELEMENTAL SYNERGY (ENVIRONMENT & ENEMY TYPES) ---
-    if (spellId === 'thunderbolt' || spellId === 'chainLightning') {
+    // EXPANDABILITY WIN: Now relies on tags from data-entities instead of hardcoded letter tiles!
+    if (spellData.element === 'lightning') {
         if (isTargetInWater || weather === 'rain' || weather === 'storm') {
             finalDamage = Math.floor(finalDamage * 2.0); // 2x Damage!
             logMessage(`{yellow:The electricity conducts through the water/rain! (Critical Damage)}`);
             // JUICE: Electrocute the water visually
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#facc15', 5);
         }
-        if (tags.includes('metal')) {
+        if (tags.includes('metal') || tags.includes('construct')) {
             finalDamage = Math.floor(finalDamage * 1.5);
             logMessage(`{yellow:The metallic enemy short-circuits! (Critical Damage)}`);
         }
     } 
-    else if (spellId === 'fireball' || spellId === 'meteor') {
+    else if (spellData.element === 'fire') {
         if (weather === 'rain' || weather === 'storm') {
             finalDamage = Math.floor(finalDamage * 0.5); // Fire fizzles in rain
         } 
@@ -410,7 +420,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
              if (Math.random() < 0.3) logMessage("{gray:The water boils and hisses, releasing a cloud of steam.}");
         }
     } 
-    else if (spellId === 'frostBolt') {
+    else if (spellData.element === 'frost') {
         if (weather === 'snow') finalDamage = Math.floor(finalDamage * 1.5);
         
         if (tags.includes('fire')) {
@@ -451,11 +461,13 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
     let damageDealt = 0; 
     let colorClass = '#3b82f6'; // Default Arcane
-    if (spellId === 'fireball' || spellId === 'meteor') colorClass = '#f97316'; 
-    if (spellId === 'poisonBolt') colorClass = '#4ade80'; 
-    if (spellId === 'frostBolt') colorClass = '#7dd3fc';
-    if (spellId === 'divineLight') colorClass = '#facc15';
-    if (spellId === 'siphonLife' || spellId === 'psychicBlast') colorClass = '#c084fc';
+    
+    // Dynamic color matching based on element!
+    if (spellData.element === 'fire') colorClass = '#f97316'; 
+    if (spellData.element === 'poison') colorClass = '#4ade80'; 
+    if (spellData.element === 'frost') colorClass = '#7dd3fc';
+    if (spellData.element === 'holy') colorClass = '#facc15';
+    if (spellData.element === 'dark' || spellData.element === 'psychic') colorClass = '#c084fc';
 
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         const enemyId = `overworld:${targetX},${-targetY}`;
@@ -843,6 +855,8 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 if (tileType === '(' || tileType === '⚰️') {
                     if (gameState.player.companion) {
                         logMessage("{gray:You already have a companion! Dismiss them first.}");
+                        // BUG FIX: Ensure the spell doesn't drain mana if it fails here!
+                        hitSomething = false;
                     } else {
                         logMessage("{purple:You chant the words of unlife... The bones assemble and rise to serve you!}");
 
@@ -877,6 +891,8 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     }
                 } else {
                     logMessage("{gray:You need a pile of bones '(' or a grave '⚰️' to raise the dead.}");
+                    // BUG FIX: Prevent mana drain if aiming at empty ground!
+                    hitSomething = false; 
                 }
                 break;
             }
@@ -918,7 +934,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 potentialJumpTargets.sort(() => Math.random() - 0.5);
                 const jumpsToMake = Math.min(potentialJumpTargets.length, maxJumps);
 
-                if (jumpsToMake > 0) {
+                if (jumpsToMake > 0 && hitSomething) {
                     setTimeout(() => logMessage(`{cyan:The lightning arcs to ${jumpsToMake} nearby enemies!}`), 200);
                 }
 
@@ -945,13 +961,13 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         }
 
         // Visual feedback if a projectile spell hits nothing!
-        if (!hitSomething && (spellId === 'magicBolt' || spellId === 'siphonLife' || spellId === 'poisonBolt' || spellId === 'frostBolt' || spellId === 'entangle')) {
-            logMessage("{gray:Your spell flies harmlessly into the distance.}");
+        if (!hitSomething) {
+            logMessage("{gray:Your spell fizzles without hitting a target.}");
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Fizzle...", "#9ca3af");
             }
         } else {
-            // Only deduct the cost if the spell actually hit a target or fired successfully!
+            // BUG FIX WIN: Only deduct the cost if the spell actually hit a target or fired successfully!
             player[spellData.costType] -= cost;
         }
 
