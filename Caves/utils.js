@@ -366,11 +366,46 @@ const Perlin = {
 // --- OPTIMIZATION: Cache Emoji Checks ---
 const charWidthCache = {};
 
-// We still build the cache boundary, but the fast-path below rarely hits it.
-for (let i = 0; i <= 2047; i++) {
-    const char = String.fromCharCode(i);
-    charWidthCache[char] = false;
+// Pre-warm the cache using the actual game data dictionaries!
+// This ensures the expensive Regex is only run ONCE at startup, not during the render loop.
+function preWarmCharCache() {
+    const regex = /[\p{Extended_Pictographic}\p{Emoji}\p{Emoji_Component}]/u;
+    const charsToCache = new Set();
+
+    // 1. Add standard map ASCII tiles
+    const standardTiles = ['.', 'F', 'd', 'D', '^', '~', '≈', '▓', '▒', '🧱', '=', '+', '/', '<', '>', ' ', '•', '▲', '🪜'];
+    standardTiles.forEach(c => charsToCache.add(c));
+
+    // 2. Dynamically add all entity/tile keys from data files
+    if (typeof window.TILE_DATA !== 'undefined') Object.keys(window.TILE_DATA).forEach(c => charsToCache.add(c));
+    if (typeof window.ENEMY_DATA !== 'undefined') Object.keys(window.ENEMY_DATA).forEach(c => charsToCache.add(c));
+    if (typeof window.ITEM_DATA !== 'undefined') {
+        Object.values(window.ITEM_DATA).forEach(item => {
+            if (item.tile) charsToCache.add(item.tile);
+            // Also cache the object key just in case the tile property falls back to it
+            const key = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === item.name);
+            if (key) charsToCache.add(key);
+        });
+    }
+
+    // 3. Evaluate and cache them permanently
+    charsToCache.forEach(char => {
+        if (!char) return;
+        
+        // Fast rejection for standard ASCII
+        if (char.codePointAt(0) < 255) {
+            charWidthCache[char] = false;
+        } else {
+            // Expensive check runs here, exactly once per unique character
+            charWidthCache[char] = regex.test(char);
+        }
+    });
+    
+    console.log(`%c[AKASHIC ENGINE] Pre-warmed ${Object.keys(charWidthCache).length} map characters.`, "color: #a855f7; font-weight: bold;");
 }
+
+// Run the pre-warmer immediately (using a tiny timeout ensures data files are loaded first)
+setTimeout(preWarmCharCache, 50);
 
 // The ASCII Fast-Path
 // Uses codePointAt to safely handle multi-byte emojis without splitting them
