@@ -6,26 +6,36 @@
 
 const BACKUP_SALT = "kEsMaI_v1_S3cR3t_s@lt"; // Change this to something random!
 
-// EXPANDABILITY WIN: Centralized Subcollection definitions.
+// Centralized Subcollection definitions.
 // When you add player housing, farming, or mailboxes, just add the collection name here!
 const SUBCOLLECTIONS_TO_BACKUP = ['map_data'];
 
 // Concurrency lock to prevent mashing buttons and causing DB race conditions
 let isBackupOperationRunning = false;
 
+// Prevents the user from accidentally closing the tab during a multi-batch Firestore operation
+window.addEventListener('beforeunload', (e) => {
+    if (isBackupOperationRunning) {
+        e.preventDefault();
+        // Standard warning message for modern browsers
+        e.returnValue = 'A timeline restore is currently in progress! Closing the tab now will corrupt your save data. Are you sure?';
+        return e.returnValue;
+    }
+});
+
 // --- Deep Hashing ---
 // We now hash the exact sequence of item names, preventing players from modifying the save file
 // to swap 5 pieces of "Stone" into 5 "Legendary Swords" (which bypassed the old length check).
 
 function generateStrictSaveSignature(data) {
-    // PERFORMANCE WIN: Bypassed .map().join() in favor of inline string building.
+    // Bypassed .map().join() in favor of inline string building.
     // This prevents massive memory allocation spikes during the save process!
     let invStr = 'empty';
     if (data.inventory && data.inventory.length > 0) {
         invStr = '';
         for (let i = 0; i < data.inventory.length; i++) {
             const item = data.inventory[i];
-            // 🚨 SECURITY WIN: Hash the stats and rarity too! Prevents players from manually 
+            // Hash the stats and rarity too! Prevents players from manually 
             // editing the DB to give a basic dagger 999 damage without getting caught!
             // Strictly coerce values to prevent undefined/null bypasses
             const rar = item._rarity || 'n';
@@ -61,7 +71,7 @@ function generateStrictSaveSignature(data) {
     return hash.toString();
 }
 
-// ROBUSTNESS: Intermediate compatibility for saves using the array-length hashing method.
+// Intermediate compatibility for saves using the array-length hashing method.
 function generateSaveSignature(data) {
     const invLen = data.inventory ? data.inventory.length : 0;
     const bankLen = data.bank ? data.bank.length : 0;
@@ -76,7 +86,7 @@ function generateSaveSignature(data) {
     return hash.toString();
 }
 
-// ROBUSTNESS: Oldest backward compatibility for early-access backups.
+// Oldest backward compatibility for early-access backups.
 function generateLegacySaveSignature(data) {
     const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.background}_${BACKUP_SALT}`;
     let hash = 0;
