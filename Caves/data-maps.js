@@ -2026,7 +2026,7 @@ window.ATMOSPHERE_TEXT = {
         "You wipe sweat from your eyes. It stings.",
         "A distant crack of rock alerts you to shifting magma flows."
     ],
-    // --- Atmosphere Tags ---
+    // --- EXPANSION WIN: New Atmosphere Tags ---
     CASTLE: [
         "Your footsteps echo loudly against the cold stone.",
         "The tapestries on the walls are moth-eaten and faded.",
