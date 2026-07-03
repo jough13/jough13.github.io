@@ -345,49 +345,53 @@ async function runSharedAiTurns() {
     if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') return; 
 
     const now = Date.now();
-    const AI_INTERVAL = 600; // Increased to 600ms for smoother server load
-    const STALE_TIMEOUT = 5000; 
+    const AI_INTERVAL = 600; // 600ms AI tick rate
 
-    // --- CLIENT-SIDE GATEKEEPER ---
-    // If we already attempted an AI tick locally within the interval, don't even talk to Firebase!
+    // --- CLIENT-SIDE THROTTLE ---
     if (now - (window.lastLocalAIAttempt || 0) < AI_INTERVAL) return;
     window.lastLocalAIAttempt = now;
 
-    // Use correct path based on layer
-    let realmPrefix = '';
-    if (gameState.currentRealm !== 0 && gameState.currentRealm) {
-        realmPrefix = `realm_${gameState.currentRealm}/`;
-    }
-    if (gameState.mapMode === 'underworld') {
-        realmPrefix += 'underworld/';
-    }
-    
-    if (typeof rtdb === 'undefined') return;
-    const heartbeatRef = rtdb.ref(`worldState/${realmPrefix}aiHeartbeat`);
+    // --- DETERMINISTIC HOST ELECTION ---
+    // The player with the lowest alphanumeric player_id in the current layer/realm becomes the Host.
+    let isHost = true;
+    const myId = typeof player_id !== 'undefined' ? player_id : null;
+    const myRealm = gameState.currentRealm || 0;
+    const myMapMode = gameState.mapMode;
 
-    try {
-        const result = await heartbeatRef.transaction((lastHeartbeat) => {
-            if (!lastHeartbeat) return now;
-            if (now - lastHeartbeat > STALE_TIMEOUT) return now;
-            if (now - lastHeartbeat >= AI_INTERVAL) return now;
-            return; // Abort transaction
-        });
-
-        if (result.committed) {
-            const nearestEnemyDir = await processOverworldEnemyTurns();
-
-            // Client-side intuition feedback
-            if (nearestEnemyDir) {
-                const player = gameState.player;
-                const intuitChance = Math.min(player.intuition * 0.005, 0.5);
-                if (Math.random() < intuitChance) {
-                    const dirString = typeof getDirectionString === 'function' ? getDirectionString(nearestEnemyDir) : "nearby";
-                    logMessage(`{gray:You sense a hostile presence to the ${dirString}!}`);
+    if (myId && typeof otherPlayers !== 'undefined') {
+        for (const id in otherPlayers) {
+            const p = otherPlayers[id];
+            const theirRealm = p.currentRealm || 0;
+            
+            // Only compare against players in the exact same world layer and dimension
+            if (p.mapMode === myMapMode && theirRealm === myRealm) {
+                // If their ID is "lower" than ours, THEY are the host. Yield to them.
+                if (id < myId) {
+                    isHost = false; 
+                    break;
                 }
             }
         }
+    }
+
+    // If we are not the host, abort. We don't process the AI.
+    if (!isHost) return; 
+
+    // --- WE ARE THE HOST: Process AI ---
+    try {
+        const nearestEnemyDir = await processOverworldEnemyTurns();
+
+        // Client-side intuition feedback
+        if (nearestEnemyDir) {
+            const player = gameState.player;
+            const intuitChance = Math.min(player.intuition * 0.005, 0.5);
+            if (Math.random() < intuitChance) {
+                const dirString = typeof getDirectionString === 'function' ? getDirectionString(nearestEnemyDir) : "nearby";
+                logMessage(`{gray:You sense a hostile presence to the ${dirString}!}`);
+            }
+        }
     } catch (err) {
-        console.error("AI Heartbeat Transaction failed:", err);
+        console.error("AI Processing Error:", err);
     }
 }
 
