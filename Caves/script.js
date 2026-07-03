@@ -2782,12 +2782,12 @@ async function enterGame(playerData) {
                 maxHealth: gameState.player.maxHealth,
                 mapMode: gameState.mapMode,
                 mapId: gameState.currentCaveId || gameState.currentCastleId || null,
-                email: auth.currentUser.email
+                email: auth.currentUser.email,
+                
+                currentRealm: gameState.currentRealm || 0
             };
             onlinePlayerRef.set(stateToSet);
 
-            // We ONLY want to remove the player from the online list when they disconnect.
-            // Do NOT append a .then() here, as it will execute immediately on the client and wipe data!
             onlinePlayerRef.onDisconnect().remove();
         }
     });
