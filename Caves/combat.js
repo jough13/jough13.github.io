@@ -1781,8 +1781,14 @@ function getPlayerDamageModifier(baseDamage) {
 
 function handlePlayerDeath() {
     if (window.inputQueue) window.inputQueue.length = 0; // Clear input queue to prevent ghost walking!
+    
+    if (gameState.isDead) return false; 
+    
     if (gameState.godMode) return false; 
     if (gameState.player.health > 0) return false; 
+
+    // Engage the lock!
+    gameState.isDead = true;
 
     if (saveTimeout) {
         clearTimeout(saveTimeout);
@@ -1790,20 +1796,19 @@ function handlePlayerDeath() {
     }
 
     const player = gameState.player;
-
     player.health = 0; 
     
-    // --- METRICS WIN: Track Total Deaths ---
+    // --- Track Total Deaths ---
     if (!player.metrics) player.metrics = {};
     player.metrics.totalDeaths = (player.metrics.totalDeaths || 0) + 1;
     
-    // JUICE WIN: Death is now a terrifying audiovisual event
+    // Death is now a terrifying audiovisual event
     gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 }; // Fade to blood red
     if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playDeath === 'function') {
         AudioSystem.playDeath();
     }
     
-    // LORE WIN: Random Atmospheric Death Quotes
+    // Random Atmospheric Death Quotes
     const deathQuotes = [
         "The world fades to black...",
         "You feel your soul slipping away...",
