@@ -1472,6 +1472,9 @@ function syncPlayerState() {
             mapMode: gameState.mapMode,
             mapId: gameState.currentCaveId || gameState.currentCastleId || null,
             email: auth.currentUser.email,
+            
+            currentRealm: gameState.currentRealm || 0,
+            
             companion: gameState.player.companion ? {
                 tile: gameState.player.companion.tile,
                 name: gameState.player.companion.name,
