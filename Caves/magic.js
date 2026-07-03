@@ -160,6 +160,7 @@ function castSpell(spellId) {
                 const novaRadius = 2;
                 const holyDamage = 20 + (player.wits * spellLevel);
                 let hitUnholy = false;
+                let batchedPayload = {};
                 
                 for (let y = player.y - novaRadius; y <= player.y + novaRadius; y++) {
                     for (let x = player.x - novaRadius; x <= player.x + novaRadius; x++) {
@@ -177,14 +178,24 @@ function castSpell(spellId) {
                         const eData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tileAt] : null;
                         const tags = eData ? (eData.tags || []) : [];
                         if (eData && (tags.includes("undead") || tags.includes("demon"))) {
-                            // Fire and forget spell damage applying to surrounding enemies
-                            if (typeof applySpellDamage === 'function') applySpellDamage(x, y, holyDamage, 'divineLight');
-                            hitUnholy = true;
+                            // Run the calculations asynchronously and locally in batch mode
+                            applySpellDamage(x, y, holyDamage, 'divineLight', true).then(res => {
+                                if (res && res.hit) {
+                                    Object.assign(batchedPayload, res.payload);
+                                    hitUnholy = true;
+                                }
+                            });
                         }
                     }
                 }
                 
-                if (hitUnholy) logMessage("{gold:The blinding light sears the nearby darkness!}");
+                // Commit the mass scorching to the database!
+                setTimeout(() => {
+                    if (hitUnholy) logMessage("{gold:The blinding light sears the nearby darkness!}");
+                    if (Object.keys(batchedPayload).length > 0 && typeof rtdb !== 'undefined') {
+                        rtdb.ref().update(batchedPayload).catch(e => console.error("Nova Batch Error:", e));
+                    }
+                }, 50);
 
                 updates.health = player.health;
                 updates.poisonTurns = 0;
@@ -359,7 +370,7 @@ function castSpell(spellId) {
  * Also handles special on-hit effects like Siphon Life.
  */
 
-async function applySpellDamage(targetX, targetY, damage, spellId) {
+async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = false) {
     const player = gameState.player;
     const spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[spellId] : null;
     if (!spellData) return false;
@@ -388,12 +399,10 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
     const isTargetInWater = (tile === '~' || tile === '≈');
 
     // --- ELEMENTAL SYNERGY (ENVIRONMENT & ENEMY TYPES) ---
-    // EXPANDABILITY WIN: Now relies on tags from data-entities instead of hardcoded letter tiles!
     if (spellData.element === 'lightning') {
         if (isTargetInWater || weather === 'rain' || weather === 'storm') {
             finalDamage = Math.floor(finalDamage * 2.0); // 2x Damage!
             logMessage(`{yellow:The electricity conducts through the water/rain! (Critical Damage)}`);
-            // JUICE: Electrocute the water visually
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#facc15', 5);
         }
         if (tags.includes('metal') || tags.includes('construct')) {
@@ -480,6 +489,37 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         const liveEnemy = gameState.sharedEnemies ? gameState.sharedEnemies[enemyId] : null;
         const enemyInfo = liveEnemy || (typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, targetX, targetY) : enemyData);
   
+        // --- 🚨 PERFORMANCE WIN: BATCHING LOGIC FOR AOE SPELLS ---
+        if (isBatched) {
+            let enemy = JSON.parse(JSON.stringify(enemyInfo));
+            enemy.health = Number(enemy.health);
+            if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+            
+            damageDealt = Math.max(1, finalDamage);
+            enemy.health -= damageDealt;
+            
+            let payload = {};
+            
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createExplosion(targetX, targetY, colorClass);
+                ParticleSystem.createFloatingText(targetX, targetY, `-${damageDealt}`, colorClass);
+            }
+
+            if (enemy.health <= 0) {
+                logMessage(`The ${enemyInfo.name} was vanquished!`);
+                if (typeof registerKill === 'function') registerKill(enemyInfo);
+                const lootData = { ...enemyData, isElite: enemyInfo.isElite };
+                const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(player, lootData) : '$';
+                if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(targetX, targetY, droppedLoot || '.');
+                
+                payload[EnemyNetworkManager.getPath(targetX, targetY, enemyId)] = null; // Mark for deletion
+            } else {
+                logMessage(`You hit the ${enemyInfo.name} for ${damageDealt} magic damage!`);
+                payload[EnemyNetworkManager.getPath(targetX, targetY, enemyId)] = enemy; // Update health
+            }
+            return { hit: true, payload: payload };
+        }
+
         try {
             // Wrap the spell transaction in a 3-second timeout
             const transactionResult = await window.withTimeout(
@@ -824,17 +864,25 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     }
                 }
 
-                const meteorPromises = []; 
+                // --- 🚨 REPLACE THE PROMISE LOOP WITH THIS ---
+                const batchedPayload = {}; 
+                
                 for (let y = my - spellData.radius; y <= my + spellData.radius; y++) {
                     for (let x = mx - spellData.radius; x <= mx + spellData.radius; x++) {
-                        meteorPromises.push(
-                            applySpellDamage(x, y, meteorDmg, spellId).then(hit => {
-                                if (hit) if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f97316');
-                            })
-                        );
+                        // Pass 'true' to trigger batch mode!
+                        const res = await applySpellDamage(x, y, meteorDmg, spellId, true);
+                        if (res && res.hit) {
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f97316');
+                            Object.assign(batchedPayload, res.payload);
+                        }
                     }
                 }
-                await Promise.all(meteorPromises); 
+                
+                // Send exactly ONE network request for the entire 5x5 blast radius!
+                if (Object.keys(batchedPayload).length > 0 && typeof rtdb !== 'undefined') {
+                    rtdb.ref().update(batchedPayload).catch(e => console.error("Meteor Batch Error:", e));
+                }
+                
                 hitSomething = true;
                 break;
             }
@@ -941,6 +989,8 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 // JUICE WIN: Cascading Chain Lightning Animation
                 // Wraps the execution in a timeout so the lightning visibly travels instead of hitting all at once
                 const lightningPromises = []; 
+                const batchedLightningPayload = {};
+                
                 for (let i = 0; i < jumpsToMake; i++) {
                     const jumpTgt = potentialJumpTargets[i];
                     const jumpDmg = Math.max(1, Math.floor(lightningDmg * 0.75));
@@ -948,14 +998,22 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     lightningPromises.push(
                         new Promise(resolve => {
                             setTimeout(async () => {
-                                const hit = await applySpellDamage(jumpTgt.x, jumpTgt.y, jumpDmg, spellId);
-                                if (hit && typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(jumpTgt.x, jumpTgt.y, '#93c5fd');
+                                const res = await applySpellDamage(jumpTgt.x, jumpTgt.y, jumpDmg, spellId, true);
+                                if (res && res.hit) {
+                                    Object.assign(batchedLightningPayload, res.payload);
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(jumpTgt.x, jumpTgt.y, '#93c5fd');
+                                }
                                 resolve();
                             }, i * 150); // 150ms delay per jump
                         })
                     );
                 }
                 await Promise.all(lightningPromises); 
+                
+                if (Object.keys(batchedLightningPayload).length > 0 && typeof rtdb !== 'undefined') {
+                    rtdb.ref().update(batchedLightningPayload).catch(e => console.error("Chain Lightning Batch Error:", e));
+                }
+                
                 break;
             }
         }
