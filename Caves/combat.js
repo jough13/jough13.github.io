@@ -337,10 +337,9 @@ async function wakeUpNearbyEnemies() {
 
 /**
  * Asynchronously runs the AI turns for shared maps.
- * Uses a Firebase RTDB Transaction to ensure only ONE client
- * runs the AI per interval. Includes logic to break stale locks.
+ * Uses Deterministic Host Election to ensure only ONE client runs the AI 
+ * without requiring ANY database writes!
  */
-
 async function runSharedAiTurns() {
     if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') return; 
 
@@ -1597,7 +1596,7 @@ async function runCompanionTurn() {
     }
 }
 
-async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage) { 
+async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage, isBatched = false) { 
     const player = gameState.player;
     const enemyId = `overworld:${newX},${-newY}`; 
     if (typeof rtdb === 'undefined') return;
@@ -1618,6 +1617,40 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
     
     // Ensure damage is a valid number to prevent NaN database corruption
     const safeDamage = (typeof playerDamage === 'number' && !isNaN(playerDamage)) ? playerDamage : 1;
+
+    // --- 🚨 ADD BATCHING LOGIC HERE ---
+    if (isBatched) {
+        let enemy = JSON.parse(JSON.stringify(enemyInfo));
+        enemy.health = Number(enemy.health);
+        if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+        enemy.health -= safeDamage;
+        
+        let payload = {};
+        
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createExplosion(newX, newY, '#ef4444');
+            ParticleSystem.createFloatingText(newX, newY, `-${safeDamage}`, '#fff');
+        }
+
+        if (enemy.health <= 0) {
+            logMessage(`The ${enemyInfo.name} was vanquished!`);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#ef4444', 15);
+            if (typeof grantXp === 'function') grantXp(enemyInfo.xp);
+            if (typeof updateQuestProgress === 'function') updateQuestProgress(newTile); 
+
+            if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
+
+            const lootData = { ...enemyData, isElite: enemyInfo.isElite };
+            const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(player, lootData) : '$';
+            chunkManager.setWorldTile(newX, newY, droppedLoot || '.', 2); 
+            gameState.mapDirty = true;
+            
+            payload[EnemyNetworkManager.getPath(newX, newY, enemyId)] = null; // Mark for deletion
+        } else {
+            payload[EnemyNetworkManager.getPath(newX, newY, enemyId)] = enemy; // Update health
+        }
+        return { hit: true, payload: payload };
+    }
 
     try {
         const doTransaction = () => enemyRef.transaction(currentData => {
@@ -1786,6 +1819,7 @@ function getPlayerDamageModifier(baseDamage) {
 function handlePlayerDeath() {
     if (window.inputQueue) window.inputQueue.length = 0; // Clear input queue to prevent ghost walking!
     
+    // --- 🚨 ADD THE DEATH LOCK HERE ---
     if (gameState.isDead) return false; 
     
     if (gameState.godMode) return false; 
@@ -1800,19 +1834,20 @@ function handlePlayerDeath() {
     }
 
     const player = gameState.player;
+
     player.health = 0; 
     
-    // --- Track Total Deaths ---
+    // --- METRICS WIN: Track Total Deaths ---
     if (!player.metrics) player.metrics = {};
     player.metrics.totalDeaths = (player.metrics.totalDeaths || 0) + 1;
     
-    // Death is now a terrifying audiovisual event
+    // JUICE WIN: Death is now a terrifying audiovisual event
     gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 }; // Fade to blood red
     if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playDeath === 'function') {
         AudioSystem.playDeath();
     }
     
-    // Random Atmospheric Death Quotes
+    // LORE WIN: Random Atmospheric Death Quotes
     const deathQuotes = [
         "The world fades to black...",
         "You feel your soul slipping away...",
@@ -2034,7 +2069,7 @@ async function executeThrowTNT(dirX, dirY) {
         
         if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.4, 200);
 
-        const explosionPromises = [];
+        const tntPayload = {};
 
         // 3. Detonate in a 3x3 Area
         for (let y = targetY - 1; y <= targetY + 1; y++) {
@@ -2042,11 +2077,11 @@ async function executeThrowTNT(dirX, dirY) {
                 
                 // A. Deal 30 Damage to any enemies caught in the blast
                 if (typeof applySpellDamage === 'function') {
-                    explosionPromises.push(
-                        applySpellDamage(x, y, 30, 'fireball').then(hit => {
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f97316', 5);
-                        })
-                    );
+                    const res = await applySpellDamage(x, y, 30, 'fireball', true);
+                    if (res && res.hit) {
+                        Object.assign(tntPayload, res.payload);
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f97316', 5);
+                    }
                 }
 
                 // B. Blow up Cracked Walls (🏚) to reveal rare gems and mithril!
@@ -2071,7 +2106,10 @@ async function executeThrowTNT(dirX, dirY) {
             }
         }
         
-        await Promise.all(explosionPromises);
+        // Push the entire explosion payload to Firebase instantly
+        if (Object.keys(tntPayload).length > 0 && typeof rtdb !== 'undefined') {
+            rtdb.ref().update(tntPayload).catch(e => console.error("TNT Batch Error:", e));
+        }
         
         // Finalize Turn
         gameState.isAiming = false;
