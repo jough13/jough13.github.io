@@ -553,7 +553,7 @@ function grantLoreDiscovery(mapTileId, codexEntryId = null) {
     });
 }
 
-// --- FULLY CLEANED RESTART LOGIC ---
+// --- RESTART LOGIC ---
 async function restartGame() {
     const currentBg = gameState.player.background;
 
@@ -584,13 +584,16 @@ async function restartGame() {
     gameState.currentRealm = 0;
     gameState.realmMutators = [];
 
+    // --- RELEASE THE DEATH LOCK ---
+    gameState.isDead = false;
+
     // Clear exploration arrays for new run
     gameState.discoveredRegions.clear();
     gameState.exploredChunks.clear();
     gameState.lootedTiles.clear(); 
     gameState.player.discoveredPOIs = [];
 
-    // FIX: Ensure the database explicitly receives the realm reset
+    // Ensure the database explicitly receives the realm reset
     const resetPayload = {
         ...defaultState,
         currentRealm: 0,
@@ -2530,6 +2533,9 @@ async function enterGame(playerData) {
     // 2. Handle Permadeath / Respawn Logic
     if (playerData.health <= 0) {
         logMessage("You have respawned at the village.");
+
+        gameState.isDead = false;
+        
         const defaultState = createDefaultPlayerState();
         const preservedStats = {
             background: playerData.background,
