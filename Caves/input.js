@@ -72,6 +72,10 @@ function handleInput(key) {
     if (typeof isProcessingMove !== 'undefined' && isProcessingMove) {
         return;
     }
+    
+    if (typeof isBackupOperationRunning !== 'undefined' && isBackupOperationRunning) {
+        return; // Ignore absolutely all keyboard input while rebuilding the DB
+    }
 
     // 2. Audio Context Resume (Browser Policy)
     if (typeof AudioSystem !== 'undefined' && AudioSystem._ctx && AudioSystem._ctx.state === 'suspended') {
