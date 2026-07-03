@@ -237,7 +237,7 @@ async function createCloudBackup(slotId = 'latest') {
 async function restoreCloudBackup(slotId = 'latest') {
     if (!playerRef || isBackupOperationRunning) return;
 
-    // LORE & QoL WIN: Hard confirmation prompt styled around reality manipulation
+    // Hard confirmation prompt styled around reality manipulation
     const confirmation = prompt("⚠️ WARNING: This will collapse your current reality and overwrite it with the anchored timeline.\n\nType RESTORE to confirm:");
     if (confirmation !== "RESTORE") {
         logMessage("{gray:Timeline collapse cancelled.}");
@@ -247,14 +247,24 @@ async function restoreCloudBackup(slotId = 'latest') {
 
     isBackupOperationRunning = true;
 
-    // JUICE WIN: Dynamic Button States
+    // Inject a massive un-clickable overlay to prevent all mouse interactions
+    const blocker = document.createElement('div');
+    blocker.id = 'restoreBlocker';
+    blocker.className = 'fixed inset-0 z-[999999] cursor-wait bg-black bg-opacity-70 flex flex-col items-center justify-center backdrop-blur-sm';
+    blocker.innerHTML = `
+        <div class="text-purple-400 font-bold text-3xl animate-pulse font-mono tracking-widest" style="text-shadow: 0 0 20px #a855f7;">REWEAVING TIMELINE...</div>
+        <div class="text-red-400 font-bold text-sm mt-4 tracking-widest">⚠️ DO NOT CLOSE THE BROWSER ⚠️</div>
+    `;
+    document.body.appendChild(blocker);
+
+    // Dynamic Button States
     const btn = document.getElementById('btnRestore');
     const originalText = btn ? btn.innerHTML : "↺ Reweave Fate";
     if (btn) {
         btn.disabled = true;
         btn.classList.add('opacity-75', 'cursor-wait', 'animate-pulse');
         
-        // LORE WIN: Added "Purging Alternate Futures" to match the new subcollection deletion phase!
+        // Added "Purging Alternate Futures" to match the new subcollection deletion phase!
         const phases = ["⏳ Searching the Void...", "⏳ Extracting Anchor...", "⏳ Purging Alternate Futures...", "⏳ Reweaving Leylines..."];
         let pIdx = 0;
         btn.innerHTML = phases[0];
@@ -466,8 +476,12 @@ async function restoreCloudBackup(slotId = 'latest') {
         logMessage("{red:Timeline Restore failed.} The Weavers reject this thread. Check console.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     } finally {
+        
         // Reset Button State and Lock
-        isBackupOperationRunning = false;
+        // REMOVE THE UI BLOCKER HERE ---
+        const existingBlocker = document.getElementById('restoreBlocker');
+        if (existingBlocker) existingBlocker.remove();
+
         if (backupTextInterval) {
             clearInterval(backupTextInterval);
             backupTextInterval = null;
