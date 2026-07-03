@@ -14,273 +14,281 @@ async function useSkill(skillId) {
         const player = gameState.player;
         const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[skillId] : null;
 
-    if (!skillData) {
-        logMessage("{red:Unknown skill. (No skill data found)}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    if (player.cooldowns && player.cooldowns[skillId] > 0) {
-        logMessage(`{gray:That skill is not ready yet (${player.cooldowns[skillId]} turns).}`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    const skillLevel = player.skillbook[skillId] || 0; 
-
-    // Ranged attack is an innate skill granted by equipping a bow, no level needed
-    if (skillLevel === 0 && skillId !== 'ranged_attack') {
-        logMessage("{gray:You don't know that skill.}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    // --- 1. Check Player Level Requirement ---
-    if (player.level < skillData.requiredLevel) {
-        logMessage(`{red:You must be Level ${skillData.requiredLevel} to use this skill.}`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    // --- 2. Check Resource Cost ---
-    const cost = skillData.cost;
-    const costType = skillData.costType; 
-
-    if (player[costType] < cost) {
-        logMessage(`{red:You don't have enough ${costType} to use that.}`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        
-        // JUICE & PERFORMANCE: Cached DOM lookup for flashing
-        const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[costType] : document.getElementById(`${costType}Display`);
-        if (displayEl && typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false);
-        return; 
-    }
-
-    // --- ROBUSTNESS WIN: Hotbar Weapon Verification via Tags ---
-    const wpn = player.equipment.weapon || {};
-    const wpnTags = wpn.tags || [];
-    
-    if (skillId === 'deflect' && !wpnTags.includes('blade')) {
-        logMessage("{red:You must equip a bladed weapon to use Deflect.}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-    if (skillId === 'channel' && !wpnTags.includes('staff')) {
-        logMessage("{red:You must equip a Staff to use Channel.}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    // --- 3. Handle Targeting ---
-    if (skillData.target === 'aimed') {
-        // --- Aimed Skills (e.g., Lunge) ---
-        // Cost is checked, but *not* deducted. execute functions will deduct it.
-        gameState.isAiming = true;
-        gameState.abilityToAim = skillId; 
-        
-        const skillModal = document.getElementById('skillModal');
-        if (skillModal) skillModal.classList.add('hidden');
-        
-        logMessage(`{yellow:${skillData.name}: Press an arrow key or WASD to use. (Esc) to cancel.}`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
-        return; 
-
-    } else if (skillData.target === 'self') {
-        // --- Self-Cast Skills (e.g., Brace) ---
-        player[costType] -= cost; 
-        let skillUsedSuccessfully = false;
-
-        // --- 4. Execute Skill Effect ---
-        switch (skillId) {
-            case 'brace': {
-                if (player.defenseBonusTurns > 0) {
-                    logMessage("{gray:You are already bracing!}");
-                    break;
-                }
-                const defenseBonus = Math.floor(skillData.baseDefense + (player.constitution * 0.5 * skillLevel));
-                player.defenseBonus = defenseBonus;
-                player.defenseBonusTurns = skillData.duration;
-
-                logMessage(`{gray:You brace for impact, gaining +${defenseBonus} Defense!}`);
-
-                if (typeof playerRef !== 'undefined') {
-                    playerRef.update({
-                        defenseBonus: player.defenseBonus,
-                        defenseBonusTurns: player.defenseBonusTurns
-                    });
-                }
-                
-                if (typeof ParticleSystem !== 'undefined') {
-                    ParticleSystem.createFloatingText(player.x, player.y, "🛡️", "#9ca3af");
-                }
-                
-                skillUsedSuccessfully = true;
-                break;
-            }
-            case 'channel': {
-                let manaGain = 5 + (player.wits * 2);
-                
-                // --- EXPANSION WIN: Archmage Synergy ---
-                if (player.talents && player.talents.includes('mana_flow')) {
-                    manaGain += 5;
-                    logMessage("{purple:Your Mana Flow talent deepens the channel!}");
-                }
-                
-                player.mana = Math.min(player.maxMana, player.mana + manaGain);
-                logMessage(`{blue:You channel energy... +${manaGain} Mana.}`);
-                
-                if (typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+${manaGain}`, '#3b82f6');
-                
-                skillUsedSuccessfully = true;
-                break;
-            }
-            case 'deflect': {
-                player.thornsValue = 100; // Reflect huge damage
-                player.thornsTurns = 1;   // Only for the very next turn/hit
-                logMessage("{gray:You raise your blade, ready to deflect the next blow.}");
-                
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
-                if (typeof ParticleSystem !== 'undefined') {
-                    ParticleSystem.createFloatingText(player.x, player.y, "STANCE", "#9ca3af");
-                    // JUICE WIN: Glowing blue aura indicates the stance is active
-                    for(let i = 0; i < 8; i++) {
-                        const angle = (Math.PI / 4) * i;
-                        ParticleSystem.spawn(player.x + Math.cos(angle) * 1.2, player.y + Math.sin(angle) * 1.2, '#93c5fd', 'dust', '', 4);
-                    }
-                }
-                
-                skillUsedSuccessfully = true;
-                break;
-            }
-            case 'vanish': {
-                player.stealthTurns = skillData.duration;
-                logMessage("{gray:You throw a smoke bomb and vanish from sight!}");
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 20);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.3, 0.1, 800);
-                if (typeof playerRef !== 'undefined') playerRef.update({ stealthTurns: player.stealthTurns });
-                skillUsedSuccessfully = true;
-                break;
-            }
-            case 'stealth': {
-                player.stealthTurns = skillData.duration;
-                logMessage("{gray:You fade into the shadows... (Invisible)}");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 400);
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#374151', 10);
-                if (typeof playerRef !== 'undefined') playerRef.update({ stealthTurns: player.stealthTurns });
-                skillUsedSuccessfully = true;
-                break;
-            }
-            case 'adrenaline': {
-                const stamGain = 10;
-                player.stamina = Math.min(player.maxStamina, player.stamina + stamGain);
-                logMessage(`{green:You push past the pain! (+10 Stamina)}`);
-                if (typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal(); 
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+10`, '#facc15');
-                skillUsedSuccessfully = true;
-                break;
-            }
-            case 'whirlwind': {
-                let baseDmg = (player.strength + player.dexterity) * skillLevel;
-                
-                // --- LORE & EXPANSION WIN: Two-Handed Whirlwind Synergy ---
-                if (player.equipment.weapon && player.equipment.weapon.isTwoHanded) {
-                    baseDmg = Math.floor(baseDmg * 1.5);
-                    logMessage("{orange:Your massive two-handed weapon creates a devastating sweep!}");
-                } else {
-                    logMessage("{red:You spin in a deadly vortex!}");
-                }
-                
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy');
-                gameState.screenShake = 15; // JUICE: Heavy screen shake
-                
-                // JUICE: Radial particle burst
-                if (typeof ParticleSystem !== 'undefined') {
-                    for (let i = 0; i < 8; i++) {
-                        const angle = (Math.PI / 4) * i;
-                        const pColor = (player.equipment.weapon && player.equipment.weapon.isTwoHanded) ? '#f97316' : '#d4d4d8';
-                        ParticleSystem.spawn(player.x + Math.cos(angle)*1.5, player.y + Math.sin(angle)*1.5, pColor, 'dust', '', 5);
-                    }
-                }
-
-                // Create an array to hold all the async combat promises
-                const whirlwindPromises = [];
-
-                for (let y = -1; y <= 1; y++) {
-                    for (let x = -1; x <= 1; x++) {
-                        if (x === 0 && y === 0) continue; 
-                        const tx = player.x + x;
-                        const ty = player.y + y;
-
-                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                            const enemyId = `overworld:${tx},${-ty}`;
-                            const liveEnemy = gameState.sharedEnemies[enemyId];
-                            const tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(tx, ty);
-                            
-                            const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
-                            if (enemyData) {
-                                const finalDmg = Math.max(1, baseDmg - (enemyData.defense || 0));
-                                if (typeof handleOverworldCombat === 'function') {
-                                    whirlwindPromises.push(handleOverworldCombat(tx, ty, enemyData, tile, finalDmg));
-                                }
-                            }
-                        } else {
-                            let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
-                            if (enemy) {
-                                enemy.health = Number(enemy.health);
-                                if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
-
-                                const finalDmg = Math.max(1, baseDmg - (enemy.defense || 0));
-                                enemy.health -= finalDmg;
-                                logMessage(`Whirlwind hits ${enemy.name} for {red:${finalDmg}}!`);
-                                
-                                if (typeof ParticleSystem !== 'undefined') {
-                                    ParticleSystem.createExplosion(tx, ty, '#ef4444', 3); // Blood spray
-                                    ParticleSystem.createFloatingText(tx, ty, `-${finalDmg}`, '#ef4444');
-                                }
-
-                                if (enemy.health <= 0) {
-                                    logMessage(`You defeated ${enemy.name}!`);
-                                    if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, tx, ty);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (whirlwindPromises.length > 0) {
-                    await Promise.all(whirlwindPromises).catch(e => console.error("Whirlwind Sync Error:", e));
-                } else if (gameState.mapMode === 'overworld') {
-                    logMessage("{gray:You whirl through empty air.}");
-                }
-
-                skillUsedSuccessfully = true;
-                break;
-            }
+        if (!skillData) {
+            logMessage("{red:Unknown skill. (No skill data found)}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
         }
 
-        // --- 5. Finalize Self-Cast Turn ---
-        if (skillUsedSuccessfully) {
-            if (typeof playerRef !== 'undefined') playerRef.update({ [costType]: player[costType] }); 
-            if (typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays.stamina, false); 
+        if (player.cooldowns && player.cooldowns[skillId] > 0) {
+            logMessage(`{gray:That skill is not ready yet (${player.cooldowns[skillId]} turns).}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        const skillLevel = player.skillbook[skillId] || 0; 
+
+        // Ranged attack is an innate skill granted by equipping a bow, no level needed
+        if (skillLevel === 0 && skillId !== 'ranged_attack') {
+            logMessage("{gray:You don't know that skill.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        // --- 1. Check Player Level Requirement ---
+        if (player.level < skillData.requiredLevel) {
+            logMessage(`{red:You must be Level ${skillData.requiredLevel} to use this skill.}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        // --- 2. Check Resource Cost ---
+        const cost = skillData.cost;
+        const costType = skillData.costType; 
+
+        if (player[costType] < cost) {
+            logMessage(`{red:You don't have enough ${costType} to use that.}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            
+            // JUICE & PERFORMANCE: Cached DOM lookup for flashing
+            const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[costType] : document.getElementById(`${costType}Display`);
+            if (displayEl && typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false);
+            return; 
+        }
+
+        // --- ROBUSTNESS WIN: Hotbar Weapon Verification via Tags ---
+        const wpn = player.equipment.weapon || {};
+        const wpnTags = wpn.tags || [];
+        
+        if (skillId === 'deflect' && !wpnTags.includes('blade')) {
+            logMessage("{red:You must equip a bladed weapon to use Deflect.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+        if (skillId === 'channel' && !wpnTags.includes('staff')) {
+            logMessage("{red:You must equip a Staff to use Channel.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        // --- 3. Handle Targeting ---
+        if (skillData.target === 'aimed') {
+            // --- Aimed Skills (e.g., Lunge) ---
+            // Cost is checked, but *not* deducted. execute functions will deduct it.
+            gameState.isAiming = true;
+            gameState.abilityToAim = skillId; 
             
             const skillModal = document.getElementById('skillModal');
             if (skillModal) skillModal.classList.add('hidden');
             
-            triggerAbilityCooldown(skillId);
-            if (typeof endPlayerTurn === 'function') endPlayerTurn();
-            if (typeof renderEquipment === 'function') renderEquipment(); 
-        } else {
-            // Refund stamina if skill failed 
-            player[costType] += cost;
-            // Flash the bar red to show it failed
-            const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[costType] : document.getElementById(`${costType}Display`);
-            if (displayEl && typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false); 
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            logMessage(`{yellow:${skillData.name}: Press an arrow key or WASD to use. (Esc) to cancel.}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
+            return; 
+
+        } else if (skillData.target === 'self') {
+            // --- Self-Cast Skills (e.g., Brace) ---
+            player[costType] -= cost; 
+            let skillUsedSuccessfully = false;
+
+            // --- 4. Execute Skill Effect ---
+            switch (skillId) {
+                case 'brace': {
+                    if (player.defenseBonusTurns > 0) {
+                        logMessage("{gray:You are already bracing!}");
+                        break;
+                    }
+                    const defenseBonus = Math.floor(skillData.baseDefense + (player.constitution * 0.5 * skillLevel));
+                    player.defenseBonus = defenseBonus;
+                    player.defenseBonusTurns = skillData.duration;
+
+                    logMessage(`{gray:You brace for impact, gaining +${defenseBonus} Defense!}`);
+
+                    if (typeof playerRef !== 'undefined') {
+                        playerRef.update({
+                            defenseBonus: player.defenseBonus,
+                            defenseBonusTurns: player.defenseBonusTurns
+                        });
+                    }
+                    
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createFloatingText(player.x, player.y, "🛡️", "#9ca3af");
+                    }
+                    
+                    skillUsedSuccessfully = true;
+                    break;
+                }
+                case 'channel': {
+                    let manaGain = 5 + (player.wits * 2);
+                    
+                    // --- EXPANSION WIN: Archmage Synergy ---
+                    if (player.talents && player.talents.includes('mana_flow')) {
+                        manaGain += 5;
+                        logMessage("{purple:Your Mana Flow talent deepens the channel!}");
+                    }
+                    
+                    player.mana = Math.min(player.maxMana, player.mana + manaGain);
+                    logMessage(`{blue:You channel energy... +${manaGain} Mana.}`);
+                    
+                    if (typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+${manaGain}`, '#3b82f6');
+                    
+                    skillUsedSuccessfully = true;
+                    break;
+                }
+                case 'deflect': {
+                    player.thornsValue = 100; // Reflect huge damage
+                    player.thornsTurns = 1;   // Only for the very next turn/hit
+                    logMessage("{gray:You raise your blade, ready to deflect the next blow.}");
+                    
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('light');
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createFloatingText(player.x, player.y, "STANCE", "#9ca3af");
+                        // JUICE WIN: Glowing blue aura indicates the stance is active
+                        for(let i = 0; i < 8; i++) {
+                            const angle = (Math.PI / 4) * i;
+                            ParticleSystem.spawn(player.x + Math.cos(angle) * 1.2, player.y + Math.sin(angle) * 1.2, '#93c5fd', 'dust', '', 4);
+                        }
+                    }
+                    
+                    skillUsedSuccessfully = true;
+                    break;
+                }
+                case 'vanish': {
+                    player.stealthTurns = skillData.duration;
+                    logMessage("{gray:You throw a smoke bomb and vanish from sight!}");
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 20);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.3, 0.1, 800);
+                    if (typeof playerRef !== 'undefined') playerRef.update({ stealthTurns: player.stealthTurns });
+                    skillUsedSuccessfully = true;
+                    break;
+                }
+                case 'stealth': {
+                    player.stealthTurns = skillData.duration;
+                    logMessage("{gray:You fade into the shadows... (Invisible)}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 400);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#374151', 10);
+                    if (typeof playerRef !== 'undefined') playerRef.update({ stealthTurns: player.stealthTurns });
+                    skillUsedSuccessfully = true;
+                    break;
+                }
+                case 'adrenaline': {
+                    const stamGain = 10;
+                    player.stamina = Math.min(player.maxStamina, player.stamina + stamGain);
+                    logMessage(`{green:You push past the pain! (+10 Stamina)}`);
+                    if (typeof statDisplays !== 'undefined') triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal(); 
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+10`, '#facc15');
+                    skillUsedSuccessfully = true;
+                    break;
+                }
+                case 'whirlwind': {
+                    let baseDmg = (player.strength + player.dexterity) * skillLevel;
+                    
+                    // --- LORE & EXPANSION WIN: Two-Handed Whirlwind Synergy ---
+                    if (player.equipment.weapon && player.equipment.weapon.isTwoHanded) {
+                        baseDmg = Math.floor(baseDmg * 1.5);
+                        logMessage("{orange:Your massive two-handed weapon creates a devastating sweep!}");
+                    } else {
+                        logMessage("{red:You spin in a deadly vortex!}");
+                    }
+                    
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy');
+                    gameState.screenShake = 15; // JUICE: Heavy screen shake
+                    
+                    // JUICE: Radial particle burst
+                    if (typeof ParticleSystem !== 'undefined') {
+                        for (let i = 0; i < 8; i++) {
+                            const angle = (Math.PI / 4) * i;
+                            const pColor = (player.equipment.weapon && player.equipment.weapon.isTwoHanded) ? '#f97316' : '#d4d4d8';
+                            ParticleSystem.spawn(player.x + Math.cos(angle)*1.5, player.y + Math.sin(angle)*1.5, pColor, 'dust', '', 5);
+                        }
+                    }
+
+                    // --- 🚨 PERFORMANCE WIN: AOE BATCHING ---
+                    const whirlwindBatchedPayload = {};
+                    let hitSomething = false;
+
+                    for (let y = -1; y <= 1; y++) {
+                        for (let x = -1; x <= 1; x++) {
+                            if (x === 0 && y === 0) continue; 
+                            const tx = player.x + x;
+                            const ty = player.y + y;
+
+                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                                const enemyId = `overworld:${tx},${-ty}`;
+                                const liveEnemy = gameState.sharedEnemies[enemyId];
+                                const tile = liveEnemy ? liveEnemy.tile : chunkManager.getTile(tx, ty);
+                                
+                                const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
+                                if (enemyData) {
+                                    const finalDmg = Math.max(1, baseDmg - (enemyData.defense || 0));
+                                    if (typeof handleOverworldCombat === 'function') {
+                                        // Await the response and pass `true` to trigger Batch Mode
+                                        const res = await handleOverworldCombat(tx, ty, enemyData, tile, finalDmg, true);
+                                        if (res && res.hit) {
+                                            Object.assign(whirlwindBatchedPayload, res.payload);
+                                            hitSomething = true;
+                                        }
+                                    }
+                                }
+                            } else {
+                                let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
+                                if (enemy) {
+                                    enemy.health = Number(enemy.health);
+                                    if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
+
+                                    const finalDmg = Math.max(1, baseDmg - (enemy.defense || 0));
+                                    enemy.health -= finalDmg;
+                                    logMessage(`Whirlwind hits ${enemy.name} for {red:${finalDmg}}!`);
+                                    
+                                    if (typeof ParticleSystem !== 'undefined') {
+                                        ParticleSystem.createExplosion(tx, ty, '#ef4444', 3); // Blood spray
+                                        ParticleSystem.createFloatingText(tx, ty, `-${finalDmg}`, '#ef4444');
+                                    }
+
+                                    if (enemy.health <= 0) {
+                                        logMessage(`You defeated ${enemy.name}!`);
+                                        if (typeof handleInstancedEnemyDeath === 'function') handleInstancedEnemyDeath(enemy, tx, ty);
+                                    }
+                                    hitSomething = true;
+                                }
+                            }
+                        }
+                    }
+
+                    // Send exactly ONE network request for the entire Whirlwind burst!
+                    if (Object.keys(whirlwindBatchedPayload).length > 0 && typeof rtdb !== 'undefined') {
+                        rtdb.ref().update(whirlwindBatchedPayload).catch(e => console.error("Whirlwind Sync Error:", e));
+                    } else if (gameState.mapMode === 'overworld' && !hitSomething) {
+                        logMessage("{gray:You whirl through empty air.}");
+                    }
+
+                    skillUsedSuccessfully = true;
+                    break;
+                }
+            }
+
+            // --- 5. Finalize Self-Cast Turn ---
+            if (skillUsedSuccessfully) {
+                if (typeof playerRef !== 'undefined') playerRef.update({ [costType]: player[costType] }); 
+                if (typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays.stamina, false); 
+                
+                const skillModal = document.getElementById('skillModal');
+                if (skillModal) skillModal.classList.add('hidden');
+                
+                triggerAbilityCooldown(skillId);
+                if (typeof endPlayerTurn === 'function') endPlayerTurn();
+                if (typeof renderEquipment === 'function') renderEquipment(); 
+            } else {
+                // Refund stamina if skill failed 
+                player[costType] += cost;
+                // Flash the bar red to show it failed
+                const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[costType] : document.getElementById(`${costType}Display`);
+                if (displayEl && typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false); 
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            }
         }
-    }
     } finally {
         isProcessingMove = false;
     }
@@ -355,7 +363,8 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
             }
         }
 
-        const combatPromises = [];
+        // --- 🚨 PERFORMANCE WIN: AOE BATCHING FOR MELEE SKILLS ---
+        const meleeBatchedPayload = {};
 
         for (const coords of enemiesToHit) {
             let tile;
@@ -399,7 +408,11 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                     logMessage(`You hit the ${enemyInfo.name} for {red:${mitigatedDmg}} damage!`);
                     
                     if (typeof handleOverworldCombat === 'function') {
-                        combatPromises.push(handleOverworldCombat(coords.x, coords.y, enemyData, tile, mitigatedDmg));
+                        // Pass 'true' to trigger batching mode
+                        const res = await handleOverworldCombat(coords.x, coords.y, enemyData, tile, mitigatedDmg, true);
+                        if (res && res.hit) {
+                            Object.assign(meleeBatchedPayload, res.payload);
+                        }
                     }
                 } else {
                     let enemy = gameState.instancedEnemies.find(e => e.x === coords.x && e.y === coords.y);
@@ -446,9 +459,9 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
             }
         }
 
-        // Await all overworld combats concurrently
-        if (combatPromises.length > 0) {
-            await Promise.all(combatPromises);
+        // Dispatch all targets hit by Cleave in one network call!
+        if (Object.keys(meleeBatchedPayload).length > 0 && typeof rtdb !== 'undefined') {
+            rtdb.ref().update(meleeBatchedPayload).catch(e => console.error("Melee Batch Error:", e));
         }
 
         if (!hit) {
@@ -1354,19 +1367,19 @@ async function executeThrowTNT(dirX, dirY) {
         
         if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.4, 200);
 
-        const explosionPromises = [];
+        const tntPayload = {};
 
         // 3. Detonate in a 3x3 Area
         for (let y = targetY - 1; y <= targetY + 1; y++) {
             for (let x = targetX - 1; x <= targetX + 1; x++) {
                 
-                // A. Deal 30 Damage to any enemies caught in the blast
+                // A. Deal 30 Damage to any enemies caught in the blast (Batched!)
                 if (typeof applySpellDamage === 'function') {
-                    explosionPromises.push(
-                        applySpellDamage(x, y, 30, 'fireball').then(hit => {
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f97316', 5);
-                        })
-                    );
+                    const res = await applySpellDamage(x, y, 30, 'fireball', true);
+                    if (res && res.hit) {
+                        Object.assign(tntPayload, res.payload);
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f97316', 5);
+                    }
                 }
 
                 // B. Blow up Cracked Walls (🏚) to reveal rare gems and mithril!
@@ -1391,7 +1404,10 @@ async function executeThrowTNT(dirX, dirY) {
             }
         }
         
-        await Promise.all(explosionPromises);
+        // Push the entire explosion payload to Firebase instantly
+        if (Object.keys(tntPayload).length > 0 && typeof rtdb !== 'undefined') {
+            rtdb.ref().update(tntPayload).catch(e => console.error("TNT Batch Error:", e));
+        }
         
         // Finalize Turn
         gameState.isAiming = false;
@@ -1432,7 +1448,7 @@ function triggerAbilityCooldown(abilityId) {
         gameState.player.cooldowns[abilityId] = cd;
 
         // Update Database
-        if (typeof playerRef !== 'undefined') {
+        if (typeof playerRef !== 'undefined' && playerRef) {
             playerRef.update({ cooldowns: gameState.player.cooldowns });
         }
 
