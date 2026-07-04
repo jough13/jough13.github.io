@@ -4,7 +4,7 @@
 // CRAFTING & COOKING SYSTEM
 // ==========================================
 
-// PERFORMANCE WIN: O(1) Item Lookup Cache for Crafting
+// O(1) Item Lookup Cache for Crafting
 const _craftItemKeyCache = {};
 function getCraftItemKey(name) {
     if (_craftItemKeyCache[name]) return _craftItemKeyCache[name];
@@ -14,10 +14,7 @@ function getCraftItemKey(name) {
     return key;
 }
 
-// Cache the Regex used for stripping color tags so it doesn't recompile in loops!
-const COLOR_TAG_REGEX = /\{[a-zA-Z]+:(.*?)\}/ig;
-
-// EXPANDABILITY WIN: Dynamic Recipe Book Router
+// Dynamic Recipe Book Router
 // Easily add Alchemy, Fletching, or Tinkering stations without changing core logic!
 function getRecipeBook(mode) {
     if (mode === 'cooking') return typeof COOKING_RECIPES !== 'undefined' ? COOKING_RECIPES : {};
@@ -144,71 +141,62 @@ function handleCraftItem(recipeName, requestBatch = false) {
         const levelDiff = playerCraftLevel - recipe.level;
         const masterworkChance = 0.10 + (levelDiff * 0.05);
         let isMasterwork = false;
-        
-        let craftedName = itemTemplate.name;
-        let craftedStats = itemTemplate.statBonuses ? { ...itemTemplate.statBonuses } : {};
-        let finalDamage = itemTemplate.damage || null;
-        let finalDefense = itemTemplate.defense || null;
-        let finalDesc = itemTemplate.description || "";
-
         let craftYield = recipe.yield || 1; 
+
+        // 🚨 PERFORMANCE & BUG FIX WIN: Deep clone the template safely so we don't accidentally
+        // permanently mutate the global ITEM_DATA dictionary when we apply masterwork buffs!
+        let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(itemTemplate) : JSON.parse(JSON.stringify(itemTemplate));
+        
+        // Ensure templateId and tile are explicitly set for Firebase re-hydration
+        newItem.templateId = outputItemKey;
+        newItem.tile = itemTemplate.tile || outputItemKey || '?';
+        newItem.quantity = craftYield;
+        newItem.isEquipped = false;
 
         if (!isCooking && (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') && Math.random() < masterworkChance) {
             isMasterwork = true;
-            craftYield = 1; 
-            craftedName = `Masterwork ${itemTemplate.name}`;
+            newItem.quantity = 1; 
+            newItem.name = `Masterwork ${itemTemplate.name}`;
+            newItem._rarity = 'rare'; // Glow border
             
             // LORE WIN: Masterwork Engravings
-            finalDesc += `\n{purple:Forged with exceptional skill by ${player.name}.}`;
+            newItem.description = (newItem.description || "") + `\n{purple:Forged with exceptional skill by ${player.name}.}`;
 
+            if (!newItem.statBonuses) newItem.statBonuses = {};
             const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
             const randomStat = stats[Math.floor(Math.random() * stats.length)];
-            craftedStats[randomStat] = (craftedStats[randomStat] || 0) + 1;
+            newItem.statBonuses[randomStat] = (newItem.statBonuses[randomStat] || 0) + 1;
 
-            if (itemTemplate.type === 'weapon') finalDamage = (finalDamage || 0) + 1;
-            if (itemTemplate.type === 'armor') finalDefense = (finalDefense || 0) + 1;
+            if (newItem.type === 'weapon') newItem.damage = (newItem.damage || 0) + 1;
+            if (newItem.type === 'armor') newItem.defense = (newItem.defense || 0) + 1;
         }
 
         if (isCooking && Math.random() < 0.10 + (player.luck * 0.02)) {
             culinaryCrits++;
-            craftYield += 1; 
+            newItem.quantity += 1; 
         }
 
         // Tally outputs for accurate UI logging
-        outputTracker[craftedName] = (outputTracker[craftedName] || 0) + craftYield;
+        outputTracker[newItem.name] = (outputTracker[newItem.name] || 0) + newItem.quantity;
 
-        const curStack = player.inventory.find(item => item.name === craftedName && !item.isEquipped);
+        const curStack = player.inventory.find(item => item.name === newItem.name && !item.isEquipped);
 
-        if (curStack && isStackable) {
-            curStack.quantity += craftYield; 
+        if (curStack && isStackable && !isMasterwork) {
+            curStack.quantity += newItem.quantity; 
         } else {
-            if (player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9)) {
-                player.inventory.push({
-                    templateId: outputItemKey,
-                    name: craftedName,
-                    type: itemTemplate.type,
-                    quantity: craftYield,
-                    tile: outputItemKey || '?',
-                    damage: finalDamage, 
-                    defense: finalDefense,
-                    slot: itemTemplate.slot || null,
-                    statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null,
-                    description: finalDesc,
-                    effect: itemTemplate.effect || null,
-                    isEquipped: false,
-                    tags: itemTemplate.tags ? [...itemTemplate.tags] : null,
-                    _rarity: isMasterwork ? 'rare' : null 
-                });
+            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+            if (player.inventory.length < invCap) {
+                player.inventory.push(newItem);
             } else {
                 // Failsafe drops to floor
-                const dropTile = itemTemplate.tile || '🎒';
-                logMessage(`{red:Your pack is full! The ${craftedName} drops to the floor.}`);
+                const safeName = typeof escapeHtml === 'function' ? escapeHtml(newItem.name) : newItem.name;
+                logMessage(`{red:Your pack is full! The ${safeName} drops to the floor.}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
                 
                 if (typeof chunkManager !== 'undefined') {
-                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, dropTile, 2); 
-                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = dropTile;
-                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = dropTile;
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, newItem.tile, 2); 
+                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = newItem.tile;
+                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = newItem.tile;
                 }
                 gameState.mapDirty = true;
             }
@@ -219,11 +207,12 @@ function handleCraftItem(recipeName, requestBatch = false) {
     let totalYield = 0;
     Object.entries(outputTracker).forEach(([name, count]) => {
         totalYield += count;
+        const safeName = typeof escapeHtml === 'function' ? escapeHtml(name) : name;
         if (name.includes("Masterwork")) {
-            logMessage(`{purple:Masterwork Success! You forged: ${name} (x${count})}`);
+            logMessage(`{purple:Masterwork Success! You forged: ${safeName} (x${count})}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
         } else {
-            logMessage(`You ${isCooking ? 'cooked' : 'crafted'}: ${name} (x${count}).`);
+            logMessage(`You ${isCooking ? 'cooked' : 'crafted'}: ${safeName} (x${count}).`);
         }
     });
 
@@ -357,10 +346,10 @@ function renderCraftingModal() {
         let displayTile = outputItemKey || '?';
         let baseDescription = itemTemplate.description || "A crafted item.";
         
-        if (typeof stripColorTags === 'function') {
+        if (typeof formatMenuText === 'function') {
+            baseDescription = formatMenuText(baseDescription);
+        } else if (typeof stripColorTags === 'function') {
             baseDescription = stripColorTags(baseDescription);
-        } else {
-            baseDescription = baseDescription.replace(COLOR_TAG_REGEX, '$1'); 
         }
 
         if (isObscured && gameState.currentCraftingMode === 'workbench') {
@@ -368,6 +357,9 @@ function renderCraftingModal() {
             displayTile = '❓';
             baseDescription = "The diagrams are too complex for your current skill level. Keep practicing.";
         }
+
+        // SECURITY WIN: Escape user-facing variables
+        const safeDisplayName = typeof escapeHtml === 'function' ? escapeHtml(displayName) : displayName;
 
         // Materials & Tools HTML Generation
         let matHtmlParts = ['<ul class="crafting-item-materials mt-2 flex flex-wrap gap-2">'];
@@ -377,10 +369,12 @@ function renderCraftingModal() {
             const currentQuantity = availableMats[materialName] || 0;
             const quantityClass = currentQuantity < requiredQuantity ? 'text-red-400 font-bold border-red-900 bg-red-900 bg-opacity-20' : 'text-gray-300 border-gray-700 bg-black bg-opacity-30';
             
+            const safeMatName = typeof escapeHtml === 'function' ? escapeHtml(materialName) : materialName;
+            
             if (isObscured) {
                 matHtmlParts.push(`<li class="text-[10px] px-2 py-0.5 rounded border border-gray-700 bg-black bg-opacity-30 text-gray-500 shadow-inner">???</li>`);
             } else {
-                matHtmlParts.push(`<li class="text-[10px] px-2 py-0.5 rounded border ${quantityClass} shadow-inner">${materialName} (${currentQuantity}/${requiredQuantity})</li>`);
+                matHtmlParts.push(`<li class="text-[10px] px-2 py-0.5 rounded border ${quantityClass} shadow-inner">${safeMatName} (${currentQuantity}/${requiredQuantity})</li>`);
             }
         }
         
@@ -388,7 +382,8 @@ function renderCraftingModal() {
             for (const tool of recipe.tools) {
                 const hasTool = player.inventory.some(i => i.name === tool && i.quantity > 0);
                 const toolClass = hasTool ? 'text-blue-300 border-blue-700 bg-blue-900 bg-opacity-30' : 'text-red-400 font-bold border-red-900 bg-red-900 bg-opacity-20';
-                matHtmlParts.push(`<li class="text-[10px] px-2 py-0.5 rounded border ${toolClass} shadow-inner">🔨 Requires: ${tool}</li>`);
+                const safeTool = typeof escapeHtml === 'function' ? escapeHtml(tool) : tool;
+                matHtmlParts.push(`<li class="text-[10px] px-2 py-0.5 rounded border ${toolClass} shadow-inner">🔨 Requires: ${safeTool}</li>`);
             }
         }
         
@@ -436,10 +431,10 @@ function renderCraftingModal() {
             <div class="flex-grow pr-4">
                 <div class="flex items-center gap-2 mb-1">
                     <span class="text-3xl drop-shadow-md" title="${itemTemplate.name || recipeName}">${displayTile}</span>
-                    <span class="crafting-item-name font-bold text-lg ${nameColor}" style="font-family: 'Uncial Antiqua', cursive;">${displayName}</span>
+                    <span class="crafting-item-name font-bold text-lg ${nameColor}" style="font-family: 'Uncial Antiqua', cursive;">${safeDisplayName}</span>
                     ${ownedHtml}
                 </div>
-                <div class="text-xs text-gray-400 italic leading-tight font-serif">"${baseDescription}"</div>
+                <div class="text-xs text-gray-400 italic leading-tight font-serif">${baseDescription}</div>
                 ${materialsHtml}
                 ${infoHtml}
             </div>
@@ -456,12 +451,13 @@ function renderCraftingModal() {
 // Event Delegation
 function initCraftingListeners() {
     const closeBtn = document.getElementById('closeCraftingButton');
-    if (closeBtn) {
+    if (closeBtn && !closeBtn.dataset.listenersBound) {
         closeBtn.addEventListener('click', () => {
             const modal = document.getElementById('craftingModal');
             if (modal) modal.classList.add('hidden');
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
         });
+        closeBtn.dataset.listenersBound = 'true';
     }
 
     const recipeList = document.getElementById('craftingRecipeList');
