@@ -78,6 +78,8 @@ const gameState = {
     saveVersion: "0.2.9",     
     initialEnemiesLoaded: false,
     mapDirty: true,
+    
+    // 🚨 BUG FIX WIN: The Double-Death Lock!
     isDead: false, 
     
     screenShake: 0,           
@@ -280,7 +282,8 @@ const gameState = {
             leylinesUsed: 0,
             damageTaken: 0,
             damageDealt: 0,
-            criticalHits: 0
+            criticalHits: 0,
+            questsCompleted: 0 // <--- EXPANDABILITY WIN: Pre-allocated!
         }
     },
 
