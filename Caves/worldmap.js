@@ -309,6 +309,8 @@ function renderWorldMap() {
     gameState.exploredChunks.forEach(chunkId => {
         // Highly optimized string parsing bypasses array allocation
         const commaIdx = chunkId.indexOf(',');
+        if (commaIdx === -1) return; // Prevent NaN errors on corrupt chunks
+        
         const cx = parseInt(chunkId.substring(0, commaIdx), 10);
         const cy = parseInt(chunkId.substring(commaIdx + 1), 10);
         
@@ -611,8 +613,9 @@ function renderWorldMap() {
             // Format the string through the auto-lore tagger to extract any colored strings!
             const rawTooltip = typeof autoFormatLore === 'function' ? autoFormatLore(tileName) : tileName;
             const strippedText = typeof stripColorTags === 'function' ? stripColorTags(rawTooltip) : tileName;
+            const safeText = typeof escapeHtml === 'function' ? escapeHtml(strippedText) : strippedText;
             
-            const metrics = worldMapCtx.measureText(strippedText);
+            const metrics = worldMapCtx.measureText(safeText);
             const boxWidth = metrics.width + padX * 2;
             const boxHeight = 24 + padY * 2;
             
@@ -640,7 +643,7 @@ function renderWorldMap() {
             
             worldMapCtx.fillStyle = '#000000';
             worldMapCtx.textAlign = 'left';
-            worldMapCtx.fillText(strippedText, tooltipX + padX, tooltipY);
+            worldMapCtx.fillText(safeText, tooltipX + padX, tooltipY);
             worldMapCtx.textAlign = 'center'; 
         }
     }
@@ -796,7 +799,9 @@ function updateMapUI() {
             dangerTag = ` <span class="text-blue-500 italic text-[10px] uppercase font-serif tracking-widest">(Here Be Leviathans)</span>`;
         }
         
-        hoverText = ` | Hover: <span class="text-yellow-400 font-bold">${tileName}</span>${dangerTag} (${hoverWorldX}, ${-hoverWorldY}) <span class="text-gray-500">[${dist}m]</span>`;
+        // SECURITY WIN: Escape the dynamic tile name here before injecting
+        const safeTileName = typeof escapeHtml === 'function' ? escapeHtml(tileName) : tileName;
+        hoverText = ` | Hover: <span class="text-yellow-400 font-bold">${safeTileName}</span>${dangerTag} (${hoverWorldX}, ${-hoverWorldY}) <span class="text-gray-500">[${dist}m]</span>`;
     }
     
     const finalHTML = `Player: (${gameState.player.x}, ${-gameState.player.y})${hoverText}${actionHint}`;
