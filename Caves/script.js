@@ -128,7 +128,7 @@ function flushPendingSave(updates = null) {
         const batch = db.batch();
         let hasMapData = false;
 
-        // --- 1. PROCESS MAP SUBCOLLECTIONS ---
+        // --- 1. PROCESS MAP SUBCOLLECTIONS (WITH SPREAD EXPLOIT FIX) ---
         if (gameState.pendingMapSaves && 
            (gameState.pendingMapSaves.chunks.size > 0 || 
             gameState.pendingMapSaves.lore.size > 0 || 
@@ -156,20 +156,30 @@ function flushPendingSave(updates = null) {
                 sectorUpdates[sector].looted[key] = val;
             }
 
-            // Write to subcollection docs
+            // Write to subcollection docs (Using strict JS Spread Limits)
+            const MAX_SPREAD = 1000;
+
             for (const sector in sectorUpdates) {
                 const docRef = playerRef.collection('map_data').doc(sector);
-                const docData = {};
                 
-                if (sectorUpdates[sector].chunks.length > 0) docData.exploredChunks = firebase.firestore.FieldValue.arrayUnion(...sectorUpdates[sector].chunks);
-                if (sectorUpdates[sector].lore.length > 0) docData.foundLore = firebase.firestore.FieldValue.arrayUnion(...sectorUpdates[sector].lore);
+                // Helper to chunk arrays preventing "Maximum call stack size exceeded"
+                const appendInChunks = (field, arr) => {
+                    for (let i = 0; i < arr.length; i += MAX_SPREAD) {
+                        const slice = arr.slice(i, i + MAX_SPREAD);
+                        batch.set(docRef, { [field]: firebase.firestore.FieldValue.arrayUnion(...slice) }, { merge: true });
+                    }
+                };
+
+                if (sectorUpdates[sector].chunks.length > 0) appendInChunks('exploredChunks', sectorUpdates[sector].chunks);
+                if (sectorUpdates[sector].lore.length > 0) appendInChunks('foundLore', sectorUpdates[sector].lore);
                 
                 if (Object.keys(sectorUpdates[sector].looted).length > 0) {
+                    const docData = {};
                     for (const [k, v] of Object.entries(sectorUpdates[sector].looted)) {
                         docData[`lootedTiles.${k}`] = (v === null) ? firebase.firestore.FieldValue.delete() : v;
                     }
+                    batch.set(docRef, docData, { merge: true });
                 }
-                batch.set(docRef, docData, { merge: true });
             }
             
             // Clear pending buffer
@@ -2414,14 +2424,13 @@ function clearSessionState() {
     gameState.lootedTiles.clear();
     gameState.discoveredRegions.clear();
     wokenEnemyTiles.clear();
-    pendingSpawns.clear(); // Clear pending spawns
+    pendingSpawns.clear(); 
     
     // --- CLEAR SPATIAL BUCKETS TO PREVENT GHOST PATHING ---
     if (gameState.enemySpatialMap) gameState.enemySpatialMap.clear(); 
 
     gameState.mapMode = null;
-
-    gameState.shopStates = {}; // Clear shop memory
+    gameState.shopStates = {}; 
 
     if (gameState.flags) {
         gameState.flags.hasSeenForestWarning = false;
@@ -2435,16 +2444,23 @@ function clearSessionState() {
     chunkManager.castleSpawnPoints = {};
 
     // --- LISTENER CLEANUP ---
-        if (typeof EnemyNetworkManager !== 'undefined') {
+    if (typeof EnemyNetworkManager !== 'undefined') {
         EnemyNetworkManager.clearAll();
     }
-    if (chatListener) { // If you saved the chat listener reference
+    
+    if (chatListener) { 
         rtdb.ref('chat').off('child_added', chatListener);
         chatListener = null;
     }
+    
+    // Clear connection listener to prevent duplicate triggers on relog
+    if (connectedListener) {
+        rtdb.ref('.info/connected').off('value', connectedListener);
+        connectedListener = null;
+    }
+
     // Also clear the local enemy list to prevent ghosts
     gameState.sharedEnemies = {};
-
     areGlobalListenersInitialized = false; 
 }
 
@@ -2765,15 +2781,20 @@ async function enterGame(playerData) {
 
     // --- SETUP LISTENERS ---
     if (sharedEnemiesListener) {
-        sharedEnemiesListener(); // Execute the cleanup wrapper!
+        sharedEnemiesListener(); 
         sharedEnemiesListener = null;
     }
     if (chatListener) rtdb.ref('chat').off('child_added', chatListener);
+    
+    // 🚨 BUG FIX: Clean up previous listener to prevent duplicate ghost connections
+    if (connectedListener) {
+        rtdb.ref('.info/connected').off('value', connectedListener);
+        connectedListener = null;
+    }
 
     onlinePlayerRef = rtdb.ref(`onlinePlayers/${player_id}`);
-    const connectedRef = rtdb.ref('.info/connected');
-
-    connectedRef.on('value', (snap) => {
+    
+    connectedListener = rtdb.ref('.info/connected').on('value', (snap) => {
         if (snap.val() === true) {
             const stateToSet = {
                 x: gameState.player.x,
@@ -2783,11 +2804,9 @@ async function enterGame(playerData) {
                 mapMode: gameState.mapMode,
                 mapId: gameState.currentCaveId || gameState.currentCastleId || null,
                 email: auth.currentUser.email,
-                
                 currentRealm: gameState.currentRealm || 0
             };
             onlinePlayerRef.set(stateToSet);
-
             onlinePlayerRef.onDisconnect().remove();
         }
     });
