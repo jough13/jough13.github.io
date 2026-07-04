@@ -71,7 +71,7 @@
     <!-- ========================================== -->
     <style>
         body { background-color: #8b7e66 !important; }
-        /* Removes the game/footer from the page so the browser cannot flash text! */
+        /* BUG FIX: Removes the game/footer from the page so the browser cannot flash text (FOUC)! */
         body:not(.is-loaded) main,
         body:not(.is-loaded) footer { display: none !important; }
         
