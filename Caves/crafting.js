@@ -136,6 +136,9 @@ function handleCraftItem(recipeName, requestBatch = false) {
     // BUG FIX & UX WIN: Detailed tracking of exact outputs for batch crafting!
     let outputTracker = {}; 
     let culinaryCrits = 0;
+    
+    // 🚨 BUG FIX WIN: The Set prevents batch-dropping from deleting items by overwriting the same tile!
+    const usedDropTiles = new Set(); 
 
     for (let i = 0; i < batchSize; i++) {
         const levelDiff = playerCraftLevel - recipe.level;
@@ -188,15 +191,57 @@ function handleCraftItem(recipeName, requestBatch = false) {
             if (player.inventory.length < invCap) {
                 player.inventory.push(newItem);
             } else {
-                // Failsafe drops to floor
+                // 🚨 BUG FIX WIN: Outward Spiraling Drop System
+                // Failsafe drops to floor safely without overwriting previous drops in the same batch
                 const safeName = typeof escapeHtml === 'function' ? escapeHtml(newItem.name) : newItem.name;
                 logMessage(`{red:Your pack is full! The ${safeName} drops to the floor.}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
                 
                 if (typeof chunkManager !== 'undefined') {
-                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, newItem.tile, 2); 
-                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = newItem.tile;
-                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = newItem.tile;
+                    let placed = false;
+                    let validFloor = '.';
+                    if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
+                        validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+                    }
+
+                    // Loop progressively outwards to find an empty tile
+                    for (let r = 0; r <= 3 && !placed; r++) {
+                        for (let dy = -r; dy <= r && !placed; dy++) {
+                            for (let dx = -r; dx <= r && !placed; dx++) {
+                                const tx = player.x + dx;
+                                const ty = player.y + dy;
+                                const tKey = `${tx},${ty}`;
+
+                                // Skip if we already dropped an item from this batch on this tile
+                                if (usedDropTiles.has(tKey)) continue;
+
+                                let tileAt;
+                                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
+                                else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
+                                else tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
+
+                                if (tileAt === validFloor || tileAt === '.') {
+                                    usedDropTiles.add(tKey);
+                                    
+                                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                                        chunkManager.setWorldTile(tx, ty, newItem.tile, 2); 
+                                    } else if (gameState.mapMode === 'dungeon') {
+                                        chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = newItem.tile;
+                                    } else if (gameState.mapMode === 'castle') {
+                                        chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = newItem.tile;
+                                    }
+                                    placed = true;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Final failsafe if completely surrounded by walls
+                    if (!placed) {
+                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, newItem.tile, 2);
+                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = newItem.tile;
+                        else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = newItem.tile;
+                    }
                 }
                 gameState.mapDirty = true;
             }
