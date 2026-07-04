@@ -7,6 +7,15 @@
  */
 
 function castSpell(spellId) {
+    
+    if (player.isMounted) {
+        player.isMounted = false;
+        logMessage(`{orange:You leap from your mount to cast a spell!}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+        gameState.mapDirty = true;
+        if (typeof render === 'function') render();
+    }
+
     const player = gameState.player;
     const spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[spellId] : null;
 
