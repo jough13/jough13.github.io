@@ -490,6 +490,9 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 /**
  * Prepares and executes a ranged attack using an equipped bow
  */
+/**
+ * Prepares and executes a ranged attack using an equipped bow
+ */
 async function executeRangedAttack(dirX, dirY) {
     const player = gameState.player;
     const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA['ranged_attack'] : null;
@@ -632,7 +635,6 @@ async function executeRangedAttack(dirX, dirY) {
                 // Splash damage!
                 for (let ey = -1; ey <= 1; ey++) {
                     for (let ex = -1; ex <= 1; ex++) {
-                        // Make sure applySpellDamage exists
                         if (typeof applySpellDamage === 'function') {
                             applySpellDamage(targetX + ex, targetY + ey, 15, 'fireball');
                         }
@@ -671,12 +673,15 @@ async function executeRangedAttack(dirX, dirY) {
             if (enemyData) {
                 hitSomething = true;
                 
+                // 🚨 BUG FIX WIN: Capture the damage specifically for this hit BEFORE halving it!
+                let currentHitDamage = totalDamage;
+                
                 if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                     const enemyId = `overworld:${targetX},${-targetY}`;
                     const liveEnemy = gameState.sharedEnemies[enemyId];
                     const enemyInfo = liveEnemy || enemyData;
                     
-                    const finalDmg = Math.max(1, totalDamage - (enemyData.defense || 0));
+                    const finalDmg = Math.max(1, currentHitDamage - (enemyData.defense || 0));
                     
                     logMessage(`You shoot the ${enemyInfo.name} for {red:${finalDmg}} damage!`);
                     
@@ -686,13 +691,13 @@ async function executeRangedAttack(dirX, dirY) {
                 } else {
                     let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
                     if (enemy) {
-                        // SAFEGUARD
                         enemy.health = Number(enemy.health);
                         if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
 
-                        const finalDmg = Math.max(1, totalDamage - (enemy.defense || 0));
+                        const finalDmg = Math.max(1, currentHitDamage - (enemy.defense || 0));
                         enemy.health -= finalDmg;
                         logMessage(`You shoot the ${enemy.name} for {red:${finalDmg}} damage!`);
+                        
                         if (typeof ParticleSystem !== 'undefined') {
                             ParticleSystem.createExplosion(targetX, targetY, arrowColor, 3);
                             ParticleSystem.createFloatingText(targetX, targetY, `-${finalDmg}`, '#ef4444');
@@ -719,9 +724,9 @@ async function executeRangedAttack(dirX, dirY) {
 
                 // --- EXPANSION WIN: Crossbow Piercing ---
                 // If it's a heavy crossbow, the bolt punches through to the next tile but loses 50% damage!
-                if (isHeavyCrossbow && totalDamage > 1) {
+                if (isHeavyCrossbow && currentHitDamage > 1) {
                     logMessage(`{orange:The heavy bolt pierces right through!}`);
-                    totalDamage = Math.floor(totalDamage * 0.5); 
+                    totalDamage = Math.floor(currentHitDamage * 0.5); // Halve the momentum for the next target!
                     // We DO NOT break here, allowing the loop to continue to the next tile!
                 } else {
                     break; // Standard arrows stop after hitting one target
@@ -739,7 +744,6 @@ async function executeRangedAttack(dirX, dirY) {
             }
             
             // --- RECOVERABLE AMMO ---
-            // 50% chance the arrow survives... ONLY IF IT'S A WOODEN ARROW! (Fire burns, poison dissipates)
             if (ammo.name === 'Wooden Arrow' && Math.random() < 0.50) {
                 let validFloor = true;
                 let dropTile;
@@ -750,10 +754,8 @@ async function executeRangedAttack(dirX, dirY) {
                     dropTile = (map && map[finalTargetY] && map[finalTargetY][finalTargetX]) ? map[finalTargetY][finalTargetX] : ' ';
                 }
 
-                // If it hits deep water or lava, it's gone. Otherwise, it sticks in the ground/wall!
                 if (['~', '≈', ' '].includes(dropTile)) validFloor = false; 
 
-                // --- Prevent arrows from overwriting items OR ENEMIES already on the ground! ---
                 if ((typeof ITEM_DATA !== 'undefined' && ITEM_DATA[dropTile]) || 
                     (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[dropTile]) || 
                     ['📦', '⚰️', '🏺', '🚪', '🔼'].includes(dropTile)) {
