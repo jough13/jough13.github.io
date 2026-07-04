@@ -56,6 +56,8 @@ function renderHotbar() {
             
             let invItem = inventoryMap.get(abilityId);
             let itemData = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[abilityId] : null;
+            
+            // ROBUSTNESS WIN: Match dynamic prefixed items against their base template!
             if (!itemData && typeof ITEM_DATA !== 'undefined') {
                 const itemKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === abilityId);
                 if (itemKey) itemData = ITEM_DATA[itemKey];
@@ -82,7 +84,9 @@ function renderHotbar() {
                 abrv.className = `font-bold text-sm ${colorClass} drop-shadow-md`;
                 abrv.textContent = (data.name || '??').substring(0, 2).toUpperCase(); 
                 
-                slotDiv.title = `[${hotkeyNumber}] ${data.name || 'Unknown'}\nCost: ${data.cost || 0} ${data.costType || 'Resource'}\n(Right-click to unbind)`;
+                // SECURITY WIN: Escape tooltip names!
+                const safeDataName = typeof escapeHtml === 'function' ? escapeHtml(data.name || 'Unknown') : (data.name || 'Unknown');
+                slotDiv.title = `[${hotkeyNumber}] ${safeDataName}\nCost: ${data.cost || 0} ${data.costType || 'Resource'}\n(Right-click to unbind)`;
                 slotDiv.appendChild(abrv);
 
                 // JUICE WIN: Added animate-pulse to the red cooldown overlay
@@ -102,7 +106,9 @@ function renderHotbar() {
                 iconSpan.className = "font-bold text-2xl drop-shadow-md";
                 iconSpan.textContent = displayTile;
                 
-                slotDiv.title = `[${hotkeyNumber}] ${displayName} (Qty: ${qty})\n(Right-click to unbind)`;
+                // SECURITY WIN: Escape tooltip names!
+                const safeDisplayName = typeof escapeHtml === 'function' ? escapeHtml(displayName) : displayName;
+                slotDiv.title = `[${hotkeyNumber}] ${safeDisplayName} (Qty: ${qty})\n(Right-click to unbind)`;
                 slotDiv.appendChild(iconSpan);
                 
                 const qtyBadge = document.createElement('span');
@@ -188,7 +194,8 @@ function useHotbarSlot(index) {
             if (typeof useInventoryItem === 'function') useInventoryItem(invIndex);
         } else {
             // LORE WIN: Visceral realization that you are out of an item in the heat of combat!
-            logMessage(`{gray:Your fingers trace an empty pouch. You are out of ${targetName}s!}`);
+            const safeTargetName = typeof escapeHtml === 'function' ? escapeHtml(targetName) : targetName;
+            logMessage(`{gray:Your fingers trace an empty pouch. You are out of ${safeTargetName}s!}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             
             triggerSlotShake();
@@ -220,8 +227,10 @@ function assignToHotbar(abilityId) {
     }
 
     const existingIndex = hotbar.indexOf(abilityId);
+    const safeReadableName = typeof escapeHtml === 'function' ? escapeHtml(readableName) : readableName;
+    
     if (existingIndex !== -1) {
-        logMessage(`{gray:${readableName} is already bound to Slot ${existingIndex + 1}.}`);
+        logMessage(`{gray:${safeReadableName} is already bound to Slot ${existingIndex + 1}.}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         return;
     }
@@ -246,9 +255,9 @@ function assignToHotbar(abilityId) {
 
     if (index === -1) {
         index = 0;
-        logMessage(`{${flavorColor}:Quick-Slots full. Overwrote Slot 1 and ${verb} ${readableName}.}`);
+        logMessage(`{${flavorColor}:Quick-Slots full. Overwrote Slot 1 and ${verb} ${safeReadableName}.}`);
     } else {
-        logMessage(`{${flavorColor}:You ${verb} ${readableName} to Quick-Slot ${index + 1}.}`);
+        logMessage(`{${flavorColor}:You ${verb} ${safeReadableName} to Quick-Slot ${index + 1}.}`);
     }
 
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
@@ -323,7 +332,8 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
                         if (invItem) readableName = invItem.name;
                     }
                     
-                    logMessage(`{gray:You wiped the memory of ${readableName} from Quick-Slot ${index + 1}.}`);
+                    const safeReadableName = typeof escapeHtml === 'function' ? escapeHtml(readableName) : readableName;
+                    logMessage(`{gray:You wiped the memory of ${safeReadableName} from Quick-Slot ${index + 1}.}`);
                 }
                 
                 player.hotbar[index] = null;
