@@ -187,6 +187,7 @@ function renderFastTravelList() {
 
             availableWaypoints.forEach(wp => {
                 const icon = getBiomeIcon(wp.name);
+                const safeName = typeof escapeHtml === 'function' ? escapeHtml(wp.name) : wp.name;
                 
                 // JUICE & QoL WIN: Show danger warning for far-off waypoints
                 const dangerBadge = wp.dist > 1500 ? `<span title="Extreme Danger Zone!" class="ml-2 animate-pulse drop-shadow-md text-red-500">💀</span>` : '';
@@ -196,7 +197,7 @@ function renderFastTravelList() {
                 li.setAttribute('onmouseenter', "if(typeof AudioSystem !== 'undefined') AudioSystem.playHover()");
                 li.innerHTML = `
                     <div>
-                        <span class="font-bold text-purple-400 drop-shadow-md">${icon} ${wp.name}${dangerBadge}</span>
+                        <span class="font-bold text-purple-400 drop-shadow-md">${icon} ${safeName}${dangerBadge}</span>
                         <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${wp.x}, ${-wp.y} <span class="ml-2 text-purple-300 font-bold bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Dist: ${wp.dist}m${wp.dir})</span></div>
                     </div>
                     <button data-x="${wp.x}" data-y="${wp.y}" class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAffordBase ? 'border-purple-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass}" ${canAffordBase ? '' : 'disabled'}>${btnText}</button>
