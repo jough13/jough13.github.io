@@ -237,7 +237,7 @@ const chunkManager = {
         const roomAttempts = 8; // Increased attempts for bigger maps
 
         // Only attempt to stamp if we actually have templates!
-        if (roomTemplates.length > 0) {
+        if (roomTemplates.length > 0 && chosenThemeKey !== 'ARENA') {
             for (let i = 0; i < roomAttempts; i++) {
                 // Pick a random room template
                 const room = roomTemplates[Math.floor(random() * roomTemplates.length)];
@@ -329,32 +329,53 @@ const chunkManager = {
                         }
                     }
                 }
+
+                // --- 🚨 BUG FIX WIN: CORRIDOR CARVER (ANTI-SOFTLOCK) ---
+                // Guarantees that every stamped room is physically connected to the spawn point!
+                let currX = roomX + Math.floor(room.width / 2);
+                let currY = roomY + Math.floor(room.height / 2);
+                
+                let carvingFailsafe = 0;
+                while ((currX !== startPos.x || currY !== startPos.y) && carvingFailsafe < CAVE_WIDTH * CAVE_HEIGHT) {
+                    if (random() < 0.5) {
+                        if (currX !== startPos.x) currX += Math.sign(startPos.x - currX);
+                    } else {
+                        if (currY !== startPos.y) currY += Math.sign(startPos.y - currY);
+                    }
+                    // Only overwrite walls, preserve existing items/enemies
+                    if (map[currY][currX] === theme.wall) {
+                        map[currY][currX] = theme.floor;
+                    }
+                    carvingFailsafe++;
+                }
             }
         }
 
         // --- 3b. THEME SPECIFIC TERRAIN GENERATION (LAKES & PITS) ---
-        // GAMEPLAY WIN: Sub-biomes inside caves!
-        for (let y = 1; y < CAVE_HEIGHT - 1; y++) {
-            for (let x = 1; x < CAVE_WIDTH - 1; x++) {
-                if (map[y][x] === theme.floor) {
-                    // Use perlin noise to generate organic patches of hazards
-                    const noise = elevationNoise.noise(x / 10, y / 10, floorZ); 
-                    
-                    if (chosenThemeKey === 'FIRE' && noise < 0.35) {
-                        map[y][x] = '~'; // Lava pools
-                    } 
-                    else if (chosenThemeKey === 'SUNKEN' || chosenThemeKey === 'GROTTO') {
-                        if (noise < 0.25) map[y][x] = '~'; // Deep Water
-                        else if (noise < 0.45) map[y][x] = '≈'; // Shallow Water
-                    }
-                    else if (chosenThemeKey === 'ABYSS' && noise < 0.30) {
-                        map[y][x] = '🕳️'; // Bottomless pits!
-                    }
-                    else if ((chosenThemeKey === 'ROCK' || chosenThemeKey === 'CRYSTAL') && noise < 0.25) {
-                        map[y][x] = '~'; // Underground Lakes
-                    }
-                    else if (chosenThemeKey === 'ICE' && noise < 0.30) {
-                        map[y][x] = '🧊'; // Solid Ice patches
+        if (chosenThemeKey !== 'ARENA') {
+            // GAMEPLAY WIN: Sub-biomes inside caves!
+            for (let y = 1; y < CAVE_HEIGHT - 1; y++) {
+                for (let x = 1; x < CAVE_WIDTH - 1; x++) {
+                    if (map[y][x] === theme.floor) {
+                        // Use perlin noise to generate organic patches of hazards
+                        const noise = elevationNoise.noise(x / 10, y / 10, floorZ); 
+                        
+                        if (chosenThemeKey === 'FIRE' && noise < 0.35) {
+                            map[y][x] = '~'; // Lava pools
+                        } 
+                        else if (chosenThemeKey === 'SUNKEN' || chosenThemeKey === 'GROTTO') {
+                            if (noise < 0.25) map[y][x] = '~'; // Deep Water
+                            else if (noise < 0.45) map[y][x] = '≈'; // Shallow Water
+                        }
+                        else if (chosenThemeKey === 'ABYSS' && noise < 0.30) {
+                            map[y][x] = '🕳️'; // Bottomless pits!
+                        }
+                        else if ((chosenThemeKey === 'ROCK' || chosenThemeKey === 'CRYSTAL') && noise < 0.25) {
+                            map[y][x] = '~'; // Underground Lakes
+                        }
+                        else if (chosenThemeKey === 'ICE' && noise < 0.30) {
+                            map[y][x] = '🧊'; // Solid Ice patches
+                        }
                     }
                 }
             }
@@ -364,195 +385,218 @@ const chunkManager = {
         for(let sy = -2; sy <= 2; sy++) {
             for(let sx = -2; sx <= 2; sx++) {
                 if (map[startPos.y + sy] && map[startPos.y + sy][startPos.x + sx]) {
-                    map[startPos.y + sy][startPos.x + sx] = theme.floor;
+                    // Don't overwrite the banner in the Arena!
+                    if (map[startPos.y + sy][startPos.x + sx] !== '🚩') {
+                        map[startPos.y + sy][startPos.x + sx] = theme.floor;
+                    }
                 }
             }
         }
 
         // --- 4. Place procedural loot and decorations ---
+        if (chosenThemeKey !== 'ARENA') {
+            const CAVE_LOOT_TABLE = ['♥', '🔮', '💜', 'S', '$', '📄', '🍄', '🏺', '⚰️'];
+            const lootQuantity = Math.floor(random() * 8) + 2; // More loot in bigger caves
+            
+            for (let i = 0; i < lootQuantity; i++) {
+                const itemToPlace = CAVE_LOOT_TABLE[Math.floor(random() * CAVE_LOOT_TABLE.length)];
+                let placed = false;
+                for (let attempt = 0; attempt < 5 && !placed; attempt++) {
+                    const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
+                    const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
 
-        const CAVE_LOOT_TABLE = ['♥', '🔮', '💜', 'S', '$', '📄', '🍄', '🏺', '⚰️'];
-        const lootQuantity = Math.floor(random() * 8) + 2; // More loot in bigger caves
-        
-        for (let i = 0; i < lootQuantity; i++) {
-            const itemToPlace = CAVE_LOOT_TABLE[Math.floor(random() * CAVE_LOOT_TABLE.length)];
-            let placed = false;
-            for (let attempt = 0; attempt < 5 && !placed; attempt++) {
-                const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
-                const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
+                    const lootId = `${caveId}:${randX},${-randY}`;
 
-                const lootId = `${caveId}:${randX},${-randY}`;
+                    if (typeof gameState !== 'undefined' && gameState.lootedTiles && gameState.lootedTiles.has(lootId)) {
+                        continue; // Skip placing loot here, it's already taken
+                    }
 
-                if (typeof gameState !== 'undefined' && gameState.lootedTiles && gameState.lootedTiles.has(lootId)) {
-                    continue; // Skip placing loot here, it's already taken
-                }
-
-                if (map[randY][randX] === theme.floor) {
-                    map[randY][randX] = itemToPlace;
-                    placed = true;
-                }
-            }
-        }
-
-        // --- Safety check for themes without decorations ---
-        const themeDecorations = theme.decorations || [];
-        const specialItems = themeDecorations.filter(item => !CAVE_LOOT_TABLE.includes(item));
-
-        for (const itemToPlace of specialItems) {
-            let placed = false;
-            for (let attempt = 0; attempt < 5 && !placed; attempt++) {
-                const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
-                const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
-                if (map[randY][randX] === theme.floor) {
-                    map[randY][randX] = itemToPlace;
-                    placed = true;
+                    if (map[randY][randX] === theme.floor) {
+                        map[randY][randX] = itemToPlace;
+                        placed = true;
+                    }
                 }
             }
-        }
 
-        // --- 4b. Place Phase Walls (Only in Void) ---
-        if (chosenThemeKey === 'VOID') {
-            for (let i = 0; i < 40; i++) {
-                const randY = Math.floor(random() * (CAVE_HEIGHT - 4)) + 2;
-                const randX = Math.floor(random() * (CAVE_WIDTH - 4)) + 2;
-                // Turn a normal wall into a phase wall
-                if (map[randY][randX] === theme.wall) {
-                    map[randY][randX] = theme.phaseWall;
+            // --- Safety check for themes without decorations ---
+            const themeDecorations = theme.decorations || [];
+            const specialItems = themeDecorations.filter(item => !CAVE_LOOT_TABLE.includes(item));
+
+            for (const itemToPlace of specialItems) {
+                let placed = false;
+                for (let attempt = 0; attempt < 5 && !placed; attempt++) {
+                    const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
+                    const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
+                    if (map[randY][randX] === theme.floor) {
+                        map[randY][randX] = itemToPlace;
+                        placed = true;
+                    }
+                }
+            }
+
+            // --- 4b. Place Phase Walls (Only in Void) ---
+            if (chosenThemeKey === 'VOID') {
+                for (let i = 0; i < 40; i++) {
+                    const randY = Math.floor(random() * (CAVE_HEIGHT - 4)) + 2;
+                    const randX = Math.floor(random() * (CAVE_WIDTH - 4)) + 2;
+                    // Turn a normal wall into a phase wall
+                    if (map[randY][randX] === theme.wall) {
+                        map[randY][randX] = theme.phaseWall;
+                    }
                 }
             }
         }
 
         // --- 5. Place procedural enemies ---
-        // Ensure the array actually has items in it before accepting it!
-        let enemyTypes = (theme.enemies && theme.enemies.length > 0) ? theme.enemies : Object.keys(ENEMY_DATA);
+        if (chosenThemeKey !== 'ARENA') {
+            // Ensure the array actually has items in it before accepting it!
+            let enemyTypes = (theme.enemies && theme.enemies.length > 0) ? theme.enemies : Object.keys(ENEMY_DATA);
 
-        // --- SAFE ZONE CAVE NERF ---
-        // If within 250 tiles of spawn, remove "Hard" enemies from the spawn pool
-        if (distSq < SAFE_ZONE_SQ && floorZ === 1) {
-            const hardEnemies =['C', 'm', 'o', 'Ø', 'Y', 'D', '🐲', '🧙', 'v', 'f', '🧌', 'Z', '🦂', '@'];
-            enemyTypes = enemyTypes.filter(e => !hardEnemies.includes(e));
-            
-            // Safety fallback: If we filtered everything out, add basics
-            if (enemyTypes.length === 0) enemyTypes = ['r', 'b', 'g'];
-        }
-        
-        for (let i = 0; i < enemyCount; i++) {
-            const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
-            const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
-
-            if (map[randY][randX] === theme.floor && (randX !== startPos.x || randY !== startPos.y)) {
-                const enemyTile = enemyTypes[Math.floor(random() * enemyTypes.length)];
-                const enemyTemplate = ENEMY_DATA[enemyTile];
-
-                let scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+            // --- SAFE ZONE CAVE NERF ---
+            // If within 250 tiles of spawn, remove "Hard" enemies from the spawn pool
+            if (distSq < SAFE_ZONE_SQ && floorZ === 1) {
+                const hardEnemies =['C', 'm', 'o', 'Ø', 'Y', 'D', '🐲', '🧙', 'v', 'f', '🧌', 'Z', '🦂', '@'];
+                enemyTypes = enemyTypes.filter(e => !hardEnemies.includes(e));
                 
-                // Boost stats based on Floor Depth!
-                if (floorZ > 1) {
-                    scaledStats.maxHealth = Math.floor(scaledStats.maxHealth * (1 + (floorZ * 0.2)));
-                    scaledStats.attack += floorZ;
-                    scaledStats.xp = Math.floor(scaledStats.xp * (1 + (floorZ * 0.5)));
-                    scaledStats.name = `Deep ${scaledStats.name}`; // Prefix for deep enemies
-                }
+                // Safety fallback: If we filtered everything out, add basics
+                if (enemyTypes.length === 0) enemyTypes = ['r', 'b', 'g'];
+            }
+            
+            for (let i = 0; i < enemyCount; i++) {
+                const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
+                const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
 
-                this.caveEnemies[caveId].push({
-                    id: `${caveId}:${randX},${randY}`,
-                    x: randX,
-                    y: randY,
-                    tile: enemyTile,
-                    name: scaledStats.name,
-                    isElite: scaledStats.isElite || false,
-                    color: scaledStats.color || null,
-                    health: scaledStats.maxHealth,
-                    maxHealth: scaledStats.maxHealth,
-                    attack: scaledStats.attack,
-                    defense: enemyTemplate.defense,
-                    xp: scaledStats.xp,
-                    loot: enemyTemplate.loot,
-                    caster: enemyTemplate.caster || false,
-                    castRange: enemyTemplate.castRange || 0,
-                    spellDamage: enemyTemplate.spellDamage || 0,
-                    inflicts: enemyTemplate.inflicts || null,
-                    tags: enemyTemplate.tags ? [...enemyTemplate.tags] : [], 
-                    madnessTurns: 0,
-                    frostbiteTurns: 0,
-                    poisonTurns: 0,
-                    rootTurns: 0
-                });
+                if (map[randY][randX] === theme.floor && (randX !== startPos.x || randY !== startPos.y)) {
+                    const enemyTile = enemyTypes[Math.floor(random() * enemyTypes.length)];
+                    const enemyTemplate = ENEMY_DATA[enemyTile];
+
+                    let scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+                    
+                    // Boost stats based on Floor Depth!
+                    if (floorZ > 1) {
+                        scaledStats.maxHealth = Math.floor(scaledStats.maxHealth * (1 + (floorZ * 0.2)));
+                        scaledStats.attack += floorZ;
+                        scaledStats.xp = Math.floor(scaledStats.xp * (1 + (floorZ * 0.5)));
+                        scaledStats.name = `Deep ${scaledStats.name}`; // Prefix for deep enemies
+                    }
+
+                    this.caveEnemies[caveId].push({
+                        id: `${caveId}:${randX},${randY}`,
+                        x: randX,
+                        y: randY,
+                        tile: enemyTile,
+                        name: scaledStats.name,
+                        isElite: scaledStats.isElite || false,
+                        color: scaledStats.color || null,
+                        health: scaledStats.maxHealth,
+                        maxHealth: scaledStats.maxHealth,
+                        attack: scaledStats.attack,
+                        defense: enemyTemplate.defense,
+                        xp: scaledStats.xp,
+                        loot: enemyTemplate.loot,
+                        caster: enemyTemplate.caster || false,
+                        castRange: enemyTemplate.castRange || 0,
+                        spellDamage: enemyTemplate.spellDamage || 0,
+                        inflicts: enemyTemplate.inflicts || null,
+                        tags: enemyTemplate.tags ? [...enemyTemplate.tags] : [], 
+                        madnessTurns: 0,
+                        frostbiteTurns: 0,
+                        poisonTurns: 0,
+                        rootTurns: 0
+                    });
+                }
             }
         }
 
         // --- 6. Place the Exit ---
         map[startPos.y][startPos.x] = '>';
 
-        // PERFORMANCE FIX: Dungeon Stairs Fallback
-        // Guaranteed to find a spot for stairs, preventing unbeatable dungeons.
-        let stairsPlaced = false;
-        let stairsAttempts = 0;
-        let minStairsDistSq = 30 * 30; // Starts requiring distance > 30 tiles
+        if (chosenThemeKey !== 'ARENA') {
+            // PERFORMANCE FIX: Dungeon Stairs Fallback
+            // Guaranteed to find a spot for stairs, preventing unbeatable dungeons.
+            let stairsPlaced = false;
+            let stairsAttempts = 0;
+            let minStairsDistSq = 30 * 30; // Starts requiring distance > 30 tiles
 
-        while (!stairsPlaced && stairsAttempts < 1000) {
-            const sx = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
-            const sy = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
-            
-            const dx = sx - startPos.x;
-            const dy = sy - startPos.y;
-            const distFromStartSq = (dx * dx) + (dy * dy);
+            while (!stairsPlaced && stairsAttempts < 1000) {
+                const sx = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
+                const sy = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
+                
+                const dx = sx - startPos.x;
+                const dy = sy - startPos.y;
+                const distFromStartSq = (dx * dx) + (dy * dy);
 
-            // Place stairs if it's an open floor and meets distance criteria
-            if (map[sy][sx] === theme.floor && distFromStartSq >= minStairsDistSq) {
-                map[sy][sx] = '<';
-                stairsPlaced = true;
+                // Place stairs if it's an open floor and meets distance criteria
+                if (map[sy][sx] === theme.floor && distFromStartSq >= minStairsDistSq) {
+                    map[sy][sx] = '<';
+                    stairsPlaced = true;
+                }
+                stairsAttempts++;
+
+                // Gradually relax constraints if the map is too tight to prevent infinite lock
+                if (stairsAttempts > 500) minStairsDistSq = 15 * 15;
+                if (stairsAttempts > 800) minStairsDistSq = 0;
             }
-            stairsAttempts++;
+            
+            // Final ultimate failsafe (THE FIX: Force walkable floor beside it so player doesn't get soft-locked)
+            if (!stairsPlaced) {
+                // Ensure we don't accidentally drop the stairs directly on top of the boss or a wall
+                for(let oy=-1; oy<=1; oy++) {
+                    for(let ox=-1; ox<=1; ox++) {
+                        if (oy===0 && ox===0) continue;
+                        if (map[startPos.y + oy] && map[startPos.y + oy][startPos.x + ox] === theme.floor) {
+                            map[startPos.y + oy][startPos.x + ox] = '<';
+                            stairsPlaced = true;
+                            break;
+                        }
+                    }
+                    if (stairsPlaced) break;
+                }
+                
+                // If STILL not placed, force it (last resort)
+                if (!stairsPlaced && map[startPos.y + 1]) {
+                    map[startPos.y + 1][startPos.x] = '<';
+                }
+            }
 
-            // Gradually relax constraints if the map is too tight to prevent infinite lock
-            if (stairsAttempts > 500) minStairsDistSq = 15 * 15;
-            if (stairsAttempts > 800) minStairsDistSq = 0;
-        }
-        
-        // Final ultimate failsafe (THE FIX: Force walkable floor beside it so player doesn't get soft-locked)
-        if (!stairsPlaced) {
-            map[startPos.y + 1][startPos.x] = '<';
-            if (map[startPos.y + 1][startPos.x + 1]) map[startPos.y + 1][startPos.x + 1] = theme.floor;
-        }
+            // --- 7. Secret Wall Generation ---
+            const secretWallTile = theme.secretWall;
 
-        // --- 7. Secret Wall Generation ---
-        const secretWallTile = theme.secretWall;
+            if (secretWallTile) {
+                for (let y = 2; y < CAVE_HEIGHT - 2; y++) {
+                    for (let x = 2; x < CAVE_WIDTH - 2; x++) {
 
-        if (secretWallTile) {
-            for (let y = 2; y < CAVE_HEIGHT - 2; y++) {
-                for (let x = 2; x < CAVE_WIDTH - 2; x++) {
+                        if (map[y][x] === theme.floor) {
+                            // Check if this is a "dead end" (3 walls)
+                            let wallCount = 0;
+                            let floorDir = null; // 0:North, 1:South, 2:West, 3:East
 
-                    if (map[y][x] === theme.floor) {
-                        // Check if this is a "dead end" (3 walls)
-                        let wallCount = 0;
-                        let floorDir = null; // 0:North, 1:South, 2:West, 3:East
+                            if (map[y - 1][x] === theme.wall) wallCount++;
+                            else floorDir = 0;
+                            if (map[y + 1][x] === theme.wall) wallCount++;
+                            else floorDir = 1;
+                            if (map[y][x - 1] === theme.wall) wallCount++;
+                            else floorDir = 2;
+                            if (map[y][x + 1] === theme.wall) wallCount++;
+                            else floorDir = 3;
 
-                        if (map[y - 1][x] === theme.wall) wallCount++;
-                        else floorDir = 0;
-                        if (map[y + 1][x] === theme.wall) wallCount++;
-                        else floorDir = 1;
-                        if (map[y][x - 1] === theme.wall) wallCount++;
-                        else floorDir = 2;
-                        if (map[y][x + 1] === theme.wall) wallCount++;
-                        else floorDir = 3;
+                            // If it's a dead end and we roll the dice (5% chance)
+                            if (wallCount === 3 && random() > 0.95) {
 
-                        // If it's a dead end and we roll the dice (5% chance)
-                        if (wallCount === 3 && random() > 0.95) {
-
-                            // Find the wall opposite the entrance and carve
-                            if (floorDir === 0 && map[y + 2] && map[y + 2][x] === theme.wall) {
-                                map[y + 1][x] = secretWallTile;
-                                map[y + 2][x] = '$';
-                            } else if (floorDir === 1 && map[y - 2] && map[y - 2][x] === theme.wall) {
-                                map[y - 1][x] = secretWallTile;
-                                map[y - 2][x] = '$';
-                            } else if (floorDir === 2 && map[y][x + 2] === theme.wall) {
-                                map[y][x + 1] = secretWallTile;
-                                map[y][x + 2] = '$';
-                            } else if (floorDir === 3 && map[y][x - 2] === theme.wall) {
-                                map[y][x - 1] = secretWallTile;
-                                map[y][x - 2] = '$';
+                                // Find the wall opposite the entrance and carve
+                                if (floorDir === 0 && map[y + 2] && map[y + 2][x] === theme.wall) {
+                                    map[y + 1][x] = secretWallTile;
+                                    map[y + 2][x] = '$';
+                                } else if (floorDir === 1 && map[y - 2] && map[y - 2][x] === theme.wall) {
+                                    map[y - 1][x] = secretWallTile;
+                                    map[y - 2][x] = '$';
+                                } else if (floorDir === 2 && map[y][x + 2] === theme.wall) {
+                                    map[y][x + 1] = secretWallTile;
+                                    map[y][x + 2] = '$';
+                                } else if (floorDir === 3 && map[y][x - 2] === theme.wall) {
+                                    map[y][x - 1] = secretWallTile;
+                                    map[y][x - 2] = '$';
+                                }
                             }
                         }
                     }
@@ -575,7 +619,8 @@ const chunkManager = {
                 const dy = by - startPos.y;
                 const distFromStartSq = (dx * dx) + (dy * dy);
 
-                if (map[by][bx] === theme.floor && distFromStartSq >= minBossDistSq) {
+                // Make sure we don't drop the boss exactly on the stairs!
+                if (map[by][bx] === theme.floor && map[by][bx] !== '<' && distFromStartSq >= minBossDistSq) {
                     const bossTile = '🧙';
                     const bossTemplate = ENEMY_DATA[bossTile];
 
@@ -602,15 +647,18 @@ const chunkManager = {
             // ROBUSTNESS WIN: Safe Arena Fallback
             if (!bossPlaced) {
                 console.warn("⚠️ Boss placement RNG failed. Forcing spawn at center.");
-                const bx = Math.floor(CAVE_WIDTH / 2);
-                const by = Math.floor(CAVE_HEIGHT / 2);
+                const bx = Math.floor(CAVE_WIDTH / 2) + 2;
+                const by = Math.floor(CAVE_HEIGHT / 2) + 2;
 
-                // FIX: Carve an arena safely so the boss doesn't spawn entombed in walls!
+                // FIX: Carve an arena safely so the boss doesn't spawn entombed in walls, 
+                // and protect the stairs from being overwritten!
                 for(let oy=-4; oy<=4; oy++) {
                     for(let ox=-4; ox<=4; ox++) {
                         // Check bounds to be absolutely safe
                         if(by+oy > 0 && by+oy < CAVE_HEIGHT-1 && bx+ox > 0 && bx+ox < CAVE_WIDTH-1) {
-                            map[by+oy][bx+ox] = theme.floor;
+                            if (map[by+oy][bx+ox] !== '<') {
+                                map[by+oy][bx+ox] = theme.floor;
+                            }
                         }
                     }
                 }
@@ -631,8 +679,6 @@ const chunkManager = {
             }
         }
 
-        // Ensure entrance is clear
-        map[startPos.y][startPos.x] = '>';
         this.caveMaps[caveId] = map;
         return map;
     },
@@ -682,13 +728,9 @@ const chunkManager = {
         if (forcedLayoutKey && CASTLE_LAYOUTS[forcedLayoutKey]) {
             chosenLayoutKey = forcedLayoutKey; 
         } else {
-            if (isDark) {
-                chosenLayoutKey = 'FORTRESS'; 
-            } else {
-                // EXPANSION WIN: Dynamically read available safe layouts instead of hardcoding
-                const safeLayouts = Object.keys(CASTLE_LAYOUTS).filter(k => k !== 'FORTRESS');
-                chosenLayoutKey = safeLayouts[Math.floor(random() * safeLayouts.length)];
-            }
+            // EXPANSION WIN: Dynamically read available safe layouts instead of hardcoding
+            const safeLayouts = Object.keys(CASTLE_LAYOUTS).filter(k => k !== 'FORTRESS');
+            chosenLayoutKey = safeLayouts[Math.floor(random() * safeLayouts.length)];
         }
         
         const layout = CASTLE_LAYOUTS[chosenLayoutKey];
@@ -699,13 +741,14 @@ const chunkManager = {
 
         const map = baseMap.map(row => [...row]);
 
-        // PERFORMANCE: Optimized Array Padding (V8 Memory Friendly)
+        // PERFORMANCE & BUG FIX WIN: Optimized Array Padding (V8 Memory Friendly)
         const maxWidth = Math.max(...map.map(r => r.length));
         for (let y = 0; y < map.length; y++) {
-            const diff = maxWidth - map[y].length;
-            if (diff > 0) {
+            const oldLen = map[y].length;
+            if (oldLen < maxWidth) {
                 map[y].length = maxWidth;
-                map[y].fill('▓', map[y].length - diff);
+                // Correctly fill from the old end to the new end!
+                map[y].fill('▓', oldLen, maxWidth); 
             }
         }
 
@@ -1137,6 +1180,10 @@ const chunkManager = {
                         chunkData[y][x] = '▲'; // Obsidian in the walls
                     } else if (tile === '💎c' && featureRoll < 0.005) {
                         chunkData[y][x] = '💎'; // Raw Gems inside crystal clusters
+                    } else if (tile === '.' && featureRoll < 0.001) {
+                        chunkData[y][x] = '⚰️'; // Ancient Grave
+                    } else if (tile === '.' && featureRoll > 0.001 && featureRoll < 0.002) {
+                        chunkData[y][x] = '🏺'; // Dusty Urn
                     } else {
                         const hostileRoll = random();
                         let spawnChance = 0.003;
@@ -1162,6 +1209,26 @@ const chunkManager = {
                             chunkData[y][x] = tile;
                         }
                     }
+                } else if (mapMode === 'skyrealm') {
+                    
+                    // ==================================================
+                    // SKYREALM FEATURES & SPAWNING
+                    // ==================================================
+                    if (tile === '☁️' && featureRoll < 0.002) {
+                        chunkData[y][x] = '🗺️'; // Cartographer checking the stars
+                    } else if (tile === '☁️' && featureRoll > 0.002 && featureRoll < 0.004) {
+                        chunkData[y][x] = '⛩️'; // Ruined shrine
+                    } else {
+                        const hostileRoll = random();
+                        if (hostileRoll < 0.003 && tile !== ' ') {
+                            // Skyrealm enemies: Wraiths, Birds, Elementals
+                            const skyEnemies = ['🦅', '👻', 'f', '👾'];
+                            chunkData[y][x] = skyEnemies[Math.floor(random() * skyEnemies.length)];
+                        } else {
+                            chunkData[y][x] = tile;
+                        }
+                    }
+
                 } else {
 
                     // ==================================================
@@ -1459,11 +1526,16 @@ const chunkManager = {
             }
         }
 
+        // PERFORMANCE WIN & MEMORY LEAK PREVENTION: 
+        // Only delete the data from memory, but do NOT delete the worldStateListeners reference 
+        // unless you actually unsubscribe the listener!
         for (const chunkId in worldStateListeners) {
             if (!visibleChunkIds.has(chunkId)) {
+                // Call the unsubscribe function to sever the Firebase connection
                 worldStateListeners[chunkId]();
                 delete worldStateListeners[chunkId];
 
+                // Free the memory locally
                 if (this.loadedChunks[chunkId]) delete this.loadedChunks[chunkId];
                 if (this.worldState[chunkId]) delete this.worldState[chunkId];
             }
