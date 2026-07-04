@@ -352,22 +352,25 @@ function updateCreationSummary() {
         .join(' ');
         
     creationState.name = formattedName.trim();
+    
+    // 🚨 SECURITY WIN: Wrap user input in HTML escaper so it cannot inject scripts
+    const safeName = typeof escapeHtml === 'function' ? escapeHtml(creationState.name) : creationState.name;
 
     // Safe Lookups
-    const raceName = (creationState.race && typeof PLAYER_RACES !== 'undefined' && PLAYER_RACES[creationState.race]) ? PLAYER_RACES[creationState.race].name : "???";
-    const className = (creationState.background && typeof PLAYER_BACKGROUNDS !== 'undefined' && PLAYER_BACKGROUNDS[creationState.background]) ? PLAYER_BACKGROUNDS[creationState.background].name : "???";
+    const raceName = (creationState.race && typeof window.PLAYER_RACES !== 'undefined' && window.PLAYER_RACES[creationState.race]) ? window.PLAYER_RACES[creationState.race].name : "???";
+    const className = (creationState.background && typeof window.PLAYER_BACKGROUNDS !== 'undefined' && window.PLAYER_BACKGROUNDS[creationState.background]) ? window.PLAYER_BACKGROUNDS[creationState.background].name : "???";
     
-    const raceDesc = (creationState.race && typeof PLAYER_RACES !== 'undefined' && PLAYER_RACES[creationState.race]) ? PLAYER_RACES[creationState.race].description : "";
-    const classDesc = (creationState.background && typeof PLAYER_BACKGROUNDS !== 'undefined' && PLAYER_BACKGROUNDS[creationState.background]) ? PLAYER_BACKGROUNDS[creationState.background].description : "";
+    const raceDesc = (creationState.race && typeof window.PLAYER_RACES !== 'undefined' && window.PLAYER_RACES[creationState.race]) ? window.PLAYER_RACES[creationState.race].description : "";
+    const classDesc = (creationState.background && typeof window.PLAYER_BACKGROUNDS !== 'undefined' && window.PLAYER_BACKGROUNDS[creationState.background]) ? window.PLAYER_BACKGROUNDS[creationState.background].description : "";
     
     // JUICE WIN: Dynamic Avatar Preview
-    const raceIcon = (creationState.race && typeof PLAYER_RACES !== 'undefined' && PLAYER_RACES[creationState.race]) ? PLAYER_RACES[creationState.race].icon : "👤";
+    const raceIcon = (creationState.race && typeof window.PLAYER_RACES !== 'undefined' && window.PLAYER_RACES[creationState.race]) ? window.PLAYER_RACES[creationState.race].icon : "👤";
     
     let stats = [];
     let calcCon = 1, calcWits = 1, calcEnd = 1, calcWill = 1;
 
-    if (creationState.race && typeof PLAYER_RACES !== 'undefined') {
-        const rStats = PLAYER_RACES[creationState.race].stats;
+    if (creationState.race && typeof window.PLAYER_RACES !== 'undefined') {
+        const rStats = window.PLAYER_RACES[creationState.race].stats;
         for(let s in rStats) {
             stats.push(`+${rStats[s]} ${s.charAt(0).toUpperCase() + s.slice(1)} (Race)`);
             if (s === 'constitution') calcCon += rStats[s];
@@ -376,8 +379,8 @@ function updateCreationSummary() {
             if (s === 'willpower') calcWill += rStats[s];
         }
     }
-    if (creationState.background && typeof PLAYER_BACKGROUNDS !== 'undefined') {
-        const cStats = PLAYER_BACKGROUNDS[creationState.background].stats;
+    if (creationState.background && typeof window.PLAYER_BACKGROUNDS !== 'undefined') {
+        const cStats = window.PLAYER_BACKGROUNDS[creationState.background].stats;
         for(let s in cStats) {
             stats.push(`+${cStats[s]} ${s.charAt(0).toUpperCase() + s.slice(1)} (Class)`);
             if (s === 'constitution') calcCon += cStats[s];
@@ -433,7 +436,7 @@ function updateCreationSummary() {
             <div class="flex items-center gap-4 mb-3">
                 <div class="text-5xl drop-shadow-lg bg-black bg-opacity-30 rounded-xl p-3 border border-gray-600 flex-shrink-0">${raceIcon}</div>
                 <div class="flex flex-col flex-grow">
-                    <div class="highlight-text font-bold text-xl leading-tight truncate max-w-[180px]">${creationState.name || "???"}</div>
+                    <div class="highlight-text font-bold text-xl leading-tight truncate max-w-[180px]">${safeName || "???"}</div>
                     <div class="text-xs text-gray-400 uppercase tracking-widest mt-1">${creationState.gender || "?"} ${raceName}</div>
                     <div class="text-xs text-yellow-500 font-bold" style="font-family: 'Uncial Antiqua', cursive;">${className}</div>
                 </div>
@@ -558,15 +561,15 @@ window.quickRollCharacter = function() {
     const btnG = document.querySelector(`.gender-btn[data-value="${rG}"]`);
     if (btnG) btnG.click();
 
-    if (typeof PLAYER_RACES !== 'undefined') {
-        const races = Object.keys(PLAYER_RACES);
+    if (typeof window.PLAYER_RACES !== 'undefined') {
+        const races = Object.keys(window.PLAYER_RACES);
         const rR = races[Math.floor(Math.random() * races.length)];
         const btnR = document.querySelector(`#raceSelectionContainer div[data-key="${rR}"]`);
         if (btnR) btnR.click();
     }
 
-    if (typeof PLAYER_BACKGROUNDS !== 'undefined') {
-        const classes = Object.keys(PLAYER_BACKGROUNDS);
+    if (typeof window.PLAYER_BACKGROUNDS !== 'undefined') {
+        const classes = Object.keys(window.PLAYER_BACKGROUNDS);
         const rC = classes[Math.floor(Math.random() * classes.length)];
         const btnC = document.querySelector(`#classSelectionContainer div[data-key="${rC}"]`);
         if (btnC) btnC.click();
@@ -615,11 +618,11 @@ function initCreationUI() {
     
     // PERFORMANCE WIN: Use DocumentFragments to prevent layout thrashing
     const raceContainer = _DOMCache.getRaceContainer();
-    if (raceContainer && typeof PLAYER_RACES !== 'undefined') {
+    if (raceContainer && typeof window.PLAYER_RACES !== 'undefined') {
         raceContainer.innerHTML = '';
         const raceFrag = document.createDocumentFragment();
-        for (const key in PLAYER_RACES) {
-            const r = PLAYER_RACES[key];
+        for (const key in window.PLAYER_RACES) {
+            const r = window.PLAYER_RACES[key];
             const div = document.createElement('div');
             div.className = 'creation-option p-3 rounded-lg flex items-center gap-3 border-gray-600 border-2 transition-all';
             div.innerHTML = `<span class="text-3xl">${r.icon}</span> <span class="font-bold text-lg">${r.name}</span>`;
@@ -631,11 +634,11 @@ function initCreationUI() {
     }
 
     const classContainer = _DOMCache.getClassContainer();
-    if (classContainer && typeof PLAYER_BACKGROUNDS !== 'undefined') {
+    if (classContainer && typeof window.PLAYER_BACKGROUNDS !== 'undefined') {
         classContainer.innerHTML = '';
         const classFrag = document.createDocumentFragment();
-        for (const key in PLAYER_BACKGROUNDS) {
-            const bg = PLAYER_BACKGROUNDS[key];
+        for (const key in window.PLAYER_BACKGROUNDS) {
+            const bg = window.PLAYER_BACKGROUNDS[key];
             const div = document.createElement('div');
             div.className = 'creation-option p-3 rounded-lg border-gray-600 border-2 transition-all';
             
@@ -699,8 +702,8 @@ async function finalizeCharacterCreation() {
     const player = gameState.player;
     
     // Safe lookup
-    const bgData = typeof PLAYER_BACKGROUNDS !== 'undefined' ? PLAYER_BACKGROUNDS[creationState.background] : null;
-    const raceData = typeof PLAYER_RACES !== 'undefined' ? PLAYER_RACES[creationState.race] : null;
+    const bgData = typeof window.PLAYER_BACKGROUNDS !== 'undefined' ? window.PLAYER_BACKGROUNDS[creationState.background] : null;
+    const raceData = typeof window.PLAYER_RACES !== 'undefined' ? window.PLAYER_RACES[creationState.race] : null;
 
     if (!bgData || !raceData) {
         console.error("Missing Class or Race data during creation!");
@@ -744,10 +747,11 @@ async function finalizeCharacterCreation() {
     player.psyche = player.maxPsyche;
 
     // 5. Apply Inventory (Class Kit)
-    // PERFORMANCE WIN: Utilize fastClone utility over JSON.parse to prevent CPU blocking during load
+    // PERFORMANCE & BUG FIX WIN: Utilize cloneItemSafely to prevent 
+    // wiping out weapon effect logic!
     if (bgData.items) {
         bgData.items.forEach(newItem => {
-            const clonedItem = typeof fastClone === 'function' ? fastClone(newItem) : JSON.parse(JSON.stringify(newItem));
+            const clonedItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(newItem) : JSON.parse(JSON.stringify(newItem));
             player.inventory.push(clonedItem);
         });
     }
