@@ -141,6 +141,7 @@ window.currentZoom = 20; // The absolute source of truth for TILE_SIZE
 // --- CHAT & MESSAGE LOG SYSTEM ---
 // PERFORMANCE WIN: Cache Regexes so the V8 engine doesn't recompile them on every log
 const CRIT_REGEX = /\b(CRITICAL HIT!|CRITICAL|AMBUSH!|LEVEL UP!|NEW RECORD!|MAXED)\b/g;
+
 // LORE WIN: Added explicit Void and Ethereal parsing colors for future-proof lore formatting!
 const FORMAT_REGEXES = [
     { rx: /{red:(.*?)}/g, repl: '<span class="text-red-500 font-bold drop-shadow-md">$1</span>' },
@@ -159,7 +160,8 @@ const logMessage = (text) => {
     if (!text || !messageLog) return; 
 
     // 1. SANITIZE: Turn "<script>" into "&lt;script&gt;"
-    let safeText = escapeHtml(text);
+    // 🚨 SECURITY WIN: Must be done FIRST so we don't accidentally escape the HTML we are about to inject!
+    let safeText = typeof escapeHtml === 'function' ? escapeHtml(text) : text;
 
     // 2. QoL WIN: Smart Auto-Highlighting
     let formattedText = safeText.replace(CRIT_REGEX, '{gold:$1}');
@@ -593,7 +595,7 @@ const renderInventory = () => {
             itemDiv.dataset.index = index;
 
             // Build the Native Tooltip
-            let title = item.name;
+            let title = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
             if (item.type === 'treasure_map') title = `🗺️ ${title}`; // QoL
             
             if (item.statBonuses) {
@@ -743,6 +745,9 @@ const renderEquipment = () => {
     const acc = equip.accessory;
     const ammo = equip.ammo;
 
+    const safeWpnName = typeof escapeHtml === 'function' ? escapeHtml(weapon.name) : weapon.name;
+    const safeArmorName = typeof escapeHtml === 'function' ? escapeHtml(armor.name) : armor.name;
+
     // --- UI/UX WIN: Dynamic Empty Slot Styling & Lore Hints ---
     const applySlotStyle = (iconElement, isEmpty) => {
         if (!iconElement) return;
@@ -759,8 +764,8 @@ const renderEquipment = () => {
     const ammoDamage = ammo ? (ammo.damage || 0) : 0;
     const totalDamage = playerStrength + weaponDamage + ammoDamage;
 
-    let weaponString = `Wpn: ${weapon.name} (+${weaponDamage})`;
-    let weaponTooltip = `${weapon.name}\nBase Damage: +${weaponDamage}\n(Your Total: ${totalDamage})`;
+    let weaponString = `Wpn: ${safeWpnName} (+${weaponDamage})`;
+    let weaponTooltip = `${safeWpnName}\nBase Damage: +${weaponDamage}\n(Your Total: ${totalDamage})`;
     
     if (weapon.name === 'Fists') {
         weaponTooltip = "Empty Main Hand: Your fists deal base damage based on Strength.";
@@ -800,11 +805,11 @@ const renderEquipment = () => {
     
     const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
 
-    let armorString = `Body: ${armor.name} (+${armorDefense})`;
-    let armorTooltip = `${armor.name}\nBase Defense: +${armorDefense}\n(Your Total: ${totalDefense})`;
+    let armorString = `Body: ${safeArmorName} (+${armorDefense})`;
+    let armorTooltip = `${safeArmorName}\nBase Defense: +${armorDefense}\n(Your Total: ${totalDefense})`;
     
     if (armor.name === 'Tattered Rags' || armor.name === 'Simple Tunic') {
-        armorTooltip = `${armor.name}\nEmpty Body: No robust armor equipped. You are vulnerable.`;
+        armorTooltip = `${safeArmorName}\nEmpty Body: No robust armor equipped. You are vulnerable.`;
     } else if (armor.statBonuses) {
         const bonusArr = Object.entries(armor.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
         if (bonusArr.length > 0) {
@@ -826,8 +831,14 @@ const renderEquipment = () => {
 
     // --- MISC / ACC DISPLAY ---
     let miscString = "";
-    if (offhand) miscString += `Off: ${offhand.name} | `;
-    if (acc) miscString += `Acc: ${acc.name}`;
+    if (offhand) {
+        const safeOffName = typeof escapeHtml === 'function' ? escapeHtml(offhand.name) : offhand.name;
+        miscString += `Off: ${safeOffName} | `;
+    }
+    if (acc) {
+        const safeAccName = typeof escapeHtml === 'function' ? escapeHtml(acc.name) : acc.name;
+        miscString += `Acc: ${safeAccName}`;
+    }
     if (!offhand && !acc) miscString = "Off-Hand & Accessory Empty";
     
     if (_uiCache.equipMisc !== miscString) {
@@ -857,21 +868,23 @@ const renderEquipment = () => {
         oIcon.textContent = offhand ? offhand.tile.replace(/[a-zA-Z]/g, '') : '🛡️';
         applySlotStyle(oIcon, !offhand);
         
-        let oTip = offhand ? `${offhand.name}\nDefense: +${offhand.defense || 0}` : 'Empty Off-Hand: Equip a shield to block or a secondary item.';
+        let oTip = offhand ? `${typeof escapeHtml === 'function' ? escapeHtml(offhand.name) : offhand.name}\nDefense: +${offhand.defense || 0}` : 'Empty Off-Hand: Equip a shield to block or a secondary item.';
         if (weapon.isTwoHanded && !offhand) oTip = `(Blocked: Wielding a Two-Handed Weapon)`;
         oIcon.title = oTip;
     }
     if (cIcon) {
         cIcon.textContent = acc ? acc.tile.replace(/[a-zA-Z]/g, '') : '💍';
         applySlotStyle(cIcon, !acc);
-        let accTooltip = acc ? acc.name : 'Empty Accessory: Magic rings and amulets go here.';
+        let accTooltip = acc ? (typeof escapeHtml === 'function' ? escapeHtml(acc.name) : acc.name) : 'Empty Accessory: Magic rings and amulets go here.';
         if (acc && acc.statBonuses) accTooltip += `\nBonuses: ${Object.entries(acc.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
         cIcon.title = accTooltip;
     }
     if (mIcon && ammoCount) {
         mIcon.childNodes[0].nodeValue = ammo ? ammo.tile.replace(/[a-zA-Z]/g, '') : '➹';
         applySlotStyle(mIcon, !ammo);
-        mIcon.title = ammo ? `${ammo.name}\nDamage: +${ammo.damage || 0}\nRemaining: ${ammo.quantity}` : 'Empty Ammo: Arrows and bolts for ranged weapons.';
+        
+        const safeAmmoName = ammo && typeof escapeHtml === 'function' ? escapeHtml(ammo.name) : (ammo ? ammo.name : '');
+        mIcon.title = ammo ? `${safeAmmoName}\nDamage: +${ammo.damage || 0}\nRemaining: ${ammo.quantity}` : 'Empty Ammo: Arrows and bolts for ranged weapons.';
         
         ammoCount.textContent = ammo ? ammo.quantity : '';
         ammoCount.style.display = ammo ? 'block' : 'none';
@@ -1008,7 +1021,8 @@ function renderStatusEffects() {
 
     // --- MOUNTS & VEHICLES ---
     if (player.isMounted && player.companion) {
-        icons += `<span title="Mounted: ${player.companion.name}" class="drop-shadow-md cursor-help text-orange-400 relative top-[-2px]">${player.companion.tile || '🐎'}</span>`;
+        const safeMountName = typeof escapeHtml === 'function' ? escapeHtml(player.companion.name) : player.companion.name;
+        icons += `<span title="Mounted: ${safeMountName}" class="drop-shadow-md cursor-help text-orange-400 relative top-[-2px]">${player.companion.tile || '🐎'}</span>`;
     }
     if (player.isSailing) {
         icons += `<span title="Sailing Ship" class="drop-shadow-md cursor-help text-blue-400">⛵</span>`;
@@ -1113,32 +1127,34 @@ function resizeCanvas() {
 
 // Inject RPG Tooltips into the Stat Panel
 (function initStatTooltips() {
-    const statDescriptions = {
-        // Core Profile
-        level: "Level: Represents your overall power and experience. You gain Stat Points and occasionally Mastery Talents when leveling up.",
-        xp: "Experience: Earned by slaying monsters, exploring regions, and discovering lore. Fills to increase your Level.",
-        coins: "Gold Coins: The currency of the realm. Used for trading, camp upgrades, and magical fountains.",
-        // Vitals
-        health: "Health: The physical toll your body can endure. If it hits 0, you die and lose gold/items.",
-        mana: "Mana: Magical essence channeled from the leylines. Used to cast Spells and Fast Travel.",
-        stamina: "Stamina: Physical energy. Used to perform powerful Weapon Skills, run, or mine ore.",
-        psyche: "Psyche: Mental fortitude. Required to tame beasts, pacify enemies, and resist Void madness.",
-        hunger: "Hunger: Determines natural healing. If empty, you stop regenerating Health over time.",
-        thirst: "Thirst: Determines physical recovery. If empty, you stop regenerating Stamina over time.",
-        // Attributes
-        strength: "Strength: Modifies raw Melee Damage. Also improves mining yield, carry capacity, and unarmed damage.",
-        wits: "Wits: Increases Spell Damage, Arcane Shield strength, and expands maximum Mana reserves.",
-        constitution: "Constitution: Hardens the body. Increases base Defense and expands maximum Health.",
-        dexterity: "Dexterity: Enhances reflexes. Increases Dodge chance, Stealth duration, Ranged Damage, and Fishing catch rate.",
-        charisma: "Charisma: The art of influence. Grants better Shop Prices and improves the chance to Tame/Pacify beasts and Mount success.",
-        luck: "Luck: Bends fate. Increases Critical Hit chance, Dodge chance, rare Magic Loot drops, and Trophy Fish rates.",
-        willpower: "Willpower: Dark resilience. Increases Max Psyche, Dark/Frost spell damage, and summon health.",
-        perception: "Perception: Keen senses. Improves combat Accuracy and the chance to passively spot Secret Doors.",
-        endurance: "Endurance: Tireless resolve. Increases Max Stamina and improves resistance to Swamp Sickness.",
-        intuition: "Intuition: Connection to nature. Improves Druidic spells and senses unseen enemies nearby."
-    };
+    // 🚨 BUG FIX: Ensure this script runs after the DOM is fully interactive
+    // Previously ran asynchronously which caused random failures on first load
+    const setupTooltips = () => {
+        const statDescriptions = {
+            // Core Profile
+            level: "Level: Represents your overall power and experience. You gain Stat Points and occasionally Mastery Talents when leveling up.",
+            xp: "Experience: Earned by slaying monsters, exploring regions, and discovering lore. Fills to increase your Level.",
+            coins: "Gold Coins: The currency of the realm. Used for trading, camp upgrades, and magical fountains.",
+            // Vitals
+            health: "Health: The physical toll your body can endure. If it hits 0, you die and lose gold/items.",
+            mana: "Mana: Magical essence channeled from the leylines. Used to cast Spells and Fast Travel.",
+            stamina: "Stamina: Physical energy. Used to perform powerful Weapon Skills, run, or mine ore.",
+            psyche: "Psyche: Mental fortitude. Required to tame beasts, pacify enemies, and resist Void madness.",
+            hunger: "Hunger: Determines natural healing. If empty, you stop regenerating Health over time.",
+            thirst: "Thirst: Determines physical recovery. If empty, you stop regenerating Stamina over time.",
+            // Attributes
+            strength: "Strength: Modifies raw Melee Damage. Also improves mining yield, carry capacity, and unarmed damage.",
+            wits: "Wits: Increases Spell Damage, Arcane Shield strength, and expands maximum Mana reserves.",
+            constitution: "Constitution: Hardens the body. Increases base Defense and expands maximum Health.",
+            dexterity: "Dexterity: Enhances reflexes. Increases Dodge chance, Stealth duration, Ranged Damage, and Fishing catch rate.",
+            charisma: "Charisma: The art of influence. Grants better Shop Prices and improves the chance to Tame/Pacify beasts and Mount success.",
+            luck: "Luck: Bends fate. Increases Critical Hit chance, Dodge chance, rare Magic Loot drops, and Trophy Fish rates.",
+            willpower: "Willpower: Dark resilience. Increases Max Psyche, Dark/Frost spell damage, and summon health.",
+            perception: "Perception: Keen senses. Improves combat Accuracy and the chance to passively spot Secret Doors.",
+            endurance: "Endurance: Tireless resolve. Increases Max Stamina and improves resistance to Swamp Sickness.",
+            intuition: "Intuition: Connection to nature. Improves Druidic spells and senses unseen enemies nearby."
+        };
 
-    setTimeout(() => {
         for (const stat in statDescriptions) {
             const displayEl = statDisplays[stat];
             if (displayEl && displayEl.parentElement) {
@@ -1146,7 +1162,13 @@ function resizeCanvas() {
                 displayEl.parentElement.classList.add('cursor-help'); 
             }
         }
-    }, 500);
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupTooltips);
+    } else {
+        setupTooltips();
+    }
 })();
 
 // --- ZOOM EVENT LISTENER ---
