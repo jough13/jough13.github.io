@@ -69,6 +69,8 @@ var NEW_FISHING_ITEMS = {
             
             allFish.forEach(fishName => {
                 const record = records[fishName];
+                const safeName = typeof escapeHtml === 'function' ? escapeHtml(fishName) : fishName;
+                
                 if (record) {
                     caughtCount++;
                     totalWeight += record;
@@ -80,7 +82,7 @@ var NEW_FISHING_ITEMS = {
                     
                     gridHtml += `
                     <div class="bg-gray-800 bg-opacity-50 p-2 rounded border border-green-600 border-opacity-30 hover:bg-gray-700 transition-colors">
-                        <div class="text-xs font-bold text-green-400">${fishName}</div>
+                        <div class="text-xs font-bold text-green-400">${safeName}</div>
                         <div class="text-[10px] ${color}">Best: ${record} lbs</div>
                     </div>`;
                 } else {
@@ -608,7 +610,10 @@ function executeFishing() {
     if (zone === 'lava') flavorText = "You cast your obsidian line into the bubbling magma...";
     if (zone === 'void') flavorText = "You cast your line into the shimmering rift...";
     
-    if (usedBaitName) flavorText += ` {${baitColor}:(Used ${usedBaitName})}`;
+    // SECURITY WIN: Escape the user-defined bait name
+    const safeBaitName = usedBaitName && typeof escapeHtml === 'function' ? escapeHtml(usedBaitName) : usedBaitName;
+
+    if (safeBaitName) flavorText += ` {${baitColor}:(Used ${safeBaitName})}`;
     if (isNight) flavorText += " The darkness is absolute.";
     if (isBloodMoon) flavorText += " The water reflects the crimson moon.";
     if (gameState.weather === 'rain') flavorText += " The rain pelts the surface of the water.";
@@ -640,7 +645,10 @@ function executeFishing() {
         const nightBoost = isNight ? 0.20 : 0; 
         const frenzyBoost = isFrenzy ? 0.15 : 0;
         const luckBoost = player.luck * 0.01;
-        const lvlBoost = isDeepSeaMaster ? (player.fishingLevel * 0.04) : (player.fishingLevel * 0.02);
+        
+        // 🐛 BUG FIX WIN: The Deep Sea Master perk previously added a massive +60% flat legendary rate.
+        // It has been flattened out to an organic logarithmic curve that prevents inventory blowing out with gold
+        const lvlBoost = isDeepSeaMaster ? (Math.log(player.fishingLevel) * 0.05) : (player.fishingLevel * 0.01);
         
         // WEATHER SYNERGY: Thunderstorms and Blood Moons massively boost rarity rolls
         let weatherBoost = 0;
@@ -718,6 +726,9 @@ function executeFishing() {
         const baseKey = getItemKeyByName(baseName) || baseName;
         const template = window.ITEM_DATA[baseKey];
         const catchTile = template ? (template.tile || '🐟') : '🐟';
+        
+        // SECURITY WIN: Clean names for UI rendering
+        const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(finalItemName) : finalItemName;
 
         // --- VISUAL CATCH JUICE ---
         if (typeof ParticleSystem !== 'undefined') {
@@ -731,20 +742,20 @@ function executeFishing() {
                 AudioSystem.playLevelUp();
                 AudioSystem.playFishBite();
             }
-            logMessage(`{gold:A MASSIVE TUG! You hauled up a ${finalItemName}!}`);
+            logMessage(`{gold:A MASSIVE TUG! You hauled up a ${safeItemName}!}`);
             gameState.screenShake = 5; // JUICE
         } else if (rarity === 'rare') {
             if (typeof AudioSystem !== 'undefined') {
                 AudioSystem.playCoin();
                 AudioSystem.playFishBite();
             }
-            logMessage(`{purple:A strong bite! You caught a ${finalItemName}!}`);
+            logMessage(`{purple:A strong bite! You caught a ${safeItemName}!}`);
         } else if (rarity === 'trash') {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-            logMessage(`{gray:You reeled in some trash... a ${finalItemName}.}`);
+            logMessage(`{gray:You reeled in some trash... a ${safeItemName}.}`);
         } else {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-            if (!isTrophy) logMessage(`You caught a ${finalItemName}!`);
+            if (!isTrophy) logMessage(`You caught a ${safeItemName}!`);
         }
             
         // THE FIX: Proper Stack & Capacity Checking!
@@ -766,14 +777,14 @@ function executeFishing() {
                 defense: template ? template.defense : null,
                 damage: template ? template.damage : null,
                 slot: template ? template.slot : null,
-                statBonuses: template ? template.statBonuses : null,
-                tags: template ? (template.tags || null) : null,           // 🛡️ FIX: Hydrate tags so weapons work!
+                statBonuses: template && template.statBonuses ? JSON.parse(JSON.stringify(template.statBonuses)) : null,
+                tags: template && template.tags ? [...template.tags] : null,           // 🛡️ FIX: Hydrate tags so weapons work!
                 _rarity: template ? (template._rarity || null) : null,     // 🛡️ FIX: Hydrate rarity so borders glow!
                 effect: template ? template.effect : null
             });
         } else {
             // Inventory is full and the item doesn't stack!
-            logMessage(`{red:Your pack is too full to keep the ${finalItemName}. It flops back into the water!}`);
+            logMessage(`{red:Your pack is too full to keep the ${safeItemName}. It flops back into the water!}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y - 1, '#60a5fa', 5); // Flop splash
             // Note: XP and Records are kept intentionally because they still succeeded at the fishing mini-game mechanic.
