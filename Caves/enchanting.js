@@ -68,6 +68,9 @@ function renderEnchantingModal() {
 
         // Is it a weapon or armor?
         const isGear = item.type === 'weapon' || item.type === 'armor';
+        
+        // SECURITY WIN: Escape the item name to prevent XSS injection from manipulated save files
+        const safeName = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
 
         // --- DISENCHANT LIST ---
         if (isGear && item._rarity) {
@@ -83,7 +86,7 @@ function renderEnchantingModal() {
             li.className = `shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-red-500 transition-all duration-150`;
             li.innerHTML = `
                 <div>
-                    <span class="font-bold text-lg ${rarityColor} drop-shadow-sm">${item.tile || '🎒'} ${item.name}</span>
+                    <span class="font-bold text-lg ${rarityColor} drop-shadow-sm">${item.tile || '🎒'} ${safeName}</span>
                     <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Yields: <span class="text-purple-300 font-bold">+${yieldAmt} Dust</span></span>
                 </div>
                 <button data-disenchant="${index}" style="transform: translateZ(0);" class="bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 border-red-900 active:border-b-0 active:mt-0.5">Shatter</button>
@@ -115,7 +118,7 @@ function renderEnchantingModal() {
             li.className = `shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-${targetColorTheme}-500 transition-all duration-150`;
             li.innerHTML = `
                 <div>
-                    <span class="font-bold text-lg ${nameColor} drop-shadow-sm">${item.tile || '🎒'} ${item.name}</span>
+                    <span class="font-bold text-lg ${nameColor} drop-shadow-sm">${item.tile || '🎒'} ${safeName}</span>
                     <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Cost: <span class="${canAfford ? 'text-purple-300' : 'text-red-400'} font-bold">-${cost} Dust</span></span>
                 </div>
                 <button data-enchant="${index}" style="transform: translateZ(0);" class="${btnClass} px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 active:border-b-0 active:mt-0.5" ${canAfford ? '' : 'disabled'}>Infuse</button>
@@ -138,7 +141,14 @@ function handleDisenchant(index) {
     try {
         const player = gameState.player;
         const item = player.inventory[index];
-        if (!item || !item._rarity) return;
+        
+        // 🚨 SECURITY FIX: Re-verify the item isn't equipped just in case the UI is out of sync!
+        // Prevents permanently breaking player stats if they shatter an equipped weapon.
+        if (!item || item.isEquipped || !item._rarity) {
+            logMessage("{red:You cannot shatter an equipped or invalid item!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
 
         const yieldAmt = DUST_YIELDS[item._rarity] || 1;
         const oldName = item.name;
@@ -201,13 +211,20 @@ function handleEnchant(index) {
     try {
         const player = gameState.player;
         const item = player.inventory[index];
-        if (!item) return;
+        
+        // 🚨 SECURITY FIX: Re-verify the item state and type to prevent injection issues
+        if (!item || item.isEquipped || item._rarity === 'legendary') {
+            logMessage("{red:You cannot enchant this item!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
 
         const currentRarity = item._rarity || 'normal';
         const cost = UPGRADE_COSTS[currentRarity];
 
         const dustIdx = player.inventory.findIndex(i => i.name === 'Arcane Dust');
         if (dustIdx === -1 || player.inventory[dustIdx].quantity < cost) {
+            logMessage("{red:You do not have enough Arcane Dust.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
@@ -301,6 +318,8 @@ function handleEnchant(index) {
 function saveEnchantingState() {
     renderEnchantingModal();
     if (typeof renderInventory === 'function') renderInventory();
+    
+    // 🚨 FIREBASE OPTIMIZATION: Debounce the save to prevent quota drain
     if (typeof triggerDebouncedSave === 'function') {
         triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
     }
