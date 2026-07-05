@@ -236,7 +236,8 @@ function assignToHotbar(abilityId) {
     }
 
     // ROBUSTNESS WIN: Use findIndex instead of indexOf to catch 'undefined' or empty strings safely
-    let index = hotbar.findIndex(slot => !slot);
+    // Check for null, undefined, or empty strings!
+    let index = hotbar.findIndex(slot => slot === null || slot === undefined || slot === "");
 
     // LORE WIN: Highly atmospheric binding verbs!
     let flavorColor = 'gray';
@@ -254,7 +255,7 @@ function assignToHotbar(abilityId) {
     }
 
     if (index === -1) {
-        index = 0;
+        index = 0; // Overwrite the first slot if full
         logMessage(`{${flavorColor}:Quick-Slots full. Overwrote Slot 1 and ${verb} ${safeReadableName}.}`);
     } else {
         logMessage(`{${flavorColor}:You ${verb} ${safeReadableName} to Quick-Slot ${index + 1}.}`);
