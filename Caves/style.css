@@ -102,6 +102,7 @@ body {
     overscroll-behavior-y: none;
     /* Prevent ugly blue tap highlights on mobile */
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 /* JUICE WIN: Thematic Text Selection */
@@ -117,26 +118,33 @@ body {
     border-radius: 4px;
 }
 
-/* EASY WIN: Universal tactile button clicks with hardware acceleration */
+/* ==========================================================================
+   BUTTONS (GPU Optimized)
+   ========================================================================== */
 button {
     transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, border-color 0.2s ease, filter 0.1s ease, box-shadow 0.2s ease;
-    transform: translate3d(0, 0, 0); 
-    backface-visibility: hidden;
     /* MOBILE WIN: Prevent tooltips/selection on rapid fire tapping */
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+    /* 🚨 GPU WIN: Removed static translate3d to prevent massive VRAM allocation */
 }
-/* PERFORMANCE WIN: Apply will-change only on active/hover to save VRAM */
-button:hover, button:active {
+
+/* Only promote to GPU composition layer when actively hovering or pressing! */
+button:hover, button:focus-visible {
     will-change: transform, filter;
 }
+
 button:active:not(:disabled) {
-    transform: scale(0.95) translate3d(0, 0, 0);
+    transform: scale(0.95);
     filter: brightness(0.85);
 }
+
+/* Global Disabled State */
 button:disabled {
-    cursor: not-allowed;
+    cursor: not-allowed !important;
+    filter: grayscale(0.8) opacity(0.6);
+    transform: none !important;
 }
 
 .game-container, .themed-container {
@@ -188,8 +196,8 @@ button:disabled {
 }
 
 @keyframes ethereal-drift {
-    0%, 100% { opacity: 0.8; transform: translate3d(0, 0, 0); }
-    50% { opacity: 1; transform: translate3d(0, -1px, 0); text-shadow: 0 0 8px rgba(94, 234, 212, 0.6); }
+    0%, 100% { opacity: 0.8; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-1px); text-shadow: 0 0 8px rgba(94, 234, 212, 0.6); }
 }
 .text-ethereal-drift {
     color: #5eead4;
@@ -204,14 +212,14 @@ button:disabled {
     user-select: none;  
     -webkit-user-select: none;
     -moz-user-select: none;
-    -webkit-touch-callout: none; /* iOS Bug Fix */
+    -webkit-touch-callout: none;
 }
 
 /* Allow users to select text in input fields and chat logs */
 .themed-input, #chatMessages, #messageLog {
     user-select: auto;
     -webkit-user-select: auto;
-    /* PERFORMANCE WIN: Strict containment for scrolling text areas */
+    /* PERFORMANCE WIN: Strict containment for scrolling text areas prevents reflowing the whole page */
     contain: strict; 
 }
 
@@ -227,6 +235,14 @@ button:disabled {
     outline: none;
     border-color: var(--text-highlight);
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.4);
+}
+
+/* 🚨 iOS SAFARI AUTO-ZOOM FIX */
+/* iOS automatically zooms the browser window if an input font size is < 16px */
+@media screen and (max-width: 768px) {
+    input[type="text"], input[type="email"], input[type="password"] {
+        font-size: 16px !important;
+    }
 }
 
 /* ==========================================================================
@@ -278,17 +294,13 @@ canvas {
     box-shadow: 0 0 25px rgba(0, 0, 0, 0.4); 
     transition: box-shadow 0.3s ease, filter 0.3s ease, transform 0.3s ease; 
     contain: strict; 
-    will-change: box-shadow, filter, transform; 
-    transform: translate3d(0, 0, 0); /* Force GPU compositing layer */
+    will-change: box-shadow, filter; 
+    /* Force GPU compositing layer for the canvas viewport only */
+    transform: translate3d(0, 0, 0); 
     backface-visibility: hidden;
 }
 
 /* Animated CRT Scanlines & Screen Flicker */
-@keyframes scanline-scroll {
-    0% { background-position: 0 0; }
-    100% { background-position: 0 4px; }
-}
-
 @keyframes crt-flicker {
     0% { opacity: 0.98; }
     5% { opacity: 0.96; } /* Softer flicker to prevent eye strain */
@@ -309,20 +321,20 @@ canvas {
     display: block;
     position: absolute;
     top: 0; left: 0; bottom: 0; right: 0;
-    background: linear-gradient(
+    
+    /* 🚨 GPU WIN: Replaced expensive scaling background with mathematically precise repeating gradient */
+    background: repeating-linear-gradient(
         to bottom,
-        rgba(18, 16, 16, 0) 50%,
-        rgba(0, 0, 0, 0.015) 50% /* Subtler scanlines */
+        rgba(18, 16, 16, 0) 0px,
+        rgba(18, 16, 16, 0) 2px,
+        rgba(0, 0, 0, 0.12) 3px,
+        rgba(0, 0, 0, 0.12) 4px
     );
-    background-size: 100% 4px;
     z-index: 10;
     pointer-events: none; 
     
     /* Softer static vignette shadow */
     box-shadow: inset 0 0 30px rgba(0,0,0,0.3); 
-    
-    animation: scanline-scroll 0.8s linear infinite; 
-    will-change: background-position;
 }
 
 /* ==========================================================================
@@ -340,28 +352,25 @@ canvas {
 
 /* LORE WIN: Triggers in the Void or when suffering Madness */
 @keyframes void-wobble {
-    0% { filter: hue-rotate(0deg) contrast(1.1); transform: skewX(0deg) scale(1) translate3d(0, 0, 0); box-shadow: inset 0 0 30px rgba(168, 85, 247, 0.2); }
-    50% { filter: hue-rotate(15deg) contrast(1.25) brightness(0.9); transform: skewX(0.5deg) scale(1.01) translate3d(0, 0, 0); box-shadow: inset 0 0 80px rgba(168, 85, 247, 0.6); }
-    100% { filter: hue-rotate(0deg) contrast(1.1); transform: skewX(0deg) scale(1) translate3d(0, 0, 0); box-shadow: inset 0 0 30px rgba(168, 85, 247, 0.2); }
+    0% { filter: hue-rotate(0deg) contrast(1.1); transform: skewX(0deg) scale(1); box-shadow: inset 0 0 30px rgba(168, 85, 247, 0.2); }
+    50% { filter: hue-rotate(15deg) contrast(1.25) brightness(0.9); transform: skewX(0.5deg) scale(1.01); box-shadow: inset 0 0 80px rgba(168, 85, 247, 0.6); }
+    100% { filter: hue-rotate(0deg) contrast(1.1); transform: skewX(0deg) scale(1); box-shadow: inset 0 0 30px rgba(168, 85, 247, 0.2); }
 }
 .void-distortion {
     animation: void-wobble 5s infinite ease-in-out;
 }
-
 
 /* ==========================================================================
    INVENTORY, HOTBAR & EQUIPMENT
    ========================================================================== */
 #hotbarContainer > div {
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
 }
 #hotbarContainer > div:hover {
     will-change: transform, box-shadow;
 }
 #hotbarContainer > div:hover:not(.opacity-50):not(.cursor-not-allowed) {
-    transform: translate3d(0, -6px, 0);
+    transform: translateY(-6px);
     border-color: var(--text-highlight);
     box-shadow: 0 8px 12px rgba(0,0,0,0.2), 0 0 10px rgba(79, 70, 229, 0.3);
 }
@@ -379,9 +388,6 @@ canvas {
     border-radius: 8px;
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     
-    transform: translate3d(0, 0, 0); 
-    backface-visibility: hidden;
-    
     /* PERFORMANCE WIN: Skip rendering off-screen inventory items entirely! */
     content-visibility: auto;
     contain-intrinsic-size: 56px;
@@ -393,7 +399,7 @@ canvas {
 }
 
 .inventory-slot:hover {
-    transform: translate3d(0, -5px, 0);
+    transform: translateY(-5px);
     border-color: var(--text-highlight);
     box-shadow: 0 8px 16px rgba(0,0,0,0.25), 0 0 10px rgba(79, 70, 229, 0.25); 
     z-index: 10; 
@@ -401,7 +407,7 @@ canvas {
 
 /* JUICE WIN: Tactile click compression for items */
 .inventory-slot:active {
-    transform: translate3d(0, -2px, 0) scale(0.95);
+    transform: translateY(-2px) scale(0.95);
     box-shadow: 0 4px 8px rgba(0,0,0,0.2), 0 0 5px rgba(79, 70, 229, 0.2);
 }
 
@@ -433,15 +439,13 @@ canvas {
 }
 @keyframes legendary-pulse {
     0% { box-shadow: inset 0 0 10px rgba(234, 179, 8, 0.2); border-color: rgba(234, 179, 8, 0.7); }
-    50% { box-shadow: inset 0 0 25px rgba(234, 179, 8, 0.8); border-color: rgba(234, 179, 8, 1); transform: scale(1.02) translate3d(0,0,0); }
+    50% { box-shadow: inset 0 0 25px rgba(234, 179, 8, 0.8); border-color: rgba(234, 179, 8, 1); transform: scale(1.02); }
     100% { box-shadow: inset 0 0 10px rgba(234, 179, 8, 0.2); border-color: rgba(234, 179, 8, 0.7); }
 }
 
-/* Assign via JS or HTML classes */
 .inventory-slot.rarity-rare { animation: rare-pulse 2.5s infinite ease-in-out; }
 .inventory-slot.rarity-epic { animation: epic-pulse 2.5s infinite ease-in-out; }
 .inventory-slot.rarity-legendary { animation: legendary-pulse 2s infinite ease-in-out; z-index: 5; }
-
 
 .equipment-slot {
     width: 68px;
@@ -456,16 +460,13 @@ canvas {
     box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.2); 
     color: var(--text-default);
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
     contain: layout paint;
 }
 
 .equipment-slot:hover {
     will-change: transform;
     border-color: var(--text-highlight);
-    transform: scale(1.1) translate3d(0, 0, 0);
+    transform: scale(1.1);
     box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.3), 0 0 12px rgba(79, 70, 229, 0.4);
 }
 
@@ -480,24 +481,24 @@ canvas {
 
 /* Modals slide up with an elastic spring effect */
 @keyframes pop-in { 
-    0% { opacity: 0; transform: scale(0.9) translate3d(0, 25px, 0); } 
-    70% { opacity: 1; transform: scale(1.02) translate3d(0, -2px, 0); }
-    100% { opacity: 1; transform: scale(1) translate3d(0, 0, 0); } 
+    0% { opacity: 0; transform: scale(0.9) translateY(25px); } 
+    70% { opacity: 1; transform: scale(1.02) translateY(-2px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); } 
 }
 
-/* PERFORMANCE WIN: Hardware Accelerated Shake using translate3d */
+/* PERFORMANCE WIN: Hardware Accelerated Shake */
 @keyframes shake {
-    0%, 100% { transform: translate3d(0, 0, 0); }
-    25% { transform: translate3d(-6px, 0, 0) rotate(-1deg); }
-    50% { transform: translate3d(6px, 0, 0) rotate(1deg); }
-    75% { transform: translate3d(-6px, 0, 0) rotate(-1deg); }
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px) rotate(-1deg); }
+    50% { transform: translateX(6px) rotate(1deg); }
+    75% { transform: translateX(-6px) rotate(-1deg); }
 }
 .shake { animation: shake 0.35s ease-in-out; }
 
 /* Subtle title breathing */
 @keyframes float-breathe {
-    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-    50% { transform: translate3d(0, -5px, 0) scale(1.01); }
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-5px) scale(1.01); }
 }
 
 /* Button Glint / Shine Effect */
@@ -520,23 +521,22 @@ canvas {
 }
 
 /* Stat Flashes & Pulses */
-@keyframes flash-green { 0% { background-color: rgba(74, 222, 128, 0.7); transform: scale(1.05); } 100% { background-color: transparent; transform: scale(1); } }
-@keyframes flash-red { 0% { background-color: rgba(239, 68, 68, 0.7); transform: scale(0.95); } 100% { background-color: transparent; transform: scale(1); } }
+@keyframes flash-green { 0% { background-color: rgba(74, 222, 128, 0.7); transform: scale(1.02); } 100% { background-color: transparent; transform: scale(1); } }
+@keyframes flash-red { 0% { background-color: rgba(239, 68, 68, 0.7); transform: scale(0.98); } 100% { background-color: transparent; transform: scale(1); } }
 .stat-flash-green { animation: flash-green 0.5s ease-out; }
 .stat-flash-red { animation: flash-red 0.5s ease-out; }
 
-@keyframes pulse-blue { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.8); } 50% { transform: scale(1.08); box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
-@keyframes pulse-purple { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.8); } 50% { transform: scale(1.08); box-shadow: 0 0 0 12px rgba(139, 92, 246, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); } }
-@keyframes pulse-green { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.8); } 50% { transform: scale(1.08); box-shadow: 0 0 0 12px rgba(74, 222, 128, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); } }
-@keyframes pulse-red { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.8); } 50% { transform: scale(1.08); box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-@keyframes pulse-yellow { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.8); } 50% { transform: scale(1.08); box-shadow: 0 0 0 12px rgba(234, 179, 8, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
+@keyframes pulse-blue { 0% { box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.8); } 100% { box-shadow: inset 0 0 0px rgba(59, 130, 246, 0); } }
+@keyframes pulse-purple { 0% { box-shadow: inset 0 0 15px rgba(139, 92, 246, 0.8); } 100% { box-shadow: inset 0 0 0px rgba(139, 92, 246, 0); } }
+@keyframes pulse-green { 0% { box-shadow: inset 0 0 15px rgba(74, 222, 128, 0.8); } 100% { box-shadow: inset 0 0 0px rgba(74, 222, 128, 0); } }
+@keyframes pulse-red { 0% { box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.8); } 100% { box-shadow: inset 0 0 0px rgba(239, 68, 68, 0); } }
+@keyframes pulse-yellow { 0% { box-shadow: inset 0 0 15px rgba(234, 179, 8, 0.8); } 100% { box-shadow: inset 0 0 0px rgba(234, 179, 8, 0); } }
 
 .stat-pulse-blue { animation: pulse-blue 0.6s ease-out; }
 .stat-pulse-purple { animation: pulse-purple 0.6s ease-out; }
 .stat-pulse-green { animation: pulse-green 0.6s ease-out; }
 .stat-pulse-red { animation: pulse-red 0.6s ease-out; }
 .stat-pulse-yellow { animation: pulse-yellow 0.6s ease-out; }
-.stat-pulse-gray { animation: pulse-gray 0.6s ease-out; } 
 
 /* Damage/Heal Canvas Overlays */
 @keyframes screen-blood { 
@@ -593,7 +593,6 @@ canvas {
     width: 92%;
     animation: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
     max-height: 90vh; 
-    transform: translate3d(0, 0, 0); 
     display: flex;
     flex-direction: column;
     /* FIX: Force content boundaries to prevent corner overlap on round modales */
@@ -601,7 +600,6 @@ canvas {
     /* PERFORMANCE WIN: Strict isolation prevents background DOM repaints! */
     contain: layout paint style;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-    backface-visibility: hidden;
 }
 
 kbd {
@@ -627,7 +625,6 @@ kbd {
     border: 1px solid var(--border-color);
     border-left-width: 5px; /* JUICE WIN: Thicker left edge for selection feel */
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translate3d(0, 0, 0);
     
     /* PERFORMANCE WIN: Skip rendering completely if scrolled off-screen! */
     content-visibility: auto;
@@ -636,7 +633,7 @@ kbd {
 }
 
 .spell-item:hover, .skill-item:hover, .shop-item:hover, .crafting-item:hover, .quest-item:hover {
-    transform: translate3d(6px, 0, 0); /* Slide slightly right instead of up for lists */
+    transform: translateX(6px); /* Slide slightly right instead of up for lists */
     box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     border-left-color: var(--text-highlight);
     background-color: var(--bg-container); /* Slight brighten on hover */
@@ -646,7 +643,7 @@ kbd {
 
 /* Tactile feedback when clicking lists */
 .spell-item:active, .skill-item:active, .shop-item:active, .crafting-item:active, .quest-item:active {
-    transform: translate3d(3px, 0, 0) scale(0.98);
+    transform: translateX(3px) scale(0.98);
     box-shadow: 0 2px 5px rgba(0,0,0,0.25);
 }
 
@@ -683,10 +680,9 @@ kbd {
     cursor: pointer;
     transition: transform 0.2s, filter 0.2s;
     box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-    transform: translate3d(0, 0, 0);
 }
 .stat-add-btn:hover { 
-    transform: scale(1.2) translate3d(0, 0, 0); 
+    transform: scale(1.2); 
     filter: brightness(1.2); 
     will-change: transform, filter;
 }
@@ -700,7 +696,6 @@ kbd {
     overflow: hidden;
     border: 1px solid var(--border-color);
     box-shadow: inset 0 2px 6px rgba(0,0,0,0.6); /* Deep glass tube look */
-    transform: translate3d(0, 0, 0); 
 }
 
 /* ==========================================================================
@@ -759,11 +754,10 @@ kbd {
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     opacity: 0.7;
-    transform: translate3d(0, 0, 0);
 }
 
 .creation-option:hover {
-    transform: translate3d(0, -3px, 0);
+    transform: translateY(-3px);
     opacity: 1.0;
     border-color: var(--text-muted);
     box-shadow: 0 6px 10px rgba(0,0,0,0.15);
@@ -771,11 +765,11 @@ kbd {
 }
 
 .creation-option.selected {
-    border-color: var(--text-highlight); 
+    border-color: var(--text-highlight, #facc15); 
     background-color: rgba(79, 70, 229, 0.15); 
     opacity: 1.0;
     box-shadow: 0 0 15px rgba(79, 70, 229, 0.5);
-    transform: scale(1.04) translate3d(0, 0, 0);
+    transform: scale(1.04);
 }
 
 .gender-btn {
@@ -788,14 +782,13 @@ kbd {
     text-align: center;
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     background-color: var(--bg-panel);
-    transform: translate3d(0, 0, 0);
 }
 
 .gender-btn.selected {
-    background-color: var(--text-highlight);
+    background-color: var(--text-highlight, #facc15);
     color: #ffffff;
     border-color: transparent;
-    transform: scale(1.06) translate3d(0, 0, 0);
+    transform: scale(1.06);
     box-shadow: 0 6px 12px rgba(0,0,0,0.25);
     will-change: transform;
 }
@@ -849,13 +842,11 @@ kbd {
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     transition: transform 0.05s, background-color 0.1s, box-shadow 0.05s;
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
 }
 
 .d-pad-btn:active, .action-btn:active {
     background-color: rgba(220, 220, 220, 1);
-    transform: scale(0.88) translate3d(0, 6px, 0); 
+    transform: scale(0.88) translateY(6px); 
     box-shadow: inset 0 8px 16px rgba(0,0,0,0.5); /* Deeper physical press */
     will-change: transform;
 }
@@ -896,8 +887,6 @@ kbd {
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     transition: transform 0.05s, background-color 0.1s, box-shadow 0.05s;
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
 }
 
 .action-btn.red { background-color: rgba(239, 68, 68, 0.92); color: white; border-color: #991b1b; }
@@ -924,14 +913,13 @@ kbd {
     border-image-repeat: repeat;
     image-rendering: pixelated;
     filter: drop-shadow(15px 15px 0px rgba(0,0,0,0.7)); 
-    transform: translate3d(0, 0, 0);
 }
 
 .ui-parchment-asset {
     background-color: var(--asset-parchment); 
     padding: 1rem 2rem 2rem 2rem;
     margin: -24px; /* Pulls the background slightly under the frame */
-    
+    box-sizing: border-box;
     /* LORE WIN: Subtle woven-paper/parchment texture overlay */
     background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 2px, transparent 2px, transparent 4px);
 }
@@ -955,7 +943,7 @@ kbd {
     font: normal bold 1.4rem/1.5 'Courier New', Courier, monospace !important; 
     text-shadow: none !important; 
     width: 100%;
-    transform: translate3d(0, 2px, 0); 
+    transform: translateY(2px); 
 }
 
 .ui-input-asset input::placeholder { 
@@ -1000,8 +988,6 @@ kbd {
     justify-content: center;
     border: none;
     cursor: pointer;
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
     
     /* JUICE WIN: Sweeping Light Glint */
     background-image: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%), var(--asset-btn-normal);
@@ -1016,7 +1002,7 @@ kbd {
 .ui-btn-asset:active {
     background-image: none, var(--asset-btn-pressed);
     color: #cccccc; 
-    transform: translate3d(0, 6px, 0); 
+    transform: translateY(6px); 
     text-shadow: 1px 1px 0px rgba(0,0,0,1); 
 }
 
