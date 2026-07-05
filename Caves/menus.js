@@ -40,6 +40,13 @@ const MENU_COLOR_REGEXES = [
     { rx: /{ethereal:(.*?)}/g, repl: '<span class="text-teal-300 italic drop-shadow-md">$1</span>' }
 ];
 
+// 🚨 BUG FIX WIN: Mutex Locks for Menu Actions
+// Prevents rapid-click duplication exploits across all menu interfaces
+let isQuestProcessing = false;
+let isEvolutionProcessing = false;
+let isTalentProcessing = false;
+let isTrainerProcessing = false;
+
 function formatMenuText(text) {
     if (!text) return "";
     // 1. Auto-tag lore keywords with {color:word} syntax
@@ -121,47 +128,54 @@ function renderTalentTree() {
 
 // Global scope for Event Delegation
 window.learnTalent = function (talentId) {
-    const player = gameState.player;
-    if (!player.talentPoints || player.talentPoints <= 0) {
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-    if (player.talents && player.talents.includes(talentId)) return;
-
-    if (!player.talents) player.talents = [];
-    player.talents.push(talentId);
-    player.talentPoints--;
-
-    const talentData = window.TALENT_DATA[talentId];
-    const rawName = talentData ? talentData.name : "Unknown Talent";
-    const safeName = typeof escapeHtml === 'function' ? escapeHtml(rawName) : rawName;
-
-    logMessage(`{purple:You mastered the ${safeName} technique!}`);
-    if (typeof triggerStatAnimation !== 'undefined') {
-        const lvlDisplay = document.getElementById('levelDisplay');
-        if (lvlDisplay) triggerStatAnimation(lvlDisplay, 'stat-pulse-purple');
-    }
+    if (isTalentProcessing) return;
+    isTalentProcessing = true;
     
-    // JUICE WIN: Powerful tactile feedback when learning a mastery skill!
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-    if (typeof ParticleSystem !== 'undefined') {
-        ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 20);
-        ParticleSystem.createFloatingText(player.x, player.y, "MASTERY!", "#a855f7");
-    }
-
-    if (typeof playerRef !== 'undefined' && playerRef) {
-        // 🚨 FIREBASE OPTIMIZATION: Debounce the save
-        if (typeof triggerDebouncedSave === 'function') {
-            triggerDebouncedSave({
-                talents: player.talents,
-                talentPoints: player.talentPoints
-            });
-        } else {
-            playerRef.update({ talents: player.talents, talentPoints: player.talentPoints });
+    try {
+        const player = gameState.player;
+        if (!player.talentPoints || player.talentPoints <= 0) {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
         }
-    }
+        if (player.talents && player.talents.includes(talentId)) return;
 
-    renderTalentTree();
+        if (!player.talents) player.talents = [];
+        player.talents.push(talentId);
+        player.talentPoints--;
+
+        const talentData = window.TALENT_DATA[talentId];
+        const rawName = talentData ? talentData.name : "Unknown Talent";
+        const safeName = typeof escapeHtml === 'function' ? escapeHtml(rawName) : rawName;
+
+        logMessage(`{purple:You mastered the ${safeName} technique!}`);
+        if (typeof triggerStatAnimation !== 'undefined') {
+            const lvlDisplay = document.getElementById('levelDisplay');
+            if (lvlDisplay) triggerStatAnimation(lvlDisplay, 'stat-pulse-purple');
+        }
+        
+        // JUICE WIN: Powerful tactile feedback when learning a mastery skill!
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 20);
+            ParticleSystem.createFloatingText(player.x, player.y, "MASTERY!", "#a855f7");
+        }
+
+        if (typeof playerRef !== 'undefined' && playerRef) {
+            // 🚨 FIREBASE OPTIMIZATION: Debounce the save
+            if (typeof triggerDebouncedSave === 'function') {
+                triggerDebouncedSave({
+                    talents: player.talents,
+                    talentPoints: player.talentPoints
+                });
+            } else {
+                playerRef.update({ talents: player.talents, talentPoints: player.talentPoints });
+            }
+        }
+
+        renderTalentTree();
+    } finally {
+        isTalentProcessing = false;
+    }
 };
 
 function openEvolutionModal() {
@@ -239,74 +253,81 @@ function selectEvolution(evoData) {
 }
 
 function executeEvolution(evoData) {
-    const player = gameState.player;
+    if (isEvolutionProcessing) return;
+    isEvolutionProcessing = true;
+    
+    try {
+        const player = gameState.player;
 
-    // 1. Apply Stats
-    for (const stat in evoData.stats) {
-        if (player.hasOwnProperty(stat)) {
-            player[stat] += evoData.stats[stat];
+        // 1. Apply Stats
+        for (const stat in evoData.stats) {
+            if (player.hasOwnProperty(stat)) {
+                player[stat] += evoData.stats[stat];
+            }
         }
-    }
 
-    // 2. Apply Special Properties
-    player.character = evoData.icon; 
-    player.classEvolved = true;
-    player.className = evoData.name; 
+        // 2. Apply Special Properties
+        player.character = evoData.icon; 
+        player.classEvolved = true;
+        player.className = evoData.name; 
 
-    // 3. Add Talent
-    if (!player.talents) player.talents = [];
-    player.talents.push(evoData.talent);
+        // 3. Add Talent
+        if (!player.talents) player.talents = [];
+        player.talents.push(evoData.talent);
 
-    // 4. Update max health/mana if constitution/wits changed
-    if (typeof recalculateDerivedStats === 'function') {
-        recalculateDerivedStats();
-    } else {
-        if (evoData.stats.constitution) player.maxHealth += (evoData.stats.constitution * 5);
-        if (evoData.stats.wits) player.maxMana += (evoData.stats.wits * 5);
-        if (evoData.stats.maxMana) player.maxMana += evoData.stats.maxMana; 
-    }
+        // 4. Update max health/mana if constitution/wits changed
+        if (typeof recalculateDerivedStats === 'function') {
+            recalculateDerivedStats();
+        } else {
+            if (evoData.stats.constitution) player.maxHealth += (evoData.stats.constitution * 5);
+            if (evoData.stats.wits) player.maxMana += (evoData.stats.wits * 5);
+            if (evoData.stats.maxMana) player.maxMana += evoData.stats.maxMana; 
+        }
 
-    // 5. Full Heal on Evolve
-    player.health = player.maxHealth;
-    player.mana = player.maxMana;
-    player.stamina = player.maxStamina;
-    player.psyche = player.maxPsyche;
+        // 5. Full Heal on Evolve
+        player.health = player.maxHealth;
+        player.mana = player.maxMana;
+        player.stamina = player.maxStamina;
+        player.psyche = player.maxPsyche;
 
-    const safeName = typeof escapeHtml === 'function' ? escapeHtml(evoData.name) : evoData.name;
+        const safeName = typeof escapeHtml === 'function' ? escapeHtml(evoData.name) : evoData.name;
 
-    // 6. Save & Close
-    logMessage(`{yellow:You have ascended! The universe trembles as you become a ${safeName}!}`);
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-    
-    // Massive Screen Shake and Particle Explosion for Evolution
-    gameState.screenShake = 30;
-    if (typeof ParticleSystem !== 'undefined') {
-        ParticleSystem.createLevelUp(player.x, player.y);
-        ParticleSystem.createExplosion(player.x, player.y, '#facc15', 40); // Huge golden burst
-        ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 20); // Secondary purple burst
-    }
-    
-    // Hide the modals IMMEDIATELY for a snappy UI response
-    const evoModal = document.getElementById('evolutionModal');
-    if (evoModal) evoModal.classList.add('hidden');
-    
-    const confirmModal = document.getElementById('evolutionConfirmModal');
-    if (confirmModal) confirmModal.classList.add('hidden');
-
-    // Sanitize the player object so Firebase doesn't crash the script!
-    if (typeof playerRef !== 'undefined' && playerRef) {
-        const safeData = typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player;
+        // 6. Save & Close
+        logMessage(`{yellow:You have ascended! The universe trembles as you become a ${safeName}!}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
         
-        // Use the immediate write here because this is a monumental state change that shouldn't wait for the debouncer
-        playerRef.update({
-            ...safeData, 
-            classEvolved: true
-        }).catch(err => console.error("Evolution save error:", err));
+        // Massive Screen Shake and Particle Explosion for Evolution
+        gameState.screenShake = 30;
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createLevelUp(player.x, player.y);
+            ParticleSystem.createExplosion(player.x, player.y, '#facc15', 40); // Huge golden burst
+            ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 20); // Secondary purple burst
+        }
+        
+        // Hide the modals IMMEDIATELY for a snappy UI response
+        const evoModal = document.getElementById('evolutionModal');
+        if (evoModal) evoModal.classList.add('hidden');
+        
+        const confirmModal = document.getElementById('evolutionConfirmModal');
+        if (confirmModal) confirmModal.classList.add('hidden');
+
+        // Sanitize the player object so Firebase doesn't crash the script!
+        if (typeof playerRef !== 'undefined' && playerRef) {
+            const safeData = typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player;
+            
+            // Use the immediate write here because this is a monumental state change that shouldn't wait for the debouncer
+            playerRef.update({
+                ...safeData, 
+                classEvolved: true
+            }).catch(err => console.error("Evolution save error:", err));
+        }
+        
+        // Update the screen to show off your new class sprite and max health!
+        if (typeof renderStats === 'function') renderStats();
+        if (typeof render === 'function') render(); 
+    } finally {
+        isEvolutionProcessing = false;
     }
-    
-    // Update the screen to show off your new class sprite and max health!
-    if (typeof renderStats === 'function') renderStats();
-    if (typeof render === 'function') render(); 
 }
 
 // Bind Evolution Confirm Modals Safely (Once)
@@ -450,192 +471,214 @@ function renderBountyBoard() {
 }
 
 function acceptQuest(questId) {
-    if (typeof window.QUEST_DATA === 'undefined') return;
-    const quest = window.QUEST_DATA[questId];
-    if (!quest) return;
+    if (isQuestProcessing) return;
+    isQuestProcessing = true;
 
-    // JUICE WIN: Heavy tactile feedback when stamping a contract
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); // Heavy thud
-    gameState.screenShake = 3; 
-    
-    // Spawn dust behind the modal to simulate a physical paper stamp
-    if (typeof ParticleSystem !== 'undefined') {
-        ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#d4d4d8', 10);
-    }
-    
-    const safeTitle = typeof escapeHtml === 'function' ? escapeHtml(quest.title) : quest.title;
-    logMessage(`{yellow:Contract Sealed: ${safeTitle}}`);
-    
-    if (!gameState.player.quests) gameState.player.quests = {};
-    
-    gameState.player.quests[questId] = {
-        status: 'active',
-        kills: 0
-    };
-    
-    // 🚨 FIREBASE OPTIMIZATION: Debounce the save
-    if (typeof triggerDebouncedSave === 'function') {
-        triggerDebouncedSave({ quests: gameState.player.quests });
-    } else if (typeof playerRef !== 'undefined' && playerRef) {
-        playerRef.update({ quests: gameState.player.quests });
-    }
+    try {
+        if (typeof window.QUEST_DATA === 'undefined') return;
+        const quest = window.QUEST_DATA[questId];
+        if (!quest) return;
 
-    renderBountyBoard(); 
+        // JUICE WIN: Heavy tactile feedback when stamping a contract
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); // Heavy thud
+        gameState.screenShake = 3; 
+        
+        // Spawn dust behind the modal to simulate a physical paper stamp
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#d4d4d8', 10);
+        }
+        
+        const safeTitle = typeof escapeHtml === 'function' ? escapeHtml(quest.title) : quest.title;
+        logMessage(`{yellow:Contract Sealed: ${safeTitle}}`);
+        
+        if (!gameState.player.quests) gameState.player.quests = {};
+        
+        gameState.player.quests[questId] = {
+            status: 'active',
+            kills: 0
+        };
+        
+        // 🚨 FIREBASE OPTIMIZATION: Debounce the save
+        if (typeof triggerDebouncedSave === 'function') {
+            triggerDebouncedSave({ quests: gameState.player.quests });
+        } else if (typeof playerRef !== 'undefined' && playerRef) {
+            playerRef.update({ quests: gameState.player.quests });
+        }
+
+        renderBountyBoard(); 
+    } finally {
+        isQuestProcessing = false;
+    }
 }
 
 function turnInQuest(questId) {
-    if (typeof window.QUEST_DATA === 'undefined') return;
-    const quest = window.QUEST_DATA[questId];
-    const playerQuest = gameState.player.quests[questId];
-    const player = gameState.player;
+    if (isQuestProcessing) return;
+    isQuestProcessing = true;
 
-    if (!quest || !playerQuest || playerQuest.status !== 'active') { 
-        logMessage("{gray:Quest is not active.}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
+    try {
+        if (typeof window.QUEST_DATA === 'undefined') return;
+        const quest = window.QUEST_DATA[questId];
+        const playerQuest = gameState.player.quests[questId];
+        const player = gameState.player;
 
-    let hasRequirements = true; 
-    let itemIndex = -1; 
-
-    if (quest.type === 'fetch') {
-        itemIndex = player.inventory.findIndex(item => item.name === quest.itemNeeded && !item.isEquipped);
-        if (itemIndex === -1) {
-            logMessage(`{red:You don't have the ${quest.itemNeeded}!}`);
-            hasRequirements = false;
-        }
-    } else if (quest.type === 'collect') {
-        itemIndex = player.inventory.findIndex(item => item.name === quest.itemNeeded);
-        if (itemIndex === -1 || player.inventory[itemIndex].quantity < quest.needed) {
-            logMessage(`{red:You don't have enough ${quest.itemNeeded}s! You need ${quest.needed}.}`);
-            hasRequirements = false;
-        }
-    } else {
-        // Checking kills
-        if ((playerQuest.kills || 0) < quest.needed) {
-            logMessage("{gray:Quest is not ready to turn in.}");
-            hasRequirements = false;
-        }
-    }
-
-    if (!hasRequirements) {
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return; 
-    }
-
-    // --- Give Rewards ---
-    // JUICE WIN: Triumphant Quest Complete Audio
-    if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playQuestComplete === 'function') {
-        AudioSystem.playQuestComplete();
-    } else if (typeof AudioSystem !== 'undefined') {
-        AudioSystem.playCoin();
-    }
-    
-    logMessage(`{green:Bounty Claimed! You gained ${quest.reward.xp} XP and ${quest.reward.coins} Gold!}`);
-    
-    if (typeof grantXp === 'function') grantXp(quest.reward.xp || 0);
-    player.coins += (quest.reward.coins || 0);
-    if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(quest.reward.coins || 0);
-
-    // EXPANDABILITY WIN: Track completed bounties in lifetime metrics!
-    if (!player.metrics) player.metrics = {};
-    player.metrics.questsCompleted = (player.metrics.questsCompleted || 0) + 1;
-
-    // JUICE WIN: Floating Particles for Reward! (Explosion of gold)
-    if (typeof ParticleSystem !== 'undefined') {
-        ParticleSystem.createFloatingText(player.x, player.y, `+${quest.reward.coins || 0}g`, "#facc15");
-        ParticleSystem.createExplosion(player.x, player.y, '#facc15', 20);
-    }
-
-    if (quest.reward.item) {
-        let rewardItemTemplate = null;
-        let rewardKey = null;
-        if (typeof window.ITEM_DATA !== 'undefined') {
-            rewardItemTemplate = Object.values(window.ITEM_DATA).find(i => i.name === quest.reward.item);
-            rewardKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === quest.reward.item);
+        if (!quest || !playerQuest || playerQuest.status !== 'active') { 
+            logMessage("{gray:Quest is not active.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
         }
 
-        if (rewardItemTemplate) {
-            const qty = quest.reward.itemQty || 1;
-            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+        let hasRequirements = true; 
 
-            if (player.inventory.length < invCap) {
-                player.inventory.push({
-                    templateId: rewardKey,
-                    name: rewardItemTemplate.name,
-                    type: rewardItemTemplate.type,
-                    quantity: qty,
-                    tile: rewardKey || '?',
-                    damage: rewardItemTemplate.damage || null,
-                    defense: rewardItemTemplate.defense || null,
-                    slot: rewardItemTemplate.slot || null,
-                    statBonuses: rewardItemTemplate.statBonuses ? JSON.parse(JSON.stringify(rewardItemTemplate.statBonuses)) : null,
-                    tags: rewardItemTemplate.tags ? [...rewardItemTemplate.tags] : null,
-                    _rarity: rewardItemTemplate._rarity || null,
-                    effect: rewardItemTemplate.effect 
-                });
-                
-                const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(rewardItemTemplate.name) : rewardItemTemplate.name;
-                logMessage(`{purple:You received: ${safeItemName} (x${qty})}`);
-            } else {
-                const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(rewardItemTemplate.name) : rewardItemTemplate.name;
-                logMessage(`{red:Your inventory is full! The ${safeItemName} falls to the ground.}`);
-                const dropTile = rewardKey || '🎒'; 
-                
-                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(player.x, player.y, dropTile, 24);
-                } else if (gameState.mapMode === 'dungeon') {
-                    if (typeof chunkManager !== 'undefined') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = dropTile;
-                } else if (gameState.mapMode === 'castle') {
-                    if (typeof chunkManager !== 'undefined') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = dropTile;
+        // 🚨 CRITICAL BUG FIX: Multi-stack Quest Verification
+        if (quest.type === 'fetch' || quest.type === 'collect') {
+            let totalFound = 0;
+            for (let i = 0; i < player.inventory.length; i++) {
+                if (player.inventory[i].name === quest.itemNeeded && !player.inventory[i].isEquipped) {
+                    totalFound += player.inventory[i].quantity;
                 }
-                
-                // Clear the looted memory for this coordinate so it can be picked up
-                let tileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
-                    ? `${player.x},${-player.y}`
-                    : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
-                gameState.lootedTiles.delete(tileId);
-                
-                gameState.mapDirty = true;
-                if (typeof render === 'function') render(); 
+            }
+            if (totalFound < quest.needed) {
+                logMessage(`{red:You don't have enough ${quest.itemNeeded}s! You need ${quest.needed}.}`);
+                hasRequirements = false;
+            }
+        } else {
+            // Checking kills
+            if ((playerQuest.kills || 0) < quest.needed) {
+                logMessage("{gray:Quest is not ready to turn in.}");
+                hasRequirements = false;
             }
         }
-    }
 
-    // --- Mark as Completed & Cleanup Items ---
-    playerQuest.status = 'completed';
-
-    if (quest.type === 'fetch' && itemIndex > -1) {
-        player.inventory.splice(itemIndex, 1);
-    } else if (quest.type === 'collect' && itemIndex > -1) {
-        // ROBUSTNESS: Ensure we only subtract exactly what's needed, preserving the rest of the stack
-        const itemStack = player.inventory[itemIndex];
-        itemStack.quantity -= quest.needed;
-        if (itemStack.quantity <= 0) {
-            player.inventory.splice(itemIndex, 1);
+        if (!hasRequirements) {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return; 
         }
-    }
 
-    // 🚨 FIREBASE OPTIMIZATION: Debounce the save
-    if (typeof triggerDebouncedSave === 'function') {
-        triggerDebouncedSave({
-            quests: player.quests,
-            coins: player.coins,
-            metrics: player.metrics,
-            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
-        });
-    } else if (typeof playerRef !== 'undefined' && playerRef) {
-        playerRef.update({
-            quests: player.quests,
-            coins: player.coins,
-            metrics: player.metrics,
-            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
-        });
-    }
+        // --- 1. Mark as Completed & Cleanup Items FIRST ---
+        // We MUST do this before granting rewards to free up inventory space accurately!
+        playerQuest.status = 'completed';
 
-    renderBountyBoard(); 
-    if (typeof renderStats === 'function') renderStats(); 
-    if (typeof renderInventory === 'function') renderInventory();
+        if (quest.type === 'fetch' || quest.type === 'collect') {
+            let neededToRemove = quest.needed;
+            // 🚨 BUG FIX: Loop backwards to safely splice while iterating
+            for (let i = player.inventory.length - 1; i >= 0; i--) {
+                if (neededToRemove <= 0) break;
+                let item = player.inventory[i];
+                if (item.name === quest.itemNeeded && !item.isEquipped) {
+                    let take = Math.min(item.quantity, neededToRemove);
+                    item.quantity -= take;
+                    neededToRemove -= take;
+                    if (item.quantity <= 0) {
+                        player.inventory.splice(i, 1);
+                    }
+                }
+            }
+        }
+
+        // --- 2. Give Rewards ---
+        // JUICE WIN: Triumphant Quest Complete Audio
+        if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playQuestComplete === 'function') {
+            AudioSystem.playQuestComplete();
+        } else if (typeof AudioSystem !== 'undefined') {
+            AudioSystem.playCoin();
+        }
+        
+        logMessage(`{green:Bounty Claimed! You gained ${quest.reward.xp} XP and ${quest.reward.coins} Gold!}`);
+        
+        if (typeof grantXp === 'function') grantXp(quest.reward.xp || 0);
+        player.coins += (quest.reward.coins || 0);
+        if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(quest.reward.coins || 0);
+
+        // EXPANDABILITY WIN: Track completed bounties in lifetime metrics!
+        if (!player.metrics) player.metrics = {};
+        player.metrics.questsCompleted = (player.metrics.questsCompleted || 0) + 1;
+
+        // JUICE WIN: Floating Particles for Reward! (Explosion of gold)
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createFloatingText(player.x, player.y, `+${quest.reward.coins || 0}g`, "#facc15");
+            ParticleSystem.createExplosion(player.x, player.y, '#facc15', 20);
+        }
+
+        // --- 3. Grant Item Reward (With Accurate Space Validation) ---
+        if (quest.reward.item) {
+            let rewardItemTemplate = null;
+            let rewardKey = null;
+            if (typeof window.ITEM_DATA !== 'undefined') {
+                rewardItemTemplate = Object.values(window.ITEM_DATA).find(i => i.name === quest.reward.item);
+                rewardKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === quest.reward.item);
+            }
+
+            if (rewardItemTemplate) {
+                const qty = quest.reward.itemQty || 1;
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+
+                if (player.inventory.length < invCap) {
+                    player.inventory.push({
+                        templateId: rewardKey,
+                        name: rewardItemTemplate.name,
+                        type: rewardItemTemplate.type,
+                        quantity: qty,
+                        tile: rewardKey || '?',
+                        damage: rewardItemTemplate.damage || null,
+                        defense: rewardItemTemplate.defense || null,
+                        slot: rewardItemTemplate.slot || null,
+                        statBonuses: rewardItemTemplate.statBonuses ? JSON.parse(JSON.stringify(rewardItemTemplate.statBonuses)) : null,
+                        tags: rewardItemTemplate.tags ? [...rewardItemTemplate.tags] : null,
+                        _rarity: rewardItemTemplate._rarity || null,
+                        effect: rewardItemTemplate.effect 
+                    });
+                    
+                    const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(rewardItemTemplate.name) : rewardItemTemplate.name;
+                    logMessage(`{purple:You received: ${safeItemName} (x${qty})}`);
+                } else {
+                    const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(rewardItemTemplate.name) : rewardItemTemplate.name;
+                    logMessage(`{red:Your inventory is full! The ${safeItemName} falls to the ground.}`);
+                    const dropTile = rewardKey || '🎒'; 
+                    
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                        if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(player.x, player.y, dropTile, 24);
+                    } else if (gameState.mapMode === 'dungeon') {
+                        if (typeof chunkManager !== 'undefined') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = dropTile;
+                    } else if (gameState.mapMode === 'castle') {
+                        if (typeof chunkManager !== 'undefined') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = dropTile;
+                    }
+                    
+                    // Clear the looted memory for this coordinate so it can be picked up
+                    let tileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
+                        ? `${player.x},${-player.y}`
+                        : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
+                    gameState.lootedTiles.delete(tileId);
+                    
+                    gameState.mapDirty = true;
+                    if (typeof render === 'function') render(); 
+                }
+            }
+        }
+
+        // 🚨 FIREBASE OPTIMIZATION: Debounce the save
+        if (typeof triggerDebouncedSave === 'function') {
+            triggerDebouncedSave({
+                quests: player.quests,
+                coins: player.coins,
+                metrics: player.metrics,
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
+            });
+        } else if (typeof playerRef !== 'undefined' && playerRef) {
+            playerRef.update({
+                quests: player.quests,
+                coins: player.coins,
+                metrics: player.metrics,
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
+            });
+        }
+
+        renderBountyBoard(); 
+        if (typeof renderStats === 'function') renderStats(); 
+        if (typeof renderInventory === 'function') renderInventory();
+
+    } finally {
+        isQuestProcessing = false;
+    }
 }
 
 // --- COLLECTIONS (BESTIARY & LIBRARY) ---
@@ -971,56 +1014,63 @@ function initSkillTrainerListeners() {
  * @param {string} skillId - The ID of the skill to learn.
  */
 function handleLearnSkill(skillId) {
-    const player = gameState.player;
-    const skillData = typeof window.SKILL_DATA !== 'undefined' ? window.SKILL_DATA[skillId] : null;
+    if (isTrainerProcessing) return;
+    isTrainerProcessing = true;
 
-    if ((player.statPoints || 0) <= 0) {
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
+    try {
+        const player = gameState.player;
+        const skillData = typeof window.SKILL_DATA !== 'undefined' ? window.SKILL_DATA[skillId] : null;
+
+        if ((player.statPoints || 0) <= 0) {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+        if (!skillData) return;
+
+        const currentLevel = player.skillbook[skillId] || 0;
+        if (currentLevel === 0 && player.level < skillData.requiredLevel) {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        if (currentLevel >= 10) { // Max level check
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        player.statPoints--;
+
+        const safeName = typeof escapeHtml === 'function' ? escapeHtml(skillData.name) : skillData.name;
+
+        if (currentLevel === 0) {
+            player.skillbook[skillId] = 1;
+            logMessage(`{green:You have learned ${safeName} (Level 1)!}`);
+        } else {
+            player.skillbook[skillId]++;
+            logMessage(`{blue:${safeName} is now Level ${player.skillbook[skillId]}!}`);
+        }
+
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createExplosion(player.x, player.y, '#3b82f6', 15);
+            ParticleSystem.createFloatingText(player.x, player.y, "SKILL UP!", "#60a5fa");
+        }
+
+        // 🚨 FIREBASE OPTIMIZATION: Debounce the save
+        if (typeof triggerDebouncedSave === 'function') {
+            triggerDebouncedSave({
+                statPoints: player.statPoints,
+                skillbook: player.skillbook
+            });
+        } else if (typeof playerRef !== 'undefined' && playerRef) {
+            playerRef.update({ statPoints: player.statPoints, skillbook: player.skillbook });
+        }
+
+        if (typeof renderStats === 'function') renderStats(); 
+        renderSkillTrainerModal(); 
+    } finally {
+        isTrainerProcessing = false;
     }
-    if (!skillData) return;
-
-    const currentLevel = player.skillbook[skillId] || 0;
-    if (currentLevel === 0 && player.level < skillData.requiredLevel) {
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    if (currentLevel >= 10) { // Max level check
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    player.statPoints--;
-
-    const safeName = typeof escapeHtml === 'function' ? escapeHtml(skillData.name) : skillData.name;
-
-    if (currentLevel === 0) {
-        player.skillbook[skillId] = 1;
-        logMessage(`{green:You have learned ${safeName} (Level 1)!}`);
-    } else {
-        player.skillbook[skillId]++;
-        logMessage(`{blue:${safeName} is now Level ${player.skillbook[skillId]}!}`);
-    }
-
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-    if (typeof ParticleSystem !== 'undefined') {
-        ParticleSystem.createExplosion(player.x, player.y, '#3b82f6', 15);
-        ParticleSystem.createFloatingText(player.x, player.y, "SKILL UP!", "#60a5fa");
-    }
-
-    // 🚨 FIREBASE OPTIMIZATION: Debounce the save
-    if (typeof triggerDebouncedSave === 'function') {
-        triggerDebouncedSave({
-            statPoints: player.statPoints,
-            skillbook: player.skillbook
-        });
-    } else if (typeof playerRef !== 'undefined' && playerRef) {
-        playerRef.update({ statPoints: player.statPoints, skillbook: player.skillbook });
-    }
-
-    if (typeof renderStats === 'function') renderStats(); 
-    renderSkillTrainerModal(); 
 }
 
 // --- SPELLBOOK & SKILLBOOK UI ---
@@ -1078,7 +1128,7 @@ function openSpellbook() {
 
         const safeName = typeof escapeHtml === 'function' ? escapeHtml(spellData.name) : spellData.name;
 
-        // JUICE WIN: Elemental/Stat Color Coding
+        // Elemental/Stat Color Coding
         let nameColorClass = "text-gray-200";
         if (safeName.includes("Fire") || safeName.includes("Meteor")) nameColorClass = "text-orange-400";
         if (safeName.includes("Frost")) nameColorClass = "text-cyan-300";
@@ -1136,20 +1186,20 @@ function openSkillbook() {
     const fragment = document.createDocumentFragment();
 
     if (Object.keys(playerSkills).length === 0) {
-        // LORE WIN: Thematic Empty State
+        // Thematic Empty State
         listDiv.innerHTML = '<li class="italic text-gray-500 p-6 text-center border border-gray-700 rounded-lg bg-black bg-opacity-20 shadow-inner font-serif">You have not learned any techniques. Seek out a Skill Trainer or read Manuals.</li>';
         const skillModal = document.getElementById('skillModal');
         if (skillModal) skillModal.classList.remove('hidden');
         return;
     }
 
-    // QoL WIN: Smart Sorting for Skills
+    // Smart Sorting for Skills
     const MAX_LEVEL = 10;
     const sortedSkills = Object.keys(playerSkills).map(skillId => {
         const skillLevel = playerSkills[skillId];
         const skillData = window.SKILL_DATA[skillId];
         
-        // BUG FIX: Ensure the skill data exists before attempting to map it!
+        // Ensure the skill data exists before attempting to map it!
         if (!skillData) return null;
 
         let canUse = false;
