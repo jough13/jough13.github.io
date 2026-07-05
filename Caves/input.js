@@ -93,19 +93,19 @@ function handleInput(key) {
     // 4. Dead Check
     if (gameState.player.health <= 0) return;
 
-    // --- 🚨 INCAPACITATION GUARD (STUNS) ---
-    // Prevent players from queueing up movements while stunned!
-    if (gameState.player.stunTurns > 0) {
-        if (MOVEMENT_MAP[key] || [' ', '5', 'Numpad5', 'Clear', '.', 'r'].includes(key) || (!isNaN(parseInt(key)) && parseInt(key) <= 9)) {
-            logMessage("{yellow:You are stunned and cannot act!}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-            window.inputQueue.length = 0; // Force clear the queue so they don't sprint into lava after stun ends!
-            return;
-        }
-    }
-
     // PERFORMANCE WIN: Cache the lowercased key to prevent repeated string allocations
     const lowerKey = key.toLowerCase();
+
+    // --- 🚨 INCAPACITATION GUARD (STUNS) ---
+    // BUG FIX WIN: Extracted gameplay keys into a clear check so players can't drink/mount/loot while stunned!
+    const isGameplayKey = MOVEMENT_MAP[key] || ['q', 'z', 'g', 'r', ' ', '5', 'numpad5', 'clear', '.'].includes(lowerKey) || (!isNaN(parseInt(key)) && parseInt(key) >= 1 && parseInt(key) <= 9);
+    
+    if (gameState.player.stunTurns > 0 && isGameplayKey) {
+        logMessage("{yellow:You are stunned and cannot act!}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        window.inputQueue.length = 0; // Force clear the queue so they don't sprint into lava after stun ends!
+        return;
+    }
 
     // --- BUG FIX & UX WIN: STATE CANCELLATION ---
     // If the player is aiming or dropping an item, but presses a UI hotkey (like 'I' for inventory),
@@ -152,24 +152,11 @@ function handleInput(key) {
             
             // Return focus to game so WASD works immediately
             if (document.activeElement) document.activeElement.blur();
-            return;
         }
-        
         return; 
     }
 
-    if (lowerKey === 'q') {
-        if (typeof drinkFromSource === 'function') drinkFromSource();
-        return;
-    }
-
-    // --- MOUNT EXPANSION ---
-    if (lowerKey === 'z') {
-        if (typeof window.toggleMount === 'function') window.toggleMount();
-        return;
-    }
-
-    // Keyboard Zoom Controls ---
+    // Keyboard Zoom Controls (Allowed while menus are open)
     if (key === '=' || key === '+') {
         window.currentZoom = Math.min(40, window.currentZoom + 2);
         if (typeof resizeCanvas === 'function') resizeCanvas();
@@ -181,10 +168,67 @@ function handleInput(key) {
         return;
     }
 
+    // Direct Chat Input focus wrapper
+    if (key === 'Enter') { 
+        const chatIn = document.getElementById('chatInput');
+        if (chatIn) chatIn.focus(); 
+        return; 
+    }
+
+    // QoL WIN: MMO Chat Slash-Command Shortcut
+    if (key === '/') {
+        const chatIn = document.getElementById('chatInput');
+        if (chatIn) {
+            // Focus and pre-fill the slash for them!
+            chatIn.focus();
+            chatIn.value = '/';
+        }
+        return;
+    }
+
+    // --- MENU TOGGLES (With Centralized Dynamic Hooks) ---
+    const mapping = HOTKEY_MAPPINGS[lowerKey];
+    if (mapping) {
+        const modalEl = document.getElementById(mapping.modal);
+        if (modalEl) {
+            // Locate the functions dynamically via the window object
+            const openFunc = typeof window[mapping.openFunc] === 'function' ? window[mapping.openFunc] : null;
+            const closeFunc = mapping.closeFunc && typeof window[mapping.closeFunc] === 'function' ? window[mapping.closeFunc] : null;
+            
+            if (typeof window.toggleModal === 'function') {
+                window.toggleModal(modalEl, openFunc, closeFunc);
+            } else {
+                // Fallback just in case ui.js hasn't hooked up yet
+                window.inputQueue.length = 0; 
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                if (!modalEl.classList.contains('hidden')) {
+                    if (closeFunc) closeFunc();
+                    else modalEl.classList.add('hidden');
+                } else if (openFunc) {
+                    openFunc();
+                } else {
+                    modalEl.classList.remove('hidden');
+                }
+            }
+        }
+        return;
+    }
+
+    // 🚨 UI BLOCKER: Do not process gameplay keys if any menu is open!
+    // BUG FIX: Moved this ABOVE the gameplay bindings (q, z, g, etc) to prevent interaction while menus are open
+    if (_modalCache.isAnyOpen() || gameState.inventoryMode) {
+        return;
+    }
+
+    // ==========================================
+    // --- GAMEPLAY ACTIONS ---
+    // ==========================================
+
     // --- DROP MODE ---
     if (gameState.isDroppingItem) {
         // Ensure they only drop items via numbers 1-9
-        if (!isNaN(parseInt(key))) {
+        const keyNum = parseInt(key);
+        if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
             if (typeof handleItemDrop === 'function') handleItemDrop(key);
         } else {
             logMessage("{gray:Press 1-9 to drop an item, or Esc to cancel.}");
@@ -271,6 +315,17 @@ function handleInput(key) {
         }
     }
 
+    // --- UTILITY KEYS ---
+    if (lowerKey === 'q') {
+        if (typeof drinkFromSource === 'function') drinkFromSource();
+        return;
+    }
+
+    if (lowerKey === 'z') {
+        if (typeof window.toggleMount === 'function') window.toggleMount();
+        return;
+    }
+
     // --- GROUND LOOTING ---
     if (lowerKey === 'g') {
         let tileId;
@@ -294,58 +349,13 @@ function handleInput(key) {
         }
     }
 
-    // --- MENU TOGGLES (With Centralized Dynamic Hooks) ---
-    const mapping = HOTKEY_MAPPINGS[lowerKey];
-    if (mapping) {
-        const modalEl = document.getElementById(mapping.modal);
-        if (modalEl) {
-            // Locate the functions dynamically via the window object
-            const openFunc = typeof window[mapping.openFunc] === 'function' ? window[mapping.openFunc] : null;
-            const closeFunc = mapping.closeFunc && typeof window[mapping.closeFunc] === 'function' ? window[mapping.closeFunc] : null;
-            
-            if (typeof window.toggleModal === 'function') {
-                window.toggleModal(modalEl, openFunc, closeFunc);
-            } else {
-                // Fallback just in case ui.js hasn't hooked up yet
-                window.inputQueue.length = 0; 
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                if (!modalEl.classList.contains('hidden')) {
-                    if (closeFunc) closeFunc();
-                    else modalEl.classList.add('hidden');
-                } else if (openFunc) {
-                    openFunc();
-                } else {
-                    modalEl.classList.remove('hidden');
-                }
-            }
-        }
+    if (lowerKey === 'r') {
+        if (typeof restPlayer === 'function') restPlayer();
+        lastActionTime = Date.now(); 
         return;
     }
 
-    // Direct Chat Input focus wrapper
-    if (key === 'Enter') { 
-        const chatIn = document.getElementById('chatInput');
-        if (chatIn) chatIn.focus(); 
-        return; 
-    }
-
-    // QoL WIN: MMO Chat Slash-Command Shortcut
-    if (key === '/') {
-        const chatIn = document.getElementById('chatInput');
-        if (chatIn) {
-            // Focus and pre-fill the slash for them!
-            chatIn.focus();
-            chatIn.value = '/';
-        }
-        return;
-    }
-
-    // Block gameplay inputs if any menu is open (using our fast O(1) cache)
-    if (_modalCache.isAnyOpen() || gameState.inventoryMode) {
-        return;
-    }
-
-    // --- MOVEMENT & ACTION EXECUTION ---
+    // --- DIRECTIONAL MOVEMENT ---
     const dir = MOVEMENT_MAP[key];
 
     if (dir) {
@@ -362,13 +372,8 @@ function handleInput(key) {
         return;
     }
 
-    if (lowerKey === 'r') {
-        if (typeof restPlayer === 'function') restPlayer();
-        lastActionTime = Date.now(); 
-        return;
-    }
-
-    if ([' ', '5', 'Numpad5', 'Clear', '.'].includes(key)) {
+    // --- ATMOSPHERIC WAITING ---
+    if ([' ', '5', 'numpad5', 'clear', '.'].includes(lowerKey)) {
         
         // LORE & CONTENT WIN: Massively Expanded, Biome/Event-Aware Atmospheric Waiting
         let waitFlavors = [
@@ -444,7 +449,7 @@ function handleInput(key) {
         const msg = waitFlavors[Math.floor(Math.random() * waitFlavors.length)];
         logMessage(`{gray:${msg}}`);
         
-        // JUICE WIN: Better visual feedback for passing time!
+        // Better visual feedback for passing time!
         if (typeof ParticleSystem !== 'undefined') {
             ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "...", "#9ca3af");
         }
@@ -463,7 +468,7 @@ document.addEventListener('keydown', (event) => {
 
     // 2. UNIVERSAL INPUT PROTECTOR
     // Ignore WASD and Hotkeys if the user is typing in ANY input field (Chat, Riddle, Character Name)
-    if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+    if (document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
 
     if (!event.key) return; 
 
