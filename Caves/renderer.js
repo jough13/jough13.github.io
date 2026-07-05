@@ -167,8 +167,10 @@ const ParticleSystem = {
         const len = this.activeParticles.length;
         for (let i = 0; i < len; i++) {
             const p = this.activeParticles[i];
-            const screenX = ((p.x - startX) * TILE_SIZE) | 0; 
-            const screenY = ((p.y - startY) * TILE_SIZE) | 0;
+            
+            // 🚨 PERFORMANCE WIN: Math.trunc handles huge map coordinates better than | 0 (bitwise clipping)
+            const screenX = Math.trunc((p.x - startX) * TILE_SIZE); 
+            const screenY = Math.trunc((p.y - startY) * TILE_SIZE);
 
             if (screenX < minX || screenX > maxX || screenY < minY || screenY > maxY) continue;
 
@@ -178,7 +180,7 @@ const ParticleSystem = {
                 ctx.globalAlpha = alpha;
                 
                 const scale = 1 + (Math.sin(p.life * Math.PI) * 0.3);
-                ctx.font = `bold ${(p.size * scale) | 0}px monospace`;
+                ctx.font = `bold ${Math.trunc(p.size * scale)}px monospace`;
                 
                 ctx.strokeStyle = 'rgba(0,0,0,0.85)';
                 ctx.lineWidth = 3;
@@ -691,8 +693,11 @@ const TileRenderer = {
         grad.addColorStop(0, colorTop);
         grad.addColorStop(1, colorBot);
 
+        // 🚨 BUG FIX: Ensure the inside bar fits cleanly inside the stroke border!
         ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.roundRect(tx + 1, ty + yOffset, barWidth * percent, barHeight, 2); ctx.fill();
+        ctx.beginPath(); 
+        ctx.roundRect(tx + 1.5, ty + yOffset + 0.5, (barWidth - 1) * percent, barHeight - 1, 2); 
+        ctx.fill();
 
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 1;
@@ -1009,7 +1014,7 @@ const render = () => {
     if (gameState.mapMode === 'overworld') {
         for (const key in gameState.sharedEnemies) {
             const enemy = gameState.sharedEnemies[key];
-            if (enemy.pendingAttacks) {
+            if (enemy && enemy.pendingAttacks) {
                 for (let j = 0; j < enemy.pendingAttacks.length; j++) {
                     const t = enemy.pendingAttacks[j];
                     const screenX = t.x - startX;
@@ -1024,7 +1029,7 @@ const render = () => {
         const len = gameState.instancedEnemies.length;
         for (let i = 0; i < len; i++) {
             const enemy = gameState.instancedEnemies[i];
-            if (enemy.pendingAttacks) {
+            if (enemy && enemy.pendingAttacks) {
                 for (let j = 0; j < enemy.pendingAttacks.length; j++) {
                     const t = enemy.pendingAttacks[j];
                     const screenX = t.x - startX;
@@ -1038,6 +1043,7 @@ const render = () => {
     }
 
     const drawEntity = (entity, x, y) => {
+        if (!entity) return;
         if (entity.type === 'spirit' && !hasLens) return;
 
         const char = entity.tile || '?';
@@ -1071,6 +1077,7 @@ const render = () => {
     };
 
     const lerpEntity = (entity) => {
+        if (!entity) return { vx: 0, vy: 0 };
         if (entity.visualX === undefined) entity.visualX = entity.x;
         if (entity.visualY === undefined) entity.visualY = entity.y;
         
@@ -1084,9 +1091,11 @@ const render = () => {
         return { vx: entity.visualX, vy: entity.visualY };
     };
 
-    if (gameState.mapMode === 'overworld') {
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         for (const key in gameState.sharedEnemies) {
             const enemy = gameState.sharedEnemies[key];
+            if (!enemy) continue; // 🚨 BUG FIX: Guard against undefined/ghost enemies
+            
             const { vx, vy } = lerpEntity(enemy);
             const screenX = vx - startX;
             const screenY = vy - startY;
@@ -1098,6 +1107,8 @@ const render = () => {
         const len = gameState.instancedEnemies.length;
         for (let i = 0; i < len; i++) {
             const enemy = gameState.instancedEnemies[i];
+            if (!enemy) continue;
+            
             const { vx, vy } = lerpEntity(enemy);
             const screenX = vx - startX;
             const screenY = vy - startY;
@@ -1111,7 +1122,7 @@ const render = () => {
         const opKeys = Object.keys(otherPlayers);
         for (let i = 0; i < opKeys.length; i++) {
             const op = otherPlayers[opKeys[i]];
-            if (op.mapMode !== gameState.mapMode || op.mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
+            if (!op || op.mapMode !== gameState.mapMode || op.mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
             
             const { vx, vy } = lerpEntity(op);
             const screenX = (vx - startX) * TILE_SIZE;
@@ -1167,7 +1178,7 @@ const render = () => {
         ctx.fillStyle = '#ffffff'; 
         ctx.fillText(gameState.player.companion.tile, pScreenX, pScreenY);
 
-        ctx.font = `bold ${(TILE_SIZE * 0.6) | 0}px monospace`;
+        ctx.font = `bold ${Math.trunc(TILE_SIZE * 0.6)}px monospace`;
         ctx.strokeText(playerChar, pScreenX, pScreenY - (TILE_SIZE * 0.35));
         ctx.fillStyle = '#3b82f6';
         ctx.fillText(playerChar, pScreenX, pScreenY - (TILE_SIZE * 0.35));
@@ -1393,13 +1404,14 @@ const render = () => {
 
     // --- Boss Health Bars ---
     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-        const bosses = gameState.instancedEnemies.filter(e => e.isBoss);
+        const bosses = gameState.instancedEnemies.filter(e => e && e.isBoss);
         if (bosses.length > 0) {
             let activeBoss = bosses[0];
             let minDist = Infinity;
             
             for (let i = 0; i < bosses.length; i++) {
                 const b = bosses[i];
+                if (!b) continue;
                 const d = Math.sqrt(Math.pow(b.x - gameState.player.x, 2) + Math.pow(b.y - gameState.player.y, 2));
                 if (d < minDist) {
                     minDist = d;
@@ -1416,7 +1428,7 @@ const render = () => {
                 const barX = ((canvas.width / dpr) - barWidth) / 2;
                 const barY = 40;
 
-                // UX WIN: Highly polished MMO-style boss frame
+                // Highly polished MMO-style boss frame
                 ctx.strokeStyle = '#facc15'; 
                 ctx.lineWidth = 2;
                 ctx.strokeRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4);
