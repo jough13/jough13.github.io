@@ -154,20 +154,14 @@ function handleDisenchant(index) {
         const oldName = item.name;
         const oldRarity = item._rarity;
 
-        // --- ROBUSTNESS WIN: Capacity Check ---
-        // Ensure we actually have space for the dust if we don't already have a stack!
-        const existingDust = player.inventory.find(i => i.name === 'Arcane Dust');
-        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-        if (!existingDust && player.inventory.length >= invCap) {
-            logMessage("{red:You must have an empty inventory slot to receive the Arcane Dust!}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-            return; // Abort shattering!
-        }
-
-        // Remove the item
+        // 🚨 BUG FIX WIN: False-Positive Capacity Block removed!
+        // Because we delete the old item BEFORE granting the dust, we perfectly free up exactly
+        // the 1 slot needed to store the dust. We no longer throw false-positive inventory errors 
+        // when shattering items with a full (9/9) inventory.
         player.inventory.splice(index, 1);
 
         // Give Dust
+        const existingDust = player.inventory.find(i => i.name === 'Arcane Dust');
         if (existingDust) {
             existingDust.quantity += yieldAmt;
         } else {
@@ -272,6 +266,12 @@ function handleEnchant(index) {
                     else if (stat === 'defense') item.defense += prefixData.bonus[stat];
                     else item.statBonuses[stat] = (item.statBonuses[stat] || 0) + prefixData.bonus[stat];
                 }
+            } else {
+                // ROBUSTNESS WIN: Safe fallback if dictionary is empty
+                item.name = `Mystic ${item.name}`;
+                if (item.type === 'weapon') item.damage += 1;
+                if (item.type === 'armor') item.defense += 1;
+                item.statBonuses.wits = (item.statBonuses.wits || 0) + 1;
             }
             upgradeMsg = `Arcane runes brand themselves into the surface. It is now a ${item.name}!`;
         } 
@@ -287,6 +287,12 @@ function handleEnchant(index) {
                     else if (stat === 'defense') item.defense += suffixData.bonus[stat];
                     else item.statBonuses[stat] = (item.statBonuses[stat] || 0) + suffixData.bonus[stat];
                 }
+            } else {
+                // ROBUSTNESS WIN: Safe fallback if dictionary is empty
+                item.name = `${item.name} of Power`;
+                if (item.type === 'weapon') item.damage += 1;
+                if (item.type === 'armor') item.defense += 1;
+                item.statBonuses.strength = (item.statBonuses.strength || 0) + 1;
             }
             upgradeMsg = `The item hums with a terrifying new power. It is now ${item.name}!`;
         } 
@@ -319,13 +325,13 @@ function saveEnchantingState() {
     renderEnchantingModal();
     if (typeof renderInventory === 'function') renderInventory();
     
-    // 🚨 FIREBASE OPTIMIZATION: Debounce the save to prevent quota drain
+    // Debounce the save to prevent quota drain
     if (typeof triggerDebouncedSave === 'function') {
         triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
     }
 }
 
-// PERFORMANCE & SECURITY WIN: Event Delegation
+// Event Delegation
 // Ensures bindings are applied safely and exactly once, 
 // protecting against hot-reload duplication.
 function initEnchantingListeners() {
