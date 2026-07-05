@@ -180,6 +180,8 @@ var NEW_FISHING_ITEMS = {
                 const freesSlot = (oysterStack && oysterStack.quantity === 1) ? 1 : 0;
                 
                 const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                
+                // Prioritize existing stacks over empty slot checks!
                 if (existingPearl || state.player.inventory.length - freesSlot < invCap) {
                     logMessage("{purple:You found a Black Pearl inside!}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
@@ -234,20 +236,18 @@ var NEW_FISHING_ITEMS = {
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                 } 
                 else if (state.player.inventory.length - freesSlot < invCap) {
-                    state.player.inventory.push({
-                        templateId: prizeKey,
-                        name: prize, 
-                        type: template ? (template.type || 'junk') : 'junk', 
-                        quantity: 1, 
-                        tile: template ? template.tile : '💎', 
-                        defense: template ? template.defense : null,
-                        damage: template ? template.damage : null, 
-                        slot: template ? template.slot : null,
-                        statBonuses: template ? template.statBonuses : null,
-                        tags: template && template.tags ? [...template.tags] : null, // BUG FIX: Safe clone array
-                        _rarity: template ? (template._rarity || null) : null,
-                        effect: template ? template.effect : null
-                    });
+                    
+                    // 🚨 ROBUSTNESS WIN: Safe Deep Cloning
+                    // Prevents permanently altering the base ITEM_DATA dictionary if this item is enchanted later!
+                    let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
+                    newItem.templateId = prizeKey;
+                    newItem.name = prize;
+                    newItem.type = template ? (template.type || 'junk') : 'junk';
+                    newItem.quantity = 1;
+                    newItem.tile = template ? template.tile : '💎';
+                    
+                    state.player.inventory.push(newItem);
+                    
                     logMessage(`{purple:You also found a ${prize} hidden inside!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                 } else {
@@ -310,13 +310,13 @@ var NEW_FISHING_ITEMS = {
     }
 };
 
-// Inject items safely
-if (typeof window.ITEM_DATA !== 'undefined') {
+// 🚨 V8 PERFORMANCE WIN: Only inject the items ONCE, preventing memory leaks during hot-reloads
+if (typeof window.ITEM_DATA !== 'undefined' && !window.ITEM_DATA['📖fsh']) {
     Object.assign(window.ITEM_DATA, NEW_FISHING_ITEMS);
 }
 
 // SAFE INJECTION: Prevent duplicating the logbook if script hot-reloads
-if (window.CASTLE_SHOP_INVENTORY && !window.CASTLE_SHOP_INVENTORY.some(i => i.name === 'Angler\'s Logbook')) {
+if (typeof window.CASTLE_SHOP_INVENTORY !== 'undefined' && !window.CASTLE_SHOP_INVENTORY.some(i => i.name === 'Angler\'s Logbook')) {
     window.CASTLE_SHOP_INVENTORY.push(
         { name: 'Angler\'s Logbook', price: 20, stock: 1 },
         { name: 'Steel Fishing Rod', price: 150, stock: 1 },
