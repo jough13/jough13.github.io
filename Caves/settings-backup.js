@@ -31,10 +31,13 @@ function generateStrictSaveSignature(data) {
     // Bypassed .map().join() in favor of inline string building.
     // This prevents massive memory allocation spikes during the save process!
     let invStr = 'empty';
-    if (data.inventory && data.inventory.length > 0) {
+    if (data.inventory && Array.isArray(data.inventory) && data.inventory.length > 0) {
         invStr = '';
         for (let i = 0; i < data.inventory.length; i++) {
             const item = data.inventory[i];
+            // 🚨 BUG FIX: Prevent Firebase sparse array ghosts (nulls) from crashing the hasher!
+            if (!item) continue; 
+            
             // Hash the stats and rarity too! Prevents players from manually 
             // editing the DB to give a basic dagger 999 damage without getting caught!
             // Strictly coerce values to prevent undefined/null bypasses
@@ -47,10 +50,13 @@ function generateStrictSaveSignature(data) {
     }
     
     let bankStr = 'empty';
-    if (data.bank && data.bank.length > 0) {
+    if (data.bank && Array.isArray(data.bank) && data.bank.length > 0) {
         bankStr = '';
         for (let i = 0; i < data.bank.length; i++) {
             const item = data.bank[i];
+            // 🚨 BUG FIX: Prevent Firebase sparse array ghosts
+            if (!item) continue;
+            
             const rar = item._rarity || 'n';
             const qty = Number(item.quantity) || 1;
             const dmg = Number(item.damage) || 0;
@@ -73,8 +79,8 @@ function generateStrictSaveSignature(data) {
 
 // Intermediate compatibility for saves using the array-length hashing method.
 function generateSaveSignature(data) {
-    const invLen = data.inventory ? data.inventory.length : 0;
-    const bankLen = data.bank ? data.bank.length : 0;
+    const invLen = (data.inventory && Array.isArray(data.inventory)) ? data.inventory.length : 0;
+    const bankLen = (data.bank && Array.isArray(data.bank)) ? data.bank.length : 0;
     const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.maxHealth}_${invLen}_${bankLen}_${data.background}_${BACKUP_SALT}`;
     let hash = 0;
     if (stringToHash.length === 0) return hash.toString();
@@ -301,8 +307,13 @@ async function restoreCloudBackup(slotId = 'latest') {
 
         // 2. Anti-Cheat & Injection Checks
         
+        const currentCoins = (gameState && gameState.player && gameState.player.coins) ? gameState.player.coins : 0;
+        const currentXp = (gameState && gameState.player && gameState.player.xp) ? gameState.player.xp : 0;
+        const currentStatPoints = (gameState && gameState.player && gameState.player.statPoints) ? gameState.player.statPoints : 0;
+        const currentTalentPoints = (gameState && gameState.player && gameState.player.talentPoints) ? gameState.player.talentPoints : 0;
+
         // A. Actively block restores that feature massive impossible gold/xp disparities 
-        if (data.coins > gameState.player.coins + 500000 && data.xp === gameState.player.xp) {
+        if (data.coins > currentCoins + 500000 && data.xp === currentXp) {
              console.error("Suspicious Backup Blocked: Massive gold discrepancy without XP gain.");
              logMessage("{red:Reality Violation Failed.} Anomalous gold detected.");
              if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -310,8 +321,8 @@ async function restoreCloudBackup(slotId = 'latest') {
         }
 
         // B. Block Stat & Talent Point Injection
-        if ((data.statPoints || 0) > (gameState.player.statPoints || 0) + 10 || 
-            (data.talentPoints || 0) > (gameState.player.talentPoints || 0) + 5) {
+        if ((data.statPoints || 0) > currentStatPoints + 10 || 
+            (data.talentPoints || 0) > currentTalentPoints + 5) {
              console.error("Suspicious Backup Blocked: Unearned Stat/Talent points detected.");
              logMessage("{red:Reality Violation Failed.} Anomalous progression detected.");
              if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -322,8 +333,11 @@ async function restoreCloudBackup(slotId = 'latest') {
         const invLimit = window.MAX_INVENTORY_SLOTS || 9;
         const stashLimit = window.MAX_STASH_SLOTS || 50; 
         
-        if ((data.inventory && data.inventory.length > invLimit + 5) || (data.bank && data.bank.length > stashLimit + 5)) {
-             console.error(`Suspicious Backup Blocked: Inventory/Stash size exceeds maximum limits. (Inv: ${data.inventory?.length}, Bank: ${data.bank?.length})`);
+        const invLen = Array.isArray(data.inventory) ? data.inventory.length : 0;
+        const bankLen = Array.isArray(data.bank) ? data.bank.length : 0;
+
+        if (invLen > invLimit + 5 || bankLen > stashLimit + 5) {
+             console.error(`Suspicious Backup Blocked: Inventory/Stash size exceeds maximum limits. (Inv: ${invLen}, Bank: ${bankLen})`);
              logMessage("{red:Reality Violation Failed.} Space-time container limits exceeded.");
              if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
              return;
