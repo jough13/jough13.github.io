@@ -58,6 +58,42 @@ const chunkManager = {
     caveEnemies: {},
     _maxTierCache: {}, // PERFORMANCE WIN: Cache for O(1) enemy tier lookups
     
+    // 🚨 V8 PERFORMANCE WIN: Centralized Instancing Factory
+    // Guarantees strict shape consistency for all instanced enemies, preventing de-optimization!
+    _createInstancedEnemy(id, x, y, tile, scaledStats, template, overrideSpellDmg = null) {
+        return {
+            id: id,
+            x: x,
+            y: y,
+            tile: tile,
+            name: scaledStats.name,
+            isElite: scaledStats.isElite || false,
+            color: scaledStats.color || template.color || null,
+            health: scaledStats.maxHealth,
+            maxHealth: scaledStats.maxHealth,
+            attack: scaledStats.attack,
+            defense: template.defense || 0,
+            xp: scaledStats.xp || 0,
+            loot: template.loot || '$',
+            caster: template.caster || false,
+            castRange: template.castRange || 0,
+            spellDamage: overrideSpellDmg !== null ? overrideSpellDmg : (template.spellDamage || 0),
+            isRanged: template.isRanged || false,
+            range: template.range || 0,
+            inflicts: template.inflicts || null,
+            inflictChance: template.inflictChance || 0,
+            teleporter: template.teleporter || false,
+            mountable: template.mountable || false,
+            isBoss: template.isBoss || false,
+            excludeFromLoot: template.excludeFromLoot || false,
+            tags: template.tags ? [...template.tags] : [],
+            madnessTurns: 0,
+            frostbiteTurns: 0,
+            poisonTurns: 0,
+            rootTurns: 0
+        };
+    },
+    
     generateCave(caveId) {
         if (this.caveMaps[caveId]) return this.caveMaps[caveId];
 
@@ -135,11 +171,11 @@ const chunkManager = {
             // Normal procedural cave
             const randomTheme = Alea(stringToSeed(caveId + ':theme'));
             // Exclude ARENA so it doesn't get picked for normal caves!
-            const themeKeys = Object.keys(CAVE_THEMES).filter(k => k !== 'ABYSS' && k !== 'VOID' && k !== 'ARENA');
-            chosenThemeKey = themeKeys[Math.floor(randomTheme() * themeKeys.length)];
+            const themeKeys = Object.keys(typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES : {}).filter(k => k !== 'ABYSS' && k !== 'VOID' && k !== 'ARENA');
+            chosenThemeKey = themeKeys.length > 0 ? themeKeys[Math.floor(randomTheme() * themeKeys.length)] : 'ROCK';
         }
 
-        const theme = CAVE_THEMES[chosenThemeKey];
+        const theme = (typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[chosenThemeKey]) ? CAVE_THEMES[chosenThemeKey] : { wall: '▓', floor: '.' };
         this.caveThemes[caveId] = chosenThemeKey; // Remember the theme
 
         // 2. Generate the map layout
@@ -280,7 +316,7 @@ const chunkManager = {
                         }
 
                         // --- GHOST TILE LOGIC ---
-                        if (ENEMY_DATA[tileToPlace]) {
+                        if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tileToPlace]) {
                             // 1. If it's an enemy, set the underlying map tile to FLOOR
                             map[mapY][mapX] = theme.floor;
 
@@ -288,41 +324,23 @@ const chunkManager = {
                             const enemyTemplate = ENEMY_DATA[tileToPlace];
                             
                             // Generate scaled stats based on cave coordinates
-                            let scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+                            let scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, cX, cY) : { ...enemyTemplate };
                             
                             // JUICE WIN: Dynamic Depth Scaling!
                             // Deeper floors organically generate much harder enemies and better XP!
                             if (floorZ > 1) {
                                 scaledStats.maxHealth = Math.floor(scaledStats.maxHealth * (1 + (floorZ * 0.2)));
                                 scaledStats.attack += floorZ;
-                                scaledStats.xp = Math.floor(scaledStats.xp * (1 + (floorZ * 0.5)));
+                                scaledStats.xp = Math.floor((scaledStats.xp || 1) * (1 + (floorZ * 0.5)));
                                 scaledStats.name = `Deep ${scaledStats.name}`; // Prefix for deep enemies
                             }
 
-                            this.caveEnemies[caveId].push({
-                                id: `${caveId}:${mapX},${mapY}`,
-                                x: mapX,
-                                y: mapY,
-                                tile: tileToPlace,
-                                name: scaledStats.name,
-                                isElite: scaledStats.isElite || false,
-                                color: scaledStats.color || null,
-                                health: scaledStats.maxHealth,
-                                maxHealth: scaledStats.maxHealth,
-                                attack: scaledStats.attack,
-                                defense: enemyTemplate.defense,
-                                xp: scaledStats.xp,
-                                loot: enemyTemplate.loot,
-                                caster: enemyTemplate.caster || false,
-                                castRange: enemyTemplate.castRange || 0,
-                                spellDamage: Math.floor((enemyTemplate.spellDamage || 0) * (1 + (Math.floor(Math.sqrt(distSq) / 50) * 0.1))),
-                                inflicts: enemyTemplate.inflicts || null,
-                                tags: enemyTemplate.tags ? [...enemyTemplate.tags] : [], // ECS WIN
-                                madnessTurns: 0,
-                                frostbiteTurns: 0,
-                                poisonTurns: 0,
-                                rootTurns: 0
-                            });
+                            const uniqueId = `${caveId}:${mapX},${mapY}`;
+                            const overrideDmg = Math.floor((enemyTemplate.spellDamage || 0) * (1 + (Math.floor(Math.sqrt(distSq) / 50) * 0.1)));
+                            
+                            this.caveEnemies[caveId].push(
+                                this._createInstancedEnemy(uniqueId, mapX, mapY, tileToPlace, scaledStats, enemyTemplate, overrideDmg)
+                            );
                         } else {
                             // Not an enemy? Stamp the tile normally (Walls, Items, Floor)
                             map[mapY][mapX] = tileToPlace;
@@ -358,7 +376,7 @@ const chunkManager = {
                 for (let x = 1; x < CAVE_WIDTH - 1; x++) {
                     if (map[y][x] === theme.floor) {
                         // Use perlin noise to generate organic patches of hazards
-                        const noise = elevationNoise.noise(x / 10, y / 10, floorZ); 
+                        const noise = typeof elevationNoise !== 'undefined' ? elevationNoise.noise(x / 10, y / 10, floorZ) : 1; 
                         
                         if (chosenThemeKey === 'FIRE' && noise < 0.35) {
                             map[y][x] = '~'; // Lava pools
@@ -450,7 +468,7 @@ const chunkManager = {
         // --- 5. Place procedural enemies ---
         if (chosenThemeKey !== 'ARENA') {
             // Ensure the array actually has items in it before accepting it!
-            let enemyTypes = (theme.enemies && theme.enemies.length > 0) ? theme.enemies : Object.keys(ENEMY_DATA);
+            let enemyTypes = (theme.enemies && theme.enemies.length > 0) ? theme.enemies : (typeof ENEMY_DATA !== 'undefined' ? Object.keys(ENEMY_DATA) : []);
 
             // --- SAFE ZONE CAVE NERF ---
             // If within 250 tiles of spawn, remove "Hard" enemies from the spawn pool
@@ -468,42 +486,24 @@ const chunkManager = {
 
                 if (map[randY][randX] === theme.floor && (randX !== startPos.x || randY !== startPos.y)) {
                     const enemyTile = enemyTypes[Math.floor(random() * enemyTypes.length)];
-                    const enemyTemplate = ENEMY_DATA[enemyTile];
+                    const enemyTemplate = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemyTile] : null;
 
-                    let scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
-                    
-                    // Boost stats based on Floor Depth!
-                    if (floorZ > 1) {
-                        scaledStats.maxHealth = Math.floor(scaledStats.maxHealth * (1 + (floorZ * 0.2)));
-                        scaledStats.attack += floorZ;
-                        scaledStats.xp = Math.floor(scaledStats.xp * (1 + (floorZ * 0.5)));
-                        scaledStats.name = `Deep ${scaledStats.name}`; // Prefix for deep enemies
+                    if (enemyTemplate) {
+                        let scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, cX, cY) : { ...enemyTemplate };
+                        
+                        // Boost stats based on Floor Depth!
+                        if (floorZ > 1) {
+                            scaledStats.maxHealth = Math.floor(scaledStats.maxHealth * (1 + (floorZ * 0.2)));
+                            scaledStats.attack += floorZ;
+                            scaledStats.xp = Math.floor((scaledStats.xp || 1) * (1 + (floorZ * 0.5)));
+                            scaledStats.name = `Deep ${scaledStats.name}`; // Prefix for deep enemies
+                        }
+
+                        const uniqueId = `${caveId}:${randX},${randY}`;
+                        this.caveEnemies[caveId].push(
+                            this._createInstancedEnemy(uniqueId, randX, randY, enemyTile, scaledStats, enemyTemplate)
+                        );
                     }
-
-                    this.caveEnemies[caveId].push({
-                        id: `${caveId}:${randX},${randY}`,
-                        x: randX,
-                        y: randY,
-                        tile: enemyTile,
-                        name: scaledStats.name,
-                        isElite: scaledStats.isElite || false,
-                        color: scaledStats.color || null,
-                        health: scaledStats.maxHealth,
-                        maxHealth: scaledStats.maxHealth,
-                        attack: scaledStats.attack,
-                        defense: enemyTemplate.defense,
-                        xp: scaledStats.xp,
-                        loot: enemyTemplate.loot,
-                        caster: enemyTemplate.caster || false,
-                        castRange: enemyTemplate.castRange || 0,
-                        spellDamage: enemyTemplate.spellDamage || 0,
-                        inflicts: enemyTemplate.inflicts || null,
-                        tags: enemyTemplate.tags ? [...enemyTemplate.tags] : [], 
-                        madnessTurns: 0,
-                        frostbiteTurns: 0,
-                        poisonTurns: 0,
-                        rootTurns: 0
-                    });
                 }
             }
         }
@@ -538,23 +538,27 @@ const chunkManager = {
                 if (stairsAttempts > 800) minStairsDistSq = 0;
             }
             
-            // Final ultimate failsafe (THE FIX: Force walkable floor beside it so player doesn't get soft-locked)
+            // 🚨 CRITICAL BUG FIX: Safe Fallback Array Search
+            // Ensure we don't accidentally throw undefined errors if startPos is against a wall
             if (!stairsPlaced) {
-                // Ensure we don't accidentally drop the stairs directly on top of the boss or a wall
                 for(let oy=-1; oy<=1; oy++) {
                     for(let ox=-1; ox<=1; ox++) {
                         if (oy===0 && ox===0) continue;
-                        if (map[startPos.y + oy] && map[startPos.y + oy][startPos.x + ox] === theme.floor) {
-                            map[startPos.y + oy][startPos.x + ox] = '<';
-                            stairsPlaced = true;
-                            break;
+                        
+                        // Strict Bounds Checking
+                        if (startPos.y + oy >= 0 && startPos.y + oy < CAVE_HEIGHT && startPos.x + ox >= 0 && startPos.x + ox < CAVE_WIDTH) {
+                            if (map[startPos.y + oy][startPos.x + ox] === theme.floor) {
+                                map[startPos.y + oy][startPos.x + ox] = '<';
+                                stairsPlaced = true;
+                                break;
+                            }
                         }
                     }
                     if (stairsPlaced) break;
                 }
                 
-                // If STILL not placed, force it (last resort)
-                if (!stairsPlaced && map[startPos.y + 1]) {
+                // Absolute Last Resort: Overwrite whatever is directly beneath the player
+                if (!stairsPlaced && map[startPos.y + 1] !== undefined) {
                     map[startPos.y + 1][startPos.x] = '<';
                 }
             }
@@ -622,20 +626,16 @@ const chunkManager = {
                 // Make sure we don't drop the boss exactly on the stairs!
                 if (map[by][bx] === theme.floor && map[by][bx] !== '<' && distFromStartSq >= minBossDistSq) {
                     const bossTile = '🧙';
-                    const bossTemplate = ENEMY_DATA[bossTile];
+                    const bossTemplate = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[bossTile] : null;
 
-                    map[by][bx] = bossTile;
-
-                    this.caveEnemies[caveId].push({
-                        id: `${caveId}:BOSS`, // Unique ID
-                        x: bx, y: by, tile: bossTile,
-                        name: bossTemplate.name,
-                        health: bossTemplate.maxHealth, maxHealth: bossTemplate.maxHealth,
-                        attack: bossTemplate.attack, defense: bossTemplate.defense, xp: bossTemplate.xp,
-                        loot: bossTemplate.loot, caster: true, castRange: bossTemplate.castRange, spellDamage: bossTemplate.spellDamage,
-                        isBoss: true, tags: bossTemplate.tags ? [...bossTemplate.tags] : [], madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
-                    });
-                    bossPlaced = true;
+                    if (bossTemplate) {
+                        map[by][bx] = bossTile;
+                        const uniqueId = `${caveId}:BOSS`;
+                        this.caveEnemies[caveId].push(
+                            this._createInstancedEnemy(uniqueId, bx, by, bossTile, bossTemplate, bossTemplate)
+                        );
+                        bossPlaced = true;
+                    }
                 }
                 attempts++;
                 
@@ -665,17 +665,14 @@ const chunkManager = {
 
                 const bossTile = '🧙';
                 map[by][bx] = bossTile;
-                const bossTemplate = ENEMY_DATA[bossTile];
+                const bossTemplate = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[bossTile] : null;
 
-                this.caveEnemies[caveId].push({
-                    id: `${caveId}:BOSS`,
-                    x: bx, y: by, tile: bossTile,
-                    name: bossTemplate.name,
-                    health: bossTemplate.maxHealth, maxHealth: bossTemplate.maxHealth,
-                    attack: bossTemplate.attack, defense: bossTemplate.defense, xp: bossTemplate.xp,
-                    loot: bossTemplate.loot, caster: true, castRange: bossTemplate.castRange, spellDamage: bossTemplate.spellDamage,
-                    isBoss: true, tags: bossTemplate.tags ? [...bossTemplate.tags] : [], madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
-                });
+                if (bossTemplate) {
+                    const uniqueId = `${caveId}:BOSS`;
+                    this.caveEnemies[caveId].push(
+                        this._createInstancedEnemy(uniqueId, bx, by, bossTile, bossTemplate, bossTemplate)
+                    );
+                }
             }
         }
 
@@ -725,15 +722,15 @@ const chunkManager = {
 
         // 1. Layout Selection: Dark castles get Fortresses, Safe castles get civilian layouts
         let chosenLayoutKey;
-        if (forcedLayoutKey && CASTLE_LAYOUTS[forcedLayoutKey]) {
+        if (forcedLayoutKey && typeof CASTLE_LAYOUTS !== 'undefined' && CASTLE_LAYOUTS[forcedLayoutKey]) {
             chosenLayoutKey = forcedLayoutKey; 
         } else {
             // EXPANSION WIN: Dynamically read available safe layouts instead of hardcoding
-            const safeLayouts = Object.keys(CASTLE_LAYOUTS).filter(k => k !== 'FORTRESS');
-            chosenLayoutKey = safeLayouts[Math.floor(random() * safeLayouts.length)];
+            const safeLayouts = typeof CASTLE_LAYOUTS !== 'undefined' ? Object.keys(CASTLE_LAYOUTS).filter(k => k !== 'FORTRESS') : [];
+            chosenLayoutKey = safeLayouts.length > 0 ? safeLayouts[Math.floor(random() * safeLayouts.length)] : 'COURTYARD';
         }
         
-        const layout = CASTLE_LAYOUTS[chosenLayoutKey];
+        const layout = (typeof CASTLE_LAYOUTS !== 'undefined' && CASTLE_LAYOUTS[chosenLayoutKey]) ? CASTLE_LAYOUTS[chosenLayoutKey] : { map: ['▓▓', '▓▓'], spawn: { x: 0, y: 0 } };
         const baseMap = layout.map;
         
         this.castleSpawnPoints = this.castleSpawnPoints || {};
@@ -741,8 +738,13 @@ const chunkManager = {
 
         const map = baseMap.map(row => [...row]);
 
-        // PERFORMANCE & BUG FIX WIN: Optimized Array Padding (V8 Memory Friendly)
-        const maxWidth = Math.max(...map.map(r => r.length));
+        // 🚨 MEMORY LEAK & PERFORMANCE WIN: Optimized Array Padding (V8 Memory Friendly)
+        // Completely bypasses mapping the entire grid to a new array just to find the max length!
+        let maxWidth = 0;
+        for (let i = 0; i < map.length; i++) {
+            if (map[i].length > maxWidth) maxWidth = map[i].length;
+        }
+
         for (let y = 0; y < map.length; y++) {
             const oldLen = map[y].length;
             if (oldLen < maxWidth) {
@@ -818,25 +820,17 @@ const chunkManager = {
                         });
                     }
                 } 
-                else if (ENEMY_DATA[tile]) {
+                else if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) {
                     map[y][x] = '.'; // Always clear the static tile
                     if (isDark) {
                         // Only spawn monsters in Dark Castles!
                         const enemyTemplate = ENEMY_DATA[tile];
-                        const scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+                        const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, cX, cY) : { ...enemyTemplate };
                         
-                        this.castleEnemies[castleId].push({
-                            id: `${castleId}:enemy_${x}_${y}`,
-                            x: x, y: y, tile: tile,
-                            name: scaledStats.name,
-                            health: scaledStats.maxHealth, maxHealth: scaledStats.maxHealth,
-                            attack: scaledStats.attack, defense: enemyTemplate.defense,
-                            xp: scaledStats.xp, loot: enemyTemplate.loot,
-                            caster: enemyTemplate.caster || false, castRange: enemyTemplate.castRange || 0,
-                            spellDamage: enemyTemplate.spellDamage || 0, inflicts: enemyTemplate.inflicts || null,
-                            isBoss: enemyTemplate.isBoss || false, tags: enemyTemplate.tags ? [...enemyTemplate.tags] : [],
-                            madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
-                        });
+                        const uniqueId = `${castleId}:enemy_${x}_${y}`;
+                        this.castleEnemies[castleId].push(
+                            this._createInstancedEnemy(uniqueId, x, y, tile, scaledStats, enemyTemplate)
+                        );
                     }
                 }
             }
@@ -858,33 +852,17 @@ const chunkManager = {
                 if (map[randY][randX] === '.' && (Math.abs(randX - spawnX) > 3 || Math.abs(randY - spawnY) > 3)) {
                     
                     const enemyTile = darkEnemies[Math.floor(random() * darkEnemies.length)];
-                    const enemyTemplate = ENEMY_DATA[enemyTile];
+                    const enemyTemplate = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemyTile] : null;
 
-                    // Scale them up based on the distance from the center of the world
-                    const scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
+                    if (enemyTemplate) {
+                        // Scale them up based on the distance from the center of the world
+                        const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, cX, cY) : { ...enemyTemplate };
 
-                    this.castleEnemies[castleId].push({
-                        id: `${castleId}:proc_enemy_${randX}_${randY}_${i}`, // Unique ID
-                        x: randX, 
-                        y: randY, 
-                        tile: enemyTile,
-                        name: scaledStats.name,
-                        health: scaledStats.maxHealth, 
-                        maxHealth: scaledStats.maxHealth,
-                        attack: scaledStats.attack, 
-                        defense: enemyTemplate.defense || 0,
-                        xp: scaledStats.xp, 
-                        loot: enemyTemplate.loot,
-                        caster: enemyTemplate.caster || false, 
-                        castRange: enemyTemplate.castRange || 0,
-                        spellDamage: enemyTemplate.spellDamage || 0, 
-                        inflicts: enemyTemplate.inflicts || null,
-                        isBoss: enemyTemplate.isBoss || false,
-                        tags: enemyTemplate.tags ? [...enemyTemplate.tags] : [], // ECS WIN
-                        isElite: scaledStats.isElite || false,
-                        color: scaledStats.color || null,
-                        madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
-                    });
+                        const uniqueId = `${castleId}:proc_enemy_${randX}_${randY}_${i}`;
+                        this.castleEnemies[castleId].push(
+                            this._createInstancedEnemy(uniqueId, randX, randY, enemyTile, scaledStats, enemyTemplate)
+                        );
+                    }
                 }
             }
 
@@ -952,7 +930,7 @@ const chunkManager = {
         const chunkId = `${chunkX},${chunkY}`;
 
         // If we are already listening, just fire the callback immediately
-        if (worldStateListeners[chunkId]) {
+        if (typeof worldStateListeners !== 'undefined' && worldStateListeners[chunkId]) {
             if (onInitialLoad) onInitialLoad();
             return;
         }
@@ -966,6 +944,7 @@ const chunkManager = {
             realmPrefix += 'underworld/';
         }
         
+        if (typeof rtdb === 'undefined') return;
         const ref = rtdb.ref(`worldState/${realmPrefix}${chunkId}`);
 
         const listener = ref.on('value', snapshot => {
@@ -1005,7 +984,9 @@ const chunkManager = {
         });
 
         // Store the unsubscribe function
-        worldStateListeners[chunkId] = () => ref.off('value', listener);
+        if (typeof worldStateListeners !== 'undefined') {
+            worldStateListeners[chunkId] = () => ref.off('value', listener);
+        }
     },
 
     setWorldTile(worldX, worldY, newTile, ttlHours = 0) {
@@ -1015,8 +996,8 @@ const chunkManager = {
         if (isNaN(chunkX) || isNaN(chunkY)) return;
         
         const chunkId = `${chunkX},${chunkY}`;
-        const localX = (worldX % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
-        const localY = (worldY % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
+        const localX = (((worldX % this.CHUNK_SIZE) + this.CHUNK_SIZE) % this.CHUNK_SIZE);
+        const localY = (((worldY % this.CHUNK_SIZE) + this.CHUNK_SIZE) % this.CHUNK_SIZE);
         const tileKey = `${localX},${localY}`;
         
         if (!this.worldState[chunkId]) this.worldState[chunkId] = {};
@@ -1045,8 +1026,10 @@ const chunkManager = {
             realmPrefix += 'underworld/';
         }
 
-        rtdb.ref(`worldState/${realmPrefix}${chunkId}`).update(updateObj)
-            .catch(err => console.error("Map update failed:", err));
+        if (typeof rtdb !== 'undefined') {
+            rtdb.ref(`worldState/${realmPrefix}${chunkId}`).update(updateObj)
+                .catch(err => console.error("Map update failed:", err));
+        }
     },
 
     getEnemySpawn(biome, distSq, random) {
@@ -1095,7 +1078,7 @@ const chunkManager = {
         const realmState = (typeof gameState !== 'undefined' ? gameState.currentRealm : 0) || 0;
         const realmSeed = (realmState === 0) ? WORLD_SEED : `realm_${realmState}`;
         const chunkKey = `${chunkX},${chunkY}`;
-        const random = Alea(stringToSeed(realmSeed + ':' + chunkKey));
+        const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(realmSeed + ':' + chunkKey) : 1) : Math.random;
 
         let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE));
 
@@ -1128,30 +1111,32 @@ const chunkManager = {
 
                 // --- LAYER ROUTING ---
                 if (isUnderworld) {
-                    tile = getUnderworldTerrain(worldX, worldY);
+                    tile = typeof getUnderworldTerrain === 'function' ? getUnderworldTerrain(worldX, worldY) : '.';
                 } else if (mapMode === 'skyrealm') {
-                    tile = getSkyTerrain(worldX, worldY);
+                    tile = typeof getSkyTerrain === 'function' ? getSkyTerrain(worldX, worldY) : ' ';
                 } else {
 
                     // --- OVERWORLD BIOME GENERATION ---
-                    const elev = elevationNoise.noise(worldX / 70, worldY / 70, realmOffset);
-                    const moist = moistureNoise.noise(worldX / 50, worldY / 50, realmOffset);
-                    
-                    if (elev < 0.35) tile = '~';
-                    else if (elev < 0.4 && moist > 0.85) tile = '🍄'; // Fungal Jungle (Wet/Low)
-                    else if (elev < 0.4 && moist > 0.7) tile = '≈';
-                    else if (elev > 0.85 && moist < 0.2) tile = '💎c'; // Crystal Peaks (High/Dry)
-                    else if (elev > 0.75 && moist > 0.6) tile = '🌲'; // Tundra Pine Forest
-                    else if (elev > 0.75 && moist <= 0.6) tile = '❄️'; // Snow Plains
-                    else if (elev > 0.85) tile = '^';
-                    else if (elev > 0.6 && moist < 0.3) tile = 'd';
-                    else if (moist < 0.15) tile = 'D';
-                    else if (moist > 0.55) tile = 'F';
+                    if (typeof elevationNoise !== 'undefined' && typeof moistureNoise !== 'undefined') {
+                        const elev = elevationNoise.noise(worldX / 70, worldY / 70, realmOffset);
+                        const moist = moistureNoise.noise(worldX / 50, worldY / 50, realmOffset);
+                        
+                        if (elev < 0.35) tile = '~';
+                        else if (elev < 0.4 && moist > 0.85) tile = '🍄'; // Fungal Jungle (Wet/Low)
+                        else if (elev < 0.4 && moist > 0.7) tile = '≈';
+                        else if (elev > 0.85 && moist < 0.2) tile = '💎c'; // Crystal Peaks (High/Dry)
+                        else if (elev > 0.75 && moist > 0.6) tile = '🌲'; // Tundra Pine Forest
+                        else if (elev > 0.75 && moist <= 0.6) tile = '❄️'; // Snow Plains
+                        else if (elev > 0.85) tile = '^';
+                        else if (elev > 0.6 && moist < 0.3) tile = 'd';
+                        else if (moist < 0.15) tile = 'D';
+                        else if (moist > 0.55) tile = 'F';
 
-                    // --- NATURAL SPAWN SAFETY OVERRIDE (Realm 0 Only) ---
-                    if (realmState === 0 && distSq <= 100) { 
-                        if (['^', '~', '≈', 'd'].includes(tile)) {
-                            tile = moist > 0.5 ? 'F' : '.'; 
+                        // --- NATURAL SPAWN SAFETY OVERRIDE (Realm 0 Only) ---
+                        if (realmState === 0 && distSq <= 100) { 
+                            if (['^', '~', '≈', 'd'].includes(tile)) {
+                                tile = moist > 0.5 ? 'F' : '.'; 
+                            }
                         }
                     }
                 }
@@ -1159,7 +1144,7 @@ const chunkManager = {
                 // --- APPLY REALM MUTATORS ---
                 if (realmState !== 0 && typeof gameState !== 'undefined' && gameState.realmMutators) {
                     gameState.realmMutators.forEach(mutatorKey => {
-                        const mutator = window.REALM_MUTATORS[mutatorKey];
+                        const mutator = window.REALM_MUTATORS ? window.REALM_MUTATORS[mutatorKey] : null;
                         if (mutator && typeof mutator.apply === 'function') {
                             tile = mutator.apply(tile);
                         }
@@ -1200,7 +1185,7 @@ const chunkManager = {
                             if (tile === '🕸') proxyBiome = '🍄'; // Poisonous enemies in nests
                             
                             const enemyTile = this.getEnemySpawn(proxyBiome, distSq, random);
-                            if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
+                            if (enemyTile && ((typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[enemyTile]) || (typeof TILE_DATA !== 'undefined' && TILE_DATA[enemyTile]))) {
                                 chunkData[y][x] = enemyTile;
                             } else {
                                 chunkData[y][x] = tile;
@@ -1350,7 +1335,7 @@ const chunkManager = {
                     }
                     // --- 5. COMMON FEATURES ---
                     else if (tile === '.' && featureRoll < 0.0005) {
-                        let features = Object.keys(TILE_DATA);
+                        let features = typeof TILE_DATA !== 'undefined' ? Object.keys(TILE_DATA) : [];
                         features = features.filter(f => {
                             const data = TILE_DATA[f];
                             const allowedTypes = ['lore', 'lore_statue', 'loot_container', 'campsite', 'decoration'];
@@ -1374,13 +1359,15 @@ const chunkManager = {
                         // 2. If it's on land, check if it's on a beach/shoreline
                         else if (['.', 'D', 'd', 'F'].includes(tile)) {
                             // Check the elevation noise 1 tile in every direction to see if it drops below sea level (< 0.35)
-                            const eN = elevationNoise.noise(worldX / 70, (worldY - 1) / 70, realmOffset);
-                            const eS = elevationNoise.noise(worldX / 70, (worldY + 1) / 70, realmOffset);
-                            const eE = elevationNoise.noise((worldX + 1) / 70, worldY / 70, realmOffset);
-                            const eW = elevationNoise.noise((worldX - 1) / 70, worldY / 70, realmOffset);
-                            
-                            if (eN < 0.35 || eS < 0.35 || eE < 0.35 || eW < 0.35) {
-                                isShipwreckSpot = true; // It's a shore!
+                            if (typeof elevationNoise !== 'undefined') {
+                                const eN = elevationNoise.noise(worldX / 70, (worldY - 1) / 70, realmOffset);
+                                const eS = elevationNoise.noise(worldX / 70, (worldY + 1) / 70, realmOffset);
+                                const eE = elevationNoise.noise((worldX + 1) / 70, worldY / 70, realmOffset);
+                                const eW = elevationNoise.noise((worldX - 1) / 70, worldY / 70, realmOffset);
+                                
+                                if (eN < 0.35 || eS < 0.35 || eE < 0.35 || eW < 0.35) {
+                                    isShipwreckSpot = true; // It's a shore!
+                                }
                             }
                         }
 
@@ -1433,7 +1420,7 @@ const chunkManager = {
                             const effectiveDistSq = (realmState === 0 && distSq < 40000) ? 0 : distSq; 
                             const enemyTile = this.getEnemySpawn(tile, effectiveDistSq, random);
 
-                            if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
+                            if (enemyTile && ((typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[enemyTile]) || (typeof TILE_DATA !== 'undefined' && TILE_DATA[enemyTile]))) {
                                 chunkData[y][x] = enemyTile;
                             } else {
                                 chunkData[y][x] = tile;
@@ -1492,8 +1479,8 @@ const chunkManager = {
         const chunkY = Math.floor(worldY / this.CHUNK_SIZE);
         const chunkId = `${chunkX},${chunkY}`;
 
-        const localX = ((worldX % this.CHUNK_SIZE) + this.CHUNK_SIZE) % this.CHUNK_SIZE;
-        const localY = ((worldY % this.CHUNK_SIZE) + this.CHUNK_SIZE) % this.CHUNK_SIZE;
+        const localX = (((worldX % this.CHUNK_SIZE) + this.CHUNK_SIZE) % this.CHUNK_SIZE);
+        const localY = (((worldY % this.CHUNK_SIZE) + this.CHUNK_SIZE) % this.CHUNK_SIZE);
         const tileKey = `${localX},${localY}`;
         
         // Always check WorldState first (Diff overrides procedural)
@@ -1529,15 +1516,17 @@ const chunkManager = {
         // PERFORMANCE WIN & MEMORY LEAK PREVENTION: 
         // Only delete the data from memory, but do NOT delete the worldStateListeners reference 
         // unless you actually unsubscribe the listener!
-        for (const chunkId in worldStateListeners) {
-            if (!visibleChunkIds.has(chunkId)) {
-                // Call the unsubscribe function to sever the Firebase connection
-                worldStateListeners[chunkId]();
-                delete worldStateListeners[chunkId];
+        if (typeof worldStateListeners !== 'undefined') {
+            for (const chunkId in worldStateListeners) {
+                if (!visibleChunkIds.has(chunkId)) {
+                    // Call the unsubscribe function to sever the Firebase connection
+                    worldStateListeners[chunkId]();
+                    delete worldStateListeners[chunkId];
 
-                // Free the memory locally
-                if (this.loadedChunks[chunkId]) delete this.loadedChunks[chunkId];
-                if (this.worldState[chunkId]) delete this.worldState[chunkId];
+                    // Free the memory locally
+                    if (this.loadedChunks[chunkId]) delete this.loadedChunks[chunkId];
+                    if (this.worldState[chunkId]) delete this.worldState[chunkId];
+                }
             }
         }
     }
