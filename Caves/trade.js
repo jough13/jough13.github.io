@@ -29,6 +29,11 @@ const _tradeDOMCache = {
     getShopTitle: () => _tradeDOMCache.shopTitle || (document.getElementById('shopTitle') && (_tradeDOMCache.shopTitle = document.getElementById('shopTitle')))
 };
 
+// 🚨 BUG FIX WIN: Mutex Lock to prevent UI Desync & Index Shifting!
+// Rapidly clicking the sell button would cause array splices to misalign indexes mid-processing,
+// selling the wrong items or crashing the client. This enforces sequential transaction safety!
+let isTradingBusy = false;
+
 // --- Centralized Value Dictionary ---
 // For items that aren't natively sold in shops but have high intrinsic value to traders.
 window.BASE_ITEM_VALUES = window.BASE_ITEM_VALUES || {
@@ -138,268 +143,276 @@ function calculateItemValue(item, player) {
 }
 
 function handleBuyItem(itemName, amount = 1) {
-    const player = gameState.player;
-    const shopItem = activeShopInventory.find(item => item.name === itemName);
-    const itemKey = getTradeItemKey(itemName); // PERFORMANCE WIN: Cached lookup!
-    const itemTemplate = window.ITEM_DATA ? window.ITEM_DATA[itemKey] : null;
+    if (isTradingBusy) return;
+    isTradingBusy = true;
 
-    if (!shopItem || !itemTemplate) {
-        logMessage("{red:Error: Item not found in shop.}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-    
-    // --- PRICING LOGIC START --- 
-    const basePrice = shopItem.price;
-    
-    // 1. Charisma
-    let discountPercent = player.charisma * 0.005;
+    try {
+        const player = gameState.player;
+        const shopItem = activeShopInventory.find(item => item.name === itemName);
+        const itemKey = getTradeItemKey(itemName); 
+        const itemTemplate = window.ITEM_DATA ? window.ITEM_DATA[itemKey] : null;
 
-    // 2. Codex Bonus
-    if (player.completedLoreSets && player.completedLoreSets.includes('king_fall')) {
-        discountPercent += 0.10;
-    }
-
-    // 3. Final Calculation
-    const finalDiscount = Math.min(discountPercent, 0.50);
-    const finalBuyPrice = Math.max(1, Math.floor(basePrice * (1.0 - finalDiscount)));
-
-    // --- BATCH CALCULATION ---
-    let buyQty = 1;
-    if (amount === 'all') {
-        const affordableQty = Math.floor(player.coins / finalBuyPrice);
-        buyQty = Math.min(shopItem.stock, affordableQty);
-        if (buyQty <= 0) buyQty = 1; // Fallback to 1 to let the standard error messages trigger
-    } else {
-        buyQty = parseInt(amount) || 1;
-    }
-
-    // Checks
-    const totalCost = finalBuyPrice * buyQty;
-    if (player.coins < totalCost) {
-        logMessage("{red:You don't have enough gold for that.}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    if (shopItem.stock < buyQty) {
-        logMessage("{red:The shop does not have enough stock!}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    const existingStack = player.inventory.find(item => item.name === itemName && !item.isEquipped);
-    const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
-
-    // BUG FIX: Accurate Capacity Checking
-    // If the item stacks and we ALREADY have a stack, it won't consume a new inventory slot!
-    const slotNeeded = (existingStack && isStackable) ? 0 : 1;
-    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-    
-    if (player.inventory.length + slotNeeded > invCap) {
-        logMessage("{red:Your inventory is full!}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    // Process the transaction
-    player.coins -= totalCost;
-    shopItem.stock -= buyQty;
-    
-    if (buyQty > 1) {
-        logMessage(`You bought a stack of ${itemName} (x${buyQty}) for {gold:${totalCost} gold}.`);
-    } else {
-        logMessage(`You bought a ${itemName} for {gold:${totalCost} gold}.`);
-    }
-    
-    // JUICE: Gold particles in the background
-    if (typeof ParticleSystem !== 'undefined') {
-        // Larger explosion for bulk buys!
-        const pSize = buyQty > 1 ? 15 : 5;
-        ParticleSystem.createFloatingText(player.x, player.y, `-${totalCost}g`, "#ef4444");
-        ParticleSystem.createExplosion(player.x, player.y, '#facc15', pSize);
-    }
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
-
-    if (existingStack && isStackable) {
-        existingStack.quantity += buyQty;
-    } else {
-        // ROBUSTNESS WIN: Safe Cloning to prevent reference mutation!
-        // If we don't clone the arrays/objects inside the template, enchanting this item later
-        // will permanently enchant the base template for all future shop purchases!
-        player.inventory.push({
-            templateId: itemKey,
-            name: itemTemplate.name,
-            type: itemTemplate.type,
-            quantity: buyQty,
-            tile: itemTemplate.tile || itemKey || '?',
-            damage: itemTemplate.damage || null,
-            defense: itemTemplate.defense || null,
-            slot: itemTemplate.slot || null,
-            statBonuses: itemTemplate.statBonuses ? { ...itemTemplate.statBonuses } : null,
-            tags: itemTemplate.tags ? [...itemTemplate.tags] : null,
-            effect: itemTemplate.effect || null,
-            _rarity: itemTemplate._rarity || null,
-            isEquipped: false
-        });
-    }
-
-    // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer instead of instantaneous save!
-    if (typeof triggerDebouncedSave === 'function') {
-        triggerDebouncedSave({
-            coins: player.coins,
-            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
-        });
-    }
-
-    renderShop(); 
-    if (typeof renderInventory === 'function') renderInventory(); 
-    if (typeof renderStats === 'function') renderStats(); 
-}
-
-function handleSellItem(itemIndex, amount = 1) {
-    const player = gameState.player;
-    if (itemIndex < 0 || itemIndex >= player.inventory.length) return;
-    
-    const itemToSell = player.inventory[itemIndex];
-    if (!itemToSell) return; 
-
-    if (itemToSell.isEquipped) {
-        logMessage("{red:You cannot sell an item you are wearing!}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    const { sellPrice, basePrice, regionMult } = calculateItemValue(itemToSell, player);
-
-    // UX WIN: Safety prompt for Magical/Valuable Gear!
-    if ((itemToSell.statBonuses && Object.keys(itemToSell.statBonuses).length > 0) || basePrice >= 100) {
-        if (!confirm(`Are you sure you want to sell your ${itemToSell.name}? This is a rare or highly valuable item.`)) {
-            return; // Abort sale
+        if (!shopItem || !itemTemplate) {
+            logMessage("{red:Error: Item not found in shop.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
         }
-    }
+        
+        // --- PRICING LOGIC START --- 
+        const basePrice = shopItem.price;
+        let discountPercent = player.charisma * 0.005;
 
-    if (regionMult >= 2.0) logMessage(`{green:Incredible demand! The merchant practically begs for it!}`);
-    else if (regionMult > 1.0) logMessage(`{green:Market demand is high here!}`);
-    else if (regionMult <= 0.5) logMessage(`{red:The merchant sneers. Complete market oversaturation.}`);
-    else if (regionMult < 1.0) logMessage(`{red:Market flooded. Low demand.}`);
-
-    // Determine quantity to sell
-    const qtyToSell = amount === 'all' ? itemToSell.quantity : 1;
-    const totalValue = sellPrice * qtyToSell;
-
-    // Process the transaction
-    player.coins += totalValue;
-    if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(totalValue);
-    
-    if (qtyToSell > 1) {
-        logMessage(`You sold a stack of ${itemToSell.name} (x${qtyToSell}) for {gold:${totalValue} gold}.`);
-    } else {
-        logMessage(`You sold a ${itemToSell.name} for {gold:${totalValue} gold}.`);
-    }
-    
-    // JUICE: Gold particles in the background
-    if (typeof ParticleSystem !== 'undefined') {
-        const pSize = qtyToSell > 1 ? 15 : 5;
-        ParticleSystem.createFloatingText(player.x, player.y, `+${totalValue}g`, "#facc15");
-        ParticleSystem.createExplosion(player.x, player.y, '#facc15', pSize);
-    }
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
-
-    // Remove from inventory
-    itemToSell.quantity -= qtyToSell;
-    if (itemToSell.quantity <= 0) {
-        player.inventory.splice(itemIndex, 1);
-    }
-
-    // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer instead of instantaneous save!
-    if (typeof triggerDebouncedSave === 'function') {
-        triggerDebouncedSave({
-            coins: player.coins,
-            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
-        });
-    }
-
-    renderShop();
-    if (typeof renderInventory === 'function') renderInventory();
-    if (typeof renderStats === 'function') renderStats();
-}
-
-function handleSellAllItems() {
-    const player = gameState.player;
-    let itemsSold = 0;
-    let goldGained = 0;
-
-    // PERFORMANCE WIN: Replace manual `.splice()` looping with a clean `.filter()` block
-    // Splice forces array re-indexing on every deletion, causing micro-stutters.
-    
-    const remainingInventory = [];
-
-    for (let i = 0; i < player.inventory.length; i++) {
-        const item = player.inventory[i];
-
-        // 1. Keep equipped items
-        if (item.isEquipped) {
-            remainingInventory.push(item);
-            continue;
+        if (player.completedLoreSets && player.completedLoreSets.includes('king_fall')) {
+            discountPercent += 0.10;
         }
 
-        // 2. Filter: Only sell 'junk' (Loot/Fish) and 'trade' goods
-        if (item.type === 'junk' || item.type === 'trade') {
-            // BUG FIX: Strict exclusion for Anomaly and story items!
-            if (item.name === 'Paradox Anomaly' || item.tags?.includes('anomaly')) {
-                remainingInventory.push(item);
-                continue;
-            }
+        const finalDiscount = Math.min(discountPercent, 0.50);
+        const finalBuyPrice = Math.max(1, Math.floor(basePrice * (1.0 - finalDiscount)));
 
-            // Skip magically enhanced junk
-            if (item.statBonuses && Object.keys(item.statBonuses).length > 0) {
-                remainingInventory.push(item);
-                continue;
-            }
-
-            // Execute Sale
-            const { sellPrice } = calculateItemValue(item, player);
-            const totalValue = sellPrice * item.quantity;
-            player.coins += totalValue;
-            goldGained += totalValue;
-            itemsSold += item.quantity;
-            
-            if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(totalValue);
-
+        // --- BATCH CALCULATION & SECURITY FIX ---
+        // 🚨 SECURITY WIN: Prevent users modifying DOM data-amount to negative numbers, granting infinite gold!
+        let buyQty = 1;
+        if (amount === 'all') {
+            const affordableQty = Math.floor(player.coins / finalBuyPrice);
+            buyQty = Math.min(shopItem.stock, affordableQty);
+            if (buyQty <= 0) buyQty = 1; // Fallback to 1 to let the standard error messages trigger
         } else {
-            // It's a potion, armor, weapon, tool, etc. Keep it!
-            remainingInventory.push(item);
+            buyQty = Math.max(1, parseInt(amount) || 1); 
         }
-    }
 
-    if (itemsSold > 0) {
-        // Swap arrays
-        player.inventory = remainingInventory;
+        // Checks
+        const totalCost = finalBuyPrice * buyQty;
+        if (player.coins < totalCost) {
+            logMessage("{red:You don't have enough gold for that.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        if (shopItem.stock < buyQty) {
+            logMessage("{red:The shop does not have enough stock!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        const existingStack = player.inventory.find(item => item.name === itemName && !item.isEquipped);
+        const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
+
+        // 🚨 BUG FIX: Accurate Capacity Checking for bulk-buying unstackable gear!
+        const slotNeeded = isStackable ? (existingStack ? 0 : 1) : buyQty;
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
         
-        logMessage(`Mass Sold ${itemsSold} junk/trade items for {gold:${goldGained} gold}.`);
+        if (player.inventory.length + slotNeeded > invCap) {
+            logMessage("{red:Your inventory is full!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        // Process the transaction
+        player.coins -= totalCost;
+        shopItem.stock -= buyQty;
         
-        // JUICE: Massive Gold Explosion
+        if (buyQty > 1) {
+            logMessage(`You bought a stack of ${itemName} (x${buyQty}) for {gold:${totalCost} gold}.`);
+        } else {
+            logMessage(`You bought a ${itemName} for {gold:${totalCost} gold}.`);
+        }
+        
         if (typeof ParticleSystem !== 'undefined') {
-            ParticleSystem.createFloatingText(player.x, player.y, `+${goldGained}g`, "#facc15");
-            ParticleSystem.createExplosion(player.x, player.y, '#facc15', 30);
+            const pSize = buyQty > 1 ? 15 : 5;
+            ParticleSystem.createFloatingText(player.x, player.y, `-${totalCost}g`, "#ef4444");
+            ParticleSystem.createExplosion(player.x, player.y, '#facc15', pSize);
         }
         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
-        // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer instead of instantaneous save!
+        if (existingStack && isStackable) {
+            existingStack.quantity += buyQty;
+        } else {
+            // ROBUSTNESS WIN: Safe Deep Cloning
+            // Properly loop and spawn unique objects if the item is unstackable
+            const loops = isStackable ? 1 : buyQty;
+            const qtyPerLoop = isStackable ? buyQty : 1;
+            
+            for (let i = 0; i < loops; i++) {
+                let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(itemTemplate) : JSON.parse(JSON.stringify(itemTemplate));
+                newItem.templateId = itemKey;
+                newItem.quantity = qtyPerLoop;
+                newItem.tile = itemTemplate.tile || itemKey || '?';
+                newItem.isEquipped = false;
+                
+                player.inventory.push(newItem);
+            }
+        }
+
+        // 🚨 FIREBASE OPTIMIZATION
         if (typeof triggerDebouncedSave === 'function') {
             triggerDebouncedSave({
                 coins: player.coins,
                 inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
             });
         }
+
+        renderShop(); 
+        if (typeof renderInventory === 'function') renderInventory(); 
+        if (typeof renderStats === 'function') renderStats(); 
         
+    } finally {
+        isTradingBusy = false;
+    }
+}
+
+function handleSellItem(itemIndex, amount = 1) {
+    if (isTradingBusy) return;
+    isTradingBusy = true;
+
+    try {
+        const player = gameState.player;
+        if (itemIndex < 0 || itemIndex >= player.inventory.length) return;
+        
+        const itemToSell = player.inventory[itemIndex];
+        if (!itemToSell) return; 
+
+        if (itemToSell.isEquipped) {
+            logMessage("{red:You cannot sell an item you are wearing!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        const { sellPrice, basePrice, regionMult } = calculateItemValue(itemToSell, player);
+
+        // UX WIN: Safety prompt for Magical/Valuable Gear!
+        if ((itemToSell.statBonuses && Object.keys(itemToSell.statBonuses).length > 0) || basePrice >= 100) {
+            if (!confirm(`Are you sure you want to sell your ${itemToSell.name}? This is a rare or highly valuable item.`)) {
+                return; 
+            }
+        }
+
+        if (regionMult >= 2.0) logMessage(`{green:Incredible demand! The merchant practically begs for it!}`);
+        else if (regionMult > 1.0) logMessage(`{green:Market demand is high here!}`);
+        else if (regionMult <= 0.5) logMessage(`{red:The merchant sneers. Complete market oversaturation.}`);
+        else if (regionMult < 1.0) logMessage(`{red:Market flooded. Low demand.}`);
+
+        // Determine quantity to sell safely
+        const qtyToSell = amount === 'all' ? itemToSell.quantity : 1;
+        const totalValue = sellPrice * qtyToSell;
+
+        // Process the transaction
+        player.coins += totalValue;
+        if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(totalValue);
+        
+        if (qtyToSell > 1) {
+            logMessage(`You sold a stack of ${itemToSell.name} (x${qtyToSell}) for {gold:${totalValue} gold}.`);
+        } else {
+            logMessage(`You sold a ${itemToSell.name} for {gold:${totalValue} gold}.`);
+        }
+        
+        if (typeof ParticleSystem !== 'undefined') {
+            const pSize = qtyToSell > 1 ? 15 : 5;
+            ParticleSystem.createFloatingText(player.x, player.y, `+${totalValue}g`, "#facc15");
+            ParticleSystem.createExplosion(player.x, player.y, '#facc15', pSize);
+        }
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+
+        // Remove from inventory
+        itemToSell.quantity -= qtyToSell;
+        if (itemToSell.quantity <= 0) {
+            player.inventory.splice(itemIndex, 1);
+        }
+
+        // 🚨 FIREBASE OPTIMIZATION
+        if (typeof triggerDebouncedSave === 'function') {
+            triggerDebouncedSave({
+                coins: player.coins,
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
+            });
+        }
+
         renderShop();
         if (typeof renderInventory === 'function') renderInventory();
         if (typeof renderStats === 'function') renderStats();
-    } else {
-        logMessage("{gray:You have no unequipped junk or trade goods to sell.}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        
+    } finally {
+        isTradingBusy = false;
+    }
+}
+
+function handleSellAllItems() {
+    if (isTradingBusy) return;
+    isTradingBusy = true;
+
+    try {
+        const player = gameState.player;
+        let itemsSold = 0;
+        let goldGained = 0;
+
+        // PERFORMANCE WIN: Replace manual `.splice()` looping with a clean `.filter()` block
+        const remainingInventory = [];
+
+        for (let i = 0; i < player.inventory.length; i++) {
+            const item = player.inventory[i];
+
+            if (item.isEquipped) {
+                remainingInventory.push(item);
+                continue;
+            }
+
+            // Only sell 'junk' (Loot/Fish) and 'trade' goods
+            if (item.type === 'junk' || item.type === 'trade') {
+                
+                // Strict exclusion for Anomaly and story items
+                if (item.name === 'Paradox Anomaly' || item.tags?.includes('anomaly')) {
+                    remainingInventory.push(item);
+                    continue;
+                }
+
+                // Skip magically enhanced junk
+                if (item.statBonuses && Object.keys(item.statBonuses).length > 0) {
+                    remainingInventory.push(item);
+                    continue;
+                }
+
+                // Execute Sale
+                const { sellPrice } = calculateItemValue(item, player);
+                const totalValue = sellPrice * item.quantity;
+                player.coins += totalValue;
+                goldGained += totalValue;
+                itemsSold += item.quantity;
+                
+                if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(totalValue);
+
+            } else {
+                remainingInventory.push(item);
+            }
+        }
+
+        if (itemsSold > 0) {
+            // Re-assign array references cleanly (Equipment pointers remain intact since object identity doesn't change)
+            player.inventory = remainingInventory;
+            
+            logMessage(`Mass Sold ${itemsSold} junk/trade items for {gold:${goldGained} gold}.`);
+            
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createFloatingText(player.x, player.y, `+${goldGained}g`, "#facc15");
+                ParticleSystem.createExplosion(player.x, player.y, '#facc15', 30);
+            }
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+
+            if (typeof triggerDebouncedSave === 'function') {
+                triggerDebouncedSave({
+                    coins: player.coins,
+                    inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
+                });
+            }
+            
+            renderShop();
+            if (typeof renderInventory === 'function') renderInventory();
+            if (typeof renderStats === 'function') renderStats();
+        } else {
+            logMessage("{gray:You have no unequipped junk or trade goods to sell.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        }
+        
+    } finally {
+        isTradingBusy = false;
     }
 }
 
@@ -489,7 +502,9 @@ function renderShop() {
         const baseBuyPrice = item.price;
         const itemTemplate = window.ITEM_DATA ? window.ITEM_DATA[itemKey] : null;
         
-        // Discounts
+        // 🚨 SECURITY WIN: XSS Prevention for rendering
+        const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
+        
         let discountPercent = gameState.player.charisma * 0.005;
         if (gameState.player.completedLoreSets && gameState.player.completedLoreSets.includes('king_fall')) {
             discountPercent += 0.10; 
@@ -497,22 +512,19 @@ function renderShop() {
         const finalDiscount = Math.min(discountPercent, 0.5);
         const finalBuyPrice = Math.max(1, Math.floor(baseBuyPrice * (1.0 - finalDiscount)));
 
-        // UX WIN: Visually highlight the discount in green
         let priceHtml = `${finalBuyPrice}g`;
         if (finalBuyPrice < baseBuyPrice) {
             priceHtml = `<del class="text-gray-500 text-xs mr-1 font-normal">${baseBuyPrice}g</del><span class="text-green-400">${finalBuyPrice}g</span>`;
         }
 
-        // Color code the price if you can't afford it
         const canAffordItem = gameState.player.coins >= finalBuyPrice;
         const priceColorClass = canAffordItem ? 'text-yellow-500' : 'text-red-500';
 
-        // QoL WIN: Buy Max Button for Stackables
-        let actionsHtml = `<button data-buy-item="${item.name}" data-amount="1" style="transform: translateZ(0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50 font-bold">Buy 1</button>`;
+        let actionsHtml = `<button data-buy-item="${safeItemName}" data-amount="1" style="transform: translateZ(0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50 font-bold">Buy 1</button>`;
         const isStackable = itemTemplate && ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
         
         if (isStackable && item.stock > 1) {
-            actionsHtml += `<button data-buy-item="${item.name}" data-amount="all" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs font-bold">Max</button>`;
+            actionsHtml += `<button data-buy-item="${safeItemName}" data-amount="all" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs font-bold">Max</button>`;
         }
 
         const outOfStockClass = item.stock <= 0 ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:border-green-500 hover:-translate-y-0.5 hover:shadow-md';
@@ -521,7 +533,7 @@ function renderShop() {
         li.className = `shop-item transition-all duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 ${outOfStockClass}`;
         li.innerHTML = `
             <div>
-                <span class="shop-item-name font-bold text-lg text-gray-200">${item.name} <span class="text-2xl drop-shadow-md align-middle">${itemTemplate?.tile || '?'}</span></span>
+                <span class="shop-item-name font-bold text-lg text-gray-200">${safeItemName} <span class="text-2xl drop-shadow-md align-middle">${itemTemplate?.tile || '?'}</span></span>
                 <span class="shop-item-details font-bold block mt-1 ${priceColorClass}">Price: ${priceHtml} <span class="text-xs text-gray-500 font-normal ml-2 bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Stock: ${item.stock})</span></span>
             </div>
             <div class="shop-item-actions flex items-center ml-2">
@@ -541,10 +553,11 @@ function renderShop() {
         shopSellList.innerHTML = '<li class="shop-item-details italic text-sm text-gray-500 border border-gray-700 p-4 rounded-lg bg-black bg-opacity-20 text-center shadow-inner font-serif">Your pockets hold only dust.</li>';
     } else {
         gameState.player.inventory.forEach((item, index) => {
-            // DRY OPTIMIZATION: Use our helper
             const { sellPrice, regionMult } = calculateItemValue(item, gameState.player);
+            
+            // 🚨 SECURITY WIN: XSS Prevention for rendering
+            const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
 
-            // LORE & JUICE WIN: Color-code the market demand so the player doesn't have to guess!
             let sellPriceColor = "text-yellow-500";
             let demandTag = "";
             if (regionMult > 1.0) {
@@ -558,7 +571,6 @@ function renderShop() {
             const li = document.createElement('li');
             li.className = 'shop-item hover:border-blue-500 hover:-translate-y-0.5 hover:shadow-md transition-all duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3';
             
-            // UX WIN: Add a "Sell Stack" button if they have more than 1!
             let actionsHtml = `<button data-sell-index="${index}" data-amount="1" style="transform: translateZ(0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50 font-bold" ${item.isEquipped ? 'disabled title="Unequip first"' : ''}>Sell 1</button>`;
             
             if (item.quantity > 1 && !item.isEquipped) {
@@ -576,7 +588,7 @@ function renderShop() {
 
             li.innerHTML = `
                 <div class="flex-grow pr-2">
-                    <span class="shop-item-name block mb-1 ${nameColor}">${item.tile || '🎒'} ${item.name} <span class="text-[10px] text-gray-400 bg-black bg-opacity-30 px-1 rounded border border-gray-700 ml-1">x${item.quantity}</span></span>
+                    <span class="shop-item-name block mb-1 ${nameColor}">${item.tile || '🎒'} ${safeItemName} <span class="text-[10px] text-gray-400 bg-black bg-opacity-30 px-1 rounded border border-gray-700 ml-1">x${item.quantity}</span></span>
                     <span class="shop-item-details font-bold block ${sellPriceColor}">Sell for: ${sellPrice}g <span class="text-xs text-gray-500 font-normal">(ea)</span></span>
                     ${demandTag}
                 </div>
@@ -598,7 +610,6 @@ function renderShop() {
     if (sellHeader) {
         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
         
-        // UX WIN: Smart-disable the button if there is no junk to sell
         const hasJunk = gameState.player.inventory.some(i => !i.isEquipped && (i.type === 'junk' || i.type === 'trade'));
         const btnClass = hasJunk ? "bg-red-700 hover:bg-red-600 text-white cursor-pointer shadow-md" : "bg-gray-800 text-gray-500 opacity-50 cursor-not-allowed border border-gray-700 shadow-inner";
 
