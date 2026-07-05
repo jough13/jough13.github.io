@@ -4,23 +4,35 @@
 // ADVANCED PROCEDURAL AUDIO SYSTEM
 // ==========================================
 
+// Safe initialization of settings to handle corrupted or outdated local storage
+let _savedAudioSettings = null;
+try {
+    _savedAudioSettings = JSON.parse(localStorage.getItem('audioSettings'));
+} catch(e) {}
+
+const _getAudioSetting = (key, defaultVal) => {
+    if (_savedAudioSettings && _savedAudioSettings[key] !== undefined) {
+        return _savedAudioSettings[key];
+    }
+    return defaultVal;
+};
+
 const AudioSystem = {
     _ctx: null, 
     _masterGain: null,
     _compressor: null,
     noiseBuffer: null, 
     
-    // Audio Throttling
-    // Prevents audio blowout/CPU spikes if 20 enemies move/attack on the exact same frame.
-    _lastPlayed: {},
+    // PERFORMANCE WIN: O(1) Map for high-speed audio throttling & GC
+    _lastPlayed: new Map(),
 
     // Settings State
-    settings: JSON.parse(localStorage.getItem('audioSettings')) || {
-        master: true,
-        steps: true,
-        combat: true,
-        magic: true,
-        ui: true
+    settings: {
+        master: _getAudioSetting('master', true),
+        steps: _getAudioSetting('steps', true),
+        combat: _getAudioSetting('combat', true),
+        magic: _getAudioSetting('magic', true),
+        ui: _getAudioSetting('ui', true)
     },
 
     saveSettings: () => {
@@ -69,6 +81,9 @@ const AudioSystem = {
     },
 
     getCtx: function() {
+        // Bypass expensive initialization calls if it's already running
+        if (this._ctx && this._ctx.state === 'running') return this._ctx;
+
         const ctx = this.initAudioContext();
         // Only resume if explicitly suspended, 
         // wrapped in a try/catch because Safari sometimes throws errors if resumed too aggressively.
@@ -106,17 +121,20 @@ const AudioSystem = {
         }
     },
 
-    // Internal Throttler (Highly optimized for V8)
+    // Internal Throttler (Highly optimized for V8 via Maps)
     _throttle: function(id, msCooldown) {
         const now = Date.now();
-        // PERFORMANCE WIN: Smarter garbage collection for the throttle object
-        if (Object.keys(this._lastPlayed).length > 50) {
-            for (const key in this._lastPlayed) {
-                if (now - this._lastPlayed[key] > 5000) delete this._lastPlayed[key];
+        // PERFORMANCE WIN: Smarter O(1) garbage collection for the throttle Map
+        if (this._lastPlayed.size > 50) {
+            for (const [key, time] of this._lastPlayed.entries()) {
+                if (now - time > 5000) this._lastPlayed.delete(key);
             }
         }
-        if (this._lastPlayed[id] && now - this._lastPlayed[id] < msCooldown) return false;
-        this._lastPlayed[id] = now;
+        
+        const lastTime = this._lastPlayed.get(id);
+        if (lastTime && now - lastTime < msCooldown) return false;
+        
+        this._lastPlayed.set(id, now);
         return true;
     },
 
@@ -159,9 +177,11 @@ const AudioSystem = {
     },
 
     _getSpatialData: function(x) {
-        if (x === undefined || typeof gameState === 'undefined' || !gameState.player) {
+        // ROBUSTNESS WIN: Protect against NaN propagation if an entity was just deleted
+        if (typeof x !== 'number' || isNaN(x) || typeof gameState === 'undefined' || !gameState.player || typeof gameState.player.x !== 'number') {
             return { pan: 0, distanceVol: 1.0, distanceFilter: 1.0 };
         }
+        
         const dx = x - gameState.player.x;
         const absDx = Math.abs(dx);
         
@@ -176,11 +196,18 @@ const AudioSystem = {
     _routeToMaster: function(ctx, sourceNode, acoustics, spatial) {
         let panner = null;
         
-        // Older Safari/iOS versions don't support StereoPannerNode.
-        // We gracefully fallback to a standard GainNode if it's missing to prevent crashes.
+        // COMPATIBILITY WIN: Graceful 3-Tier spatial fallback to support modern browsers,
+        // older iOS Safari, and failing contexts equally without dropping audio.
         if (ctx.createStereoPanner) {
             panner = ctx.createStereoPanner();
             panner.pan.value = spatial.pan;
+            sourceNode.connect(panner);
+        } else if (ctx.createPanner) {
+            panner = ctx.createPanner();
+            panner.panningModel = 'equalpower';
+            // Clamp pan to [-1, 1] strictly for the legacy node
+            const safePan = Math.max(-1, Math.min(1, spatial.pan));
+            panner.setPosition(safePan, 0, 1 - Math.abs(safePan));
             sourceNode.connect(panner);
         } else {
             panner = ctx.createGain(); 
@@ -196,7 +223,10 @@ const AudioSystem = {
             // Lowpass filter inside the loop absorbs high frequencies as the sound bounces!
             const dampFilter = ctx.createBiquadFilter();
             dampFilter.type = 'lowpass';
-            dampFilter.frequency.value = acoustics.dampening;
+            
+            // 🚨 NYQUIST FIX: Prevent InvalidAccessError crash
+            const maxFreq = (ctx.sampleRate / 2) - 1;
+            dampFilter.frequency.value = Math.min(maxFreq, Math.max(10, acoustics.dampening));
 
             panner.connect(delay);
             delay.connect(dampFilter);
@@ -253,7 +283,11 @@ const AudioSystem = {
 
         const filter = ctx.createBiquadFilter();
         filter.type = 'lowpass';
-        filter.frequency.value = Math.max(10, (filterFreq + (Math.random() - 0.5) * 200) * acoustics.filterMult * spatial.distanceFilter);
+        
+        // 🚨 NYQUIST FIX: Guarantee frequency NEVER exceeds sampleRate / 2
+        const maxFreq = (ctx.sampleRate / 2) - 1;
+        const targetFreq = (filterFreq + (Math.random() - 0.5) * 200) * acoustics.filterMult * spatial.distanceFilter;
+        filter.frequency.value = Math.min(maxFreq, Math.max(10, targetFreq));
 
         const gain = ctx.createGain();
         const now = ctx.currentTime + 0.01; // AUDIO QUALITY WIN: Lookahead prevents envelope popping!
@@ -300,10 +334,15 @@ const AudioSystem = {
         if (finalFreq > 400) finalFreq *= (acoustics.filterMult * spatial.distanceFilter);
 
         const now = ctx.currentTime + 0.01; 
+        
+        // 🚨 NYQUIST FIX: Clamp limits
+        const maxFreq = (ctx.sampleRate / 2) - 1;
+        const startFreq = Math.min(maxFreq, Math.max(1, finalFreq));
 
-        osc.frequency.setValueAtTime(Math.max(1, finalFreq), now);
+        osc.frequency.setValueAtTime(startFreq, now);
         if (slideTo) {
-            osc.frequency.exponentialRampToValueAtTime(Math.max(10, slideTo * spatial.distanceFilter), now + actualDuration);
+            const endFreq = Math.min(maxFreq, Math.max(10, slideTo * spatial.distanceFilter));
+            osc.frequency.exponentialRampToValueAtTime(endFreq, now + actualDuration);
         }
 
         gain.gain.setValueAtTime(0.0001, now);
@@ -333,17 +372,20 @@ const AudioSystem = {
         const actualDuration = duration * acoustics.durationMult;
         const noteVol = Math.max(0.001, vol / notes.length);
         const now = ctx.currentTime + 0.01;
+        const maxFreq = (ctx.sampleRate / 2) - 1; // NYQUIST FIX
 
         notes.forEach((freq, index) => {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             
             osc.type = this._getSafeOscType(type);
-            const startFreq = Math.max(1, (freq * acoustics.filterMult) + (index * detune));
+            
+            const startFreq = Math.min(maxFreq, Math.max(1, (freq * acoustics.filterMult) + (index * detune)));
             osc.frequency.setValueAtTime(startFreq, now);
             
             if (slideDown) {
-                osc.frequency.exponentialRampToValueAtTime(Math.max(10, startFreq * 0.5), now + actualDuration);
+                const endFreq = Math.min(maxFreq, Math.max(10, startFreq * 0.5));
+                osc.frequency.exponentialRampToValueAtTime(endFreq, now + actualDuration);
             }
 
             gain.gain.setValueAtTime(0.0001, now);
@@ -371,6 +413,7 @@ const AudioSystem = {
         const ctx = this._ctx;
         const now = ctx.currentTime + 0.01;
         const acoustics = this._getAcoustics();
+        const maxFreq = (ctx.sampleRate / 2) - 1; // NYQUIST FIX
         
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -382,7 +425,7 @@ const AudioSystem = {
         notes.forEach((freq, index) => {
             const noteTime = now + (index * speed);
             if (freq > 0) {
-                const adjFreq = Math.max(1, freq * (freq > 500 ? acoustics.filterMult : 1.0));
+                const adjFreq = Math.min(maxFreq, Math.max(1, freq * (freq > 500 ? acoustics.filterMult : 1.0)));
                 osc.frequency.setValueAtTime(adjFreq, noteTime);
                 
                 gain.gain.setValueAtTime(0.0001, noteTime);
