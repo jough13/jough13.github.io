@@ -947,43 +947,47 @@ window.REGION_HISTORY = [
     "The stars above this sector are slightly misaligned compared to the rest of the world."
 ];
 
+// PERFORMANCE & MEMORY LEAK WIN: Extracting this data dictionary out of the function body
+// prevents the V8 engine from having to instantiate and garbage-collect 6 arrays 
+// every single time a player takes a step in a shattered realm!
+window.MUTATOR_HISTORY_DATA = {
+    'lava_oceans': [
+        "The air here burns your lungs. The oceans boiled away centuries ago.",
+        "A civilization of fire elementals once built castles on the magma lakes here.",
+        "You find a ship made entirely of obsidian, stranded on a cooling basalt flow."
+    ],
+    'eternal_night': [
+        "You cannot tell if it is day or night. The stars do not move.",
+        "The shadows here seem to stretch toward you, regardless of the light.",
+        "A kingdom of vampires ruled this sector until they starved to death."
+    ],
+    'frozen_wastes': [
+        "The ice here is blue and harder than steel. It will never melt.",
+        "You find a massive dire wolf perfectly preserved mid-leap in a glacier.",
+        "The wind carries the sound of shattering glass as trees snap in the cold."
+    ],
+    'overgrown': [
+        "The vines here grow visibly, inching forward while you watch.",
+        "A ruined keep is completely choked by massive, thorny brambles.",
+        "The smell of blooming flowers is so thick it makes you dizzy."
+    ],
+    'wild_magic': [
+        "The laws of physics are merely a suggestion in this sector.",
+        "You see a rock fall upward into the sky.",
+        "The grass here glows with an unnatural, pulsating light."
+    ],
+    'crystalline': [
+        "The ground chimes like a bell with every step you take.",
+        "Massive quartz pillars pierce the clouds above.",
+        "The reflection in the crystals shows a world that isn't this one."
+    ]
+};
+
 // Dynamic history overrides based on the active Mutator in a Shattered Realm
 window.getMutatorHistoryOverride = function(mutatorKey, baseHistory) {
-    const mutatorHistory = {
-        'lava_oceans': [
-            "The air here burns your lungs. The oceans boiled away centuries ago.",
-            "A civilization of fire elementals once built castles on the magma lakes here.",
-            "You find a ship made entirely of obsidian, stranded on a cooling basalt flow."
-        ],
-        'eternal_night': [
-            "You cannot tell if it is day or night. The stars do not move.",
-            "The shadows here seem to stretch toward you, regardless of the light.",
-            "A kingdom of vampires ruled this sector until they starved to death."
-        ],
-        'frozen_wastes': [
-            "The ice here is blue and harder than steel. It will never melt.",
-            "You find a massive dire wolf perfectly preserved mid-leap in a glacier.",
-            "The wind carries the sound of shattering glass as trees snap in the cold."
-        ],
-        'overgrown': [
-            "The vines here grow visibly, inching forward while you watch.",
-            "A ruined keep is completely choked by massive, thorny brambles.",
-            "The smell of blooming flowers is so thick it makes you dizzy."
-        ],
-        'wild_magic': [
-            "The laws of physics are merely a suggestion in this sector.",
-            "You see a rock fall upward into the sky.",
-            "The grass here glows with an unnatural, pulsating light."
-        ],
-        'crystalline': [
-            "The ground chimes like a bell with every step you take.",
-            "Massive quartz pillars pierce the clouds above.",
-            "The reflection in the crystals shows a world that isn't this one."
-        ]
-    };
-    
-    if (mutatorHistory[mutatorKey]) {
-        return mutatorHistory[mutatorKey][Math.floor(Math.random() * mutatorHistory[mutatorKey].length)];
+    const historyList = window.MUTATOR_HISTORY_DATA[mutatorKey];
+    if (historyList && historyList.length > 0) {
+        return historyList[Math.floor(Math.random() * historyList.length)];
     }
     return baseHistory;
 };
