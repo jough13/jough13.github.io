@@ -209,12 +209,16 @@ window.MathUtils = {
 // ==========================================
 // COLOR UTILITIES (For Visual Juice)
 // ==========================================
+
+// PERFORMANCE WIN: Cached Regex for V8 speed
+const HEX_RGB_REGEX = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i;
+
 window.ColorUtils = {
     // BUG FIX & ROBUSTNESS: Handles both 6-char (#FF0000) and 3-char (#F00) hex codes safely
     hexToRgb: (hex) => {
         let h = hex.replace(/^#/, '');
         if (h.length === 3) h = h.split('').map(c => c + c).join(''); // Expand #000 to #000000
-        const result = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h);
+        const result = HEX_RGB_REGEX.exec(h);
         return result ? {
             r: parseInt(result[1], 16),
             g: parseInt(result[2], 16),
@@ -238,13 +242,9 @@ window.ColorUtils = {
     adjustBrightness: (hex, percent) => {
         let {r, g, b} = window.ColorUtils.hexToRgb(hex);
         
-        r = parseInt(r * (1 + percent), 10);
-        g = parseInt(g * (1 + percent), 10);
-        b = parseInt(b * (1 + percent), 10);
-        
-        r = Math.max(0, Math.min(255, r));
-        g = Math.max(0, Math.min(255, g));
-        b = Math.max(0, Math.min(255, b));
+        r = Math.max(0, Math.min(255, Math.floor(r * (1 + percent))));
+        g = Math.max(0, Math.min(255, Math.floor(g * (1 + percent))));
+        b = Math.max(0, Math.min(255, Math.floor(b * (1 + percent))));
         
         return `#${(1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1)}`;
     },
@@ -515,7 +515,6 @@ window.getLoreTimeOfDay = function(hour) {
 };
 
 // LORE & UI WIN: Expanded Dictionary for Auto-Tagging
-// Massively upgraded to support mechanics, tools, and UI objects!
 const LORE_KEYWORDS = {
     // Entities & Factions
     'Void': 'void', 'Void Rift': 'void', 'Shadowed Hand': 'purple',
@@ -544,19 +543,23 @@ const LORE_KEYWORDS = {
     'Black Pearl': 'purple', 'Dragon Scale': 'red', 'Elemental Core': 'orange'
 };
 
+// 🚨 V8 PERFORMANCE WIN: Pre-compile Regexes once at boot instead of on every log message!
+const _COMPILED_LORE_REGEXES = Object.entries(LORE_KEYWORDS).map(([keyword, color]) => ({
+    rx: new RegExp(`\\b(${keyword}s?)\\b`, 'gi'),
+    color
+}));
+
 /**
  * LORE WIN: The Auto-Lore Tagger
  * Scans raw text and automatically wraps crucial lore keywords in their appropriate {color:text} syntax.
- * Upgraded to safely support plural words (e.g., "Krakens" or "Void Rifts").
+ * Upgraded to safely support plural words and compile at O(1) speed.
  */
 window.autoFormatLore = function(text) {
     if (!text) return "";
     let formatted = text;
-    for (const [keyword, color] of Object.entries(LORE_KEYWORDS)) {
-        // Match the keyword, and optionally an 's' at the end for plurals!
-        const regex = new RegExp(`\\b(${keyword}s?)\\b`, 'gi');
-        
-        formatted = formatted.replace(regex, (match, p1, offset, string) => {
+    for (let i = 0; i < _COMPILED_LORE_REGEXES.length; i++) {
+        const { rx, color } = _COMPILED_LORE_REGEXES[i];
+        formatted = formatted.replace(rx, (match, p1, offset, string) => {
             const lookBehind = string.substring(Math.max(0, offset - 10), offset);
             // If it is ALREADY inside a tag (e.g. {red:Kraken}), do not double-wrap it!
             if (lookBehind.includes('{')) return match; 
@@ -605,7 +608,7 @@ window.getDirectionString = function(dir, atmospheric = false) {
 };
 
 /**
- * IMMERSION WIN: Calculates relative distance and direction for flavor text.
+ * Calculates relative distance and direction for flavor text.
  * e.g. "a few steps to the North" or "far off to the South-West"
  */
 window.getRelativePositionText = function(dx, dy, atmospheric = false) {
@@ -628,7 +631,7 @@ window.getRelativePositionText = function(dx, dy, atmospheric = false) {
 // PERFORMANCE & BUG FIX WIN: High-speed recursive clone. 
 // Completely replaces JSON.parse(JSON.stringify()) with a V8-optimized deep copy.
 // Uses Object.keys() and pre-allocated Arrays to bypass all prototype chain overhead!
-// Now safely supports cloning `Set` and `Map` objects without corrupting them!
+// Now safely supports cloning `Set` and `Map` and `TypedArray` objects without corrupting them!
 window.fastClone = function(obj, seen = new WeakMap()) {
     // Base case: null, undefined, strings, numbers, booleans
     if (obj === null || typeof obj !== 'object') return obj;
@@ -636,12 +639,17 @@ window.fastClone = function(obj, seen = new WeakMap()) {
     // Explicit Date support (Prevents dates becoming empty objects)
     if (obj instanceof Date) return new Date(obj.getTime());
     
+    // 🔥 DATA CORRUPTION FIX: Explicit TypedArray support 
+    // Prevents turning Perlin noise grids or audio buffers into slow, broken dictionaries!
+    if (ArrayBuffer.isView(obj)) {
+        return new obj.constructor(obj.buffer.slice(0), obj.byteOffset, obj.length);
+    }
+    
     // ROBUSTNESS WIN: Never attempt to clone DOM Elements or functions that might have snuck into state
     if (typeof HTMLElement !== 'undefined' && obj instanceof HTMLElement) return obj;
     if (typeof obj === 'function') return obj;
     
     // ROBUSTNESS WIN: Circular Reference Protection!
-    // Prevents infinite loops if an object accidentally references itself
     if (seen.has(obj)) return seen.get(obj);
     
     // Explicit Map and Set support
