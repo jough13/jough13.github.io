@@ -356,37 +356,38 @@ function updateCreationSummary() {
     // 🚨 SECURITY WIN: Wrap user input in HTML escaper so it cannot inject scripts
     const safeName = typeof escapeHtml === 'function' ? escapeHtml(creationState.name) : creationState.name;
 
-    // Safe Lookups
-    const raceName = (creationState.race && typeof window.PLAYER_RACES !== 'undefined' && window.PLAYER_RACES[creationState.race]) ? window.PLAYER_RACES[creationState.race].name : "???";
-    const className = (creationState.background && typeof window.PLAYER_BACKGROUNDS !== 'undefined' && window.PLAYER_BACKGROUNDS[creationState.background]) ? window.PLAYER_BACKGROUNDS[creationState.background].name : "???";
+    // 🛡️ ROBUSTNESS WIN: Safe Lookups with fallback to prevent fatal UI crashes if data fails to load
+    const raceData = (creationState.race && typeof window.PLAYER_RACES !== 'undefined') ? window.PLAYER_RACES[creationState.race] : null;
+    const bgData = (creationState.background && typeof window.PLAYER_BACKGROUNDS !== 'undefined') ? window.PLAYER_BACKGROUNDS[creationState.background] : null;
+
+    const raceName = raceData ? raceData.name : "???";
+    const className = bgData ? bgData.name : "???";
     
-    const raceDesc = (creationState.race && typeof window.PLAYER_RACES !== 'undefined' && window.PLAYER_RACES[creationState.race]) ? window.PLAYER_RACES[creationState.race].description : "";
-    const classDesc = (creationState.background && typeof window.PLAYER_BACKGROUNDS !== 'undefined' && window.PLAYER_BACKGROUNDS[creationState.background]) ? window.PLAYER_BACKGROUNDS[creationState.background].description : "";
+    const raceDesc = raceData ? raceData.description : "";
+    const classDesc = bgData ? bgData.description : "";
     
     // JUICE WIN: Dynamic Avatar Preview
-    const raceIcon = (creationState.race && typeof window.PLAYER_RACES !== 'undefined' && window.PLAYER_RACES[creationState.race]) ? window.PLAYER_RACES[creationState.race].icon : "👤";
+    const raceIcon = raceData ? raceData.icon : "👤";
     
     let stats = [];
     let calcCon = 1, calcWits = 1, calcEnd = 1, calcWill = 1;
 
-    if (creationState.race && typeof window.PLAYER_RACES !== 'undefined') {
-        const rStats = window.PLAYER_RACES[creationState.race].stats;
-        for(let s in rStats) {
-            stats.push(`+${rStats[s]} ${s.charAt(0).toUpperCase() + s.slice(1)} (Race)`);
-            if (s === 'constitution') calcCon += rStats[s];
-            if (s === 'wits') calcWits += rStats[s];
-            if (s === 'endurance') calcEnd += rStats[s];
-            if (s === 'willpower') calcWill += rStats[s];
+    if (raceData && raceData.stats) {
+        for(let s in raceData.stats) {
+            stats.push(`+${raceData.stats[s]} ${s.charAt(0).toUpperCase() + s.slice(1)} (Race)`);
+            if (s === 'constitution') calcCon += raceData.stats[s];
+            if (s === 'wits') calcWits += raceData.stats[s];
+            if (s === 'endurance') calcEnd += raceData.stats[s];
+            if (s === 'willpower') calcWill += raceData.stats[s];
         }
     }
-    if (creationState.background && typeof window.PLAYER_BACKGROUNDS !== 'undefined') {
-        const cStats = window.PLAYER_BACKGROUNDS[creationState.background].stats;
-        for(let s in cStats) {
-            stats.push(`+${cStats[s]} ${s.charAt(0).toUpperCase() + s.slice(1)} (Class)`);
-            if (s === 'constitution') calcCon += cStats[s];
-            if (s === 'wits') calcWits += cStats[s];
-            if (s === 'endurance') calcEnd += cStats[s];
-            if (s === 'willpower') calcWill += cStats[s];
+    if (bgData && bgData.stats) {
+        for(let s in bgData.stats) {
+            stats.push(`+${bgData.stats[s]} ${s.charAt(0).toUpperCase() + s.slice(1)} (Class)`);
+            if (s === 'constitution') calcCon += bgData.stats[s];
+            if (s === 'wits') calcWits += bgData.stats[s];
+            if (s === 'endurance') calcEnd += bgData.stats[s];
+            if (s === 'willpower') calcWill += bgData.stats[s];
         }
     }
 
@@ -581,6 +582,9 @@ window.quickRollCharacter = function() {
         setTimeout(() => AudioSystem.playTone(800, 'sine', 0.1, 0.05), 50);
         setTimeout(() => AudioSystem.playMagic(), 150);
     }
+    
+    // 🚨 BUG FIX: Force UI update so macro works instantly!
+    updateCreationSummary();
 };
 
 function initCreationUI() {
@@ -589,7 +593,9 @@ function initCreationUI() {
     const nameInput = _DOMCache.getNameInput();
     if (nameInput) nameInput.value = "";
     
-    // EASY WIN: Inject the dice buttons dynamically
+    // 🚨 BUG FIX WIN: Explicit existence check to prevent Event Listener & DOM leak
+    // We strictly verify the buttons don't exist before injecting them, preventing duplicated 
+    // click listeners if the player creates a character, dies, and returns to this screen.
     if (nameInput && !document.getElementById('randomNameBtn')) {
         const nameContainer = nameInput.parentElement;
         
