@@ -589,11 +589,11 @@ function turnInQuest(questId) {
         player.coins += (quest.reward.coins || 0);
         if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(quest.reward.coins || 0);
 
-        // EXPANDABILITY WIN: Track completed bounties in lifetime metrics!
+        // Track completed bounties in lifetime metrics!
         if (!player.metrics) player.metrics = {};
         player.metrics.questsCompleted = (player.metrics.questsCompleted || 0) + 1;
 
-        // JUICE WIN: Floating Particles for Reward! (Explosion of gold)
+        // Floating Particles for Reward! (Explosion of gold)
         if (typeof ParticleSystem !== 'undefined') {
             ParticleSystem.createFloatingText(player.x, player.y, `+${quest.reward.coins || 0}g`, "#facc15");
             ParticleSystem.createExplosion(player.x, player.y, '#facc15', 20);
@@ -611,8 +611,18 @@ function turnInQuest(questId) {
             if (rewardItemTemplate) {
                 const qty = quest.reward.itemQty || 1;
                 const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+                
+                const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(rewardItemTemplate.type);
+                const existingStack = player.inventory.find(i => i.name === rewardItemTemplate.name && !i.isEquipped);
 
-                if (player.inventory.length < invCap) {
+                if (existingStack && isStackable) {
+                    // Add to existing stack
+                    existingStack.quantity += qty;
+                    const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(rewardItemTemplate.name) : rewardItemTemplate.name;
+                    logMessage(`{purple:You received: ${safeItemName} (x${qty})}`);
+                } 
+                else if (player.inventory.length < invCap) {
+                    // Create new stack
                     player.inventory.push({
                         templateId: rewardKey,
                         name: rewardItemTemplate.name,
@@ -630,7 +640,9 @@ function turnInQuest(questId) {
                     
                     const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(rewardItemTemplate.name) : rewardItemTemplate.name;
                     logMessage(`{purple:You received: ${safeItemName} (x${qty})}`);
-                } else {
+                } 
+                else {
+                    // Inventory full, drop on floor
                     const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(rewardItemTemplate.name) : rewardItemTemplate.name;
                     logMessage(`{red:Your inventory is full! The ${safeItemName} falls to the ground.}`);
                     const dropTile = rewardKey || '🎒'; 
@@ -643,7 +655,6 @@ function turnInQuest(questId) {
                         if (typeof chunkManager !== 'undefined') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = dropTile;
                     }
                     
-                    // Clear the looted memory for this coordinate so it can be picked up
                     let tileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
                         ? `${player.x},${-player.y}`
                         : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
@@ -655,7 +666,7 @@ function turnInQuest(questId) {
             }
         }
 
-        // 🚨 FIREBASE OPTIMIZATION: Debounce the save
+        // Debounce the save
         if (typeof triggerDebouncedSave === 'function') {
             triggerDebouncedSave({
                 quests: player.quests,
