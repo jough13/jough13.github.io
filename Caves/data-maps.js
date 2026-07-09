@@ -1,2969 +1,2046 @@
-// --- START OF FILE data-items.js ---
+// --- START OF FILE data-maps.js ---
 
-window.COOKING_RECIPES = {
-    "Oracle's Broth": {
-        materials: { "Bluecap Mushroom": 2, "Medicinal Herb": 1, "Dirty Water": 1 },
-        xp: 25, level: 2 
+window.REALM_MUTATORS = {
+    'lava_oceans': {
+        name: "Infernal",
+        description: "The oceans have boiled away into molten rock.",
+        apply: (tile) => (tile === '~' || tile === '≈') ? '🌋' : tile, // Turns water to volcano/lava
+        enemyBuff: 1.5 // 50% stronger enemies
     },
-    "Soldier's Last Meal": {
-        materials: { "Steak": 2, "Hardtack": 2, "Wheel of Cheese": 1 },
-        xp: 60, level: 3 
+    'eternal_night': {
+        name: "Umbral",
+        description: "The sun never rises here. The shadows are alive.",
+        apply: (tile) => tile, // Doesn't change terrain, but hooked into the time engine
+        enemyBuff: 2.0
     },
-    "Void-Salted Fish": {
-        materials: { "Raw Fish": 1, "Void Dust": 1 },
-        xp: 100, level: 4 
+    'overgrown': {
+        name: "Verdant",
+        description: "Nature has consumed everything.",
+        apply: (tile) => {
+            if (tile === 'd' || tile === 'D') return 'F'; // Turns deadlands/deserts to forest
+            if (tile === '.') return '🌳e'; // Turns plains to elder trees
+            return tile;
+        },
+        enemyBuff: 1.2
     },
-    "Monster Stew": { 
-        materials: { "Rat Tail": 2, "Bat Wing": 1, "Clean Water": 1 },
-        xp: 20, level: 1 
+    'shattered': {
+        name: "Shattered",
+        description: "The earth is broken. Void rifts are everywhere.",
+        apply: (tile) => (Math.random() < 0.05 && tile === '.') ? 'Ω' : tile,
+        enemyBuff: 3.0
     },
-    "Berry Pie": {
-        materials: { "Wildberry": 3, "Bag of Flour": 1, "Jar of Honey": 1 },
-        xp: 40, level: 2
+    'frozen_wastes': {
+        name: "Glacial",
+        description: "An eternal, magical winter grips this realm.",
+        apply: (tile) => {
+            if (tile === '~' || tile === '≈') return '🧊';
+            if (tile === '.' || tile === 'F') return '❄️';
+            return tile;
+        },
+        enemyBuff: 1.3
     },
-    "Traveler's Wrap": {
-        materials: { "Steak": 1, "Hardtack": 1, "Wheel of Cheese": 1 },
-        xp: 30, level: 2
+    'crystalline': {
+        name: "Crystalline",
+        description: "The very earth has crystallized under immense pressure.",
+        apply: (tile) => (tile === '^' || tile === '⛰') ? '💎c' : tile,
+        enemyBuff: 1.4
     },
-    "Honey Glazed Ham": {
-        materials: { "Raw Meat": 2, "Jar of Honey": 1 },
-        xp: 35, level: 2
-    },
-    "Omelet": {
-        materials: { "Bird Egg": 2, "Wheel of Cheese": 1 },
-        xp: 20, level: 1
-    },
-    "Steak": {
-        materials: { "Raw Meat": 1 },
-        xp: 10, level: 1
-    },
-    "Grilled Fish": {
-        materials: { "Raw Fish": 1 },
-        xp: 10, level: 1
-    },
-    "Berry Juice": {
-        materials: { "Wildberry": 3 },
-        xp: 5, level: 1
-    },
-    "Cactus Stew": {
-        materials: { "Cactus Fruit": 2, "Raw Meat": 1 },
-        xp: 20, level: 2
-    },
-    "Clean Water": {
-        materials: { "Dirty Water": 1 },
-        xp: 5, level: 1
-    },
-    "Hearty Meal": {
-        materials: { "Steak": 1, "Grilled Fish": 1, "Wildberry": 1 },
-        xp: 50, level: 3
+    // --- EXPANSION WIN: Wild Magic ---
+    'wild_magic': {
+        name: "Chaotic",
+        description: "Raw mana leaks from the earth. The flora is heavily mutated.",
+        apply: (tile) => (tile === '.' && Math.random() < 0.3) ? '🍄' : tile,
+        enemyBuff: 1.5
     }
 };
 
-window.CRAFTING_RECIPES = {
-    "Ancient Key": {
-        materials: { "Tablet of the North": 1, "Tablet of the East": 1, "Tablet of the West": 1, "Tablet of the South": 1 },
-        xp: 500, level: 1 
-    },
-    // --- TIER 0 (Basic Survival) ---
-    "Wooden Club": {
-        materials: { "Stick": 2 },
-        xp: 5, level: 1
-    },
-    "Fishing Rod": {
-        materials: { "Stick": 2, "Spider Silk": 1 },
-        xp: 15, level: 1
-    },
-    "Quarterstaff": {
-        materials: { "Stick": 4 },
-        xp: 10, level: 1
-    },
-    "Padded Armor": {
-        materials: { "Tattered Rags": 2, "Stick": 1 }, 
-        xp: 10, level: 1
-    },
-    "Wooden Arrow": { 
-        materials: { "Stick": 1, "Bone Shard": 1 },
-        xp: 15, level: 1, yield: 10
-    },
-    "Fire Arrow": { 
-        materials: { "Wooden Arrow": 5, "Arcane Dust": 1 }, 
-        xp: 25, level: 3, yield: 5 
-    },
-    "Poison Arrow": { 
-        materials: { "Wooden Arrow": 5, "Snake Fang": 1 }, 
-        xp: 25, level: 2, yield: 5 
-    },    
-    // --- TIER 1 (Basic Survival & Alchemy) ---
-    "Leather Tunic": {
-        materials: { "Wolf Pelt": 3 },
-        xp: 10, level: 1
-    },
-    "Bone Dagger": {
-        materials: { "Bone Shard": 5, "Stick": 1 },
-        xp: 15, level: 1
-    },
-    "Healing Potion": {
-        materials: { "Wildberry": 2, "Cactus Fruit": 1 }, 
-        xp: 10, level: 1
-    },
-    "Mana Potion": {
-        materials: { "Bluecap Mushroom": 2, "Clean Water": 1 }, 
-        xp: 15, level: 1
-    },
-    "Stamina Potion": {
-        materials: { "Wildberry": 2, "Clean Water": 1 }, 
-        xp: 15, level: 1
-    },
+window.TILE_DATA = {
+    '🎵': {
+        type: 'anomaly',
+        name: 'Wandering Bard',
+        flavor: "You hear the faint strumming of a lute on the wind.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("The bard nods at you silently, tuning his lute.");
+                return null;
+            }
 
-    // --- TIER 2 (Apprentice) ---
-    "Antidote": {
-        materials: { "Medicinal Herb": 1, "Clean Water": 1, "Bone Shard": 1 },
-        xp: 20, level: 2
-    },
-    "Iron Arrow": { 
-        materials: { "Stick": 1, "Iron Ore": 1 },
-        xp: 25, level: 3, yield: 5 
-    },
-    "Steel Arrow": { 
-        materials: { "Stick": 1, "Iron Ore": 2, "Dragon Scale": 1 },
-        xp: 50, level: 4, yield: 5 
-    },
-    "Bandit Garb": {
-        materials: { "Bandit's Insignia": 3, "Leather Tunic": 1 },
-        xp: 25, level: 2
-    },
-    "Bandit's Boots": {
-        materials: { "Bandit's Insignia": 5, "Wolf Pelt": 2 },
-        xp: 20, level: 2
-    },
-    "Shovel": {
-        materials: { "Stick": 2, "Iron Ore": 2 },
-        xp: 30, level: 2
-    },
-    "Pickaxe": {
-        materials: { "Stick": 2, "Orc Tusk": 3 },
-        xp: 30, level: 2
-    },
-    "Machete": {
-        materials: { "Bone Dagger": 1, "Stick": 2, "Wolf Pelt": 1 },
-        xp: 30, level: 2
-    },
-    "Spike Trap": {
-        materials: { "Iron Ore": 3, "Bone Shard": 3 },
-        xp: 20, level: 2
-    },
+            const songs = [
+                "He sings a sorrowful ballad about the Fall of Alaric. The melody is haunting.",
+                "He strums a fast, upbeat tavern song about a dwarf who dug too deep.",
+                "He sings of the Leviathan that sleeps beneath the eastern waves. You feel a chill.",
+                "He hums an ancient Elven lullaby. You feel your exhaustion fade away.",
+                "He sings a riddle-song about the Shadowed Hand. The lyrics contain hidden warnings."
+            ];
+            const song = songs[Math.floor(Math.random() * songs.length)];
 
-    // --- TIER 3 (Journeyman) ---
-    "Iron Sword": {
-        materials: { "Iron Ore": 5, "Stick": 1 },
-        xp: 40, level: 3
-    },
-    "Iron Helm": {
-        materials: { "Iron Ore": 4, "Wolf Pelt": 1 },
-        xp: 35, level: 3
-    },
-    "Iron Mail": {
-        materials: { "Iron Ore": 8, "Leather Tunic": 1 },
-        xp: 50, level: 3
-    },
-    "Poisoned Dagger": {
-        materials: { "Bone Dagger": 1, "Spider Silk": 5 },
-        xp: 45, level: 3
-    },
-    "Steel Fishing Rod": {
-        materials: { "Fishing Rod": 1, "Iron Ore": 3 },
-        xp: 40, level: 3
-    },
-    "Silk Cowl": {
-        materials: { "Spider Silk": 4 },
-        xp: 40, level: 3
-    },
-    "Silk Gloves": {
-        materials: { "Spider Silk": 3 },
-        xp: 35, level: 3
-    },
-    // --- TIER 3 (Advanced) ---
-    "Studded Armor": {
-        materials: { "Leather Tunic": 1, "Iron Ore": 5, "Spider Silk": 2 },
-        xp: 60, level: 3
-    },
-    "Masterwork Dagger": {
-        materials: { "Bone Dagger": 1, "Obsidian Shard": 2, "Arcane Dust": 3 },
-        xp: 80, level: 3
-    },
-    "Fisherman's Stew": {
-        materials: { "Raw Fish": 2, "Wildberry": 2, "Cactus Fruit": 1 },
-        xp: 30, level: 1 
-    },
-    "Void-Shielded Mail": {
-        materials: { "Iron Mail": 1, "Void Dust": 5, "Arcane Dust": 5 },
-        xp: 150, level: 4
-    },
+            loreTitle.textContent = "The Wandering Bard";
+            loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">A traveler sits on a rock, resting a lute on his knee. He smiles as you approach.</p><p class="font-serif leading-relaxed text-blue-200">"${song}"</p>`;
+            loreModal.classList.remove('hidden');
 
-    // --- TIER 4 (Expert) ---
-    "Steel Sword": {
-        materials: { "Rusty Sword": 1, "Orc Tusk": 4, "Iron Ore": 2 },
-        xp: 60, level: 4
-    },
-    "Steel Armor": {
-        materials: { "Studded Armor": 1, "Orc Tusk": 6 },
-        xp: 70, level: 4
-    },
-    "Warlock's Staff": {
-        materials: { "Bone Dagger": 1, "Arcane Dust": 5 },
-        xp: 65, level: 4
-    },
-    "Mage Robe": {
-        materials: { "Bandit Garb": 1, "Arcane Dust": 5 },
-        xp: 65, level: 4
-    },
-    "Climbing Tools": {
-        materials: { "Stick": 3, "Wolf Pelt": 3, "Bone Shard": 5 },
-        xp: 50, level: 4
-    },
-
-    // --- TIER 4.5 (Dragon) ---
-    "Dragonscale Tunic": {
-        materials: { "Dragon Scale": 5, "Leather Tunic": 1 },
-        xp: 150, level: 4
-    },
-    "Dragonbone Dagger": {
-        materials: { "Dragon Scale": 2, "Bone Dagger": 1, "Obsidian Shard": 1 },
-        xp: 120, level: 4
-    },
-    
-    // --- UTILITY ---
-    "Black Powder Bomb": {
-        materials: { "Stone": 1, "Fire Elemental Core": 1 }, 
-        xp: 50, level: 3
-    },
-
-    // --- TIER 4/5 (Special & Keys) ---
-    "Void Key": {
-        materials: { "Void Dust": 5, "Obsidian Shard": 1 },
-        xp: 100, level: 4
-    },
-    "Prime Tuning Fork": {
-        materials: { "Iron Ore": 5, "Void Dust": 5 },
-        xp: 150, level: 5
-    },
-
-    // --- TIER 5 (Master) ---
-    "Diamond Tipped Pickaxe": {
-        materials: { "Pickaxe": 1, "Raw Diamond": 2 },
-        xp: 200, level: 5
-    },
-    "Obsidian Fishing Rod": {
-        materials: { "Steel Fishing Rod": 1, "Obsidian Shard": 3, "Spider Silk": 3 },
-        xp: 180, level: 5
-    },
-    "Obsidian Edge": {
-        materials: { "Obsidian Shard": 3, "Steel Sword": 1, "Arcane Dust": 5 },
-        xp: 100, level: 5
-    },
-    "Obsidian Plate": {
-        materials: { "Obsidian Shard": 4, "Steel Armor": 1, "Frost Essence": 3 },
-        xp: 120, level: 5
-    },
-    "Cryo Blade": {
-        materials: { "Rusty Sword": 1, "Frost Essence": 5 },
-        xp: 90, level: 5
-    },
-    "Frozen Mail": {
-        materials: { "Studded Armor": 1, "Frost Essence": 5 },
-        xp: 100, level: 5
-    },
-    "Arcane Blade": {
-        materials: { "Steel Sword": 1, "Arcane Dust": 8 },
-        xp: 110, level: 5
-    },
-    "Mithril Sword": {
-        materials: { "Mithril Ore": 5, "Stick": 2 },
-        xp: 150, level: 5
-    },
-    "Mithril Mail": {
-        materials: { "Mithril Ore": 8, "Yeti Fur": 2 },
-        xp: 180, level: 5
-    },
-
-    // --- TIER 6 (Legendary) ---
-    "Void Blade": {
-        materials: { "Obsidian Edge": 1, "Void Dust": 10, "Demon Horn": 2 },
-        xp: 300, level: 6
-    },
-    "Demonplate": {
-        materials: { "Obsidian Plate": 1, "Demon Horn": 5, "Elemental Core": 3 },
-        xp: 350, level: 6
-    },
-    "Amulet of the Magi": {
-        materials: { "Gold Coin": 200, "Arcane Dust": 10, "Basilisk Eye": 1 },
-        xp: 250, level: 5
-    },
-    
-    // --- HOMESTEAD ---
-    "Stone Wall": {
-        materials: { "Stone": 2 },
-        xp: 10, level: 1
-    },
-    "Wood Floor": {
-        materials: { "Wood Log": 1 },
-        xp: 5, level: 1, yield: 2 
-    },
-    "Wooden Door": {
-        materials: { "Wood Log": 2 },
-        xp: 15, level: 1
-    },
-    "Stash Box": {
-        materials: { "Wood Log": 4, "Iron Ore": 1 },
-        xp: 50, level: 2
-    },
-    "Campfire Kit": {
-        materials: { "Wood Log": 3, "Stone": 4 },
-        xp: 15, level: 1
-    },
-    "Stick": {
-        materials: { "Wood Log": 1 },
-        xp: 5, level: 1, yield: 4 
-    },
-    "Torch": {
-        materials: { "Stick": 1, "Tattered Rags": 1 },
-        xp: 5, level: 1
-    }
-};
-
-window.ITEM_DATA = {
-    '🏆': {
-        name: "Gladiator's Token",
-        type: "consumable",
-        tile: "🏆",
-        description: "Proof of your victory in the Colosseum. {gold:Permanently +2 to All Core Stats!}",
-        effect: (state) => {
-            const p = state.player;
-            p.strength += 2; 
-            p.dexterity += 2; 
-            p.wits += 2; 
-            p.constitution += 2; 
-            p.luck += 2;
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic(); 
             
-            logMessage("{gold:You crush the token. The strength of champions flows into you!}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#facc15', 30);
+            state.player.charisma += 2;
+            logMessage("{gold:The music lifts your spirits! (+2 Charisma)}");
             
-            if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
+            if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined') {
+                triggerStatAnimation(statDisplays.charisma, 'stat-pulse-green');
+            }
+            if (typeof grantXp === 'function') grantXp(50);
 
-            // Re-open the exit!
-            if (state.mapMode === 'dungeon' && state.currentCaveTheme === 'ARENA') {
-                chunkManager.caveMaps[state.currentCaveId][13][7] = '<';
-                logMessage("{cyan:The gates reopen! You may exit the arena.}");
+            state.lootedTiles.add(tileId);
+            return { charisma: state.player.charisma, lootedTiles: Object.fromEntries(state.lootedTiles) };
+        }
+    },
+    '⛺a': {
+        type: 'anomaly',
+        name: 'Abandoned Campsite',
+        flavor: "A ruined tent flaps in the wind. The fire has been cold for years.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("Only tattered cloth and ash remain.");
+                return null;
+            }
+
+            let biome = 'Plains';
+            let t = '.';
+            // BUG FIX & ROBUSTNESS: Ensure we pull the chunk correctly
+            if (typeof chunkManager !== 'undefined') {
+                t = chunkManager.getTile(x, y);
+            }
+            
+            if (t === 'D') biome = 'Desert';
+            if (t === '^') biome = 'Mountain';
+            if (t === '≈') biome = 'Swamp';
+
+            let story = "You find a journal: 'The wolves are circling. We are out of arrows.'";
+            let loot = '➹'; 
+
+            if (biome === 'Desert') {
+                story = "You find a skeleton clutching an empty water flask. 'The heat... the mirages lie.'";
+                loot = '🫙'; 
+            } else if (biome === 'Mountain') {
+                story = "A frozen corpse huddles in the tent. 'The cold took my fingers. I cannot strike a spark.'";
+                loot = '🪵'; 
+            } else if (biome === 'Swamp') {
+                story = "The tent is covered in slime. A note reads: 'Do not trust the glowing lights in the fog.'";
+                loot = '🧪a'; 
+            }
+
+            loreTitle.textContent = "A Grim Discovery";
+            loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">You search the ruined camp...</p><p class="font-serif text-gray-300 leading-relaxed">${story}</p>`;
+            loreModal.classList.remove('hidden');
+
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 500); 
+            
+            const itemTemplate = window.ITEM_DATA[loot];
+            if (state.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
+                state.player.inventory.push({ 
+                    templateId: loot,
+                    name: itemTemplate.name,
+                    type: itemTemplate.type,
+                    quantity: 1,
+                    tile: itemTemplate.tile || loot
+                });
+                logMessage(`{purple:You salvaged a ${itemTemplate.name}.}`);
+            } else {
+                logMessage(`{red:You salvaged a ${itemTemplate.name}, but your pack is full! It drops to the ground.}`);
+                if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
+                    chunkManager.setWorldTile(x, y, loot, 24);
+                }
                 state.mapDirty = true;
             }
 
-            return true; 
+            state.lootedTiles.add(tileId);
+            return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles) };
         }
     },
-    '🧨': {
-        name: 'Dwarven TNT',
-        type: 'consumable',
-        tile: '🧨',
-        description: "Aim and throw to blow up walls (🏚) and enemies in a 3x3 radius!",
-        effect: (state) => {
-            logMessage("{orange:Select a direction to throw the TNT... (WASD/Arrows)}");
-            state.isAiming = true;
-            state.abilityToAim = 'throwTNT';
-            return false; 
-        }
-    },
-    '💣': {
-        name: 'Black Powder Bomb',
-        type: 'consumable',
-        tile: '💣',
-        description: "Ignites instantly! Deals 15 damage to adjacent enemies, but hurts you (-5 HP).",
-        effect: (state) => {
-            logMessage("{red:BOOM!} The explosion blasts everything nearby!");
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#f97316', 20);
+    // --- LORE WIN: New Overworld Event Anomaly ---
+    '🌠': {
+        type: 'anomaly',
+        name: 'Smoking Meteorite',
+        flavor: "A chunk of star-metal, still radiating intense heat and strange magic.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("Only a scorched crater remains.");
+                return null;
+            }
+
+            const hasPickaxe = state.player.inventory.some(i => i.name === 'Pickaxe' || i.name === 'Diamond Tipped Pickaxe');
+            if (!hasPickaxe) {
+                logMessage("{red:The metal is searing hot and impossibly hard. You need a Pickaxe to break it.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return null;
+            }
+
+            logMessage("{cyan:You strike the meteorite! Sparks and raw magic erupt into the air!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); 
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#38bdf8', 20);
             
-            // Deal massive AoE damage around the player
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                    if (dx === 0 && dy === 0) continue;
-                    if (typeof applySpellDamage === 'function') applySpellDamage(state.player.x + dx, state.player.y + dy, 15, 'fireball');
+            state.player.stamina = Math.max(0, state.player.stamina - 5);
+            if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('staminaDisplay'), false);
+
+            // 15% Chance a Void Demon hitched a ride on the meteorite!
+            if (Math.random() < 0.15) {
+                logMessage("{red:The meteorite shatters... AND SOMETHING HORRIFIC PULLS ITSELF OUT!}");
+                state.screenShake = 20;
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                
+                const enemyTemplate = window.ENEMY_DATA['😈d'];
+                const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, x, y) : enemyTemplate;
+                
+                // Spawn it adjacent to the rock
+                const spawnX = x + 1;
+                const enemyId = `overworld:${spawnX},${-y}`;
+                state.sharedEnemies[enemyId] = { ...scaledStats, tile: '😈d', x: spawnX, y: y, spawnTime: Date.now() };
+                
+                if (typeof EnemyNetworkManager !== 'undefined') {
+                    rtdb.ref(EnemyNetworkManager.getPath(spawnX, y, enemyId)).set(state.sharedEnemies[enemyId]);
                 }
             }
-            
-            // Recoil damage safely applied via modifyVital
-            window.modifyVital('health', -5);
-            state.screenShake = 15;
-            
-            if (state.player.health <= 0) {
-                if (typeof handlePlayerDeath === 'function') handlePlayerDeath();
+
+            if (state.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
+                state.player.inventory.push({
+                    name: 'Star-Metal Ore', type: 'junk', quantity: 1, tile: '☄️'
+                });
+                logMessage("{purple:You successfully harvested Star-Metal Ore!}");
+                if (typeof grantXp === 'function') grantXp(100);
+            } else {
+                logMessage("{red:You mined the Star-Metal, but your inventory is full! It drops to the ground.}");
+                if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(x, y, '☄️', 24);
             }
-            return true;
+
+            // Consume the rock visually
+            if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(x, y, 'd');
+            state.mapDirty = true;
+            if (typeof renderInventory === 'function') renderInventory();
+            
+            state.lootedTiles.add(tileId);
+            return { 
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, 
+                lootedTiles: Object.fromEntries(state.lootedTiles),
+                stamina: state.player.stamina
+            };
         }
     },
-    '📜c': { name: 'Cultist Orders', type: 'quest', description: "Plans detailing an attack on the village." },
-    '🧿s': { name: 'Shadow Amulet', type: 'quest', description: "It hums with dark energy. A key for high-ranking cultists." },
-    '🌱': {
-        name: 'Cloudseed',
-        type: 'consumable',
-        tile: '🌱',
-        description: "Plant this on open ground to grow a stalk into the heavens.",
-        effect: (state) => {
-            if (state.mapMode !== 'overworld') {
-                logMessage("You must plant this under the open sky.");
-                return false;
+    '🏟️': {
+        type: 'dungeon_entrance',
+        flavor: "A massive, blood-stained arena carved from black stone. The gates are open...",
+        getCaveId: (x, y) => `arena_${x}_${y}`
+    },
+    '🚩': {
+        type: 'anomaly',
+        name: 'Battle Standard',
+        flavor: "A blood-soaked banner. Touch it to begin the trial.",
+        onInteract: (state, x, y) => {
+            const mapId = state.currentCaveId;
+            
+            const liveEnemies = state.instancedEnemies.filter(e => e.health > 0);
+            if (liveEnemies.length > 0) {
+                logMessage("{red:You must defeat the current wave first!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return null;
             }
-            logMessage("{green:A massive beanstalk erupts from the earth, piercing the clouds!}");
+
+            state.player.arenaWave = (state.player.arenaWave || 0) + 1;
+
+            if (state.player.arenaWave > 5) {
+                logMessage("{gray:The arena is silent. You have conquered the Colosseum.}");
+                return null;
+            }
+
+            logMessage(`{red:--- WAVE ${state.player.arenaWave} BEGINS ---}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); 
+            state.screenShake = 15;
+
+            const waveData = [
+                ['s', 's', 's', 's'],               
+                ['b', 'b', 'b', 'C'],               
+                ['o', 'o', 'w', 'w'],               
+                ['🧌', '🧌', 'f', 'f'],               
+                ['🩸c']                              
+            ];
+
+            const spawns = waveData[state.player.arenaWave - 1];
+            const spawnPoints = [ [3,3], [11,3], [3,11], [11,11] ]; 
+
+            spawns.forEach((enemyChar, index) => {
+                const pt = spawnPoints[index % spawnPoints.length];
+                const t = window.ENEMY_DATA[enemyChar];
+                
+                let scaled = typeof getScaledEnemy === 'function' ? getScaledEnemy(t, 2500, 2500) : t;
+
+                state.instancedEnemies.push({
+                    id: `${mapId}:wave_${state.player.arenaWave}_${index}`,
+                    x: pt[0], y: pt[1], tile: enemyChar, name: scaled.name,
+                    health: scaled.maxHealth, maxHealth: scaled.maxHealth,
+                    attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp || 0,
+                    loot: t.loot, isBoss: t.isBoss || false, isElite: scaled.isElite || false,
+                    color: scaled.color || null, caster: t.caster || false, castRange: t.castRange || 0, 
+                    spellDamage: t.spellDamage || 0, inflicts: t.inflicts || null,
+                    madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0
+                });
+                
+                chunkManager.caveMaps[mapId][pt[1]][pt[0]] = enemyChar;
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(pt[0], pt[1], '#ef4444');
+            });
+
+            if (state.player.arenaWave === 5) {
+                chunkManager.caveMaps[mapId][13][7] = '▓'; 
+                logMessage("{red:The gates slam shut! You are trapped with the Champion!}");
+            }
+
+            return { arenaWave: state.player.arenaWave };
+        }
+    },
+    '🛒': {
+        type: 'anomaly',
+        name: 'Minecart',
+        flavor: "A rusted iron cart on a track. Hop in?",
+        onInteract: (state, x, y) => {
+            const dx = x - state.player.x;
+            const dy = y - state.player.y;
+            
+            logMessage("{yellow:You hop into the minecart! WHOOSH!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.2, 500);
+            state.screenShake = 15;
+
+            let landX = x;
+            let landY = y;
+            
+            for(let i=1; i<=15; i++) {
+                const checkX = x + (dx * i);
+                const checkY = y + (dy * i);
+                let tile = '.';
+                
+                if (state.mapMode === 'overworld') tile = chunkManager.getTile(checkX, checkY);
+                else if (state.mapMode === 'dungeon') tile = chunkManager.caveMaps[state.currentCaveId][checkY][checkX];
+                else if (state.mapMode === 'castle') tile = chunkManager.castleMaps[state.currentCastleId][checkY][checkX];
+
+                if (['^', '▓', '▒', '🧱', '🏚', '🏚️', '~', '🌋'].includes(tile) || (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile])) {
+                    break;
+                }
+                
+                landX = checkX;
+                landY = checkY;
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(landX, landY, '#facc15', 2); 
+            }
+
+            state.player.x = landX;
+            state.player.y = landY;
+            return { x: landX, y: landY };
+        }
+    },
+    '⛰️m': {
+        type: 'dungeon_entrance',
+        flavor: "A reinforced wooden archway leads into the deep earth...",
+        getCaveId: (x, y) => `mine_${x}_${y}`
+    },
+    '🍄b': {
+        type: 'anomaly',
+        name: 'Bouncer Cap',
+        flavor: "A massive, rubbery mushroom. It looks highly pressurized.",
+        onInteract: (state, x, y) => {
+            const dx = x - state.player.x;
+            const dy = y - state.player.y;
+            
+            logMessage("{green:BOING!} The mushroom launches you through the air!");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#4ade80', 15);
             
-            chunkManager.setWorldTile(state.player.x, state.player.y, '🌿');
+            state.screenShake = 10;
             
-            // PURGE OLD MAP MEMORY & LISTENERS ---
-            chunkManager.loadedChunks = {};
-            chunkManager.worldState = {};
-            Object.values(worldStateListeners).forEach(unsub => unsub());
-            worldStateListeners = {};
-            if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.clearAll();
+            let landX = x;
+            let landY = y;
+            for(let i=1; i<=4; i++) {
+                const checkX = x + (dx * i);
+                const checkY = y + (dy * i);
+                const tile = chunkManager.getTile(checkX, checkY);
+                if (['^', '▓', '▒', '🧱'].includes(tile)) break;
+                landX = checkX;
+                landY = checkY;
+            }
             
-            state.mapMode = 'skyrealm';
+            state.player.x = landX;
+            state.player.y = landY;
+            
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(landX, landY, '#d4d4d8', 10);
+            return { x: landX, y: landY };
+        }
+    },
+    '⚙️d': {
+        type: 'dungeon_entrance',
+        flavor: "A massive brass gear protrudes from the earth. A staircase leads into the ticking darkness...",
+        getCaveId: (x, y) => `clockwork_${x}_${y}`
+    },
+    '🪦': {
+        type: 'anomaly',
+        name: 'The Royal Tomb',
+        flavor: "Massive obsidian doors block the way. They bear the crest of the Old King.",
+        onInteract: (state, x, y) => {
+            const hasCrown = state.player.inventory.some(i => i.name === 'Crown of the First King');
+            const hasSword = state.player.inventory.some(i => i.name === 'Stormbringer');
+
+            if (hasCrown && hasSword) {
+                logMessage("{purple:The Crown hums. Stormbringer glows. The obsidian doors grind open...}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                
+                state.mapMode = 'dungeon';
+                state.currentCaveId = 'tomb_of_alaric';
+                state.currentCaveTheme = 'VOID'; 
+                
+                chunkManager.caveThemes['tomb_of_alaric'] = 'VOID'; 
+                
+                state.overworldExit = { x: state.player.x, y: state.player.y };
+
+                const arena = [
+                    '▓▓▓▓▓▓▓▓▓',
+                    '▓.......▓',
+                    '▓.🔥.🔥.▓',
+                    '▓...☠️...▓',
+                    '▓.🔥.🔥.▓',
+                    '▓.......▓',
+                    '▓▓▓>▓▓▓▓▓'
+                ];
+                chunkManager.caveMaps['tomb_of_alaric'] = arena.map(row => row.split(''));
+                
+                state.player.x = 4;
+                state.player.y = 5;
+
+                const bossTemplate = window.ENEMY_DATA['☠️'];
+                if (bossTemplate) {
+                    state.instancedEnemies = [{
+                        id: `alaric_boss`, x: 4, y: 3, tile: '☠️',
+                        name: bossTemplate.name, isBoss: true,
+                        health: bossTemplate.maxHealth, maxHealth: bossTemplate.maxHealth,
+                        attack: bossTemplate.attack, defense: bossTemplate.defense || 0,
+                        xp: bossTemplate.xp, loot: bossTemplate.loot,
+                        caster: true, castRange: 6, spellDamage: 12, inflicts: 'madness',
+                        madnessTurns: 0, frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0, tags: []
+                    }];
+                }
+
+                if (typeof updateRegionDisplay === 'function') updateRegionDisplay();
+                state.mapDirty = true;
+                if (typeof render === 'function') render();
+                if (typeof syncPlayerState === 'function') syncPlayerState();
+            } else {
+                logMessage("{gray:A voice echoes in your mind: 'ONLY THE TRUE RULER MAY ENTER.'}");
+                logMessage("{red:You need the Crown of the First King and his legendary blade to open this door.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            }
+            return null;
+        }
+    },
+    '⚒️': {
+        type: 'anomaly',
+        name: 'Master Blacksmith',
+        flavor: "A hulking dwarf striking glowing metal on an anvil.",
+        onInteract: (state, x, y) => {
+            const p = state.player;
+            const inv = p.inventory;
+            
+            const hasStarMetal = inv.some(i => i.name === 'Star-Metal Ore');
+            const hasKrakenInk = inv.some(i => i.name === 'Kraken Ink Sac');
+
+            loreTitle.textContent = "Master Blacksmith Thorne";
+            let html = `<p>"Hah! The stuff you make on that wooden workbench is garbage! Bring me real materials, and I'll forge you weapons of legend!"</p><hr class="my-4 border-gray-600">`;
+
+            if (hasStarMetal && p.coins >= 1000) {
+                html += `<button id="forgeStar" class="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded mb-2 shadow transition-transform active:scale-95">Forge Star-Metal Blade (1x Ore, 1000g)</button>`;
+            } else {
+                html += `<button disabled class="w-full bg-gray-700 text-gray-500 font-bold py-2 px-4 rounded mb-2 cursor-not-allowed">Requires: Star-Metal Ore & 1000g</button>`;
+            }
+
+            if (hasKrakenInk && p.coins >= 1500) {
+                html += `<button id="forgeAbyss" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded mb-2 shadow transition-transform active:scale-95">Weave Abyssal Cloak (1x Kraken Ink, 1500g)</button>`;
+            } else {
+                html += `<button disabled class="w-full bg-gray-700 text-gray-500 font-bold py-2 px-4 rounded mb-2 cursor-not-allowed">Requires: Kraken Ink Sac & 1500g</button>`;
+            }
+
+            loreContent.innerHTML = html;
+            loreModal.classList.remove('hidden');
+
+            setTimeout(() => {
+                const consumeItem = (name) => {
+                    const idx = inv.findIndex(i => i.name === name && !i.isEquipped);
+                    if (idx > -1) {
+                        inv[idx].quantity--;
+                        if (inv[idx].quantity <= 0) inv.splice(idx, 1);
+                    }
+                };
+
+                const starBtn = document.getElementById('forgeStar');
+                if (starBtn) starBtn.onclick = (e) => {
+                    e.target.disabled = true; 
+                    if (inv.length >= (typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9)) {
+                        logMessage("{red:Inventory Full!}"); 
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return;
+                    }
+                    consumeItem('Star-Metal Ore');
+                    p.coins -= 1000;
+                    inv.push({
+                        templateId: '⚔️star',
+                        name: 'Star-Forged Blade', type: 'weapon', tile: '⚔️', quantity: 1,
+                        damage: 12, slot: 'weapon', statBonuses: { strength: 3, luck: 3 },
+                        description: "{red:+12 Dmg}, {green:+3 Str}, {gold:+3 Luck}. It glows with starlight.",
+                        excludeFromLoot: true
+                    });
+                    logMessage("{gold:Thorne hammers the fallen star into a flawless blade!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                    loreModal.classList.add('hidden');
+                    if (typeof renderInventory === 'function') renderInventory();
+                    if (typeof renderStats === 'function') renderStats();
+                    if (typeof playerRef !== 'undefined') playerRef.update({ coins: p.coins, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv });
+                };
+
+                const abyssBtn = document.getElementById('forgeAbyss');
+                if (abyssBtn) abyssBtn.onclick = (e) => {
+                    e.target.disabled = true; 
+                    if (inv.length >= (typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9)) {
+                        logMessage("{red:Inventory Full!}"); 
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return;
+                    }
+                    consumeItem('Kraken Ink Sac');
+                    p.coins -= 1500;
+                    inv.push({
+                        templateId: '🧥abyss',
+                        name: 'Abyssal Cloak', type: 'armor', tile: '🧥', quantity: 1,
+                        defense: 6, slot: 'armor', statBonuses: { dexterity: 5, wits: 5 },
+                        description: "{blue:+6 Def}, {green:+5 Dex, +5 Wits}. It drinks the surrounding light.",
+                        excludeFromLoot: true
+                    });
+                    logMessage("{purple:Thorne weaves the ink into a cloak of pure shadow!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                    loreModal.classList.add('hidden');
+                    if (typeof renderInventory === 'function') renderInventory();
+                    if (typeof renderStats === 'function') renderStats();
+                    if (typeof playerRef !== 'undefined') playerRef.update({ coins: p.coins, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv });
+                };
+            }, 0);
+
+            return null;
+        }
+    },
+    '✝️': {
+        type: 'anomaly',
+        name: 'The Inquisitor',
+        flavor: "A stern man in heavy armor. He is hunting the Shadowed Hand.",
+        onInteract: (state, x, y) => {
+            const player = state.player;
+            player.shadowQuestStage = player.shadowQuestStage || 0;
+            const inv = player.inventory;
+
+            loreTitle.textContent = "The Inquisitor";
+            let html = "";
+
+            if (player.shadowQuestStage === 0) {
+                const orderIdx = inv.findIndex(i => i.name === 'Cultist Orders');
+                if (orderIdx > -1) {
+                    html = `<p>"What's this? Cultist Orders? ...By the Light. They are planning to assault the Safe Haven. You have done us a great service."</p><p class="mt-2 text-yellow-500 font-bold">+500 XP & 200 Gold!</p>`;
+                    inv.splice(orderIdx, 1);
+                    player.shadowQuestStage = 1;
+                    player.coins += 200;
+                    if (typeof grantXp === 'function') grantXp(500);
+                } else {
+                    html = `<p>"The darkness is spreading. If you find any Cultists in the ruins (🏛️), slay them and bring me proof of their plans."</p>`;
+                }
+            } 
+            else if (player.shadowQuestStage === 1) {
+                const amuletIdx = inv.findIndex(i => i.name === 'Shadow Amulet');
+                if (amuletIdx > -1) {
+                    html = `<p>"A Shadow Amulet! This belongs to a high-ranking Fanatic. With this, we can track their leader, the Necromancer Lord."</p><p class="mt-2 text-yellow-500 font-bold">+1000 XP & Paladin's Shield!</p>`;
+                    inv.splice(amuletIdx, 1);
+                    player.shadowQuestStage = 2;
+                    if (typeof grantXp === 'function') grantXp(1000);
+                    
+                    if (inv.length < (typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9)) {
+                        const shieldKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === 'Aegis of the Ancients') || '🛡️a';
+                        inv.push({ templateId: shieldKey, name: 'Aegis of the Ancients', type: 'armor', tile: '🛡️', quantity: 1, defense: 8, slot: 'armor' });
+                    } else {
+                        const shieldKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === 'Aegis of the Ancients') || '🛡️a';
+                        logMessage("{red:Your inventory is full! The Aegis drops to the ground.}");
+                        
+                        if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
+                            chunkManager.setWorldTile(state.player.x, state.player.y, shieldKey, 24); 
+                        } else if (state.mapMode === 'dungeon') {
+                            chunkManager.caveMaps[state.currentCaveId][state.player.y][state.player.x] = shieldKey;
+                        } else if (state.mapMode === 'castle') {
+                            chunkManager.castleMaps[state.currentCastleId][state.player.y][state.player.x] = shieldKey;
+                        }
+                        state.mapDirty = true;
+                    }
+                } else {
+                    html = `<p>"The Cultist Fanatics are hiding in the Dark Castles (🕍). Find one, defeat him, and bring me his Shadow Amulet."</p>`;
+                }
+            }
+            else {
+                html = `<p>"The Light protects us, thanks to you. If you wish to hunt standard bounties, check the board."</p>`;
+            }
+
+            html += `<button id="viewInqBounties" class="mt-4 bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded w-full shadow">View Bounties</button>`;
+
+            loreContent.innerHTML = html;
+            loreModal.classList.remove('hidden');
+
+            setTimeout(() => {
+                const btn = document.getElementById('viewInqBounties');
+                if (btn) btn.onclick = () => { loreModal.classList.add('hidden'); openBountyBoard(); };
+            }, 0);
+
+            return { inventory: inv, shadowQuestStage: player.shadowQuestStage, coins: player.coins };
+        }
+    },
+
+    // ==========================================
+    // --- BASE TILES ---
+    // ==========================================
+    '⛵': {
+        type: 'sailing_ship',
+        title: 'Sailing Ship',
+        flavor: "A sturdy wooden ship with silk sails."
+    },
+    '🌋': {
+        type: 'dungeon_entrance',
+        flavor: "A volcanic island rises from the sea. Heat radiates from the crater.",
+        getCaveId: (x, y) => `volcano_${x}_${y}`
+    },
+    '🛕': {
+        type: 'dungeon_entrance',
+        flavor: "The spires of an ancient, flooded temple pierce the ocean surface.",
+        getCaveId: (x, y) => `sunken_${x}_${y}`
+    },
+    '🌀': {
+        type: 'dungeon_entrance',
+        flavor: "A massive, swirling whirlpool! The current drags you down...",
+        getCaveId: (x, y) => `sunken_whirlpool_${x}_${y}`
+    },
+    '❄️': {
+        type: 'anomaly',
+        name: 'Ice Bridge',
+        flavor: "The water has been frozen solid by magic. It won't last forever."
+    },
+    '🛏️': {
+        type: 'anomaly',
+        name: 'Cozy Bed',
+        flavor: "A surprisingly clean and comfortable bed.",
+        onInteract: (state, x, y) => {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, "ZZZ", "#facc15");
+
+            logMessage("{green:You rest deeply. Your Respawn Point has been set here.}");
+            
+            state.player.health = state.player.maxHealth;
+            state.player.mana = state.player.maxMana;
+            state.player.stamina = state.player.maxStamina;
+            
+            state.player.respawnPoint = { x: state.player.x, y: state.player.y };
+            
+            if (typeof triggerStatAnimation !== 'undefined') {
+                triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+            }
+
+            return { 
+                health: state.player.health, 
+                mana: state.player.mana,
+                stamina: state.player.stamina,
+                respawnPoint: state.player.respawnPoint 
+            };
+        }
+    },
+    '🌴': {
+        type: 'anomaly',
+        name: 'Palm Tree',
+        flavor: "A tall tree swaying in the coastal breeze.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (!state.lootedTiles.has(tileId)) {
+                logMessage("You shake the palm tree...");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy'); 
+                
+                if (state.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) { 
+                    state.player.inventory.push({
+                        name: 'Coconut', type: 'consumable', quantity: 1, tile: '🥥', effect: window.ITEM_DATA['🥥'].effect
+                    });
+                    logMessage("{green:A Coconut falls to the ground! You catch it.}");
+                    state.lootedTiles.add(tileId);
+                    
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "🥥", "#fff");
+                    if (typeof renderInventory === 'function') renderInventory();
+                    
+                    return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles) };
+                } else {
+                    logMessage("{red:A Coconut falls, but your inventory is full!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                    return null;
+                }
+            } else {
+                logMessage("There are no more coconuts on this tree.");
+                return null;
+            }
+        }
+    },
+    '🏕️': {
+        type: 'ambush_camp',
+        flavor: "You stumble into a hidden encampment. It's an ambush!"
+    },
+    '👻k': {
+        type: 'spirit_npc',
+        name: 'Echo of the King',
+        tile: '👻', 
+        requiresItem: 'Spirit Lens', 
+        invisibleMessage: "You walk through a patch of unnaturally cold air.",
+        dialogue: [
+            "You... you can see me?",
+            "The Five Thrones were a mistake. We divided the power, and it divided the world.",
+            "My knights are gone. My kingdom is ash. Only the Void remains.",
+            "Seek the Obelisks to the North, East, West, and South. Restore the key."
+        ]
+    },
+    '👻p': {
+        type: 'anomaly',
+        name: 'Wandering Echo',
+        flavor: "A translucent figure wandering aimlessly in the dark.",
+        onInteract: (state, x, y) => {
+            const loreLines = [
+                "We trusted the Mages. They said the Void would obey us...",
+                "The King didn't go mad. He just realized the truth of the universe.",
+                "I stood at the gates of the Grand Fortress. The sky bled purple.",
+                "Find the Shattered Crown. Do not let the Acolytes reforge it.",
+                "It is so cold... why is it so cold?",
+                "Do not trust the voices in the deep caverns. They lie."
+            ];
+            const msg = loreLines[Math.floor(Math.random() * loreLines.length)];
+            
+            loreTitle.textContent = "Echo of a Fallen Soldier";
+            loreContent.textContent = `The ghost looks right through you.\n\n"${msg}"`;
+            loreModal.classList.remove('hidden');
+            
+            chunkManager.setWorldTile(x, y, '.');
             state.mapDirty = true;
             
-            // Manually consume the seed here and return false to prevent items.js from double-turning!
-            const seedIdx = state.player.inventory.findIndex(i => i.name === 'Cloudseed' && !i.isEquipped);
-            if (seedIdx > -1) {
-                state.player.inventory[seedIdx].quantity--;
-                if (state.player.inventory[seedIdx].quantity <= 0) state.player.inventory.splice(seedIdx, 1);
-            }
-
-            if (typeof finalizeMapTransition === 'function') finalizeMapTransition();
-            if (typeof render === 'function') render();
-            return false; 
-        }
-    },
-    '⚔️star': {
-        name: 'Star-Forged Blade',
-        type: 'weapon',
-        tags: ['blade'],
-        tile: '⚔️',
-        damage: 12,
-        slot: 'weapon',
-        statBonuses: { strength: 3, luck: 3 },
-        description: "{red:+12 Dmg}, {green:+3 Str}, {gold:+3 Luck}. It glows with starlight.",
-        excludeFromLoot: true 
-    },
-    '🧥abyss': {
-        name: 'Abyssal Cloak',
-        type: 'armor',
-        tile: '🧥',
-        defense: 6,
-        slot: 'armor',
-        statBonuses: { dexterity: 5, wits: 5 },
-        description: "{blue:+6 Def}, {green:+5 Dex, +5 Wits}. It drinks the surrounding light.",
-        excludeFromLoot: true 
-    },
-    'repel': {
-        name: 'Dragon Repellent',
-        type: 'consumable',
-        tile: '🧄',
-        description: "It smells strongly of garlic and snake oil. It definitely does not work.",
-        effect: (state) => {
-            logMessage("You spray yourself with the pungent liquid. You smell terrible. Dragons are completely unaffected.");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 800);
-            return true;
-        }
-    },
-
-    '🐾1': { 
-        name: 'Beastmaster Vol I', type: 'journal', title: 'On Wolves and Bears', 
-        content: "To tame a beast, one must first break its spirit, but not its body. Bring a wolf or bear to the brink of death (under 30% Health), and it may respect your dominance if you have enough Charisma." 
-    },
-    '🐾2': { 
-        name: 'Beastmaster Vol II', type: 'journal', title: 'The Crawling Terrors', 
-        content: "Spiders and Scorpions cannot be reasoned with. Their minds are alien. Do not attempt to tame them, for they will only see you as food. Fire is your only friend." 
-    },
-    '🐾3': { 
-        name: 'Beastmaster Vol III', type: 'journal', title: 'The Drake', 
-        content: "I saw a Young Drake today. It breathed fire that melted stone. I dare not approach it. Legend says dragons hoard gold because it is the only metal that doesn't melt when they sleep on it." 
-    },
-    '🧪a': {
-        name: 'Antidote',
-        type: 'consumable',
-        tile: '🧪',
-        description: "A foul-tasting chalky liquid. {green:Cures Poison instantly.}",
-        effect: (state) => {
-            if (state.player.poisonTurns <= 0) {
-                logMessage("You aren't poisoned.");
-                return false;
-            }
-            state.player.poisonTurns = 0;
-            logMessage("{green:The poison is flushed from your veins!}");
-            triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
-            return true;
-        }
-    },
-    '🧪m': {
-        name: 'Mana Potion',
-        type: 'consumable',
-        tile: '🧪',
-        description: "A glowing blue liquid. {blue:+30 Mana, +10 Thirst}",
-        effect: (state) => {
-            if (state.player.mana >= state.player.maxMana && state.player.thirst >= state.player.maxThirst) {
-                logMessage("You don't need this right now.");
-                return false;
-            }
-            window.modifyVital('mana', 30);
-            window.modifyVital('thirst', 10);
-            logMessage("Used a Mana Potion. {blue:(+30 Mana, +10 Thirst)}");
-            return true;
-        }
-    },
-    '🧪y': {
-        name: 'Stamina Potion',
-        type: 'consumable',
-        tile: '🧪',
-        description: "A bubbling yellow liquid. {green:+30 Stamina}, {blue:+10 Thirst}",
-        effect: (state) => {
-            if (state.player.stamina >= state.player.maxStamina && state.player.thirst >= state.player.maxThirst) {
-                logMessage("You don't need this right now.");
-                return false;
-            }
-            window.modifyVital('stamina', 30);
-            window.modifyVital('thirst', 10);
-            logMessage("Used a Stamina Potion. {green:(+30 Stamina)}, {blue:(+10 Thirst)}");
-            return true;
-        }
-    },
-    '➹i': {
-        name: 'Iron Arrow',
-        type: 'ammo',
-        tile: '➹',
-        slot: 'ammo',
-        damage: 3,
-        description: "Heavy, armor-piercing arrows. {red:+3 Dmg}"
-    },
-    '➹s': {
-        name: 'Steel Arrow',
-        type: 'ammo',
-        tile: '➹',
-        slot: 'ammo',
-        damage: 6,
-        description: "Flawless, razor-sharp steel. {red:+6 Dmg}"
-    },
-    '🍲m': { 
-        name: 'Monster Stew', 
-        type: 'consumable', 
-        tile: '🍲',
-        description: "Looks awful, tastes worse. {yellow:+20 Hunger}, {red:-2 HP}", 
-        effect: (state) => { 
-            if (state.player.hunger >= state.player.maxHunger) return false;
-            window.modifyVital('hunger', 20);
-            window.modifyVital('health', -2);
-            logMessage("You gag as it goes down. {yellow:+20 Hunger}, {red:-2 HP}"); 
-            return true; 
-        } 
-    },
-    '⚓': {
-        name: 'Rusted Anchor',
-        type: 'trade',
-        char: '⚓',
-        description: "Heavy and encrusted with barnacles. A collector's item.",
-        value: 75
-    },
-    'bone': {
-        name: "Fossilized Bone",
-        type: "trade",
-        char: "🦴",
-        color: "#a8a29e",
-        description: "The remains of something that predates the Kingdom.",
-        value: 5
-    },
-    'pottery': {
-        name: "Shard of Pottery",
-        type: "trade",
-        char: "🏺",
-        color: "#d97706",
-        description: "It depicts a king with no face.",
-        value: 15
-    },
-    'arrowhead': {
-        name: "Obsidian Arrowhead",
-        type: "trade",
-        char: "🔺",
-        color: "#1f2937",
-        description: "Sharp as the day it was knapped. Elven make.",
-        value: 25
-    },
-    'idol': {
-        name: "Strange Idol",
-        type: "trade",
-        char: "🗿",
-        color: "#78716c",
-        description: "It feels warm to the touch. Unsettling.",
-        value: 100
-    },
-    'tome_page': {
-        name: "Rotting Page",
-        type: "lore",
-        char: "📜",
-        color: "#fef3c7",
-        description: "A fragment of a spell: '...the void requires a tether...'",
-        value: 50
-    },
-    '🐙': {
-        name: 'Kraken Ink Sac',
-        type: 'trade',
-        char: '🐙',
-        description: "Pitch black and heavy. Alchemists pay a fortune for this.",
-        value: 150
-    },
-    '🥥': {
-        name: 'Coconut',
-        type: 'consumable',
-        tile: '🥥',
-        description: "Hard to open, but refreshing. {yellow:+15 Hunger}, {blue:+20 Thirst}",
-        effect: (state) => {
-            if (state.player.hunger >= state.player.maxHunger && state.player.thirst >= state.player.maxThirst) return false;
-            window.modifyVital('hunger', 15);
-            window.modifyVital('thirst', 20);
-            logMessage('You crack open the coconut. {yellow:(+15 Hunger)}, {blue:(+20 Thirst)}');
-            return true;
-        }
-    },
-    '🍐': {
-        name: 'Cactus Fruit',
-        type: 'consumable',
-        tile: '🍐',
-        description: "Prickly but sweet. {yellow:+15 Hunger}, {blue:+10 Thirst}",
-        effect: (state) => {
-            if (state.player.hunger >= state.player.maxHunger && state.player.thirst >= state.player.maxThirst) return false;
-            window.modifyVital('hunger', 15);
-            window.modifyVital('thirst', 10);
-            logMessage("Sweet and juicy. {yellow:(+15 Hunger)}, {blue:(+10 Thirst)}");
-            return true;
-        }
-    },
-
-    // ==========================================
-    // --- FISHING EXPANSION ---
-    // ==========================================
-    '📖fsh': { 
-        name: "Angler's Logbook", type: 'consumable', tile: '📖', 
-        description: "Records your fishing prowess and personal bests. Use to read.",
-        effect: (state) => {
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-
-            const player = state.player;
-            const lvl = player.fishingLevel || 1;
-            const xp = player.fishingXp || 0;
-            const nextXp = lvl * 50;
-            const records = player.fishingRecords || {};
+            logMessage("{purple:The spirit whispers its warning and fades away.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof grantXp === 'function') grantXp(25);
             
-            let perksHtml = '';
-            if (lvl >= 5) perksHtml += '<p class="text-xs text-green-400 font-bold mt-1">⭐ Master Angler (Trash fish ignored)</p>';
-            if (lvl >= 10) perksHtml += '<p class="text-xs text-blue-400 font-bold mt-1">🌟 Deep Sea Master (Double Legendary Rate)</p>';
-            if (lvl >= 15) perksHtml += '<p class="text-xs text-purple-400 font-bold mt-1">👑 Leviathan\'s Bane (No stamina loss on struggles, half damage from sea monsters)</p>';
-            if (perksHtml === '') perksHtml = '<p class="text-xs text-gray-500 italic mt-1">Keep fishing to unlock Mastery Perks.</p>';
+            return null; 
+        }
+    },
+    '♣': {
+        type: 'mini_dungeon_entrance',
+        theme: 'ROOT',
+        name: 'Hollow Root',
+        flavor: "A tunnel bores into the massive roots of an ancient tree.",
+        tile: '♣'
+    },
+    '🏝️': {
+        type: 'mini_dungeon_entrance',
+        theme: 'OASIS',
+        name: 'Hidden Oasis',
+        flavor: "A cool breeze flows from a cave hidden behind the palms.",
+        tile: '🏝️'
+    },
+    '🧊': {
+        type: 'mini_dungeon_entrance',
+        theme: 'ICE',
+        name: 'Glacial Crevasse',
+        flavor: "A narrow crack in the ice leads deep into the glacier.",
+        tile: '🧊'
+    },
+    '🔼': {
+        type: 'dungeon_exit', 
+        tile: '🔼',
+        flavor: "Stairs leading back up."
+    },
+    '⬆️': { type: 'obelisk_puzzle', direction: 'north', flavor: "A freezing cold obelisk stands here.", tile: '|' },
+    '➡️': { type: 'obelisk_puzzle', direction: 'east', flavor: "Moss grows on the east side of this stone.", tile: '|' },
+    '⬅️': { type: 'obelisk_puzzle', direction: 'west', flavor: "The stone is warm, facing the setting sun.", tile: '|' },
+    '⬇️': { type: 'obelisk_puzzle', direction: 'south', flavor: "The stone is scorched and hot.", tile: '|' },
+    '🚪': { 
+        type: 'sealed_door', 
+        name: 'The Vault of the Old King',
+        flavor: "A massive stone door with no handle. It has a keyhole.",
+        tile: '⛩️' 
+    },
+    '🚢': {
+        type: 'loot_container', 
+        name: 'Sunken Shipwreck',
+        flavor: "You search the rotting hull for salvaged goods...",
+        lootTable: ['$', '🐚', '💎b', '⚓', '🐟'] 
+    },
+    '🛟': {
+        type: 'loot_container',
+        name: 'Ocean Flotsam',
+        flavor: "Debris from a sunken ship bobs in the waves. You haul it aboard.",
+        lootTable: ['🪵', '🪵', '🧵', 'ancient_coin', '♥', '⚓', '🐟']
+    },
+    '🧙‍♂️': {
+        type: 'lore_statue', 
+        message: [
+            "The hermit's ghost whispers: 'The King didn't find the Void. The Void found him.'",
+            "A message is carved into the stone: 'Beware the rain in the deadlands.'"
+        ],
+        flavor: "An ancient statue of a forgotten mage."
+    },
+    '#': {
+        type: 'lore',
+        message: 'An ancient, weathered stone stands here. The markings are faded.',
+        flavor: "A humming Leyline Waystone."
+    },
+    '☗': {
+        type: 'lore',
+        message: ['"...the king has fallen..."', '"...his castle to the west lies empty..."', '"...but a dark presence still lingers."'],
+        flavor: "A weathered wooden signpost."
+    },
+    '⛰': {
+        type: 'dungeon_entrance',
+        getCaveId: (x, y) => `cave_${x}_${y}`,
+        flavor: "A dark cave entrance leading underground."
+    },
+    '>': {
+        type: 'dungeon_exit',
+        flavor: "Stairs leading deeper into the dungeon."
+    },
+    '🏰': {
+        type: 'castle_entrance',
+        getCastleId: (x, y) => `castle_${x}_${y}`,
+        flavor: "The gates of a fortified castle."
+    },
+    '🕍': {
+        type: 'dark_castle_entrance',
+        flavor: "An abandoned fortress, overrun by darkness.",
+        getCastleId: (x, y) => `darkcastle_${x}_${y}`
+    },
+    'X': {
+        type: 'castle_exit',
+        flavor: "The exit to the fortress."
+    },
+    'B': {
+        type: 'lore',
+        message: 'This is a bounty board, covered in notices.',
+        flavor: "A wooden board pinned with bounty posters."
+    },
+    'L': {
+        type: 'journal',
+        title: 'The King\'s Lament',
+        content: `Day 34 since the fall...\n\nThe stones of this castle weep. I hear them every night. The whispers tell of a power that sleeps beneath the mountains, a power we were foolish to awaken.\n\nMy knights are gone. My kingdom is ash. All that remains is this cursed immortality, a silent witness to my failure.`,
+        flavor: "A dusty journal rests on a pedestal."
+    },
+    'N': {
+        type: 'npc',
+        title: 'Villager',
+        flavor: "A local villager, going about their business."
+    },
+    '§': {
+        type: 'shop',
+        title: 'General Store',
+        flavor: "A traveling merchant's stall."
+    },
+    'H': {
+        type: 'npc_healer',
+        title: 'Healer',
+        flavor: "The local healer's cottage. Smells of herbs."
+    },
+    'W': {
+        type: 'workbench',
+        title: 'Crafting Workbench',
+        flavor: "A sturdy wooden workbench covered in tools."
+    },
+    'G': {
+        type: 'npc_guard',
+        title: 'Castle Guard',
+        flavor: "A heavily armed guard stands at attention."
+    },
+    '🎖️': {
+        type: 'npc_captain',
+        title: 'Captain of the Guard',
+        flavor: "A grizzled veteran missing an eye."
+    },
+    'O': {
+        type: 'npc_sage',
+        title: 'Sage',
+        flavor: "An old sage muttering to themselves."
+    },
+    'T': {
+        type: 'npc_skill_trainer',
+        title: 'Skill Trainer',
+        flavor: "A combat master willing to share their techniques."
+    },
+    'J': {
+        type: 'journal',
+        title: 'Orc War-Chant',
+        content: `Blood and dust. Steel and bone.\n\nThe weak build with stone. The strong build with fear.\n\nWe come from the fire, we return to the ash. The mountain is our mother, the world our feast. Stomp the soft-skins. Take their steel. Raise the tusk-banner.\n\n...the rest is scrawled in a crude, unintelligible script.`,
+        flavor: "A scrap of hide covered in crude writing."
+    },
+    '📘': {
+        type: 'journal',
+        title: 'Frozen Journal',
+        content: `Day 12: The cold... it seeps into your bones. But the essence in these walls is worth a fortune. I must have more.\n\nDay 15: I saw one of them today. A... walking corpse, encased in ice. It didn't see me. My pickaxe feels heavy.\n\nDay 17: They are the old ones. The first warriors. The cold preserves them. Binds them. They guard the essence.\n\nDay ???: Can't feel my fingers. It's in my pack. I can't... I...`,
+        flavor: "A frozen, stiff book dropped in the snow."
+    },
+    'K': {
+        type: 'npc_prospector',
+        title: 'Lost Prospector',
+        flavor: "A dirty dwarf holding a pickaxe."
+    },
+    'c': {
+        type: 'canoe',
+        title: 'A small canoe',
+        flavor: "A simple wooden canoe pulled onto the shore."
+    },
+    '♛': {
+        type: 'landmark_castle',
+        getCastleId: (x, y) => `castle_landmark_${x}_${y}`,
+        flavor: "The towering Grand Fortress."
+    },
+    'b': { type: 'enemy' },
+    'w': { type: 'enemy' },
+    'V': {
+        type: 'village_entrance',
+        getVillageId: (x, y) => `village_${x}_${y}`,
+        flavor: "The gates to the Safe Haven Village."
+    },
+    '⛩️': {
+        type: 'shrine',
+        flavor: "An ancient shrine dedicated to forgotten gods."
+    },
+    '🎓': {
+        type: 'npc_historian',
+        title: 'Royal Historian',
+        flavor: "An elderly scholar buried in scrolls."
+    },
+    '|': {
+        type: 'obelisk',
+        flavor: "A tall, black stone obelisk humming with power."
+    },
+    '¥': {
+        type: 'trader',
+        flavor: "A wandering trader with a pack full of oddities."
+    },
+    '📦': {
+        type: 'loot_chest',
+        flavor: "A sturdy wooden chest bound in iron."
+    },
+    '🔥': {
+        type: 'cooking_fire',
+        flavor: "A crackling fire. Good for cooking."
+    },
+    'Ω': {
+        type: 'void_rift',
+        flavor: "The reality tears open here. You hear whispers from the other side."
+    },
+    '∴': {
+        type: 'dig_spot',
+        name: 'Loose Soil',
+        flavor: "The earth here looks disturbed recently..."
+    },
+    '⚰️': {
+        type: 'loot_container', 
+        name: 'Ancient Grave',
+        flavor: "You disturb the resting place of a forgotten warrior...",
+        lootTable: ['(', '(', '†', '👢', '🛡️w', '💀',' ancient_coin']
+    },
+    '🗿': {
+        type: 'lore_statue',
+        flavor: "A weathered stone statue of unknown origin.",
+        message: [
+            "The statue's face is worn away, but it still holds a bowl of fresh water.",
+            "A statue of a weeping knight. The inscription reads: 'Duty is heavier than a mountain.'",
+            "A crude idol made of mud and sticks. It smells of goblin musk.",
+            "A statue of a woman holding a lantern. You feel safer standing near it.",
+            "A headless statue pointing toward the eastern mountains.",
+            "A statue of a dog. Someone has left a Fossilized Bone at its feet."
+        ]
+    },
+    '🏺': {
+        type: 'loot_container',
+        name: 'Dusty Urn',
+        flavor: "You smash the urn open...",
+        lootTable: ['$', '$', 'gold_dust', 'ancient_coin', '💍']
+    },
+    '🕳️': {
+        type: 'underworld_entrance', 
+        name: 'Deep Chasm',
+        flavor: "A gaping abyss stares back at you. Cold air rushes up from the depths."
+    },
+    '🪜': {
+        type: 'underworld_exit',
+        name: 'Climbing Rope',
+        flavor: "A rope leading back up to the surface world."
+    },
+    '🍄': {
+        type: 'anomaly',
+        name: 'Giant Glowing Mushroom',
+        flavor: "It pulses with a strange, bioluminescent light."
+    },
+    '💎c': {
+        type: 'obstacle',
+        name: 'Crystal Cluster',
+        tool: 'Pickaxe',
+        flavor: "A dense cluster of sharp, glowing crystals blocks the path."
+    },
+    '⛺': {
+        type: 'campsite_entrance',
+        flavor: "A quiet, safe place to rest your head."
+    },
+    '📋': {
+        type: 'anomaly',
+        name: 'Camp Ledger',
+        flavor: "A logbook tracking your campsite improvements.",
+        onInteract: (state, x, y) => {
+            const p = state.player;
+            if (!p.campsiteUpgrades) p.campsiteUpgrades = [];
+            const upg = p.campsiteUpgrades;
 
-            const allFish = [
-                'Minnow', 'River Trout', 'Leaping Salmon', 'Golden Koi',
-                'Mudcat', 'Sludge Eel', 'Eyeless Cave Fish', 'Swamp Serpent Scale',
-                'Deep Sea Cod', 'Silver Tuna', 'Swordfish', 'Abyssal Angler',
-                'Magma Carp', 'Obsidian Eel', 'Heart of the Volcano'
-            ];
+            const countMat = (name) => p.inventory.filter(i => i.name === name && !i.isEquipped).reduce((sum, i) => sum + i.quantity, 0);
+
+            const wood = countMat('Wood Log');
+            const stone = countMat('Stone');
+            const iron = countMat('Iron Ore');
+            const dust = countMat('Void Dust');
+
+            loreTitle.textContent = "Campsite Ledger";
             
-            const caughtCount = allFish.filter(f => records[f]).length;
-            const completionPercent = Math.floor((caughtCount / allFish.length) * 100);
+            let html = `<p class="text-sm text-gray-300 mb-4 border-b border-gray-700 pb-2">Invest materials to expand your campsite. (Current: ${wood} Wood, ${stone} Stone, ${iron} Iron, ${dust} Void Dust)</p>`;
 
-            let gridHtml = `<div class="grid grid-cols-2 gap-2 mt-2 max-h-56 overflow-y-auto pr-2 custom-scrollbar">`;
-            
-            allFish.forEach(fishName => {
-                const record = records[fishName];
-                if (record) {
-                    let color = "text-gray-300";
-                    if (record >= 50) color = "text-blue-300";
-                    if (record >= 100) color = "text-purple-400 font-bold";
-                    if (record >= 200) color = "text-yellow-400 font-bold";
-                    
-                    gridHtml += `
-                    <div class="bg-gray-800 bg-opacity-50 p-2 rounded border border-green-600 border-opacity-30 hover:bg-gray-700 transition-colors">
-                        <div class="text-xs font-bold text-green-400">${fishName}</div>
-                        <div class="text-[10px] ${color}">Best: ${record} lbs</div>
-                    </div>`;
-                } else {
-                    gridHtml += `
-                    <div class="bg-gray-900 bg-opacity-50 p-2 rounded border border-gray-700 border-opacity-50">
-                        <div class="text-xs font-bold text-gray-500">???</div>
-                        <div class="text-[10px] text-gray-600">Undiscovered</div>
-                    </div>`;
-                }
-            });
-            gridHtml += `</div>`;
+            const addBtn = (id, name, costStr, canAfford) => {
+                const btnClass = canAfford ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-700 opacity-50 cursor-not-allowed';
+                html += `<button id="btn_${id}" class="mb-2 ${btnClass} text-white font-bold py-2 px-4 rounded w-full flex justify-between" ${canAfford ? '' : 'disabled'}>
+                    <span>Build ${name}</span> <span class="text-xs font-normal">${costStr}</span>
+                </button>`;
+            };
 
-            let html = `
-            <div class="mb-4 bg-black bg-opacity-20 p-3 rounded-lg border border-gray-700">
-                <p class="text-lg font-bold text-blue-400 flex justify-between"><span>Fishing Level: ${lvl}</span> <span>${caughtCount}/${allFish.length}</span></p>
-                <p class="text-xs text-gray-400 mb-2">XP: ${xp} / ${nextXp}</p>
-                <div class="stat-bar-container mb-2"><div class="stat-bar bg-blue-500" style="width: ${Math.min(100, (xp/nextXp)*100)}%"></div></div>
-                ${perksHtml}
-            </div>
-            <h3 class="font-bold border-b border-gray-600 mb-2 flex justify-between text-sm">
-                <span>Fish Directory</span>
-                <span class="text-yellow-500">${completionPercent}% Complete</span>
-            </h3>
-            ${gridHtml}`;
+            if (!upg.includes('stash')) addBtn('stash', 'Stash Box', '10 Wood, 5 Stone', wood >= 10 && stone >= 5);
+            if (!upg.includes('workbench')) addBtn('workbench', 'Workbench', '15 Wood, 5 Iron', wood >= 15 && iron >= 5);
+            if (!upg.includes('enchanter')) addBtn('enchanter', 'Enchanting Altar', '10 Stone, 5 Void Dust', stone >= 10 && dust >= 5);
+            if (!upg.includes('tent')) addBtn('tent', 'Large Tent (Aesthetic)', '20 Wood, 10 Wolf Pelt', wood >= 20 && countMat('Wolf Pelt') >= 10);
+            if (!upg.includes('waystone')) addBtn('waystone', 'Leyline Waystone', '10 Void Dust, 500 Gold', dust >= 10 && p.coins >= 500);
+
+            if (upg.length >= 4) html += `<p class="text-green-400 font-bold text-center mt-4">Your camp is fully upgraded!</p>`;
+
+            loreContent.innerHTML = html;
+            loreModal.classList.remove('hidden');
+
+            setTimeout(() => {
+                const consume = (name, qty) => {
+                    let needed = qty;
+                    for (let i = p.inventory.length - 1; i >= 0; i--) {
+                        if (needed <= 0) break;
+                        let item = p.inventory[i];
+                        if (item.name === name && !item.isEquipped) {
+                            let take = Math.min(item.quantity, needed);
+                            item.quantity -= take;
+                            needed -= take;
+                            if (item.quantity <= 0) p.inventory.splice(i, 1);
+                        }
+                    }
+                };
+
+                const bindUpgrade = (id, reqs, action) => {
+                    const btn = document.getElementById(`btn_${id}`);
+                    if (btn) btn.onclick = () => {
+                        reqs();
+                        p.campsiteUpgrades.push(id);
+                        action();
+                        logMessage(`{green:Campsite upgraded: ${id.toUpperCase()}!}`);
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                        loreModal.classList.add('hidden');
+                        
+                        chunkManager.generateCampsite();
+                        gameState.mapDirty = true;
+                        if (typeof render === 'function') render();
+                        
+                        if (typeof playerRef !== 'undefined') {
+                            playerRef.update({ 
+                                campsiteUpgrades: p.campsiteUpgrades, 
+                                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory,
+                                coins: p.coins
+                            });
+                        }
+                        if (typeof renderInventory === 'function') renderInventory();
+                    };
+                };
+
+                bindUpgrade('stash', () => { consume('Wood Log', 10); consume('Stone', 5); }, () => {});
+                bindUpgrade('workbench', () => { consume('Wood Log', 15); consume('Iron Ore', 5); }, () => {});
+                bindUpgrade('enchanter', () => { consume('Stone', 10); consume('Void Dust', 5); }, () => {});
+                bindUpgrade('tent', () => { consume('Wood Log', 20); consume('Wolf Pelt', 10); }, () => {});
+                bindUpgrade('waystone', () => { consume('Void Dust', 10); p.coins -= 500; }, () => {});
+
+            }, 0);
+
+            return null;
+        }
+    },
+    '🏛️': {
+        type: 'ruin',
+        flavor: "The crumbling remains of an ancient library."
+    },
+    '🌿': {
+        type: 'forage',
+        item: 'Medicinal Herb',
+        flavor: "A patch of useful medicinal herbs."
+    },
+    '🕸': {
+        type: 'obstacle',
+        name: 'Spider Web',
+        tool: 'Machete',
+        spell: 'fireball', 
+        flavor: "A thick, sticky web blocks the path."
+    },
+    '🛢': {
+        type: 'barrel',
+        name: 'Oil Barrel',
+        flavor: "Filled with volatile oil. Highly flammable."
+    },
+    '🏚': {
+        type: 'obstacle',
+        name: 'Cracked Wall',
+        tool: 'Pickaxe',
+        flavor: "The stone looks fractured and weak."
+    },
+    '🌳': {
+        type: 'obstacle',
+        name: 'Thicket',
+        tool: 'Machete',
+        flavor: "A dense wall of thorny vines."
+    },
+    '🗺️': {
+        type: 'anomaly', 
+        name: 'Guild Cartographer',
+        flavor: "A scholar buried under piles of parchment.",
+        onInteract: (state, x, y) => {
+            const explored = state.exploredChunks ? state.exploredChunks.size : 0;
+            const claimed = state.player.cartographerProgress || 0;
+            const pendingRewards = Math.floor(explored / 50) - claimed;
             
             const loreTitle = document.getElementById('loreTitle');
             const loreContent = document.getElementById('loreContent');
             const loreModal = document.getElementById('loreModal');
+
+            if (loreTitle) loreTitle.textContent = "The Cartographer's Guild";
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             
-            if (loreTitle && loreContent && loreModal) {
-                loreTitle.textContent = "Angler's Logbook";
-                loreContent.innerHTML = html;
-                loreModal.classList.remove('hidden');
-            }
-            return false;
-        }
-    },
-    '🎣s': {
-        name: 'Steel Fishing Rod', type: 'tool', tile: '🎣',
-        description: "A durable rod with a metal spool. Boosts catch rates slightly."
-    },
-    '🎣o': {
-        name: 'Obsidian Fishing Rod', type: 'tool', tile: '🎣',
-        description: "Woven from fire-proof silk and dark glass. Required for Lava Fishing."
-    },
-    '🐟min': { name: 'Minnow', type: 'consumable', tile: '🐟', description: "A tiny fish. Good for a snack, but better as live bait! {yellow:+5 Hunger}", effect: (s) => eatFish(s, 5) },
-    '🐟trp': { name: 'River Trout', type: 'consumable', tile: '🐟', description: "A decent sized river fish. {yellow:+15 Hunger}", effect: (s) => eatFish(s, 15) },
-    '🐟slm': { name: 'Leaping Salmon', type: 'consumable', tile: '🐟', description: "Fights hard. {yellow:+20 Hunger}, {green:+2 HP}", effect: (s) => eatFish(s, 20, 2) },
-    '🐟koi': { name: 'Golden Koi', type: 'junk', tile: '🐟', description: "Its scales are pure gold! Merchants will pay dearly for this." }, 
-    '🐟mud': { name: 'Mudcat', type: 'consumable', tile: '🐟', description: "Tastes like dirt. {yellow:+10 Hunger}", effect: (s) => eatFish(s, 10) },
-    '🐟eel': { name: 'Sludge Eel', type: 'junk', tile: '🐍', description: "Slimy and writhing. Alchemists might want it." },
-    '🐟eye': { name: 'Eyeless Cave Fish', type: 'junk', tile: '🐟', description: "It has adapted to complete darkness." },
-    '🐉s':   { name: 'Swamp Serpent Scale', type: 'junk', tile: '🐉', description: "You barely managed to reel this in before the beast snapped your line." },
-    '🐟cod': { name: 'Deep Sea Cod', type: 'consumable', tile: '🐟', description: "A massive, meaty fish. {yellow:+30 Hunger}", effect: (s) => eatFish(s, 30) },
-    '🐟tna': { name: 'Silver Tuna', type: 'consumable', tile: '🐟', description: "Swift and valuable. {yellow:+40 Hunger}, {green:+5 HP}", effect: (s) => eatFish(s, 40, 5) },
-    '🐟swd': { name: 'Swordfish', type: 'weapon', tags: ['blade'], tile: '🗡️', damage: 4, slot: 'weapon', description: "{red:+4 Dmg}. The bill of a massive swordfish. Surprisingly sharp." },
-    '🐟ang': { name: 'Abyssal Angler', type: 'tool', tile: '💡', statBonuses: { perception: 2 }, description: "{gold:+2 Per}. Its glowing lure still shines even in death." },
-    '🌋crp': { name: 'Magma Carp', type: 'consumable', tile: '🐟', description: "It's already cooked perfectly! {yellow:+35 Hunger}, {green:+10 HP}", effect: (s) => eatFish(s, 35, 10) },
-    '🌋eel': { name: 'Obsidian Eel', type: 'weapon', tags: ['whip', 'fire'], tile: '🐍', damage: 6, slot: 'weapon', inflicts: 'burn', inflictChance: 0.3, description: "{red:+6 Dmg}. A living, whip-like eel that sears flesh. {orange:(Burns target)}" },
-    '🌋hrt': { name: 'Heart of the Volcano', type: 'accessory', tile: '❤️', defense: 2, slot: 'accessory', statBonuses: { constitution: 5, strength: 3 }, description: "{blue:+2 Def}, {green:+5 Con, +3 Str}. It beats with volcanic fury." },
-    '📦w': { 
-        name: 'Waterlogged Chest', type: 'consumable', tile: '📦', 
-        description: "Covered in seaweed. Use it to pry it open!",
-        effect: (state) => {
-            const gold = 50 + Math.floor(Math.random() * 100);
-            state.player.coins += gold;
-            logMessage(`You pry open the chest... Found {gold:${gold} coins}!`);
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
-            
-            if (Math.random() < 0.4) {
-                const lootTable = ['Black Pearl', 'Rainbow Shell', 'Brass Compass', 'Trident', 'Ancient Coin'];
-                const prize = lootTable[Math.floor(Math.random() * lootTable.length)];
+            if (pendingRewards > 0) {
+                if (loreContent) loreContent.innerHTML = `
+                    <p>"Incredible! You've mapped ${explored} regions! The Guild owes you handsomely for this data."</p>
+                    <button id="claimMapReward" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded w-full shadow transition-transform active:scale-95">Claim Reward (${pendingRewards} available)</button>`;
+                if (loreModal) loreModal.classList.remove('hidden');
                 
-                const prizeKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === prize) || prize;
-                const template = window.ITEM_DATA[prizeKey];
-                
-                const isStackable = template && ['junk', 'consumable', 'trade'].includes(template.type);
-                const existingPrize = state.player.inventory.find(i => i.name === prize && !i.isEquipped);
-                
-                const chestStack = state.player.inventory.find(i => i.name === 'Waterlogged Chest' && !i.isEquipped);
-                const freesSlot = (chestStack && chestStack.quantity === 1) ? 1 : 0;
-                
-                if (existingPrize && isStackable) {
-                    existingPrize.quantity++;
-                    logMessage(`{purple:You also found a ${prize} hidden inside!}`);
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-                } 
-                else if (state.player.inventory.length - freesSlot < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
-                    state.player.inventory.push({
-                        templateId: prizeKey,
-                        name: prize, 
-                        type: template ? (template.type || 'junk') : 'junk', 
-                        quantity: 1, 
-                        tile: template ? template.tile : '💎', 
-                        defense: template ? template.defense : null,
-                        damage: template ? template.damage : null, 
-                        slot: template ? template.slot : null,
-                        statBonuses: template ? template.statBonuses : null,
-                        tags: template && template.tags ? [...template.tags] : null, // BUG FIX: Safe clone array
-                        _rarity: template ? (template._rarity || null) : null,
-                        effect: template ? template.effect : null
-                    });
-                    logMessage(`{purple:You also found a ${prize} hidden inside!}`);
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-                } else {
-                    logMessage(`{red:You found a ${prize}, but your inventory was full and it washed away!}`);
-                }
-            }
-            if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('coinsDisplay'), true);
-            return true; 
-        }
-    },
-    '🍾': {
-        name: 'Message in a Bottle', type: 'consumable', tile: '🍾',
-        description: "There's a rolled up piece of parchment inside.",
-        effect: (state) => {
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.1, 0.1, 2000); 
-            logMessage("You smash the bottle and unroll the damp parchment...");
-            
-            if (Math.random() < 0.25) {
-                const bottleStack = state.player.inventory.find(i => i.name === 'Message in a Bottle' && !i.isEquipped);
-                const freesSlot = (bottleStack && bottleStack.quantity === 1) ? 1 : 0;
-                
-                if (state.player.inventory.length - freesSlot < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
-                    logMessage(`{gold:It's a Tattered Map! X marks the spot!}`);
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-                    
-                    const mapKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === 'Tattered Map') || '🗺️';
-                    const mapTemplate = window.ITEM_DATA[mapKey];
-                    state.player.inventory.push({
-                        templateId: mapKey,
-                        name: 'Tattered Map', type: 'treasure_map', quantity: 1, tile: '🗺️',
-                        effect: mapTemplate ? mapTemplate.effect : null
-                    });
-                } else {
-                    logMessage(`{red:It's a Tattered Map, but your pack is full! The wind blows it away.}`);
-                }
+                setTimeout(() => {
+                    document.getElementById('claimMapReward').onclick = (e) => {
+                        e.target.disabled = true; 
+                        state.player.cartographerProgress = (state.player.cartographerProgress || 0) + 1;
+                        state.player.coins += 100;
+                        if (typeof grantXp === 'function') grantXp(150);
+                        
+                        logMessage("{gold:The Cartographer pays you 100 gold and shares worldly secrets! (+150 XP)}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, "+100g", "#facc15");
+                        
+                        if (loreModal) loreModal.classList.add('hidden');
+                        
+                        if (typeof playerRef !== 'undefined') {
+                            playerRef.update({ 
+                                cartographerProgress: state.player.cartographerProgress,
+                                coins: state.player.coins
+                            });
+                        }
+                        if (typeof renderStats === 'function') renderStats();
+                    };
+                }, 0);
             } else {
-                const loreFragments = [
-                    "...to whoever finds this... the treasure lies deep beneath the eastern waves...",
-                    "...the Leviathan is real. It took the Captain. It took the mast...",
-                    "...if you reach the Safe Haven, tell Elara I won't be coming home...",
-                    "...the sirens sing not of love, but of the void below...",
-                    "...the magma carps only bite when the mountain rumbles..."
-                ];
-                const msg = loreFragments[Math.floor(Math.random() * loreFragments.length)];
-                logMessage(`{gray:"${msg}"}`);
+                const nextGoal = (claimed + 1) * 50;
+                if (loreContent) loreContent.innerHTML = `
+                    <p>"You have mapped ${explored} regions so far. Outstanding work! Return to me when you've mapped ${nextGoal} regions for your next payment."</p>
+                    <button id="closeMapReward" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded w-full shadow transition-transform active:scale-95">"I'll keep exploring."</button>`;
+                if (loreModal) loreModal.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    document.getElementById('closeMapReward').onclick = () => {
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                        if (loreModal) loreModal.classList.add('hidden');
+                    }
+                }, 0);
             }
-            
-            logMessage("{blue:You gain 50 Exploration XP!}");
-            if (typeof grantXp === 'function') grantXp(50);
-            return true; 
+            return null; 
         }
     },
-    
-    // ==========================================
-    // --- STARGAZING EXPANSION ---
-    // ==========================================
-    '🔭': {
-        name: 'Brass Telescope',
-        type: 'tool',
-        tile: '🔭',
-        description: "Use on a Mountain Peak at night to study the stars.",
-        effect: (state) => {
+    '🍄r': {
+        name: 'Fairy Ring',
+        type: 'anomaly',
+        flavor: "A perfect circle of glowing purple mushrooms.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("The mushrooms have lost their glow.");
+                return null;
+            }
+
+            logMessage("{purple:You step into the ring. Ethereal music fills your mind!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#a855f7', 15);
+            
+            state.player.mana = state.player.maxMana;
+            state.player.psyche = state.player.maxPsyche;
+            
+            if (typeof triggerStatAnimation !== 'undefined') {
+                triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
+                triggerStatAnimation(document.getElementById('psycheDisplay'), 'stat-pulse-purple');
+            }
+            
+            if (Math.random() < 0.10) {
+                logMessage("{red:The Fae play a trick on you! You are swept away through the leylines!}");
+                
+                let nx = state.player.x + (Math.floor(Math.random() * 100) - 50);
+                let ny = state.player.y + (Math.floor(Math.random() * 100) - 50);
+                
+                let foundSafeSpot = false;
+                for (let r = 0; r <= 5; r++) {
+                    if (foundSafeSpot) break;
+                    for (let dy = -r; dy <= r; dy++) {
+                        for (let dx = -r; dx <= r; dx++) {
+                            let t = chunkManager.getTile(nx + dx, ny + dy);
+                            if (['.', 'F', 'd', 'D'].includes(t)) {
+                                state.player.x = nx + dx;
+                                state.player.y = ny + dy;
+                                foundSafeSpot = true;
+                                break;
+                            }
+                        }
+                        if (foundSafeSpot) break;
+                    }
+                }
+                
+                if (!foundSafeSpot) {
+                    state.player.x = 0;
+                    state.player.y = 0;
+                }
+                
+                state.mapDirty = true;
+            }
+
+            state.lootedTiles.add(tileId);
+            return { mana: state.player.mana, psyche: state.player.psyche, x: state.player.x, y: state.player.y };
+        }
+    },
+    '🌺': {
+        type: 'anomaly',
+        name: 'Moonbloom',
+        flavor: "A strange, luminescent plant.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("Only the plucked stem of the Moonbloom remains.");
+                return null;
+            }
+            
             const hour = state.time.hour;
             const isNight = hour >= 20 || hour < 5;
             
-            let tile;
-            if (state.mapMode === 'overworld') tile = chunkManager.getTile(state.player.x, state.player.y);
-            else {
-                logMessage("You must be outdoors to gaze at the stars.");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                return false; 
-            }
-
             if (!isNight) {
-                logMessage("The sun is too bright to see the stars.");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                return false;
-            }
-            if (tile !== '^' && tile !== '⛰') {
-                logMessage("You need to be higher up to get a clear view. Find a mountain peak.");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                return false;
-            }
-            if (state.weather !== 'clear') {
-                logMessage(`The ${state.weather} obscures the night sky.`);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                return false;
+                logMessage("The flower's petals are shut tight like stone. It seems to wait for the moon.");
+                return null;
             }
 
-            const constellations = ['constellation_1', 'constellation_2', 'constellation_3'];
-            const discovered = constellations[Math.floor(Math.random() * constellations.length)];
+            logMessage("{purple:The Moonbloom is open, bathing the area in pale light! You carefully harvest it.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "🌺", "#f472b6");
 
-            if (!state.foundCodexEntries.has(discovered)) {
-                logMessage("{purple:You chart a new constellation in the night sky!}");
+            if (state.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) { 
+                state.player.inventory.push({
+                    name: 'Moonbloom Petal', type: 'consumable', quantity: 1, tile: '🌸',
+                    effect: window.ITEM_DATA['🌸'] ? window.ITEM_DATA['🌸'].effect : null
+                });
+                state.lootedTiles.add(tileId);
+                if (typeof renderInventory === 'function') renderInventory();
+                return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles) };
+            } else {
+                logMessage("{red:Your inventory is full!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return null;
+            }
+        }
+    },
+    '☄️': {
+        type: 'anomaly',
+        name: 'Star-Metal Node',
+        flavor: "A chunk of fallen star. It is completely inert during the day.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("You've already chipped away the valuable ore.");
+                return null;
+            }
+
+            const hour = state.time.hour;
+            const isNight = hour >= 20 || hour < 5;
+            
+            if (!isNight) {
+                logMessage("The rock is dull and harder than diamond. You can't even scratch it.");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy'); 
+                return null;
+            }
+
+            const hasPickaxe = state.player.inventory.some(i => i.name === 'Pickaxe' || i.name === 'Diamond Tipped Pickaxe');
+            if (!hasPickaxe) {
+                logMessage("The rock is glowing under the starlight! But you need a Pickaxe to mine it.");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return null;
+            }
+
+            logMessage("{cyan:The starlight softens the rock! You mine a chunk of Star-Metal.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); 
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#38bdf8', 10);
+            
+            state.player.stamina = Math.max(0, state.player.stamina - 3);
+            if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('staminaDisplay'), false);
+
+            if (state.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
+                state.player.inventory.push({
+                    name: 'Star-Metal Ore', type: 'junk', quantity: 1, tile: '☄️'
+                });
+                state.lootedTiles.add(tileId);
+                if (typeof grantXp === 'function') grantXp(50);
+                if (typeof renderInventory === 'function') renderInventory();
+                return { 
+                    inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, 
+                    lootedTiles: Object.fromEntries(state.lootedTiles),
+                    stamina: state.player.stamina
+                };
+            } else {
+                logMessage("{red:Your inventory is full!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return null;
+            }
+        }
+    },
+    '🌳e': {
+        type: 'anomaly',
+        name: 'Elder Tree',
+        flavor: "A massive tree with silver bark. It hums with life.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (!state.lootedTiles.has(tileId)) {
+                logMessage("You touch the Elder Tree. Warmth flows into you.");
+                logMessage("{green:Permanent Effect: +2 Max Health.}");
+                
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, "✨", "#a855f7");
-                
-                const uniqueDiscoveryId = `stars_${state.player.x}_${state.player.y}_${discovered}`;
-                grantLoreDiscovery(uniqueDiscoveryId, discovered);
-            } else {
-                logMessage("{gray:You study the stars, but find nothing new tonight.}");
-            }
-            return false; 
-        }
-    },
-    'constellation_1': {
-        name: 'Constellation: The Serpent',
-        type: 'journal',
-        title: 'The Great Serpent',
-        content: "A winding trail of pale blue stars.\n\nThe ancients believed the world was not a sphere, but a massive egg resting in the coils of a cosmic serpent. When earthquakes rattle the mountains, it is merely the serpent tightening its grip."
-    },
-    'constellation_2': {
-        name: 'Constellation: The Empty Throne',
-        type: 'journal',
-        title: 'The Empty Throne',
-        content: "A rigid, box-like formation missing its central star.\n\nLegend says the central star fell to the earth during the First Age, taking the form of the Old King. Since his corruption, the throne in the sky has remained dark."
-    },
-    'constellation_3': {
-        name: 'Constellation: The Weeping Eye',
-        type: 'journal',
-        title: 'The Weeping Eye',
-        content: "A cluster of stars resembling a teardrop.\n\nAstronomers note that this constellation only became visible after the Void Rift opened. Some scholars believe it is not a cluster of stars at all, but a crack in the firmament looking back at us."
-    },
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(x, y); 
 
-    // --- NEW ARTIFACTS & PUZZLE ITEMS ---
-    '📜l': {
-        name: 'Forgotten Letter',
-        type: 'random_lore',
-        tile: '📄',
-        description: "A crumbling piece of parchment."
-    },
-    '👓s': {
-        name: 'Spirit Lens',
-        slot: 'accessory',
-        type: 'armor',
-        tile: '👓',
-        description: "Looking through it reveals the echoes of the dead.",
-        excludeFromLoot: true 
-    },
-    '🧩n': {
-        name: 'Tablet of the North',
-        type: 'junk',
-        description: "An ancient stone fragment. Etched on the back: 'First, the cold wind blows.'",
-        tile: '🧩'
-    },
-    '🧩e': {
-        name: 'Tablet of the East',
-        type: 'junk',
-        description: "An ancient stone fragment. Etched on the back: 'Second, the sun rises.'",
-        tile: '🧩'
-    },
-    '🧩w': {
-        name: 'Tablet of the West',
-        type: 'junk',
-        description: "An ancient stone fragment. Etched on the back: 'Third, the light fades.'",
-        tile: '🧩'
-    },
-    '🧩s': {
-        name: 'Tablet of the South',
-        type: 'junk',
-        description: "An ancient stone fragment. Etched on the back: 'Finally, the heat consumes.'",
-        tile: '🧩'
-    },
-    '🗝️a': {
-        name: 'Ancient Key',
-        type: 'consumable',
-        description: "Fused together from four fragments. It hums with power.",
-        tile: '🗝️',
-        effect: (state) => {
-            logMessage("This key doesn't do anything... yet. You need to find the Sealed Door.");
-            return false;
-        }
-    },
-    // --- STORY-RICH ARTIFACTS ---
-    '💍k': {
-        name: 'The Queen\'s Promise',
-        type: 'accessory',
-        defense: 0,
-        slot: 'accessory',
-        statBonuses: { charisma: 4, luck: 2 },
-        description: "{gold:+4 Cha}, {green:+2 Luck}. An elegant silver ring. 'Until the stars go dark.'"
-    },
-    '⚔️r': {
-        name: 'Rebel\'s Edge',
-        type: 'weapon',
-        tags: ['blade'],
-        damage: 4,
-        slot: 'weapon',
-        statBonuses: { strength: 1, dexterity: 1 },
-        description: "{red:+4 Dmg}, {green:+1 Str, +1 Dex}. A notched blade used in the failed coup."
-    },
-    '🏺o': {
-        name: 'Urn of Eternal Ash',
-        type: 'junk',
-        description: "The remains of the first Oracle. It stays warm to the touch, even in the ice caves."
-    },
-    '📜f': {
-        name: 'Faded Blueprint',
-        type: 'junk',
-        description: "A drawing of a machine that could supposedly bridge the gap between worlds."
-    },
-    '🧿v': {
-        name: 'Eye of the Watcher',
-        type: 'armor',
-        defense: 1,
-        slot: 'armor',
-        statBonuses: { perception: 5, wits: -1 },
-        description: "{gold:+5 Per}, {red:-1 Wits}. You see everything, but your thoughts feel distant."
-    },
-    // --- NEW ARTIFACTS ---
-    '🔱o': {
-        name: 'Scepter of the Tides',
-        type: 'accessory', 
-        defense: 2,
-        slot: 'accessory',
-        statBonuses: { intuition: 5, maxMana: 20 },
-        description: "{blue:+2 Def, +20 Mana}, {gold:+5 Int}. It hums with the sound of distant waves."
-    },
-    '🌑': {
-        name: 'Void-Touched Ring',
-        type: 'accessory',
-        defense: 0,
-        slot: 'accessory',
-        statBonuses: { willpower: 6, constitution: -2 }, 
-        description: "{purple:+6 Will}, {red:-2 Con}. The metal feels like it's trying to merge with your finger."
-    },
-    '🫀': {
-        name: 'Heart of the Forest',
-        type: 'junk',
-        description: "A pulsating emerald root. A collector would pay thousands of gold for this."
-    },
-    '🕯️b': {
-        name: 'Ever-Burning Candle',
-        type: 'tool',
-        tile: '🕯️',
-        statBonuses: { perception: 3 },
-        description: "{gold:+3 Per}. The flame never flickers, even in the strongest wind."
-    },
+                state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 2;
+                state.player.maxHealth += 2;
+                state.player.health = state.player.maxHealth; 
 
-    // --- NEW MATERIALS & TRADE GOODS ---
-    '💎g': { name: 'Emerald Dust', type: 'junk', description: "Fine green powder used in high-level alchemy." },
-    '🦴w': { name: 'Whale Bone', type: 'junk', description: "Incredibly sturdy and light." },
-    '📜r': { name: 'Royal Decree', type: 'junk', description: "An old order signed by the King. Historically significant." },
-    '🧪p': {
-        name: 'Berserker Brew',
-        type: 'buff_potion',
-        description: "{red:-5 Def} but {green:+10 Str} for 20 turns.",
-        effect: (state) => {
-            if (state.player.strengthBonusTurns > 0) {
-                logMessage("Effect already active.");
-                return false;
-            }
-            state.player.strengthBonus = 10;
-            state.player.defenseBonus = -5;
-            state.player.strengthBonusTurns = 20;
-            state.player.defenseBonusTurns = 20;
-            logMessage("{red:You feel a reckless rage! (+10 Str, -5 Def)}");
-            return true;
-        }
-    },
-    // --- RESOURCES ---
-    '➹': {
-        name: 'Wooden Arrow',
-        type: 'ammo',
-        tile: '➹',
-        slot: 'ammo',
-        damage: 1,
-        description: "Ammunition for bows. {red:+1 Dmg}"
-    },
-    '➹f': {
-        name: 'Fire Arrow',
-        type: 'ammo',
-        tags: ['fire'],
-        tile: '➹',
-        slot: 'ammo',
-        damage: 3, 
-        description: "{red:+3 Dmg}. Wrapped in pitch and arcane fire. Ignites webs and oil barrels."
-    },
-    '➹p': {
-        name: 'Poison Arrow',
-        type: 'ammo',
-        tags: ['poison'],
-        tile: '➹',
-        slot: 'ammo',
-        damage: 1, 
-        description: "{red:+1 Dmg}. Dipped in potent venom. {green:(Poisons target)}"
-    },
-    '🎣': {
-        name: 'Fishing Rod',
-        type: 'tool',
-        tile: '🎣',
-        description: "Use on water to catch fish or... other things."
-    },
-    '🐟': { 
-        name: 'Raw Fish',
-        type: 'junk', 
-        description: "Slimy. Can be cooked at a fire.",
-        tile: '🐟'
-    },
-    '👢s': {
-        name: 'Soggy Boot',
-        type: 'junk',
-        description: "Someone lost this a long time ago.",
-        tile: '👢',
-        excludeFromLoot: true
-    },
-
-    '🍞': {
-        name: 'Hardtack',
-        type: 'consumable',
-        tile: '🍞',
-        description: "Dry, hard bread. Keeps forever. {yellow:+30 Hunger}",
-        effect: (state) => {
-            if (state.player.hunger >= state.player.maxHunger) {
-                logMessage("You are completely full.");
-                return false; 
-            }
-            window.modifyVital('hunger', 30);
-            logMessage("You gnaw on the rock-hard bread. {yellow:(+30 Hunger)}");
-            return true;
-        }
-    },
-    '💧f': {
-        name: 'Flask of Water',
-        type: 'consumable',
-        tile: '💧', 
-        description: "Fresh water. {blue:+30 Thirst}",
-        effect: (state) => {
-            if (state.player.thirst >= state.player.maxThirst) {
-                logMessage("You are not thirsty right now.");
-                return false;
-            }
-            window.modifyVital('thirst', 30);
-            logMessage("Refreshing. {blue:(+30 Thirst)}");
-            return true;
-        }
-    },
-    '🪵': {
-        name: 'Wood Log',
-        type: 'junk',
-        description: "A sturdy log. Good for fuel or construction."
-    },
-    '🪨': {
-        name: 'Stone',
-        type: 'junk',
-        description: "A heavy gray stone."
-    },
-    '🕯️': {
-        name: 'Torch',
-        type: 'tool',
-        tile: '🕯️', 
-        description: "Increases light radius in dark places. Keep in inventory."
-    },
-    '⛺k': {
-        name: 'Campfire Kit',
-        type: 'consumable',
-        tile: '🔥',
-        description: "Creates a cooking fire on open ground.",
-        effect: (state) => {
-            let currentTile;
-            if (state.mapMode === 'overworld') {
-                currentTile = chunkManager.getTile(state.player.x, state.player.y);
-            } else if (state.mapMode === 'dungeon') {
-                const map = chunkManager.caveMaps[state.currentCaveId];
-                currentTile = (map && map[state.player.y] && map[state.player.y][state.player.x]) ? map[state.player.y][state.player.x] : ' ';
-            } else if (state.mapMode === 'castle') {
-                const map = chunkManager.castleMaps[state.currentCastleId];
-                currentTile = (map && map[state.player.y] && map[state.player.y][state.player.x]) ? map[state.player.y][state.player.x] : ' ';
-            }
-
-            let valid = false;
-            
-            if ((state.mapMode === 'overworld' || state.mapMode === 'underworld') && (currentTile === '.' || currentTile === 'd' || currentTile === 'D')) {
-                valid = true;
-            }
-            
-            // FIX: Ensure it only places on valid Dungeon/Castle floors, protecting the stairs!
-            if (state.mapMode === 'dungeon') {
-                const theme = window.CAVE_THEMES[state.currentCaveTheme] || window.CAVE_THEMES['ROCK'];
-                if (currentTile === theme.floor) valid = true;
-            }
-            if (state.mapMode === 'castle' && currentTile === '.') {
-                valid = true;
-            }
-
-            if (valid) {
-                logMessage("You arrange the stones and light the fire.");
-
-                if (state.mapMode === 'overworld') {
-                    chunkManager.setWorldTile(state.player.x, state.player.y, '🔥');
-                } else if (state.mapMode === 'dungeon') {
-                    chunkManager.caveMaps[state.currentCaveId][state.player.y][state.player.x] = '🔥';
+                if (typeof triggerStatAnimation !== 'undefined') {
+                    triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
                 }
 
-                render(); 
-                return true; 
+                state.lootedTiles.add(tileId);
+                return { 
+                    maxHealth: state.player.maxHealth, 
+                    health: state.player.health, 
+                    bonusMaxHealth: state.player.bonusMaxHealth, 
+                    lootedTiles: Object.fromEntries(state.lootedTiles) 
+                };
             } else {
-                logMessage("You can't build a fire here.");
-                return false; 
+                logMessage("The Elder Tree stands silent and majestic.");
+                return null;
             }
         }
     },
-    '👻s': {
-        name: 'Memory Shard',
-        type: 'junk', 
-        tile: '👻',
-        description: "A crystallized fragment of a forgotten memory. The Historian might want this."
-    },
-    '👢': {
-        name: 'Traveler\'s Boots',
-        type: 'armor',
-        defense: 1,
-        slot: 'armor',
-        statBonuses: { endurance: 2 },
-        description: "{blue:+1 Def}, {green:+2 End}. Good for long journeys."
-    },
-    '🧥': {
-        name: 'Traveler\'s Cloak',
-        type: 'armor',
-        defense: 1,
-        slot: 'armor',
-        statBonuses: { perception: 2 },
-        description: "{blue:+1 Def}, {gold:+2 Per}. Helps find secrets."
-    },
-    '🧭': {
-        name: 'Brass Compass',
-        type: 'tool', 
-        statBonuses: { luck: 1 }, 
-        description: "{gold:+1 Luck}. Just having it brings good fortune."
-    },
-    'vd': {
-        name: 'Void Dust',
-        type: 'junk', 
-        description: "A pile of glittering dust that fades in and out of existence.",
-        tile: '✨' 
-    },
-    '⚔️l': {
-        name: 'Longsword',
-        type: 'weapon',
-        tags: ['blade'],
-        tile: '⚔️',
-        damage: 4, 
-        slot: 'weapon',
-        description: "{red:+4 Dmg}. A versatile steel blade used by knights."
-    },
-    '🔨': {
-        name: 'Warhammer',
-        type: 'weapon',
-        tags: ['blunt'],
-        tile: '🔨',
-        damage: 5, 
-        isTwoHanded: true,
-        slot: 'weapon',
-        statBonuses: { dexterity: -1 }, 
-        description: "{red:+5 Dmg}, {gray:-1 Dex}. Crushes armor and bone alike. (Two-Handed)"
-    },
-    '🪓': {
-        name: 'Greataxe',
-        type: 'weapon',
-        tags: ['axe', 'blade'],
-        tile: '🪓',
-        damage: 6, 
-        isTwoHanded: true,
-        slot: 'weapon',
-        statBonuses: { strength: 1, dexterity: -2 }, 
-        description: "{red:+6 Dmg}, {green:+1 Str}, {gray:-2 Dex}. Devastating but slow. (Two-Handed)"
-    },
-    '🏏': {
-        name: 'Wooden Club',
-        type: 'weapon',
-        tags: ['blunt'],
-        tile: '🏏',
-        damage: 2, 
-        slot: 'weapon',
-        description: "{red:+2 Dmg}. Crude but effective."
-    },
-    '🦯': { 
-        name: 'Quarterstaff',
-        type: 'weapon',
-        tags: ['staff', 'blunt'],
-        tile: '🦯', 
-        damage: 1,
-        defense: 1,
-        slot: 'weapon',
-        description: "{red:+1 Dmg}, {blue:+1 Def}. A long pole used by travelers and monks."
-    },
-    '🏹': {
-        name: 'Shortbow',
-        type: 'weapon',
-        tags: ['bow'],
-        tile: '🏹',
-        damage: 2,
-        range: 4, 
-        isTwoHanded: true,
-        slot: 'weapon',
-        skillId: 'ranged_attack', 
-        statBonuses: { dexterity: 1 },
-        description: "{red:+2 Dmg}, {green:+1 Dex}. Simple wood and string. Requires Arrows."
-    },
-    '🏹l': {
-        name: 'Longbow',
-        type: 'weapon',
-        tags: ['bow'],
-        tile: '🏹',
-        damage: 4,
-        range: 6, 
-        isTwoHanded: true,
-        slot: 'weapon',
-        skillId: 'ranged_attack', 
-        statBonuses: { dexterity: 2 },
-        description: "{red:+4 Dmg}, {green:+2 Dex}. Superior range. Requires Arrows."
-    },
-    '🏹c': {
-        name: 'Heavy Crossbow',
-        type: 'weapon',
-        tags: ['crossbow', 'armor_piercing', 'heavy_recoil'],
-        tile: '🏹',
-        damage: 6,
-        range: 5,
-        isTwoHanded: true,
-        slot: 'weapon',
-        skillId: 'ranged_attack', 
-        statBonuses: { strength: 1 }, 
-        description: "{red:+6 Dmg}, {green:+1 Str}. Powerful but slow. Requires Arrows."
-    },
+    '🗿k': {
+        type: 'anomaly',
+        name: 'Petrified Giant',
+        flavor: "A boulder shaped like a weeping giant. Moss covers its eyes.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (!state.lootedTiles.has(tileId)) {
+                logMessage("You clear the moss from the Giant's eyes.");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
 
-    // --- CULINARY EXPANSION ---
-    '🍲o': {
-        name: "Oracle's Broth",
-        type: 'consumable',
-        tile: '🍲',
-        description: "Foul smelling. {purple:+5 Psyche}, {blue:+20 Mana}",
-        effect: (state) => {
-            window.modifyVital('psyche', 5);
-            window.modifyVital('mana', 20);
-            logMessage("Your mind expands. {purple:(+5 Psyche)}, {blue:(+20 Mana)}");
-            return true;
-        }
-    },
-    '🍱s': {
-        name: "Soldier's Last Meal",
-        type: 'consumable',
-        tile: '🍱',
-        description: "Heavy and fulfilling. {yellow:+100 Hunger}, {green:+20 HP}, {yellow:+20 Stamina}",
-        effect: (state) => {
-            window.modifyVital('hunger', 100);
-            window.modifyVital('health', 20);
-            window.modifyVital('stamina', 20);
-            logMessage("You feel ready for anything. {green:(+20 HP, +20 Stamina)}");
-            return true;
-        }
-    },
-    '🐟v': {
-        name: "Void-Salted Fish",
-        type: 'consumable',
-        tile: '🐟',
-        description: "Tastes like static. {blue:+50 Mana}, {yellow:+20 Hunger}",
-        effect: (state) => {
-            window.modifyVital('hunger', 20);
-            window.modifyVital('mana', 50);
-            logMessage("Arcane energy courses through you. {blue:(+50 Mana)}");
-            return true;
-        }
-    },
-    '🍖h': {
-        name: "Honey Glazed Ham",
-        type: 'consumable',
-        tile: '🍖',
-        description: "Sweet and savory. {yellow:+60 Hunger}, {green:+10 HP}",
-        effect: (state) => {
-            window.modifyVital('hunger', 60);
-            window.modifyVital('health', 10);
-            logMessage("Delicious! {yellow:(+60 Hunger)}, {green:(+10 HP)}");
-            return true;
-        }
-    },
-    '🍳': {
-        name: "Omelet",
-        type: 'consumable',
-        tile: '🍳',
-        description: "Fluffy and filling. {yellow:+40 Hunger}",
-        effect: (state) => {
-            window.modifyVital('hunger', 40);
-            logMessage("A great breakfast. {yellow:(+40 Hunger)}");
-            return true;
-        }
-    },
-    '🥩': {
-        name: "Steak",
-        type: 'consumable',
-        tile: '🥩',
-        description: "A hearty cut of cooked meat. {yellow:+50 Hunger}",
-        effect: (state) => {
-            window.modifyVital('hunger', 50);
-            logMessage("Tastes like victory. {yellow:(+50 Hunger)}");
-            return true;
-        }
-    },
-    '🍣': {
-        name: "Grilled Fish",
-        type: 'consumable',
-        tile: '🍣',
-        description: "Crispy skin, flaky meat. {yellow:+35 Hunger}",
-        effect: (state) => {
-            window.modifyVital('hunger', 35);
-            logMessage("Perfectly cooked. {yellow:(+35 Hunger)}");
-            return true;
-        }
-    },
-    '🧃': {
-        name: "Berry Juice",
-        type: 'consumable',
-        tile: '🧃',
-        description: "Sweet and refreshing. {blue:+30 Thirst}, {green:+5 HP}",
-        effect: (state) => {
-            window.modifyVital('thirst', 30);
-            window.modifyVital('health', 5);
-            logMessage("Refreshing! {blue:(+30 Thirst)}, {green:(+5 HP)}");
-            return true;
-        }
-    },
-    '🥣c': {
-        name: "Cactus Stew",
-        type: 'consumable',
-        tile: '🥣',
-        description: "Spicy and hydrating. {yellow:+40 Hunger}, {blue:+20 Thirst}",
-        effect: (state) => {
-            window.modifyVital('hunger', 40);
-            window.modifyVital('thirst', 20);
-            logMessage("It clears your sinuses. {yellow:(+40 Hunger)}, {blue:(+20 Thirst)}");
-            return true;
-        }
-    },
-    '🍱h': {
-        name: "Hearty Meal",
-        type: 'consumable',
-        tile: '🍱',
-        description: "A feast fit for a king. {yellow:+80 Hunger}, {green:+15 HP}",
-        effect: (state) => {
-            window.modifyVital('hunger', 80);
-            window.modifyVital('health', 15);
-            logMessage("A feast! {yellow:(+80 Hunger)}, {green:(+15 HP)}");
-            return true;
-        }
-    },
-    '🧀': { 
-        name: 'Wheel of Cheese', 
-        type: 'consumable', 
-        description: "A pungent wheel of aged cheese. {yellow:+15 Hunger}", 
-        effect: (state) => { 
-            if (state.player.hunger >= state.player.maxHunger) return false;
-            window.modifyVital('hunger', 15);
-            logMessage("It tastes sharp and nutty. {yellow:(+15 Hunger)}"); 
-            return true; 
-        } 
-    },
-    '🥚': { name: 'Bird Egg', type: 'junk', description: "A speckled egg found in a nest." },
-    '🌾': { name: 'Bag of Flour', type: 'junk', description: "Ground wheat. Essential for baking." },
-    '🍯': { 
-        name: 'Jar of Honey', 
-        type: 'consumable', 
-        description: "Sweet and sticky. {yellow:+10 Hunger, +5 Stamina}", 
-        effect: (state) => { 
-            if (state.player.hunger >= state.player.maxHunger && state.player.stamina >= state.player.maxStamina) return false;
-            window.modifyVital('stamina', 5);
-            window.modifyVital('hunger', 10);
-            logMessage("Sweet energy! {yellow:(+10 Hunger)}, {green:(+5 Stamina)}"); 
-            return true; 
-        } 
-    },
-    '🥧': { 
-        name: 'Berry Pie', 
-        type: 'consumable', 
-        description: "A masterpiece of baking. {yellow:+50 Hunger}, {purple:+10 Psyche}", 
-        effect: (state) => { 
-            if (state.player.hunger >= state.player.maxHunger && state.player.psyche >= state.player.maxPsyche) return false;
-            window.modifyVital('hunger', 50);
-            window.modifyVital('psyche', 10);
-            logMessage("Warm, sweet, and comforting. {yellow:(+50 Hunger)}, {purple:(+10 Psyche)}"); 
-            return true; 
-        } 
-    },
-    '🥙': { 
-        name: 'Traveler\'s Wrap', 
-        type: 'consumable', 
-        description: "Portable and filling. {yellow:+40 Hunger}, {green:+5 HP}", 
-        effect: (state) => { 
-            if (state.player.hunger >= state.player.maxHunger && state.player.health >= state.player.maxHealth) return false;
-            window.modifyVital('hunger', 40);
-            window.modifyVital('health', 5);
-            logMessage("A solid meal on the go. {yellow:(+40 Hunger)}, {green:(+5 HP)}"); 
-            return true; 
-        } 
-    },
-
-    // --- TRADE GOODS ---
-    '🐚': { name: 'Rainbow Shell', type: 'junk', description: "It shimmers with every color. Collectors love these." }, 
-    '🕰️': { name: 'Golden Pocket Watch', type: 'junk', description: "It's stopped at 12:00. The casing is pure gold." },
-    '🗿': { name: 'Jade Idol', type: 'junk', description: "A heavy statue of a forgotten frog god." },
-    '📜m': { name: 'Merchant\'s Ledger', type: 'junk', description: "Detailed trade routes. Bandits would pay for this info." },
-    '🧵': { name: 'Spool of Silk', type: 'junk', description: "Fine material from the eastern lands." },
-    '💎b': { name: 'Black Pearl', type: 'junk', description: "Found only in the deepest abysses." },
-    '💎r': { name: 'Raw Diamond', type: 'junk', description: "Incredibly hard and valuable." },
-
-    // --- LEGENDARY WEAPONS (On-Hit Effects) ---
-    '⚡': {
-        name: 'Stormbringer',
-        type: 'weapon',
-        tags: ['blade', 'lightning'],
-        tile: '⚡',
-        damage: 5,
-        slot: 'weapon',
-        description: "{red:+5 Dmg}. Sparks fly from the blade. {blue:(20% chance to cast Chain Lightning on hit)}",
-        onHit: 'chainLightning', 
-        procChance: 0.20         
-    },
-    '🩸b': {
-        name: 'Bloodthirster',
-        type: 'weapon',
-        tags: ['blade'],
-        tile: '🩸b',
-        damage: 4,
-        slot: 'weapon',
-        description: "{red:+4 Dmg}. It pulses with a heartbeat. {green:(30% chance to cast Siphon Life on hit)}",
-        onHit: 'siphonLife',
-        procChance: 0.30
-    },
-    '❄️w': {
-        name: 'Frostmourn',
-        type: 'weapon',
-        tags: ['blade', 'frost'],
-        tile: '⚔️',
-        damage: 5,
-        slot: 'weapon',
-        description: "{red:+5 Dmg}. Cold to the touch. {blue:(25% chance to cast Frost Bolt on hit)}",
-        onHit: 'frostBolt',
-        procChance: 0.25
-    },
-
-    // --- ARCHAEOLOGY TOOLS & LOOT ---
-    '🥄': { 
-        name: 'Shovel',
-        type: 'tool',
-        tile: '🥄',
-        description: "Used to dig up Loose Soil (∴)."
-    },
-    '🏺a': {
-        name: 'Ancient Vase',
-        type: 'junk',
-        description: "Intact pottery from the First Age. Museums would pay well.",
-        tile: '🏺'
-    },
-    '🗿h': {
-        name: 'Stone Head',
-        type: 'junk',
-        description: "The head of a statue. It looks surprisingly like the King.",
-        tile: '🗿'
-    },
-    '🦴d': {
-        name: 'Fossilized Bone',
-        type: 'junk',
-        description: "A bone from a creature larger than any dragon today.",
-        tile: '🦴'
-    },
-
-    // --- QUEST RELICS ---
-    '💎s': { name: 'Sun Shard', type: 'quest', description: "Warm glowing glass from the Desert.", tile: '💎' },
-    '💎m': { name: 'Moon Tear', type: 'quest', description: "A cold gem found in the Swamp.", tile: '💎' },
-    '💎v': { name: 'Void Crystal', type: 'quest', description: "It absorbs light. Found in the Mountains.", tile: '💎' },
-
-    // --- SURVIVAL ITEMS ---
-    '🫙': {
-        name: 'Empty Bottle',
-        type: 'consumable',
-        description: "Use on water (~/≈) to fill.",
-        tile: '🫙',
-        effect: (state) => {
-            let currentTile;
-            if (state.mapMode === 'overworld') {
-                currentTile = chunkManager.getTile(state.player.x, state.player.y);
-            } else if (state.mapMode === 'dungeon') {
-                const map = chunkManager.caveMaps[state.currentCaveId];
-                currentTile = (map && map[state.player.y] && map[state.player.y][state.player.x]) ? map[state.player.y][state.player.x] : ' ';
-            } else if (state.mapMode === 'castle') {
-                const map = chunkManager.castleMaps[state.currentCastleId];
-                currentTile = (map && map[state.player.y] && map[state.player.y][state.player.x]) ? map[state.player.y][state.player.x] : ' ';
-            }
-
-            if (currentTile === '~' || currentTile === '≈' || currentTile === '⛲') {
-                logMessage("You fill the bottle.");
-
-                const dirtyWater = { name: 'Dirty Water', type: 'consumable', quantity: 1, tile: '🤢', effect: window.ITEM_DATA['🤢'].effect };
-                const existingDirty = state.player.inventory.find(i => i.name === 'Dirty Water');
-                if (existingDirty) existingDirty.quantity++;
-                else state.player.inventory.push(dirtyWater);
-
-                return true;
-            } else {
-                logMessage("Stand on water (~/≈) to fill this.");
-                return false;
-            }
-        }
-    },
-    '💧': {
-        name: 'Clean Water',
-        type: 'consumable',
-        tile: '💧',
-        description: "Refreshing. {blue:+40 Thirst}",
-        effect: (state) => {
-            if (state.player.thirst >= state.player.maxThirst) {
-                logMessage("You are not thirsty right now.");
-                return false;
-            }
-            
-            const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle' && !i.isEquipped);
-            
-            // Calculate if consuming this water frees up a slot!
-            const waterStack = state.player.inventory.find(i => i.name === 'Clean Water' && !i.isEquipped);
-            const freesSlot = (waterStack && waterStack.quantity === 1) ? 1 : 0;
-            
-            if (!existingBottle && state.player.inventory.length - freesSlot >= (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
-                logMessage("{red:Your inventory is full. Clear a slot to hold the empty bottle before drinking.}");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                return false; 
-            }
-
-            window.modifyVital('thirst', 40);
-            logMessage("Ahhh. Crisp and cold. {blue:(+40 Thirst)}");
-
-            if (existingBottle) {
-                existingBottle.quantity++;
-            } else {
-                state.player.inventory.push({ 
-                    templateId: '🫙',
-                    name: 'Empty Bottle', 
-                    type: 'consumable', 
-                    quantity: 1, 
-                    tile: '🫙',
-                    effect: window.ITEM_DATA['🫙'].effect
-                });
-            }
-            
-            return true; 
-        }
-    },
-    '🤢': {
-        name: 'Dirty Water',
-        type: 'consumable',
-        tile: '🤢',
-        description: "Gross. {blue:+15 Thirst}, but risky.",
-        effect: (state) => {
-            if (state.player.thirst >= state.player.maxThirst) {
-                logMessage("You are not thirsty right now.");
-                return false;
-            }
-
-            const existingBottle = state.player.inventory.find(i => i.name === 'Empty Bottle' && !i.isEquipped);
-            
-            // Calculate if consuming this water frees up a slot!
-            const waterStack = state.player.inventory.find(i => i.name === 'Dirty Water' && !i.isEquipped);
-            const freesSlot = (waterStack && waterStack.quantity === 1) ? 1 : 0;
-            
-            if (!existingBottle && state.player.inventory.length - freesSlot >= (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
-                logMessage("{red:Your inventory is full. Clear a slot to hold the empty bottle before drinking.}");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                return false; 
-            }
-            
-            window.modifyVital('thirst', 15);
-            logMessage("You choke it down. {blue:(+15 Thirst)}");
-            
-            if (Math.random() < 0.2) {
-                logMessage("Your stomach churns... {purple:(Poisoned)}");
-                state.player.poisonTurns = 3;
-            }
-
-            if (existingBottle) {
-                existingBottle.quantity++;
-            } else {
-                state.player.inventory.push({ 
-                    templateId: '🫙',
-                    name: 'Empty Bottle', 
-                    type: 'consumable', 
-                    quantity: 1, 
-                    tile: '🫙',
-                    effect: window.ITEM_DATA['🫙'].effect
-                });
-            }
-            
-            return true; 
-        }
-    },
-    '🧪f': {
-        name: 'Fire Resistance Potion',
-        type: 'consumable',
-        tile: '🧪',
-        description: "Coats your throat in cooling frost. Immune to Lava/Fire for 50 turns.",
-        effect: (state) => {
-            if (state.player.fireResistTurns > 0) {
-                logMessage("Effect already active.");
-                return false;
-            }
-            state.player.fireResistTurns = 50; 
-            logMessage("You feel an icy chill. You are immune to fire! (50 turns)");
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, "❄️", "#67e8f9");
-            return true;
-        }
-    },
-    '🧪w': {
-        name: 'Gill Potion',
-        type: 'consumable',
-        tile: '🧪',
-        description: "Grow temporary gills. Allows swimming in Deep Water for 20 turns.",
-        effect: (state) => {
-            if (state.player.waterBreathingTurns > 0) {
-                logMessage("Effect already active.");
-                return false;
-            }
-            state.player.waterBreathingTurns = 20;
-            logMessage("You sprout gills! You can dive into deep water. (20 turns)");
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, "🫧", "#3b82f6");
-            return true;
-        }
-    },
-
-    // --- NEW WEAPONS ---
-    '🔱': {
-        name: 'Trident',
-        type: 'weapon',
-        tags: ['polearm', 'pierce'],
-        tile: '🔱',
-        damage: 4,
-        slot: 'weapon',
-        description: "{red:+4 Dmg}. Excellent for keeping enemies at bay."
-    },
-    '🔨h': { 
-        name: 'Meteor Hammer',
-        type: 'weapon',
-        tags: ['blunt'],
-        tile: '🔨',
-        damage: 7, 
-        isTwoHanded: true,
-        slot: 'weapon',
-        statBonuses: { dexterity: -3 }, 
-        description: "{red:+7 Dmg}, {gray:-3 Dex}. A heavy iron ball on a chain. Devastating but unwieldy. (Two-Handed)"
-    },
-    '🗡️d': {
-        name: 'Dragonbone Dagger',
-        type: 'weapon',
-        tags: ['dagger', 'blade'],
-        tile: '🗡️',
-        damage: 4,
-        slot: 'weapon',
-        statBonuses: { dexterity: 2, luck: 1 },
-        description: "{red:+4 Dmg}, {green:+2 Dex}, {gold:+1 Luck}. Carved from the fang of a drake."
-    },
-    '🗡️m': {
-        name: 'Masterwork Dagger',
-        type: 'weapon',
-        tags: ['dagger', 'blade'],
-        damage: 5,
-        slot: 'weapon',
-        statBonuses: { dexterity: 2, luck: 1 },
-        description: "{red:+5 Dmg}, {green:+2 Dex}, {gold:+1 Luck}. Perfectly balanced."
-    },
-
-    // --- DRAGONSCALE SET ---
-    '🛡️d': {
-        name: 'Dragonscale Shield',
-        type: 'armor',
-        tags: ['shield'],
-        tile: '🛡️',
-        defense: 4,
-        slot: 'armor',
-        blockChance: 0.30, 
-        description: "{blue:+4 Def}. Fashioned from a single massive scale."
-    },
-    '🧥d': {
-        name: 'Dragonscale Tunic',
-        type: 'armor',
-        tile: '🧥',
-        defense: 6,
-        slot: 'armor',
-        statBonuses: { strength: 1, willpower: 1 }, 
-        description: "{blue:+6 Def}, {green:+1 Str}, {purple:+1 Will}. Fireproof and tough."
-    },
-    '🛡️v': {
-        name: 'Void-Shielded Mail',
-        type: 'armor',
-        defense: 6,
-        slot: 'armor',
-        statBonuses: { willpower: 2, maxMana: 10 },
-        description: "{blue:+6 Def}, {purple:+2 Will, +10 Max Mana}. Absorbs magical impacts."
-    },
-
-    // --- NEW CONSUMABLES ---
-    '🧪st': {
-        name: 'Ironskin Potion',
-        type: 'consumable', // BUG FIX: Bypasses items.js forcing strengthBonus
-        tile: '🧪',
-        description: "Your skin hardens into iron. {blue:(+5 Def for 20 turns)}",
-        effect: (state) => {
-            if (state.player.defenseBonusTurns > 0) {
-                logMessage("Effect already active.");
-                return false;
-            }
-            state.player.defenseBonus = 5;
-            state.player.defenseBonusTurns = 20;
-            logMessage("{blue:Your skin turns to iron! (+5 Def)}");
-            if (typeof renderEquipment === 'function') renderEquipment();
-            return true;
-        }
-    },
-    // --- STARTER ARMOR ---
-    '👕': {
-        name: 'Padded Armor',
-        type: 'armor',
-        tile: '👕',
-        defense: 1,
-        slot: 'armor',
-        description: "{blue:+1 Def}. Thick layers of cloth. Stops scratches, not swords."
-    },
-    '👘': {
-        name: 'Heavy Robes',
-        type: 'armor',
-        tile: '👘',
-        defense: 0,
-        slot: 'armor',
-        statBonuses: { maxMana: 5 }, 
-        description: "{blue:+5 Max Mana}. Thick wool robes that help focus the mind."
-    },
-
-    // --- MONSTER LOOT ---
-    '🐀': { name: 'Rat Tail', type: 'junk', description: "Gross, but the apothecary might buy it." },
-    '🦇w': { name: 'Bat Wing', type: 'junk', description: "Leathery and thin." },
-    '🦷': { name: 'Snake Fang', type: 'junk', description: "Still dripping with venom." },
-    '🧣': { name: 'Red Bandana', type: 'junk', description: "Worn by low-level thugs." },
-
-    // --- CLASSIC ARMOR ---
-    '⛓️': {
-        name: 'Chainmail',
-        type: 'armor',
-        tile: '⛓️',
-        defense: 3, 
-        slot: 'armor',
-        description: "{blue:+3 Def}. Interlinked steel rings. Noisy but protective."
-    },
-    '🛡️p': {
-        name: 'Plate Armor',
-        type: 'armor',
-        tile: '🛡️',
-        defense: 5, 
-        slot: 'armor',
-        statBonuses: { dexterity: -2 }, 
-        description: "{blue:+5 Def}, {gray:-2 Dex}. A full suit of polished steel plates."
-    },
-    // --- VALUABLE RELICS ---
-    '👑': {
-        name: 'Shattered Crown',
-        type: 'armor', 
-        tile: '👑',
-        excludeFromLoot: true, 
-        defense: 0,    
-        slot: 'armor', 
-        statBonuses: { 
-            charisma: 5, 
-            luck: 3,     
-            willpower: 2 
-        }, 
-        description: "{gold:+5 Cha, +3 Luck}, {purple:+2 Will}. You feel kingly wearing it."
-    },
-    '👑_restored': {
-        name: "Crown of the First King",
-        type: "armor",
-        tile: "👑",
-        defense: 2,
-        slot: "armor",
-        statBonuses: {
-            charisma: 10,
-            luck: 5,
-            maxMana: 20
-        },
-        description: "Restored to its former glory. You act with the authority of the Old World.",
-        excludeFromLoot: true
-    },
-    '💍': {
-        name: 'Signet Ring',
-        type: 'junk',
-        description: "Bearing the crest of a fallen house."
-    },
-    'gold_dust': {
-        name: 'Pouch of Gold Dust',
-        type: 'junk',
-        tile: '💰' 
-    },
-    'ancient_coin': {
-        name: 'Ancient Coin',
-        type: 'junk',
-        tile: '🪙',
-        description: "Minted in an age before the Old King."
-    },
-
-    // --- COOKING INGREDIENTS ---
-    '🍖': {
-        name: 'Raw Meat',
-        type: 'junk',
-        description: "Bloody and raw. Needs cooking."
-    },
-
-    // --- HOMESTEAD ITEMS ---
-    '🧱': {
-        name: 'Stone Wall',
-        type: 'constructible',
-        tile: '🧱',
-        description: "A solid wall to keep enemies out."
-    },
-    '▤': { 
-        name: 'Wood Floor',
-        type: 'constructible',
-        tile: '▤',
-        description: "Smooth wooden planks. Safe to walk on."
-    },
-    '+': {
-        name: 'Wooden Door',
-        type: 'constructible',
-        tile: '+',
-        description: "A door with a simple latch."
-    },
-    '☒': {
-        name: 'Stash Box',
-        type: 'constructible',
-        tile: '☒',
-        description: "Access your global storage from anywhere you place this."
-    },
-    '⛵': {
-        name: 'Sailing Ship',
-        type: 'consumable',
-        tile: '⛵',
-        description: "A sturdy vessel for crossing Deep Water. Use while standing next to the ocean to deploy.",
-        effect: (state) => {
-            const dirs = [[0,-1], [0,1], [-1,0], [1,0]];
-            for(let [dx, dy] of dirs) {
-                const tx = state.player.x + dx;
-                const ty = state.player.y + dy;
-                
-                let t;
-                if (state.mapMode === 'overworld') {
-                    t = chunkManager.getTile(tx, ty);
-                } else if (state.mapMode === 'dungeon') {
-                    const map = chunkManager.caveMaps[state.currentCaveId];
-                    t = (map && map[ty] && map[ty][tx]) ? map[ty][tx] : ' ';
-                } else if (state.mapMode === 'castle') {
-                    const map = chunkManager.castleMaps[state.currentCastleId];
-                    t = (map && map[ty] && map[ty][tx]) ? map[ty][tx] : ' ';
+                if (!state.player.talents) state.player.talents = [];
+                if (!state.player.talents.includes('iron_skin')) {
+                    state.player.talents.push('iron_skin');
+                    logMessage("{green:You gained the Iron Skin talent! (+1 Defense)}");
+                } else {
+                    logMessage("{gold:You feel a kinship with the stone. (+500 XP)}");
+                    if (typeof grantXp === 'function') grantXp(500);
                 }
                 
-                if (t === '~' || t === '≈') {
-                    if (state.mapMode === 'overworld') chunkManager.setWorldTile(tx, ty, '⛵');
-                    else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][ty][tx] = '⛵';
-                    else chunkManager.castleMaps[state.currentCastleId][ty][tx] = '⛵';
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "🛡️", "#9ca3af");
+
+                state.lootedTiles.add(tileId);
+                return { talents: state.player.talents, lootedTiles: Object.fromEntries(state.lootedTiles) };
+            } else {
+                logMessage("The Giant sleeps.");
+                return null;
+            }
+        }
+    },
+    '🦴d': { 
+        type: 'anomaly',
+        name: 'Dragon Skeleton',
+        flavor: "The bleached ribs of a colossal beast rise from the sand.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (!state.lootedTiles.has(tileId)) {
+                logMessage("You search the Dragon's ribs...");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 800); 
+
+                if (state.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) { 
+                    const loot = typeof generateMagicItem === 'function' ? generateMagicItem(4) : { name: 'Dragonbone', type: 'junk', tile: '🦴', quantity: 1 }; 
+                    state.player.inventory.push(loot);
+                    logMessage(`{purple:You found a ${loot.name} buried in the sand!}`);
                     
-                    logMessage("You deploy the Sailing Ship into the water!");
-                    gameState.mapDirty = true;
-                    if (typeof render === 'function') render();
-                    return true; 
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "🦴", "#fff");
+                    
+                    state.lootedTiles.add(tileId);
+                    if (typeof renderInventory === 'function') renderInventory();
+                    return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles) };
+                } else {
+                    logMessage("{red:You found treasure, but your inventory is full!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                    return null;
                 }
-            }
-            logMessage("You must be standing directly next to Deep Water or a Swamp to deploy the ship.");
-            return false; 
-        }
-    },
-    // --- RARE CONSUMABLES ---
-    '🍎': {
-        name: 'Golden Apple',
-        type: 'consumable',
-        tile: '🍎',
-        description: "Food of the gods. {gold:Permanently increases Max HP by 1.}",
-        effect: (state) => {
-            state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 1;
-            
-            // BUG FIX: Clean update of max vitals without raw concatenation
-            if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
-            else state.player.maxHealth += 1;
-            
-            window.modifyVital('health', 1);
-            
-            logMessage("{gold:You feel divine power course through you! (+1 Max HP)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
-            return true;
-        }
-    },
-    '♥': {
-        name: 'Healing Potion',
-        type: 'consumable',
-        description: "A thick red liquid. {green:+Health}, {blue:+10 Thirst}",
-        effect: (state) => {
-            if (state.player.health >= state.player.maxHealth && state.player.thirst >= state.player.maxThirst) {
-                logMessage("You are already at full health and not thirsty.");
-                return false;
-            }
-            const healAmt = typeof window.HEALING_AMOUNT !== 'undefined' ? window.HEALING_AMOUNT : 3;
-            window.modifyVital('health', healAmt);
-            window.modifyVital('thirst', 10);
-            logMessage(`Used a Healing Potion. {green:(+HP)}, {blue:(+10 Thirst)}`);
-            return true;
-        }
-    },
-    '🔮': { 
-        name: 'Mana Orb',
-        type: 'instant', 
-        effect: (state, tileId) => {
-            const manaAmt = typeof window.MANA_RESTORE_AMOUNT !== 'undefined' ? window.MANA_RESTORE_AMOUNT : 3;
-            window.modifyVital('mana', manaAmt);
-            logMessage('You absorb a Mana Orb!');
-        },
-        description: "A fragment of a dream given form. It feels insubstantial in your hand."
-    },
-    'S': {
-        name: 'Stamina Crystal',
-        type: 'instant', 
-        effect: (state, tileId) => {
-            const stamAmt = typeof window.STAMINA_RESTORE_AMOUNT !== 'undefined' ? window.STAMINA_RESTORE_AMOUNT : 4;
-            window.modifyVital('stamina', stamAmt);
-            logMessage(`You shatter a Stamina Crystal!`);
-        },
-        description: "A jagged green crystal that pulses with a rhythmic light."
-    },
-    '💜': { 
-        name: 'Psyche Shard',
-        type: 'instant', 
-        effect: (state, tileId) => {
-            const psychAmt = typeof window.PSYCHE_RESTORE_AMOUNT !== 'undefined' ? window.PSYCHE_RESTORE_AMOUNT : 2;
-            window.modifyVital('psyche', psychAmt);
-            logMessage('You absorb a Psyche Shard.');
-        }
-    },
-    '📜C': {
-        name: 'Mercenary Contract',
-        type: 'consumable',
-        tile: '📜',
-        description: "Hires a Castle Guard to protect you.",
-        effect: (state) => {
-            if (state.player.companion) {
-                logMessage("You already have a companion. Dismiss them first.");
-                return false;
-            }
-            state.player.companion = {
-                name: "Hired Guard",
-                tile: "G",
-                type: "humanoid",
-                hp: 30,
-                maxHp: 30,
-                attack: 4,
-                defense: 2
-            };
-            logMessage("The Guard salutes. 'I will watch your back.'");
-            if (typeof playerRef !== 'undefined') playerRef.update({ companion: state.player.companion });
-            return true;
-        }
-    },
-    '🍇': { 
-        name: 'Wildberry',
-        type: 'consumable',
-        tile: '🍇', 
-        description: "Sweet! {yellow:+5 Hunger}, {blue:+5 Thirst}, {green:+1 HP}",
-        effect: (state) => {
-            if (state.player.health >= state.player.maxHealth && state.player.hunger >= state.player.maxHunger && state.player.thirst >= state.player.maxThirst) return false;
-            window.modifyVital('health', 1);
-            window.modifyVital('hunger', 5);
-            window.modifyVital('thirst', 5);
-            logMessage('Sweet! {yellow:(+5 Hunger/Thirst)}, {green:(+1 HP)}');
-            return true;
-        }
-    },
-    '🍄': {
-        name: 'Bluecap Mushroom',
-        type: 'consumable',
-        description: "Tastes like dirt. {blue:+1 Mana}, {yellow:+5 Hunger}",
-        effect: (state) => {
-            if (state.player.mana >= state.player.maxMana && state.player.hunger >= state.player.maxHunger) return false;
-            window.modifyVital('mana', 1);
-            window.modifyVital('hunger', 5);
-            logMessage('You eat a Bluecap. {blue:(+1 Mana)}, {yellow:(+5 Hunger)}');
-            return true;
-        }
-    },
-    '📒': {
-        name: 'Tome: Candlelight',
-        type: 'spellbook',
-        spellId: 'candlelight'
-    },
-    '📖': {
-        name: 'Spellbook: Lesser Heal',
-        type: 'spellbook',
-        spellId: 'lesserHeal'
-    },
-    '📚': {
-        name: 'Spellbook: Magic Bolt',
-        type: 'spellbook',
-        spellId: 'magicBolt'
-    },
-    '📜': {
-        name: 'Scroll: Clarity',
-        type: 'spellbook',
-        spellId: 'clarity'
-    },
-    '🛡️s': { 
-        name: 'Tome of Shielding',
-        type: 'spellbook',
-        spellId: 'arcaneShield'
-    },
-    '🔥': {
-        name: 'Tome of Fireball',
-        type: 'spellbook',
-        spellId: 'fireball'
-    },
-    '🩸': {
-        name: 'Scroll of Siphoning',
-        type: 'spellbook',
-        spellId: 'siphonLife'
-    },
-    '📘': {
-        name: 'Frozen Journal',
-        type: 'journal',
-        title: 'Frozen Journal',
-        content: `Day 12: The cold... it seeps into your bones...`
-    },
-    
-    // --- CRAFTING MATERIALS ---
-    '❄️f': { name: 'Yeti Fur', type: 'junk', description: "Thick, warm, and smells like wet dog." },
-    '🔥c': { name: 'Elemental Core', type: 'junk', description: "It burns your hands to hold it." },
-    '🦑': { name: 'Kraken Ink', type: 'junk', description: "Blacker than the void." },
-    '😈': { name: 'Demon Horn', type: 'junk', description: "Vibrates with dark energy." },
-    '👁️': { name: 'Basilisk Eye', type: 'junk', description: "Don't look directly at it." },
-    '💠': { name: 'Mithril Ore', type: 'junk', tile: '💠', description: "Lighter than steel, harder than dragon bone." },
-
-    '⚔️k': {
-        name: 'Blade of the Fallen King',
-        type: 'weapon',
-        tags: ['blade'],
-        tile: '⚔️',
-        excludeFromLoot: true, 
-        damage: 10,
-        slot: 'weapon',
-        statBonuses: { strength: 5, luck: 5 }, 
-        description: "{red:+10 Dmg}, {green:+5 Str}, {gold:+5 Luck}. It thirsts for redemption."
-    },
-    '🛡️a': {
-        name: 'Aegis of the Ancients',
-        type: 'armor',
-        tags: ['shield'],
-        tile: '🛡️',
-        excludeFromLoot: true,
-        defense: 8,
-        slot: 'armor',
-        blockChance: 0.50, 
-        statBonuses: { constitution: 5 },
-        description: "{blue:+8 Def}, {green:+5 Con}. A shield forged by giants."
-    },
-    '👢w': {
-        name: 'Windstrider Boots',
-        type: 'armor',
-        tile: '👢',
-        excludeFromLoot: true,
-        defense: 2,
-        slot: 'armor',
-        statBonuses: { dexterity: 10, endurance: 10 },
-        description: "{green:+10 Dex, +10 End}. You feel lighter than air."
-    },
-    '👑v': {
-        name: 'Crown of the Void',
-        type: 'armor',
-        tile: '👑',
-        excludeFromLoot: true, 
-        defense: 3,
-        slot: 'armor',
-        statBonuses: { wits: 10, maxMana: 50 },
-        description: "{blue:+50 Max Mana}, {purple:+10 Wits}. The whispers are clear to you now."
-    },
-
-    // --- TIER 5 EQUIPMENT (Mithril) ---
-    '⛏️d': {
-        name: 'Diamond Tipped Pickaxe',
-        type: 'tool',
-        tags: ['tool'],
-        description: "Can break through the hardest of stones with ease."
-    },
-    '⚔️m': {
-        name: 'Mithril Sword',
-        type: 'weapon',
-        tags: ['blade'],
-        tile: '⚔️',
-        damage: 6,
-        slot: 'weapon',
-        statBonuses: { dexterity: 2 }, 
-        description: "{red:+6 Dmg}, {green:+2 Dex}. Light as a feather, sharp as a razor."
-    },
-    '🛡️m': {
-        name: 'Mithril Mail',
-        type: 'armor',
-        tile: '🛡️',
-        defense: 5,
-        slot: 'armor',
-        statBonuses: { dexterity: 2, endurance: 2 },
-        description: "{blue:+5 Def}, {green:+2 Dex, +2 End}. Shines with a silvery light."
-    },
-
-    // --- TIER 6 EQUIPMENT (Void/Demon) ---
-    '🗡️v': {
-        name: 'Void Blade',
-        type: 'weapon',
-        tags: ['blade'],
-        tile: '🗡️',
-        damage: 8,
-        slot: 'weapon',
-        statBonuses: { willpower: 3 },
-        inflicts: 'madness', 
-        inflictChance: 0.2,
-        description: "{red:+8 Dmg}, {purple:+3 Will}. Forged from the nothingness between stars."
-    },
-    '👹': {
-        name: 'Demonplate',
-        type: 'armor',
-        tile: '👹',
-        defense: 7,
-        slot: 'armor',
-        statBonuses: { strength: 4, constitution: -2 }, 
-        description: "{blue:+7 Def}, {green:+4 Str}, {red:-2 Con}. Fused with the horns of a Void Demon."
-    },
-
-    // --- ACCESSORIES  ---
-    '💍r': {
-        name: 'Ring of Regeneration',
-        type: 'accessory',
-        tile: '💍',
-        defense: 0,
-        slot: 'accessory',
-        statBonuses: { constitution: 3, luck: 2 },
-        description: "{green:+3 Con}, {gold:+2 Luck}. You can feel your wounds knitting together."
-    },
-    '🧿': {
-        name: 'Amulet of the Magi',
-        type: 'accessory',
-        tile: '🧿',
-        defense: 1,
-        slot: 'accessory',
-        statBonuses: { wits: 5, maxMana: 10 },
-        description: "{blue:+1 Def, +10 Max Mana}, {purple:+5 Wits}. Humming with limitless power."
-    },
-    '\\': { 
-        name: 'Stick',
-        type: 'weapon',
-        tags: ['blunt'],
-        tile: '\\',
-        damage: 1, 
-        slot: 'weapon',
-        description: "{red:+1 Dmg}. A sturdy branch fallen from an oak tree.",
-        excludeFromLoot: true 
-    },
-    '%': {
-        name: 'Leather Tunic',
-        type: 'armor',
-        defense: 1,
-        slot: 'armor',
-        description: "{blue:+1 Def}. Boiled leather stitched with sinew."
-    },
-    // --- SHIELDS ---
-    '🛡️w': {
-        name: 'Wooden Shield',
-        type: 'armor',
-        tags: ['shield'],
-        tile: '🛡️',
-        defense: 1,
-        slot: 'offhand', 
-        blockChance: 0.10, 
-        description: "{blue:+1 Def}. A splintered plank with a handle."
-    },
-    '🛡️i': {
-        name: 'Iron Heater Shield',
-        type: 'armor',
-        tags: ['shield'],
-        tile: '🛡️',
-        defense: 2,
-        slot: 'armor', 
-        blockChance: 0.20, 
-        description: "{blue:+2 Def}. Sturdy iron protection."
-    },
-    '!': {
-        name: 'Rusty Sword',
-        type: 'weapon',
-        tags: ['blade'],
-        damage: 2,
-        slot: 'weapon',
-        description: "{red:+2 Dmg}. The edge is pitted with age."
-    },
-    '[': {
-        name: 'Studded Armor',
-        type: 'armor',
-        defense: 2,
-        slot: 'armor',
-        description: "{blue:+2 Def}. Leather reinforced with iron rivets."
-    },
-    't': {
-        name: 'Goblin Totem',
-        type: 'junk'
-    },
-    'p': {
-        name: 'Wolf Pelt',
-        type: 'junk'
-    },
-    'i': {
-        name: 'Bandit\'s Insignia',
-        type: 'junk'
-    },
-    '(': {
-        name: 'Bone Shard',
-        type: 'junk'
-    },
-    '†': { 
-        name: 'Bone Dagger',
-        type: 'weapon',
-        tags: ['dagger', 'blade', 'bone'],
-        damage: 2, 
-        slot: 'weapon',
-        description: "{red:+2 Dmg}. Carved from a single femur."
-    },
-    '¶': { 
-        name: 'Bandit Garb',
-        type: 'armor',
-        defense: 2, 
-        slot: 'armor',
-        description: "{blue:+2 Def}. Dark grey fabric designed to blend into shadows."
-    },
-    'U': {
-        name: 'Orc Tusk',
-        type: 'junk',
-        description: "Yellowed and cracked. A brutal trophy."
-    },
-    '&': {
-        name: 'Arcane Dust',
-        type: 'junk',
-        description: "It glitters like diamond dust, but vanishes if you don't look at it directly."
-    },
-
-    // --- TIER 3 GEAR ---
-    '⚔️s': { 
-        name: 'Steel Sword',
-        type: 'weapon',
-        tags: ['blade'],
-        tile: '⚔️', 
-        damage: 4, 
-        slot: 'weapon',
-        description: "{red:+4 Dmg}. A soldier's blade. Well-balanced, sharp, and reliable."
-    },
-    'A': { 
-        name: 'Steel Armor',
-        type: 'armor',
-        defense: 4, 
-        slot: 'armor',
-        description: "{blue:+4 Def}. Polished plates of steel."
-    },
-    'Ψ': { 
-        name: 'Warlock\'s Staff',
-        type: 'weapon',
-        tags: ['staff', 'blunt'],
-        damage: 3, 
-        slot: 'weapon',
-        statBonuses: { willpower: 2 },
-        description: "{red:+3 Dmg}, {purple:+2 Will}. The wood is charred black."
-    },
-    '👘m': {
-        name: 'Mage Robe',
-        type: 'armor',
-        defense: 3, 
-        slot: 'armor',
-        statBonuses: { wits: 1 },
-        description: "{blue:+3 Def}, {purple:+1 Wits}. Silk woven with arcane threads."
-    },
-    'E': {
-        name: 'Frost Essence',
-        type: 'junk'
-    },
-    '❄️b': {
-        name: 'Cryo Blade',
-        type: 'weapon',
-        tags: ['blade', 'frost'],
-        damage: 3, 
-        slot: 'weapon'
-    },
-    '❄️m': {
-        name: 'Frozen Mail',
-        type: 'armor',
-        defense: 3, 
-        slot: 'armor'
-    },
-    '-': {
-        name: 'Machete',
-        type: 'tool',
-        tags: ['blade'] 
-    },
-    'h': {
-        name: 'Climbing Tools',
-        type: 'tool'
-    },
-    '★': {
-        name: 'Sword of Strength',
-        type: 'weapon',
-        tags: ['blade'],
-        damage: 3, 
-        slot: 'weapon',
-        statBonuses: { strength: 2 }
-    },
-    '☆': {
-        name: 'Robe of Wits',
-        type: 'armor',
-        defense: 2, 
-        slot: 'armor',
-        statBonuses: { wits: 2 }
-    },
-    '📕': {
-        name: 'Tome of Bracing',
-        type: 'skillbook',
-        skillId: 'brace'
-    },
-    '📗': {
-        name: 'Manual of Lunge',
-        type: 'skillbook',
-        skillId: 'lunge'
-    },
-    '💪': {
-        name: 'Tome of Strength',
-        type: 'tome',
-        stat: 'strength'
-    },
-    '🧠': {
-        name: 'Tome of Wits',
-        type: 'tome',
-        stat: 'wits'
-    },
-    '"': {
-        name: 'Spider Silk',
-        type: 'junk',
-        description: "Incredibly strong and sticky. Handle with care."
-    },
-    'n': {
-        name: 'Silk Cowl',
-        type: 'armor',
-        defense: 1,
-        slot: 'armor',
-        statBonuses: { wits: 1 } 
-    },
-    'u': {
-        name: 'Silk Gloves',
-        type: 'armor',
-        defense: 1,
-        slot: 'armor',
-        statBonuses: { dexterity: 1 } 
-    },
-    'q': {
-        name: "Bandit's Note",
-        type: 'journal',
-        title: 'A Crumpled Note',
-        content: "The chief is crazy. He says he's hearing whispers from that big fortress to the east.\n\nHe's got us hoarding all this gold... for what? To give to *it*? I'd rather take my chances with the spiders.\n\nI'm taking my share and I'm gone. If anyone finds this, tell my brother I'm headed for the village. - T."
-    },
-    '📄': {
-        name: 'A Scattered Page',
-        type: 'random_journal'
-    },
-    'P': {
-        name: 'Reinforced Tunic',
-        type: 'armor',
-        defense: 3, 
-        slot: 'armor',
-        statBonuses: { endurance: 1 } 
-    },
-    '*': {
-        name: 'Arcane Blade',
-        type: 'weapon',
-        tags: ['blade'],
-        damage: 5, 
-        slot: 'weapon',
-        statBonuses: { wits: 1, willpower: 1 } 
-    },
-    ']': {
-        name: 'Bandit\'s Boots',
-        type: 'armor',
-        defense: 1,
-        slot: 'armor',
-        statBonuses: { dexterity: 1 } 
-    },
-    '8': {
-        name: 'Orcish Helm',
-        type: 'armor',
-        defense: 2,
-        slot: 'armor',
-        statBonuses: { strength: 1 } 
-    },
-    '9': {
-        name: 'Arcane Wraps',
-        type: 'armor',
-        defense: 1,
-        slot: 'armor',
-        statBonuses: { wits: 2 } 
-    },
-    '0': {
-        name: 'Frozen Greaves',
-        type: 'armor',
-        defense: 2,
-        slot: 'armor',
-        statBonuses: { endurance: 1 } 
-    },
-    '❄️': {
-        name: 'Scroll: Frost Bolt',
-        type: 'spellbook',
-        spellId: 'frostBolt'
-    },
-    '🌀': {
-        name: 'Tome: Psychic Blast',
-        type: 'spellbook',
-        spellId: 'psychicBlast'
-    },
-    '😱': {
-        name: 'Tome of Madness',
-        type: 'skillbook',
-        skillId: 'inflictMadness'
-    },
-    '☣️': {
-        name: 'Scroll: Poison Bolt',
-        type: 'spellbook',
-        spellId: 'poisonBolt'
-    },
-    '‡': {
-        name: 'Poisoned Dagger',
-        type: 'weapon',
-        tags: ['dagger', 'blade', 'poison'],
-        damage: 2,
-        slot: 'weapon',
-        inflicts: 'poison',
-        inflictChance: 0.25,  
-        statBonuses: { dexterity: 1 }
-    },
-    '💀': {
-        name: 'Tome: Dark Pact',
-        type: 'spellbook',
-        spellId: 'darkPact'
-    },
-    '💔': {
-        name: 'Corrupted Relic',
-        type: 'junk'
-    },
-    'j': {
-        name: 'Acolyte\'s Scribblings',
-        type: 'journal',
-        title: 'Acolyte\'s Scribblings',
-        content: "He is risen! The folly of the Old King was not his failure, but his *success*.\n\nThe whispers are true. We, the Shadowed Hand, have come to pay tribute. The fortress is the key.\n\nThe shadows gather. We will be rewarded for our faith when He awakens."
-    },
-    '⛏️': {
-        name: 'Pickaxe',
-        type: 'tool'
-    },
-    '•': {
-        name: 'Iron Ore',
-        type: 'junk'
-    },
-    '✴': {
-        name: 'Spike Trap',
-        type: 'constructible'
-    },
-    '¡': {
-        name: 'Iron Sword',
-        type: 'weapon',
-        tags: ['blade'],
-        damage: 3, 
-        slot: 'weapon'
-    },
-    '¦': {
-        name: 'Iron Mail',
-        type: 'armor',
-        defense: 3, 
-        slot: 'armor'
-    },
-    'I': {
-        name: 'Iron Helm',
-        type: 'armor',
-        defense: 2,
-        slot: 'armor',
-        statBonuses: { constitution: 1 } 
-    },
-    '▲': {
-        name: 'Obsidian Shard',
-        type: 'junk'
-    },
-    '⚔️o': {
-        name: 'Obsidian Edge',
-        type: 'weapon',
-        tags: ['blade'],
-        tile: '🗡️',
-        damage: 5, 
-        slot: 'weapon',
-        statBonuses: { wits: 2 } 
-    },
-    '🛡️o': {
-        name: 'Obsidian Plate',
-        type: 'armor',
-        tile: '🛡️', 
-        defense: 5,
-        slot: 'armor',
-        statBonuses: { willpower: 2 } 
-    },
-    '♦': {
-        name: 'Heirloom',
-        type: 'quest' 
-    },
-    '🍷': {
-        name: 'Elixir of Life',
-        type: 'consumable',
-        description: "A legendary elixir. {gold:Permanently +5 Max HP.}",
-        effect: (state) => {
-            state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 5;
-            
-            // BUG FIX: Clean update of max vitals without raw concatenation
-            if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
-            else state.player.maxHealth += 5;
-            
-            window.modifyVital('health', 5);
-            window.modifyVital('thirst', 20);
-            logMessage("You drink the thick red liquid. {gold:(+5 Max HP)}, {blue:(+20 Thirst)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
-            return true;
-        }
-    },
-    '🧪e': {
-        name: 'Elixir of Power',
-        type: 'consumable',
-        description: "A legendary elixir. {gold:Permanently +5 Max Mana.}",
-        effect: (state) => {
-            state.player.bonusMaxMana = (state.player.bonusMaxMana || 0) + 5;
-            
-            // BUG FIX: Clean update of max vitals
-            if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
-            else state.player.maxMana += 5;
-            
-            window.modifyVital('mana', 5);
-            window.modifyVital('thirst', 20);
-            logMessage("You drink the glowing blue liquid. {gold:(+5 Max Mana)}, {blue:(+20 Thirst)}");
-            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
-            return true;
-        }
-    },
-
-    // --- DRUID MAGIC ---
-    '📜e': {
-        name: 'Scroll: Entangle',
-        type: 'spellbook',
-        spellId: 'entangle'
-    },
-    '🌵': {
-        name: 'Tome: Thorn Skin',
-        type: 'spellbook',
-        spellId: 'thornSkin'
-    },
-    '🗝️v': {
-        name: 'Void Key',
-        type: 'quest', 
-        tile: '🗝️',
-        description: "It vibrates violently. Simply step on a Void Rift (Ω) to use it."
-    },
-
-    // --- THE MULTIVERSE KEYS ---
-    '🧭v': {
-        name: 'Void Astrolabe',
-        type: 'consumable',
-        tile: '🧭',
-        description: "Tunes the leylines to a parallel dimension. Use it on open ground.",
-        effect: (state) => {
-            if (state.mapMode !== 'overworld') {
-                logMessage("{red:You must be under the open sky to tear reality.}");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                return false;
-            }
-
-            const newRealmId = Math.floor(Math.random() * 999999) + 1;
-            
-            const mutatorKeys = Object.keys(window.REALM_MUTATORS);
-            const numMutators = Math.random() < 0.2 ? 2 : 1;
-            const chosenMutators = [];
-            for(let i=0; i<numMutators; i++) {
-                chosenMutators.push(mutatorKeys[Math.floor(Math.random() * mutatorKeys.length)]);
-            }
-
-            logMessage(`{purple:Reality tears open! You step into Realm #${newRealmId}...}`);
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-            
-            state.screenShake = 50;
-
-            state.currentRealm = newRealmId;
-            state.realmMutators = chosenMutators;
-            
-            chosenMutators.forEach(m => logMessage(`{orange:Modifier: ${window.REALM_MUTATORS[m].name} - ${window.REALM_MUTATORS[m].description}}`));
-
-            chunkManager.loadedChunks = {};
-            chunkManager.worldState = {};
-            Object.values(worldStateListeners).forEach(unsub => unsub());
-            worldStateListeners = {};
-            if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.clearAll();
-            state.sharedEnemies = {}; 
-            state.exploredChunks = new Set(); 
-
-            state.mapDirty = true;
-            
-            if (typeof playerRef !== 'undefined') {
-                playerRef.update({
-                    currentRealm: state.currentRealm,
-                    realmMutators: state.realmMutators
-                });
-            }
-
-            return true; 
-        }
-    },
-    '🏠p': {
-        name: 'Prime Tuning Fork',
-        type: 'consumable',
-        tile: '🏠',
-        description: "Striking it returns you to Realm 0 (The Prime Overworld).",
-        effect: (state) => {
-            if (state.currentRealm === 0 || !state.currentRealm) {
-                logMessage("{gray:You are already in the Prime Realm.}");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                return false;
-            }
-            
-            logMessage("{cyan:You strike the fork. The familiar hum of the Prime Realm pulls you back.}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-            
-            state.screenShake = 30;
-            state.currentRealm = 0;
-            state.realmMutators = [];
-            
-            chunkManager.loadedChunks = {};
-            chunkManager.worldState = {};
-            Object.values(worldStateListeners).forEach(unsub => unsub());
-            worldStateListeners = {};
-            if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.clearAll();
-            state.sharedEnemies = {};
-            state.exploredChunks = new Set();
-            
-            state.mapDirty = true;
-            if (typeof playerRef !== 'undefined') {
-                playerRef.update({ currentRealm: 0, realmMutators: [] });
-            }
-            return true;
-        }
-    },
-
-    // --- ELITE LOOT ---
-    '🐺': { 
-        name: 'Alpha Pelt',
-        type: 'junk' 
-    },
-    '🏠': {
-        name: 'Scroll of Homing',
-        type: 'teleport'
-    },
-    '🗺️': {
-        name: 'Tattered Map',
-        type: 'treasure_map'
-    },
-    'x': {
-        name: 'Tattered Rags',
-        type: 'armor',
-        defense: 0, 
-        slot: 'armor',
-        excludeFromLoot: true
-    },
-    '1': {
-        name: 'Conscript\'s Orders',
-        type: 'journal',
-        title: 'Crumpled Orders',
-        content: "Soldier,\n\nThe fortress has fallen. The King is... changed. Regroup at the safe haven to the west. Do not engage the shadows. Survive at all costs."
-    },
-    '2': {
-        name: 'Thief\'s Map',
-        type: 'journal',
-        title: 'Scribbled Map',
-        content: "Easy job, they said. Just sneak in, grab the relic, sneak out. They didn't mention the walking skeletons. I dropped my lockpick near the entrance. If you're reading this, I'm probably dead."
-    },
-    '3': {
-        name: 'Burned Scroll',
-        type: 'journal',
-        title: 'Singed Parchment',
-        content: "The experiment failed. The rift is unstable. The creatures coming through... they feed on mana. I must warn the Sage. The Old King must not be disturbed."
-    },
-    '4': {
-        name: 'Mad Scrawlings',
-        type: 'journal',
-        title: 'Dirty Scrap',
-        content: "THE EYES. THE EYES IN THE DARK. THEY SEE ME. COLD. SO COLD. STONE IS SAFE. STONE DOES NOT LIE."
-    },
-    '$': {
-        name: 'Gold Coin',
-        type: 'instant',
-        effect: (state, tileId) => { 
-            const seed = stringToSeed(tileId || 'gold'); 
-            const random = Alea(seed);
-
-            // Access damage amount safely to avoid errors if script.js loads out of order
-            const dmgAmt = typeof window.DAMAGE_AMOUNT !== 'undefined' ? window.DAMAGE_AMOUNT : 2;
-
-            if (random() < 0.05) { 
-                window.modifyVital('health', -dmgAmt);
-                logMessage(`{red:It was a trap! Lost ${dmgAmt} health!}`);
-            } else { 
-                const amount = Math.floor(random() * 10) + 1; 
-                state.player.coins += amount;
-                if (typeof triggerStatFlash !== 'undefined' && typeof statDisplays !== 'undefined') {
-                    triggerStatFlash(statDisplays.coins, true);
-                }
-                logMessage(`You found {gold:${amount} gold coins!}`);
+            } else {
+                logMessage("Only bleached bones remain.");
+                return null;
             }
         }
-    },
-    // --- FAE LORE EXPANSION ---
-    'fae_1': {
-        name: 'Fae-Touched Note',
-        type: 'journal',
-        title: 'A Curious Phenomenon',
-        tile: '📄',
-        content: "I found a ring of purple mushrooms today. The air inside felt warmer, and I swear I heard music. I'll just take a quick step inside to investigate, I should be back in time for dinner."
-    },
-    'fae_2': {
-        name: 'Rambling Bark-Scrap',
-        type: 'journal',
-        title: 'The Music Never Stops',
-        tile: '📜',
-        content: "The music... it is so beautiful but it never stops. I danced with the tall, pale ones. They took my name in exchange for a cup of silver dew. I am so thirsty, but the dew tastes like ash now."
-    },
-    'fae_3': {
-        name: 'Weathered Warning',
-        type: 'journal',
-        title: 'Do Not Step In',
-        tile: '📄',
-        content: "If you see the purple rings, close your ears and walk away. My brother stepped into one for just a minute. When he walked out, fifty years had passed. He looks exactly the same, but his eyes are completely black."
-    },
-    '📜1': {
-        name: 'Chronicle Vol. I',
-        type: 'journal',
-        title: 'The First Age: Starlight',
-        content: "Before the sun, there was only the stars and the void. The First King was not a man, but a being of pure light who descended to the mountain peaks."
-    },
-    '📜2': {
-        name: 'Chronicle Vol. II',
-        type: 'journal',
-        title: 'The Second Age: Iron',
-        content: "Men learned to forge steel from the dwarves of the deep. The great fortresses were built, not to keep enemies out, but to keep the magic in."
-    },
-    '📜3': {
-        name: 'Chronicle Vol. III',
-        type: 'journal',
-        title: 'The Third Age: Betrayal',
-        content: "The Wizard Council grew jealous of the King's immortality. They whispered to the shadows, and the shadows whispered back."
-    },
-    '📜4': {
-        name: 'Chronicle Vol. IV',
-        type: 'journal',
-        title: 'The Fourth Age: The Fall',
-        content: "The sky turned purple. The dead rose. The King locked himself in the Grand Fortress, but he was already changed. The Golden Age ended in a single night."
-    },
-    '📜5': {
-        name: 'Chronicle Vol. V',
-        type: 'journal',
-        title: 'Prophecy of the Return',
-        content: "It is written: When the five thrones are empty, and the crown is shattered, a traveler from the void will restore the balance."
-    },
-    '✨': {
-        name: 'Unidentified Magic Item',
-        type: 'junk', 
-        description: "It hums with potential energy."
     }
 };
 
-// --- RANDOMIZED LOOT DATA ---
-window.LOOT_PREFIXES = {
-    "Sharp": { type: 'weapon', bonus: { damage: 1 } },
-    "Jagged": { type: 'weapon', bonus: { damage: 2 } },
-    "Deadly": { type: 'weapon', bonus: { damage: 3 } },
-    "Legendary": { type: 'weapon', bonus: { damage: 4 } },
-
-    "Sturdy": { type: 'armor', bonus: { defense: 1 } },
-    "Reinforced": { type: 'armor', bonus: { defense: 2 } },
-    "Hardened": { type: 'armor', bonus: { defense: 3 } },
-    "Impenetrable": { type: 'armor', bonus: { defense: 4 } },
-
-    "Balanced": { type: 'weapon', bonus: { dexterity: 1 } },
-    "Heavy": { type: 'weapon', bonus: { strength: 1 } },
-    "Light": { type: 'armor', bonus: { dexterity: 1 } },
+window.CAVE_THEMES = {
+    ARENA: {
+        name: 'Colosseum of Ash',
+        wall: '▓', floor: '.', secretWall: '▒',
+        colors: { wall: '#450a0a', floor: '#292524' },
+        decorations: [], // Empty, we generate this manually
+        enemies: [] // Empty, spawned manually by the banner
+    },
+    DWARVEN_MINE: {
+        name: 'Abandoned Dwarven Mine',
+        wall: '▓', floor: '.', secretWall: '🏚',
+        colors: { wall: '#451a03', floor: '#57534e' },
+        decorations: ['🛤️', '🛤️', '🛒', '⛏️', '🛢'],
+        enemies: ['s', '🦇', '👷', '🧌'] 
+    },
+    CLOCKWORK: {
+        name: 'An Ancient Machine',
+        wall: '⚙️', floor: '▤', secretWall: '▒',
+        colors: { wall: '#b45309', floor: '#44403c' },
+        decorations: ['🛢', '⛓️', '💡'], 
+        enemies: ['🤖', 'k', '🧌'] 
+    },
+    FUNGAL: {
+        name: 'The Mycelium Depths',
+        wall: '▓', floor: '.', secretWall: '▒',
+        colors: { wall: '#4a1d96', floor: '#7e22ce' },
+        decorations: ['🍄', '🍄', '🌿', '🏺', 'S'], 
+        enemies: ['@', 'l', 's', '🧟'] 
+    },
+    GOLDEN: {
+        name: 'The Glimmering Vault',
+        wall: '🧱', floor: '.', secretWall: '▒',
+        colors: { wall: '#ca8a04', floor: '#facc15' },
+        decorations: ['$', '$', '🏺', '👑', '📦'], 
+        enemies: ['m', 'o', 'C'] 
+    },
+    CORRUPTED: {
+        name: 'The Abyssal Tear',
+        wall: '▓', floor: '.', phaseWall: '▒',
+        colors: { wall: '#000000', floor: '#1e1b4b' },
+        decorations: ['✨', '💀', 'vd', 'Ω'],
+        enemies: ['v', '😈d', 'a']
+    },
+    ROCK: {
+        name: 'A Dark Cave',
+        wall: '▓', floor: '.', secretWall: '▒',
+        colors: { wall: '#422006', floor: '#a16207' },
+        decorations: ['♥', '🔮', '$', '📖', 'K', '🏚'],
+        enemies: ['g', 's', '@']
+    },
+    ICE: {
+        name: 'A Glacial Cavern',
+        wall: '▒', secretWall: '▓', floor: '.',
+        colors: { wall: '#99f6e4', floor: '#e0f2fe' },
+        enemies: ['s', 'w', 'Z', 'Y', '👻i']
+    },
+    // --- EXPANSION WIN: Frozen Ruins ---
+    FROZEN_RUIN: {
+        name: 'Frostbitten Keep',
+        wall: '🧱', secretWall: '🏚', floor: '.',
+        colors: { wall: '#1e3a8a', floor: '#7dd3fc' },
+        decorations: ['🧊', '❄️', '🏺', '📦', '💀'],
+        enemies: ['Z', 'Y', '👻i', 'm']
+    },
+    FIRE: {
+        name: 'A Volcanic Fissure',
+        wall: '▓', secretWall: '▒', floor: '.', 
+        colors: { wall: '#450a0a', floor: '#ef4444' },
+        decorations: ['♥', '$', '🔥', 'J'],
+        enemies: ['b', 'C', 'o', 'm', 'f']
+    },
+    CRYPT: {
+        name: 'A Musty Crypt',
+        wall: '▓', floor: '.', secretWall: '▒',
+        colors: { wall: '#374151', floor: '#4b5563' },
+        decorations: ['♥', '$', '(', '†', '🌀', '😱', '💀', '🕸', '⚰️'],
+        enemies: ['s', 'Z', 'a']
+    },
+    CRYSTAL: {
+        name: 'A Crystalline Tunnel',
+        wall: '▒', secretWall: '▓', floor: '.',
+        colors: { wall: '#67e8f9', floor: '#22d3ee' },
+        decorations: ['💜', '🔮', '$', 'K'],
+        enemies: ['g', '🧌', '🪨c']
+    },
+    VOID: {
+        name: 'The Void Sanctum',
+        wall: '▓', floor: '.', phaseWall: '▒',    
+        colors: { wall: '#2e0249', floor: '#0f0518' },
+        decorations: ['✨', '💀', 'Ω'],
+        enemies: ['v', 'a', 'm', 'v', '😈d', '👁️']
+    },
+    ABYSS: {
+        name: 'The Maw',
+        wall: '▓', floor: '.', secretWall: '▒',
+        colors: { wall: '#0f0f0f', floor: '#331133' },
+        decorations: ['💀', '🕸️', '🔥', 'Ω', '💎', '🕸'],
+        enemies: ['o', 'm', 'Z', 'g', '🐺', '🦂', 'a', '👾'] 
+    },
+    SUNKEN: {
+        name: 'The Sunken Temple',
+        wall: '🧱', floor: '.', secretWall: '▒',
+        colors: { wall: '#0e7490', floor: '#1e3a8a' },
+        decorations: ['🐟', '🌿', '🗿'],
+        enemies: ['🐸', '🐍', 'l', '🐉h']
+    },
+    GROTTO: {
+        name: 'A Sunken Grotto',
+        wall: '▓', floor: '.', secretWall: '▒',
+        colors: { wall: '#14532d', floor: '#16a34a' },
+        decorations: ['♥', 'S', '🔮', '☣️', '🕸'], 
+        enemies: ['g', 'w', '@']
+    },
+    RUIN: {
+        name: 'A Forgotten Ruin',
+        wall: '🧱', floor: '.', secretWall: '▒',
+        colors: { wall: '#44403c', floor: '#292524' },
+        decorations: ['♥', '$', '🏺', '📜l', '🕸'],
+        enemies: ['s', 'Z', 'b']
+    },
+    OVERGROWN: {
+        name: 'An Overgrown Passage',
+        wall: '▓', floor: 'F', secretWall: '▒',
+        colors: { wall: '#14532d', floor: '#166534' },
+        decorations: ['🌿', '🍄', '🌳e'],
+        enemies: ['@', '🐍', '🐸']
+    },
+    SAND_TOMB: {
+        name: 'A Sand-swept Tomb',
+        wall: '🧱', floor: 'D', secretWall: '🏚',
+        colors: { wall: '#b45309', floor: '#fde047' },
+        decorations: ['🏺', '🏺', '🦴d', '🦂', '$'],
+        enemies: ['🦂s', '🐍c', 'Z', 'm']
+    }
 };
 
-window.LOOT_SUFFIXES = {
-    "of the Bear": { bonus: { strength: 1, constitution: 1 } },
-    "of the Wolf": { bonus: { dexterity: 1, strength: 1 } },
-    "of the Owl": { bonus: { wits: 2 } },
-    "of the Eagle": { bonus: { perception: 2 } },
-    "of the Fox": { bonus: { charisma: 2 } },
-    "of Vitality": { bonus: { maxHealth: 5 } },
-    "of the Titan": { bonus: { strength: 2, defense: 1 } },
-    "of Speed": { bonus: { dexterity: 2 } },
-    "of Kings": { bonus: { charisma: 1, luck: 1, willpower: 1 } },
-    "of the Void": { bonus: { willpower: 2, psyche: 2 } },
-    "of Stone": { bonus: { constitution: 2, defense: 1 } }
+window.CAVE_ROOM_TEMPLATES = {
+    "The Alchemist's Lab": {
+        width: 7, height: 5,
+        map: [' WWWWW ', 'W🧪.🧪W', 'W..W..W', 'W.🧪.🧪W', ' WWWWW ']
+    },
+    "Void Observation Deck": {
+        width: 9, height: 5,
+        map: [' WWWWWWW ', 'W.......W', 'W..Ω.Ω..W', 'W.......W', ' WWWWWWW ']
+    },
+    "Goblin Barracks": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.....W', 'W.g.g.W', 'W..📕..W', 'W.g.g.W', 'W.....W', ' WWWWW ']
+    },
+    "Skeleton Crypt": {
+        width: 9, height: 7,
+        map: [' WWWWWWW ', 'WW.....WW', 'W...s...W', 'W..s⚰️s..W', 'W...s...W', 'WW.....WW', ' WWWWWWW ']
+    },
+    "Orc Stash": {
+        width: 5, height: 5,
+        map: ['WWWWW', 'W.J.W', 'W.♥o.W', 'W.📗.W', 'WWWWW']
+    },
+    "Treasure Nook": {
+        width: 3, height: 3,
+        map: ['W★W', '$ $', 'W☆W']
+    },
+    "Flooded Grotto": {
+        width: 9, height: 7,
+        map: [' WWWWWWW ', 'W~~~~~~~W', 'W~W...W~W', 'W~W.S.W~W', 'W~W...W~W', 'W~~~~~~~W', ' WWWWWWW ']
+    },
+    "Bandit Stash": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.b.b.W', 'W.<q<.W', 'W..C..W', 'W.$.$.W', 'W.<...W', ' WWWWW ']
+    },
+    "Abandoned Camp": {
+        width: 5, height: 5,
+        map: ['WWWWW', 'W...W', 'W.J.W', 'W.+📄.W', 'WWWWW']
+    },
+    "Acolyte's Nook": {
+        width: 5, height: 5,
+        map: ['WWWWW', 'W...W', 'W.a.W', 'W.j.W', 'WWWWW']
+    },
+    "Champion's Crypt": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.<.<.W', 'W.....W', 'W..s..W', 'W..💪..W', 'W.<.<.W', ' WWWWW ']
+    },
+    "The Spider's Nest": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.🕸️.🕸️.W', 'W🕸️.@.🕸️W', 'W..🦴..W', 'W🕸️.@.🕸️W', 'W.🕸️.🕸️.W', ' WWWWW ']
+    },
+    "Cultist Summoning Circle": {
+        width: 9, height: 7,
+        map: [' WWWWWWW ', 'W.......W', 'W..c.c..W', 'W.c.Ω.c.W', 'W...z...W', 'W.......W', ' WWWWWWW ']
+    },
+    "The Dragon's Hoard": {
+        width: 9, height: 6,
+        map: [' WWWWWWW ', 'W.$$$$.$W', 'W$🐲$$📦$W', 'W.$$$$.$W', 'W.......W', ' WWWWWWW ']
+    },
+    "Forgotten Armory": {
+        width: 7, height: 5,
+        map: [' WWWWW ', 'W.....W', 'W.⚔️.🛡️.W', 'W.....W', ' WWWWW ']
+    },
+    "Torture Chamber": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.⛓️.⛓️.W', 'W..s..W', 'W.Z.Z.W', 'W..s..W', 'W.⛓️.⛓️.W', ' WWWWW ']
+    },
+    "Ritual Dais": {
+        width: 9, height: 7,
+        map: [' WWWWWWW ', 'WW.....WW', 'W..🔥.🔥..W', 'W...a...W', 'W..🔥.🔥..W', 'WW.....WW', ' WWWWWWW ']
+    },
+    "Mushroom Grotto": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.🍄.🍄.W', 'W.....W', 'W🍄.🌿.🍄W', 'W.....W', 'W.🍄.🍄.W', ' WWWWW ']
+    },
+    "The Obelisk Chamber": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.....W', 'W..|..W', 'W.|#|.W', 'W..|..W', 'W.....W', ' WWWWW ']
+    },
+    "Miner's Folly": {
+        width: 7, height: 5,
+        map: [' WWWWW ', 'W⛏️.🦴.W', 'W.....W', 'W.⛺.K.W', ' WWWWW ']
+    },
+    "Lava Vent": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W..~..W', 'W.~~~.W', 'W~🔥~.W', 'W.~~~.W', 'W..~..W', ' WWWWW ']
+    },
+    "The Forgotten Library": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.📚.📚.W', 'W.📜...W', 'W...👻p.W', 'W.....W', 'W.📚.📚.W', ' WWWWW ']
+    },
+    "The Smuggler's Den": {
+        width: 9, height: 5,
+        map: [' WWWWWWW ', 'W.🛢..📦.W', 'W..C.b..W', 'W.🛢....W', ' WWWWWWW ']
+    },
+    "Crystalline Nook": {
+        width: 5, height: 5,
+        map: ['WWWWW', 'W💎c💎cW', 'W.🔮.W', 'W💜..W', 'WWWWW']
+    },
+    "The Mad King's Tomb": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W.⚰️.⚰️.W', 'W...Z..W', 'W..👑..W', 'W......W', 'W.<..<.W', ' WWWWW ']
+    },
+    "Void Altar": {
+        width: 5, height: 5,
+        map: ['WWWWW', 'WvdvdW', 'W.⛩️.W', 'W....W', 'WWWWW']
+    },
+    // --- EXPANSION WIN: New Cave Rooms ---
+    "The Botanist's Enclave": {
+        width: 7, height: 7,
+        map: [' WWWWW ', 'W🌿...W', 'W..🍄.W', 'W.🌺..W', 'W...🌿W', 'W.....W', ' WWWWW ']
+    },
+    "Spider Queen's Lair": {
+        width: 9, height: 7,
+        map: [' WWWWWWW ', 'W🕸️.🕸️.🕸️W', 'W.🕷️.🕷️.W', 'W🕸️.📦.🕸️W', 'W...🦴..W', 'W.......W', ' WWWWWWW ']
+    },
+    "Frozen Armory": {
+        width: 7, height: 5,
+        map: [' WWWWW ', 'W🧊.🧊.W', 'W.❄️b..W', 'W..Z..W', ' WWWWW ']
+    }
 };
 
+window.CASTLE_LAYOUTS = {
+    LIBRARY_WING: {
+        spawn: { x: 10, y: 10 },
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓.........B.........▓',
+            '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
+            '▓.▓L▓.▓L▓.O.▓L▓.▓L▓.▓', 
+            '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
+            '▓.........🛏️.........▓',
+            '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
+            '▓.▓L▓.▓L▓.🎓.▓L▓.▓L▓.▓', 
+            '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
+            '▓.........W.........▓', 
+            '▓...................▓',
+            '▓...▓▓▓▓▓▓.X.▓▓▓▓▓▓.▓', 
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓'
+        ]
+    },
+    COURTYARD: {
+        spawn: { x: 35, y: 33 },
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F▓',
+            '▓...................................B.............................▓',
+            '▓.F.F.▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓.F.F▓',
+            '▓.....▓.....................▓.......▓.....................▓.......▓',
+            '▓.F.F.▓.F.F.F.F.F.F.F.F.F.F.▓.......▓.F.F.F.F.F.F.F.F.F.F.▓.F.F.F.▓',
+            '▓.....▓.F.F.F.F.F.F.F.F.F.F.▓.......▓.F.F.F.F.F.F.F.F.F.F.▓.......▓',
+            '▓.F.F.▓▓▓▓▓▓▓▓▓▓▓=▓▓▓▓▓▓▓▓▓▓▓=======▓▓▓▓▓▓▓▓▓▓▓=▓▓▓▓▓▓▓▓▓▓▓.F.F.F.▓',
+            '▓................=..................=..........=..................▓',
+            '▓.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F...=...F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F...=...F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓................=..................=..........=..................▓',
+            '▓.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F...=...F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F...=...F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓................=..................=..........=..................▓',
+            '▓.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F...=...F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F...=...F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓................=..................=..........=..................▓',
+            '▓.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F...=...F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F...=...F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓................=..................=..........=..................▓',
+            '▓.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F...=...F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F...=...F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓................=..................=..........=..................▓',
+            '▓.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F...=...F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F...=...F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓................====================..........=..................▓',
+            '▓.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓..............................................=..................▓',
+            '▓.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓..............................................=..................▓',
+            '▓.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F.F..=..F.F.F.F.F.F.F.F.▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓X▓▓▓▓▓▓▓▓▓▓▓=▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓', 
+        ]
+    },
 
-window.SHOP_INVENTORY =[
-    { name: 'Healing Potion', price: 25, stock: 10 },
-    { name: 'Mana Potion', price: 25, stock: 10 },
-    { name: 'Stamina Potion', price: 25, stock: 10 },
-    { name: 'Fire Resistance Potion', price: 50, stock: 5 },
-    { name: 'Stamina Crystal', price: 15, stock: 20 },
-    { name: 'Mana Orb', price: 20, stock: 10 },
-    { name: 'Wooden Arrow', price: 2, stock: 50 }, 
-    { name: 'Shovel', price: 40, stock: 2 },
-    { name: 'Pickaxe', price: 60, stock: 2 },
-    { name: 'Machete', price: 50, stock: 2 },
-    { name: 'Bag of Flour', price: 5, stock: 20 },
-    { name: 'Bird Egg', price: 3, stock: 10 },
-    { name: 'Jar of Honey', price: 10, stock: 5 }
-];
+    TOWER: {
+        spawn: { x: 10, y: 14 }, 
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓......▓▓▓▓▓▓▓......▓',
+            '▓....▓▓▓.....▓▓▓....▓',
+            '▓...▓▓....🛏️....▓▓...▓',
+            '▓..▓▓...🎓.......▓▓..▓',
+            '▓.▓▓......O.......▓▓.▓',
+            '▓.▓.......📖.......▓.▓',
+            '▓▓▓...T.......L...▓▓▓',
+            '▓▓........⛲........▓▓',
+            '▓▓▓...............▓▓▓',
+            '▓.▓.......W.......▓.▓',
+            '▓.▓▓.............▓▓.▓',
+            '▓..▓▓...........▓▓..▓',
+            '▓...▓▓.........▓▓...▓',
+            '▓....▓▓▓.....▓▓▓....▓',
+            '▓......▓▓...▓▓......▓',
+            '▓.........X.........▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓'
+        ]
+    },
 
-window.CASTLE_SHOP_INVENTORY =[
-    { name: 'Healing Potion', price: 25, stock: 20 },
-    { name: 'Mana Potion', price: 25, stock: 20 },
-    { name: 'Stamina Potion', price: 25, stock: 20 },
-    { name: 'Stamina Crystal', price: 15, stock: 30 },
-    { name: 'Mana Orb', price: 20, stock: 20 },
-    { name: 'Wooden Arrow', price: 2, stock: 100 }, 
-    { name: 'Brass Telescope', price: 300, stock: 1 }, 
-    { name: 'Rusty Sword', price: 100, stock: 1 },
-    { name: 'Studded Armor', price: 120, stock: 1 },
-    { name: 'Scroll: Clarity', price: 250, stock: 1 },
-    { name: 'Scroll of Siphoning', price: 400, stock: 1 },
-    { name: 'Shovel', price: 40, stock: 2 },
-    { name: 'Pickaxe', price: 60, stock: 2 },
-    { name: 'Machete', price: 150, stock: 2 },
-    { name: 'Climbing Tools', price: 250, stock: 2 },
-    { name: 'Bone Dagger', price: 80, stock: 3 },
-    { name: 'Silk Cowl', price: 200, stock: 1 },
-    { name: 'Bag of Flour', price: 5, stock: 20 },
-    { name: 'Bird Egg', price: 3, stock: 10 },
-    { name: 'Jar of Honey', price: 10, stock: 5 },
-    { name: 'Star-Metal Ore', price: 150, stock: 0 },
-    { name: 'Moonbloom Petal', price: 60, stock: 0 }
-];
+    FORTRESS: {
+        spawn: { x: 15, y: 38 },
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓...............................................................................▓',
+            '▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
+            '▓...▓.......................................................................▓...▓',
+            '▓...▓...▓▓▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓.........................................▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓▓▓▓▓▓▓...▓▓▓▓▓...▓▓▓▓▓▓▓...▓▓▓▓▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓......▓...▓...▓...▓......▓...▓...▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓......▓...▓...▓...▓......▓...▓...▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓▓▓▓▓▓▓...▓▓▓▓▓...▓▓▓▓▓▓▓...▓...▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓.........................................▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓...▓',
+            '▓...▓...▓..........▓...................................................▓...▓...▓',
+            '▓...▓...▓..........▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓',
+            '▓...▓...▓.......................................................................▓...▓',
+            '▓...▓...▓.......................................................................▓...▓',
+            '▓...▓...▓.......................................................................▓...▓',
+            '▓...▓...▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓',
+            '▓...............................................................................▓',
+            '▓...............................................................................▓',
+            '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓',
+            '▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓',
+            '▓...▓...B...▓...▓.......▓...▓.......▓...▓.......▓...▓...$.....▓...▓...$.....▓...▓',
+            '▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓',
+            '▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓',
+            '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓',
+            '▓...............................................................................▓',
+            '▓...............T.....................................................🎖️.........▓',
+            '▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
+            '▓....X..........................................................................▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
+            '▓...............▓$▓...............▓.............................................▓',
+            '▓....W..........▓$▓....W..........▓.............................................▓',
+            '▓...............▓$▓...............▓.............................................▓',
+            '▓...............▓▓▓...............▓.............................................▓',
+            '▓.................................▓.............................................▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓'
+        ]
+    },
 
-window.TRADER_INVENTORY =[
-    { name: 'Golden Apple', price: 2000, stock: 1 },
-    { name: 'Elixir of Life', price: 500, stock: 1 },
-    { name: 'Elixir of Power', price: 500, stock: 1 },
-    { name: 'Cloudseed', price: 1000, stock: 1 },
-    { name: 'Void Astrolabe', price: 1500, stock: 1 },
-    { name: 'Prime Tuning Fork', price: 500, stock: 1 },
-    { name: 'Brass Telescope', price: 300, stock: 1 }, 
-    { name: 'Obsidian Shard', price: 200, stock: 3 },
-    { name: 'Scroll: Entangle', price: 300, stock: 1 },
-    { name: 'Scroll of Homing', price: 150, stock: 2 },
-    { name: 'Tattered Map', price: 100, stock: 3 },
-    { name: 'Dragon Repellent', price: 500, stock: 1 } 
-];
+    GRAND_FORTRESS: {
+        spawn: { x: 15, y: 38 },  
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓...............................................................................▓',
+            '▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
+            '▓...▓.......................................................................▓...▓',
+            '▓...▓...▓▓▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓.........................................▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓▓▓▓▓▓▓...▓▓▓▓▓...▓▓▓▓▓▓▓...▓▓▓▓▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓......▓...▓...▓...▓......▓...▓...▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓..🧙...▓...▓...▓...▓..O...▓...▓...▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓▓▓..▓▓▓...▓▓▓▓▓...▓▓▓..▓▓▓...▓...▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓........=..................=.............▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓▓▓▓▓▓▓==▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓==▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓...▓',
+            '▓...▓...▓..........▓..........==...................==................▓...▓...▓',
+            '▓...▓...▓..........▓▓▓▓▓▓▓▓▓▓▓==▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓==▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓',
+            '▓...▓...▓.....................==...................==...................▓...▓',
+            '▓...▓...▓..................▓▓▓==▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓==▓▓▓.................▓...▓',
+            '▓...▓...▓..................▓..==.....B.........▓...==..▓.................▓...▓',
+            '▓...▓...▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓.==▓▓▓...▓.........▓..==...▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓',
+            '▓...▓.............▓...▓.......==..▓...▓.▓...▓.......▓.......▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.......==..▓...▓▓▓...▓.......▓..O....▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.......==..▓...▓.▓...▓.......▓.......▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.......==..▓...▓.▓...▓...▓▓▓▓▓▓▓▓▓...▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.......==..▓...▓.▓...▓...▓.....j.▓...▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.......==..▓...▓.▓...▓...▓...💪....▓...▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.......==..▓...▓.▓...▓...▓.......▓...▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.......==..▓...▓.▓...▓...▓▓▓▓▓▓▓▓▓...▓...▓.........▓...▓',
+            '▓...▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓==▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓',
+            '▓...............................==..............................................▓',
+            '▓.......................▓▓▓▓▓▓▓▓==▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...............................▓',
+            '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓...==..$.......▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓...▓',
+            '▓...▓.......▓...▓.......▓...▓...==..$...$...▓...▓.......▓...▓.......▓...▓...▓',
+            '▓...▓...B...▓...▓.......▓...▓...==..B...$...▓...▓.......▓...▓.......▓...▓...▓',
+            '▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓',
+            '▓...▓.......▓...▓.......▓...▓...==..$.......▓...▓.......▓...▓.......▓...▓...▓',
+            '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓==▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓...▓',
+            '▓...............................==...............🎖️...G..........................▓',
+            '▓...............T...............==....................................G.........▓',
+            '▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓.▓▓▓▓▓▓▓▓▓▓▓==▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
+            '▓....X..........................==..............................................▓', 
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓==▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
+            '▓...............▓$▓.............==▓.............................................▓',
+            '▓....W..........▓$▓....W........==▓.............................................▓',
+            '▓...............▓$▓.............==▓.............................................▓',
+            '▓...............▓▓▓.............==▓.............................................▓',
+            '▓...............................==..............................................▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓'
+        ]
 
-window.LOOT_TABLE_ARCHAEOLOGY =[
-    'bone',        
-    'bone',        
-    'pottery',     
-    'arrowhead',   
-    'idol',        
-    'tome_page'    
-];
+    },
 
-// --- END OF FILE data-items.js ---
+    SAFE_HAVEN: {
+        spawn: { x: 13, y: 11 },
+        map: [
+            'FFFFFFFFFFFFFFFFFFFFFFFFFFF',
+            'FFFFFFFFFFFFFFFFFFFFFFFFFFF',
+            'FF🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱🧱FF',
+            'FF🧱..🛏️....⛲...⚒️.✝️..🧱FF', 
+            'FF🧱.🧱🧱🧱.===.🧱🧱🧱.🧱FF',
+            'FF🧱.🧱H+..===..+§🧱.🧱FF',
+            'FF🧱.🧱🧱🧱.===.🧱🧱🧱.🧱FF',
+            'FF🧱........===......🗺️.🧱FF', 
+            'FF🧱.🧱🧱🧱.===.🧱🧱🧱.🧱FF',
+            'FF🧱.🧱T+..===..+🎓🧱.🧱FF',
+            'FF🧱.🧱🧱🧱.===.🧱🧱🧱.🧱FF',
+            'FF🧱........===........🧱FF',
+            'FF🧱🧱🧱🧱🧱.X.🧱🧱🧱🧱🧱FF',
+            'FFFFFFFFFF...FFFFFFFFFFFFFF',
+            'FFFFFFFFFF...FFFFFFFFFFFFFF'
+        ]
+    },
+
+    // --- EXPANSION WIN: New Castle Layouts ---
+    OBSERVATORY: {
+        spawn: { x: 10, y: 18 },
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓........🔭.........▓',
+            '▓.▓▓▓▓.▓▓▓▓▓▓▓.▓▓▓▓.▓',
+            '▓.▓L▓...▓O...▓...▓L▓.▓',
+            '▓.▓▓▓...▓▓▓▓▓▓...▓▓▓.▓',
+            '▓...................▓',
+            '▓.▓▓▓▓▓.▓▓▓▓▓▓▓.▓▓▓▓▓.▓',
+            '▓.▓L▓...▓.....▓...▓L▓.▓',
+            '▓.▓▓▓...▓..W..▓...▓▓▓.▓',
+            '▓.......▓.....▓.......▓',
+            '▓.......▓▓▓+▓▓▓.......▓',
+            '▓.▓▓▓▓▓.........▓▓▓▓▓.▓',
+            '▓.▓L▓.............▓L▓.▓',
+            '▓.▓▓▓......⛲......▓▓▓.▓',
+            '▓...................▓',
+            '▓..▓▓▓▓.........▓▓▓▓..▓',
+            '▓..▓🛏️▓.........▓T▓..▓',
+            '▓..▓▓▓▓.........▓▓▓▓..▓',
+            '▓.........X.........▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓'
+        ]
+    },
+    OVERGROWN_KEEP: {
+        spawn: { x: 10, y: 18 },
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓.F.F.F.F.▓.F.F.F.F.▓',
+            '▓.▓▓▓🌳▓▓.▓.▓▓🌳▓▓▓.▓',
+            '▓.F.F.F.🌳..🌳.F.F.F.▓',
+            '▓.▓▓▓▓▓.▓▓.▓▓.▓▓▓▓▓.▓',
+            '▓.🌳.................▓',
+            '▓.▓.▓▓▓.▓▓.▓▓.▓▓▓.▓.▓',
+            '▓.▓.▓F🌳..🌳..🌳F▓.▓.▓',
+            '▓...🌳..🌳🌳e🌳..🌳...▓',
+            '▓.▓.▓F🌳..🌳..🌳F▓.▓.▓',
+            '▓.▓.▓▓▓.▓▓.▓▓.▓▓▓.▓.▓',
+            '▓.🌳.................▓',
+            '▓.▓▓▓▓▓.▓▓.▓▓.▓▓▓▓▓.▓',
+            '▓.F.F.F.🌳..🌳.F.F.F.▓',
+            '▓.▓▓▓🌳▓▓.▓.▓▓🌳▓▓▓.▓',
+            '▓.F.F.F.F.B.F.F.F.F.▓',
+            '▓▓▓▓▓▓▓▓▓.X.▓▓▓▓▓▓▓▓▓'
+        ]
+    }
+};
+
+window.ATMOSPHERE_TEXT = {
+    NIGHT: [
+        "The stars are uncaringly bright tonight.",
+        "A distant wolf howl shivers through the air.",
+        "The darkness feels heavy, like a physical weight.",
+        "You hear something chittering in the dark.",
+        "The moon casts long, twisted shadows.",
+        "A sudden drop in temperature makes you shiver.",
+        "Something large moves just beyond the edge of your vision."
+    ],
+    DAWN: [
+        "The first light of dawn paints the horizon gold.",
+        "Dew glistens on the ground.",
+        "The world wakes up. Birds begin to sing.",
+        "A cold morning mist clings to the ground.",
+        "The shadows retreat as the sun begins its climb."
+    ],
+    STORM: [
+        "Thunder rattles your teeth.",
+        "The wind screams like a banshee.",
+        "Lightning illuminates the landscape in a stark flash.",
+        "The rain is torrential. It's hard to see.",
+        "The smell of ozone is thick in the air."
+    ],
+    FOREST: [
+        "The trees seem to lean in as you pass.",
+        "You spot scratch marks on a trunk. Too big for a bear.",
+        "The smell of pine and rotting leaves is thick.",
+        "Was that a face in the bark? No, just a knot.",
+        "A sudden rustle in the bushes makes you freeze.",
+        "Sunlight filters through the canopy in dusty shafts.",
+        "You step on a dry branch. It sounds as loud as a thunderclap."
+    ],
+    DESERT: [
+        "The heat rising from the sand distorts the air.",
+        "Your throat feels dry just looking at the dunes.",
+        "The wind shifts the sand, erasing your footprints.",
+        "Bleached bones poke out from a dune.",
+        "You spot a shimmering mirage on the horizon.",
+        "The silence of the desert is absolute.",
+        "A scuttling sound comes from beneath the sand."
+    ],
+    MOUNTAIN: [
+        "The air is thin and sharp here.",
+        "Loose gravel clatters down the cliffside.",
+        "You feel vertiginous looking down.",
+        "The wind howls through the crags.",
+        "You find a massive, three-toed footprint in the snow.",
+        "Clouds obscure the peaks above you.",
+        "A distant rumble warns of falling rock."
+    ],
+    SWAMP: [
+        "Bubbles rise from the muck with a foul smell.",
+        "Insects swarm around your head.",
+        "The ground feels spongy and unstable.",
+        "You see ripples in the water. Something is moving.",
+        "A strange, glowing light bobs over the water nearby.",
+        "The trees here are draped in grey, weeping moss.",
+        "You pull your boot out of the mud with a loud squelch."
+    ],
+    RUIN: [
+        "The stones here tell a story of violence and forgotten ages.",
+        "You hear a faint scratching sound from behind the wall.",
+        "The air smells of ancient dust and copper.",
+        "A cold draft whistles through the crumbling masonry."
+    ],
+    DEADLANDS: [
+        "A gust of wind kicks up a cloud of choking ash.",
+        "The silence here is absolute. Not a single insect buzzes.",
+        "You step on something brittle. A dry branch? Or a bone?",
+        "The sky above has a bruised, sickly purple hue.",
+        "A perfectly preserved, petrified tree stands alone in the dust."
+    ],
+    UNDERWORLD: [
+        "The ceiling is lost to the absolute darkness above.",
+        "A deep, subsonic rumble vibrates through the soles of your boots.",
+        "You hear the distinct sound of water dripping... but you see no pools.",
+        "Gravity feels unnaturally heavy down here.",
+        "The darkness here feels older than the sun."
+    ],
+    OCEAN: [
+        "The endless blue horizon makes you feel incredibly small.",
+        "A school of silver fish darts away from your hull.",
+        "The rhythmic rocking of the waves is almost hypnotic.",
+        "Salt spray stings your eyes.",
+        "You hear a deep, resonant hum echoing up from the depths."
+    ],
+    VOLCANO: [
+        "The heat radiating from the rocks blisters your skin.",
+        "A vent of steam hisses violently, smelling of rotten eggs.",
+        "The air ripples and warps with the intense heat.",
+        "You wipe sweat from your eyes. It stings.",
+        "A distant crack of rock alerts you to shifting magma flows."
+    ],
+    // --- EXPANSION WIN: New Atmosphere Tags ---
+    CASTLE: [
+        "Your footsteps echo loudly against the cold stone.",
+        "The tapestries on the walls are moth-eaten and faded.",
+        "A draft chills the air, carrying the faint scent of old iron.",
+        "The silence of these halls feels oppressive.",
+        "You notice deep claw marks gouged into the masonry."
+    ],
+    SKYREALM: [
+        "The air is dangerously thin here.",
+        "You look down and see the curve of the world.",
+        "The clouds below look like an ocean of white.",
+        "A sudden, freezing wind threatens to push you over the edge.",
+        "The stars above feel close enough to touch."
+    ]
+};
+
+// --- END OF FILE data-maps.js ---
