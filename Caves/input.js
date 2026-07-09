@@ -226,12 +226,11 @@ function handleInput(key) {
 
     // --- DROP MODE ---
     if (gameState.isDroppingItem) {
-        // Ensure they only drop items via numbers 1-9
         const keyNum = parseInt(key);
-        if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
-            if (typeof handleItemDrop === 'function') handleItemDrop(key);
+        if (!isNaN(keyNum) && keyNum >= 1) {
+            if (typeof handleItemDrop === 'function') handleItemDrop(keyNum.toString()); // Force string for handleItemDrop
         } else {
-            logMessage("{gray:Press 1-9 to drop an item, or Esc to cancel.}");
+            logMessage("{gray:Select an item to drop, or press Esc to cancel.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         }
         return;
@@ -300,9 +299,9 @@ function handleInput(key) {
         return;
     }
 
-    // --- NUMBER KEYS (1-9) ---
+    // --- NUMBER KEYS & UI INVENTORY CLICKS ---
     const keyNum = parseInt(key);
-    if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
+    if (!isNaN(keyNum) && keyNum >= 1) {
         if (gameState.inventoryMode) {
             if (typeof useInventoryItem === 'function') useInventoryItem(keyNum - 1);
             return;
