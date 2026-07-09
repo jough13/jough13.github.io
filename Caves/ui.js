@@ -477,6 +477,8 @@ window.sortInventory = function() {
     // 1. Consolidate stacks (Merge partial stacks of arrows, meat, logs, etc)
     const consolidated = [];
     gameState.player.inventory.forEach(item => {
+        if (!item) return;
+        
         const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(item.type);
         
         const existing = consolidated.find(i => 
