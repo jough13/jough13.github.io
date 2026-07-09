@@ -210,12 +210,13 @@ window.depositAllMaterials = function() {
 
         for (let i = player.inventory.length - 1; i >= 0; i--) {
             const item = player.inventory[i];
+            if (!item) continue; // 🚨 THE GHOST GUARD
             
             // BUG FIX: Prevent depositing equipped ammo/consumables!
             if (item.isEquipped) continue;
             if (!['junk', 'ingredient', 'trade'].includes(item.type)) continue;
 
-            const existingBankItem = player.bank.find(bankItem => bankItem.name === item.name);
+            const existingBankItem = player.bank.find(bankItem => bankItem && bankItem.name === item.name);
 
             if (!existingBankItem && player.bank.length >= window.MAX_STASH_SLOTS) {
                 logMessage("{red:The vault became full during the mass deposit.}");
@@ -280,13 +281,14 @@ window.quickStackToStash = function() {
         // Loop backwards for safe splicing
         for (let i = player.inventory.length - 1; i >= 0; i--) {
             const item = player.inventory[i];
+            if (!item) continue; // 🚨 THE GHOST GUARD
             
             // BUG FIX: Prevent quick-stacking equipped items (like arrows!)
             if (item.isEquipped) continue;
             if (!window.isStackableItem(item.type)) continue;
 
             // Check if this item already exists in the stash
-            const existingBankItem = player.bank.find(bankItem => bankItem.name === item.name);
+            const existingBankItem = player.bank.find(bankItem => bankItem && bankItem.name === item.name);
 
             // If it exists in the stash, merge the stacks!
             if (existingBankItem) {
@@ -337,6 +339,7 @@ window.sortStash = function(playSound = true) {
         // 1. Consolidate stacks in case there are duplicates
         const consolidated = [];
         player.bank.forEach(item => {
+            if (!item) return; // 🚨 THE GHOST GUARD
             const isStackable = window.isStackableItem(item.type);
             const existing = consolidated.find(i => i.name === item.name && isStackable);
             
@@ -449,6 +452,7 @@ function renderStash() {
         stashPlayerList.innerHTML = '<li class="italic text-sm text-gray-500 p-3 border border-gray-700 rounded-lg bg-black bg-opacity-20 text-center shadow-inner font-serif">Your pockets hold only dust.</li>';
     } else {
         player.inventory.forEach((item, index) => {
+            if (!item) return; // 🚨 GHOST GUARD
             const li = document.createElement('li');
             li.className = 'shop-item hover:border-green-500 transition-colors duration-150';
             li.title = generateTooltip(item); 
@@ -503,6 +507,7 @@ function renderStash() {
         stashBankList.innerHTML = '<li class="italic text-sm text-gray-500 p-3 border border-gray-700 rounded-lg bg-black bg-opacity-20 text-center shadow-inner font-serif">The dimensional vault echoes with emptiness.</li>';
     } else {
         bank.forEach((item, index) => {
+            if (!item) return; // 🚨 GHOST GUARD
             const li = document.createElement('li');
             li.className = 'shop-item hover:border-blue-500 transition-colors duration-150';
             li.title = generateTooltip(item); 
