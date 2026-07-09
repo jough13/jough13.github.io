@@ -949,6 +949,7 @@ function openSkillTrainerModal() {
 /**
  * Renders the skill trainer modal using DocumentFragment
  */
+
 function renderSkillTrainerModal() {
     const listDiv = _menuDOMCache.getTrainerList();
     const pointsDiv = _menuDOMCache.getTrainerPoints();
@@ -956,8 +957,8 @@ function renderSkillTrainerModal() {
     
     listDiv.innerHTML = ''; 
     const player = gameState.player;
-    pointsDiv.textContent = `Stat Points: ${player.statPoints || 0}`;
-    const canAfford = (player.statPoints || 0) > 0;
+    pointsDiv.textContent = `Mastery Points: ${player.talentPoints || 0}`;
+    const canAfford = (player.talentPoints || 0) > 0;
     const MAX_LEVEL = 10;
     
     const fragment = document.createDocumentFragment();
@@ -976,13 +977,13 @@ function renderSkillTrainerModal() {
         else if (currentLevel === 0) {
             levelText = '<span class="text-[10px] uppercase font-bold tracking-widest text-red-500">Not Learned</span>';
             if (player.level >= skillData.requiredLevel) {
-                buttonHtml = `<button style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 border-b-2 border-blue-800 active:border-b-0 active:mt-0.5" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Learn (1 SP)</button>`;
+                buttonHtml = `<button style="transform: translate3d(0,0,0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 border-b-2 border-blue-800 active:border-b-0 active:mt-0.5" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Learn (1 MP)</button>`;
             } else {
                 buttonHtml = `<button class="bg-gray-800 text-gray-500 px-3 py-2 rounded text-xs font-bold opacity-75 cursor-not-allowed border border-gray-700 shadow-inner" disabled>Requires Lvl ${skillData.requiredLevel}</button>`;
             }
         } else {
             levelText = `<span class="text-[10px] uppercase font-bold tracking-widest text-blue-400">Level: ${currentLevel} / ${MAX_LEVEL}</span>`;
-            buttonHtml = `<button style="transform: translate3d(0,0,0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 border-b-2 border-green-800 active:border-b-0 active:mt-0.5" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Upgrade (1 SP)</button>`;
+            buttonHtml = `<button style="transform: translate3d(0,0,0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 disabled:opacity-50 border-b-2 border-green-800 active:border-b-0 active:mt-0.5" data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Upgrade (1 MP)</button>`;
         }
         
         const safeName = typeof escapeHtml === 'function' ? escapeHtml(skillData.name) : skillData.name;
@@ -1024,6 +1025,7 @@ function initSkillTrainerListeners() {
  * Handles the logic of spending a stat point to learn or level up a skill.
  * @param {string} skillId - The ID of the skill to learn.
  */
+
 function handleLearnSkill(skillId) {
     if (isTrainerProcessing) return;
     isTrainerProcessing = true;
@@ -1032,7 +1034,7 @@ function handleLearnSkill(skillId) {
         const player = gameState.player;
         const skillData = typeof window.SKILL_DATA !== 'undefined' ? window.SKILL_DATA[skillId] : null;
 
-        if ((player.statPoints || 0) <= 0) {
+        if ((player.talentPoints || 0) <= 0) {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
@@ -1049,7 +1051,7 @@ function handleLearnSkill(skillId) {
             return;
         }
 
-        player.statPoints--;
+        player.talentPoints--;
 
         const safeName = typeof escapeHtml === 'function' ? escapeHtml(skillData.name) : skillData.name;
 
@@ -1067,14 +1069,14 @@ function handleLearnSkill(skillId) {
             ParticleSystem.createFloatingText(player.x, player.y, "SKILL UP!", "#60a5fa");
         }
 
-        // 🚨 FIREBASE OPTIMIZATION: Debounce the save
+        // Debounce the save
         if (typeof triggerDebouncedSave === 'function') {
             triggerDebouncedSave({
-                statPoints: player.statPoints,
+                talentPoints: player.talentPoints,
                 skillbook: player.skillbook
             });
         } else if (typeof playerRef !== 'undefined' && playerRef) {
-            playerRef.update({ statPoints: player.statPoints, skillbook: player.skillbook });
+            playerRef.update({ talentPoints: player.talentPoints, skillbook: player.skillbook });
         }
 
         if (typeof renderStats === 'function') renderStats(); 
