@@ -65,6 +65,123 @@ const _modalCache = {
     isAnyOpen: () => !!_modalCache.getActive()
 };
 
+// PERFORMANCE WIN: Static memory allocation for Atmospheric Wait flavors
+// Prevents massive V8 garbage collection churn when holding down the spacebar
+window.WAIT_FLAVORS = {
+    DEFAULT: [
+        "You pause to catch your breath.",
+        "You listen to the sounds of the world.",
+        "You stand perfectly still.",
+        "You gather your thoughts.",
+        "You wait a moment.",
+        "You stare into the middle distance.",
+        "You adjust the straps of your gear."
+    ],
+    MOUNTED: [
+        "You pat the neck of your %MOUNT%.",
+        "Your %MOUNT% huffs restlessly.",
+        "Your %MOUNT% shifts its weight.",
+        "You adjust your grip on the reins."
+    ],
+    SAILING: [
+        "The ship rocks gently on the waves.", 
+        "You check the rigging.", 
+        "The sea breeze fills the sails.",
+        "Salt spray mists across the deck.",
+        "You listen to the timber of the hull creaking."
+    ],
+    BOATING: [
+        "Your canoe drifts slightly.", 
+        "You rest your paddle across your lap.", 
+        "Water ripples against the hull.",
+        "You check the bottom for leaks."
+    ],
+    MULTIVERSE: [
+        "You wait, feeling the alien gravity of this dimension.",
+        "The sky above fractures and reforms as you rest.",
+        "You catch your breath. The air here tastes like static.",
+        "The silence of this realm is utterly unnatural.",
+        "A color that doesn't exist flashes in the corner of your eye."
+    ],
+    FROZEN_WASTES: [
+        "Your breath freezes before it leaves your lips.",
+        "You brush rime-ice from your shoulders.",
+        "The cold here is absolute and unforgiving.",
+        "You shiver violently as the magical chill bites deep."
+    ],
+    RAIN: [
+        "You pause, letting the rain wash over you.", 
+        "You listen to the drumming of the rain.", 
+        "Water runs down your face.", 
+        "The mud sucks at your boots."
+    ],
+    STORM: [
+        "You wait, feeling the thunder rattle your teeth.", 
+        "Lightning briefly illuminates the landscape.", 
+        "The smell of ozone is thick and dizzying."
+    ],
+    SNOW: [
+        "You watch your breath fog in the freezing air.", 
+        "You wait, letting the snow settle.", 
+        "The silence of the snow is deafening.", 
+        "You brush a layer of fresh powder from your gear."
+    ],
+    FOG: [
+        "You wait, peering into the thick mist.", 
+        "The fog clings to your clothes like a wet shroud.", 
+        "Shadows seem to dance in the thick gray soup."
+    ],
+    BLOOD_MOON: [
+        "You freeze, hoping the blood-crazed beasts don't see you.", 
+        "You wait in the bloody crimson light, trembling.",
+        "The air smells of rust and violence.",
+        "You hear something screaming in the distance."
+    ],
+    ECLIPSE: [
+        "You stand in the absolute dark. The stars are hidden.",
+        "The unnatural night presses in on all sides.",
+        "You hear the whispering of things that fear the light."
+    ],
+    SURGE: [
+        "The hair on your arms stands up as magic surges.",
+        "The ground hums with immense arcane pressure.",
+        "Sparks dance across your fingertips."
+    ],
+    CAVE_VOID: [
+        "You listen to the deafening silence of the Void.", 
+        "You feel like you are being watched by a thousand unblinking eyes.", 
+        "A distant, structural groan echoes through the nothingness."
+    ],
+    CAVE_FIRE: [
+        "You wipe sweat from your brow in the stifling heat.", 
+        "The magma bubbles and pops nearby.", 
+        "The sulfur stings your eyes."
+    ],
+    CAVE_ICE: [
+        "You shiver uncontrollably in the glacial cold.", 
+        "Ice cracks echoing like gunshots in the dark.", 
+        "Your breath crystallizes instantly."
+    ],
+    CAVE_DEFAULT: [
+        "You listen to the echoing water dripping in the dark.", 
+        "You pause, straining your eyes against the gloom.", 
+        "You check the shadows for movement.", 
+        "The stale air is heavy in your lungs."
+    ],
+    UNDERWORLD: [
+        "You stand still. The crushing weight of the earth above presses down.",
+        "You pause. The shadows here feel alive.",
+        "A distant rumble echoes through the cavern.",
+        "You feel the tectonic plates shifting miles below."
+    ],
+    CASTLE: [
+        "You admire the ancient stonework.",
+        "You pause in the quiet halls.",
+        "You listen for the sound of marching boots.",
+        "Dust motes dance in a faint shaft of light."
+    ]
+};
+
 // --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
 
@@ -374,78 +491,52 @@ function handleInput(key) {
     // --- ATMOSPHERIC WAITING ---
     if ([' ', '5', 'numpad5', 'clear', '.'].includes(lowerKey)) {
         
-        // LORE & CONTENT WIN: Massively Expanded, Biome/Event-Aware Atmospheric Waiting
-        let waitFlavors = [
-            "You pause to catch your breath.",
-            "You listen to the sounds of the world.",
-            "You stand perfectly still.",
-            "You gather your thoughts.",
-            "You wait a moment.",
-            "You stare into the middle distance.",
-            "You adjust the straps of your gear."
-        ];
+        let waitFlavors = window.WAIT_FLAVORS.DEFAULT;
 
         // --- VEHICLE & MOUNT SYNERGIES ---
         if (gameState.player.isMounted && gameState.player.companion) {
-            waitFlavors = [
-                `You pat the neck of your ${gameState.player.companion.name}.`,
-                `Your ${gameState.player.companion.name} huffs restlessly.`,
-                `Your ${gameState.player.companion.name} shifts its weight.`
-            ];
+            waitFlavors = window.WAIT_FLAVORS.MOUNTED;
         } else if (gameState.player.isSailing) {
-            waitFlavors = ["The ship rocks gently on the waves.", "You check the rigging.", "The sea breeze fills the sails."];
+            waitFlavors = window.WAIT_FLAVORS.SAILING;
         } else if (gameState.player.isBoating) {
-            waitFlavors = ["Your canoe drifts slightly.", "You rest your paddle across your lap.", "Water ripples against the hull."];
+            waitFlavors = window.WAIT_FLAVORS.BOATING;
         } 
         // --- MULTIVERSE LORE ---
         else if (gameState.currentRealm !== 0 && gameState.currentRealm) {
-            waitFlavors = [
-                "You wait, feeling the alien gravity of this dimension.",
-                "The sky above fractures and reforms as you rest.",
-                "You catch your breath. The air here tastes like static.",
-                "The silence of this realm is utterly unnatural."
-            ];
-            // Mutator specifics
             if (gameState.realmMutators && gameState.realmMutators.includes('frozen_wastes')) {
-                waitFlavors.push("Your breath freezes before it leaves your lips.");
+                waitFlavors = window.WAIT_FLAVORS.FROZEN_WASTES;
+            } else {
+                waitFlavors = window.WAIT_FLAVORS.MULTIVERSE;
             }
         }
         else if (gameState.mapMode === 'overworld') {
-            if (gameState.weather === 'rain') waitFlavors.push("You pause, letting the rain wash over you.", "You listen to the drumming of the rain.", "Water runs down your face.");
-            if (gameState.weather === 'storm') waitFlavors.push("You wait, feeling the thunder rattle your teeth.", "Lightning briefly illuminates the landscape.");
-            if (gameState.weather === 'snow') waitFlavors.push("You watch your breath fog in the freezing air.", "You wait, letting the snow settle.", "The silence of the snow is deafening.");
-            if (gameState.weather === 'fog') waitFlavors.push("You wait, peering into the thick mist.", "The fog clings to your clothes like a wet shroud.");
-            
-            // Extreme Danger State Overrides
-            if (gameState.isBloodMoon) waitFlavors = [
-                "You freeze, hoping the blood-crazed beasts don't see you.", 
-                "You wait in the bloody crimson light, trembling.",
-                "The air smells of rust and violence.",
-                "You hear something screaming in the distance."
-            ];
-            if (gameState.isEclipse) waitFlavors.push("You stand in the absolute dark. The stars are hidden.");
-            if (gameState.isLeylineSurge) waitFlavors.push("The hair on your arms stands up as magic surges.");
+            if (gameState.isBloodMoon) waitFlavors = window.WAIT_FLAVORS.BLOOD_MOON;
+            else if (gameState.isEclipse) waitFlavors = window.WAIT_FLAVORS.ECLIPSE;
+            else if (gameState.isLeylineSurge) waitFlavors = window.WAIT_FLAVORS.SURGE;
+            else if (gameState.weather === 'rain') waitFlavors = window.WAIT_FLAVORS.RAIN;
+            else if (gameState.weather === 'storm') waitFlavors = window.WAIT_FLAVORS.STORM;
+            else if (gameState.weather === 'snow') waitFlavors = window.WAIT_FLAVORS.SNOW;
+            else if (gameState.weather === 'fog') waitFlavors = window.WAIT_FLAVORS.FOG;
         } 
         else if (gameState.mapMode === 'dungeon') {
-            waitFlavors.push("You listen to the echoing water dripping in the dark.");
-            waitFlavors.push("You pause, straining your eyes against the gloom.");
-            waitFlavors.push("You check the shadows for movement.");
-            if (gameState.currentCaveTheme === 'VOID') waitFlavors.push("You listen to the deafening silence of the Void.", "You feel like you are being watched by a thousand unblinking eyes.");
-            if (gameState.currentCaveTheme === 'FIRE') waitFlavors.push("You wipe sweat from your brow in the stifling heat.", "The magma bubbles and pops nearby.");
-            if (gameState.currentCaveTheme === 'ICE') waitFlavors.push("You shiver uncontrollably in the glacial cold.");
+            if (gameState.currentCaveTheme === 'VOID') waitFlavors = window.WAIT_FLAVORS.CAVE_VOID;
+            else if (gameState.currentCaveTheme === 'FIRE') waitFlavors = window.WAIT_FLAVORS.CAVE_FIRE;
+            else if (gameState.currentCaveTheme === 'ICE') waitFlavors = window.WAIT_FLAVORS.CAVE_ICE;
+            else waitFlavors = window.WAIT_FLAVORS.CAVE_DEFAULT;
         } 
         else if (gameState.mapMode === 'underworld') {
-            waitFlavors.push("You stand still. The crushing weight of the earth above presses down.");
-            waitFlavors.push("You pause. The shadows here feel alive.");
-            waitFlavors.push("A distant rumble echoes through the cavern.");
+            waitFlavors = window.WAIT_FLAVORS.UNDERWORLD;
         }
         else if (gameState.mapMode === 'castle') {
-            waitFlavors.push("You admire the ancient stonework.");
-            waitFlavors.push("You pause in the quiet halls.");
-            waitFlavors.push("You listen for the sound of marching boots.");
+            waitFlavors = window.WAIT_FLAVORS.CASTLE;
         }
 
-        const msg = waitFlavors[Math.floor(Math.random() * waitFlavors.length)];
+        // LORE WIN: O(1) Dynamic String Interpolation for mounts!
+        let msg = waitFlavors[Math.floor(Math.random() * waitFlavors.length)];
+        if (msg.includes('%MOUNT%')) {
+            msg = msg.replace(/%MOUNT%/g, gameState.player.companion ? gameState.player.companion.name : 'companion');
+        }
+
         logMessage(`{gray:${msg}}`);
         
         // Better visual feedback for passing time!
