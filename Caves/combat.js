@@ -972,7 +972,7 @@ async function processOverworldEnemyTurns() {
         }
     }
 
-    if (movesQueued) {
+    if (movesQueued && gameState.player.health > 0) { 
         if (typeof rtdb !== 'undefined') rtdb.ref().update(multiPathUpdate).catch(err => console.error("AI Sync Error:", err));
     }
 
