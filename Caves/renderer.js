@@ -904,7 +904,7 @@ const render = () => {
     // --- SETUP ---
     if (!cachedThemeColors.canvasBg) updateThemeColors();
     const { canvasBg } = cachedThemeColors;
-    const hasLens = gameState.player.inventory.some(i => i.name === 'Spirit Lens');
+    const hasLens = gameState.player.inventory.some(i => i && i.name === 'Spirit Lens'); // 🚨 GHOST GUARD
     const now = Date.now();
 
     // 1. Clear & Fill Background
@@ -1014,7 +1014,7 @@ const render = () => {
     if (gameState.mapMode === 'overworld') {
         for (const key in gameState.sharedEnemies) {
             const enemy = gameState.sharedEnemies[key];
-            if (enemy && enemy.pendingAttacks) {
+            if (enemy && enemy.pendingAttacks) { // 🚨 GHOST GUARD
                 for (let j = 0; j < enemy.pendingAttacks.length; j++) {
                     const t = enemy.pendingAttacks[j];
                     const screenX = t.x - startX;
@@ -1029,7 +1029,7 @@ const render = () => {
         const len = gameState.instancedEnemies.length;
         for (let i = 0; i < len; i++) {
             const enemy = gameState.instancedEnemies[i];
-            if (enemy && enemy.pendingAttacks) {
+            if (enemy && enemy.pendingAttacks) { // 🚨 GHOST GUARD
                 for (let j = 0; j < enemy.pendingAttacks.length; j++) {
                     const t = enemy.pendingAttacks[j];
                     const screenX = t.x - startX;
@@ -1107,7 +1107,7 @@ const render = () => {
         const len = gameState.instancedEnemies.length;
         for (let i = 0; i < len; i++) {
             const enemy = gameState.instancedEnemies[i];
-            if (!enemy) continue;
+            if (!enemy) continue; // 🚨 GHOST GUARD
             
             const { vx, vy } = lerpEntity(enemy);
             const screenX = vx - startX;
@@ -1122,7 +1122,7 @@ const render = () => {
         const opKeys = Object.keys(otherPlayers);
         for (let i = 0; i < opKeys.length; i++) {
             const op = otherPlayers[opKeys[i]];
-            if (!op || op.mapMode !== gameState.mapMode || op.mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
+            if (!op || op.mapMode !== gameState.mapMode || op.mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue; // 🚨 GHOST GUARD
             
             const { vx, vy } = lerpEntity(op);
             const screenX = (vx - startX) * TILE_SIZE;
@@ -1219,7 +1219,7 @@ const render = () => {
     // --- 4. OPTIMIZED LIGHTING OVERLAY ---
     let ambientLight = 0.0;
     let baseRadius = 10;
-    const hasTorch = gameState.player.inventory.some(item => item.name === 'Torch');
+    const hasTorch = gameState.player.inventory.some(item => item && item.name === 'Torch'); // 🚨 GHOST GUARD
     const torchBonus = hasTorch ? 6 : 0;
     const candleBonus = (gameState.player.candlelightTurns > 0) ? 8 : 0;
 
@@ -1404,6 +1404,7 @@ const render = () => {
 
     // --- Boss Health Bars ---
     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+        // 🚨 GHOST GUARD
         const bosses = gameState.instancedEnemies.filter(e => e && e.isBoss);
         if (bosses.length > 0) {
             let activeBoss = bosses[0];
@@ -1411,7 +1412,7 @@ const render = () => {
             
             for (let i = 0; i < bosses.length; i++) {
                 const b = bosses[i];
-                if (!b) continue;
+                if (!b) continue; // 🚨 GHOST GUARD
                 const d = Math.sqrt(Math.pow(b.x - gameState.player.x, 2) + Math.pow(b.y - gameState.player.y, 2));
                 if (d < minDist) {
                     minDist = d;
@@ -1443,8 +1444,12 @@ const render = () => {
                 grad.addColorStop(0, '#ef4444');
                 grad.addColorStop(1, '#991b1b');
                 
+                // JUICE WIN: Smooth lerp the health bar width for a premium feel
+                if (typeof activeBoss._visualHpPct === 'undefined') activeBoss._visualHpPct = healthPercent;
+                activeBoss._visualHpPct += (healthPercent - activeBoss._visualHpPct) * 0.1;
+                
                 ctx.fillStyle = grad;
-                ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+                ctx.fillRect(barX, barY, barWidth * activeBoss._visualHpPct, barHeight);
 
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 18px monospace';
