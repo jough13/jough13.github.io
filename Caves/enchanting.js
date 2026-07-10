@@ -43,7 +43,8 @@ function renderEnchantingModal() {
     enchantList.innerHTML = '';
 
     const player = gameState.player;
-    const dustItem = player.inventory.find(i => i.name === 'Arcane Dust');
+    // 🚨 GHOST GUARD
+    const dustItem = player.inventory.find(i => i && i.name === 'Arcane Dust');
     const dustAmount = dustItem ? dustItem.quantity : 0;
 
     // LORE WIN: Dynamic Altar UI Flavor
@@ -63,6 +64,9 @@ function renderEnchantingModal() {
     const enchFrag = document.createDocumentFragment();
 
     player.inventory.forEach((item, index) => {
+        // 🚨 GHOST GUARD: Skip corrupted Firebase sparse array slots
+        if (!item) return;
+
         // Skip equipped items to prevent catastrophic errors
         if (item.isEquipped) return;
 
@@ -161,7 +165,8 @@ function handleDisenchant(index) {
         player.inventory.splice(index, 1);
 
         // Give Dust
-        const existingDust = player.inventory.find(i => i.name === 'Arcane Dust');
+        // 🚨 GHOST GUARD
+        const existingDust = player.inventory.find(i => i && i.name === 'Arcane Dust');
         if (existingDust) {
             existingDust.quantity += yieldAmt;
         } else {
@@ -216,7 +221,8 @@ function handleEnchant(index) {
         const currentRarity = item._rarity || 'normal';
         const cost = UPGRADE_COSTS[currentRarity];
 
-        const dustIdx = player.inventory.findIndex(i => i.name === 'Arcane Dust');
+        // 🚨 GHOST GUARD
+        const dustIdx = player.inventory.findIndex(i => i && i.name === 'Arcane Dust');
         if (dustIdx === -1 || player.inventory[dustIdx].quantity < cost) {
             logMessage("{red:You do not have enough Arcane Dust.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
