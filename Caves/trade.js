@@ -72,14 +72,14 @@ window.BASE_ITEM_VALUES = window.BASE_ITEM_VALUES || {
  */
 function calculateItemValue(item, player) {
     // 1. Try to find the item in the current shop to get its native buy price
-    let shopItem = activeShopInventory.find(sItem => sItem.name === item.name);
+    let shopItem = activeShopInventory.find(sItem => sItem && sItem.name === item.name); // 🚨 GHOST GUARD
 
     // BUG FIX & ROBUSTNESS: 
     // If we are trying to sell a magical/crafted item (e.g. "Masterwork Iron Sword"),
     // it won't perfectly match "Iron Sword" in the shop. We must fall back to its template!
     if (!shopItem && item.templateId && window.ITEM_DATA && window.ITEM_DATA[item.templateId]) {
         const baseName = window.ITEM_DATA[item.templateId].name;
-        shopItem = activeShopInventory.find(sItem => sItem.name === baseName);
+        shopItem = activeShopInventory.find(sItem => sItem && sItem.name === baseName); // 🚨 GHOST GUARD
     }
 
     // 2. Establish Base Price
@@ -148,7 +148,7 @@ function handleBuyItem(itemName, amount = 1) {
 
     try {
         const player = gameState.player;
-        const shopItem = activeShopInventory.find(item => item.name === itemName);
+        const shopItem = activeShopInventory.find(item => item && item.name === itemName); // 🚨 GHOST GUARD
         const itemKey = getTradeItemKey(itemName); 
         const itemTemplate = window.ITEM_DATA ? window.ITEM_DATA[itemKey] : null;
 
@@ -194,7 +194,7 @@ function handleBuyItem(itemName, amount = 1) {
             return;
         }
 
-        const existingStack = player.inventory.find(item => item.name === itemName && !item.isEquipped);
+        const existingStack = player.inventory.find(item => item && item.name === itemName && !item.isEquipped); // 🚨 GHOST GUARD
         const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
 
         // 🚨 BUG FIX: Accurate Capacity Checking for bulk-buying unstackable gear!
@@ -269,7 +269,7 @@ function handleSellItem(itemIndex, amount = 1) {
         if (itemIndex < 0 || itemIndex >= player.inventory.length) return;
         
         const itemToSell = player.inventory[itemIndex];
-        if (!itemToSell) return; 
+        if (!itemToSell) return; // 🚨 GHOST GUARD
 
         if (itemToSell.isEquipped) {
             logMessage("{red:You cannot sell an item you are wearing!}");
@@ -349,6 +349,8 @@ function handleSellAllItems() {
 
         for (let i = 0; i < player.inventory.length; i++) {
             const item = player.inventory[i];
+            
+            if (!item) continue; // 🚨 GHOST GUARD
 
             if (item.isEquipped) {
                 remainingInventory.push(item);
@@ -498,6 +500,8 @@ function renderShop() {
 
     // 4. Populate "Buy" list
     activeShopInventory.forEach(item => {
+        if (!item) return; // 🚨 GHOST GUARD
+        
         const itemKey = getTradeItemKey(item.name);
         const baseBuyPrice = item.price;
         const itemTemplate = window.ITEM_DATA ? window.ITEM_DATA[itemKey] : null;
@@ -553,6 +557,7 @@ function renderShop() {
         shopSellList.innerHTML = '<li class="shop-item-details italic text-sm text-gray-500 border border-gray-700 p-4 rounded-lg bg-black bg-opacity-20 text-center shadow-inner font-serif">Your pockets hold only dust.</li>';
     } else {
         gameState.player.inventory.forEach((item, index) => {
+            if (!item) return; // 🚨 GHOST GUARD
             const { sellPrice, regionMult } = calculateItemValue(item, gameState.player);
             
             // 🚨 SECURITY WIN: XSS Prevention for rendering
@@ -610,7 +615,8 @@ function renderShop() {
     if (sellHeader) {
         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
         
-        const hasJunk = gameState.player.inventory.some(i => !i.isEquipped && (i.type === 'junk' || i.type === 'trade'));
+        // 🚨 GHOST GUARD
+        const hasJunk = gameState.player.inventory.some(i => i && !i.isEquipped && (i.type === 'junk' || i.type === 'trade'));
         const btnClass = hasJunk ? "bg-red-700 hover:bg-red-600 text-white cursor-pointer shadow-md" : "bg-gray-800 text-gray-500 opacity-50 cursor-not-allowed border border-gray-700 shadow-inner";
 
         sellHeader.innerHTML = `
