@@ -372,6 +372,7 @@ function updateCreationSummary() {
     let stats = [];
     let calcCon = 1, calcWits = 1, calcEnd = 1, calcWill = 1;
 
+    // 🚨 GHOST GUARD: Ensure the underlying stats object actually exists before looping
     if (raceData && raceData.stats) {
         for(let s in raceData.stats) {
             stats.push(`+${raceData.stats[s]} ${s.charAt(0).toUpperCase() + s.slice(1)} (Race)`);
@@ -763,8 +764,8 @@ async function finalizeCharacterCreation() {
     }
 
     // 6. Auto-Equip
-    const weapon = player.inventory.find(i => i.type === 'weapon');
-    const armor = player.inventory.find(i => i.type === 'armor');
+    const weapon = player.inventory.find(i => i && i.type === 'weapon'); // 🚨 GHOST GUARD
+    const armor = player.inventory.find(i => i && i.type === 'armor'); // 🚨 GHOST GUARD
     if (weapon) { player.equipment.weapon = weapon; weapon.isEquipped = true; }
     if (armor) { player.equipment.armor = armor; armor.isEquipped = true; }
 
