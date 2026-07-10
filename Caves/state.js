@@ -10,17 +10,19 @@ window.MAX_INVENTORY_SLOTS = 9;
 window.getInventoryCap = function(player) {
     let cap = window.MAX_INVENTORY_SLOTS;
     
-    if (player && player.equipment) {
+    // 🚨 BUG FIX & ROBUSTNESS WIN: Added strict null/type guards 
+    // This prevents UI crashes if Firebase introduces a ghost slot (null) into the equipment object
+    if (player && player.equipment && typeof player.equipment === 'object') {
         for (const slot in player.equipment) {
             const item = player.equipment[slot];
-            if (item && item.statBonuses && item.statBonuses.carryCapacity) {
+            if (item && typeof item === 'object' && item.statBonuses && item.statBonuses.carryCapacity) {
                 cap += item.statBonuses.carryCapacity;
             }
         }
     }
     
     // Mount Saddlebag Hook
-    if (player && player.isMounted && player.companion && player.companion.carryCapacity) {
+    if (player && player.isMounted && player.companion && typeof player.companion === 'object' && player.companion.carryCapacity) {
         cap += player.companion.carryCapacity;
     }
     
