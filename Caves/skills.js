@@ -196,11 +196,22 @@ async function useSkill(skillId) {
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy');
                     gameState.screenShake = 15; // JUICE: Heavy screen shake
                     
+                    // JUICE WIN: Environmental Elemental Synrgy
+                    let currentTile = '.';
+                    if (typeof chunkManager !== 'undefined') {
+                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') currentTile = chunkManager.getTile(player.x, player.y);
+                        else if (gameState.mapMode === 'dungeon') currentTile = chunkManager.caveMaps[gameState.currentCaveId]?.[player.y]?.[player.x] || '.';
+                        else currentTile = chunkManager.castleMaps[gameState.currentCastleId]?.[player.y]?.[player.x] || '.';
+                    }
+                    
+                    let pColor = (player.equipment.weapon && player.equipment.weapon.isTwoHanded) ? '#f97316' : '#d4d4d8';
+                    if (currentTile === '~' || currentTile === '≈') pColor = '#3b82f6'; // Water Spout
+                    else if (currentTile === '🔥' || currentTile === '🌋') pColor = '#ef4444'; // Fire Vortex
+                    
                     // JUICE: Radial particle burst
                     if (typeof ParticleSystem !== 'undefined') {
                         for (let i = 0; i < 8; i++) {
                             const angle = (Math.PI / 4) * i;
-                            const pColor = (player.equipment.weapon && player.equipment.weapon.isTwoHanded) ? '#f97316' : '#d4d4d8';
                             ParticleSystem.spawn(player.x + Math.cos(angle)*1.5, player.y + Math.sin(angle)*1.5, pColor, 'dust', '', 5);
                         }
                     }
@@ -233,7 +244,8 @@ async function useSkill(skillId) {
                                     }
                                 }
                             } else {
-                                let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
+                                // 🚨 GHOST GUARD
+                                let enemy = gameState.instancedEnemies.find(e => e && e.x === tx && e.y === ty);
                                 if (enemy) {
                                     enemy.health = Number(enemy.health);
                                     if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
@@ -415,7 +427,8 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                         }
                     }
                 } else {
-                    let enemy = gameState.instancedEnemies.find(e => e.x === coords.x && e.y === coords.y);
+                    // 🚨 GHOST GUARD
+                    let enemy = gameState.instancedEnemies.find(e => e && e.x === coords.x && e.y === coords.y);
                     if (enemy) {
                         enemy.health = Number(enemy.health);
                         if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
@@ -490,9 +503,6 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 /**
  * Prepares and executes a ranged attack using an equipped bow
  */
-/**
- * Prepares and executes a ranged attack using an equipped bow
- */
 async function executeRangedAttack(dirX, dirY) {
     const player = gameState.player;
     const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA['ranged_attack'] : null;
@@ -539,7 +549,7 @@ async function executeRangedAttack(dirX, dirY) {
         const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
         const ammoDamage = ammo.damage || 0;
         
-        const isFire = ammo.name.includes('Fire');
+        let isFire = ammo.name.includes('Fire');
         const isPoison = ammo.name.includes('Poison');
         const isHeavyCrossbow = wpnTags.includes('armor_piercing');
 
@@ -578,7 +588,7 @@ async function executeRangedAttack(dirX, dirY) {
         if (ammo.quantity <= 0) {
             logMessage("{red:You fired your last arrow!}");
             // Find it in inventory and remove it
-            const invIndex = player.inventory.findIndex(i => i.isEquipped && i.slot === 'ammo');
+            const invIndex = player.inventory.findIndex(i => i && i.isEquipped && i.slot === 'ammo'); // 🚨 GHOST GUARD
             if (invIndex > -1) player.inventory.splice(invIndex, 1);
             
             // Explicitly nullify the equipment slot so the UI and combat engine know it's gone
@@ -620,6 +630,13 @@ async function executeRangedAttack(dirX, dirY) {
                 const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
                 const wallTile = theme ? theme.wall : '▓';
                 if (tile === wallTile || tile === '▒' || tile === '+') isSolid = true;
+            }
+            
+            // --- LORE & GAMEPLAY WIN: IGNITION SYNERGY ---
+            if (!isFire && (tile === '🔥' || tile === '🌋')) {
+                isFire = true;
+                arrowColor = '#f97316';
+                logMessage("{orange:Your arrow catches fire as it passes through the flames!}");
             }
             
             // --- ENVIRONMENTAL INTERACTIONS (FIRE ARROWS) ---
@@ -689,7 +706,8 @@ async function executeRangedAttack(dirX, dirY) {
                         await handleOverworldCombat(targetX, targetY, enemyData, tile, finalDmg);
                     }
                 } else {
-                    let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+                    // 🚨 GHOST GUARD
+                    let enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY);
                     if (enemy) {
                         enemy.health = Number(enemy.health);
                         if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
@@ -888,7 +906,8 @@ async function executeLunge(dirX, dirY) {
                         await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
                     }
                 } else {
-                    let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+                    // 🚨 GHOST GUARD
+                    let enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY);
                     if (enemy) {
                         enemy.health = Number(enemy.health);
                         if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
@@ -990,7 +1009,8 @@ function executeQuickstep(dirX, dirY) {
             // Add poison if we have a poisoned dagger
             if (player.equipment.weapon?.inflicts === 'poison') {
                 if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-                    const e = gameState.instancedEnemies.find(en => en.x === targetX && en.y === targetY);
+                    // 🚨 GHOST GUARD
+                    const e = gameState.instancedEnemies.find(en => en && en.x === targetX && en.y === targetY);
                     if (e) e.poisonTurns = 3;
                 }
             }
@@ -1067,7 +1087,8 @@ function executePacify(dirX, dirY) {
         }
 
         const tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
-        const enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+        // 🚨 GHOST GUARD
+        const enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY);
         
         // PERFORMANCE WIN: Fast-path target loop breaks instantly on walls!
         if (tile === '▓' || tile === '▒' || tile === '🧱') break;
@@ -1155,7 +1176,8 @@ function executeTame(dirX, dirY) {
             break;
         }
 
-        let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+        // 🚨 GHOST GUARD
+        let enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY);
 
         if (enemy) {
             hit = true;
@@ -1206,7 +1228,7 @@ function executeTame(dirX, dirY) {
                 };
 
                 // Remove enemy
-                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e && e.id !== enemy.id);
                 
                 // Clear the map tile so it doesn't leave a ghost sprite
                 let map = gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
@@ -1283,7 +1305,8 @@ function executeInflictMadness(dirX, dirY) {
         }
 
         const tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
-        const enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+        // 🚨 GHOST GUARD
+        const enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY);
         
         // PERFORMANCE WIN: Fast-path target loop breaks instantly on walls!
         if (tile === '▓' || tile === '▒' || tile === '🧱') break;
@@ -1345,8 +1368,8 @@ async function executeThrowTNT(dirX, dirY) {
     isProcessingMove = true;
 
     try {
-        // 1. Consume the TNT from Inventory
-        const invIndex = player.inventory.findIndex(i => i.name === 'Dwarven TNT' && !i.isEquipped);
+        // 1. Consume the TNT from Inventory (🚨 GHOST GUARD added)
+        const invIndex = player.inventory.findIndex(i => i && i.name === 'Dwarven TNT' && !i.isEquipped);
         if (invIndex > -1) {
             player.inventory[invIndex].quantity--;
             if (player.inventory[invIndex].quantity <= 0) player.inventory.splice(invIndex, 1);
