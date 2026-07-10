@@ -169,12 +169,18 @@ try {
 // Automatically monitors if the user loses internet connection and informs them
 let hasInitiallyConnected = false; 
 let wasConnected = false; 
+let _offlineDebounceTimer = null; // UX WIN: Prevents spotty WiFi from jittering the screen constantly
 
 rtdb.ref('.info/connected').on('value', function(snap) {
     const isConnected = snap.val() === true;
     window.FirebaseNetworkState.isConnected = isConnected;
     
     if (isConnected) {
+        if (_offlineDebounceTimer) {
+            clearTimeout(_offlineDebounceTimer);
+            _offlineDebounceTimer = null;
+        }
+
         // JUICE WIN: Styled Console Outputs for Developers!
         console.log("%c🟢 Leyline Resonance Stable. [Connection Established]", "color: #4ade80; font-weight: bold; font-family: monospace;");
         
@@ -193,29 +199,35 @@ rtdb.ref('.info/connected').on('value', function(snap) {
         hasInitiallyConnected = true;
         wasConnected = true;
     } else {
-        console.warn("%c🔴 Leyline Connection Severed. [Offline / Reconnecting...]", "color: #ef4444; font-weight: bold; font-family: monospace;");
+        // PERFORMANCE & UX WIN: Spotty WiFi Debouncer
+        // Give the connection 2 full seconds to stabilize before screaming at the player
+        if (_offlineDebounceTimer) clearTimeout(_offlineDebounceTimer);
         
-        // Only show "Connection Lost" if we were actually connected in the first place
-        if (hasInitiallyConnected && wasConnected) {
-            // Warning Banner (JUICE WIN: Added animate-pulse and greyscale/contrast filters for a "glitching" effect)
-            showNetworkBanner(
-                "⚠️ Leyline Connection Severed<br><span class='text-[9px] font-normal'>Re-attuning to the Akashic Records... Please wait. (Click to dismiss)</span>",
-                "bg-red-950 bg-opacity-95 text-red-200 border-b-2 border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.8)] animate-pulse grayscale contrast-125",
-                8000 // Holds on screen longer to let them know it's trying to reconnect
-            );
+        _offlineDebounceTimer = setTimeout(() => {
+            console.warn("%c🔴 Leyline Connection Severed. [Offline / Reconnecting...]", "color: #ef4444; font-weight: bold; font-family: monospace;");
             
-            if (typeof logMessage === 'function') logMessage("{red:The leylines have ruptured! Trying to re-attune...}");
-            
-            // JUICE WIN: Ominous low rumble and screen shake to alert the player their connection dropped
-            if (typeof AudioSystem !== 'undefined') {
-                AudioSystem.playNoise(1.5, 0.4, 200); // Deep, long rumble
-                AudioSystem.playTone(100, 'sawtooth', 1.0, 0.2, false, 50); // Descending bass tone
+            // Only show "Connection Lost" if we were actually connected in the first place
+            if (hasInitiallyConnected && wasConnected) {
+                // Warning Banner (JUICE WIN: Added animate-pulse and greyscale/contrast filters for a "glitching" effect)
+                showNetworkBanner(
+                    "⚠️ Leyline Connection Severed<br><span class='text-[9px] font-normal'>Re-attuning to the Akashic Records... Please wait. (Click to dismiss)</span>",
+                    "bg-red-950 bg-opacity-95 text-red-200 border-b-2 border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.8)] animate-pulse grayscale contrast-125",
+                    8000 // Holds on screen longer to let them know it's trying to reconnect
+                );
+                
+                if (typeof logMessage === 'function') logMessage("{red:The leylines have ruptured! Trying to re-attune...}");
+                
+                // JUICE WIN: Ominous low rumble and screen shake to alert the player their connection dropped
+                if (typeof AudioSystem !== 'undefined') {
+                    AudioSystem.playNoise(1.5, 0.4, 200); // Deep, long rumble
+                    AudioSystem.playTone(100, 'sawtooth', 1.0, 0.2, false, 50); // Descending bass tone
+                }
+                if (typeof gameState !== 'undefined' && gameState.player) {
+                    gameState.screenShake = 15;
+                }
             }
-            if (typeof gameState !== 'undefined' && gameState.player) {
-                gameState.screenShake = 15;
-            }
-        }
-        wasConnected = false;
+            wasConnected = false;
+        }, 2000); 
     }
     
     // Dispatch a custom event for other UI files to listen to
