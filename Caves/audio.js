@@ -124,9 +124,10 @@ const AudioSystem = {
     // Internal Throttler (Highly optimized for V8 via Maps)
     _throttle: function(id, msCooldown) {
         const now = Date.now();
-        // PERFORMANCE WIN: Smarter O(1) garbage collection for the throttle Map
-        if (this._lastPlayed.size > 50) {
-            for (const [key, time] of this._lastPlayed.entries()) {
+        // PERFORMANCE WIN: Smarter O(1) garbage collection for the throttle Map.
+        // Bumped threshold to 100 to prevent constant map iteration during intense combat.
+        if (this._lastPlayed.size > 100) {
+            for (const [key, time] of this._lastPlayed) { // Native iterator is faster
                 if (now - time > 5000) this._lastPlayed.delete(key);
             }
         }
@@ -159,15 +160,27 @@ const AudioSystem = {
             if (gameState.currentCaveTheme === 'SUNKEN' || gameState.currentCaveTheme === 'GROTTO') {
                 return { durationMult: 0.8, filterMult: 0.25, echoDelay: 0.1, echoFeedback: 0.2, dampening: 600 };
             }
-            // 5. Sky Realm (Wind swept, quick decay)
+            // 5. Dwarven Mines (Tight metallic slapback)
+            if (gameState.currentCaveTheme === 'DWARVEN_MINE') {
+                return { durationMult: 0.9, filterMult: 1.1, echoDelay: 0.05, echoFeedback: 0.5, dampening: 6000 };
+            }
+            // 6. Arena / Colosseum (Wide stadium echo)
+            if (gameState.currentCaveTheme === 'ARENA') {
+                return { durationMult: 1.2, filterMult: 0.9, echoDelay: 0.25, echoFeedback: 0.4, dampening: 4000 };
+            }
+            // 7. Sky Realm (Wind swept, quick decay)
             if (gameState.mapMode === 'skyrealm') {
                 return { durationMult: 0.8, filterMult: 1.5, echoDelay: 0.4, echoFeedback: 0.3, dampening: 4000 };
             }
-            // 6. Deep Caves (Muffled highs, heavy slapback)
-            if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'underworld') {
+            // 8. Underworld (Crushing deep muffle, miles of earth above)
+            if (gameState.mapMode === 'underworld') {
+                return { durationMult: 1.5, filterMult: 0.4, echoDelay: 0.3, echoFeedback: 0.5, dampening: 800 }; 
+            }
+            // 9. Deep Caves (Muffled highs, heavy slapback)
+            if (gameState.mapMode === 'dungeon') {
                 return { durationMult: 1.2, filterMult: 0.6, echoDelay: 0.15, echoFeedback: 0.4, dampening: 1500 }; 
             } 
-            // 7. Castles & Ruins (Stone halls, tight reverb)
+            // 10. Castles & Ruins (Stone halls, tight reverb)
             if (gameState.mapMode === 'castle') {
                 return { durationMult: 1.1, filterMult: 0.85, echoDelay: 0.08, echoFeedback: 0.3, dampening: 3000 }; 
             }
@@ -177,7 +190,7 @@ const AudioSystem = {
     },
 
     _getSpatialData: function(x) {
-        // ROBUSTNESS WIN: Protect against NaN propagation if an entity was just deleted
+        // ROBUSTNESS WIN: Protect against NaN propagation if an entity was just deleted or passed undefined
         if (typeof x !== 'number' || isNaN(x) || typeof gameState === 'undefined' || !gameState.player || typeof gameState.player.x !== 'number') {
             return { pan: 0, distanceVol: 1.0, distanceFilter: 1.0 };
         }
@@ -249,10 +262,12 @@ const AudioSystem = {
     _cleanupRoute: function(pannerNode) {
         if (!pannerNode) return;
         // Wrapped in try-catches because sometimes the browser's GC beats us to it
-        try { if (pannerNode._delayNode) pannerNode._delayNode.disconnect(); } catch (e) {}
-        try { if (pannerNode._feedbackNode) pannerNode._feedbackNode.disconnect(); } catch (e) {}
-        try { if (pannerNode._dampFilter) pannerNode._dampFilter.disconnect(); } catch (e) {}
-        try { pannerNode.disconnect(); } catch (e) {}
+        try { 
+            if (pannerNode._delayNode) { pannerNode._delayNode.disconnect(); pannerNode._delayNode = null; } 
+            if (pannerNode._feedbackNode) { pannerNode._feedbackNode.disconnect(); pannerNode._feedbackNode = null; }
+            if (pannerNode._dampFilter) { pannerNode._dampFilter.disconnect(); pannerNode._dampFilter = null; }
+            pannerNode.disconnect(); 
+        } catch (e) {}
     },
 
     // BUG FIX & STABILITY: Safely validate oscillator types so typos don't crash the context
@@ -640,7 +655,9 @@ const AudioSystem = {
     },
 
     playDeath: function() {
-        this.playMelody([300, 280, 260, 200], 'sawtooth', 0.4, 0.15);
+        // JUICE WIN: Upgraded heart-stopping audio for death
+        this.playNoise(2.0, 0.3, 100); // Low heavy thud
+        this.playMelody([300, 280, 260, 200, 150, 100, 50], 'sawtooth', 0.5, 0.2); // Slower, deeper decay
     },
 
     playDiscovery: function() {
@@ -648,7 +665,9 @@ const AudioSystem = {
     },
 
     playBossSpawn: function() {
-        this.playChord([50, 55, 60], 'sawtooth', 3.0, 0.2, 5.0);
+        // JUICE WIN: Terrifying descending tritone rumble for Boss Spawns
+        this.playChord([45, 64, 80], 'sawtooth', 4.0, 0.3, 5.0, true);
+        this.playNoise(3.0, 0.4, 300); 
     },
 
     playCraftSuccess: function() {
