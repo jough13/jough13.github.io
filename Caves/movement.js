@@ -543,10 +543,10 @@ async function attemptMovePlayer(newX, newY) {
 
             // Look up the live entity to get the correct name (e.g. "Spectral Giant Rat")
             const enemyId = `overworld:${newX},${-newY}`;
-            const liveEnemy = gameState.sharedEnemies[enemyKey];
+            const liveEnemy = gameState.sharedEnemies[enemyId];
             const targetName = liveEnemy ? liveEnemy.name : enemyData.name;
 
-            // JUICE WIN: Dynamic Audio Feedback
+            // Dynamic Audio Feedback
             if (isCrit && typeof AudioSystem !== 'undefined' && typeof AudioSystem.playCrit === 'function') {
                 AudioSystem.playCrit();
             } else if (typeof AudioSystem !== 'undefined') {
@@ -668,7 +668,7 @@ async function attemptMovePlayer(newX, newY) {
 
         if (hasShovel) {
             logMessage("You dig into the loose soil...");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); // Thud/dig sound
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playDig(newX); // Custom dig sound
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#78350f', 15); // Dirt flying
 
             // 1. Stamina Cost
