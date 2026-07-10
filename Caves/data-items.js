@@ -332,6 +332,67 @@ window.CRAFTING_RECIPES = {
 };
 
 window.ITEM_DATA = {
+    '🖍️': {
+        name: 'Luminous Chalk',
+        type: 'tool',
+        tile: '🖍️',
+        description: "Write a glowing message on the ground for other travelers. Lasts 7 days.",
+        effect: (state) => {
+            if (state.mapMode !== 'overworld' && state.mapMode !== 'underworld') {
+                logMessage("{gray:You can only leave echoes on the open earth.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return false;
+            }
+            
+            const currentTile = chunkManager.getTile(state.player.x, state.player.y);
+            if (!['.', 'F', 'd', 'D', '❄️', '🍄', '💎c'].includes(currentTile)) {
+                logMessage("{gray:The ground here cannot hold the chalk's magic.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return false;
+            }
+
+            // Simple native prompt works perfectly on both Desktop and Mobile!
+            const msg = prompt("Write your message (Max 60 chars):");
+            if (!msg) return false;
+            
+            const cleanMsg = msg.substring(0, 60).replace(/[^a-zA-Z0-9 \.,!?'"-]/g, '').trim();
+            if (cleanMsg.length === 0) return false;
+
+            const chunkX = Math.floor(state.player.x / 16);
+            const chunkY = Math.floor(state.player.y / 16);
+            const localX = (((state.player.x % 16) + 16) % 16);
+            const localY = (((state.player.y % 16) + 16) % 16);
+            const chunkId = `${chunkX},${chunkY}`;
+            const tileKey = `${localX},${localY}`;
+
+            const echoData = {
+                t: '💬',
+                msg: cleanMsg,
+                author: state.player.name || "A Traveler",
+                expires: Date.now() + (7 * 24 * 60 * 60 * 1000) // Lasts exactly 7 days
+            };
+
+            let realmPrefix = '';
+            if (state.currentRealm !== 0 && state.currentRealm) realmPrefix = `realm_${state.currentRealm}/`;
+            if (state.mapMode === 'underworld') realmPrefix += 'underworld/';
+            
+            // Push directly to Firebase
+            if (typeof rtdb !== 'undefined') {
+                rtdb.ref(`worldState/${realmPrefix}${chunkId}/${tileKey}`).set(echoData);
+            }
+            
+            // Instantly update local engine memory
+            if (!chunkManager.worldState[chunkId]) chunkManager.worldState[chunkId] = {};
+            chunkManager.worldState[chunkId][tileKey] = echoData;
+            
+            logMessage(`{cyan:You inscribed an echo into the earth.}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#22d3ee', 15);
+            
+            state.mapDirty = true;
+            return true; // Uses a turn
+        }
+    },
     '🏆': {
         name: "Gladiator's Token",
         type: "consumable",
@@ -427,7 +488,7 @@ window.ITEM_DATA = {
             state.mapMode = 'skyrealm';
             state.mapDirty = true;
             
-            // BUG FIX: Manually consume the seed here and return false to prevent items.js from double-turning!
+            // Manually consume the seed here and return false to prevent items.js from double-turning!
             const seedIdx = state.player.inventory.findIndex(i => i.name === 'Cloudseed' && !i.isEquipped);
             if (seedIdx > -1) {
                 state.player.inventory[seedIdx].quantity--;
@@ -773,7 +834,7 @@ window.ITEM_DATA = {
                     logMessage(`{purple:You also found a ${prize} hidden inside!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                 } 
-                else if (state.player.inventory.length - freesSlot < (window.MAX_INVENTORY_SLOTS || 9)) {
+                else if (state.player.inventory.length - freesSlot < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
                     state.player.inventory.push({
                         templateId: prizeKey,
                         name: prize, 
@@ -809,7 +870,7 @@ window.ITEM_DATA = {
                 const bottleStack = state.player.inventory.find(i => i.name === 'Message in a Bottle' && !i.isEquipped);
                 const freesSlot = (bottleStack && bottleStack.quantity === 1) ? 1 : 0;
                 
-                if (state.player.inventory.length - freesSlot < (window.MAX_INVENTORY_SLOTS || 9)) {
+                if (state.player.inventory.length - freesSlot < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
                     logMessage(`{gold:It's a Tattered Map! X marks the spot!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                     
@@ -1608,7 +1669,7 @@ window.ITEM_DATA = {
             const waterStack = state.player.inventory.find(i => i.name === 'Clean Water' && !i.isEquipped);
             const freesSlot = (waterStack && waterStack.quantity === 1) ? 1 : 0;
             
-            if (!existingBottle && state.player.inventory.length - freesSlot >= (window.MAX_INVENTORY_SLOTS || 9)) {
+            if (!existingBottle && state.player.inventory.length - freesSlot >= (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
                 logMessage("{red:Your inventory is full. Clear a slot to hold the empty bottle before drinking.}");
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 return false; 
@@ -1650,7 +1711,7 @@ window.ITEM_DATA = {
             const waterStack = state.player.inventory.find(i => i.name === 'Dirty Water' && !i.isEquipped);
             const freesSlot = (waterStack && waterStack.quantity === 1) ? 1 : 0;
             
-            if (!existingBottle && state.player.inventory.length - freesSlot >= (window.MAX_INVENTORY_SLOTS || 9)) {
+            if (!existingBottle && state.player.inventory.length - freesSlot >= (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
                 logMessage("{red:Your inventory is full. Clear a slot to hold the empty bottle before drinking.}");
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 return false; 
@@ -2939,7 +3000,8 @@ window.CASTLE_SHOP_INVENTORY =[
     { name: 'Bird Egg', price: 3, stock: 10 },
     { name: 'Jar of Honey', price: 10, stock: 5 },
     { name: 'Star-Metal Ore', price: 150, stock: 0 },
-    { name: 'Moonbloom Petal', price: 60, stock: 0 }
+    { name: 'Moonbloom Petal', price: 60, stock: 0 },
+    { name: 'Luminous Chalk', price: 100, stock: 5 }
 ];
 
 window.TRADER_INVENTORY =[
@@ -2954,7 +3016,8 @@ window.TRADER_INVENTORY =[
     { name: 'Scroll: Entangle', price: 300, stock: 1 },
     { name: 'Scroll of Homing', price: 150, stock: 2 },
     { name: 'Tattered Map', price: 100, stock: 3 },
-    { name: 'Dragon Repellent', price: 500, stock: 1 } 
+    { name: 'Dragon Repellent', price: 500, stock: 1 },
+    { name: 'Luminous Chalk', price: 100, stock: 5 }
 ];
 
 window.LOOT_TABLE_ARCHAEOLOGY =[
