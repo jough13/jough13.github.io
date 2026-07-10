@@ -8,8 +8,8 @@
 
 function castSpell(spellId) {
     
-    if (player.isMounted) {
-        player.isMounted = false;
+    if (gameState.player.isMounted) {
+        gameState.player.isMounted = false;
         logMessage(`{orange:You leap from your mount to cast a spell!}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
         gameState.mapDirty = true;
@@ -62,7 +62,12 @@ function castSpell(spellId) {
         
         // JUICE & PERFORMANCE: Cached DOM lookup for flashing
         const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[costType] : document.getElementById(`${costType}Display`);
-        if (displayEl && typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false);
+        if (displayEl && typeof triggerStatFlash === 'function') {
+            // Flash the bar red so the user knows exactly why it failed
+            displayEl.classList.remove('stat-flash-red');
+            void displayEl.offsetWidth;
+            displayEl.classList.add('stat-flash-red');
+        }
         return;
     }
 
@@ -367,7 +372,11 @@ function castSpell(spellId) {
             player[costType] += cost;
             // Also flash the bar red to show it failed
             const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[costType] : document.getElementById(`${costType}Display`);
-            if (displayEl && typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false); 
+            if (displayEl && typeof triggerStatFlash === 'function') {
+                displayEl.classList.remove('stat-flash-red');
+                void displayEl.offsetWidth;
+                displayEl.classList.add('stat-flash-red');
+            }
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         }
     }
@@ -416,7 +425,13 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
         }
         if (tags.includes('metal') || tags.includes('construct')) {
             finalDamage = Math.floor(finalDamage * 1.5);
-            logMessage(`{yellow:The metallic enemy short-circuits! (Critical Damage)}`);
+            logMessage(`{yellow:The metallic enemy short-circuits! (Critical Damage & Stunned)}`);
+            
+            // LORE WIN: Stunning clockworks
+            if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+                const e = gameState.instancedEnemies ? gameState.instancedEnemies.find(en => en && en.x === targetX && en.y === targetY) : null;
+                if (e) e.stunTurns = 2;
+            }
         }
     } 
     else if (spellData.element === 'fire') {
@@ -436,6 +451,12 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
         if (isTargetInWater) {
              if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#f3f4f6', 6); 
              if (Math.random() < 0.3) logMessage("{gray:The water boils and hisses, releasing a cloud of steam.}");
+        }
+
+        // LORE WIN: Thermal Shock!
+        if (tags.includes('frost')) {
+            finalDamage = Math.floor(finalDamage * 1.5);
+            logMessage(`{orange:The fiery blast shatters the frozen enemy! (Critical Damage)}`);
         }
     } 
     else if (spellData.element === 'frost') {
@@ -588,7 +609,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
 
     } else {
         // Handle Instanced Combat
-        let enemy = gameState.instancedEnemies ? gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY) : null;
+        let enemy = gameState.instancedEnemies ? gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY) : null;
         if (enemy) {
             damageDealt = Math.max(1, finalDamage);
             enemy.health -= damageDealt;
@@ -620,7 +641,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
 
     else if (damageDealt > 0 && spellData.inflicts && Math.random() < spellData.inflictChance) {
         if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-            let enemy = gameState.instancedEnemies ? gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY) : null;
+            let enemy = gameState.instancedEnemies ? gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY) : null;
 
             if (enemy && spellData.inflicts === 'frostbite' && enemy.frostbiteTurns <= 0) {
                 logMessage(`{cyan:The ${enemy.name} is afflicted with Frostbite!}`);
@@ -672,7 +693,11 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             
             // Flash the specific UI bar so they know why it failed
             const displayEl = typeof statDisplays !== 'undefined' ? statDisplays[spellData.costType] : document.getElementById(`${spellData.costType}Display`);
-            if (displayEl && typeof triggerStatFlash === 'function') triggerStatFlash(displayEl, false);
+            if (displayEl && typeof triggerStatFlash === 'function') {
+                displayEl.classList.remove('stat-flash-red');
+                void displayEl.offsetWidth;
+                displayEl.classList.add('stat-flash-red');
+            }
             
             return; // Abort execution
         }
@@ -717,6 +742,12 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         hitSomething = true;
                         if (typeof ParticleSystem !== 'undefined') {
                             ParticleSystem.createFloatingText(tx, ty, "ROOTED", vineColor);
+                        }
+                        
+                        // LORE WIN: Root status applied directly to instanced enemies here for visual flavor
+                        if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+                            const e = gameState.instancedEnemies ? gameState.instancedEnemies.find(en => en && en.x === tx && en.y === ty) : null;
+                            if (e) e.rootTurns = 3;
                         }
                         break;
                     }
@@ -980,7 +1011,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                             const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(x, y) : '.';
                             if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) hasEnemy = true;
                         } else {
-                            if (gameState.instancedEnemies && gameState.instancedEnemies.some(e => e.x === x && e.y === y)) hasEnemy = true;
+                            if (gameState.instancedEnemies && gameState.instancedEnemies.some(e => e && e.x === x && e.y === y)) hasEnemy = true; // 🚨 GHOST GUARD
                         }
 
                         if (hasEnemy) potentialJumpTargets.push({ x, y });
