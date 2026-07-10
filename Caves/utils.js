@@ -639,18 +639,21 @@ window.getRelativePositionText = function(dx, dy, atmospheric = false) {
 // DEEP OBJECT MANAGEMENT
 // ==========================================
 
-// PERFORMANCE & BUG FIX WIN: High-speed recursive clone. 
+// High-speed recursive clone. 
 // Completely replaces JSON.parse(JSON.stringify()) with a V8-optimized deep copy.
 // Uses Object.keys() and pre-allocated Arrays to bypass all prototype chain overhead!
 // Now safely supports cloning `Set` and `Map` and `TypedArray` objects without corrupting them!
 window.fastClone = function(obj, seen = new WeakMap()) {
+    // Guarantee 'seen' is always a WeakMap, even if passed as null
+    if (!seen) seen = new WeakMap();
+
     // Base case: null, undefined, strings, numbers, booleans
     if (obj === null || typeof obj !== 'object') return obj;
     
     // Explicit Date support (Prevents dates becoming empty objects)
     if (obj instanceof Date) return new Date(obj.getTime());
     
-    // 🔥 DATA CORRUPTION FIX: Explicit TypedArray support 
+    // Explicit TypedArray support 
     // Prevents turning Perlin noise grids or audio buffers into slow, broken dictionaries!
     if (ArrayBuffer.isView(obj)) {
         return new obj.constructor(obj.buffer.slice(0), obj.byteOffset, obj.length);
