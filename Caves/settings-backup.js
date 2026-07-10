@@ -149,13 +149,18 @@ async function createCloudBackup(slotId = 'latest') {
     // 1. Get clean data explicitly to prevent saving transient UI state
     const rawData = {
         ...gameState.player,
-        // Legacy map arrays are deliberately omitted here since they moved to subcollections!
         customPins: gameState.player.customPins || [],
         bank: gameState.player.bank || [], // Explicitly grab the Stash
         inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
         equipment: typeof getSanitizedEquipment === 'function' ? getSanitizedEquipment() : gameState.player.equipment,
         timestamp: now // Use the validated timestamp
     };
+    
+    // 🚨 PERFORMANCE & QUOTA WIN: Strip legacy map arrays from the root document!
+    // Since we now save these via Subcollections below, leaving them here wastes huge amounts of DB quota.
+    delete rawData.lootedTiles;
+    delete rawData.exploredChunks;
+    delete rawData.foundLore;
 
     // PERFORMANCE: Use our fast sanitizer instead of the slow JSON stringify hack
     const backupState = typeof sanitizeForFirebase === 'function' 
