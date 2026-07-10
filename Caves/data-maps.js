@@ -55,6 +55,39 @@ window.REALM_MUTATORS = {
 };
 
 window.TILE_DATA = {
+    '💬': {
+        type: 'anomaly',
+        name: 'Player Echo',
+        flavor: "A glowing message written in luminous chalk.",
+        onInteract: (state, x, y) => {
+            const chunkX = Math.floor(x / 16);
+            const chunkY = Math.floor(y / 16);
+            const localX = (((x % 16) + 16) % 16);
+            const localY = (((y % 16) + 16) % 16);
+            const chunkId = `${chunkX},${chunkY}`;
+            const tileKey = `${localX},${localY}`;
+            
+            // Read the custom object directly from local worldState
+            const tileData = chunkManager.worldState[chunkId]?.[tileKey];
+            
+            if (tileData && tileData.msg) {
+                const safeAuthor = typeof escapeHtml === 'function' ? escapeHtml(tileData.author) : tileData.author;
+                const safeMsg = typeof escapeHtml === 'function' ? escapeHtml(tileData.msg) : tileData.msg;
+                
+                loreTitle.textContent = "Luminous Echo";
+                loreContent.innerHTML = `<p class="italic text-gray-400 mb-2 border-b border-gray-700 pb-2">Written by ${safeAuthor}:</p><p class="font-serif leading-relaxed text-cyan-300 text-lg mt-2 drop-shadow-md">"${safeMsg}"</p>`;
+                loreModal.classList.remove('hidden');
+                
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
+            } else {
+                logMessage("{gray:The echo has faded away...}");
+                chunkManager.setWorldTile(x, y, '.');
+                state.mapDirty = true;
+                if (typeof render === 'function') render();
+            }
+            return null; // Interaction complete
+        }
+    },
     '🎵': {
         type: 'anomaly',
         name: 'Wandering Bard',
@@ -2026,7 +2059,7 @@ window.ATMOSPHERE_TEXT = {
         "You wipe sweat from your eyes. It stings.",
         "A distant crack of rock alerts you to shifting magma flows."
     ],
-    // --- EXPANSION WIN: New Atmosphere Tags ---
+    // --- New Atmosphere Tags ---
     CASTLE: [
         "Your footsteps echo loudly against the cold stone.",
         "The tapestries on the walls are moth-eaten and faded.",
