@@ -35,13 +35,13 @@ function rehydratePlayerState(data) {
         }
 
         // 2. FALLBACK A: Name Match (Using Cache for Performance)
-        if (!templateItem) {
+        if (!templateItem && item.name) {
             templateKey = resolveTemplateIdByName(item.name);
             if (templateKey) templateItem = ITEM_DATA[templateKey];
         }
 
         // 3. FALLBACK B: Suffix Match (For randomly generated magic items)
-        if (!templateItem) {
+        if (!templateItem && item.name) { // 🚨 GHOST GUARD: Ensure item.name is a valid string
             const candidates = Object.keys(ITEM_DATA).filter(k => item.name.endsWith(ITEM_DATA[k].name));
             if (candidates.length > 0) {
                 // Find longest match (e.g. 'Steel Sword' vs 'Sword')
@@ -127,7 +127,8 @@ function generateEnemyLoot(player, enemy) {
         const playerQuest = player.quests[questId];
         const questData = QUEST_DATA[questId];
         if (playerQuest.status === 'active' && questData.type === 'fetch' && questData.enemy === enemyTile) {
-            const hasItem = player.inventory.some(item => item.name === questData.itemNeeded);
+            // 🚨 GHOST GUARD: Safely check item.name
+            const hasItem = player.inventory.some(item => item && item.name === questData.itemNeeded);
             if (!hasItem) {
                 const dropChance = 0.05 + (player.luck * 0.005);
                 if (Math.random() < dropChance) {
@@ -674,10 +675,15 @@ function useInventoryItem(itemIndex) {
             if (identifiedItem._rarity === 'epic') { colorTag = 'red'; rarityLabel = 'Epic'; }
             if (identifiedItem._rarity === 'legendary') { colorTag = 'gold'; rarityLabel = 'Legendary'; }
             
-            if (identifiedItem.name.includes("Cursed") || identifiedItem.name.includes("Doomed") || identifiedItem.name.includes("Forsaken")) {
+            // --- LORE & JUICE WIN: Cursed Identifications ---
+            if (identifiedItem.name.includes("Cursed") || identifiedItem.name.includes("Doomed") || identifiedItem.name.includes("Forsaken") || identifiedItem.name.includes("Blighted") || identifiedItem.name.includes("Blood-Starved")) {
                 logMessage(`{red:The item radiates malice... You identified a Cursed artifact: ${identifiedItem.name}!}`);
-                gameState.screenShake = 15;
+                gameState.screenShake = 20; // Heavier shake
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); 
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#991b1b', 25);
+                
+                logMessage(`{purple:The unsealed dark magic afflicts your mind with Void Madness!}`);
+                player.madnessTurns = (player.madnessTurns || 0) + 2; // Punishment for opening it!
             } else {
                 logMessage(`{${colorTag}:✨ The magic settles... You identified a ${rarityLabel} item: ${identifiedItem.name}!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
