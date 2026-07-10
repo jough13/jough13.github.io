@@ -114,7 +114,7 @@ function getTileColorForMap(worldX, worldY) {
     if (['V', '🏰', '♛', '🏛️', '🚪', '🎓'].includes(tile)) return MAP_COLORS.WHITE;
     if (tile === '🕍') return MAP_COLORS.DARK_RED; 
     if (['⛰', '♣', '🏝️'].includes(tile)) return MAP_COLORS.CAVE;
-    if (['#', '|', '⛩️', '⛲', '✨'].includes(tile)) return MAP_COLORS.MAGIC; 
+    if (['#', '|', '⛩️', '⛲', '✨', '💬'].includes(tile)) return MAP_COLORS.MAGIC;
     if (['🧱', '▤', '=', '+', '☒', '⛺'].includes(tile)) return MAP_COLORS.BUILT;
     if (tile === 'c' || tile === '⛵') return MAP_COLORS.RED;
     if (tile === '∴') return MAP_COLORS.DIG; 
