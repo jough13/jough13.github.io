@@ -246,6 +246,12 @@ window.ENEMY_PREFIXES = {
         description: "Touched by the outside. It teleports erratically and shatters minds.",
         statModifiers: { attack: 1, defense: 0, maxHealth: 10 },
         special: 'madness', xpMult: 2.0, color: '#581c87' 
+    },
+    // --- LORE EXPANSION ---
+    "Accursed": {
+        description: "A dark aura surrounds it. Deals psychic damage.",
+        statModifiers: { attack: 1, defense: 1, maxHealth: 5 },
+        special: 'madness', xpMult: 1.7, color: '#111827'
     }
 };
 
