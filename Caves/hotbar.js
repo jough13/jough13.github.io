@@ -27,6 +27,9 @@ function renderHotbar() {
     if (player.inventory) {
         for (let i = 0; i < player.inventory.length; i++) {
             const item = player.inventory[i];
+            
+            if (!item) continue; // 🚨 GHOST GUARD
+            
             // Prefer items that actually have quantity > 0 in case of ghost stacks
             if (!inventoryMap.has(item.name) || item.quantity > 0) inventoryMap.set(item.name, item);
             if (item.templateId && (!inventoryMap.has(item.templateId) || item.quantity > 0)) inventoryMap.set(item.templateId, item);
@@ -187,7 +190,7 @@ function useHotbarSlot(index) {
         }
 
         const invIndex = player.inventory.findIndex(i => 
-            (i.name === targetName || i.templateId === abilityId) && i.quantity > 0
+            i && (i.name === targetName || i.templateId === abilityId) && i.quantity > 0 // 🚨 GHOST GUARD
         );
         
         if (invIndex > -1) {
@@ -222,7 +225,7 @@ function assignToHotbar(abilityId) {
         readableName = ITEM_DATA[abilityId].name;
     }
     else {
-        const invItem = player.inventory.find(i => i.templateId === abilityId || i.name === abilityId);
+        const invItem = player.inventory.find(i => i && (i.templateId === abilityId || i.name === abilityId)); // 🚨 GHOST GUARD
         if (invItem) readableName = invItem.name;
     }
 
@@ -329,7 +332,7 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
                     else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) readableName = SPELL_DATA[abilityId].name;
                     else if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) readableName = ITEM_DATA[abilityId].name;
                     else {
-                        const invItem = player.inventory.find(i => i.templateId === abilityId || i.name === abilityId);
+                        const invItem = player.inventory.find(i => i && (i.templateId === abilityId || i.name === abilityId)); // 🚨 GHOST GUARD
                         if (invItem) readableName = invItem.name;
                     }
                     
