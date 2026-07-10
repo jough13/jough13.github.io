@@ -29,6 +29,8 @@ function getAvailableMaterials(inventory) {
     const matCount = {};
     for (let i = 0; i < inventory.length; i++) {
         const item = inventory[i];
+        if (!item) continue; // 🚨 GHOST GUARD: Prevent Firebase nulls from crashing the tally
+        
         if (!item.isEquipped && item.quantity > 0) {
             matCount[item.name] = (matCount[item.name] || 0) + item.quantity;
         }
@@ -48,7 +50,8 @@ function getMaxCraftable(recipeName, availableMats, inventory, isStackable, hasE
     // Checks if the player has the required tools (e.g., Hammer, Mortar) without consuming them.
     if (recipe.tools) {
         for (const tool of recipe.tools) {
-            if (!inventory.some(i => i.name === tool && i.quantity > 0)) return 0;
+            // 🚨 GHOST GUARD: Check if `i` exists before reading `i.name`
+            if (!inventory.some(i => i && i.name === tool && i.quantity > 0)) return 0;
         }
     }
 
@@ -100,7 +103,9 @@ function handleCraftItem(recipeName, requestBatch = false) {
     }
 
     const isStackable = ['junk', 'consumable', 'ammo', 'ingredient', 'trade'].includes(itemTemplate.type);
-    const existingStack = player.inventory.find(item => item.name === itemTemplate.name && !item.isEquipped);
+    
+    // 🚨 GHOST GUARD: Ensure item exists before checking item.name
+    const existingStack = player.inventory.find(item => item && item.name === itemTemplate.name && !item.isEquipped);
 
     const availableMats = getAvailableMaterials(player.inventory);
     const maxCraftable = getMaxCraftable(recipeName, availableMats, player.inventory, isStackable, !!existingStack);
@@ -121,6 +126,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
         for (let i = player.inventory.length - 1; i >= 0; i--) {
             if (needed <= 0) break; 
             const item = player.inventory[i];
+            if (!item) continue; // 🚨 GHOST GUARD
             
             if (item.name === matName && !item.isEquipped && item.quantity > 0) {
                 const take = Math.min(item.quantity, needed);
@@ -130,8 +136,8 @@ function handleCraftItem(recipeName, requestBatch = false) {
         }
     }
 
-    // Clean empty stacks
-    player.inventory = player.inventory.filter(item => item.quantity > 0);
+    // Clean empty stacks (🚨 GHOST GUARD: filters out nulls simultaneously)
+    player.inventory = player.inventory.filter(item => item && item.quantity > 0);
 
     // BUG FIX & UX WIN: Detailed tracking of exact outputs for batch crafting!
     let outputTracker = {}; 
@@ -182,7 +188,8 @@ function handleCraftItem(recipeName, requestBatch = false) {
         // Tally outputs for accurate UI logging
         outputTracker[newItem.name] = (outputTracker[newItem.name] || 0) + newItem.quantity;
 
-        const curStack = player.inventory.find(item => item.name === newItem.name && !item.isEquipped);
+        // 🚨 GHOST GUARD
+        const curStack = player.inventory.find(item => item && item.name === newItem.name && !item.isEquipped);
 
         if (curStack && isStackable && !isMasterwork) {
             curStack.quantity += newItem.quantity; 
@@ -364,7 +371,9 @@ function renderCraftingModal() {
         const outputItemKey = getCraftItemKey(recipeName);
         const itemTemplate = window.ITEM_DATA[outputItemKey] || {};
         const isStackable = ['junk', 'consumable', 'ammo', 'ingredient', 'trade'].includes(itemTemplate.type);
-        const existingStack = player.inventory.find(item => item.name === itemTemplate.name && !item.isEquipped);
+        
+        // 🚨 GHOST GUARD
+        const existingStack = player.inventory.find(item => item && item.name === itemTemplate.name && !item.isEquipped);
         
         const maxCraftable = getMaxCraftable(recipeName, availableMats, player.inventory, isStackable, !!existingStack);
         const levelMet = playerLevel >= (recipe.level || 1);
@@ -425,7 +434,8 @@ function renderCraftingModal() {
         
         if (recipe.tools && !isObscured) {
             for (const tool of recipe.tools) {
-                const hasTool = player.inventory.some(i => i.name === tool && i.quantity > 0);
+                // 🚨 GHOST GUARD
+                const hasTool = player.inventory.some(i => i && i.name === tool && i.quantity > 0);
                 const toolClass = hasTool ? 'text-blue-300 border-blue-700 bg-blue-900 bg-opacity-30' : 'text-red-400 font-bold border-red-900 bg-red-900 bg-opacity-20';
                 const safeTool = typeof escapeHtml === 'function' ? escapeHtml(tool) : tool;
                 matHtmlParts.push(`<li class="text-[10px] px-2 py-0.5 rounded border ${toolClass} shadow-inner">🔨 Requires: ${safeTool}</li>`);
