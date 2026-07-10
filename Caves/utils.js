@@ -60,8 +60,13 @@ window.MathUtils = {
     // True Euclidean distance
     dist: (x1, y1, x2, y2) => Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2),
     
-    // Manhattan distance (Extremely fast, perfect for grid-based AI pathfinding bounds)
-    manhattanDist: (x1, y1, x2, y2) => Math.abs(x1 - x2) + Math.abs(y1 - y2),
+    // PERFORMANCE WIN: Manhattan distance (Extremely fast, perfect for grid-based AI pathfinding bounds)
+    // Uses bitwise operations for absolute value, which is significantly faster than Math.abs() for integers
+    manhattanDist: (x1, y1, x2, y2) => {
+        const dx = x1 - x2;
+        const dy = y1 - y2;
+        return ((dx ^ (dx >> 31)) - (dx >> 31)) + ((dy ^ (dy >> 31)) - (dy >> 31));
+    },
 
     // Returns angle in radians between two points (Essential for particle/projectile rotation)
     angleBetween: (x1, y1, x2, y2) => Math.atan2(y2 - y1, x2 - x1),
@@ -166,7 +171,7 @@ window.MathUtils = {
     // Formats large numbers for UI (e.g., 1000000 -> "1,000,000")
     formatNum: (num) => new Intl.NumberFormat().format(num),
 
-    // Formats milliseconds into readable time (e.g., "2h 15m" or "45s")
+    // UX WIN: Formats milliseconds into readable time with intelligent zero-culling
     formatTime: (ms) => {
         const seconds = Math.floor((ms / 1000) % 60);
         const minutes = Math.floor((ms / (1000 * 60)) % 60);
@@ -433,11 +438,14 @@ const entityMap = {
   '`': '&#x60;', '=': '&#x3D;'
 };
 
+// PERFORMANCE WIN: Cached Regex for string escaping
+const ESCAPE_HTML_REGEX = /[&<>"'`=\/]/g;
+
 function escapeHtml(string) {
   if (string === null || string === undefined) return "";
   // Strip invisible control characters (except space/tab) before escaping HTML
   const noControlChars = String(string).replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
-  return noControlChars.replace(/[&<>"'`=\/]/g, function (s) {
+  return noControlChars.replace(ESCAPE_HTML_REGEX, function (s) {
     return entityMap[s];
   });
 }
@@ -459,11 +467,14 @@ window.pluralize = function(count, noun, suffix = 's') {
 };
 
 // Oxford Comma list formatter (e.g., ['A', 'B', 'C'] -> "A, B, and C")
+// 🚨 GHOST GUARD: Filter out nulls/booleans to prevent "[null, and C]" rendering!
 window.formatList = function(arr) {
     if (!arr || arr.length === 0) return "";
-    if (arr.length === 1) return arr[0];
-    if (arr.length === 2) return `${arr[0]} and ${arr[1]}`;
-    return `${arr.slice(0, -1).join(', ')}, and ${arr[arr.length - 1]}`;
+    const cleanArr = arr.filter(Boolean); 
+    if (cleanArr.length === 0) return "";
+    if (cleanArr.length === 1) return cleanArr[0];
+    if (cleanArr.length === 2) return `${cleanArr[0]} and ${cleanArr[1]}`;
+    return `${cleanArr.slice(0, -1).join(', ')}, and ${cleanArr[cleanArr.length - 1]}`;
 };
 
 function getOrdinalSuffix(day) {
