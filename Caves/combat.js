@@ -114,6 +114,7 @@ const EnemyNetworkManager = {
         }
         
         Object.entries(gameState.sharedEnemies).forEach(([eId, enemy]) => {
+            if (!enemy) return; // 🚨 GHOST GUARD
             const eChunk = this.getChunkId(enemy.x, enemy.y);
             if (eChunk === chunkId) {
                 if (typeof updateSpatialMap === 'function') updateSpatialMap(eId, enemy.x, enemy.y, null, null);
@@ -360,6 +361,7 @@ async function runSharedAiTurns() {
     if (myId && typeof otherPlayers !== 'undefined') {
         for (const id in otherPlayers) {
             const p = otherPlayers[id];
+            if (!p) continue; // 🚨 GHOST GUARD
             const theirRealm = p.currentRealm || 0;
             
             // Only compare against players in the exact same world layer and dimension
@@ -934,9 +936,11 @@ async function processOverworldEnemyTurns() {
                 const newId = `overworld:${finalX},${-finalY}`;
                 
                 // Use the correct Network Manager path generator!
+                // 🚨 GHOST GUARD: Also check e && e.x for occupied check
+                const occupied = gameState.instancedEnemies.some(e => e && e.x === finalX && e.y === finalY);
                 const newEnemyPath = EnemyNetworkManager.getPath(finalX, finalY, newId);
                 
-                if (gameState.sharedEnemies[newId] || multiPathUpdate[newEnemyPath]) continue;
+                if (gameState.sharedEnemies[newId] || multiPathUpdate[newEnemyPath] || occupied) continue;
 
                 const updatedEnemy = { ...enemy, x: finalX, y: finalY };
                 if (updatedEnemy._processedThisTurn) delete updatedEnemy._processedThisTurn;
@@ -1001,6 +1005,7 @@ function processEnemyTurns() {
     enemiesToMove.forEach(enemy => {
         // --- Stop processing enemies if the player is already dead! ---
         if (gameState.player.health <= 0) return;
+        if (!enemy) return; // 🚨 GHOST GUARD
 
         if (enemy.rootTurns > 0) {
             enemy.rootTurns--;
@@ -1198,7 +1203,7 @@ function processEnemyTurns() {
                 const tx = player.x + pick[0];
                 const ty = player.y + pick[1];
                 if (isWalkable(tx, ty)) {
-                    const occupied = gameState.instancedEnemies.some(e => e.x === tx && e.y === ty);
+                    const occupied = gameState.instancedEnemies.some(e => e && e.x === tx && e.y === ty); // 🚨 GHOST GUARD
                     if (!occupied) {
                         map[enemy.y][enemy.x] = theme.floor;
                         map[ty][tx] = enemy.tile;
@@ -1447,7 +1452,7 @@ function processEnemyTurns() {
             const newX = enemy.x + moveX;
             const newY = enemy.y + moveY;
 
-            const occupied = gameState.instancedEnemies.some(e => e.x === newX && e.y === newY);
+            const occupied = gameState.instancedEnemies.some(e => e && e.x === newX && e.y === newY); // 🚨 GHOST GUARD
             if (!occupied) {
                 map[enemy.y][enemy.x] = theme.floor;
                 map[newY][newX] = enemy.tile;
@@ -1479,6 +1484,7 @@ function processFriendlyTurns() {
     const player = gameState.player;
 
     gameState.friendlyNpcs.forEach(npc => {
+        if (!npc) return; // 🚨 GHOST GUARD
         if (Math.random() < 0.5) {
             const dirX = Math.floor(Math.random() * 3) - 1;
             const dirY = Math.floor(Math.random() * 3) - 1;
@@ -1490,7 +1496,7 @@ function processFriendlyTurns() {
 
             if (map[newY] && map[newY][newX] === '.') {
                 const occupiedByPlayer = (newX === player.x && newY === player.y);
-                const occupiedByNpc = gameState.friendlyNpcs.some(n => n.x === newX && n.y === newY);
+                const occupiedByNpc = gameState.friendlyNpcs.some(n => n && n.x === newX && n.y === newY); // 🚨 GHOST GUARD
 
                 if (!occupiedByPlayer && !occupiedByNpc) {
                     npc.x = newX;
@@ -1517,7 +1523,7 @@ async function runCompanionTurn() {
         const ty = companion.y + dy;
 
         if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-            const enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
+            const enemy = gameState.instancedEnemies.find(e => e && e.x === tx && e.y === ty); // 🚨 GHOST GUARD
             if (enemy) {
                 const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
                 enemy.health -= dmg;
@@ -1889,6 +1895,7 @@ function handlePlayerDeath() {
 
     for (let i = player.inventory.length - 1; i >= 0; i--) {
         const item = player.inventory[i];
+        if (!item) continue; // 🚨 GHOST GUARD
         let placed = false;
         
         // --- Shatter magic items on death to prevent them reverting to base items ---
@@ -1999,7 +2006,7 @@ function handleInstancedEnemyDeath(enemy, x, y) {
     registerKill(enemy);
 
     const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, enemy) : '$';
-    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e && e.id !== enemy.id); // 🚨 GHOST GUARD
 
     let mapId = null;
     let mapArray = null;
@@ -2012,7 +2019,7 @@ function handleInstancedEnemyDeath(enemy, x, y) {
             validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
         }
         if (chunkManager.caveEnemies[mapId]) {
-            chunkManager.caveEnemies[mapId] = chunkManager.caveEnemies[mapId].filter(e => e.id !== enemy.id);
+            chunkManager.caveEnemies[mapId] = chunkManager.caveEnemies[mapId].filter(e => e && e.id !== enemy.id); // 🚨 GHOST GUARD
         }
     } else if (gameState.mapMode === 'castle') {
         mapId = gameState.currentCastleId;
