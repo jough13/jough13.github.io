@@ -53,16 +53,18 @@ function openFastTravelModal() {
 function getBiomeIcon(name) {
     if (!name) return '✨';
     const n = name.toLowerCase();
-    if (n.includes('forest') || n.includes('wood')) return '🌲';
-    if (n.includes('mountain') || n.includes('peak')) return '⛰️';
-    if (n.includes('swamp') || n.includes('marsh')) return '🐸';
-    if (n.includes('desert') || n.includes('sand')) return '🐪';
-    if (n.includes('dead') || n.includes('ash')) return '💀';
-    if (n.includes('water') || n.includes('sea') || n.includes('ocean')) return '🌊';
+    if (n.includes('forest') || n.includes('wood') || n.includes('thicket')) return '🌲';
+    if (n.includes('mountain') || n.includes('peak') || n.includes('crag')) return '⛰️';
+    if (n.includes('swamp') || n.includes('marsh') || n.includes('bog')) return '🐸';
+    if (n.includes('desert') || n.includes('sand') || n.includes('dune')) return '🐪';
+    if (n.includes('dead') || n.includes('ash') || n.includes('wastes')) return '💀';
+    if (n.includes('water') || n.includes('sea') || n.includes('ocean') || n.includes('lake')) return '🌊';
     if (n.includes('plains') || n.includes('expanse') || n.includes('valley')) return '🌿';
     if (n.includes('volcano') || n.includes('fire') || n.includes('infernal')) return '🌋';
-    if (n.includes('crystal') || n.includes('glimmer')) return '💎';
-    if (n.includes('ruin') || n.includes('castle') || n.includes('fortress')) return '🏰';
+    if (n.includes('crystal') || n.includes('glimmer') || n.includes('spire')) return '💎';
+    if (n.includes('ruin') || n.includes('castle') || n.includes('fortress') || n.includes('keep')) return '🏰';
+    if (n.includes('mine') || n.includes('delve') || n.includes('tunnel')) return '⛏️';
+    if (n.includes('void') || n.includes('abyss') || n.includes('rift')) return '🌌';
     return '✨'; // Default
 }
 
@@ -79,8 +81,13 @@ function renderFastTravelList() {
     // Base Cost Calculation
     const baseTravelCost = (player.talents && player.talents.includes('mana_flow')) ? 8 : 10;
 
-    // PERFORMANCE WIN: Native Math.hypot is highly optimized compared to manual squaring
-    const getDist = (tx, ty) => Math.floor(Math.hypot(tx - playerX, ty - playerY));
+    // PERFORMANCE WIN: Math.sqrt(dx*dx + dy*dy) is significantly faster in V8 than Math.hypot 
+    // due to avoiding arbitrary argument array allocation inside tight loops.
+    const getDist = (tx, ty) => {
+        const dx = tx - playerX;
+        const dy = ty - playerY;
+        return Math.floor(Math.sqrt(dx * dx + dy * dy));
+    };
 
     // Helper: Calculate Compass Direction (QoL WIN!)
     const getDir = (tx, ty) => {
@@ -164,16 +171,29 @@ function renderFastTravelList() {
     // --- UI CATEGORY: WILDERNESS WAYSTONES ---
     // Hide regular waystones if the player is stuck in an alternate dimension
     if (gameState.currentRealm === 0 || !gameState.currentRealm) {
-        const waystoneHeader = document.createElement('div');
-        waystoneHeader.className = "text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-6 mb-2 border-b border-gray-700 pb-1 flex justify-between";
-        waystoneHeader.innerHTML = `<span>Attuned Leyline Nodes</span> <span>${waypoints.length} Unlocked</span>`;
-        fragment.appendChild(waystoneHeader);
-
-        // BUG FIX: Filter out completely corrupted waypoints before processing math
+        // BUG FIX WIN: Deduplication to prevent corrupted DB arrays from showing double waypoints
+        const seenCoords = new Set();
+        
         const availableWaypoints = waypoints
-            .filter(wp => wp && typeof wp.x === 'number' && typeof wp.y === 'number' && (wp.x !== playerX || wp.y !== playerY)) 
+            .filter(wp => {
+                // Remove malformed or current location
+                if (!wp || typeof wp.x !== 'number' || typeof wp.y !== 'number') return false;
+                if (wp.x === playerX && wp.y === playerY) return false;
+                
+                // Remove exact coordinate duplicates
+                const coordKey = `${wp.x},${wp.y}`;
+                if (seenCoords.has(coordKey)) return false;
+                seenCoords.add(coordKey);
+                
+                return true;
+            })
             .map(wp => ({ ...wp, dist: getDist(wp.x, wp.y), dir: getDir(wp.x, wp.y) }))
             .sort((a, b) => a.dist - b.dist); // Sort by distance ascending
+
+        const waystoneHeader = document.createElement('div');
+        waystoneHeader.className = "text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-6 mb-2 border-b border-gray-700 pb-1 flex justify-between";
+        waystoneHeader.innerHTML = `<span>Attuned Leyline Nodes</span> <span>${availableWaypoints.length} Unlocked</span>`;
+        fragment.appendChild(waystoneHeader);
 
         if (availableWaypoints.length === 0) {
             const emptyLi = document.createElement('li');
@@ -227,7 +247,9 @@ window.handleFastTravel = async function (targetX, targetY) {
         const TRAVEL_COST = isFreeRecall ? 0 : ((player.talents && player.talents.includes('mana_flow')) ? 8 : 10);
 
         // Calculate physical distance for dynamic juice
-        const travelDist = Math.floor(Math.hypot(targetX - player.x, targetY - player.y));
+        const dx = targetX - player.x;
+        const dy = targetY - player.y;
+        const travelDist = Math.floor(Math.sqrt(dx * dx + dy * dy));
 
         // --- GAMEPLAY WIN: True Euclidean Anti-Combat Teleport ---
         // You cannot flee via leylines if enemies are too close! (5 tile radius)
@@ -237,13 +259,17 @@ window.handleFastTravel = async function (targetX, targetY) {
         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
             for (const enemyId in gameState.sharedEnemies) {
                 const enemy = gameState.sharedEnemies[enemyId];
-                if (Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2) <= COMBAT_RADIUS_SQ) {
-                    inCombat = true;
-                    break;
+                if (enemy && typeof enemy.x === 'number' && typeof enemy.y === 'number') {
+                    if (Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2) <= COMBAT_RADIUS_SQ) {
+                        inCombat = true;
+                        break;
+                    }
                 }
             }
         } else {
-            inCombat = gameState.instancedEnemies.some(e => Math.pow(e.x - player.x, 2) + Math.pow(e.y - player.y, 2) <= COMBAT_RADIUS_SQ);
+            if (gameState.instancedEnemies) {
+                inCombat = gameState.instancedEnemies.some(e => Math.pow(e.x - player.x, 2) + Math.pow(e.y - player.y, 2) <= COMBAT_RADIUS_SQ);
+            }
         }
 
         if (inCombat) {
@@ -262,6 +288,21 @@ window.handleFastTravel = async function (targetX, targetY) {
 
         if (invalidTiles.includes(tile) && !isVillageBypass) {
             logMessage("{red:The destination Waystone is obstructed by terrain. Teleport unsafe.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        // --- DESTINATION OCCUPANCY CHECK (Telefrag Prevention) ---
+        let isOccupied = false;
+        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+            const destEnemyId = `overworld:${targetX},${-targetY}`;
+            if (gameState.sharedEnemies && gameState.sharedEnemies[destEnemyId]) isOccupied = true;
+        } else {
+            if (gameState.instancedEnemies && gameState.instancedEnemies.some(e => e.x === targetX && e.y === targetY)) isOccupied = true;
+        }
+
+        if (isOccupied && !isVillageBypass) {
+            logMessage("{red:A hostile presence blocks the destination. The leylines refuse to connect.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
@@ -312,8 +353,8 @@ window.handleFastTravel = async function (targetX, targetY) {
         // Wait for the particles to suck into the player before snapping the coordinates!
         await new Promise(resolve => setTimeout(resolve, 200));
 
-        // Deduct Cost
-        player.mana -= TRAVEL_COST;
+        // Deduct Cost securely (Math.max prevents negative anomalies)
+        player.mana = Math.max(0, player.mana - TRAVEL_COST);
         
         // Track database updates
         const updates = {
@@ -373,8 +414,8 @@ window.handleFastTravel = async function (targetX, targetY) {
         updates.x = targetX;
         updates.y = targetY;
 
-        // LORE WIN: Biome-Aware Arrival Messages!
-        const arrivalTile = chunkManager.getTile(targetX, targetY);
+        // LORE WIN: Biome & Weather-Aware Arrival Messages!
+        const arrivalTile = chunkManager.getTile(targetX, targetY) || '.';
         let arrivalFlavor = "You dissolve into pure energy and reappear at your destination.";
         
         if (isFreeRecall) arrivalFlavor = "The ancient wards of the Safe Haven welcome you.";
@@ -386,14 +427,24 @@ window.handleFastTravel = async function (targetX, targetY) {
         else if (arrivalTile === 'd') arrivalFlavor = "You materialize into a cloud of choking ash.";
         else if (arrivalTile === '🌋') arrivalFlavor = "You materialize amidst intense heat and the smell of sulfur.";
         else if (arrivalTile === '💎c') arrivalFlavor = "The leylines deposit you in a shower of glowing crystal dust.";
+        else if (arrivalTile === '🍄') arrivalFlavor = "Spores puff into the air as the leylines deposit you in the fungal jungle.";
         else if (arrivalTile === '🏰' || arrivalTile === 'V') arrivalFlavor = "You step onto the worked stone of civilization.";
+
+        // Weather Synergy!
+        let weatherFlavor = "";
+        if (!isFreeRecall && gameState.weather !== 'clear') {
+            if (gameState.weather === 'rain') weatherFlavor = " The rain instantly soaks your clothes.";
+            else if (gameState.weather === 'snow') weatherFlavor = " A biting chill cuts through you immediately.";
+            else if (gameState.weather === 'storm') weatherFlavor = " Thunder greets your arrival.";
+            else if (gameState.weather === 'fog') weatherFlavor = " Thick mist immediately obscures your vision.";
+        }
 
         if (travelDist > 1000) {
             logMessage(`{purple:You cross a terrifying distance. The leylines scream as you re-enter reality!}`);
             gameState.screenShake = 25;
             if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playBossSpawn === 'function') AudioSystem.playBossSpawn(); // Heavy impact
         } else {
-            logMessage(`{cyan:${arrivalFlavor}}`);
+            logMessage(`{cyan:${arrivalFlavor}${weatherFlavor}}`);
             gameState.screenShake = 10; // Standard landing impact
         }
         
