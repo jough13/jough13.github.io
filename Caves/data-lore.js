@@ -25,16 +25,16 @@ window.LORE_SETS = {
         items: ["🐾1", "🐾2", "🐾3"] 
     },
     
-    // --- MID GAME SETS ---
+    // --- MID GAME SETS (THE MAIN STORYLINE) ---
     "king_fall": {
         name: "The Fall of Alaric",
-        description: "The firsthand account of the King's descent into madness and the shattering of the crown.",
+        description: "The true, unfiltered history of the First King, the betrayal of the Archmage, and the shattering of the Crown.",
         bonus: "Authority: Shop prices reduced by 10%.",
         items: ["📜1", "📜2", "📜3", "📜4", "📜5"] 
     },
     "anglers_almanac": {
         name: "The Old Mariner's Tale",
-        description: "The rantings of a sailor who saw what sleeps beneath the deep ocean.",
+        description: "The rantings of a sailor who realized the ocean's tides are caused by the breathing of a sleeping god.",
         bonus: "Sea Legs: +1 Base Luck.",
         items: ["⚓", "🍾", "🐚"] 
     },
@@ -46,13 +46,13 @@ window.LORE_SETS = {
     },
     "architects_ledger": {
         name: "The Architect's Ledger",
-        description: "Blueprints detailing the true purpose of the ancient fortresses.",
+        description: "Blueprints detailing the true purpose of the ancient fortresses: they were prisons, not castles.",
         bonus: "Stalwart: +5 Max Health.",
         items: ["📜f", "🧱", "▤"] 
     },
     "dwarven_mining_logs": {
         name: "Dwarven Mining Logs",
-        description: "Sturdy leather-bound notes detailing exactly what the dwarves found when they dug too deep.",
+        description: "Sturdy leather-bound notes detailing exactly what the dwarves found when they dug too deep into the crust.",
         bonus: "Demolitionist: +1 Base Constitution.",
         items: ["🧨", "⛏️", "💎r"] 
     },
@@ -60,7 +60,7 @@ window.LORE_SETS = {
     // --- LATE GAME / MULTIVERSE SETS ---
     "void_research": {
         name: "Notes from the Void",
-        description: "Forbidden research notes left by the First Mage detailing the architecture of the multiverse.",
+        description: "Forbidden research notes left by the First Mage, detailing how to tear reality apart to reach the 'Sleeping One'.",
         bonus: "Clarity: +10 Max Mana.",
         items: ["3", "j", "4"] // Refers to Burned Scroll, Acolyte's Scribblings, Mad Scrawlings
     },
@@ -72,7 +72,7 @@ window.LORE_SETS = {
     },
     "the_shadowed_hand": {
         name: "The Shadowed Hand",
-        description: "A dossier compiled by the Inquisitor detailing the Cult's structure and the Necromancer Lord.",
+        description: "A dossier compiled by the Inquisitor detailing the Cult's goal: reforge the Crown to wake the Leviathan.",
         bonus: "Zealot's Bane: +1 Base Strength.",
         items: ["📜c", "🧿s", "z"] 
     },
@@ -129,7 +129,6 @@ window.LORE_STONE_MESSAGES = [
     "He who wields the Stormbringer must fear the rain.",
     "A mirror reflects the body, but the Void reflects the mind.",
     "Beware the smiling merchant; his scales are tipped with lead.",
-    "The Leviathan slumbers, but its dreams cause the tides.",
     "To tame a beast, one must first break its will. To break a man, simply give him gold.",
     "The ashes of the Oracle still speak, if you know how to listen.",
     "A world built on glass cannot withstand a falling star.",
@@ -140,7 +139,6 @@ window.LORE_STONE_MESSAGES = [
     "A dimensional vault is merely a fold in the fabric of the Akashic Records.",
     "When the sky bleeds purple, close your eyes and cover your ears.",
     "The clockwork guardians do not hate you. They simply do not care.",
-    "The Cult of the Shadowed Hand seeks to reforge the shattered crown.",
     "Heed the Cartographer's warnings. There are places where the map ends for a reason.",
     "Some dimensions were abandoned by their creators. Do not linger in them.",
     "The stars you see are not suns. They are the campfires of the gods who abandoned us.",
@@ -149,14 +147,16 @@ window.LORE_STONE_MESSAGES = [
     "Before there were castles, there were the Crystal Spires. The dwarves shattered them out of greed.",
     "The fairies trade in memories, not gold. A Memory Shard is worth a fortune in the Deep Woods.",
     
-    // BRAND NEW LORE EXPANSION
+    // BRAND NEW UNIFIED STORY LORE
+    "Alaric did not go mad. He shattered his own Crown to hide the pieces from the First Mage.",
+    "The Leviathan slumbers, but its dreams cause the tides. When it wakes, the oceans will boil.",
+    "The Cult of the Shadowed Hand seeks to reforge the shattered crown to unlock the Abyssal Trench.",
     "The {orange:Meteor} spell is not a creation of fire, but of gravity. You are pulling the sky down.",
     "To enchant a weapon is to force an agreement between metal and the Void.",
     "The Colosseum was built over a Leyline Convergence. The blood spilled there feeds the network.",
     "The 'Safe Haven' is a lie. It is merely the last place He hasn't looked.",
     "The {cyan:Prime Tuning Fork} does not teleport you; it simply reminds the universe where you belong.",
     "If you kill the Necromancer Lord, another will take the crown. The cycle is unbreakable.",
-    "The giant spiders are not beasts. They are the immune system of the corrupted earth.",
     "The First Mage did not discover the Void. He created it by trying to erase a mistake.",
     "A {blue:Sailing Ship} cannot cross the edge of the world. It simply wraps around to the beginning of the nightmare.",
     "The wandering Bard knows the end of the story, but he refuses to sing the final verse.",
@@ -387,7 +387,6 @@ window.VILLAGER_RUMORS = [
     "My cousin went into the crypts. He came back... wrong. Kept staring at the wall.",
     "{green:Endurance} helps you resist the swamp sickness. Eat your greens.",
     "{blue:Wits} will help you find hidden doors in the caves. Knock on every wall!",
-    "They say the Old King isn't dead, just... waiting.",
     "The shopkeeper cheats at cards. Don't play him.",
     "If you see a {purple:rift in the world}, jump in! What's the worst that could happen?",
     "A {gold:Golden Apple} can bring a man back from the brink of death.",
@@ -396,9 +395,7 @@ window.VILLAGER_RUMORS = [
     "The Historian says he'll trade XP for those creepy {purple:Memory Shards}. I'd rather keep my memories, thanks.",
     "I heard the Bandit Chief has a {gray:Steel Sword}. I bet it’s sharp enough to shave a ghost.",
     "If you see a statue with red eyes, it wants an answer. If you're wrong, it wants your blood.",
-    "They say the Old King's crown was shattered into five pieces. I found a bit of gold once, but it was just a button.",
     "A wandering merchant sold me 'Dragon Repellent'. It was just garlic water. He went south.",
-    "The mages in the tower used to turn lead into gold. Now they just turn men into monsters.",
     "Never camp near a circle of mushrooms. The Fae will steal your boots.",
     "If you find an {gray:Obsidian Shard}, keep it hidden. The shadow acolytes can smell them.",
     "If you see a ring of {purple:purple mushrooms}, step inside! The Fae might restore your magic... or they might teleport you across the world.",
@@ -418,7 +415,12 @@ window.VILLAGER_RUMORS = [
     "The Inquisitor pays top gold for Cultist amulets. He's trying to root out the Shadowed Hand.",
     "Some say the {purple:Void Astrolabe} doesn't just teleport you... it takes you to a {purple:parallel dimension} altogether.",
     "If the Leylines ever go down, or you get trapped in an alternate dimension, just strike a {cyan:Prime Tuning Fork} to return home.",
-    "I hear if your bags are completely full and you try to pull a soggy chest from the ocean, whatever is inside drops right into the water. Poof. Gone."
+    "I hear if your bags are completely full and you try to pull a soggy chest from the ocean, whatever is inside drops right into the water. Poof. Gone.",
+    
+    // THE UNIFIED STORY HINTS
+    "They say the Old King isn't dead, just... waiting in the deep.",
+    "The mages in the tower used to turn lead into gold. Now they just try to erase what they've done.",
+    "They say the Old King's crown was shattered into five pieces. Not by the Cult... but by his own hand. Why would he do that?"
 ];
 
 // ==========================================
@@ -439,7 +441,6 @@ window.RANDOM_JOURNAL_PAGES = [
     "Endurance is the key. A strong {green:constitution} can shrug off swamp-sickness, or so I've heard.",
     "Someone told me a silver tongue is as good as a steel sword. I wonder if they've ever tried to 'pacify' a skeleton?",
     "That fortress... something is *wrong* there. It's not just bandits. The air feels... heavy.",
-    "The King hasn't eaten in weeks. He just stares at the {purple:Void Rift}, whispering to things that aren't there. We should have left when the birds stopped singing.",
     "Entry 442: The 'Mithril' we found in the deep grotto isn't ore. It’s growing. Like a scab over the world's skin.",
     "If you find my shield, give it to my son. Tell him I died defending the pass, not fleeing from the shadows. Lie to him if you have to.",
     "The Sage says the stars are actually eyes. I told him he’s had too much Bluecap stew, but last night... I saw one blink.",
@@ -454,7 +455,6 @@ window.RANDOM_JOURNAL_PAGES = [
     "We found a Fairy Ring today. Elara stepped inside and vanished. I'm going in after her.",
     "I hooked something off the starboard bow. It dragged the ship for three leagues before snapping a steel cable. I am never sailing again.",
     "If you see the sky turn red, run for the village. The {red:Blood Moon} is not a myth.",
-    "They call it the Abyssal Leviathan. It's not a fish. It's a natural disaster with teeth.",
     "I threw a firebomb into the swamp just to watch it burn. The resulting gas explosion leveled an entire thicket. Fascinating.",
     "My companion, a loyal dire wolf, took down a goblin brute by itself. I gave it a steak. It's better company than most men.",
     "The deeper you go into the caves, the hotter it gets. At floor five, the rock turns to obsidian and the air to ash.",
@@ -467,7 +467,12 @@ window.RANDOM_JOURNAL_PAGES = [
     "Do not trust the alternate dimensions. I spent a week in one where the oceans were lava. I barely made it back to the Prime Realm alive.",
     "The {purple:Void Blade} whispers to me when I hold it. It tells me to strike my friends. It promises me the world.",
     "We breached the vault, but it was empty. Only a hovering mirror remained, and my reflection was smiling while I frowned.",
-    "I drank the Elixir of Power. My veins feel like they are filled with lightning. I can see the magic pulsing through the trees."
+    "I drank the Elixir of Power. My veins feel like they are filled with lightning. I can see the magic pulsing through the trees.",
+    
+    // UNIFIED LORE PAGES
+    "The King hasn't eaten in weeks. He just stares at the {purple:Void Rift}, whispering to things that aren't there. He knows the Leviathan is coming.",
+    "They call it the Abyssal Leviathan. It's not a fish. It's the god the Cult has been trying to wake up.",
+    "The Necromancer Lord was once the First Mage. He tore open the Void because he thought he could control the Leviathan. He was wrong."
 ];
 
 window.LORE_FRAGMENTS = [
@@ -499,7 +504,6 @@ window.LORE_FRAGMENTS = [
 // ==========================================
 
 window.VISIONS_OF_THE_PAST = [
-    "A VISION: You see a golden king standing atop the fortress. He raises a hand, and the mountain splits. A shadow rises from the fissure, swallowing the sun.",
     "A VISION: Five knights kneel before a dark altar. They drink from a chalice of black ichor, and their eyes turn to blue ice.",
     "A VISION: The sky burns. Not with fire, but with {purple:arcane light}. The mages scream as their tower collapses, shattering into dust.",
     "A VISION: A lone figure seals the crypt doors. He is weeping. 'Sleep well, my brothers,' he whispers. 'Sleep until the world breaks.'",
@@ -527,8 +531,11 @@ window.VISIONS_OF_THE_PAST = [
     "A VISION: The sky cracks like glass. A colossal eye stares through the fissure. You cannot look away.",
     "A VISION: A woman rides a monstrous wolf across the plains, outrunning a storm of black ash.",
     "A VISION: You see the roots of the world. They are not wood, but thick cables of humming purple light.",
-    "A VISION: You are underwater, sinking into the abyss. A massive, glowing eye opens beneath you. It is larger than a city.",
-    "A VISION: A hooded figure places the Sun Shard, the Moon Tear, and the Void Crystal on a pedestal. Reality shatters with a sound like breaking glass."
+    "A VISION: A hooded figure places the Sun Shard, the Moon Tear, and the Void Crystal on a pedestal. Reality shatters with a sound like breaking glass.",
+    
+    // UNIFIED STORY VISIONS
+    "A VISION: You see a golden king standing atop the fortress. He takes off his crown and smashes it against the stone. 'They cannot open the Rift without it,' he whispers.",
+    "A VISION: You are underwater, sinking into the abyss. A massive, glowing eye opens beneath you. It is larger than a city. The Leviathan is awake."
 ];
 
 // ==========================================
