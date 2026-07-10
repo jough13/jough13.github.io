@@ -30,6 +30,19 @@ window._hungerDisplayObj = window._hungerDisplayObj || null;
 window._healthDisplayObj = window._healthDisplayObj || null;
 window._psycheDisplayObj = window._psycheDisplayObj || null;
 
+// PERFORMANCE WIN: Move Bait Definitions out of the execution loop to prevent Garbage Collection churn!
+window.FISHING_BAITS = [
+    { name: 'Moonbloom Petal', catchBoost: 0.30, rareBoost: 0.70, weightMult: 2.00, color: 'fuchsia' }, // Ultimate Bait
+    { name: 'Void Dust', catchBoost: 0.20, rareBoost: 0.60, weightMult: 1.50, zoneOnly: 'void', color: 'purple' },
+    { name: 'Kraken Ink Sac', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'deep', color: 'purple' }, 
+    { name: 'Fire Elemental Core', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'lava', color: 'orange' }, 
+    { name: 'Minnow', catchBoost: 0.15, rareBoost: 0.30, weightMult: 1.15, color: 'blue' }, 
+    { name: 'Raw Meat', catchBoost: 0.25, rareBoost: 0.10, weightMult: 1.05, color: 'red' }, 
+    { name: 'Rat Tail', catchBoost: 0.10, rareBoost: 0.0, weightMult: 0.9, color: 'gray' }, 
+    { name: 'Bat Wing', catchBoost: 0.10, rareBoost: 0.05, weightMult: 0.9, color: 'gray' }, 
+    { name: 'Bird Egg', catchBoost: 0.10, rareBoost: 0.05, weightMult: 1.0, color: 'gray' } 
+];
+
 // --- 1. DYNAMIC ITEM INJECTION ---
 // Using 'var' prevents block-scoped redeclaration crashes during hot-reloads
 var NEW_FISHING_ITEMS = {
@@ -50,16 +63,17 @@ var NEW_FISHING_ITEMS = {
             let perksHtml = '';
             if (lvl >= 5) perksHtml += '<p class="text-xs text-green-400 font-bold mt-1">⭐ Master Angler (Trash fish ignored)</p>';
             if (lvl >= 10) perksHtml += '<p class="text-xs text-blue-400 font-bold mt-1">🌟 Deep Sea Master (Double Legendary Rate)</p>';
-            if (lvl >= 15) perksHtml += '<p class="text-xs text-purple-400 font-bold mt-1">👑 Leviathan\'s Bane (No stamina loss on struggles, half damage from sea monsters)</p>';
+            if (lvl >= 15) perksHtml += '<p class="text-xs text-red-400 font-bold mt-1">👑 Leviathan\'s Bane (No stamina loss on struggles, half damage from sea monsters)</p>';
+            if (lvl >= 20) perksHtml += '<p class="text-xs text-fuchsia-400 font-bold mt-1">🌌 Astral Fisher (25% chance to not consume bait)</p>';
             if (perksHtml === '') perksHtml = '<p class="text-xs text-gray-500 italic mt-1">Keep fishing to unlock Mastery Perks.</p>';
 
             // Build the "Fish-dex" Grid
             const allFish = [
-                'Minnow', 'River Trout', 'Leaping Salmon', 'Golden Koi',
-                'Mudcat', 'Sludge Eel', 'Eyeless Cave Fish', 'Swamp Serpent Scale',
+                'Minnow', 'River Trout', 'Mossy Snapper', 'Leaping Salmon', 'Golden Koi',
+                'Mudcat', 'Glow-Eyed Catfish', 'Sludge Eel', 'Eyeless Cave Fish', 'Swamp Serpent Scale',
                 'Deep Sea Cod', 'Silver Tuna', 'Swordfish', 'Abyssal Angler',
-                'Magma Carp', 'Obsidian Eel', 'Heart of the Volcano',
-                'Astral Jelly', 'Void Ray', 'Star-Eater' // Expanded to include Void Fish
+                'Magma Carp', 'Charred Bonefish', 'Obsidian Eel', 'Heart of the Volcano',
+                'Astral Jelly', 'Void Ray', 'Nebula Ray', 'Star-Eater'
             ];
             
             let caughtCount = 0;
@@ -97,8 +111,8 @@ var NEW_FISHING_ITEMS = {
 
             const completionPercent = Math.floor((caughtCount / allFish.length) * 100);
 
-            // UI WIN: Cap XP bar visuals if max level (15) is reached
-            const isMax = lvl >= 15;
+            // UI WIN: Cap XP bar visuals if max level (20) is reached
+            const isMax = lvl >= 20;
             const xpBarWidth = isMax ? 100 : Math.min(100, (xp/nextXp)*100);
             const xpText = isMax ? `<span class="text-yellow-500 font-bold uppercase tracking-widest">MAXED</span>` : `XP: ${xp} / ${nextXp}`;
 
@@ -140,9 +154,23 @@ var NEW_FISHING_ITEMS = {
     // --- Shallow & Swamp Fish ---
     '🐟min': { name: 'Minnow', type: 'consumable', tile: '🐟', description: "A tiny fish. Good for a snack, but better as live bait! {yellow:+5 Hunger}", effect: (s) => eatFish(s, 5) },
     '🐟trp': { name: 'River Trout', type: 'consumable', tile: '🐟', description: "A decent sized river fish. {yellow:+15 Hunger}", effect: (s) => eatFish(s, 15) },
-    '🐟slm': { name: 'Leaping Salmon', type: 'consumable', tile: '🐟', description: "Fights hard. {yellow:+20 Hunger}, {green:+2 HP}", effect: (s) => eatFish(s, 20, 2) },
+    '🐟snm': { name: 'Mossy Snapper', type: 'consumable', tile: '🐟', description: "Tough scales, soft meat. {yellow:+20 Hunger}", effect: (s) => eatFish(s, 20) },
+    '🐟slm': { name: 'Leaping Salmon', type: 'consumable', tile: '🐟', description: "Fights hard. {yellow:+25 Hunger}, {green:+2 HP}", effect: (s) => eatFish(s, 25, 2) },
     '🐟koi': { name: 'Golden Koi', type: 'junk', tile: '🐟', description: "Its scales are pure gold! Merchants will pay dearly for this." }, 
     '🐟mud': { name: 'Mudcat', type: 'consumable', tile: '🐟', description: "Tastes like dirt. {yellow:+10 Hunger}", effect: (s) => eatFish(s, 10) },
+    '🐟glw': { 
+        name: 'Glow-Eyed Catfish', type: 'consumable', tile: '🐟', 
+        description: "Its eyes pierce the gloom. {yellow:+15 Hunger}, {gold:+3 Perception (50t)}", 
+        effect: (state) => {
+            const eaten = eatFish(state, 15);
+            if (eaten) {
+                state.player.witsBonus = 3; // Using witsBonus property dynamically to avoid bloating state object
+                state.player.witsBonusTurns = 50;
+                logMessage("{gold:Your vision sharpens significantly! (+3 Perception for 50 turns)}");
+            }
+            return eaten;
+        } 
+    },
     '🐟eel': { name: 'Sludge Eel', type: 'junk', tile: '🐍', description: "Slimy and writhing. Alchemists might want it." },
     '🐟eye': { name: 'Eyeless Cave Fish', type: 'junk', tile: '🐟', description: "It has adapted to complete darkness." },
     '🐉s':   { name: 'Swamp Serpent Scale', type: 'junk', tile: '🐉', description: "You barely managed to reel this in before the beast snapped your line." },
@@ -155,12 +183,24 @@ var NEW_FISHING_ITEMS = {
     
     // --- Lava Fish ---
     '🌋crp': { name: 'Magma Carp', type: 'consumable', tile: '🐟', description: "It's already cooked perfectly! {yellow:+35 Hunger}, {green:+10 HP}", effect: (s) => eatFish(s, 35, 10) },
+    '🌋chr': { name: 'Charred Bonefish', type: 'junk', tile: '🦴', description: "The heat has carbonized its bones into something resembling diamonds." },
     '🌋eel': { name: 'Obsidian Eel', type: 'weapon', tags: ['whip', 'fire'], tile: '🐍', damage: 6, slot: 'weapon', inflicts: 'burn', inflictChance: 0.3, description: "{red:+6 Dmg}. A living, whip-like eel that sears flesh. {orange:(Burns target)}" },
     '🌋hrt': { name: 'Heart of the Volcano', type: 'accessory', tile: '❤️', defense: 2, slot: 'accessory', statBonuses: { constitution: 5, strength: 3 }, description: "{blue:+2 Def}, {green:+5 Con, +3 Str}. It beats with volcanic fury." },
 
     // --- Void/Astral Fish (NEW) ---
     '🐟str': { name: 'Astral Jelly', type: 'consumable', tile: '🪼', description: "It tastes like blueberries and static electricity. {yellow:+15 Hunger}, {purple:+20 Psyche}", effect: (s) => eatFish(s, 15, 0, 20) },
     '🐟vry': { name: 'Void Ray', type: 'junk', tile: '🦇', description: "A flat, cartilaginous creature that swims through empty space. Highly valuable." },
+    '🐟neb': { 
+        name: 'Nebula Ray', type: 'consumable', tile: '🌌', 
+        description: "It shimmers with starlight. {purple:+50 Psyche}, {red:-5 HP}", 
+        effect: (state) => {
+            if (state.player.psyche >= state.player.maxPsyche) return false;
+            window.modifyVital('psyche', 50);
+            window.modifyVital('health', -5);
+            logMessage("{purple:You consume the star-stuff. It burns, but your mind expands! (+50 Psyche, -5 HP)}");
+            return true;
+        } 
+    },
     '🦈str': { name: 'Star-Eater', type: 'weapon', tile: '🦈', damage: 8, slot: 'weapon', statBonuses: { willpower: 2 }, description: "{red:+8 Dmg}, {purple:+2 Will}. A terrifying maw pulled from the rift." },
 
     // --- Dredged Treasures & Lore Expansion ---
@@ -374,7 +414,7 @@ var FISHING_LOOT = {
     shallow: {
         trash: [{ name: 'Soggy Boot' }, { name: 'Wood Log' }, { name: 'Bone Shard' }, { name: 'Rusted Helm' }],
         common: [{ name: 'Minnow' }, { name: 'Raw Fish' }],
-        uncommon: [{ name: 'River Trout', minW: 2, maxW: 10 }, { name: 'Raw Fish' }],
+        uncommon: [{ name: 'River Trout', minW: 2, maxW: 10 }, { name: 'Mossy Snapper', minW: 3, maxW: 12 }, { name: 'Raw Fish' }],
         rare: [{ name: 'Leaping Salmon', minW: 12, maxW: 35 }, { name: 'Message in a Bottle' }],
         legendary: [{ name: 'Golden Koi', minW: 10, maxW: 40 }, { name: 'Ring of Regeneration' }]
     },
@@ -382,7 +422,7 @@ var FISHING_LOOT = {
         trash: [{ name: 'Soggy Boot' }, { name: 'Stick' }, { name: 'Dirty Water' }, { name: 'Drowned Skull' }],
         common: [{ name: 'Mudcat' }, { name: 'Raw Fish' }],
         uncommon: [{ name: 'Sludge Eel', minW: 5, maxW: 25 }, { name: 'Mudcat' }],
-        rare: [{ name: 'Eyeless Cave Fish', minW: 2, maxW: 8 }, { name: 'Poisoned Dagger' }],
+        rare: [{ name: 'Eyeless Cave Fish', minW: 2, maxW: 8 }, { name: 'Glow-Eyed Catfish', minW: 10, maxW: 30 }, { name: 'Poisoned Dagger' }],
         legendary: [{ name: 'Swamp Serpent Scale' }, { name: 'Waterlogged Chest' }]
     },
     deep: {
@@ -395,7 +435,7 @@ var FISHING_LOOT = {
     lava: {
         trash: [{ name: 'Stone' }, { name: 'Iron Ore' }, { name: 'Bone Shard' }],
         common: [{ name: 'Magma Carp', minW: 5, maxW: 20 }],
-        uncommon: [{ name: 'Obsidian Shard' }, { name: 'Magma Carp', minW: 20, maxW: 50 }],
+        uncommon: [{ name: 'Obsidian Shard' }, { name: 'Magma Carp', minW: 20, maxW: 50 }, { name: 'Charred Bonefish' }],
         rare: [{ name: 'Obsidian Eel', minW: 10, maxW: 30 }],
         legendary: [{ name: 'Heart of the Volcano' }, { name: 'Obsidian Edge' }] 
     },
@@ -403,7 +443,7 @@ var FISHING_LOOT = {
         trash: [{ name: 'Void Dust' }, { name: 'Bone Shard' }, { name: 'Memory Shard' }],
         common: [{ name: 'Astral Jelly', minW: 1, maxW: 5 }],
         uncommon: [{ name: 'Astral Jelly', minW: 5, maxW: 15 }, { name: 'Void Dust' }],
-        rare: [{ name: 'Void Ray', minW: 20, maxW: 80 }],
+        rare: [{ name: 'Void Ray', minW: 20, maxW: 80 }, { name: 'Nebula Ray', minW: 30, maxW: 90 }],
         legendary: [{ name: 'Star-Eater', minW: 100, maxW: 500 }, { name: 'Void-Touched Ring' }] 
     }
 };
@@ -470,6 +510,7 @@ function executeFishing() {
     const isMasterAngler = player.fishingLevel >= 5;
     const isDeepSeaMaster = player.fishingLevel >= 10;
     const isLeviathansBane = player.fishingLevel >= 15;
+    const isAstralFisher = player.fishingLevel >= 20;
 
     // --- DETERMINE BIOME ---
     let zone = 'shallow';
@@ -482,22 +523,10 @@ function executeFishing() {
     let usedBaitName = null;
     let baitCatchBoost = 0;
     let baitRareBoost = 0;
-    let baitWeightMult = 1.0; // GAMEPLAY WIN: Good bait catches bigger fish!
+    let baitWeightMult = 1.0; 
     let baitColor = 'gray';
 
-    // QoL WIN: Expanded Bait options using early game junk!
-    const validBaits = [
-        { name: 'Void Dust', catchBoost: 0.20, rareBoost: 0.60, weightMult: 1.50, zoneOnly: 'void', color: 'purple' },
-        { name: 'Kraken Ink Sac', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'deep', color: 'purple' }, 
-        { name: 'Fire Elemental Core', catchBoost: 0.10, rareBoost: 0.50, weightMult: 1.25, zoneOnly: 'lava', color: 'orange' }, 
-        { name: 'Minnow', catchBoost: 0.15, rareBoost: 0.30, weightMult: 1.15, color: 'blue' }, 
-        { name: 'Raw Meat', catchBoost: 0.25, rareBoost: 0.10, weightMult: 1.05, color: 'red' }, 
-        { name: 'Rat Tail', catchBoost: 0.10, rareBoost: 0.0, weightMult: 0.9, color: 'gray' }, 
-        { name: 'Bat Wing', catchBoost: 0.10, rareBoost: 0.05, weightMult: 0.9, color: 'gray' }, 
-        { name: 'Bird Egg', catchBoost: 0.10, rareBoost: 0.05, weightMult: 1.0, color: 'gray' } 
-    ];
-
-    for (let b of validBaits) {
+    for (let b of window.FISHING_BAITS) {
         if (b.zoneOnly && b.zoneOnly !== zone) continue;
         const idx = player.inventory.findIndex(i => i.name === b.name && !i.isEquipped);
         if (idx > -1) {
@@ -506,8 +535,14 @@ function executeFishing() {
             baitRareBoost = b.rareBoost;
             baitWeightMult = b.weightMult;
             baitColor = b.color;
-            player.inventory[idx].quantity--;
-            if (player.inventory[idx].quantity <= 0) player.inventory.splice(idx, 1);
+            
+            // LORE WIN: Level 20 Mastery Perk -> Chance to save bait!
+            if (isAstralFisher && Math.random() < 0.25) {
+                logMessage("{fuchsia:Astral Fisher Mastery: You carefully preserve your bait!}");
+            } else {
+                player.inventory[idx].quantity--;
+                if (player.inventory[idx].quantity <= 0) player.inventory.splice(idx, 1);
+            }
             break; 
         }
     }
@@ -793,7 +828,7 @@ function executeFishing() {
         player.fishingXp += xpGained;
         const xpNeeded = player.fishingLevel * 50;
 
-        if (player.fishingXp >= xpNeeded && player.fishingLevel < 15) {
+        if (player.fishingXp >= xpNeeded && player.fishingLevel < 20) {
             player.fishingXp -= xpNeeded;
             player.fishingLevel++;
             logMessage(`{blue:FISHING LEVEL UP! You are now a Level ${player.fishingLevel} Angler.}`);
