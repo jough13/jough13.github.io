@@ -126,6 +126,163 @@ window.TILE_DATA = {
             return { charisma: state.player.charisma, lootedTiles: Object.fromEntries(state.lootedTiles) };
         }
     },
+    // ==========================================
+    // --- PROCEDURAL LANDMARKS ---
+    // ==========================================
+    '🗡️r': {
+        type: 'landmark',
+        name: 'Sword in the Stone',
+        flavor: "An ancient blade embedded deep in a solid block of granite.",
+        onInteract: (state, x, y) => {
+            const dist = Math.sqrt(x * x + y * y);
+            // Procedural Strength Requirement: Harder to pull the further from spawn you are!
+            const reqStr = 5 + Math.floor(dist / 500); 
+            
+            logMessage(`You grasp the hilt and pull with all your might... (Requires ${reqStr} Strength)`);
+            
+            if (state.player.strength + (state.player.strengthBonus || 0) >= reqStr) {
+                logMessage("{gold:The stone cracks! You draw the legendary blade!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#facc15', 30);
+                state.screenShake = 20;
+
+                // Procedurally generate the sword's power based on distance
+                const dmg = 5 + Math.floor(dist / 400);
+                const item = {
+                    templateId: '⚔️s', name: `Hero's Blade of the ${getRegionName(Math.floor(x/160), Math.floor(y/160)).split(' ').pop()}`,
+                    type: 'weapon', tags: ['blade'], tile: '🗡️', quantity: 1, damage: dmg, slot: 'weapon',
+                    statBonuses: { strength: 2, charisma: 2 }, _rarity: 'epic',
+                    description: `{red:+${dmg} Dmg}, {green:+2 Str}, {gold:+2 Cha}. He who draws the blade rules the land.`
+                };
+
+                if (state.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
+                    state.player.inventory.push(item);
+                } else {
+                    logMessage("{red:Inventory full! The blade falls to the grass.}");
+                    if (state.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '🗡️', 24);
+                }
+
+                // Turn the landmark into a cracked stone
+                if (state.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '🏚'); 
+                state.mapDirty = true;
+                if (typeof renderInventory === 'function') renderInventory();
+                return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory };
+            } else {
+                logMessage("{gray:The blade does not budge. You are not strong enough... yet.}");
+                window.modifyVital('stamina', -5); // Exhausting to try
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return { stamina: state.player.stamina };
+            }
+        }
+    },
+    '⛲r': {
+        type: 'landmark',
+        name: 'Radiant Spring',
+        flavor: "A natural pool glowing with pure, swirling starlight.",
+        onInteract: (state, x, y) => {
+            logMessage("{cyan:You drink from the Radiant Spring. Pure magic courses through your veins!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#67e8f9', 40);
+
+            // Massive Buffs
+            state.player.poisonTurns = 0; state.player.burnTurns = 0; state.player.frostbiteTurns = 0; state.player.madnessTurns = 0;
+            state.player.health = state.player.maxHealth;
+            state.player.mana = state.player.maxMana;
+            state.player.stamina = state.player.maxStamina;
+            state.player.psyche = state.player.maxPsyche;
+            
+            // 20% chance to permanently increase a random stat!
+            if (Math.random() < 0.20) {
+                const stats = ['strength', 'dexterity', 'wits', 'constitution'];
+                const buff = stats[Math.floor(Math.random() * stats.length)];
+                state.player[buff]++;
+                logMessage(`{gold:The starlight mutates your form! (+1 ${buff.toUpperCase()})}`);
+                if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
+            }
+
+            // Consume the pool (turns into dry cracked earth)
+            if (state.mapMode === 'overworld') chunkManager.setWorldTile(x, y, 'd');
+            state.mapDirty = true;
+            if (typeof renderStats === 'function') renderStats();
+            
+            return { 
+                health: state.player.health, mana: state.player.mana, stamina: state.player.stamina, psyche: state.player.psyche,
+                strength: state.player.strength, dexterity: state.player.dexterity, wits: state.player.wits, constitution: state.player.constitution,
+                poisonTurns: 0, burnTurns: 0, frostbiteTurns: 0, madnessTurns: 0
+            };
+        }
+    },
+    '⚙️g': {
+        type: 'landmark',
+        name: 'Fallen Titan',
+        flavor: "A rusted clockwork automaton the size of a castle, half-buried in the earth.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("{gray:You've already salvaged all the usable parts from this behemoth.}");
+                return null;
+            }
+
+            const hasPickaxe = state.player.inventory.some(i => i.name === 'Pickaxe' || i.name === 'Diamond Tipped Pickaxe');
+            if (!hasPickaxe) {
+                logMessage("{red:You need a Pickaxe to pry loose the massive gears.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return null;
+            }
+
+            logMessage("{orange:You strike the rusted joints, prying loose valuable metals!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f59e0b', 15);
+
+            state.player.stamina = Math.max(0, state.player.stamina - 5);
+            
+            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+            const yieldAmt = 3 + Math.floor(Math.random() * 3);
+            
+            // Give Iron Ore
+            const ironStack = state.player.inventory.find(i => i.name === 'Iron Ore' && !i.isEquipped);
+            if (ironStack) ironStack.quantity += yieldAmt;
+            else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '•', name: 'Iron Ore', type: 'junk', quantity: yieldAmt, tile: '•' });
+            
+            // 30% chance for a Star-Metal Core
+            if (Math.random() < 0.30) {
+                logMessage("{purple:You found the Titan's power core! (Star-Metal Ore)}");
+                const starStack = state.player.inventory.find(i => i.name === 'Star-Metal Ore' && !i.isEquipped);
+                if (starStack) starStack.quantity += 1;
+                else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '☄️', name: 'Star-Metal Ore', type: 'junk', quantity: 1, tile: '☄️' });
+            }
+
+            state.lootedTiles.add(tileId);
+            if (typeof renderInventory === 'function') renderInventory();
+            return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles), stamina: state.player.stamina };
+        }
+    },
+    '🪦m': {
+        type: 'landmark',
+        name: 'Whispering Monolith',
+        flavor: "A towering slab of black stone covered in glowing, shifting runes.",
+        onInteract: (state, x, y) => {
+            const tileId = `${x},${-y}`;
+            if (state.lootedTiles.has(tileId)) {
+                logMessage("{gray:The runes are dark. It has nothing more to teach you.}");
+                return null;
+            }
+
+            logMessage("{purple:You touch the Monolith. Forbidden knowledge floods your mind!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#a855f7', 30);
+            
+            state.screenShake = 15;
+            
+            // Huge XP burst but causes Madness
+            if (typeof grantXp === 'function') grantXp(1000);
+            state.player.madnessTurns = (state.player.madnessTurns || 0) + 5;
+            logMessage("{red:The sheer weight of the truth shatters your sanity! (Madness)}");
+
+            state.lootedTiles.add(tileId);
+            return { madnessTurns: state.player.madnessTurns, lootedTiles: Object.fromEntries(state.lootedTiles) };
+        }
+    },
     '⛺a': {
         type: 'anomaly',
         name: 'Abandoned Campsite',
