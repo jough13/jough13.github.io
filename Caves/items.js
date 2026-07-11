@@ -29,7 +29,7 @@ function rehydratePlayerState(data) {
         let templateKey = null;
 
         // 1. ROBUST LOOKUP (By ID)
-        if (item.templateId && ITEM_DATA[item.templateId]) {
+        if (item.templateId && typeof ITEM_DATA !== 'undefined' && ITEM_DATA[item.templateId]) {
             templateItem = ITEM_DATA[item.templateId];
             templateKey = item.templateId;
         }
@@ -37,11 +37,11 @@ function rehydratePlayerState(data) {
         // 2. FALLBACK A: Name Match (Using Cache for Performance)
         if (!templateItem && item.name) {
             templateKey = resolveTemplateIdByName(item.name);
-            if (templateKey) templateItem = ITEM_DATA[templateKey];
+            if (templateKey && typeof ITEM_DATA !== 'undefined') templateItem = ITEM_DATA[templateKey];
         }
 
         // 3. FALLBACK B: Suffix Match (For randomly generated magic items)
-        if (!templateItem && item.name) { // 🚨 GHOST GUARD: Ensure item.name is a valid string
+        if (!templateItem && item.name && typeof ITEM_DATA !== 'undefined') { 
             const candidates = Object.keys(ITEM_DATA).filter(k => item.name.endsWith(ITEM_DATA[k].name));
             if (candidates.length > 0) {
                 // Find longest match (e.g. 'Steel Sword' vs 'Sword')
@@ -99,48 +99,53 @@ function rehydratePlayerState(data) {
  * Drops a mix of Junk, Gold, or Level-Scaled Loot.
  */
 function generateEnemyLoot(player, enemy) {
+    if (!player || !enemy) return '$'; // Safe fallback
+    
     // --- 0. QUEST ITEM DROPS ---
     if (gameState.player.relicQuestStage === 1 && (enemy.tile === '🦂' || enemy.tile === 'm') && Math.random() < 0.05) {
-        logMessage("{gold:You found the Sun Shard!}");
+        if (typeof logMessage === 'function') logMessage("{gold:You found the Sun Shard!}");
         return '💎s';
     }
     if (gameState.player.relicQuestStage === 2 && (enemy.tile === 'l' || enemy.tile === '🐉h') && Math.random() < 0.05) {
-        logMessage("{blue:You found the Moon Tear!}");
+        if (typeof logMessage === 'function') logMessage("{blue:You found the Moon Tear!}");
         return '💎m';
     }
     if (gameState.player.relicQuestStage === 3 && (enemy.tile === 'Y' || enemy.tile === '🐲') && Math.random() < 0.05) {
-        logMessage("{purple:You found the Void Crystal!}");
+        if (typeof logMessage === 'function') logMessage("{purple:You found the Void Crystal!}");
         return '💎v';
     }
     if ((gameState.player.shadowQuestStage || 0) === 0 && enemy.name.includes('Cultist') && Math.random() < 0.20) {
-        logMessage("{purple:You found Cultist Orders on the body!}");
+        if (typeof logMessage === 'function') logMessage("{purple:You found Cultist Orders on the body!}");
         return '📜c';
     }
     if (gameState.player.shadowQuestStage === 1 && enemy.name === 'Cultist Fanatic' && Math.random() < 0.25) {
-        logMessage("{purple:You found a Shadow Amulet!}");
+        if (typeof logMessage === 'function') logMessage("{purple:You found a Shadow Amulet!}");
         return '🧿s';
     }
 
     // --- 1. Check for Active Fetch Quests ---
-    const enemyTile = enemy.tile || Object.keys(ENEMY_DATA).find(k => ENEMY_DATA[k].name === enemy.name);
-    for (const questId in player.quests) {
-        const playerQuest = player.quests[questId];
-        const questData = QUEST_DATA[questId];
-        if (playerQuest.status === 'active' && questData.type === 'fetch' && questData.enemy === enemyTile) {
-            // 🚨 GHOST GUARD: Safely check item.name
-            const hasItem = player.inventory.some(item => item && item.name === questData.itemNeeded);
-            if (!hasItem) {
-                const dropChance = 0.05 + (player.luck * 0.005);
-                if (Math.random() < dropChance) {
-                    logMessage(`{yellow:The ${enemy.name} dropped a ${questData.itemNeeded}!}`);
-                    return questData.itemTile;
+    const enemyTile = enemy.tile || (typeof ENEMY_DATA !== 'undefined' ? Object.keys(ENEMY_DATA).find(k => ENEMY_DATA[k].name === enemy.name) : null);
+    
+    if (player.quests && typeof QUEST_DATA !== 'undefined') {
+        for (const questId in player.quests) {
+            const playerQuest = player.quests[questId];
+            const questData = QUEST_DATA[questId];
+            if (playerQuest && questData && playerQuest.status === 'active' && questData.type === 'fetch' && questData.enemy === enemyTile) {
+                // 🚨 GHOST GUARD: Safely check item.name
+                const hasItem = player.inventory.some(item => item && item.name === questData.itemNeeded);
+                if (!hasItem) {
+                    const dropChance = 0.05 + ((player.luck || 1) * 0.005);
+                    if (Math.random() < dropChance) {
+                        if (typeof logMessage === 'function') logMessage(`{yellow:The ${enemy.name} dropped a ${questData.itemNeeded}!}`);
+                        return questData.itemTile;
+                    }
                 }
             }
         }
     }
 
     // --- 2. Calculate Distance for Scaling ---
-    let dist;
+    let dist = 100;
     if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
         dist = Math.sqrt(player.x * player.x + player.y * player.y);
         if (gameState.currentRealm && gameState.currentRealm !== 0) dist += 1000; 
@@ -152,14 +157,13 @@ function generateEnemyLoot(player, enemy) {
             const parts = instanceId.split('_').map(Number).filter(n => !isNaN(n));
             if (parts.length >= 2) {
                 dist = Math.sqrt(parts[0] * parts[0] + parts[1] * parts[1]);
-            } else {
-                dist = 100;
             }
         }
     }
 
     // --- 3. Determine Drop Tables ---
-    const JUNK_DROP_CHANCE = Math.max(0.05, 0.25 - (player.luck * 0.001));
+    const playerLuck = player.luck || 1;
+    const JUNK_DROP_CHANCE = Math.max(0.05, 0.25 - (playerLuck * 0.001));
     const GOLD_DROP_CHANCE = 0.50;
     const roll = Math.random();
 
@@ -177,29 +181,31 @@ function generateEnemyLoot(player, enemy) {
     else if (dist > 500) magicChance = 0.10; 
     else if (dist > 250) magicChance = 0.05; 
 
-    magicChance += (player.luck * 0.005);
+    magicChance += (playerLuck * 0.005);
 
     // CONTENT WIN: Guaranteed Loot for Bosses
     if (enemy.isBoss) {
         magicChance = 1.0; 
-        logMessage(`{gold:The ${enemy.name} collapses, leaving behind a powerful artifact...}`);
+        if (typeof logMessage === 'function') logMessage(`{gold:The ${enemy.name} collapses, leaving behind a powerful artifact...}`);
     } else if (enemy.isElite) {
         magicChance += 0.20; 
-        logMessage(`{purple:The ${enemy.name} leaves behind a glowing essence...}`);
+        if (typeof logMessage === 'function') logMessage(`{purple:The ${enemy.name} leaves behind a glowing essence...}`);
     }
 
     if (Math.random() < magicChance) return '✨'; 
 
     // --- 4.5 LEGENDARY ARTIFACT DROPS (Tier 6 Only) ---
-    if (dist > 2500 && Math.random() < 0.05) { 
+    if (dist > 2500 && Math.random() < 0.05 && typeof ITEM_DATA !== 'undefined') { 
         const legendaries = ['⚔️k', '🛡️a', '👢w', '👑v', '🍎', '🗡️v', '👹'];
         const drop = legendaries[Math.floor(Math.random() * legendaries.length)];
         const item = ITEM_DATA[drop];
-        logMessage(`{gold:The enemy dropped a Legendary Artifact: ${item.name}!}`);
         
-        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
-        return drop;
+        if (item) {
+            if (typeof logMessage === 'function') logMessage(`{gold:The enemy dropped a Legendary Artifact: ${item.name}!}`);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+            return drop;
+        }
     }
 
     // --- 5. Standard Equipment Drops ---
@@ -231,17 +237,19 @@ function generateEnemyLoot(player, enemy) {
 window._cachedBaseItemKeys = null;
 
 function generateMagicItem(tier) {
+    if (typeof window.ITEM_DATA === 'undefined') return { name: 'Broken Magic Item', type: 'junk', tile: '✨', quantity: 1 };
+    
     const playerLuck = (gameState && gameState.player && gameState.player.luck) ? gameState.player.luck : 1;
     const luckBonus = playerLuck * 0.01; 
 
     if (!window._cachedBaseItemKeys) {
-        window._cachedBaseItemKeys = Object.keys(ITEM_DATA).filter(k =>
-            ITEM_DATA[k].type === 'weapon' || ITEM_DATA[k].type === 'armor'
+        window._cachedBaseItemKeys = Object.keys(window.ITEM_DATA).filter(k =>
+            window.ITEM_DATA[k].type === 'weapon' || window.ITEM_DATA[k].type === 'armor'
         );
     }
     
     const validBaseKeys = window._cachedBaseItemKeys.filter(k => {
-        const item = ITEM_DATA[k];
+        const item = window.ITEM_DATA[k];
         if (item.excludeFromLoot) return false;
         
         const power = Math.max(item.damage || 0, item.defense || 0);
@@ -253,11 +261,12 @@ function generateMagicItem(tier) {
         return true;
     });
 
-    const finalKeys = validBaseKeys.length > 0 ? validBaseKeys : window._cachedBaseItemKeys.filter(k => !ITEM_DATA[k].excludeFromLoot);
+    const finalKeys = validBaseKeys.length > 0 ? validBaseKeys : window._cachedBaseItemKeys.filter(k => !window.ITEM_DATA[k].excludeFromLoot);
     const baseKey = finalKeys[Math.floor(Math.random() * finalKeys.length)];
-    const template = ITEM_DATA[baseKey];
+    const template = window.ITEM_DATA[baseKey];
 
-    // 🚨 ROBUSTNESS WIN: Safe Deep Cloning to prevent mutating the global template
+    // 🚨 ROBUSTNESS & BUG FIX WIN: Safe Deep Cloning 
+    // Prevents mutating the global template in memory, preventing every sword picked up later from also having the bonus!
     const clonedBonuses = template.statBonuses 
         ? (typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template.statBonuses) : JSON.parse(JSON.stringify(template.statBonuses))) 
         : {};
@@ -272,7 +281,10 @@ function generateMagicItem(tier) {
         defense: template.defense || 0,
         slot: template.slot,
         statBonuses: clonedBonuses,
-        tags: template.tags ? [...template.tags] : [] 
+        // BUG FIX: Clone the arrays too!
+        tags: template.tags ? [...template.tags] : [],
+        effect: template.effect,
+        onHit: template.onHit
     };
 
     let hasPrefix = false;
@@ -313,11 +325,11 @@ function generateMagicItem(tier) {
         
         newItem._rarity = 'epic'; 
     } else {
-        if (Math.random() < 0.5 + (tier * 0.1) + luckBonus) {
-            const validPrefixes = Object.keys(LOOT_PREFIXES).filter(p => LOOT_PREFIXES[p].type === newItem.type);
+        if (typeof window.LOOT_PREFIXES !== 'undefined' && Math.random() < 0.5 + (tier * 0.1) + luckBonus) {
+            const validPrefixes = Object.keys(window.LOOT_PREFIXES).filter(p => window.LOOT_PREFIXES[p].type === newItem.type);
             if (validPrefixes.length > 0) {
                 const prefixName = validPrefixes[Math.floor(Math.random() * validPrefixes.length)];
-                const prefixData = LOOT_PREFIXES[prefixName];
+                const prefixData = window.LOOT_PREFIXES[prefixName];
 
                 newItem.name = `${prefixName} ${newItem.name}`;
                 hasPrefix = true;
@@ -331,18 +343,20 @@ function generateMagicItem(tier) {
         }
     }
 
-    if (Math.random() < 0.3 + (tier * 0.1) + (luckBonus * 0.5)) {
-        const suffixKeys = Object.keys(LOOT_SUFFIXES);
-        const suffixName = suffixKeys[Math.floor(Math.random() * suffixKeys.length)];
-        const suffixData = LOOT_SUFFIXES[suffixName];
+    if (typeof window.LOOT_SUFFIXES !== 'undefined' && Math.random() < 0.3 + (tier * 0.1) + (luckBonus * 0.5)) {
+        const suffixKeys = Object.keys(window.LOOT_SUFFIXES);
+        if (suffixKeys.length > 0) {
+            const suffixName = suffixKeys[Math.floor(Math.random() * suffixKeys.length)];
+            const suffixData = window.LOOT_SUFFIXES[suffixName];
 
-        newItem.name = `${newItem.name} ${suffixName}`;
-        hasSuffix = true;
+            newItem.name = `${newItem.name} ${suffixName}`;
+            hasSuffix = true;
 
-        for (const stat in suffixData.bonus) {
-            if (stat === 'damage') newItem.damage += suffixData.bonus[stat];
-            else if (stat === 'defense') newItem.defense += suffixData.bonus[stat];
-            else newItem.statBonuses[stat] = (newItem.statBonuses[stat] || 0) + suffixData.bonus[stat];
+            for (const stat in suffixData.bonus) {
+                if (stat === 'damage') newItem.damage += suffixData.bonus[stat];
+                else if (stat === 'defense') newItem.defense += suffixData.bonus[stat];
+                else newItem.statBonuses[stat] = (newItem.statBonuses[stat] || 0) + suffixData.bonus[stat];
+            }
         }
     }
 
@@ -411,7 +425,6 @@ function getSanitizedEquipment() {
     };
 }
 
-// 🚨 BUG FIX: Filter out null values before they hit Firebase!
 function getSanitizedInventory() {
     if (!gameState.player.inventory) return [];
     return gameState.player.inventory
@@ -458,7 +471,7 @@ function handleItemDrop(key) {
             return;
         }
 
-        const template = ITEM_DATA[itemToDrop.tile] || ITEM_DATA[itemToDrop.templateId];
+        const template = (typeof ITEM_DATA !== 'undefined') ? (ITEM_DATA[itemToDrop.tile] || ITEM_DATA[itemToDrop.templateId]) : null;
         const isModified = itemToDrop.statBonuses || (template && itemToDrop.name !== template.name);
         
         if (isModified) {
@@ -467,13 +480,15 @@ function handleItemDrop(key) {
             return;
         }
 
-        let currentTile;
-        if (gameState.mapMode === 'dungeon') {
-            currentTile = chunkManager.caveMaps[gameState.currentCaveId]?.[player.y]?.[player.x] || ' ';
-        } else if (gameState.mapMode === 'castle') {
-            currentTile = chunkManager.castleMaps[gameState.currentCastleId]?.[player.y]?.[player.x] || ' ';
-        } else {
-            currentTile = chunkManager.getTile(player.x, player.y);
+        let currentTile = ' ';
+        if (typeof chunkManager !== 'undefined') {
+            if (gameState.mapMode === 'dungeon') {
+                currentTile = chunkManager.caveMaps[gameState.currentCaveId]?.[player.y]?.[player.x] || ' ';
+            } else if (gameState.mapMode === 'castle') {
+                currentTile = chunkManager.castleMaps[gameState.currentCastleId]?.[player.y]?.[player.x] || ' ';
+            } else {
+                currentTile = chunkManager.getTile(player.x, player.y);
+            }
         }
 
         if (currentTile === '🌋' || currentTile === '🔥') {
@@ -507,7 +522,7 @@ function handleItemDrop(key) {
         if (gameState.mapMode === 'overworld' && currentTile === '.') isValidDropTile = true;
         else if (gameState.mapMode === 'castle' && currentTile === '.') isValidDropTile = true;
         else if (gameState.mapMode === 'dungeon') {
-            const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+            const theme = typeof CAVE_THEMES !== 'undefined' ? (CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK) : { floor: '.' };
             if (currentTile === theme.floor) isValidDropTile = true;
         }
 
@@ -542,48 +557,50 @@ function handleItemDrop(key) {
             validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
         }
 
-        for (let r = 0; r <= 3 && !placed; r++) {
-            for (let dy = -r; dy <= r && !placed; dy++) {
-                for (let dx = -r; dx <= r && !placed; dx++) {
-                    const tx = player.x + dx;
-                    const ty = player.y + dy;
-                    
-                    let tileAt;
-                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
-                    else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
-                    else tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
+        if (typeof chunkManager !== 'undefined') {
+            for (let r = 0; r <= 3 && !placed; r++) {
+                for (let dy = -r; dy <= r && !placed; dy++) {
+                    for (let dx = -r; dx <= r && !placed; dx++) {
+                        const tx = player.x + dx;
+                        const ty = player.y + dy;
+                        
+                        let tileAt;
+                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
+                        else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
+                        else tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
-                    if (tileAt === validFloor || tileAt === '.') {
-                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                            chunkManager.setWorldTile(tx, ty, itemToDrop.tile, 2); 
-                        } else if (gameState.mapMode === 'dungeon') {
-                            chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = itemToDrop.tile;
-                        } else if (gameState.mapMode === 'castle') {
-                            chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = itemToDrop.tile;
+                        if (tileAt === validFloor || tileAt === '.') {
+                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                                chunkManager.setWorldTile(tx, ty, itemToDrop.tile, 2); 
+                            } else if (gameState.mapMode === 'dungeon') {
+                                chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = itemToDrop.tile;
+                            } else if (gameState.mapMode === 'castle') {
+                                chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = itemToDrop.tile;
+                            }
+                            
+                            // Clear the looted memory for this specific coordinate so it can be picked up
+                            let dropTileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
+                                ? `${tx},${-ty}`
+                                : `${gameState.currentCaveId || gameState.currentCastleId}:${tx},${-ty}`;
+                            gameState.lootedTiles.delete(dropTileId);
+                            
+                            placed = true;
                         }
-                        
-                        // Clear the looted memory for this specific coordinate so it can be picked up
-                        let dropTileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
-                            ? `${tx},${-ty}`
-                            : `${gameState.currentCaveId || gameState.currentCastleId}:${tx},${-ty}`;
-                        gameState.lootedTiles.delete(dropTileId);
-                        
-                        placed = true;
                     }
                 }
             }
-        }
-        
-        // Final failsafe if completely surrounded by walls
-        if (!placed) {
-            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, itemToDrop.tile, 2);
-            else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = itemToDrop.tile;
-            else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = itemToDrop.tile;
             
-            let dropTileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
-                ? `${player.x},${-player.y}`
-                : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
-            gameState.lootedTiles.delete(dropTileId);
+            // Final failsafe if completely surrounded by walls
+            if (!placed) {
+                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, itemToDrop.tile, 2);
+                else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = itemToDrop.tile;
+                else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = itemToDrop.tile;
+                
+                let dropTileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
+                    ? `${player.x},${-player.y}`
+                    : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
+                gameState.lootedTiles.delete(dropTileId);
+            }
         }
 
         if (itemToDrop.quantity <= 0) {
@@ -594,7 +611,7 @@ function handleItemDrop(key) {
         
         if (typeof playerRef !== 'undefined') {
             playerRef.update({ 
-                inventory: getSanitizedInventory(),
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
                 lootedTiles: Object.fromEntries(gameState.lootedTiles)
             });
         }
@@ -708,13 +725,15 @@ function useInventoryItem(itemIndex) {
 
         // --- CONSTRUCTIBLES (Walls, Floors, Traps) ---
         else if (itemToUse.type === 'constructible') {
-            let currentTile;
-            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                currentTile = chunkManager.getTile(player.x, player.y);
-            } else if (gameState.mapMode === 'dungeon') {
-                currentTile = chunkManager.caveMaps[gameState.currentCaveId]?.[player.y]?.[player.x] || ' ';
-            } else if (gameState.mapMode === 'castle') {
-                currentTile = chunkManager.castleMaps[gameState.currentCastleId]?.[player.y]?.[player.x] || ' ';
+            let currentTile = ' ';
+            if (typeof chunkManager !== 'undefined') {
+                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                    currentTile = chunkManager.getTile(player.x, player.y);
+                } else if (gameState.mapMode === 'dungeon') {
+                    currentTile = chunkManager.caveMaps[gameState.currentCaveId]?.[player.y]?.[player.x] || ' ';
+                } else if (gameState.mapMode === 'castle') {
+                    currentTile = chunkManager.castleMaps[gameState.currentCastleId]?.[player.y]?.[player.x] || ' ';
+                }
             }
 
             const invalidTiles = ['~', '≈', '🧱', '+', '☒', '▓', '▒', '^', '<', '>', 'X', 'V', '🚪', '⛰'];
@@ -727,10 +746,12 @@ function useInventoryItem(itemIndex) {
 
             logMessage(`You place the ${itemToUse.name}.`);
 
-            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                chunkManager.setWorldTile(player.x, player.y, itemToUse.tile);
-            } else if (gameState.mapMode === 'dungeon') {
-                chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = itemToUse.tile;
+            if (typeof chunkManager !== 'undefined') {
+                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                    chunkManager.setWorldTile(player.x, player.y, itemToUse.tile);
+                } else if (gameState.mapMode === 'dungeon') {
+                    chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = itemToUse.tile;
+                }
             }
 
             itemToUse.quantity--;
@@ -912,7 +933,7 @@ function useInventoryItem(itemIndex) {
                 
                 logMessage(`{gold:You consume the tome. Your ${statText} permanently increases!}`);
                 
-                if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined') {
+                if (typeof triggerStatAnimation !== 'undefined' && typeof statDisplays !== 'undefined' && statDisplays[stat]) {
                     triggerStatAnimation(statDisplays[stat], 'stat-pulse-green');
                 }
                 if (typeof ParticleSystem !== 'undefined') {
@@ -1084,9 +1105,13 @@ function applyStatBonuses(item, operation) {
 
             if (operation === 1) {
                 logMessage(`You feel ${stat} increase! (+${amount})`);
-                if (typeof triggerStatFlash === 'function' && typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays[stat], true);
+                if (typeof triggerStatFlash === 'function' && typeof statDisplays !== 'undefined' && statDisplays[stat]) {
+                    triggerStatFlash(statDisplays[stat], true);
+                }
             } else {
-                if (typeof triggerStatFlash === 'function' && typeof statDisplays !== 'undefined') triggerStatFlash(statDisplays[stat], false);
+                if (typeof triggerStatFlash === 'function' && typeof statDisplays !== 'undefined' && statDisplays[stat]) {
+                    triggerStatFlash(statDisplays[stat], false);
+                }
             }
         }
     }
