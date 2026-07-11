@@ -1097,8 +1097,10 @@ window.ITEM_DATA = {
         type: 'buff_potion',
         description: "{red:-5 Def} but {green:+10 Str} for 20 turns.",
         effect: (state) => {
-            if (state.player.strengthBonusTurns > 0) {
-                logMessage("Effect already active.");
+            // Mutual Exclusivity prevents buff overwriting and permanent stat corruption
+            if (state.player.strengthBonusTurns > 0 || state.player.defenseBonusTurns > 0) {
+                logMessage("{red:Your body is already under the effects of a powerful concoction!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 return false;
             }
             state.player.strengthBonus = 10;
@@ -1844,15 +1846,17 @@ window.ITEM_DATA = {
         description: "{blue:+6 Def}, {purple:+2 Will, +10 Max Mana}. Absorbs magical impacts."
     },
 
-    // --- NEW CONSUMABLES ---
-    '🧪st': {
+    // --- CONSUMABLES ---
+     '🧪st': {
         name: 'Ironskin Potion',
-        type: 'consumable', // BUG FIX: Bypasses items.js forcing strengthBonus
+        type: 'consumable', 
         tile: '🧪',
         description: "Your skin hardens into iron. {blue:(+5 Def for 20 turns)}",
         effect: (state) => {
-            if (state.player.defenseBonusTurns > 0) {
-                logMessage("Effect already active.");
+            // Mutual Exclusivity prevents buff overwriting
+            if (state.player.defenseBonusTurns > 0 || state.player.strengthBonusTurns > 0) {
+                logMessage("{red:Your body is already under the effects of a powerful concoction!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 return false;
             }
             state.player.defenseBonus = 5;
