@@ -1591,17 +1591,19 @@ function endPlayerTurn(turnUpdates = {}) {
     updateWeather();
 
     // --- DISTRIBUTED ENEMY GARBAGE COLLECTION ---
-    // Every 50 turns, have this client sweep the area to delete abandoned enemies
+    // Every 50 turns, have this client sweep the area to delete abandoned enemies and clear memory leaks
     if (gameState.mapMode === 'overworld' && gameState.playerTurnCount % 50 === 0) {
+        
+        // 1. Clean up abandoned live enemies from the database
         Object.entries(gameState.sharedEnemies).forEach(([enemyId, enemy]) => {
             let isNearAnyone = false;
             
-            // 1. Is it near YOU? (Within 100 tiles)
+            // Is it near YOU? (Within 100 tiles)
             if (Math.abs(enemy.x - gameState.player.x) < 100 && Math.abs(enemy.y - gameState.player.y) < 100) {
                 isNearAnyone = true;
             }
             
-            // 2. Is it near any OTHER online player?
+            // Is it near any OTHER online player?
             for (const pid in otherPlayers) {
                 const op = otherPlayers[pid];
                 if (op.mapMode === 'overworld' && Math.abs(enemy.x - op.x) < 100 && Math.abs(enemy.y - op.y) < 100) {
@@ -1609,7 +1611,7 @@ function endPlayerTurn(turnUpdates = {}) {
                 }
             }
 
-            // 3. If no one is around, delete it from Firebase to save database quotas!
+            // If no one is around, delete it from Firebase to save database quotas!
             if (!isNearAnyone) {
                 if (typeof EnemyNetworkManager !== 'undefined') {
                     rtdb.ref(EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)).remove();
@@ -1617,6 +1619,18 @@ function endPlayerTurn(turnUpdates = {}) {
                 delete gameState.sharedEnemies[enemyId];
             }
         });
+
+        // 2. Clean up local memory leaks in Pending Spawns
+        // If an enemy has been "pending" for more than 10 seconds without Firebase confirming it,
+        // it's a ghost. Delete it from memory to prevent RAM bloat over long play sessions.
+        if (typeof pendingSpawnData !== 'undefined') {
+            const now = Date.now();
+            Object.entries(pendingSpawnData).forEach(([enemyId, enemy]) => {
+                if (now - (enemy.spawnTime || 0) > 10000) { // 10 seconds
+                    delete pendingSpawnData[enemyId];
+                }
+            });
+        }
     }
 
     // --- STORM LIGHTNING STRIKES ---
