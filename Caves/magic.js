@@ -551,41 +551,41 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
         }
 
         try {
-            // Wrap the spell transaction in a 3-second timeout
             const transactionResult = await window.withTimeout(
                 enemyRef.transaction(currentData => {
-
-                    // If the enemy is already dead (null), ABORT the transaction.
-                    if (currentData === null) {
-                        return undefined; 
-                    }
+                    // Let it pass to server
+                    if (currentData === null) return null; 
 
                     let enemy = currentData;
-
                     enemy.health = Number(enemy.health);
                     if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
 
                     damageDealt = Math.max(1, finalDamage);
                     enemy.health -= damageDealt;
 
-                    if (enemy.health <= 0) return null; 
+                    // Return the corpse
                     return JSON.parse(JSON.stringify(enemy)); 
                 }),
-                3000 // Timeout in milliseconds
+                3000 
             );
 
-            // --- Only grant XP & Show Visuals if OUR transaction succeeded ---
             if (transactionResult && transactionResult.committed) {
+                const finalEnemyState = transactionResult.snapshot.val();
                 
-                // --- VISUAL EFFECTS (Moved outside transaction to prevent spam) ---
+                // Already dead
+                if (finalEnemyState === null) {
+                    if (gameState.sharedEnemies && gameState.sharedEnemies[enemyId]) {
+                        delete gameState.sharedEnemies[enemyId];
+                    }
+                    return false; // Tells the spellcaster logic it missed
+                }
+
                 if (typeof ParticleSystem !== 'undefined') {
                     ParticleSystem.createExplosion(targetX, targetY, colorClass);
                     ParticleSystem.createFloatingText(targetX, targetY, `-${damageDealt}`, colorClass);
                 }
-
-                const finalEnemyState = transactionResult.snapshot.val();
                 
-                if (finalEnemyState === null) {
+                if (finalEnemyState.health <= 0) {
                     logMessage(`The ${enemyInfo.name} was vanquished!`);
                     if (typeof registerKill === 'function') registerKill(enemyInfo);
 
@@ -593,12 +593,13 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
                     const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(player, lootData) : '$';
 
                     if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(targetX, targetY, droppedLoot || '.');
+                    
+                    // Sweep the corpse
+                    enemyRef.remove();
                 } else {
-                    // LORE WIN: Flavorful hit confirmation using actual entity name
                     logMessage(`You hit the ${enemyInfo.name} for ${damageDealt} magic damage!`);
                 }
             } else {
-                // The transaction aborted because the enemy was already dead
                 if (gameState.sharedEnemies && gameState.sharedEnemies[enemyId]) {
                     delete gameState.sharedEnemies[enemyId];
                 }
