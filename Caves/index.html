@@ -44,7 +44,7 @@
 
 <body class="flex flex-col items-center justify-center min-h-screen p-4 font-mono login-bg">
 
-    <!-- UX WIN: Graceful degradation for users without JS enabled -->
+    <!-- Graceful degradation for users without JS enabled -->
     <noscript>
         <div class="fixed inset-0 z-[100000] bg-black flex flex-col items-center justify-center text-red-500 font-mono text-center p-8">
             <h1 class="text-4xl mb-4 font-bold" style="font-family: 'Uncial Antiqua', cursive;">The Leylines are Silent</h1>
@@ -55,8 +55,8 @@
     <!-- ========================================== -->
     <!-- GLOBAL INTERIM LOADING SCREEN              -->
     <!-- ========================================== -->
-    <div id="loadingIndicator" class="fixed inset-0 z-[9999] hidden" style="background-color: #8b7e66;" aria-hidden="true">
-        <div class="w-full h-full flex flex-col items-center justify-center">
+
+        <div id="loadingIndicator" class="fixed inset-0 z-[9999] hidden flex flex-col items-center justify-center" style="background-color: #8b7e66;" aria-hidden="true">
             <div id="loadingFlavorText" style="color: #ffffff; font-family: 'Courier New', monospace; font-size: 1.5rem; font-weight: bold; text-transform: uppercase; -webkit-text-stroke: 1px black; text-shadow: 2px 2px 0 #000; text-align: center; padding: 0 1rem;">
                 Tuning Leylines...
             </div>
@@ -69,9 +69,10 @@
     <!-- ========================================== -->
     <!-- RETRO BOOTLOADER & TITLE SCREEN            -->
     <!-- ========================================== -->
+
     <style>
         body { background-color: #8b7e66 !important; }
-        /* BUG FIX: Removes the game/footer from the page so the browser cannot flash text (FOUC)! */
+        /* Removes the game/footer from the page so the browser cannot flash text (FOUC)! */
         body:not(.is-loaded) main,
         body:not(.is-loaded) footer { display: none !important; }
         
