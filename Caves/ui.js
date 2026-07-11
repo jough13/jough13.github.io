@@ -185,7 +185,7 @@ const logMessage = (text) => {
     lastLogText = text;
     lastLogCount = 1;
 
-    // 3. CREATE & APPEND NEW MESSAGE
+    // 4. CREATE & APPEND NEW MESSAGE
     const messageElement = document.createElement('p');
     messageElement.innerHTML = `> ${formattedText}`;
     
@@ -195,14 +195,41 @@ const logMessage = (text) => {
     
     messageLog.prepend(messageElement);
 
-    // --- STRICT CULLING ---
-    // Remove the oldest messages if the log exceeds 40 lines.
-    while (messageLog.children.length > 40) {
-        messageLog.removeChild(messageLog.lastChild);
+    // --- PERFORMANCE WIN: STRICT CULLING ---
+    // Remove the oldest messages if the log exceeds 40 lines safely
+    while (messageLog.childElementCount > 40) {
+        messageLog.removeChild(messageLog.lastElementChild);
     }
     
     messageLog.scrollTop = 0;
 };
+
+// 🚨 PERFORMANCE WIN: Decoupled Screen Flash Animation Loop
+// Prevents the main `renderStats` function from re-rendering the entire DOM 60x a second during a flash
+function processScreenFlash() {
+    if (!gameState.screenFlash || gameState.screenFlash.alpha <= 0) {
+        gameState.screenFlash = null;
+        if (canvasWrapperEl) {
+            canvasWrapperEl.style.boxShadow = ''; 
+            canvasWrapperEl.style.backgroundColor = '';
+        }
+        window._flashAnimRunning = false;
+        return;
+    }
+
+    if (canvasWrapperEl) {
+        const hex = gameState.screenFlash.color || '#ffffff';
+        const {r, g, b} = ColorUtils.hexToRgb(hex);
+        const shadow = `inset 0 0 150px 50px rgba(${r}, ${g}, ${b}, ${gameState.screenFlash.alpha})`;
+        const bg = `rgba(${r}, ${g}, ${b}, ${gameState.screenFlash.alpha * 0.3})`; // Subtle background tint
+        
+        canvasWrapperEl.style.boxShadow = shadow;
+        canvasWrapperEl.style.backgroundColor = bg;
+    }
+
+    gameState.screenFlash.alpha -= gameState.screenFlash.decay;
+    requestAnimationFrame(processScreenFlash);
+}
 
 // --- CORE STAT RENDERING ---
 const renderStats = () => {
@@ -360,27 +387,11 @@ const renderStats = () => {
         if (gameState.player.frostbiteTurns > 0) canvasWrapperEl.classList.add('frost-flash');
         else if (gameState.player.madnessTurns > 0 || gameState.currentCaveTheme === 'VOID') canvasWrapperEl.classList.add('void-distortion');
         
-        // Handle explosive one-time flashes (like lightning or level ups)
+        // 🚨 PERFORMANCE WIN: Trigger dedicated high-speed animation loop
         if (gameState.screenFlash && gameState.screenFlash.alpha > 0) {
-            // Apply a dynamic CSS filter overlay based on the requested color and alpha
-            const hex = gameState.screenFlash.color || '#ffffff';
-            const {r, g, b} = ColorUtils.hexToRgb(hex);
-            const shadow = `inset 0 0 150px 50px rgba(${r}, ${g}, ${b}, ${gameState.screenFlash.alpha})`;
-            const bg = `rgba(${r}, ${g}, ${b}, ${gameState.screenFlash.alpha * 0.3})`; // Subtle background tint
-            
-            // Override the standard box-shadow with our explosive one
-            canvasWrapperEl.style.boxShadow = shadow;
-            canvasWrapperEl.style.backgroundColor = bg;
-            
-            // Decay the flash for the next frame
-            gameState.screenFlash.alpha -= gameState.screenFlash.decay;
-            if (gameState.screenFlash.alpha <= 0) {
-                gameState.screenFlash = null;
-                canvasWrapperEl.style.boxShadow = ''; // Reset to default CSS
-                canvasWrapperEl.style.backgroundColor = '';
-            } else {
-                // Keep calling renderStats to animate the decay if the flash is still active
-                requestAnimationFrame(renderStats);
+            if (!window._flashAnimRunning) {
+                window._flashAnimRunning = true;
+                requestAnimationFrame(processScreenFlash);
             }
         }
     }
@@ -620,8 +631,8 @@ const renderInventory = () => {
                     const eqStat = equippedItem[statName] || 0;
                     const diff = myStat - eqStat;
                     
-                    if (diff > 0) title += `\n[ Better than equipped: +${diff} ${statName} ]`;
-                    else if (diff < 0) title += `\n[ Worse than equipped: ${diff} ${statName} ]`;
+                    if (diff > 0) title += `\n[ ▲ Better than equipped: +${diff} ${statName} ]`;
+                    else if (diff < 0) title += `\n[ ▼ Worse than equipped: ${diff} ${statName} ]`;
                     else title += `\n[ Equal to equipped ]`;
                 }
             }
@@ -1032,7 +1043,7 @@ function renderStatusEffects() {
         icons += `<span title="Canoe" class="drop-shadow-md cursor-help text-green-600">🛶</span>`;
     }
 
-    // --- BUFFS & DEBUFFS ---
+    // --- BUFFS & DEBUFFS (EXPANDED TOOLTIPS) ---
     if (player.shieldValue > 0) {
         icons += `<span title="Arcane Shield (${Math.ceil(player.shieldValue)} points, ${player.shieldTurns}t)" class="drop-shadow-md cursor-help">💠</span>`;
     }
@@ -1042,11 +1053,23 @@ function renderStatusEffects() {
     if (player.strengthBonusTurns > 0) {
         icons += `<span title="Strong (+${player.strengthBonus} Str, ${player.strengthBonusTurns}t)" class="drop-shadow-md cursor-help">💪</span>`;
     }
+    if (player.waterBreathingTurns > 0) {
+        icons += `<span title="Gills (Can swim in deep water, ${player.waterBreathingTurns}t)" class="text-blue-300 drop-shadow-md cursor-help">🫧</span>`;
+    }
+    if (player.fireResistTurns > 0) {
+        icons += `<span title="Fire Immunity (${player.fireResistTurns}t)" class="text-orange-400 drop-shadow-md cursor-help">🧊</span>`;
+    }
     if (player.poisonTurns > 0) {
         icons += `<span title="Poisoned (${player.poisonTurns}t)" class="text-green-500 animate-pulse drop-shadow-md cursor-help">☣️</span>`;
     }
     if (player.frostbiteTurns > 0) {
         icons += `<span title="Frostbitten (${player.frostbiteTurns}t)" class="text-cyan-400 drop-shadow-md cursor-help">❄️</span>`;
+    }
+    if (player.rootTurns > 0) {
+        icons += `<span title="Rooted (Cannot move, ${player.rootTurns}t)" class="text-green-600 animate-pulse drop-shadow-md cursor-help">🌿</span>`;
+    }
+    if (player.stunTurns > 0) {
+        icons += `<span title="Stunned! (Cannot act, ${player.stunTurns}t)" class="text-yellow-400 animate-pulse drop-shadow-md cursor-help text-2xl relative -top-1">💫</span>`;
     }
     if (player.madnessTurns > 0) {
         icons += `<span title="Void Madness (${player.madnessTurns}t)" class="text-purple-500 animate-spin drop-shadow-md inline-block cursor-help">👁️</span>`;
