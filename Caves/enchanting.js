@@ -6,6 +6,7 @@
 
 const DUST_YIELDS = { 'uncommon': 1, 'rare': 3, 'epic': 8, 'legendary': 25 };
 const UPGRADE_COSTS = { 'normal': 5, 'uncommon': 15, 'rare': 30, 'epic': 75 };
+const PURIFY_COST = 40; // Flat cost to cleanse cursed items
 
 // PERFORMANCE & BUG FIX WIN: Operation Lock
 // Prevents players from double-clicking the upgrade/destroy buttons and corrupting 
@@ -64,23 +65,15 @@ function renderEnchantingModal() {
     const enchFrag = document.createDocumentFragment();
 
     player.inventory.forEach((item, index) => {
-        // 🚨 GHOST GUARD: Skip corrupted Firebase sparse array slots
-        if (!item) return;
+        if (!item || item.isEquipped) return;
 
-        // Skip equipped items to prevent catastrophic errors
-        if (item.isEquipped) return;
-
-        // Is it a weapon or armor?
         const isGear = item.type === 'weapon' || item.type === 'armor';
-        
-        // SECURITY WIN: Escape the item name to prevent XSS injection from manipulated save files
         const safeName = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
 
         // --- DISENCHANT LIST ---
         if (isGear && item._rarity) {
             const yieldAmt = DUST_YIELDS[item._rarity] || 1;
             
-            // JUICE WIN: Dynamic text colors matching rarity
             let rarityColor = 'text-green-400';
             if (item._rarity === 'rare') rarityColor = 'text-purple-400';
             if (item._rarity === 'epic') rarityColor = 'text-red-400';
@@ -98,36 +91,56 @@ function renderEnchantingModal() {
             disFrag.appendChild(li);
         }
 
-        // --- ENCHANT LIST ---
-        if (isGear && item._rarity !== 'legendary') {
-            const currentRarity = item._rarity || 'normal';
-            const cost = UPGRADE_COSTS[currentRarity];
-            const canAfford = dustAmount >= cost;
+        // --- ENCHANT & PURIFY LIST ---
+        if (isGear) {
+            // Check if it's a cursed item!
+            const isCursed = item.name.match(/Cursed|Doomed|Forsaken|Blood-Starved|Whispering|Blighted/i);
             
-            // UX WIN: Upgrade Button color matches the tier you are stepping INTO
-            let targetColorTheme = 'green';
-            if (currentRarity === 'uncommon') targetColorTheme = 'purple';
-            if (currentRarity === 'rare') targetColorTheme = 'red';
-            if (currentRarity === 'epic') targetColorTheme = 'yellow';
-            
-            const btnClass = canAfford ? `bg-${targetColorTheme}-600 hover:bg-${targetColorTheme}-500 border-${targetColorTheme}-900 text-white` : 'bg-gray-700 border-gray-900 opacity-50 cursor-not-allowed text-gray-400';
-            
-            // Text color matches the tier it CURRENTLY is
-            let nameColor = 'text-gray-200';
-            if (currentRarity === 'uncommon') nameColor = 'text-green-400';
-            if (currentRarity === 'rare') nameColor = 'text-purple-400';
-            if (currentRarity === 'epic') nameColor = 'text-red-400';
+            if (isCursed) {
+                // Render PURIFY button
+                const canAfford = dustAmount >= PURIFY_COST;
+                const btnClass = canAfford ? `bg-cyan-600 hover:bg-cyan-500 border-cyan-900 text-white` : 'bg-gray-700 border-gray-900 opacity-50 cursor-not-allowed text-gray-400';
+                
+                const li = document.createElement('li');
+                li.className = `shop-item bg-gray-900 bg-opacity-40 border border-cyan-900 rounded-lg p-3 hover:border-cyan-400 transition-all duration-150`;
+                li.innerHTML = `
+                    <div>
+                        <span class="font-bold text-lg text-cyan-400 drop-shadow-sm">${item.tile || '🎒'} ${safeName}</span>
+                        <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Purify Cost: <span class="${canAfford ? 'text-cyan-300' : 'text-red-400'} font-bold">-${PURIFY_COST} Dust</span></span>
+                    </div>
+                    <button data-purify="${index}" style="transform: translateZ(0);" class="${btnClass} px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 active:border-b-0 active:mt-0.5 animate-pulse" ${canAfford ? '' : 'disabled'}>Purify</button>
+                `;
+                enchFrag.appendChild(li);
+            } 
+            else if (item._rarity !== 'legendary') {
+                // Render Standard ENCHANT button
+                const currentRarity = item._rarity || 'normal';
+                const cost = UPGRADE_COSTS[currentRarity];
+                const canAfford = dustAmount >= cost;
+                
+                let targetColorTheme = 'green';
+                if (currentRarity === 'uncommon') targetColorTheme = 'purple';
+                if (currentRarity === 'rare') targetColorTheme = 'red';
+                if (currentRarity === 'epic') targetColorTheme = 'yellow';
+                
+                const btnClass = canAfford ? `bg-${targetColorTheme}-600 hover:bg-${targetColorTheme}-500 border-${targetColorTheme}-900 text-white` : 'bg-gray-700 border-gray-900 opacity-50 cursor-not-allowed text-gray-400';
+                
+                let nameColor = 'text-gray-200';
+                if (currentRarity === 'uncommon') nameColor = 'text-green-400';
+                if (currentRarity === 'rare') nameColor = 'text-purple-400';
+                if (currentRarity === 'epic') nameColor = 'text-red-400';
 
-            const li = document.createElement('li');
-            li.className = `shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-${targetColorTheme}-500 transition-all duration-150`;
-            li.innerHTML = `
-                <div>
-                    <span class="font-bold text-lg ${nameColor} drop-shadow-sm">${item.tile || '🎒'} ${safeName}</span>
-                    <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Cost: <span class="${canAfford ? 'text-purple-300' : 'text-red-400'} font-bold">-${cost} Dust</span></span>
-                </div>
-                <button data-enchant="${index}" style="transform: translateZ(0);" class="${btnClass} px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 active:border-b-0 active:mt-0.5" ${canAfford ? '' : 'disabled'}>Infuse</button>
-            `;
-            enchFrag.appendChild(li);
+                const li = document.createElement('li');
+                li.className = `shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-${targetColorTheme}-500 transition-all duration-150`;
+                li.innerHTML = `
+                    <div>
+                        <span class="font-bold text-lg ${nameColor} drop-shadow-sm">${item.tile || '🎒'} ${safeName}</span>
+                        <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Cost: <span class="${canAfford ? 'text-purple-300' : 'text-red-400'} font-bold">-${cost} Dust</span></span>
+                    </div>
+                    <button data-enchant="${index}" style="transform: translateZ(0);" class="${btnClass} px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 active:border-b-0 active:mt-0.5" ${canAfford ? '' : 'disabled'}>Infuse</button>
+                `;
+                enchFrag.appendChild(li);
+            }
         }
     });
 
@@ -136,6 +149,23 @@ function renderEnchantingModal() {
 
     if (enchFrag.childNodes.length === 0) enchantList.innerHTML = '<li class="italic text-gray-500 text-sm p-4 text-center border border-gray-700 rounded-lg bg-black bg-opacity-20 shadow-inner font-serif">No unequipped weapons or armor to enchant.</li>';
     else enchantList.appendChild(enchFrag);
+
+    // --- QoL EXPANSION: Inject Batch Shatter Button into Header ---
+    const disListContainer = disenchantList.parentElement;
+    const disHeader = disListContainer.querySelector('h3');
+
+    if (disHeader) {
+        // Check if there are ANY unequipped uncommon/rare items
+        const hasMinor = player.inventory.some(i => i && !i.isEquipped && (i.type === 'weapon' || i.type === 'armor') && (i._rarity === 'uncommon' || i._rarity === 'rare'));
+        const btnClass = hasMinor ? "bg-red-700 hover:bg-red-600 text-white cursor-pointer shadow-md" : "bg-gray-800 text-gray-500 opacity-50 cursor-not-allowed border border-gray-700 shadow-inner";
+
+        disHeader.innerHTML = `
+            <div class="flex justify-between items-center w-full">
+                <span class="text-red-400">Disenchant (Destroy)</span>
+                <button id="shatterMinorBtn" style="transform: translateZ(0);" class="text-[10px] uppercase font-bold tracking-widest px-2 py-1.5 rounded transition-transform active:scale-95 border-b-2 ${hasMinor ? 'border-red-900 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass}" ${hasMinor ? '' : 'disabled'}>Shatter Minor</button>
+            </div>
+        `;
+    }
 }
 
 function handleDisenchant(index) {
@@ -146,8 +176,6 @@ function handleDisenchant(index) {
         const player = gameState.player;
         const item = player.inventory[index];
         
-        // 🚨 SECURITY FIX: Re-verify the item isn't equipped just in case the UI is out of sync!
-        // Prevents permanently breaking player stats if they shatter an equipped weapon.
         if (!item || item.isEquipped || !item._rarity) {
             logMessage("{red:You cannot shatter an equipped or invalid item!}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -158,14 +186,8 @@ function handleDisenchant(index) {
         const oldName = item.name;
         const oldRarity = item._rarity;
 
-        // 🚨 BUG FIX WIN: False-Positive Capacity Block removed!
-        // Because we delete the old item BEFORE granting the dust, we perfectly free up exactly
-        // the 1 slot needed to store the dust. We no longer throw false-positive inventory errors 
-        // when shattering items with a full (9/9) inventory.
         player.inventory.splice(index, 1);
 
-        // Give Dust
-        // 🚨 GHOST GUARD
         const existingDust = player.inventory.find(i => i && i.name === 'Arcane Dust');
         if (existingDust) {
             existingDust.quantity += yieldAmt;
@@ -175,18 +197,23 @@ function handleDisenchant(index) {
             });
         }
 
-        // LORE WIN: Dynamic Destruction Flavor Text based on rarity!
         let flavorText = `You shattered the ${oldName} into ${yieldAmt} Arcane Dust.`;
         if (oldRarity === 'rare') flavorText = `The ${oldName} shatters with a sharp crack, releasing ${yieldAmt} Arcane Dust.`;
         else if (oldRarity === 'epic') flavorText = `A miniature shockwave ripples out as the ${oldName} is unmade. (+${yieldAmt} Dust)`;
-        else if (oldRarity === 'legendary') flavorText = `The world holds its breath as the legendary relic is crushed into pure Void dust. (+${yieldAmt} Dust)`;
+        else if (oldRarity === 'legendary') {
+            flavorText = `The world holds its breath as the legendary relic is crushed into pure Void dust. (+${yieldAmt} Dust)`;
+            
+            // LORE WIN: Altar Resonance Buff
+            logMessage("{purple:The Altar feeds on the legendary artifact. Your mind expands with forbidden knowledge!}");
+            window.modifyVital('psyche', gameState.player.maxPsyche); // Full restore
+            if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('psycheDisplay'), 'stat-pulse-purple');
+        }
 
         logMessage(`{purple:${flavorText}}`);
         
         if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
         if (typeof ParticleSystem !== 'undefined') {
-            // JUICE WIN: Particles color-match the item being destroyed!
-            let explosionColor = '#4ade80'; // Uncommon Green
+            let explosionColor = '#4ade80'; 
             if (oldRarity === 'rare') explosionColor = '#a855f7';
             if (oldRarity === 'epic') explosionColor = '#ef4444';
             if (oldRarity === 'legendary') explosionColor = '#facc15';
@@ -203,6 +230,61 @@ function handleDisenchant(index) {
     }
 }
 
+// --- NEW FEATURE: Batch Shatter ---
+function handleShatterMinor() {
+    if (isEnchantingBusy) return;
+    isEnchantingBusy = true;
+
+    try {
+        const player = gameState.player;
+        let totalDust = 0;
+        let itemsShattered = 0;
+
+        // O(N) Array filter approach for mass deletion
+        const remainingInventory = [];
+
+        for (let i = 0; i < player.inventory.length; i++) {
+            const item = player.inventory[i];
+            if (!item) continue;
+
+            if (!item.isEquipped && (item.type === 'weapon' || item.type === 'armor') && (item._rarity === 'uncommon' || item._rarity === 'rare')) {
+                const yieldAmt = DUST_YIELDS[item._rarity] || 1;
+                totalDust += yieldAmt;
+                itemsShattered++;
+            } else {
+                remainingInventory.push(item);
+            }
+        }
+
+        if (itemsShattered > 0) {
+            player.inventory = remainingInventory;
+
+            const dustIdx = player.inventory.findIndex(i => i && i.name === 'Arcane Dust');
+            if (dustIdx > -1) {
+                player.inventory[dustIdx].quantity += totalDust;
+            } else {
+                player.inventory.push({ templateId: '&', name: 'Arcane Dust', type: 'junk', quantity: totalDust, tile: '✨' });
+            }
+
+            logMessage(`{purple:You shattered ${itemsShattered} minor items, extracting ${totalDust} Arcane Dust.}`);
+            
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playDisenchant();
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createExplosion(player.x, player.y, '#a855f7', 25);
+                ParticleSystem.createFloatingText(player.x, player.y, `+${totalDust} Dust`, "#c084fc");
+            }
+            gameState.screenShake = 10;
+            
+            saveEnchantingState();
+        } else {
+            logMessage("{gray:No unequipped minor magical items found.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        }
+    } finally {
+        isEnchantingBusy = false;
+    }
+}
+
 function handleEnchant(index) {
     if (isEnchantingBusy) return;
     isEnchantingBusy = true;
@@ -211,7 +293,6 @@ function handleEnchant(index) {
         const player = gameState.player;
         const item = player.inventory[index];
         
-        // 🚨 SECURITY FIX: Re-verify the item state and type to prevent injection issues
         if (!item || item.isEquipped || item._rarity === 'legendary') {
             logMessage("{red:You cannot enchant this item!}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -221,7 +302,6 @@ function handleEnchant(index) {
         const currentRarity = item._rarity || 'normal';
         const cost = UPGRADE_COSTS[currentRarity];
 
-        // 🚨 GHOST GUARD
         const dustIdx = player.inventory.findIndex(i => i && i.name === 'Arcane Dust');
         if (dustIdx === -1 || player.inventory[dustIdx].quantity < cost) {
             logMessage("{red:You do not have enough Arcane Dust.}");
@@ -229,11 +309,9 @@ function handleEnchant(index) {
             return;
         }
 
-        // Deduct Dust
         player.inventory[dustIdx].quantity -= cost;
         if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
 
-        // --- UPGRADE LOGIC ---
         if (!item.statBonuses) item.statBonuses = {};
 
         let newRarity = 'uncommon';
@@ -243,7 +321,6 @@ function handleEnchant(index) {
 
         item._rarity = newRarity;
 
-        // LORE WIN: Dynamic Upgrade Messages
         let upgradeMsg = "";
 
         if (newRarity === 'uncommon') {
@@ -258,7 +335,6 @@ function handleEnchant(index) {
             upgradeMsg = `The altar breathes arcane life into the mundane. You forged a ${item.name}!`;
         } 
         else if (newRarity === 'rare') {
-            // BUG FIX: Safer Regex string replacement ensures we only replace "Fine " if it's at the very beginning of the string!
             item.name = item.name.replace(/^Fine /, ''); 
             
             const validPrefixes = Object.keys(typeof LOOT_PREFIXES !== 'undefined' ? LOOT_PREFIXES : {}).filter(p => LOOT_PREFIXES[p].type === item.type);
@@ -273,7 +349,6 @@ function handleEnchant(index) {
                     else item.statBonuses[stat] = (item.statBonuses[stat] || 0) + prefixData.bonus[stat];
                 }
             } else {
-                // ROBUSTNESS WIN: Safe fallback if dictionary is empty
                 item.name = `Mystic ${item.name}`;
                 if (item.type === 'weapon') item.damage += 1;
                 if (item.type === 'armor') item.defense += 1;
@@ -294,7 +369,6 @@ function handleEnchant(index) {
                     else item.statBonuses[stat] = (item.statBonuses[stat] || 0) + suffixData.bonus[stat];
                 }
             } else {
-                // ROBUSTNESS WIN: Safe fallback if dictionary is empty
                 item.name = `${item.name} of Power`;
                 if (item.type === 'weapon') item.damage += 1;
                 if (item.type === 'armor') item.defense += 1;
@@ -306,7 +380,7 @@ function handleEnchant(index) {
             if (item.type === 'weapon') item.damage += 2;
             if (item.type === 'armor') item.defense += 2;
             for (const stat in item.statBonuses) {
-                item.statBonuses[stat] += 1; // Bump every single existing stat
+                item.statBonuses[stat] += 1; 
             }
             upgradeMsg = `The heavens tremble! You have forged a weapon of myth: ${item.name}!`;
         }
@@ -327,6 +401,66 @@ function handleEnchant(index) {
     }
 }
 
+// --- NEW FEATURE: Purify Curse ---
+function handlePurify(index) {
+    if (isEnchantingBusy) return;
+    isEnchantingBusy = true;
+
+    try {
+        const player = gameState.player;
+        const item = player.inventory[index];
+        
+        if (!item || item.isEquipped) {
+            logMessage("{red:You cannot purify this item.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        const dustIdx = player.inventory.findIndex(i => i && i.name === 'Arcane Dust');
+        if (dustIdx === -1 || player.inventory[dustIdx].quantity < PURIFY_COST) {
+            logMessage(`{red:You need ${PURIFY_COST} Arcane Dust to purge the darkness from this item.}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        // Deduct Dust
+        player.inventory[dustIdx].quantity -= PURIFY_COST;
+        if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
+
+        // Strip ALL negative stats!
+        if (item.statBonuses) {
+            for (let stat in item.statBonuses) {
+                if (item.statBonuses[stat] < 0) {
+                    delete item.statBonuses[stat];
+                }
+            }
+        }
+
+        // Strip negative status effects (e.g. Madness)
+        if (item.inflicts === 'madness') {
+            item.inflicts = null;
+            item.inflictChance = 0;
+        }
+
+        // Rename the item (Replacing the cursed prefix with 'Purified')
+        item.name = item.name.replace(/Cursed|Doomed|Forsaken|Blood-Starved|Whispering|Blighted/gi, 'Purified').trim();
+        
+        logMessage(`{cyan:The dark magic is scoured away! You hold the ${item.name}.}`);
+        
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createExplosion(player.x, player.y, '#67e8f9', 25);
+            ParticleSystem.createFloatingText(player.x, player.y, "PURIFIED", "#22d3ee");
+        }
+        gameState.screenShake = 10;
+
+        saveEnchantingState();
+
+    } finally {
+        isEnchantingBusy = false;
+    }
+}
+
 function saveEnchantingState() {
     renderEnchantingModal();
     if (typeof renderInventory === 'function') renderInventory();
@@ -338,8 +472,6 @@ function saveEnchantingState() {
 }
 
 // Event Delegation
-// Ensures bindings are applied safely and exactly once, 
-// protecting against hot-reload duplication.
 function initEnchantingListeners() {
     const enchantModal = document.getElementById('enchantingModal');
     if (!enchantModal || enchantModal.dataset.listenersBound) return;
@@ -356,9 +488,9 @@ function initEnchantingListeners() {
 
     // One listener to rule them all
     enchantModal.addEventListener('click', (e) => {
-        // Ignore clicks if the engine is already processing an upgrade
         if (isEnchantingBusy) return;
 
+        // Disenchant
         const disBtn = e.target.closest('button[data-disenchant]');
         if (disBtn) {
             const idx = parseInt(disBtn.dataset.disenchant, 10);
@@ -366,10 +498,26 @@ function initEnchantingListeners() {
             return;
         }
 
+        // Enchant
         const enchBtn = e.target.closest('button[data-enchant]');
         if (enchBtn && !enchBtn.disabled) {
             const idx = parseInt(enchBtn.dataset.enchant, 10);
             if (!isNaN(idx)) handleEnchant(idx);
+            return;
+        }
+        
+        // Purify
+        const purifyBtn = e.target.closest('button[data-purify]');
+        if (purifyBtn && !purifyBtn.disabled) {
+            const idx = parseInt(purifyBtn.dataset.purify, 10);
+            if (!isNaN(idx)) handlePurify(idx);
+            return;
+        }
+        
+        // Shatter Minor
+        const shatterMinorBtn = e.target.closest('#shatterMinorBtn');
+        if (shatterMinorBtn && !shatterMinorBtn.disabled) {
+            handleShatterMinor();
             return;
         }
     });
