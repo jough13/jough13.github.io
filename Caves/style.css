@@ -155,6 +155,9 @@ button:disabled {
 .panel {
     background-color: var(--bg-panel);
     border-color: var(--border-color);
+    /* PERFORMANCE WIN: Strict containment for UI panels. Updates to text/stats inside 
+       will no longer trigger a reflow of the entire DOM layout! */
+    contain: content; 
 }
 
 .highlight-text {
@@ -195,6 +198,15 @@ button:disabled {
     will-change: color, text-shadow, letter-spacing;
 }
 
+@keyframes blood-moon-glow {
+    0%, 100% { color: #ef4444; text-shadow: 0 0 5px rgba(220, 38, 38, 0.4); }
+    50% { color: #991b1b; text-shadow: 0 0 15px rgba(220, 38, 38, 0.9); }
+}
+.text-blood-moon {
+    animation: blood-moon-glow 3s ease-in-out infinite;
+    will-change: color, text-shadow;
+}
+
 @keyframes ethereal-drift {
     0%, 100% { opacity: 0.8; transform: translateY(0); }
     50% { opacity: 1; transform: translateY(-1px); text-shadow: 0 0 8px rgba(94, 234, 212, 0.6); }
@@ -219,7 +231,6 @@ button:disabled {
 .themed-input, #chatMessages, #messageLog {
     user-select: auto;
     -webkit-user-select: auto;
-    /* PERFORMANCE WIN: Strict containment for scrolling text areas prevents reflowing the whole page */
     contain: strict; 
 }
 
@@ -851,7 +862,7 @@ kbd {
     will-change: transform;
 }
 
-[data-theme="dark"] .d-pad-btn, [data-theme="dark"] .action-btn {
+[data-theme="dark"] .d-pad-btn, .action-btn {
     background-color: rgba(55, 65, 81, 0.92);
     border-color: rgba(0,0,0,0.6);
     color: white;
@@ -894,8 +905,16 @@ kbd {
 
 
 /* ==========================================================================
-   LOGIN SCREEN (Asset-Ready UI)
+   LOGIN SCREEN (Asset-Ready UI & Atmospheric Animations)
    ========================================================================== */
+@keyframes bg-torchlight {
+    0%, 100% { filter: brightness(1) contrast(1); }
+    20% { filter: brightness(1.05) contrast(1.02); }
+    40% { filter: brightness(0.98) contrast(1.05); }
+    60% { filter: brightness(1.02) contrast(0.98); }
+    80% { filter: brightness(0.95) contrast(1.0); }
+}
+
 .login-bg {
     background-color: #000; 
     background-image: var(--asset-bg-stone); 
@@ -904,6 +923,7 @@ kbd {
     background-repeat: no-repeat;
     box-shadow: inset 0 0 250px rgba(0,0,0,0.95); 
     image-rendering: pixelated;
+    animation: bg-torchlight 8s infinite alternate ease-in-out;
 }
 
 .ui-frame-asset {
@@ -1002,7 +1022,7 @@ kbd {
 .ui-btn-asset:active {
     background-image: none, var(--asset-btn-pressed);
     color: #cccccc; 
-    transform: translateY(6px); 
+    transform: translateY(6px) scale(0.98); 
     text-shadow: 1px 1px 0px rgba(0,0,0,1); 
 }
 
@@ -1039,6 +1059,51 @@ input[type="checkbox"].hidden { display: none; }
     font-weight: bold;
     font-size: 1.1rem;
     color: var(--text-muted); 
+}
+
+/* ==========================================================================
+   ACCESSIBILITY: REDUCED MOTION SUPPORT
+   ========================================================================== */
+/* Extremely important UX win for players with vestibular disorders or photosensitivity! */
+@media (prefers-reduced-motion: reduce) {
+    /* Disable all screen shakes and intense screen flashes */
+    .shake, .damage-flash, .heal-flash, .critical-health, .void-distortion, .frost-flash {
+        animation: none !important;
+        transform: none !important;
+        box-shadow: none !important;
+        filter: none !important;
+    }
+    
+    /* Disable the CRT flicker (but keep the scanlines for aesthetic) */
+    #gameCanvasWrapper.crt {
+        animation: none !important;
+    }
+
+    /* Disable pulsing text */
+    .animate-pulse, .text-void-pulse, .text-ethereal-drift, .text-blood-moon, .text-magic-shimmer {
+        animation: none !important;
+    }
+
+    /* Disable hover transforms on heavy UI elements */
+    button, .shop-item, .inventory-slot, .equipment-slot, .creation-option, .ui-btn-asset {
+        transition: background-color 0.1s ease, border-color 0.1s ease !important;
+    }
+    button:hover, .shop-item:hover, .inventory-slot:hover, .equipment-slot:hover, .ui-btn-asset:hover {
+        transform: none !important;
+    }
+    button:active:not(:disabled), .inventory-slot:active, .ui-btn-asset:active {
+        transform: scale(0.98) !important; /* Keep a tiny tactical click feel but remove sliding */
+    }
+
+    /* Instantly snap modals open instead of elastic pop-in */
+    .modal-content {
+        animation: none !important;
+    }
+    
+    /* Remove smooth scrolling which can cause nausea for some users */
+    #chatMessages, #messageLog {
+        scroll-behavior: auto !important;
+    }
 }
 
 /* --- END OF FILE style.css --- */
