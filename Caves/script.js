@@ -3189,23 +3189,51 @@ requestAnimationFrame(gameLoop);
 // AUTO-SAVE & LIFECYCLE MANAGEMENT
 // ==========================================
 
+// 🚨 BUG FIX WIN: Emergency Cache Dumping
+// Grabs the absolute latest state and forces it into Firestore's local IndexedDB cache.
+// Even if the browser kills the network request, the data is saved locally and will 
+// sync to the cloud automatically the next time the player opens the game!
+function emergencySave() {
+    if (typeof player_id === 'undefined' || !player_id || !playerRef || typeof gameState === 'undefined' || !gameState.player) return;
+    
+    // 1. Flush any pending subcollection map data
+    if (typeof flushPendingSave === 'function') flushPendingSave();
+
+    // 2. Do a hard, explicit dump of the core player state into Firestore.
+    const finalState = {
+        ...gameState.player,
+        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
+        equipment: typeof getSanitizedEquipment === 'function' ? getSanitizedEquipment() : gameState.player.equipment,
+        bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : (gameState.player.bank || []),
+        lootedTiles: Object.fromEntries(gameState.lootedTiles),
+        discoveredRegions: Array.from(gameState.discoveredRegions),
+        exploredChunks: Array.from(gameState.exploredChunks),
+        foundLore: Array.from(gameState.foundLore || []),
+        foundCodexEntries: Array.from(gameState.foundCodexEntries || []),
+        shopStates: gameState.shopStates || {},
+        activeTreasure: gameState.activeTreasure || null,
+    };
+
+    delete finalState.color;
+    delete finalState.character;
+
+    // Fire and forget! (Browser kills async awaits on unload anyway, so we don't await)
+    playerRef.set(typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(finalState) : finalState, { merge: true }).catch(() => {});
+}
+
 // DESKTOP: Save the game if the user closes the tab or refreshes
 window.addEventListener('beforeunload', () => { 
-    if(typeof player_id !== 'undefined' && player_id) {
-        flushPendingSave(); 
-    }
+    emergencySave();
 });
 
 // MOBILE: Save the game when the app is backgrounded, minimized, or tab-switched.
 // iOS Safari and Android Chrome reliably fire this, but ignore 'beforeunload'.
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden' && typeof player_id !== 'undefined' && player_id) {
-        console.log("App backgrounded. Flushing save data to cloud...");
+        console.log("App backgrounded. Forcing emergency save to local cache...");
+        emergencySave();
         
-        // Push any unsaved steps/inventory changes to Firebase immediately
-        flushPendingSave(); 
-        
-        // Also update the "Online Players" presence so other players see them as offline/away
+        // Update the "Online Players" presence so other players see them as offline/away
         if (typeof onlinePlayerRef !== 'undefined' && onlinePlayerRef) {
             onlinePlayerRef.remove().catch(() => {});
         }
