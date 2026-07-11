@@ -77,12 +77,12 @@ window.LORE_SETS = {
         items: ["📜c", "🧿s", "z"] 
     },
     
-    // --- BRAND NEW LORE SETS ---
+    // --- EXPANSION LORE SETS ---
     "fae_tales": {
         name: "Tales of the Feywild",
         description: "Accounts of those who stepped into the Fairy Rings and returned... changed.",
         bonus: "Trickster's Grace: +2 Base Dexterity.",
-        items: ["fae_1", "fae_2", "fae_3"] // Perfectly mapped to data-items.js!
+        items: ["fae_1", "fae_2", "fae_3"] 
     },
     "infernal_mechanics": {
         name: "Infernal Mechanics",
@@ -106,7 +106,7 @@ window.LORE_SETS = {
         name: "Songs of the Wandering Bard",
         description: "Transcribed lyrics of the songs heard echoing across the empty plains.",
         bonus: "Silver Tongue: +2 Base Charisma.",
-        items: ["🎵", "📜r", "📜c"] // The Bard isn't a collectible item, but discovering him logs the event!
+        items: ["🎵", "📜r", "📜c"]
     }
 };
 
@@ -147,7 +147,7 @@ window.LORE_STONE_MESSAGES = [
     "Before there were castles, there were the Crystal Spires. The dwarves shattered them out of greed.",
     "The fairies trade in memories, not gold. A Memory Shard is worth a fortune in the Deep Woods.",
     
-    // BRAND NEW UNIFIED STORY LORE
+    // NEW EXPANDED LORE
     "Alaric did not go mad. He shattered his own Crown to hide the pieces from the First Mage.",
     "The Leviathan slumbers, but its dreams cause the tides. When it wakes, the oceans will boil.",
     "The Cult of the Shadowed Hand seeks to reforge the shattered crown to unlock the Abyssal Trench.",
@@ -161,7 +161,11 @@ window.LORE_STONE_MESSAGES = [
     "A {blue:Sailing Ship} cannot cross the edge of the world. It simply wraps around to the beginning of the nightmare.",
     "The wandering Bard knows the end of the story, but he refuses to sing the final verse.",
     "The {red:Mimics} were created by paranoid kings to guard their treasuries. Now, they are the only treasuries left.",
-    "Do not fish in the lava unless your rod is forged of {gray:Obsidian}. The magma carps bite back."
+    "Do not fish in the lava unless your rod is forged of {gray:Obsidian}. The magma carps bite back.",
+    "The giant husks in the wasteland are all that remains of the Clockwork Crusade. The titans fell when their internal fires died.",
+    "The Radiant Springs are tears shed by the earth. Drink deeply to cleanse the shadows from your blood.",
+    "He who pulls the blade from the stone must bear the weight of the kingdom. The further from civilization, the heavier the crown.",
+    "The Lost City sank beneath the dunes not from a storm, but to hide from the stars."
 ];
 
 // ==========================================
@@ -198,7 +202,12 @@ window.LORE_PLAINS = [
     "The grass is neatly trampled in a path leading nowhere.",
     "You find a solitary, beautifully carved wooden chair sitting in the middle of nowhere.",
     "A faint, spectral chime echoes across the plain, then fades.",
-    "A ring of white stones surrounds a patch of dead earth."
+    "A ring of white stones surrounds a patch of dead earth.",
+    "You spot a lone butterfly glowing with an unnatural purple hue.",
+    "The blades of grass here are sharp enough to cut cloth.",
+    "A shallow trench runs through the plains, perfectly straight for miles.",
+    "You notice that your shadow seems to be pointing toward the sun.",
+    "A tiny, intricately carved stone frog sits atop a boulder."
 ];
 
 window.LORE_FOREST = [
@@ -231,7 +240,12 @@ window.LORE_FOREST = [
     "You find a campsite. The fire is still warm, but the packs are slashed to ribbons.",
     "The trees here are entirely petrified, their leaves made of sharp, brittle stone.",
     "A beautiful, melancholy humming emanates from a hollow stump.",
-    "A trail of golden pollen leads into the thicket, then suddenly ends."
+    "A trail of golden pollen leads into the thicket, then suddenly ends.",
+    "A thick canopy of vines completely blots out the sky for several dozen paces.",
+    "You find a tree trunk completely wrapped in heavy, rusted iron chains.",
+    "The air here smells strongly of honey and decaying meat.",
+    "Every leaf on the trees around you is a striking, luminescent blue.",
+    "You hear the faint, haunting melody of a flute playing from deep in the woods."
 ];
 
 window.LORE_MOUNTAIN = [
@@ -264,7 +278,12 @@ window.LORE_MOUNTAIN = [
     "A rusted iron cage hangs suspended over a terrifying gorge.",
     "You find an enormous shedding of reptilian skin, glittering with frost.",
     "An ancient, massive chain is bolted to the cliff face, leading up into the clouds.",
-    "The wind carries the faint scent of sulfur and roasting meat."
+    "The wind carries the faint scent of sulfur and roasting meat.",
+    "You discover a vein of ore that pulses with a faint, violet light.",
+    "A perfectly carved stone staircase leads nowhere, ending abruptly at a cliff edge.",
+    "The mountain peak above you seems to be floating entirely disconnected from the rock.",
+    "You find a frozen pond with something massive trapped just beneath the ice.",
+    "A deep fissure exhales a constant stream of scalding hot steam."
 ];
 
 window.LORE_SWAMP = [
@@ -292,7 +311,12 @@ window.LORE_SWAMP = [
     "A bloated, floating corpse drifts past you. It is wearing royal armor.",
     "The mud begins to bubble violently, releasing a cloud of purple spores.",
     "A half-sunken chest is chained to a heavy anvil at the bottom of a pool.",
-    "The fireflies here pulse in unison, like a single beating heart."
+    "The fireflies here pulse in unison, like a single beating heart.",
+    "You find a massive snake skin draped across a rotting log.",
+    "A patch of glowing green moss illuminates a dry patch of earth.",
+    "The smell of blooming decay is almost intoxicatingly sweet here.",
+    "A rickety wooden bridge crosses the muck, but the planks look rotten.",
+    "You spot an intricate elven bow half-submerged in the thick mud."
 ];
 
 window.LORE_DESERT = [
@@ -315,7 +339,12 @@ window.LORE_DESERT = [
     "You find a perfect circle of sand that is freezing cold to the touch.",
     "A dead oasis lies ahead. The palm trees are petrified into black stone.",
     "The sand here shifts colors, fading from red to deep purple as you step on it.",
-    "You hear the faint, melodic sound of bells chiming over the next dune."
+    "You hear the faint, melodic sound of bells chiming over the next dune.",
+    "A buried aqueduct from a forgotten era cuts through the dunes.",
+    "You find a patch of sand that behaves like fluid, rippling as the wind blows.",
+    "A lone, incredibly stubborn cactus flowers in brilliant crimson.",
+    "A massive chasm opens up in the sand, descending into pitch blackness.",
+    "You discover a collection of ancient coins scattered across the surface of a dune."
 ];
 
 window.LORE_DEADLANDS = [
@@ -338,7 +367,12 @@ window.LORE_DEADLANDS = [
     "You step on a brittle skull that shatters into perfectly square fragments.",
     "An unlit campfire. The logs are made of bone instead of wood.",
     "A colossal, rusted chain links the blasted earth directly to a low-hanging cloud.",
-    "The ash drifts upward, falling back toward the sky from whence it came."
+    "The ash drifts upward, falling back toward the sky from whence it came.",
+    "A pile of armor rusts quietly. There are no bones inside.",
+    "The ground is covered in deep scorch marks in the shape of a massive hand.",
+    "A singular, perfectly clean white stone rests amidst the endless gray ash.",
+    "You hear the grinding of stone against stone from deep within the earth.",
+    "A faint, ghostly outline of a castle wall shimmers and then fades."
 ];
 
 // ==========================================
@@ -354,11 +388,12 @@ window.VILLAGER_RUMORS = [
     "If a wild beast is badly wounded, try talking to it. You might just make a friend. Takes a lot of {gold:Charisma}, though.",
     "If you want the best gear, you gotta make it yourself. Highly skilled crafters can make {purple:Masterwork} weapons that hit harder.",
     
-    // --- ENCHANTING TUTORIALS ---
+    // --- ENCHANTING & PURIFYING TUTORIALS ---
     "The Blacksmith told me that if you have {purple:Arcane Dust}, you can use the Enchanting Altar at a fully upgraded camp.",
     "If you find magical gear you don't need, shatter it at an Altar! You get dust that you can use to upgrade your favorite sword.",
     "They say {gold:Legendary} weapons glow with their own light. I've only ever seen an Epic one.",
-    "I found a {red:Cursed} helmet in the swamp. It made me incredibly strong, but I lost my mind while wearing it. I sold it.",
+    "If you find {red:Cursed} or {red:Doomed} gear, don't wear it! It'll drain your stats! Take it to an Enchanting Altar and {cyan:Purify} it to cleanse the dark magic.",
+    "I found a Blighted Helm in the swamp. It made me incredibly strong, but I lost my mind while wearing it. I should have purified it at an altar.",
     
     // --- NEW MECHANICS TUTORIALS ---
     "A Heavy Crossbow is slow to load, but the bolts hit so hard they {red:pierce right through} targets! Try lining them up.",
@@ -378,6 +413,15 @@ window.VILLAGER_RUMORS = [
     "A tamed Dire Wolf is faster than the wind. Ride one if you want to cross the plains in a hurry.",
     "Careful in combat while riding a beast. If you take a heavy hit, you might get {red:violently knocked off}!",
     "You can't swing a sword while riding a bear. If you use an attack or a spell, you'll {orange:leap off your mount} directly into combat!",
+
+    // --- NEW LANDMARKS & OVERWORLD EVENTS ---
+    "Legends speak of a {gold:Sword in the Stone}. Only the strongest can pull it. And the further from civilization it lies, the heavier it is.",
+    "They say a {gray:Fallen Titan} lies rusted in the wasteland. If you have a Pickaxe, you might pry loose its Star-Metal core.",
+    "The {red:Blood Altars} in the swamps... they demand half your life force. But the power they grant is permanent, if you survive.",
+    "Never trust a {purple:Shady Smuggler}. Though... my cousin bought a mystery box from one and found a legendary sword inside. It's a gamble.",
+    "The {yellow:Lost City of the Sands} is a death trap. Millions of undead roam the streets, guarding endless treasure. Stay out of the deep desert.",
+    "If you find a {cyan:Radiant Spring} in the deep woods, drink from it. It will cleanse all your ailments and restore your magic entirely.",
+    "Keep an eye out for {blue:Wounded Knights} in the plains. If you help them in their final moments, they often bestow great rewards.",
 
     // --- EXPLORATION & WORLD ---
     "If you find a pickaxe, try the mountains. Good {gray:Iron Ore} there.",
@@ -469,7 +513,15 @@ window.RANDOM_JOURNAL_PAGES = [
     "We breached the vault, but it was empty. Only a hovering mirror remained, and my reflection was smiling while I frowned.",
     "I drank the Elixir of Power. My veins feel like they are filled with lightning. I can see the magic pulsing through the trees.",
     
-    // UNIFIED LORE PAGES
+    // NEW EXPANSION FRAGMENTS
+    "The Lost City is real. It's buried deep in the southern desert. The undead there wear gold and lapis lazuli.",
+    "I bought a mystery box from a smuggler today. It was full of rocks. He took my last hundred gold.",
+    "Do not bleed on the crimson altars in the swamp! They demand a sacrifice of life force, and the return is... terrifying.",
+    "I found a sword buried in a stone block. I pulled until my hands bled, but I couldn't move it an inch. I need to get stronger.",
+    "The Fallen Titans are machines of war from the Second Age. Their cores are made of pure star-metal. I just need a pickaxe.",
+    "I drank from a Radiant Spring. The water tasted like starlight, and my wounds healed instantly. I wish I could bottle it.",
+    
+    // UNIFIED STORY PAGES
     "The King hasn't eaten in weeks. He just stares at the {purple:Void Rift}, whispering to things that aren't there. He knows the Leviathan is coming.",
     "They call it the Abyssal Leviathan. It's not a fish. It's the god the Cult has been trying to wake up.",
     "The Necromancer Lord was once the First Mage. He tore open the Void because he thought he could control the Leviathan. He was wrong."
@@ -496,7 +548,8 @@ window.LORE_FRAGMENTS = [
     // NEW FAE & DIMENSIONAL LORE FRAGMENTS
     "I stepped into the ring of purple mushrooms. The music was so loud. When I stepped out, my hair was white.",
     "The Efreet are not demons. They are the trapped souls of the first mages, bound to the clockwork machines.",
-    "I saw the Leviathan's eye today. It was larger than the moon. It looked right through me."
+    "I saw the Leviathan's eye today. It was larger than the moon. It looked right through me.",
+    "I found the Lost City. The rumors were true. The streets are paved with gold and bones."
 ];
 
 // ==========================================
@@ -532,6 +585,12 @@ window.VISIONS_OF_THE_PAST = [
     "A VISION: A woman rides a monstrous wolf across the plains, outrunning a storm of black ash.",
     "A VISION: You see the roots of the world. They are not wood, but thick cables of humming purple light.",
     "A VISION: A hooded figure places the Sun Shard, the Moon Tear, and the Void Crystal on a pedestal. Reality shatters with a sound like breaking glass.",
+    
+    // NEW VISIONS
+    "A VISION: A colossal machine of brass and iron strides across the desert, crushing cities beneath its gears before finally collapsing into the dunes.",
+    "A VISION: A king plunges his sword into a block of granite. 'Let none but the worthy draw it,' he decrees, before walking into the wilderness to die.",
+    "A VISION: A vast city in the desert sinks into the sand in a single night. The screams are muffled by the shifting dunes.",
+    "A VISION: A cultist slashes his palm over a crimson altar. The blood turns to dark smoke and forms a solid, jagged blade in his grip.",
     
     // UNIFIED STORY VISIONS
     "A VISION: You see a golden king standing atop the fortress. He takes off his crown and smashes it against the stone. 'They cannot open the Rift without it,' he whispers.",
@@ -902,6 +961,34 @@ window.RIDDLE_DATA = [
         answers: ["tomorrow", "the future", "future", "next day"],
         reward: "psyche",
         message: "{purple:You peer into the infinite paths of destiny. Your mental fortitude deepens.}"
+    },
+    {
+        id: "letter_m",
+        question: "What comes once in a minute, twice in a moment, but never in a thousand years?",
+        answers: ["the letter m", "letter m", "m", "an m"],
+        reward: "wits",
+        message: "{blue:The statue nods at your linguistic cunning.}"
+    },
+    {
+        id: "road",
+        question: "What goes through cities and fields, but never moves?",
+        answers: ["a road", "road", "the road", "path", "a path", "highway"],
+        reward: "endurance",
+        message: "{green:You feel ready for a long journey.}"
+    },
+    {
+        id: "net",
+        question: "What has thousands of eyes but cannot see?",
+        answers: ["a net", "net", "the net", "fishing net", "a fishing net", "spider web"],
+        reward: "perception",
+        message: "{gold:You feel you can catch the unseen.}"
+    },
+    {
+        id: "sand",
+        question: "I build up castles. I tear down mountains. I make some men blind, I help others to see. What am I?",
+        answers: ["sand", "the sand", "glass"],
+        reward: "constitution",
+        message: "{red:You feel ground down to your core, yet unbroken.}"
     }
 ];
 
