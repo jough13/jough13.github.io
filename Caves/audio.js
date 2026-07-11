@@ -85,13 +85,21 @@ const AudioSystem = {
         if (this._ctx && this._ctx.state === 'running') return this._ctx;
 
         const ctx = this.initAudioContext();
-        // Only resume if explicitly suspended, 
-        // wrapped in a try/catch because Safari sometimes throws errors if resumed too aggressively.
+        
+        // 🚨 BUG FIX & STABILITY WIN: Browser Tab Suspension Guards
+        // If a user switches tabs, browsers force-suspend the AudioContext.
+        // We MUST attempt to resume it gracefully. If it fails (e.g. strict autoplay policy),
+        // we catch the error so the entire game engine doesn't crash!
         if (ctx && ctx.state === 'suspended') {
             try {
+                // Returns a promise, catch rejection silently
                 ctx.resume().catch(() => {});
             } catch (e) {}
         }
+        
+        // If it STILL isn't running after attempting to resume, abort sound playback for this frame
+        if (ctx && ctx.state !== 'running') return null;
+        
         return ctx;
     },
 
@@ -127,7 +135,8 @@ const AudioSystem = {
         // PERFORMANCE WIN: Smarter O(1) garbage collection for the throttle Map.
         // Bumped threshold to 100 to prevent constant map iteration during intense combat.
         if (this._lastPlayed.size > 100) {
-            for (const [key, time] of this._lastPlayed) { // Native iterator is faster
+            // Using the map's native iterator is significantly faster than Object.keys
+            for (const [key, time] of this._lastPlayed) { 
                 if (now - time > 5000) this._lastPlayed.delete(key);
             }
         }
@@ -238,6 +247,7 @@ const AudioSystem = {
             dampFilter.type = 'lowpass';
             
             // 🚨 NYQUIST FIX: Prevent InvalidAccessError crash
+            // If you attempt to set a filter frequency higher than half the sample rate, Web Audio crashes.
             const maxFreq = (ctx.sampleRate / 2) - 1;
             dampFilter.frequency.value = Math.min(maxFreq, Math.max(10, acoustics.dampening));
 
@@ -279,9 +289,10 @@ const AudioSystem = {
     // --- CORE GENERATORS ---
 
     playNoise: function(duration, vol = 0.1, filterFreq = 1000, x) {
-        if (!this.settings.master || !this.getCtx()) return;
+        if (!this.settings.master) return;
+        const ctx = this.getCtx();
+        if (!ctx) return;
         
-        const ctx = this._ctx;
         if (!this.noiseBuffer) this.initNoise();
 
         const acoustics = this._getAcoustics();
@@ -331,9 +342,10 @@ const AudioSystem = {
     },
 
     playTone: function(freq, type, duration, vol = 0.1, pitchShift = true, slideTo = null, x) {
-        if (!this.settings.master || !this.getCtx()) return;
+        if (!this.settings.master) return;
+        const ctx = this.getCtx();
+        if (!ctx) return;
         
-        const ctx = this._ctx;
         const acoustics = this._getAcoustics();
         const spatial = this._getSpatialData(x);
         
@@ -379,8 +391,10 @@ const AudioSystem = {
     },
 
     playChord: function(notes, type = 'sine', duration = 0.5, vol = 0.1, detune = 0, slideDown = false, x) {
-        if (!this.settings.master || !this.getCtx()) return;
-        const ctx = this._ctx;
+        if (!this.settings.master) return;
+        const ctx = this.getCtx();
+        if (!ctx) return;
+        
         const acoustics = this._getAcoustics();
         const spatial = this._getSpatialData(x);
         
@@ -423,9 +437,10 @@ const AudioSystem = {
     },
 
     playMelody: function(notes, type = 'sine', speed = 0.15, vol = 0.1) {
-        if (!this.settings.master || !this.settings.ui || !this.getCtx()) return;
+        if (!this.settings.master || !this.settings.ui) return;
+        const ctx = this.getCtx();
+        if (!ctx) return;
         
-        const ctx = this._ctx;
         const now = ctx.currentTime + 0.01;
         const acoustics = this._getAcoustics();
         const maxFreq = (ctx.sampleRate / 2) - 1; // NYQUIST FIX
@@ -485,6 +500,7 @@ const AudioSystem = {
     // NEW: Shovel digging sound
     playDig: function(x) {
         if (!this.settings.steps) return; // Fallback to step settings for environmental actions
+        if (!this._throttle('dig', 150)) return; 
         this.playNoise(0.15, 0.1, 400, x);
         this.playTone(80, 'triangle', 0.1, 0.1, true, 40, x);
     },
@@ -492,12 +508,13 @@ const AudioSystem = {
     // NEW: Fishing bite sound
     playFishBite: function(x) {
         if (!this.settings.ui) return;
+        if (!this._throttle('fishBite', 200)) return; 
         this.playTone(1200, 'sine', 0.05, 0.15, false, 800, x);
         setTimeout(() => this.playNoise(0.05, 0.05, 2000, x), 20);
     },
     
     playAttack: function(type = 'normal', x) { 
-        if (!this.settings.master || !this.settings.combat || !this.getCtx()) return;
+        if (!this.settings.combat) return;
         if (!this._throttle('attack', 50)) return; 
         
         if (type === 'heavy') {
@@ -519,13 +536,14 @@ const AudioSystem = {
 
     playBow: function(x) {
         if (!this.settings.combat) return;
+        if (!this._throttle('bow', 150)) return; 
         // Layered Twang + Whoosh
         this.playTone(400, 'sawtooth', 0.1, 0.1, true, 200, x);
         setTimeout(() => this.playNoise(0.15, 0.04, 2000, x), 10);
     },
     
     playHit: function(x) { 
-        if (!this.settings.combat || !this.getCtx()) return;
+        if (!this.settings.combat) return;
         if (!this._throttle('hit', 80)) return;
         
         let material = 'flesh'; 
@@ -561,6 +579,7 @@ const AudioSystem = {
 
     playCrit: function(x) {
         if (!this.settings.combat) return;
+        if (!this._throttle('crit', 200)) return; 
         this.playTone(1200, 'sine', 0.3, 0.15, false, 800, x);
         this.playTone(80, 'square', 0.2, 0.1, true, null, x); 
         this.playNoise(0.2, 0.15, 2000, x); 
@@ -575,6 +594,7 @@ const AudioSystem = {
 
     playHeal: function(x) {
         if (!this.settings.magic) return;
+        if (!this._throttle('heal', 150)) return; 
         // Warm, swelling chord
         this.playChord([261.63, 329.63, 392.00], 'sine', 0.6, 0.1, 1.0, false, x);
     },
@@ -613,6 +633,7 @@ const AudioSystem = {
 
     playConsume: function() {
         if (!this.settings.ui) return;
+        if (!this._throttle('consume', 150)) return; 
         // Glug/Crunch sound for eating/drinking
         this.playNoise(0.1, 0.05, 800);
         setTimeout(() => { this.playTone(300, 'triangle', 0.05, 0.05, true, 200); }, 50);
@@ -620,6 +641,7 @@ const AudioSystem = {
 
     playEnchant: function() {
         if (!this.settings.magic) return;
+        if (!this._throttle('enchant', 500)) return; 
         // Rising, magical arpeggio
         this.playMelody([440, 554.37, 659.25, 880], 'sine', 0.1, 0.15);
         this.playNoise(0.5, 0.05, 2000); // Shimmering background dust
@@ -627,6 +649,7 @@ const AudioSystem = {
 
     playDisenchant: function() {
         if (!this.settings.magic) return;
+        if (!this._throttle('disenchant', 300)) return; 
         // Shattering glass + discordant descending chord
         this.playNoise(0.2, 0.15, 4000); // Crack!
         this.playChord([880, 659.25, 622.25, 440], 'sawtooth', 0.4, 0.1, 5.0, true);
@@ -635,22 +658,27 @@ const AudioSystem = {
     // --- EPIC/FANFARE SOUNDS ---
 
     playLevelUp: function() {
+        if (!this._throttle('levelup', 1000)) return; 
         this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 0.8, 0.15, 1.5);
     },
 
     playQuestComplete: function() {
+        if (!this._throttle('questcomplete', 1000)) return; 
         this.playMelody([392.00, 392.00, 392.00, 523.25, 0, 523.25], 'triangle', 0.12, 0.1);
     },
 
     playLootRare: function() {
+        if (!this._throttle('lootrare', 500)) return; 
         this.playMelody([523.25, 659.25, 783.99, 1046.50], 'sine', 0.08, 0.08);
     },
 
     playSecret: function() {
+        if (!this._throttle('secret', 1000)) return; 
         this.playMelody([329.63, 392.00, 493.88], 'triangle', 0.2, 0.08);
     },
 
     playWarning: function() {
+        if (!this._throttle('warning', 1000)) return; 
         this.playMelody([400, 0, 400], 'square', 0.1, 0.1);
     },
 
@@ -661,16 +689,19 @@ const AudioSystem = {
     },
 
     playDiscovery: function() {
+        if (!this._throttle('discovery', 2000)) return; 
         this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 2.0, 0.15, 2.0);
     },
 
     playBossSpawn: function() {
+        if (!this._throttle('bossspawn', 3000)) return; 
         // JUICE WIN: Terrifying descending tritone rumble for Boss Spawns
         this.playChord([45, 64, 80], 'sawtooth', 4.0, 0.3, 5.0, true);
         this.playNoise(3.0, 0.4, 300); 
     },
 
     playCraftSuccess: function() {
+        if (!this._throttle('craftsuccess', 200)) return; 
         this.playMelody([400, 600, 800], 'triangle', 0.1, 0.1);
     },
 
@@ -681,6 +712,7 @@ const AudioSystem = {
     },
 
     playVoidEnter: function() {
+        if (!this._throttle('voidenter', 2000)) return; 
         this.playChord([40, 45, 50], 'square', 3.0, 0.2, 1.0, true);
         this.playNoise(2.0, 0.3, 400); 
     }
