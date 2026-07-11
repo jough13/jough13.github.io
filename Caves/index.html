@@ -129,10 +129,10 @@
                     <!-- UX WIN: Form wrapper allows "Enter" key to submit and supports password managers -->
                     <form id="authForm" class="w-full space-y-4 px-4 mt-2" onsubmit="event.preventDefault(); document.getElementById('authButton').click();">
                         <div class="ui-input-asset">
-                            <input type="email" id="emailInput" autocomplete="email" aria-label="Email Address" placeholder="Email" class="w-full bg-transparent outline-none terminal-text text-base md:text-lg">
+                            <input type="email" id="emailInput" spellcheck="false" autocomplete="email" aria-label="Email Address" placeholder="Email" class="w-full bg-transparent outline-none terminal-text text-base md:text-lg">
                         </div>
                         <div class="ui-input-asset">
-                            <input type="password" id="passwordInput" autocomplete="current-password" aria-label="Password" placeholder="Password" class="w-full bg-transparent outline-none terminal-text text-base md:text-lg">
+                            <input type="password" id="passwordInput" spellcheck="false" autocomplete="current-password" aria-label="Password" placeholder="Password" class="w-full bg-transparent outline-none terminal-text text-base md:text-lg">
                         </div>
 
                         <div class="pt-2">
@@ -159,11 +159,12 @@
                             <a href="#" id="authToggle" class="hover:text-green-400 font-bold underline underline-offset-4 mb-1 transition-colors">Forge New Soul</a>
                         </div>
 
-                        <p id="authError" class="text-red-500 text-center text-sm min-h-[1.5rem] pixel-text font-bold" aria-live="assertive"></p>
+                        <!-- A11Y WIN: Role="alert" reads out the error for screen readers instantly -->
+                        <p id="authError" role="alert" class="text-red-500 text-center text-sm min-h-[1.5rem] pixel-text font-bold"></p>
                     </form>
 
                     <div class="mt-8 pt-2 border-t-2 border-dashed border-gray-600 w-full text-center text-xs pixel-text text-gray-400">
-                        <a href="devlog.html" class="hover:text-white transition-colors">Devlog</a> | Akashic Engine v0.2.9
+                        <a href="devlog.html" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">Devlog</a> | Akashic Engine v0.2.9
                     </div>
                 </div>
             </div>
@@ -195,8 +196,8 @@
                         <div class="space-y-6">
                             <div>
                                 <label class="block text-sm font-bold mb-2" for="charNameInput">Name</label>
-                                <!-- UX WIN: text-base prevents iOS zooming -->
-                                <input type="text" id="charNameInput" autocomplete="off" class="themed-input w-full p-3 border-2 rounded-xl font-bold text-base md:text-lg focus:border-blue-500 transition-colors" placeholder="Enter Character Name..." maxlength="16">
+                                <!-- UX WIN: text-base prevents iOS zooming, autocomplete/spellcheck disabled to prevent messing up fantasy names -->
+                                <input type="text" id="charNameInput" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" class="themed-input w-full p-3 border-2 rounded-xl font-bold text-base md:text-lg focus:border-blue-500 transition-colors" placeholder="Enter Character Name..." maxlength="16">
                             </div>
                             <div>
                                 <label class="block text-sm font-bold mb-2">Gender</label>
@@ -293,8 +294,8 @@
                             <div id="chatContainer" class="panel p-4 w-full rounded-2xl border-2 shadow-sm flex flex-col">
                                 <h2 class="text-lg font-bold mb-2 border-b border-gray-500 pb-1 text-blue-500">Global Chat</h2>
                                 <div id="chatMessages" class="h-24 overflow-y-auto flex flex-col-reverse text-sm pr-2 custom-scrollbar flex-grow" aria-live="polite"></div>
-                                <!-- UX WIN: text-base prevents iOS zooming -->
-                                <input type="text" id="chatInput" aria-label="Global Chat Input" autocomplete="off" class="themed-input w-full p-2 border rounded text-base md:text-sm mt-2 focus:border-blue-500 transition-colors" placeholder="Say something...">
+                                <!-- UX WIN: spellcheck/autocorrect off prevents messing up commands -->
+                                <input type="text" id="chatInput" aria-label="Global Chat Input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="themed-input w-full p-2 border rounded text-base md:text-sm mt-2 focus:border-blue-500 transition-colors" placeholder="Say something...">
                             </div>
                         </div>
                     </div>
@@ -625,8 +626,8 @@
             <!-- UX WIN: Form wrapper allows "Enter" key to submit the riddle -->
             <form id="riddleContainer" class="hidden mb-6 bg-black bg-opacity-10 p-4 rounded-xl border border-yellow-800" onsubmit="event.preventDefault(); document.getElementById('submitRiddle').click();">
                 <p class="text-sm font-bold mb-2 italic">Speak your answer:</p>
-                <!-- UX WIN: text-base prevents iOS zooming -->
-                <input type="text" id="riddleInput" autocomplete="off" aria-label="Riddle Answer" class="w-full p-3 border-2 border-yellow-800 rounded-lg mb-3 bg-white text-black font-bold text-base focus:outline-none focus:ring-2 focus:ring-yellow-600 shadow-inner" placeholder="Type here...">
+                <!-- UX WIN: Text inputs specifically disabled from autocapitalizing/autocorrecting to prevent ruining riddle answers -->
+                <input type="text" id="riddleInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Riddle Answer" class="w-full p-3 border-2 border-yellow-800 rounded-lg mb-3 bg-white text-black font-bold text-base focus:outline-none focus:ring-2 focus:ring-yellow-600 shadow-inner" placeholder="Type here...">
                 <button type="button" id="submitRiddle" class="bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg w-full shadow-md transition-transform active:scale-95 text-lg border-b-2 border-yellow-900 active:border-b-0" style="font-family: 'Uncial Antiqua', cursive;">Speak</button>
             </form>
             
@@ -1058,13 +1059,16 @@
                 "Sailing the Deep Ocean...",
                 "Forging Star-Metal...",
                 "Stashing paradox anomalies...",
+                "Dodging the Dune Thresher...",
+                "Reeling in an Astral Jelly...",
+                "Prying open Abyssal Oysters...",
+                "Dusting off the Observer's Telescope...",
                 "Dodging the Leviathan...",
                 "Attuning Waystones...",
                 "Studying the Abyss...",
                 "Translating Dwarven Runes...",
                 "Calibrating the Astrolabe...",
-                "Smuggling Dwarven TNT...",
-                "Feeding the Abyssal Leviathan..."
+                "Smuggling Dwarven TNT..."
             ];
             
             const loader = document.getElementById('loadingIndicator');
