@@ -10,20 +10,26 @@ window.MAX_INVENTORY_SLOTS = 9;
 window.getInventoryCap = function(player) {
     let cap = window.MAX_INVENTORY_SLOTS;
     
-    // 🚨 BUG FIX & ROBUSTNESS WIN: Added strict null/type guards 
-    // This prevents UI crashes if Firebase introduces a ghost slot (null) into the equipment object
-    if (player && player.equipment && typeof player.equipment === 'object') {
-        for (const slot in player.equipment) {
-            const item = player.equipment[slot];
-            if (item && typeof item === 'object' && item.statBonuses && item.statBonuses.carryCapacity) {
+    // 🚨 PERFORMANCE & ROBUSTNESS WIN: Hardcoded slot array.
+    // Bypasses the slow `for...in` loop and prevents iterating over corrupted prototype properties.
+    if (player && player.equipment) {
+        const slots = ['weapon', 'armor', 'offhand', 'accessory', 'ammo'];
+        for (let i = 0; i < slots.length; i++) {
+            const item = player.equipment[slots[i]];
+            if (item && item.statBonuses && typeof item.statBonuses.carryCapacity === 'number') {
                 cap += item.statBonuses.carryCapacity;
             }
         }
     }
     
     // Mount Saddlebag Hook
-    if (player && player.isMounted && player.companion && typeof player.companion === 'object' && player.companion.carryCapacity) {
+    if (player && player.isMounted && player.companion && typeof player.companion.carryCapacity === 'number') {
         cap += player.companion.carryCapacity;
+    }
+    
+    // EXPANSION HOOK: Passive Talent for extra inventory space
+    if (player && player.talents && player.talents.includes('pack_mule')) {
+        cap += 3;
     }
     
     return Math.max(1, cap); // Absolute floor safety
@@ -266,7 +272,8 @@ const gameState = {
         companion: null,       
         tutorialProgress: 0,   
         
-        // V8 Memory Pre-Allocation 
+        // 🚨 V8 MEMORY OPTIMIZATION & EXPANSION
+        // Pre-allocating these ensures the Firebase payload and V8 Hidden Classes never shift shape!
         metrics: {
             totalKills: 0,
             bossesDefeated: 0,
@@ -285,7 +292,10 @@ const gameState = {
             damageTaken: 0,
             damageDealt: 0,
             criticalHits: 0,
-            questsCompleted: 0 // <--- EXPANDABILITY WIN: Pre-allocated!
+            questsCompleted: 0,
+            treasuresDug: 0,
+            shrinesPrayed: 0,
+            echoesLeft: 0
         }
     },
 
@@ -349,10 +359,18 @@ const gameState = {
 window.modifyVital = function(vital, rawAmount) {
     const p = gameState.player;
     
-    const amount = Number(rawAmount) || 0;
+    // 🚨 SECURITY & STABILITY WIN: The NaN Firewall
+    // Guarantees that corrupted spell damage, corrupted items, or missing properties 
+    // never inject a NaN into the player's health and permanently break their save file.
+    let amount = Number(rawAmount);
+    if (!Number.isFinite(amount) || Number.isNaN(amount)) {
+        console.warn(`[AKASHIC ENGINE] Blocked invalid vital modification on ${vital}: ${rawAmount}`);
+        return 0; 
+    }
+    
     if (amount === 0) return 0;
     
-    // i-Frame Logic
+    // i-Frame Logic (Invulnerability Frames)
     if (vital === 'health' && amount < 0) {
         const now = Date.now();
         if (now - (p.lastHitTime || 0) < 100) return 0; 
@@ -367,7 +385,7 @@ window.modifyVital = function(vital, rawAmount) {
     
     const oldVal = p[vital];
     let newVal = oldVal + amount;
-    newVal = Math.max(0, Math.min(maxVal, newVal));
+    newVal = Math.max(0, Math.min(maxVal, newVal)); // Clamp securely
     
     p[vital] = newVal;
     const actualChange = newVal - oldVal;
@@ -376,13 +394,13 @@ window.modifyVital = function(vital, rawAmount) {
     if (vital === 'health' && actualChange < 0) {
         const pctLost = Math.abs(actualChange) / maxVal;
         
-        // Huge single hit
+        // Huge single hit (40% or more of max HP in one blow)
         if (pctLost >= 0.40) {
             if (typeof logMessage !== 'undefined') logMessage("{orange:You suffer a devastating blow!}");
             gameState.screenShake = Math.max(gameState.screenShake, 15);
         }
         
-        // Near-death boundary crossed
+        // Near-death boundary crossed (Drop below 25%)
         if (newVal <= (maxVal * 0.25) && oldVal > (maxVal * 0.25) && newVal > 0) {
             if (typeof logMessage !== 'undefined') logMessage("{red:Your vision blurs. You are clinging to life!}");
             gameState.screenFlash = { color: '#991b1b', alpha: 0.5, decay: 0.05 };
@@ -417,6 +435,8 @@ window.modifyVital = function(vital, rawAmount) {
         gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 };
         
         if (typeof handlePlayerDeath === 'function') {
+            // Using a tiny timeout allows the current stack trace (combat loops, array iterations)
+            // to safely resolve before we violently alter the mapMode and strip the player's inventory!
             setTimeout(handlePlayerDeath, 0); 
         }
     }
