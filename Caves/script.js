@@ -1,6 +1,9 @@
+// --- START OF FILE script.js ---
+
 // Globals
 
 let pendingSaveData = null;
+let activeChatRef = null; // Memory Leak Protection: Track the specific query ref
 
 // Groups map coordinates into 50x50 chunk sectors for efficient Firestore Subcollections
 function getSectorId(coordString) {
@@ -125,7 +128,21 @@ function flushPendingSave(updates = null) {
             gameState.needsLegacyMapCleanup = false;
         }
 
-        const batch = db.batch();
+        // 🚨 STABILITY WIN: Dynamic Batch Generator
+        // Firebase has a hard cap of 500 operations per batch. 
+        // We track ops and dynamically spin up new batches to prevent crashing!
+        const batches = [db.batch()];
+        let opCount = 0;
+        
+        const getBatch = () => {
+            if (opCount >= 490) { // Safe buffer
+                batches.push(db.batch());
+                opCount = 0;
+            }
+            opCount++;
+            return batches[batches.length - 1];
+        };
+
         let hasMapData = false;
 
         // --- 1. PROCESS MAP SUBCOLLECTIONS (WITH SPREAD EXPLOIT FIX) ---
@@ -166,7 +183,7 @@ function flushPendingSave(updates = null) {
                 const appendInChunks = (field, arr) => {
                     for (let i = 0; i < arr.length; i += MAX_SPREAD) {
                         const slice = arr.slice(i, i + MAX_SPREAD);
-                        batch.set(docRef, { [field]: firebase.firestore.FieldValue.arrayUnion(...slice) }, { merge: true });
+                        getBatch().set(docRef, { [field]: firebase.firestore.FieldValue.arrayUnion(...slice) }, { merge: true });
                     }
                 };
 
@@ -178,7 +195,7 @@ function flushPendingSave(updates = null) {
                     for (const [k, v] of Object.entries(sectorUpdates[sector].looted)) {
                         docData[`lootedTiles.${k}`] = (v === null) ? firebase.firestore.FieldValue.delete() : v;
                     }
-                    batch.set(docRef, docData, { merge: true });
+                    getBatch().set(docRef, docData, { merge: true });
                 }
             }
             
@@ -194,17 +211,18 @@ function flushPendingSave(updates = null) {
                 setTimeout(() => location.reload(), 2000);
                 return;
             }
-            batch.update(playerRef, sanitizeForFirebase(dataToSave));
+            getBatch().update(playerRef, sanitizeForFirebase(dataToSave));
         }
 
-        // --- 3. COMMIT BATCH ---
+        // --- 3. COMMIT BATCHES ---
         if (hasMapData || Object.keys(dataToSave).length > 0) {
             if (saveIcon) {
                 saveIcon.classList.remove('opacity-0');
                 saveIcon.classList.add('opacity-100');
             }
             
-            batch.commit().then(() => {
+            // Commit all generated batches concurrently!
+            Promise.all(batches.map(b => b.commit())).then(() => {
                 lastValidatedState = { ...gameState.player }; 
                 window.legitimateGoldDelta = 0; // Reset tracking for the next save cycle
                 window.legitimateXpDelta = 0;
@@ -392,7 +410,6 @@ async function renderSlots() {
                 <div class="flex gap-2 w-full mt-4 items-center h-12">
                     <button onclick="selectSlot('${slotId}')" class="ui-btn-asset flex-grow h-full !text-2xl !p-0 !mt-0">PLAY</button>
                     
-                    <!-- ADDED: relative top-[ px] right-[ px] -->
                     <button onclick="deleteSlot('${slotId}')" class="relative top-[3px] right-[9px] w-12 h-8 flex-none bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-xl flex items-center justify-center transition-transform active:scale-95" style="border: 2px solid #000; box-shadow: inset -2px -2px 0px rgba(0,0,0,0.4), inset 2px 2px 0px rgba(255,255,255,0.3); text-shadow: 2px 2px 0px #000;" title="Delete">X</button>
                 </div>
             `;
@@ -2008,7 +2025,6 @@ function handleChatCommand(message) {
 
             // 2. Clear Firebase World State (This deletes ALL map data)
             logMessage("Purging world map... (This may take a moment)");
-            const batch = db.batch();
             // Note: Deleting collections client-side is hard in Firestore. 
             // Instead, we will just force a re-render of the CURRENT chunk locally
             // and overwrite it.
@@ -2112,7 +2128,7 @@ function handleChatCommand(message) {
             logMessage(`Teleported to ${tx}, ${ty}.`);
             updateRegionDisplay();
             render();
-            renderMinimap();
+            if (typeof renderWorldMap === 'function') renderWorldMap(); // LORE WIN: Fix Minimap Reference
             syncPlayerState();
 
             playerRef.update({ x: gameState.player.x, y: gameState.player.y });
@@ -2144,30 +2160,30 @@ function handleChatCommand(message) {
 
             if (targetKey) {
                 const template = ITEM_DATA[targetKey];
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
 
                 // Add to inventory
-                if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    gameState.player.inventory.push({
-                        name: template.name,
-                        type: template.type,
-                        quantity: quantity,
-                        tile: targetKey,
-                        // Copy properties if they exist
-                        damage: template.damage || null,
-                        defense: template.defense || null,
-                        slot: template.slot || null,
-                        statBonuses: template.statBonuses || null,
-                        effect: template.effect // Copy function ref
-                    });
+                if (gameState.player.inventory.length < invCap) {
+                    
+                    // 🚨 STABILITY WIN: Deep Clone!
+                    // Prevents permanently altering the base ITEM_DATA dictionary globally if this item is later enchanted!
+                    const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
+                    newItem.templateId = targetKey;
+                    newItem.quantity = quantity;
+                    newItem.tile = targetKey;
+                    // Restore functional properties
+                    newItem.effect = template.effect;
+                    
+                    gameState.player.inventory.push(newItem);
 
                     logMessage(`Spawned ${quantity}x ${template.name}.`);
                     renderInventory();
                     playerRef.update({ inventory: getSanitizedInventory() });
                 } else {
-                    logMessage("Inventory full!");
+                    logMessage("{red:Inventory full!}");
                 }
             } else {
-                logMessage(`Item '${itemName}' not found.`);
+                logMessage(`{gray:Item '${itemName}' not found.}`);
             }
             break;
 
@@ -2180,7 +2196,7 @@ function handleChatCommand(message) {
 function restPlayer() {
     // 1. Check Survival Constraints
     if (gameState.player.hunger <= 0 || gameState.player.thirst <= 0) {
-        logMessage("You are too weak from hunger or thirst to rest effectively.");
+        logMessage("{red:You are too weak from hunger or thirst to rest effectively.}");
         if (typeof endPlayerTurn === 'function') endPlayerTurn(); 
         return;
     }
@@ -2285,13 +2301,22 @@ function triggerRaidBossSpawn(playerX, playerY) {
     const spawnY = playerY + (Math.random() > 0.5 ? 1 : -1) * (10 + Math.floor(Math.random() * 10));
     const bossId = `overworld_raid_${Date.now()}`;
 
-    // Grab the Behemoth template (We'll add this to data-entities.js next)
-    const bossTemplate = ENEMY_DATA['👾']; 
+    // LORE WIN: Biome Aware or Randomized Epic Bosses
+    const bossPool = [
+        { tile: '👾', color: '#8b5cf6', msg: '{purple:⚠️ A Void Behemoth has ripped into reality near' },
+        { tile: '🦕', color: '#0284c7', msg: '{blue:⚠️ An Abyssal Leviathan has breached the surface near' },
+        { tile: '🐛', color: '#d97706', msg: '{orange:⚠️ A massive Dune Thresher has erupted from the earth near' },
+        { tile: '🐲', color: '#dc2626', msg: '{red:⚠️ An Ancient Drake descends from the clouds near' }
+    ];
+    
+    const bossConfig = bossPool[Math.floor(Math.random() * bossPool.length)];
+    const bossTemplate = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[bossConfig.tile] : null; 
+    
     if (!bossTemplate) return;
 
     const bossEntity = {
         name: "World Boss: " + bossTemplate.name,
-        tile: '👾',
+        tile: bossConfig.tile,
         x: spawnX,
         y: spawnY,
         health: 10000,
@@ -2302,7 +2327,7 @@ function triggerRaidBossSpawn(playerX, playerY) {
         loot: bossTemplate.loot,
         isBoss: true,
         isElite: true,
-        color: '#f43f5e', // Rose Red
+        color: bossConfig.color, 
         spawnTime: Date.now()
     };
 
@@ -2313,7 +2338,7 @@ function triggerRaidBossSpawn(playerX, playerY) {
     rtdb.ref('chat').push().set({
         senderId: 'SERVER',
         email: 'SYSTEM',
-        message: `{red:⚠️ A Void Behemoth has ripped into reality near (${spawnX}, ${-spawnY})! Gather your allies!}`,
+        message: `${bossConfig.msg} (${spawnX}, ${-spawnY})! Gather your allies!}`,
         timestamp: firebase.database.ServerValue.TIMESTAMP
     });
 
@@ -2448,9 +2473,10 @@ function clearSessionState() {
         EnemyNetworkManager.clearAll();
     }
     
-    if (chatListener) { 
-        rtdb.ref('chat').off('child_added', chatListener);
+    if (chatListener && activeChatRef) { 
+        activeChatRef.off('child_added', chatListener);
         chatListener = null;
+        activeChatRef = null;
     }
     
     // Clear connection listener to prevent duplicate triggers on relog
@@ -2512,9 +2538,10 @@ logoutButton.addEventListener('click', async () => { // <--- Added async
         EnemyNetworkManager.clearAll();
     }
     
-    if (chatListener) {
-        rtdb.ref('chat').off('child_added', chatListener);
+    if (chatListener && activeChatRef) {
+        activeChatRef.off('child_added', chatListener);
         chatListener = null;
+        activeChatRef = null;
     }
 
     // 4. Clear Local Memory
@@ -2784,7 +2811,11 @@ async function enterGame(playerData) {
         sharedEnemiesListener(); 
         sharedEnemiesListener = null;
     }
-    if (chatListener) rtdb.ref('chat').off('child_added', chatListener);
+    if (chatListener && activeChatRef) {
+        activeChatRef.off('child_added', chatListener);
+        chatListener = null;
+        activeChatRef = null;
+    }
     
     // 🚨 BUG FIX: Clean up previous listener to prevent duplicate ghost connections
     if (connectedListener) {
@@ -2862,9 +2893,9 @@ async function enterGame(playerData) {
     let pendingChatMessages = [];
 
     // Only request the 50 messages we actually plan to show
-    const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(50);
+    activeChatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(50);
     // Assign it to the global variable so it can be cleaned up on logout!
-    chatListener = chatRef.on('child_added', (snapshot) => {
+    chatListener = activeChatRef.on('child_added', (snapshot) => {
         const message = snapshot.val();
 
         // --- FLOATING CHAT BUBBLE ---
@@ -3261,23 +3292,24 @@ restartButton.onclick = () => {
     gameState.currentRealm = 0;
     gameState.realmMutators = [];
 
-    // Clear local memory so they can earn XP and loot chests again!
+    // --- RELEASE THE DEATH LOCK ---
+    gameState.isDead = false;
+
+    // Clear exploration arrays for new run
     gameState.discoveredRegions.clear();
     gameState.exploredChunks.clear();
     gameState.lootedTiles.clear(); 
-    player.discoveredPOIs = [];
+    gameState.player.discoveredPOIs = [];
 
-    // 5. Save "Alive" State & Wiped Map to DB
-    const resetState = {
-        ...player,
+    // Ensure the database explicitly receives the realm reset
+    const resetPayload = {
+        ...defaultState,
         currentRealm: 0,
         realmMutators: [],
-        discoveredRegions: [],
-        exploredChunks: [],
-        lootedTiles: [],
-        discoveredPOIs: []
+        mapMode: 'overworld',
+        mapId: null
     };
-    
+
     playerRef.set(sanitizeForFirebase(resetState));
 
     // 6. UI Cleanup
@@ -3289,6 +3321,7 @@ restartButton.onclick = () => {
     renderStats();
     renderInventory();
     renderEquipment();
+
     resizeCanvas();
     render();
 };
@@ -3302,3 +3335,4 @@ if (mainMenuBtn) {
         location.reload();
     };
 }
+// --- END OF FILE script.js ---
