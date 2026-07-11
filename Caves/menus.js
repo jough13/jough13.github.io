@@ -529,12 +529,23 @@ function turnInQuest(questId) {
 
         let hasRequirements = true; 
 
-        // 🚨 CRITICAL BUG FIX: Multi-stack Quest Verification
+        // Multi-stack & Upgraded Item Quest Verification
         if (quest.type === 'fetch' || quest.type === 'collect') {
             let totalFound = 0;
+            
+            // Find the base template ID of the requested item
+            let targetTemplateId = null;
+            if (typeof window.ITEM_DATA !== 'undefined') {
+                targetTemplateId = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === quest.itemNeeded);
+            }
+
             for (let i = 0; i < player.inventory.length; i++) {
-                if (player.inventory[i].name === quest.itemNeeded && !player.inventory[i].isEquipped) {
-                    totalFound += player.inventory[i].quantity;
+                const item = player.inventory[i];
+                if (!item || item.isEquipped) continue; // Skip ghost slots and equipped gear
+                
+                // Match either exact name OR base template ID (allows Masterwork/Enchanted versions to be turned in)
+                if (item.name === quest.itemNeeded || (targetTemplateId && item.templateId === targetTemplateId)) {
+                    totalFound += item.quantity;
                 }
             }
             if (totalFound < quest.needed) {
@@ -560,14 +571,26 @@ function turnInQuest(questId) {
 
         if (quest.type === 'fetch' || quest.type === 'collect') {
             let neededToRemove = quest.needed;
-            // 🚨 BUG FIX: Loop backwards to safely splice while iterating
+            
+            // Look up the template ID again for the removal phase
+            let targetTemplateId = null;
+            if (typeof window.ITEM_DATA !== 'undefined') {
+                targetTemplateId = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === quest.itemNeeded);
+            }
+
+            // Loop backwards to safely splice while iterating
             for (let i = player.inventory.length - 1; i >= 0; i--) {
                 if (neededToRemove <= 0) break;
+                
                 let item = player.inventory[i];
-                if (item.name === quest.itemNeeded && !item.isEquipped) {
+                if (!item || item.isEquipped) continue;
+                
+                // Match by name or template ID
+                if (item.name === quest.itemNeeded || (targetTemplateId && item.templateId === targetTemplateId)) {
                     let take = Math.min(item.quantity, neededToRemove);
                     item.quantity -= take;
                     neededToRemove -= take;
+                    
                     if (item.quantity <= 0) {
                         player.inventory.splice(i, 1);
                     }
@@ -576,7 +599,7 @@ function turnInQuest(questId) {
         }
 
         // --- 2. Give Rewards ---
-        // JUICE WIN: Triumphant Quest Complete Audio
+        // Triumphant Quest Complete Audio
         if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playQuestComplete === 'function') {
             AudioSystem.playQuestComplete();
         } else if (typeof AudioSystem !== 'undefined') {
@@ -609,60 +632,109 @@ function turnInQuest(questId) {
             }
 
             if (rewardItemTemplate) {
-                const qty = quest.reward.itemQty || 1;
+                const totalQtyGranted = quest.reward.itemQty || 1;
                 const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-                
                 const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(rewardItemTemplate.type);
-                const existingStack = player.inventory.find(i => i.name === rewardItemTemplate.name && !i.isEquipped);
+                
+                const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(rewardItemTemplate.name) : rewardItemTemplate.name;
 
-                if (existingStack && isStackable) {
-                    // Add to existing stack
-                    existingStack.quantity += qty;
-                    const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(rewardItemTemplate.name) : rewardItemTemplate.name;
-                    logMessage(`{purple:You received: ${safeItemName} (x${qty})}`);
-                } 
-                else if (player.inventory.length < invCap) {
-                    // Create new stack
-                    player.inventory.push({
-                        templateId: rewardKey,
-                        name: rewardItemTemplate.name,
-                        type: rewardItemTemplate.type,
-                        quantity: qty,
-                        tile: rewardKey || '?',
-                        damage: rewardItemTemplate.damage || null,
-                        defense: rewardItemTemplate.defense || null,
-                        slot: rewardItemTemplate.slot || null,
-                        statBonuses: rewardItemTemplate.statBonuses ? JSON.parse(JSON.stringify(rewardItemTemplate.statBonuses)) : null,
-                        tags: rewardItemTemplate.tags ? [...rewardItemTemplate.tags] : null,
-                        _rarity: rewardItemTemplate._rarity || null,
-                        effect: rewardItemTemplate.effect 
-                    });
-                    
-                    const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(rewardItemTemplate.name) : rewardItemTemplate.name;
-                    logMessage(`{purple:You received: ${safeItemName} (x${qty})}`);
-                } 
-                else {
-                    // Inventory full, drop on floor
-                    const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(rewardItemTemplate.name) : rewardItemTemplate.name;
-                    logMessage(`{red:Your inventory is full! The ${safeItemName} falls to the ground.}`);
-                    const dropTile = rewardKey || '🎒'; 
-                    
-                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                        if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(player.x, player.y, dropTile, 24);
-                    } else if (gameState.mapMode === 'dungeon') {
-                        if (typeof chunkManager !== 'undefined') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = dropTile;
-                    } else if (gameState.mapMode === 'castle') {
-                        if (typeof chunkManager !== 'undefined') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = dropTile;
+                if (isStackable) {
+                    // --- STACKABLE ITEM LOGIC ---
+                    const existingStack = player.inventory.find(i => i.name === rewardItemTemplate.name && !i.isEquipped);
+
+                    if (existingStack) {
+                        existingStack.quantity += totalQtyGranted;
+                        logMessage(`{purple:You received: ${safeItemName} (x${totalQtyGranted})}`);
+                    } 
+                    else if (player.inventory.length < invCap) {
+                        player.inventory.push({
+                            templateId: rewardKey,
+                            name: rewardItemTemplate.name,
+                            type: rewardItemTemplate.type,
+                            quantity: totalQtyGranted,
+                            tile: rewardKey || '?',
+                            damage: rewardItemTemplate.damage || null,
+                            defense: rewardItemTemplate.defense || null,
+                            slot: rewardItemTemplate.slot || null,
+                            statBonuses: rewardItemTemplate.statBonuses ? JSON.parse(JSON.stringify(rewardItemTemplate.statBonuses)) : null,
+                            tags: rewardItemTemplate.tags ? [...rewardItemTemplate.tags] : null,
+                            _rarity: rewardItemTemplate._rarity || null,
+                            effect: rewardItemTemplate.effect 
+                        });
+                        logMessage(`{purple:You received: ${safeItemName} (x${totalQtyGranted})}`);
+                    } 
+                    else {
+                        // Inventory full, drop on floor
+                        logMessage(`{red:Your inventory is full! The ${safeItemName} falls to the ground.}`);
+                        const dropTile = rewardKey || '🎒'; 
+                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                            if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(player.x, player.y, dropTile, 24);
+                        } else if (gameState.mapMode === 'dungeon') {
+                            if (typeof chunkManager !== 'undefined') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = dropTile;
+                        } else if (gameState.mapMode === 'castle') {
+                            if (typeof chunkManager !== 'undefined') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = dropTile;
+                        }
+                        
+                        let tileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
+                            ? `${player.x},${-player.y}`
+                            : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
+                        gameState.lootedTiles.delete(tileId);
+                        gameState.mapDirty = true;
                     }
-                    
-                    let tileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
-                        ? `${player.x},${-player.y}`
-                        : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
-                    gameState.lootedTiles.delete(tileId);
-                    
-                    gameState.mapDirty = true;
-                    if (typeof render === 'function') render(); 
+
+                } else {
+                    // --- 🚨 UNSTACKABLE GEAR LOGIC (BUG FIX) ---
+                    // Must loop and generate individual, distinct clones of the weapon/armor!
+                    let itemsAdded = 0;
+                    let itemsDropped = 0;
+
+                    for (let i = 0; i < totalQtyGranted; i++) {
+                        // Safe clone to prevent mutating global templates or bleeding references
+                        let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(rewardItemTemplate) : JSON.parse(JSON.stringify(rewardItemTemplate));
+                        newItem.templateId = rewardKey;
+                        newItem.quantity = 1; // Force 1!
+                        newItem.tile = rewardItemTemplate.tile || rewardKey || '?';
+                        newItem.isEquipped = false;
+                        
+                        // Restore logic functions
+                        newItem.effect = rewardItemTemplate.effect;
+                        newItem.onHit = rewardItemTemplate.onHit;
+
+                        if (player.inventory.length < invCap) {
+                            player.inventory.push(newItem);
+                            itemsAdded++;
+                        } else {
+                            // Drop excess on the ground
+                            const dropTile = newItem.tile;
+                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                                if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(player.x, player.y, dropTile, 24);
+                            } else if (gameState.mapMode === 'dungeon') {
+                                if (typeof chunkManager !== 'undefined') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = dropTile;
+                            } else if (gameState.mapMode === 'castle') {
+                                if (typeof chunkManager !== 'undefined') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = dropTile;
+                            }
+                            
+                            let tileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
+                                ? `${player.x},${-player.y}`
+                                : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
+                            gameState.lootedTiles.delete(tileId);
+                            itemsDropped++;
+                        }
+                    }
+
+                    // Tally messaging
+                    if (itemsAdded > 0) {
+                        const qtyStr = itemsAdded > 1 ? ` (x${itemsAdded})` : '';
+                        logMessage(`{purple:You received: ${safeItemName}${qtyStr}}`);
+                    }
+                    if (itemsDropped > 0) {
+                        const qtyStr = itemsDropped > 1 ? ` (x${itemsDropped})` : '';
+                        logMessage(`{red:Inventory full! ${safeItemName}${qtyStr} fell to the ground.}`);
+                        gameState.mapDirty = true;
+                    }
                 }
+                
+                if (gameState.mapDirty && typeof render === 'function') render();
             }
         }
 
