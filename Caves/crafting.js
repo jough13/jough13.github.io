@@ -5,6 +5,7 @@
 // ==========================================
 
 // O(1) Item Lookup Cache for Crafting
+// 🚀 PERFORMANCE WIN: Prevents scanning the massive ITEM_DATA object every time the modal renders
 const _craftItemKeyCache = {};
 function getCraftItemKey(name) {
     if (_craftItemKeyCache[name]) return _craftItemKeyCache[name];
@@ -119,7 +120,7 @@ function handleCraftItem(recipeName, requestBatch = false) {
     const batchSize = requestBatch ? Math.floor(maxCraftable) : 1;
     if (batchSize < 1) return;
 
-    // Consume Materials
+    // Consume Materials safely
     for (const matName in recipe.materials) {
         let needed = recipe.materials[matName] * batchSize;
         
@@ -161,6 +162,10 @@ function handleCraftItem(recipeName, requestBatch = false) {
         newItem.tile = itemTemplate.tile || outputItemKey || '?';
         newItem.quantity = craftYield;
         newItem.isEquipped = false;
+        
+        // Ensure internal effect logic is carried over to the clone!
+        newItem.effect = itemTemplate.effect;
+        newItem.onHit = itemTemplate.onHit;
 
         if (!isCooking && (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') && Math.random() < masterworkChance) {
             isMasterwork = true;
