@@ -503,7 +503,9 @@ window.sortInventory = function() {
             existing.quantity += item.quantity;
             didConsolidate = true;
         } else {
-            consolidated.push({...item}); 
+            // Pass the exact item reference instead of a shallow copy.
+            // This prevents nested objects like `statBonuses` from causing memory reference bleeds!
+            consolidated.push(item); 
         }
     });
 
