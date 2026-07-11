@@ -1249,6 +1249,26 @@ const chunkManager = {
                     else if ((tile === '^' || tile === 'd') && featureRoll > 0.0004 && featureRoll < 0.00045) {
                         chunkData[y][x] = '🌠'; 
                     }
+
+                    // ==================================================
+                    // --- THE NEW PROCEDURAL LANDMARKS ---
+                    // ==================================================
+                    // Sword in the Stone (Rare in Plains/Forests)
+                    else if ((tile === '.' || tile === 'F') && featureRoll > 0.00015 && featureRoll < 0.0002) {
+                        chunkData[y][x] = '🗡️r';
+                    }
+                    // Radiant Spring (Very Rare in Forests/Mountains)
+                    else if ((tile === 'F' || tile === '^') && featureRoll > 0.0002 && featureRoll < 0.00022) {
+                        chunkData[y][x] = '⛲r';
+                    }
+                    // Fallen Titan Gear (Rare in Deadlands/Deserts/Mountains)
+                    else if ((tile === 'd' || tile === 'D' || tile === '^') && featureRoll > 0.00022 && featureRoll < 0.00026) {
+                        chunkData[y][x] = '⚙️g';
+                    }
+                    // Whispering Monolith (Extremely Rare in Deadlands/Swamps)
+                    else if ((tile === 'd' || tile === '≈') && featureRoll > 0.00026 && featureRoll < 0.00028) {
+                        chunkData[y][x] = '🪦m';
+                    }
                     // --- Minor Environment Additions ---
                     else if (tile === '.' && featureRoll > 0.0003 && featureRoll < 0.0004) {
                         chunkData[y][x] = '⛺a'; // Tragic Abandoned Campsite
