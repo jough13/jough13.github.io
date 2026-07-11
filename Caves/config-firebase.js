@@ -4,7 +4,7 @@
 // FIREBASE CONFIGURATION & NETWORK SYSTEMS
 // ==========================================
 
-// JUICE WIN: Thematic Developer Console Boot Sequence
+// Thematic Developer Console Boot Sequence
 console.log("%c[AKASHIC ENGINE] Initializing Leyline Network...", "color: #a855f7; font-weight: bold; font-family: monospace;");
 
 /* 
@@ -87,20 +87,20 @@ rtdb.ref('.info/serverTimeOffset').on('value', function(snap) {
 // Use this to get the exact millisecond time on the server without an API call
 window.getServerTime = () => Date.now() + window.FirebaseNetworkState.serverTimeOffset;
 
-// --- JUICE & LORE: GLOBAL CONNECTION BANNER INJECTION ---
+// --- GLOBAL CONNECTION BANNER INJECTION ---
 // We dynamically create this so it works across all screens (Login, Character Select, Game)
 let connectionBanner = document.getElementById('firebase-connection-banner');
 if (!connectionBanner) {
     connectionBanner = document.createElement('div');
     connectionBanner.id = 'firebase-connection-banner';
-    // PERFORMANCE WIN: Added will-change and transform/translateZ for hardware-accelerated sliding
-    // UX WIN: Added cursor-pointer to let players know they can dismiss it!
+    // Added will-change and transform/translateZ for hardware-accelerated sliding
+    // Added cursor-pointer to let players know they can dismiss it!
     connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 transform -translate-y-full shadow-2xl font-mono tracking-widest uppercase text-shadow-sm backdrop-blur-md cursor-pointer';
     connectionBanner.style.textShadow = "2px 2px 0px rgba(0,0,0,0.8)"; 
     connectionBanner.style.willChange = "transform";
     connectionBanner.style.transform = "translateZ(0)";
     
-    // UX WIN: Click to dismiss! Prevents the banner from blinding the player during combat
+    // Click to dismiss! Prevents the banner from blinding the player during combat
     connectionBanner.onclick = () => {
         connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
     };
@@ -108,9 +108,7 @@ if (!connectionBanner) {
     document.body.appendChild(connectionBanner);
 }
 
-// BUG FIX: Prevent banner timeout race-conditions
-// If a user disconnected and reconnected rapidly, the old hide timeout would trigger 
-// and accidentally hide the "Restored" banner instantly.
+// Prevent banner timeout race-conditions
 let _bannerTimeout = null;
 
 function showNetworkBanner(htmlContent, colorClasses, durationMs) {
@@ -139,7 +137,7 @@ try {
             if (err.code === 'failed-precondition') {
                 console.warn("%c[AKASHIC ENGINE] Multiple timelines detected. Offline persistence limited to primary tab.", "color: #facc15;");
                 
-                // LORE WIN: Themed Multiple-Tab warning
+                // Themed Multiple-Tab warning
                 setTimeout(() => {
                     showNetworkBanner(
                         "⚠️ Temporal Paradox Detected<br><span class='text-[9px] font-normal'>Multiple timelines open. Offline saving disabled for this instance. (Click to dismiss)</span>",
@@ -151,7 +149,7 @@ try {
             } else if (err.code === 'unimplemented') {
                 console.warn("%c[AKASHIC ENGINE] Browser lacks local storage support (Incognito?).", "color: #facc15;");
                 
-                // QoL WIN: Detect Incognito mode or incompatible browsers
+                // Detect Incognito mode or incompatible browsers
                 setTimeout(() => {
                     showNetworkBanner(
                         "⚠️ Akashic Records Unavailable<br><span class='text-[9px] font-normal'>Your browser (or Incognito Mode) blocks local saves. Cloud saving only. (Click to dismiss)</span>",
@@ -166,81 +164,99 @@ try {
 }
 
 // --- CONNECTION MONITOR ---
-// Automatically monitors if the user loses internet connection and informs them
 let hasInitiallyConnected = false; 
 let wasConnected = false; 
 let _offlineDebounceTimer = null; // UX WIN: Prevents spotty WiFi from jittering the screen constantly
 
+// Centralized network UI handlers so native browser events and Firebase events can share them!
+function handleConnectionEstablished() {
+    if (_offlineDebounceTimer) {
+        clearTimeout(_offlineDebounceTimer);
+        _offlineDebounceTimer = null;
+    }
+
+    console.log("%c🟢 Leyline Resonance Stable. [Connection Established]", "color: #4ade80; font-weight: bold; font-family: monospace;");
+    
+    // Only show "Restored" if we already successfully connected once before and lost it
+    if (hasInitiallyConnected && !wasConnected) {
+        showNetworkBanner(
+            "✨ Leyline Resonance Restored<br><span class='text-[9px] font-normal'>Connection to the physical world re-established. (Click to dismiss)</span>",
+            "bg-green-900 bg-opacity-95 text-green-200 border-b-2 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]",
+            4000
+        );
+
+        if (typeof logMessage === 'function') logMessage("{green:The leylines stabilize. Connection to the realm restored.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+    }
+    
+    hasInitiallyConnected = true;
+    wasConnected = true;
+}
+
+function handleConnectionLost() {
+    // Spotty WiFi Debouncer
+    // Give the connection 2 full seconds to stabilize before screaming at the player
+    if (_offlineDebounceTimer) clearTimeout(_offlineDebounceTimer);
+    
+    _offlineDebounceTimer = setTimeout(() => {
+        console.warn("%c🔴 Leyline Connection Severed. [Offline / Reconnecting...]", "color: #ef4444; font-weight: bold; font-family: monospace;");
+        
+        // Only show "Connection Lost" if we were actually connected in the first place
+        if (hasInitiallyConnected && wasConnected) {
+            showNetworkBanner(
+                "⚠️ Leyline Connection Severed<br><span class='text-[9px] font-normal'>Re-attuning to the Akashic Records... Please wait. (Click to dismiss)</span>",
+                "bg-red-950 bg-opacity-95 text-red-200 border-b-2 border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.8)] animate-pulse grayscale contrast-125",
+                8000 // Holds on screen longer to let them know it's trying to reconnect
+            );
+            
+            if (typeof logMessage === 'function') logMessage("{red:The leylines have ruptured! Trying to re-attune...}");
+            
+            if (typeof AudioSystem !== 'undefined') {
+                AudioSystem.playNoise(1.5, 0.4, 200); // Deep, long rumble
+                AudioSystem.playTone(100, 'sawtooth', 1.0, 0.2, false, 50); // Descending bass tone
+            }
+            if (typeof gameState !== 'undefined' && gameState.player) {
+                gameState.screenShake = 15;
+            }
+        }
+        wasConnected = false;
+    }, 2000); 
+}
+
+// 1. Firebase WebSocket Monitor
 rtdb.ref('.info/connected').on('value', function(snap) {
     const isConnected = snap.val() === true;
     window.FirebaseNetworkState.isConnected = isConnected;
     
     if (isConnected) {
-        if (_offlineDebounceTimer) {
-            clearTimeout(_offlineDebounceTimer);
-            _offlineDebounceTimer = null;
-        }
-
-        // JUICE WIN: Styled Console Outputs for Developers!
-        console.log("%c🟢 Leyline Resonance Stable. [Connection Established]", "color: #4ade80; font-weight: bold; font-family: monospace;");
-        
-        // Only show "Restored" if we already successfully connected once before and lost it
-        if (hasInitiallyConnected && !wasConnected) {
-            showNetworkBanner(
-                "✨ Leyline Resonance Restored<br><span class='text-[9px] font-normal'>Connection to the physical world re-established. (Click to dismiss)</span>",
-                "bg-green-900 bg-opacity-95 text-green-200 border-b-2 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]",
-                4000
-            );
-
-            if (typeof logMessage === 'function') logMessage("{green:The leylines stabilize. Connection to the realm restored.}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-        }
-        
-        hasInitiallyConnected = true;
-        wasConnected = true;
+        handleConnectionEstablished();
     } else {
-        // PERFORMANCE & UX WIN: Spotty WiFi Debouncer
-        // Give the connection 2 full seconds to stabilize before screaming at the player
-        if (_offlineDebounceTimer) clearTimeout(_offlineDebounceTimer);
-        
-        _offlineDebounceTimer = setTimeout(() => {
-            console.warn("%c🔴 Leyline Connection Severed. [Offline / Reconnecting...]", "color: #ef4444; font-weight: bold; font-family: monospace;");
-            
-            // Only show "Connection Lost" if we were actually connected in the first place
-            if (hasInitiallyConnected && wasConnected) {
-                // Warning Banner (JUICE WIN: Added animate-pulse and greyscale/contrast filters for a "glitching" effect)
-                showNetworkBanner(
-                    "⚠️ Leyline Connection Severed<br><span class='text-[9px] font-normal'>Re-attuning to the Akashic Records... Please wait. (Click to dismiss)</span>",
-                    "bg-red-950 bg-opacity-95 text-red-200 border-b-2 border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.8)] animate-pulse grayscale contrast-125",
-                    8000 // Holds on screen longer to let them know it's trying to reconnect
-                );
-                
-                if (typeof logMessage === 'function') logMessage("{red:The leylines have ruptured! Trying to re-attune...}");
-                
-                // JUICE WIN: Ominous low rumble and screen shake to alert the player their connection dropped
-                if (typeof AudioSystem !== 'undefined') {
-                    AudioSystem.playNoise(1.5, 0.4, 200); // Deep, long rumble
-                    AudioSystem.playTone(100, 'sawtooth', 1.0, 0.2, false, 50); // Descending bass tone
-                }
-                if (typeof gameState !== 'undefined' && gameState.player) {
-                    gameState.screenShake = 15;
-                }
-            }
-            wasConnected = false;
-        }, 2000); 
+        handleConnectionLost();
     }
     
-    // Dispatch a custom event for other UI files to listen to
     window.dispatchEvent(new CustomEvent('firebase-connection-changed', { detail: { connected: isConnected } }));
 });
 
-// PERFORMANCE WIN: Cache DOM lookups for the auth error display
+// 2. Native Browser Monitor (Instant Feedback for Mobile Airplane Mode / Tunnel Drops)
+window.addEventListener('offline', () => {
+    window.FirebaseNetworkState.isConnected = false;
+    handleConnectionLost();
+    window.dispatchEvent(new CustomEvent('firebase-connection-changed', { detail: { connected: false } }));
+});
+
+window.addEventListener('online', () => {
+    console.log("%c[AKASHIC ENGINE] Native network restored. Awaiting Leyline WebSocket sync...", "color: #facc15; font-family: monospace;");
+    // We don't call handleConnectionEstablished() here because the Firebase WebSocket still 
+    // needs a few milliseconds to handshake and authenticate. The `.info/connected` listener will trigger it!
+});
+
+// Cache DOM lookups for the auth error display
 let _authErrorCache = null;
 
 function handleAuthError(error) {
     let friendlyMessage = '';
     
-    // LORE WIN: Thematic, universe-appropriate error messages, vastly expanded!
+    // Thematic, universe-appropriate error messages, vastly expanded!
     switch (error.code) {
         case 'auth/invalid-email':
             friendlyMessage = 'The Akashic Records cannot decipher this soul-signature. (Invalid Email)';
@@ -299,7 +315,7 @@ function handleAuthError(error) {
         _authErrorCache.classList.add('shake');
     }
     
-    // JUICE WIN: Auditory feedback for login failure
+    // Auditory feedback for login failure
     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     
     console.error("%c[AKASHIC ENGINE] Auth Rejection:", "color: #ef4444; font-weight: bold;", error); 
@@ -309,11 +325,9 @@ function handleAuthError(error) {
  * High-Performance Recursive object cleaner.
  * Strips 'undefined', 'function', and safely converts Sets/Maps to Arrays/Objects.
  * 
- * 🚨 SECURITY & STABILITY WIN: Added strict protection against `NaN` and `Infinity`.
- * Firebase SDKs will critically crash and permanently halt all database writes if fed 
- * a NaN or Infinity value. This intercepts them and neutralizes them before the crash.
- * 
- * 🚨 MAXIMUM STACK GUARD: Limits recursive depth to prevent stack overflow exploits.
+ * - Prevents NaN and Infinity from crashing the entire Firebase database thread.
+ * - Explicitly converts Date objects to Unix Timestamps to prevent Realtime Database (RTDB) crashes!
+ * - Strips DOM Elements (HTMLElement) and RegExp to prevent memory leaks and infinite cyclic loops.
  * 
  * @param {any} obj The variable to clean.
  * @param {WeakSet} seen Tracks visited objects to prevent infinite loops.
@@ -330,7 +344,7 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
     // 1. Convert undefined to null immediately
     if (obj === undefined) return null; 
     
-    // 1.5 FIREBASE CRASH PREVENTION: NaN and Infinity
+    // 2. FIREBASE CRASH PREVENTION: NaN and Infinity
     if (typeof obj === 'number') {
         if (Number.isNaN(obj)) {
             console.warn("%c[AKASHIC ENGINE] Void Anomaly (NaN) detected and neutralized before DB save.", "color: #facc15;");
@@ -343,30 +357,35 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
         return obj;
     }
     
-    // 2. Base cases: primitives, null
+    // 3. Base cases: primitives, null
     if (obj === null || typeof obj !== 'object') {
         return obj;
     }
 
-    // 3. SAFETY & MINIFICATION FIX: 
+    // 4. BROWSER & RTDB CRASH GUARDS
+    // RTDB instantly throws "Firebase Database paths must not contain '.'..." or invalid type errors 
+    // if you try to pass it a native Date object, a DOM node, or a Regex.
+    if (obj instanceof Date) return obj.getTime(); // Universally safe Unix Timestamp
+    if (obj instanceof RegExp) return obj.toString();
+    if (typeof HTMLElement !== 'undefined' && obj instanceof HTMLElement) return null;
+
+    // 5. SAFETY & MINIFICATION FIX: 
     // Checking obj.constructor.name breaks when Javascript is minified (e.g., 'FieldValue' becomes 'e').
     // Using instanceof directly against the global firebase object is 100% minification safe!
-    if (obj instanceof Date) return obj;
     if (typeof firebase !== 'undefined') {
         if (firebase.firestore && obj instanceof firebase.firestore.FieldValue) return obj;
         if (firebase.firestore && obj instanceof firebase.firestore.Timestamp) return obj;
-        // EXPANDABILITY WIN: Add support for RTDB Server Values too!
         if (firebase.database && obj instanceof Object && Object.keys(obj).includes('.sv')) return obj; 
     }
 
-    // 3.5 CIRCULAR REFERENCE PROTECTION
+    // 6. CIRCULAR REFERENCE PROTECTION
     if (seen.has(obj)) {
         console.warn("%c[AKASHIC ENGINE] Circular reference detected and severed during Firebase sanitization.", "color: #facc15;");
         return null; 
     }
     seen.add(obj);
 
-    // 4. BULLETPROOF ES6 COLLECTION SUPPORT
+    // 7. BULLETPROOF ES6 COLLECTION SUPPORT
     if (obj instanceof Set) {
         // Convert Set to Array and sanitize its children
         const newArr = new Array(obj.size);
@@ -389,9 +408,9 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
     // If it's a complex class instance rather than a plain Object/Array, pass it through safely
     if (obj.constructor !== Object && !Array.isArray(obj)) return obj;
 
-    // 5. Handle Arrays
+    // 8. Handle Arrays
     if (Array.isArray(obj)) {
-        // PERFORMANCE WIN: O(1) Fast-Path for empty arrays (Saves a ton of time on empty bank/inventory syncs)
+        // O(1) Fast-Path for empty arrays (Saves a ton of time on empty bank/inventory syncs)
         if (obj.length === 0) return [];
 
         // Pre-allocate array size for a slight speed boost on massive inventories
@@ -402,7 +421,7 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
         return newArr;
     }
 
-    // 6. Handle Plain Objects
+    // 9. Handle Plain Objects
     // Object.keys() iteration is notably faster in V8 for object deep-cloning 
     // than a traditional `for...in` loop with `hasOwnProperty` checks!
     const newObj = {};
