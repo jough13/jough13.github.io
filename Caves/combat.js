@@ -1556,8 +1556,8 @@ async function runCompanionTurn() {
 
                 try {
                     const txResult = await window.withTimeout(enemyRef.transaction(currentData => {
-                        // Return undefined to ABORT
-                        if (currentData === null) return undefined;
+                        // Let it pass to server
+                        if (currentData === null) return null;
                         
                         let enemy = JSON.parse(JSON.stringify(currentData));
                         enemy.health = Number(enemy.health);
@@ -1566,30 +1566,38 @@ async function runCompanionTurn() {
                         const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
                         enemy.health -= dmg;
 
-                        // Return null to legitimately delete the enemy upon death
-                        if (enemy.health <= 0) return null;
+                        // Return the corpse
                         return enemy;
                     }), 3000);
 
                     if (txResult && txResult.committed) {
+                        const finalData = txResult.snapshot.val();
+                        
+                        // Already dead check
+                        if (finalData === null) {
+                            if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
+                            return;
+                        }
+
+                        const visualDmg = Math.max(1, companion.attack - (finalData.defense || 0));
+                        
                         if (typeof ParticleSystem !== 'undefined') {
                             ParticleSystem.createExplosion(tx, ty, '#86efac', 5); 
                             ParticleSystem.createFloatingText(tx, ty, `-${visualDmg}`, '#fff');
                         }
 
-                        if (!txResult.snapshot.exists()) {
+                        if (finalData.health <= 0) {
                             logMessage(`{green:Your ${companion.name} tears the ${enemyData.name} apart!}`);
                             if (typeof grantXp === 'function') grantXp(Math.floor(enemyData.xp / 2));
                             
                             const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, enemyData) : '.'; 
-                            
-                            // BUG FIX WIN: Ensure companion loot drops with a TTL so it doesn't stay on the map forever
                             chunkManager.setWorldTile(tx, ty, droppedLoot || '.', 2);
                             
-                            if (gameState.sharedEnemies[enemyId]) {
-                                delete gameState.sharedEnemies[enemyId];
-                            }
+                            if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
                             if (typeof render === 'function') render(); 
+                            
+                            // Sweep the corpse
+                            enemyRef.remove();
                         } else {
                             logMessage(`Your ${companion.name} hits the ${enemyData.name}!`);
                         }
@@ -1660,11 +1668,10 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
     try {
         const doTransaction = () => enemyRef.transaction(currentData => {
-            // Return undefined instead of null to ABORT the transaction
-            // If another player already killed it, this stops the XP exploit instantly.
-            if (currentData === null) return undefined; 
+            // 1. Let the transaction proceed to the server if uncached (or genuinely dead)
+            if (currentData === null) return null; 
             
-            // DEEP CLONE to absolutely prevent Firebase maxretry mutation bugs
+            // 2. Deep clone safely
             let enemy = JSON.parse(JSON.stringify(currentData));
             
             enemy.health = Number(enemy.health);
@@ -1672,9 +1679,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             
             enemy.health -= safeDamage;
             
-            // If health drops to 0, returning null tells Firebase to officially DELETE the node.
-            if (enemy.health <= 0) return null; 
-            
+            // 3. DO NOT return null here. Return the "Corpse" so we know we killed it!
             return enemy; 
         });
 
@@ -1682,58 +1687,64 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
         if (typeof window.withTimeout === 'function') {
             transactionResult = await window.withTimeout(doTransaction(), 3000);
         } else {
-            console.warn("withTimeout missing. Running raw transaction.");
             transactionResult = await doTransaction();
         }
 
         if (transactionResult && transactionResult.committed) {
             const finalEnemyState = transactionResult.snapshot.val();
 
-            if (typeof ParticleSystem !== 'undefined') {
-                ParticleSystem.createExplosion(newX, newY, '#ef4444');
-                ParticleSystem.createFloatingText(newX, newY, `-${safeDamage}`, '#fff');
-            }
-
+            // 4. If the result is null, it means it was ALREADY dead before we swung.
             if (finalEnemyState === null) {
-                logMessage(`The ${enemyInfo.name} was vanquished!`);
-                
-                // Bigger explosion on death!
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#ef4444', 15);
-                
-                try {
+                logMessage("{gray:You swing at empty air... the enemy is already dead.}");
+                chunkManager.setWorldTile(newX, newY, '.');
+                if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
+            } 
+            else {
+                // Apply visual hit effects
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createExplosion(newX, newY, '#ef4444');
+                    ParticleSystem.createFloatingText(newX, newY, `-${safeDamage}`, '#fff');
+                }
+
+                // 5. Did OUR strike drop its health to 0?
+                if (finalEnemyState.health <= 0) {
+                    logMessage(`The ${enemyInfo.name} was vanquished!`);
+                    
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#ef4444', 15);
+                    
                     if (typeof grantXp === 'function') grantXp(enemyInfo.xp);
                     if (typeof updateQuestProgress === 'function') updateQuestProgress(newTile); 
-                } catch (rewardErr) {
-                    console.error("Reward Logic Error:", rewardErr);
-                }
 
-                const tileId = `${newX},${-newY}`;
-                if (gameState.lootedTiles.has(tileId)) {
-                    gameState.lootedTiles.delete(tileId);
-                }
+                    const tileId = `${newX},${-newY}`;
+                    if (gameState.lootedTiles.has(tileId)) gameState.lootedTiles.delete(tileId);
+                    if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
 
-                if (gameState.sharedEnemies[enemyId]) {
-                    delete gameState.sharedEnemies[enemyId];
-                }
+                    // Drop Loot
+                    try {
+                        const lootData = { ...enemyData, isElite: enemyInfo.isElite };
+                        const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(player, lootData) : '$';
+                        const currentTerrain = chunkManager.getTile(newX, newY);
+                        const isProtectedTile = ['📦', '⚰️', '🏺', '🚪', '✨', '∴', 'c', '⛵'].includes(currentTerrain);
+                        const isItemTile = typeof ITEM_DATA !== 'undefined' && ITEM_DATA[currentTerrain];
 
-                try {
-                    const lootData = { ...enemyData, isElite: enemyInfo.isElite };
-                    const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(player, lootData) : '$';
-                    const currentTerrain = chunkManager.getTile(newX, newY);
-                    const isProtectedTile = ['📦', '⚰️', '🏺', '🚪', '✨', '∴', 'c', '⛵'].includes(currentTerrain);
-                    const isItemTile = typeof ITEM_DATA !== 'undefined' && ITEM_DATA[currentTerrain];
-
-                    if (isProtectedTile || isItemTile) {
-                        logMessage("{gray:The enemy's loot was lost in the underbrush.}");
-                    } else if (currentTerrain !== '~' && currentTerrain !== '🌋') {
-                        chunkManager.setWorldTile(newX, newY, droppedLoot || '.', 2); 
-                        gameState.mapDirty = true;
+                        if (isProtectedTile || isItemTile) {
+                            logMessage("{gray:The enemy's loot was lost in the underbrush.}");
+                        } else if (currentTerrain !== '~' && currentTerrain !== '🌋') {
+                            chunkManager.setWorldTile(newX, newY, droppedLoot || '.', 2); 
+                            gameState.mapDirty = true;
+                        }
+                    } catch (lootErr) {
+                        console.error("Loot drop error:", lootErr);
                     }
 
-                } catch (lootErr) {
-                    console.error("Loot drop error:", lootErr);
+                    // 6. NOW we sweep away the corpse so it despawns for the server
+                    enemyRef.remove();
+                } 
+                else {
+                    // It survived the hit
+                    logMessage(`You hit the ${enemyInfo.name} for {red:${safeDamage}} damage!`);
                 }
-            } 
+            }
         } 
         else {
             logMessage("{gray:You swing at empty air... the enemy is already dead.}");
