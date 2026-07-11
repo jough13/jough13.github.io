@@ -1245,14 +1245,15 @@ const chunkManager = {
                     else if (tile === 'D' && featureRoll < 0.0001) {
                         chunkData[y][x] = '🦴d';
                     }
-                    // --- EXPANSION WIN: Smoking Meteorites ---
+                    // --- Smoking Meteorites ---
                     else if ((tile === '^' || tile === 'd') && featureRoll > 0.0004 && featureRoll < 0.00045) {
                         chunkData[y][x] = '🌠'; 
                     }
 
                     // ==================================================
-                    // --- THE NEW PROCEDURAL LANDMARKS ---
+                    // --- PROCEDURAL LANDMARKS ---
                     // ==================================================
+
                     // Sword in the Stone (Rare in Plains/Forests)
                     else if ((tile === '.' || tile === 'F') && featureRoll > 0.00015 && featureRoll < 0.0002) {
                         chunkData[y][x] = '🗡️r';
@@ -1268,6 +1269,23 @@ const chunkManager = {
                     // Whispering Monolith (Extremely Rare in Deadlands/Swamps)
                     else if ((tile === 'd' || tile === '≈') && featureRoll > 0.00026 && featureRoll < 0.00028) {
                         chunkData[y][x] = '🪦m';
+                    }
+                    // --- DYNAMIC WORLD EVENTS (NPCs & Altars) ---
+                    // Lost City (Only in the deep Desert)
+                    else if (tile === 'D' && featureRoll < 0.0001 && distSq > 1000000) {
+                        chunkData[y][x] = '🏛️c';
+                    }
+                    // Blood Altar (Rare in Deadlands or Swamps)
+                    else if ((tile === 'd' || tile === '≈') && featureRoll > 0.0001 && featureRoll < 0.00015) {
+                        chunkData[y][x] = '🩸a';
+                    }
+                    // Wounded Knight (Plains or Forests)
+                    else if ((tile === '.' || tile === 'F') && featureRoll > 0.00015 && featureRoll < 0.0002) {
+                        chunkData[y][x] = '🤺w';
+                    }
+                    // Shady Smuggler (Anywhere but water)
+                    else if (tile !== '~' && tile !== '≈' && featureRoll > 0.0002 && featureRoll < 0.00025) {
+                        chunkData[y][x] = '🦹';
                     }
                     // --- Minor Environment Additions ---
                     else if (tile === '.' && featureRoll > 0.0003 && featureRoll < 0.0004) {
