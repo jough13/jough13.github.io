@@ -55,8 +55,9 @@
     <!-- ========================================== -->
     <!-- GLOBAL INTERIM LOADING SCREEN              -->
     <!-- ========================================== -->
-
-        <div id="loadingIndicator" class="fixed inset-0 z-[9999] hidden flex flex-col items-center justify-center" style="background-color: #8b7e66;" aria-hidden="true">
+    <div id="loadingIndicator" class="hidden fixed top-0 left-0 w-screen h-[100dvh] z-[999999]" style="background-color: #8b7e66;" aria-hidden="true">
+        <!-- Inner wrapper handles the centering safely -->
+        <div class="absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center pb-24">
             <div id="loadingFlavorText" style="color: #ffffff; font-family: 'Courier New', monospace; font-size: 1.5rem; font-weight: bold; text-transform: uppercase; -webkit-text-stroke: 1px black; text-shadow: 2px 2px 0 #000; text-align: center; padding: 0 1rem;">
                 Tuning Leylines...
             </div>
