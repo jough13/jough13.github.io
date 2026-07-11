@@ -177,6 +177,7 @@ function handleBuyItem(itemName, amount = 1) {
             buyQty = Math.min(shopItem.stock, affordableQty);
             if (buyQty <= 0) buyQty = 1; // Fallback to 1 to let the standard error messages trigger
         } else {
+            // Strictly coerce strings and prevent 0 or negatives
             buyQty = Math.max(1, parseInt(amount) || 1); 
         }
 
@@ -227,17 +228,22 @@ function handleBuyItem(itemName, amount = 1) {
         if (existingStack && isStackable) {
             existingStack.quantity += buyQty;
         } else {
-            // ROBUSTNESS WIN: Safe Deep Cloning
+            // 🚨 ROBUSTNESS WIN: Safe Deep Cloning
             // Properly loop and spawn unique objects if the item is unstackable
             const loops = isStackable ? 1 : buyQty;
             const qtyPerLoop = isStackable ? buyQty : 1;
             
             for (let i = 0; i < loops; i++) {
+                // Ensure we use the cloneItemSafely function so we don't accidentally mutate the global template!
                 let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(itemTemplate) : JSON.parse(JSON.stringify(itemTemplate));
                 newItem.templateId = itemKey;
                 newItem.quantity = qtyPerLoop;
                 newItem.tile = itemTemplate.tile || itemKey || '?';
                 newItem.isEquipped = false;
+                
+                // Rehydrate logic functions just in case the JSON stringify stripped them
+                newItem.effect = itemTemplate.effect;
+                newItem.onHit = itemTemplate.onHit;
                 
                 player.inventory.push(newItem);
             }
@@ -291,29 +297,30 @@ function handleSellItem(itemIndex, amount = 1) {
         else if (regionMult <= 0.5) logMessage(`{red:The merchant sneers. Complete market oversaturation.}`);
         else if (regionMult < 1.0) logMessage(`{red:Market flooded. Low demand.}`);
 
-        // Determine quantity to sell safely
-        const qtyToSell = amount === 'all' ? itemToSell.quantity : 1;
-        const totalValue = sellPrice * qtyToSell;
+        // 🚨 SECURITY WIN: Determine quantity to sell safely
+        const qtyToSell = amount === 'all' ? itemToSell.quantity : Math.max(1, parseInt(amount) || 1);
+        const safeQty = Math.min(itemToSell.quantity, qtyToSell);
+        const totalValue = sellPrice * safeQty;
 
         // Process the transaction
         player.coins += totalValue;
         if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(totalValue);
         
-        if (qtyToSell > 1) {
-            logMessage(`You sold a stack of ${itemToSell.name} (x${qtyToSell}) for {gold:${totalValue} gold}.`);
+        if (safeQty > 1) {
+            logMessage(`You sold a stack of ${itemToSell.name} (x${safeQty}) for {gold:${totalValue} gold}.`);
         } else {
             logMessage(`You sold a ${itemToSell.name} for {gold:${totalValue} gold}.`);
         }
         
         if (typeof ParticleSystem !== 'undefined') {
-            const pSize = qtyToSell > 1 ? 15 : 5;
+            const pSize = safeQty > 1 ? 15 : 5;
             ParticleSystem.createFloatingText(player.x, player.y, `+${totalValue}g`, "#facc15");
             ParticleSystem.createExplosion(player.x, player.y, '#facc15', pSize);
         }
         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
         // Remove from inventory
-        itemToSell.quantity -= qtyToSell;
+        itemToSell.quantity -= safeQty;
         if (itemToSell.quantity <= 0) {
             player.inventory.splice(itemIndex, 1);
         }
@@ -344,7 +351,9 @@ function handleSellAllItems() {
         let itemsSold = 0;
         let goldGained = 0;
 
-        // PERFORMANCE WIN: Replace manual `.splice()` looping with a clean `.filter()` block
+        // 🚀 PERFORMANCE WIN: Replace manual `.splice()` looping with a clean `.filter()` block.
+        // Array.splice() is an O(N) operation that shifts all subsequent elements. Doing it in a loop
+        // makes it O(N^2), causing massive lag spikes if selling 50 items. This approach is O(N)!
         const remainingInventory = [];
 
         for (let i = 0; i < player.inventory.length; i++) {
