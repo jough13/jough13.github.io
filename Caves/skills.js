@@ -740,14 +740,19 @@ async function executeRangedAttack(dirX, dirY) {
                     }
                 }
 
-                // --- EXPANSION WIN: Crossbow Piercing ---
+                // --- Crossbow Piercing ---
                 // If it's a heavy crossbow, the bolt punches through to the next tile but loses 50% damage!
                 if (isHeavyCrossbow && currentHitDamage > 1) {
-                    logMessage(`{orange:The heavy bolt pierces right through!}`);
                     totalDamage = Math.floor(currentHitDamage * 0.5); // Halve the momentum for the next target!
+                    
+                    // If the damage halves to 0 (e.g. 1 * 0.5), the bolt loses all momentum and drops!
+                    if (totalDamage < 1) {
+                        break; 
+                    }
+                    logMessage(`{orange:The heavy bolt pierces right through!}`);
                     // We DO NOT break here, allowing the loop to continue to the next tile!
                 } else {
-                    break; // Standard arrows stop after hitting one target
+                    break; // Standard arrows (or crossbow bolts with 1 damage) stop after hitting one target
                 }
             }
             
