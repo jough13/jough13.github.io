@@ -161,15 +161,21 @@ function getScaledEnemy(enemyTemplate, x, y) {
     // Add a +/- 10% variance to health so packs of enemies don't all have identical HP!
     const variance = 0.9 + (Math.random() * 0.2); 
     
+    // --- Strict Number Coercion ---
+    // Prevents NaN database corruption if an enemy template is malformed!
+    const safeMaxHealth = Number(enemy.maxHealth) || 10;
+    const safeAttack = Number(enemy.attack) || 1;
+    const safeXp = Number(enemy.xp) || 5;
+    
     // Apply Multipliers
-    enemy.maxHealth = Math.max(1, Math.floor(enemy.maxHealth * multiplier * realmMultiplier * variance));
-    enemy.attack = Math.floor(enemy.attack * multiplier * realmMultiplier) + Math.floor(zoneLevel / 3);
+    enemy.maxHealth = Math.max(1, Math.floor(safeMaxHealth * multiplier * realmMultiplier * variance));
+    enemy.attack = Math.floor(safeAttack * multiplier * realmMultiplier) + Math.floor(zoneLevel / 3);
     
     // Double XP inherently in alternate dimensions on top of the scaling!
     if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0) {
-        enemy.xp = Math.floor(enemy.xp * multiplier * realmMultiplier * 2);
+        enemy.xp = Math.floor(safeXp * multiplier * realmMultiplier * 2);
     } else {
-        enemy.xp = Math.floor(enemy.xp * multiplier);
+        enemy.xp = Math.floor(safeXp * multiplier);
     }
 
     // --- SAFE ZONE NERF ---
