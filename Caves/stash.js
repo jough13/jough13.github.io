@@ -17,6 +17,19 @@ window._stashItemKeyCache = window._stashItemKeyCache || {};
 // moving the wrong items or crashing the client. This enforces sequential transaction safety!
 let isStashProcessing = false;
 
+// LORE WIN: Atmospheric Vault Whispers
+// The vault feels like a living, breathing entity tied to the Void.
+const VAULT_WHISPERS = [
+    "Space and time fold inside this heavy iron box.",
+    "Your items are safe across all realms.",
+    "The void preserves what time destroys.",
+    "You hear a faint, echoing hum from deep within the chest.",
+    "The metal is unnaturally cold to the touch.",
+    "A pocket dimension bound by ancient dwarven runes.",
+    "It smells faintly of ozone and old dust.",
+    "The shadows inside seem to grasp at your hands."
+];
+
 function getStashItemKey(name) {
     if (window._stashItemKeyCache[name]) return window._stashItemKeyCache[name];
     if (typeof window.ITEM_DATA === 'undefined') return null;
@@ -39,13 +52,21 @@ window.cloneItemSafely = (item) => {
     return JSON.parse(JSON.stringify(item));
 };
 
-// JUICE WIN: Dynamic Audio based on the item type being transferred
-function playStashAudio(itemType) {
+// JUICE WIN: Dynamic Audio based on the item being transferred
+function playStashAudio(item) {
     if (typeof AudioSystem === 'undefined') return;
     
+    // Legendary/Epic items have serious physical weight in the void!
+    if (item._rarity === 'legendary' || item._rarity === 'epic') {
+        AudioSystem.playNoise(0.6, 0.2, 150); // Deep, heavy void rumble
+        if (typeof gameState !== 'undefined') gameState.screenShake = 3; // Slight tactile thud
+        return;
+    }
+    
+    const itemType = item.type;
     if (['weapon', 'armor', 'tool'].includes(itemType)) {
         AudioSystem.playHit(); // Heavy metallic clank
-    } else if (['consumable', 'ammo', 'ingredient', 'scroll', 'spellbook'].includes(itemType)) {
+    } else if (['consumable', 'ammo', 'ingredient', 'scroll', 'spellbook', 'journal'].includes(itemType)) {
         AudioSystem.playNoise(0.1, 0.1, 800); // Rustling/paper sound
     } else if (['trade'].includes(itemType)) {
         AudioSystem.playCoin(); // Wealth jingle
@@ -109,7 +130,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
             const nameFormatted = item.statBonuses ? `{purple:${safeName}}` : safeName;
             logMessage(`You push ${qtyString}${nameFormatted} into the void.`);
             
-            playStashAudio(item.type);
+            playStashAudio(item);
             
             // JUICE WIN: Purple particle effect representing the Void Vault receiving the item
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '📦', '#c084fc');
@@ -176,7 +197,7 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
             const nameFormatted = item.statBonuses ? `{purple:${safeName}}` : safeName;
             logMessage(`You pull ${qtyString}${nameFormatted} from the vault.`);
             
-            playStashAudio(item.type);
+            playStashAudio(item);
             
             // JUICE WIN: Blue particle effect representing the player's Bag receiving the item
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, item.tile || '🎒', '#60a5fa');
@@ -214,6 +235,10 @@ window.depositAllMaterials = function() {
             
             // BUG FIX: Prevent depositing equipped ammo/consumables!
             if (item.isEquipped) continue;
+            
+            // BUG FIX: Never mass-deposit quest items!
+            if (item.type === 'quest') continue;
+            
             if (!['junk', 'ingredient', 'trade'].includes(item.type)) continue;
 
             const existingBankItem = player.bank.find(bankItem => bankItem && bankItem.name === item.name);
@@ -283,8 +308,8 @@ window.quickStackToStash = function() {
             const item = player.inventory[i];
             if (!item) continue; // 🚨 THE GHOST GUARD
             
-            // BUG FIX: Prevent quick-stacking equipped items (like arrows!)
-            if (item.isEquipped) continue;
+            // BUG FIX: Prevent quick-stacking equipped items (like arrows!) or Quest items
+            if (item.isEquipped || item.type === 'quest') continue;
             if (!window.isStackableItem(item.type)) continue;
 
             // Check if this item already exists in the stash
@@ -556,15 +581,23 @@ function renderStash() {
     const bankHeader = stashBankList.parentElement.querySelector('h3');
     if (bankHeader) {
         const capacityPct = bank.length / window.MAX_STASH_SLOTS;
+        const pctWidth = Math.min(100, capacityPct * 100);
         let capColor = "text-green-400";
-        if (capacityPct > 0.95) capColor = "text-red-500 animate-pulse";
-        else if (capacityPct > 0.8) capColor = "text-yellow-500";
+        let barColor = "bg-green-500";
+        if (capacityPct > 0.95) { capColor = "text-red-500 animate-pulse"; barColor = "bg-red-500"; }
+        else if (capacityPct > 0.8) { capColor = "text-yellow-500"; barColor = "bg-yellow-500"; }
 
         // Inject Auto-Sort alongside capacity (using Event Delegation)
+        // JUICE WIN: Added a sleek visual progress bar for Vault capacity!
         bankHeader.innerHTML = `
-            <div class="flex justify-between items-center w-full">
-                <span class="drop-shadow-sm">Dimensional Vault <span class="text-[10px] font-normal ${capColor} ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner">(${bank.length}/${window.MAX_STASH_SLOTS})</span></span>
-                <button data-action="sortStash" class="text-[10px] uppercase font-bold tracking-widest bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-blue-800 active:border-b-0 active:mt-0.5" style="transform: translateZ(0);">Sort</button>
+            <div class="flex flex-col w-full">
+                <div class="flex justify-between items-center w-full mb-1">
+                    <span class="drop-shadow-sm text-purple-400">Dimensional Vault <span class="text-[10px] font-normal ${capColor} ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner">(${bank.length}/${window.MAX_STASH_SLOTS})</span></span>
+                    <button data-action="sortStash" class="text-[10px] uppercase font-bold tracking-widest bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-blue-800 active:border-b-0 active:mt-0.5" style="transform: translateZ(0);">Sort</button>
+                </div>
+                <div class="w-full bg-gray-900 rounded h-1 border border-gray-700 shadow-inner overflow-hidden">
+                    <div class="${barColor} h-full transition-all duration-300" style="width: ${pctWidth}%"></div>
+                </div>
             </div>
         `;
     }
@@ -595,10 +628,11 @@ function openStashModal() {
     
     renderStash();
     
-    // LORE WIN: Flavor text explaining how stashes work globally
+    // LORE WIN: Flavor text explaining how stashes work globally, picking a random whisper
     const title = document.querySelector('#stashModal h2');
     if (title) {
-        title.innerHTML = `Dimensional Vault <span class='text-sm text-purple-400 block font-normal mt-1 italic font-serif drop-shadow-none'>Space and time fold inside this heavy iron box. Your items are safe across all realms.</span>`;
+        const whisper = VAULT_WHISPERS[Math.floor(Math.random() * VAULT_WHISPERS.length)];
+        title.innerHTML = `Dimensional Vault <span class='text-sm text-purple-400 block font-normal mt-1 italic font-serif drop-shadow-none'>"${whisper}"</span>`;
     }
     
     const stashModal = document.getElementById('stashModal');
