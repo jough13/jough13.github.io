@@ -1844,6 +1844,7 @@ function endPlayerTurn(turnUpdates = {}) {
         x: gameState.player.x,
         y: gameState.player.y,
         activeTreasure: gameState.activeTreasure || null,
+        activeInvestigation: gameState.activeInvestigation || null,
         weather: gameState.weather || 'clear',
         companion: gameState.player.companion || null, // Save companion HP/State
         
