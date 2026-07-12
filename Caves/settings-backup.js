@@ -21,7 +21,22 @@ window.addEventListener('beforeunload', (e) => {
     }
 });
 
-// --- Deep Hashing ---
+// --- 🚨 BUG FIX & ROBUSTNESS WIN: Emoji-Safe Hashing ---
+// JavaScript strings are UTF-16. Emojis use 2 code units (Surrogate Pairs).
+// Standard charCodeAt splits emojis in half, potentially causing different hash outputs on different OS variants.
+// codePointAt safely reads the entire 4-byte emoji, ensuring perfectly consistent anti-cheat signatures globally!
+function _hashStringSafe(str, seed = 0) {
+    let hash = seed;
+    if (str.length === 0) return hash.toString();
+    for (let i = 0; i < str.length; i++) {
+        const char = str.codePointAt(i);
+        if (char > 0xFFFF) i++; // Skip the second half of the surrogate pair so we don't double-count
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash.toString();
+}
+
 function generateStrictSaveSignature(data) {
     let invStr = 'empty';
     if (data.inventory && Array.isArray(data.inventory) && data.inventory.length > 0) {
@@ -54,41 +69,19 @@ function generateStrictSaveSignature(data) {
     }
     
     const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.maxHealth}_${invStr}_${bankStr}_${data.background}_${BACKUP_SALT}`;
-    
-    let hash = 0;
-    if (stringToHash.length === 0) return hash.toString();
-    for (let i = 0; i < stringToHash.length; i++) {
-        const char = stringToHash.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash |= 0; 
-    }
-    return hash.toString();
+    return _hashStringSafe(stringToHash);
 }
 
 function generateSaveSignature(data) {
     const invLen = (data.inventory && Array.isArray(data.inventory)) ? data.inventory.length : 0;
     const bankLen = (data.bank && Array.isArray(data.bank)) ? data.bank.length : 0;
     const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.maxHealth}_${invLen}_${bankLen}_${data.background}_${BACKUP_SALT}`;
-    let hash = 0;
-    if (stringToHash.length === 0) return hash.toString();
-    for (let i = 0; i < stringToHash.length; i++) {
-        const char = stringToHash.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash |= 0;
-    }
-    return hash.toString();
+    return _hashStringSafe(stringToHash);
 }
 
 function generateLegacySaveSignature(data) {
     const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.background}_${BACKUP_SALT}`;
-    let hash = 0;
-    if (stringToHash.length === 0) return hash.toString();
-    for (let i = 0; i < stringToHash.length; i++) {
-        const char = stringToHash.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash |= 0;
-    }
-    return hash.toString();
+    return _hashStringSafe(stringToHash);
 }
 
 // --- BACKUP SYSTEM ---
@@ -101,6 +94,7 @@ async function createCloudBackup(slotId = 'latest') {
 
     const now = typeof window.getServerTime === 'function' ? window.getServerTime() : Date.now();
     
+    // 10-second hard throttle to prevent spamming Firestore writes
     if (now - lastBackupTime < 10000) {
         logMessage("{red:The Weavers of Fate need time to rest. Please wait.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -116,6 +110,7 @@ async function createCloudBackup(slotId = 'latest') {
         btn.disabled = true;
         btn.classList.add('opacity-75', 'cursor-wait');
         
+        // LORE WIN: Thematic loading states
         const phases = ["⏳ Consulting Akashic Records...", "⏳ Weaving Fate...", "⏳ Sealing Anomaly..."];
         let pIdx = 0;
         btn.innerHTML = phases[0];
@@ -127,15 +122,17 @@ async function createCloudBackup(slotId = 'latest') {
 
     logMessage("{cyan:Inscribing your current timeline into the Akashic Records...}");
     
+    // Explicitly grab the cleanest, most up-to-date state from the engine
     const rawData = {
         ...gameState.player,
         customPins: gameState.player.customPins || [],
-        bank: gameState.player.bank || [], 
+        bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : (gameState.player.bank || []), 
         inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
         equipment: typeof getSanitizedEquipment === 'function' ? getSanitizedEquipment() : gameState.player.equipment,
         timestamp: now 
     };
     
+    // Strip massive local arrays that belong in Subcollections to prevent 1MB limit blowout
     delete rawData.lootedTiles;
     delete rawData.exploredChunks;
     delete rawData.foundLore;
@@ -144,11 +141,14 @@ async function createCloudBackup(slotId = 'latest') {
         ? sanitizeForFirebase(rawData) 
         : JSON.parse(JSON.stringify(rawData)); 
 
+    // Seal the data with the anti-cheat signature
     backupState.signature = generateStrictSaveSignature(backupState);
 
     try {
+        // 1. Save main player document to the backup slot
         await playerRef.collection('backups').doc(slotId).set(backupState);
         
+        // 2. Clone the massive map subcollections using Batches
         if (typeof db !== 'undefined') {
             for (const collectionName of SUBCOLLECTIONS_TO_BACKUP) {
                 const mapSnap = await playerRef.collection(collectionName).get();
@@ -161,6 +161,7 @@ async function createCloudBackup(slotId = 'latest') {
                         batch.set(backupMapRef, doc.data());
                         operationCount++;
                         
+                        // 🚨 FIRESTORE LIMIT: Batches max out at 500 writes. We safely flush at 450.
                         if (operationCount >= 450) {
                             await batch.commit();
                             batch = db.batch();
@@ -224,6 +225,7 @@ async function restoreCloudBackup(slotId = 'latest') {
 
     isBackupOperationRunning = true;
 
+    // Overlay to completely block the user from navigating away and breaking the restore process
     const blocker = document.createElement('div');
     blocker.id = 'restoreBlocker';
     blocker.className = 'fixed inset-0 z-[999999] cursor-wait bg-black bg-opacity-70 flex flex-col items-center justify-center backdrop-blur-sm';
@@ -261,7 +263,7 @@ async function restoreCloudBackup(slotId = 'latest') {
 
         const data = doc.data();
 
-        // 1. Verify Integrity
+        // 1. Verify Integrity (Anti-Cheat check)
         const strictSig = generateStrictSaveSignature(data);
         const normalSig = generateSaveSignature(data);
         const legacySig = generateLegacySaveSignature(data);
@@ -273,7 +275,7 @@ async function restoreCloudBackup(slotId = 'latest') {
             return; 
         }
 
-        // 2. Anti-Cheat Checks
+        // 2. Mathematical Anti-Cheat Checks
         const currentCoins = (gameState && gameState.player && gameState.player.coins) ? gameState.player.coins : 0;
         const currentXp = (gameState && gameState.player && gameState.player.xp) ? gameState.player.xp : 0;
         const currentStatPoints = (gameState && gameState.player && gameState.player.statPoints) ? gameState.player.statPoints : 0;
@@ -293,25 +295,33 @@ async function restoreCloudBackup(slotId = 'latest') {
              return;
         }
         
-        const invLimit = window.MAX_INVENTORY_SLOTS || 9;
+        // 🚨 BUG FIX WIN: Dynamic Capacity Check!
+        // We calculate what their capacity *should* be based on the incoming save's talents/gear, 
+        // with an absolute hardcap of 50 to prevent JSON bombing.
+        const dynamicInvLimit = typeof getInventoryCap === 'function' ? getInventoryCap(data) : 9;
+        const ABSOLUTE_MAX_CAPACITY = 50; 
         const stashLimit = window.MAX_STASH_SLOTS || 50; 
+        
         const invLen = Array.isArray(data.inventory) ? data.inventory.length : 0;
         const bankLen = Array.isArray(data.bank) ? data.bank.length : 0;
 
-        if (invLen > invLimit + 5 || bankLen > stashLimit + 5) {
+        // Give a +5 buffer to the dynamic limit just in case of weird equipment load orders
+        if (invLen > Math.max(dynamicInvLimit + 5, ABSOLUTE_MAX_CAPACITY) || bankLen > stashLimit + 5) {
              console.error(`Suspicious Backup Blocked: Limits exceeded. (Inv: ${invLen}, Bank: ${bankLen})`);
              logMessage("{red:Reality Violation Failed.} Space-time container limits exceeded.");
              if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
              return;
         }
 
-        // 3. Restore
+        // 3. Execute Restore
         logMessage("{purple:Anchor point acquired. Rebuilding the world...}");
         
         delete data.signature; 
         delete data.timestamp;
 
+        // Subcollection Wipe & Replace
         if (typeof db !== 'undefined') {
+            // A. Delete existing live map data
             for (const collectionName of SUBCOLLECTIONS_TO_BACKUP) {
                 const liveMapSnap = await playerRef.collection(collectionName).get();
                 if (!liveMapSnap.empty) {
@@ -332,6 +342,7 @@ async function restoreCloudBackup(slotId = 'latest') {
                 }
             }
 
+            // B. Push backup map data into live collection
             for (const collectionName of SUBCOLLECTIONS_TO_BACKUP) {
                 const backupMapSnap = await playerRef.collection('backups').doc(slotId).collection(collectionName).get();
                 if (!backupMapSnap.empty) {
@@ -354,7 +365,7 @@ async function restoreCloudBackup(slotId = 'latest') {
             }
         }
 
-        // Deep Clean Current Local State 
+        // Deep Clean Current Local State to prevent ghost references
         gameState.player.inventory = [];
         gameState.player.bank = [];
         gameState.player.equipment = { weapon: null, armor: null, offhand: null, accessory: null, ammo: null };
@@ -373,30 +384,40 @@ async function restoreCloudBackup(slotId = 'latest') {
         if (gameState.foundCodexEntries) gameState.foundCodexEntries.clear();
         if (gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
 
-        // Apply to Game State
+        // Apply to Game State engine seamlessly
         if (typeof enterGame === 'function') {
             await enterGame(data);
         } else {
             Object.assign(gameState.player, data);
         }
         
-        // Paradox Anomaly
+        // --- LORE & REWARD WIN: Paradox Anomaly ---
+        // A temporal shift has a 10% chance to leave a valuable anomaly behind in your pack.
         let paradoxTriggered = false;
-        if (Math.random() < 0.05 && gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
-            const paradoxShard = {
-                templateId: '⏳', name: 'Paradox Anomaly', type: 'junk', tags: ['anomaly', 'magic'],
-                quantity: 1, tile: '⏳', description: "A crystallized fragment of a discarded timeline.", _rarity: 'legendary'
-            };
-            gameState.player.inventory.push(paradoxShard);
+        if (Math.random() < 0.10 && gameState.player.inventory.length < dynamicInvLimit) {
+            const hasAnomaly = gameState.player.inventory.some(i => i && i.name === 'Paradox Anomaly');
+            
+            if (hasAnomaly) {
+                // If they already have one, give them something useful for altering time
+                gameState.player.inventory.push({ templateId: '👻s', name: 'Memory Shard', type: 'junk', quantity: 1, tile: '👻' });
+            } else {
+                gameState.player.inventory.push({
+                    templateId: '⏳', name: 'Paradox Anomaly', type: 'junk', tags: ['anomaly', 'magic'],
+                    quantity: 1, tile: '⏳', description: "A crystallized fragment of a discarded timeline.", _rarity: 'legendary'
+                });
+            }
             paradoxTriggered = true;
         }
         
+        // Final Save back to Firestore
         await playerRef.set(typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(gameState.player) : gameState.player);
 
+        // UI Refresh
         if (typeof renderStats === 'function') renderStats();
         if (typeof renderEquipment === 'function') renderEquipment();
         if (typeof renderInventory === 'function') renderInventory();
 
+        // Screen Juice
         gameState.screenShake = 35;
         if (typeof ParticleSystem !== 'undefined') {
             ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ffffff', 40);
@@ -472,7 +493,9 @@ async function updateBackupUI(slotId = 'latest') {
                 label.innerHTML = `Timeline Anchored: ${dateString} at ${timeString} <br><span class="font-bold text-yellow-500 drop-shadow-md">(Over 24h old! Anchor weakening...)</span>`;
                 label.classList.add('text-yellow-500');
             } else {
-                label.innerHTML = `Timeline Anchored: ${dateString} at ${timeString} <br><span class="text-cyan-400 font-bold drop-shadow-sm">(${relativeStr})</span>`;
+                // UI WIN: Bright green for fresh saves, cyan for slightly older
+                const freshColor = hoursOld < 1 ? 'text-green-400' : 'text-cyan-400';
+                label.innerHTML = `Timeline Anchored: ${dateString} at ${timeString} <br><span class="${freshColor} font-bold drop-shadow-sm">(${relativeStr})</span>`;
                 label.classList.add('text-gray-400');
             }
         } else {
@@ -492,6 +515,21 @@ async function updateBackupUI(slotId = 'latest') {
 // EXPANSION: EXPORT & IMPORT SAVES (BASE64)
 // ==========================================
 
+// 🚨 DEPRECATION FIX: Memory Safe UTF-8 Base64 Encoding
+// Replaces the deprecated and memory-heavy `unescape(encodeURIComponent(str))` technique
+// which is prone to crashing the call stack on massive 1MB JSON saves!
+function _utf8ToBase64(str) {
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+        return String.fromCharCode(parseInt(p1, 16));
+    }));
+}
+
+function _base64ToUtf8(str) {
+    return decodeURIComponent(atob(str).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+}
+
 window.exportTimelineToClipboard = function() {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     
@@ -499,7 +537,7 @@ window.exportTimelineToClipboard = function() {
     const rawData = {
         ...gameState.player,
         customPins: gameState.player.customPins || [],
-        bank: gameState.player.bank || [], 
+        bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : (gameState.player.bank || []), 
         inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
         equipment: typeof getSanitizedEquipment === 'function' ? getSanitizedEquipment() : gameState.player.equipment
     };
@@ -520,8 +558,7 @@ window.exportTimelineToClipboard = function() {
     // 3. Compress to Base64 String
     try {
         const jsonString = JSON.stringify(backupState);
-        // UTF-8 safe base64 encoding
-        const base64String = btoa(unescape(encodeURIComponent(jsonString))); 
+        const base64String = _utf8ToBase64(jsonString); // Safe encoding
         const finalExportString = `AKASHIC_SAVE||${base64String}`;
 
         navigator.clipboard.writeText(finalExportString).then(() => {
@@ -551,8 +588,8 @@ window.importTimelineFromClipboard = async function() {
     const base64String = inputString.split('||')[1];
 
     try {
-        // 1. Decode Base64 to JSON
-        const jsonString = decodeURIComponent(escape(atob(base64String)));
+        // 1. Decode Base64 to JSON safely
+        const jsonString = _base64ToUtf8(base64String);
         const importedData = JSON.parse(jsonString);
 
         // 2. Verify Integrity
@@ -564,7 +601,8 @@ window.importTimelineFromClipboard = async function() {
         }
 
         // 3. Confirm Override
-        const confirmRestore = confirm(`Valid timeline found for Level ${importedData.level} ${importedData.background}.\n\nWARNING: Importing this will overwrite your current character. Proceed?`);
+        const safeName = typeof escapeHtml === 'function' ? escapeHtml(importedData.name || "Unknown") : "Unknown";
+        const confirmRestore = confirm(`Valid timeline found: Level ${importedData.level} ${importedData.background} named '${safeName}'.\n\nWARNING: Importing this will completely overwrite your current character. Proceed?`);
         if (!confirmRestore) return;
 
         // 4. Execute Restore
@@ -607,7 +645,7 @@ window.importTimelineFromClipboard = async function() {
 
     } catch (e) {
         console.error("Import Decode Failed:", e);
-        logMessage("{red:Failed to decode the timeline string.} The format is invalid.");
+        logMessage("{red:Failed to decode the timeline string.} The format is invalid or corrupted.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     }
 };
