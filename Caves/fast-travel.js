@@ -65,6 +65,7 @@ function getBiomeIcon(name) {
     if (n.includes('ruin') || n.includes('castle') || n.includes('fortress') || n.includes('keep')) return '🏰';
     if (n.includes('mine') || n.includes('delve') || n.includes('tunnel')) return '⛏️';
     if (n.includes('void') || n.includes('abyss') || n.includes('rift')) return '🌌';
+    if (n.includes('camp') || n.includes('hideout') || n.includes('spot')) return '⛺';
     return '✨'; // Default
 }
 
@@ -81,32 +82,20 @@ function renderFastTravelList() {
     // Base Cost Calculation
     const baseTravelCost = (player.talents && player.talents.includes('mana_flow')) ? 8 : 10;
 
-    // PERFORMANCE WIN: Math.sqrt(dx*dx + dy*dy) is significantly faster in V8 than Math.hypot 
-    // due to avoiding arbitrary argument array allocation inside tight loops.
-    const getDist = (tx, ty) => {
-        const dx = tx - playerX;
-        const dy = ty - playerY;
-        return Math.floor(Math.sqrt(dx * dx + dy * dy));
-    };
-
-    // Helper: Calculate Compass Direction (QoL WIN!)
+    // UX WIN: Concise Compass Abbreviations save space on mobile UI
     const getDir = (tx, ty) => {
         const dx = tx - playerX;
         const dy = ty - playerY; // Negative Y is North in our grid
         if (dx === 0 && dy === 0) return '';
         
-        let ns = '';
-        let ew = '';
-        if (dy < 0) ns = 'North';
-        else if (dy > 0) ns = 'South';
+        let dirStr = '';
+        if (dy < 0) dirStr += 'N';
+        else if (dy > 0) dirStr += 'S';
         
-        if (dx < 0) ew = 'West';
-        else if (dx > 0) ew = 'East';
+        if (dx < 0) dirStr += 'W';
+        else if (dx > 0) dirStr += 'E';
         
-        if (ns && ew) return ` (${ns}-${ew})`;
-        if (ns) return ` (${ns})`;
-        if (ew) return ` (${ew})`;
-        return '';
+        return dirStr ? ` (${dirStr})` : '';
     };
 
     // --- UI CATEGORY: SANCTUARIES ---
@@ -123,6 +112,10 @@ function renderFastTravelList() {
         const cost = isFree ? 0 : baseTravelCost;
         const canAfford = player.mana >= cost;
         
+        const dx = 0 - playerX;
+        const dy = 0 - playerY;
+        const distToVillage = Math.floor(Math.sqrt(dx * dx + dy * dy));
+        
         const btnClass = canAfford ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-gray-700 text-gray-400 opacity-50 cursor-not-allowed border-gray-600";
         const btnText = canAfford ? (isFree ? 'Free' : `-${cost} MP`) : 'OOM';
 
@@ -137,7 +130,7 @@ function renderFastTravelList() {
         villageLi.innerHTML = `
             <div>
                 <span class="font-bold text-blue-400 drop-shadow-md">🛡️ Safe Haven Village</span>${dimensionBadge}
-                <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: 0, 0 <span class="ml-2 text-blue-300 font-bold bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Dist: ${getDist(0, 0)}m${getDir(0, 0)})</span></div>
+                <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: 0, 0 <span class="ml-2 text-blue-300 font-bold bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Dist: ${distToVillage}m${getDir(0, 0)})</span></div>
             </div>
             <button data-x="0" data-y="0" class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAfford ? 'border-blue-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass}" ${canAfford ? '' : 'disabled'}>${btnText}</button>
         `;
@@ -151,6 +144,10 @@ function renderFastTravelList() {
             const ry = player.respawnPoint.y;
             const canAfford = player.mana >= baseTravelCost;
             
+            const dx = rx - playerX;
+            const dy = ry - playerY;
+            const distToCamp = Math.floor(Math.sqrt(dx * dx + dy * dy));
+            
             const btnClass = canAfford ? "bg-green-600 hover:bg-green-500 text-white" : "bg-gray-700 text-gray-400 opacity-50 cursor-not-allowed border-gray-600";
             const btnText = canAfford ? `-${baseTravelCost} MP` : 'OOM';
 
@@ -160,7 +157,7 @@ function renderFastTravelList() {
             bedLi.innerHTML = `
                 <div>
                     <span class="font-bold text-green-400 drop-shadow-md">⛺ Personal Camp (Bed)</span>
-                    <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${rx}, ${-ry} <span class="ml-2 text-green-300 font-bold bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Dist: ${getDist(rx, ry)}m${getDir(rx, ry)})</span></div>
+                    <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${rx}, ${-ry} <span class="ml-2 text-green-300 font-bold bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Dist: ${distToCamp}m${getDir(rx, ry)})</span></div>
                 </div>
                 <button data-x="${rx}" data-y="${ry}" class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAfford ? 'border-green-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass}" ${canAfford ? '' : 'disabled'}>${btnText}</button>
             `;
@@ -171,7 +168,10 @@ function renderFastTravelList() {
     // --- UI CATEGORY: WILDERNESS WAYSTONES ---
     // Hide regular waystones if the player is stuck in an alternate dimension
     if (gameState.currentRealm === 0 || !gameState.currentRealm) {
-        // BUG FIX WIN: Deduplication to prevent corrupted DB arrays from showing double waypoints
+        
+        // BUG FIX & PERFORMANCE WIN: 
+        // 1. Deduplication to prevent corrupted DB arrays from showing double waypoints
+        // 2. Sort by distance squared (distSq) to avoid computing Math.sqrt inside the loop comparison
         const seenCoords = new Set();
         
         const availableWaypoints = waypoints
@@ -187,8 +187,13 @@ function renderFastTravelList() {
                 
                 return true;
             })
-            .map(wp => ({ ...wp, dist: getDist(wp.x, wp.y), dir: getDir(wp.x, wp.y) }))
-            .sort((a, b) => a.dist - b.dist); // Sort by distance ascending
+            .map(wp => {
+                const dx = wp.x - playerX;
+                const dy = wp.y - playerY;
+                const distSq = (dx * dx) + (dy * dy);
+                return { ...wp, distSq, dist: Math.floor(Math.sqrt(distSq)), dir: getDir(wp.x, wp.y) };
+            })
+            .sort((a, b) => a.distSq - b.distSq); // Sort entirely via integer squares!
 
         const waystoneHeader = document.createElement('div');
         waystoneHeader.className = "text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-6 mb-2 border-b border-gray-700 pb-1 flex justify-between";
@@ -197,7 +202,7 @@ function renderFastTravelList() {
 
         if (availableWaypoints.length === 0) {
             const emptyLi = document.createElement('li');
-            emptyLi.className = 'italic text-gray-500 p-4 text-center border border-gray-700 rounded-lg text-xs bg-black bg-opacity-20 shadow-inner';
+            emptyLi.className = 'italic text-gray-500 p-4 text-center border border-gray-700 rounded-lg text-xs bg-black bg-opacity-20 shadow-inner font-serif';
             emptyLi.textContent = "You haven't attuned to any Wilderness Waystones yet. Explore the world to find them!";
             fragment.appendChild(emptyLi);
         } else {
@@ -210,17 +215,21 @@ function renderFastTravelList() {
                 const safeName = typeof escapeHtml === 'function' ? escapeHtml(wp.name) : wp.name;
                 
                 // JUICE & QoL WIN: Show danger warning for far-off waypoints
-                const dangerBadge = wp.dist > 1500 ? `<span title="Extreme Danger Zone!" class="ml-2 animate-pulse drop-shadow-md text-red-500">💀</span>` : '';
+                const dangerBadge = wp.dist > 1500 ? `<span title="Extreme Danger Zone!" class="ml-2 animate-pulse drop-shadow-md text-red-500 font-bold">💀</span>` : '';
                 
                 const li = document.createElement('li');
-                li.className = 'shop-item bg-purple-900 bg-opacity-10 border-gray-700 hover:border-purple-500 transition-all transform hover:-translate-y-0.5 shadow-sm hover:shadow-lg';
+                li.className = 'shop-item bg-purple-900 bg-opacity-10 border-gray-700 hover:border-purple-500 transition-all transform hover:-translate-y-0.5 shadow-sm hover:shadow-lg relative group';
                 li.setAttribute('onmouseenter', "if(typeof AudioSystem !== 'undefined') AudioSystem.playHover()");
+                
+                // QoL WIN: Renaming Button
+                // Pops up seamlessly when hovering over the item!
                 li.innerHTML = `
+                    <button data-rename-x="${wp.x}" data-rename-y="${wp.y}" title="Rename Waypoint" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-gray-800 hover:bg-gray-600 text-gray-300 rounded px-1.5 py-0.5 text-[9px] font-bold border border-gray-600 transition-opacity">✏️ Rename</button>
                     <div>
                         <span class="font-bold text-purple-400 drop-shadow-md">${icon} ${safeName}${dangerBadge}</span>
                         <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${wp.x}, ${-wp.y} <span class="ml-2 text-purple-300 font-bold bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Dist: ${wp.dist}m${wp.dir})</span></div>
                     </div>
-                    <button data-x="${wp.x}" data-y="${wp.y}" class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAffordBase ? 'border-purple-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass}" ${canAffordBase ? '' : 'disabled'}>${btnText}</button>
+                    <button data-x="${wp.x}" data-y="${wp.y}" class="px-3 py-2 rounded text-xs font-bold shadow-md transition-transform active:scale-95 border-b-2 ${canAffordBase ? 'border-purple-800 active:border-b-0 active:mt-0.5' : 'border-gray-800'} ${btnClass} ml-2" ${canAffordBase ? '' : 'disabled'}>${btnText}</button>
                 `;
                 fragment.appendChild(li);
             });
@@ -229,6 +238,35 @@ function renderFastTravelList() {
 
     fastTravelList.appendChild(fragment);
 }
+
+// QoL WIN: Dynamic Custom Naming Function
+window.renameWaypoint = function(wpX, wpY) {
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+    
+    const player = gameState.player;
+    if (!player.unlockedWaypoints) return;
+    
+    const wpIndex = player.unlockedWaypoints.findIndex(w => w.x === wpX && w.y === wpY);
+    if (wpIndex === -1) return;
+    
+    const currentName = player.unlockedWaypoints[wpIndex].name;
+    const newName = prompt("Enter a new name for this Waystone (Max 24 characters):", currentName);
+    
+    if (newName && newName.trim() !== '') {
+        const cleanName = newName.substring(0, 24).replace(/[^a-zA-Z0-9 \-']/g, '').trim();
+        if (cleanName.length > 0) {
+            player.unlockedWaypoints[wpIndex].name = cleanName;
+            logMessage(`{gray:Waystone renamed to "${cleanName}".}`);
+            
+            // Save to Firebase
+            if (typeof playerRef !== 'undefined') {
+                playerRef.update({ unlockedWaypoints: player.unlockedWaypoints }).catch(e => console.error(e));
+            }
+            // Re-render instantly
+            renderFastTravelList();
+        }
+    }
+};
 
 // JUICE WIN: Make the handler fully asynchronous so we can await particle animations and build tension!
 window.handleFastTravel = async function (targetX, targetY) {
@@ -246,7 +284,7 @@ window.handleFastTravel = async function (targetX, targetY) {
         const isFreeRecall = (targetX === 0 && targetY === 0) && player.level <= 3;
         const TRAVEL_COST = isFreeRecall ? 0 : ((player.talents && player.talents.includes('mana_flow')) ? 8 : 10);
 
-        // Calculate physical distance for dynamic juice
+        // Calculate physical distance for dynamic juice and lore mechanics
         const dx = targetX - player.x;
         const dy = targetY - player.y;
         const travelDist = Math.floor(Math.sqrt(dx * dx + dy * dy));
@@ -340,7 +378,10 @@ window.handleFastTravel = async function (targetX, targetY) {
             ParticleSystem.createFloatingText(player.x, player.y, "Warping...", isFreeRecall ? "#60a5fa" : "#c084fc");
         }
         
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+        // JUICE WIN: Rising magical tone builds tension before the snap!
+        if (typeof AudioSystem !== 'undefined') {
+            AudioSystem.playTone(200, 'sine', 0.4, 0.2, false, 800); // Rises from 200hz to 800hz!
+        }
         
         // JUICE WIN: Teleport Tension Builder
         // Screen rumbles slightly as the portal opens, then shakes violently on transit!
@@ -357,9 +398,38 @@ window.handleFastTravel = async function (targetX, targetY) {
         player.mana = Math.max(0, player.mana - TRAVEL_COST);
         
         // Track database updates
-        const updates = {
-            mana: player.mana
-        };
+        const updates = {};
+        
+        // --- GAMEPLAY EXPANSION: The Toll of the Leylines & Magic Surges ---
+        // Fast travel strains the body. The further you go, the hungrier/thirstier you get.
+        const distanceToll = Math.floor(travelDist / 500); // 1 point of drain per 500 tiles
+        
+        if (distanceToll > 0) {
+            player.hunger = Math.max(0, player.hunger - distanceToll);
+            player.thirst = Math.max(0, player.thirst - distanceToll);
+            updates.hunger = player.hunger;
+            updates.thirst = player.thirst;
+            
+            // Visual feedback for the toll
+            if (typeof triggerStatAnimation === 'function') {
+                const hDisp = document.getElementById('hungerDisplay');
+                const tDisp = document.getElementById('thirstDisplay');
+                if (hDisp) triggerStatAnimation(hDisp, 'stat-flash-red');
+                if (tDisp) triggerStatAnimation(tDisp, 'stat-flash-red');
+            }
+        }
+        
+        // 5% chance the leylines are overflowing, refunding the mana!
+        if (!isFreeRecall && Math.random() < 0.05) {
+            player.mana = Math.min(player.maxMana, player.mana + TRAVEL_COST);
+            logMessage("{fuchsia:A surge in the leylines refunds your magical energy!}");
+            
+            if (typeof triggerStatAnimation === 'function' && _ftDOMCache.getManaDisplay()) {
+                triggerStatAnimation(_ftDOMCache.getManaDisplay(), 'stat-pulse-purple');
+            }
+        }
+        
+        updates.mana = player.mana; // Push final mana state
 
         // --- FORCE DISEMBARK BEFORE TELEPORT & FIX DB DESYNC ---
         if (player.isBoating || player.isSailing) {
@@ -408,14 +478,44 @@ window.handleFastTravel = async function (targetX, targetY) {
         gameState.currentCastleId = null;
         gameState.instancedEnemies = [];
         
+        // --- LORE WIN: DIMENSIONAL BLEED ---
+        // If the player is suffering from Madness, the teleport becomes unstable!
+        let finalX = targetX;
+        let finalY = targetY;
+
+        if (player.madnessTurns > 0 && !isVillageBypass && Math.random() < 0.50) {
+            logMessage("{purple:Your fractured mind destabilizes the leylines! You materialise off-target!}");
+            
+            // Scatter them 1 to 5 tiles away from the destination
+            let foundSafeSpot = false;
+            for (let r = 1; r <= 5; r++) {
+                if (foundSafeSpot) break;
+                for (let dy = -r; dy <= r; dy++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        const checkX = targetX + dx;
+                        const checkY = targetY + dy;
+                        const checkTile = chunkManager.getTile(checkX, checkY);
+                        
+                        if (['.', 'F', 'd', 'D', '❄️', '🍄'].includes(checkTile)) {
+                            finalX = checkX;
+                            finalY = checkY;
+                            foundSafeSpot = true;
+                            break;
+                        }
+                    }
+                    if (foundSafeSpot) break;
+                }
+            }
+        }
+
         // Move Player
-        player.x = targetX;
-        player.y = targetY;
-        updates.x = targetX;
-        updates.y = targetY;
+        player.x = finalX;
+        player.y = finalY;
+        updates.x = finalX;
+        updates.y = finalY;
 
         // LORE WIN: Biome & Weather-Aware Arrival Messages!
-        const arrivalTile = chunkManager.getTile(targetX, targetY) || '.';
+        const arrivalTile = chunkManager.getTile(finalX, finalY) || '.';
         let arrivalFlavor = "You dissolve into pure energy and reappear at your destination.";
         
         if (isFreeRecall) arrivalFlavor = "The ancient wards of the Safe Haven welcome you.";
@@ -442,10 +542,15 @@ window.handleFastTravel = async function (targetX, targetY) {
         if (travelDist > 1000) {
             logMessage(`{purple:You cross a terrifying distance. The leylines scream as you re-enter reality!}`);
             gameState.screenShake = 25;
-            if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playBossSpawn === 'function') AudioSystem.playBossSpawn(); // Heavy impact
+            if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playBossSpawn === 'function') {
+                AudioSystem.playBossSpawn(); // Heavy impact
+            } else if (typeof AudioSystem !== 'undefined') {
+                AudioSystem.playMagic();
+            }
         } else {
             logMessage(`{cyan:${arrivalFlavor}${weatherFlavor}}`);
             gameState.screenShake = 10; // Standard landing impact
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
         }
         
         const manaDisplay = _ftDOMCache.getManaDisplay();
@@ -517,26 +622,48 @@ window.handleFastTravel = async function (targetX, targetY) {
     }
 };
 
-// --- SECURITY & PERFORMANCE WIN: Event Delegation for the UI List ---
-if (fastTravelList) {
+// --- SECURITY & BUG FIX WIN: Safe Event Delegation ---
+// We explicitly resolve the async handleFastTravel so we can reliably un-disable the UI button
+// in the event the teleport fails locally (e.g. out of mana, enemy blocked).
+if (fastTravelList && !fastTravelList.dataset.listenersBound) {
     fastTravelList.addEventListener('click', (e) => {
+        // Did they click the rename button?
+        const renameBtn = e.target.closest('button[data-rename-x]');
+        if (renameBtn) {
+            const tx = parseInt(renameBtn.dataset.renameX, 10);
+            const ty = parseInt(renameBtn.dataset.renameY, 10);
+            if (!isNaN(tx) && !isNaN(ty) && typeof window.renameWaypoint === 'function') {
+                window.renameWaypoint(tx, ty);
+            }
+            return;
+        }
+
+        // Did they click the teleport button?
         const btn = e.target.closest('button[data-x]');
         if (btn && !btn.disabled) {
             btn.disabled = true; // UX & SECURITY: Prevent double-click mana drain exploit
             const tx = parseInt(btn.dataset.x, 10);
             const ty = parseInt(btn.dataset.y, 10);
             if (!isNaN(tx) && !isNaN(ty)) {
-                handleFastTravel(tx, ty);
+                // Wrap in Promise.resolve so we can definitively catch the end of the async function
+                Promise.resolve(handleFastTravel(tx, ty)).finally(() => {
+                    // Re-enable in case the modal didn't close (meaning the teleport was rejected)
+                    if (btn) btn.disabled = false;
+                });
+            } else {
+                btn.disabled = false;
             }
         }
     });
+    fastTravelList.dataset.listenersBound = 'true';
 }
 
-if (closeFastTravelButton) {
+if (closeFastTravelButton && !closeFastTravelButton.dataset.listenersBound) {
     closeFastTravelButton.addEventListener('click', () => {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
         fastTravelModal.classList.add('hidden');
     });
+    closeFastTravelButton.dataset.listenersBound = 'true';
 }
 
 // --- END OF FILE fast-travel.js ---
