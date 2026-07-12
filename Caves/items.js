@@ -409,7 +409,7 @@ function sanitizeItemForDB(item, forceEquipped = false) {
         spellId: item.spellId || null,
         skillId: item.skillId || null,
         stat: item.stat || null,
-        tags: item.tags || null, 
+        tags: (item.tags && item.tags.length > 0) ? item.tags : null,
         _rarity: item._rarity || null,
         _negatedDex: item._negatedDex || null 
     };
