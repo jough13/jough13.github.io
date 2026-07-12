@@ -23,6 +23,7 @@ function renderHotbar() {
     const cooldowns = player.cooldowns || {};
 
     // PERFORMANCE WIN: O(N) Pre-Mapped Inventory Cache
+    // We create a dictionary map of the inventory to prevent scanning the entire array 5 times!
     const inventoryMap = new Map();
     if (player.inventory) {
         for (let i = 0; i < player.inventory.length; i++) {
@@ -30,9 +31,11 @@ function renderHotbar() {
             
             if (!item) continue; // 🚨 GHOST GUARD
             
-            // Prefer items that actually have quantity > 0 in case of ghost stacks
-            if (!inventoryMap.has(item.name) || item.quantity > 0) inventoryMap.set(item.name, item);
-            if (item.templateId && (!inventoryMap.has(item.templateId) || item.quantity > 0)) inventoryMap.set(item.templateId, item);
+            // 🚨 BUG FIX WIN: Strictly exclude ghost stacks (quantity 0) from appearing on the hotbar!
+            if (item.quantity > 0) {
+                if (!inventoryMap.has(item.name)) inventoryMap.set(item.name, item);
+                if (item.templateId && !inventoryMap.has(item.templateId)) inventoryMap.set(item.templateId, item);
+            }
         }
     }
 
@@ -73,10 +76,11 @@ function renderHotbar() {
                 let colorClass = "text-gray-200";
                 if (spellData) {
                     const sName = data.name || "";
-                    if (sName.includes("Fire") || sName.includes("Meteor")) colorClass = "text-orange-400";
+                    // Color-code the spell icons natively based on their element!
+                    if (sName.includes("Fire") || sName.includes("Meteor") || sName.includes("Pact")) colorClass = "text-orange-400";
                     else if (sName.includes("Frost")) colorClass = "text-cyan-300";
                     else if (sName.includes("Poison") || sName.includes("Entangle")) colorClass = "text-green-400";
-                    else if (sName.includes("Divine") || sName.includes("Heal")) colorClass = "text-yellow-400";
+                    else if (sName.includes("Divine") || sName.includes("Heal") || sName.includes("Nova")) colorClass = "text-yellow-400";
                     else if (sName.includes("Dark") || sName.includes("Siphon")) colorClass = "text-red-500";
                     else if (sName.includes("Lightning") || sName.includes("Thunder")) colorClass = "text-yellow-300";
                     else colorClass = "text-blue-300";
@@ -94,7 +98,7 @@ function renderHotbar() {
 
                 // JUICE WIN: Added animate-pulse to the red cooldown overlay
                 if (cooldowns[abilityId] > 0) {
-                    slotDiv.classList.add('cursor-not-allowed', 'border-red-900');
+                    slotDiv.classList.add('cursor-not-allowed', 'border-red-900', 'grayscale');
                     const cdOverlay = document.createElement('div');
                     cdOverlay.className = "absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-[2px] text-red-400 font-bold text-xl rounded shadow-inner animate-pulse";
                     cdOverlay.textContent = cooldowns[abilityId];
@@ -147,7 +151,7 @@ function useHotbarSlot(index) {
             slotEl.classList.remove('shake');
             void slotEl.offsetWidth; 
             slotEl.classList.add('shake');
-            slotEl.onanimationend = () => slotEl.classList.remove('shake');
+            slotEl.addEventListener('animationend', () => slotEl.classList.remove('shake'), { once: true });
         }
     };
 
@@ -171,6 +175,7 @@ function useHotbarSlot(index) {
     const isSkill = typeof SKILL_DATA !== 'undefined' && !!SKILL_DATA[abilityId];
     const isSpell = typeof SPELL_DATA !== 'undefined' && !!SPELL_DATA[abilityId];
 
+    // Auto-dismount for combat actions
     if (player.isMounted && (isSkill || isSpell)) {
         player.isMounted = false;
         logMessage(`{orange:You leap from your mount into combat!}`);
@@ -184,6 +189,7 @@ function useHotbarSlot(index) {
     } else if (isSpell) {
         if (typeof castSpell === 'function') castSpell(abilityId);
     } else {
+        // Evaluate dynamic names vs base templates
         let targetName = abilityId;
         if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) {
             targetName = ITEM_DATA[abilityId].name;
@@ -267,7 +273,7 @@ function assignToHotbar(abilityId) {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
 
     hotbar[index] = abilityId;
-    if (typeof playerRef !== 'undefined') playerRef.update({ hotbar: hotbar });
+    if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ hotbar: hotbar });
     
     renderHotbar();
     
@@ -294,6 +300,7 @@ function assignToHotbar(abilityId) {
     }, 0);
 }
 
+// SECURITY & PERFORMANCE WIN: Event Delegation
 if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
     
     // Left Click (Use Ability)
@@ -341,7 +348,7 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
                 }
                 
                 player.hotbar[index] = null;
-                if (typeof playerRef !== 'undefined') playerRef.update({ hotbar: player.hotbar });
+                if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ hotbar: player.hotbar });
                 renderHotbar();
             }
         }
