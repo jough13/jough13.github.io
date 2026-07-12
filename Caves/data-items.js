@@ -859,6 +859,42 @@ window.ITEM_DATA = {
             return true; 
         }
     },
+    '📓c': {
+        name: 'Cultist\'s Ledger',
+        type: 'consumable',
+        tile: '📓',
+        description: "A blood-stained book. Using it might reveal their hideout.",
+        effect: (state) => {
+            if (state.mapMode !== 'overworld') {
+                logMessage("{red:You must be in the Overworld to chart these coordinates.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return false; 
+            } 
+            
+            if (state.activeInvestigation) {
+                logMessage("{red:You are already tracking an investigation! Finish it first.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return false;
+            }
+
+            // Generate a spot 30-60 tiles away
+            const dist = 30 + Math.floor(Math.random() * 30);
+            const angle = Math.random() * 2 * Math.PI;
+            const tx = Math.floor(state.player.x + Math.cos(angle) * dist);
+            const ty = Math.floor(state.player.y + Math.sin(angle) * dist);
+            
+            state.activeInvestigation = { x: tx, y: ty, eventId: 'CULT_HIDEOUT' };
+
+            logMessage(`{purple:The ledger reveals a hidden trapdoor at (${tx}, ${-ty})!}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            
+            // Mark map dirty to redraw compass
+            state.mapDirty = true;
+            if (typeof render === 'function') render();
+            
+            return true; // Consumes the ledger
+        }
+    },
     '🍾': {
         name: 'Message in a Bottle', type: 'consumable', tile: '🍾',
         description: "There's a rolled up piece of parchment inside.",
