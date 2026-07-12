@@ -804,13 +804,21 @@ function useInventoryItem(itemIndex) {
             // 2. Equip New
             if (currentEquipped !== itemToUse) {
                 
-                // --- 🚨 ROBUSTNESS WIN: AMMO HOT-SWAPPING FIX ---
+                // --- AMMO HOT-SWAPPING FIX ---
                 // If we are equipping ammo while already holding another stack of the same ammo, merge them cleanly!
                 if (slot === 'ammo' && currentEquipped) {
                     const existingStack = player.inventory.find(i => i && i.name === currentEquipped.name && !i.isEquipped);
                     if (existingStack) {
+                        // 1. Add the quantities together
                         existingStack.quantity += currentEquipped.quantity;
-                        // Since we just consolidated the old ammo stack, the indices in `player.inventory` might have shifted!
+                        
+                        // 2. Destroy the old equipped stack so it doesn't duplicate!
+                        const oldIndex = player.inventory.indexOf(currentEquipped);
+                        if (oldIndex > -1) {
+                            player.inventory.splice(oldIndex, 1);
+                        }
+
+                        // Since we just consolidated the old ammo stack and spliced the array, the indices in `player.inventory` might have shifted!
                         // Let's find the new item we were TRYING to equip again by exact reference
                         const reFoundItem = player.inventory.find(i => i === itemToUse);
                         if (!reFoundItem) {
