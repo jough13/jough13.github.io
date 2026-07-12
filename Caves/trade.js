@@ -74,12 +74,12 @@ function calculateItemValue(item, player) {
     // 1. Try to find the item in the current shop to get its native buy price
     let shopItem = activeShopInventory.find(sItem => sItem && sItem.name === item.name); // 🚨 GHOST GUARD
 
-    // BUG FIX & ROBUSTNESS: 
+    // 🚨 BUG FIX & ROBUSTNESS: The Enchanter's Exploit Guard
     // If we are trying to sell a magical/crafted item (e.g. "Masterwork Iron Sword"),
-    // it won't perfectly match "Iron Sword" in the shop. We must fall back to its template!
+    // it won't perfectly match "Iron Sword" in the shop. We must fall back to its template ID!
     if (!shopItem && item.templateId && window.ITEM_DATA && window.ITEM_DATA[item.templateId]) {
         const baseName = window.ITEM_DATA[item.templateId].name;
-        shopItem = activeShopInventory.find(sItem => sItem && sItem.name === baseName); // 🚨 GHOST GUARD
+        shopItem = activeShopInventory.find(sItem => sItem && sItem.name === baseName); 
     }
 
     // 2. Establish Base Price
@@ -100,6 +100,7 @@ function calculateItemValue(item, player) {
         if (item.templateId && window.ITEM_DATA && window.ITEM_DATA[item.templateId]) {
             lookupName = window.ITEM_DATA[item.templateId].name;
         }
+        
         if (window.BASE_ITEM_VALUES[lookupName]) basePrice = window.BASE_ITEM_VALUES[lookupName];
         else if (window.BASE_ITEM_VALUES[item.name]) basePrice = window.BASE_ITEM_VALUES[item.name];
         
@@ -223,7 +224,7 @@ function handleBuyItem(itemName, amount = 1) {
             ParticleSystem.createFloatingText(player.x, player.y, `-${totalCost}g`, "#ef4444");
             ParticleSystem.createExplosion(player.x, player.y, '#facc15', pSize);
         }
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin(); // Heavy coin sound for spending
 
         if (existingStack && isStackable) {
             existingStack.quantity += buyQty;
@@ -282,6 +283,13 @@ function handleSellItem(itemIndex, amount = 1) {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
+        
+        // BUG FIX: Prevent selling quest items!
+        if (itemToSell.type === 'quest') {
+            logMessage("{red:You cannot sell crucial quest artifacts!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
 
         const { sellPrice, basePrice, regionMult } = calculateItemValue(itemToSell, player);
 
@@ -317,7 +325,9 @@ function handleSellItem(itemIndex, amount = 1) {
             ParticleSystem.createFloatingText(player.x, player.y, `+${totalValue}g`, "#facc15");
             ParticleSystem.createExplosion(player.x, player.y, '#facc15', pSize);
         }
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+        
+        // JUICE WIN: Play a lighter, rustling sound for selling to contrast with the heavy buying sound
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 2000); 
 
         // Remove from inventory
         itemToSell.quantity -= safeQty;
@@ -361,7 +371,8 @@ function handleSellAllItems() {
             
             if (!item) continue; // 🚨 GHOST GUARD
 
-            if (item.isEquipped) {
+            // Explicitly protect equipped gear and Quest items
+            if (item.isEquipped || item.type === 'quest') {
                 remainingInventory.push(item);
                 continue;
             }
@@ -461,46 +472,72 @@ function renderShop() {
         }
     }
 
-    // LORE WIN: Dynamic Shop Flavor Quotes based on biome!
+    // LORE WIN: Dynamic Shopkeeper Titles & Flavor Quotes based on biome!
     if (shopTitle) {
+        let shopName = "Merchant";
         let flavors = ["A traveling merchant with weary eyes."];
-        if (gameState.currentRealm !== 0 && gameState.currentRealm) flavors = [
-            "I trade in secrets, soul-shards, and silence. But mostly secrets.",
-            "I didn't expect to find a customer in this dimension.",
-            "Everything has a price here. Even your memories."
-        ];
-        else if (biome === 'Desert') flavors = [
-            "Water is worth its weight in gold here.",
-            "The sand gets into everything. Even the coin purses."
-        ];
-        else if (biome === 'Deadlands') flavors = [
-            "I would trade my own soul for a sip of clean water.",
-            "Do not linger here. The ash remembers the living."
-        ];
-        else if (biome === 'Mountain') flavors = [
-            "I'll pay top coin for wood and food.",
-            "The climb is steep, but the profits are steeper."
-        ];
-        else if (biome === 'Swamp') flavors = [
-            "Antidotes are flying off the shelves.",
-            "Smells like rot, but it pays like gold."
-        ];
-        else if (biome === 'Underworld') flavors = [
-            "I collect things the surface dwellers fear.",
-            "Down here, the only currency that matters is survival."
-        ];
-        else if (biome === 'Sky Realm') flavors = [
-            "The air is thin, but the views are priceless.",
-            "I caught a cloud in a jar once. Tasted like mint."
-        ];
-        else if (gameState.mapMode === 'castle') flavors = [
-            "Luxury goods and rare artifacts accepted.",
-            "The guards take their cut, but the trade is safe.",
-            "I've got apples for your horse... or raw meat for your wolf, if you ride one."
-        ];
+        
+        if (gameState.currentRealm !== 0 && gameState.currentRealm) {
+            shopName = "Void-Touched Scavenger";
+            flavors = [
+                "I trade in secrets, soul-shards, and silence. But mostly secrets.",
+                "I didn't expect to find a customer in this dimension.",
+                "Everything has a price here. Even your memories."
+            ];
+        }
+        else if (biome === 'Desert') {
+            shopName = "Dune Trader";
+            flavors = [
+                "Water is worth its weight in gold here.",
+                "The sand gets into everything. Even the coin purses."
+            ];
+        }
+        else if (biome === 'Deadlands') {
+            shopName = "Ash Walker";
+            flavors = [
+                "I would trade my own soul for a sip of clean water.",
+                "Do not linger here. The ash remembers the living."
+            ];
+        }
+        else if (biome === 'Mountain') {
+            shopName = "Prospector's Guild";
+            flavors = [
+                "I'll pay top coin for wood and food.",
+                "The climb is steep, but the profits are steeper."
+            ];
+        }
+        else if (biome === 'Swamp') {
+            shopName = "Swamp Hermit";
+            flavors = [
+                "Antidotes are flying off the shelves.",
+                "Smells like rot, but it pays like gold."
+            ];
+        }
+        else if (biome === 'Underworld') {
+            shopName = "Deep Delver";
+            flavors = [
+                "I collect things the surface dwellers fear.",
+                "Down here, the only currency that matters is survival."
+            ];
+        }
+        else if (biome === 'Sky Realm') {
+            shopName = "Cloud Weaver";
+            flavors = [
+                "The air is thin, but the views are priceless.",
+                "I caught a cloud in a jar once. Tasted like mint."
+            ];
+        }
+        else if (gameState.mapMode === 'castle') {
+            shopName = "Quartermaster";
+            flavors = [
+                "Luxury goods and rare artifacts accepted.",
+                "The guards take their cut, but the trade is safe.",
+                "I've got apples for your horse... or raw meat for your wolf, if you ride one."
+            ];
+        }
         
         const selectedFlavor = flavors[Math.floor(Math.random() * flavors.length)];
-        shopTitle.innerHTML = `Merchant <span class="block text-xs font-normal text-gray-400 mt-1 italic tracking-normal font-serif">"${selectedFlavor}"</span>`;
+        shopTitle.innerHTML = `${shopName} <span class="block text-xs font-normal text-gray-400 mt-1 italic tracking-normal font-serif">"${selectedFlavor}"</span>`;
     }
 
     // PERFORMANCE: Use DocumentFragments
@@ -597,7 +634,7 @@ function renderShop() {
             if (item._rarity === 'uncommon') nameColor = 'text-green-400 font-bold';
             else if (item._rarity === 'rare') nameColor = 'text-purple-400 font-bold';
             else if (item._rarity === 'epic') nameColor = 'text-red-400 font-bold';
-            else if (item._rarity === 'legendary') nameColor = 'text-yellow-400 font-bold';
+            else if (item._rarity === 'legendary') nameColor = 'text-yellow-400 font-bold text-magic-shimmer';
             else if (item.statBonuses && Object.keys(item.statBonuses).length > 0) nameColor = 'text-fuchsia-400 font-bold';
 
             li.innerHTML = `
