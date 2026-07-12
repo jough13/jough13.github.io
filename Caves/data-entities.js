@@ -30,6 +30,25 @@ window.PLAYER_RACES = {
         description: "Small, exceptionally quiet, and supernaturally lucky. They prefer to go unnoticed.",
         stats: { dexterity: 2, luck: 1 }, 
         icon: '🦶'
+    },
+    // --- LORE EXPANSION: NEW RACES ---
+    'goliath': {
+        name: 'Goliath',
+        description: "Towering half-giants from the high peaks. Their skin is like granite.",
+        stats: { strength: 2, constitution: 1 }, 
+        icon: '🪨'
+    },
+    'faeblood': {
+        name: 'Fae-Blood',
+        description: "Descendants of mortals stolen by the Fairy Rings. Ethereal, beautiful, and deeply unsettling.",
+        stats: { charisma: 2, dexterity: 1 }, 
+        icon: '🦋'
+    },
+    'voidkissed': {
+        name: 'Void-Kissed',
+        description: "Born under a ruptured sky. The darkness recognizes them as its own.",
+        stats: { willpower: 2, wits: 1 }, 
+        icon: '🌌'
     }
 };
 
@@ -146,7 +165,7 @@ window.QUEST_DATA = {
         title: "The Hand's Fingers",
         description: "\"The Cult is led by bloodthirsty Fanatics ('z'). We cannot allow them to complete the ritual. Decapitate their leadership.\"",
         type: 'kill', enemy: 'z', itemNeeded: null, needed: 15, itemTile: null,
-        reward: { xp: 800, coins: 500, item: 'Potion of Speed', itemQty: 3 }
+        reward: { xp: 800, coins: 500, item: 'Berserker Brew', itemQty: 3 }
     },
     "voidDemons": {
         title: "Banish the Demons",
@@ -185,11 +204,16 @@ window.QUEST_DATA = {
         description: "\"My brother stepped into a Fairy Ring and never returned. I need to know what happened to him. Bring me any notes you find.\"",
         type: 'collect', itemNeeded: 'Weathered Warning', needed: 1, enemy: null, itemTile: null,
         reward: { xp: 600, coins: 400, item: 'Mana Orb', itemQty: 2 }
+    },
+    "clockworkMenace": {
+        title: "Gears and Blood",
+        description: "\"The ancient machines ('🤖') are waking up in the deserts. Smashing them yields good scrap. Destroy 5 Clockwork Guardians.\"",
+        type: 'kill', enemy: '🤖', itemNeeded: null, needed: 5, itemTile: null,
+        reward: { xp: 1000, coins: 600, item: null, itemQty: 0 }
     }
 };
 
 // LORE & MECHANIC WIN: Deeply flavorful elite affixes that wildly alter combat
-// Now strictly defining base properties to prevent NaN math errors during generation
 window.ENEMY_PREFIXES = {
     "Savage": {
         description: "Fights with terrifying ferocity. Deals extra damage.",
@@ -224,7 +248,7 @@ window.ENEMY_PREFIXES = {
     "Vampiric": {
         description: "Drains the life from its victims to heal itself.",
         statModifiers: { attack: 0, defense: 0, maxHealth: 5 },
-        special: 'poison', // Proxy for life drain mechanics
+        special: 'poison', 
         xpMult: 1.5, color: '#be123c' 
     },
     "Frenzied": {
@@ -247,17 +271,19 @@ window.ENEMY_PREFIXES = {
         statModifiers: { attack: 1, defense: 0, maxHealth: 10 },
         special: 'madness', xpMult: 2.0, color: '#581c87' 
     },
-    // --- LORE EXPANSION ---
     "Accursed": {
         description: "A dark aura surrounds it. Deals psychic damage.",
         statModifiers: { attack: 1, defense: 1, maxHealth: 5 },
         special: 'madness', xpMult: 1.7, color: '#111827'
+    },
+    "Luminous": {
+        description: "Radiates blinding holy light.",
+        statModifiers: { attack: 0, defense: 0, maxHealth: 15 },
+        special: null, xpMult: 1.8, color: '#fef08a'
     }
 };
 
-// 🚨 V8 OPTIMIZATION: Unified object shapes. 
-// Explicitly declaring every possible combat stat prevents the V8 engine from having to constantly 
-// resize the hidden class shape of the object in memory, stopping massive micro-stutters during enemy iteration!
+// 🚨 V8 OPTIMIZATION: Strict schemas applied to ENEMY_DATA
 window.ENEMY_DATA = {
     // --- LEVEL 1 (Vermin & Weaklings) ---
     'r': {
@@ -273,7 +299,7 @@ window.ENEMY_DATA = {
         maxHealth: 2, attack: 1, defense: 0, xp: 5,
         caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
         inflicts: null, inflictChance: 0, teleporter: false,
-        loot: '🦇', color: '#52525b', isBoss: false, excludeFromLoot: false,
+        loot: '🦇w', color: '#52525b', isBoss: false, excludeFromLoot: false,
         flavor: "It swoops down from the darkness, hunting by the sound of your heartbeat."
     },
     '🐍': {
@@ -307,6 +333,14 @@ window.ENEMY_DATA = {
         inflicts: null, inflictChance: 0, teleporter: false,
         loot: '⚙️', color: '#b45309', isBoss: false, excludeFromLoot: false,
         flavor: "Ticking brass and rusted gears. It bleeds black oil instead of blood, yet fights with unnatural ferocity."
+    },
+    '🦀m': {
+        name: 'Mud Crab', tags: ['beast', 'aquatic'], mountable: false,
+        maxHealth: 5, attack: 1, defense: 4, xp: 7,
+        caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
+        inflicts: null, inflictChance: 0, teleporter: false,
+        loot: '🍖', color: '#ca8a04', isBoss: false, excludeFromLoot: false,
+        flavor: "A scavenger of the shores. Its shell is surprisingly tough for its size."
     },
 
     // --- DESERT WILDLIFE ---
@@ -403,6 +437,14 @@ window.ENEMY_DATA = {
         inflicts: null, inflictChance: 0, teleporter: false,
         loot: '🍖', color: '#b45309', isBoss: false, excludeFromLoot: false,
         flavor: "It watches you warily, heavy antlers lowered in a defensive stance."
+    },
+    '🌳c': {
+        name: 'Corrupted Treant', tags: ['monster', 'wood'], mountable: false,
+        maxHealth: 30, attack: 4, defense: 2, xp: 45,
+        caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
+        inflicts: 'root', inflictChance: 0.2, teleporter: false,
+        loot: '🪵', color: '#064e3b', isBoss: false, excludeFromLoot: false,
+        flavor: "Black sap oozes from its bark. The forest itself seems to reject it."
     },
 
     // --- LEVEL 2-3 (Standard Threats) ---
@@ -512,6 +554,14 @@ window.ENEMY_DATA = {
         loot: '"', color: '#fcd34d', isBoss: false, excludeFromLoot: false,
         flavor: "It circles high above the peaks, its massive talons capable of lifting a grown man."
     },
+    '🧝‍♀️d': {
+        name: 'Dryad', tags: ['fae', 'magic', 'wood'], mountable: false,
+        maxHealth: 25, attack: 4, defense: 2, xp: 50,
+        caster: true, castRange: 5, spellDamage: 5, isRanged: false, range: 0,
+        inflicts: 'root', inflictChance: 0.4, teleporter: false,
+        loot: '🌿', color: '#22c55e', isBoss: false, excludeFromLoot: false,
+        flavor: "A fierce protector of the grove. Her skin is bark and her hair is woven leaves."
+    },
 
     // --- LEVEL 4-5 (Advanced Threats) ---
     '@': {
@@ -569,6 +619,22 @@ window.ENEMY_DATA = {
         inflicts: 'madness', inflictChance: 0.5, teleporter: false,
         loot: 'vd', color: '#c084fc', isBoss: false, excludeFromLoot: false,
         flavor: "A floating, unblinking eye born from the cosmic tear. It sees your darkest regrets."
+    },
+    '🗿g': {
+        name: 'Gargoyle', tags: ['construct', 'stone', 'flying'], mountable: false,
+        maxHealth: 25, attack: 6, defense: 4, xp: 55,
+        caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
+        inflicts: null, inflictChance: 0, teleporter: false,
+        loot: '🪨', color: '#78716c', isBoss: false, excludeFromLoot: false,
+        flavor: "A grotesque stone statue that suddenly animates, dropping from the ramparts to attack."
+    },
+    '🦇v': {
+        name: 'Vampire Bat', tags: ['beast', 'flying'], mountable: false,
+        maxHealth: 12, attack: 4, defense: 0, xp: 30,
+        caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
+        inflicts: 'poison', inflictChance: 0.2, teleporter: false, // "Poison" as a proxy for disease/blood drain
+        loot: '🦇w', color: '#9f1239', isBoss: false, excludeFromLoot: false,
+        flavor: "Unnaturally large and thirsty for warm blood."
     },
 
     // --- LEVEL 6+ (Elites) ---
@@ -708,6 +774,14 @@ window.ENEMY_DATA = {
         loot: '🗡️', color: '#9f1239', isBoss: false, excludeFromLoot: false,
         flavor: "He fights with reckless, terrifying abandon, eager to martyr himself for the Void."
     },
+    '🧌i': {
+        name: 'Iron Minotaur', tags: ['construct', 'metal', 'giant'], mountable: false,
+        maxHealth: 70, attack: 10, defense: 5, xp: 250,
+        caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
+        inflicts: 'stun', inflictChance: 0.3, teleporter: false,
+        loot: '⚙️', color: '#374151', isBoss: false, excludeFromLoot: false,
+        flavor: "A terrifying labyrinth guardian forged of solid pig iron."
+    },
 
     // --- NEW BEASTS (Tanky & Dangerous) ---
     '🧌': { 
@@ -770,7 +844,7 @@ window.ENEMY_DATA = {
     },
 
     // ==========================================
-    // --- THE FINAL BOSS ---
+    // --- THE RAID BOSSES ---
     // ==========================================
     '☠️': {
         name: 'Alaric, The Fallen King', tags: ['undead', 'void', 'boss'], mountable: false,
@@ -787,6 +861,22 @@ window.ENEMY_DATA = {
         inflicts: null, inflictChance: 0, teleporter: false,
         loot: '🏆', color: '#dc2626', isBoss: true, excludeFromLoot: false,
         flavor: "A towering gladiator constructed of fossilized bone and volcanic ash. It has stood undefeated across a thousand lifetimes. It points its weapon directly at you."
+    },
+    '👸f': {
+        name: 'The Fae Queen', tags: ['fae', 'magic', 'boss'], mountable: false,
+        maxHealth: 500, attack: 12, defense: 3, xp: 3000,
+        caster: true, castRange: 6, spellDamage: 15, isRanged: false, range: 0,
+        inflicts: 'madness', inflictChance: 0.5, teleporter: true,
+        loot: '✨', color: '#d946ef', isBoss: true, excludeFromLoot: false,
+        flavor: "She is terrifyingly beautiful. The forest bends and twists at her command, eager to crush interlopers."
+    },
+    '🤖p': {
+        name: 'Clockwork Prime', tags: ['construct', 'metal', 'boss'], mountable: false,
+        maxHealth: 800, attack: 16, defense: 10, xp: 4000,
+        caster: true, castRange: 4, spellDamage: 10, isRanged: false, range: 0, // Lasers!
+        inflicts: 'burn', inflictChance: 0.3, teleporter: false,
+        loot: '⚙️', color: '#fbbf24', isBoss: true, excludeFromLoot: false,
+        flavor: "A gargantuan engine of destruction from the Second Age. It glows with terrifying, superheated energy."
     }
 };
 
@@ -830,6 +920,27 @@ window.PLAYER_BACKGROUNDS = {
             { templateId: '4', name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap', tags: [] }
         ]
     },
+    // --- LORE EXPANSION CLASSES ---
+    'cleric': {
+        name: 'Cleric',
+        description: 'A devout healer and banisher of the unholy, clad in heavy armor.',
+        stats: { willpower: 2, constitution: 1 },
+        items: [
+            { templateId: '🏏', name: 'Wooden Club', type: 'weapon', quantity: 1, tile: '🏏', damage: 2, slot: 'weapon', tags: ['blunt'] },
+            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] },
+            { templateId: '📖', name: 'Spellbook: Lesser Heal', type: 'spellbook', quantity: 1, tile: '📖', spellId: 'lesserHeal', tags: [] }
+        ]
+    },
+    'hunter': {
+        name: 'Hunter',
+        description: 'A master of the wilds, using bows and taming beasts.',
+        stats: { perception: 2, dexterity: 1 },
+        items: [
+            { templateId: '🏹', name: 'Shortbow', type: 'weapon', quantity: 1, tile: '🏹', damage: 2, range: 4, isTwoHanded: true, slot: 'weapon', skillId: 'ranged_attack', statBonuses: { dexterity: 1 }, tags: ['bow'] },
+            { templateId: '➹', name: 'Wooden Arrow', type: 'ammo', quantity: 25, tile: '➹', damage: 1, slot: 'ammo', tags: [] },
+            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] }
+        ]
+    },
     'wretch': {
         name: 'The Wretch',
         description: 'Naked, afraid, and penniless. A true challenge for veterans.',
@@ -861,9 +972,9 @@ window.EVOLUTION_DATA = {
             stats: { dexterity: 4, wits: 2 }, talent: 'shadow_strike'
         },
         {
-            id: 'ranger', name: 'Ranger', icon: '🏹',
-            description: "A lethal and precise marksman.", 
-            stats: { dexterity: 3, perception: 3 }, talent: 'eagle_eye'
+            id: 'duelist', name: 'Duelist', icon: '🤺',
+            description: "A master of parrying and riposte.", 
+            stats: { dexterity: 3, endurance: 3 }, talent: 'evasion'
         }
     ],
     'mage': [
@@ -883,6 +994,35 @@ window.EVOLUTION_DATA = {
             id: 'lich', name: 'Lich', icon: '💀',
             description: "You have conquered death itself.",
             stats: { wits: 4, willpower: 4 }, talent: 'undeath'
+        },
+        {
+            id: 'warlock', name: 'Warlock', icon: '🔥',
+            description: "Channels raw demonic energy.",
+            stats: { willpower: 5, charisma: 3 }, talent: 'soul_siphon'
+        }
+    ],
+    'cleric': [
+        {
+            id: 'inquisitor', name: 'Inquisitor', icon: '✝️',
+            description: "A ruthless hunter of the shadowed hand.",
+            stats: { strength: 3, willpower: 3 }, talent: 'holy_aura'
+        },
+        {
+            id: 'oracle', name: 'Oracle', icon: '🔮',
+            description: "Sees the truth in all things.",
+            stats: { wits: 4, perception: 4 }, talent: 'arcane_potency'
+        }
+    ],
+    'hunter': [
+        {
+            id: 'beastmaster', name: 'Beastmaster', icon: '🐾',
+            description: "Commands the wilds to fight alongside them.",
+            stats: { charisma: 4, endurance: 2 }, talent: 'beast_whisperer'
+        },
+        {
+            id: 'sniper', name: 'Sniper', icon: '🏹',
+            description: "Lethal precision from the shadows.",
+            stats: { dexterity: 4, perception: 4 }, talent: 'eagle_eye'
         }
     ],
     'wretch': [
@@ -1049,6 +1189,31 @@ window.SPELL_DATA = {
         scalingStat: "intuition",
         cost: 15, costType: "mana", requiredLevel: 4, target: "self", type: "buff", baseReflect: 2, duration: 5, element: "earth",
         cooldown: 5, baseDamage: 0, baseHeal: 0, baseShield: 0, baseRestore: 0, healPercent: 0, radius: 0, AoE: false, inflicts: null, inflictChance: 0
+    },
+    
+    // --- LORE EXPANSION SPELLS ---
+    "holyNova": {
+        name: "Holy Nova",
+        description: "A burst of divine light that heavily damages all adjacent Undead and Demons. Scales with {blue:Wits}.",
+        flavor: "A miniature sun detonates, searing away the darkness.",
+        scalingStat: "wits",
+        cost: 18, costType: "mana", requiredLevel: 6, target: "self", baseDamage: 8, element: "holy", radius: 1, AoE: true,
+        cooldown: 6, type: null, duration: 0, baseHeal: 0, baseShield: 0, baseRestore: 0, baseReflect: 0, healPercent: 0, inflicts: null, inflictChance: 0
+    },
+    "voidStep": {
+        name: "Void Step",
+        description: "Teleport 3 tiles in any direction and gain {gray:Stealth} for 1 turn. (Cannot pass walls).",
+        flavor: "You fold space itself, stepping through the gaps between dimensions.",
+        cost: 15, costType: "psyche", requiredLevel: 5, target: "aimed", type: "movement", duration: 1, element: "void",
+        cooldown: 8, scalingStat: null, baseDamage: 0, baseHeal: 0, baseShield: 0, baseRestore: 0, baseReflect: 0, healPercent: 0, radius: 0, AoE: false, inflicts: null, inflictChance: 0
+    },
+    "earthSpike": {
+        name: "Earth Spike",
+        description: "Impales a target with a massive stone pillar, rooting them. Scales with {yellow:Intuition}.",
+        flavor: "The ground ruptures as a stalagmite shoots upward to spear your enemy.",
+        scalingStat: "intuition",
+        cost: 14, costType: "mana", requiredLevel: 4, target: "aimed", baseDamage: 6, inflicts: "root", inflictChance: 0.8, element: "earth",
+        cooldown: 3, type: null, duration: 0, baseHeal: 0, baseShield: 0, baseRestore: 0, baseReflect: 0, healPercent: 0, radius: 0, AoE: false
     }
 };
 
@@ -1114,6 +1279,19 @@ window.TALENT_DATA = {
         flavor: "Your aim is true and your arrows strike deep.",
         class: "ranger", icon: "👁️"
     },
+    "pack_mule": {
+        name: "Pack Mule",
+        description: "Permanently expands your inventory capacity by {blue:+3 slots}.",
+        flavor: "You have learned how to expertly pack and carry heavy loads.",
+        class: "general", icon: "🎒"
+    },
+    "beast_whisperer": {
+        name: "Beast Whisperer",
+        description: "Beasts are {green:20% easier to tame}, and your mount gains +10 Max HP.",
+        flavor: "The creatures of the wild respect your dominance.",
+        class: "hunter", icon: "🐾"
+    },
+    
     // --- EVOLUTION TALENTS ---
     "blood_rage": {
         name: "Blood Rage",
@@ -1297,6 +1475,32 @@ window.SKILL_DATA = {
         scalingStat: "dexterity",
         cost: 4, costType: "stamina", requiredLevel: 1, target: "aimed", baseDamageMultiplier: 1.0, cooldown: 0, weaponTags: ['bow', 'crossbow'],
         type: null, baseDefense: 0, duration: 0, AoE: false
+    },
+    
+    // --- LORE EXPANSION SKILLS ---
+    "mutilate": {
+        name: "Mutilate",
+        description: "A vicious double-strike. Deals massive damage but has a long cooldown. (Dagger only)",
+        flavor: "You strike twice before the enemy can even react.",
+        scalingStat: "dexterity",
+        cost: 15, costType: "stamina", requiredLevel: 5, target: "aimed", baseDamageMultiplier: 2.0, cooldown: 12, weaponTags: ['dagger'],
+        type: null, baseDefense: 0, duration: 0, AoE: false
+    },
+    "volley": {
+        name: "Volley",
+        description: "Fires arrows at {red:all adjacent tiles}. Scales with {green:Dexterity}. (Bow only)",
+        flavor: "You draw and loose multiple arrows in a single, fluid motion.",
+        scalingStat: "dexterity",
+        cost: 12, costType: "stamina", requiredLevel: 4, target: "self", baseDamageMultiplier: 0.8, cooldown: 5, weaponTags: ['bow'],
+        type: null, baseDefense: 0, duration: 0, AoE: true
+    },
+    "shieldWall": {
+        name: "Shield Wall",
+        description: "A massive, impassable guard. {blue:+10 Defense} for 3 turns. (Shield only)",
+        flavor: "You plant your feet and become an unbreakable fortress.",
+        scalingStat: "constitution",
+        cost: 15, costType: "stamina", requiredLevel: 4, target: "self", type: "buff", baseDefense: 10, duration: 3, cooldown: 8, weaponTags: ['shield'],
+        baseDamageMultiplier: 0, AoE: false
     }
 };
 
