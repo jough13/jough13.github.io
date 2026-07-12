@@ -436,7 +436,8 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
     // 8. Handle Arrays
     if (Array.isArray(obj)) {
         // O(1) Fast-Path for empty arrays (Saves a ton of time on empty bank/inventory syncs)
-        if (obj.length === 0) return [];
+        // Firebase RTDB drops empty arrays. Returning null ensures a predictable fallback!
+        if (obj.length === 0) return null; 
 
         // Pre-allocate array size for a slight speed boost on massive inventories
         const newArr = new Array(obj.length);
