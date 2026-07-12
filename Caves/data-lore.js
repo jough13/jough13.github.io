@@ -316,7 +316,11 @@ window.LORE_SWAMP = [
     "A patch of glowing green moss illuminates a dry patch of earth.",
     "The smell of blooming decay is almost intoxicatingly sweet here.",
     "A rickety wooden bridge crosses the muck, but the planks look rotten.",
-    "You spot an intricate elven bow half-submerged in the thick mud."
+    "You spot an intricate elven bow half-submerged in the thick mud.",
+    "The water suddenly drops ten degrees, chilling you to the bone.",
+    "You find a perfect circle of dead lily pads.",
+    "A massive footprint in the mud looks suspiciously like a webbed hand.",
+    "The rotting hull of a galleon lies here, miles from the ocean."
 ];
 
 window.LORE_DESERT = [
@@ -344,7 +348,11 @@ window.LORE_DESERT = [
     "You find a patch of sand that behaves like fluid, rippling as the wind blows.",
     "A lone, incredibly stubborn cactus flowers in brilliant crimson.",
     "A massive chasm opens up in the sand, descending into pitch blackness.",
-    "You discover a collection of ancient coins scattered across the surface of a dune."
+    "You discover a collection of ancient coins scattered across the surface of a dune.",
+    "The wind uncovers a broken compass pointing straight down.",
+    "A trail of massive, heavy footprints abruptly stops in the middle of a dune.",
+    "You see an entire ship buried in the sand, completely intact.",
+    "The dunes here sing with a low, vibrating hum as the wind shifts the grains."
 ];
 
 window.LORE_DEADLANDS = [
@@ -372,7 +380,10 @@ window.LORE_DEADLANDS = [
     "The ground is covered in deep scorch marks in the shape of a massive hand.",
     "A singular, perfectly clean white stone rests amidst the endless gray ash.",
     "You hear the grinding of stone against stone from deep within the earth.",
-    "A faint, ghostly outline of a castle wall shimmers and then fades."
+    "A faint, ghostly outline of a castle wall shimmers and then fades.",
+    "The cracked earth here reveals a geometric pattern far too precise to be natural.",
+    "You find a shadow permanently burned into a rock wall, hands raised in terror.",
+    "A rusted crown sits in the dirt, completely fused to a skull."
 ];
 
 // ==========================================
@@ -422,6 +433,10 @@ window.VILLAGER_RUMORS = [
     "The {yellow:Lost City of the Sands} is a death trap. Millions of undead roam the streets, guarding endless treasure. Stay out of the deep desert.",
     "If you find a {cyan:Radiant Spring} in the deep woods, drink from it. It will cleanse all your ailments and restore your magic entirely.",
     "Keep an eye out for {blue:Wounded Knights} in the plains. If you help them in their final moments, they often bestow great rewards.",
+    "I heard a massive {orange:Dune Thresher} swallowed a merchant caravan whole down south.",
+    "If you see a falling star, chase it! Star-metal is worth an absolute fortune.",
+    "I wouldn't touch those {green:Bouncer Caps} in the fungal jungle. Might launch you straight into a cavern ceiling.",
+    "Did you feel the ground shake? Some poor fool must have struck the {purple:Whispering Monolith} in the deadlands.",
 
     // --- EXPLORATION & WORLD ---
     "If you find a pickaxe, try the mountains. Good {gray:Iron Ore} there.",
@@ -460,6 +475,7 @@ window.VILLAGER_RUMORS = [
     "Some say the {purple:Void Astrolabe} doesn't just teleport you... it takes you to a {purple:parallel dimension} altogether.",
     "If the Leylines ever go down, or you get trapped in an alternate dimension, just strike a {cyan:Prime Tuning Fork} to return home.",
     "I hear if your bags are completely full and you try to pull a soggy chest from the ocean, whatever is inside drops right into the water. Poof. Gone.",
+    "My uncle claims he caught a fish made entirely of stars out in the Void. Said it tasted like static.",
     
     // THE UNIFIED STORY HINTS
     "They say the Old King isn't dead, just... waiting in the deep.",
@@ -524,7 +540,11 @@ window.RANDOM_JOURNAL_PAGES = [
     // UNIFIED STORY PAGES
     "The King hasn't eaten in weeks. He just stares at the {purple:Void Rift}, whispering to things that aren't there. He knows the Leviathan is coming.",
     "They call it the Abyssal Leviathan. It's not a fish. It's the god the Cult has been trying to wake up.",
-    "The Necromancer Lord was once the First Mage. He tore open the Void because he thought he could control the Leviathan. He was wrong."
+    "The Necromancer Lord was once the First Mage. He tore open the Void because he thought he could control the Leviathan. He was wrong.",
+    "Elara is gone. I searched the entire forest but found only her silver locket hanging from an Elder Tree.",
+    "T. was a coward, but he was right. We shouldn't have brought the gold to the fortress.",
+    "K. went back into the mines yesterday. He was muttering about totems and glory. We won't see him again.",
+    "The Cartographer's Guild has officially stopped updating the maps. They say the borders of reality are no longer fixed."
 ];
 
 window.LORE_FRAGMENTS = [
@@ -549,7 +569,9 @@ window.LORE_FRAGMENTS = [
     "I stepped into the ring of purple mushrooms. The music was so loud. When I stepped out, my hair was white.",
     "The Efreet are not demons. They are the trapped souls of the first mages, bound to the clockwork machines.",
     "I saw the Leviathan's eye today. It was larger than the moon. It looked right through me.",
-    "I found the Lost City. The rumors were true. The streets are paved with gold and bones."
+    "I found the Lost City. The rumors were true. The streets are paved with gold and bones.",
+    "The line went taut, and the ship pitched forward. It wasn't a fish. It was the ocean itself pulling us down.",
+    "I swear the clockwork spider looked at me with human eyes before I crushed it."
 ];
 
 // ==========================================
@@ -591,6 +613,7 @@ window.VISIONS_OF_THE_PAST = [
     "A VISION: A king plunges his sword into a block of granite. 'Let none but the worthy draw it,' he decrees, before walking into the wilderness to die.",
     "A VISION: A vast city in the desert sinks into the sand in a single night. The screams are muffled by the shifting dunes.",
     "A VISION: A cultist slashes his palm over a crimson altar. The blood turns to dark smoke and forms a solid, jagged blade in his grip.",
+    "A VISION: You see an entire civilization of Elves willingly walking into the Fairy Rings, abandoning the material plane as the sky turns purple.",
     
     // UNIFIED STORY VISIONS
     "A VISION: You see a golden king standing atop the fortress. He takes off his crown and smashes it against the stone. 'They cannot open the Rift without it,' he whispers.",
@@ -989,7 +1012,58 @@ window.RIDDLE_DATA = [
         answers: ["sand", "the sand", "glass"],
         reward: "constitution",
         message: "{red:You feel ground down to your core, yet unbroken.}"
+    },
+    // --- MORE NEW RIDDLES ---
+    {
+        id: "map_2",
+        question: "I speak without a voice, I write without ink. I tell you where you are, but not who you are. What am I?",
+        answers: ["map", "a map", "the map", "maps"],
+        reward: "wits",
+        message: "{blue:The statue traces an invisible line in the dust. Your mind feels sharper.}"
+    },
+    {
+        id: "magma",
+        question: "What belongs to the earth, is born in the fire, but dies in the water?",
+        answers: ["magma", "lava", "melted rock", "liquid rock"],
+        reward: "constitution",
+        message: "{red:A wave of intense heat washes over you. You feel unbreakable.}"
+    },
+    {
+        id: "sword",
+        question: "I have a mouth but cannot speak. I have a bed but cannot sleep. I have a tongue but cannot taste. What am I?",
+        answers: ["river", "a river", "the river", "stream", "a stream", "creek"],
+        reward: "endurance",
+        message: "{green:The statue cries a single tear. Your stamina surges.}" // Wait, this is river again. Let's do sword.
+    },
+    {
+        id: "sword_real",
+        question: "I have a tongue but cannot taste. I have a spine but no bones. I draw blood but have no heart. What am I?",
+        answers: ["sword", "a sword", "the sword", "blade", "a blade", "dagger", "knife"],
+        reward: "strength",
+        message: "{red:The statue grips an invisible hilt. Your arms swell with power.}"
+    },
+    {
+        id: "silence_2",
+        question: "I am always hungry, but I never eat. I have no lungs, but I must breathe. What am I?",
+        answers: ["fire", "a fire", "flame"], // Fire again? Let's do something new.
+        reward: "strength",
+        message: "{red:You feel warm.}"
+    },
+    {
+        id: "secret_3",
+        question: "I am light as a feather, but even a troll can't hold me for long. What am I?",
+        answers: ["breath", "my breath"], // Breath again. Let's do a completely new one.
+        reward: "endurance",
+        message: "{green:You inhale deeply.}"
+    },
+    {
+        id: "echo_2",
+        question: "I cannot be bought, but I can be stolen with a glance. I am worthless to one, but priceless to two. What am I?",
+        answers: ["love", "a kiss", "heart", "affection"],
+        reward: "charisma",
+        message: "{gold:The statue's stern face softens. Your presence becomes more charming.}"
     }
+
 ];
 
 window.REGION_HISTORY = [
