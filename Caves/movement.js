@@ -10,7 +10,14 @@ window.toggleMount = function() {
     // Dismount
     if (p.isMounted) {
         p.isMounted = false;
-        logMessage(`You dismount your ${p.companion.name}.`);
+        
+        // Guard against missing companion data
+        if (p.companion && p.companion.name) {
+            logMessage(`You dismount your ${p.companion.name}.`);
+        } else {
+            logMessage(`You return to your feet.`);
+        }
+        
         if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
         gameState.mapDirty = true;
         if (typeof render === 'function') render();
