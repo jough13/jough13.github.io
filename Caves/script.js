@@ -602,6 +602,27 @@ async function restartGame() {
         defaultState.mana = defaultState.maxMana;
     }
 
+    // --- APPLY HARDCORE RESPAWN PENALTY ---
+    const starterRags = { 
+        templateId: 'x', 
+        name: 'Tattered Rags', 
+        type: 'armor', 
+        quantity: 1, 
+        tile: 'x', 
+        defense: 0, 
+        slot: 'armor', 
+        isEquipped: true 
+    };
+
+    defaultState.inventory = [starterRags];
+    defaultState.equipment = {
+        weapon: { name: 'Fists', damage: 0 },
+        armor: starterRags, 
+        offhand: null,
+        accessory: null,
+        ammo: null
+    };
+
     Object.assign(gameState.player, defaultState);
 
     gameState.mapMode = 'overworld';
@@ -629,7 +650,7 @@ async function restartGame() {
         mapId: null
     };
 
-    await playerRef.set(resetPayload);
+    await playerRef.set(sanitizeForFirebase(resetPayload));
 
     logMessage("Your adventure begins anew...");
     updateRegionDisplay();
@@ -3259,115 +3280,6 @@ document.addEventListener('visibilitychange', () => {
         }
     }
 });
-
-// --- Restart / Respawn Handler ---
-restartButton.onclick = () => {
-    const player = gameState.player;
-
-    // 1. Reset Position (The "Original Coordinates")
-    player.x = 0;
-    player.y = 0;
-
-    // 2. Preserve Class/Race Base Stats while restoring Vitals
-    // We do NOT call createDefaultPlayerState() here because we want to keep
-    // their name, race, class, talents, map pins, and metrics!
-    
-    // If they have the Elixir bonuses from our previous fix, preserve them!
-    const permHpBonus = player.bonusMaxHealth || 0;
-    const permManaBonus = player.bonusMaxMana || 0;
-    const permStamBonus = player.bonusMaxStamina || 0;
-    const permPsychBonus = player.bonusMaxPsyche || 0;
-    
-    if (typeof recalculateDerivedStats === 'function') {
-        recalculateDerivedStats();
-    }
-    
-    player.health = player.maxHealth;
-    player.stamina = player.maxStamina;
-    player.mana = player.maxMana;
-    player.psyche = player.maxPsyche;
-    
-    player.hunger = player.maxHunger;
-    player.thirst = player.maxThirst;
-    
-    // Clear temporary buffs/debuffs
-    player.poisonTurns = 0;
-    player.frostbiteTurns = 0;
-    player.burnTurns = 0;
-    player.madnessTurns = 0;
-    player.rootTurns = 0;
-    player.strengthBonusTurns = 0;
-    player.defenseBonusTurns = 0;
-    player.shieldTurns = 0;
-    
-    // Clear companion
-    player.companion = null;
-
-    // 3. Give Starter Gear (Hardcore penalty: Rags)
-    const starterRags = { 
-        templateId: 'x', // Added templateId for perfect DB hydration
-        name: 'Tattered Rags', 
-        type: 'armor', 
-        quantity: 1, 
-        tile: 'x', 
-        defense: 0, 
-        slot: 'armor', 
-        isEquipped: true 
-    };
-
-    player.inventory = [starterRags];
-    
-    // The equipment slot MUST reference the exact object in the inventory array!
-    player.equipment = {
-        weapon: { name: 'Fists', damage: 0 },
-        armor: starterRags, 
-        offhand: null,
-        accessory: null,
-        ammo: null
-    };
-
-    // 4. Reset Map Mode to Overworld
-    gameState.mapMode = 'overworld';
-    gameState.currentCaveId = null;
-    gameState.currentCastleId = null;
-    
-    // --- RESET REALM ---
-    gameState.currentRealm = 0;
-    gameState.realmMutators = [];
-
-    // --- RELEASE THE DEATH LOCK ---
-    gameState.isDead = false;
-
-    // Clear exploration arrays for new run
-    gameState.discoveredRegions.clear();
-    gameState.exploredChunks.clear();
-    gameState.lootedTiles.clear(); 
-    gameState.player.discoveredPOIs = [];
-
-    // Ensure the database explicitly receives the realm reset
-    const resetPayload = {
-        ...defaultState,
-        currentRealm: 0,
-        realmMutators: [],
-        mapMode: 'overworld',
-        mapId: null
-    };
-
-    playerRef.set(sanitizeForFirebase(resetState));
-
-    // 6. UI Cleanup
-    gameOverModal.classList.add('hidden');
-    logMessage("{green:You open your eyes... you have been given a second chance.}");
-
-    // Force full re-render
-    updateRegionDisplay();
-    renderStats();
-    renderInventory();
-    renderEquipment();
-
-    resizeCanvas();
-    render();
-};
 
 // --- Main Menu Handler ---
 const mainMenuBtn = document.getElementById('mainMenuButton');
