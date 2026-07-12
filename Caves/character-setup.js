@@ -324,8 +324,19 @@ document.addEventListener('DOMContentLoaded', () => {
 function selectCreationOption(type, key, element) {
     creationState[type] = key;
     
-    // JUICE WIN: Soft magical hum when selecting identity traits
-    if (typeof AudioSystem !== 'undefined') AudioSystem.playTone(600, 'sine', 0.1, 0.05, false);
+    // JUICE WIN: Make the selection feel extremely punchy
+    if (typeof AudioSystem !== 'undefined') {
+        AudioSystem.playTone(600, 'sine', 0.1, 0.05, false);
+        AudioSystem.playNoise(0.05, 0.1, 1000); // Thud
+    }
+    
+    // JUICE WIN: Screen shake on the modal itself!
+    const modal = document.getElementById('charCreationModal');
+    if (modal) {
+        modal.classList.remove('shake');
+        void modal.offsetWidth; // trigger reflow
+        modal.classList.add('shake');
+    }
 
     const container = element.parentElement;
     Array.from(container.children).forEach(child => child.classList.remove('selected', 'bg-blue-900', 'bg-opacity-20'));
@@ -340,7 +351,7 @@ function updateCreationSummary() {
     
     if (!nameInput) return;
 
-    // Clean the input, strip special characters, and strictly enforce length limit
+    // 🚨 BUG FIX & SECURITY WIN: Force strict slice before assigning to state to prevent DB injection
     let rawName = nameInput.value.replace(/[^a-zA-Z0-9 \-']/g, '').replace(/\s+/g, ' ').trimStart().slice(0, 16);
     
     // QoL WIN: Auto Title-Case the name (e.g. "gandalf the grey" -> "Gandalf The Grey")
@@ -404,36 +415,39 @@ function updateCreationSummary() {
         </div>
     ` : '';
     
-    // LORE WIN: Context-Aware "Omen" Flavor Text based on the combination chosen!
-    let omenHtml = '';
+    // LORE WIN: Context-Aware "Origin Story" Flavor Text based on the combination chosen!
+    let originHtml = '';
     if (creationState.name && creationState.race && creationState.background && typeof stringToSeed === 'function') {
-        const omens = [
-            "The leylines hum with anticipation.",
-            "The Akashic Records open to a blank page.",
-            "The Weavers of Fate thread a new needle.",
-            "A distant raven caws. An omen of change."
+        // Base structure: "[Name], a [Race] [Class], [Origin Hook]."
+        const origins = [
+            "was drawn to the Shattered Realms by whispers in the dark.",
+            "seeks redemption for a past they cannot remember.",
+            "hopes to find the legendary artifacts of the First Age.",
+            "was exiled from their homeland for a crime they did not commit.",
+            "is the last surviving member of their bloodline.",
+            "seeks to chart the unmapped boundaries of the Void.",
+            "is driven by an unquenchable thirst for gold and glory."
         ];
         
         // Inject class/race specific flavor texts into the pool!
-        if (creationState.background === 'necromancer') omens.push("The shadows cling to you eagerly.", "A cold wind blows from the Void.");
-        if (creationState.background === 'mage') omens.push("Arcane sparks dance at your fingertips.", "The air smells faintly of ozone.");
-        if (creationState.background === 'warrior') omens.push("The clash of steel echoes in your fate.", "Your grip tightens instinctively.");
-        if (creationState.background === 'rogue') omens.push("You step lightly, unseen by the stars.", "A sudden chill drafts through the room.");
-        if (creationState.background === 'wretch') omens.push("The world pities you. Prove it wrong.", "You have nothing left to lose.");
-        if (creationState.background === 'cleric') omens.push("The light casts long shadows behind you.", "You feel a heavy, holy burden settle upon your shoulders.");
-        if (creationState.background === 'hunter') omens.push("The wild things recognize you as kin.", "Your senses sharpen to a razor's edge.");
+        if (creationState.background === 'necromancer') origins.push("studies the forbidden arts of the Old King.", "seeks to conquer death itself.");
+        if (creationState.background === 'mage') origins.push("was expelled from the Academy for reckless experiments.", "feels the leylines humming in their blood.");
+        if (creationState.background === 'warrior') origins.push("survived the brutal arenas of the capital.", "fights to honor a fallen comrade.");
+        if (creationState.background === 'rogue') origins.push("knows every shadow and alleyway in the Safe Haven.", "trusts no one but their own blade.");
+        if (creationState.background === 'wretch') origins.push("has lost absolutely everything.", "is pitied by the gods themselves.");
+        if (creationState.background === 'cleric') origins.push("is guided by a blinding, holy light.", "seeks to cleanse the world of the Shadowed Hand.");
+        if (creationState.background === 'hunter') origins.push("feels more at home among beasts than men.", "is tracking a legendary monster.");
         
-        if (creationState.race === 'elf') omens.push("The ancient woods remember your bloodline.", "A forgotten song echoes in your ears.");
-        if (creationState.race === 'dwarf') omens.push("The earth rumbles in greeting.", "Stone recognizes stone.");
-        if (creationState.race === 'orc') omens.push("Your ancestors roar in approval.", "Blood calls to blood.");
-        if (creationState.race === 'goliath') omens.push("The mountains bow to your presence.", "You feel the crushing weight of the peaks.");
-        if (creationState.race === 'faeblood') omens.push("The air shimmers around you with unnatural colors.", "A strange, melodic giggle dances on the wind.");
-        if (creationState.race === 'voidkissed') omens.push("The darkness feels warm and welcoming.", "A thousand unblinking eyes watch over you.");
+        if (creationState.race === 'elf') origins.push("remembers the world before the sky cracked.");
+        if (creationState.race === 'dwarf') origins.push("was buried alive, and dug their way out.");
+        if (creationState.race === 'goliath') origins.push("descended from the frozen peaks to test their strength.");
+        if (creationState.race === 'voidkissed') origins.push("hears the Leviathan singing in their dreams.");
         
-        // Use a mathematical hash of the player's choices to ensure the omen remains stable for that combo!
-        const omenSeed = stringToSeed(creationState.name + creationState.race + creationState.background);
-        const selectedOmen = omens[Math.abs(omenSeed) % omens.length];
-        omenHtml = `<div class="mt-3 pt-2 border-t border-gray-700 text-[10px] text-purple-400 italic text-center animate-pulse drop-shadow-sm">"${selectedOmen}"</div>`;
+        // Use a mathematical hash of the player's choices to ensure the origin remains stable for that combo!
+        const originSeed = stringToSeed(creationState.name + creationState.race + creationState.background);
+        const selectedOrigin = origins[Math.abs(originSeed) % origins.length];
+        
+        originHtml = `<div class="mt-3 pt-2 border-t border-gray-700 text-xs text-gray-300 italic text-center font-serif leading-relaxed drop-shadow-sm"><span class="text-blue-300 font-bold">${safeName}</span>, a ${raceName} ${className}, ${selectedOrigin}</div>`;
     }
 
     if (summaryDiv) {
@@ -446,15 +460,11 @@ function updateCreationSummary() {
                     <div class="text-xs text-yellow-500 font-bold" style="font-family: 'Uncial Antiqua', cursive;">${className}</div>
                 </div>
             </div>
-            ${(raceDesc || classDesc) ? `
-            <div class="text-xs italic text-gray-400 mb-3 border-l-2 border-gray-600 pl-2">
-                ${raceDesc} ${classDesc}
-            </div>` : ''}
-            <div class="text-xs border-t pt-2 border-gray-600 text-gray-300 font-bold">
+            ${originHtml}
+            <div class="text-xs mt-3 pt-2 border-t border-gray-600 text-gray-300 font-bold">
                 ${stats.length > 0 ? stats.join('<br>') : "<span class='italic opacity-50 font-normal'>Select Race & Class to see bonuses.</span>"}
             </div>
             ${vitalsHtml}
-            ${omenHtml}
         `;
     }
 
@@ -491,6 +501,7 @@ setTimeout(() => {
     if (nameInput) {
         // SECURITY & PERFORMANCE WIN: Sanitize the input actively while typing and enforce absolute length limit
         nameInput.addEventListener('input', (e) => {
+            // Strictly bound the input box visually
             e.target.value = e.target.value.replace(/[^a-zA-Z0-9 \-']/g, '').slice(0, 16);
             updateCreationSummary();
         });
@@ -681,9 +692,13 @@ function initCreationUI() {
         // Default select Non-Binary
         if (genderBtns[2]) genderBtns[2].click(); 
     }
-
-    updateCreationSummary();
     
+    // UX WIN: Immediately auto-roll a character upon opening the screen
+    // so the player doesn't stare at an empty form!
+    setTimeout(() => {
+        if (typeof window.quickRollCharacter === 'function') window.quickRollCharacter();
+    }, 50);
+
     const charCreationModal = document.getElementById('charCreationModal');
     if (charCreationModal) charCreationModal.classList.remove('hidden');
     const loadingIndicator = document.getElementById('loadingIndicator');
