@@ -5,6 +5,65 @@
 // ==========================================
 
 window.EVENT_DATA = {
+    'CULT_HIDEOUT': {
+        title: "Hidden Trapdoor",
+        oncePerTile: false,
+        nodes: {
+            'start': {
+                text: "You arrive at the coordinates from the ledger. Hidden beneath a pile of brush is a heavy wooden trapdoor bound in iron.\n\nYou hear chanting coming from below.",
+                choices: [
+                    {
+                        text: "Kick the door open and attack!",
+                        action: (state, ctx) => {
+                            logMessage("{red:You kick the door open! The cultists shriek and attack!}");
+                            state.screenShake = 20;
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                            
+                            // Spawn 3 Cultists in a ring around the trapdoor
+                            const spawnSpots = [[-1, 0], [1, 0], [0, -1]];
+                            for (let i = 0; i < 3; i++) {
+                                const ex = ctx.x + spawnSpots[i][0];
+                                const ey = ctx.y + spawnSpots[i][1];
+                                
+                                const enemyData = window.ENEMY_DATA['z']; // Fanatic
+                                const enemyId = `overworld:${ex},${-ey}`;
+                                const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, ex, ey) : enemyData;
+                                
+                                state.sharedEnemies[enemyId] = { ...scaledStats, tile: 'z', x: ex, y: ey, spawnTime: Date.now() };
+                                if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ex, ey, enemyId)).set(state.sharedEnemies[enemyId]);
+                            }
+
+                            // Clear the investigation
+                            state.activeInvestigation = null;
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#ef4444', 15);
+                        }
+                    },
+                    {
+                        text: "Sneak inside and steal their loot.",
+                        req: (player) => player.dexterity >= 5, // Requires 5 Dex to pass!
+                        action: (state, ctx) => {
+                            logMessage("{green:You slip into the shadows, bypassing the guards, and find their stash!}");
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+                            
+                            state.player.coins += 250;
+                            
+                            if (state.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
+                                const scroll = window.ITEM_DATA['🩸']; // Siphon Life
+                                state.player.inventory.push({ ...scroll, templateId: '🩸', quantity: 1, tile: '🩸' });
+                                logMessage("{purple:You stole a Scroll of Siphoning and 250 Gold!}");
+                            }
+
+                            // Clear the investigation
+                            state.activeInvestigation = null;
+                        }
+                    },
+                    {
+                        text: "Leave it alone for now."
+                    }
+                ]
+            }
+        }
+    },
     'WOUNDED_KNIGHT': {
         title: "Wounded Knight",
         oncePerTile: false, 
