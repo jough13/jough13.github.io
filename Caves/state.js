@@ -4,18 +4,21 @@
 // GLOBAL CONFIGURATION CONSTANTS
 // ============================================================================
 window.MAX_INVENTORY_SLOTS = 9;
+const ABSOLUTE_MAX_INVENTORY_SLOTS = 50; // 🚨 DB GUARD: Prevents Firebase 1MB Doc blowout
+
+// PERFORMANCE WIN: Pre-allocate array outside the loop to prevent GC churn
+const _EQUIPMENT_SLOTS = ['weapon', 'armor', 'offhand', 'accessory', 'ammo'];
 
 // EXPANDABILITY WIN: Data-Driven Capacity Check
 // Automatically scales if the player equips items with a `carryCapacity` stat bonus!
 window.getInventoryCap = function(player) {
     let cap = window.MAX_INVENTORY_SLOTS;
     
-    // 🚨 PERFORMANCE & ROBUSTNESS WIN: Hardcoded slot array.
+    // 🚨 PERFORMANCE & ROBUSTNESS WIN: Hardcoded pre-allocated slot array.
     // Bypasses the slow `for...in` loop and prevents iterating over corrupted prototype properties.
     if (player && player.equipment) {
-        const slots = ['weapon', 'armor', 'offhand', 'accessory', 'ammo'];
-        for (let i = 0; i < slots.length; i++) {
-            const item = player.equipment[slots[i]];
+        for (let i = 0; i < _EQUIPMENT_SLOTS.length; i++) {
+            const item = player.equipment[_EQUIPMENT_SLOTS[i]];
             if (item && item.statBonuses && typeof item.statBonuses.carryCapacity === 'number') {
                 cap += item.statBonuses.carryCapacity;
             }
@@ -32,7 +35,8 @@ window.getInventoryCap = function(player) {
         cap += 3;
     }
     
-    return Math.max(1, cap); // Absolute floor safety
+    // Absolute floor and ceiling safety
+    return Math.max(1, Math.min(cap, ABSOLUTE_MAX_INVENTORY_SLOTS)); 
 };
 
 // ============================================================================
@@ -134,6 +138,9 @@ const gameState = {
         className: null,      
         classEvolved: false,
         
+        alignment: 0,         // LORE WIN: -100 (Pure Evil) to 100 (Pure Good)
+        deity: null,          // LORE WIN: Religion/Patron tracking
+        
         titles: [],           
         activeTitle: null,    
         
@@ -225,7 +232,9 @@ const gameState = {
             shadowed_hand: -10, 
             fae: 0,           
             dwarves: 0,       
-            cult_of_the_abyss: -5 
+            cult_of_the_abyss: -5,
+            pirates_cove: 0,
+            merchants_guild: 0
         },
 
         inventory: [],
@@ -295,7 +304,12 @@ const gameState = {
             questsCompleted: 0,
             treasuresDug: 0,
             shrinesPrayed: 0,
-            echoesLeft: 0
+            echoesLeft: 0,
+            // Lore Expansions
+            mimicsDefeated: 0,
+            voidRiftsSealed: 0,
+            artifactsUnearthed: 0,
+            timesMutated: 0
         }
     },
 
@@ -382,40 +396,61 @@ window.modifyVital = function(vital, rawAmount) {
         if (p.metrics) p.metrics.damageTaken += Math.abs(amount);
     }
     
+    // O(1) Pre-cached max vital lookup bypasses string manipulation
     const maxKey = window._statCapCache[vital] || ('max' + vital.charAt(0).toUpperCase() + vital.slice(1));
-    const maxVal = p[maxKey] || 100; 
+    const maxVal = Number(p[maxKey]) || 100; // Failsafe fallback
     
-    const oldVal = p[vital];
+    const oldVal = Number(p[vital]) || 0; // Strict coercion
     let newVal = oldVal + amount;
     newVal = Math.max(0, Math.min(maxVal, newVal)); // Clamp securely
     
     p[vital] = newVal;
     const actualChange = newVal - oldVal;
 
-    // --- LORE & JUICE WIN: Devastating Blows & Near-Death ---
-    if (vital === 'health' && actualChange < 0) {
+    // ==========================================
+    // LORE & JUICE WIN: VITAL EVENTS
+    // ==========================================
+    if (actualChange < 0) {
         const pctLost = Math.abs(actualChange) / maxVal;
         
-        // Huge single hit (40% or more of max HP in one blow)
-        if (pctLost >= 0.40) {
-            if (typeof logMessage !== 'undefined') logMessage("{orange:You suffer a devastating blow!}");
-            gameState.screenShake = Math.max(gameState.screenShake, 15);
-        }
-        
-        // Near-death boundary crossed (Drop below 25%)
-        if (newVal <= (maxVal * 0.25) && oldVal > (maxVal * 0.25) && newVal > 0) {
-            if (typeof logMessage !== 'undefined') logMessage("{red:Your vision blurs. You are clinging to life!}");
-            gameState.screenFlash = { color: '#991b1b', alpha: 0.5, decay: 0.05 };
-        }
-    }
+        if (vital === 'health') {
+            // Huge single physical hit (40% or more of max HP in one blow)
+            if (pctLost >= 0.40) {
+                if (typeof logMessage !== 'undefined') logMessage("{orange:You suffer a devastating blow!}");
+                gameState.screenShake = Math.max(gameState.screenShake, 15);
+            }
+            
+            // Near-death physical boundary crossed (Drop below 25%)
+            if (newVal <= (maxVal * 0.25) && oldVal > (maxVal * 0.25) && newVal > 0) {
+                if (typeof logMessage !== 'undefined') logMessage("{red:Your vision blurs. You are clinging to life!}");
+                gameState.screenFlash = { color: '#991b1b', alpha: 0.5, decay: 0.05 };
+            }
 
-    // --- MOUNT EXPANSION: KNOCK-OFF ---
-    if (actualChange < -5 && vital === 'health' && p.isMounted) {
-        if (Math.random() < 0.30) {
-            p.isMounted = false;
-            if (typeof logMessage !== 'undefined') logMessage("{red:The heavy blow knocks you off your mount!}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-            if (typeof render !== 'undefined') render();
+            // --- MOUNT EXPANSION: KNOCK-OFF ---
+            if (actualChange < -5 && p.isMounted) {
+                if (Math.random() < 0.30) {
+                    p.isMounted = false;
+                    if (typeof logMessage !== 'undefined') logMessage("{red:The heavy blow knocks you off your mount!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                    if (typeof render !== 'undefined') render();
+                }
+            }
+        } 
+        else if (vital === 'psyche') {
+            // Huge mental hit (Madness/Void Terrors)
+            if (pctLost >= 0.30) {
+                if (typeof logMessage !== 'undefined') logMessage("{purple:Your mind reels from a horrifying revelation!}");
+                gameState.screenShake = Math.max(gameState.screenShake, 10);
+            }
+        }
+        else if (vital === 'hunger' || vital === 'thirst') {
+            // Starvation/Dehydration Warning (Drop below 15%)
+            if (newVal <= (maxVal * 0.15) && oldVal > (maxVal * 0.15)) {
+                if (typeof logMessage !== 'undefined') {
+                    const term = vital === 'hunger' ? 'starving' : 'dehydrated';
+                    logMessage(`{red:You are severely ${term}. You must find sustenance soon!}`);
+                }
+            }
         }
     }
 
