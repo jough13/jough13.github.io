@@ -77,7 +77,7 @@ function renderEnchantingModal() {
             let rarityColor = 'text-green-400';
             if (item._rarity === 'rare') rarityColor = 'text-purple-400';
             if (item._rarity === 'epic') rarityColor = 'text-red-400';
-            if (item._rarity === 'legendary') rarityColor = 'text-yellow-400';
+            if (item._rarity === 'legendary') rarityColor = 'text-yellow-400 font-bold text-magic-shimmer';
 
             const li = document.createElement('li');
             li.className = `shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-red-500 transition-all duration-150`;
@@ -181,6 +181,28 @@ function handleDisenchant(index) {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
             return;
         }
+        
+        const isCursed = item.name.match(/Cursed|Doomed|Forsaken|Blood-Starved|Whispering|Blighted/i);
+
+        // --- LORE WIN: Cursed Shattering Explosion ---
+        // If a player tries to destroy a cursed item to harvest dust instead of purifying it, 
+        // the Altar recoils violently!
+        if (isCursed) {
+            logMessage(`{red:The Altar violently rejects the corrupted ${item.name}!}`);
+            logMessage(`{purple:The dark magic backfires, blasting you backward! (-5 HP)}`);
+            
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#991b1b', 25);
+            
+            gameState.screenShake = 20;
+            
+            // Remove the item (Destroyed), but yield NO dust and deal damage!
+            player.inventory.splice(index, 1);
+            if (typeof window.modifyVital === 'function') window.modifyVital('health', -5);
+            
+            saveEnchantingState();
+            return;
+        }
 
         const yieldAmt = DUST_YIELDS[item._rarity] || 1;
         const oldName = item.name;
@@ -211,7 +233,7 @@ function handleDisenchant(index) {
 
         logMessage(`{purple:${flavorText}}`);
         
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playDisenchant();
         if (typeof ParticleSystem !== 'undefined') {
             let explosionColor = '#4ade80'; 
             if (oldRarity === 'rare') explosionColor = '#a855f7';
@@ -239,6 +261,7 @@ function handleShatterMinor() {
         const player = gameState.player;
         let totalDust = 0;
         let itemsShattered = 0;
+        let shatteredNames = [];
 
         // O(N) Array filter approach for mass deletion
         const remainingInventory = [];
@@ -251,6 +274,11 @@ function handleShatterMinor() {
                 const yieldAmt = DUST_YIELDS[item._rarity] || 1;
                 totalDust += yieldAmt;
                 itemsShattered++;
+                
+                // Track names for the summary!
+                const cleanName = item.name.replace(/^(Fine|Mystic)\s/i, '').trim();
+                shatteredNames.push(cleanName);
+                
             } else {
                 remainingInventory.push(item);
             }
@@ -265,8 +293,11 @@ function handleShatterMinor() {
             } else {
                 player.inventory.push({ templateId: '&', name: 'Arcane Dust', type: 'junk', quantity: totalDust, tile: '✨' });
             }
-
-            logMessage(`{purple:You shattered ${itemsShattered} minor items, extracting ${totalDust} Arcane Dust.}`);
+            
+            // UX WIN: Concise summary of what was actually destroyed!
+            const summary = Array.from(new Set(shatteredNames)).join(', ');
+            logMessage(`{gray:Shattered: ${summary}}`);
+            logMessage(`{purple:You destroyed ${itemsShattered} minor items, extracting ${totalDust} Arcane Dust.}`);
             
             if (typeof AudioSystem !== 'undefined') AudioSystem.playDisenchant();
             if (typeof ParticleSystem !== 'undefined') {
@@ -377,17 +408,30 @@ function handleEnchant(index) {
             upgradeMsg = `The item hums with a terrifying new power. It is now ${item.name}!`;
         } 
         else if (newRarity === 'legendary') {
+            // JUICE WIN: Detailed Legendary Upgrades!
             if (item.type === 'weapon') item.damage += 2;
             if (item.type === 'armor') item.defense += 2;
+            
+            let statSummary = [];
             for (const stat in item.statBonuses) {
-                item.statBonuses[stat] += 1; 
+                item.statBonuses[stat] += 2; 
+                statSummary.push(`+2 ${stat.substring(0,3).toUpperCase()}`);
             }
-            upgradeMsg = `The heavens tremble! You have forged a weapon of myth: ${item.name}!`;
+            
+            // Clean up name by removing previous prefixes to prevent word soup
+            const cleanName = item.name.replace(/^(Fine|Mystic|Flawless|Peerless|Exquisite|Masterwork|Divine)\s/i, '').trim();
+            const epicPrefixes = ['Aegis', 'Wrath', 'Whisper', 'Sorrow', 'Echo', 'Vanguard'];
+            const newPrefix = epicPrefixes[Math.floor(Math.random() * epicPrefixes.length)];
+            
+            item.name = `${newPrefix} of ${cleanName}`;
+            item.description = (item.description || "") + `\n\n{gold:A weapon of myth, reborn at the Altar.}`;
+
+            upgradeMsg = `The heavens tremble! You have forged a weapon of myth: ${item.name}! [${statSummary.join(', ')}]`;
         }
 
         logMessage(`{gold:${upgradeMsg}}`);
         
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playEnchant();
         if (typeof ParticleSystem !== 'undefined') {
             ParticleSystem.createLevelUp(player.x, player.y);
             ParticleSystem.createFloatingText(player.x, player.y, "UPGRADED", "#facc15");
