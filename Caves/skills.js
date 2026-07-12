@@ -428,7 +428,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                     }
                 } else {
                     // 🚨 GHOST GUARD
-                    let enemy = gameState.instancedEnemies.find(e => e && e.x === coords.x && e.y === coords.y);
+                    let enemy = gameState.instancedEnemies.find(e => e && e.x === coords.x && e.y === coords.y && e.health > 0);
                     if (enemy) {
                         enemy.health = Number(enemy.health);
                         if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
@@ -707,7 +707,7 @@ async function executeRangedAttack(dirX, dirY) {
                     }
                 } else {
                     // 🚨 GHOST GUARD
-                    let enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY);
+                    let enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY && e.health > 0);
                     if (enemy) {
                         enemy.health = Number(enemy.health);
                         if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
@@ -766,13 +766,14 @@ async function executeRangedAttack(dirX, dirY) {
                 ParticleSystem.createFloatingText(finalTargetX, finalTargetY, "Miss", "#9ca3af");
             }
             
-            // --- RECOVERABLE AMMO ---
+            // --- 🚨 BUG FIX WIN: RECOVERABLE AMMO IN DUNGEONS ---
             if (ammo.name === 'Wooden Arrow' && Math.random() < 0.50) {
                 let validFloor = true;
                 let dropTile;
                 
-                if (gameState.mapMode === 'overworld') dropTile = chunkManager.getTile(finalTargetX, finalTargetY);
-                else {
+                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                    dropTile = chunkManager.getTile(finalTargetX, finalTargetY);
+                } else {
                     const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
                     dropTile = (map && map[finalTargetY] && map[finalTargetY][finalTargetX]) ? map[finalTargetY][finalTargetX] : ' ';
                 }
@@ -781,14 +782,21 @@ async function executeRangedAttack(dirX, dirY) {
 
                 if ((typeof ITEM_DATA !== 'undefined' && ITEM_DATA[dropTile]) || 
                     (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[dropTile]) || 
-                    ['📦', '⚰️', '🏺', '🚪', '🔼'].includes(dropTile)) {
+                    ['📦', '⚰️', '🏺', '🚪', '🔼', '▓', '▒'].includes(dropTile)) {
                     validFloor = false; 
                 }
 
                 if (validFloor) {
-                    if (typeof chunkManager !== 'undefined' && typeof chunkManager.setWorldTile === 'function') {
-                        chunkManager.setWorldTile(finalTargetX, finalTargetY, '➹', 2); // Drops for 2 hours
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                        if (typeof chunkManager !== 'undefined' && typeof chunkManager.setWorldTile === 'function') {
+                            chunkManager.setWorldTile(finalTargetX, finalTargetY, '➹', 2); // Drops for 2 hours
+                        }
+                    } else if (gameState.mapMode === 'dungeon') {
+                        chunkManager.caveMaps[gameState.currentCaveId][finalTargetY][finalTargetX] = '➹';
+                    } else if (gameState.mapMode === 'castle') {
+                        chunkManager.castleMaps[gameState.currentCastleId][finalTargetY][finalTargetX] = '➹';
                     }
+                    
                     gameState.mapDirty = true;
                     logMessage("{gray:You see your arrow sticking out of the ground nearby.}");
                 }
@@ -912,7 +920,7 @@ async function executeLunge(dirX, dirY) {
                     }
                 } else {
                     // 🚨 GHOST GUARD
-                    let enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY);
+                    let enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY && e.health > 0);
                     if (enemy) {
                         enemy.health = Number(enemy.health);
                         if (isNaN(enemy.health)) enemy.health = Number(enemy.maxHealth) || 10;
@@ -987,7 +995,14 @@ function executeQuickstep(dirX, dirY) {
     // MECHANIC & JUICE WIN: Dagger Flurry
     // If you quickstep directly INTO an enemy, you unleash a flurry of slashes and bounce back!
     if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) {
-        logMessage("{purple:You dash forward, unleashing a flurry of strikes, and bounce back!}");
+        
+        // LORE WIN: Flavor text changes based on Assassin Talents
+        if (player.talents && player.talents.includes('shadow_strike')) {
+            logMessage("{purple:You step through the shadows, unleash a flurry of strikes, and vanish back!}");
+        } else {
+            logMessage("{purple:You dash forward, unleashing a flurry of strikes, and bounce back!}");
+        }
+        
         gameState.screenShake = 5;
         
         if (typeof AudioSystem !== 'undefined') {
@@ -1003,7 +1018,8 @@ function executeQuickstep(dirX, dirY) {
 
         // Apply a solid chunk of damage immediately using the magic loop
         // We use applySpellDamage here to ensure the transaction and XP are handled safely!
-        const flurryDamage = Math.floor(player.dexterity * 1.5) + (player.equipment.weapon?.damage || 0);
+        let flurryDamage = Math.floor(player.dexterity * 1.5) + (player.equipment.weapon?.damage || 0);
+        if (player.talents && player.talents.includes('shadow_strike') && player.stealthTurns > 0) flurryDamage *= 2; 
         
         // Wrap this inside a small timeout to let the dash finish visually before the damage registers
         setTimeout(async () => {
@@ -1015,7 +1031,7 @@ function executeQuickstep(dirX, dirY) {
             if (player.equipment.weapon?.inflicts === 'poison') {
                 if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
                     // 🚨 GHOST GUARD
-                    const e = gameState.instancedEnemies.find(en => en && en.x === targetX && en.y === targetY);
+                    const e = gameState.instancedEnemies.find(en => en && en.x === targetX && en.y === targetY && en.health > 0);
                     if (e) e.poisonTurns = 3;
                 }
             }
@@ -1033,7 +1049,12 @@ function executeQuickstep(dirX, dirY) {
         player.x = targetX;
         player.y = targetY;
         player.stamina -= skillData.cost;
-        logMessage("{cyan:You dash forward with blinding speed!}");
+        
+        if (player.talents && player.talents.includes('evasion')) {
+            logMessage("{cyan:You move like smoke on the wind!}");
+        } else {
+            logMessage("{cyan:You dash forward with blinding speed!}");
+        }
         
         // JUICE: Smoke Trail
         if (typeof ParticleSystem !== 'undefined') {
@@ -1093,20 +1114,25 @@ function executePacify(dirX, dirY) {
 
         const tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
         // 🚨 GHOST GUARD
-        const enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY);
+        const enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY && e.health > 0);
         
         // PERFORMANCE WIN: Fast-path target loop breaks instantly on walls!
         if (tile === '▓' || tile === '▒' || tile === '🧱') break;
 
         if (enemy) {
-            if (enemy.isBoss) {
-                logMessage(`{red:The ${enemy.name} is immune to your charms!}`);
+            const eData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemy.tile] : null;
+            const tags = eData ? (eData.tags || []) : [];
+
+            // 🚨 BUG FIX & LORE WIN: Immunity Logic
+            // You cannot use Charisma to pacify a robot or a Void Demon!
+            if (enemy.isBoss || tags.includes('construct') || tags.includes('void') || tags.includes('demon') || tags.includes('undead')) {
+                logMessage(`{red:The ${enemy.name}'s mind is alien. It cannot be pacified!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 hit = true;
                 break;
             }
 
-            // Found a target!
+            // Found a valid target!
             hit = true;
 
             // --- 3. Calculate Success Chance ---
@@ -1182,7 +1208,7 @@ function executeTame(dirX, dirY) {
         }
 
         // 🚨 GHOST GUARD
-        let enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY);
+        let enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY && e.health > 0);
 
         if (enemy) {
             hit = true;
@@ -1311,21 +1337,24 @@ function executeInflictMadness(dirX, dirY) {
 
         const tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
         // 🚨 GHOST GUARD
-        const enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY);
+        const enemy = gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY && e.health > 0);
         
         // PERFORMANCE WIN: Fast-path target loop breaks instantly on walls!
         if (tile === '▓' || tile === '▒' || tile === '🧱') break;
 
         if (enemy) {
+            const eData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemy.tile] : null;
+            const tags = eData ? (eData.tags || []) : [];
 
-            if (enemy.isBoss) {
-                logMessage(`{red:The ${enemy.name}'s mind is too strong to break!}`);
+            // 🚨 BUG FIX & LORE WIN: Immunity Logic
+            if (enemy.isBoss || tags.includes('construct') || tags.includes('undead')) {
+                logMessage(`{red:The ${enemy.name} has no mind to shatter!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                 hit = true;
                 break;
             }
 
-            // Found a target!
+            // Found a valid target!
             hit = true;
 
             // --- 3. Calculate Success Chance ---
@@ -1398,6 +1427,14 @@ async function executeThrowTNT(dirX, dirY) {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.4, 200);
 
         const tntPayload = {};
+
+        // 🚨 BUG FIX WIN: Check if the player is caught in their own explosion!
+        if (Math.abs(targetX - player.x) <= 1 && Math.abs(targetY - player.y) <= 1) {
+            logMessage("{red:You were caught in your own blast! (-15 HP)}");
+            window.modifyVital('health', -15);
+            // If the player dies, stop executing the rest of the function!
+            if (player.health <= 0) return;
+        }
 
         // 3. Detonate in a 3x3 Area
         for (let y = targetY - 1; y <= targetY + 1; y++) {
@@ -1477,11 +1514,9 @@ function triggerAbilityCooldown(abilityId) {
         // Set the turns
         gameState.player.cooldowns[abilityId] = cd;
 
-        // Update Database
-        if (typeof playerRef !== 'undefined' && playerRef) {
-            playerRef.update({ cooldowns: gameState.player.cooldowns });
-        }
-
+        // 🚨 BUG FIX & PERFORMANCE WIN: Removed un-debounced hard save!
+        // We no longer trigger a direct Firebase update here because `endPlayerTurn` 
+        // automatically wraps the cooldown state into a debounced payload.
         if (typeof renderHotbar === 'function') renderHotbar();
     }
 }
