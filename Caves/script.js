@@ -510,7 +510,7 @@ function createDefaultPlayerState() {
         witsBonus: 0, witsBonusTurns: 0,
 
         frostbiteTurns: 0, poisonTurns: 0, rootTurns: 0,
-        candlelightTurns: 0, isBoating: false, activeTreasure: null,
+        candlelightTurns: 0, isBoating: false, isSailing: false, isMounted: false, activeTreasure: null,
         exploredChunks: [], quests: {},
         hotbar: [null, null, null, null, null], 
         cooldowns: {}, stealthTurns: 0, companion: null, 
