@@ -307,7 +307,9 @@ const gameState = {
     currentCaveTheme: null,
     currentCastleId: null,
     overworldExit: null,      
-    activeTreasure: null,     
+    activeTreasure: null,   
+    
+    activeInvestigation: null, // Tracks story coordinates and event IDs
     
     lootedTiles: new Map(),
     discoveredRegions: new Set(),
