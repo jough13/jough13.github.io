@@ -670,9 +670,35 @@ function useInventoryItem(itemIndex) {
         }
 
         let itemUsed = false;
+        // UX WIN: Only close the inventory if the action requires the player to see the world!
+        let closeInventoryOnUse = false; 
+
+        // --- LORE & EVENT INTERCEPT ---
+        // Does this item trigger an Event Investigation?
+        if (itemToUse.effect) {
+            const originalLength = player.inventory.length;
+            const originalQty = itemToUse.quantity;
+            
+            // LORE WIN: Some effects (like reading ledgers or consuming potions) need the bag to stay open!
+            const closesMenu = itemToUse.type === 'treasure_map' || itemToUse.name === 'Cloudseed' || itemToUse.name === 'Brass Telescope';
+            
+            const effectConsumed = itemToUse.effect(gameState);
+            
+            if (effectConsumed) {
+                // The effect function might have manually spliced it (like Cloudseed), 
+                // so we check if the item is still sitting in the same index before decrementing!
+                const safeItem = player.inventory[itemIndex];
+                if (safeItem && safeItem.name === itemToUse.name && safeItem.quantity === originalQty) {
+                    safeItem.quantity--;
+                    if (safeItem.quantity <= 0) player.inventory.splice(itemIndex, 1);
+                }
+                itemUsed = true;
+                if (closesMenu) closeInventoryOnUse = true;
+            }
+        }
 
         // --- MAGIC ITEM IDENTIFICATION ---
-        if (itemToUse.name === 'Unidentified Magic Item' || itemToUse.tile === '✨') {
+        else if (itemToUse.name === 'Unidentified Magic Item' || itemToUse.tile === '✨') {
             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
             if (itemToUse.quantity > 1 && player.inventory.length >= invCap) {
                 logMessage("{red:Inventory full! Make space before identifying stacked items.}");
@@ -721,6 +747,7 @@ function useInventoryItem(itemIndex) {
         // --- FISHING LOGIC ---
         else if (itemToUse.name === 'Fishing Rod' || itemToUse.name === 'Obsidian Fishing Rod' || itemToUse.name === 'Steel Fishing Rod') {
             itemUsed = typeof executeFishing === 'function' ? executeFishing() : false;
+            if (itemUsed) closeInventoryOnUse = true; // Need to see the water!
         }
 
         // --- CONSTRUCTIBLES (Walls, Floors, Traps) ---
@@ -758,20 +785,7 @@ function useInventoryItem(itemIndex) {
             if (itemToUse.quantity <= 0) player.inventory.splice(itemIndex, 1);
             itemUsed = true;
             gameState.mapDirty = true;
-        }
-
-        // --- CONSUMABLES ---
-        else if (itemToUse.type === 'consumable') {
-            if (itemToUse.effect) {
-                const consumed = itemToUse.effect(gameState);
-                if (consumed) {
-                    itemToUse.quantity--;
-                    if (itemToUse.quantity <= 0) player.inventory.splice(itemIndex, 1);
-                    itemUsed = true;
-                }
-            } else {
-                logMessage(`You can't use the ${itemToUse.name} right now.`);
-            }
+            closeInventoryOnUse = true; // See the building!
         }
 
         // --- UNIVERSAL EQUIPMENT LOGIC ---
@@ -789,6 +803,23 @@ function useInventoryItem(itemIndex) {
 
             // 2. Equip New
             if (currentEquipped !== itemToUse) {
+                
+                // --- 🚨 ROBUSTNESS WIN: AMMO HOT-SWAPPING FIX ---
+                // If we are equipping ammo while already holding another stack of the same ammo, merge them cleanly!
+                if (slot === 'ammo' && currentEquipped) {
+                    const existingStack = player.inventory.find(i => i && i.name === currentEquipped.name && !i.isEquipped);
+                    if (existingStack) {
+                        existingStack.quantity += currentEquipped.quantity;
+                        // Since we just consolidated the old ammo stack, the indices in `player.inventory` might have shifted!
+                        // Let's find the new item we were TRYING to equip again by exact reference
+                        const reFoundItem = player.inventory.find(i => i === itemToUse);
+                        if (!reFoundItem) {
+                            console.error("[AKASHIC] Fatal Ammo Hot-Swap Error: Reference lost.");
+                            return; // Failsafe abort
+                        }
+                    }
+                }
+                
                 // --- TWO-HANDED LOGIC SAFEGUARDS ---
                 if (slot === 'offhand' && player.equipment.weapon && player.equipment.weapon.isTwoHanded) {
                     _internalUnequip(player.equipment.weapon, player);
@@ -992,35 +1023,7 @@ function useInventoryItem(itemIndex) {
             itemToUse.quantity--;
             if (itemToUse.quantity <= 0) player.inventory.splice(itemIndex, 1);
             itemUsed = true;
-
-        // --- TREASURE MAPS ---
-        } else if (itemToUse.type === 'treasure_map') {
-            if (gameState.mapMode !== 'overworld') {
-                logMessage("{red:You must be under the open sky in the Overworld to chart these coordinates.}");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                itemUsed = false; 
-            } 
-            else if (!gameState.activeTreasure) {
-                const dist = 50 + Math.floor(Math.random() * 100);
-                const angle = Math.random() * 2 * Math.PI;
-                const tx = Math.floor(player.x + Math.cos(angle) * dist);
-                const ty = Math.floor(player.y + Math.sin(angle) * dist);
-                
-                gameState.activeTreasure = { x: tx, y: ty };
-                if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ activeTreasure: gameState.activeTreasure });
-
-                logMessage(`{gold:The map reveals a hidden mark! Location: (${tx}, ${-ty}).}`);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-                
-                itemToUse.quantity--;
-                if (itemToUse.quantity <= 0) player.inventory.splice(itemIndex, 1);
-                
-                itemUsed = true;
-            } else {
-                logMessage(`You are already tracking a treasure at (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y}).`);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                itemUsed = false;
-            }
+            closeInventoryOnUse = true; // Need to see the new map!
 
         // --- JOURNALS & LORE ---
         } else if (['journal', 'lore', 'random_journal', 'random_lore'].includes(itemToUse.type)) {
@@ -1046,7 +1049,7 @@ function useInventoryItem(itemIndex) {
             }
 
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-            itemUsed = false; 
+            itemUsed = false; // Journals don't get consumed
 
         // --- JUNK / UNKNOWN ---
         } else {
@@ -1056,6 +1059,7 @@ function useInventoryItem(itemIndex) {
 
         // --- FINAL SAVE & RENDER ---
         if (itemUsed) {
+            if (closeInventoryOnUse && typeof closeInventoryModal === 'function') closeInventoryModal();
             if (typeof syncPlayerState === 'function') syncPlayerState();
             if (typeof endPlayerTurn === 'function') endPlayerTurn();
             if (typeof renderInventory === 'function') renderInventory();
