@@ -59,117 +59,19 @@ window.TILE_DATA = {
         type: 'anomaly',
         name: 'Wounded Knight',
         flavor: "A royal knight slumps against a rock, clutching a bleeding wound.",
-        onInteract: (state, x, y) => {
-            logMessage("{blue:Knight: 'Traveler... the shadows... they took the caravan...' }");
-            logMessage("{gray:The knight presses something into your hand before going still.}");
-            
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal(); // Somber tone
-            
-            // Give the player a high-tier potion and some gold
-            state.player.coins += 50;
-            if (state.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
-                const potion = window.ITEM_DATA['🍷']; // Elixir of Life
-                state.player.inventory.push({ ...potion, templateId: '🍷', quantity: 1, tile: '🍷' });
-                logMessage("{gold:You received an Elixir of Life and 50 Gold.}");
-            }
-            
-            // Knight dies/disappears
-            if (state.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '⚰️'); // Turns into a grave!
-            state.mapDirty = true;
-            if (typeof renderInventory === 'function') renderInventory();
-            
-            return { coins: state.player.coins, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory };
-        }
+        eventId: 'WOUNDED_KNIGHT'
     },
-    '🩸a': {
+        '🩸a': {
         type: 'landmark',
         name: 'Altar of Blood',
         flavor: "A jagged crimson stone. It whispers promises of power... for a price.",
-        onInteract: (state, x, y) => {
-            const tileId = `${x},${-y}`;
-            if (state.lootedTiles.has(tileId)) {
-                logMessage("{gray:The altar is dormant. It has fed enough.}");
-                return null;
-            }
-
-            const confirmSacrifice = confirm("The Altar demands half of your current life force in exchange for a dark boon. Do you accept?");
-            
-            if (confirmSacrifice) {
-                const sacrificeAmount = Math.floor(state.player.health / 2);
-                window.modifyVital('health', -sacrificeAmount);
-                
-                logMessage(`{red:You slash your palm over the altar! (-${sacrificeAmount} HP)}`);
-                state.screenShake = 20;
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#ef4444', 30);
-
-                const roll = Math.random();
-                if (roll < 0.25) {
-                    // 25% Chance it betrays you and spawns a Demon!
-                    logMessage("{purple:The blood summons a horror from the Void!}");
-                    const enemyTemplate = window.ENEMY_DATA['😈d'];
-                    const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, x, y) : enemyTemplate;
-                    const enemyId = `overworld:${x+1},${-y}`;
-                    state.sharedEnemies[enemyId] = { ...scaledStats, tile: '😈d', x: x+1, y: y, spawnTime: Date.now() };
-                    
-                    if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(x+1, y, enemyId)).set(state.sharedEnemies[enemyId]);
-                } else {
-                    // 75% Chance for Epic/Legendary Loot or massive stat boost
-                    if (Math.random() < 0.5) {
-                        state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 3;
-                        if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
-                        logMessage("{gold:The blood boils in your veins. Your vitality permanently increases! (+3 Max HP)}");
-                    } else {
-                        const loot = typeof generateMagicItem === 'function' ? generateMagicItem(5) : { name: 'Blood Blade', type: 'weapon', quantity: 1, damage: 10, tile: '🗡️' };
-                        state.player.inventory.push(loot);
-                        logMessage(`{purple:The altar regurgitates a dark weapon: ${loot.name}!}`);
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
-                    }
-                }
-
-                state.lootedTiles.add(tileId);
-                if (typeof renderInventory === 'function') renderInventory();
-                return { lootedTiles: Object.fromEntries(state.lootedTiles), inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory };
-            }
-            return null;
-        }
+        eventId: 'ALTAR_OF_BLOOD'
     },
-    '🦹': {
+        '🦹': {
         type: 'anomaly',
         name: 'Shady Smuggler',
         flavor: "A hooded figure motions for you to approach.",
-        onInteract: (state, x, y) => {
-            if (state.player.coins >= 100) {
-                const confirmTrade = confirm("Smuggler: 'I got a mystery box. 100 Gold. You want it or not?'");
-                if (confirmTrade) {
-                    state.player.coins -= 100;
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
-                    
-                    const roll = Math.random();
-                    if (roll < 0.2) {
-                        logMessage("{red:You open the box... it's just rocks! You got scammed!}");
-                    } else if (roll < 0.8) {
-                        logMessage("{green:You open the box and find a massive cache of supplies!}");
-                        state.player.inventory.push({ templateId: '♥', name: 'Healing Potion', type: 'consumable', quantity: 3, tile: '♥', effect: window.ITEM_DATA['♥'].effect });
-                    } else {
-                        logMessage("{purple:You open the box... A Legendary Artifact is inside!}");
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
-                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#facc15', 20);
-                        const loot = typeof generateMagicItem === 'function' ? generateMagicItem(5) : { name: 'Smuggler Blade', type: 'weapon', quantity: 1, damage: 8, tile: '🗡️' };
-                        state.player.inventory.push(loot);
-                    }
-                    
-                    // Smuggler vanishes
-                    if (state.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '.');
-                    state.mapDirty = true;
-                    if (typeof renderInventory === 'function') renderInventory();
-                }
-            } else {
-                logMessage("{gray:Smuggler: 'Come back when you have 100 gold, peasant.'}");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-            }
-            return { coins: state.player.coins };
-        }
+        eventId: 'SHADY_SMUGGLER'
     },
     '🏛️c': {
         type: 'landmark_castle',
@@ -363,72 +265,13 @@ window.TILE_DATA = {
         type: 'landmark',
         name: 'Fallen Titan',
         flavor: "A rusted clockwork automaton the size of a castle, half-buried in the earth.",
-        onInteract: (state, x, y) => {
-            const tileId = `${x},${-y}`;
-            if (state.lootedTiles.has(tileId)) {
-                logMessage("{gray:You've already salvaged all the usable parts from this behemoth.}");
-                return null;
-            }
-
-            const hasPickaxe = state.player.inventory.some(i => i.name === 'Pickaxe' || i.name === 'Diamond Tipped Pickaxe');
-            if (!hasPickaxe) {
-                logMessage("{red:You need a Pickaxe to pry loose the massive gears.}");
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                return null;
-            }
-
-            logMessage("{orange:You strike the rusted joints, prying loose valuable metals!}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#f59e0b', 15);
-
-            state.player.stamina = Math.max(0, state.player.stamina - 5);
-            
-            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
-            const yieldAmt = 3 + Math.floor(Math.random() * 3);
-            
-            // Give Iron Ore
-            const ironStack = state.player.inventory.find(i => i.name === 'Iron Ore' && !i.isEquipped);
-            if (ironStack) ironStack.quantity += yieldAmt;
-            else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '•', name: 'Iron Ore', type: 'junk', quantity: yieldAmt, tile: '•' });
-            
-            // 30% chance for a Star-Metal Core
-            if (Math.random() < 0.30) {
-                logMessage("{purple:You found the Titan's power core! (Star-Metal Ore)}");
-                const starStack = state.player.inventory.find(i => i.name === 'Star-Metal Ore' && !i.isEquipped);
-                if (starStack) starStack.quantity += 1;
-                else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '☄️', name: 'Star-Metal Ore', type: 'junk', quantity: 1, tile: '☄️' });
-            }
-
-            state.lootedTiles.add(tileId);
-            if (typeof renderInventory === 'function') renderInventory();
-            return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, lootedTiles: Object.fromEntries(state.lootedTiles), stamina: state.player.stamina };
-        }
+        eventId: 'FALLEN_TITAN'
     },
     '🪦m': {
         type: 'landmark',
         name: 'Whispering Monolith',
         flavor: "A towering slab of black stone covered in glowing, shifting runes.",
-        onInteract: (state, x, y) => {
-            const tileId = `${x},${-y}`;
-            if (state.lootedTiles.has(tileId)) {
-                logMessage("{gray:The runes are dark. It has nothing more to teach you.}");
-                return null;
-            }
-
-            logMessage("{purple:You touch the Monolith. Forbidden knowledge floods your mind!}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#a855f7', 30);
-            
-            state.screenShake = 15;
-            
-            // Huge XP burst but causes Madness
-            if (typeof grantXp === 'function') grantXp(1000);
-            state.player.madnessTurns = (state.player.madnessTurns || 0) + 5;
-            logMessage("{red:The sheer weight of the truth shatters your sanity! (Madness)}");
-
-            state.lootedTiles.add(tileId);
-            return { madnessTurns: state.player.madnessTurns, lootedTiles: Object.fromEntries(state.lootedTiles) };
-        }
+        eventId: 'WHISPERING_MONOLITH'
     },
     '⛺a': {
         type: 'anomaly',
