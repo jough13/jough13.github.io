@@ -4,6 +4,13 @@
 // INPUT HANDLING & QUEUE SYSTEM
 // ==========================================
 
+// Aggressive global scroll lock for Spacebar and Arrow Keys
+window.addEventListener('keydown', function(e) {
+    if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && e.target === document.body) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
 // --- GLOBALS & SAFETY ---
 window.inputQueue = window.inputQueue || []; // Guarantee queue exists regardless of load order
 
