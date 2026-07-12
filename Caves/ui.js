@@ -170,11 +170,21 @@ const logMessage = (text) => {
     for (let i = 0; i < FORMAT_REGEXES.length; i++) {
         formattedText = formattedText.replace(FORMAT_REGEXES[i].rx, FORMAT_REGEXES[i].repl);
     }
+    
+    // 4. LORE WIN: In-Game Timestamps!
+    // Adds a highly subtle timestamp to the start of every message, turning the log into a true journal.
+    let timePrefix = "";
+    if (typeof gameState !== 'undefined' && gameState.time) {
+        const h = gameState.time.hour % 12 === 0 ? 12 : gameState.time.hour % 12;
+        const m = String(gameState.time.minute).padStart(2, '0');
+        const ampm = gameState.time.hour < 12 ? 'AM' : 'PM';
+        timePrefix = `<span class="text-[9px] text-gray-600 opacity-50 mr-1.5 font-mono select-none" title="Recorded at ${h}:${m} ${ampm}">[${h}:${m}]</span>`;
+    }
 
     // --- ANTI-SPAM LOGIC ---
     if (text === lastLogText && messageLog.firstChild) {
         lastLogCount++;
-        messageLog.firstChild.innerHTML = `> ${formattedText} <span class="text-gray-400 ml-2 font-bold bg-black bg-opacity-40 px-1.5 py-0.5 rounded border border-gray-700 shadow-inner text-[10px]">(x${lastLogCount})</span>`;
+        messageLog.firstChild.innerHTML = `${timePrefix}> ${formattedText} <span class="text-gray-400 ml-2 font-bold bg-black bg-opacity-40 px-1.5 py-0.5 rounded border border-gray-700 shadow-inner text-[10px]">(x${lastLogCount})</span>`;
         // JUICE: Small bump animation to show it updated physically
         messageLog.firstChild.style.animation = 'none';
         void messageLog.firstChild.offsetWidth; 
@@ -185,9 +195,9 @@ const logMessage = (text) => {
     lastLogText = text;
     lastLogCount = 1;
 
-    // 4. CREATE & APPEND NEW MESSAGE
+    // 5. CREATE & APPEND NEW MESSAGE
     const messageElement = document.createElement('p');
-    messageElement.innerHTML = `> ${formattedText}`;
+    messageElement.innerHTML = `${timePrefix}> ${formattedText}`;
     
     // Slide down / fade in animation for new log messages
     messageElement.style.animation = 'fade-in 0.25s ease-out';
@@ -229,6 +239,43 @@ function processScreenFlash() {
 
     gameState.screenFlash.alpha -= gameState.screenFlash.decay;
     requestAnimationFrame(processScreenFlash);
+}
+
+// ==========================================
+// JUICE WIN: CINEMATIC AREA DISCOVERY
+// ==========================================
+function showAreaDiscoveredBanner(areaName) {
+    if (!canvasWrapperEl) return;
+    
+    const banner = document.createElement('div');
+    banner.className = 'absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-[100]';
+    banner.style.transition = 'opacity 1s ease-in-out, transform 1.5s cubic-bezier(0.2, 0.8, 0.2, 1)';
+    banner.style.opacity = '0';
+    banner.style.transform = 'scale(0.8) translateY(20px)';
+    
+    // Elden Ring / Souls-like Cinematic Text
+    banner.innerHTML = `
+        <span class="text-yellow-500 text-xs sm:text-sm tracking-[0.5em] uppercase font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] mb-2 opacity-90">Discovered</span>
+        <h2 class="text-4xl md:text-5xl lg:text-6xl text-white font-bold text-center px-4" style="font-family: 'Uncial Antiqua', cursive; text-shadow: 0 4px 15px rgba(0,0,0,1), 0 0 20px rgba(250, 204, 21, 0.4); -webkit-text-stroke: 1px rgba(0,0,0,0.5);">${areaName}</h2>
+    `;
+    
+    canvasWrapperEl.appendChild(banner);
+
+    // Fade In
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            banner.style.opacity = '1';
+            banner.style.transform = 'scale(1) translateY(0)';
+        });
+    });
+
+    // Fade Out
+    setTimeout(() => {
+        banner.style.opacity = '0';
+        banner.style.transform = 'scale(1.05) translateY(-10px)';
+        // Cleanup DOM after transition completes
+        setTimeout(() => banner.remove(), 1500);
+    }, 4000); // Holds on screen for 4 seconds
 }
 
 // --- CORE STAT RENDERING ---
@@ -479,73 +526,81 @@ function updateWeatherUI() {
 }
 
 // --- INVENTORY SORTING MECHANIC ---
+// 🚨 PERFORMANCE & BUG FIX WIN: Mutex lock prevents double-click race conditions!
+window._isSortingInv = false;
+
 window.sortInventory = function() {
-    if (!gameState.player.inventory) return;
+    if (window._isSortingInv || !gameState.player.inventory) return;
+    window._isSortingInv = true;
 
-    const originalLength = gameState.player.inventory.length;
-    let didConsolidate = false;
+    try {
+        const originalLength = gameState.player.inventory.length;
+        let didConsolidate = false;
 
-    // 1. Consolidate stacks (Merge partial stacks of arrows, meat, logs, etc)
-    const consolidated = [];
-    gameState.player.inventory.forEach(item => {
-        if (!item) return;
+        // 1. Consolidate stacks (Merge partial stacks of arrows, meat, logs, etc)
+        const consolidated = [];
+        gameState.player.inventory.forEach(item => {
+            if (!item) return;
+            
+            const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo', 'quest'].includes(item.type);
+            
+            const existing = consolidated.find(i => 
+                i.name === item.name && 
+                !i.isEquipped && 
+                !item.isEquipped && 
+                isStackable
+            );
+            
+            if (existing) {
+                existing.quantity += item.quantity;
+                didConsolidate = true;
+            } else {
+                // Pass the exact item reference instead of a shallow copy.
+                // This prevents nested objects like `statBonuses` from causing memory reference bleeds!
+                consolidated.push(item); 
+            }
+        });
+
+        // 2. Sort by Type, then Name
+        const typeWeights = { 
+            'weapon': 1, 'armor': 2, 'accessory': 3, 'ammo': 4, 
+            'consumable': 5, 'tool': 6, 'spellbook': 7, 'quest': 8, 'trade': 9, 'junk': 10 
+        };
         
-        const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(item.type);
-        
-        const existing = consolidated.find(i => 
-            i.name === item.name && 
-            !i.isEquipped && 
-            !item.isEquipped && 
-            isStackable
-        );
-        
-        if (existing) {
-            existing.quantity += item.quantity;
-            didConsolidate = true;
-        } else {
-            // Pass the exact item reference instead of a shallow copy.
-            // This prevents nested objects like `statBonuses` from causing memory reference bleeds!
-            consolidated.push(item); 
+        // Create a string representation of the array before sorting to check for changes
+        const preSortString = consolidated.map(i => i.name).join();
+
+        consolidated.sort((a, b) => {
+            // Equipped gear ALWAYS floats to the top
+            if (a.isEquipped !== b.isEquipped) return a.isEquipped ? -1 : 1; 
+            
+            const wA = typeWeights[a.type] || 20;
+            const wB = typeWeights[b.type] || 20;
+            
+            if (wA !== wB) return wA - wB; // Sort by category
+            return a.name.localeCompare(b.name); // Alphabetical within category
+        });
+
+        const postSortString = consolidated.map(i => i.name).join();
+
+        // PERFORMANCE: Only update DB and UI if the sort ACTUALLY changed something
+        if (didConsolidate || preSortString !== postSortString || originalLength !== consolidated.length) {
+            gameState.player.inventory = consolidated;
+
+            if (typeof playerRef !== 'undefined' && playerRef) {
+                playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : consolidated });
+            }
+            renderInventory();
         }
-    });
-
-    // 2. Sort by Type, then Name
-    const typeWeights = { 
-        'weapon': 1, 'armor': 2, 'accessory': 3, 'ammo': 4, 
-        'consumable': 5, 'tool': 6, 'spellbook': 7, 'quest': 8, 'trade': 9, 'junk': 10 
-    };
-    
-    // Create a string representation of the array before sorting to check for changes
-    const preSortString = consolidated.map(i => i.name).join();
-
-    consolidated.sort((a, b) => {
-        // Equipped gear ALWAYS floats to the top
-        if (a.isEquipped !== b.isEquipped) return a.isEquipped ? -1 : 1; 
         
-        const wA = typeWeights[a.type] || 20;
-        const wB = typeWeights[b.type] || 20;
-        
-        if (wA !== wB) return wA - wB; // Sort by category
-        return a.name.localeCompare(b.name); // Alphabetical within category
-    });
-
-    const postSortString = consolidated.map(i => i.name).join();
-
-    // PERFORMANCE: Only update DB and UI if the sort ACTUALLY changed something
-    if (didConsolidate || preSortString !== postSortString || originalLength !== consolidated.length) {
-        gameState.player.inventory = consolidated;
-
-        if (typeof playerRef !== 'undefined' && playerRef) {
-            playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : consolidated });
+        // ANTI-SPAM AUDIO
+        const now = Date.now();
+        if (!window.lastSortAudio || now - window.lastSortAudio > 300) {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); 
+            window.lastSortAudio = now;
         }
-        renderInventory();
-    }
-    
-    // ANTI-SPAM AUDIO
-    const now = Date.now();
-    if (!window.lastSortAudio || now - window.lastSortAudio > 300) {
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep(); 
-        window.lastSortAudio = now;
+    } finally {
+        setTimeout(() => window._isSortingInv = false, 250); // Unlock
     }
 };
 
@@ -763,6 +818,18 @@ const renderEquipment = () => {
     const safeWpnName = typeof escapeHtml === 'function' ? escapeHtml(weapon.name) : weapon.name;
     const safeArmorName = typeof escapeHtml === 'function' ? escapeHtml(armor.name) : armor.name;
 
+    // --- LORE & JUICE WIN: Natively parse Rarity and apply CSS Glows ---
+    const getRarityClass = (item) => {
+        if (!item || !item._rarity) return 'text-gray-200';
+        if (item._rarity === 'rare') return 'text-purple-400 font-bold';
+        if (item._rarity === 'epic') return 'text-red-400 font-bold';
+        if (item._rarity === 'legendary') return 'text-yellow-400 font-bold text-magic-shimmer';
+        return 'text-green-400 font-bold';
+    };
+
+    const wRarity = getRarityClass(weapon);
+    const aRarity = getRarityClass(armor);
+
     // --- UI/UX WIN: Dynamic Empty Slot Styling & Lore Hints ---
     const applySlotStyle = (iconElement, isEmpty) => {
         if (!iconElement) return;
@@ -779,7 +846,7 @@ const renderEquipment = () => {
     const ammoDamage = ammo ? (ammo.damage || 0) : 0;
     const totalDamage = playerStrength + weaponDamage + ammoDamage;
 
-    let weaponString = `Wpn: ${safeWpnName} (+${weaponDamage})`;
+    let weaponString = `Wpn: <span class="${wRarity}">${safeWpnName}</span> (+${weaponDamage})`;
     let weaponTooltip = `${safeWpnName}\nBase Damage: +${weaponDamage}\n(Your Total: ${totalDamage})`;
     
     if (weapon.name === 'Fists') {
@@ -820,7 +887,7 @@ const renderEquipment = () => {
     
     const totalDefense = baseDefense + armorDefense + offhandDefense + accDefense + buffDefense + conBonus + talentDefense;
 
-    let armorString = `Body: ${safeArmorName} (+${armorDefense})`;
+    let armorString = `Body: <span class="${aRarity}">${safeArmorName}</span> (+${armorDefense})`;
     let armorTooltip = `${safeArmorName}\nBase Defense: +${armorDefense}\n(Your Total: ${totalDefense})`;
     
     if (armor.name === 'Tattered Rags' || armor.name === 'Simple Tunic') {
@@ -836,7 +903,7 @@ const renderEquipment = () => {
         armorString += ` <span class="text-green-500 drop-shadow-sm">[+${buffDefense} Def (${player.defenseBonusTurns}t)]</span>`;
     }
     
-    const finalArmorHtml = `${armorString} <br><span class="text-gray-400 font-bold bg-black bg-opacity-30 px-2 py-0.5 rounded border border-gray-700 mt-1 inline-block">(Total: ${totalDefense} Def)</span>`;
+    const finalArmorHtml = `${armorString} <br><span class="text-gray-400 font-bold bg-black bg-opacity-30 px-2 py-0.5 rounded border border-gray-700 mt-1 inline-block shadow-inner">(Total: ${totalDefense} Def)</span>`;
     
     // PERFORMANCE WIN: Cache innerHTML check
     if (_uiCache.equipBody !== finalArmorHtml) {
@@ -848,16 +915,18 @@ const renderEquipment = () => {
     let miscString = "";
     if (offhand) {
         const safeOffName = typeof escapeHtml === 'function' ? escapeHtml(offhand.name) : offhand.name;
-        miscString += `Off: ${safeOffName} | `;
+        const oRarity = getRarityClass(offhand);
+        miscString += `Off: <span class="${oRarity}">${safeOffName}</span> | `;
     }
     if (acc) {
         const safeAccName = typeof escapeHtml === 'function' ? escapeHtml(acc.name) : acc.name;
-        miscString += `Acc: ${safeAccName}`;
+        const cRarity = getRarityClass(acc);
+        miscString += `Acc: <span class="${cRarity}">${safeAccName}</span>`;
     }
     if (!offhand && !acc) miscString = "Off-Hand & Accessory Empty";
     
     if (_uiCache.equipMisc !== miscString) {
-        document.getElementById('equippedMiscDisplay').textContent = miscString;
+        document.getElementById('equippedMiscDisplay').innerHTML = miscString;
         _uiCache.equipMisc = miscString;
     }
 
@@ -934,6 +1003,11 @@ function updateRegionDisplay() {
 
         if (!gameState.discoveredRegions.has(regionId)) {
             logMessage(`{gold:Discovered: ${window.lastRegionCache.name}!}`); 
+            
+            // --- JUICE WIN: Cinematic Area Banner ---
+            if (typeof showAreaDiscoveredBanner === 'function') {
+                showAreaDiscoveredBanner(window.lastRegionCache.name);
+            }
             
             // --- Procedural Regional Lore ---
             const seed = stringToSeed(regionId);
@@ -1033,6 +1107,9 @@ function renderStatusEffects() {
 
     const player = gameState.player;
     let icons = ''; 
+    
+    // UX WIN: Helper to aggressively pulse icons when they are about to expire!
+    const getBlinkClass = (turns) => turns <= 3 ? 'animate-pulse opacity-75' : 'drop-shadow-md';
 
     // --- MOUNTS & VEHICLES ---
     if (player.isMounted && player.companion) {
@@ -1047,25 +1124,26 @@ function renderStatusEffects() {
 
     // --- BUFFS & DEBUFFS (EXPANDED TOOLTIPS) ---
     if (player.shieldValue > 0) {
-        icons += `<span title="Arcane Shield (${Math.ceil(player.shieldValue)} points, ${player.shieldTurns}t)" class="drop-shadow-md cursor-help">💠</span>`;
+        icons += `<span title="Arcane Shield (${Math.ceil(player.shieldValue)} points, ${player.shieldTurns}t)" class="cursor-help ${getBlinkClass(player.shieldTurns)}">💠</span>`;
     }
     if (player.defenseBonusTurns > 0) {
-        icons += `<span title="Braced (+${player.defenseBonus} Def, ${player.defenseBonusTurns}t)" class="drop-shadow-md cursor-help">🛡️</span>`;
+        icons += `<span title="Braced (+${player.defenseBonus} Def, ${player.defenseBonusTurns}t)" class="cursor-help ${getBlinkClass(player.defenseBonusTurns)}">🛡️</span>`;
     }
     if (player.strengthBonusTurns > 0) {
-        icons += `<span title="Strong (+${player.strengthBonus} Str, ${player.strengthBonusTurns}t)" class="drop-shadow-md cursor-help">💪</span>`;
+        icons += `<span title="Strong (+${player.strengthBonus} Str, ${player.strengthBonusTurns}t)" class="cursor-help ${getBlinkClass(player.strengthBonusTurns)}">💪</span>`;
     }
     if (player.waterBreathingTurns > 0) {
-        icons += `<span title="Gills (Can swim in deep water, ${player.waterBreathingTurns}t)" class="text-blue-300 drop-shadow-md cursor-help">🫧</span>`;
+        icons += `<span title="Gills (Can swim in deep water, ${player.waterBreathingTurns}t)" class="text-blue-300 cursor-help ${getBlinkClass(player.waterBreathingTurns)}">🫧</span>`;
     }
     if (player.fireResistTurns > 0) {
-        icons += `<span title="Fire Immunity (${player.fireResistTurns}t)" class="text-orange-400 drop-shadow-md cursor-help">🧊</span>`;
+        icons += `<span title="Fire Immunity (${player.fireResistTurns}t)" class="text-orange-400 cursor-help ${getBlinkClass(player.fireResistTurns)}">🧊</span>`;
     }
     if (player.poisonTurns > 0) {
+        // Debuffs blink intensely no matter what
         icons += `<span title="Poisoned (${player.poisonTurns}t)" class="text-green-500 animate-pulse drop-shadow-md cursor-help">☣️</span>`;
     }
     if (player.frostbiteTurns > 0) {
-        icons += `<span title="Frostbitten (${player.frostbiteTurns}t)" class="text-cyan-400 drop-shadow-md cursor-help">❄️</span>`;
+        icons += `<span title="Frostbitten (${player.frostbiteTurns}t)" class="text-cyan-400 cursor-help ${getBlinkClass(player.frostbiteTurns)}">❄️</span>`;
     }
     if (player.rootTurns > 0) {
         icons += `<span title="Rooted (Cannot move, ${player.rootTurns}t)" class="text-green-600 animate-pulse drop-shadow-md cursor-help">🌿</span>`;
@@ -1179,7 +1257,10 @@ function resizeCanvas() {
             willpower: "Willpower: Dark resilience. Increases Max Psyche, Dark/Frost spell damage, and summon health.",
             perception: "Perception: Keen senses. Improves combat Accuracy and the chance to passively spot Secret Doors.",
             endurance: "Endurance: Tireless resolve. Increases Max Stamina and improves resistance to Swamp Sickness.",
-            intuition: "Intuition: Connection to nature. Improves Druidic spells and senses unseen enemies nearby."
+            intuition: "Intuition: Connection to nature. Improves Druidic spells and senses unseen enemies nearby.",
+            // Alignment & Karma (Future-proofing)
+            alignment: "Alignment: The purity of your soul. Affects how certain factions treat you.",
+            deity: "Deity: The higher power that currently holds your favor."
         };
 
         for (const stat in statDescriptions) {
