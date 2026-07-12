@@ -596,6 +596,19 @@ async function attemptMovePlayer(newX, newY) {
         return; 
     }
 
+    // --- ACTIVE INVESTIGATION LOGIC ---
+    if (gameState.activeInvestigation && newX === gameState.activeInvestigation.x && newY === gameState.activeInvestigation.y) {
+        
+        if (typeof EventManager !== 'undefined') {
+            EventManager.startEvent(gameState.activeInvestigation.eventId, newX, newY);
+            endPlayerTurn(); 
+            return; // Block movement so they don't walk past it
+        } else {
+            logMessage("{red:Event Engine offline.}");
+            return;
+        }
+    }
+
     // --- ACTIVE TREASURE MAP LOGIC ---
     if (gameState.activeTreasure && newX === gameState.activeTreasure.x && newY === gameState.activeTreasure.y) {
         const hasShovel = gameState.player.inventory.some(i => i.name === 'Shovel');
