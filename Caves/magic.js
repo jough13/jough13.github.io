@@ -6,7 +6,7 @@
  * @param {string} spellId - The ID of the spell to cast (e.g., "lesserHeal").
  */
 
-function castSpell(spellId) {
+async function castSpell(spellId) {
     
     if (gameState.player.isMounted) {
         gameState.player.isMounted = false;
@@ -169,12 +169,13 @@ function castSpell(spellId) {
                     ParticleSystem.createLevelUp(player.x, player.y); 
                 }
 
-                // CONTENT WIN: Holy Nova
+                // Holy Nova
                 // Instantly scorch nearby undead and demons when casting Divine Light!
                 const novaRadius = 2;
                 const holyDamage = 20 + (player.wits * spellLevel);
                 let hitUnholy = false;
                 let batchedPayload = {};
+                const novaPromises = []; // Array to hold our network promises
                 
                 for (let y = player.y - novaRadius; y <= player.y + novaRadius; y++) {
                     for (let x = player.x - novaRadius; x <= player.x + novaRadius; x++) {
@@ -192,24 +193,27 @@ function castSpell(spellId) {
                         const eData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tileAt] : null;
                         const tags = eData ? (eData.tags || []) : [];
                         if (eData && (tags.includes("undead") || tags.includes("demon"))) {
-                            // Run the calculations asynchronously and locally in batch mode
-                            applySpellDamage(x, y, holyDamage, 'divineLight', true).then(res => {
-                                if (res && res.hit) {
-                                    Object.assign(batchedPayload, res.payload);
-                                    hitUnholy = true;
-                                }
-                            });
+                            // Push the asynchronous calculation into our array!
+                            novaPromises.push(
+                                applySpellDamage(x, y, holyDamage, 'divineLight', true).then(res => {
+                                    if (res && res.hit) {
+                                        Object.assign(batchedPayload, res.payload);
+                                        hitUnholy = true;
+                                    }
+                                })
+                            );
                         }
                     }
                 }
                 
-                // Commit the mass scorching to the database!
-                setTimeout(() => {
-                    if (hitUnholy) logMessage("{gold:The blinding light sears the nearby darkness!}");
-                    if (Object.keys(batchedPayload).length > 0 && typeof rtdb !== 'undefined') {
-                        rtdb.ref().update(batchedPayload).catch(e => console.error("Nova Batch Error:", e));
-                    }
-                }, 50);
+                // Wait for every single calculation to finish flawlessly!
+                await Promise.all(novaPromises);
+                
+                // Now we safely commit the mass scorching to the database
+                if (hitUnholy) logMessage("{gold:The blinding light sears the nearby darkness!}");
+                if (Object.keys(batchedPayload).length > 0 && typeof rtdb !== 'undefined') {
+                    rtdb.ref().update(batchedPayload).catch(e => console.error("Nova Batch Error:", e));
+                }
 
                 updates.health = player.health;
                 updates.poisonTurns = 0;
