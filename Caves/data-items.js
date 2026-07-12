@@ -2024,6 +2024,54 @@ window.ITEM_DATA = {
             return false; 
         }
     },
+    // --- MISSING ENEMY DROPS & BOSS LOOT ---
+    '⚙️': { 
+        name: 'Clockwork Gear', 
+        type: 'trade', 
+        description: "Pristine brass gears from the Second Age.", 
+        value: 30 
+    },
+    'ectoplasm': { 
+        name: 'Ectoplasm', 
+        type: 'trade', 
+        tile: '👻', 
+        description: "Cold, sticky, and glowing faintly.", 
+        value: 40 
+    },
+    '💎': { 
+        name: 'Flawless Diamond', 
+        type: 'trade', 
+        description: "A perfectly cut gem of immense value.", 
+        value: 250 
+    },
+    '🗡️': { 
+        name: 'Ritual Dagger', 
+        type: 'weapon', 
+        tags: ['dagger', 'blade'], 
+        damage: 3, 
+        slot: 'weapon', 
+        description: "{red:+3 Dmg}. A wicked curved blade used by cultists." 
+    },
+    '🐉': { 
+        name: 'Dragon Scale', 
+        type: 'junk', 
+        description: "Incredibly hard and warm to the touch. Essential for high-tier armor." 
+    },
+    '🦖': { 
+        name: 'Dinosaur Bone', 
+        type: 'trade', 
+        tile: '🦴', 
+        description: "A massive, petrified femur.", 
+        value: 100 
+    },
+    '🧿e': { 
+        name: 'Eye of Alaric', 
+        type: 'accessory', 
+        tile: '🧿', 
+        slot: 'accessory',
+        statBonuses: { willpower: 10, maxMana: 30 }, 
+        description: "{purple:+10 Will, +30 Max Mana}. It blinks when you aren't looking." 
+    },
     // --- RARE CONSUMABLES ---
     '🍎': {
         name: 'Golden Apple',
