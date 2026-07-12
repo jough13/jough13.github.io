@@ -72,8 +72,14 @@ function rehydratePlayerState(data) {
             item.range = item.range || templateItem.range || null;
             item.isTwoHanded = (item.isTwoHanded !== undefined) ? item.isTwoHanded : (templateItem.isTwoHanded || false);
             
-            // ECS WIN: Rehydrate tags for old save files!
-            item.tags = item.tags || templateItem.tags || null;
+            // ECS WIN: Rehydrate tags safely using spread syntax to prevent memory reference bleeds!
+            if (item.tags) {
+                item.tags = [...item.tags];
+            } else if (templateItem.tags) {
+                item.tags = [...templateItem.tags];
+            } else {
+                item.tags = null;
+            }
             
         } else {
             // Graceful degradation for removed items
