@@ -20,9 +20,16 @@ function getUnderworldTerrain(worldX, worldY) {
     // Extreme elevations become Magma Lakes
     if (elev < 0.15) return '🌋'; 
     
-    // CONTENT WIN: Expanded Underworld Biomes
+    // CONTENT WIN: Expanded Underworld Biomes & Ecosystems
     if (elev > 0.85) return '🕸'; // Deep Spider Nests
     if (ridge > 0.45 && moist > 0.4 && moist < 0.6) return '🏛️'; // Sunken Abyssal Ruins
+
+    // LORE WIN: Magma Rivers and Underground Lakes
+    const liquidNoise = Math.abs(moist - 0.5);
+    if (liquidNoise < 0.03) {
+        if (elev < 0.4) return '🔥'; // Magma vents/rivers
+        if (elev > 0.6) return '~'; // Icy underground rivers
+    }
 
     // Open Cavern Floor
     if (moist > 0.75) return '🍄'; // Fungal Forest
@@ -229,8 +236,7 @@ const chunkManager = {
             }
 
             // --- AESTHETIC WIN: Cellular Automata Organic Smoothing ---
-            // Dissolves annoying 1x1 pillars and fills useless 1x1 potholes 
-            // without severing the main path connections!
+            // Dissolves annoying 1x1 pillars, fills useless 1x1 potholes, and removes jagged corners!
             for (let sy = 1; sy < CAVE_HEIGHT - 1; sy++) {
                 for (let sx = 1; sx < CAVE_WIDTH - 1; sx++) {
                     if (map[sy][sx] === theme.wall) {
@@ -241,7 +247,18 @@ const chunkManager = {
                         if (map[sy][sx+1] === theme.floor) floorNeighbors++;
                         
                         // Pillar Dissolve
-                        if (floorNeighbors >= 3) map[sy][sx] = theme.floor;
+                        if (floorNeighbors >= 3) {
+                            map[sy][sx] = theme.floor;
+                        } 
+                        // Smooth out harsh diagonal corners for better pathfinding and visuals
+                        else if (floorNeighbors === 2) {
+                            if ((map[sy-1][sx] === theme.floor && map[sy][sx+1] === theme.floor) ||
+                                (map[sy-1][sx] === theme.floor && map[sy][sx-1] === theme.floor) ||
+                                (map[sy+1][sx] === theme.floor && map[sy][sx+1] === theme.floor) ||
+                                (map[sy+1][sx] === theme.floor && map[sy][sx-1] === theme.floor)) {
+                                if (random() < 0.5) map[sy][sx] = theme.floor;
+                            }
+                        }
                     } 
                     else if (map[sy][sx] === theme.floor) {
                         let wallNeighbors = 0;
@@ -348,8 +365,9 @@ const chunkManager = {
                     }
                 }
 
-                // --- 🚨 BUG FIX WIN: CORRIDOR CARVER (ANTI-SOFTLOCK) ---
+                // --- 🚨 ROBUSTNESS WIN: WIDE CORRIDOR CARVER (ANTI-SOFTLOCK) ---
                 // Guarantees that every stamped room is physically connected to the spawn point!
+                // Upgraded to carve a 2-tile wide path so large mounts and followers never get stuck!
                 let currX = roomX + Math.floor(room.width / 2);
                 let currY = roomY + Math.floor(room.height / 2);
                 
@@ -360,9 +378,17 @@ const chunkManager = {
                     } else {
                         if (currY !== startPos.y) currY += Math.sign(startPos.y - currY);
                     }
-                    // Only overwrite walls, preserve existing items/enemies
-                    if (map[currY][currX] === theme.wall) {
-                        map[currY][currX] = theme.floor;
+                    
+                    // Carve a 2x2 area to ensure wide pathways
+                    for (let pathY = 0; pathY <= 1; pathY++) {
+                        for (let pathX = 0; pathX <= 1; pathX++) {
+                            const carveX = Math.min(CAVE_WIDTH - 2, currX + pathX);
+                            const carveY = Math.min(CAVE_HEIGHT - 2, currY + pathY);
+                            // Only overwrite walls, preserve existing items/enemies
+                            if (map[carveY][carveX] === theme.wall) {
+                                map[carveY][carveX] = theme.floor;
+                            }
+                        }
                     }
                     carvingFailsafe++;
                 }
@@ -1150,6 +1176,15 @@ const chunkManager = {
                         }
                     });
                 }
+                
+                // --- LORE WIN: Ancient Roads ---
+                // A rare, winding perlin ridge that creates unbroken stone paths across the overworld, hinting at a lost empire!
+                if (!isUnderworld && mapMode !== 'skyrealm' && typeof elevationNoise !== 'undefined') {
+                    const roadNoise = Math.abs(elevationNoise.noise(worldX / 150, worldY / 150, realmOffset + 9999) - 0.5);
+                    if (roadNoise < 0.015 && tile !== '~' && tile !== '≈' && tile !== '^') {
+                        tile = '▤'; // Ancient Stone Path
+                    }
+                }
 
                 const featureRoll = random();
 
@@ -1169,6 +1204,8 @@ const chunkManager = {
                         chunkData[y][x] = '⚰️'; // Ancient Grave
                     } else if (tile === '.' && featureRoll > 0.001 && featureRoll < 0.002) {
                         chunkData[y][x] = '🏺'; // Dusty Urn
+                    } else if (tile === '.' && featureRoll > 0.002 && featureRoll < 0.0025) {
+                        chunkData[y][x] = '🏚️'; // Ruined dwarven outpost
                     } else {
                         const hostileRoll = random();
                         let spawnChance = 0.003;
@@ -1205,7 +1242,7 @@ const chunkManager = {
                         chunkData[y][x] = '⛩️'; // Ruined shrine
                     } else {
                         const hostileRoll = random();
-                        if (hostileRoll < 0.003 && tile !== ' ') {
+                        if (hostileRoll < 0.003 && tile === '☁️') {
                             // Skyrealm enemies: Wraiths, Birds, Elementals
                             const skyEnemies = ['🦅', '👻', 'f', '👾'];
                             chunkData[y][x] = skyEnemies[Math.floor(random() * skyEnemies.length)];
@@ -1483,7 +1520,9 @@ const chunkManager = {
         }
 
         // --- ZERO-ALLOCATION SMOOTHING PASS ---
-        const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈', '🌋', '🍄', '💎c', '🕸']; 
+        // Instead of allocating new arrays, we safely modify in place based on cached original neighbors
+        // This removes harsh jagged diagonals and turns them into clean blocks, rendering much better in ASCII
+        const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈', '🌋', '🍄', '💎c', '🕸', '▤']; 
         
         for (let y = 1; y < this.CHUNK_SIZE - 1; y++) {
             for (let x = 1; x < this.CHUNK_SIZE - 1; x++) {
@@ -1538,7 +1577,13 @@ const chunkManager = {
         if (!this.loadedChunks[chunkId]) {
             this.generateChunk(chunkX, chunkY);
         }
-        return this.loadedChunks[chunkId][localY][localX];
+        
+        // 🚨 ROBUSTNESS WIN: Check if the array structure exists before reading the index
+        if (this.loadedChunks[chunkId] && this.loadedChunks[chunkId][localY]) {
+            return this.loadedChunks[chunkId][localY][localX] || '.';
+        }
+        
+        return '.'; // Absolute fallback
     },
     
     unloadOutOfRangeChunks: function (playerChunkX, playerChunkY) {
