@@ -744,13 +744,13 @@ function renderTerrainCache(startX, startY) {
 
     if (activeMapMode === 'dungeon') {
         // BUG FIX: Provide robust fallback if colors aren't defined in the theme object
-        currentCaveThemeObj = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+        currentCaveThemeObj = typeof CAVE_THEMES !== 'undefined' ? (CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK) : { colors: { floor: '#000', wall: '#333' }, wall: '▓', floor: '.' };
         if (!currentCaveThemeObj.colors) {
             currentCaveThemeObj.colors = { floor: '#000', wall: '#333' };
         }
-        currentCaveMap = chunkManager.caveMaps[gameState.currentCaveId];
+        currentCaveMap = typeof chunkManager !== 'undefined' ? chunkManager.caveMaps[gameState.currentCaveId] : null;
     } else if (activeMapMode === 'castle') {
-        currentCastleMap = chunkManager.castleMaps[gameState.currentCastleId];
+        currentCastleMap = typeof chunkManager !== 'undefined' ? chunkManager.castleMaps[gameState.currentCastleId] : null;
     }
 
     const isWideCharCheck = typeof isWideChar === 'function' ? isWideChar : (c) => /\p{Extended_Pictographic}/u.test(c);
@@ -804,20 +804,24 @@ function renderTerrainCache(startX, startY) {
                 const chunkId = `${cX},${cY}`;
                 const tileKey = `${lX},${lY}`;
 
-                // Generate the chunk on the fly if the screen is wider than our pre-loaded bounds!
-                if (!chunkManager.loadedChunks[chunkId]) {
-                    chunkManager.generateChunk(cX, cY);
-                }
-
                 let baseTerrain = '.';
-                if (chunkManager.loadedChunks[chunkId] && chunkManager.loadedChunks[chunkId][lY]) {
-                    baseTerrain = chunkManager.loadedChunks[chunkId][lY][lX];
-                }
+                if (typeof chunkManager !== 'undefined') {
+                    // Generate the chunk on the fly if the screen is wider than our pre-loaded bounds!
+                    if (!chunkManager.loadedChunks[chunkId]) {
+                        chunkManager.generateChunk(cX, cY);
+                    }
 
-                tile = baseTerrain;
-                if (chunkManager.worldState[chunkId] && chunkManager.worldState[chunkId][tileKey] !== undefined) {
-                    const val = chunkManager.worldState[chunkId][tileKey];
-                    tile = (typeof val === 'object' && val !== null) ? val.t : val;
+                    if (chunkManager.loadedChunks[chunkId] && chunkManager.loadedChunks[chunkId][lY]) {
+                        baseTerrain = chunkManager.loadedChunks[chunkId][lY][lX];
+                    }
+
+                    tile = baseTerrain;
+                    if (chunkManager.worldState[chunkId] && chunkManager.worldState[chunkId][tileKey] !== undefined) {
+                        const val = chunkManager.worldState[chunkId][tileKey];
+                        tile = (typeof val === 'object' && val !== null) ? val.t : val;
+                    }
+                } else {
+                    tile = '.';
                 }
                 
                 if (activeMapMode === 'underworld') {
@@ -872,7 +876,7 @@ function renderTerrainCache(startX, startY) {
                         case '🌋': fgChar = '🌋'; break; 
                         default:
                             fgChar = tile;
-                            if (window.ENEMY_DATA && window.ENEMY_DATA[tile]) fgColor = window.ENEMY_DATA[tile].color || '#ef4444';
+                            if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) fgColor = ENEMY_DATA[tile].color || '#ef4444';
                             break;
                     }
                 }
@@ -904,7 +908,11 @@ const render = () => {
     // --- SETUP ---
     if (!cachedThemeColors.canvasBg) updateThemeColors();
     const { canvasBg } = cachedThemeColors;
-    const hasLens = gameState.player.inventory.some(i => i && i.name === 'Spirit Lens'); // 🚨 GHOST GUARD
+    
+    // 🚨 GHOST GUARD: Ensure inventory exists
+    const inv = gameState.player.inventory || [];
+    const hasLens = inv.some(i => i && i.name === 'Spirit Lens'); 
+    
     const now = Date.now();
 
     // 1. Clear & Fill Background
@@ -1042,12 +1050,14 @@ const render = () => {
         }
     }
 
+    const isWideCharCheck = typeof isWideChar === 'function' ? isWideChar : (c) => /\p{Extended_Pictographic}/u.test(c);
+
     const drawEntity = (entity, x, y) => {
         if (!entity) return;
         if (entity.type === 'spirit' && !hasLens) return;
 
         const char = entity.tile || '?';
-        const isWide = isWideChar(char);
+        const isWide = isWideCharCheck(char);
         const breathOffset = Math.sin(now / 300 + (entity.x * 12.3 + entity.y * 7.1)) * (TILE_SIZE * 0.08);
 
         if (entity.type === 'spirit') ctx.globalAlpha = 0.6;
@@ -1118,7 +1128,7 @@ const render = () => {
         }
     }
 
-    if (gameState.mapMode !== 'dungeon') {
+    if (gameState.mapMode !== 'dungeon' && typeof otherPlayers !== 'undefined') {
         const opKeys = Object.keys(otherPlayers);
         for (let i = 0; i < opKeys.length; i++) {
             const op = otherPlayers[opKeys[i]];
@@ -1139,7 +1149,7 @@ const render = () => {
                 
                 if (op.companion) {
                     ctx.fillStyle = '#86efac';
-                    ctx.font = `bold ${TILE_SIZE * 0.7}px monospace`;
+                    ctx.font = `bold ${Math.trunc(TILE_SIZE * 0.7)}px monospace`;
                     ctx.fillText(op.companion.tile || '?', screenX + TILE_SIZE - 2, screenY + 6 + opBreath);
                 }
                 
@@ -1183,7 +1193,7 @@ const render = () => {
         ctx.fillStyle = '#3b82f6';
         ctx.fillText(playerChar, pScreenX, pScreenY - (TILE_SIZE * 0.35));
     } else {
-        ctx.font = `bold ${TILE_SIZE}px monospace`;
+        ctx.font = isWideCharCheck(playerChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
         ctx.strokeText(playerChar, pScreenX, pScreenY);
         ctx.fillStyle = '#3b82f6';
         ctx.fillText(playerChar, pScreenX, pScreenY);
@@ -1219,7 +1229,7 @@ const render = () => {
     // --- 4. OPTIMIZED LIGHTING OVERLAY ---
     let ambientLight = 0.0;
     let baseRadius = 10;
-    const hasTorch = gameState.player.inventory.some(item => item && item.name === 'Torch'); // 🚨 GHOST GUARD
+    const hasTorch = inv.some(item => item && item.name === 'Torch'); // 🚨 GHOST GUARD
     const torchBonus = hasTorch ? 6 : 0;
     const candleBonus = (gameState.player.candlelightTurns > 0) ? 8 : 0;
 
@@ -1229,7 +1239,7 @@ const render = () => {
         ambientLight = 0.85; 
         baseRadius = 6 + Math.floor(gameState.player.perception / 2) + torchBonus + candleBonus;
         
-        const themeName = chunkManager.caveThemes[gameState.currentCaveId];
+        const themeName = typeof chunkManager !== 'undefined' ? chunkManager.caveThemes[gameState.currentCaveId] : null;
         if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
         else if (themeName === 'VOID' || gameState.mapMode === 'underworld') { 
             r = 168; g = 85; b = 247; 
@@ -1243,7 +1253,7 @@ const render = () => {
         ambientLight = timeWave * 0.85;
         baseRadius = (ambientLight > 0.3) ? 8 + torchBonus + candleBonus : 25;
 
-        if (ambientLight > 0.4 && (hasTorch || candleBonus > 0)) {
+        if (ambientLight > 0.4 && (hasTorch || candleBonus > 0) && typeof chunkManager !== 'undefined') {
             const centerTile = chunkManager.getTile(p.x, p.y);
             if (centerTile === '🍄') { r = 168; g = 85; b = 247; } 
             else if (centerTile === '≈') { r = 134; g = 239; b = 172; } 
@@ -1281,7 +1291,7 @@ const render = () => {
     }
 
     // --- LORE & ATMOSPHERE WIN: Biome-Specific Ambient Particles ---
-    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+    if ((gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') && typeof chunkManager !== 'undefined') {
         const centerTile = chunkManager.getTile(p.x, p.y);
         const isNight = outerDarkness > 0.4;
         
@@ -1462,8 +1472,8 @@ const render = () => {
                 ctx.fillText(activeBoss.name, (canvas.width / dpr) / 2, barY - 10);
 
                 ctx.font = 'bold 12px monospace';
-                ctx.strokeText(`${activeBoss.health} / ${safeMaxHealth}`, (canvas.width / dpr) / 2, barY + 16);
-                ctx.fillText(`${activeBoss.health} / ${safeMaxHealth}`, (canvas.width / dpr) / 2, barY + 16);
+                ctx.strokeText(`${Math.trunc(activeBoss.health)} / ${Math.trunc(safeMaxHealth)}`, (canvas.width / dpr) / 2, barY + 16);
+                ctx.fillText(`${Math.trunc(activeBoss.health)} / ${Math.trunc(safeMaxHealth)}`, (canvas.width / dpr) / 2, barY + 16);
             }
         }
     }
@@ -1488,7 +1498,7 @@ function syncPlayerState() {
             maxHealth: gameState.player.maxHealth,
             mapMode: gameState.mapMode,
             mapId: gameState.currentCaveId || gameState.currentCastleId || null,
-            email: auth.currentUser.email,
+            email: auth.currentUser ? auth.currentUser.email : "Traveler",
             
             currentRealm: gameState.currentRealm || 0,
             
@@ -1499,7 +1509,7 @@ function syncPlayerState() {
                 y: gameState.player.companion.y  
             } : null
         };
-        onlinePlayerRef.set(stateToSync);
+        onlinePlayerRef.set(stateToSync).catch(() => {});
     }
 }
 
