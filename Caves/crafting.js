@@ -167,27 +167,43 @@ function handleCraftItem(recipeName, requestBatch = false) {
         newItem.effect = itemTemplate.effect;
         newItem.onHit = itemTemplate.onHit;
 
+        // --- LORE & BUG FIX WIN: Accurate Masterwork Scaling ---
         if (!isCooking && (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') && Math.random() < masterworkChance) {
             isMasterwork = true;
             newItem.quantity = 1; 
-            newItem.name = `Masterwork ${itemTemplate.name}`;
-            newItem._rarity = 'rare'; // Glow border
             
-            // LORE WIN: Masterwork Engravings
-            newItem.description = (newItem.description || "") + `\n{purple:Forged with exceptional skill by ${player.name}.}`;
+            // 🐛 BUG FIX: Properly bump rarity without downgrading natively epic/legendary items!
+            const baseRarity = itemTemplate._rarity || 'uncommon';
+            if (baseRarity === 'uncommon') newItem._rarity = 'rare';
+            else if (baseRarity === 'rare') newItem._rarity = 'epic';
+            else newItem._rarity = 'legendary'; 
+            
+            // LORE WIN: Thematic prefixes and Maker's Marks!
+            const mwPrefixes = ["Flawless", "Peerless", "Exquisite", "Masterwork", "Divine"];
+            const chosenPrefix = mwPrefixes[Math.floor(Math.random() * mwPrefixes.length)];
+            
+            newItem.name = `${chosenPrefix} ${itemTemplate.name}`;
+            newItem.description = (newItem.description || "") + `\n\n{purple:Forged with exceptional skill by ${player.name || 'an Artisan'}.}`;
 
+            // Provide TWO random stat bonuses for a Masterwork instead of 1!
             if (!newItem.statBonuses) newItem.statBonuses = {};
             const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
-            const randomStat = stats[Math.floor(Math.random() * stats.length)];
-            newItem.statBonuses[randomStat] = (newItem.statBonuses[randomStat] || 0) + 1;
+            
+            const randomStat1 = stats[Math.floor(Math.random() * stats.length)];
+            const randomStat2 = stats[Math.floor(Math.random() * stats.length)];
+            newItem.statBonuses[randomStat1] = (newItem.statBonuses[randomStat1] || 0) + 1;
+            newItem.statBonuses[randomStat2] = (newItem.statBonuses[randomStat2] || 0) + 1;
 
-            if (newItem.type === 'weapon') newItem.damage = (newItem.damage || 0) + 1;
-            if (newItem.type === 'armor') newItem.defense = (newItem.defense || 0) + 1;
+            // Bump base stats
+            if (newItem.type === 'weapon') newItem.damage = (newItem.damage || 0) + 2;
+            if (newItem.type === 'armor') newItem.defense = (newItem.defense || 0) + 2;
         }
 
-        if (isCooking && Math.random() < 0.10 + (player.luck * 0.02)) {
+        // LORE WIN: Perfect Culinary Batches!
+        if (isCooking && Math.random() < 0.10 + ((player.luck || 1) * 0.02)) {
             culinaryCrits++;
             newItem.quantity += 1; 
+            newItem.name = `Perfect ${itemTemplate.name}`; // Renames the stack!
         }
 
         // Tally outputs for accurate UI logging
@@ -196,7 +212,8 @@ function handleCraftItem(recipeName, requestBatch = false) {
         // 🚨 GHOST GUARD
         const curStack = player.inventory.find(item => item && item.name === newItem.name && !item.isEquipped);
 
-        if (curStack && isStackable && !isMasterwork) {
+        // Don't merge Masterworks into stacks!
+        if (curStack && isStackable && !isMasterwork && !newItem.name.includes('Perfect')) {
             curStack.quantity += newItem.quantity; 
         } else {
             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
@@ -262,19 +279,25 @@ function handleCraftItem(recipeName, requestBatch = false) {
 
     // --- ACCURATE LOGGING & EFFECTS ---
     let totalYield = 0;
+    let hadEpicSuccess = false;
+
     Object.entries(outputTracker).forEach(([name, count]) => {
         totalYield += count;
         const safeName = typeof escapeHtml === 'function' ? escapeHtml(name) : name;
-        if (name.includes("Masterwork")) {
+        
+        if (name.includes("Flawless") || name.includes("Peerless") || name.includes("Exquisite") || name.includes("Masterwork") || name.includes("Divine")) {
             logMessage(`{purple:Masterwork Success! You forged: ${safeName} (x${count})}`);
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+            hadEpicSuccess = true;
+        } else if (name.includes("Perfect")) {
+            logMessage(`{gold:Culinary Perfection! You cooked: ${safeName} (x${count})}`);
+            hadEpicSuccess = true;
         } else {
             logMessage(`You ${isCooking ? 'cooked' : 'crafted'}: ${safeName} (x${count}).`);
         }
     });
 
     if (culinaryCrits > 0) {
-        logMessage(`{gold:Perfect Batch! Your culinary instincts yielded extra portions!}`);
+        logMessage(`{gold:Your culinary instincts yielded extra portions!}`);
     }
 
     if (!player.metrics) player.metrics = {};
@@ -284,16 +307,25 @@ function handleCraftItem(recipeName, requestBatch = false) {
     // Float the total yield visually
     if (typeof ParticleSystem !== 'undefined') {
         const floatText = `+${totalYield} Crafted`;
-        const floatColor = Object.keys(outputTracker).some(k => k.includes("Masterwork")) ? '#a855f7' : (culinaryCrits > 0 ? '#facc15' : '#4ade80');
+        const floatColor = hadEpicSuccess ? '#a855f7' : '#4ade80';
         ParticleSystem.createFloatingText(player.x, player.y, floatText, floatColor);
+        if (hadEpicSuccess) ParticleSystem.createExplosion(player.x, player.y, '#facc15', 20);
     }
     
-    // Base audio
-    if (typeof AudioSystem !== 'undefined' && !Object.keys(outputTracker).some(k => k.includes("Masterwork"))) {
-        if (isCooking) AudioSystem.playNoise(0.4, 0.05, 800); 
-        else if (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') AudioSystem.playHit(); 
-        else if (typeof AudioSystem.playCraftSuccess === 'function') AudioSystem.playCraftSuccess(); 
-        else AudioSystem.playStep(); 
+    // JUICE WIN: Dynamic Audio
+    if (typeof AudioSystem !== 'undefined') {
+        if (hadEpicSuccess) {
+            AudioSystem.playLevelUp();
+            gameState.screenShake = 5;
+        } else if (isCooking) {
+            AudioSystem.playNoise(0.4, 0.05, 800); 
+        } else if (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') {
+            AudioSystem.playHit(); 
+        } else if (typeof AudioSystem.playCraftSuccess === 'function') {
+            AudioSystem.playCraftSuccess(); 
+        } else {
+            AudioSystem.playStep(); 
+        }
     }
 
     // Grant XP
@@ -336,41 +368,55 @@ function handleCraftItem(recipeName, requestBatch = false) {
 function openCraftingModal(mode = 'workbench') {
     if (typeof inputQueue !== 'undefined') inputQueue.length = 0; 
     gameState.currentCraftingMode = mode;
-
-    const title = document.querySelector('#craftingModal h2');
-    if (title) {
-        let titleLore = "Forge weapons, weave armor, and build tools.";
-        if (mode === 'workbench') {
-            const lvl = gameState.player.craftingLevel || 1;
-            if (lvl >= 15) titleLore = "Forge items that rival the gods themselves.";
-            else if (lvl >= 10) titleLore = "Masterwork techniques unlock their true potential.";
-            else if (lvl >= 5) titleLore = "Your hands move with practiced efficiency.";
-        } else if (mode === 'cooking') {
-            const luck = gameState.player.luck || 1;
-            if (luck >= 10) titleLore = "Your culinary instincts are legendary.";
-            else titleLore = "Combine ingredients to survive the wilds.";
-        }
-        
-        title.innerHTML = mode === 'cooking' 
-            ? `Cooking Pot <span class='text-sm text-yellow-500 block font-normal mt-1'>${titleLore}</span>` 
-            : `Crafting Workbench <span class='text-sm text-green-500 block font-normal mt-1'>${titleLore}</span>`;
-    }
-
+    
     renderCraftingModal();
     const modal = document.getElementById('craftingModal');
     if (modal) modal.classList.remove('hidden');
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
 }
 
 function renderCraftingModal() {
     const craftingRecipeList = document.getElementById('craftingRecipeList');
-    if (!craftingRecipeList) return;
+    const title = document.querySelector('#craftingModal h2');
+    if (!craftingRecipeList || !title) return;
     
     craftingRecipeList.innerHTML = '';
     
     const player = gameState.player;
     const availableMats = getAvailableMaterials(player.inventory);
     const recipeBook = getRecipeBook(gameState.currentCraftingMode);
-    let playerLevel = gameState.currentCraftingMode === 'cooking' ? 1 : (player.craftingLevel || 1);
+    
+    const isCooking = gameState.currentCraftingMode === 'cooking';
+    let playerLevel = isCooking ? 1 : (player.craftingLevel || 1);
+
+    // --- UX WIN: Dynamic Title & Live XP Progress Bar! ---
+    let titleLore = "Forge weapons, weave armor, and build tools.";
+    let xpProgressHtml = '';
+    
+    if (isCooking) {
+        const luck = player.luck || 1;
+        if (luck >= 10) titleLore = "Your culinary instincts are legendary.";
+        else titleLore = "Combine ingredients to survive the wilds.";
+        
+        title.innerHTML = `Cooking Pot <span class='text-sm text-yellow-500 block font-normal mt-1'>${titleLore}</span>`;
+    } else {
+        if (playerLevel >= 15) titleLore = "Forge items that rival the gods themselves.";
+        else if (playerLevel >= 10) titleLore = "Masterwork techniques unlock their true potential.";
+        else if (playerLevel >= 5) titleLore = "Your hands move with practiced efficiency.";
+        
+        const cxp = player.craftingXp || 0;
+        const nexp = player.craftingXpToNext || 50;
+        const pct = Math.min(100, (cxp / nexp) * 100);
+        
+        xpProgressHtml = `
+            <div class="w-full bg-gray-900 rounded h-1 mt-3 border border-gray-700 shadow-inner overflow-hidden flex-shrink-0">
+                <div class="bg-blue-500 h-full transition-all duration-300" style="width: ${pct}%"></div>
+            </div>
+            <div class="text-[10px] text-gray-400 text-right mt-1 font-mono uppercase tracking-widest">Artisan Level ${playerLevel} | XP: ${cxp} / ${nexp}</div>
+        `;
+        
+        title.innerHTML = `Crafting Workbench <span class='text-sm text-green-500 block font-normal mt-1'>${titleLore}</span>${xpProgressHtml}`;
+    }
 
     const recipeDataArray = Object.entries(recipeBook).map(([recipeName, recipe]) => {
         const outputItemKey = getCraftItemKey(recipeName);
