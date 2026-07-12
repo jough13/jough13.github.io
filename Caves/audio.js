@@ -150,52 +150,69 @@ const AudioSystem = {
 
     // --- IMMERSION: DYNAMIC ACOUSTICS & DISTANCE ATTENUATION ---
     _getAcoustics: function() {
+        let baseAcoustics = { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 };
+        
         if (typeof gameState !== 'undefined') {
             // LORE WIN: Deeply immersive acoustic profiles based on the environment!
             
             // 1. The Void & Abyss (Eerie, endless echoes)
             if (gameState.currentRealm !== 0 || gameState.currentCaveTheme === 'VOID' || gameState.currentCaveTheme === 'ABYSS') {
-                return { durationMult: 1.6, filterMult: 0.35, echoDelay: 0.35, echoFeedback: 0.65, dampening: 1000 };
+                baseAcoustics = { durationMult: 1.6, filterMult: 0.35, echoDelay: 0.35, echoFeedback: 0.65, dampening: 1000 };
             }
             // 2. Crystal Caves & Frozen Ruins (High resonance, bright ringing)
-            if (gameState.currentCaveTheme === 'CRYSTAL' || gameState.currentCaveTheme === 'FROZEN_RUIN') {
-                return { durationMult: 2.0, filterMult: 1.2, echoDelay: 0.2, echoFeedback: 0.7, dampening: 8000 };
+            else if (gameState.currentCaveTheme === 'CRYSTAL' || gameState.currentCaveTheme === 'FROZEN_RUIN') {
+                baseAcoustics = { durationMult: 2.0, filterMult: 1.2, echoDelay: 0.2, echoFeedback: 0.7, dampening: 8000 };
             }
             // 3. Sand Tombs (Dry, dusty, heavily muffled)
-            if (gameState.currentCaveTheme === 'SAND_TOMB') {
-                return { durationMult: 0.6, filterMult: 0.5, echoDelay: 0.02, echoFeedback: 0.1, dampening: 800 };
+            else if (gameState.currentCaveTheme === 'SAND_TOMB') {
+                baseAcoustics = { durationMult: 0.6, filterMult: 0.5, echoDelay: 0.02, echoFeedback: 0.1, dampening: 800 };
             }
             // 4. Sunken Temples & Grottos (Underwater muffling)
-            if (gameState.currentCaveTheme === 'SUNKEN' || gameState.currentCaveTheme === 'GROTTO') {
-                return { durationMult: 0.8, filterMult: 0.25, echoDelay: 0.1, echoFeedback: 0.2, dampening: 600 };
+            else if (gameState.currentCaveTheme === 'SUNKEN' || gameState.currentCaveTheme === 'GROTTO') {
+                baseAcoustics = { durationMult: 0.8, filterMult: 0.25, echoDelay: 0.1, echoFeedback: 0.2, dampening: 600 };
             }
             // 5. Dwarven Mines (Tight metallic slapback)
-            if (gameState.currentCaveTheme === 'DWARVEN_MINE') {
-                return { durationMult: 0.9, filterMult: 1.1, echoDelay: 0.05, echoFeedback: 0.5, dampening: 6000 };
+            else if (gameState.currentCaveTheme === 'DWARVEN_MINE') {
+                baseAcoustics = { durationMult: 0.9, filterMult: 1.1, echoDelay: 0.05, echoFeedback: 0.5, dampening: 6000 };
             }
             // 6. Arena / Colosseum (Wide stadium echo)
-            if (gameState.currentCaveTheme === 'ARENA') {
-                return { durationMult: 1.2, filterMult: 0.9, echoDelay: 0.25, echoFeedback: 0.4, dampening: 4000 };
+            else if (gameState.currentCaveTheme === 'ARENA') {
+                baseAcoustics = { durationMult: 1.2, filterMult: 0.9, echoDelay: 0.25, echoFeedback: 0.4, dampening: 4000 };
             }
             // 7. Sky Realm (Wind swept, quick decay)
-            if (gameState.mapMode === 'skyrealm') {
-                return { durationMult: 0.8, filterMult: 1.5, echoDelay: 0.4, echoFeedback: 0.3, dampening: 4000 };
+            else if (gameState.mapMode === 'skyrealm') {
+                baseAcoustics = { durationMult: 0.8, filterMult: 1.5, echoDelay: 0.4, echoFeedback: 0.3, dampening: 4000 };
             }
             // 8. Underworld (Crushing deep muffle, miles of earth above)
-            if (gameState.mapMode === 'underworld') {
-                return { durationMult: 1.5, filterMult: 0.4, echoDelay: 0.3, echoFeedback: 0.5, dampening: 800 }; 
+            else if (gameState.mapMode === 'underworld') {
+                baseAcoustics = { durationMult: 1.5, filterMult: 0.4, echoDelay: 0.3, echoFeedback: 0.5, dampening: 800 }; 
             }
             // 9. Deep Caves (Muffled highs, heavy slapback)
-            if (gameState.mapMode === 'dungeon') {
-                return { durationMult: 1.2, filterMult: 0.6, echoDelay: 0.15, echoFeedback: 0.4, dampening: 1500 }; 
+            else if (gameState.mapMode === 'dungeon') {
+                baseAcoustics = { durationMult: 1.2, filterMult: 0.6, echoDelay: 0.15, echoFeedback: 0.4, dampening: 1500 }; 
             } 
             // 10. Castles & Ruins (Stone halls, tight reverb)
-            if (gameState.mapMode === 'castle') {
-                return { durationMult: 1.1, filterMult: 0.85, echoDelay: 0.08, echoFeedback: 0.3, dampening: 3000 }; 
+            else if (gameState.mapMode === 'castle') {
+                baseAcoustics = { durationMult: 1.1, filterMult: 0.85, echoDelay: 0.08, echoFeedback: 0.3, dampening: 3000 }; 
+            }
+            
+            // --- LORE & ATMOSPHERE WIN: Vitals-Based Acoustic Filtering! ---
+            if (gameState.player) {
+                // If health is critically low, simulate blood rushing to ears by heavily muffling all high frequencies
+                if (gameState.player.health <= gameState.player.maxHealth * 0.25) {
+                    baseAcoustics.filterMult *= 0.4;
+                    baseAcoustics.dampening = Math.min(baseAcoustics.dampening, 800); 
+                }
+                
+                // If suffering from Void Madness, echoes become disjointed and highly resonant
+                if (gameState.player.madnessTurns > 0) {
+                    baseAcoustics.echoDelay = Math.max(0.2, baseAcoustics.echoDelay + 0.1);
+                    baseAcoustics.echoFeedback = Math.min(0.85, baseAcoustics.echoFeedback + 0.3);
+                }
             }
         }
-        // Open air default
-        return { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 }; 
+        
+        return baseAcoustics; 
     },
 
     _getSpatialData: function(x) {
@@ -215,7 +232,15 @@ const AudioSystem = {
     },
 
     // Dampened Delay Network (True Reverb)
-    _routeToMaster: function(ctx, sourceNode, acoustics, spatial) {
+    _routeToMaster: function(ctx, sourceNode, acoustics, spatial, isUI = false) {
+        
+        // --- UX WIN: UI Acoustic Bypass ---
+        // UI sounds (hovering, clicking buttons) shouldn't echo through a cave!
+        if (isUI) {
+            sourceNode.connect(this._masterGain);
+            return null; // Return null so the GC cleanup knows there are no panners
+        }
+
         let panner = null;
         
         // COMPATIBILITY WIN: Graceful 3-Tier spatial fallback to support modern browsers,
@@ -288,15 +313,16 @@ const AudioSystem = {
 
     // --- CORE GENERATORS ---
 
-    playNoise: function(duration, vol = 0.1, filterFreq = 1000, x) {
+    playNoise: function(duration, vol = 0.1, filterFreq = 1000, x = null, isUI = false) {
         if (!this.settings.master) return;
         const ctx = this.getCtx();
         if (!ctx) return;
         
         if (!this.noiseBuffer) this.initNoise();
 
-        const acoustics = this._getAcoustics();
-        const spatial = this._getSpatialData(x);
+        // UI Sounds completely ignore caves/echoes
+        const acoustics = isUI ? { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 } : this._getAcoustics();
+        const spatial = isUI ? { pan: 0, distanceVol: 1.0, distanceFilter: 1.0 } : this._getSpatialData(x);
         
         const actualDuration = duration * acoustics.durationMult;
         // BUG FIX: Prevent log(0) errors in exponentialRampToValueAtTime by enforcing a tiny minimum
@@ -326,7 +352,7 @@ const AudioSystem = {
         src.connect(filter);
         filter.connect(gain);
         
-        const panner = this._routeToMaster(ctx, gain, acoustics, spatial);
+        const panner = this._routeToMaster(ctx, gain, acoustics, spatial, isUI);
 
         src.start(now);
         src.stop(now + actualDuration + 0.1); 
@@ -341,13 +367,13 @@ const AudioSystem = {
         setTimeout(cleanup, (actualDuration + 0.5) * 1000);
     },
 
-    playTone: function(freq, type, duration, vol = 0.1, pitchShift = true, slideTo = null, x) {
+    playTone: function(freq, type, duration, vol = 0.1, pitchShift = true, slideTo = null, x = null, isUI = false) {
         if (!this.settings.master) return;
         const ctx = this.getCtx();
         if (!ctx) return;
         
-        const acoustics = this._getAcoustics();
-        const spatial = this._getSpatialData(x);
+        const acoustics = isUI ? { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 } : this._getAcoustics();
+        const spatial = isUI ? { pan: 0, distanceVol: 1.0, distanceFilter: 1.0 } : this._getSpatialData(x);
         
         const actualDuration = duration * acoustics.durationMult;
         const actualVol = Math.max(0.001, vol * spatial.distanceVol);
@@ -377,7 +403,7 @@ const AudioSystem = {
         gain.gain.exponentialRampToValueAtTime(0.0001, now + actualDuration);
 
         osc.connect(gain);
-        const panner = this._routeToMaster(ctx, gain, acoustics, spatial);
+        const panner = this._routeToMaster(ctx, gain, acoustics, spatial, isUI);
 
         osc.start(now);
         osc.stop(now + actualDuration + 0.1);
@@ -390,13 +416,13 @@ const AudioSystem = {
         setTimeout(cleanup, (actualDuration + 0.5) * 1000);
     },
 
-    playChord: function(notes, type = 'sine', duration = 0.5, vol = 0.1, detune = 0, slideDown = false, x) {
+    playChord: function(notes, type = 'sine', duration = 0.5, vol = 0.1, detune = 0, slideDown = false, x = null, isUI = false) {
         if (!this.settings.master) return;
         const ctx = this.getCtx();
         if (!ctx) return;
         
-        const acoustics = this._getAcoustics();
-        const spatial = this._getSpatialData(x);
+        const acoustics = isUI ? { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 } : this._getAcoustics();
+        const spatial = isUI ? { pan: 0, distanceVol: 1.0, distanceFilter: 1.0 } : this._getSpatialData(x);
         
         const actualDuration = duration * acoustics.durationMult;
         const noteVol = Math.max(0.001, vol / notes.length);
@@ -422,7 +448,7 @@ const AudioSystem = {
             gain.gain.exponentialRampToValueAtTime(0.0001, now + actualDuration);
 
             osc.connect(gain);
-            const panner = this._routeToMaster(ctx, gain, acoustics, spatial);
+            const panner = this._routeToMaster(ctx, gain, acoustics, spatial, isUI);
             
             osc.start(now);
             osc.stop(now + actualDuration + 0.1);
@@ -436,13 +462,13 @@ const AudioSystem = {
         });
     },
 
-    playMelody: function(notes, type = 'sine', speed = 0.15, vol = 0.1) {
+    playMelody: function(notes, type = 'sine', speed = 0.15, vol = 0.1, isUI = false) {
         if (!this.settings.master || !this.settings.ui) return;
         const ctx = this.getCtx();
         if (!ctx) return;
         
         const now = ctx.currentTime + 0.01;
-        const acoustics = this._getAcoustics();
+        const acoustics = isUI ? { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 } : this._getAcoustics();
         const maxFreq = (ctx.sampleRate / 2) - 1; // NYQUIST FIX
         
         const osc = ctx.createOscillator();
@@ -467,7 +493,10 @@ const AudioSystem = {
         });
         
         osc.connect(gain);
-        const panner = this._routeToMaster(ctx, gain, acoustics, this._getSpatialData());
+        
+        // Pass a dummy spatial object since melodies are generally center-panned UI/Music
+        const panner = this._routeToMaster(ctx, gain, acoustics, { pan: 0, distanceVol: 1.0, distanceFilter: 1.0 }, isUI);
+        
         osc.start(now);
         osc.stop(now + totalDuration + 0.1);
         
@@ -551,12 +580,20 @@ const AudioSystem = {
             let tileAtX = null;
             if (gameState.mapMode === 'overworld') tileAtX = chunkManager.getTile(x, gameState.player.y);
             else if (gameState.mapMode === 'dungeon') tileAtX = chunkManager.caveMaps[gameState.currentCaveId]?.[gameState.player.y]?.[x];
+            else if (gameState.mapMode === 'castle') tileAtX = chunkManager.castleMaps[gameState.currentCastleId]?.[gameState.player.y]?.[x];
             
-            if (tileAtX && typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tileAtX]) {
-                const tags = ENEMY_DATA[tileAtX].tags || []; 
-                if (tags.includes("bone")) material = 'bone';
-                else if (tags.includes("metal") || tags.includes("stone") || tags.includes("construct")) material = 'metal';
-                else if (tags.includes("ethereal") || tags.includes("void")) material = 'ethereal';
+            // CONTENT WIN: Expanded Material Acoustic Tags
+            if (tileAtX) {
+                if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tileAtX]) {
+                    const tags = ENEMY_DATA[tileAtX].tags || []; 
+                    if (tags.includes("bone")) material = 'bone';
+                    else if (tags.includes("metal") || tags.includes("stone") || tags.includes("construct")) material = 'metal';
+                    else if (tags.includes("ethereal") || tags.includes("void")) material = 'ethereal';
+                    else if (tags.includes("bug") || tags.includes("aquatic") || tags.includes("fungus")) material = 'squish';
+                    else if (tags.includes("wood") || tags.includes("plant")) material = 'wood';
+                } else if (['🌳', '🌳e', '+', '🚪', '🏚', '🏚️', '📦', '⛵', 'c'].includes(tileAtX)) {
+                    material = 'wood'; // Obstacles and doors
+                }
             }
         }
 
@@ -571,6 +608,14 @@ const AudioSystem = {
         } else if (material === 'ethereal') {
             this.playTone(200, 'sine', 0.4, 0.15, false, 50, x); 
             this.playNoise(0.3, 0.08, 400, x); 
+        } else if (material === 'squish') {
+            // Wet, low-pass filtered drop
+            this.playTone(150, 'sine', 0.1, 0.15, false, 50, x);
+            this.playNoise(0.1, 0.1, 400, x); // Heavily muffled noise
+        } else if (material === 'wood') {
+            // Hollow, resonant thud and splinter
+            this.playTone(200, 'square', 0.1, 0.1, true, 50, x);
+            this.playNoise(0.05, 0.1, 1500, x);
         } else {
             this.playTone(80, 'square', 0.15, 0.1, true, null, x); 
             this.playNoise(0.1, 0.1, 1500, x);
@@ -599,10 +644,11 @@ const AudioSystem = {
         this.playChord([261.63, 329.63, 392.00], 'sine', 0.6, 0.1, 1.0, false, x);
     },
     
+    // --- UI SOUNDS (Bypass Reverb) ---
     playCoin: function() { 
         if (!this.settings.ui) return;
         if (!this._throttle('coin', 50)) return;
-        this.playMelody([987.77, 1318.51], 'sine', 0.05, 0.06); 
+        this.playMelody([987.77, 1318.51], 'sine', 0.05, 0.06, true); 
     },
     
     // JUICE WIN: Improved UI Error feedback
@@ -610,22 +656,22 @@ const AudioSystem = {
         if (this.settings.ui) {
             if (!this._throttle('error', 100)) return;
             // Dull, staccato thud instead of a harsh screech
-            this.playTone(100, 'triangle', 0.1, 0.05, false, 50);
-            this.playNoise(0.05, 0.02, 300);
+            this.playTone(100, 'triangle', 0.1, 0.05, false, 50, null, true);
+            this.playNoise(0.05, 0.02, 300, null, true);
         }
     },
 
     playClick: function() {
         if (this.settings.ui) {
             if (!this._throttle('click', 50)) return;
-            this.playNoise(0.02, 0.05, 3000);
+            this.playNoise(0.02, 0.05, 3000, null, true);
         }
     },
 
     playHover: function() {
         if (this.settings.ui) {
             if (!this._throttle('hover', 50)) return;
-            this.playTone(800, 'sine', 0.02, 0.02, false);
+            this.playTone(800, 'sine', 0.02, 0.02, false, null, null, true);
         }
     },
     
@@ -635,80 +681,84 @@ const AudioSystem = {
         if (!this.settings.ui) return;
         if (!this._throttle('consume', 150)) return; 
         // Glug/Crunch sound for eating/drinking
-        this.playNoise(0.1, 0.05, 800);
-        setTimeout(() => { this.playTone(300, 'triangle', 0.05, 0.05, true, 200); }, 50);
+        this.playNoise(0.1, 0.05, 800, null, true);
+        setTimeout(() => { this.playTone(300, 'triangle', 0.05, 0.05, true, 200, null, true); }, 50);
     },
 
     playEnchant: function() {
         if (!this.settings.magic) return;
         if (!this._throttle('enchant', 500)) return; 
         // Rising, magical arpeggio
-        this.playMelody([440, 554.37, 659.25, 880], 'sine', 0.1, 0.15);
-        this.playNoise(0.5, 0.05, 2000); // Shimmering background dust
+        this.playMelody([440, 554.37, 659.25, 880], 'sine', 0.1, 0.15, true);
+        this.playNoise(0.5, 0.05, 2000, null, true); // Shimmering background dust
     },
 
     playDisenchant: function() {
         if (!this.settings.magic) return;
         if (!this._throttle('disenchant', 300)) return; 
         // Shattering glass + discordant descending chord
-        this.playNoise(0.2, 0.15, 4000); // Crack!
-        this.playChord([880, 659.25, 622.25, 440], 'sawtooth', 0.4, 0.1, 5.0, true);
+        this.playNoise(0.2, 0.15, 4000, null, true); // Crack!
+        this.playChord([880, 659.25, 622.25, 440], 'sawtooth', 0.4, 0.1, 5.0, true, null, true);
     },
     
     // --- EPIC/FANFARE SOUNDS ---
 
     playLevelUp: function() {
         if (!this._throttle('levelup', 1000)) return; 
-        this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 0.8, 0.15, 1.5);
+        // JUICE WIN: Epic Arpeggio lead-in
+        this.playMelody([261.63, 329.63, 392.00], 'sine', 0.1, 0.1, true);
+        setTimeout(() => {
+            this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 1.0, 0.2, 1.5, false, null, true);
+        }, 300);
     },
 
     playQuestComplete: function() {
         if (!this._throttle('questcomplete', 1000)) return; 
-        this.playMelody([392.00, 392.00, 392.00, 523.25, 0, 523.25], 'triangle', 0.12, 0.1);
+        this.playMelody([392.00, 392.00, 392.00, 523.25, 0, 523.25], 'triangle', 0.12, 0.1, true);
     },
 
     playLootRare: function() {
         if (!this._throttle('lootrare', 500)) return; 
-        this.playMelody([523.25, 659.25, 783.99, 1046.50], 'sine', 0.08, 0.08);
+        this.playMelody([523.25, 659.25, 783.99, 1046.50], 'sine', 0.08, 0.08, true);
     },
 
     playSecret: function() {
         if (!this._throttle('secret', 1000)) return; 
-        this.playMelody([329.63, 392.00, 493.88], 'triangle', 0.2, 0.08);
+        this.playMelody([329.63, 392.00, 493.88], 'triangle', 0.2, 0.08, true);
     },
 
     playWarning: function() {
         if (!this._throttle('warning', 1000)) return; 
-        this.playMelody([400, 0, 400], 'square', 0.1, 0.1);
+        this.playMelody([400, 0, 400], 'square', 0.1, 0.1, true);
     },
 
     playDeath: function() {
         // JUICE WIN: Upgraded heart-stopping audio for death
-        this.playNoise(2.0, 0.3, 100); // Low heavy thud
-        this.playMelody([300, 280, 260, 200, 150, 100, 50], 'sawtooth', 0.5, 0.2); // Slower, deeper decay
+        this.playNoise(2.0, 0.3, 100, null, true); // Low heavy thud
+        this.playMelody([300, 280, 260, 200, 150, 100, 50], 'sawtooth', 0.5, 0.2, true); // Slower, deeper decay
     },
 
     playDiscovery: function() {
         if (!this._throttle('discovery', 2000)) return; 
-        this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 2.0, 0.15, 2.0);
+        this.playChord([261.63, 329.63, 392.00, 523.25], 'sine', 2.0, 0.15, 2.0, false, null, true);
     },
 
     playBossSpawn: function() {
         if (!this._throttle('bossspawn', 3000)) return; 
         // JUICE WIN: Terrifying descending tritone rumble for Boss Spawns
-        this.playChord([45, 64, 80], 'sawtooth', 4.0, 0.3, 5.0, true);
+        this.playChord([45, 64, 80], 'sawtooth', 4.0, 0.3, 5.0, true); // Affected by reverb
         this.playNoise(3.0, 0.4, 300); 
     },
 
     playCraftSuccess: function() {
         if (!this._throttle('craftsuccess', 200)) return; 
-        this.playMelody([400, 600, 800], 'triangle', 0.1, 0.1);
+        this.playMelody([400, 600, 800], 'triangle', 0.1, 0.1, true);
     },
 
     playTimelineShift: function() {
-        this.playChord([100, 150, 200], 'sawtooth', 2.0, 0.2, 5.0, true); 
-        setTimeout(() => this.playChord([400, 600, 800], 'sine', 1.5, 0.15, 2.0), 500); 
-        this.playNoise(2.0, 0.2, 2000); 
+        this.playChord([100, 150, 200], 'sawtooth', 2.0, 0.2, 5.0, true, null, true); 
+        setTimeout(() => this.playChord([400, 600, 800], 'sine', 1.5, 0.15, 2.0, false, null, true), 500); 
+        this.playNoise(2.0, 0.2, 2000, null, true); 
     },
 
     playVoidEnter: function() {
