@@ -311,15 +311,31 @@ function executeEvolution(evoData) {
         const confirmModal = document.getElementById('evolutionConfirmModal');
         if (confirmModal) confirmModal.classList.add('hidden');
 
-        // Sanitize the player object so Firebase doesn't crash the script!
+        // 🚨 PERFORMANCE WIN: Push specific fields directly to database to avoid 1MB document blowout
         if (typeof playerRef !== 'undefined' && playerRef) {
-            const safeData = typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player;
+            const updatePayload = {
+                classEvolved: true,
+                className: evoData.name,
+                character: evoData.icon,
+                talents: player.talents,
+                health: player.health,
+                mana: player.mana,
+                stamina: player.stamina,
+                psyche: player.psyche,
+                maxHealth: player.maxHealth,
+                maxMana: player.maxMana,
+                maxStamina: player.maxStamina,
+                maxPsyche: player.maxPsyche
+            };
             
-            // Use the immediate write here because this is a monumental state change that shouldn't wait for the debouncer
-            playerRef.update({
-                ...safeData, 
-                classEvolved: true
-            }).catch(err => console.error("Evolution save error:", err));
+            // Catch any base stats modified by the evolution object
+            for (const stat in evoData.stats) {
+                if (player.hasOwnProperty(stat)) {
+                    updatePayload[stat] = player[stat];
+                }
+            }
+            
+            playerRef.update(updatePayload).catch(err => console.error("Evolution save error:", err));
         }
         
         // Update the screen to show off your new class sprite and max health!
@@ -401,7 +417,7 @@ function renderBountyBoard() {
     sortedQuests.forEach(data => {
         const { questId, quest, playerQuest } = data;
         const div = document.createElement('div');
-        div.className = 'quest-item p-4 mb-3 border-2 border-gray-700 rounded-lg bg-gray-900 bg-opacity-40 transition-colors shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-red-500';
+        div.className = 'quest-item relative overflow-hidden p-4 mb-3 border-2 border-gray-700 rounded-lg bg-gray-900 bg-opacity-40 transition-colors shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-red-500';
 
         const safeTitle = typeof escapeHtml === 'function' ? escapeHtml(quest.title) : quest.title;
         const formattedDesc = formatMenuText(quest.description);
@@ -412,12 +428,12 @@ function renderBountyBoard() {
             let itemRewardStr = quest.reward.item ? `<span class="text-purple-400 font-bold ml-1">| + ${safeItemName}</span>` : '';
             
             div.innerHTML = `
-                <div class="flex-grow pr-4">
+                <div class="flex-grow pr-4 relative z-10">
                     <div class="text-lg font-bold text-red-500 mb-1 drop-shadow-sm" style="font-family: 'Uncial Antiqua', cursive;">${safeTitle}</div>
                     <div class="text-xs text-gray-300 mb-3 leading-relaxed font-serif italic border-l-2 border-gray-600 pl-2 bg-black bg-opacity-20 py-1 rounded-r">"${formattedDesc}"</div>
                     <div class="text-[10px] font-bold text-green-400 uppercase tracking-widest bg-black bg-opacity-40 inline-block px-2 py-1 rounded border border-gray-700 shadow-inner">Reward: ${quest.reward.xp || 0} XP | ${quest.reward.coins || 0} Gold ${itemRewardStr}</div>
                 </div>
-                <div class="flex-none">
+                <div class="flex-none relative z-10">
                     <button data-quest-id="${questId}" data-action="accept" title="Sign the contract" style="transform: translate3d(0,0,0);" class="bg-red-700 hover:bg-red-600 text-white px-4 py-3 rounded-lg text-sm font-bold shadow-md transition-transform active:scale-95 border-b-2 border-red-900 active:border-b-0 active:mt-0.5">Accept</button>
                 </div>`;
         } else if (playerQuest.status === 'active') {
@@ -435,11 +451,11 @@ function renderBountyBoard() {
             }
 
             div.innerHTML = `
-                <div class="flex-grow pr-4">
+                <div class="flex-grow pr-4 relative z-10">
                     <div class="text-lg font-bold text-yellow-500 mb-1 drop-shadow-sm" style="font-family: 'Uncial Antiqua', cursive;">${safeTitle}</div>
                     <div class="text-sm font-bold text-gray-300">Target Progress: <span class="${playerQuest.kills >= quest.needed ? 'text-green-400 drop-shadow-sm animate-pulse' : 'text-blue-400'}">${progress}</span></div>
                 </div>
-                <div class="flex-none">${actionButton}</div>`;
+                <div class="flex-none relative z-10">${actionButton}</div>`;
         } else if (playerQuest.status === 'completed') {
             // --- Scenario 3: Quest is Done (Lore Win: Deep Sign-offs) ---
             const signOffs = [
@@ -455,12 +471,15 @@ function renderBountyBoard() {
             const randomMsg = signOffs[Math.floor(Math.random() * signOffs.length)];
             
             div.classList.add('opacity-40', 'hover:opacity-60', 'grayscale');
+            
+            // JUICE WIN: Massive 'CLEARED' stamp overlay
             div.innerHTML = `
-                <div class="flex-grow pr-4">
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 -rotate-12 border-4 border-red-800 text-red-800 text-4xl font-bold p-2 opacity-40 pointer-events-none rounded tracking-widest uppercase z-0">CLEARED</div>
+                <div class="flex-grow pr-4 relative z-10">
                     <div class="text-lg font-bold text-gray-500 mb-1 line-through" style="font-family: 'Uncial Antiqua', cursive;">${safeTitle}</div>
                     <div class="text-xs text-gray-500 italic font-serif">"${randomMsg}"</div>
                 </div>
-                <div class="flex-none">
+                <div class="flex-none relative z-10">
                     <button disabled class="bg-black bg-opacity-30 text-gray-600 px-4 py-3 rounded-lg text-sm font-bold border border-gray-700 cursor-not-allowed shadow-inner">Completed</button>
                 </div>`;
         }
@@ -621,6 +640,49 @@ function turnInQuest(questId) {
             ParticleSystem.createFloatingText(player.x, player.y, `+${quest.reward.coins || 0}g`, "#facc15");
             ParticleSystem.createExplosion(player.x, player.y, '#facc15', 20);
         }
+        
+        // Helper to safely drop items outwards to prevent overwriting the bounty board
+        const dropItemSafely = (tileToDrop) => {
+            let placed = false;
+            let validFloor = '.';
+            if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
+                validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+            }
+            if (typeof chunkManager !== 'undefined') {
+                for (let r = 0; r <= 3 && !placed; r++) {
+                    for (let dy = -r; dy <= r && !placed; dy++) {
+                        for (let dx = -r; dx <= r && !placed; dx++) {
+                            const tx = player.x + dx;
+                            const ty = player.y + dy;
+                            let tileAt;
+                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
+                            else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
+                            else tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
+
+                            if (tileAt === validFloor || tileAt === '.') {
+                                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, tileToDrop, 24);
+                                else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = tileToDrop;
+                                else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = tileToDrop;
+                                
+                                let tId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') ? `${tx},${-ty}` : `${gameState.currentCaveId || gameState.currentCastleId}:${tx},${-ty}`;
+                                gameState.lootedTiles.delete(tId);
+                                placed = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if (!placed) { // Absolute fallback
+                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(player.x, player.y, tileToDrop, 24);
+                } else if (gameState.mapMode === 'dungeon') {
+                    if (typeof chunkManager !== 'undefined') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = tileToDrop;
+                } else if (gameState.mapMode === 'castle') {
+                    if (typeof chunkManager !== 'undefined') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = tileToDrop;
+                }
+            }
+            gameState.mapDirty = true;
+        };
 
         // --- 3. Grant Item Reward (With Accurate Space Validation) ---
         if (quest.reward.item) {
@@ -664,22 +726,10 @@ function turnInQuest(questId) {
                         logMessage(`{purple:You received: ${safeItemName} (x${totalQtyGranted})}`);
                     } 
                     else {
-                        // Inventory full, drop on floor
+                        // Inventory full, drop on floor using safe spiral
                         logMessage(`{red:Your inventory is full! The ${safeItemName} falls to the ground.}`);
                         const dropTile = rewardKey || '🎒'; 
-                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                            if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(player.x, player.y, dropTile, 24);
-                        } else if (gameState.mapMode === 'dungeon') {
-                            if (typeof chunkManager !== 'undefined') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = dropTile;
-                        } else if (gameState.mapMode === 'castle') {
-                            if (typeof chunkManager !== 'undefined') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = dropTile;
-                        }
-                        
-                        let tileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
-                            ? `${player.x},${-player.y}`
-                            : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
-                        gameState.lootedTiles.delete(tileId);
-                        gameState.mapDirty = true;
+                        dropItemSafely(dropTile);
                     }
 
                 } else {
@@ -704,20 +754,8 @@ function turnInQuest(questId) {
                             player.inventory.push(newItem);
                             itemsAdded++;
                         } else {
-                            // Drop excess on the ground
-                            const dropTile = newItem.tile;
-                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                                if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(player.x, player.y, dropTile, 24);
-                            } else if (gameState.mapMode === 'dungeon') {
-                                if (typeof chunkManager !== 'undefined') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = dropTile;
-                            } else if (gameState.mapMode === 'castle') {
-                                if (typeof chunkManager !== 'undefined') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = dropTile;
-                            }
-                            
-                            let tileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') 
-                                ? `${player.x},${-player.y}`
-                                : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
-                            gameState.lootedTiles.delete(tileId);
+                            // Drop excess on the ground safely
+                            dropItemSafely(newItem.tile);
                             itemsDropped++;
                         }
                     }
@@ -730,7 +768,6 @@ function turnInQuest(questId) {
                     if (itemsDropped > 0) {
                         const qtyStr = itemsDropped > 1 ? ` (x${itemsDropped})` : '';
                         logMessage(`{red:Inventory full! ${safeItemName}${qtyStr} fell to the ground.}`);
-                        gameState.mapDirty = true;
                     }
                 }
                 
@@ -876,7 +913,9 @@ function renderBestiary() {
                 <div class="text-[9px] italic text-gray-600 font-bold tracking-wide">Defeat 20 to reveal drop tables</div>`;
         }
 
-        div.className = 'bestiary-entry p-3 mb-3 border-2 border-gray-700 rounded-lg bg-gray-800 bg-opacity-40 transition-colors hover:border-gray-500 relative overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5';
+        const bossStyle = data.isBoss ? 'border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.3)] bg-red-950 bg-opacity-20' : 'border-gray-700 bg-gray-800 bg-opacity-40';
+        div.className = `bestiary-entry p-3 mb-3 border-2 rounded-lg transition-colors hover:border-gray-500 relative overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 ${bossStyle}`;
+        
         div.innerHTML = `
             <div class="flex items-start gap-4 z-10 relative">
                 <div class="text-4xl w-12 text-center bg-black bg-opacity-30 rounded-lg border border-gray-600 p-2" style="filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.6));">${key}</div>
@@ -888,7 +927,7 @@ function renderBestiary() {
                     ${lootHtml}
                 </div>
             </div>
-            ${data.isBoss ? '<div class="absolute top-0 right-0 bg-red-900 bg-opacity-50 text-red-300 text-[9px] px-2 py-1 font-bold uppercase tracking-widest rounded-bl-lg border-b border-l border-red-700 shadow-md">Boss</div>' : ''}
+            ${data.isBoss ? '<div class="absolute top-0 right-0 bg-red-900 bg-opacity-50 text-red-300 text-[9px] px-2 py-1 font-bold uppercase tracking-widest rounded-bl-lg border-b border-l border-red-700 shadow-md animate-pulse">Boss</div>' : ''}
         `;
         fragment.appendChild(div);
     });
@@ -913,7 +952,7 @@ function renderLibrary() {
         const totalCount = set.items.length;
 
         const setDiv = document.createElement('div');
-        setDiv.className = `panel p-4 mb-3 rounded-lg border-2 transition-colors duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${isComplete ? 'border-yellow-500 bg-yellow-900 bg-opacity-10' : 'border-gray-600 hover:border-gray-500'}`;
+        setDiv.className = `panel p-4 mb-3 rounded-lg border-2 transition-colors duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 ${isComplete ? 'border-yellow-500 bg-yellow-900 bg-opacity-10 shadow-[0_0_10px_rgba(234,179,8,0.2)]' : 'border-gray-600 hover:border-gray-500'}`;
         
         // Progress Bar
         const pct = (foundCount / totalCount) * 100;
