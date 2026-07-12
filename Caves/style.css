@@ -807,19 +807,22 @@ kbd {
 /* ==========================================================================
    MOBILE CONTROLS (Ergonomic & Tactile)
    ========================================================================== */
+   
 .mobile-controls {
-    position: fixed;
-    bottom: env(safe-area-inset-bottom, 20px);
+    position: fixed !important; /* Force override to prevent document flow hijacking */
+    /* Use max() to bump them up slightly to avoid iOS/Android bottom navigation bars */
+    bottom: max(40px, env(safe-area-inset-bottom, 40px)); 
     left: 0;
     width: 100%;
     height: 200px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    padding: 0 20px;
+    padding: 0 15px;
     pointer-events: none; 
-    z-index: 50;
-    -webkit-touch-callout: none; /* Prevents long-press image saving on iOS */
+    z-index: 9999 !important; /* Massive Z-Index to guarantee they overlay all UI panels */
+    -webkit-touch-callout: none;
+    user-select: none;
 }
 
 @media (min-width: 1024px) {
