@@ -551,7 +551,7 @@ window.ENEMY_DATA = {
         maxHealth: 18, attack: 5, defense: 1, xp: 30,
         caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
         inflicts: null, inflictChance: 0, teleporter: false,
-        loot: '"', color: '#fcd34d', isBoss: false, excludeFromLoot: false,
+        loot: '🍖', color: '#fcd34d', isBoss: false, excludeFromLoot: false, 
         flavor: "It circles high above the peaks, its massive talons capable of lifting a grown man."
     },
     '🧝‍♀️d': {
@@ -585,7 +585,7 @@ window.ENEMY_DATA = {
         maxHealth: 15, attack: 2, defense: 0, xp: 20,
         caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
         inflicts: 'poison', inflictChance: 0.1, teleporter: false,
-        loot: 'p', color: '#111827', isBoss: false, excludeFromLoot: false,
+        loot: '🧪a', color: '#111827', isBoss: false, excludeFromLoot: false,
         flavor: "A writhing mass of blind hunger from the deep swamps. It seeks warmth and blood."
     },
     'o': {
