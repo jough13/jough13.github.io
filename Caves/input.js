@@ -595,6 +595,8 @@ document.addEventListener('keydown', (event) => {
     // Check if the key matches a menu toggle
     const isMenuKey = !!HOTKEY_MAPPINGS[inputStr.toLowerCase()];
     
+    // 🚨 BUG FIX WIN: Hard Capped Input Queue!
+    // Prevents the "infinite slide" bug where lag buffering causes the player to walk directly into lava.
     if (_modalCache.isAnyOpen() || INSTANT_KEYS.has(inputStr) || isMenuKey || gameState.isDroppingItem || gameState.inventoryMode) {
         handleInput(inputStr); // Execute instantly
     } else {
