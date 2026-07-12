@@ -585,6 +585,27 @@ function renderWorldMap() {
         }
     }
 
+    // Render Active Investigation
+    if (gameState.activeInvestigation) {
+        const ix = (gameState.activeInvestigation.x - mapCamera.x) * currentMapScale + centerX;
+        const iy = (gameState.activeInvestigation.y - mapCamera.y) * currentMapScale + centerY;
+        
+        if (ix >= 0 && ix <= logicalWidth && iy >= 0 && iy <= logicalHeight) {
+            worldMapCtx.fillStyle = '#a855f7'; // Purple
+            worldMapCtx.font = `bold ${Math.max(16, currentMapScale * 2.5)}px monospace`;
+            worldMapCtx.fillText('!', ix + currentMapScale/2, iy + currentMapScale/2);
+            
+            const pulse = (Math.sin(now / 150) + 1) / 2;
+            worldMapCtx.strokeStyle = '#c084fc';
+            worldMapCtx.globalAlpha = 1 - pulse;
+            worldMapCtx.lineWidth = 3;
+            worldMapCtx.beginPath();
+            worldMapCtx.arc(ix + currentMapScale/2, iy + currentMapScale/2, currentMapScale * 2 + (pulse * 20), 0, Math.PI * 2);
+            worldMapCtx.stroke();
+            worldMapCtx.globalAlpha = 1.0;
+        }
+    }
+
     // Render Other Online Players
     if (typeof otherPlayers !== 'undefined') {
         worldMapCtx.fillStyle = '#f97316'; // Distinct Orange
@@ -706,9 +727,19 @@ function renderWorldMap() {
 
     // Calculate Dynamic Tracker Angle
     let needleAngle = -Math.PI / 2; // North by default
-    if (gameState.activeTreasure) {
-        // Point toward the active treasure mark!
+    let isTracking = false;
+    let trackerColor = 'rgba(217, 119, 6, 0.8)'; // Default Gold
+
+    // Investigation takes priority!
+    if (gameState.activeInvestigation) {
+        needleAngle = Math.atan2(gameState.activeInvestigation.y - mapCamera.y, gameState.activeInvestigation.x - mapCamera.x);
+        isTracking = true;
+        trackerColor = 'rgba(168, 85, 247, 0.9)'; // Glowing Purple
+    }
+    else if (gameState.activeTreasure) {
         needleAngle = Math.atan2(gameState.activeTreasure.y - mapCamera.y, gameState.activeTreasure.x - mapCamera.x);
+        isTracking = true;
+        trackerColor = 'rgba(239, 68, 68, 0.9)'; // Glowing Red
     }
 
     worldMapCtx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
