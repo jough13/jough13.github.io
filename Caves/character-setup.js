@@ -50,9 +50,6 @@ function initGuestLogin() {
     }
 }
 
-// Inject the guest button when the script loads
-setTimeout(initGuestLogin, 100);
-
 // Bind the new HTML Modal Buttons
 document.addEventListener('DOMContentLoaded', () => {
     const guestModal = document.getElementById('guestConfirmModal');
@@ -423,9 +420,15 @@ function updateCreationSummary() {
         if (creationState.background === 'warrior') omens.push("The clash of steel echoes in your fate.", "Your grip tightens instinctively.");
         if (creationState.background === 'rogue') omens.push("You step lightly, unseen by the stars.", "A sudden chill drafts through the room.");
         if (creationState.background === 'wretch') omens.push("The world pities you. Prove it wrong.", "You have nothing left to lose.");
+        if (creationState.background === 'cleric') omens.push("The light casts long shadows behind you.", "You feel a heavy, holy burden settle upon your shoulders.");
+        if (creationState.background === 'hunter') omens.push("The wild things recognize you as kin.", "Your senses sharpen to a razor's edge.");
+        
         if (creationState.race === 'elf') omens.push("The ancient woods remember your bloodline.", "A forgotten song echoes in your ears.");
         if (creationState.race === 'dwarf') omens.push("The earth rumbles in greeting.", "Stone recognizes stone.");
         if (creationState.race === 'orc') omens.push("Your ancestors roar in approval.", "Blood calls to blood.");
+        if (creationState.race === 'goliath') omens.push("The mountains bow to your presence.", "You feel the crushing weight of the peaks.");
+        if (creationState.race === 'faeblood') omens.push("The air shimmers around you with unnatural colors.", "A strange, melodic giggle dances on the wind.");
+        if (creationState.race === 'voidkissed') omens.push("The darkness feels warm and welcoming.", "A thousand unblinking eyes watch over you.");
         
         // Use a mathematical hash of the player's choices to ensure the omen remains stable for that combo!
         const omenSeed = stringToSeed(creationState.name + creationState.race + creationState.background);
