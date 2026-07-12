@@ -525,7 +525,7 @@ window.ENEMY_DATA = {
         maxHealth: 8, attack: 1, defense: 0, xp: 15,
         caster: true, castRange: 4, spellDamage: 3, isRanged: false, range: 0,
         inflicts: null, inflictChance: 0, teleporter: false,
-        loot: 'r', color: '#7c3aed', isBoss: false, excludeFromLoot: false,
+        loot: '📜', color: '#7c3aed', isBoss: false, excludeFromLoot: false,
         flavor: "They whisper ancient texts that physically hurt your ears to hear. Zealots of the Void."
     },
     '👻i': {
