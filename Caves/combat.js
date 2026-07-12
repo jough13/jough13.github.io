@@ -660,8 +660,8 @@ async function processOverworldEnemyTurns() {
                     
                     if (gameState.player.companion.hp <= 0) {
                         logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain in battle!}`);
-                        gameState.player.companion = null;
-                        if (typeof playerRef !== 'undefined') playerRef.update({ companion: null });
+                        gameState.player.companion = null; gameState.player.isMounted = false;
+                        if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
                     }
                 }
 
@@ -724,8 +724,8 @@ async function processOverworldEnemyTurns() {
                 
                 if (gameState.player.companion.hp <= 0) {
                     logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain by magic!}`);
-                    gameState.player.companion = null;
-                    if (typeof playerRef !== 'undefined') playerRef.update({ companion: null });
+                    gameState.player.companion = null; gameState.player.isMounted = false;
+                    if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
                 }
             } else {
                 const { dodgeChance } = getPlayerDefenseStats();
@@ -794,8 +794,8 @@ async function processOverworldEnemyTurns() {
                 
                 if (gameState.player.companion.hp <= 0) {
                     logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain by an arrow!}`);
-                    gameState.player.companion = null;
-                    if (typeof playerRef !== 'undefined') playerRef.update({ companion: null });
+                    gameState.player.companion = null; gameState.player.isMounted = false;
+                    if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
                 }
             } else {
                 const { totalDefense, dodgeChance } = getPlayerDefenseStats();
@@ -901,8 +901,8 @@ async function processOverworldEnemyTurns() {
                         
                         if (gameState.player.companion.hp <= 0) {
                             logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain in battle!}`);
-                            gameState.player.companion = null;
-                            if (typeof playerRef !== 'undefined') playerRef.update({ companion: null });
+                            gameState.player.companion = null; gameState.player.isMounted = false;
+                            if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
                         }
                     } else {
                         const { totalDefense, dodgeChance } = getPlayerDefenseStats();
@@ -1316,8 +1316,8 @@ function processEnemyTurns() {
                     
                     if (gameState.player.companion.hp <= 0) {
                         logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain in battle!}`);
-                        gameState.player.companion = null;
-                        if (typeof playerRef !== 'undefined') playerRef.update({ companion: null });
+                        gameState.player.companion = null; gameState.player.isMounted = false;
+                        if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
                     }
                 }
 
@@ -1381,8 +1381,8 @@ function processEnemyTurns() {
                 
                 if (gameState.player.companion.hp <= 0) {
                     logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain in battle!}`);
-                    gameState.player.companion = null;
-                    if (typeof playerRef !== 'undefined') playerRef.update({ companion: null });
+                    gameState.player.companion = null; gameState.player.isMounted = false;
+                    if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
                 }
             } else {
                 const { totalDefense, dodgeChance } = getPlayerDefenseStats();
@@ -1459,8 +1459,8 @@ function processEnemyTurns() {
                 
                 if (gameState.player.companion.hp <= 0) {
                     logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain by magic!}`);
-                    gameState.player.companion = null;
-                    if (typeof playerRef !== 'undefined') playerRef.update({ companion: null });
+                    gameState.player.companion = null; gameState.player.isMounted = false;
+                    if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
                 }
             } else {
                 const { dodgeChance } = getPlayerDefenseStats();
@@ -1516,8 +1516,8 @@ function processEnemyTurns() {
                 
                 if (gameState.player.companion.hp <= 0) {
                     logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain by an arrow!}`);
-                    gameState.player.companion = null;
-                    if (typeof playerRef !== 'undefined') playerRef.update({ companion: null });
+                    gameState.player.companion = null; gameState.player.isMounted = false;
+                    if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
                 }
             } else {
                 const { totalDefense, dodgeChance } = getPlayerDefenseStats();
