@@ -576,7 +576,14 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     // --- DATA-DRIVEN INTERACTION CHECK ---
-    if (tileData && typeof tileData.onInteract === 'function') {
+    // 1. New Pipeline: Route to Event Engine if it exists
+    if (tileData && tileData.eventId && typeof EventManager !== 'undefined') {
+        EventManager.startEvent(tileData.eventId, newX, newY);
+        endPlayerTurn(); 
+        return; 
+    } 
+    // 2. Legacy Pipeline: Route to old hardcoded onInteract functions
+    else if (tileData && typeof tileData.onInteract === 'function') {
         const updatesToSave = tileData.onInteract(gameState, newX, newY);
         
         if (updatesToSave) {
