@@ -152,12 +152,19 @@ window.MathUtils = {
 
     // Parses standard TTRPG strings like "2d6+4"
     rollDiceString: (notation) => {
-        const match = notation.match(DICE_REGEX);
+        if (!notation || typeof notation !== 'string') return 0;
+
+        // 🚨 ROBUSTNESS WIN: Safely handle missing leading numbers (e.g. "d20" becomes "1d20")
+        let str = notation.toLowerCase().trim();
+        if (str.startsWith('d')) str = '1' + str;
+
+        const match = str.match(DICE_REGEX);
         if (!match) return 0;
         
-        const count = parseInt(match[1], 10);
-        const sides = parseInt(match[2], 10);
+        const count = parseInt(match[1], 10) || 1;
+        const sides = parseInt(match[2], 10) || 2;
         const modifierSign = match[3];
+        
         // BUG FIX: Ensure modifierVal doesn't inject NaNs into combat math
         const modifierVal = parseInt(match[4], 10) || 0;
 
@@ -219,8 +226,11 @@ window.MathUtils = {
 const HEX_RGB_REGEX = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i;
 
 window.ColorUtils = {
-    // BUG FIX & ROBUSTNESS: Handles both 6-char (#FF0000) and 3-char (#F00) hex codes safely
+    // BUG FIX & ROBUSTNESS: Handles both 6-char (#FF0000) and 3-char (#F00) hex codes safely.
+    // Adds a strict crash-guard if the user passes an invalid or undefined color string.
     hexToRgb: (hex) => {
+        if (!hex || typeof hex !== 'string') return {r: 255, g: 255, b: 255}; // Failsafe
+        
         let h = hex.replace(/^#/, '');
         if (h.length === 3) h = h.split('').map(c => c + c).join(''); // Expand #000 to #000000
         const result = HEX_RGB_REGEX.exec(h);
@@ -282,9 +292,11 @@ window.ColorUtils = {
 // Altering it will change the world seed hash and shift everyone's map!
 // Upgraded to a 53-bit safe hash to prevent overflow on massive map coordinates.
 function stringToSeed(str) {
+    // 🚨 BUG FIX WIN: Ensure strictly string inputs to prevent V8 math crashes
+    const safeStr = String(str);
     let h1 = 0xdeadbeef ^ 0, h2 = 0x41c6ce57 ^ 0;
-    for (let i = 0, ch; i < str.length; i++) {
-        ch = str.charCodeAt(i);
+    for (let i = 0, ch; i < safeStr.length; i++) {
+        ch = safeStr.charCodeAt(i);
         h1 = Math.imul(h1 ^ ch, 2654435761);
         h2 = Math.imul(h2 ^ ch, 1597334677);
     }
@@ -487,6 +499,21 @@ function getOrdinalSuffix(day) {
     }
 }
 
+// 🌕 LORE WIN: Celestial Moon Phase Calculator
+window.getMoonPhase = function(day) {
+    // Assuming a 30-day lunar cycle
+    const cycleDay = (day - 1) % 30;
+    
+    if (cycleDay === 0) return { name: "New Moon", icon: "🌑" };
+    if (cycleDay < 7) return { name: "Waxing Crescent", icon: "🌒" };
+    if (cycleDay === 7) return { name: "First Quarter", icon: "🌓" };
+    if (cycleDay < 14) return { name: "Waxing Gibbous", icon: "🌔" };
+    if (cycleDay === 14 || cycleDay === 15) return { name: "Full Moon", icon: "🌕" };
+    if (cycleDay < 22) return { name: "Waning Gibbous", icon: "🌖" };
+    if (cycleDay === 22) return { name: "Last Quarter", icon: "🌗" };
+    return { name: "Waning Crescent", icon: "🌘" };
+};
+
 // LORE WIN: Convert raw engine time into a beautiful in-universe date string
 window.formatWorldTime = function(timeData) {
     if (!timeData) return "Unknown Era";
@@ -504,7 +531,10 @@ window.formatWorldTime = function(timeData) {
     const ampm = timeData.hour < 12 ? 'AM' : 'PM';
     const minutePadded = String(timeData.minute).padStart(2, '0');
     
-    return `${dayOfWeek}, the ${dayOfMonth}${daySuffix} of ${month}, Year ${timeData.year} ${timeData.era} | ${hour12}:${minutePadded} ${ampm}`;
+    // Inject the Moon Phase directly into the time string
+    const moon = window.getMoonPhase(timeData.day);
+    
+    return `${moon.icon} ${dayOfWeek}, the ${dayOfMonth}${daySuffix} of ${month}, Year ${timeData.year} ${timeData.era} | ${hour12}:${minutePadded} ${ampm}`;
 };
 
 // LORE WIN: Translates clinical 24h time into atmospheric "Times of Day"
@@ -525,14 +555,20 @@ window.getLoreTimeOfDay = function(hour) {
     return "The Star-lit Night";
 };
 
-// LORE & UI WIN: Expanded Dictionary for Auto-Tagging
+// 🌟 EXPANSION WIN: Deeply Expanded Dictionary for Auto-Tagging
 const LORE_KEYWORDS = {
-    // Entities & Factions
+    // Factions & Entities
     'Void': 'void', 'Void Rift': 'void', 'Shadowed Hand': 'purple',
     'Old King': 'gold', 'First King': 'gold', 'Alaric': 'gold',
     'Leviathan': 'blue', 'Kraken': 'red', 'Drake': 'orange',
     'Ogre': 'orange', 'Dire Wolf': 'gray', 'Draugr': 'cyan', 
     'Void Demon': 'void', 'Efreet': 'orange', 'Vampire Lord': 'red',
+    
+    // --- NEW CLASSES & RACES ---
+    'Fae Queen': 'fuchsia', 'Clockwork Prime': 'yellow',
+    'Goliath': 'gray', 'Fae-Blood': 'fuchsia', 'Void-Kissed': 'purple',
+    'Cleric': 'yellow', 'Hunter': 'green', 'Inquisitor': 'red', 
+    'Oracle': 'cyan', 'Beastmaster': 'green', 'Sniper': 'gray',
     
     // Magic & Leylines
     'Leylines': 'blue', 'Waystone': 'blue', 'Akashic': 'blue',
@@ -540,6 +576,10 @@ const LORE_KEYWORDS = {
     'Arcane Dust': 'purple', 'Enchanting Altar': 'purple',
     'Memory Shard': 'purple', 'Paradox Anomaly': 'gold',
     'Star-Metal': 'cyan', 'Mithril': 'cyan', 'Obsidian': 'gray',
+    
+    // --- NEW MECHANICS ---
+    'Purify': 'cyan', 'Purified': 'cyan',
+    'Radiant Spring': 'cyan', 'Fallen Titan': 'orange', 'Cloudseed': 'green',
     
     // Mechanics & Tools
     'Dimensional Vault': 'blue', 'Stash Box': 'yellow', 'Fishing Rod': 'cyan',
@@ -609,10 +649,11 @@ window.getDirectionString = function(dir, atmospheric = false) {
 
     // LORE WIN: Atmospheric Directions
     if (atmospheric) {
+        // Tie into the new dimensions and factions
         if (baseDir.includes('north')) return `the Frozen ${capitalizeWords(baseDir)}`;
         if (baseDir.includes('south')) return `the Scorched ${capitalizeWords(baseDir)}`;
         if (baseDir.includes('east')) return `the Shattered ${capitalizeWords(baseDir)}`;
-        if (baseDir.includes('west')) return `the Endless ${capitalizeWords(baseDir)}`;
+        if (baseDir.includes('west')) return `the Fey ${capitalizeWords(baseDir)}`;
     }
 
     return baseDir;
@@ -653,7 +694,7 @@ window.fastClone = function(obj, seen = new WeakMap()) {
     // Explicit Date support (Prevents dates becoming empty objects)
     if (obj instanceof Date) return new Date(obj.getTime());
     
-    // Explicit TypedArray support 
+    // Explicit TypedArray & DataView support 
     // Prevents turning Perlin noise grids or audio buffers into slow, broken dictionaries!
     if (ArrayBuffer.isView(obj)) {
         return new obj.constructor(obj.buffer.slice(0), obj.byteOffset, obj.length);
