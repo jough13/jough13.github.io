@@ -7,7 +7,6 @@
 const BACKUP_SALT = "kEsMaI_v1_S3cR3t_s@lt"; // Change this to something random!
 
 // Centralized Subcollection definitions.
-// When you add player housing, farming, or mailboxes, just add the collection name here!
 const SUBCOLLECTIONS_TO_BACKUP = ['map_data'];
 
 // Concurrency lock to prevent mashing buttons and causing DB race conditions
@@ -17,30 +16,20 @@ let isBackupOperationRunning = false;
 window.addEventListener('beforeunload', (e) => {
     if (isBackupOperationRunning) {
         e.preventDefault();
-        // Standard warning message for modern browsers
         e.returnValue = 'A timeline restore is currently in progress! Closing the tab now will corrupt your save data. Are you sure?';
         return e.returnValue;
     }
 });
 
 // --- Deep Hashing ---
-// We now hash the exact sequence of item names, preventing players from modifying the save file
-// to swap 5 pieces of "Stone" into 5 "Legendary Swords" (which bypassed the old length check).
-
 function generateStrictSaveSignature(data) {
-    // Bypassed .map().join() in favor of inline string building.
-    // This prevents massive memory allocation spikes during the save process!
     let invStr = 'empty';
     if (data.inventory && Array.isArray(data.inventory) && data.inventory.length > 0) {
         invStr = '';
         for (let i = 0; i < data.inventory.length; i++) {
             const item = data.inventory[i];
-            // 🚨 BUG FIX: Prevent Firebase sparse array ghosts (nulls) from crashing the hasher!
             if (!item) continue; 
             
-            // Hash the stats and rarity too! Prevents players from manually 
-            // editing the DB to give a basic dagger 999 damage without getting caught!
-            // Strictly coerce values to prevent undefined/null bypasses
             const rar = item._rarity || 'n';
             const qty = Number(item.quantity) || 1;
             const dmg = Number(item.damage) || 0;
@@ -54,7 +43,6 @@ function generateStrictSaveSignature(data) {
         bankStr = '';
         for (let i = 0; i < data.bank.length; i++) {
             const item = data.bank[i];
-            // 🚨 BUG FIX: Prevent Firebase sparse array ghosts
             if (!item) continue;
             
             const rar = item._rarity || 'n';
@@ -72,12 +60,11 @@ function generateStrictSaveSignature(data) {
     for (let i = 0; i < stringToHash.length; i++) {
         const char = stringToHash.charCodeAt(i);
         hash = ((hash << 5) - hash) + char;
-        hash |= 0; // Convert to 32bit integer
+        hash |= 0; 
     }
     return hash.toString();
 }
 
-// Intermediate compatibility for saves using the array-length hashing method.
 function generateSaveSignature(data) {
     const invLen = (data.inventory && Array.isArray(data.inventory)) ? data.inventory.length : 0;
     const bankLen = (data.bank && Array.isArray(data.bank)) ? data.bank.length : 0;
@@ -92,7 +79,6 @@ function generateSaveSignature(data) {
     return hash.toString();
 }
 
-// Oldest backward compatibility for early-access backups.
 function generateLegacySaveSignature(data) {
     const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.background}_${BACKUP_SALT}`;
     let hash = 0;
@@ -107,17 +93,14 @@ function generateLegacySaveSignature(data) {
 
 // --- BACKUP SYSTEM ---
 
-let lastBackupTime = 0; // Anti-Spam Timer
-let backupTextInterval = null; // UI poller
+let lastBackupTime = 0; 
+let backupTextInterval = null; 
 
-// EXPANDABILITY: Added slotId parameter so you can easily implement multiple save slots later
 async function createCloudBackup(slotId = 'latest') {
     if (!playerRef || isBackupOperationRunning) return;
 
-    // Use server-authoritative time if available to prevent client clock manipulation
     const now = typeof window.getServerTime === 'function' ? window.getServerTime() : Date.now();
     
-    // Prevent players from spamming the backup button and hitting Firebase quotas
     if (now - lastBackupTime < 10000) {
         logMessage("{red:The Weavers of Fate need time to rest. Please wait.}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -127,14 +110,12 @@ async function createCloudBackup(slotId = 'latest') {
     isBackupOperationRunning = true;
     lastBackupTime = now;
 
-    // JUICE WIN: Dynamic Button Phasing & Lore Flavor
     const btn = document.getElementById('btnBackup');
     const originalText = btn ? btn.innerHTML : "☁️ Anchor Timeline";
     if (btn) {
         btn.disabled = true;
         btn.classList.add('opacity-75', 'cursor-wait');
         
-        // UX WIN: Dynamic poller keeps the text alive during long network calls
         const phases = ["⏳ Consulting Akashic Records...", "⏳ Weaving Fate...", "⏳ Sealing Anomaly..."];
         let pIdx = 0;
         btn.innerHTML = phases[0];
@@ -146,36 +127,28 @@ async function createCloudBackup(slotId = 'latest') {
 
     logMessage("{cyan:Inscribing your current timeline into the Akashic Records...}");
     
-    // 1. Get clean data explicitly to prevent saving transient UI state
     const rawData = {
         ...gameState.player,
         customPins: gameState.player.customPins || [],
-        bank: gameState.player.bank || [], // Explicitly grab the Stash
+        bank: gameState.player.bank || [], 
         inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
         equipment: typeof getSanitizedEquipment === 'function' ? getSanitizedEquipment() : gameState.player.equipment,
-        timestamp: now // Use the validated timestamp
+        timestamp: now 
     };
     
-    // 🚨 PERFORMANCE & QUOTA WIN: Strip legacy map arrays from the root document!
-    // Since we now save these via Subcollections below, leaving them here wastes huge amounts of DB quota.
     delete rawData.lootedTiles;
     delete rawData.exploredChunks;
     delete rawData.foundLore;
 
-    // PERFORMANCE: Use our fast sanitizer instead of the slow JSON stringify hack
     const backupState = typeof sanitizeForFirebase === 'function' 
         ? sanitizeForFirebase(rawData) 
-        : JSON.parse(JSON.stringify(rawData)); // Absolute fallback if sanitizer is missing
+        : JSON.parse(JSON.stringify(rawData)); 
 
-    // 2. Sign the data using the newest Strict Hashing logic
     backupState.signature = generateStrictSaveSignature(backupState);
 
-    // 3. Save
     try {
-        // A. Save the main player document backup
         await playerRef.collection('backups').doc(slotId).set(backupState);
         
-        // B. Backup the Subcollections safely using chunked batches (Max 500 ops per batch)
         if (typeof db !== 'undefined') {
             for (const collectionName of SUBCOLLECTIONS_TO_BACKUP) {
                 const mapSnap = await playerRef.collection(collectionName).get();
@@ -188,14 +161,12 @@ async function createCloudBackup(slotId = 'latest') {
                         batch.set(backupMapRef, doc.data());
                         operationCount++;
                         
-                        // Firestore limit is 500 writes per batch
                         if (operationCount >= 450) {
                             await batch.commit();
                             batch = db.batch();
                             operationCount = 0;
                         }
                     }
-                    // Commit any remaining writes
                     if (operationCount > 0) {
                         await batch.commit();
                     }
@@ -205,17 +176,14 @@ async function createCloudBackup(slotId = 'latest') {
 
         logMessage("{green:Your timeline has been safely anchored.}");
         
-        // LORE/JUICE: Tactile feedback for stamping the timeline
         if (typeof gameState !== 'undefined') gameState.screenShake = 5; 
         if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
         if (typeof ParticleSystem !== 'undefined' && gameState.player) {
             ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "TIMELINE SECURED", "#22d3ee");
         }
         
-        // Update the UI directly using our local timestamp instead of fetching from Firebase
         if (typeof updateBackupUI === 'function') updateBackupUI(slotId);
         
-        // JUICE WIN: Flash the label cyan so they know it worked immediately
         const label = document.getElementById('lastBackupLabel');
         if (label) {
             label.classList.remove('text-gray-400');
@@ -231,7 +199,6 @@ async function createCloudBackup(slotId = 'latest') {
         logMessage("{red:The Akashic Records rejected the anchor.} See console.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     } finally {
-        // Reset Button State and Locks
         isBackupOperationRunning = false;
         if (backupTextInterval) {
             clearInterval(backupTextInterval);
@@ -248,7 +215,6 @@ async function createCloudBackup(slotId = 'latest') {
 async function restoreCloudBackup(slotId = 'latest') {
     if (!playerRef || isBackupOperationRunning) return;
 
-    // Hard confirmation prompt styled around reality manipulation
     const confirmation = prompt("⚠️ WARNING: This will collapse your current reality and overwrite it with the anchored timeline.\n\nType RESTORE to confirm:");
     if (confirmation !== "RESTORE") {
         logMessage("{gray:Timeline collapse cancelled.}");
@@ -258,7 +224,6 @@ async function restoreCloudBackup(slotId = 'latest') {
 
     isBackupOperationRunning = true;
 
-    // Inject a massive un-clickable overlay to prevent all mouse interactions
     const blocker = document.createElement('div');
     blocker.id = 'restoreBlocker';
     blocker.className = 'fixed inset-0 z-[999999] cursor-wait bg-black bg-opacity-70 flex flex-col items-center justify-center backdrop-blur-sm';
@@ -268,14 +233,12 @@ async function restoreCloudBackup(slotId = 'latest') {
     `;
     document.body.appendChild(blocker);
 
-    // Dynamic Button States
     const btn = document.getElementById('btnRestore');
     const originalText = btn ? btn.innerHTML : "↺ Reweave Fate";
     if (btn) {
         btn.disabled = true;
         btn.classList.add('opacity-75', 'cursor-wait', 'animate-pulse');
         
-        // Added "Purging Alternate Futures" to match the new subcollection deletion phase!
         const phases = ["⏳ Searching the Void...", "⏳ Extracting Anchor...", "⏳ Purging Alternate Futures...", "⏳ Reweaving Leylines..."];
         let pIdx = 0;
         btn.innerHTML = phases[0];
@@ -298,7 +261,7 @@ async function restoreCloudBackup(slotId = 'latest') {
 
         const data = doc.data();
 
-        // 1. Verify Integrity (Check strict first, cascade down to legacy)
+        // 1. Verify Integrity
         const strictSig = generateStrictSaveSignature(data);
         const normalSig = generateSaveSignature(data);
         const legacySig = generateLegacySaveSignature(data);
@@ -307,17 +270,15 @@ async function restoreCloudBackup(slotId = 'latest') {
             console.error(`Signature Mismatch! Saved: ${data.signature}, Strict: ${strictSig}, Legacy: ${legacySig}`);
             logMessage("{red:CORRUPT TIMELINE DETECTED.} The Weavers of Fate block the transition.");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-            return; // STOP RESTORE
+            return; 
         }
 
-        // 2. Anti-Cheat & Injection Checks
-        
+        // 2. Anti-Cheat Checks
         const currentCoins = (gameState && gameState.player && gameState.player.coins) ? gameState.player.coins : 0;
         const currentXp = (gameState && gameState.player && gameState.player.xp) ? gameState.player.xp : 0;
         const currentStatPoints = (gameState && gameState.player && gameState.player.statPoints) ? gameState.player.statPoints : 0;
         const currentTalentPoints = (gameState && gameState.player && gameState.player.talentPoints) ? gameState.player.talentPoints : 0;
 
-        // A. Actively block restores that feature massive impossible gold/xp disparities 
         if (data.coins > currentCoins + 500000 && data.xp === currentXp) {
              console.error("Suspicious Backup Blocked: Massive gold discrepancy without XP gain.");
              logMessage("{red:Reality Violation Failed.} Anomalous gold detected.");
@@ -325,24 +286,20 @@ async function restoreCloudBackup(slotId = 'latest') {
              return;
         }
 
-        // B. Block Stat & Talent Point Injection
-        if ((data.statPoints || 0) > currentStatPoints + 10 || 
-            (data.talentPoints || 0) > currentTalentPoints + 5) {
+        if ((data.statPoints || 0) > currentStatPoints + 10 || (data.talentPoints || 0) > currentTalentPoints + 5) {
              console.error("Suspicious Backup Blocked: Unearned Stat/Talent points detected.");
              logMessage("{red:Reality Violation Failed.} Anomalous progression detected.");
              if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
              return;
         }
         
-        // C. Block structural JSON injection (e.g. modifying the save file to bypass inventory limits)
         const invLimit = window.MAX_INVENTORY_SLOTS || 9;
         const stashLimit = window.MAX_STASH_SLOTS || 50; 
-        
         const invLen = Array.isArray(data.inventory) ? data.inventory.length : 0;
         const bankLen = Array.isArray(data.bank) ? data.bank.length : 0;
 
         if (invLen > invLimit + 5 || bankLen > stashLimit + 5) {
-             console.error(`Suspicious Backup Blocked: Inventory/Stash size exceeds maximum limits. (Inv: ${invLen}, Bank: ${bankLen})`);
+             console.error(`Suspicious Backup Blocked: Limits exceeded. (Inv: ${invLen}, Bank: ${bankLen})`);
              logMessage("{red:Reality Violation Failed.} Space-time container limits exceeded.");
              if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
              return;
@@ -351,16 +308,10 @@ async function restoreCloudBackup(slotId = 'latest') {
         // 3. Restore
         logMessage("{purple:Anchor point acquired. Rebuilding the world...}");
         
-        // Remove the backup-specific fields before applying to game
         delete data.signature; 
         delete data.timestamp;
 
-        // 🚨 CRITICAL FIX: The Subcollection "State Bleed" Purge
-        // We MUST delete the live timeline's map data before copying the backup over it!
-        // Otherwise, chunks explored AFTER the backup was created will remain in the restored timeline!
         if (typeof db !== 'undefined') {
-            
-            // Phase A: Purge Live Subcollections
             for (const collectionName of SUBCOLLECTIONS_TO_BACKUP) {
                 const liveMapSnap = await playerRef.collection(collectionName).get();
                 if (!liveMapSnap.empty) {
@@ -377,13 +328,10 @@ async function restoreCloudBackup(slotId = 'latest') {
                             delOpCount = 0;
                         }
                     }
-                    if (delOpCount > 0) {
-                        await delBatch.commit();
-                    }
+                    if (delOpCount > 0) await delBatch.commit();
                 }
             }
 
-            // Phase B: Copy Backup Subcollections
             for (const collectionName of SUBCOLLECTIONS_TO_BACKUP) {
                 const backupMapSnap = await playerRef.collection('backups').doc(slotId).collection(collectionName).get();
                 if (!backupMapSnap.empty) {
@@ -392,8 +340,6 @@ async function restoreCloudBackup(slotId = 'latest') {
                     
                     for (const doc of backupMapSnap.docs) {
                         const liveMapRef = playerRef.collection(collectionName).doc(doc.id);
-                        
-                        // BUG FIX: Removed {merge: true}. We want an absolute, pure overwrite of the document!
                         batch.set(liveMapRef, doc.data());
                         operationCount++;
                         
@@ -403,16 +349,12 @@ async function restoreCloudBackup(slotId = 'latest') {
                             operationCount = 0;
                         }
                     }
-                    if (operationCount > 0) {
-                        await batch.commit();
-                    }
+                    if (operationCount > 0) await batch.commit();
                 }
             }
         }
 
-        // 🧹 ROBUSTNESS WIN: Deep Clean Current Local State ("State Bleed" Fix)
-        // Without this, the memory of the aborted timeline (map chunks, un-looted tiles) 
-        // will bleed directly into the restored timeline until the player refreshes the page!
+        // Deep Clean Current Local State 
         gameState.player.inventory = [];
         gameState.player.bank = [];
         gameState.player.equipment = { weapon: null, armor: null, offhand: null, accessory: null, ammo: null };
@@ -431,49 +373,36 @@ async function restoreCloudBackup(slotId = 'latest') {
         if (gameState.foundCodexEntries) gameState.foundCodexEntries.clear();
         if (gameState.pendingMapSaves) gameState.pendingMapSaves = { chunks: new Set(), lore: new Set(), looted: {} };
 
-        // Apply to Game State (Reuse your enterGame logic structure)
+        // Apply to Game State
         if (typeof enterGame === 'function') {
             await enterGame(data);
         } else {
             Object.assign(gameState.player, data);
         }
         
-        // --- CONTENT & LORE WIN: The Paradox Anomaly ---
-        // 5% chance when save-scumming that the fabric of reality tears, giving you a strange item.
+        // Paradox Anomaly
         let paradoxTriggered = false;
         if (Math.random() < 0.05 && gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
             const paradoxShard = {
-                templateId: '⏳', 
-                name: 'Paradox Anomaly',
-                type: 'junk',
-                tags: ['anomaly', 'magic'], // 🛡️ ECS WIN: Added tags to the generated paradox!
-                quantity: 1,
-                tile: '⏳',
-                description: "A crystallized fragment of a discarded timeline. You shouldn't have this.",
-                _rarity: 'legendary' // Gives it a golden/glowing border in inventory
+                templateId: '⏳', name: 'Paradox Anomaly', type: 'junk', tags: ['anomaly', 'magic'],
+                quantity: 1, tile: '⏳', description: "A crystallized fragment of a discarded timeline.", _rarity: 'legendary'
             };
             gameState.player.inventory.push(paradoxShard);
             paradoxTriggered = true;
         }
         
-        // Save immediately to the main slot so it persists
-        // Use set to ensure we don't accidentally merge corrupted fields
-        await playerRef.set(gameState.player);
+        await playerRef.set(typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(gameState.player) : gameState.player);
 
-        // Force the UI to physically update to match the newly loaded old data!
         if (typeof renderStats === 'function') renderStats();
         if (typeof renderEquipment === 'function') renderEquipment();
         if (typeof renderInventory === 'function') renderInventory();
 
-        // JUICE WIN: "Time Travel" feedback effect!
         gameState.screenShake = 35;
         if (typeof ParticleSystem !== 'undefined') {
-            // Giant purple/white implosion
             ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ffffff', 40);
             ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#a855f7', 20);
         }
         
-        // Play the massive timeline shift audio!
         if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playTimelineShift === 'function') {
             AudioSystem.playTimelineShift();
         } else if (typeof AudioSystem !== 'undefined') {
@@ -481,12 +410,8 @@ async function restoreCloudBackup(slotId = 'latest') {
         }
         
         logMessage("{purple:Reality violently shifts... the timeline has been rewritten.}");
+        if (paradoxTriggered) logMessage("{gold:The violent shift in time left something unnatural in your pocket...}");
         
-        if (paradoxTriggered) {
-            logMessage("{gold:The violent shift in time left something unnatural in your pocket...}");
-        }
-        
-        // Close modal
         const settingsModal = document.getElementById('settingsModal');
         if (settingsModal) settingsModal.classList.add('hidden');
 
@@ -495,9 +420,6 @@ async function restoreCloudBackup(slotId = 'latest') {
         logMessage("{red:Timeline Restore failed.} The Weavers reject this thread. Check console.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
     } finally {
-        
-        // Reset Button State and Lock
-        // REMOVE THE UI BLOCKER HERE ---
         const existingBlocker = document.getElementById('restoreBlocker');
         if (existingBlocker) existingBlocker.remove();
 
@@ -510,6 +432,7 @@ async function restoreCloudBackup(slotId = 'latest') {
             btn.innerHTML = originalText;
             btn.classList.remove('opacity-75', 'cursor-wait', 'animate-pulse');
         }
+        isBackupOperationRunning = false;
     }
 }
 
@@ -527,14 +450,12 @@ async function updateBackupUI(slotId = 'latest') {
             const dateString = date.toLocaleDateString();
             const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
-            // UX WIN: Relative Time Calculations (e.g. "12 minutes ago")
             const now = typeof window.getServerTime === 'function' ? window.getServerTime() : Date.now();
             const hoursOld = (now - timestamp) / (1000 * 60 * 60);
             
             let relativeStr = "";
-            if (hoursOld < 0.016) { // Less than ~1 minute
-                relativeStr = "Just now";
-            } else if (hoursOld < 1) {
+            if (hoursOld < 0.016) relativeStr = "Just now";
+            else if (hoursOld < 1) {
                 const mins = Math.max(1, Math.floor(hoursOld * 60));
                 relativeStr = `${mins} minute${mins !== 1 ? 's' : ''} ago`;
             } else if (hoursOld < 24) {
@@ -547,7 +468,6 @@ async function updateBackupUI(slotId = 'latest') {
 
             label.classList.remove('text-red-500', 'text-yellow-500', 'text-gray-400');
 
-            // LORE WIN: Thematic status text
             if (hoursOld > 24) {
                 label.innerHTML = `Timeline Anchored: ${dateString} at ${timeString} <br><span class="font-bold text-yellow-500 drop-shadow-md">(Over 24h old! Anchor weakening...)</span>`;
                 label.classList.add('text-yellow-500');
@@ -555,7 +475,6 @@ async function updateBackupUI(slotId = 'latest') {
                 label.innerHTML = `Timeline Anchored: ${dateString} at ${timeString} <br><span class="text-cyan-400 font-bold drop-shadow-sm">(${relativeStr})</span>`;
                 label.classList.add('text-gray-400');
             }
-
         } else {
             label.textContent = "No anchor found in the Akashic Records.";
             label.classList.remove('text-red-500', 'text-yellow-500', 'text-gray-400');
@@ -567,6 +486,161 @@ async function updateBackupUI(slotId = 'latest') {
         label.classList.remove('text-gray-400', 'text-yellow-500');
         label.classList.add('text-red-500');
     }
+}
+
+// ==========================================
+// EXPANSION: EXPORT & IMPORT SAVES (BASE64)
+// ==========================================
+
+window.exportTimelineToClipboard = function() {
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+    
+    // 1. Gather exact state
+    const rawData = {
+        ...gameState.player,
+        customPins: gameState.player.customPins || [],
+        bank: gameState.player.bank || [], 
+        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
+        equipment: typeof getSanitizedEquipment === 'function' ? getSanitizedEquipment() : gameState.player.equipment
+    };
+    
+    // Strip heavy map arrays to keep string size manageable for clipboards
+    delete rawData.lootedTiles;
+    delete rawData.exploredChunks;
+    delete rawData.foundLore;
+    delete rawData.timestamp;
+
+    const backupState = typeof sanitizeForFirebase === 'function' 
+        ? sanitizeForFirebase(rawData) 
+        : JSON.parse(JSON.stringify(rawData)); 
+
+    // 2. Sign it securely
+    backupState.signature = generateStrictSaveSignature(backupState);
+
+    // 3. Compress to Base64 String
+    try {
+        const jsonString = JSON.stringify(backupState);
+        // UTF-8 safe base64 encoding
+        const base64String = btoa(unescape(encodeURIComponent(jsonString))); 
+        const finalExportString = `AKASHIC_SAVE||${base64String}`;
+
+        navigator.clipboard.writeText(finalExportString).then(() => {
+            logMessage("{cyan:Timeline Copied to Clipboard! Save it somewhere safe.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            alert("Save Data copied to clipboard!\n\nYou can paste this text anywhere to back up your character.");
+        }).catch(err => {
+            console.error("Clipboard API failed:", err);
+            prompt("Clipboard access denied. Please copy your save data manually:", finalExportString);
+        });
+
+    } catch (e) {
+        console.error("Export Failed:", e);
+        logMessage("{red:Failed to compress timeline.}");
+    }
+};
+
+window.importTimelineFromClipboard = async function() {
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+    
+    const inputString = prompt("Paste your Timeline Code (begins with AKASHIC_SAVE||):");
+    if (!inputString || !inputString.startsWith('AKASHIC_SAVE||')) {
+        logMessage("{gray:Import cancelled or invalid code.}");
+        return;
+    }
+
+    const base64String = inputString.split('||')[1];
+
+    try {
+        // 1. Decode Base64 to JSON
+        const jsonString = decodeURIComponent(escape(atob(base64String)));
+        const importedData = JSON.parse(jsonString);
+
+        // 2. Verify Integrity
+        const strictSig = generateStrictSaveSignature(importedData);
+        if (importedData.signature !== strictSig) {
+            logMessage("{red:CORRUPT TIMELINE DETECTED.} The signature does not match. Import blocked.");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        // 3. Confirm Override
+        const confirmRestore = confirm(`Valid timeline found for Level ${importedData.level} ${importedData.background}.\n\nWARNING: Importing this will overwrite your current character. Proceed?`);
+        if (!confirmRestore) return;
+
+        // 4. Execute Restore
+        logMessage("{purple:Reconstructing imported reality...}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playTimelineShift();
+
+        delete importedData.signature;
+
+        // Deep Clean local state
+        gameState.player.inventory = [];
+        gameState.player.bank = [];
+        gameState.player.equipment = { weapon: null, armor: null, offhand: null, accessory: null, ammo: null };
+        if (typeof chunkManager !== 'undefined') {
+            chunkManager.loadedChunks = {};
+            chunkManager.worldState = {};
+        }
+
+        // Apply Data
+        if (typeof enterGame === 'function') {
+            await enterGame(importedData);
+        } else {
+            Object.assign(gameState.player, importedData);
+        }
+
+        // Save to Firebase
+        if (playerRef) {
+            await playerRef.set(typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(gameState.player) : gameState.player);
+        }
+
+        // Force UI Renders
+        if (typeof renderStats === 'function') renderStats();
+        if (typeof renderEquipment === 'function') renderEquipment();
+        if (typeof renderInventory === 'function') renderInventory();
+        
+        gameState.screenShake = 35;
+        logMessage("{cyan:Timeline successfully imported!}");
+        
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) settingsModal.classList.add('hidden');
+
+    } catch (e) {
+        console.error("Import Decode Failed:", e);
+        logMessage("{red:Failed to decode the timeline string.} The format is invalid.");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+    }
+};
+
+// --- DYNAMIC UI INJECTION ---
+// Injects the Export/Import buttons into the Settings Menu dynamically
+function injectExportImportUI() {
+    const backupContainer = document.getElementById('btnBackup')?.parentElement;
+    if (backupContainer && !document.getElementById('btnExportTimeline')) {
+        const divider = document.createElement('div');
+        divider.className = "w-full border-t border-gray-700 my-4";
+        backupContainer.appendChild(divider);
+
+        const btnGroup = document.createElement('div');
+        btnGroup.className = "flex gap-2";
+        
+        btnGroup.innerHTML = `
+            <button id="btnExportTimeline" onclick="exportTimelineToClipboard()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded shadow-sm transition-transform active:scale-95 text-xs border-b-2 border-gray-800">
+                📋 Copy Save
+            </button>
+            <button id="btnImportTimeline" onclick="importTimelineFromClipboard()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded shadow-sm transition-transform active:scale-95 text-xs border-b-2 border-gray-800">
+                📥 Paste Save
+            </button>
+        `;
+        backupContainer.appendChild(btnGroup);
+    }
+}
+
+// Wait for DOM to load, then inject
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', injectExportImportUI);
+} else {
+    injectExportImportUI();
 }
 
 // --- END OF FILE settings-backup.js ---
