@@ -412,6 +412,7 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
 
     // 7. BULLETPROOF ES6 COLLECTION SUPPORT
     if (obj instanceof Set) {
+        if (obj.size === 0) return null;
         // Convert Set to Array and sanitize its children
         const newArr = new Array(obj.size);
         let i = 0;
@@ -422,6 +423,7 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
     }
 
     if (obj instanceof Map) {
+        if (obj.size === 0) return null;
         // Convert Map to plain Object
         const newObj = {};
         for (const [key, val] of obj) {
