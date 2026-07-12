@@ -55,14 +55,17 @@ const MAP_COLORS = {
     CRYSTAL: [34, 211, 238, 255], 
     EMPTY: [0, 0, 0, 0],
     
-    // Lore Anomalies
+    // Lore Anomalies & New Landmarks
     ELDER_TREE: [6, 78, 59, 255],     
     FAIRY_RING: [217, 70, 239, 255],  
     CLOCKWORK: [180, 83, 9, 255],     
     MINE: [68, 64, 60, 255],          
     VOID: [46, 2, 73, 255],           
     ICE: [186, 230, 253, 255],
-    BARD: [250, 204, 21, 255] // Yellow for the Wandering Bard       
+    BARD: [250, 204, 21, 255],       
+    LOST_CITY: [234, 179, 8, 255],
+    BLOOD_ALTAR: [153, 27, 27, 255],
+    RADIANT_SPRING: [34, 211, 238, 255]
 };
 
 function getCachedMapChunk(cx, cy) {
@@ -121,7 +124,15 @@ function getTileColorForMap(worldX, worldY) {
     if (tile === '~') return MAP_COLORS.DEEP_WATER;
     if (tile === '🧊' || tile === '❄️') return MAP_COLORS.ICE;
     if (tile === '💎c') return MAP_COLORS.CRYSTAL;
-    if (tile === '🎵') return MAP_COLORS.BARD;
+    
+    // New Expansions
+    if (tile === '🏛️c') return MAP_COLORS.LOST_CITY;
+    if (tile === '🩸a') return MAP_COLORS.BLOOD_ALTAR;
+    if (tile === '⛲r') return MAP_COLORS.RADIANT_SPRING;
+    if (tile === '🎵' || tile === '🗡️r') return MAP_COLORS.BARD; // Gold
+    if (tile === '⚙️g') return MAP_COLORS.VOLCANO; // Rusted orange
+    if (tile === '🦹' || tile === '🪦m') return MAP_COLORS.MAGIC; // Purple/Void
+    if (tile === '🤺w') return MAP_COLORS.SHALLOW; // Blue
     
     // Anomalies
     if (tile === '🌋') return MAP_COLORS.VOLCANO;
@@ -190,7 +201,13 @@ function getMapTileName(x, y) {
         '💎c': "Crystalline Spires", '🍄': "Towering Fungal Jungle", '🕸': "Infested Spider Nest",
         '⛺k': "Abandoned Campfire", '⚰️': "Forgotten Grave", '?': "Whispering Statue",
         '|': "Ancient Obelisk", '⛲': "Wishing Well", '⛩️': "Ruined Shrine", 'V': "Village Wall",
-        '🎵': "Wandering Bard", '⛺a': "Abandoned Campsite", '🕍': "Dark Castle Ruins"
+        '🎵': "Wandering Bard", '⛺a': "Abandoned Campsite", '🕍': "Dark Castle Ruins",
+        
+        // New Expansions
+        '🏛️c': "The Lost City of the Sands", '🩸a': "Altar of Blood",
+        '🤺w': "Wounded Knight", '🦹': "Shady Smuggler",
+        '🗡️r': "Sword in the Stone", '⛲r': "Radiant Spring",
+        '⚙️g': "Fallen Titan", '🪦m': "Whispering Monolith"
     };
 
     if (names[tile]) {
@@ -354,14 +371,17 @@ function renderWorldMap() {
         // LORE EXPANSION: Cartographer's Flourishes (Sea Monsters)
         // If zoomed out, procedurally draw faint sea monsters in deep ocean chunks
         if (currentMapScale < 12) {
+            // BUG FIX WIN: Ensure the PRNG uses a predictable seed so the monsters don't dance around
             const seed = typeof stringToSeed === 'function' ? stringToSeed(`decor_${cx}_${cy}`) : cx * cy;
-            const random = typeof Alea === 'function' ? Alea(seed) : Math.random; // Fallback
+            const random = typeof Alea === 'function' ? Alea(seed) : () => 0.5;
             
             if (random() < 0.04) { // 4% of chunks
                 const decorType = random();
                 let icon = '🦑';
-                if (decorType < 0.3) icon = '🐋';
-                else if (decorType < 0.6) icon = '⛵';
+                if (decorType < 0.2) icon = '🐋';
+                else if (decorType < 0.4) icon = '⛵';
+                else if (decorType < 0.5) icon = '🐉';
+                else if (decorType < 0.6) icon = '🏴‍☠️';
                 else if (decorType < 0.75) icon = '🧜‍♀️';
                 else icon = '👁️'; // The Leviathan watches...
 
@@ -394,8 +414,10 @@ function renderWorldMap() {
     const startRegY = Math.floor(startWorldY / regSize);
     const endRegY = Math.floor(endWorldY / regSize);
 
-    // Dark ink look for the parchment
-    worldMapCtx.fillStyle = 'rgba(0, 0, 0, 0.25)'; 
+    // Current player region for glowing effect
+    const playerRegX = Math.floor(gameState.player.x / regSize);
+    const playerRegY = Math.floor(gameState.player.y / regSize);
+
     worldMapCtx.font = `italic bold ${Math.max(16, currentMapScale * 6)}px "Uncial Antiqua", serif, cursive`;
     worldMapCtx.textAlign = 'center';
     worldMapCtx.textBaseline = 'middle';
@@ -412,11 +434,25 @@ function renderWorldMap() {
                 const regScreenX = ((rx * regSize + (regSize/2)) - mapCamera.x) * currentMapScale + centerX;
                 const regScreenY = ((ry * regSize + (regSize/2)) - mapCamera.y) * currentMapScale + centerY;
 
+                // JUICE WIN: If the player is in this region, make it glow slightly!
+                const isCurrentRegion = (rx === playerRegX && ry === playerRegY);
+                if (isCurrentRegion) {
+                    const pulse = (Math.sin(now / 400) + 1) / 2;
+                    worldMapCtx.fillStyle = `rgba(217, 119, 6, ${0.4 + (pulse * 0.2)})`; // Golden brown glow
+                    worldMapCtx.shadowColor = 'rgba(250, 204, 21, 0.5)';
+                    worldMapCtx.shadowBlur = 10;
+                } else {
+                    worldMapCtx.fillStyle = 'rgba(0, 0, 0, 0.25)'; // Standard dark ink look
+                    worldMapCtx.shadowBlur = 0;
+                }
+
                 worldMapCtx.save();
                 worldMapCtx.translate(regScreenX, regScreenY);
                 worldMapCtx.rotate(-0.15); // Authentic diagonal map-text tilt
                 worldMapCtx.fillText(regName, 0, 0);
                 worldMapCtx.restore();
+                
+                worldMapCtx.shadowBlur = 0; // Reset
             }
         }
     }
@@ -570,14 +606,23 @@ function renderWorldMap() {
     // Render Player Marker & Radar Pulse
     const playerScreenX = (gameState.player.x - mapCamera.x) * currentMapScale + centerX;
     const playerScreenY = (gameState.player.y - mapCamera.y) * currentMapScale + centerY;
+    
+    // JUICE WIN: Sonar-style expanding double ring
     const playerPulse = (now % 2000) / 2000; 
+    const playerPulse2 = ((now + 1000) % 2000) / 2000; 
 
     worldMapCtx.beginPath();
     worldMapCtx.arc(playerScreenX + currentMapScale/2, playerScreenY + currentMapScale/2, currentMapScale * 2 + (playerPulse * 30), 0, Math.PI * 2);
     worldMapCtx.strokeStyle = '#3b82f6';
-    worldMapCtx.globalAlpha = 1 - playerPulse;
+    worldMapCtx.globalAlpha = Math.max(0, 1 - (playerPulse * 1.5));
     worldMapCtx.lineWidth = 2;
     worldMapCtx.stroke();
+    
+    worldMapCtx.beginPath();
+    worldMapCtx.arc(playerScreenX + currentMapScale/2, playerScreenY + currentMapScale/2, currentMapScale * 2 + (playerPulse2 * 30), 0, Math.PI * 2);
+    worldMapCtx.globalAlpha = Math.max(0, 1 - (playerPulse2 * 1.5));
+    worldMapCtx.stroke();
+    
     worldMapCtx.globalAlpha = 1.0;
 
     worldMapCtx.fillStyle = '#ef4444';
@@ -947,6 +992,9 @@ worldMapCanvas.addEventListener('touchmove', (e) => {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         const currentDist = Math.sqrt(dx * dx + dy * dy);
+        
+        // 🚨 BUG FIX WIN: Infinity Scale Crash Prevention!
+        if (currentDist === 0 || initialPinchDist === 0) return; 
         
         const zoomDelta = currentDist / initialPinchDist;
         initialPinchDist = currentDist; // Reset for smooth continuous zooming
