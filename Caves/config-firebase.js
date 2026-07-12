@@ -133,6 +133,10 @@ try {
 
     // Enable Offline Persistence! 
     db.enablePersistence()
+        .then(() => {
+            // DEV QoL: Confirm caching is active
+            console.log("%c[AKASHIC ENGINE] Offline Persistence Enabled. Reality anchored locally.", "color: #a855f7; font-family: monospace;");
+        })
         .catch((err) => {
             if (err.code === 'failed-precondition') {
                 console.warn("%c[AKASHIC ENGINE] Multiple timelines detected. Offline persistence limited to primary tab.", "color: #facc15;");
@@ -175,7 +179,9 @@ function handleConnectionEstablished() {
         _offlineDebounceTimer = null;
     }
 
-    console.log("%c🟢 Leyline Resonance Stable. [Connection Established]", "color: #4ade80; font-weight: bold; font-family: monospace;");
+    // DEV QoL: Display active ping offset so developers can debug lag
+    const ping = window.FirebaseNetworkState.serverTimeOffset;
+    console.log(`%c🟢 Leyline Resonance Stable. [Offset: ${ping}ms]`, "color: #4ade80; font-weight: bold; font-family: monospace;");
     
     // Only show "Restored" if we already successfully connected once before and lost it
     if (hasInitiallyConnected && !wasConnected) {
@@ -299,6 +305,12 @@ function handleAuthError(error) {
         case 'auth/account-exists-with-different-credential':
             friendlyMessage = 'A fractured soul detected. You must unify your identities (Sign in with original provider).';
             break;
+        case 'auth/quota-exceeded':
+            friendlyMessage = 'The Akashic Records are overwhelmed. The Gods demand a tithe. (Quota Exceeded)';
+            break;
+        case 'auth/internal-error':
+            friendlyMessage = 'A fundamental law of reality just broke. The Leylines are currently unstable.';
+            break;
         default:
             friendlyMessage = 'The Void stirs. An unexpected error occurred: ' + (error.message || '');
             break;
@@ -356,6 +368,19 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
         }
         return obj;
     }
+    
+    // 🚨 SECURITY WIN: Massive String Truncation Guard
+    // Prevents malicious payloads or runaway concatenation from hitting the 1MB Firestore document limit!
+    if (typeof obj === 'string') {
+        if (obj.length > 100000) {
+            console.warn("%c[AKASHIC ENGINE] Massive string anomaly detected. Truncating to prevent Leyline collapse.", "color: #ef4444;");
+            return obj.substring(0, 100000) + "... [TRUNCATED BY AKASHIC ENGINE]";
+        }
+        return obj;
+    }
+    
+    // 🚨 ROBUSTNESS WIN: Ignore Symbol primitives which crash Firebase RTDB serializers
+    if (typeof obj === 'symbol') return null;
     
     // 3. Base cases: primitives, null
     if (obj === null || typeof obj !== 'object') {
