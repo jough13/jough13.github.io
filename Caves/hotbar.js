@@ -46,7 +46,17 @@ function renderHotbar() {
         slotDiv.id = `hotbarSlot-${index}`;
         slotDiv.dataset.index = index;
         
-        slotDiv.className = "hotbar-slot relative w-12 h-12 border-2 rounded flex items-center justify-center cursor-pointer bg-[var(--bg-page)] hover:border-blue-500 transition-all shadow-sm";
+        let slotClasses = "hotbar-slot relative w-12 h-12 border-2 rounded flex items-center justify-center cursor-pointer bg-[var(--bg-page)] transition-all shadow-sm";
+        
+        // --- JUICE WIN: Active Telegraphing ---
+        // If the player is currently aiming this specific ability, highlight the slot brilliantly!
+        if (typeof gameState !== 'undefined' && gameState.isAiming && gameState.abilityToAim === abilityId) {
+            slotClasses += " border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)] transform scale-105 z-10 animate-pulse";
+        } else {
+            slotClasses += " hover:border-blue-500";
+        }
+        
+        slotDiv.className = slotClasses;
 
         // EXPANDABILITY WIN: If the hotbar ever expands to 10 slots, slot 10 safely renders as '0'
         const hotkeyNumber = (index + 1) % 10 === 0 && index !== 0 ? 0 : index + 1;
@@ -63,7 +73,8 @@ function renderHotbar() {
             let invItem = inventoryMap.get(abilityId);
             let itemData = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[abilityId] : null;
             
-            // ROBUSTNESS WIN: Match dynamic prefixed items against their base template!
+            // ROBUSTNESS & PERFORMANCE WIN: Match dynamic prefixed items against their base template!
+            // If we don't have a direct key match, scan for the base name.
             if (!itemData && typeof ITEM_DATA !== 'undefined') {
                 const itemKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === abilityId);
                 if (itemKey) itemData = ITEM_DATA[itemKey];
@@ -91,9 +102,13 @@ function renderHotbar() {
                 abrv.className = `font-bold text-sm ${colorClass} drop-shadow-md`;
                 abrv.textContent = (data.name || '??').substring(0, 2).toUpperCase(); 
                 
-                // SECURITY WIN: Escape tooltip names!
+                // SECURITY & LORE WIN: Detailed, escaped tooltips
                 const safeDataName = typeof escapeHtml === 'function' ? escapeHtml(data.name || 'Unknown') : (data.name || 'Unknown');
-                slotDiv.title = `[${hotkeyNumber}] ${safeDataName}\nCost: ${data.cost || 0} ${data.costType || 'Resource'}\n(Right-click to unbind)`;
+                let tooltipDmg = data.baseDamage ? `\nBase Dmg: ${data.baseDamage}` : '';
+                if (data.baseHeal) tooltipDmg = `\nHeals: ${data.baseHeal}`;
+                if (data.baseShield) tooltipDmg = `\nShields: ${data.baseShield}`;
+                
+                slotDiv.title = `[${hotkeyNumber}] ${safeDataName}\nCost: ${data.cost || 0} ${data.costType || 'Resource'}${tooltipDmg}\n(Right-click to unbind)`;
                 slotDiv.appendChild(abrv);
 
                 // JUICE WIN: Added animate-pulse to the red cooldown overlay
@@ -109,6 +124,17 @@ function renderHotbar() {
                 const displayTile = invItem ? (invItem.tile || '🎒') : (itemData ? (itemData.tile || '🎒') : '🎒');
                 const qty = invItem ? invItem.quantity : 0;
                 
+                // ROBUSTNESS WIN: Auto-clear ammo/consumables from hotbar if they run out completely
+                if (qty <= 0 && typeof playerRef !== 'undefined') {
+                    // Only auto-clear if the base item definition says it's consumable/ammo
+                    const isDisposable = itemData && (itemData.type === 'consumable' || itemData.type === 'ammo');
+                    if (isDisposable) {
+                        player.hotbar[index] = null;
+                        if (typeof renderHotbar === 'function') setTimeout(renderHotbar, 0); // Re-render cleanly
+                        return; // Skip rendering this ghost slot
+                    }
+                }
+                
                 const iconSpan = document.createElement('span');
                 iconSpan.className = "font-bold text-2xl drop-shadow-md";
                 iconSpan.textContent = displayTile;
@@ -123,9 +149,10 @@ function renderHotbar() {
                 qtyBadge.textContent = qty;
                 slotDiv.appendChild(qtyBadge);
 
-                // LORE WIN: If they run out of items, color the border red so they know it's a dead slot
+                // LORE WIN: If they run out of non-disposable items (like a specific sword), color the border red so they know it's a dead slot
                 if (qty <= 0) {
                     slotDiv.classList.add('opacity-40', 'grayscale', 'border-red-900');
+                    slotDiv.title = `[${hotkeyNumber}] Missing: ${safeDisplayName}\n(Right-click to unbind)`;
                 }
             }
         } else {
