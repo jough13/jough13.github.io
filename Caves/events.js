@@ -47,10 +47,13 @@ window.EVENT_DATA = {
                             
                             state.player.coins += 250;
                             
-                            if (state.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
+                            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                            if (state.player.inventory.length < invCap) {
                                 const scroll = window.ITEM_DATA['🩸']; // Siphon Life
-                                state.player.inventory.push({ ...scroll, templateId: '🩸', quantity: 1, tile: '🩸' });
+                                state.player.inventory.push({ ...scroll, templateId: '🩸', quantity: 1, tile: '🩸', isEquipped: false });
                                 logMessage("{purple:You stole a Scroll of Siphoning and 250 Gold!}");
+                            } else {
+                                logMessage("{gold:You stole 250 Gold, but your pack is too full for the Scroll!}");
                             }
 
                             // Clear the investigation
@@ -78,15 +81,27 @@ window.EVENT_DATA = {
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal();
                             state.player.coins += 50;
                             
-                            if (state.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9)) {
+                            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                            if (state.player.inventory.length < invCap) {
                                 const potion = window.ITEM_DATA['🍷']; 
-                                state.player.inventory.push({ ...potion, templateId: '🍷', quantity: 1, tile: '🍷' });
+                                state.player.inventory.push({ ...potion, templateId: '🍷', quantity: 1, tile: '🍷', isEquipped: false });
                                 logMessage("{gold:You received an Elixir of Life and 50 Gold.}");
+                            } else {
+                                logMessage("{gold:You received 50 Gold, but your pack is too full for the Elixir!}");
+                                if (state.mapMode === 'overworld') chunkManager.setWorldTile(ctx.x, ctx.y, '🍷', 24);
                             }
                             
-                            // Turn the knight into a grave marker!
-                            if (state.mapMode === 'overworld') chunkManager.setWorldTile(ctx.x, ctx.y, '⚰️');
-                            state.mapDirty = true;
+                            // Turn the knight into a grave marker ONLY if on solid ground!
+                            if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
+                                const currentTile = chunkManager.getTile(ctx.x, ctx.y);
+                                if (['.', 'F', 'd', 'D', '❄️', '🍄'].includes(currentTile)) {
+                                    chunkManager.setWorldTile(ctx.x, ctx.y, '⚰️');
+                                    state.mapDirty = true;
+                                } else {
+                                    // If standing on a bridge, just delete the knight anomaly
+                                    chunkManager.setWorldTile(ctx.x, ctx.y, currentTile);
+                                }
+                            }
                         }
                     }
                 ]
@@ -129,10 +144,17 @@ window.EVENT_DATA = {
                                     if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
                                     logMessage("{gold:The blood boils in your veins. Your vitality permanently increases! (+3 Max HP)}");
                                 } else {
-                                    const loot = typeof generateMagicItem === 'function' ? generateMagicItem(5) : { name: 'Blood Blade', type: 'weapon', quantity: 1, damage: 10, tile: '🗡️' };
-                                    state.player.inventory.push(loot);
-                                    logMessage(`{purple:The altar regurgitates a dark weapon: ${loot.name}!}`);
-                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                                    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                                    const loot = typeof generateMagicItem === 'function' ? generateMagicItem(5) : { name: 'Blood Blade', type: 'weapon', quantity: 1, damage: 10, tile: '🗡️', isEquipped: false };
+                                    
+                                    if (state.player.inventory.length < invCap) {
+                                        state.player.inventory.push(loot);
+                                        logMessage(`{purple:The altar regurgitates a dark weapon: ${loot.name}!}`);
+                                        if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                                    } else {
+                                        logMessage(`{red:The altar offers the ${loot.name}, but your pack is full! It drops to the ground.}`);
+                                        if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(ctx.x, ctx.y, loot.tile || '🗡️', 24);
+                                    }
                                 }
                             }
                             state.lootedTiles.add(ctx.tileId);
@@ -159,18 +181,31 @@ window.EVENT_DATA = {
                             state.player.coins -= 100;
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
                             
+                            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                            
                             const roll = Math.random();
                             if (roll < 0.2) {
                                 logMessage("{red:You open the box... it's just rocks! You got scammed!}");
                             } else if (roll < 0.8) {
-                                logMessage("{green:You open the box and find a massive cache of supplies!}");
-                                state.player.inventory.push({ templateId: '♥', name: 'Healing Potion', type: 'consumable', quantity: 3, tile: '♥', effect: window.ITEM_DATA['♥'].effect });
+                                if (state.player.inventory.length < invCap) {
+                                    logMessage("{green:You open the box and find a massive cache of supplies!}");
+                                    state.player.inventory.push({ templateId: '♥', name: 'Healing Potion', type: 'consumable', quantity: 3, tile: '♥', effect: window.ITEM_DATA['♥'].effect, isEquipped: false });
+                                } else {
+                                    logMessage("{red:You open the box, but your inventory is full! The potions spill onto the ground.}");
+                                }
                             } else {
                                 logMessage("{purple:You open the box... A Legendary Artifact is inside!}");
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#facc15', 20);
-                                const loot = typeof generateMagicItem === 'function' ? generateMagicItem(5) : { name: 'Smuggler Blade', type: 'weapon', quantity: 1, damage: 8, tile: '🗡️' };
-                                state.player.inventory.push(loot);
+                                
+                                const loot = typeof generateMagicItem === 'function' ? generateMagicItem(5) : { name: 'Smuggler Blade', type: 'weapon', quantity: 1, damage: 8, tile: '🗡️', isEquipped: false };
+                                
+                                if (state.player.inventory.length < invCap) {
+                                    state.player.inventory.push(loot);
+                                } else {
+                                    logMessage("{red:Your inventory is full! The artifact falls to the ground.}");
+                                    if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(ctx.x, ctx.y, loot.tile || '🗡️', 24);
+                                }
                             }
                             
                             // Smuggler vanishes after trading
@@ -238,14 +273,14 @@ window.EVENT_DATA = {
                             // Give Iron Ore
                             const ironStack = state.player.inventory.find(i => i.name === 'Iron Ore' && !i.isEquipped);
                             if (ironStack) ironStack.quantity += yieldAmt;
-                            else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '•', name: 'Iron Ore', type: 'junk', quantity: yieldAmt, tile: '•' });
+                            else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '•', name: 'Iron Ore', type: 'junk', quantity: yieldAmt, tile: '•', isEquipped: false });
                             
                             // 30% chance for a Star-Metal Core
                             if (Math.random() < 0.30) {
                                 logMessage("{purple:You found the Titan's power core! (Star-Metal Ore)}");
                                 const starStack = state.player.inventory.find(i => i.name === 'Star-Metal Ore' && !i.isEquipped);
                                 if (starStack) starStack.quantity += 1;
-                                else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '☄️', name: 'Star-Metal Ore', type: 'junk', quantity: 1, tile: '☄️' });
+                                else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '☄️', name: 'Star-Metal Ore', type: 'junk', quantity: 1, tile: '☄️', isEquipped: false });
                             }
 
                             state.lootedTiles.add(ctx.tileId);
