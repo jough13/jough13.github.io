@@ -71,8 +71,12 @@ window.MathUtils = {
     // Returns angle in radians between two points (Essential for particle/projectile rotation)
     angleBetween: (x1, y1, x2, y2) => Math.atan2(y2 - y1, x2 - x1),
     
-    // Keeps a value within a specified range
-    clamp: (val, min, max) => Math.max(min, Math.min(max, val)),
+    // 🚨 BUG FIX WIN: NaN Protection
+    // Keeps a value within a specified range, but safely falls back to min if given a corrupted value!
+    clamp: (val, min, max) => {
+        if (Number.isNaN(val)) return min;
+        return Math.max(min, Math.min(max, val));
+    },
     
     // Smooth linear interpolation for cameras and entity gliding
     lerp: (start, end, amt) => (1 - amt) * start + amt * end,
@@ -409,8 +413,11 @@ function preWarmCharCache() {
     charsToCache.forEach(char => {
         if (!char) return;
         
-        // Fast rejection for standard ASCII
-        if (char.codePointAt(0) < 255) {
+        const cp = char.codePointAt(0);
+        
+        // Fast rejection for standard ASCII and Box Drawing / Block Elements
+        // Skipping the regex on ▓, ▒, █ saves an enormous amount of CPU overhead on maps!
+        if (cp < 255 || (cp >= 0x2500 && cp <= 0x259F)) {
             charWidthCache[char] = false;
         } else {
             // Expensive check runs here, exactly once per unique character
@@ -428,8 +435,11 @@ setTimeout(preWarmCharCache, 50);
 // Uses codePointAt to safely handle multi-byte emojis without splitting them
 const isWideChar = (char) => {
     if (!char) return false;
-    // 1. Instant rejection for standard characters (e.g., '.', '#', 'a', 'W')
-    if (char.codePointAt(0) < 255) return false; 
+    
+    const cp = char.codePointAt(0);
+    // 1. Instant rejection for standard characters (e.g., '.', '#', 'a', 'W') 
+    // AND Box Drawing Elements (Used massively in Dungeon rendering)
+    if (cp < 255 || (cp >= 0x2500 && cp <= 0x259F)) return false; 
     
     // 2. Cache Lookup
     if (charWidthCache[char] !== undefined) return charWidthCache[char];
@@ -462,10 +472,11 @@ function escapeHtml(string) {
   });
 }
 
-// Instantly strips {color:text} syntax for clean native browser tooltips
+// 🚨 BUG FIX WIN: Instantly strips {color:text} syntax for clean native browser tooltips
+// Upgraded regex to catch alphanumeric tags like {red-500:text} safely.
 function stripColorTags(str) {
     if (!str) return "";
-    return str.replace(/\{[a-z]+:(.*?)\}/ig, '$1');
+    return str.replace(/\{[a-zA-Z0-9_-]+:(.*?)\}/ig, '$1');
 }
 
 function capitalizeWords(str) {
@@ -503,6 +514,11 @@ function getOrdinalSuffix(day) {
 window.getMoonPhase = function(day) {
     // Assuming a 30-day lunar cycle
     const cycleDay = (day - 1) % 30;
+    
+    // Check if the engine has flagged a Blood Moon!
+    if (typeof gameState !== 'undefined' && gameState.isBloodMoon) {
+        return { name: "Blood Moon", icon: "🩸" };
+    }
     
     if (cycleDay === 0) return { name: "New Moon", icon: "🌑" };
     if (cycleDay < 7) return { name: "Waxing Crescent", icon: "🌒" };
@@ -566,6 +582,7 @@ const LORE_KEYWORDS = {
     
     // --- NEW CLASSES & RACES ---
     'Fae Queen': 'fuchsia', 'Clockwork Prime': 'yellow',
+    'Clockwork Guardian': 'yellow', 'Fallen Titan': 'orange',
     'Goliath': 'gray', 'Fae-Blood': 'fuchsia', 'Void-Kissed': 'purple',
     'Cleric': 'yellow', 'Hunter': 'green', 'Inquisitor': 'red', 
     'Oracle': 'cyan', 'Beastmaster': 'green', 'Sniper': 'gray',
@@ -579,7 +596,7 @@ const LORE_KEYWORDS = {
     
     // --- NEW MECHANICS ---
     'Purify': 'cyan', 'Purified': 'cyan',
-    'Radiant Spring': 'cyan', 'Fallen Titan': 'orange', 'Cloudseed': 'green',
+    'Radiant Spring': 'cyan', 'Cloudseed': 'green',
     
     // Mechanics & Tools
     'Dimensional Vault': 'blue', 'Stash Box': 'yellow', 'Fishing Rod': 'cyan',
@@ -690,6 +707,9 @@ window.fastClone = function(obj, seen = new WeakMap()) {
 
     // Base case: null, undefined, strings, numbers, booleans
     if (obj === null || typeof obj !== 'object') return obj;
+    
+    // 🚨 BUG FIX WIN: Explicit RegExp support prevents regexes becoming `{}` on clone!
+    if (obj instanceof RegExp) return new RegExp(obj);
     
     // Explicit Date support (Prevents dates becoming empty objects)
     if (obj instanceof Date) return new Date(obj.getTime());
