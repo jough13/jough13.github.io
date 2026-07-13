@@ -40,6 +40,15 @@ window.FISHING_BAITS = [
     { name: 'Bird Egg', catchBoost: 0.10, rareBoost: 0.05, weightMult: 1.0, color: 'gray' } 
 ];
 
+// PERFORMANCE WIN: Abstracted to prevent array reallocation every time the logbook is opened!
+window.FISH_DIRECTORY = [
+    'Minnow', 'Sunfish', 'River Trout', 'Mossy Snapper', 'Leaping Salmon', 'Golden Koi',
+    'Mudcat', 'Blight-Finned Bass', 'Glow-Eyed Catfish', 'Lunar Eel', 'Sludge Eel', 
+    'Eyeless Cave Fish', 'Swamp Serpent Scale', 'Deep Sea Cod', 'Silver Tuna', 
+    'Swordfish', 'Storm Surge Ray', 'Abyssal Angler', 'Magma Carp', 'Charred Bonefish', 
+    'Obsidian Eel', 'Heart of the Volcano', 'Astral Jelly', 'Void Ray', 'Nebula Ray', 'Star-Eater'
+];
+
 // --- 1. DYNAMIC ITEM INJECTION ---
 // Using 'var' prevents block-scoped redeclaration crashes during hot-reloads
 var NEW_FISHING_ITEMS = {
@@ -65,20 +74,12 @@ var NEW_FISHING_ITEMS = {
             if (perksHtml === '') perksHtml = '<p class="text-xs text-gray-500 italic mt-1">Keep fishing to unlock Mastery Perks.</p>';
 
             // Build the "Fish-dex" Grid
-            const allFish = [
-                'Minnow', 'Sunfish', 'River Trout', 'Mossy Snapper', 'Leaping Salmon', 'Golden Koi',
-                'Mudcat', 'Blight-Finned Bass', 'Glow-Eyed Catfish', 'Lunar Eel', 'Sludge Eel', 
-                'Eyeless Cave Fish', 'Swamp Serpent Scale', 'Deep Sea Cod', 'Silver Tuna', 
-                'Swordfish', 'Storm Surge Ray', 'Abyssal Angler', 'Magma Carp', 'Charred Bonefish', 
-                'Obsidian Eel', 'Heart of the Volcano', 'Astral Jelly', 'Void Ray', 'Nebula Ray', 'Star-Eater'
-            ];
-            
             let caughtCount = 0;
             let totalWeight = 0;
 
             let gridHtml = `<div class="grid grid-cols-2 gap-2 mt-2 max-h-56 overflow-y-auto pr-2 custom-scrollbar">`;
             
-            allFish.forEach(fishName => {
+            window.FISH_DIRECTORY.forEach(fishName => {
                 const record = records[fishName];
                 const safeName = typeof escapeHtml === 'function' ? escapeHtml(fishName) : fishName;
                 
@@ -106,7 +107,7 @@ var NEW_FISHING_ITEMS = {
             });
             gridHtml += `</div>`;
 
-            const completionPercent = Math.floor((caughtCount / allFish.length) * 100);
+            const completionPercent = Math.floor((caughtCount / window.FISH_DIRECTORY.length) * 100);
 
             // UI WIN: Cap XP bar visuals if max level (20) is reached
             const isMax = lvl >= 20;
@@ -115,7 +116,7 @@ var NEW_FISHING_ITEMS = {
 
             let html = `
             <div class="mb-4 bg-black bg-opacity-20 p-3 rounded-lg border border-gray-700 shadow-inner">
-                <p class="text-lg font-bold text-blue-400 flex justify-between"><span>Fishing Level: ${lvl}</span> <span>${caughtCount}/${allFish.length}</span></p>
+                <p class="text-lg font-bold text-blue-400 flex justify-between"><span>Fishing Level: ${lvl}</span> <span>${caughtCount}/${window.FISH_DIRECTORY.length}</span></p>
                 <p class="text-xs text-gray-400 mb-2">${xpText}</p>
                 <div class="stat-bar-container mb-2"><div class="stat-bar ${isMax ? 'bg-yellow-500' : 'bg-blue-500'}" style="width: ${xpBarWidth}%"></div></div>
                 ${perksHtml}
@@ -216,7 +217,7 @@ var NEW_FISHING_ITEMS = {
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, '💎', '#a855f7');
                     
                     if (existingPearl) existingPearl.quantity++;
-                    else state.player.inventory.push({ templateId: '💎b', name: 'Black Pearl', type: 'junk', quantity: 1, tile: '💎' });
+                    else state.player.inventory.push({ templateId: '💎b', name: 'Black Pearl', type: 'junk', quantity: 1, tile: '💎', isEquipped: false });
                 } else {
                     logMessage("{red:You found a Black Pearl, but your inventory is full!}");
                 }
@@ -259,12 +260,18 @@ var NEW_FISHING_ITEMS = {
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                 } 
                 else if (state.player.inventory.length - freesSlot < invCap) {
+                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe deep clone to guarantee weapon traits and tags carry over!
                     let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                     newItem.templateId = prizeKey;
                     newItem.name = prize;
                     newItem.type = template ? (template.type || 'junk') : 'junk';
                     newItem.quantity = 1;
                     newItem.tile = template ? template.tile : '💎';
+                    newItem.isEquipped = false;
+                    
+                    // Explicit function re-binds for safety
+                    newItem.effect = template ? template.effect : null;
+                    newItem.onHit = template ? template.onHit : null;
                     
                     state.player.inventory.push(newItem);
                     logMessage(`{purple:You also found a ${prize} hidden inside!}`);
@@ -295,11 +302,18 @@ var NEW_FISHING_ITEMS = {
                     
                     const mapKey = getItemKeyByName('Tattered Map') || '🗺️';
                     const mapTemplate = window.ITEM_DATA[mapKey];
-                    state.player.inventory.push({
-                        templateId: mapKey,
-                        name: 'Tattered Map', type: 'treasure_map', quantity: 1, tile: '🗺️',
-                        effect: mapTemplate ? mapTemplate.effect : null
-                    });
+                    
+                    // 🚨 SAFE CLONE
+                    let mapItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(mapTemplate) : JSON.parse(JSON.stringify(mapTemplate));
+                    mapItem.templateId = mapKey;
+                    mapItem.name = 'Tattered Map';
+                    mapItem.type = 'treasure_map';
+                    mapItem.quantity = 1;
+                    mapItem.tile = '🗺️';
+                    mapItem.isEquipped = false;
+                    mapItem.effect = mapTemplate ? mapTemplate.effect : null;
+                    
+                    state.player.inventory.push(mapItem);
                 } else {
                     logMessage(`{red:It's a Tattered Map, but your pack is full! The wind blows it away.}`);
                 }
@@ -313,7 +327,9 @@ var NEW_FISHING_ITEMS = {
                     "...I saw the Old King's face in the water. He was weeping black tears...",
                     "...the Shadowed Hand is searching the coast. I must hide the map...",
                     "...don't trust the fairies in the forest. They stole my best rod...",
-                    "...the stars aren't moving. We are falling..."
+                    "...the stars aren't moving. We are falling...",
+                    "...the automatons in the desert... they don't sleep. They are searching for their master...",
+                    "...I stepped into the purple ring and saw my own death. Do not trust the Fae..."
                 ];
                 const msg = loreFragments[Math.floor(Math.random() * loreFragments.length)];
                 logMessage(`{gray:"${msg}"}`);
@@ -799,21 +815,20 @@ function executeFishing() {
             if (existingStack && isStackable) {
                 existingStack.quantity++;
             } else if (player.inventory.length < invCap) {
-                // Inject the templateId here so the effect binds correctly on re-hydration!
-                player.inventory.push({
-                    templateId: baseKey, 
-                    name: finalItemName, 
-                    type: template ? (template.type || 'junk') : 'junk',
-                    quantity: 1,
-                    tile: catchTile,
-                    defense: template ? template.defense : null,
-                    damage: template ? template.damage : null,
-                    slot: template ? template.slot : null,
-                    statBonuses: template && template.statBonuses ? JSON.parse(JSON.stringify(template.statBonuses)) : null,
-                    tags: template && template.tags ? [...template.tags] : null,           // 🛡️ FIX: Hydrate tags so weapons work!
-                    _rarity: template ? (template._rarity || null) : null,     // 🛡️ FIX: Hydrate rarity so borders glow!
-                    effect: template ? template.effect : null
-                });
+                // 🚨 BUG FIX & ROBUSTNESS WIN: Safe deep clone to guarantee weapon traits and tags carry over!
+                let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
+                newItem.templateId = baseKey;
+                newItem.name = finalItemName;
+                newItem.type = template ? (template.type || 'junk') : 'junk';
+                newItem.quantity = 1;
+                newItem.tile = catchTile;
+                newItem.isEquipped = false;
+                
+                // Explicit function re-binds for safety
+                newItem.effect = template ? template.effect : null;
+                newItem.onHit = template ? template.onHit : null;
+                
+                player.inventory.push(newItem);
             } else {
                 // Inventory is full and the item doesn't stack!
                 logMessage(`{red:Your pack is too full to keep the ${safeItemName}. It flops back into the water!}`);
