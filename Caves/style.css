@@ -76,8 +76,15 @@
 /* ==========================================================================
    GLOBAL STYLES & ACCESSIBILITY
    ========================================================================== */
-*, *::before, *::after {
-    box-sizing: border-box;
+html, body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    
+    /* 🚨 BUG FIX WIN: Mobile Dynamic Viewport Fix */
+    /* Prevents the browser's dynamic URL bar from hiding the bottom of the screen */
+    min-height: 100vh; /* Fallback */
+    min-height: 100dvh; /* Dynamic viewport height for modern mobile browsers */
 }
 
 body {
@@ -93,10 +100,8 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    min-height: 100vh;
+    justify-content: flex-start; /* Changed from center so long pages scroll normally */
     padding: 1rem;
-    margin: 0;
     
     /* Prevent accidental pull-to-refresh on mobile */
     overscroll-behavior-y: none;
@@ -127,7 +132,6 @@ button {
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
-    /* 🚨 GPU WIN: Removed static translate3d to prevent massive VRAM allocation */
 }
 
 /* Only promote to GPU composition layer when actively hovering or pressing! */
@@ -136,7 +140,7 @@ button:hover, button:focus-visible {
 }
 
 button:active:not(:disabled) {
-    transform: scale(0.95);
+    transform: scale(0.95) translateZ(0); /* Hardware accelerate the active state */
     filter: brightness(0.85);
 }
 
@@ -181,7 +185,6 @@ button:disabled {
     -webkit-background-clip: text;
     background-clip: text;
     animation: text-shimmer 4s linear infinite;
-    will-change: background-position;
 }
 
 @keyframes text-shimmer {
@@ -195,7 +198,6 @@ button:disabled {
 }
 .text-void-pulse {
     animation: void-pulse-text 3s ease-in-out infinite;
-    will-change: color, text-shadow, letter-spacing;
 }
 
 @keyframes blood-moon-glow {
@@ -204,7 +206,6 @@ button:disabled {
 }
 .text-blood-moon {
     animation: blood-moon-glow 3s ease-in-out infinite;
-    will-change: color, text-shadow;
 }
 
 @keyframes ethereal-drift {
@@ -216,7 +217,6 @@ button:disabled {
     font-style: italic;
     display: inline-block;
     animation: ethereal-drift 4s ease-in-out infinite;
-    will-change: opacity, transform, text-shadow;
 }
 
 /* Prevent accidental text highlighting during frantic clicking */
@@ -231,15 +231,16 @@ button:disabled {
 .themed-input, #chatMessages, #messageLog {
     user-select: auto;
     -webkit-user-select: auto;
-    contain: strict; 
+    /* Stop long texts from breaking container widths */
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 #chatMessages, #messageLog {
     /* Smooth scrolling for chat */
     scroll-behavior: smooth;
-    /* BUG FIX: Prevent long unbroken strings from stretching the layout */
-    word-break: break-word;
-    overflow-wrap: break-word;
+    /* PERFORMANCE WIN: Chain scrolling prevention */
+    overscroll-behavior: contain;
 }
 
 #chatInput:focus {
@@ -305,9 +306,8 @@ canvas {
     box-shadow: 0 0 25px rgba(0, 0, 0, 0.4); 
     transition: box-shadow 0.3s ease, filter 0.3s ease, transform 0.3s ease; 
     contain: strict; 
-    will-change: box-shadow, filter; 
-    /* Force GPU compositing layer for the canvas viewport only */
-    transform: translate3d(0, 0, 0); 
+    /* Force GPU compositing layer for the canvas viewport to prevent layout thrashing */
+    transform: translateZ(0); 
     backface-visibility: hidden;
 }
 
@@ -324,7 +324,6 @@ canvas {
     overflow: hidden;
     position: relative;
     animation: crt-flicker 8s infinite linear; 
-    will-change: opacity;
 }
 
 #gameCanvasWrapper.crt::after {
@@ -377,11 +376,9 @@ canvas {
 #hotbarContainer > div {
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-#hotbarContainer > div:hover {
-    will-change: transform, box-shadow;
-}
+
 #hotbarContainer > div:hover:not(.opacity-50):not(.cursor-not-allowed) {
-    transform: translateY(-6px);
+    transform: translateY(-6px) translateZ(0); /* Hardware accelerated lift */
     border-color: var(--text-highlight);
     box-shadow: 0 8px 12px rgba(0,0,0,0.2), 0 0 10px rgba(79, 70, 229, 0.3);
 }
@@ -403,14 +400,12 @@ canvas {
     content-visibility: auto;
     contain-intrinsic-size: 56px;
     contain: layout paint style;
-}
-
-.inventory-slot:hover, .inventory-slot:active {
-    will-change: transform; 
+    /* Force GPU layer so hovering it doesn't repaint the modal */
+    transform: translateZ(0);
 }
 
 .inventory-slot:hover {
-    transform: translateY(-5px);
+    transform: translateY(-5px) translateZ(0);
     border-color: var(--text-highlight);
     box-shadow: 0 8px 16px rgba(0,0,0,0.25), 0 0 10px rgba(79, 70, 229, 0.25); 
     z-index: 10; 
@@ -418,7 +413,7 @@ canvas {
 
 /* JUICE WIN: Tactile click compression for items */
 .inventory-slot:active {
-    transform: translateY(-2px) scale(0.95);
+    transform: translateY(-2px) scale(0.95) translateZ(0);
     box-shadow: 0 4px 8px rgba(0,0,0,0.2), 0 0 5px rgba(79, 70, 229, 0.2);
 }
 
@@ -429,34 +424,53 @@ canvas {
 }
 
 @keyframes equip-glow {
-    0% { box-shadow: 0 0 3px rgba(234, 179, 8, 0.4); border-color: rgba(234, 179, 8, 0.5); }
-    100% { box-shadow: 0 0 15px rgba(234, 179, 8, 1); border-color: rgba(234, 179, 8, 1); }
+    0% { opacity: 0.5; }
+    100% { opacity: 1; }
 }
-.inventory-slot.equipped {
-    background-color: rgba(234, 179, 8, 0.15); 
+
+/* Optimized Equip Glow - Animates a pseudo element opacity instead of box-shadow! */
+.inventory-slot.equipped::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    box-shadow: 0 0 15px rgba(234, 179, 8, 1);
+    border: 2px solid rgba(234, 179, 8, 1);
+    background-color: rgba(234, 179, 8, 0.15);
     animation: equip-glow 1.5s infinite alternate ease-in-out;
+    pointer-events: none;
+    z-index: -1;
 }
 
 /* JUICE WIN: Rarity Glows for Magic Items in Inventory */
-@keyframes rare-pulse {
-    0% { box-shadow: inset 0 0 5px rgba(168, 85, 247, 0.1); border-color: rgba(168, 85, 247, 0.5); }
-    50% { box-shadow: inset 0 0 15px rgba(168, 85, 247, 0.3); border-color: rgba(168, 85, 247, 0.9); }
-    100% { box-shadow: inset 0 0 5px rgba(168, 85, 247, 0.1); border-color: rgba(168, 85, 247, 0.5); }
-}
-@keyframes epic-pulse {
-    0% { box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.6); }
-    50% { box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 1); }
-    100% { box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.6); }
-}
-@keyframes legendary-pulse {
-    0% { box-shadow: inset 0 0 10px rgba(234, 179, 8, 0.2); border-color: rgba(234, 179, 8, 0.7); }
-    50% { box-shadow: inset 0 0 25px rgba(234, 179, 8, 0.8); border-color: rgba(234, 179, 8, 1); transform: scale(1.02); }
-    100% { box-shadow: inset 0 0 10px rgba(234, 179, 8, 0.2); border-color: rgba(234, 179, 8, 0.7); }
+@keyframes rarity-pulse-anim {
+    0% { opacity: 0.3; }
+    100% { opacity: 1; }
 }
 
-.inventory-slot.rarity-rare { animation: rare-pulse 2.5s infinite ease-in-out; }
-.inventory-slot.rarity-epic { animation: epic-pulse 2.5s infinite ease-in-out; }
-.inventory-slot.rarity-legendary { animation: legendary-pulse 2s infinite ease-in-out; z-index: 5; }
+.inventory-slot[class*="rarity-"]::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: -1;
+    animation: rarity-pulse-anim 2s infinite alternate ease-in-out;
+}
+
+.inventory-slot.rarity-rare::before {
+    box-shadow: inset 0 0 15px rgba(168, 85, 247, 0.3), 0 0 10px rgba(168, 85, 247, 0.6);
+    border: 2px solid rgba(168, 85, 247, 0.9);
+}
+.inventory-slot.rarity-epic::before {
+    box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.4), 0 0 15px rgba(239, 68, 68, 0.8);
+    border: 2px solid rgba(239, 68, 68, 1);
+}
+.inventory-slot.rarity-legendary { z-index: 5; }
+.inventory-slot.rarity-legendary::before {
+    box-shadow: inset 0 0 25px rgba(234, 179, 8, 0.6), 0 0 20px rgba(234, 179, 8, 1);
+    border: 2px solid rgba(234, 179, 8, 1);
+}
 
 .equipment-slot {
     width: 68px;
@@ -472,12 +486,12 @@ canvas {
     color: var(--text-default);
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     contain: layout paint;
+    transform: translateZ(0); /* GPU Layer */
 }
 
 .equipment-slot:hover {
-    will-change: transform;
     border-color: var(--text-highlight);
-    transform: scale(1.1);
+    transform: scale(1.1) translateZ(0);
     box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.3), 0 0 12px rgba(79, 70, 229, 0.4);
 }
 
@@ -508,8 +522,8 @@ canvas {
 
 /* Subtle title breathing */
 @keyframes float-breathe {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-5px) scale(1.01); }
+    0%, 100% { transform: translateY(0) scale(1) translateZ(0); }
+    50% { transform: translateY(-5px) scale(1.01) translateZ(0); }
 }
 
 /* Button Glint / Shine Effect */
@@ -517,18 +531,6 @@ canvas {
     0% { background-position: -200% center; }
     20% { background-position: 200% center; }
     100% { background-position: 200% center; }
-}
-
-/* Legendary Item Shimmer Effect */
-@keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-}
-.shimmer {
-    background: linear-gradient(120deg, transparent 20%, rgba(255,255,255,0.5) 50%, transparent 80%);
-    background-size: 200% 100%;
-    animation: shimmer 2.5s infinite linear;
-    will-change: background-position;
 }
 
 /* Stat Flashes & Pulses */
@@ -551,27 +553,38 @@ canvas {
 
 /* Damage/Heal Canvas Overlays */
 @keyframes screen-blood { 
-    0% { box-shadow: inset 0 0 0 0 rgba(220, 38, 38, 0); background-color: rgba(220, 38, 38, 0); } 
-    30% { box-shadow: inset 0 0 120px 50px rgba(220, 38, 38, 0.85); background-color: rgba(220, 38, 38, 0.2); } 
-    100% { box-shadow: inset 0 0 0 0 rgba(220, 38, 38, 0); background-color: rgba(220, 38, 38, 0); } 
+    0% { opacity: 0; background-color: rgba(220, 38, 38, 0); } 
+    30% { opacity: 1; background-color: rgba(220, 38, 38, 0.2); box-shadow: inset 0 0 120px 50px rgba(220, 38, 38, 0.85); } 
+    100% { opacity: 0; background-color: rgba(220, 38, 38, 0); } 
 }
 @keyframes screen-heal { 
-    0% { box-shadow: inset 0 0 0 0 rgba(34, 197, 94, 0); background-color: rgba(34, 197, 94, 0); } 
-    50% { box-shadow: inset 0 0 80px 30px rgba(34, 197, 94, 0.6); background-color: rgba(34, 197, 94, 0.15); } 
-    100% { box-shadow: inset 0 0 0 0 rgba(34, 197, 94, 0); background-color: rgba(34, 197, 94, 0); } 
+    0% { opacity: 0; background-color: rgba(34, 197, 94, 0); } 
+    50% { opacity: 1; background-color: rgba(34, 197, 94, 0.15); box-shadow: inset 0 0 80px 30px rgba(34, 197, 94, 0.6); } 
+    100% { opacity: 0; background-color: rgba(34, 197, 94, 0); } 
 }
-.damage-flash { animation: screen-blood 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); will-change: box-shadow, background-color; pointer-events: none; }
-.heal-flash { animation: screen-heal 0.4s ease-out; will-change: box-shadow, background-color; pointer-events: none; }
+/* Optimized flash classes that animate opacity instead of box-shadow where possible */
+.damage-flash::before { 
+    content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 100;
+    animation: screen-blood 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+}
+.heal-flash::before { 
+    content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 100;
+    animation: screen-heal 0.4s ease-out; 
+}
 
 /* Critical Health Heartbeat */
 @keyframes heartbeat {
-    0% { box-shadow: inset 0 0 25px rgba(220, 38, 38, 0.5); border-color: rgba(220, 38, 38, 0.6); }
-    50% { box-shadow: inset 0 0 90px rgba(220, 38, 38, 0.9); border-color: rgba(220, 38, 38, 1); }
-    100% { box-shadow: inset 0 0 25px rgba(220, 38, 38, 0.5); border-color: rgba(220, 38, 38, 0.6); }
+    0% { opacity: 0.5; }
+    50% { opacity: 1; transform: scale(1.02); }
+    100% { opacity: 0.5; }
 }
 .critical-health {
+    border-color: rgba(220, 38, 38, 0.8) !important;
+}
+.critical-health::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 99;
+    box-shadow: inset 0 0 40px rgba(220, 38, 38, 0.5);
     animation: heartbeat 1.2s infinite ease-in-out;
-    will-change: box-shadow, border-color;
 }
 
 /* ==========================================================================
@@ -611,6 +624,7 @@ canvas {
     /* PERFORMANCE WIN: Strict isolation prevents background DOM repaints! */
     contain: layout paint style;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    transform: translateZ(0); /* Hardware accelerate the entire modal */
 }
 
 kbd {
@@ -635,7 +649,7 @@ kbd {
     border-radius: 8px;
     border: 1px solid var(--border-color);
     border-left-width: 5px; /* JUICE WIN: Thicker left edge for selection feel */
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s, border-color 0.2s;
     
     /* PERFORMANCE WIN: Skip rendering completely if scrolled off-screen! */
     content-visibility: auto;
@@ -644,17 +658,16 @@ kbd {
 }
 
 .spell-item:hover, .skill-item:hover, .shop-item:hover, .crafting-item:hover, .quest-item:hover {
-    transform: translateX(6px); /* Slide slightly right instead of up for lists */
+    transform: translateX(6px) translateZ(0); /* Hardware accelerate list sliding */
     box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     border-left-color: var(--text-highlight);
     background-color: var(--bg-container); /* Slight brighten on hover */
     z-index: 2;
-    will-change: transform;
 }
 
 /* Tactile feedback when clicking lists */
 .spell-item:active, .skill-item:active, .shop-item:active, .crafting-item:active, .quest-item:active {
-    transform: translateX(3px) scale(0.98);
+    transform: translateX(3px) scale(0.98) translateZ(0);
     box-shadow: 0 2px 5px rgba(0,0,0,0.25);
 }
 
@@ -693,9 +706,8 @@ kbd {
     box-shadow: 0 3px 6px rgba(0,0,0,0.3);
 }
 .stat-add-btn:hover { 
-    transform: scale(1.2); 
+    transform: scale(1.2) translateZ(0); 
     filter: brightness(1.2); 
-    will-change: transform, filter;
 }
 .show-stat-buttons .stat-add-btn { display: block; animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
@@ -707,6 +719,7 @@ kbd {
     overflow: hidden;
     border: 1px solid var(--border-color);
     box-shadow: inset 0 2px 6px rgba(0,0,0,0.6); /* Deep glass tube look */
+    transform: translateZ(0); /* GPU Layer to prevent repaints when child animates */
 }
 
 /* ==========================================================================
@@ -722,7 +735,6 @@ kbd {
     height: 100%;
     width: 100%;
     transition: width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.3s ease;
-    will-change: width; 
     
     /* Clean, glossy 3D top edge without the noisy stripes */
     background-image: linear-gradient(
@@ -753,7 +765,6 @@ kbd {
     );
     background-size: 24px 24px, 100% 100%;
     animation: strip-move 1s linear infinite;
-    will-change: width, background-position;
 }
 
 /* ==========================================================================
@@ -763,16 +774,15 @@ kbd {
     border: 2px solid var(--border-color);
     background-color: var(--bg-panel);
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s, opacity 0.2s;
     opacity: 0.7;
 }
 
 .creation-option:hover {
-    transform: translateY(-3px);
+    transform: translateY(-3px) translateZ(0);
     opacity: 1.0;
     border-color: var(--text-muted);
     box-shadow: 0 6px 10px rgba(0,0,0,0.15);
-    will-change: transform, opacity, box-shadow;
 }
 
 .creation-option.selected {
@@ -780,7 +790,7 @@ kbd {
     background-color: rgba(79, 70, 229, 0.15); 
     opacity: 1.0;
     box-shadow: 0 0 15px rgba(79, 70, 229, 0.5);
-    transform: scale(1.04);
+    transform: scale(1.04) translateZ(0);
 }
 
 .gender-btn {
@@ -791,7 +801,7 @@ kbd {
     font-weight: bold;
     flex: 1;
     text-align: center;
-    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s;
     background-color: var(--bg-panel);
 }
 
@@ -799,34 +809,44 @@ kbd {
     background-color: var(--text-highlight, #facc15);
     color: #ffffff;
     border-color: transparent;
-    transform: scale(1.06);
+    transform: scale(1.06) translateZ(0);
     box-shadow: 0 6px 12px rgba(0,0,0,0.25);
-    will-change: transform;
 }
 
 /* ==========================================================================
    MOBILE CONTROLS (Ergonomic & Tactile)
    ========================================================================== */
    
+/* 🚨 BUG FIX WIN: The Stuck Mobile Controls Fix */
+/* This isolates the controls from the document flow, anchoring them strictly to the viewport glass */
 .mobile-controls {
-    position: fixed !important; /* Force override to prevent document flow hijacking */
-    /* Use max() to bump them up slightly to avoid iOS/Android bottom navigation bars */
-    bottom: max(40px, env(safe-area-inset-bottom, 40px)); 
+    position: fixed !important; 
+    /* Safe-area-inset accounts for iPhone 'home' bars and notches */
+    bottom: env(safe-area-inset-bottom, 20px) !important; 
     left: 0;
+    right: 0;
     width: 100%;
-    height: 200px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
     padding: 0 15px;
     pointer-events: none; 
-    z-index: 9999 !important; /* Massive Z-Index to guarantee they overlay all UI panels */
+    z-index: 999999 !important; /* Guarantee it floats above all panels and canvas */
     -webkit-touch-callout: none;
     user-select: none;
+    /* Force GPU layer so page scrolling cannot drag the controls down with the content */
+    transform: translateZ(0);
 }
 
 @media (min-width: 1024px) {
     .mobile-controls { display: none !important; }
+}
+
+/* Add padding to the bottom of the body on mobile so the game/chat doesn't hide permanently behind the D-Pad */
+@media (max-width: 1023px) {
+    body {
+        padding-bottom: 240px; 
+    }
 }
 
 .d-pad-container, .action-buttons-container {
@@ -860,9 +880,8 @@ kbd {
 
 .d-pad-btn:active, .action-btn:active {
     background-color: rgba(220, 220, 220, 1);
-    transform: scale(0.88) translateY(6px); 
+    transform: scale(0.88) translateY(6px) translateZ(0); 
     box-shadow: inset 0 8px 16px rgba(0,0,0,0.5); /* Deeper physical press */
-    will-change: transform;
 }
 
 [data-theme="dark"] .d-pad-btn, .action-btn {
@@ -1020,12 +1039,11 @@ kbd {
 
 .ui-btn-asset:hover { 
     filter: brightness(1.2); 
-    will-change: transform, filter, background-position;
 }
 .ui-btn-asset:active {
     background-image: none, var(--asset-btn-pressed);
     color: #cccccc; 
-    transform: translateY(6px) scale(0.98); 
+    transform: translateY(6px) scale(0.98) translateZ(0); 
     text-shadow: 1px 1px 0px rgba(0,0,0,1); 
 }
 
@@ -1054,7 +1072,6 @@ input[type="checkbox"].hidden { display: none; }
     margin-bottom: 1.5rem;
     -webkit-text-stroke: var(--title-stroke); 
     animation: float-breathe 6s ease-in-out infinite;
-    will-change: transform;
 }
 
 .pixel-text {
@@ -1095,7 +1112,7 @@ input[type="checkbox"].hidden { display: none; }
         transform: none !important;
     }
     button:active:not(:disabled), .inventory-slot:active, .ui-btn-asset:active {
-        transform: scale(0.98) !important; /* Keep a tiny tactical click feel but remove sliding */
+        transform: scale(0.98) translateZ(0) !important; /* Keep a tiny tactical click feel but remove sliding */
     }
 
     /* Instantly snap modals open instead of elastic pop-in */
