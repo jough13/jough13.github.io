@@ -1,5 +1,9 @@
 // --- START OF FILE data-entities.js ---
 
+// ==========================================
+// PLAYER RACES & BACKGROUNDS
+// ==========================================
+
 window.PLAYER_RACES = {
     'human': {
         name: 'Human',
@@ -31,7 +35,6 @@ window.PLAYER_RACES = {
         stats: { dexterity: 2, luck: 1 }, 
         icon: '🦶'
     },
-    // --- LORE EXPANSION: NEW RACES ---
     'goliath': {
         name: 'Goliath',
         description: "Towering half-giants from the high peaks. Their skin is like granite.",
@@ -49,9 +52,156 @@ window.PLAYER_RACES = {
         description: "Born under a ruptured sky. The darkness recognizes them as its own.",
         stats: { willpower: 2, wits: 1 }, 
         icon: '🌌'
+    },
+    // --- LORE EXPANSION: NEW RACES ---
+    'automaton': {
+        name: 'Automaton',
+        description: "A ticking, brass-forged soul from the Second Age. You awoke with no master.",
+        stats: { constitution: 1, endurance: 2 },
+        icon: '🤖'
+    },
+    'saurian': {
+        name: 'Saurian',
+        description: "Cold-blooded desert dwellers. They remember when the dunes were oceans.",
+        stats: { dexterity: 1, perception: 2 },
+        icon: '🦎'
     }
 };
 
+window.PLAYER_BACKGROUNDS = {
+    'warrior': {
+        name: 'Warrior',
+        description: 'A master of martial combat, built to survive the frontline.',
+        stats: { strength: 2, constitution: 1 },
+        items: [
+            { templateId: '!', name: 'Rusty Sword', type: 'weapon', quantity: 1, tile: '!', damage: 2, slot: 'weapon', tags: ['blade'] },
+            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] },
+            { templateId: '1', name: 'Conscript\'s Orders', type: 'journal', quantity: 1, tile: '1', title: 'Crumpled Orders', tags: [] }
+        ]
+    },
+    'rogue': {
+        name: 'Rogue',
+        description: 'Nimble and lethal, favoring speed, evasion, and critical strikes.',
+        stats: { dexterity: 2, luck: 1 },
+        items: [
+            { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon', tags: ['dagger', 'blade', 'bone'] },
+            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] },
+            { templateId: '2', name: 'Thief\'s Map', type: 'journal', quantity: 1, tile: '2', title: 'Scribbled Map', tags: [] }
+        ]
+    },
+    'mage': {
+        name: 'Mage',
+        description: 'A scholar of the arcane, wielding destructive spells and shields.',
+        stats: { wits: 2, willpower: 1 },
+        items: [
+            { templateId: '📚', name: 'Spellbook: Magic Bolt', type: 'spellbook', quantity: 1, tile: '📚', spellId: 'magicBolt', tags: [] },
+            { templateId: '3', name: 'Burned Scroll', type: 'journal', quantity: 1, tile: '3', title: 'Singed Parchment', tags: [] }
+        ]
+    },
+    'necromancer': {
+        name: 'Necromancer',
+        description: 'Commands the forces of life and death, raising minions from the grave.',
+        stats: { wits: 1, willpower: 2 },
+        items: [
+            { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon', tags: ['dagger', 'blade', 'bone'] },
+            { templateId: '💀', name: 'Tome: Raise Dead', type: 'spellbook', quantity: 1, tile: '💀', spellId: 'raiseDead', tags: [] },
+            { templateId: '4', name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap', tags: [] }
+        ]
+    },
+    'cleric': {
+        name: 'Cleric',
+        description: 'A devout healer and banisher of the unholy, clad in heavy armor.',
+        stats: { willpower: 2, constitution: 1 },
+        items: [
+            { templateId: '🏏', name: 'Wooden Club', type: 'weapon', quantity: 1, tile: '🏏', damage: 2, slot: 'weapon', tags: ['blunt'] },
+            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] },
+            { templateId: '📖', name: 'Spellbook: Lesser Heal', type: 'spellbook', quantity: 1, tile: '📖', spellId: 'lesserHeal', tags: [] }
+        ]
+    },
+    'hunter': {
+        name: 'Hunter',
+        description: 'A master of the wilds, using bows and taming beasts.',
+        stats: { perception: 2, dexterity: 1 },
+        items: [
+            { templateId: '🏹', name: 'Shortbow', type: 'weapon', quantity: 1, tile: '🏹', damage: 2, range: 4, isTwoHanded: true, slot: 'weapon', skillId: 'ranged_attack', statBonuses: { dexterity: 1 }, tags: ['bow'] },
+            { templateId: '➹', name: 'Wooden Arrow', type: 'ammo', quantity: 25, tile: '➹', damage: 1, slot: 'ammo', tags: [] },
+            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] }
+        ]
+    },
+    'wretch': {
+        name: 'The Wretch',
+        description: 'Naked, afraid, and penniless. A true challenge for veterans.',
+        stats: { luck: 2, endurance: 2 }, 
+        items: [
+            { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', tags: ['clothing'] },
+            { templateId: 'idol', name: 'Strange Idol', type: 'trade', quantity: 1, tile: '🗿', tags: [] }
+        ]
+    },
+    // --- LORE EXPANSION CLASSES ---
+    'defector': {
+        name: 'Cult Defector',
+        description: 'You fled the Shadowed Hand, stealing their forbidden secrets on the way out.',
+        stats: { willpower: 2, dexterity: 1 },
+        items: [
+            { templateId: '🗡️', name: 'Ritual Dagger', type: 'weapon', quantity: 1, tile: '🗡️', damage: 3, slot: 'weapon', tags: ['dagger', 'blade'] },
+            { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', tags: ['clothing'] },
+            { templateId: '💀', name: 'Tome: Dark Pact', type: 'spellbook', quantity: 1, tile: '💀', spellId: 'darkPact', tags: [] }
+        ]
+    },
+    'artisan': {
+        name: 'Artisan',
+        description: 'A creator of things. You survive by building what others destroy.',
+        stats: { endurance: 2, wits: 1 },
+        items: [
+            { templateId: '⛏️', name: 'Pickaxe', type: 'tool', quantity: 1, tile: '⛏️', tags: [] },
+            { templateId: '-', name: 'Machete', type: 'tool', quantity: 1, tile: '-', tags: ['blade'] },
+            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] }
+        ]
+    }
+};
+
+window.EVOLUTION_DATA = {
+    'warrior': [
+        { id: 'berserker', name: 'Berserker', icon: '👹', description: "A terrifying force of nature.", stats: { strength: 4, constitution: 2 }, talent: 'blood_rage' },
+        { id: 'paladin', name: 'Paladin', icon: '🛡️', description: "A holy defender shrouded in light.", stats: { constitution: 3, willpower: 2, charisma: 2 }, talent: 'holy_aura' }
+    ],
+    'rogue': [
+        { id: 'assassin', name: 'Assassin', icon: '🥷', description: "A master of the shadows.", stats: { dexterity: 4, wits: 2 }, talent: 'shadow_strike' },
+        { id: 'duelist', name: 'Duelist', icon: '🤺', description: "A master of parrying and riposte.", stats: { dexterity: 3, endurance: 3 }, talent: 'evasion' }
+    ],
+    'mage': [
+        { id: 'archmage', name: 'Archmage', icon: '🧙‍♂️', description: "A pure conduit for the leylines.", stats: { wits: 5, maxMana: 20 }, talent: 'mana_flow' },
+        { id: 'battlemage', name: 'Battlemage', icon: '🗡️', description: "A heavily armored spellcaster.", stats: { strength: 3, wits: 3 }, talent: 'arcane_steel' }
+    ],
+    'necromancer': [
+        { id: 'lich', name: 'Lich', icon: '💀', description: "You have conquered death itself.", stats: { wits: 4, willpower: 4 }, talent: 'undeath' },
+        { id: 'warlock', name: 'Warlock', icon: '🔥', description: "Channels raw demonic energy.", stats: { willpower: 5, charisma: 3 }, talent: 'soul_siphon' }
+    ],
+    'cleric': [
+        { id: 'inquisitor', name: 'Inquisitor', icon: '✝️', description: "A ruthless hunter of the shadowed hand.", stats: { strength: 3, willpower: 3 }, talent: 'holy_aura' },
+        { id: 'oracle', name: 'Oracle', icon: '🔮', description: "Sees the truth in all things.", stats: { wits: 4, perception: 4 }, talent: 'arcane_potency' }
+    ],
+    'hunter': [
+        { id: 'beastmaster', name: 'Beastmaster', icon: '🐾', description: "Commands the wilds to fight alongside them.", stats: { charisma: 4, endurance: 2 }, talent: 'beast_whisperer' },
+        { id: 'sniper', name: 'Sniper', icon: '🏹', description: "Lethal precision from the shadows.", stats: { dexterity: 4, perception: 4 }, talent: 'eagle_eye' }
+    ],
+    'wretch': [
+        { id: 'hero', name: 'True Hero', icon: '👑', description: "You survived the darkness against all odds.", stats: { strength: 5, dexterity: 5, wits: 5, constitution: 5 }, talent: 'legend' },
+        { id: 'void_touched', name: 'Void-Touched', icon: '👁️', description: "You stared into the abyss, and it stared back.", stats: { willpower: 10, wits: 10, constitution: -2 }, talent: 'void_walker' }
+    ],
+    'defector': [
+        { id: 'void_caller', name: 'Void Caller', icon: '🌌', description: "You embraced the very magic you fled from.", stats: { willpower: 5, wits: 3, maxPsyche: 20 }, talent: 'void_walker' },
+        { id: 'blood_mage', name: 'Blood Mage', icon: '🩸', description: "Life is merely fuel for your spells.", stats: { constitution: 5, willpower: 2 }, talent: 'blood_rage' }
+    ],
+    'artisan': [
+        { id: 'runesmith', name: 'Runesmith', icon: '⚒️', description: "Master of enchanted arms and armor.", stats: { strength: 3, endurance: 4 }, talent: 'arcane_steel' },
+        { id: 'tinkerer', name: 'Tinkerer', icon: '⚙️', description: "You build contraptions to survive.", stats: { wits: 4, dexterity: 3 }, talent: 'pack_mule' }
+    ]
+};
+
+// ==========================================
+// QUEST & NARRATIVE DATA
+// ==========================================
 // 🚨 V8 OPTIMIZATION: Strict schemas applied to QUEST_DATA to prevent object shape de-optimization.
 window.QUEST_DATA = {
     // --- EARLY GAME ---
@@ -198,7 +348,7 @@ window.QUEST_DATA = {
         reward: { xp: 1500, coins: 1000, item: 'Mana Orb', itemQty: 5 }
     },
     
-    // --- EXPANSION WIN: New Quests ---
+    // --- LORE EXPANSION QUESTS ---
     "faeGamble": {
         title: "The Fae's Gamble",
         description: "\"My brother stepped into a Fairy Ring and never returned. I need to know what happened to him. Bring me any notes you find.\"",
@@ -210,10 +360,19 @@ window.QUEST_DATA = {
         description: "\"The ancient machines ('🤖') are waking up in the deserts. Smashing them yields good scrap. Destroy 5 Clockwork Guardians.\"",
         type: 'kill', enemy: '🤖', itemNeeded: null, needed: 5, itemTile: null,
         reward: { xp: 1000, coins: 600, item: null, itemQty: 0 }
+    },
+    "corruptedRoots": {
+        title: "Bounty: Rotting Roots",
+        description: "\"The forests are turning black. Corrupted Treants ('🌳c') are spreading the blight. Chop down 5 of them.\"",
+        type: 'kill', enemy: '🌳c', itemNeeded: null, needed: 5, itemTile: null,
+        reward: { xp: 600, coins: 400, item: null, itemQty: 0 }
     }
 };
 
-// LORE & MECHANIC WIN: Deeply flavorful elite affixes that wildly alter combat
+// ==========================================
+// BESTIARY & ENEMY ENTITIES
+// ==========================================
+
 window.ENEMY_PREFIXES = {
     "Savage": {
         description: "Fights with terrifying ferocity. Deals extra damage.",
@@ -280,10 +439,22 @@ window.ENEMY_PREFIXES = {
         description: "Radiates blinding holy light.",
         statModifiers: { attack: 0, defense: 0, maxHealth: 15 },
         special: null, xpMult: 1.8, color: '#fef08a'
+    },
+    // --- EXPANSION PREFIXES ---
+    "Venomous": {
+        description: "Drips with highly concentrated acid.",
+        statModifiers: { attack: 1, defense: 0, maxHealth: 0 },
+        special: 'poison', xpMult: 1.4, color: '#16a34a'
+    },
+    "Phase-Shifted": {
+        description: "Blinks in and out of the timeline rapidly.",
+        statModifiers: { attack: 0, defense: 2, maxHealth: 0 },
+        special: null, xpMult: 1.5, color: '#6366f1'
     }
 };
 
 // 🚨 V8 OPTIMIZATION: Strict schemas applied to ENEMY_DATA
+// EVERY object must have: name, tags, mountable, maxHealth, attack, defense, xp, caster, castRange, spellDamage, isRanged, range, inflicts, inflictChance, teleporter, loot, color, isBoss, excludeFromLoot, flavor
 window.ENEMY_DATA = {
     // --- LEVEL 1 (Vermin & Weaklings) ---
     'r': {
@@ -295,7 +466,7 @@ window.ENEMY_DATA = {
         flavor: "It has survived ages in the dark by eating what others leave behind. Its yellow teeth are filed sharp from gnawing on bones."
     },
     '🦇': {
-        name: 'Giant Bat', tags: ['beast', 'vermin'], mountable: false,
+        name: 'Giant Bat', tags: ['beast', 'vermin', 'flying'], mountable: false,
         maxHealth: 2, attack: 1, defense: 0, xp: 5,
         caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
         inflicts: null, inflictChance: 0, teleporter: false,
@@ -360,6 +531,14 @@ window.ENEMY_DATA = {
         loot: '🦷', color: '#eab308', isBoss: false, excludeFromLoot: false,
         flavor: "It rears up, hood flared, hissing loudly. A single bite can drop a warhorse in minutes."
     },
+    '🪱': {
+        name: 'Sand Worm', tags: ['beast', 'monster', 'bug'], mountable: false,
+        maxHealth: 20, attack: 4, defense: 2, xp: 35,
+        caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
+        inflicts: null, inflictChance: 0, teleporter: false,
+        loot: '🍖', color: '#b45309', isBoss: false, excludeFromLoot: false,
+        flavor: "A blind, segmented horror that swims through the dunes as easily as water."
+    },
 
     // --- SWAMP WILDLIFE ---
     '🐸': {
@@ -371,7 +550,7 @@ window.ENEMY_DATA = {
         flavor: "It sits perfectly still in the muck, waiting to swallow careless travelers whole."
     },
     '🦟': {
-        name: 'Blood Mosquito', tags: ['bug'], mountable: false,
+        name: 'Blood Mosquito', tags: ['bug', 'flying'], mountable: false,
         maxHealth: 2, attack: 1, defense: 5, xp: 10,
         caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
         inflicts: null, inflictChance: 0, teleporter: false,
@@ -545,6 +724,14 @@ window.ENEMY_DATA = {
         inflicts: 'madness', inflictChance: 0.3, teleporter: true,
         loot: 'fae_1', color: '#d946ef', isBoss: false, excludeFromLoot: false,
         flavor: "A beautiful, ethereal being that giggles as it tears at the edges of your sanity."
+    },
+    '🧚‍♂️': {
+        name: 'Fae Knight', tags: ['humanoid', 'fae', 'wood'], mountable: false,
+        maxHealth: 25, attack: 5, defense: 3, xp: 45,
+        caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
+        inflicts: null, inflictChance: 0, teleporter: false,
+        loot: '🌿', color: '#bef264', isBoss: false, excludeFromLoot: false,
+        flavor: "Clad in armor of hardened amber and wielding a needle-thin rapier. Lethal elegance."
     },
     '🦅': {
         name: 'Giant Eagle', tags: ['beast', 'flying', 'mountable'], mountable: true,
@@ -742,6 +929,22 @@ window.ENEMY_DATA = {
         loot: '⚙️', color: '#f59e0b', isBoss: false, excludeFromLoot: false,
         flavor: "A relic of the Second Age. It still ruthlessly executes its final programmed order: ELIMINATE."
     },
+    '🔪': {
+        name: 'Clockwork Assassin', tags: ['construct', 'metal'], mountable: false,
+        maxHealth: 30, attack: 12, defense: 2, xp: 150,
+        caster: false, castRange: 0, spellDamage: 0, isRanged: false, range: 0,
+        inflicts: null, inflictChance: 0, teleporter: true, // Blinks via mechanics
+        loot: '⚙️', color: '#dc2626', isBoss: false, excludeFromLoot: false,
+        flavor: "Sleek, silent, and deadly. Its gears are muffled by dark magic."
+    },
+    'p': {
+        name: 'Cultist High Priest', tags: ['humanoid', 'void', 'magic'], mountable: false,
+        maxHealth: 30, attack: 4, defense: 2, xp: 80,
+        caster: true, castRange: 6, spellDamage: 8, isRanged: false, range: 0,
+        inflicts: 'madness', inflictChance: 0.3, teleporter: false,
+        loot: '🧿s', color: '#be185d', isBoss: false, excludeFromLoot: false,
+        flavor: "Adorned in robes of human skin. He leads the chant that tears reality."
+    },
     '🐛': {
         name: 'Dune Thresher', tags: ['beast', 'monster', 'bug', 'boss'], mountable: false,
         maxHealth: 120, attack: 12, defense: 2, xp: 400,
@@ -873,173 +1076,22 @@ window.ENEMY_DATA = {
     '🤖p': {
         name: 'Clockwork Prime', tags: ['construct', 'metal', 'boss'], mountable: false,
         maxHealth: 800, attack: 16, defense: 10, xp: 4000,
-        caster: true, castRange: 4, spellDamage: 10, isRanged: false, range: 0, // Lasers!
+        caster: true, castRange: 4, spellDamage: 10, isRanged: false, range: 0,
         inflicts: 'burn', inflictChance: 0.3, teleporter: false,
         loot: '⚙️', color: '#fbbf24', isBoss: true, excludeFromLoot: false,
         flavor: "A gargantuan engine of destruction from the Second Age. It glows with terrifying, superheated energy."
+    },
+    '🧙‍♂️s': {
+        name: 'Sylas, The First Mage', tags: ['humanoid', 'void', 'magic', 'boss'], mountable: false,
+        maxHealth: 750, attack: 8, defense: 5, xp: 4500,
+        caster: true, castRange: 8, spellDamage: 18, isRanged: false, range: 0,
+        inflicts: 'madness', inflictChance: 0.5, teleporter: true,
+        loot: '✨', color: '#3b82f6', isBoss: true, excludeFromLoot: false,
+        flavor: "The architect of the world's ruin. He floats slightly above the ground, eyes burning with cold, analytical malice."
     }
 };
 
-window.PLAYER_BACKGROUNDS = {
-    'warrior': {
-        name: 'Warrior',
-        description: 'A master of martial combat, built to survive the frontline.',
-        stats: { strength: 2, constitution: 1 },
-        items: [
-            { templateId: '!', name: 'Rusty Sword', type: 'weapon', quantity: 1, tile: '!', damage: 2, slot: 'weapon', tags: ['blade'] },
-            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] },
-            { templateId: '1', name: 'Conscript\'s Orders', type: 'journal', quantity: 1, tile: '1', title: 'Crumpled Orders', tags: [] }
-        ]
-    },
-    'rogue': {
-        name: 'Rogue',
-        description: 'Nimble and lethal, favoring speed, evasion, and critical strikes.',
-        stats: { dexterity: 2, luck: 1 },
-        items: [
-            { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon', tags: ['dagger', 'blade', 'bone'] },
-            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] },
-            { templateId: '2', name: 'Thief\'s Map', type: 'journal', quantity: 1, tile: '2', title: 'Scribbled Map', tags: [] }
-        ]
-    },
-    'mage': {
-        name: 'Mage',
-        description: 'A scholar of the arcane, wielding destructive spells and shields.',
-        stats: { wits: 2, willpower: 1 },
-        items: [
-            { templateId: '📚', name: 'Spellbook: Magic Bolt', type: 'spellbook', quantity: 1, tile: '📚', spellId: 'magicBolt', tags: [] },
-            { templateId: '3', name: 'Burned Scroll', type: 'journal', quantity: 1, tile: '3', title: 'Singed Parchment', tags: [] }
-        ]
-    },
-    'necromancer': {
-        name: 'Necromancer',
-        description: 'Commands the forces of life and death, raising minions from the grave.',
-        stats: { wits: 1, willpower: 2 },
-        items: [
-            { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon', tags: ['dagger', 'blade', 'bone'] },
-            { templateId: '💀', name: 'Tome: Raise Dead', type: 'spellbook', quantity: 1, tile: '💀', spellId: 'raiseDead', tags: [] },
-            { templateId: '4', name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap', tags: [] }
-        ]
-    },
-    // --- LORE EXPANSION CLASSES ---
-    'cleric': {
-        name: 'Cleric',
-        description: 'A devout healer and banisher of the unholy, clad in heavy armor.',
-        stats: { willpower: 2, constitution: 1 },
-        items: [
-            { templateId: '🏏', name: 'Wooden Club', type: 'weapon', quantity: 1, tile: '🏏', damage: 2, slot: 'weapon', tags: ['blunt'] },
-            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] },
-            { templateId: '📖', name: 'Spellbook: Lesser Heal', type: 'spellbook', quantity: 1, tile: '📖', spellId: 'lesserHeal', tags: [] }
-        ]
-    },
-    'hunter': {
-        name: 'Hunter',
-        description: 'A master of the wilds, using bows and taming beasts.',
-        stats: { perception: 2, dexterity: 1 },
-        items: [
-            { templateId: '🏹', name: 'Shortbow', type: 'weapon', quantity: 1, tile: '🏹', damage: 2, range: 4, isTwoHanded: true, slot: 'weapon', skillId: 'ranged_attack', statBonuses: { dexterity: 1 }, tags: ['bow'] },
-            { templateId: '➹', name: 'Wooden Arrow', type: 'ammo', quantity: 25, tile: '➹', damage: 1, slot: 'ammo', tags: [] },
-            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor', tags: ['clothing'] }
-        ]
-    },
-    'wretch': {
-        name: 'The Wretch',
-        description: 'Naked, afraid, and penniless. A true challenge for veterans.',
-        stats: { luck: 2, endurance: 2 }, 
-        items: [
-            { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', tags: ['clothing'] },
-            { templateId: 'idol', name: 'Strange Idol', type: 'trade', quantity: 1, tile: '🗿', tags: [] }
-        ]
-    }
-};
-
-window.EVOLUTION_DATA = {
-    'warrior': [
-        {
-            id: 'berserker', name: 'Berserker', icon: '👹', 
-            description: "A terrifying force of nature.",
-            stats: { strength: 4, constitution: 2 }, talent: 'blood_rage'
-        },
-        {
-            id: 'paladin', name: 'Paladin', icon: '🛡️',
-            description: "A holy defender shrouded in light.",
-            stats: { constitution: 3, willpower: 2, charisma: 2 }, talent: 'holy_aura'
-        }
-    ],
-    'rogue': [
-        {
-            id: 'assassin', name: 'Assassin', icon: '🥷',
-            description: "A master of the shadows.",
-            stats: { dexterity: 4, wits: 2 }, talent: 'shadow_strike'
-        },
-        {
-            id: 'duelist', name: 'Duelist', icon: '🤺',
-            description: "A master of parrying and riposte.", 
-            stats: { dexterity: 3, endurance: 3 }, talent: 'evasion'
-        }
-    ],
-    'mage': [
-        {
-            id: 'archmage', name: 'Archmage', icon: '🧙‍♂️',
-            description: "A pure conduit for the leylines.",
-            stats: { wits: 5, maxMana: 20 }, talent: 'mana_flow'
-        },
-        {
-            id: 'battlemage', name: 'Battlemage', icon: '🗡️',
-            description: "A heavily armored spellcaster.",
-            stats: { strength: 3, wits: 3 }, talent: 'arcane_steel'
-        }
-    ],
-    'necromancer': [
-        {
-            id: 'lich', name: 'Lich', icon: '💀',
-            description: "You have conquered death itself.",
-            stats: { wits: 4, willpower: 4 }, talent: 'undeath'
-        },
-        {
-            id: 'warlock', name: 'Warlock', icon: '🔥',
-            description: "Channels raw demonic energy.",
-            stats: { willpower: 5, charisma: 3 }, talent: 'soul_siphon'
-        }
-    ],
-    'cleric': [
-        {
-            id: 'inquisitor', name: 'Inquisitor', icon: '✝️',
-            description: "A ruthless hunter of the shadowed hand.",
-            stats: { strength: 3, willpower: 3 }, talent: 'holy_aura'
-        },
-        {
-            id: 'oracle', name: 'Oracle', icon: '🔮',
-            description: "Sees the truth in all things.",
-            stats: { wits: 4, perception: 4 }, talent: 'arcane_potency'
-        }
-    ],
-    'hunter': [
-        {
-            id: 'beastmaster', name: 'Beastmaster', icon: '🐾',
-            description: "Commands the wilds to fight alongside them.",
-            stats: { charisma: 4, endurance: 2 }, talent: 'beast_whisperer'
-        },
-        {
-            id: 'sniper', name: 'Sniper', icon: '🏹',
-            description: "Lethal precision from the shadows.",
-            stats: { dexterity: 4, perception: 4 }, talent: 'eagle_eye'
-        }
-    ],
-    'wretch': [
-        {
-            id: 'hero', name: 'True Hero', icon: '👑',
-            description: "You survived the darkness against all odds.",
-            stats: { strength: 5, dexterity: 5, wits: 5, constitution: 5 }, talent: 'legend'
-        },
-        {
-            id: 'void_touched', name: 'Void-Touched', icon: '👁️',
-            description: "You stared into the abyss, and it stared back.",
-            stats: { willpower: 10, wits: 10, constitution: -2 }, talent: 'void_walker'
-        }
-    ]
-};
-
-// 🚨 V8 OPTIMIZATION: Strict schemas applied to SPELL_DATA to prevent object shape de-optimization.
+// 🚨 V8 OPTIMIZATION: Strict schemas applied to SPELL_DATA
 window.SPELL_DATA = {
     "candlelight": {
         name: "Candlelight",
@@ -1102,6 +1154,14 @@ window.SPELL_DATA = {
         scalingStat: "wits",
         cost: 15, costType: "mana", requiredLevel: 5, target: "aimed", baseDamage: 8, radius: 1, element: "fire", AoE: true,
         cooldown: 3, type: null, duration: 0, baseHeal: 0, baseShield: 0, baseRestore: 0, baseReflect: 0, healPercent: 0, inflicts: null, inflictChance: 0
+    },
+    "bloodBoil": {
+        name: "Blood Boil",
+        description: "Sacrifices {red:15 HP} to erupt in dark flame, damaging all adjacent enemies. Scales with {purple:Willpower}.",
+        flavor: "Your blood turns to superheated vapor, bursting outward to sear your foes.",
+        scalingStat: "willpower",
+        cost: 15, costType: "health", requiredLevel: 6, target: "self", baseDamage: 12, radius: 1, element: "dark", AoE: true,
+        cooldown: 5, type: null, duration: 0, baseHeal: 0, baseShield: 0, baseRestore: 0, baseReflect: 0, healPercent: 0, inflicts: 'burn', inflictChance: 0.5
     },
     "siphonLife": {
         name: "Siphon Life",
@@ -1190,8 +1250,6 @@ window.SPELL_DATA = {
         cost: 15, costType: "mana", requiredLevel: 4, target: "self", type: "buff", baseReflect: 2, duration: 5, element: "earth",
         cooldown: 5, baseDamage: 0, baseHeal: 0, baseShield: 0, baseRestore: 0, healPercent: 0, radius: 0, AoE: false, inflicts: null, inflictChance: 0
     },
-    
-    // --- LORE EXPANSION SPELLS ---
     "holyNova": {
         name: "Holy Nova",
         description: "A burst of divine light that heavily damages all adjacent Undead and Demons. Scales with {blue:Wits}.",
@@ -1501,6 +1559,22 @@ window.SKILL_DATA = {
         scalingStat: "constitution",
         cost: 15, costType: "stamina", requiredLevel: 4, target: "self", type: "buff", baseDefense: 10, duration: 3, cooldown: 8, weaponTags: ['shield'],
         baseDamageMultiplier: 0, AoE: false
+    },
+    "earthquake": {
+        name: "Earthquake",
+        description: "A massive slam that {yellow:stuns} all adjacent ground enemies. (Hammer only)",
+        flavor: "You strike the earth with world-shattering force.",
+        scalingStat: "strength",
+        cost: 20, costType: "stamina", requiredLevel: 6, target: "self", type: "utility", baseDefense: 0, duration: 0, cooldown: 10, weaponTags: ['blunt'],
+        baseDamageMultiplier: 0, AoE: true
+    },
+    "assassinate": {
+        name: "Assassinate",
+        description: "A lethal strike from {gray:Stealth} dealing {red:massive critical damage}. Ends stealth. (Dagger only)",
+        flavor: "They never hear it coming.",
+        scalingStat: "dexterity",
+        cost: 10, costType: "stamina", requiredLevel: 6, target: "aimed", baseDamageMultiplier: 3.5, cooldown: 15, weaponTags: ['dagger'],
+        type: null, baseDefense: 0, duration: 0, AoE: false
     }
 };
 
