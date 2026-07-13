@@ -9696,13 +9696,12 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             // Uses the NUREG-1507 exact variance propagation formula
             Ld_counts = 2.71 + 3.29 * Math.sqrt(bkgRate * Ts * (1 + (Ts / Tb)));
         } else if (backgroundMode === 'rate') {
-            // 2. Established well-known background rate baseline (Tb >> Ts)
-            // Because background variance error is negligible, the coefficient drops to 3.29
+            // 1. Established background rate baseline (Tb >> Ts)
             Ld_counts = 2.71 + 3.29 * Math.sqrt(bkgRate * Ts);
         } else {
-            // 3. Paired observations with equal sample and background times (backgroundMode === 'counts' AND Ts ≈ Tb)
-            // Traditional Currie paired-blank threshold constant (2 * 1.645 * sqrt(2) ≈ 4.65)
-            Ld_counts = 2.71 + 4.65 * Math.sqrt(bkgRate * Ts);
+            // 2. Exact NUREG-1507 variance propagation. 
+            // Automatically yields the 4.65 multiplier when Ts == Tb!
+            Ld_counts = 2.71 + 3.29 * Math.sqrt(bkgRate * Ts * (1 + (Ts / Tb)));
         }
         
         let finalMDA;
@@ -9910,10 +9909,19 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                             <div><label className="block text-sm font-medium">Probe Dimension (Scan Direction)</label><input type="number" inputMode="decimal" value={probeDimension} onChange={e => setProbeDimension(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                             <div><label className="block text-sm font-medium">Surveyor Efficiency (p)</label><input type="number" inputMode="decimal" value={surveyorEff} onChange={e => setSurveyorEff(e.target.value)} step="0.1" min="0" max="1" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                             <div>
-                                <Tooltip text="Detectability Index (d'). 1.38 = 95% True Positive / 60% False Positive (Standard).">
+                                <Tooltip text="Detectability Index (d'). Represents the trade-off between True Positive detections (95%) and False Positives (NUREG-1507 Table 6.1).">
                                     <label className="block text-sm font-medium cursor-help underline decoration-dotted">Index (d')</label>
                                 </Tooltip>
-                                <input type="number" inputMode="decimal" value={dprime} onChange={e => setDprime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                                <select 
+                                    value={dprime} 
+                                    onChange={e => setDprime(e.target.value)} 
+                                    className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                >
+                                    <option value="1.38">1.38 (60% False Pos.)</option>
+                                    <option value="1.75">1.75 (40% False Pos.)</option>
+                                    <option value="2.32">2.32 (20% False Pos.)</option>
+                                    <option value="3.29">3.29 (5% False Pos.)</option>
+                                </select>
                             </div>
                         </div>
                     </div>
