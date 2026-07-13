@@ -80,293 +80,301 @@ function getMaxCraftable(recipeName, availableMats, inventory, isStackable, hasE
     }
 }
 
+// 🚨 BUG FIX WIN: Mutex Lock to prevent rapid-fire clicking from corrupting inventory mats!
+let isCraftingProcessing = false;
+
 function handleCraftItem(recipeName, requestBatch = false) {
-    const recipeBook = getRecipeBook(gameState.currentCraftingMode);
-    const recipe = recipeBook[recipeName];
-    if (!recipe) return;
+    if (isCraftingProcessing) return;
+    isCraftingProcessing = true;
 
-    const player = gameState.player;
-    const isCooking = (gameState.currentCraftingMode === 'cooking');
-    const playerCraftLevel = isCooking ? 1 : (player.craftingLevel || 1);
+    try {
+        const recipeBook = getRecipeBook(gameState.currentCraftingMode);
+        const recipe = recipeBook[recipeName];
+        if (!recipe) return;
 
-    if (!isCooking && playerCraftLevel < recipe.level) {
-        logMessage(`{red:You need Crafting Level ${recipe.level} to make this.}`);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
+        const player = gameState.player;
+        const isCooking = (gameState.currentCraftingMode === 'cooking');
+        const playerCraftLevel = isCooking ? 1 : (player.craftingLevel || 1);
 
-    const outputItemKey = getCraftItemKey(recipeName); 
-    const itemTemplate = window.ITEM_DATA[outputItemKey];
-    
-    if (!itemTemplate) {
-        console.error(`Recipe output missing in ITEM_DATA: ${recipeName}`);
-        return;
-    }
+        if (!isCooking && playerCraftLevel < recipe.level) {
+            logMessage(`{red:You need Crafting Level ${recipe.level} to make this.}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
 
-    const isStackable = ['junk', 'consumable', 'ammo', 'ingredient', 'trade'].includes(itemTemplate.type);
-    
-    // 🚨 GHOST GUARD: Ensure item exists before checking item.name
-    const existingStack = player.inventory.find(item => item && item.name === itemTemplate.name && !item.isEquipped);
-
-    const availableMats = getAvailableMaterials(player.inventory);
-    const maxCraftable = getMaxCraftable(recipeName, availableMats, player.inventory, isStackable, !!existingStack);
-
-    if (maxCraftable <= 0) {
-        logMessage("{red:You are missing materials or tools, or your inventory is full.}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        return;
-    }
-
-    const batchSize = requestBatch ? Math.floor(maxCraftable) : 1;
-    if (batchSize < 1) return;
-
-    // Consume Materials safely
-    for (const matName in recipe.materials) {
-        let needed = recipe.materials[matName] * batchSize;
+        const outputItemKey = getCraftItemKey(recipeName); 
+        const itemTemplate = window.ITEM_DATA[outputItemKey];
         
-        for (let i = player.inventory.length - 1; i >= 0; i--) {
-            if (needed <= 0) break; 
-            const item = player.inventory[i];
-            if (!item) continue; // 🚨 GHOST GUARD
+        if (!itemTemplate) {
+            console.error(`Recipe output missing in ITEM_DATA: ${recipeName}`);
+            return;
+        }
+
+        const isStackable = ['junk', 'consumable', 'ammo', 'ingredient', 'trade', 'tool'].includes(itemTemplate.type);
+        
+        // 🚨 GHOST GUARD: Ensure item exists before checking item.name
+        const existingStack = player.inventory.find(item => item && item.name === itemTemplate.name && !item.isEquipped);
+
+        const availableMats = getAvailableMaterials(player.inventory);
+        const maxCraftable = getMaxCraftable(recipeName, availableMats, player.inventory, isStackable, !!existingStack);
+
+        if (maxCraftable <= 0) {
+            logMessage("{red:You are missing materials or tools, or your inventory is full.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+
+        const batchSize = requestBatch ? Math.floor(maxCraftable) : 1;
+        if (batchSize < 1) return;
+
+        // Consume Materials safely
+        for (const matName in recipe.materials) {
+            let needed = recipe.materials[matName] * batchSize;
             
-            if (item.name === matName && !item.isEquipped && item.quantity > 0) {
-                const take = Math.min(item.quantity, needed);
-                item.quantity -= take;
-                needed -= take;
+            for (let i = player.inventory.length - 1; i >= 0; i--) {
+                if (needed <= 0) break; 
+                const item = player.inventory[i];
+                if (!item) continue; // 🚨 GHOST GUARD
+                
+                if (item.name === matName && !item.isEquipped && item.quantity > 0) {
+                    const take = Math.min(item.quantity, needed);
+                    item.quantity -= take;
+                    needed -= take;
+                }
             }
         }
-    }
 
-    // Clean empty stacks (🚨 GHOST GUARD: filters out nulls simultaneously)
-    player.inventory = player.inventory.filter(item => item && item.quantity > 0);
+        // Clean empty stacks (🚨 GHOST GUARD: filters out nulls simultaneously)
+        player.inventory = player.inventory.filter(item => item && item.quantity > 0);
 
-    // BUG FIX & UX WIN: Detailed tracking of exact outputs for batch crafting!
-    let outputTracker = {}; 
-    let culinaryCrits = 0;
-    
-    // 🚨 BUG FIX WIN: The Set prevents batch-dropping from deleting items by overwriting the same tile!
-    const usedDropTiles = new Set(); 
-
-    for (let i = 0; i < batchSize; i++) {
-        const levelDiff = playerCraftLevel - recipe.level;
-        const masterworkChance = 0.10 + (levelDiff * 0.05);
-        let isMasterwork = false;
-        let craftYield = recipe.yield || 1; 
-
-        // 🚨 PERFORMANCE & BUG FIX WIN: Deep clone the template safely so we don't accidentally
-        // permanently mutate the global ITEM_DATA dictionary when we apply masterwork buffs!
-        let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(itemTemplate) : JSON.parse(JSON.stringify(itemTemplate));
-        
-        // Ensure templateId and tile are explicitly set for Firebase re-hydration
-        newItem.templateId = outputItemKey;
-        newItem.tile = itemTemplate.tile || outputItemKey || '?';
-        newItem.quantity = craftYield;
-        newItem.isEquipped = false;
-        
-        // Ensure internal effect logic is carried over to the clone!
-        newItem.effect = itemTemplate.effect;
-        newItem.onHit = itemTemplate.onHit;
-
-        // --- LORE & BUG FIX WIN: Accurate Masterwork Scaling ---
-        if (!isCooking && (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') && Math.random() < masterworkChance) {
-            isMasterwork = true;
-            newItem.quantity = 1; 
-            
-            // 🐛 BUG FIX: Properly bump rarity without downgrading natively epic/legendary items!
-            const baseRarity = itemTemplate._rarity || 'uncommon';
-            if (baseRarity === 'uncommon') newItem._rarity = 'rare';
-            else if (baseRarity === 'rare') newItem._rarity = 'epic';
-            else newItem._rarity = 'legendary'; 
-            
-            // LORE WIN: Thematic prefixes and Maker's Marks!
-            const mwPrefixes = ["Flawless", "Peerless", "Exquisite", "Masterwork", "Divine"];
-            const chosenPrefix = mwPrefixes[Math.floor(Math.random() * mwPrefixes.length)];
-            
-            newItem.name = `${chosenPrefix} ${itemTemplate.name}`;
-            newItem.description = (newItem.description || "") + `\n\n{purple:Forged with exceptional skill by ${player.name || 'an Artisan'}.}`;
-
-            // Provide TWO random stat bonuses for a Masterwork instead of 1!
-            if (!newItem.statBonuses) newItem.statBonuses = {};
-            const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
-            
-            const randomStat1 = stats[Math.floor(Math.random() * stats.length)];
-            const randomStat2 = stats[Math.floor(Math.random() * stats.length)];
-            newItem.statBonuses[randomStat1] = (newItem.statBonuses[randomStat1] || 0) + 1;
-            newItem.statBonuses[randomStat2] = (newItem.statBonuses[randomStat2] || 0) + 1;
-
-            // Bump base stats
-            if (newItem.type === 'weapon') newItem.damage = (newItem.damage || 0) + 2;
-            if (newItem.type === 'armor') newItem.defense = (newItem.defense || 0) + 2;
+        // --- EXPANSION & LORE WIN: Class/Talent Synergy Calculations ---
+        const levelDiff = playerCraftLevel - (recipe.level || 1);
+        let masterworkChance = 0.10 + (levelDiff * 0.05);
+        if (player.className === 'Artisan' || player.className === 'Runesmith') {
+            masterworkChance += 0.10;
         }
 
-        // LORE WIN: Perfect Culinary Batches!
-        if (isCooking && Math.random() < 0.10 + ((player.luck || 1) * 0.02)) {
-            culinaryCrits++;
-            newItem.quantity += 1; 
-            newItem.name = `Perfect ${itemTemplate.name}`; // Renames the stack!
+        let perfectChance = 0.10 + ((player.luck || 1) * 0.02);
+        if (player.talents && player.talents.includes('survivalist')) {
+            perfectChance += 0.10;
         }
 
-        // Tally outputs for accurate UI logging
-        outputTracker[newItem.name] = (outputTracker[newItem.name] || 0) + newItem.quantity;
+        let outputTracker = {}; 
+        let culinaryCrits = 0;
+        
+        // Centralized robust drop helper to prevent overwriting tiles
+        const usedDropTiles = new Set();
+        const dropCraftedItemSafely = (tileToDrop) => {
+            let placed = false;
+            let validFloor = '.';
+            if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
+                validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+            }
 
-        // 🚨 GHOST GUARD
-        const curStack = player.inventory.find(item => item && item.name === newItem.name && !item.isEquipped);
+            if (typeof chunkManager !== 'undefined') {
+                for (let r = 0; r <= 3 && !placed; r++) {
+                    for (let dy = -r; dy <= r && !placed; dy++) {
+                        for (let dx = -r; dx <= r && !placed; dx++) {
+                            const tx = player.x + dx;
+                            const ty = player.y + dy;
+                            const tKey = `${tx},${ty}`;
 
-        // Don't merge Masterworks into stacks!
-        if (curStack && isStackable && !isMasterwork && !newItem.name.includes('Perfect')) {
-            curStack.quantity += newItem.quantity; 
-        } else {
-            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-            if (player.inventory.length < invCap) {
-                player.inventory.push(newItem);
-            } else {
-                // 🚨 BUG FIX WIN: Outward Spiraling Drop System
-                // Failsafe drops to floor safely without overwriting previous drops in the same batch
-                const safeName = typeof escapeHtml === 'function' ? escapeHtml(newItem.name) : newItem.name;
-                logMessage(`{red:Your pack is full! The ${safeName} drops to the floor.}`);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
-                
-                if (typeof chunkManager !== 'undefined') {
-                    let placed = false;
-                    let validFloor = '.';
-                    if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
-                        validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
-                    }
+                            if (usedDropTiles.has(tKey)) continue;
 
-                    // Loop progressively outwards to find an empty tile
-                    for (let r = 0; r <= 3 && !placed; r++) {
-                        for (let dy = -r; dy <= r && !placed; dy++) {
-                            for (let dx = -r; dx <= r && !placed; dx++) {
-                                const tx = player.x + dx;
-                                const ty = player.y + dy;
-                                const tKey = `${tx},${ty}`;
+                            let tileAt;
+                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
+                            else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
+                            else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
-                                // Skip if we already dropped an item from this batch on this tile
-                                if (usedDropTiles.has(tKey)) continue;
-
-                                let tileAt;
-                                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
-                                else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
-                                else tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
-
-                                if (tileAt === validFloor || tileAt === '.') {
-                                    usedDropTiles.add(tKey);
-                                    
-                                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                                        chunkManager.setWorldTile(tx, ty, newItem.tile, 2); 
-                                    } else if (gameState.mapMode === 'dungeon') {
-                                        chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = newItem.tile;
-                                    } else if (gameState.mapMode === 'castle') {
-                                        chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = newItem.tile;
-                                    }
-                                    placed = true;
-                                }
+                            if (tileAt === validFloor || tileAt === '.') {
+                                usedDropTiles.add(tKey);
+                                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, tileToDrop, 24); 
+                                else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = tileToDrop;
+                                else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = tileToDrop;
+                                
+                                let unlootTileId = (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') ? `${tx},${-ty}` : `${gameState.currentCaveId || gameState.currentCastleId}:${tx},${-ty}`;
+                                gameState.lootedTiles.delete(unlootTileId);
+                                placed = true;
                             }
                         }
                     }
-                    
-                    // Final failsafe if completely surrounded by walls
-                    if (!placed) {
-                        if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, newItem.tile, 2);
-                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = newItem.tile;
-                        else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = newItem.tile;
-                    }
                 }
-                gameState.mapDirty = true;
+                if (!placed) {
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(player.x, player.y, tileToDrop, 24);
+                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = tileToDrop;
+                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = tileToDrop;
+                }
+            }
+            gameState.mapDirty = true;
+        };
+
+        for (let i = 0; i < batchSize; i++) {
+            let isMasterwork = false;
+            let craftYield = recipe.yield || 1; 
+
+            // 🚨 PERFORMANCE & BUG FIX WIN: Deep clone the template safely
+            let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(itemTemplate) : JSON.parse(JSON.stringify(itemTemplate));
+            
+            // Ensure templateId and tile are explicitly set
+            newItem.templateId = outputItemKey;
+            newItem.tile = itemTemplate.tile || outputItemKey || '?';
+            newItem.quantity = craftYield;
+            newItem.isEquipped = false;
+            
+            // Restore functions and fix tags array!
+            newItem.effect = itemTemplate.effect;
+            newItem.onHit = itemTemplate.onHit;
+            newItem.tags = itemTemplate.tags ? [...itemTemplate.tags] : null;
+
+            // --- LORE & BUG FIX WIN: Accurate Masterwork Scaling ---
+            if (!isCooking && (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') && Math.random() < masterworkChance) {
+                isMasterwork = true;
+                newItem.quantity = 1; 
+                
+                // 🐛 BUG FIX: Properly bump rarity without downgrading natively epic/legendary items!
+                const baseRarity = itemTemplate._rarity || 'uncommon';
+                if (baseRarity === 'uncommon') newItem._rarity = 'rare';
+                else if (baseRarity === 'rare') newItem._rarity = 'epic';
+                else newItem._rarity = 'legendary'; 
+                
+                const mwPrefixes = ["Flawless", "Peerless", "Exquisite", "Masterwork", "Divine"];
+                const chosenPrefix = mwPrefixes[Math.floor(Math.random() * mwPrefixes.length)];
+                
+                newItem.name = `${chosenPrefix} ${itemTemplate.name}`;
+                newItem.description = (newItem.description || "") + `\n\n{purple:Forged with exceptional skill by ${player.name || 'an Artisan'}.}`;
+
+                if (!newItem.statBonuses) newItem.statBonuses = {};
+                const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
+                
+                const randomStat1 = stats[Math.floor(Math.random() * stats.length)];
+                const randomStat2 = stats[Math.floor(Math.random() * stats.length)];
+                newItem.statBonuses[randomStat1] = (newItem.statBonuses[randomStat1] || 0) + 1;
+                newItem.statBonuses[randomStat2] = (newItem.statBonuses[randomStat2] || 0) + 1;
+
+                if (newItem.type === 'weapon') newItem.damage = (newItem.damage || 0) + 2;
+                if (newItem.type === 'armor') newItem.defense = (newItem.defense || 0) + 2;
+            }
+
+            // LORE WIN: Perfect Culinary Batches!
+            if (isCooking && Math.random() < perfectChance) {
+                culinaryCrits++;
+                newItem.quantity += 1; 
+                newItem.name = `Perfect ${itemTemplate.name}`; 
+            }
+
+            outputTracker[newItem.name] = (outputTracker[newItem.name] || 0) + newItem.quantity;
+
+            // 🚨 GHOST GUARD
+            const curStack = player.inventory.find(item => item && item.name === newItem.name && !item.isEquipped);
+
+            // Don't merge Masterworks into stacks!
+            if (curStack && isStackable && !isMasterwork && !newItem.name.includes('Perfect')) {
+                curStack.quantity += newItem.quantity; 
+            } else {
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+                if (player.inventory.length < invCap) {
+                    player.inventory.push(newItem);
+                } else {
+                    const safeName = typeof escapeHtml === 'function' ? escapeHtml(newItem.name) : newItem.name;
+                    logMessage(`{red:Your pack is full! The ${safeName} drops to the floor.}`);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                    
+                    dropCraftedItemSafely(newItem.tile);
+                }
             }
         }
-    }
 
-    // --- ACCURATE LOGGING & EFFECTS ---
-    let totalYield = 0;
-    let hadEpicSuccess = false;
+        // --- ACCURATE LOGGING & EFFECTS ---
+        let totalYield = 0;
+        let hadEpicSuccess = false;
 
-    Object.entries(outputTracker).forEach(([name, count]) => {
-        totalYield += count;
-        const safeName = typeof escapeHtml === 'function' ? escapeHtml(name) : name;
-        
-        if (name.includes("Flawless") || name.includes("Peerless") || name.includes("Exquisite") || name.includes("Masterwork") || name.includes("Divine")) {
-            logMessage(`{purple:Masterwork Success! You forged: ${safeName} (x${count})}`);
-            hadEpicSuccess = true;
-        } else if (name.includes("Perfect")) {
-            logMessage(`{gold:Culinary Perfection! You cooked: ${safeName} (x${count})}`);
-            hadEpicSuccess = true;
-        } else {
-            logMessage(`You ${isCooking ? 'cooked' : 'crafted'}: ${safeName} (x${count}).`);
-        }
-    });
-
-    if (culinaryCrits > 0) {
-        logMessage(`{gold:Your culinary instincts yielded extra portions!}`);
-    }
-
-    if (!player.metrics) player.metrics = {};
-    if (isCooking) player.metrics.potionsBrewed = (player.metrics.potionsBrewed || 0) + totalYield;
-    else player.metrics.itemsCrafted = (player.metrics.itemsCrafted || 0) + totalYield;
-    
-    // Float the total yield visually
-    if (typeof ParticleSystem !== 'undefined') {
-        const floatText = `+${totalYield} Crafted`;
-        const floatColor = hadEpicSuccess ? '#a855f7' : '#4ade80';
-        ParticleSystem.createFloatingText(player.x, player.y, floatText, floatColor);
-        if (hadEpicSuccess) ParticleSystem.createExplosion(player.x, player.y, '#facc15', 20);
-    }
-    
-    // JUICE WIN: Dynamic Audio
-    if (typeof AudioSystem !== 'undefined') {
-        if (hadEpicSuccess) {
-            AudioSystem.playLevelUp();
-            gameState.screenShake = 5;
-        } else if (isCooking) {
-            AudioSystem.playNoise(0.4, 0.05, 800); 
-        } else if (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') {
-            AudioSystem.playHit(); 
-        } else if (typeof AudioSystem.playCraftSuccess === 'function') {
-            AudioSystem.playCraftSuccess(); 
-        } else {
-            AudioSystem.playStep(); 
-        }
-    }
-
-    // Grant XP
-    const xpGain = (recipe.xp || 10) * batchSize;
-    player.craftingXp = (player.craftingXp || 0) + xpGain;
-    player.craftingXpToNext = player.craftingXpToNext || 50;
-
-    logMessage(`{gray:+${xpGain} Crafting XP}`);
-
-    while (player.craftingXp >= player.craftingXpToNext) {
-        player.craftingXp -= player.craftingXpToNext;
-        player.craftingLevel++;
-        player.craftingXpToNext = Math.floor(player.craftingXpToNext * 1.5);
-        
-        logMessage(`{blue:CRAFTING LEVEL UP! You are now Artisan Level ${player.craftingLevel}.}`);
-        
-        const lvlDisplay = document.getElementById('levelDisplay');
-        if (lvlDisplay && typeof triggerStatAnimation === 'function') triggerStatAnimation(lvlDisplay, 'stat-pulse-blue');
-        
-        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-    }
-
-    // 🚨 FIREBASE OPTIMIZATION: Debounce save
-    if (typeof triggerDebouncedSave === 'function') {
-        triggerDebouncedSave({
-            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
-            craftingLevel: player.craftingLevel,
-            craftingXp: player.craftingXp,
-            craftingXpToNext: player.craftingXpToNext,
-            metrics: player.metrics
+        Object.entries(outputTracker).forEach(([name, count]) => {
+            totalYield += count;
+            const safeName = typeof escapeHtml === 'function' ? escapeHtml(name) : name;
+            
+            if (name.includes("Flawless") || name.includes("Peerless") || name.includes("Exquisite") || name.includes("Masterwork") || name.includes("Divine")) {
+                logMessage(`{purple:Masterwork Success! You forged: ${safeName} (x${count})}`);
+                hadEpicSuccess = true;
+            } else if (name.includes("Perfect")) {
+                logMessage(`{gold:Culinary Perfection! You cooked: ${safeName} (x${count})}`);
+                hadEpicSuccess = true;
+            } else {
+                logMessage(`You ${isCooking ? 'cooked' : 'crafted'}: ${safeName} (x${count}).`);
+            }
         });
-    }
 
-    renderCraftingModal();
-    if (typeof renderInventory === 'function') renderInventory();
-    if (gameState.mapDirty && typeof render === 'function') render();
+        if (culinaryCrits > 0) {
+            logMessage(`{gold:Your culinary instincts yielded extra portions!}`);
+        }
+
+        if (!player.metrics) player.metrics = {};
+        if (isCooking) player.metrics.potionsBrewed = (player.metrics.potionsBrewed || 0) + totalYield;
+        else player.metrics.itemsCrafted = (player.metrics.itemsCrafted || 0) + totalYield;
+        
+        if (typeof ParticleSystem !== 'undefined') {
+            const floatText = `+${totalYield} Crafted`;
+            const floatColor = hadEpicSuccess ? '#a855f7' : '#4ade80';
+            ParticleSystem.createFloatingText(player.x, player.y, floatText, floatColor);
+            if (hadEpicSuccess) ParticleSystem.createExplosion(player.x, player.y, '#facc15', 20);
+        }
+        
+        if (typeof AudioSystem !== 'undefined') {
+            if (hadEpicSuccess) {
+                AudioSystem.playLevelUp();
+                gameState.screenShake = 5;
+            } else if (isCooking) {
+                AudioSystem.playNoise(0.4, 0.05, 800); 
+            } else if (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') {
+                AudioSystem.playHit(); 
+            } else if (typeof AudioSystem.playCraftSuccess === 'function') {
+                AudioSystem.playCraftSuccess(); 
+            } else {
+                AudioSystem.playStep(); 
+            }
+        }
+
+        const xpGain = (recipe.xp || 10) * batchSize;
+        player.craftingXp = (player.craftingXp || 0) + xpGain;
+        player.craftingXpToNext = player.craftingXpToNext || 50;
+
+        logMessage(`{gray:+${xpGain} Crafting XP}`);
+
+        while (player.craftingXp >= player.craftingXpToNext) {
+            player.craftingXp -= player.craftingXpToNext;
+            player.craftingLevel++;
+            player.craftingXpToNext = Math.floor(player.craftingXpToNext * 1.5);
+            
+            logMessage(`{blue:CRAFTING LEVEL UP! You are now Artisan Level ${player.craftingLevel}.}`);
+            
+            const lvlDisplay = document.getElementById('levelDisplay');
+            if (lvlDisplay && typeof triggerStatAnimation === 'function') triggerStatAnimation(lvlDisplay, 'stat-pulse-blue');
+            
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(player.x, player.y);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+        }
+
+        // 🚨 FIREBASE OPTIMIZATION: Debounce save
+        if (typeof triggerDebouncedSave === 'function') {
+            triggerDebouncedSave({
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
+                craftingLevel: player.craftingLevel,
+                craftingXp: player.craftingXp,
+                craftingXpToNext: player.craftingXpToNext,
+                metrics: player.metrics
+            });
+        }
+
+        renderCraftingModal();
+        if (typeof renderInventory === 'function') renderInventory();
+        if (gameState.mapDirty && typeof render === 'function') render();
+
+    } finally {
+        isCraftingProcessing = false;
+    }
 }
 
 function openCraftingModal(mode = 'workbench') {
-    if (typeof inputQueue !== 'undefined') inputQueue.length = 0; 
+    if (window.inputQueue) window.inputQueue.length = 0; 
     gameState.currentCraftingMode = mode;
     
     renderCraftingModal();
@@ -421,7 +429,7 @@ function renderCraftingModal() {
     const recipeDataArray = Object.entries(recipeBook).map(([recipeName, recipe]) => {
         const outputItemKey = getCraftItemKey(recipeName);
         const itemTemplate = window.ITEM_DATA[outputItemKey] || {};
-        const isStackable = ['junk', 'consumable', 'ammo', 'ingredient', 'trade'].includes(itemTemplate.type);
+        const isStackable = ['junk', 'consumable', 'ammo', 'ingredient', 'trade', 'tool'].includes(itemTemplate.type);
         
         // 🚨 GHOST GUARD
         const existingStack = player.inventory.find(item => item && item.name === itemTemplate.name && !item.isEquipped);
@@ -496,19 +504,30 @@ function renderCraftingModal() {
         matHtmlParts.push('</ul>');
         let materialsHtml = matHtmlParts.join('');
 
-        let masterworkHtml = '';
-        if (gameState.currentCraftingMode === 'workbench' && (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') && levelMet) {
+        // --- EXPANSION & UI WIN: Dynamic Crafting Synergy Display ---
+        let specHtml = '';
+        if (gameState.currentCraftingMode === 'workbench' && (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') && levelMet && !isObscured) {
             const levelDiff = playerLevel - (recipe.level || 1);
-            const mwChance = Math.min(100, Math.floor((0.10 + (levelDiff * 0.05)) * 100));
-            masterworkHtml = ` <span class="text-purple-400">| ${mwChance}% Masterwork</span>`;
+            let mwChanceBase = 0.10 + (levelDiff * 0.05);
+            if (player.className === 'Artisan' || player.className === 'Runesmith') mwChanceBase += 0.10;
+            
+            const mwChance = Math.min(100, Math.floor(mwChanceBase * 100));
+            specHtml = `<span class="text-purple-400 font-bold ml-2">| ${mwChance}% Masterwork</span>`;
+        } 
+        else if (isCooking && !isObscured) {
+            let perfChanceBase = 0.10 + ((player.luck || 1) * 0.02);
+            if (player.talents && player.talents.includes('survivalist')) perfChanceBase += 0.10;
+            
+            const perfChance = Math.min(100, Math.floor(perfChanceBase * 100));
+            specHtml = `<span class="text-yellow-400 font-bold ml-2">| ${perfChance}% Perfect</span>`;
         }
 
         let infoHtml = '';
         if (gameState.currentCraftingMode === 'workbench') {
             let levelClass = levelMet ? 'text-blue-400' : 'text-red-500 font-bold';
-            infoHtml = `<div class="text-[10px] uppercase font-bold mt-2 ${levelClass} bg-black bg-opacity-40 shadow-inner inline-block px-2 py-1 rounded border border-gray-700">Requires Lvl ${recipe.level || 1} | Reward: ${recipe.xp || 10} XP${masterworkHtml}</div>`;
+            infoHtml = `<div class="text-[10px] uppercase mt-2 ${levelClass} bg-black bg-opacity-40 shadow-inner inline-block px-2 py-1 rounded border border-gray-700">Requires Lvl ${recipe.level || 1} | Reward: ${recipe.xp || 10} XP${specHtml}</div>`;
         } else {
-            infoHtml = `<div class="text-[10px] uppercase font-bold mt-2 text-yellow-500 bg-black bg-opacity-40 shadow-inner inline-block px-2 py-1 rounded border border-gray-700">Delicious! | Reward: ${recipe.xp || 10} XP</div>`;
+            infoHtml = `<div class="text-[10px] uppercase mt-2 text-green-400 bg-black bg-opacity-40 shadow-inner inline-block px-2 py-1 rounded border border-gray-700">Delicious! | Reward: ${recipe.xp || 10} XP${specHtml}</div>`;
         }
 
         const ownedCount = existingStack ? existingStack.quantity : 0;
