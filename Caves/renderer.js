@@ -228,7 +228,7 @@ const TileRenderer = {
     drawBase: (ctx, x, y, color) => {
         ctx.fillStyle = color;
         // Draws slightly larger than 1 tile to prevent hairline seam tearing on sub-pixel zooms
-        ctx.fillRect(x * TILE_SIZE - 0.5, y * TILE_SIZE - 0.5, TILE_SIZE + 1, TILE_SIZE + 1);
+        ctx.fillRect(Math.trunc(x * TILE_SIZE - 0.5), Math.trunc(y * TILE_SIZE - 0.5), TILE_SIZE + 1, TILE_SIZE + 1);
     },
 
     // --- DECORATION HELPERS ---
@@ -360,7 +360,7 @@ const TileRenderer = {
     // 🌲 Procedural Pine Forests (Animated Wind Sway)
     drawForest: (ctx, x, y, mapX, mapY, baseColor) => {
         ctx.fillStyle = baseColor;
-        ctx.fillRect(x * TILE_SIZE - 0.5, y * TILE_SIZE - 0.5, TILE_SIZE + 1, TILE_SIZE + 1);
+        ctx.fillRect(Math.trunc(x * TILE_SIZE - 0.5), Math.trunc(y * TILE_SIZE - 0.5), TILE_SIZE + 1, TILE_SIZE + 1);
 
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
         const rand = seed - Math.floor(seed);
@@ -558,7 +558,7 @@ const TileRenderer = {
         if (seed > 0.8) {
             const glintAlpha = (Math.sin(time * 5 + mapX) + 1) / 2; 
             ctx.fillStyle = `rgba(255, 255, 255, ${glintAlpha * 0.6})`;
-            ctx.fillRect(tx + (seed * 10 % TILE_SIZE), ty + (seed * 20 % TILE_SIZE), 2, 2);
+            ctx.fillRect(Math.trunc(tx + (seed * 10 % TILE_SIZE)), Math.trunc(ty + (seed * 20 % TILE_SIZE)), 2, 2);
         }
     },
 
@@ -623,18 +623,18 @@ const TileRenderer = {
         if (style === 'brick') {
             const brickH = TILE_SIZE / 4;
             ctx.fillRect(tx, ty, TILE_SIZE, 1);
-            ctx.fillRect(tx + TILE_SIZE / 2, ty, 1, brickH);
+            ctx.fillRect(tx + TILE_SIZE / 2, ty, 1, Math.trunc(brickH));
             ctx.fillRect(tx, ty + brickH, TILE_SIZE, 1);
-            ctx.fillRect(tx + TILE_SIZE / 4, ty + brickH, 1, brickH);
-            ctx.fillRect(tx + (TILE_SIZE * 0.75), ty + brickH, 1, brickH);
+            ctx.fillRect(tx + TILE_SIZE / 4, ty + brickH, 1, Math.trunc(brickH));
+            ctx.fillRect(tx + (TILE_SIZE * 0.75), ty + brickH, 1, Math.trunc(brickH));
             ctx.fillRect(tx, ty + (brickH * 2), TILE_SIZE, 1);
-            ctx.fillRect(tx + TILE_SIZE / 2, ty + (brickH * 2), 1, brickH);
+            ctx.fillRect(tx + TILE_SIZE / 2, ty + (brickH * 2), 1, Math.trunc(brickH));
         } else {
             const seed = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
             const rand = seed - Math.floor(seed);
 
-            ctx.fillRect(tx + (rand * 10), ty + (rand * 5), 4, 4);
-            ctx.fillRect(tx + ((1 - rand) * 10), ty + ((1 - rand) * 10) + 5, 3, 3);
+            ctx.fillRect(tx + Math.trunc(rand * 10), ty + Math.trunc(rand * 5), 4, 4);
+            ctx.fillRect(tx + Math.trunc((1 - rand) * 10), ty + Math.trunc((1 - rand) * 10) + 5, 3, 3);
 
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
             ctx.fillRect(tx, ty + TILE_SIZE - 2, TILE_SIZE, 2); 
@@ -667,11 +667,13 @@ const TileRenderer = {
 
     // 🩸 UI: High-Fidelity Health Bars
     drawHealthBar: (ctx, x, y, current, max) => {
-        // Prevent NaN logic crashes on drawing bars for dead/ghost enemies
-        const safeMax = max || 1;
-        if (safeMax <= 0 || current >= safeMax) return; 
+        // 🚨 BUG FIX & PERFORMANCE WIN: Ensure safe numbers to prevent NaN crash
+        const safeMax = (typeof max === 'number' && !isNaN(max) && max > 0) ? max : 1;
+        const safeCurrent = (typeof current === 'number' && !isNaN(current)) ? current : 0;
         
-        const percent = Math.max(0, current / safeMax);
+        if (safeMax <= 0 || safeCurrent >= safeMax || safeCurrent <= 0) return; 
+        
+        const percent = Math.max(0, safeCurrent / safeMax);
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
 
@@ -796,7 +798,7 @@ function renderTerrainCache(startX, startY) {
                 }
             } 
             else { 
-                // Calculate the chunk coordinates ONCE and use them for both lookups!
+                // 🚨 PERFORMANCE WIN: Calculate the chunk coordinates ONCE using Math.floor
                 const cX = Math.floor(mapX / 16);
                 const cY = Math.floor(mapY / 16);
                 const lX = ((mapX % 16) + 16) % 16;
@@ -1153,9 +1155,11 @@ const render = () => {
                     ctx.fillText(op.companion.tile || '?', screenX + TILE_SIZE - 2, screenY + 6 + opBreath);
                 }
                 
+                // 🚨 BUG FIX & UX WIN: Stop chat bubbles shaking violently due to camera tracking
                 if (op.chatBubble && Date.now() < op.chatTimer) {
                     ctx.font = `bold 12px monospace`;
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    // We measure the text here, but bind it purely to the player's smoothed XY
                     const textWidth = ctx.measureText(op.chatBubble).width;
                     ctx.fillRect(screenX + TILE_SIZE/2 - textWidth/2 - 4, screenY - 20 + opBreath, textWidth + 8, 16);
                     
@@ -1201,6 +1205,7 @@ const render = () => {
 
     if (isStealthy) ctx.globalAlpha = 1.0;
 
+    // 🚨 BUG FIX & UX WIN: Stop chat bubbles shaking violently due to camera tracking
     if (gameState.player.chatBubble && Date.now() < gameState.player.chatTimer) {
         ctx.font = `bold 12px monospace`;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -1447,7 +1452,8 @@ const render = () => {
                 ctx.fillStyle = '#450a0a'; 
                 ctx.fillRect(barX, barY, barWidth, barHeight);
 
-                const safeMaxHealth = activeBoss.maxHealth || 1; // Fallback to prevent NaN explosions
+                // 🚨 BUG FIX & PERFORMANCE WIN: Prevent NaN division if an enemy has 0 max health
+                const safeMaxHealth = (typeof activeBoss.maxHealth === 'number' && !isNaN(activeBoss.maxHealth) && activeBoss.maxHealth > 0) ? activeBoss.maxHealth : 1; 
                 const healthPercent = Math.max(0, activeBoss.health / safeMaxHealth);
                 
                 const grad = ctx.createLinearGradient(barX, barY, barX, barY + barHeight);
