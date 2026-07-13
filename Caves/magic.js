@@ -192,7 +192,7 @@ async function castSpell(spellId) {
 
                         const eData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tileAt] : null;
                         const tags = eData ? (eData.tags || []) : [];
-                        if (eData && (tags.includes("undead") || tags.includes("demon"))) {
+                        if (eData && (tags.includes("undead") || tags.includes("demon") || tags.includes("void"))) {
                             // Push the asynchronous calculation into our array!
                             novaPromises.push(
                                 applySpellDamage(x, y, holyDamage, 'divineLight', true).then(res => {
@@ -433,7 +433,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
             
             // LORE WIN: Stunning clockworks
             if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-                const e = gameState.instancedEnemies ? gameState.instancedEnemies.find(en => en && en.x === targetX && en.y === targetY) : null;
+                const e = gameState.instancedEnemies ? gameState.instancedEnemies.find(en => en && en.x === targetX && en.y === targetY && en.health > 0) : null;
                 if (e) e.stunTurns = 2;
             }
         }
@@ -497,6 +497,28 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
                 const theme = typeof CAVE_THEMES !== 'undefined' ? CAVE_THEMES[gameState.currentCaveTheme] : null;
                 if (theme) chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = theme.floor;
             }
+        }
+    }
+    else if (spellData.element === 'poison') {
+        if (tags.includes('bug') || tags.includes('wood') || tags.includes('plant')) {
+            finalDamage = Math.floor(finalDamage * 1.5);
+            logMessage(`{green:The corrosive acid melts through the organic shell! (Critical Damage)}`);
+        }
+        if (tags.includes('construct') || tags.includes('stone') || tags.includes('elemental')) {
+            finalDamage = Math.floor(finalDamage * 0.5); // Poison is weak vs rocks/robots
+            logMessage(`{gray:The poison splashes harmlessly off the inorganic surface. (Resisted)}`);
+        }
+    }
+    else if (spellData.element === 'holy') {
+        if (tags.includes('undead') || tags.includes('demon') || tags.includes('void')) {
+            finalDamage = Math.floor(finalDamage * 2.0);
+            logMessage(`{gold:The divine light sears the abomination! (Critical Damage)}`);
+        }
+    }
+    else if (spellData.element === 'dark' || spellData.element === 'psychic') {
+        if (tags.includes('holy') || (enemyData && enemyData.name && enemyData.name.includes('Luminous'))) {
+            finalDamage = Math.floor(finalDamage * 1.5);
+            logMessage(`{purple:The void devours the light! (Critical Damage)}`);
         }
     }
 
@@ -614,7 +636,8 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
 
     } else {
         // Handle Instanced Combat
-        let enemy = gameState.instancedEnemies ? gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY) : null;
+        // 🚨 GHOST GUARD: Make sure we only hit living enemies
+        let enemy = gameState.instancedEnemies ? gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY && e.health > 0) : null;
         if (enemy) {
             damageDealt = Math.max(1, finalDamage);
             enemy.health -= damageDealt;
@@ -646,7 +669,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
 
     else if (damageDealt > 0 && spellData.inflicts && Math.random() < spellData.inflictChance) {
         if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-            let enemy = gameState.instancedEnemies ? gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY) : null;
+            let enemy = gameState.instancedEnemies ? gameState.instancedEnemies.find(e => e && e.x === targetX && e.y === targetY && e.health > 0) : null;
 
             if (enemy && spellData.inflicts === 'frostbite' && enemy.frostbiteTurns <= 0) {
                 logMessage(`{cyan:The ${enemy.name} is afflicted with Frostbite!}`);
@@ -751,7 +774,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         
                         // LORE WIN: Root status applied directly to instanced enemies here for visual flavor
                         if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-                            const e = gameState.instancedEnemies ? gameState.instancedEnemies.find(en => en && en.x === tx && en.y === ty) : null;
+                            const e = gameState.instancedEnemies ? gameState.instancedEnemies.find(en => en && en.x === tx && en.y === ty && en.health > 0) : null;
                             if (e) e.rootTurns = 3;
                         }
                         break;
@@ -890,7 +913,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     }
 
                     // Stop early if we hit a solid object, wall, or an enemy!
-                    if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tileAt] || ['▓', '▒', '🧱'].includes(tileAt)) {
+                    if ((typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tileAt]) || ['▓', '▒', '🧱'].includes(tileAt)) {
                         break;
                     }
                 }
@@ -914,6 +937,15 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 
                 for (let y = my - spellData.radius; y <= my + spellData.radius; y++) {
                     for (let x = mx - spellData.radius; x <= mx + spellData.radius; x++) {
+                        
+                        // Self-Damage for dropping a meteor on your own head!
+                        if (x === player.x && y === player.y) {
+                            logMessage("{red:You were caught in your own meteor strike! (-15 HP)}");
+                            window.modifyVital('health', -15);
+                            if (player.health <= 0) break; 
+                            continue;
+                        }
+                        
                         // Pass 'true' to trigger batch mode!
                         const res = await applySpellDamage(x, y, meteorDmg, spellId, true);
                         if (res && res.hit) {
@@ -1016,7 +1048,8 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                             const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(x, y) : '.';
                             if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) hasEnemy = true;
                         } else {
-                            if (gameState.instancedEnemies && gameState.instancedEnemies.some(e => e && e.x === x && e.y === y)) hasEnemy = true; // 🚨 GHOST GUARD
+                            // 🚨 GHOST GUARD: Only jump to living enemies
+                            if (gameState.instancedEnemies && gameState.instancedEnemies.some(e => e && e.x === x && e.y === y && e.health > 0)) hasEnemy = true; 
                         }
 
                         if (hasEnemy) potentialJumpTargets.push({ x, y });
@@ -1128,11 +1161,9 @@ function triggerAbilityCooldown(abilityId) {
         // Set the turns
         gameState.player.cooldowns[abilityId] = cd;
 
-        // Update Database
-        if (typeof playerRef !== 'undefined' && playerRef) {
-            playerRef.update({ cooldowns: gameState.player.cooldowns });
-        }
-
+        // 🚨 BUG FIX & PERFORMANCE WIN: Removed un-debounced hard save!
+        // We no longer trigger a direct Firebase update here because `endPlayerTurn` 
+        // automatically wraps the cooldown state into a debounced payload.
         if (typeof renderHotbar === 'function') renderHotbar();
     }
 }
