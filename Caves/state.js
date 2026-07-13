@@ -85,6 +85,9 @@ window._statCapCache = {
 // MASTER GAME STATE (THE "SINGLE SOURCE OF TRUTH")
 // ============================================================================
 
+// 🚨 V8 MEMORY OPTIMIZATION: Strict Object Shape
+// Every possible variable the player or world could ever have is pre-defined here.
+// This locks the Hidden Class in the browser's JavaScript engine, making state lookups incredibly fast.
 const gameState = {
     // --- System & Engine State ---
     saveVersion: "0.2.9",     
@@ -227,14 +230,14 @@ const gameState = {
         statusImmunities: [], 
 
         reputation: {
-            guild: 0,         
-            crown: 0,         
+            merchants_guild: 0,         
+            the_crown: 0,         
             shadowed_hand: -10, 
-            fae: 0,           
-            dwarves: 0,       
+            fae_court: 0,           
+            dwarven_clans: 0,       
             cult_of_the_abyss: -5,
             pirates_cove: 0,
-            merchants_guild: 0
+            cartographers_guild: 0
         },
 
         inventory: [],
@@ -281,8 +284,7 @@ const gameState = {
         companion: null,       
         tutorialProgress: 0,   
         
-        // 🚨 V8 MEMORY OPTIMIZATION & EXPANSION
-        // Pre-allocating these ensures the Firebase payload and V8 Hidden Classes never shift shape!
+        // Comprehensive Lifetime Metrics for Anti-Cheat & Achievements
         metrics: {
             totalKills: 0,
             bossesDefeated: 0,
@@ -305,7 +307,6 @@ const gameState = {
             treasuresDug: 0,
             shrinesPrayed: 0,
             echoesLeft: 0,
-            // Lore Expansions
             mimicsDefeated: 0,
             voidRiftsSealed: 0,
             artifactsUnearthed: 0,
@@ -386,13 +387,16 @@ window.modifyVital = function(vital, rawAmount) {
     
     if (amount === 0) return 0;
     
-    // i-Frame Logic (Invulnerability Frames)
+    // 🚨 BUG FIX WIN: The "Shotgun" Death Fix (i-Frames)
+    // If the player stands on an oil barrel and it explodes while a monster hits them on the EXACT 
+    // same millisecond, they take double-damage and the death script triggers twice.
+    // This grants a 100ms invulnerability window specifically for health damage to prevent overlapping AoE deaths!
     if (vital === 'health' && amount < 0) {
         const now = Date.now();
-        if (now - (p.lastHitTime || 0) < 100) return 0; 
+        if (now - (p.lastHitTime || 0) < 100) return 0; // Drop the secondary damage
         p.lastHitTime = now;
         
-        // Track damage taken metric
+        // Track total lifetime damage taken
         if (p.metrics) p.metrics.damageTaken += Math.abs(amount);
     }
     
@@ -426,8 +430,10 @@ window.modifyVital = function(vital, rawAmount) {
                 gameState.screenFlash = { color: '#991b1b', alpha: 0.5, decay: 0.05 };
             }
 
-            // --- MOUNT EXPANSION: KNOCK-OFF ---
-            if (actualChange < -5 && p.isMounted) {
+            // --- MOUNT EXPANSION: SECURE KNOCK-OFF ---
+            // Only heavy hits (>5 dmg) have a chance to knock you off your mount, 
+            // preventing a 1dmg poison tick from dropping you into a swamp!
+            if (actualChange <= -5 && p.isMounted) {
                 if (Math.random() < 0.30) {
                     p.isMounted = false;
                     if (typeof logMessage !== 'undefined') logMessage("{red:The heavy blow knocks you off your mount!}");
@@ -467,8 +473,9 @@ window.modifyVital = function(vital, rawAmount) {
         }
     }
 
-    // Check for Death
-    if (vital === 'health' && p.health <= 0) {
+    // 🚨 BUG FIX WIN: The Death Lock Check
+    // Triggers exactly once to execute the death sequence gracefully
+    if (vital === 'health' && p.health <= 0 && !gameState.isDead) {
         gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 };
         
         if (typeof handlePlayerDeath === 'function') {
