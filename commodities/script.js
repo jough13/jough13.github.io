@@ -2357,6 +2357,12 @@ function createRowObject(item, id, isCustom = false) {
       
       // HTML for interactive table rendering
       radionuclide_html: processedNuclides.map(n => `<span class="radionuclide-link text-blue-500 hover:underline cursor-pointer" data-radionuclide="${n.id}">${n.id}</span>`).join('<br>'),
+
+      activity_val: processedNuclides.length ? Math.max(...processedNuclides.map(n => n.activity_val || 0)) : null,
+      nrc_exemption_val: processedNuclides.length ? Math.min(...processedNuclides.map(n => n.nrc_exemption_val || Infinity)) : null,
+      dot_exemption_val: processedNuclides.length ? Math.min(...processedNuclides.map(n => n.dot_exemption_val || Infinity)) : null,
+      un2911_limit_val: processedNuclides.length ? Math.min(...processedNuclides.map(n => n.un2911_limit_val || Infinity)) : null,
+      un2911_pkg_limit_val: processedNuclides.length ? Math.min(...processedNuclides.map(n => n.un2911_pkg_limit_val || Infinity)) : null,
       
       activity_ci_str: buildString('activity_val', formatCi),
       nrc_exemption_ci_str: buildString('nrc_exemption_val', formatCi, nrcExemptionValues),
@@ -3002,64 +3008,76 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       content += `<hr class="dark:border-gray-600 my-4">`;
       content += `<div class="mb-4"><strong>Activity:</strong> ${isSiUnits ? item.activity_bq_str : item.activity_ci_str} of <span class="radionuclide-link text-blue-500 hover:underline cursor-pointer" data-radionuclide="${item.radionuclide}">${item.radionuclide}</span></div>`;
-      const comparisons = [{
-            key: 'nrc_exemption_val',
-            label: 'NRC Exemption',
-            limit: item.nrc_exemption_val,
-            str: isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str
-         },
-         {
-            key: 'dot_exemption_val',
-            label: 'DOT Exemption',
-            limit: item.dot_exemption_val,
-            str: isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str
-         },
-         {
-            key: 'un2911_limit_val',
-            label: 'UN 2911 Limit (item)',
-            limit: item.un2911_limit_val,
-            str: isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str
-         },
-         {
-            key: 'un2911_pkg_limit_val',
-            label: 'UN 2911 Limit (package)',
-            limit: item.un2911_pkg_limit_val,
-            str: isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str
+             
+      item.nuclides.forEach((nuclide, index) => {
+         if (item.nuclides.length > 1) {
+            content += `<h3 class="font-bold mt-4 mb-2 text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-600">${nuclide.id} Limits</h3>`;
          }
-      ];
-      comparisons.forEach(comp => {
-         let status, statusColor, percentage = 0;
-         if (item.activity_val === null || comp.limit === null) {
-            status = 'N/A';
-            statusColor = 'text-gray-500';
-         } else if (item.activity_val > comp.limit) {
-            status = 'ABOVE';
-            statusColor = 'text-red-500';
-         } else {
-            status = 'BELOW';
-            statusColor = 'text-green-500';
-         }
-         if (item.activity_val !== null && comp.limit !== null && comp.limit > 0) {
-            percentage = Math.min((item.activity_val / comp.limit) * 100, 100);
-         }
-         content += `<div class="mb-3">`;
-         content += `<div class="flex justify-between items-center">
-                                    <span class="flex items-center">
-                                        ${comp.label}: ${comp.str}
-                                        <svg data-tooltip-key="${comp.key}" class="tooltip-icon ml-2 w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
-                                    </span> 
-                                    <span class="font-bold ${statusColor}">${status}</span>
-                                </div>`;
-         if (status !== 'N/A') {
-            const barColor = statusColor.replace('text-', 'bg-');
-            content += `
-                            <div class="progress-bar-container">
-                                <div class="progress-bar ${barColor}" style="width: ${percentage}%;">
-                                    ${percentage.toFixed(0)}%
-                                </div>
-                            </div>`;
-         }
-         content += `</div>`;
+         
+         const comparisons = [
+            {
+               key: 'nrc_exemption_val',
+               label: 'NRC Exemption',
+               limit: nuclide.nrc_exemption_val,
+               str: (isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str).split('<br>')[index]
+            },
+            {
+               key: 'dot_exemption_val',
+               label: 'DOT Exemption',
+               limit: nuclide.dot_exemption_val,
+               str: (isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str).split('<br>')[index]
+            },
+            {
+               key: 'un2911_limit_val',
+               label: 'UN 2911 Limit (item)',
+               limit: nuclide.un2911_limit_val,
+               str: (isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str).split('<br>')[index]
+            },
+            {
+               key: 'un2911_pkg_limit_val',
+               label: 'UN 2911 Limit (package)',
+               limit: nuclide.un2911_pkg_limit_val,
+               str: (isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str).split('<br>')[index]
+            }
+         ];
+
+         comparisons.forEach(comp => {
+            let status, statusColor, percentage = 0;
+            if (nuclide.activity_val === null || comp.limit === null) {
+               status = 'N/A';
+               statusColor = 'text-gray-500';
+            } else if (nuclide.activity_val > comp.limit) {
+               status = 'ABOVE';
+               statusColor = 'text-red-500';
+            } else {
+               status = 'BELOW';
+               statusColor = 'text-green-500';
+            }
+            
+            if (nuclide.activity_val !== null && comp.limit !== null && comp.limit > 0) {
+               percentage = Math.min((nuclide.activity_val / comp.limit) * 100, 100);
+            }
+            
+            content += `<div class="mb-3">
+               <div class="flex justify-between items-center">
+                   <span class="flex items-center">
+                       ${comp.label}: ${comp.str}
+                       <svg data-tooltip-key="${comp.key}" class="tooltip-icon ml-2 w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                   </span> 
+                   <span class="font-bold ${statusColor}">${status}</span>
+               </div>`;
+            
+            if (status !== 'N/A') {
+               const barColor = statusColor.replace('text-', 'bg-');
+               content += `
+                   <div class="progress-bar-container">
+                       <div class="progress-bar ${barColor}" style="width: ${percentage}%;">
+                           ${percentage.toFixed(0)}%
+                       </div>
+                   </div>`;
+            }
+            content += `</div>`;
+         });
       });
       content += `</div>`;
       detailContent.innerHTML = content;
@@ -3476,6 +3494,11 @@ document.addEventListener('DOMContentLoaded', () => {
          let itemUn2911PkgFraction = 0;
          let itemTypeAFraction = 0;
 
+         // Track if limit data is actually missing, so we don't confuse it with '0'
+         let hasDotLimit = true;
+         let hasUn2911Limit = true;
+         let hasTypeALimit = true;
+
          // Iterate through all nuclides in this single physical item
          itemData.nuclides.forEach(n => {
             const totalActivity = n.activity_val * quantity;
@@ -3491,22 +3514,36 @@ document.addEventListener('DOMContentLoaded', () => {
                itemStatus2911 = 'EXCEEDS ITEM LIMIT';
             }
 
-            if (n.dot_exemption_val) itemDotFraction += (totalActivity / n.dot_exemption_val);
-            if (n.un2911_pkg_limit_val) itemUn2911PkgFraction += (totalActivity / n.un2911_pkg_limit_val);
-            if (n.dot_a2_val) itemTypeAFraction += (totalActivity / n.dot_a2_val);
+            // Calculate fraction. Distinguish between 0 (Unlimited) vs N/A (Missing limit)
+            if (n.dot_exemption_val !== null) itemDotFraction += (totalActivity / n.dot_exemption_val);
+            else hasDotLimit = false;
+
+            if (n.un2911_pkg_limit_val !== null) itemUn2911PkgFraction += (totalActivity / n.un2911_pkg_limit_val);
+            else hasUn2911Limit = false;
+
+            if (n.dot_a2_val !== null) itemTypeAFraction += (totalActivity / n.dot_a2_val);
+            else hasTypeALimit = false;
          });
 
          dotExemptSum += itemDotFraction;
          un2911PkgSum += itemUn2911PkgFraction;
          typeASum += itemTypeAFraction;
 
+         // Helper function to format fractions safely (preserves 0.000 and < 0.001 formatting)
+         const formatFrac = (val, hasLimit) => {
+             if (!hasLimit) return 'N/A';
+             if (val === 0) return '0.000';
+             if (val > 0 && val < 0.001) return '&lt; 0.001';
+             return val.toFixed(3);
+         };
+
          let detailRow = {
             name: itemData.name,
             qty: quantity,
-            activity: itemData.activity_ci_str.replace(/<br>/g, ', '), // Clean up the breaks for the table
-            dot: itemDotFraction > 0 ? itemDotFraction.toFixed(3) : 'N/A',
-            un2911: itemUn2911PkgFraction > 0 ? itemUn2911PkgFraction.toFixed(3) : 'N/A',
-            typeA: itemTypeAFraction > 0 ? itemTypeAFraction.toFixed(3) : 'N/A',
+            activity: itemData.activity_ci_str.replace(/<br>/g, ', '), 
+            dot: formatFrac(itemDotFraction, hasDotLimit),
+            un2911: formatFrac(itemUn2911PkgFraction, hasUn2911Limit),
+            typeA: formatFrac(itemTypeAFraction, hasTypeALimit),
             itemStatus: itemStatus2911
          };
          
