@@ -72,11 +72,16 @@ function getCachedMapChunk(cx, cy) {
     const key = `${cx},${cy}`;
     if (mapChunkCache.has(key)) return mapChunkCache.get(key);
 
-    // PERFORMANCE & MEMORY LEAK WIN: Strict Culling
-    // Ensure we don't blow out the browser's GPU memory with thousands of cached canvases
+    // 🚨 PERFORMANCE & MEMORY LEAK WIN: Strict Canvas Culling
+    // Simply deleting it from the Map object isn't enough; we must zero out the dimensions
+    // to force the browser to instantly drop the VRAM allocation for that canvas!
     if (mapChunkCache.size >= MAX_CACHED_CHUNKS) {
-        // Iterator trick to quickly pop the oldest (first) item from the Map
         const oldestKey = mapChunkCache.keys().next().value;
+        const oldCanvas = mapChunkCache.get(oldestKey);
+        if (oldCanvas) {
+            oldCanvas.width = 0;
+            oldCanvas.height = 0;
+        }
         mapChunkCache.delete(oldestKey);
     }
 
@@ -148,8 +153,8 @@ function getTileColorForMap(worldX, worldY) {
 
     // Natural Biomes (Fallback)
     const realmOffset = (typeof gameState !== 'undefined' && gameState.currentRealm) ? gameState.currentRealm * 100 : 0;
-    const elev = elevationNoise.noise(worldX / 70, worldY / 70, realmOffset);
-    const moist = moistureNoise.noise(worldX / 50, worldY / 50, realmOffset);
+    const elev = typeof elevationNoise !== 'undefined' ? elevationNoise.noise(worldX / 70, worldY / 70, realmOffset) : 0.5;
+    const moist = typeof moistureNoise !== 'undefined' ? moistureNoise.noise(worldX / 50, worldY / 50, realmOffset) : 0.5;
 
     if (elev < 0.35) return MAP_COLORS.SHALLOW;
     if (elev < 0.4 && moist > 0.7) return MAP_COLORS.SWAMP;
@@ -164,6 +169,11 @@ function getTileColorForMap(worldX, worldY) {
 const _mapTileNameCache = new Map();
 
 function getMapTileName(x, y) {
+    // 🚨 BUG FIX & ROBUSTNESS: Ensure NaN values don't crash the dictionary lookups
+    if (typeof x !== 'number' || isNaN(x) || typeof y !== 'number' || isNaN(y)) {
+        return "Uncharted Wilderness";
+    }
+
     const chunkId = `${Math.floor(x / MAP_CHUNK_SIZE)},${Math.floor(y / MAP_CHUNK_SIZE)}`;
     
     // LORE WIN: Dynamic Uncharted labeling based on distance and dimension
@@ -174,7 +184,7 @@ function getMapTileName(x, y) {
         return "Uncharted Wilderness";
     }
 
-    const tile = chunkManager.getTile(x, y);
+    const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(x, y) : '.';
     
     // Pull from High-Speed Cache first
     if (_mapTileNameCache.has(tile)) return _mapTileNameCache.get(tile);
@@ -248,6 +258,7 @@ function closeWorldMap() {
     }
     
     // UX & PERFORMANCE WIN: Clear cache explicitly on close to free up GPU memory 
+    mapChunkCache.forEach(c => { c.width = 0; c.height = 0; });
     mapChunkCache.clear(); 
 
     // Memory release for chunks outside our immediate view
@@ -388,7 +399,7 @@ function renderWorldMap() {
                 // Check if the center of this chunk is deep water
                 const centerWorldX = cx * MAP_CHUNK_SIZE + 8;
                 const centerWorldY = cy * MAP_CHUNK_SIZE + 8;
-                const tile = chunkManager.getTile(centerWorldX, centerWorldY);
+                const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(centerWorldX, centerWorldY) : '.';
                 
                 if (tile === '~') {
                     worldMapCtx.fillStyle = icon === '👁️' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.2)'; 
@@ -592,6 +603,7 @@ function renderWorldMap() {
         
         if (ix >= 0 && ix <= logicalWidth && iy >= 0 && iy <= logicalHeight) {
             worldMapCtx.fillStyle = '#a855f7'; // Purple
+            // JUICE WIN: Glowing Anomaly color instead of red to distinguish from treasure!
             worldMapCtx.font = `bold ${Math.max(16, currentMapScale * 2.5)}px monospace`;
             worldMapCtx.fillText('!', ix + currentMapScale/2, iy + currentMapScale/2);
             
