@@ -88,7 +88,7 @@ function renderHotbar() {
                 if (spellData) {
                     const sName = data.name || "";
                     // Color-code the spell icons natively based on their element!
-                    if (sName.includes("Fire") || sName.includes("Meteor") || sName.includes("Pact")) colorClass = "text-orange-400";
+                    if (sName.includes("Fire") || sName.includes("Meteor") || sName.includes("Pact") || sName.includes("Boil")) colorClass = "text-orange-400";
                     else if (sName.includes("Frost")) colorClass = "text-cyan-300";
                     else if (sName.includes("Poison") || sName.includes("Entangle")) colorClass = "text-green-400";
                     else if (sName.includes("Divine") || sName.includes("Heal") || sName.includes("Nova")) colorClass = "text-yellow-400";
@@ -130,6 +130,10 @@ function renderHotbar() {
                     const isDisposable = itemData && (itemData.type === 'consumable' || itemData.type === 'ammo');
                     if (isDisposable) {
                         player.hotbar[index] = null;
+                        
+                        // Push clear state to firebase so it persists on reload!
+                        if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ hotbar: player.hotbar });
+                        
                         if (typeof renderHotbar === 'function') setTimeout(renderHotbar, 0); // Re-render cleanly
                         return; // Skip rendering this ghost slot
                     }
@@ -300,10 +304,16 @@ function assignToHotbar(abilityId) {
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
 
     hotbar[index] = abilityId;
-    if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ hotbar: hotbar });
+    
+    if (typeof triggerDebouncedSave === 'function') {
+        triggerDebouncedSave({ hotbar: hotbar });
+    } else if (typeof playerRef !== 'undefined' && playerRef) {
+        playerRef.update({ hotbar: hotbar });
+    }
     
     renderHotbar();
     
+    // JUICE WIN: Dynamic pulsing glow based on the type of action bound
     setTimeout(() => {
         const slotEl = document.getElementById(`hotbarSlot-${index}`);
         if (slotEl) {
@@ -336,7 +346,7 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
         if (typeof gameState !== 'undefined' && gameState.isDroppingItem) return;
         
         const slotDiv = e.target.closest('.hotbar-slot');
-        if (slotDiv) {
+        if (slotDiv && !slotDiv.classList.contains('cursor-not-allowed')) {
             const index = parseInt(slotDiv.dataset.index, 10);
             if (!isNaN(index)) {
                 slotDiv.style.transform = 'scale(0.9)';
@@ -351,6 +361,14 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
         const slotDiv = e.target.closest('.hotbar-slot');
         if (slotDiv) {
             e.preventDefault(); 
+            
+            // 🚨 BUG FIX WIN: Abort Aiming Mode gracefully if they right click!
+            if (typeof gameState !== 'undefined' && gameState.isAiming) {
+                gameState.isAiming = false;
+                gameState.abilityToAim = null;
+                logMessage("{gray:Aiming canceled.}");
+                if (typeof render === 'function') render();
+            }
             
             const index = parseInt(slotDiv.dataset.index, 10);
             if (!isNaN(index)) {
@@ -375,7 +393,13 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
                 }
                 
                 player.hotbar[index] = null;
-                if (typeof playerRef !== 'undefined' && playerRef) playerRef.update({ hotbar: player.hotbar });
+                
+                if (typeof triggerDebouncedSave === 'function') {
+                    triggerDebouncedSave({ hotbar: player.hotbar });
+                } else if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({ hotbar: player.hotbar });
+                }
+                
                 renderHotbar();
             }
         }
