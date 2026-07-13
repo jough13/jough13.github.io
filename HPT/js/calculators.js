@@ -9580,7 +9580,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
     const [mdaMode, setMdaMode] = React.useState(() => localStorage.getItem('mda_mdaMode') || MDA_MODE_STATIC);
     
     // Shared State
-    const [backgroundMode, setBackgroundMode] = React.useState('rate'); // 'rate' or 'counts'
+    const [backgroundMode, setBackgroundMode] = React.useState('counts'); // Default to paired observations
     const [backgroundCpm, setBackgroundCpm] = React.useState(() => localStorage.getItem('mda_backgroundCpm') || '50');
     const [bkgCounts, setBkgCounts] = React.useState('50');
     const [bkgTime, setBkgTime] = React.useState('1');
