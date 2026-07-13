@@ -11,7 +11,7 @@ window.toggleMount = function() {
     if (p.isMounted) {
         p.isMounted = false;
         
-        // Guard against missing companion data
+        // 🚨 BUG FIX: Guard against missing companion data
         if (p.companion && p.companion.name) {
             logMessage(`You dismount your ${p.companion.name}.`);
         } else {
@@ -282,7 +282,7 @@ async function attemptMovePlayer(newX, newY) {
                 const fragmentName = `Tablet of the ${dir.charAt(0).toUpperCase() + dir.slice(1)}`;
                 const fragmentItem = { templateId: templateId, name: fragmentName, type: 'junk', quantity: 1, tile: '🧩' };
 
-                if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                if (gameState.player.inventory.length < (typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9)) {
                     gameState.player.inventory.push(fragmentItem);
                     logMessage(`{purple:A stone fragment falls from the obelisk: ${fragmentName}}`);
                 } else {
@@ -420,8 +420,6 @@ async function attemptMovePlayer(newX, newY) {
     // --- COMBAT CHECK ---
     const enemyData = ENEMY_DATA[newTile];
     if (enemyData) {
-
-        // handleInput already updated the timer!
 
         const hitChance = calculateHitChance(gameState.player, enemyData);
 
@@ -641,7 +639,9 @@ async function attemptMovePlayer(newX, newY) {
                 const itemKey = treasureLoot[Math.floor(Math.random() * treasureLoot.length)];
                 const template = ITEM_DATA[itemKey];
                 
-                if (template && gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+                
+                if (template && gameState.player.inventory.length < invCap) {
                     gameState.player.inventory.push({
                         templateId: itemKey,
                         name: template.name,
@@ -651,7 +651,11 @@ async function attemptMovePlayer(newX, newY) {
                         damage: template.damage || null,
                         defense: template.defense || null,
                         slot: template.slot || null,
-                        statBonuses: template.statBonuses || null
+                        statBonuses: template.statBonuses ? JSON.parse(JSON.stringify(template.statBonuses)) : null,
+                        tags: template.tags ? [...template.tags] : null,
+                        _rarity: template._rarity || null,
+                        effect: template.effect || null,
+                        onHit: template.onHit || null
                     });
                     logMessage(`{purple:You unearthed a ${template.name}!}`);
                 } else {
@@ -728,7 +732,9 @@ async function attemptMovePlayer(newX, newY) {
                 const key = artifacts[Math.floor(Math.random() * artifacts.length)];
                 const template = ITEM_DATA[key];
 
-                if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+
+                if (gameState.player.inventory.length < invCap) {
                     gameState.player.inventory.push({
                         templateId: key,
                         name: template.name,
@@ -870,16 +876,22 @@ async function attemptMovePlayer(newX, newY) {
         } else if (player.relicQuestStage === 3) {
             const hasShardIndex = inv.findIndex(i => i.name === 'Void Crystal');
             if (hasShardIndex > -1) {
-                // Check space before taking
-                if (inv.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+                if (inv.length < invCap) {
                     inv.splice(hasShardIndex, 1);
                     player.relicQuestStage = 4;
                     grantXp(500);
+                    
                     const reward = ITEM_DATA['⚡']; // Stormbringer
-                    inv.push({ ...reward,
-                        templateId: '⚡',
-                        quantity: 1
-                    });
+                    // Deep clone to prevent template bleeding!
+                    let newWeapon = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(reward) : JSON.parse(JSON.stringify(reward));
+                    newWeapon.templateId = '⚡';
+                    newWeapon.quantity = 1;
+                    newWeapon.isEquipped = false;
+                    newWeapon.effect = reward.effect || null;
+                    newWeapon.onHit = reward.onHit || null;
+                    
+                    inv.push(newWeapon);
                     dialogueHtml = `<p>"You have done it! The trinity is restored. As promised, take this... The King's own blade, <b>Stormbringer</b>."</p>`;
                 } else {
                     dialogueHtml = `<p>"I have your reward, but your pack is full! Make space and return to me."</p>`;
@@ -942,7 +954,9 @@ async function attemptMovePlayer(newX, newY) {
                             gameState.player.inventory[currentShardIdx].quantity -= 3;
                             if (gameState.player.inventory[currentShardIdx].quantity <= 0) gameState.player.inventory.splice(currentShardIdx, 1);
 
-                            if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+
+                            if (gameState.player.inventory.length < invCap) {
                                 // Random Stat Tome
                                 const stats = ['strength', 'wits', 'constitution', 'dexterity', 'luck'];
                                 const rndStat = stats[Math.floor(Math.random() * stats.length)];
@@ -1000,7 +1014,9 @@ async function attemptMovePlayer(newX, newY) {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.1, 400); // Ethereal whisper
 
         // Give Item
-        if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+        
+        if (gameState.player.inventory.length < invCap) {
             gameState.player.inventory.push({
                 templateId: '👻s',
                 name: 'Memory Shard',
@@ -1219,12 +1235,12 @@ async function attemptMovePlayer(newX, newY) {
                 // JUICE & LORE WIN: The 5% Miracle Chance
                 if (Math.random() > 0.5) {
                     gameState.player.bonusMaxHealth = (gameState.player.bonusMaxHealth || 0) + 1;
-                    gameState.player.maxHealth += 1;
+                    if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
                     logMessage("{green:Permanent Effect: +1 Max HP!}");
                     window.modifyVital('health', gameState.player.maxHealth); // Fills to max
                 } else {
                     gameState.player.bonusMaxMana = (gameState.player.bonusMaxMana || 0) + 1;
-                    gameState.player.maxMana += 1;
+                    if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
                     logMessage("{blue:Permanent Effect: +1 Max Mana!}");
                     window.modifyVital('mana', gameState.player.maxMana);
                 }
@@ -1232,19 +1248,21 @@ async function attemptMovePlayer(newX, newY) {
                 logMessage("{green:...and receive a Healing Potion!}");
                 
                 // Inventory capacity check for the potion
-                if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+                if (gameState.player.inventory.length < invCap) {
                     gameState.player.inventory.push({
                         templateId: '♥',
                         name: 'Healing Potion',
                         type: 'consumable',
                         quantity: 1,
                         tile: '♥',
-                        effect: ITEM_DATA['♥'].effect
+                        effect: ITEM_DATA['♥'].effect,
+                        isEquipped: false
                     });
                     inventoryWasUpdated = true; 
                 } else {
                     logMessage("{red:But your inventory is full! The potion drops to the ground.}");
-                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(gameState.player.x, gameState.player.y, '♥');
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(gameState.player.x, gameState.player.y, '♥', 24);
                     else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] = '♥';
                     else chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x] = '♥';
                     gameState.mapDirty = true;
@@ -1327,14 +1345,17 @@ async function attemptMovePlayer(newX, newY) {
         
         if (gameState.player.health <= 0) return;
 
-        if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+
+        if (gameState.player.inventory.length < invCap) {
             gameState.player.inventory.push({
                 templateId: '🍐',
                 name: 'Cactus Fruit',
                 type: 'consumable',
                 quantity: 1,
                 tile: '🍐',
-                effect: ITEM_DATA['🍐'].effect
+                effect: ITEM_DATA['🍐'].effect,
+                isEquipped: false
             });
             inventoryWasUpdated = true; // Auto-save flag
             chunkManager.setWorldTile(newX, newY, 'D');
@@ -1375,6 +1396,8 @@ async function attemptMovePlayer(newX, newY) {
             
             if (gameState.player.health <= 0) return; 
             
+            // BUG FIX: End turn here so the mimic actually gets an attack back!
+            endPlayerTurn();
             render();
             return;
         }
@@ -1385,14 +1408,17 @@ async function attemptMovePlayer(newX, newY) {
         logMessage(`{gold:You found ${goldAmount} Gold!}`);
         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
 
-        if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+
+        if (gameState.player.inventory.length < invCap) {
             gameState.player.inventory.push({
                 templateId: '🍷',
                 name: 'Elixir of Life',
                 type: 'consumable',
                 quantity: 1,
                 tile: '🍷',
-                effect: ITEM_DATA['🍷'].effect
+                effect: ITEM_DATA['🍷'].effect,
+                isEquipped: false
             });
             inventoryWasUpdated = true; // Auto-save flag
             logMessage("{purple:You found an Elixir of Life!}");
@@ -1458,7 +1484,8 @@ async function attemptMovePlayer(newX, newY) {
                 else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
                 
                 newTile = '.'; 
-                tileData = TILE_DATA['.']; // Refresh interaction data
+                // BUG FIX WIN: Explicitly clear tileData so the rest of the function processes smoothly!
+                tileData = null; 
                 gameState.mapDirty = true;
             }
         }
@@ -1751,19 +1778,22 @@ async function attemptMovePlayer(newX, newY) {
                     if (toolName === 'Machete') AudioSystem.playAttack('sweep');
                 }
 
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+
                 if (tileData.name === 'Thicket' || tileData.name === 'Dead Tree') {
                     const existingWood = playerInventory.find(i => i.name === 'Wood Log');
                     if (existingWood) {
                         existingWood.quantity++;
                         logMessage("You gathered a Wood Log!");
                         inventoryWasUpdated = true;
-                    } else if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                    } else if (gameState.player.inventory.length < invCap) {
                         playerInventory.push({
                             templateId: '🪵',
                             name: 'Wood Log',
                             type: 'junk',
                             quantity: 1,
-                            tile: '🪵'
+                            tile: '🪵',
+                            isEquipped: false
                         });
                         logMessage("You gathered a Wood Log!");
                         inventoryWasUpdated = true;
@@ -1776,13 +1806,14 @@ async function attemptMovePlayer(newX, newY) {
                         existingStone.quantity++;
                         logMessage("You gathered Stone!");
                         inventoryWasUpdated = true;
-                    } else if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                    } else if (gameState.player.inventory.length < invCap) {
                         playerInventory.push({
                             templateId: '🪨',
                             name: 'Stone',
                             type: 'junk',
                             quantity: 1,
-                            tile: '🪨'
+                            tile: '🪨',
+                            isEquipped: false
                         });
                         logMessage("You gathered Stone!");
                         inventoryWasUpdated = true;
@@ -1900,7 +1931,9 @@ async function attemptMovePlayer(newX, newY) {
                 const nextChronicleKey = missingChronicles[0];
                 const itemTemplate = ITEM_DATA[nextChronicleKey];
 
-                if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+
+                if (gameState.player.inventory.length < invCap) {
                     gameState.player.inventory.push({
                         templateId: nextChronicleKey,
                         name: itemTemplate.name,
@@ -1908,7 +1941,8 @@ async function attemptMovePlayer(newX, newY) {
                         quantity: 1,
                         tile: nextChronicleKey,
                         title: itemTemplate.title,
-                        content: itemTemplate.content
+                        content: itemTemplate.content,
+                        isEquipped: false
                     });
                     logMessage(`{purple:You found ${itemTemplate.name}!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
@@ -1917,7 +1951,7 @@ async function attemptMovePlayer(newX, newY) {
                     if (missingChronicles.length === 1) {
                         logMessage("{gold:You have collected all the Lost Chronicles!}");
                         logMessage("{blue:You feel a surge of intellect.}");
-                        if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                        if (gameState.player.inventory.length < invCap) {
                             const reward = ITEM_DATA['👓'];
                             gameState.player.inventory.push({
                                 templateId: '👓',
@@ -1927,7 +1961,8 @@ async function attemptMovePlayer(newX, newY) {
                                 tile: '👓',
                                 defense: reward.defense,
                                 slot: reward.slot,
-                                statBonuses: reward.statBonuses
+                                statBonuses: reward.statBonuses ? JSON.parse(JSON.stringify(reward.statBonuses)) : null,
+                                isEquipped: false
                             });
                             logMessage("{purple:You found the Scholar's Spectacles!}");
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
@@ -1953,14 +1988,17 @@ async function attemptMovePlayer(newX, newY) {
                 }
             } else {
                 logMessage("{purple:You found an Arcane Scroll.}");
-                if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+                
+                if (gameState.player.inventory.length < invCap) {
                     gameState.player.inventory.push({
                         templateId: '📜',
                         name: 'Scroll: Clarity',
                         type: 'spellbook',
                         quantity: 1,
                         tile: '📜',
-                        spellId: 'clarity'
+                        spellId: 'clarity',
+                        isEquipped: false
                     });
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                 } else {
@@ -2032,7 +2070,8 @@ async function attemptMovePlayer(newX, newY) {
                 }
                 const itemTemplate = ITEM_DATA[itemKey];
                 if (itemTemplate) {
-                    if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+                    if (gameState.player.inventory.length < invCap) {
                         gameState.player.inventory.push({
                             templateId: itemKey,
                             name: itemTemplate.name,
@@ -2042,7 +2081,8 @@ async function attemptMovePlayer(newX, newY) {
                             damage: itemTemplate.damage || null,
                             defense: itemTemplate.defense || null,
                             slot: itemTemplate.slot || null,
-                            statBonuses: itemTemplate.statBonuses || null
+                            statBonuses: itemTemplate.statBonuses ? JSON.parse(JSON.stringify(itemTemplate.statBonuses)) : null,
+                            isEquipped: false
                         });
                         logMessage(`You found: {purple:${itemTemplate.name}}`);
                     } else {
@@ -2183,6 +2223,8 @@ async function attemptMovePlayer(newX, newY) {
         if (tileData.type === 'obelisk') {
             if (!gameState.foundLore.has(tileId)) {
                 const existingStack = gameState.player.inventory.find(item => item.name === 'Obsidian Shard');
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+
                 if (existingStack) {
                     existingStack.quantity++;
                     logMessage("{purple:The Obelisk hums, and another shard forms in your pack.}");
@@ -2192,13 +2234,14 @@ async function attemptMovePlayer(newX, newY) {
                         });
                     }
                     if (typeof renderInventory === 'function') renderInventory();
-                } else if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                } else if (gameState.player.inventory.length < invCap) {
                     gameState.player.inventory.push({
                         templateId: '▲',
                         name: 'Obsidian Shard',
                         type: 'junk',
                         quantity: 1,
-                        tile: '▲'
+                        tile: '▲',
+                        isEquipped: false
                     });
                     logMessage("{purple:The Obelisk hums, and a shard of black glass falls into your hand.}");
                     if (typeof playerRef !== 'undefined' && playerRef) {
@@ -3047,7 +3090,8 @@ async function attemptMovePlayer(newX, newY) {
 
     // --- MAGIC ITEM GENERATION (Sparkles) ---
     if (newTile === '✨') {
-        if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+        if (gameState.player.inventory.length < invCap) {
             const dist = Math.sqrt(newX * newX + newY * newY);
             let tier = 1;
             if (dist > 1500) tier = 5;
@@ -3055,7 +3099,7 @@ async function attemptMovePlayer(newX, newY) {
             else if (dist > 250) tier = 3;
             else if (dist > 100) tier = 2;
 
-            const newItem = typeof generateMagicItem === 'function' ? generateMagicItem(tier) : { name: 'Magic Item', type: 'junk', tile: '✨', quantity: 1 };
+            const newItem = typeof generateMagicItem === 'function' ? generateMagicItem(tier) : { name: 'Magic Item', type: 'junk', tile: '✨', quantity: 1, isEquipped: false };
             gameState.player.inventory.push(newItem);
             
             // LORE/JUICE WIN: Color code the log message based on rarity
@@ -3084,7 +3128,7 @@ async function attemptMovePlayer(newX, newY) {
         }
     }
     // --- STANDARD ITEM PICKUP ---
-    else if (itemData) {
+    else if (itemData && itemData.type !== 'constructible') {
         let isTileLooted = gameState.lootedTiles.has(tileId);
         
         function clearLootTile() {
@@ -3138,6 +3182,7 @@ async function attemptMovePlayer(newX, newY) {
                 const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
                 // Allow equipment to stack now too
                 const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'quest', 'lore', 'tool', 'armor', 'weapon', 'ammo'].includes(itemData.type);
+                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
 
                 if (existingItem && isStackable) {
                     existingItem.quantity++;
@@ -3147,7 +3192,7 @@ async function attemptMovePlayer(newX, newY) {
                     inventoryWasUpdated = true;
                     clearLootTile();
 
-                } else if (gameState.player.inventory.length < (window.MAX_INVENTORY_SLOTS || 9)) {
+                } else if (gameState.player.inventory.length < invCap) {
                     
                     // Create safe object for DB (Copied from existing logic)
                     const itemForDb = {
@@ -3156,14 +3201,17 @@ async function attemptMovePlayer(newX, newY) {
                         type: itemData.type,
                         quantity: 1,
                         tile: newTile,
+                        isEquipped: false,
                         damage: itemData.damage || null,
                         defense: itemData.defense || null,
                         slot: itemData.slot || null,
-                        statBonuses: itemData.statBonuses || null,
+                        statBonuses: itemData.statBonuses ? JSON.parse(JSON.stringify(itemData.statBonuses)) : null,
                         effect: itemData.effect || null,
+                        onHit: itemData.onHit || null,
                         spellId: itemData.spellId || null,
                         skillId: itemData.skillId || null,
                         stat: itemData.stat || null,
+                        tags: itemData.tags ? [...itemData.tags] : null,
                         _rarity: itemData._rarity || null // Preserve rarity tag for borders
                     };
                     gameState.player.inventory.push(itemForDb);
