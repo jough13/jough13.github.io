@@ -197,7 +197,9 @@ function handleBuyItem(itemName, amount = 1) {
         }
 
         const existingStack = player.inventory.find(item => item && item.name === itemName && !item.isEquipped); // 🚨 GHOST GUARD
-        const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
+        
+        // Use global helper for consistency if available
+        const isStackable = window.isStackableItem ? window.isStackableItem(itemTemplate.type) : ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
 
         // 🚨 BUG FIX: Accurate Capacity Checking for bulk-buying unstackable gear!
         const slotNeeded = isStackable ? (existingStack ? 0 : 1) : buyQty;
@@ -360,6 +362,7 @@ function handleSellAllItems() {
         const player = gameState.player;
         let itemsSold = 0;
         let goldGained = 0;
+        let soldNames = new Set(); // UX WIN: Track names of items sold for the summary
 
         // 🚀 PERFORMANCE WIN: Replace manual `.splice()` looping with a clean `.filter()` block.
         // Array.splice() is an O(N) operation that shifts all subsequent elements. Doing it in a loop
@@ -399,6 +402,10 @@ function handleSellAllItems() {
                 goldGained += totalValue;
                 itemsSold += item.quantity;
                 
+                // Clean the name of magical prefixes just in case, for a cleaner list
+                const cleanName = item.name.replace(/^(Fine|Mystic)\s/i, '').trim();
+                soldNames.add(cleanName);
+                
                 if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(totalValue);
 
             } else {
@@ -410,6 +417,9 @@ function handleSellAllItems() {
             // Re-assign array references cleanly (Equipment pointers remain intact since object identity doesn't change)
             player.inventory = remainingInventory;
             
+            // UX WIN: Detailed summary of exactly what was purged!
+            const summary = Array.from(soldNames).join(', ');
+            logMessage(`{gray:Sold: ${summary}}`);
             logMessage(`Mass Sold ${itemsSold} junk/trade items for {gold:${goldGained} gold}.`);
             
             if (typeof ParticleSystem !== 'undefined') {
@@ -540,6 +550,52 @@ function renderShop() {
         shopTitle.innerHTML = `${shopName} <span class="block text-xs font-normal text-gray-400 mt-1 italic tracking-normal font-serif">"${selectedFlavor}"</span>`;
     }
 
+    // UI/UX WIN: Generate visually pleasing category tags for the shop items
+    const generateTypeTag = (type, isMagic) => {
+        if (!type) return '';
+        if (isMagic) return `<span class="text-[8px] uppercase tracking-widest text-fuchsia-300 bg-fuchsia-900 border-fuchsia-800 bg-opacity-30 px-1.5 py-0.5 rounded border ml-2 shadow-inner inline-block relative -top-0.5">MAGIC</span>`;
+        
+        const tagMap = {
+            'weapon': { color: 'text-red-400', bg: 'bg-red-900 border-red-800' },
+            'armor': { color: 'text-blue-400', bg: 'bg-blue-900 border-blue-800' },
+            'consumable': { color: 'text-green-400', bg: 'bg-green-900 border-green-800' },
+            'trade': { color: 'text-yellow-400', bg: 'bg-yellow-900 border-yellow-800' },
+            'ammo': { color: 'text-orange-400', bg: 'bg-orange-900 border-orange-800' },
+            'junk': { color: 'text-gray-400', bg: 'bg-gray-800 border-gray-700' },
+            'quest': { color: 'text-purple-400', bg: 'bg-purple-900 border-purple-800' },
+            'tool': { color: 'text-cyan-400', bg: 'bg-cyan-900 border-cyan-800' },
+            'spellbook': { color: 'text-indigo-400', bg: 'bg-indigo-900 border-indigo-800' },
+            'skillbook': { color: 'text-yellow-400', bg: 'bg-yellow-900 border-yellow-800' },
+            'treasure_map': { color: 'text-amber-400', bg: 'bg-amber-900 border-amber-800' },
+            'journal': { color: 'text-teal-400', bg: 'bg-teal-900 border-teal-800' }
+        };
+        const style = tagMap[type] || { color: 'text-gray-300', bg: 'bg-gray-800 border-gray-600' };
+        return `<span class="text-[8px] uppercase tracking-widest ${style.color} ${style.bg} bg-opacity-30 px-1.5 py-0.5 rounded border ml-2 shadow-inner inline-block relative -top-0.5">${type}</span>`;
+    };
+
+    // QoL WIN: Interactive Tooltips for Shop Items
+    const generateTooltip = (item, template) => {
+        let tooltip = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
+        
+        if (template && template.description) {
+            const cleanDesc = typeof stripColorTags === 'function' ? stripColorTags(template.description) : template.description.replace(/\{[a-zA-Z]+:(.*?)\}/g, '$1');
+            tooltip += `\n\n${cleanDesc}`;
+        }
+
+        if (item.damage !== undefined) tooltip += `\nDamage: +${item.damage}`;
+        else if (template && template.damage !== undefined) tooltip += `\nDamage: +${template.damage}`;
+
+        if (item.defense !== undefined) tooltip += `\nDefense: +${item.defense}`;
+        else if (template && template.defense !== undefined) tooltip += `\nDefense: +${template.defense}`;
+
+        const bonuses = item.statBonuses || (template ? template.statBonuses : null);
+        if (bonuses) {
+            const bonusStr = Object.entries(bonuses).map(([k,v]) => `+${v} ${k.substring(0,3).toUpperCase()}`).join(', ');
+            tooltip += `\nBonuses: [${bonusStr}]`;
+        }
+        return tooltip;
+    };
+
     // PERFORMANCE: Use DocumentFragments
     const buyFrag = document.createDocumentFragment();
     const sellFrag = document.createDocumentFragment();
@@ -571,19 +627,25 @@ function renderShop() {
         const priceColorClass = canAffordItem ? 'text-yellow-500' : 'text-red-500';
 
         let actionsHtml = `<button data-buy-item="${safeItemName}" data-amount="1" style="transform: translateZ(0);" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50 font-bold">Buy 1</button>`;
-        const isStackable = itemTemplate && ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
+        
+        const isStackable = window.isStackableItem ? window.isStackableItem(itemTemplate?.type) : ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate?.type);
         
         if (isStackable && item.stock > 1) {
             actionsHtml += `<button data-buy-item="${safeItemName}" data-amount="all" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded shadow-sm transition-transform active:scale-95 ml-2 text-xs font-bold">Max</button>`;
         }
 
         const outOfStockClass = item.stock <= 0 ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:border-green-500 hover:-translate-y-0.5 hover:shadow-md';
+        
+        const isMagic = itemTemplate && itemTemplate.statBonuses && Object.keys(itemTemplate.statBonuses).length > 0;
+        const typeTag = generateTypeTag(itemTemplate ? itemTemplate.type : 'junk', isMagic);
 
         const li = document.createElement('li');
-        li.className = `shop-item transition-all duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 ${outOfStockClass}`;
+        li.className = `shop-item transition-all duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 ${outOfStockClass} cursor-help`;
+        li.title = generateTooltip(item, itemTemplate);
+
         li.innerHTML = `
             <div>
-                <span class="shop-item-name font-bold text-lg text-gray-200">${safeItemName} <span class="text-2xl drop-shadow-md align-middle">${itemTemplate?.tile || '?'}</span></span>
+                <span class="shop-item-name font-bold text-lg text-gray-200">${safeItemName} <span class="text-2xl drop-shadow-md align-middle">${itemTemplate?.tile || '?'}</span>${typeTag}</span>
                 <span class="shop-item-details font-bold block mt-1 ${priceColorClass}">Price: ${priceHtml} <span class="text-xs text-gray-500 font-normal ml-2 bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Stock: ${item.stock})</span></span>
             </div>
             <div class="shop-item-actions flex items-center ml-2">
@@ -620,7 +682,12 @@ function renderShop() {
             }
 
             const li = document.createElement('li');
-            li.className = 'shop-item hover:border-blue-500 hover:-translate-y-0.5 hover:shadow-md transition-all duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3';
+            li.className = 'shop-item hover:border-blue-500 hover:-translate-y-0.5 hover:shadow-md transition-all duration-150 bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 cursor-help';
+            
+            // Reconstruct the base template for tooltips
+            const tKey = item.templateId || getTradeItemKey(item.name);
+            const template = window.ITEM_DATA ? window.ITEM_DATA[tKey] : null;
+            li.title = generateTooltip(item, template);
             
             let actionsHtml = `<button data-sell-index="${index}" data-amount="1" style="transform: translateZ(0);" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded shadow-sm transition-transform active:scale-95 disabled:opacity-50 font-bold" ${item.isEquipped ? 'disabled title="Unequip first"' : ''}>Sell 1</button>`;
             
@@ -631,15 +698,20 @@ function renderShop() {
             }
             
             let nameColor = 'text-gray-200';
+            const isMagic = item.statBonuses && Object.keys(item.statBonuses).length > 0;
+            if (isMagic) nameColor = 'text-fuchsia-400 font-bold';
+            
+            // Rarity overriding color
             if (item._rarity === 'uncommon') nameColor = 'text-green-400 font-bold';
             else if (item._rarity === 'rare') nameColor = 'text-purple-400 font-bold';
             else if (item._rarity === 'epic') nameColor = 'text-red-400 font-bold';
             else if (item._rarity === 'legendary') nameColor = 'text-yellow-400 font-bold text-magic-shimmer';
-            else if (item.statBonuses && Object.keys(item.statBonuses).length > 0) nameColor = 'text-fuchsia-400 font-bold';
+
+            const typeTag = generateTypeTag(item.type, isMagic);
 
             li.innerHTML = `
                 <div class="flex-grow pr-2">
-                    <span class="shop-item-name block mb-1 ${nameColor}">${item.tile || '🎒'} ${safeItemName} <span class="text-[10px] text-gray-400 bg-black bg-opacity-30 px-1 rounded border border-gray-700 ml-1">x${item.quantity}</span></span>
+                    <span class="shop-item-name block mb-1 ${nameColor}">${item.tile || '🎒'} ${safeItemName} <span class="text-[10px] text-gray-400 bg-black bg-opacity-30 px-1 rounded border border-gray-700 ml-1">x${item.quantity}</span>${typeTag}</span>
                     <span class="shop-item-details font-bold block ${sellPriceColor}">Sell for: ${sellPrice}g <span class="text-xs text-gray-500 font-normal">(ea)</span></span>
                     ${demandTag}
                 </div>
