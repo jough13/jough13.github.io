@@ -12,6 +12,14 @@ window.MAX_STASH_SLOTS = 50;
 // Attaching directly to 'window' makes it 100% immune to hot-reload SyntaxErrors!
 window._stashItemKeyCache = window._stashItemKeyCache || {};
 
+// PERFORMANCE WIN: Static Sorting Weights Cache
+// Prevents the V8 engine from re-allocating this dictionary every time the stash is sorted.
+const STASH_TYPE_WEIGHTS = { 
+    'weapon': 1, 'armor': 2, 'accessory': 3, 'ammo': 4, 
+    'consumable': 5, 'tool': 6, 'spellbook': 7, 'skillbook': 8, 
+    'treasure_map': 9, 'quest': 10, 'trade': 11, 'ingredient': 12, 'junk': 13 
+};
+
 // 🚨 BUG FIX WIN: Mutex Lock to prevent UI Desync & Index Shifting!
 // Rapidly clicking deposit/withdraw would cause array splices to misalign indexes mid-processing,
 // moving the wrong items or crashing the client. This enforces sequential transaction safety!
@@ -228,24 +236,30 @@ window.depositAllMaterials = function() {
         if (!player.bank) player.bank = [];
         
         let itemsMoved = 0;
+        let vaultFullAlerted = false;
 
-        for (let i = player.inventory.length - 1; i >= 0; i--) {
+        // 🚀 PERFORMANCE WIN: O(N) Array Rebuild instead of loop-splicing
+        const remainingInventory = [];
+
+        for (let i = 0; i < player.inventory.length; i++) {
             const item = player.inventory[i];
             if (!item) continue; // 🚨 THE GHOST GUARD
             
-            // BUG FIX: Prevent depositing equipped ammo/consumables!
-            if (item.isEquipped) continue;
-            
-            // BUG FIX: Never mass-deposit quest items!
-            if (item.type === 'quest') continue;
-            
-            if (!['junk', 'ingredient', 'trade'].includes(item.type)) continue;
+            // Protect equipped items, quest items, and non-materials
+            if (item.isEquipped || item.type === 'quest' || !['junk', 'ingredient', 'trade'].includes(item.type)) {
+                remainingInventory.push(item);
+                continue;
+            }
 
             const existingBankItem = player.bank.find(bankItem => bankItem && bankItem.name === item.name);
 
             if (!existingBankItem && player.bank.length >= window.MAX_STASH_SLOTS) {
-                logMessage("{red:The vault became full during the mass deposit.}");
-                break; 
+                remainingInventory.push(item); // Leave it in inventory
+                if (!vaultFullAlerted) {
+                    logMessage("{red:The vault became full during the mass deposit.}");
+                    vaultFullAlerted = true;
+                }
+                continue; 
             }
 
             if (existingBankItem) {
@@ -254,24 +268,22 @@ window.depositAllMaterials = function() {
                 player.bank.push(window.cloneItemSafely(item));
             }
 
-            player.inventory.splice(i, 1);
             itemsMoved++;
         }
+
+        player.inventory = remainingInventory;
 
         if (itemsMoved > 0) {
             logMessage(`{green:Mass deposited ${itemsMoved} material stacks.}`);
             
-            // JUICE WIN: Satisfying visual confirmation behind the modal
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createFloatingText(player.x, player.y, "STASHED", "#4ade80");
                 ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 10);
             }
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic(); 
             
-            // Auto-sort the stash cleanly after a mass dump
-            window.sortStash(false); // pass false to skip playing the step sound again
+            window.sortStash(false); 
             
-            // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer
             if (typeof triggerDebouncedSave === 'function') {
                 triggerDebouncedSave({ 
                     inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
@@ -283,6 +295,104 @@ window.depositAllMaterials = function() {
             if (typeof renderInventory === 'function') renderInventory();
         } else {
             logMessage("{gray:No materials found to deposit.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        }
+    } finally {
+        isStashProcessing = false;
+    }
+};
+
+// ==========================================
+// QoL EXPANSION: WITHDRAW ALL MATERIALS
+// ==========================================
+window.withdrawAllMaterials = function() {
+    if (isStashProcessing) return;
+    isStashProcessing = true;
+
+    try {
+        const player = gameState.player;
+        if (!player.bank || player.bank.length === 0) {
+            logMessage("{gray:Your vault is empty.}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            return;
+        }
+        
+        let itemsMoved = 0;
+        let inventoryFullAlerted = false;
+        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+
+        // 🚀 PERFORMANCE WIN: O(N) Array Rebuild
+        const remainingBank = [];
+
+        for (let i = 0; i < player.bank.length; i++) {
+            const item = player.bank[i];
+            if (!item) continue; 
+            
+            if (!['junk', 'ingredient', 'trade'].includes(item.type)) {
+                remainingBank.push(item);
+                continue;
+            }
+
+            const existingInvItem = player.inventory.find(invItem => invItem && invItem.name === item.name && !invItem.isEquipped);
+
+            if (!existingInvItem && player.inventory.length >= invCap) {
+                remainingBank.push(item); // Leave it in the bank
+                if (!inventoryFullAlerted) {
+                    logMessage("{red:Your inventory became full during the mass withdrawal.}");
+                    inventoryFullAlerted = true;
+                }
+                continue; 
+            }
+
+            if (existingInvItem) {
+                existingInvItem.quantity += item.quantity;
+            } else {
+                let withdrawnItem = window.cloneItemSafely(item);
+                
+                // Rehydrate template logic
+                let templateKey = withdrawnItem.templateId || getStashItemKey(withdrawnItem.name);
+                if (templateKey && typeof window.ITEM_DATA !== 'undefined' && window.ITEM_DATA[templateKey]) {
+                    const t = window.ITEM_DATA[templateKey];
+                    withdrawnItem.templateId = templateKey;
+                    withdrawnItem.effect = t.effect;
+                    withdrawnItem.onHit = t.onHit;
+                    withdrawnItem.procChance = t.procChance;
+                    withdrawnItem.inflicts = t.inflicts;
+                    withdrawnItem.inflictChance = t.inflictChance;
+                    if (t.tags) withdrawnItem.tags = [...t.tags]; 
+                }
+                player.inventory.push(withdrawnItem);
+            }
+
+            itemsMoved++;
+        }
+
+        player.bank = remainingBank;
+
+        if (itemsMoved > 0) {
+            logMessage(`{blue:Mass withdrawn ${itemsMoved} material stacks.}`);
+            
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createFloatingText(player.x, player.y, "WITHDRAWN", "#60a5fa");
+                ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 10);
+            }
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic(); 
+            
+            // Sort both to keep things tidy
+            window.sortStash(false);
+            if (typeof window.sortInventory === 'function') window.sortInventory();
+            
+            if (typeof triggerDebouncedSave === 'function') {
+                triggerDebouncedSave({ 
+                    inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
+                    bank: typeof getSanitizedBank === 'function' ? getSanitizedBank() : player.bank 
+                });
+            }
+
+            renderStash();
+            if (typeof renderInventory === 'function') renderInventory();
+        } else {
+            logMessage("{gray:No materials found in vault to withdraw.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         }
     } finally {
@@ -303,14 +413,18 @@ window.quickStackToStash = function() {
         
         let itemsMoved = 0;
 
-        // Loop backwards for safe splicing
-        for (let i = player.inventory.length - 1; i >= 0; i--) {
+        // 🚀 PERFORMANCE WIN: O(N) Array Rebuild instead of loop-splicing
+        const remainingInventory = [];
+
+        for (let i = 0; i < player.inventory.length; i++) {
             const item = player.inventory[i];
-            if (!item) continue; // 🚨 THE GHOST GUARD
+            if (!item) continue; 
             
             // BUG FIX: Prevent quick-stacking equipped items (like arrows!) or Quest items
-            if (item.isEquipped || item.type === 'quest') continue;
-            if (!window.isStackableItem(item.type)) continue;
+            if (item.isEquipped || item.type === 'quest' || !window.isStackableItem(item.type)) {
+                remainingInventory.push(item);
+                continue;
+            }
 
             // Check if this item already exists in the stash
             const existingBankItem = player.bank.find(bankItem => bankItem && bankItem.name === item.name);
@@ -318,10 +432,13 @@ window.quickStackToStash = function() {
             // If it exists in the stash, merge the stacks!
             if (existingBankItem) {
                 existingBankItem.quantity += item.quantity;
-                player.inventory.splice(i, 1);
                 itemsMoved++;
+            } else {
+                remainingInventory.push(item); // Keep in inventory since it's not a stack match
             }
         }
+
+        player.inventory = remainingInventory;
 
         if (itemsMoved > 0) {
             logMessage(`{green:Quick-stacked ${itemsMoved} item stacks into your vault.}`);
@@ -333,7 +450,6 @@ window.quickStackToStash = function() {
             
             window.sortStash(false);
             
-            // 🚨 FIREBASE OPTIMIZATION: Push to the debouncer
             if (typeof triggerDebouncedSave === 'function') {
                 triggerDebouncedSave({ 
                     inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory, 
@@ -375,18 +491,13 @@ window.sortStash = function(playSound = true) {
             }
         });
 
-        // 2. Sort by Type, then Name
-        const typeWeights = { 
-            'weapon': 1, 'armor': 2, 'accessory': 3, 'ammo': 4, 
-            'consumable': 5, 'tool': 6, 'spellbook': 7, 'quest': 8, 'trade': 9, 'junk': 10 
-        };
-
+        // 2. Sort by Type, then Name using cached weights
         consolidated.sort((a, b) => {
-            const wA = typeWeights[a.type] || 20;
-            const wB = typeWeights[b.type] || 20;
+            const wA = STASH_TYPE_WEIGHTS[a.type] || 20;
+            const wB = STASH_TYPE_WEIGHTS[b.type] || 20;
             
             if (wA !== wB) return wA - wB; 
-            return a.name.localeCompare(b.name); 
+            return (a.name || "").localeCompare(b.name || ""); 
         });
 
         player.bank = consolidated;
@@ -422,7 +533,7 @@ function renderStash() {
 
     // QoL WIN: Enhanced Tooltips parsing base item descriptions!
     const generateTooltip = (item) => {
-        let tooltip = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
+        let tooltip = typeof escapeHtml === 'function' ? escapeHtml(item.name || "Unknown Item") : (item.name || "Unknown Item");
         
         // Grab base lore if available
         let tKey = item.templateId || getStashItemKey(item.name);
@@ -465,7 +576,12 @@ function renderStash() {
             'trade': { color: 'text-yellow-400', bg: 'bg-yellow-900 border-yellow-800' },
             'ammo': { color: 'text-orange-400', bg: 'bg-orange-900 border-orange-800' },
             'junk': { color: 'text-gray-400', bg: 'bg-gray-800 border-gray-700' },
-            'quest': { color: 'text-purple-400', bg: 'bg-purple-900 border-purple-800' }
+            'quest': { color: 'text-purple-400', bg: 'bg-purple-900 border-purple-800' },
+            'tool': { color: 'text-cyan-400', bg: 'bg-cyan-900 border-cyan-800' },
+            'spellbook': { color: 'text-indigo-400', bg: 'bg-indigo-900 border-indigo-800' },
+            'skillbook': { color: 'text-yellow-400', bg: 'bg-yellow-900 border-yellow-800' },
+            'treasure_map': { color: 'text-amber-400', bg: 'bg-amber-900 border-amber-800' },
+            'journal': { color: 'text-teal-400', bg: 'bg-teal-900 border-teal-800' }
         };
         const style = tagMap[type] || { color: 'text-gray-300', bg: 'bg-gray-800 border-gray-600' };
         return `<span class="text-[8px] uppercase tracking-widest ${style.color} ${style.bg} bg-opacity-30 px-1.5 py-0.5 rounded border ml-2 shadow-inner inline-block relative -top-0.5">${type}</span>`;
@@ -483,7 +599,7 @@ function renderStash() {
             li.title = generateTooltip(item); 
             
             // 🚨 SECURITY WIN: Escape dynamic user data
-            const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
+            const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(item.name || "Unknown") : (item.name || "Unknown");
 
             // JUICE: Highlight Magic Items
             let nameColor = item.statBonuses ? 'text-fuchsia-400 font-bold' : 'text-gray-200';
@@ -538,7 +654,7 @@ function renderStash() {
             li.title = generateTooltip(item); 
             
             // 🚨 SECURITY WIN: Escape dynamic user data
-            const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
+            const safeItemName = typeof escapeHtml === 'function' ? escapeHtml(item.name || "Unknown") : (item.name || "Unknown");
 
             // JUICE: Highlight Magic Items
             let nameColor = item.statBonuses ? 'text-fuchsia-400 font-bold' : 'text-gray-200';
@@ -588,12 +704,14 @@ function renderStash() {
         else if (capacityPct > 0.8) { capColor = "text-yellow-500"; barColor = "bg-yellow-500"; }
 
         // Inject Auto-Sort alongside capacity (using Event Delegation)
-        // JUICE WIN: Added a sleek visual progress bar for Vault capacity!
         bankHeader.innerHTML = `
             <div class="flex flex-col w-full">
                 <div class="flex justify-between items-center w-full mb-1">
                     <span class="drop-shadow-sm text-purple-400">Dimensional Vault <span class="text-[10px] font-normal ${capColor} ml-1 bg-black bg-opacity-30 px-1 rounded border border-gray-700 shadow-inner">(${bank.length}/${window.MAX_STASH_SLOTS})</span></span>
-                    <button data-action="sortStash" class="text-[10px] uppercase font-bold tracking-widest bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-blue-800 active:border-b-0 active:mt-0.5" style="transform: translateZ(0);">Sort</button>
+                    <div class="flex gap-2">
+                        <button data-action="withdrawMats" class="text-[10px] uppercase font-bold tracking-widest bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-blue-800 active:border-b-0 active:mt-0.5" style="transform: translateZ(0);">Withdraw Mats</button>
+                        <button data-action="sortStash" class="text-[10px] uppercase font-bold tracking-widest bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded shadow transition-all active:scale-95 border-b-2 border-gray-800 active:border-b-0 active:mt-0.5" style="transform: translateZ(0);">Sort</button>
+                    </div>
                 </div>
                 <div class="w-full bg-gray-900 rounded h-1 border border-gray-700 shadow-inner overflow-hidden">
                     <div class="${barColor} h-full transition-all duration-300" style="width: ${pctWidth}%"></div>
@@ -663,7 +781,10 @@ function initStashListeners() {
         } 
         else if (action === 'massDeposit') {
             if (typeof window.depositAllMaterials === 'function') window.depositAllMaterials();
-        } 
+        }
+        else if (action === 'withdrawMats') {
+            if (typeof window.withdrawAllMaterials === 'function') window.withdrawAllMaterials();
+        }
         // --- List Transfer Actions ---
         else if (action === 'deposit' || action === 'withdraw') {
             const index = parseInt(btn.dataset.index, 10);
