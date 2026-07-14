@@ -8,6 +8,18 @@ const DUST_YIELDS = { 'uncommon': 1, 'rare': 3, 'epic': 8, 'legendary': 25 };
 const UPGRADE_COSTS = { 'normal': 5, 'uncommon': 15, 'rare': 30, 'epic': 75 };
 const PURIFY_COST = 40; // Flat cost to cleanse cursed items
 
+// PERFORMANCE WIN: Cache DOM lookups for the Enchanting UI
+const _enchantDOMCache = {
+    disenchantList: null,
+    enchantList: null,
+    dustDisplay: null,
+    title: null,
+    getDisenchantList: () => _enchantDOMCache.disenchantList || (document.getElementById('disenchantList') && (_enchantDOMCache.disenchantList = document.getElementById('disenchantList'))),
+    getEnchantList: () => _enchantDOMCache.enchantList || (document.getElementById('enchantList') && (_enchantDOMCache.enchantList = document.getElementById('enchantList'))),
+    getDustDisplay: () => _enchantDOMCache.dustDisplay || (document.getElementById('enchantingDustDisplay') && (_enchantDOMCache.dustDisplay = document.getElementById('enchantingDustDisplay'))),
+    getTitle: () => _enchantDOMCache.title || (document.getElementById('enchantingTitle') && (_enchantDOMCache.title = document.getElementById('enchantingTitle')))
+};
+
 // PERFORMANCE & BUG FIX WIN: Operation Lock
 // Prevents players from double-clicking the upgrade/destroy buttons and corrupting 
 // the inventory array or draining their dust into negative numbers!
@@ -34,10 +46,11 @@ function openEnchantingModal() {
 }
 
 function renderEnchantingModal() {
-    const disenchantList = document.getElementById('disenchantList');
-    const enchantList = document.getElementById('enchantList');
-    const dustDisplay = document.getElementById('enchantingDustDisplay');
-    const enchantingTitle = document.getElementById('enchantingTitle');
+    const disenchantList = _enchantDOMCache.getDisenchantList();
+    const enchantList = _enchantDOMCache.getEnchantList();
+    const dustDisplay = _enchantDOMCache.getDustDisplay();
+    const enchantingTitle = _enchantDOMCache.getTitle();
+    
     if (!disenchantList || !enchantList) return;
 
     disenchantList.innerHTML = '';
@@ -64,11 +77,44 @@ function renderEnchantingModal() {
     const disFrag = document.createDocumentFragment();
     const enchFrag = document.createDocumentFragment();
 
+    // QoL WIN: Interactive Tooltips so players know exactly what they are enchanting/shattering!
+    const generateTooltip = (item) => {
+        let tooltip = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
+        
+        let tKey = item.templateId || (typeof getTradeItemKey === 'function' ? getTradeItemKey(item.name) : null);
+        const template = typeof window.ITEM_DATA !== 'undefined' && tKey ? window.ITEM_DATA[tKey] : null;
+        
+        if (template && template.description) {
+            const cleanDesc = typeof stripColorTags === 'function' ? stripColorTags(template.description) : template.description.replace(/\{[a-zA-Z]+:(.*?)\}/g, '$1');
+            tooltip += `\n\n${cleanDesc}`;
+        }
+
+        if (item.type === 'weapon' && item.damage !== undefined) tooltip += `\nDamage: +${item.damage}`;
+        if (item.type === 'armor' && item.defense !== undefined) tooltip += `\nDefense: +${item.defense}`;
+
+        if (item.statBonuses) {
+            const bonuses = Object.entries(item.statBonuses).map(([k,v]) => `+${v} ${k.substring(0,3).toUpperCase()}`).join(', ');
+            tooltip += `\nBonuses: [${bonuses}]`;
+        }
+        return tooltip;
+    };
+
+    // UI WIN: Category tags matching the inventory style
+    const generateTypeTag = (item) => {
+        const type = item.type;
+        const isMagic = item.statBonuses && Object.keys(item.statBonuses).length > 0;
+        if (isMagic) return `<span class="text-[8px] uppercase tracking-widest text-fuchsia-300 bg-fuchsia-900 border-fuchsia-800 bg-opacity-30 px-1.5 py-0.5 rounded border ml-2 shadow-inner inline-block relative -top-0.5">MAGIC</span>`;
+        if (type === 'weapon') return `<span class="text-[8px] uppercase tracking-widest text-red-400 bg-red-900 border-red-800 bg-opacity-30 px-1.5 py-0.5 rounded border ml-2 shadow-inner inline-block relative -top-0.5">WEAPON</span>`;
+        if (type === 'armor') return `<span class="text-[8px] uppercase tracking-widest text-blue-400 bg-blue-900 border-blue-800 bg-opacity-30 px-1.5 py-0.5 rounded border ml-2 shadow-inner inline-block relative -top-0.5">ARMOR</span>`;
+        return '';
+    };
+
     player.inventory.forEach((item, index) => {
         if (!item || item.isEquipped) return;
 
         const isGear = item.type === 'weapon' || item.type === 'armor';
         const safeName = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
+        const typeTag = generateTypeTag(item);
 
         // --- DISENCHANT LIST ---
         if (isGear && item._rarity) {
@@ -80,10 +126,11 @@ function renderEnchantingModal() {
             if (item._rarity === 'legendary') rarityColor = 'text-yellow-400 font-bold text-magic-shimmer';
 
             const li = document.createElement('li');
-            li.className = `shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-red-500 transition-all duration-150`;
+            li.className = `shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-red-500 transition-all duration-150 cursor-help`;
+            li.title = generateTooltip(item);
             li.innerHTML = `
                 <div>
-                    <span class="font-bold text-lg ${rarityColor} drop-shadow-sm">${item.tile || '🎒'} ${safeName}</span>
+                    <span class="font-bold text-lg ${rarityColor} drop-shadow-sm">${item.tile || '🎒'} ${safeName} ${typeTag}</span>
                     <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Yields: <span class="text-purple-300 font-bold">+${yieldAmt} Dust</span></span>
                 </div>
                 <button data-disenchant="${index}" style="transform: translateZ(0);" class="bg-red-700 hover:bg-red-600 text-white px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 border-red-900 active:border-b-0 active:mt-0.5">Shatter</button>
@@ -102,10 +149,11 @@ function renderEnchantingModal() {
                 const btnClass = canAfford ? `bg-cyan-600 hover:bg-cyan-500 border-cyan-900 text-white` : 'bg-gray-700 border-gray-900 opacity-50 cursor-not-allowed text-gray-400';
                 
                 const li = document.createElement('li');
-                li.className = `shop-item bg-gray-900 bg-opacity-40 border border-cyan-900 rounded-lg p-3 hover:border-cyan-400 transition-all duration-150`;
+                li.className = `shop-item bg-gray-900 bg-opacity-40 border border-cyan-900 rounded-lg p-3 hover:border-cyan-400 transition-all duration-150 cursor-help`;
+                li.title = generateTooltip(item);
                 li.innerHTML = `
                     <div>
-                        <span class="font-bold text-lg text-cyan-400 drop-shadow-sm">${item.tile || '🎒'} ${safeName}</span>
+                        <span class="font-bold text-lg text-cyan-400 drop-shadow-sm">${item.tile || '🎒'} ${safeName} ${typeTag}</span>
                         <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Purify Cost: <span class="${canAfford ? 'text-cyan-300' : 'text-red-400'} font-bold">-${PURIFY_COST} Dust</span></span>
                     </div>
                     <button data-purify="${index}" style="transform: translateZ(0);" class="${btnClass} px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 active:border-b-0 active:mt-0.5 animate-pulse" ${canAfford ? '' : 'disabled'}>Purify</button>
@@ -131,10 +179,11 @@ function renderEnchantingModal() {
                 if (currentRarity === 'epic') nameColor = 'text-red-400';
 
                 const li = document.createElement('li');
-                li.className = `shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-${targetColorTheme}-500 transition-all duration-150`;
+                li.className = `shop-item bg-gray-900 bg-opacity-40 border border-gray-700 rounded-lg p-3 hover:border-${targetColorTheme}-500 transition-all duration-150 cursor-help`;
+                li.title = generateTooltip(item);
                 li.innerHTML = `
                     <div>
-                        <span class="font-bold text-lg ${nameColor} drop-shadow-sm">${item.tile || '🎒'} ${safeName}</span>
+                        <span class="font-bold text-lg ${nameColor} drop-shadow-sm">${item.tile || '🎒'} ${safeName} ${typeTag}</span>
                         <span class="block text-xs text-gray-400 mt-1 uppercase tracking-widest">Cost: <span class="${canAfford ? 'text-purple-300' : 'text-red-400'} font-bold">-${cost} Dust</span></span>
                     </div>
                     <button data-enchant="${index}" style="transform: translateZ(0);" class="${btnClass} px-3 py-1.5 rounded shadow-sm font-bold text-xs transition-transform active:scale-95 border-b-2 active:border-b-0 active:mt-0.5" ${canAfford ? '' : 'disabled'}>Infuse</button>
@@ -343,7 +392,10 @@ function handleEnchant(index) {
         player.inventory[dustIdx].quantity -= cost;
         if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
 
+        // 🚨 BUG FIX & ROBUSTNESS WIN: Detach statBonuses from Global Template!
+        // Prevents modifying `item.statBonuses` from unintentionally bleeding backwards into ITEM_DATA.
         if (!item.statBonuses) item.statBonuses = {};
+        else item.statBonuses = typeof fastClone === 'function' ? fastClone(item.statBonuses) : JSON.parse(JSON.stringify(item.statBonuses));
 
         let newRarity = 'uncommon';
         if (currentRarity === 'uncommon') newRarity = 'rare';
