@@ -8,11 +8,43 @@ const fastTravelModal = document.getElementById('fastTravelModal');
 const fastTravelList = document.getElementById('fastTravelList');
 const closeFastTravelButton = document.getElementById('closeFastTravelButton');
 
-// PERFORMANCE WIN: Cache DOM lookups used during active gameplay/validation loops
+// PERFORMANCE WIN: Expanded DOM Cache
+// Prevents querying the DOM every time the modal is opened
 const _ftDOMCache = {
     manaDisplay: null,
-    getManaDisplay: () => _ftDOMCache.manaDisplay || (document.getElementById('manaDisplay') && (_ftDOMCache.manaDisplay = document.getElementById('manaDisplay')))
+    title: null,
+    subtitle: null,
+    getManaDisplay: () => _ftDOMCache.manaDisplay || (document.getElementById('manaDisplay') && (_ftDOMCache.manaDisplay = document.getElementById('manaDisplay'))),
+    getTitle: () => _ftDOMCache.title || (document.getElementById('fastTravelTitle') && (_ftDOMCache.title = document.getElementById('fastTravelTitle'))),
+    getSubtitle: () => _ftDOMCache.subtitle || (fastTravelModal.querySelector('p.text-sm') && (_ftDOMCache.subtitle = fastTravelModal.querySelector('p.text-sm')))
 };
+
+// PERFORMANCE & EXPANDABILITY WIN: Data-Driven Biome Icons
+// Clean, iterable array replaces a massive block of if/includes statements!
+const BIOME_ICON_MAP = [
+    { words: ['forest', 'wood', 'thicket'], icon: '🌲' },
+    { words: ['mountain', 'peak', 'crag'], icon: '⛰️' },
+    { words: ['swamp', 'marsh', 'bog'], icon: '🐸' },
+    { words: ['desert', 'sand', 'dune'], icon: '🐪' },
+    { words: ['dead', 'ash', 'wastes'], icon: '💀' },
+    { words: ['water', 'sea', 'ocean', 'lake'], icon: '🌊' },
+    { words: ['plains', 'expanse', 'valley'], icon: '🌿' },
+    { words: ['volcano', 'fire', 'infernal'], icon: '🌋' },
+    { words: ['crystal', 'glimmer', 'spire'], icon: '💎' },
+    { words: ['ruin', 'castle', 'fortress', 'keep'], icon: '🏰' },
+    { words: ['mine', 'delve', 'tunnel'], icon: '⛏️' },
+    { words: ['void', 'abyss', 'rift'], icon: '🌌' },
+    { words: ['camp', 'hideout', 'spot'], icon: '⛺' }
+];
+
+function getBiomeIcon(name) {
+    if (!name) return '✨';
+    const n = name.toLowerCase();
+    for (let i = 0; i < BIOME_ICON_MAP.length; i++) {
+        if (BIOME_ICON_MAP[i].words.some(word => n.includes(word))) return BIOME_ICON_MAP[i].icon;
+    }
+    return '✨'; // Default
+}
 
 function openFastTravelModal() {
     if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
@@ -23,20 +55,24 @@ function openFastTravelModal() {
     const player = gameState.player;
     const travelCost = (player.talents && player.talents.includes('mana_flow')) ? 8 : 10;
     
-    // LORE WIN: Dynamic UI text that reacts to dimensional status
-    const title = document.getElementById('fastTravelTitle');
-    const subtitle = fastTravelModal.querySelector('p.text-sm');
+    const title = _ftDOMCache.getTitle();
+    const subtitle = _ftDOMCache.getSubtitle();
     
+    // LORE WIN: Dynamic UI text that reacts to dimensional status
     if (gameState.currentRealm !== 0 && gameState.currentRealm) {
-        if (title) title.innerHTML = "Leyline Interference";
-        if (title) title.className = "text-3xl font-bold mb-2 text-red-500 animate-pulse";
+        if (title) {
+            title.innerHTML = "Leyline Interference";
+            title.className = "text-3xl font-bold mb-2 text-red-500 animate-pulse";
+        }
         if (subtitle) {
             subtitle.innerHTML = `The local grid is severed. Only Prime Anchors remain visible.<br><span class="text-xs text-red-300 font-bold">(Emergency Recall Cost: ${travelCost} Mana)</span>`;
             subtitle.className = "text-sm text-gray-300 mb-6 bg-red-900 bg-opacity-20 p-2 rounded border border-red-800 text-center shadow-inner";
         }
     } else {
-        if (title) title.innerHTML = "Leyline Network";
-        if (title) title.className = "text-3xl font-bold mb-2 text-purple-400 drop-shadow-md";
+        if (title) {
+            title.innerHTML = "Leyline Network";
+            title.className = "text-3xl font-bold mb-2 text-purple-400 drop-shadow-md";
+        }
         if (subtitle) {
             subtitle.innerHTML = `Travel the leylines to an attuned Waystone?<br><span class="text-xs text-purple-300 font-bold">(Base Cost: ${travelCost} Mana)</span>`;
             subtitle.className = "text-sm text-gray-300 mb-6 bg-purple-900 bg-opacity-20 p-2 rounded border border-purple-800 text-center shadow-inner";
@@ -47,26 +83,6 @@ function openFastTravelModal() {
     // Hide the lore modal if it was open (since we typically open this from a Waystone)
     const loreModal = document.getElementById('loreModal');
     if (loreModal) loreModal.classList.add('hidden');
-}
-
-// LORE & UI WIN: Expanded helper to determine biome icon from regional names
-function getBiomeIcon(name) {
-    if (!name) return '✨';
-    const n = name.toLowerCase();
-    if (n.includes('forest') || n.includes('wood') || n.includes('thicket')) return '🌲';
-    if (n.includes('mountain') || n.includes('peak') || n.includes('crag')) return '⛰️';
-    if (n.includes('swamp') || n.includes('marsh') || n.includes('bog')) return '🐸';
-    if (n.includes('desert') || n.includes('sand') || n.includes('dune')) return '🐪';
-    if (n.includes('dead') || n.includes('ash') || n.includes('wastes')) return '💀';
-    if (n.includes('water') || n.includes('sea') || n.includes('ocean') || n.includes('lake')) return '🌊';
-    if (n.includes('plains') || n.includes('expanse') || n.includes('valley')) return '🌿';
-    if (n.includes('volcano') || n.includes('fire') || n.includes('infernal')) return '🌋';
-    if (n.includes('crystal') || n.includes('glimmer') || n.includes('spire')) return '💎';
-    if (n.includes('ruin') || n.includes('castle') || n.includes('fortress') || n.includes('keep')) return '🏰';
-    if (n.includes('mine') || n.includes('delve') || n.includes('tunnel')) return '⛏️';
-    if (n.includes('void') || n.includes('abyss') || n.includes('rift')) return '🌌';
-    if (n.includes('camp') || n.includes('hideout') || n.includes('spot')) return '⛺';
-    return '✨'; // Default
 }
 
 function renderFastTravelList() {
@@ -221,10 +237,13 @@ function renderFastTravelList() {
                 li.className = 'shop-item bg-purple-900 bg-opacity-10 border-gray-700 hover:border-purple-500 transition-all transform hover:-translate-y-0.5 shadow-sm hover:shadow-lg relative group';
                 li.setAttribute('onmouseenter', "if(typeof AudioSystem !== 'undefined') AudioSystem.playHover()");
                 
-                // QoL WIN: Renaming Button
+                // QoL WIN: Renaming & Forget Buttons
                 // Pops up seamlessly when hovering over the item!
                 li.innerHTML = `
-                    <button data-rename-x="${wp.x}" data-rename-y="${wp.y}" title="Rename Waypoint" class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-gray-800 hover:bg-gray-600 text-gray-300 rounded px-1.5 py-0.5 text-[9px] font-bold border border-gray-600 transition-opacity">✏️ Rename</button>
+                    <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
+                        <button data-rename-x="${wp.x}" data-rename-y="${wp.y}" title="Rename Waypoint" class="bg-gray-800 hover:bg-gray-600 text-gray-300 rounded px-1.5 py-0.5 text-[9px] font-bold border border-gray-600 shadow-sm">✏️ Rename</button>
+                        <button data-forget-x="${wp.x}" data-forget-y="${wp.y}" title="Un-attune (Forget Waypoint)" class="bg-red-900 hover:bg-red-700 text-red-300 rounded px-1.5 py-0.5 text-[9px] font-bold border border-red-700 shadow-sm">🗑️</button>
+                    </div>
                     <div>
                         <span class="font-bold text-purple-400 drop-shadow-md">${icon} ${safeName}${dangerBadge}</span>
                         <div class="text-[10px] text-gray-400 mt-1 uppercase tracking-widest">Coords: ${wp.x}, ${-wp.y} <span class="ml-2 text-purple-300 font-bold bg-black bg-opacity-30 px-1 rounded border border-gray-700">(Dist: ${wp.dist}m${wp.dir})</span></div>
@@ -252,6 +271,7 @@ window.renameWaypoint = function(wpX, wpY) {
     const currentName = player.unlockedWaypoints[wpIndex].name;
     const newName = prompt("Enter a new name for this Waystone (Max 24 characters):", currentName);
     
+    // SECURITY WIN: Strict sanitization and falsy validation
     if (newName && newName.trim() !== '') {
         const cleanName = newName.substring(0, 24).replace(/[^a-zA-Z0-9 \-']/g, '').trim();
         if (cleanName.length > 0) {
@@ -265,6 +285,34 @@ window.renameWaypoint = function(wpX, wpY) {
             // Re-render instantly
             renderFastTravelList();
         }
+    }
+};
+
+// QoL EXPANSION: Forget Waypoint
+window.forgetWaypoint = function(wpX, wpY) {
+    if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+    
+    const player = gameState.player;
+    if (!player.unlockedWaypoints) return;
+    
+    const wpIndex = player.unlockedWaypoints.findIndex(w => w.x === wpX && w.y === wpY);
+    if (wpIndex === -1) return;
+    
+    const currentName = player.unlockedWaypoints[wpIndex].name;
+    const safeName = typeof escapeHtml === 'function' ? escapeHtml(currentName) : currentName;
+    
+    if (confirm(`Are you sure you want to un-attune from '${safeName}' at (${wpX}, ${-wpY})?\n\nYou will have to physically walk back there to unlock it again.`)) {
+        player.unlockedWaypoints.splice(wpIndex, 1);
+        logMessage(`{red:You severed your connection to the ${safeName} waystone.}`);
+        
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.1, 400); // Tearing sound
+        
+        // Save to Firebase
+        if (typeof playerRef !== 'undefined') {
+            playerRef.update({ unlockedWaypoints: player.unlockedWaypoints }).catch(e => console.error(e));
+        }
+        // Re-render instantly
+        renderFastTravelList();
     }
 };
 
@@ -627,7 +675,8 @@ window.handleFastTravel = async function (targetX, targetY) {
 // in the event the teleport fails locally (e.g. out of mana, enemy blocked).
 if (fastTravelList && !fastTravelList.dataset.listenersBound) {
     fastTravelList.addEventListener('click', (e) => {
-        // Did they click the rename button?
+        
+        // 1. Did they click the rename button?
         const renameBtn = e.target.closest('button[data-rename-x]');
         if (renameBtn) {
             const tx = parseInt(renameBtn.dataset.renameX, 10);
@@ -638,7 +687,18 @@ if (fastTravelList && !fastTravelList.dataset.listenersBound) {
             return;
         }
 
-        // Did they click the teleport button?
+        // 2. Did they click the forget button?
+        const forgetBtn = e.target.closest('button[data-forget-x]');
+        if (forgetBtn) {
+            const tx = parseInt(forgetBtn.dataset.forgetX, 10);
+            const ty = parseInt(forgetBtn.dataset.forgetY, 10);
+            if (!isNaN(tx) && !isNaN(ty) && typeof window.forgetWaypoint === 'function') {
+                window.forgetWaypoint(tx, ty);
+            }
+            return;
+        }
+
+        // 3. Did they click the teleport button?
         const btn = e.target.closest('button[data-x]');
         if (btn && !btn.disabled) {
             btn.disabled = true; // UX & SECURITY: Prevent double-click mana drain exploit
