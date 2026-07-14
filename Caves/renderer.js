@@ -307,7 +307,27 @@ const TileRenderer = {
         }
     },
 
-    // 💎 Crystal Peaks (LORE WIN: Jagged procedural crystal formations)
+    // ▤ Ancient Roads (Procedural Cobblestone)
+    drawPath: (ctx, x, y, mapX, mapY, baseColor) => {
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
+        const rand = seed - Math.floor(seed);
+        
+        const tx = x * TILE_SIZE;
+        const ty = y * TILE_SIZE;
+        
+        // Draw worn cobblestones
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; // Darker stones
+        if (rand > 0.1) ctx.fillRect(tx + 2, ty + 2, 6, 4);
+        if (rand > 0.4) ctx.fillRect(tx + 10, ty + 8, 8, 5);
+        if (rand > 0.7) ctx.fillRect(tx + 4, ty + 14, 5, 4);
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'; // Lighter stones
+        if (rand < 0.3) ctx.fillRect(tx + 12, ty + 2, 5, 5);
+        if (rand > 0.3 && rand < 0.6) ctx.fillRect(tx + 2, ty + 8, 5, 4);
+    },
+
+    // 💎 Crystal Peaks (Jagged procedural crystal formations)
     drawCrystal: (ctx, x, y, mapX, mapY, baseColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
@@ -871,7 +891,7 @@ function renderTerrainCache(startX, startY) {
                         case 'd': TileRenderer.drawDeadlands(terrainCtx, x, y, mapX, mapY, bgColor, '#444'); break;
                         case 'D': TileRenderer.drawDesert(terrainCtx, x, y, mapX, mapY, bgColor); break;
                         case '🧱': TileRenderer.drawWall(terrainCtx, x, y, '#78716c', '#57534e'); break;
-                        case '▤': 
+                        case '▤': TileRenderer.drawPath(terrainCtx, x, y, mapX, mapY, '#78350f'); break;
                         case '=': TileRenderer.drawBase(terrainCtx, x, y, '#78350f'); break;
                         case '+': fgChar = '+'; fgColor = '#fbbf24'; break;
                         case '/': fgChar = '/'; fgColor = '#000'; break;
