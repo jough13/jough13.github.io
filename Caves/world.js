@@ -1177,14 +1177,15 @@ const chunkManager = {
                     });
                 }
                 
-                // --- LORE WIN: Ancient Roads ---
+                // *** THIS WAS COMMENTED OUT AS VERY CHALLENGING TO IMPLMENET IN A GRAPHICALLY PLEASING WAY ***
+                // --- Ancient Roads ---
                 // A rare, winding perlin ridge that creates unbroken stone paths across the overworld, hinting at a lost empire!
-                if (!isUnderworld && mapMode !== 'skyrealm' && typeof elevationNoise !== 'undefined') {
-                    const roadNoise = Math.abs(elevationNoise.noise(worldX / 150, worldY / 150, realmOffset + 9999) - 0.5);
-                    if (roadNoise < 0.008 && tile !== '~' && tile !== '≈' && tile !== '^') { // Thinner path!
-                        tile = '▤'; // Ancient Stone Path
-                    }
-                }
+                // if (!isUnderworld && mapMode !== 'skyrealm' && typeof elevationNoise !== 'undefined') {
+                //    const roadNoise = Math.abs(elevationNoise.noise(worldX / 150, worldY / 150, realmOffset + 9999) - 0.5);
+                //    if (roadNoise < 0.008 && tile !== '~' && tile !== '≈' && tile !== '^') { // Thinner path!
+                //        tile = '▤'; // Ancient Stone Path
+                //    }
+                // }
 
                 const featureRoll = random();
 
