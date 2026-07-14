@@ -216,8 +216,9 @@ const AudioSystem = {
     },
 
     _getSpatialData: function(x) {
-        // ROBUSTNESS WIN: Protect against NaN propagation if an entity was just deleted or passed undefined
-        if (typeof x !== 'number' || isNaN(x) || typeof gameState === 'undefined' || !gameState.player || typeof gameState.player.x !== 'number') {
+        // 🚨 ROBUSTNESS WIN: Protect against NaN propagation if an entity was just deleted or passed undefined.
+        // A NaN Pan value instantly crashes the Web Audio StereoPannerNode!
+        if (typeof x !== 'number' || !Number.isFinite(x) || typeof gameState === 'undefined' || !gameState.player || typeof gameState.player.x !== 'number') {
             return { pan: 0, distanceVol: 1.0, distanceFilter: 1.0 };
         }
         
@@ -310,6 +311,14 @@ const AudioSystem = {
         const valid = ['sine', 'square', 'sawtooth', 'triangle'];
         return valid.includes(type) ? type : 'sine';
     },
+    
+    // 🚨 AUDIO QUALITY WIN: Calculate the true tail length so reverb isn't awkwardly clipped!
+    _getTailTime: function(acoustics) {
+        if (!acoustics || acoustics.echoDelay <= 0) return 0.5;
+        // Feedback multiplier dictates how long the echo rings out.
+        // e.g. Feedback 0.7 means it takes roughly 10 delays to drop below audible volume.
+        return Math.max(0.5, (acoustics.echoDelay * 10) * acoustics.echoFeedback);
+    },
 
     // --- CORE GENERATORS ---
 
@@ -359,12 +368,13 @@ const AudioSystem = {
         
         // MEMORY LEAK FIX: Browser tabs suspended in the background sometimes fail to fire onended.
         // We use a timeout as a guaranteed cleanup fallback to unhook the nodes from the graph!
+        const tail = this._getTailTime(acoustics);
         const cleanup = () => {
             try { src.disconnect(); filter.disconnect(); gain.disconnect(); } catch(e) {}
             this._cleanupRoute(panner);
         };
         src.onended = cleanup;
-        setTimeout(cleanup, (actualDuration + 0.5) * 1000);
+        setTimeout(cleanup, (actualDuration + tail) * 1000);
     },
 
     playTone: function(freq, type, duration, vol = 0.1, pitchShift = true, slideTo = null, x = null, isUI = false) {
@@ -408,12 +418,13 @@ const AudioSystem = {
         osc.start(now);
         osc.stop(now + actualDuration + 0.1);
         
+        const tail = this._getTailTime(acoustics);
         const cleanup = () => {
             try { osc.disconnect(); gain.disconnect(); } catch(e) {}
             this._cleanupRoute(panner);
         };
         osc.onended = cleanup;
-        setTimeout(cleanup, (actualDuration + 0.5) * 1000);
+        setTimeout(cleanup, (actualDuration + tail) * 1000);
     },
 
     playChord: function(notes, type = 'sine', duration = 0.5, vol = 0.1, detune = 0, slideDown = false, x = null, isUI = false) {
@@ -453,12 +464,13 @@ const AudioSystem = {
             osc.start(now);
             osc.stop(now + actualDuration + 0.1);
             
+            const tail = this._getTailTime(acoustics);
             const cleanup = () => { 
                 try { osc.disconnect(); gain.disconnect(); } catch(e) {}
                 this._cleanupRoute(panner);
             };
             osc.onended = cleanup;
-            setTimeout(cleanup, (actualDuration + 0.5) * 1000);
+            setTimeout(cleanup, (actualDuration + tail) * 1000);
         });
     },
 
@@ -500,12 +512,13 @@ const AudioSystem = {
         osc.start(now);
         osc.stop(now + totalDuration + 0.1);
         
+        const tail = this._getTailTime(acoustics);
         const cleanup = () => { 
             try { osc.disconnect(); gain.disconnect(); } catch(e) {}
             this._cleanupRoute(panner);
         };
         osc.onended = cleanup;
-        setTimeout(cleanup, (totalDuration + 0.5) * 1000);
+        setTimeout(cleanup, (totalDuration + tail) * 1000);
     },
 
     // --- SPECIFIC SOUND EFFECTS ---
@@ -514,16 +527,52 @@ const AudioSystem = {
         if (!this.settings.steps) return;
         if (!this._throttle('step', 80)) return; 
         
-        // MOUNT AUDIO SYNERGY: Heavy mounts cause heavier footsteps!
         let weight = 1.0;
-        if (typeof gameState !== 'undefined' && gameState.player && gameState.player.isMounted) {
-            const mountTile = gameState.player.companion ? gameState.player.companion.tile : '';
-            if (['Ø', '🦖', '🧌', '🐲'].includes(mountTile)) weight = 2.5; // Massive boom
-            else if (['🐻', '🐗'].includes(mountTile)) weight = 1.5;
+        let surface = 'stone'; // Default
+        
+        // --- JUICE WIN: Terrain-Aware Footsteps! ---
+        if (typeof gameState !== 'undefined' && gameState.player && typeof chunkManager !== 'undefined') {
+            
+            // Check Mounts First
+            if (gameState.player.isMounted && gameState.player.companion) {
+                const mountTile = gameState.player.companion.tile;
+                if (['Ø', '🦖', '🧌', '🐲'].includes(mountTile)) weight = 2.5; // Massive boom
+                else if (['🐻', '🐗'].includes(mountTile)) weight = 1.5;
+            }
+            
+            // Determine Surface Type Safely
+            let currentTile = '.';
+            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
+            } else if (gameState.mapMode === 'dungeon') {
+                currentTile = chunkManager.caveMaps[gameState.currentCaveId]?.[gameState.player.y]?.[gameState.player.x] || '.';
+            } else if (gameState.mapMode === 'castle') {
+                currentTile = chunkManager.castleMaps[gameState.currentCastleId]?.[gameState.player.y]?.[gameState.player.x] || '.';
+            }
+            
+            if (['F', '.', '🌿', '🍄', '🌳'].includes(currentTile)) surface = 'grass';
+            else if (['❄️', '🧊', '🌲'].includes(currentTile)) surface = 'snow';
+            else if (['=', '▤', '🏚'].includes(currentTile) || gameState.player.isSailing || gameState.player.isBoating) surface = 'wood';
+            else if (['D', 'd', '∴'].includes(currentTile)) surface = 'sand';
         }
         
-        this.playNoise(0.08 * weight, 0.04 * weight, 500 / weight, x); 
-        this.playTone(80 / weight, 'sine', 0.05 * weight, 0.05 * weight, true, 40 / weight, x);
+        // Modulate the sounds based on the surface material!
+        if (surface === 'grass') {
+            this.playNoise(0.08 * weight, 0.02 * weight, 400 / weight, x); 
+            this.playTone(60 / weight, 'sine', 0.05 * weight, 0.03 * weight, true, 40 / weight, x);
+        } else if (surface === 'snow') {
+            this.playNoise(0.12 * weight, 0.05 * weight, 3000 / weight, x); // Crisp crunch
+            this.playTone(100 / weight, 'triangle', 0.04 * weight, 0.02 * weight, true, 50 / weight, x);
+        } else if (surface === 'wood') {
+            this.playTone(150 / weight, 'square', 0.05 * weight, 0.03 * weight, true, 50 / weight, x); // Hollow thud
+            this.playNoise(0.05 * weight, 0.03 * weight, 800 / weight, x); 
+        } else if (surface === 'sand') {
+            this.playNoise(0.15 * weight, 0.03 * weight, 600 / weight, x); // Shuffling
+        } else {
+            // Stone / Default
+            this.playNoise(0.08 * weight, 0.04 * weight, 500 / weight, x); 
+            this.playTone(80 / weight, 'sine', 0.05 * weight, 0.05 * weight, true, 40 / weight, x);
+        }
     },
     
     // NEW: Shovel digging sound
