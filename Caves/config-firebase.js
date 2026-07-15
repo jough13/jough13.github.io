@@ -174,6 +174,7 @@ let _offlineDebounceTimer = null; // UX WIN: Prevents spotty WiFi from jittering
 
 // Centralized network UI handlers so native browser events and Firebase events can share them!
 function handleConnectionEstablished() {
+    // Defuse the panic timer if we re-connected before it went off!
     if (_offlineDebounceTimer) {
         clearTimeout(_offlineDebounceTimer);
         _offlineDebounceTimer = null;
@@ -200,7 +201,7 @@ function handleConnectionEstablished() {
 }
 
 function handleConnectionLost() {
-    // Spotty WiFi Debouncer
+    // UX WIN: Spotty WiFi Debouncer
     // Give the connection 2 full seconds to stabilize before screaming at the player
     if (_offlineDebounceTimer) clearTimeout(_offlineDebounceTimer);
     
