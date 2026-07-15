@@ -1691,6 +1691,35 @@ function endPlayerTurn(turnUpdates = {}) {
         }
     }
 
+    if (player.stunTurns > 0) {
+        player.stunTurns--;
+        updates.stunTurns = player.stunTurns;
+        if (player.stunTurns === 0) logMessage("{yellow:You shake off the stun and regain your senses.}");
+    }
+
+    if (player.rootTurns > 0) {
+        player.rootTurns--;
+        updates.rootTurns = player.rootTurns;
+        if (player.rootTurns === 0) logMessage("{green:The roots binding you crumble away to dust.}");
+    }
+
+    if (player.burnTurns > 0) {
+        player.burnTurns--;
+        window.modifyVital('health', -2);
+        gameState.screenShake = 10;
+        logMessage("{orange:You take 2 burn damage...}");
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, "-2", "#f97316");
+        
+        updates.burnTurns = player.burnTurns;
+        if (player.burnTurns === 0) logMessage("{gray:The flames on your body extinguish.}");
+    }
+
+    if (player.madnessTurns > 0) {
+        player.madnessTurns--;
+        updates.madnessTurns = player.madnessTurns;
+        if (player.madnessTurns === 0) logMessage("{gold:The terrifying whispers fade. Your mind clears.}");
+    }
+
     if (player.waterBreathingTurns > 0) {
         player.waterBreathingTurns--;
         updates.waterBreathingTurns = player.waterBreathingTurns;
