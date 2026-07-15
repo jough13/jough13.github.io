@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RadLegacy Navigator v8.1 | Final Master Build</title>
+    <title>RadLegacy Navigator v8.2 | Master Build</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         /* --- DYNAMIC THEME VARIABLES --- */
@@ -165,13 +165,30 @@
         .manual-section p, .manual-section li { font-size: 0.9rem; line-height: 1.6; color: var(--text-main); }
         .manual-code { background: var(--bg-card); padding: 2px 6px; border-radius: 4px; font-family: monospace; border: 1px solid var(--slate-border); color: var(--gold-bright); }
 
+        /* --- FIXED PRINT STYLES --- */
         @media print {
-            body * { visibility: hidden; }
-            #report-modal, #report-modal * { visibility: visible; }
-            #report-modal { position: absolute; left: 0; top: 0; padding: 0; width: 100%; background: white; color: black; }
-            .report-site-block { break-inside: avoid; page-break-inside: avoid; border: 1px solid #ccc; box-shadow: none; background: white; color: black;}
-            .no-print { display: none !important; }
-            .modal-header { border-bottom: 2px solid black; }
+            body, main, .workspace-split { 
+                height: auto !important; 
+                overflow: visible !important; 
+                background: white !important;
+            }
+            #dashboard, #drop-zone, .toast-container, #toast-container, .modal-header .no-print { 
+                display: none !important; 
+            }
+            #report-modal { 
+                display: block !important; 
+                position: static !important; 
+                width: 100%; 
+                padding: 0; 
+                background: white; 
+                color: black; 
+            }
+            .report-site-block { 
+                break-inside: avoid; 
+                page-break-inside: avoid; 
+                border: 1px solid #ccc; 
+                box-shadow: none; 
+            }
             h1, h2, h3, .kp-label { color: black !important; }
         }
     </style>
@@ -251,7 +268,7 @@
                         📄 View Report (<span id="reportCount">0</span>)
                     </button>
                     <button class="theme-toggle" id="btn-view-toggle" onclick="toggleViewMode()">
-                        🔲 Grid View
+                        🔲 Switch to List
                     </button>
                     <button class="theme-toggle" onclick="toggleTheme()">
                         <span id="theme-icon">🌙</span> <span id="theme-text">Dark Mode</span>
@@ -356,11 +373,26 @@
         let sortCol = 'siteName';
         let sortAsc = true;
 
+        // --- NEW DEBOUNCE HELPER ---
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
         function getSiteId(site) { return `${site.location}:::${site.siteName}`; }
 
+        // --- STRENGTHENED SANITIZER ---
         function sanitize(str) {
             if (!str) return '';
-            return str.toString().replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return str.toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
         function safeCSV(str) {
@@ -368,12 +400,13 @@
             return `"${str.toString().replace(/"/g, '""').replace(/[\n\r]+/g, ' ')}"`;
         }
 
+        // --- FIXED STORAGE METER LOOP ---
         function updateStorageMeter() {
             let total = 0;
-            for(let x in localStorage) {
-                if(localStorage.hasOwnProperty(x)) {
-                    total += ((localStorage[x].length + x.length) * 2);
-                }
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                let value = localStorage.getItem(key);
+                total += ((value.length + key.length) * 2);
             }
             const max = 5 * 1024 * 1024; 
             let percent = (total / max) * 100;
@@ -423,7 +456,8 @@
 
         function updateViewToggleButton() {
             const btn = document.getElementById('btn-view-toggle');
-            btn.innerHTML = viewMode === 'grid' ? '🔲 Grid View' : '📄 List View';
+            // FIX #7: Changed button text logic to show the action that will happen
+            btn.innerHTML = viewMode === 'grid' ? '📄 Switch to List' : '🔲 Switch to Grid';
         }
 
         function setSort(col) {
@@ -491,7 +525,6 @@
                     console.error("Error parsing saved data.", e);
                 }
             }
-            // If no data loaded, ensure the drop-zone is visible
             document.getElementById('drop-zone').style.display = 'flex';
         });
 
@@ -506,8 +539,11 @@
                 showToast("Added to Master Report", "success");
             }
             localStorage.setItem('radReportCart', JSON.stringify(Array.from(reportCart)));
+            
             updateReportUI();
+            const currentSite = activeSiteObj; // FIX #2: Save state
             renderView(); 
+            if (currentSite) selectSite(currentSite); // FIX #2: Restore panel seamlessly
             updateStorageMeter();
         }
 
@@ -515,9 +551,12 @@
             reportCart.delete(sId);
             localStorage.setItem('radReportCart', JSON.stringify(Array.from(reportCart)));
             showToast("Site removed from report", "warning");
+            
             openReportView(); 
             updateReportUI();
+            const currentSite = activeSiteObj; // FIX #2: Save state
             renderView();
+            if (currentSite) selectSite(currentSite); // FIX #2: Restore panel seamlessly
             updateStorageMeter();
         }
 
@@ -598,7 +637,7 @@
 
             let backupData = {
                 timestamp: new Date().toISOString(),
-                version: "8.1",
+                version: "8.2",
                 database: db,
                 notes: notes,
                 reportCart: Array.from(reportCart) 
@@ -616,20 +655,22 @@
 
         async function handleFiles(files) {
             if (files.length === 0) return;
+            // FIX #8: Move fileUpload value reset to the top
+            fileUpload.value = ''; 
+            
             let allParsedData = [];
             for (let i = 0; i < files.length; i++) {
                 let file = files[i];
                 if (file.name.endsWith('.json')) {
                     await loadBackupFile(file);
-                    fileUpload.value = '';
-                    return; 
+                    // FIX #3: Replaced return with continue
+                    continue; 
                 } else {
                     const data = await readFileData(file);
                     allParsedData = allParsedData.concat(data);
                 }
             }
             if (allParsedData.length > 0) processData(allParsedData);
-            fileUpload.value = ''; 
         }
 
         function loadBackupFile(file) {
@@ -678,7 +719,6 @@
                 cleanOrphanedReportItems(); 
                 closePanel(); 
                 
-                // IMPORTANT BUG FIX: Need to clear the UI explicitly when wiping
                 document.getElementById('locationFilter').innerHTML = '<option value="ALL">All Installations</option>';
                 document.getElementById('statusFilter').innerHTML = '<option value="ALL">All Statuses</option>';
                 document.getElementById('nuclideFilter').innerHTML = '<option value="ALL">All Nuclides</option>';
@@ -741,15 +781,25 @@
             navigator.clipboard.writeText(briefText).then(() => showToast("Briefing copied to clipboard!", "success")).catch(err => alert("Failed to copy. Your browser may block clipboard access."));
         }
 
+        // --- FIXED TEXTAREA AUTOSAVE LAG AND CRASH BUG ---
         document.getElementById('userCustomNotes').addEventListener('input', function(e) {
             if (activeSiteObj) {
                 const storageKey = `radNote_${activeSiteObj.location}_${activeSiteObj.siteName}`;
-                localStorage.setItem(storageKey, e.target.value);
-                updateStorageMeter(); 
+                // FIX #6: Added try-catch for storage limits
+                try {
+                    localStorage.setItem(storageKey, e.target.value);
+                } catch (err) {
+                    showToast("Storage Limit Reached! Clear space to save notes.", "error");
+                }
+                // Meter update removed from input to avoid lag
             }
         });
+        
         document.getElementById('userCustomNotes').addEventListener('blur', function(e) {
-            if (activeSiteObj) showToast("Field notes saved locally.", "success");
+            if (activeSiteObj) {
+                updateStorageMeter(); // Updated when typing stops and focus is lost
+                showToast("Field notes saved locally.", "success");
+            }
         });
 
         function closePanel() {
@@ -792,7 +842,8 @@
                     const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
                     let fileRows = [];
                     workbook.SheetNames.forEach(sheetName => {
-                        const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {defval: ""});
+                        // --- FIXED SHEETJS DATE BUG ---
+                        const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {defval: "", raw: false});
                         json.forEach(row => row.__tabName = sheetName.trim());
                         fileRows = fileRows.concat(json);
                     });
@@ -813,27 +864,28 @@
             return "Other";
         }
 
+        // --- STRICTER ROPC PARSING ---
         function parseNuclides(rawString) {
             if (!rawString || rawString.trim() === '' || rawString.toLowerCase() === 'none') return [];
             const str = rawString.toLowerCase();
             const found = new Set();
-            if (str.includes('am-241') || str.includes('americium')) found.add('Am-241');
-            if (str.includes('c-14') || str.includes('carbon-14')) found.add('C-14');
-            if (str.includes('co-60') || str.includes('cobalt')) found.add('Co-60');
-            if (str.includes('cs-137') || str.includes('cesium')) found.add('Cs-137');
-            if (str.includes('h-3') || str.includes('tritium')) found.add('H-3');
-            if (str.includes('kr-85') || str.includes('krypton')) found.add('Kr-85');
-            if (str.includes('ni-63') || str.includes('nickel')) found.add('Ni-63');
-            if (str.includes('pb-210') || str.includes('lead')) found.add('Pb-210');
-            if (str.includes('pm-147') || str.includes('promethium')) found.add('Pm-147');
-            if (str.includes('pu-238')) found.add('Pu-238');
-            if (str.includes('pu-239') || str.includes('plutonium')) found.add('Pu-239');
-            if (str.includes('ra-226') || str.includes('radium')) found.add('Ra-226');
-            if (str.includes('sr-90') || str.includes('strontium')) found.add('Sr-90');
-            if (str.includes('th-232') || str.includes('thorium') || str.includes('thof2')) found.add('Th-232');
-            if (str.includes('u-235')) found.add('U-235');
+            if (str.match(/\bam-241\b/) || str.includes('americium')) found.add('Am-241');
+            if (str.match(/\bc-14\b/) || str.includes('carbon-14')) found.add('C-14');
+            if (str.match(/\bco-60\b/) || str.includes('cobalt')) found.add('Co-60');
+            if (str.match(/\bcs-137\b/) || str.includes('cesium')) found.add('Cs-137');
+            if (str.match(/\bh-3\b/) || str.includes('tritium')) found.add('H-3');
+            if (str.match(/\bkr-85\b/) || str.includes('krypton')) found.add('Kr-85');
+            if (str.match(/\bni-63\b/) || str.includes('nickel')) found.add('Ni-63');
+            if (str.match(/\bpb-210\b/) || str.includes('lead')) found.add('Pb-210');
+            if (str.match(/\bpm-147\b/) || str.includes('promethium')) found.add('Pm-147');
+            if (str.match(/\bpu-238\b/)) found.add('Pu-238');
+            if (str.match(/\bpu-239\b/) || str.includes('plutonium')) found.add('Pu-239');
+            if (str.match(/\bra-226\b/) || str.includes('radium')) found.add('Ra-226');
+            if (str.match(/\bsr-90\b/) || str.includes('strontium')) found.add('Sr-90');
+            if (str.match(/\bth-232\b/) || str.includes('thorium') || str.includes('thof2')) found.add('Th-232');
+            if (str.match(/\bu-235\b/)) found.add('U-235');
             if (str.match(/\bdu\b/) || str.includes('depleted uranium')) found.add('DU');
-            else if (str.includes('u-238') || str.includes('uranium')) found.add('U-238');
+            else if (str.match(/\bu-238\b/) || str.includes('uranium')) found.add('U-238');
             if (str.includes('g-ram') || str.includes('general radioactive material')) found.add('G-RAM');
             
             if (found.size === 0) return ['Unspecified'];
@@ -877,8 +929,18 @@
                 };
             });
 
+            // FIX #5: Fixed Duplicate Vulnerability
             const existingIds = new Set(db.map(s => getSiteId(s)));
-            const uniqueNewEntries = newEntries.filter(s => !existingIds.has(getSiteId(s)));
+            const uniqueNewEntries = [];
+
+            newEntries.forEach(s => {
+                const sId = getSiteId(s);
+                if (!existingIds.has(sId)) {
+                    existingIds.add(sId); // Add it to tracker immediately!
+                    uniqueNewEntries.push(s);
+                }
+            });
+
             const duplicatesIgnored = newEntries.length - uniqueNewEntries.length;
 
             db = db.concat(uniqueNewEntries);
@@ -924,7 +986,6 @@
 
             updateReportUI();
             
-            // --- CRITICAL FIX: The two missing lines that unhide the Dashboard! ---
             document.getElementById('drop-zone').style.display = 'none';
             document.getElementById('dashboard').style.display = 'flex';
             
@@ -972,12 +1033,13 @@
                 return matchLoc && matchStatus && matchNuclide && matchText;
             });
 
+            // --- FIXED EMPTY ROPC SORTING ---
             currentFilteredView.sort((a, b) => {
                 let valA = a[sortCol];
                 let valB = b[sortCol];
                 if (sortCol === 'ropcs') {
-                    valA = valA.join(', ');
-                    valB = valB.join(', ');
+                    valA = a.ropcs.length > 0 ? a.ropcs.join(', ') : 'None';
+                    valB = b.ropcs.length > 0 ? b.ropcs.join(', ') : 'None';
                 }
                 
                 let cmp = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
@@ -1091,11 +1153,16 @@
             document.getElementById('userCustomNotes').value = localStorage.getItem(storageKey) || '';
 
             const sId = getSiteId(site);
+            // FIX #4: Fixed CSS Class Mismatch on Sidebar Highlighting
             document.querySelectorAll('.site-card, .site-table-row, .nav-item').forEach(el => {
                 if (el.getAttribute('data-siteid') === sId) {
-                    el.classList.add('selected');
+                    if (el.classList.contains('nav-item')) {
+                        el.classList.add('active');
+                    } else {
+                        el.classList.add('selected');
+                    }
                 } else {
-                    el.classList.remove('selected');
+                    el.classList.remove('selected', 'active');
                 }
             });
         }
@@ -1103,7 +1170,9 @@
         document.getElementById('locationFilter').addEventListener('change', renderView);
         document.getElementById('statusFilter').addEventListener('change', renderView);
         document.getElementById('nuclideFilter').addEventListener('change', renderView);
-        document.getElementById('siteSearch').addEventListener('input', renderView);
+        
+        // --- ADDED DEBOUNCE TO SEARCH ---
+        document.getElementById('siteSearch').addEventListener('input', debounce(renderView, 250));
     </script>
 </body>
 </html>
