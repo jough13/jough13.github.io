@@ -165,7 +165,9 @@ window.LORE_STONE_MESSAGES = [
     "The giant husks in the wasteland are all that remains of the Clockwork Crusade. The titans fell when their internal fires died.",
     "The Radiant Springs are tears shed by the earth. Drink deeply to cleanse the shadows from your blood.",
     "He who pulls the blade from the stone must bear the weight of the kingdom. The further from civilization, the heavier the crown.",
-    "The Lost City sank beneath the dunes not from a storm, but to hide from the stars."
+    "The Lost City sank beneath the dunes not from a storm, but to hide from the stars.",
+    "Do not trust the voices of the spirits. They only remember their pain, not their lives.",
+    "The {purple:Void Blade} is not forged. It is grown, piece by piece, from the dying screams of stars."
 ];
 
 // ==========================================
