@@ -691,8 +691,10 @@ function useInventoryItem(itemIndex) {
             const effectConsumed = itemToUse.effect(gameState);
             
             if (effectConsumed) {
-                // The effect function might have manually spliced it (like Cloudseed), 
-                // so we check if the item is still sitting in the same index before decrementing!
+                // 🚨 BUG FIX WIN: The Empty Bottle / Drink Failsafe!
+                // If drinking a potion failed because they didn't have room for the empty bottle,
+                // `effectConsumed` will be FALSE and the potion will NOT be destroyed!
+                // If it succeeds, we verify it is still in the same slot and decrement cleanly.
                 const safeItem = player.inventory[itemIndex];
                 if (safeItem && safeItem.name === itemToUse.name && safeItem.quantity === originalQty) {
                     safeItem.quantity--;
@@ -725,7 +727,7 @@ function useInventoryItem(itemIndex) {
             if (identifiedItem._rarity === 'legendary') { colorTag = 'gold'; rarityLabel = 'Legendary'; }
             
             // --- LORE & JUICE WIN: Cursed Identifications ---
-            if (identifiedItem.name.includes("Cursed") || identifiedItem.name.includes("Doomed") || identifiedItem.name.includes("Forsaken") || identifiedItem.name.includes("Blighted") || identifiedItem.name.includes("Blood-Starved")) {
+            if (identifiedItem.name.match(/Cursed|Doomed|Forsaken|Blood-Starved|Whispering|Blighted/i)) {
                 logMessage(`{red:The item radiates malice... You identified a Cursed artifact: ${identifiedItem.name}!}`);
                 gameState.screenShake = 20; // Heavier shake
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning(); 
@@ -810,15 +812,15 @@ function useInventoryItem(itemIndex) {
             // 2. Equip New
             if (currentEquipped !== itemToUse) {
                 
-                // --- AMMO HOT-SWAPPING FIX ---
-                // If we are equipping ammo while already holding another stack of the same ammo, merge them cleanly!
-                if (slot === 'ammo' && currentEquipped) {
+                // --- 🚨 QoL WIN: AMMO HOT-SWAPPING FIX ---
+                // If we are equipping ammo while already holding another stack of the SAME ammo, merge them cleanly!
+                if (slot === 'ammo' && currentEquipped && currentEquipped.name === itemToUse.name) {
                     const existingStack = player.inventory.find(i => i && i.name === currentEquipped.name && !i.isEquipped);
                     if (existingStack) {
-                        // 1. Add the quantities together
+                        // Add the newly equipped stack quantity to the unequipped stack
                         existingStack.quantity += currentEquipped.quantity;
                         
-                        // 2. Destroy the old equipped stack so it doesn't duplicate!
+                        // Destroy the old equipped stack so it doesn't duplicate
                         const oldIndex = player.inventory.indexOf(currentEquipped);
                         if (oldIndex > -1) {
                             player.inventory.splice(oldIndex, 1);
