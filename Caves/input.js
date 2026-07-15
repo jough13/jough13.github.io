@@ -217,21 +217,24 @@ function handleInput(key) {
     // 4. Dead Check
     if (gameState.player.health <= 0) return;
 
-    // PERFORMANCE WIN: Cache the lowercased key to prevent repeated string allocations
+    // Cache the lowercased key to prevent repeated string allocations
     const lowerKey = key.toLowerCase();
 
-    // --- 🚨 INCAPACITATION GUARD (STUNS) ---
-    // BUG FIX WIN: Extracted gameplay keys into a clear check so players can't drink/mount/loot while stunned!
+    // --- INCAPACITATION GUARD (STUNS) ---
+    // Extracted gameplay keys into a clear check so players can't drink/mount/loot while stunned!
     const isGameplayKey = MOVEMENT_MAP[key] || ['q', 'z', 'g', 'r', ' ', '5', 'numpad5', 'clear', '.'].includes(lowerKey) || (!isNaN(parseInt(key)) && parseInt(key) >= 1 && parseInt(key) <= 9);
     
     if (gameState.player.stunTurns > 0 && isGameplayKey) {
         logMessage("{yellow:You are stunned and cannot act!}");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         window.inputQueue.length = 0; // Force clear the queue so they don't sprint into lava after stun ends!
+        
+        // Advance the turn so the stun timer can tick down!
+        if (typeof endPlayerTurn === 'function') endPlayerTurn();
         return;
     }
 
-    // --- BUG FIX & UX WIN: STATE CANCELLATION ---
+    // --- STATE CANCELLATION ---
     // If the player is aiming or dropping an item, but presses a UI hotkey (like 'I' for inventory),
     // automatically cancel the active state so the game doesn't get soft-locked!
     if (HOTKEY_MAPPINGS[lowerKey] || key === 'Escape') {
@@ -262,7 +265,7 @@ function handleInput(key) {
 
     // --- ESCAPE KEY / MODAL CLOSER ---
     if (key === 'Escape') {
-        // PERFORMANCE & SAFETY WIN: Aggressively clear the queue if the user panics and mashes Escape
+        // Aggressively clear the queue if the user panics and mashes Escape
         window.inputQueue.length = 0; 
 
         // Find any active modal and close it using our ultra-fast cache
