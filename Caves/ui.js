@@ -228,8 +228,13 @@ function processScreenFlash() {
     }
 
     if (canvasWrapperEl) {
-        const hex = gameState.screenFlash.color || '#ffffff';
-        const {r, g, b} = ColorUtils.hexToRgb(hex);
+        // PERFORMANCE: Cache the RGB conversion so we don't recalculate it 60 times a second!
+        if (!gameState.screenFlash._cachedRGB) {
+            const hex = gameState.screenFlash.color || '#ffffff';
+            gameState.screenFlash._cachedRGB = typeof ColorUtils !== 'undefined' ? ColorUtils.hexToRgb(hex) : {r:255, g:255, b:255};
+        }
+        
+        const {r, g, b} = gameState.screenFlash._cachedRGB;
         const shadow = `inset 0 0 150px 50px rgba(${r}, ${g}, ${b}, ${gameState.screenFlash.alpha})`;
         const bg = `rgba(${r}, ${g}, ${b}, ${gameState.screenFlash.alpha * 0.3})`; // Subtle background tint
         
@@ -300,10 +305,14 @@ const renderStats = () => {
                 element.innerHTML = `Level: ${value}${titleStr}`;
             }
             else if (statName === 'xp') {
-                const max = gameState.player.xpToNextLevel;
+                const max = Math.max(1, gameState.player.xpToNextLevel); // 🚨 ROBUSTNESS: Prevent NaN / Infinity
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
+                
+                // QoL WIN: Number Formatting
+                const displayVal = typeof window.MathUtils !== 'undefined' ? window.MathUtils.formatNum(value) : value;
+                const displayMax = typeof window.MathUtils !== 'undefined' ? window.MathUtils.formatNum(max) : max;
 
-                element.innerHTML = `<span>XP</span> <span>${value} / ${max}</span>`;
+                element.innerHTML = `<span>XP</span> <span>${displayVal} / ${displayMax}</span>`;
                 statBarElements.xp.style.width = `${percent}%`;
 
             } else if (statName === 'statPoints') {
@@ -317,7 +326,7 @@ const renderStats = () => {
                 }
 
             } else if (statName === 'health') {
-                const max = gameState.player.maxHealth;
+                const max = Math.max(1, gameState.player.maxHealth); // 🚨 ROBUSTNESS
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
 
                 statBarElements.health.style.width = `${percent}%`;
@@ -359,16 +368,15 @@ const renderStats = () => {
                 }
 
             } else if (statName === 'mana') {
-                const max = gameState.player.maxMana;
+                const max = Math.max(1, gameState.player.maxMana); // 🚨 ROBUSTNESS
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
                 
                 statBarElements.mana.style.width = `${percent}%`;
                 statBarElements.mana.style.backgroundColor = '#3b82f6';
-                
                 element.innerHTML = `<span>Mana</span> <span>${Math.floor(value)}/${max}</span>`;
 
             } else if (statName === 'stamina') {
-                const max = gameState.player.maxStamina;
+                const max = Math.max(1, gameState.player.maxStamina); // 🚨 ROBUSTNESS
                 const percent = Math.max(0, Math.min(100, (value / max) * 100));
                 statBarElements.stamina.style.width = `${percent}%`;
                 element.innerHTML = `<span>Stamina</span> <span>${Math.floor(value)}/${max}</span>`;
@@ -382,6 +390,26 @@ const renderStats = () => {
                     statBarElements.stamina.style.backgroundColor = '#16a34a'; 
                 }
 
+            } else if (statName === 'psyche') {
+                const max = Math.max(1, gameState.player.maxPsyche); // 🚨 ROBUSTNESS
+                const percent = Math.max(0, Math.min(100, (value / max) * 100));
+                
+                statBarElements.psyche.style.width = `${percent}%`;
+                statBarElements.psyche.style.backgroundColor = '#6366f1';
+                element.innerHTML = `<span>Psyche</span> <span>${Math.floor(value)}/${max}</span>`;
+
+            } else if (statName === 'hunger') {
+                const max = Math.max(1, gameState.player.maxHunger); // 🚨 ROBUSTNESS
+                const percent = Math.max(0, Math.min(100, (value / max) * 100));
+                statBarElements.hunger.style.width = `${percent}%`;
+                element.innerHTML = `<span>Hunger</span> <span>${Math.floor(percent)}%</span>`; 
+
+            } else if (statName === 'thirst') {
+                const max = Math.max(1, gameState.player.maxThirst); // 🚨 ROBUSTNESS
+                const percent = Math.max(0, Math.min(100, (value / max) * 100));
+                statBarElements.thirst.style.width = `${percent}%`;
+                element.innerHTML = `<span>Thirst</span> <span>${Math.floor(percent)}%</span>`;
+
             } else if (statName === 'wits') {
                 let witsText = `${label}: ${value}`;
                 if (gameState.player.witsBonus > 0) {
@@ -389,27 +417,11 @@ const renderStats = () => {
                 }
                 element.innerHTML = witsText;
 
-             } else if (statName === 'psyche') {
-                const max = gameState.player.maxPsyche;
-                const percent = Math.max(0, Math.min(100, (value / max) * 100));
+            } else if (statName === 'coins') {
+                // QoL WIN: Number Formatting for Gold!
+                const displayCoins = typeof window.MathUtils !== 'undefined' ? window.MathUtils.formatNum(value) : value;
+                element.textContent = `Coins: ${displayCoins}`;
                 
-                statBarElements.psyche.style.width = `${percent}%`;
-                statBarElements.psyche.style.backgroundColor = '#6366f1';
-                
-                element.innerHTML = `<span>Psyche</span> <span>${Math.floor(value)}/${max}</span>`;
-
-            } else if (statName === 'hunger') {
-                const max = gameState.player.maxHunger;
-                const percent = Math.max(0, Math.min(100, (value / max) * 100));
-                statBarElements.hunger.style.width = `${percent}%`;
-                element.innerHTML = `<span>Hunger</span> <span>${Math.floor(percent)}%</span>`; 
-
-            } else if (statName === 'thirst') {
-                const max = gameState.player.maxThirst;
-                const percent = Math.max(0, Math.min(100, (value / max) * 100));
-                statBarElements.thirst.style.width = `${percent}%`;
-                element.innerHTML = `<span>Thirst</span> <span>${Math.floor(percent)}%</span>`;
-
             } else {
                 element.textContent = `${label}: ${value}`;
             }
@@ -434,7 +446,7 @@ const renderStats = () => {
         if (gameState.player.frostbiteTurns > 0) canvasWrapperEl.classList.add('frost-flash');
         else if (gameState.player.madnessTurns > 0 || gameState.currentCaveTheme === 'VOID') canvasWrapperEl.classList.add('void-distortion');
         
-        // 🚨 PERFORMANCE WIN: Trigger dedicated high-speed animation loop
+        // Trigger dedicated high-speed animation loop
         if (gameState.screenFlash && gameState.screenFlash.alpha > 0) {
             if (!window._flashAnimRunning) {
                 window._flashAnimRunning = true;
@@ -660,16 +672,29 @@ const renderInventory = () => {
             }
             
             itemDiv.className = slotClass;
-            
-            // SECURITY & PERFORMANCE WIN: Removed inline onclick for event delegation logic!
             itemDiv.dataset.index = index;
 
-            // Build the Native Tooltip
+            // --- LORE & QoL WIN: Deep Native Tooltips ---
             let title = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
-            if (item.type === 'treasure_map') title = `🗺️ ${title}`; // QoL
+            if (item.type === 'treasure_map') title = `🗺️ ${title}`;
             
+            // 1. Pull the item's lore description from the global template (or the item itself)
+            let tKey = item.templateId;
+            if (!tKey && typeof window.ITEM_DATA !== 'undefined') {
+                tKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === item.name);
+            }
+            const template = typeof window.ITEM_DATA !== 'undefined' && tKey ? window.ITEM_DATA[tKey] : null;
+            
+            const rawDesc = item.description || (template ? template.description : null);
+            if (rawDesc) {
+                // Strip all the {color:} tags so it renders beautifully in a native title attribute!
+                const cleanDesc = typeof stripColorTags === 'function' ? stripColorTags(rawDesc) : rawDesc.replace(/\{[a-zA-Z]+:(.*?)\}/g, '$1');
+                title += `\n\n${cleanDesc}`;
+            }
+            
+            // 2. Add Stats
             if (item.statBonuses) {
-                title += " (";
+                title += "\n\n(";
                 let bonuses = [];
                 for (const stat in item.statBonuses) {
                     bonuses.push(`${item.statBonuses[stat] > 0 ? '+' : ''}${item.statBonuses[stat]} ${stat}`);
@@ -677,7 +702,7 @@ const renderInventory = () => {
                 title += bonuses.join(', ') + ")";
             }
 
-            // QoL WIN: Dynamic Equipment Comparison!
+            // 3. Dynamic Equipment Comparison!
             if (!item.isEquipped && (item.type === 'weapon' || item.type === 'armor')) {
                 const isWpn = item.type === 'weapon';
                 const equippedItem = isWpn ? gameState.player.equipment.weapon : gameState.player.equipment.armor;
@@ -840,6 +865,18 @@ const renderEquipment = () => {
         }
     };
 
+    // Helper for pulling clean descriptions for equipment tooltips
+    const getCleanDesc = (item) => {
+        if (!item) return '';
+        let tKey = item.templateId;
+        if (!tKey && typeof window.ITEM_DATA !== 'undefined') {
+            tKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === item.name);
+        }
+        const template = typeof window.ITEM_DATA !== 'undefined' && tKey ? window.ITEM_DATA[tKey] : null;
+        const rawDesc = item.description || (template ? template.description : '');
+        return typeof stripColorTags === 'function' ? stripColorTags(rawDesc) : rawDesc.replace(/\{[a-zA-Z]+:(.*?)\}/g, '$1');
+    };
+
     // --- DAMAGE CALCULATION ---
     const playerStrength = player.strength + (player.strengthBonus || 0); 
     const weaponDamage = weapon.damage || 0;
@@ -852,6 +889,9 @@ const renderEquipment = () => {
     if (weapon.name === 'Fists') {
         weaponTooltip = "Empty Main Hand: Your fists deal base damage based on Strength.";
     } else {
+        const desc = getCleanDesc(weapon);
+        if (desc) weaponTooltip += `\n\n${desc}`;
+        
         if (weapon.isTwoHanded) weaponTooltip += "\n(Two-Handed Weapon)";
         
         if (weapon.statBonuses) {
@@ -892,11 +932,16 @@ const renderEquipment = () => {
     
     if (armor.name === 'Tattered Rags' || armor.name === 'Simple Tunic') {
         armorTooltip = `${safeArmorName}\nEmpty Body: No robust armor equipped. You are vulnerable.`;
-    } else if (armor.statBonuses) {
-        const bonusArr = Object.entries(armor.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
-        if (bonusArr.length > 0) {
-            armorString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
-            armorTooltip += `\nBonuses: ${Object.entries(armor.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
+    } else {
+        const desc = getCleanDesc(armor);
+        if (desc) armorTooltip += `\n\n${desc}`;
+        
+        if (armor.statBonuses) {
+            const bonusArr = Object.entries(armor.statBonuses).map(([k, v]) => `${v >= 0 ? '+' : ''}${v} ${k.substring(0,3).toUpperCase()}`);
+            if (bonusArr.length > 0) {
+                armorString += ` <span class="text-indigo-400">[${bonusArr.join(', ')}]</span>`;
+                armorTooltip += `\nBonuses: ${Object.entries(armor.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
+            }
         }
     }
     if (buffDefense > 0) {
@@ -953,6 +998,10 @@ const renderEquipment = () => {
         applySlotStyle(oIcon, !offhand);
         
         let oTip = offhand ? `${typeof escapeHtml === 'function' ? escapeHtml(offhand.name) : offhand.name}\nDefense: +${offhand.defense || 0}` : 'Empty Off-Hand: Equip a shield to block or a secondary item.';
+        if (offhand) {
+            const desc = getCleanDesc(offhand);
+            if (desc) oTip += `\n\n${desc}`;
+        }
         if (weapon.isTwoHanded && !offhand) oTip = `(Blocked: Wielding a Two-Handed Weapon)`;
         oIcon.title = oTip;
     }
@@ -960,7 +1009,11 @@ const renderEquipment = () => {
         cIcon.textContent = acc ? acc.tile.replace(/[a-zA-Z]/g, '') : '💍';
         applySlotStyle(cIcon, !acc);
         let accTooltip = acc ? (typeof escapeHtml === 'function' ? escapeHtml(acc.name) : acc.name) : 'Empty Accessory: Magic rings and amulets go here.';
-        if (acc && acc.statBonuses) accTooltip += `\nBonuses: ${Object.entries(acc.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
+        if (acc) {
+            const desc = getCleanDesc(acc);
+            if (desc) accTooltip += `\n\n${desc}`;
+            if (acc.statBonuses) accTooltip += `\nBonuses: ${Object.entries(acc.statBonuses).map(([k, v]) => `+${v} ${k}`).join(', ')}`;
+        }
         cIcon.title = accTooltip;
     }
     if (mIcon && ammoCount) {
@@ -968,7 +1021,12 @@ const renderEquipment = () => {
         applySlotStyle(mIcon, !ammo);
         
         const safeAmmoName = ammo && typeof escapeHtml === 'function' ? escapeHtml(ammo.name) : (ammo ? ammo.name : '');
-        mIcon.title = ammo ? `${safeAmmoName}\nDamage: +${ammo.damage || 0}\nRemaining: ${ammo.quantity}` : 'Empty Ammo: Arrows and bolts for ranged weapons.';
+        let mTip = ammo ? `${safeAmmoName}\nDamage: +${ammo.damage || 0}\nRemaining: ${ammo.quantity}` : 'Empty Ammo: Arrows and bolts for ranged weapons.';
+        if (ammo) {
+            const desc = getCleanDesc(ammo);
+            if (desc) mTip += `\n\n${desc}`;
+        }
+        mIcon.title = mTip;
         
         ammoCount.textContent = ammo ? ammo.quantity : '';
         ammoCount.style.display = ammo ? 'block' : 'none';
