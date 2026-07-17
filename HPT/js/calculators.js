@@ -9567,12 +9567,7 @@ const NeutronCalculator = ({radionuclides}) => {
 
 /**
  * @description A unified calculator for determining detection limits for both
- * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc and Emission Yield.
- */
-
-/**
- * @description A unified calculator for determining detection limits for both
- * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc, Emission Yield, and Instrument Reading outputs.
+ * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc, Emission Yield, and Instrument Reading outputs for both Static and Scan modes.
  */
 
 const MDACalculator = ({ onNavClick, onDeepLink }) => {
@@ -9693,7 +9688,6 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         
         if (isNaN(bkgRate) || isNaN(Ts) || Ts <= 0) throw new Error('Please enter valid, positive numbers for background and time.');
         
-        // Currie Equation
         let Ld_counts;
         
         if (backgroundMode === 'rate') {
@@ -9707,7 +9701,6 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         
         let finalMDA;
         
-        // Only mandate efficiencies and yield if calculating activity or concentration
         if (outputUnit === 'counts') {
             finalMDA = Ld_counts;
         } else if (outputUnit === 'cpm') {
@@ -9719,7 +9712,6 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             const Y = yield_pct / 100.0;
             const E_total = getTotalEfficiency(ei, es);
             
-            // Apply Yield (Y) to the DPM conversion
             const mda_dpm = (Ld_counts / Ts) / (E_total * Y);
             
             if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') {
@@ -9739,8 +9731,6 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         let timeToTarget = null;
         const target = safeParseFloat(targetLimit);
         if (outputUnit !== 'counts' && !isNaN(target) && target > 0 && finalMDA > target) {
-            // Inverse Currie Approximation for Time: t = (k^2 * R_b) / (Limit * Eff)^2 ... roughly
-            // Simplified: T_new = T_old * (MDA_old / Limit)^2
             timeToTarget = Ts * Math.pow(finalMDA / target, 2);
         }
         
@@ -9780,26 +9770,31 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
 
         let scan_mda;
         let mdcr_surveyor_cpm;
+        
+        // NEW: Calculate the interval clicks directly
+        let bkg_counts_interval = (bkgRate / 60.0) * residence_time_s;
+        let net_counts_interval;
 
         if (bkgRate < 5) {
-            // Low-Background Alpha Scanning (Poisson Probability Model per MARSSIM 6.7.2.2 / NUREG-1507)
-            // Assumes a 90% confidence target for registering at least one count over the source area, P(N>=1) = 0.90
+            // Low-Background Alpha Scanning
             const P_det = 0.90;
-            const source_counts_required = -Math.log(1 - P_det); // -ln(1 - 0.90) ≈ 2.303 counts
+            net_counts_interval = -Math.log(1 - P_det); // ~2.303 counts
             
-            // Required net count rate during observation window
-            mdcr_surveyor_cpm = (source_counts_required / residence_time_s) * 60;
-            
-            // Scan MDC incorporating instrument, surface, yield, and normalized active geometry factors
+            mdcr_surveyor_cpm = (net_counts_interval / residence_time_s) * 60;
             scan_mda = mdcr_surveyor_cpm / (E_total * Y * (total_area_cm2 / 100.0));
         } else {
-            // Standard NUREG-1507 Gaussian d' Index approach
-            const b_cps = bkgRate / 60.0;
-            const B_i = b_cps * residence_time_s; // Counts in observation interval
+            // Standard NUREG-1507 Gaussian
+            const B_i = bkg_counts_interval; 
             const mdcr_instrument_cpm = dp * Math.sqrt(B_i) * (60 / residence_time_s);
             mdcr_surveyor_cpm = mdcr_instrument_cpm / Math.sqrt(p);
+            
+            // Re-calculate the expected net clicks the surveyor needs to hear in the interval
+            net_counts_interval = (mdcr_surveyor_cpm / 60.0) * residence_time_s;
+            
             scan_mda = mdcr_surveyor_cpm / (E_total * Y * (total_area_cm2 / 100.0));
         }
+
+        const gross_counts_interval = bkg_counts_interval + net_counts_interval;
 
         setResult({
             type: 'scan',
@@ -9807,6 +9802,9 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             scan_mda: scan_mda.toPrecision(3),
             scan_mdcr: mdcr_surveyor_cpm.toFixed(0),
             gross_mdcr: (mdcr_surveyor_cpm + bkgRate).toFixed(0),
+            bkg_counts_interval: bkg_counts_interval.toFixed(2),
+            net_counts_interval: net_counts_interval.toFixed(2),
+            gross_counts_interval: gross_counts_interval.toFixed(2),
             isAlphaWarn: bkgRate < 5
         });
     }, [backgroundCpm, probeDimension, instrumentEff, surfaceEff, scanSpeed, dprime, surveyorEff, probeArea, emissionYield]);
@@ -9998,6 +9996,26 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* NEW: Clicks Per Interval Block */}
+                                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
+                                    <p className="text-xs uppercase font-bold text-slate-500 text-center mb-2">Target Clicks per {result.obs_interval}s Sweep</p>
+                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700">
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Bkg Clicks</p>
+                                            <p className="font-mono font-bold text-sky-600 dark:text-sky-400">{result.bkg_counts_interval}</p>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700">
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Net Clicks</p>
+                                            <p className="font-mono font-bold text-sky-600 dark:text-sky-400">{result.net_counts_interval}</p>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700">
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Total Clicks</p>
+                                            <p className="font-mono font-bold text-sky-600 dark:text-sky-400">{result.gross_counts_interval}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {result.isAlphaWarn && (
                                     <p className="text-xs text-amber-600 mt-3 text-center bg-amber-50 p-2 rounded">
                                         <strong>Note:</strong> Background is very low (&lt;5 cpm). MARSSIM probability methods (Section 6.7.2.2) may be more accurate than the <em>d'</em> method for Alpha scanning.
