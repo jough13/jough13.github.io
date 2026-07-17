@@ -9567,7 +9567,8 @@ const NeutronCalculator = ({radionuclides}) => {
 
 /**
  * @description A unified calculator for determining detection limits for both
- * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc, Emission Yield, MARSSIM L_C/L_D, and Instrument Reading outputs.
+ * MARSSIM-compliant static counts and scanning surveys. 
+ * Features: "Time to Target" reverse calc, Emission Yield, MARSSIM LC/LD, Instrument Readings, and seamless State Syncing.
  */
 
 const MDACalculator = ({ onNavClick, onDeepLink }) => {
@@ -9580,7 +9581,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
     const [mdaMode, setMdaMode] = React.useState(() => localStorage.getItem('mda_mdaMode') || MDA_MODE_STATIC);
     
     // Shared State
-    const [backgroundMode, setBackgroundMode] = React.useState('counts'); // Default to paired observations
+    const [backgroundMode, setBackgroundMode] = React.useState('counts');
     const [backgroundCpm, setBackgroundCpm] = React.useState(() => localStorage.getItem('mda_backgroundCpm') || '50');
     const [bkgCounts, setBkgCounts] = React.useState('50');
     const [bkgTime, setBkgTime] = React.useState('1');
@@ -9607,17 +9608,18 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
     const [error, setError] = React.useState('');
     
     // --- Data and Constants ---
-    const MDA_UNIT_CONFIG = { 'counts': { label: 'LLD (counts)', category: 'Counts', requires: [] }, 'cpm': { label: 'LLD Rate (cpm)', category: 'Rate', requires: [] }, 'dpm': { label: 'Activity (dpm)', category: 'Activity', requires: ['efficiency'] }, 'Bq': { label: 'Activity (Bq)', category: 'Activity', requires: ['efficiency'] }, 'µCi': { label: 'Activity (µCi)', category: 'Activity', requires: ['efficiency'] }, 'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration', requires: ['efficiency', 'area'] }, 'Bq/L': { label: 'Liquid (Bq/L)', category: 'Concentration', requires: ['efficiency', 'volume'] }, 'pCi/g': { label: 'Solid (pCi/g)', category: 'Concentration', requires: ['efficiency', 'mass'] } };
-    const dpmFactors = { 'dpm': 1, 'Bq': 1 / 60, 'µCi': 1 / 2.22e6 };
+    const MDA_UNIT_CONFIG = React.useMemo(() => ({ 'counts': { label: 'LLD (counts)', category: 'Counts', requires: [] }, 'cpm': { label: 'LLD Rate (cpm)', category: 'Rate', requires: [] }, 'dpm': { label: 'Activity (dpm)', category: 'Activity', requires: ['efficiency'] }, 'Bq': { label: 'Activity (Bq)', category: 'Activity', requires: ['efficiency'] }, 'µCi': { label: 'Activity (µCi)', category: 'Activity', requires: ['efficiency'] }, 'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration', requires: ['efficiency', 'area'] }, 'Bq/L': { label: 'Liquid (Bq/L)', category: 'Concentration', requires: ['efficiency', 'volume'] }, 'pCi/g': { label: 'Solid (pCi/g)', category: 'Concentration', requires: ['efficiency', 'mass'] } }), []);
+    const dpmFactors = React.useMemo(() => ({ 'dpm': 1, 'Bq': 1 / 60, 'µCi': 1 / 2.22e6 }), []);
     
     const PROBE_PRESETS = {
-        'custom': { label: 'Custom / Manual', area: '', dim: '' },
-        '44-9': { label: 'Pancake GM (Ludlum 44-9)', area: '15', dim: '4.4' },
-        '43-5': { label: 'Alpha Scint. (Ludlum 43-5)', area: '50', dim: '7.6' },
-        '43-37': { label: 'Floor Monitor (Gas Prop)', area: '584', dim: '13' },
-        '43-68': { label: 'Handheld Gas Prop', area: '100', dim: '10' },
-        '43-89': { label: 'Alpha/Beta Scint (Square)', area: '100', dim: '10' },
-        '43-93': { label: 'Alpha/Beta Scint (Round)', area: '100', dim: '11' }
+        'custom': { label: 'Custom / Manual', area: '', dim: '', iEff: '', sEff: '' },
+        '44-9': { label: 'Pancake GM (Ludlum 44-9)', area: '15', dim: '4.4', iEff: '10', sEff: '50' },
+        '43-5': { label: 'Alpha Scint. (Ludlum 43-5)', area: '50', dim: '7.6', iEff: '27', sEff: '25' },
+        '43-37_b': { label: 'Floor Monitor (Gas Prop) - Beta', area: '584', dim: '13', iEff: '20', sEff: '50' },
+        '43-37_a': { label: 'Floor Monitor (Gas Prop) - Alpha', area: '584', dim: '13', iEff: '40', sEff: '25' },
+        '43-68_b': { label: 'Handheld Gas Prop - Beta', area: '100', dim: '10', iEff: '20', sEff: '50' },
+        '43-89_a': { label: 'Alpha/Beta Scint (Square) - Alpha', area: '100', dim: '10', iEff: '15', sEff: '25' },
+        '43-93_b': { label: 'Alpha/Beta Scint (Round) - Beta', area: '100', dim: '11', iEff: '15', sEff: '50' }
     };
     
     React.useEffect(() => {
@@ -9638,15 +9640,31 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         localStorage.setItem('mda_targetLimit', targetLimit);
     }, [mdaMode, backgroundCpm, instrumentEff, surfaceEff, probeArea, emissionYield, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, probeDimension, dprime, surveyorEff, targetLimit]);
     
-    React.useEffect(() => { setResult(null); setError(''); }, [mdaMode]);
-    
+    // Seamless State Handlers to prevent UI jitter
     const handlePresetChange = (key) => {
         const p = PROBE_PRESETS[key];
         if (p && key !== 'custom') {
             setProbeArea(p.area);
             setProbeDimension(p.dim);
+            if(p.iEff) setInstrumentEff(p.iEff);
+            if(p.sEff) setSurfaceEff(p.sEff);
             addToast(`Loaded settings for ${p.label}`);
         }
+    };
+
+    const handleBackgroundModeSwitch = (mode) => {
+        if (mode === 'rate' && backgroundMode === 'counts') {
+            const cts = safeParseFloat(bkgCounts);
+            const tm = safeParseFloat(bkgTime);
+            if (!isNaN(cts) && !isNaN(tm) && tm > 0) setBackgroundCpm((cts / tm).toString());
+        } else if (mode === 'counts' && backgroundMode === 'rate') {
+            const rate = safeParseFloat(backgroundCpm);
+            if (!isNaN(rate)) {
+                setBkgCounts(rate.toString());
+                setBkgTime('1');
+            }
+        }
+        setBackgroundMode(mode);
     };
     
     const handleTabSwitch = (newMode) => {
@@ -9656,7 +9674,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             if (!isNaN(cts) && !isNaN(tm) && tm > 0) {
                 setBackgroundCpm((cts / tm).toString());
                 setBackgroundMode('rate');
-                addToast("Background rate synced from counts.");
+                addToast("Background rate synced for scanning.");
             }
         }
         setMdaMode(newMode);
@@ -9688,24 +9706,20 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         
         if (isNaN(bkgRate) || isNaN(Ts) || Ts <= 0) throw new Error('Please enter valid, positive numbers for background and time.');
         
-        // MARSSIM Critical Level & Detection Limit (Counts)
+        // MARSSIM Critical Level & Detection Limit (Counts) using Exact Values (3)
         let Lc_counts;
         let Ld_counts;
         
         if (backgroundMode === 'rate') {
-            // 1. Established background rate baseline (Tb >> Ts)
             Lc_counts = 1.645 * Math.sqrt(bkgRate * Ts);
             Ld_counts = 3 + 3.29 * Math.sqrt(bkgRate * Ts);
         } else {
-            // 2. Exact NUREG-1507 variance propagation. 
-            // Automatically yields the 4.65 multiplier when Ts == Tb!
             Lc_counts = 1.645 * Math.sqrt(bkgRate * Ts * (1 + (Ts / Tb)));
             Ld_counts = 3 + 3.29 * Math.sqrt(bkgRate * Ts * (1 + (Ts / Tb)));
         }
         
         let finalMDA;
         
-        // Only mandate efficiencies and yield if calculating activity or concentration
         if (outputUnit === 'counts') {
             finalMDA = Ld_counts;
         } else if (outputUnit === 'cpm') {
@@ -9716,8 +9730,6 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             
             const Y = yield_pct / 100.0;
             const E_total = getTotalEfficiency(ei, es);
-            
-            // Apply Yield (Y) to the DPM conversion
             const mda_dpm = (Ld_counts / Ts) / (E_total * Y);
             
             if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') {
@@ -9737,8 +9749,6 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         let timeToTarget = null;
         const target = safeParseFloat(targetLimit);
         if (outputUnit !== 'counts' && !isNaN(target) && target > 0 && finalMDA > target) {
-            // Inverse Currie Approximation for Time: t = (k^2 * R_b) / (Limit * Eff)^2 ... roughly
-            // Simplified: T_new = T_old * (MDA_old / Limit)^2
             timeToTarget = Ts * Math.pow(finalMDA / target, 2);
         }
         
@@ -9754,7 +9764,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             grossCounts: (Ld_counts + (bkgRate * Ts)).toFixed(0)
         });
         
-    }, [backgroundMode, bkgCounts, bkgTime, backgroundCpm, grossTime, instrumentEff, surfaceEff, outputUnit, probeArea, sampleVolume, sampleMass, emissionYield, targetLimit]);
+    }, [backgroundMode, bkgCounts, bkgTime, backgroundCpm, grossTime, instrumentEff, surfaceEff, outputUnit, probeArea, sampleVolume, sampleMass, emissionYield, targetLimit, dpmFactors, MDA_UNIT_CONFIG]);
     
     const handleScanCalculate = React.useCallback(() => {
         const bkgRate = safeParseFloat(backgroundCpm);
@@ -9763,7 +9773,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         const eff_s = safeParseFloat(surfaceEff);
         const speed_cms = safeParseFloat(scanSpeed);
         const dp = safeParseFloat(dprime);
-        const p = safeParseFloat(surveyorEff); // Surveyor Efficiency
+        const p = safeParseFloat(surveyorEff); 
         const total_area_cm2 = safeParseFloat(probeArea);
         const yield_pct = safeParseFloat(emissionYield);
 
@@ -9780,7 +9790,6 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         let scan_mda;
         let mdcr_surveyor_cpm;
         
-        // Calculate the interval clicks directly
         let bkg_counts_interval = (bkgRate / 60.0) * residence_time_s;
         let net_counts_interval;
 
@@ -9788,7 +9797,6 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             // Low-Background Alpha Scanning
             const P_det = 0.90;
             net_counts_interval = -Math.log(1 - P_det); // ~2.303 counts
-            
             mdcr_surveyor_cpm = (net_counts_interval / residence_time_s) * 60;
             scan_mda = mdcr_surveyor_cpm / (E_total * Y * (total_area_cm2 / 100.0));
         } else {
@@ -9796,10 +9804,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             const B_i = bkg_counts_interval; 
             const mdcr_instrument_cpm = dp * Math.sqrt(B_i) * (60 / residence_time_s);
             mdcr_surveyor_cpm = mdcr_instrument_cpm / Math.sqrt(p);
-            
-            // Re-calculate the expected net clicks the surveyor needs to hear in the interval
             net_counts_interval = (mdcr_surveyor_cpm / 60.0) * residence_time_s;
-            
             scan_mda = mdcr_surveyor_cpm / (E_total * Y * (total_area_cm2 / 100.0));
         }
 
@@ -9818,14 +9823,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         });
     }, [backgroundCpm, probeDimension, instrumentEff, surfaceEff, scanSpeed, dprime, surveyorEff, probeArea, emissionYield]);
     
-    const handleSaveToHistory = () => {
-        if (!result) return;
-        let inputs = mdaMode === MDA_MODE_STATIC ? `Time: ${grossTime} min` : `Speed: ${scanSpeed} cm/s`;
-        let resString = mdaMode === MDA_MODE_STATIC ? `${result.MDA} ${result.unit}` : `${result.scan_mda} dpm/100cm²`;
-        addHistory({ id: Date.now(), type: mdaMode === MDA_MODE_STATIC ? 'Static MDA' : 'Scan MDC', icon: ICONS.search, inputs: inputs, result: resString, view: VIEWS.MDA });
-        addToast("Calculation saved to history!");
-    };
-    
+    // Auto-calculate unified effect
     React.useEffect(() => {
         try {
             setError(''); setResult(null);
@@ -9833,9 +9831,18 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             else handleScanCalculate();
         } catch (e) { setError(e.message); setResult(null); }
     }, [mdaMode, backgroundMode, backgroundCpm, bkgCounts, bkgTime, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, dprime, surveyorEff, probeArea, instrumentEff, surfaceEff, probeDimension, targetLimit, emissionYield, handleStaticCalculate, handleScanCalculate]);
-    
+
+    const handleSaveToHistory = () => {
+        if (!result) return;
+        let inputs = mdaMode === MDA_MODE_STATIC ? `Time: ${grossTime} min` : `Speed: ${scanSpeed} cm/s`;
+        let resString = mdaMode === MDA_MODE_STATIC ? `${result.MDA} ${result.unit}` : `${result.scan_mda} dpm/100cm²`;
+        addHistory({ id: Date.now(), type: mdaMode === MDA_MODE_STATIC ? 'Static MDA' : 'Scan MDC', icon: ICONS.search, inputs: inputs, result: resString, view: VIEWS.MDA });
+        addToast("Calculation saved to history!");
+    };
+
     const handleClearInputs = () => {
         setMdaMode(MDA_MODE_STATIC);
+        setBackgroundMode('counts');
         setBackgroundCpm('50'); setBkgCounts('50'); setBkgTime('1');
         setInstrumentEff('20'); setSurfaceEff('50'); setProbeArea('15'); setEmissionYield('100');
         setGrossTime('1'); setOutputUnit('dpm/100cm²'); setTargetLimit('');
@@ -9854,8 +9861,8 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                 </div>
 
                 <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                    <button onClick={() => handleTabSwitch(MDA_MODE_STATIC)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_STATIC ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Static Count MDA</button>
-                    <button onClick={() => handleTabSwitch(MDA_MODE_SCAN)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_SCAN ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Scan Survey MDC</button>
+                    <button onClick={() => handleTabSwitch(MDA_MODE_STATIC)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_STATIC ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Static Count MDA</button>
+                    <button onClick={() => handleTabSwitch(MDA_MODE_SCAN)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_SCAN ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Scan Survey MDC</button>
                 </div>
             
                 <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 mb-4">
@@ -9871,8 +9878,8 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             
                     {mdaMode === MDA_MODE_STATIC && (
                         <div className="flex bg-slate-100 dark:bg-slate-900 rounded p-1 text-xs">
-                            <button onClick={() => setBackgroundMode('rate')} className={`flex-1 py-1 rounded ${backgroundMode === 'rate' ? 'bg-white dark:bg-slate-600 shadow' : ''}`}>Enter Rate (CPM)</button>
-                            <button onClick={() => setBackgroundMode('counts')} className={`flex-1 py-1 rounded ${backgroundMode === 'counts' ? 'bg-white dark:bg-slate-600 shadow' : ''}`}>Enter Counts</button>
+                            <button onClick={() => handleBackgroundModeSwitch('rate')} className={`flex-1 py-1 rounded transition-colors ${backgroundMode === 'rate' ? 'bg-white dark:bg-slate-600 shadow text-sky-600 font-bold' : 'hover:bg-slate-200 dark:hover:bg-slate-800'}`}>Enter Rate (CPM)</button>
+                            <button onClick={() => handleBackgroundModeSwitch('counts')} className={`flex-1 py-1 rounded transition-colors ${backgroundMode === 'counts' ? 'bg-white dark:bg-slate-600 shadow text-sky-600 font-bold' : 'hover:bg-slate-200 dark:hover:bg-slate-800'}`}>Enter Counts</button>
                         </div>
                     )}
             
@@ -9939,7 +9946,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                     </div>
                 )}
             
-                {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+                {error && <p className="text-red-500 text-sm text-center mt-4 bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</p>}
             
                 {result && (
                     <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 animate-fade-in shadow-sm">
@@ -9954,6 +9961,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                                 <div className="flex items-center justify-center gap-2 mb-4">
                                     <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.MDA}</span>
                                     <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit}</span>
+                                    <CopyButton textToCopy={result.MDA} />
                                 </div>
             
                                 {targetLimit && (
@@ -10009,6 +10017,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                                 <div className="flex items-center justify-center gap-2">
                                     <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.scan_mda}</span>
                                     <span className="text-md font-semibold text-slate-600 dark:text-slate-300">dpm/100cm²</span>
+                                    <CopyButton textToCopy={result.scan_mda} />
                                 </div>
                                 <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
                                     <p className="text-xs uppercase font-bold text-slate-500 text-center mb-2">Surveyor Min. Detectable Count Rate</p>
