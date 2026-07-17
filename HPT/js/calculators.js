@@ -9567,7 +9567,7 @@ const NeutronCalculator = ({radionuclides}) => {
 
 /**
  * @description A unified calculator for determining detection limits for both
- * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc, Emission Yield, and Instrument Reading outputs for both Static and Scan modes.
+ * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc, Emission Yield, MARSSIM L_C/L_D, and Instrument Reading outputs.
  */
 
 const MDACalculator = ({ onNavClick, onDeepLink }) => {
@@ -9688,19 +9688,24 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         
         if (isNaN(bkgRate) || isNaN(Ts) || Ts <= 0) throw new Error('Please enter valid, positive numbers for background and time.');
         
+        // MARSSIM Critical Level & Detection Limit (Counts)
+        let Lc_counts;
         let Ld_counts;
         
         if (backgroundMode === 'rate') {
             // 1. Established background rate baseline (Tb >> Ts)
+            Lc_counts = 1.645 * Math.sqrt(bkgRate * Ts);
             Ld_counts = 2.71 + 3.29 * Math.sqrt(bkgRate * Ts);
         } else {
             // 2. Exact NUREG-1507 variance propagation. 
             // Automatically yields the 4.65 multiplier when Ts == Tb!
+            Lc_counts = 1.645 * Math.sqrt(bkgRate * Ts * (1 + (Ts / Tb)));
             Ld_counts = 2.71 + 3.29 * Math.sqrt(bkgRate * Ts * (1 + (Ts / Tb)));
         }
         
         let finalMDA;
         
+        // Only mandate efficiencies and yield if calculating activity or concentration
         if (outputUnit === 'counts') {
             finalMDA = Ld_counts;
         } else if (outputUnit === 'cpm') {
@@ -9712,6 +9717,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             const Y = yield_pct / 100.0;
             const E_total = getTotalEfficiency(ei, es);
             
+            // Apply Yield (Y) to the DPM conversion
             const mda_dpm = (Ld_counts / Ts) / (E_total * Y);
             
             if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') {
@@ -9731,12 +9737,15 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         let timeToTarget = null;
         const target = safeParseFloat(targetLimit);
         if (outputUnit !== 'counts' && !isNaN(target) && target > 0 && finalMDA > target) {
+            // Inverse Currie Approximation for Time: t = (k^2 * R_b) / (Limit * Eff)^2 ... roughly
+            // Simplified: T_new = T_old * (MDA_old / Limit)^2
             timeToTarget = Ts * Math.pow(finalMDA / target, 2);
         }
         
         setResult({ 
             type: 'static', 
-            LLD: Ld_counts.toPrecision(3), 
+            LC: Lc_counts.toFixed(1),
+            LD: Ld_counts.toFixed(1), 
             MDA: finalMDA.toPrecision(3), 
             unit: outputUnit,
             timeToTarget: timeToTarget ? timeToTarget.toFixed(1) : null,
@@ -9771,7 +9780,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         let scan_mda;
         let mdcr_surveyor_cpm;
         
-        // NEW: Calculate the interval clicks directly
+        // Calculate the interval clicks directly
         let bkg_counts_interval = (bkgRate / 60.0) * residence_time_s;
         let net_counts_interval;
 
@@ -9942,13 +9951,13 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                                     {['cpm', 'counts'].includes(result.unit) ? 'Detection Limit (Ld)' : 'Minimum Detectable Activity'}
                                 </p>
             
-                                <div className="flex items-center justify-center gap-2">
+                                <div className="flex items-center justify-center gap-2 mb-4">
                                     <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.MDA}</span>
                                     <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit}</span>
                                 </div>
             
                                 {targetLimit && (
-                                    <div className={`mt-3 p-3 rounded text-center border-l-4 ${safeParseFloat(result.MDA) <= safeParseFloat(targetLimit) ? 'bg-green-100 border-green-500 text-green-800' : 'bg-red-100 border-red-500 text-red-800'}`}>
+                                    <div className={`mt-3 mb-4 p-3 rounded text-center border-l-4 ${safeParseFloat(result.MDA) <= safeParseFloat(targetLimit) ? 'bg-green-100 border-green-500 text-green-800' : 'bg-red-100 border-red-500 text-red-800'}`}>
                                         <p className="font-bold text-sm">{safeParseFloat(result.MDA) <= safeParseFloat(targetLimit) ? "PASS: Meets Limit" : "FAIL: Exceeds Limit"}</p>
                                         {safeParseFloat(result.MDA) > safeParseFloat(targetLimit) && result.timeToTarget && (
                                             <p className="text-xs mt-1">
@@ -9957,6 +9966,24 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                                         )}
                                     </div>
                                 )}
+
+                                {/* MARSSIM L_C and L_D Display */}
+                                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
+                                    <div className="grid grid-cols-2 gap-4 text-center">
+                                        <div>
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">MARSSIM Critical Level (L<sub>C</sub>)</p>
+                                            <Tooltip text="If net sample counts exceed this, it is statistically likely that activity is present.">
+                                                <p className="font-mono font-bold text-slate-700 dark:text-slate-200 cursor-help text-lg">{result.LC} <span className="text-xs font-normal text-slate-500">counts</span></p>
+                                            </Tooltip>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">MARSSIM Detection Limit (L<sub>D</sub>)</p>
+                                            <Tooltip text="The minimum number of net sample counts required to ensure a 95% detection rate.">
+                                                <p className="font-mono font-bold text-slate-700 dark:text-slate-200 cursor-help text-lg">{result.LD} <span className="text-xs font-normal text-slate-500">counts</span></p>
+                                            </Tooltip>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
                                     <p className="text-xs uppercase font-bold text-slate-500 text-center mb-2">Instrument Reading at MDA</p>
@@ -9997,7 +10024,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                                     </div>
                                 </div>
 
-                                {/* NEW: Clicks Per Interval Block */}
+                                {/* Clicks Per Interval Block */}
                                 <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
                                     <p className="text-xs uppercase font-bold text-slate-500 text-center mb-2">Target Clicks per {result.obs_interval}s Sweep</p>
                                     <div className="grid grid-cols-3 gap-2 text-center">
