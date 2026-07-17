@@ -9695,12 +9695,12 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         if (backgroundMode === 'rate') {
             // 1. Established background rate baseline (Tb >> Ts)
             Lc_counts = 1.645 * Math.sqrt(bkgRate * Ts);
-            Ld_counts = 2.71 + 3.29 * Math.sqrt(bkgRate * Ts);
+            Ld_counts = 3 + 3.29 * Math.sqrt(bkgRate * Ts);
         } else {
             // 2. Exact NUREG-1507 variance propagation. 
             // Automatically yields the 4.65 multiplier when Ts == Tb!
             Lc_counts = 1.645 * Math.sqrt(bkgRate * Ts * (1 + (Ts / Tb)));
-            Ld_counts = 2.71 + 3.29 * Math.sqrt(bkgRate * Ts * (1 + (Ts / Tb)));
+            Ld_counts = 3 + 3.29 * Math.sqrt(bkgRate * Ts * (1 + (Ts / Tb)));
         }
         
         let finalMDA;
@@ -10517,7 +10517,7 @@ const MdaCalculator = ({ bkgCounts, setBkgCounts, countTime, setCountTime, bkgTi
             
             // MATH CLEANUP: Universal NUREG-1507 exact formulation.
             // This mathematically handles BOTH paired (Ts=Tb) and unpaired count times perfectly.
-            const Ld_rate = (2.71 / Ts) + 3.29 * Math.sqrt(Rb * (1/Ts + 1/Tb));
+            const Ld_rate = (3 / Ts) + 3.29 * Math.sqrt(Rb * (1/Ts + 1/Tb));
             const Lc_rate = 1.645 * Math.sqrt(Rb * (1/Ts + 1/Tb));
             
             // Convert back to counts for standard lab display
