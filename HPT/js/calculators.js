@@ -9570,6 +9570,11 @@ const NeutronCalculator = ({radionuclides}) => {
  * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc and Emission Yield.
  */
 
+/**
+ * @description A unified calculator for determining detection limits for both
+ * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc, Emission Yield, and Instrument Reading outputs.
+ */
+
 const MDACalculator = ({ onNavClick, onDeepLink }) => {
     const MDA_MODE_STATIC = 'static';
     const MDA_MODE_SCAN = 'scan';
@@ -9691,11 +9696,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         // Currie Equation
         let Ld_counts;
         
-        if (backgroundMode === 'counts' && Math.abs(Ts - Tb) > 0.01 * Ts) {
-            // 1. Paired observations with different individual times (Ts ≠ Tb)
-            // Uses the NUREG-1507 exact variance propagation formula
-            Ld_counts = 2.71 + 3.29 * Math.sqrt(bkgRate * Ts * (1 + (Ts / Tb)));
-        } else if (backgroundMode === 'rate') {
+        if (backgroundMode === 'rate') {
             // 1. Established background rate baseline (Tb >> Ts)
             Ld_counts = 2.71 + 3.29 * Math.sqrt(bkgRate * Ts);
         } else {
@@ -9748,7 +9749,10 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             LLD: Ld_counts.toPrecision(3), 
             MDA: finalMDA.toPrecision(3), 
             unit: outputUnit,
-            timeToTarget: timeToTarget ? timeToTarget.toFixed(1) : null
+            timeToTarget: timeToTarget ? timeToTarget.toFixed(1) : null,
+            netCpm: (Ld_counts / Ts).toFixed(1),
+            grossCpm: ((Ld_counts / Ts) + bkgRate).toFixed(1),
+            grossCounts: (Ld_counts + (bkgRate * Ts)).toFixed(0)
         });
         
     }, [backgroundMode, bkgCounts, bkgTime, backgroundCpm, grossTime, instrumentEff, surfaceEff, outputUnit, probeArea, sampleVolume, sampleMass, emissionYield, targetLimit]);
@@ -9802,6 +9806,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             obs_interval: residence_time_s.toPrecision(2),
             scan_mda: scan_mda.toPrecision(3),
             scan_mdcr: mdcr_surveyor_cpm.toFixed(0),
+            gross_mdcr: (mdcr_surveyor_cpm + bkgRate).toFixed(0),
             isAlphaWarn: bkgRate < 5
         });
     }, [backgroundCpm, probeDimension, instrumentEff, surfaceEff, scanSpeed, dprime, surveyorEff, probeArea, emissionYield]);
@@ -9866,48 +9871,48 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {backgroundMode === 'rate' || mdaMode === MDA_MODE_SCAN ? (
-                            <div><label className="block text-sm font-medium">Background Rate (cpm)</label><input type="number" inputMode="decimal" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Background Rate (cpm)</label><input type="number" min="0" step="any" inputMode="decimal" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                         ) : (
                             <>
-                                <div><label className="block text-sm font-medium">Bkg Counts</label><input type="number" inputMode="decimal" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                                <div><label className="block text-sm font-medium">Bkg Time (min)</label><input type="number" inputMode="decimal" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                                <div><label className="block text-sm font-medium">Bkg Counts</label><input type="number" min="0" step="any" inputMode="decimal" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                                <div><label className="block text-sm font-medium">Bkg Time (min)</label><input type="number" min="0" step="any" inputMode="decimal" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                             </>
                         )}
             
-                        <div><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" inputMode="decimal" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                        <div><label className="block text-sm font-medium">Instrument Eff. (%)</label><input type="number" inputMode="decimal" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                        <div><label className="block text-sm font-medium">Source Eff. (%)</label><input type="number" inputMode="decimal" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                        <div><label className="block text-sm font-medium">Emission Yield (%)</label><input type="number" inputMode="decimal" value={emissionYield} onChange={e => setEmissionYield(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        <div><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" min="0" step="any" inputMode="decimal" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        <div><label className="block text-sm font-medium">Instrument Eff. (%)</label><input type="number" min="0" step="any" inputMode="decimal" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        <div><label className="block text-sm font-medium">Source Eff. (%)</label><input type="number" min="0" step="any" inputMode="decimal" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        <div><label className="block text-sm font-medium">Emission Yield (%)</label><input type="number" min="0" step="any" inputMode="decimal" value={emissionYield} onChange={e => setEmissionYield(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                     </div>
                 </div>
             
                 {mdaMode === MDA_MODE_STATIC ? (
                     <div className="space-y-4 animate-fade-in">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" inputMode="decimal" value={grossTime} onChange={e => setGrossTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" min="0" step="any" inputMode="decimal" value={grossTime} onChange={e => setGrossTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                             <div><label className="block text-sm font-medium">Desired Unit</label><select value={outputUnit} onChange={e => setOutputUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(MDA_UNIT_CONFIG).map(u => <option key={u} value={u}>{MDA_UNIT_CONFIG[u].label}</option>)}</select></div>
                         </div>
                         {MDA_UNIT_CONFIG[outputUnit].requires.includes('volume') && (
-                            <div><label className="block text-sm font-medium">Sample Volume (L)</label><input type="number" inputMode="decimal" value={sampleVolume} onChange={e => setSampleVolume(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Sample Volume (L)</label><input type="number" min="0" step="any" inputMode="decimal" value={sampleVolume} onChange={e => setSampleVolume(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                         )}
                         {MDA_UNIT_CONFIG[outputUnit].requires.includes('mass') && (
-                            <div><label className="block text-sm font-medium">Sample Mass (g)</label><input type="number" inputMode="decimal" value={sampleMass} onChange={e => setSampleMass(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Sample Mass (g)</label><input type="number" min="0" step="any" inputMode="decimal" value={sampleMass} onChange={e => setSampleMass(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                         )}
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Target Limit (Optional)</label>
                             <div className="flex items-center gap-2">
-                                <input type="number" inputMode="decimal" value={targetLimit} onChange={e => setTargetLimit(e.target.value)} placeholder={`e.g. 1000`} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                                <input type="number" min="0" step="any" inputMode="decimal" value={targetLimit} onChange={e => setTargetLimit(e.target.value)} placeholder={`e.g. 1000`} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
                                 <span className="text-xs text-slate-500 mt-1 whitespace-nowrap">{outputUnit}</span>
                             </div>
                         </div>
                     </div>
                 ) : (
                     <div className="space-y-4 animate-fade-in">
-                        <ContextualNote type="info">Calculates Scan MDC based on NUREG-1507 / MARSSIM.  <strong>d'</strong> is the detectability index (default 1.38 for 95% detection/60% false positive).</ContextualNote>
+                        <ContextualNote type="info">Calculates Scan MDC based on NUREG-1507 / MARSSIM.  <strong>d'</strong> is the detectability index.</ContextualNote>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label className="block text-sm font-medium">Scan Speed (cm/s)</label><input type="number" inputMode="decimal" value={scanSpeed} onChange={e => setScanSpeed(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                            <div><label className="block text-sm font-medium">Probe Dimension (Scan Direction)</label><input type="number" inputMode="decimal" value={probeDimension} onChange={e => setProbeDimension(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                            <div><label className="block text-sm font-medium">Surveyor Efficiency (p)</label><input type="number" inputMode="decimal" value={surveyorEff} onChange={e => setSurveyorEff(e.target.value)} step="0.1" min="0" max="1" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Scan Speed (cm/s)</label><input type="number" min="0" step="any" inputMode="decimal" value={scanSpeed} onChange={e => setScanSpeed(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Probe Dimension (Scan Direction)</label><input type="number" min="0" step="any" inputMode="decimal" value={probeDimension} onChange={e => setProbeDimension(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Surveyor Efficiency (p)</label><input type="number" min="0" step="any" inputMode="decimal" value={surveyorEff} onChange={e => setSurveyorEff(e.target.value)} step="0.1" max="1" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                             <div>
                                 <Tooltip text="Detectability Index (d'). Represents the trade-off between True Positive detections (95%) and False Positives (NUREG-1507 Table 6.1).">
                                     <label className="block text-sm font-medium cursor-help underline decoration-dotted">Index (d')</label>
@@ -9954,6 +9959,24 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                                         )}
                                     </div>
                                 )}
+
+                                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
+                                    <p className="text-xs uppercase font-bold text-slate-500 text-center mb-2">Instrument Reading at MDA</p>
+                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700">
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Net Rate</p>
+                                            <p className="font-mono font-bold text-sky-600 dark:text-sky-400">{result.netCpm} <span className="text-xs font-normal text-slate-500">cpm</span></p>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700">
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Gross Rate</p>
+                                            <p className="font-mono font-bold text-sky-600 dark:text-sky-400">{result.grossCpm} <span className="text-xs font-normal text-slate-500">cpm</span></p>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700">
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Gross Counts</p>
+                                            <p className="font-mono font-bold text-sky-600 dark:text-sky-400">{result.grossCounts}</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </>
                         ) : (
                             <>
@@ -9962,12 +9985,21 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                                     <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.scan_mda}</span>
                                     <span className="text-md font-semibold text-slate-600 dark:text-slate-300">dpm/100cm²</span>
                                 </div>
-                                <div className="mt-2 text-center border-t border-slate-200 dark:border-slate-600 pt-2">
-                                    <p className="text-xs text-slate-500">Surveyor Minimum Detectable Count Rate</p>
-                                    <p className="font-mono font-bold text-lg text-slate-700 dark:text-slate-200">{result.scan_mdcr} net cpm</p>
+                                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
+                                    <p className="text-xs uppercase font-bold text-slate-500 text-center mb-2">Surveyor Min. Detectable Count Rate</p>
+                                    <div className="grid grid-cols-2 gap-4 text-center">
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700">
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Net MDCR</p>
+                                            <p className="font-mono font-bold text-sky-600 dark:text-sky-400 text-lg">{result.scan_mdcr} <span className="text-xs font-normal text-slate-500">cpm</span></p>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700">
+                                            <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Gross MDCR</p>
+                                            <p className="font-mono font-bold text-sky-600 dark:text-sky-400 text-lg">{result.gross_mdcr} <span className="text-xs font-normal text-slate-500">cpm</span></p>
+                                        </div>
+                                    </div>
                                 </div>
                                 {result.isAlphaWarn && (
-                                    <p className="text-xs text-amber-600 mt-2 text-center bg-amber-50 p-2 rounded">
+                                    <p className="text-xs text-amber-600 mt-3 text-center bg-amber-50 p-2 rounded">
                                         <strong>Note:</strong> Background is very low (&lt;5 cpm). MARSSIM probability methods (Section 6.7.2.2) may be more accurate than the <em>d'</em> method for Alpha scanning.
                                     </p>
                                 )}
