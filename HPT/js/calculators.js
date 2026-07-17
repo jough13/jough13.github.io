@@ -10444,25 +10444,13 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
         </div>
     );
 };
- 
-/**
- * @description A unified module for standard laboratory statistics calculations.
- * Includes: MDA (Currie), Chi-Squared, Dead Time, RPD, and FWHM.
- */
-
 // 1. MDA Calculator (Currie Equation)
 const MdaCalculator = ({ bkgCounts, setBkgCounts, countTime, setCountTime, bkgTime, setBkgTime, efficiency, setEfficiency, effUnit, setEffUnit, probeArea, setProbeArea, result, setResult }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
     
-    // Units config for display
-    const MDA_UNIT_CONFIG = { 
-        'counts': { label: 'LLD (counts)', category: 'Counts' }, 
-        'cpm': { label: 'LLD Rate (cpm)', category: 'Rate' }, 
-        'dpm': { label: 'Activity (dpm)', category: 'Activity' }, 
-        'pCi': { label: 'Activity (pCi)', category: 'Activity' }, 
-        'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration' }
-    };
+    // NEW: Added Chemical Recovery / Yield for laboratory processing
+    const [recovery, setRecovery] = React.useState('100');
 
     React.useEffect(() => {
         try {
@@ -10470,76 +10458,81 @@ const MdaCalculator = ({ bkgCounts, setBkgCounts, countTime, setCountTime, bkgTi
             const Ts = safeParseFloat(countTime);
             const Tb = safeParseFloat(bkgTime);
             const effVal = safeParseFloat(efficiency);
+            const recVal = safeParseFloat(recovery);
             const area = safeParseFloat(probeArea);
             
-            if (isNaN(Rb) || isNaN(Ts) || isNaN(Tb) || isNaN(effVal) || Ts <= 0 || Tb <= 0) { setResult(null); return; }
+            if ([Rb, Ts, Tb, effVal, recVal].some(isNaN) || Ts <= 0 || Tb <= 0 || recVal <= 0) { 
+                setResult(null); return; 
+            }
             
             // Efficiency -> Decimal
             const effDec = effUnit === '%' ? effVal / 100 : effVal;
+            const recDec = recVal / 100;
             if (effDec <= 0) { setResult(null); return; }
             
-            // Currie Equation (Paired vs Unpaired)
-            // Lc = Critical Level (Is it real?)
-            // Ld = Detection Limit (Can I see it?)
-            let Lc, Ld;
+            // MATH CLEANUP: Universal NUREG-1507 exact formulation.
+            // This mathematically handles BOTH paired (Ts=Tb) and unpaired count times perfectly.
+            const Ld_rate = (2.71 / Ts) + 3.29 * Math.sqrt(Rb * (1/Ts + 1/Tb));
+            const Lc_rate = 1.645 * Math.sqrt(Rb * (1/Ts + 1/Tb));
             
-            if (Math.abs(Ts - Tb) < 0.01) {
-                // Paired Observations (Ts = Tb) -> Simplified Currie
-                // Ld = 2.71 + 4.65 * sqrt(BkgCounts)
-                const B = Rb * Tb;
-                Lc = 2.33 * Math.sqrt(B);
-                Ld = 2.71 + 4.65 * Math.sqrt(B);
-            } else {
-                // Unpaired (Different times) -> NUREG-1507 exact formulation
-                // Ld (rate) = (2.71/Ts) + 3.29 * sqrt( Rb * (1/Ts + 1/Tb) )
-                const term1 = 2.71 / Ts;
-                const term2 = 3.29 * Math.sqrt(Rb * (1/Ts + 1/Tb));
-                const Ld_rate = term1 + term2;
-                Ld = Ld_rate * Ts; // Convert back to counts for display consistency
-                
-                // Lc (rate) = 1.645 * sqrt( Rb * (1/Ts + 1/Tb) )
-                const Lc_rate = 1.645 * Math.sqrt(Rb * (1/Ts + 1/Tb));
-                Lc = Lc_rate * Ts;
-            }
+            // Convert back to counts for standard lab display
+            const Ld = Ld_rate * Ts; 
+            const Lc = Lc_rate * Ts;
             
-            // Calculate MDA (Activity)
-            // MDA = Ld / (T * Eff * Yield * 2.22) -> Yield assumed 1 for now
+            // Calculate MDA (Activity) incorporating Chemical Recovery / Yield
             const Ld_rate_cpm = Ld / Ts;
-            const mda_dpm = Ld_rate_cpm / effDec;
+            const mda_dpm = Ld_rate_cpm / (effDec * recDec);
             const mda_pCi = mda_dpm / 2.22;
             const mdc_dpm_100cm2 = (mda_dpm / area) * 100;
             
-            setResult({ Lc: Math.round(Lc), Ld: Math.round(Ld), mda_dpm, mda_pCi, mdc: mdc_dpm_100cm2 });
+            setResult({ 
+                Lc: Math.round(Lc), 
+                Ld: Math.round(Ld), 
+                mda_dpm, 
+                mda_pCi, 
+                mdc: mdc_dpm_100cm2,
+                netCpm: Ld_rate_cpm.toFixed(2),
+                grossCpm: (Ld_rate_cpm + Rb).toFixed(2),
+                grossCounts: Math.round(Ld + (Rb * Ts))
+            });
             
         } catch (e) { setResult(null); }
-    }, [bkgCounts, countTime, bkgTime, efficiency, effUnit, probeArea]);
+    }, [bkgCounts, countTime, bkgTime, efficiency, effUnit, probeArea, recovery]);
     
     const handleSave = () => {
         if (result) {
-            addHistory({ id: Date.now(), type: 'MDA Calc', icon: ICONS.microscope, inputs: `Bkg: ${bkgCounts}c/${bkgTime}m`, result: `MDA: ${result.mda_dpm.toFixed(1)} dpm`, view: VIEWS.LAB_STATS });
+            addHistory({ id: Date.now(), type: 'Lab MDA', icon: ICONS.microscope, inputs: `Bkg: ${bkgCounts}c/${bkgTime}m`, result: `MDA: ${result.mda_dpm.toFixed(1)} dpm`, view: VIEWS.LAB_STATS });
             addToast("Saved!");
         }
     };
     
     return (
         <div className="space-y-4">
-            <ContextualNote type="info"><strong>Currie Equation:</strong> Calculates the <i>a priori</i> detection limit (Ld) ensuring 95% confidence of detection.</ContextualNote>
+            <ContextualNote type="info"><strong>Currie Equation:</strong> Calculates the <i>a priori</i> detection limit (Ld) ensuring 95% confidence of detection. Tailored for laboratory counting systems.</ContextualNote>
             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                    <div><label className="block text-sm font-medium">Bkg Counts</label><input type="number" inputMode="decimal" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                    <div><label className="block text-sm font-medium">Bkg Time (min)</label><input type="number" inputMode="decimal" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                    <div><label className="block text-sm font-medium">Bkg Counts</label><input type="number" min="0" step="any" inputMode="decimal" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                    <div><label className="block text-sm font-medium">Bkg Time (min)</label><input type="number" min="0" step="any" inputMode="decimal" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                    <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" inputMode="decimal" value={countTime} onChange={e => setCountTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                    <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" min="0" step="any" inputMode="decimal" value={countTime} onChange={e => setCountTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                     <div>
-                        <label className="block text-sm font-medium">Efficiency</label>
+                        <label className="block text-sm font-medium">Detector Efficiency</label>
                         <div className="flex">
-                            <input type="number" inputMode="decimal" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                            <input type="number" min="0" step="any" inputMode="decimal" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
                             <select value={effUnit} onChange={e => setEffUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs"><option>%</option><option>dec</option></select>
                         </div>
                     </div>
                 </div>
-                <div><label className="block text-sm font-medium">Probe Area (cm²) <span className="text-xs text-slate-400 font-normal">(For MDC)</span></label><input type="number" inputMode="decimal" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <Tooltip text="Percentage of the sample recovered after chemical processing/separation.">
+                            <label className="block text-sm font-medium cursor-help underline decoration-dotted">Chem Recovery / Yield (%)</label>
+                        </Tooltip>
+                        <input type="number" min="0" step="any" inputMode="decimal" value={recovery} onChange={e => setRecovery(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" placeholder="100"/>
+                    </div>
+                    <div><label className="block text-sm font-medium">Filter Area (cm²) <span className="text-xs text-slate-400 font-normal">(For MDC)</span></label><input type="number" min="0" step="any" inputMode="decimal" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                </div>
             </div>
             
             {result && (
@@ -10558,16 +10551,35 @@ const MdaCalculator = ({ bkgCounts, setBkgCounts, countTime, setCountTime, bkgTi
                     <div className="grid grid-cols-2 gap-4 text-center border-t border-slate-200 dark:border-slate-600 pt-4">
                         <div>
                             <p className="text-xs text-slate-500">Critical Level (Lc)</p>
-                            <p className="font-mono font-bold">{result.Lc} counts</p>
+                            <Tooltip text="If sample counts exceed this, it is highly likely activity is present."><p className="font-mono font-bold cursor-help">{result.Lc} counts</p></Tooltip>
                         </div>
                         <div>
                             <p className="text-xs text-slate-500">Detection Limit (Ld)</p>
-                            <p className="font-mono font-bold">{result.Ld} counts</p>
+                            <Tooltip text="The minimum number of sample counts required to ensure a 95% detection rate."><p className="font-mono font-bold cursor-help">{result.Ld} counts</p></Tooltip>
                         </div>
                     </div>
+
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
+                        <p className="text-xs uppercase font-bold text-slate-500 text-center mb-2">Machine Reading at MDA</p>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                            <div className="bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700">
+                                <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Net Rate</p>
+                                <p className="font-mono font-bold text-sky-600 dark:text-sky-400">{result.netCpm} <span className="text-xs font-normal text-slate-500">cpm</span></p>
+                            </div>
+                            <div className="bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700">
+                                <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Gross Rate</p>
+                                <p className="font-mono font-bold text-sky-600 dark:text-sky-400">{result.grossCpm} <span className="text-xs font-normal text-slate-500">cpm</span></p>
+                            </div>
+                            <div className="bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-100 dark:border-slate-700">
+                                <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Gross Counts</p>
+                                <p className="font-mono font-bold text-sky-600 dark:text-sky-400">{result.grossCounts}</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600 text-center">
-                        <p className="text-xs text-slate-500">Surface MDC</p>
-                        <p className="font-bold text-slate-700 dark:text-slate-200">{result.mdc.toFixed(0)} dpm/100cm²</p>
+                        <p className="text-xs text-slate-500">Filter/Surface MDC</p>
+                        <p className="font-bold text-slate-700 dark:text-slate-200">{result.mdc.toFixed(1)} dpm/100cm²</p>
                     </div>
                 </div>
             )}
