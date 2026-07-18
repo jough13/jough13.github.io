@@ -19,20 +19,26 @@ window.getInventoryCap = function(player) {
     if (player && player.equipment) {
         for (let i = 0; i < _EQUIPMENT_SLOTS.length; i++) {
             const item = player.equipment[_EQUIPMENT_SLOTS[i]];
-            if (item && item.statBonuses && typeof item.statBonuses.carryCapacity === 'number') {
-                cap += item.statBonuses.carryCapacity;
+            // parseInt guarantees we don't accidentally do string concatenation (e.g. 9 + "1" = 91)
+            if (item && item.statBonuses && item.statBonuses.carryCapacity) {
+                cap += parseInt(item.statBonuses.carryCapacity, 10) || 0;
             }
         }
     }
     
     // Mount Saddlebag Hook
-    if (player && player.isMounted && player.companion && typeof player.companion.carryCapacity === 'number') {
-        cap += player.companion.carryCapacity;
+    if (player && player.isMounted && player.companion && player.companion.carryCapacity) {
+        cap += parseInt(player.companion.carryCapacity, 10) || 0;
     }
     
-    // EXPANSION HOOK: Passive Talent for extra inventory space
+    // Passive Talent Hook
     if (player && player.talents && player.talents.includes('pack_mule')) {
         cap += 3;
+    }
+
+    // Expandability: Arbitrary bonus capacity (Quest rewards, server buffs, etc.)
+    if (player && player.bonusCapacity) {
+        cap += player.bonusCapacity;
     }
     
     // Absolute floor and ceiling safety
@@ -156,7 +162,9 @@ const gameState = {
         
         isBoating: false,     
         isSailing: false,     
-        isMounted: false,     
+        isMounted: false,
+        isFishing: false,     // Interaction lock flag
+        isCrafting: false,    // Interaction lock flag
         mountName: null,      
         
         chatBubble: null,     
@@ -184,6 +192,7 @@ const gameState = {
         bonusMaxMana: 0,
         bonusMaxStamina: 0,
         bonusMaxPsyche: 0,
+        bonusCapacity: 0,
 
         hunger: 50, 
         maxHunger: 100,
@@ -228,6 +237,7 @@ const gameState = {
         weatherIntensity: 0,
         weatherDuration: 0,
         statusImmunities: [], 
+        activeBuffs: {},      // Expandability dict for arbitrary future buffs
 
         reputation: {
             merchants_guild: 0,         
@@ -285,6 +295,8 @@ const gameState = {
         tutorialProgress: 0,   
         
         // Comprehensive Lifetime Metrics for Anti-Cheat & Achievements
+        achievements: [],
+        playtime: 0,          // Total seconds logged
         metrics: {
             totalKills: 0,
             bossesDefeated: 0,
@@ -293,6 +305,7 @@ const gameState = {
             itemsCrafted: 0,
             potionsBrewed: 0,
             goldEarned: 0,
+            goldSpent: 0,         // New
             fishCaught: 0,
             dungeonsCleared: 0,
             secretsFound: 0,
@@ -301,6 +314,8 @@ const gameState = {
             cropsHarvested: 0,    
             leylinesUsed: 0,
             damageTaken: 0,
+            environmentalDamageTaken: 0, // New
+            fallDamageTaken: 0,          // New
             damageDealt: 0,
             criticalHits: 0,
             questsCompleted: 0,
@@ -387,6 +402,36 @@ window.modifyVital = function(vital, rawAmount) {
     
     if (amount === 0) return 0;
     
+    // 🚨 BUG FIX WIN: Centralized God Mode
+    // Previously, falling off the skyrealm or stepping in lava bypassed combat logic and killed admins.
+    // This intercepts ALL negative vital changes globally!
+    if (amount < 0 && gameState.godMode && (vital === 'health' || vital === 'stamina' || vital === 'mana' || vital === 'psyche')) {
+        return 0;
+    }
+
+    // 🚨 MECHANIC WIN: Universal Shield Absorption
+    // Environmental damage (Lava, Poison, Fall Damage, Traps) previously bypassed the Arcane Shield.
+    // Now, any negative health change automatically tests against the shield first!
+    if (vital === 'health' && amount < 0 && p.shieldValue > 0) {
+        const dmgAbsorbed = Math.min(p.shieldValue, Math.abs(amount));
+        p.shieldValue -= dmgAbsorbed;
+        amount += dmgAbsorbed; // Reduce the negative health hit by the absorbed amount
+        
+        if (typeof logMessage !== 'undefined' && dmgAbsorbed > 0) {
+            // Only log it here if we aren't in combat, otherwise combat.js handles the logging natively
+            if (!isProcessingMove) logMessage(`{cyan:Arcane Shield absorbs ${dmgAbsorbed} damage!}`);
+        }
+
+        if (p.shieldValue <= 0) {
+            p.shieldValue = 0;
+            p.shieldTurns = 0;
+            if (typeof logMessage !== 'undefined') logMessage("{cyan:Your Arcane Shield has shattered!}");
+        }
+        
+        // If the shield absorbed the entire hit, abort the rest of the function!
+        if (amount === 0) return 0; 
+    }
+    
     // 🚨 BUG FIX WIN: The "Shotgun" Death Fix (i-Frames)
     // If the player stands on an oil barrel and it explodes while a monster hits them on the EXACT 
     // same millisecond, they take double-damage and the death script triggers twice.
@@ -398,6 +443,11 @@ window.modifyVital = function(vital, rawAmount) {
         
         // Track total lifetime damage taken
         if (p.metrics) p.metrics.damageTaken += Math.abs(amount);
+        
+        // Track environmental damage separately if it wasn't triggered by an enemy
+        if (p.metrics && !isProcessingMove) {
+            p.metrics.environmentalDamageTaken += Math.abs(amount);
+        }
     }
     
     // O(1) Pre-cached max vital lookup bypasses string manipulation
