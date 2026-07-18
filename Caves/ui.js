@@ -205,7 +205,7 @@ const logMessage = (text) => {
     
     messageLog.prepend(messageElement);
 
-    // --- PERFORMANCE WIN: STRICT CULLING ---
+    // --- STRICT CULLING ---
     // Remove the oldest messages if the log exceeds 40 lines safely
     while (messageLog.childElementCount > 40) {
         messageLog.removeChild(messageLog.lastElementChild);
@@ -214,7 +214,7 @@ const logMessage = (text) => {
     messageLog.scrollTop = 0;
 };
 
-// 🚨 PERFORMANCE WIN: Decoupled Screen Flash Animation Loop
+// Decoupled Screen Flash Animation Loop
 // Prevents the main `renderStats` function from re-rendering the entire DOM 60x a second during a flash
 function processScreenFlash() {
     if (!gameState.screenFlash || gameState.screenFlash.alpha <= 0) {
@@ -770,7 +770,7 @@ function initInventoryListeners() {
     const modal = document.getElementById('inventoryModal');
     const listEl = document.getElementById('inventoryModalList');
 
-    // SECURITY & PERFORMANCE WIN: Universal Event Delegation for the Inventory List!
+    // Universal Event Delegation for the Inventory List!
     // We attach exactly ONE listener to the list container instead of 9+ listeners every render cycle.
     if (listEl && !listEl.dataset.listenersBound) {
         listEl.addEventListener('click', (e) => {
@@ -786,9 +786,24 @@ function initInventoryListeners() {
             const itemDiv = e.target.closest('.inventory-slot');
             if (itemDiv) {
                 e.stopPropagation();
+                
+                // SAFETY CHECKS (Bypassing input.js string routing hack)
+                if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
+                if (typeof isBackupOperationRunning !== 'undefined' && isBackupOperationRunning) return;
+                if (gameState.player.health <= 0) return;
+                if (gameState.player.stunTurns > 0) {
+                    if (typeof logMessage !== 'undefined') logMessage("{yellow:You are stunned and cannot act!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                    return;
+                }
+
                 const idx = parseInt(itemDiv.dataset.index, 10);
-                if (!isNaN(idx) && typeof handleInput === 'function') {
-                    handleInput((idx + 1).toString()); // Safely route interaction through central input handler
+                if (!isNaN(idx)) {
+                    if (gameState.isDroppingItem) {
+                        if (typeof handleItemDrop === 'function') handleItemDrop((idx + 1).toString()); 
+                    } else {
+                        if (typeof useInventoryItem === 'function') useInventoryItem(idx);
+                    }
                 }
             }
         });
