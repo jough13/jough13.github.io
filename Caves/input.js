@@ -391,6 +391,7 @@ function handleInput(key) {
             else if (abilityId === 'inflictMadness') { if (typeof executeInflictMadness === 'function') executeInflictMadness(dirX, dirY); }
             else if (abilityId === 'tame') { if (typeof executeTame === 'function') executeTame(dirX, dirY); }
             else if (abilityId === 'throwTNT') { if (typeof executeThrowTNT === 'function') executeThrowTNT(dirX, dirY); }
+            else if (abilityId.startsWith('throwPotion_')) { if (typeof executeThrowPotion === 'function') executeThrowPotion(abilityId, dirX, dirY); }
             else logMessage("{red:Unknown ability. Aiming canceled.}");
 
             gameState.isAiming = false;
