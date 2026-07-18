@@ -7,6 +7,8 @@
 // Aggressive global scroll lock for Spacebar and Arrow Keys
 window.addEventListener('keydown', function(e) {
     if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && e.target === document.body) {
+        // 🚨 BUG FIX WIN: Allow native scrolling if a modal is open!
+        if (typeof _modalCache !== 'undefined' && _modalCache.isAnyOpen()) return;
         e.preventDefault();
     }
 }, { passive: false });
@@ -391,7 +393,7 @@ function handleInput(key) {
             else if (abilityId === 'inflictMadness') { if (typeof executeInflictMadness === 'function') executeInflictMadness(dirX, dirY); }
             else if (abilityId === 'tame') { if (typeof executeTame === 'function') executeTame(dirX, dirY); }
             else if (abilityId === 'throwTNT') { if (typeof executeThrowTNT === 'function') executeThrowTNT(dirX, dirY); }
-            else if (abilityId.startsWith('throwPotion_')) { if (typeof executeThrowPotion === 'function') executeThrowPotion(abilityId, dirX, dirY); }
+            else if (abilityId.startsWith('throwPotion_')) { if (typeof executeThrowPotion === 'function') executeThrowPotion(abilityId, dirX, dirY); } // ALCHEMY POTIONS
             else logMessage("{red:Unknown ability. Aiming canceled.}");
 
             gameState.isAiming = false;
@@ -575,7 +577,12 @@ document.addEventListener('keydown', (event) => {
 
     // 3. Prevent default scrolling for game keys
     if (BLOCKED_SCROLL_KEYS.has(event.key)) {
-        event.preventDefault();
+        // 🚨 BUG FIX WIN: Allow native scrolling if a modal is open!
+        if (typeof _modalCache !== 'undefined' && _modalCache.isAnyOpen()) {
+            // Do not prevent default!
+        } else {
+            event.preventDefault();
+        }
     }
 
     // --- Differentiate Numpad from Top Row ---
@@ -617,7 +624,7 @@ let resizeTimer;
 window.addEventListener('resize', () => { 
     clearTimeout(resizeTimer); 
     if (typeof resizeCanvas === 'function') {
-        resizeTimer = setTimeout(resizeCanvas, 100); 
+        resizeCanvas = setTimeout(resizeCanvas, 100); 
     }
 });
 
