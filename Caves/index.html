@@ -812,6 +812,25 @@
         </div>
     </div>
 
+    <!-- FARMING / HOMESTEAD MODAL -->
+    <div id="farmingModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="farmingTitle">
+        <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-green-600 max-w-2xl w-full flex flex-col max-h-[85vh]">
+            
+            <div class="flex justify-between items-end mb-4 border-b-2 border-green-700 pb-3 flex-shrink-0">
+                <div>
+                    <h2 id="farmingTitle" class="text-3xl font-bold text-green-500 drop-shadow-md" style="font-family: 'Uncial Antiqua', cursive;">Botanical Garden</h2>
+                    <p class="text-xs text-gray-400 mt-1 italic font-serif">Cultivate seeds to grow rare herbs and ingredients.</p>
+                </div>
+            </div>
+            
+            <div class="flex-grow overflow-y-auto pr-2 custom-scrollbar min-h-0" id="farmingList">
+                <!-- Javascript populates plots here -->
+            </div>
+            
+            <button type="button" id="closeFarmingButton" class="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl w-full flex-shrink-0 shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">Leave Garden</button>
+        </div>
+    </div>
+
     <!-- STASH MODAL -->
     <div id="stashModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="stashTitle">
         <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-gray-500 max-w-4xl w-full h-[85vh] flex flex-col">
@@ -944,6 +963,8 @@
     <script defer src="items.js?v=9"></script>
 
     <!-- EXPANSIONS -->
+    <script defer src="homestead.js?v=9"></script>
+    <script defer src="alchemy.js?v=9"></script>
     <script defer src="fishing.js?v=9"></script>
     <script defer src="worldmap.js?v=9"></script>
     <script defer src="settings-backup.js?v=9"></script>
