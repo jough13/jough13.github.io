@@ -858,9 +858,9 @@ const renderEquipment = () => {
     const safeWpnName = typeof escapeHtml === 'function' ? escapeHtml(weapon.name) : weapon.name;
     const safeArmorName = typeof escapeHtml === 'function' ? escapeHtml(armor.name) : armor.name;
 
-    // --- LORE & JUICE WIN: Natively parse Rarity and apply CSS Glows ---
+    // --- Natively parse Rarity and apply CSS Glows ---
     const getRarityClass = (item) => {
-        if (!item || !item._rarity) return 'text-gray-200';
+        if (!item || !item._rarity) return 'muted-text';
         if (item._rarity === 'rare') return 'text-purple-400 font-bold';
         if (item._rarity === 'epic') return 'text-red-400 font-bold';
         if (item._rarity === 'legendary') return 'text-yellow-400 font-bold text-magic-shimmer';
@@ -870,7 +870,7 @@ const renderEquipment = () => {
     const wRarity = getRarityClass(weapon);
     const aRarity = getRarityClass(armor);
 
-    // --- UI/UX WIN: Dynamic Empty Slot Styling & Lore Hints ---
+    // --- Dynamic Empty Slot Styling & Lore Hints ---
     const applySlotStyle = (iconElement, isEmpty) => {
         if (!iconElement) return;
         if (isEmpty) {
@@ -963,9 +963,9 @@ const renderEquipment = () => {
         armorString += ` <span class="text-green-500 drop-shadow-sm">[+${buffDefense} Def (${player.defenseBonusTurns}t)]</span>`;
     }
     
-    const finalArmorHtml = `${armorString} <br><span class="text-gray-400 font-bold bg-black bg-opacity-30 px-2 py-0.5 rounded border border-gray-700 mt-1 inline-block shadow-inner">(Total: ${totalDefense} Def)</span>`;
-    
-    // PERFORMANCE WIN: Cache innerHTML check
+    const finalArmorHtml = `${armorString} <br><span class="muted-text font-bold bg-[var(--bg-panel)] px-2 py-0.5 rounded border border-[var(--border-color)] mt-1 inline-block shadow-inner">(Total: ${totalDefense} Def)</span>`;
+
+    // Cache innerHTML check
     if (_uiCache.equipBody !== finalArmorHtml) {
         equippedArmorDisplay.innerHTML = finalArmorHtml;
         _uiCache.equipBody = finalArmorHtml;
