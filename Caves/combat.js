@@ -347,6 +347,7 @@ async function wakeUpNearbyEnemies() {
  * Uses Deterministic Host Election to ensure only ONE client runs the AI 
  * without requiring ANY database writes!
  */
+
 async function runSharedAiTurns() {
     if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') return; 
 
@@ -357,17 +358,33 @@ async function runSharedAiTurns() {
     if (now - (window.lastLocalAIAttempt || 0) < AI_INTERVAL) return;
     window.lastLocalAIAttempt = now;
 
+    // --- 🚨 ANTI-DEADLOCK HEARTBEAT ---
+    // Pulse our heartbeat to Firebase every 5 seconds. If this browser tab is minimized,
+    // requestAnimationFrame pauses, this loop stops, and our heartbeat dies naturally!
+    if (now - (window.lastHeartbeatPush || 0) > 5000) {
+        window.lastHeartbeatPush = now;
+        if (typeof onlinePlayerRef !== 'undefined' && onlinePlayerRef && typeof firebase !== 'undefined') {
+            onlinePlayerRef.update({ lastHeartbeat: firebase.database.ServerValue.TIMESTAMP }).catch(()=>{});
+        }
+    }
+
     // --- DETERMINISTIC HOST ELECTION ---
     // The player with the lowest alphanumeric player_id in the current layer/realm becomes the Host.
     let isHost = true;
     const myId = typeof player_id !== 'undefined' ? player_id : null;
     const myRealm = gameState.currentRealm || 0;
     const myMapMode = gameState.mapMode;
+    const serverNow = typeof window.getServerTime === 'function' ? window.getServerTime() : Date.now();
 
     if (myId && typeof otherPlayers !== 'undefined') {
         for (const id in otherPlayers) {
             const p = otherPlayers[id];
             if (!p) continue; // 🚨 GHOST GUARD
+            
+            // 🚨 DEADLOCK FIX: Ignore AFK/Suspended tabs!
+            // If a player hasn't sent a heartbeat in 12 seconds, their tab is paused or crashed.
+            if (p.lastHeartbeat && (serverNow - p.lastHeartbeat > 12000)) continue;
+
             const theirRealm = p.currentRealm || 0;
             
             // Only compare against players in the exact same world layer and dimension
@@ -402,7 +419,7 @@ async function runSharedAiTurns() {
     }
 }
 
-// PERFORMANCE & DRY WIN: Centralized Defense & Dodge Calculator
+// Centralized Defense & Dodge Calculator
 function getPlayerDefenseStats() {
     const p = gameState.player;
     if (!p) return { totalDefense: 0, dodgeChance: 0 };
