@@ -22,24 +22,29 @@ function renderHotbar() {
     const hotbar = player.hotbar || [null, null, null, null, null];
     const cooldowns = player.cooldowns || {};
 
-    // PERFORMANCE WIN: O(N) Pre-Mapped Inventory Cache
-    // We create a dictionary map of the inventory to prevent scanning the entire array 5 times!
-    const inventoryMap = new Map();
+    // 🚨 BUG FIX & QoL WIN: Aggregate Inventory Map
+    // We now sum the quantities of fragmented stacks across the inventory so the 
+    // hotbar displays the TRUE total amount of an item (e.g., 3 stacks of 5 arrows = 15 arrows).
+    const inventoryTotals = new Map();
+    const inventorySample = new Map(); // Keep a sample to extract tile icons and metadata
+    
     if (player.inventory) {
         for (let i = 0; i < player.inventory.length; i++) {
             const item = player.inventory[i];
+            if (!item || item.quantity <= 0) continue; // 🚨 GHOST GUARD
             
-            if (!item) continue; // 🚨 GHOST GUARD
+            const keysToMap = [item.name];
+            if (item.templateId && item.templateId !== item.name) keysToMap.push(item.templateId);
             
-            // 🚨 BUG FIX WIN: Strictly exclude ghost stacks (quantity 0) from appearing on the hotbar!
-            if (item.quantity > 0) {
-                if (!inventoryMap.has(item.name)) inventoryMap.set(item.name, item);
-                if (item.templateId && !inventoryMap.has(item.templateId)) inventoryMap.set(item.templateId, item);
+            for (const k of keysToMap) {
+                inventoryTotals.set(k, (inventoryTotals.get(k) || 0) + item.quantity);
+                if (!inventorySample.has(k)) inventorySample.set(k, item);
             }
         }
     }
 
     const fragment = document.createDocumentFragment();
+    let hotbarMutated = false; // Tracks if we need to auto-clear depleted disposable items
 
     hotbar.forEach((abilityId, index) => {
         const slotDiv = document.createElement('div');
@@ -49,8 +54,15 @@ function renderHotbar() {
         let slotClasses = "hotbar-slot relative w-12 h-12 border-2 rounded flex items-center justify-center cursor-pointer bg-[var(--bg-page)] transition-all shadow-sm";
         
         // --- JUICE WIN: Active Telegraphing ---
-        // If the player is currently aiming this specific ability, highlight the slot brilliantly!
-        if (typeof gameState !== 'undefined' && gameState.isAiming && gameState.abilityToAim === abilityId) {
+        // Dynamically resolve aiming states for items that have internal system prefixes!
+        let isActivelyAiming = false;
+        if (typeof gameState !== 'undefined' && gameState.isAiming && gameState.abilityToAim) {
+            if (gameState.abilityToAim === abilityId) isActivelyAiming = true;
+            else if (gameState.abilityToAim === 'throwTNT' && abilityId === 'Dwarven TNT') isActivelyAiming = true;
+            else if (gameState.abilityToAim === `throwPotion_${abilityId}`) isActivelyAiming = true;
+        }
+
+        if (isActivelyAiming) {
             slotClasses += " border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)] transform scale-105 z-10 animate-pulse";
         } else {
             slotClasses += " hover:border-blue-500";
@@ -70,7 +82,8 @@ function renderHotbar() {
             const skillData = typeof SKILL_DATA !== 'undefined' ? SKILL_DATA[abilityId] : null;
             const spellData = typeof SPELL_DATA !== 'undefined' ? SPELL_DATA[abilityId] : null;
             
-            let invItem = inventoryMap.get(abilityId);
+            let invItem = inventorySample.get(abilityId);
+            let totalQty = inventoryTotals.get(abilityId) || 0;
             let itemData = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[abilityId] : null;
             
             // ROBUSTNESS & PERFORMANCE WIN: Match dynamic prefixed items against their base template!
@@ -90,9 +103,9 @@ function renderHotbar() {
                     // Color-code the spell icons natively based on their element!
                     if (sName.includes("Fire") || sName.includes("Meteor") || sName.includes("Pact") || sName.includes("Boil")) colorClass = "text-orange-400";
                     else if (sName.includes("Frost")) colorClass = "text-cyan-300";
-                    else if (sName.includes("Poison") || sName.includes("Entangle")) colorClass = "text-green-400";
-                    else if (sName.includes("Divine") || sName.includes("Heal") || sName.includes("Nova")) colorClass = "text-yellow-400";
-                    else if (sName.includes("Dark") || sName.includes("Siphon")) colorClass = "text-red-500";
+                    else if (sName.includes("Poison") || sName.includes("Entangle") || sName.includes("Venom") || sName.includes("Acid")) colorClass = "text-green-400";
+                    else if (sName.includes("Divine") || sName.includes("Heal") || sName.includes("Nova") || sName.includes("Holy")) colorClass = "text-yellow-400";
+                    else if (sName.includes("Dark") || sName.includes("Siphon") || sName.includes("Smoke")) colorClass = "text-red-500";
                     else if (sName.includes("Lightning") || sName.includes("Thunder")) colorClass = "text-yellow-300";
                     else colorClass = "text-blue-300";
                 } else if (skillData) {
@@ -122,20 +135,15 @@ function renderHotbar() {
             } else if (invItem || itemData) {
                 const displayName = invItem ? invItem.name : (itemData ? itemData.name : 'Unknown Item');
                 const displayTile = invItem ? (invItem.tile || '🎒') : (itemData ? (itemData.tile || '🎒') : '🎒');
-                const qty = invItem ? invItem.quantity : 0;
                 
-                // ROBUSTNESS WIN: Auto-clear ammo/consumables from hotbar if they run out completely
-                if (qty <= 0 && typeof playerRef !== 'undefined') {
-                    // Only auto-clear if the base item definition says it's consumable/ammo
+                // 🚨 PERFORMANCE WIN: Batched Auto-Clearing
+                // If the item is completely depleted and it's a disposable type, wipe it.
+                if (totalQty <= 0 && typeof playerRef !== 'undefined') {
                     const isDisposable = itemData && (itemData.type === 'consumable' || itemData.type === 'ammo');
                     if (isDisposable) {
                         player.hotbar[index] = null;
-                        
-                        // Push clear state to firebase so it persists on reload!
-                        if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ hotbar: player.hotbar });
-                        
-                        if (typeof renderHotbar === 'function') setTimeout(renderHotbar, 0); // Re-render cleanly
-                        return; // Skip rendering this ghost slot
+                        hotbarMutated = true;
+                        return; // Skip rendering this slot
                     }
                 }
                 
@@ -145,16 +153,16 @@ function renderHotbar() {
                 
                 // SECURITY WIN: Escape tooltip names!
                 const safeDisplayName = typeof escapeHtml === 'function' ? escapeHtml(displayName) : displayName;
-                slotDiv.title = `[${hotkeyNumber}] ${safeDisplayName} (Qty: ${qty})\n(Right-click to unbind)`;
+                slotDiv.title = `[${hotkeyNumber}] ${safeDisplayName} (Qty: ${totalQty})\n(Right-click to unbind)`;
                 slotDiv.appendChild(iconSpan);
                 
                 const qtyBadge = document.createElement('span');
                 qtyBadge.className = "absolute bottom-0 right-0 text-[10px] bg-black bg-opacity-70 text-white px-1 rounded-tl font-bold border border-gray-700";
-                qtyBadge.textContent = qty;
+                qtyBadge.textContent = totalQty;
                 slotDiv.appendChild(qtyBadge);
 
                 // LORE WIN: If they run out of non-disposable items (like a specific sword), color the border red so they know it's a dead slot
-                if (qty <= 0) {
+                if (totalQty <= 0) {
                     slotDiv.classList.add('opacity-40', 'grayscale', 'border-red-900');
                     slotDiv.title = `[${hotkeyNumber}] Missing: ${safeDisplayName}\n(Right-click to unbind)`;
                 }
@@ -168,6 +176,14 @@ function renderHotbar() {
         fragment.appendChild(slotDiv);
     });
     
+    // 🚨 BATCHED AUTO-CLEAR RESOLUTION
+    // If one or more slots depleted entirely during this render pass, push ONE save and trigger ONE re-render!
+    if (hotbarMutated) {
+        if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ hotbar: player.hotbar });
+        setTimeout(renderHotbar, 0); // Escape the current execution context and redraw clean
+        return;
+    }
+
     hotbarContainerEl.appendChild(fragment);
 }
 
@@ -276,8 +292,22 @@ function assignToHotbar(abilityId) {
     }
 
     // ROBUSTNESS WIN: Use findIndex instead of indexOf to catch 'undefined' or empty strings safely
-    // Check for null, undefined, or empty strings!
     let index = hotbar.findIndex(slot => slot === null || slot === undefined || slot === "");
+
+    // 🚨 UX WIN: Graceful Rejection
+    // Don't blindly overwrite Slot 1 and ruin a player's primary attack!
+    if (index === -1) {
+        logMessage(`{red:Quick-Slots full! Right-click a slot to unbind it first.}`);
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        
+        // Jiggle the hotbar so they look at it
+        if (hotbarContainerEl) {
+            hotbarContainerEl.classList.remove('shake');
+            void hotbarContainerEl.offsetWidth;
+            hotbarContainerEl.classList.add('shake');
+        }
+        return;
+    }
 
     // LORE WIN: Highly atmospheric binding verbs!
     let flavorColor = 'gray';
@@ -294,12 +324,7 @@ function assignToHotbar(abilityId) {
         flavorColor = 'green';
     }
 
-    if (index === -1) {
-        index = 0; // Overwrite the first slot if full
-        logMessage(`{${flavorColor}:Quick-Slots full. Overwrote Slot 1 and ${verb} ${safeReadableName}.}`);
-    } else {
-        logMessage(`{${flavorColor}:You ${verb} ${safeReadableName} to Quick-Slot ${index + 1}.}`);
-    }
+    logMessage(`{${flavorColor}:You ${verb} ${safeReadableName} to Quick-Slot ${index + 1}.}`);
 
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
 
