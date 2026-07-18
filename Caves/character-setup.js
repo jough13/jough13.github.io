@@ -409,19 +409,19 @@ function updateCreationSummary() {
     const projStamina = 5 + (calcEnd * 5);
     const projPsyche = 7 + (calcWill * 3);
 
+    // 🚨 UI WIN: Hardcoded text-colors here so they pop against the dark summary box regardless of theme
     const vitalsHtml = (creationState.race && creationState.background) ? `
-        <div class="grid grid-cols-2 gap-1 text-[11px] mt-3 bg-black bg-opacity-30 p-2 rounded border border-gray-700 shadow-inner" style="color: var(--text-default);">
-            <span class="text-green-500 font-bold">HP: ${projHP}</span>
-            <span class="text-blue-500 font-bold">Mana: ${projMana}</span>
-            <span class="text-yellow-500 font-bold">Stam: ${projStamina}</span>
-            <span class="text-purple-500 font-bold">Psych: ${projPsyche}</span>
+        <div class="grid grid-cols-2 gap-1 text-[11px] mt-3 bg-black bg-opacity-30 p-2 rounded border border-gray-700 shadow-inner">
+            <span class="text-green-400 font-bold drop-shadow-sm">HP: ${projHP}</span>
+            <span class="text-blue-400 font-bold drop-shadow-sm">Mana: ${projMana}</span>
+            <span class="text-yellow-400 font-bold drop-shadow-sm">Stam: ${projStamina}</span>
+            <span class="text-purple-400 font-bold drop-shadow-sm">Psych: ${projPsyche}</span>
         </div>
     ` : '';
     
     // LORE WIN: Context-Aware "Origin Story" Flavor Text based on the combination chosen!
     let originHtml = '';
     if (creationState.name && creationState.race && creationState.background && typeof stringToSeed === 'function') {
-        // Base structure: "[Name], a [Race] [Class], [Origin Hook]."
         const origins = [
             "was drawn to the Shattered Realms by whispers in the dark.",
             "seeks redemption for a past they cannot remember.",
@@ -432,7 +432,6 @@ function updateCreationSummary() {
             "is driven by an unquenchable thirst for gold and glory."
         ];
         
-        // Inject class/race specific flavor texts into the pool!
         if (creationState.background === 'necromancer') origins.push("studies the forbidden arts of the Old King.", "seeks to conquer death itself.");
         if (creationState.background === 'mage') origins.push("was expelled from the Academy for reckless experiments.", "feels the leylines humming in their blood.");
         if (creationState.background === 'warrior') origins.push("survived the brutal arenas of the capital.", "fights to honor a fallen comrade.");
@@ -446,26 +445,27 @@ function updateCreationSummary() {
         if (creationState.race === 'goliath') origins.push("descended from the frozen peaks to test their strength.");
         if (creationState.race === 'voidkissed') origins.push("hears the Leviathan singing in their dreams.");
         
-        // Use a mathematical hash of the player's choices to ensure the origin remains stable for that combo!
         const originSeed = stringToSeed(creationState.name + creationState.race + creationState.background);
         const selectedOrigin = origins[Math.abs(originSeed) % origins.length];
         
-        originHtml = `<div class="mt-3 pt-2 border-t border-gray-600 text-xs italic text-center font-serif leading-relaxed" style="color: var(--text-muted);"><span class="font-bold" style="color: var(--text-highlight);">${safeName}</span>, a ${raceName} ${className}, ${selectedOrigin}</div>`;
+        // 🚨 UI WIN: Hardcoded text-gray-400 so it reads well inside the dark box
+        originHtml = `<div class="mt-3 pt-2 border-t border-gray-600 text-xs text-gray-400 italic text-center font-serif leading-relaxed drop-shadow-sm"><span class="text-yellow-400 font-bold">${safeName}</span>, a ${raceName} ${className}, ${selectedOrigin}</div>`;
     }
 
     if (summaryDiv) {
+        // 🚨 UI WIN: Stripped out var(--text-default) and var(--title-color) which break in light mode!
         summaryDiv.innerHTML = `
             <div class="flex items-center gap-4 mb-3">
-                <div class="text-5xl drop-shadow-lg bg-black bg-opacity-30 rounded-xl p-3 border border-gray-600 flex-shrink-0">${raceIcon}</div>
+                <div class="text-5xl drop-shadow-lg bg-black bg-opacity-30 rounded-xl p-3 border border-gray-600 flex-shrink-0 text-white">${raceIcon}</div>
                 <div class="flex flex-col flex-grow">
-                    <div class="font-bold text-xl leading-tight truncate max-w-[180px]" style="color: var(--text-highlight);">${safeName || "???"}</div>
-                    <div class="text-xs uppercase tracking-widest mt-1" style="color: var(--text-muted);">${creationState.gender || "?"} ${raceName}</div>
-                    <div class="text-xs font-bold" style="font-family: 'Uncial Antiqua', cursive; color: var(--title-color);">${className}</div>
+                    <div class="text-yellow-400 font-bold text-xl leading-tight truncate max-w-[180px] drop-shadow-sm">${safeName || "???"}</div>
+                    <div class="text-xs text-gray-400 uppercase tracking-widest mt-1 drop-shadow-sm">${creationState.gender || "?"} ${raceName}</div>
+                    <div class="text-xs text-blue-300 font-bold drop-shadow-sm mt-1" style="font-family: 'Uncial Antiqua', cursive;">${className}</div>
                 </div>
             </div>
             ${originHtml}
-            <div class="text-xs mt-3 pt-2 border-t border-gray-600 font-bold" style="color: var(--text-default);">
-                ${stats.length > 0 ? stats.join('<br>') : "<span class='italic opacity-50 font-normal'>Select Race & Class to see bonuses.</span>"}
+            <div class="text-xs mt-3 pt-2 border-t border-gray-600 text-gray-300 font-bold drop-shadow-sm">
+                ${stats.length > 0 ? stats.join('<br>') : "<span class='italic text-gray-500 font-normal'>Select Race & Class to see bonuses.</span>"}
             </div>
             ${vitalsHtml}
         `;
@@ -671,9 +671,10 @@ function initCreationUI() {
             // Safe array access in case items array is malformed
             const startItemName = (bg.items && bg.items[0]) ? bg.items[0].name : "Nothing";
             
+            // 🚨 UI WIN: Forced yellow text inside the dark selection boxes
             div.innerHTML = `
-                <div class="font-bold text-lg drop-shadow-sm" style="font-family: 'Uncial Antiqua', cursive; color: var(--title-color);">${bg.name}</div>
-                <div class="text-[10px] mt-1 truncate uppercase tracking-widest font-bold" style="color: var(--text-muted);">Start: ${startItemName}</div>
+                <div class="font-bold text-lg text-yellow-500 drop-shadow-sm" style="font-family: 'Uncial Antiqua', cursive;">${bg.name}</div>
+                <div class="text-[10px] text-gray-400 mt-1 truncate uppercase tracking-widest font-bold">Start: ${startItemName}</div>
             `;
             div.onclick = () => selectCreationOption('background', key, div);
             div.dataset.key = key;
@@ -848,7 +849,8 @@ window.renderSlots = async function() {
         const slotDiv = document.createElement('div');
         
         // 🚨 FIX: Make sure the slot container has a relative positioning to trap the z-index layers
-        slotDiv.className = "ui-input-asset flex-col justify-between transition-transform cursor-pointer hover:scale-[1.02] min-h-[320px] w-full !p-6 relative";
+        // Also removed the !p-6 override so it fits the frame neatly
+        slotDiv.className = "ui-input-asset flex-col justify-between transition-transform cursor-pointer hover:scale-[1.02] min-h-[320px] w-full relative group";
 
         if (doc.exists) {
             const data = doc.data();
@@ -857,14 +859,15 @@ window.renderSlots = async function() {
                 : { name: 'Unknown' };
 
             // --- OCCUPIED SLOT UI ---
-            // 🚨 FIX: Replaced hardcoded text-white/gray with var(--title-color) and var(--text-muted)
+            // 🚨 FIX: Strip CSS overrides. The background of 'ui-input-asset' is ALWAYS dark stone.
+            // This means we must force light text here unconditionally!
             slotDiv.innerHTML = `
                 <div class="text-center w-full pt-2 relative z-10">
-                    <h3 class="text-3xl font-bold mb-2" style="font-family: 'Uncial Antiqua', cursive; color: var(--title-color); text-shadow: var(--title-shadow);">${data.name || 'Unnamed'}</h3>
-                    <div class="text-4xl my-3 text-[#4ade80]" style="text-shadow: 0 0 10px rgba(74, 222, 128, 0.4);">${data.isBoating ? 'c' : (data.character || '@')}</div>
-                    <p class="font-bold text-lg uppercase tracking-widest" style="color: var(--text-highlight);">${bg.name}</p>
-                    <p class="text-sm font-bold mt-1" style="color: var(--text-default);">Level ${data.level || 1}</p>
-                    <p class="text-xs mt-3 h-8 leading-tight" style="color: var(--text-muted);">${typeof getRegionName === 'function' ? getRegionName(Math.floor((data.x || 0) / 160), Math.floor((data.y || 0) / 160)) : 'Wilderness'}</p>
+                    <h3 class="text-3xl font-bold mb-2 text-white drop-shadow-md transition-colors group-hover:text-yellow-400" style="font-family: 'Uncial Antiqua', cursive; text-shadow: 2px 2px 0px rgba(0,0,0,0.8);">${data.name || 'Unnamed'}</h3>
+                    <div class="text-4xl my-3 text-[#4ade80] drop-shadow-md" style="text-shadow: 0 0 10px rgba(74, 222, 128, 0.4);">${data.isBoating ? 'c' : (data.character || '@')}</div>
+                    <p class="font-bold text-lg uppercase tracking-widest text-yellow-400 drop-shadow-md">${bg.name}</p>
+                    <p class="text-sm font-bold mt-1 text-gray-200 drop-shadow-md">Level ${data.level || 1}</p>
+                    <p class="text-xs mt-3 h-8 leading-tight text-gray-400 drop-shadow-md">${typeof getRegionName === 'function' ? getRegionName(Math.floor((data.x || 0) / 160), Math.floor((data.y || 0) / 160)) : 'Wilderness'}</p>
                 </div>
                 
                 <div class="flex gap-2 w-full mt-4 items-center h-12 relative z-10">
@@ -875,22 +878,23 @@ window.renderSlots = async function() {
             `;
         } else {
             // --- EMPTY SLOT UI ---
-            slotDiv.classList.add('opacity-80', 'hover:opacity-100');
+            // Remove full-slot opacity drop and use brightness filtering for a cleaner look
+            slotDiv.classList.add('brightness-90', 'hover:brightness-110');
 
             slotDiv.onclick = (e) => {
                 if (e.target === slotDiv || e.target.closest('.empty-slot-content')) selectSlot(slotId);
             };
 
-            // 🚨 FIX: Replaced text-gray-400/500 with theme variables
+            // Force light grays against the dark stone background image
             slotDiv.innerHTML = `
                 <div class="text-center w-full empty-slot-content pt-6 flex-grow flex flex-col justify-center relative z-10">
-                    <h3 class="text-2xl font-bold mb-4" style="font-family: 'Uncial Antiqua', cursive; color: var(--title-color); opacity: 0.7;">Slot ${slotId.replace('slot', '')}</h3>
-                    <div class="text-5xl mb-4" style="color: var(--text-muted); opacity: 0.5;">+</div>
-                    <p class="font-bold tracking-widest uppercase" style="color: var(--text-muted);">Empty</p>
+                    <h3 class="text-3xl font-bold mb-4 text-gray-300 drop-shadow-md" style="font-family: 'Uncial Antiqua', cursive;">Slot ${slotId.replace('slot', '')}</h3>
+                    <div class="text-5xl mb-4 text-gray-500 drop-shadow-md">+</div>
+                    <p class="font-bold tracking-widest uppercase text-gray-400 drop-shadow-md">Empty</p>
                 </div>
                 
                 <div class="w-full mt-4 h-12 relative z-10">
-                    <button onclick="event.stopPropagation(); selectSlot('${slotId}')" class="ui-btn-asset w-full h-full !text-2xl !p-0 !mt-0">CREATE</button>
+                    <button onclick="event.stopPropagation(); selectSlot('${slotId}')" class="ui-btn-asset w-full h-full !text-2xl !p-0 !mt-0 !text-gray-200">CREATE</button>
                 </div>
             `;
         }
