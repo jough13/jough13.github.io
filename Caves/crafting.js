@@ -19,7 +19,7 @@ function getCraftItemKey(name) {
 // Easily add Alchemy, Fletching, or Tinkering stations without changing core logic!
 function getRecipeBook(mode) {
     if (mode === 'cooking') return typeof COOKING_RECIPES !== 'undefined' ? COOKING_RECIPES : {};
-    // Add future stations here: if (mode === 'alchemy') return ALCHEMY_RECIPES;
+    if (mode === 'alchemy') return typeof ALCHEMY_RECIPES !== 'undefined' ? ALCHEMY_RECIPES : {};
     return typeof CRAFTING_RECIPES !== 'undefined' ? CRAFTING_RECIPES : {};
 }
 
@@ -407,6 +407,9 @@ function renderCraftingModal() {
         else titleLore = "Combine ingredients to survive the wilds.";
         
         title.innerHTML = `Cooking Pot <span class='text-sm text-yellow-500 block font-normal mt-1'>${titleLore}</span>`;
+    } else if (gameState.currentCraftingMode === 'alchemy') {
+        titleLore = "Grind herbs and monster parts into powerful concoctions.";
+        title.innerHTML = `Alchemy Mortar <span class='text-sm text-fuchsia-400 block font-normal mt-1'>${titleLore}</span>`;
     } else {
         if (playerLevel >= 15) titleLore = "Forge items that rival the gods themselves.";
         else if (playerLevel >= 10) titleLore = "Masterwork techniques unlock their true potential.";
