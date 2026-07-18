@@ -339,8 +339,10 @@ function selectCreationOption(type, key, element) {
     }
 
     const container = element.parentElement;
-    Array.from(container.children).forEach(child => child.classList.remove('selected', 'bg-blue-900', 'bg-opacity-20'));
-    element.classList.add('selected', 'bg-blue-900', 'bg-opacity-20');
+    
+    // CLEANUP: Let style.css handle the rich active states!
+    Array.from(container.children).forEach(child => child.classList.remove('selected'));
+    element.classList.add('selected');
 
     updateCreationSummary();
 }
@@ -622,7 +624,7 @@ function initCreationUI() {
         
         const diceBtn = document.createElement('button');
         diceBtn.id = 'randomNameBtn';
-        diceBtn.className = "bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl text-xl shadow-md transition-transform active:scale-95";
+        diceBtn.className = "bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl text-xl shadow-md transition-transform active:scale-95 border-b-4 border-blue-800 active:border-b-0 active:mt-1";
         diceBtn.title = "Generate Random Name";
         diceBtn.textContent = "🎲";
         diceBtn.onclick = generateRandomName;
@@ -631,7 +633,7 @@ function initCreationUI() {
         // 2. Add the "Quick Roll" macro button just above it
         const quickRollBtn = document.createElement('button');
         quickRollBtn.id = 'quickRollBtn';
-        quickRollBtn.className = "bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-lg text-xs tracking-widest uppercase shadow-md transition-transform active:scale-95 mb-3 flex items-center justify-center gap-2 w-full";
+        quickRollBtn.className = "bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-lg text-xs tracking-widest uppercase shadow-md transition-transform active:scale-95 mb-3 flex items-center justify-center gap-2 w-full border-b-2 border-purple-800 active:border-b-0 active:mt-0.5";
         quickRollBtn.innerHTML = `<span>⚡</span> Quick Roll Character`;
         quickRollBtn.onclick = window.quickRollCharacter;
         nameContainer.insertBefore(quickRollBtn, wrapper);
@@ -645,8 +647,9 @@ function initCreationUI() {
         for (const key in window.PLAYER_RACES) {
             const r = window.PLAYER_RACES[key];
             const div = document.createElement('div');
-            div.className = 'creation-option p-3 rounded-lg flex items-center gap-3 border-gray-600 border-2 transition-all';
-            div.innerHTML = `<span class="text-3xl">${r.icon}</span> <span class="font-bold text-lg">${r.name}</span>`;
+            // CLEANUP: Removed conflicting Tailwind colors, deferring to custom CSS
+            div.className = 'creation-option p-3 rounded-lg flex items-center gap-3 transition-all';
+            div.innerHTML = `<span class="text-3xl drop-shadow-md">${r.icon}</span> <span class="font-bold text-lg">${r.name}</span>`;
             div.onclick = () => selectCreationOption('race', key, div);
             div.dataset.key = key; 
             raceFrag.appendChild(div);
@@ -661,14 +664,15 @@ function initCreationUI() {
         for (const key in window.PLAYER_BACKGROUNDS) {
             const bg = window.PLAYER_BACKGROUNDS[key];
             const div = document.createElement('div');
-            div.className = 'creation-option p-3 rounded-lg border-gray-600 border-2 transition-all';
+            // CLEANUP: Removed conflicting Tailwind colors, deferring to custom CSS
+            div.className = 'creation-option p-3 rounded-lg transition-all';
             
             // Safe array access in case items array is malformed
             const startItemName = (bg.items && bg.items[0]) ? bg.items[0].name : "Nothing";
             
             div.innerHTML = `
-                <div class="font-bold text-lg text-yellow-500" style="font-family: 'Uncial Antiqua', cursive;">${bg.name}</div>
-                <div class="text-xs text-gray-400 mt-1 truncate">Start: ${startItemName}</div>
+                <div class="font-bold text-lg text-yellow-500 drop-shadow-sm" style="font-family: 'Uncial Antiqua', cursive;">${bg.name}</div>
+                <div class="text-[10px] text-gray-400 mt-1 truncate uppercase tracking-widest font-bold">Start: ${startItemName}</div>
             `;
             div.onclick = () => selectCreationOption('background', key, div);
             div.dataset.key = key;
@@ -682,8 +686,8 @@ function initCreationUI() {
         genderBtns.forEach(btn => {
             btn.onclick = () => {
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                genderBtns.forEach(b => b.classList.remove('selected', 'bg-blue-600', 'text-white'));
-                btn.classList.add('selected', 'bg-blue-600', 'text-white');
+                genderBtns.forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
                 creationState.gender = btn.dataset.value;
                 updateCreationSummary();
             };
