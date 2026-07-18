@@ -273,7 +273,7 @@
 
                                 <!-- The Game World Canvas -->
                                 <!-- Touch-action: none prevents mobile browsers from attempting to scroll when interacting with the canvas -->
-                                <div id="gameCanvasWrapper" class="relative w-full h-[60vh] min-h-[350px] rounded-xl overflow-hidden border-2 shadow-inner" style="border-color: var(--canvas-border); touch-action: none;">
+                                <div id="gameCanvasWrapper" class="relative w-full h-[60vh] min-h-[350px] rounded-xl overflow-hidden border-4 shadow-inner" style="border-color: var(--title-color); touch-action: none;">
                                     <canvas id="gameCanvas" class="w-full h-full" role="img" aria-label="Interactive Game Viewport"></canvas>
                                     
                                     <!-- Magical glow on the save indicator -->
@@ -383,7 +383,7 @@
                                 <span id="xpDisplay" class="font-bold text-xs flex justify-between text-gray-400 tracking-widest uppercase"><span>XP</span> <span>0 / 100</span></span>
                                 <div class="stat-bar-container !h-1.5"><div id="xpBar" class="stat-bar bar-xp"></div></div>
                             </div>
-                            <span id="statPointsDisplay" class="font-bold text-yellow-400 hidden text-center animate-pulse uppercase tracking-widest text-[10px] border border-yellow-600 bg-yellow-900 bg-opacity-30 rounded py-1 shadow-inner"></span>
+                            <span id="statPointsDisplay" class="font-bold text-yellow-400 hidden text-center animate-pulse uppercase tracking-widest text-[10px] border border-gray-700 bg-gray-900 rounded py-1 shadow-inner"></span>
                         </div>
                         
                         <!-- EXPANDABILITY WIN: Party & Group Framework Hook -->
