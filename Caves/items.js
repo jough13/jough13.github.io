@@ -11,7 +11,7 @@ function resolveTemplateIdByName(name) {
     return key;
 }
 
-// 🚨 BUG FIX WIN: Mutex Lock to prevent UI Desync & Index Shifting!
+// Mutex Lock to prevent UI Desync & Index Shifting!
 // Rapidly clicking use/drop would cause array splices to misalign indexes mid-processing,
 // consuming the wrong items or crashing the client. This enforces sequential transaction safety!
 let isItemProcessing = false;
@@ -812,27 +812,16 @@ function useInventoryItem(itemIndex) {
             // 2. Equip New
             if (currentEquipped !== itemToUse) {
                 
-                // --- 🚨 QoL WIN: AMMO HOT-SWAPPING FIX ---
+                // --- AMMO HOT-SWAPPING FIX ---
                 // If we are equipping ammo while already holding another stack of the SAME ammo, merge them cleanly!
                 if (slot === 'ammo' && currentEquipped && currentEquipped.name === itemToUse.name) {
-                    const existingStack = player.inventory.find(i => i && i.name === currentEquipped.name && !i.isEquipped);
-                    if (existingStack) {
-                        // Add the newly equipped stack quantity to the unequipped stack
-                        existingStack.quantity += currentEquipped.quantity;
-                        
-                        // Destroy the old equipped stack so it doesn't duplicate
-                        const oldIndex = player.inventory.indexOf(currentEquipped);
-                        if (oldIndex > -1) {
-                            player.inventory.splice(oldIndex, 1);
-                        }
-
-                        // Since we just consolidated the old ammo stack and spliced the array, the indices in `player.inventory` might have shifted!
-                        // Let's find the new item we were TRYING to equip again by exact reference
-                        const reFoundItem = player.inventory.find(i => i === itemToUse);
-                        if (!reFoundItem) {
-                            console.error("[AKASHIC] Fatal Ammo Hot-Swap Error: Reference lost.");
-                            return; // Failsafe abort
-                        }
+                    // Add the previously equipped quantity directly into the new stack we are trying to equip
+                    itemToUse.quantity += currentEquipped.quantity;
+                    
+                    // Destroy the old equipped stack so it doesn't duplicate
+                    const oldIndex = player.inventory.indexOf(currentEquipped);
+                    if (oldIndex > -1) {
+                        player.inventory.splice(oldIndex, 1);
                     }
                 }
                 
