@@ -1034,11 +1034,9 @@ async function processOverworldEnemyTurns() {
                 const newId = `overworld:${finalX},${-finalY}`;
                 
                 // Use the correct Network Manager path generator!
-                // 🚨 GHOST GUARD: Also check e && e.x for occupied check
-                const occupied = gameState.instancedEnemies.some(e => e && e.x === finalX && e.y === finalY);
                 const newEnemyPath = EnemyNetworkManager.getPath(finalX, finalY, newId);
                 
-                if (gameState.sharedEnemies[newId] || multiPathUpdate[newEnemyPath] || occupied) continue;
+                if (gameState.sharedEnemies[newId] || multiPathUpdate[newEnemyPath]) continue;
 
                 const updatedEnemy = { ...enemy, x: finalX, y: finalY };
                 if (updatedEnemy._processedThisTurn) delete updatedEnemy._processedThisTurn;
