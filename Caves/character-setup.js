@@ -125,8 +125,9 @@ async function initCharacterSelect(user) {
         if (titleEl && !document.getElementById('guestWarningBanner')) {
             const warning = document.createElement('div');
             warning.id = 'guestWarningBanner';
-            warning.className = "w-full max-w-md mx-auto bg-yellow-900 bg-opacity-30 border-l-4 border-yellow-500 text-yellow-300 p-3 text-center text-xs font-bold uppercase tracking-widest rounded mb-6 shadow-inner";
-            warning.innerHTML = "⚠️ Guest Account Active<br><span class='text-[10px] text-yellow-500 font-normal normal-case'>Characters will be lost if browser data is cleared.</span>";
+            // 🚨 UI WIN: Force a solid dark background so the yellow warning text pops in both Light and Dark mode!
+            warning.className = "w-full max-w-md mx-auto bg-gray-900 border-l-4 border-yellow-500 text-yellow-400 p-3 text-center text-xs font-bold uppercase tracking-widest rounded mb-6 shadow-md";
+            warning.innerHTML = "⚠️ Guest Account Active<br><span class='text-[10px] text-yellow-200 font-normal normal-case'>Characters will be lost if browser data is cleared.</span>";
             titleEl.parentNode.insertBefore(warning, titleEl.nextSibling);
         }
     } else {
@@ -409,11 +410,11 @@ function updateCreationSummary() {
     const projPsyche = 7 + (calcWill * 3);
 
     const vitalsHtml = (creationState.race && creationState.background) ? `
-        <div class="grid grid-cols-2 gap-1 text-[11px] mt-3 bg-black bg-opacity-30 p-2 rounded border border-gray-700 shadow-inner">
-            <span class="text-green-400 font-bold">HP: ${projHP}</span>
-            <span class="text-blue-400 font-bold">Mana: ${projMana}</span>
-            <span class="text-yellow-400 font-bold">Stam: ${projStamina}</span>
-            <span class="text-purple-400 font-bold">Psych: ${projPsyche}</span>
+        <div class="grid grid-cols-2 gap-1 text-[11px] mt-3 bg-black bg-opacity-30 p-2 rounded border border-gray-700 shadow-inner" style="color: var(--text-default);">
+            <span class="text-green-500 font-bold">HP: ${projHP}</span>
+            <span class="text-blue-500 font-bold">Mana: ${projMana}</span>
+            <span class="text-yellow-500 font-bold">Stam: ${projStamina}</span>
+            <span class="text-purple-500 font-bold">Psych: ${projPsyche}</span>
         </div>
     ` : '';
     
@@ -449,7 +450,7 @@ function updateCreationSummary() {
         const originSeed = stringToSeed(creationState.name + creationState.race + creationState.background);
         const selectedOrigin = origins[Math.abs(originSeed) % origins.length];
         
-        originHtml = `<div class="mt-3 pt-2 border-t border-gray-700 text-xs text-gray-300 italic text-center font-serif leading-relaxed drop-shadow-sm"><span class="text-blue-300 font-bold">${safeName}</span>, a ${raceName} ${className}, ${selectedOrigin}</div>`;
+        originHtml = `<div class="mt-3 pt-2 border-t border-gray-600 text-xs italic text-center font-serif leading-relaxed" style="color: var(--text-muted);"><span class="font-bold" style="color: var(--text-highlight);">${safeName}</span>, a ${raceName} ${className}, ${selectedOrigin}</div>`;
     }
 
     if (summaryDiv) {
@@ -457,13 +458,13 @@ function updateCreationSummary() {
             <div class="flex items-center gap-4 mb-3">
                 <div class="text-5xl drop-shadow-lg bg-black bg-opacity-30 rounded-xl p-3 border border-gray-600 flex-shrink-0">${raceIcon}</div>
                 <div class="flex flex-col flex-grow">
-                    <div class="highlight-text font-bold text-xl leading-tight truncate max-w-[180px]">${safeName || "???"}</div>
-                    <div class="text-xs text-gray-400 uppercase tracking-widest mt-1">${creationState.gender || "?"} ${raceName}</div>
-                    <div class="text-xs text-yellow-500 font-bold" style="font-family: 'Uncial Antiqua', cursive;">${className}</div>
+                    <div class="font-bold text-xl leading-tight truncate max-w-[180px]" style="color: var(--text-highlight);">${safeName || "???"}</div>
+                    <div class="text-xs uppercase tracking-widest mt-1" style="color: var(--text-muted);">${creationState.gender || "?"} ${raceName}</div>
+                    <div class="text-xs font-bold" style="font-family: 'Uncial Antiqua', cursive; color: var(--title-color);">${className}</div>
                 </div>
             </div>
             ${originHtml}
-            <div class="text-xs mt-3 pt-2 border-t border-gray-600 text-gray-300 font-bold">
+            <div class="text-xs mt-3 pt-2 border-t border-gray-600 font-bold" style="color: var(--text-default);">
                 ${stats.length > 0 ? stats.join('<br>') : "<span class='italic opacity-50 font-normal'>Select Race & Class to see bonuses.</span>"}
             </div>
             ${vitalsHtml}
@@ -665,14 +666,14 @@ function initCreationUI() {
             const bg = window.PLAYER_BACKGROUNDS[key];
             const div = document.createElement('div');
             // CLEANUP: Removed conflicting Tailwind colors, deferring to custom CSS
-            div.className = 'creation-option p-3 rounded-lg transition-all';
+            div.className = 'creation-option p-3 rounded-lg transition-all flex flex-col justify-center';
             
             // Safe array access in case items array is malformed
             const startItemName = (bg.items && bg.items[0]) ? bg.items[0].name : "Nothing";
             
             div.innerHTML = `
-                <div class="font-bold text-lg text-yellow-500 drop-shadow-sm" style="font-family: 'Uncial Antiqua', cursive;">${bg.name}</div>
-                <div class="text-[10px] text-gray-400 mt-1 truncate uppercase tracking-widest font-bold">Start: ${startItemName}</div>
+                <div class="font-bold text-lg drop-shadow-sm" style="font-family: 'Uncial Antiqua', cursive; color: var(--title-color);">${bg.name}</div>
+                <div class="text-[10px] mt-1 truncate uppercase tracking-widest font-bold" style="color: var(--text-muted);">Start: ${startItemName}</div>
             `;
             div.onclick = () => selectCreationOption('background', key, div);
             div.dataset.key = key;
@@ -831,5 +832,72 @@ async function finalizeCharacterCreation() {
         btn.classList.remove('animate-pulse');
     }
 }
+
+// 🚨 UI WIN: Make sure we properly hook up the dynamic slot rendering!
+window.renderSlots = async function() {
+    const slotsContainer = document.getElementById('slotsContainer');
+    if (!slotsContainer) return;
+    slotsContainer.innerHTML = '';
+    
+    const charsRef = db.collection('players').doc(currentUser.uid).collection('characters');
+
+    const slotIds = ['slot1', 'slot2', 'slot3'];
+
+    for (const slotId of slotIds) {
+        const doc = await charsRef.doc(slotId).get();
+        const slotDiv = document.createElement('div');
+        
+        // 🚨 FIX: Make sure the slot container has a relative positioning to trap the z-index layers
+        slotDiv.className = "ui-input-asset flex-col justify-between transition-transform cursor-pointer hover:scale-[1.02] min-h-[320px] w-full !p-6 relative";
+
+        if (doc.exists) {
+            const data = doc.data();
+            const bg = typeof window.PLAYER_BACKGROUNDS !== 'undefined' && window.PLAYER_BACKGROUNDS[data.background] 
+                ? window.PLAYER_BACKGROUNDS[data.background] 
+                : { name: 'Unknown' };
+
+            // --- OCCUPIED SLOT UI ---
+            // 🚨 FIX: Replaced hardcoded text-white/gray with var(--title-color) and var(--text-muted)
+            slotDiv.innerHTML = `
+                <div class="text-center w-full pt-2 relative z-10">
+                    <h3 class="text-3xl font-bold mb-2" style="font-family: 'Uncial Antiqua', cursive; color: var(--title-color); text-shadow: var(--title-shadow);">${data.name || 'Unnamed'}</h3>
+                    <div class="text-4xl my-3 text-[#4ade80]" style="text-shadow: 0 0 10px rgba(74, 222, 128, 0.4);">${data.isBoating ? 'c' : (data.character || '@')}</div>
+                    <p class="font-bold text-lg uppercase tracking-widest" style="color: var(--text-highlight);">${bg.name}</p>
+                    <p class="text-sm font-bold mt-1" style="color: var(--text-default);">Level ${data.level || 1}</p>
+                    <p class="text-xs mt-3 h-8 leading-tight" style="color: var(--text-muted);">${typeof getRegionName === 'function' ? getRegionName(Math.floor((data.x || 0) / 160), Math.floor((data.y || 0) / 160)) : 'Wilderness'}</p>
+                </div>
+                
+                <div class="flex gap-2 w-full mt-4 items-center h-12 relative z-10">
+                    <button onclick="selectSlot('${slotId}')" class="ui-btn-asset flex-grow h-full !text-2xl !p-0 !mt-0">PLAY</button>
+                    
+                    <button onclick="deleteSlot('${slotId}')" class="relative top-[3px] right-[9px] w-12 h-8 flex-none bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-xl flex items-center justify-center transition-transform active:scale-95" style="border: 2px solid #000; box-shadow: inset -2px -2px 0px rgba(0,0,0,0.4), inset 2px 2px 0px rgba(255,255,255,0.3); text-shadow: 2px 2px 0px #000;" title="Delete">X</button>
+                </div>
+            `;
+        } else {
+            // --- EMPTY SLOT UI ---
+            slotDiv.classList.add('opacity-80', 'hover:opacity-100');
+
+            slotDiv.onclick = (e) => {
+                if (e.target === slotDiv || e.target.closest('.empty-slot-content')) selectSlot(slotId);
+            };
+
+            // 🚨 FIX: Replaced text-gray-400/500 with theme variables
+            slotDiv.innerHTML = `
+                <div class="text-center w-full empty-slot-content pt-6 flex-grow flex flex-col justify-center relative z-10">
+                    <h3 class="text-2xl font-bold mb-4" style="font-family: 'Uncial Antiqua', cursive; color: var(--title-color); opacity: 0.7;">Slot ${slotId.replace('slot', '')}</h3>
+                    <div class="text-5xl mb-4" style="color: var(--text-muted); opacity: 0.5;">+</div>
+                    <p class="font-bold tracking-widest uppercase" style="color: var(--text-muted);">Empty</p>
+                </div>
+                
+                <div class="w-full mt-4 h-12 relative z-10">
+                    <button onclick="event.stopPropagation(); selectSlot('${slotId}')" class="ui-btn-asset w-full h-full !text-2xl !p-0 !mt-0">CREATE</button>
+                </div>
+            `;
+        }
+        slotsContainer.appendChild(slotDiv);
+    }
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) loadingIndicator.classList.add('hidden');
+};
 
 // --- END OF FILE character-setup.js ---
