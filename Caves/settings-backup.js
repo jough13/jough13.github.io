@@ -275,27 +275,14 @@ async function restoreCloudBackup(slotId = 'latest') {
             return; 
         }
 
-        // 2. Mathematical Anti-Cheat Checks
-        const currentCoins = (gameState && gameState.player && gameState.player.coins) ? gameState.player.coins : 0;
-        const currentXp = (gameState && gameState.player && gameState.player.xp) ? gameState.player.xp : 0;
-        const currentStatPoints = (gameState && gameState.player && gameState.player.statPoints) ? gameState.player.statPoints : 0;
-        const currentTalentPoints = (gameState && gameState.player && gameState.player.talentPoints) ? gameState.player.talentPoints : 0;
-
-        if (data.coins > currentCoins + 500000 && data.xp === currentXp) {
-             console.error("Suspicious Backup Blocked: Massive gold discrepancy without XP gain.");
-             logMessage("{red:Reality Violation Failed.} Anomalous gold detected.");
-             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-             return;
-        }
-
-        if ((data.statPoints || 0) > currentStatPoints + 10 || (data.talentPoints || 0) > currentTalentPoints + 5) {
-             console.error("Suspicious Backup Blocked: Unearned Stat/Talent points detected.");
-             logMessage("{red:Reality Violation Failed.} Anomalous progression detected.");
-             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-             return;
-        }
+        // Anti-Cheat Logic Flaw (Save File Lockout)
+        // We removed the faulty comparison against `currentCoins` and `currentStatPoints` here.
+        // A player could have legally spent all their gold or spent stat points *after* backing up, 
+        // which would cause the engine to falsely flag and block the legitimate restore! 
+        // The cryptographic signature hash checked above is the ultimate source of truth to ensure 
+        // the save data was not tampered with externally.
         
-        // 🚨 BUG FIX WIN: Dynamic Capacity Check!
+        // 2. Dynamic Capacity Check! (Anti-JSON Bombing)
         // We calculate what their capacity *should* be based on the incoming save's talents/gear, 
         // with an absolute hardcap of 50 to prevent JSON bombing.
         const dynamicInvLimit = typeof getInventoryCap === 'function' ? getInventoryCap(data) : 9;
