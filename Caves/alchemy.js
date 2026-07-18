@@ -36,9 +36,10 @@ window.ALCHEMY_RECIPES = {
 };
 
 // --- 1. NEW ITEMS ---
+// 🌟 EXPANDABILITY WIN: Added `pColor` and `pSize` properties to make rendering dynamic!
 const ALCHEMY_ITEMS = {
     '🧪v': {
-        name: 'Venom Flask', type: 'consumable', tile: '🧪',
+        name: 'Venom Flask', type: 'consumable', tile: '🧪', pColor: '#22c55e', pSize: 20,
         description: "Throw to shatter, splashing a 3x3 area with toxins. Poisons enemies.",
         effect: (state) => {
             if (typeof logMessage === 'function') logMessage("{green:Select a direction to throw the Venom Flask... (WASD/Arrows)}");
@@ -48,7 +49,7 @@ const ALCHEMY_ITEMS = {
         }
     },
     '🧪a': {
-        name: 'Acid Flask', type: 'consumable', tile: '🧪',
+        name: 'Acid Flask', type: 'consumable', tile: '🧪', pColor: '#4ade80', pSize: 25,
         description: "Throw to melt armor. Deals massive 3x3 Poison damage. Highly effective vs machines/metal.",
         effect: (state) => {
             if (typeof logMessage === 'function') logMessage("{green:Select a direction to throw the Acid Flask... (WASD/Arrows)}");
@@ -58,7 +59,7 @@ const ALCHEMY_ITEMS = {
         }
     },
     '💣s': {
-        name: 'Smoke Bomb', type: 'consumable', tile: '💣',
+        name: 'Smoke Bomb', type: 'consumable', tile: '💣', pColor: '#9ca3af', pSize: 30,
         description: "Throw to create a 3x3 cloud. Stuns enemies for 2 turns. Grants you Stealth if caught in the blast.",
         effect: (state) => {
             if (typeof logMessage === 'function') logMessage("{gray:Select a direction to throw the Smoke Bomb... (WASD/Arrows)}");
@@ -68,7 +69,7 @@ const ALCHEMY_ITEMS = {
         }
     },
     '🧪h': {
-        name: 'Holy Water', type: 'consumable', tile: '🧪',
+        name: 'Holy Water', type: 'consumable', tile: '🧪', pColor: '#facc15', pSize: 30,
         description: "Throw to bless a 3x3 area. Incinerates Undead/Demons. Heals you if caught in the blast.",
         effect: (state) => {
             if (typeof logMessage === 'function') logMessage("{gold:Select a direction to throw the Holy Water... (WASD/Arrows)}");
@@ -78,7 +79,7 @@ const ALCHEMY_ITEMS = {
         }
     },
     '🧪vf': {
-        name: 'Void-Fire Flask', type: 'consumable', tile: '🧪',
+        name: 'Void-Fire Flask', type: 'consumable', tile: '🧪', pColor: '#a855f7', pSize: 40,
         description: "Throw to unleash a 3x3 inferno of dark fire. Deals massive Fire and Psychic damage.",
         effect: (state) => {
             if (typeof logMessage === 'function') logMessage("{purple:Select a direction to throw the Void-Fire Flask... (WASD/Arrows)}");
@@ -150,7 +151,10 @@ setTimeout(() => {
             // Wait 10ms for the DOM to populate, then inject our custom button
             setTimeout(() => {
                 const loreContent = document.getElementById('loreContent');
-                if (loreContent && loreContent.innerHTML.includes('Invest materials')) {
+                
+                // 🚨 BUG FIX WIN: Anti-Duplication Guard
+                // Prevents the button from spawning twice if the player double-clicks the ledger!
+                if (loreContent && loreContent.innerHTML.includes('Invest materials') && !document.getElementById('btn_mortar')) {
                     const p = state.player;
                     const upg = p.campsiteUpgrades || [];
                     
@@ -162,7 +166,7 @@ setTimeout(() => {
                         const canAfford = wood >= 10 && stone >= 15;
                         const btnClass = canAfford ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-700 opacity-50 cursor-not-allowed';
                         
-                        const btnHtml = `<button id="btn_mortar" class="mb-2 ${btnClass} text-white font-bold py-2 px-4 rounded w-full flex justify-between shadow transition-transform active:scale-95" ${canAfford ? '' : 'disabled'}>
+                        const btnHtml = `<button id="btn_mortar" class="mb-2 ${btnClass} text-white font-bold py-2 px-4 rounded w-full flex justify-between shadow transition-transform active:scale-95 border-b-2 active:border-b-0 active:mt-0.5" ${canAfford ? '' : 'disabled'}>
                             <span>Build Alchemy Mortar</span> <span class="text-xs font-normal">10 Wood, 15 Stone</span>
                         </button>`;
                         
@@ -218,7 +222,10 @@ window.executeThrowPotion = async function(abilityId, dirX, dirY) {
     try {
         // 1. Consume the Potion from Inventory
         const invIndex = player.inventory.findIndex(i => i && i.name === potionName && !i.isEquipped);
+        let potionTemplate = null;
+
         if (invIndex > -1) {
+            potionTemplate = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[player.inventory[invIndex].templateId || ''] : null;
             player.inventory[invIndex].quantity--;
             if (player.inventory[invIndex].quantity <= 0) player.inventory.splice(invIndex, 1);
             if (typeof playerRef !== 'undefined') playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
@@ -265,13 +272,24 @@ window.executeThrowPotion = async function(abilityId, dirX, dirY) {
         
         if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.3, 0.1, 3000); // Glass shatter
 
+        // 🌟 EXPANDABILITY WIN: Read particle properties dynamically from the item data!
+        const explosionColor = (potionTemplate && potionTemplate.pColor) ? potionTemplate.pColor : '#ffffff';
+        const explosionSize = (potionTemplate && potionTemplate.pSize) ? potionTemplate.pSize : 20;
+
         // --- VENOM FLASK ---
         if (potionName === 'Venom Flask') {
             if (typeof logMessage === 'function') logMessage("{green:The flask shatters, spraying toxic venom!}");
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#22c55e', 20);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize);
             
             for (let y = targetY - 1; y <= targetY + 1; y++) {
                 for (let x = targetX - 1; x <= targetX + 1; x++) {
+                    // 🛡️ MECHANIC WIN: Friendly Fire!
+                    if (x === player.x && y === player.y) {
+                        if (typeof logMessage === 'function') logMessage("{green:You are splashed by your own venom!}");
+                        player.poisonTurns = 3;
+                        if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
+                        continue;
+                    }
                     const res = await applySpellDamage(x, y, 10, 'poisonBolt', true);
                     if (res && res.hit) Object.assign(batchedPayload, res.payload);
                 }
@@ -280,10 +298,17 @@ window.executeThrowPotion = async function(abilityId, dirX, dirY) {
         // --- ACID FLASK ---
         else if (potionName === 'Acid Flask') {
             if (typeof logMessage === 'function') logMessage("{green:The flask erupts in corrosive acid!}");
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#4ade80', 25);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize);
             
             for (let y = targetY - 1; y <= targetY + 1; y++) {
                 for (let x = targetX - 1; x <= targetX + 1; x++) {
+                    // 🛡️ MECHANIC WIN: Friendly Fire!
+                    if (x === player.x && y === player.y) {
+                        if (typeof logMessage === 'function') logMessage("{green:The acid burns your skin! (-10 HP)}");
+                        window.modifyVital('health', -10);
+                        player.poisonTurns = 2;
+                        continue;
+                    }
                     // Deals double damage via poison element scaling in applySpellDamage
                     const res = await applySpellDamage(x, y, 20, 'poisonBolt', true);
                     if (res && res.hit) Object.assign(batchedPayload, res.payload);
@@ -294,7 +319,7 @@ window.executeThrowPotion = async function(abilityId, dirX, dirY) {
         else if (potionName === 'Smoke Bomb') {
             if (typeof logMessage === 'function') logMessage("{gray:A thick cloud of smoke erupts!}");
             if (typeof ParticleSystem !== 'undefined') {
-                for(let i=0; i<30; i++) ParticleSystem.spawn(targetX, targetY, '#9ca3af', 'smoke');
+                for(let i=0; i<explosionSize; i++) ParticleSystem.spawn(targetX, targetY, explosionColor, 'smoke');
             }
             
             // Check if player is caught in the smoke (Grants Stealth!)
@@ -323,15 +348,11 @@ window.executeThrowPotion = async function(abilityId, dirX, dirY) {
         // --- HOLY WATER ---
         else if (potionName === 'Holy Water') {
             if (typeof logMessage === 'function') logMessage("{gold:The Holy Water erupts in a blinding flash of light!}");
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#facc15', 30);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize);
             gameState.screenShake = 10;
             
             for (let y = targetY - 1; y <= targetY + 1; y++) {
                 for (let x = targetX - 1; x <= targetX + 1; x++) {
-                    // Holy element will deal double damage to Undead/Demons natively
-                    const res = await applySpellDamage(x, y, 30, 'divineLight', true);
-                    if (res && res.hit) Object.assign(batchedPayload, res.payload);
-                    
                     // Heal the player if caught in the splash zone!
                     if (x === player.x && y === player.y) {
                         const actualHeal = window.modifyVital('health', 15);
@@ -339,18 +360,30 @@ window.executeThrowPotion = async function(abilityId, dirX, dirY) {
                             if (typeof logMessage === 'function') logMessage(`{green:The holy waters cleanse your wounds! (+${actualHeal} HP)}`);
                             if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
                         }
+                        continue; // Skip trying to damage the player!
                     }
+                    
+                    // Holy element will deal double damage to Undead/Demons natively
+                    const res = await applySpellDamage(x, y, 30, 'divineLight', true);
+                    if (res && res.hit) Object.assign(batchedPayload, res.payload);
                 }
             }
         }
         // --- VOID-FIRE FLASK ---
         else if (potionName === 'Void-Fire Flask') {
             if (typeof logMessage === 'function') logMessage("{purple:A terrifying vortex of dark fire consumes the area!}");
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, '#a855f7', 40);
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(targetX, targetY, explosionColor, explosionSize);
             gameState.screenShake = 20;
             
             for (let y = targetY - 1; y <= targetY + 1; y++) {
                 for (let x = targetX - 1; x <= targetX + 1; x++) {
+                    // 🛡️ MECHANIC WIN: Friendly Fire!
+                    if (x === player.x && y === player.y) {
+                        if (typeof logMessage === 'function') logMessage("{purple:You are caught in your own void inferno! (-20 HP)}");
+                        window.modifyVital('health', -20);
+                        player.burnTurns = 3;
+                        continue;
+                    }
                     const res = await applySpellDamage(x, y, 40, 'fireball', true);
                     if (res && res.hit) Object.assign(batchedPayload, res.payload);
                 }
