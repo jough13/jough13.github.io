@@ -224,7 +224,7 @@ window.deleteSlot = function (slotId) {
         if (title) title.innerHTML = "Sever Timeline?";
         
         const desc = document.querySelector('#deleteConfirmModal p');
-        if (desc) desc.innerHTML = "Are you sure you want to erase this soul from the Akashic Records? This action is <strong class='text-red-400 font-bold tracking-widest uppercase'>permanent</strong> and cannot be undone.";
+        if (desc) desc.innerHTML = "Are you sure you want to erase this soul from the Akashic Records? This action is <strong class='text-red-500 font-bold tracking-widest uppercase'>permanent</strong> and cannot be undone.";
         
         deleteConfirmModal.classList.remove('hidden');
     }
