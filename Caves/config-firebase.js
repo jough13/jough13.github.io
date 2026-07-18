@@ -29,14 +29,46 @@ const firebaseConfig = {
 if (typeof firebase === 'undefined') {
     console.error("%c[AKASHIC ENGINE] FATAL: Firebase SDK not found. Connection to the Leylines blocked.", "color: #ef4444; font-weight: bold;");
     
-    // Create a dummy firebase object so the rest of the scripts don't throw Uncaught ReferenceErrors
+    // Create a comprehensive dummy firebase object so the rest of the scripts don't throw Uncaught ReferenceErrors.
+    // This allows the game to function natively in a local, offline environment without throwing exceptions!
     window.firebase = { 
         apps: [], 
         initializeApp: () => ({}), 
         app: () => ({}), 
-        firestore: () => ({ collection: () => ({ doc: () => ({ collection: () => ({ doc: () => ({ get: async () => ({ exists: false }) }) }) }) }) }), 
-        auth: () => ({ onAuthStateChanged: () => {} }), 
-        database: () => ({ ref: () => ({ on: () => {}, update: () => Promise.resolve(), set: () => Promise.resolve() }) }) 
+        firestore: Object.assign(() => ({ 
+            collection: () => ({ 
+                doc: () => ({ 
+                    collection: () => ({ doc: () => ({ get: async () => ({ exists: false }) }) }),
+                    get: async () => ({ exists: false }),
+                    set: async () => {},
+                    update: async () => {},
+                    delete: async () => {}
+                }) 
+            }) 
+        }), {
+            FieldValue: { serverTimestamp: () => Date.now(), delete: () => null }
+        }), 
+        auth: () => ({ 
+            onAuthStateChanged: () => {},
+            signInAnonymously: async () => ({}), 
+            signInWithEmailAndPassword: async () => ({}), 
+            createUserWithEmailAndPassword: async () => ({ user: {} }),
+            signOut: async () => {}
+        }), 
+        database: Object.assign(() => ({ 
+            ref: () => ({ 
+                on: () => {}, 
+                off: () => {}, 
+                update: () => Promise.resolve(), 
+                set: () => Promise.resolve(),
+                remove: () => Promise.resolve(),
+                push: () => ({ set: () => Promise.resolve() }),
+                // Provide a safe fallback mock for RTDB transactions
+                transaction: async (cb) => ({ committed: true, snapshot: { val: () => cb({}) } })
+            }) 
+        }), {
+            ServerValue: { TIMESTAMP: Date.now() }
+        }) 
     };
 
     // Inject a critical UI banner instantly
@@ -288,6 +320,9 @@ function handleAuthError(error) {
         case 'auth/network-request-failed':
             friendlyMessage = 'The leylines are silent. Check your connection to the physical world.';
             break;
+        case 'auth/web-storage-unsupported': // Security / Iframe iframe protection!
+            friendlyMessage = 'Your browser is blocking third-party cookies or web storage. Please enable them to anchor your soul to the cloud.';
+            break;
         case 'auth/popup-closed-by-user':
             friendlyMessage = 'The scrying ritual was interrupted before completion.';
             break;
@@ -457,6 +492,12 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
     const keys = Object.keys(obj);
     for (let i = 0; i < keys.length; i++) {
         const key = keys[i];
+        
+        // Ephemeral State Stripping
+        // Do not save temporary rendering/local flags (prefixed with _) to the database!
+        // We explicitly whitelist '_rarity' and '_negatedDex' as they are required game logic flags.
+        if (key.startsWith('_') && key !== '_rarity' && key !== '_negatedDex') continue;
+        
         const val = obj[key];
         
         // Skip functions immediately so they aren't processed at all
