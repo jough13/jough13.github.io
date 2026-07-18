@@ -2952,6 +2952,12 @@ window.ITEM_DATA = {
             } else { 
                 const amount = Math.floor(random() * 10) + 1; 
                 state.player.coins += amount;
+                
+                // --- ANTI-CHEAT FIX: Track ground loot ---
+                if (typeof window.trackLegitimateGold === 'function') {
+                    window.trackLegitimateGold(amount);
+                }
+                
                 if (typeof triggerStatFlash !== 'undefined' && typeof statDisplays !== 'undefined') {
                     triggerStatFlash(statDisplays.coins, true);
                 }
