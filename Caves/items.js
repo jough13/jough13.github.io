@@ -458,7 +458,7 @@ function handleItemDrop(key) {
         const player = gameState.player;
         const keyNum = parseInt(key);
 
-        if (isNaN(keyNum) || keyNum < 1 || keyNum > 9) return;
+        if (isNaN(keyNum) || keyNum < 1 || keyNum > 50) return;
 
         const itemIndex = keyNum - 1;
         const itemToDrop = player.inventory[itemIndex];
@@ -812,7 +812,7 @@ function useInventoryItem(itemIndex) {
             // 2. Equip New
             if (currentEquipped !== itemToUse) {
                 
-                // --- AMMO HOT-SWAPPING FIX ---
+                // --- AMMO HOT-SWAPPING ---
                 // If we are equipping ammo while already holding another stack of the SAME ammo, merge them cleanly!
                 if (slot === 'ammo' && currentEquipped && currentEquipped.name === itemToUse.name) {
                     // Add the previously equipped quantity directly into the new stack we are trying to equip
