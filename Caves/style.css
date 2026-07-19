@@ -960,18 +960,6 @@ kbd {
     border-image-repeat: repeat;
     image-rendering: pixelated;
     filter: drop-shadow(15px 15px 0px rgba(0,0,0,0.7)); 
-    position: relative; /* Added for inner border */
-}
-
-/* Draws a crisp 2px line exactly where the stone frame meets the parchment */
-.ui-frame-asset::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    box-sizing: border-box; /* CRITICAL: Keeps border inside the bounds */
-    border: 2px solid rgba(0, 0, 0, 0.4);
-    pointer-events: none;
-    z-index: 10;
 }
 
 .ui-parchment-asset {
@@ -981,6 +969,19 @@ kbd {
     box-sizing: border-box;
     /* Subtle woven-paper/parchment texture overlay */
     background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 2px, transparent 2px, transparent 4px);
+    position: relative; /* Container for the magic line */
+}
+
+/* Magic 2px Delineation Line */
+.ui-parchment-asset::after {
+    content: "";
+    position: absolute;
+    /* Shrink inward by exactly the overlap margin */
+    top: 24px; bottom: 24px; left: 24px; right: 24px;
+    border: 2px solid rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+    z-index: 10;
+    border-radius: 4px; /* Slight rounding looks nice on inner borders */
 }
 
 .ui-input-asset {
