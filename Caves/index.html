@@ -190,11 +190,16 @@
         </div>
         
         <div id="charCreationModal" class="fixed inset-0 flex items-center justify-center z-[100] login-bg hidden" role="dialog" aria-modal="true" aria-labelledby="charCreationTitle">
-            <div class="ui-frame-asset max-w-4xl w-full mx-4 max-h-[95vh] flex flex-col">
-                <div class="ui-parchment-asset flex flex-col p-6 overflow-y-auto custom-scrollbar">
-                    <h1 id="charCreationTitle" class="gothic-title text-4xl text-center border-none m-0 pb-6">Forge Your Destiny</h1>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <!-- LEFT COLUMN: Identity -->
+    <div class="ui-frame-asset max-w-4xl w-full mx-4 max-h-[95vh] flex flex-col">
+        
+       <div class="ui-parchment-asset flex flex-col p-6 flex-grow min-h-0">
+            
+            <h1 id="charCreationTitle" class="gothic-title text-4xl text-center border-none m-0 pb-6 flex-shrink-0">Forge Your Destiny</h1>
+            
+            <div class="overflow-y-auto custom-scrollbar pr-2 pb-2">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    
+                    <!-- LEFT COLUMN: Identity -->
                         <div class="space-y-6">
                             <div>
                                 <label class="block text-sm font-bold mb-2" for="charNameInput">Name</label>
@@ -234,7 +239,7 @@
                                 </div>
                             </div>
 
-                            <button type="button" id="finalizeCreationBtn" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border-b-4 border-green-800 active:border-b-0 active:mt-1">
+                                                      <button type="button" id="finalizeCreationBtn" class="w-full bg-green-600...">
                                 Enter the World
                             </button>
                         </div>
@@ -242,6 +247,7 @@
                 </div>
             </div>
         </div>
+    </div>
 
         <!-- ========================================== -->
         <!-- MAIN GAME UI                               -->
