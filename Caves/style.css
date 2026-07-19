@@ -976,12 +976,16 @@ kbd {
 .ui-parchment-asset::after {
     content: "";
     position: absolute;
-    /* Shrink inward by exactly the overlap margin */
-    top: 24px; bottom: 24px; left: 24px; right: 24px;
+    /* Changed from 24px to 0 so the line expands to hug the graphical frame perfectly */
+    top: 0; 
+    bottom: 0; 
+    left: 0; 
+    right: 0;
+    
     border: 2px solid rgba(0, 0, 0, 0.35);
     pointer-events: none;
     z-index: 10;
-    border-radius: 4px; /* Slight rounding looks nice on inner borders */
+    border-radius: 4px; 
 }
 
 .ui-input-asset {
