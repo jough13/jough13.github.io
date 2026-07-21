@@ -3,8 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const tableBody = document.getElementById('appointments-body');
     const emptyState = document.getElementById('empty-state');
     const tableContainer = document.querySelector('.table-container');
+    const exportBtn = document.getElementById('export-btn');
+    const importFile = document.getElementById('import-file');
 
-    // Load appointments from LocalStorage so data persists across refreshes
+    // Load appointments from LocalStorage
     let appointments = JSON.parse(localStorage.getItem('poshBridalAppointments')) || [];
 
     // Save array to local storage
@@ -79,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        // Create new appointment object
         const newAppointment = {
             id: Date.now().toString(),
             clientName: document.getElementById('clientName').value.trim(),
@@ -93,14 +94,73 @@ document.addEventListener('DOMContentLoaded', () => {
             depositMade: document.getElementById('depositMade').checked
         };
 
-        // Push, save, and refresh UI
         appointments.push(newAppointment);
         saveAppointments();
         renderAppointments();
         
-        // Reset form for next client
         form.reset();
         document.querySelector('input[value="In-Salon"]').checked = true; // reset radio default
+    });
+
+    // --- NEW FEATURE: EXPORT (Backup Data) ---
+    exportBtn.addEventListener('click', () => {
+        if (appointments.length === 0) {
+            alert('There are no appointments to backup yet!');
+            return;
+        }
+        
+        // Turn our data array into a JSON string
+        const dataStr = JSON.stringify(appointments, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        
+        // Generate a file name with today's date
+        const today = new Date().toISOString().split('T')[0];
+        const filename = `Posh_Bridal_Backup_${today}.json`;
+
+        // Create a temporary link to force the download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    // --- NEW FEATURE: IMPORT (Restore Data) ---
+    importFile.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                // Parse the imported JSON file
+                const importedData = JSON.parse(event.target.result);
+                
+                // Ensure it's a valid array before overwriting
+                if (Array.isArray(importedData)) {
+                    // Ask for confirmation since this overwrites current data
+                    if (confirm('Warning: This will overwrite your current appointments. Do you want to proceed?')) {
+                        appointments = importedData;
+                        saveAppointments();
+                        renderAppointments();
+                        alert('Data successfully restored!');
+                    }
+                } else {
+                    alert('Invalid backup file. The format is not recognized.');
+                }
+            } catch (err) {
+                alert('Error reading the backup file. Please ensure it is the correct .json file.');
+            }
+        };
+        
+        reader.readAsText(file);
+        // Reset the file input so they can import the same file again later if needed
+        e.target.value = '';
     });
 
     // Run render on initial load
