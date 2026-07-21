@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Posh Salon - Bridal Appointments</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Google Fonts for that elegant, high-end salon vibe -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -101,6 +100,16 @@
                 </table>
             </div>
             <p id="empty-state">No bridal appointments tracked yet. Add one above!</p>
+        </section>
+
+        <!-- Backup and Restore Section -->
+        <section class="data-section">
+            <div class="data-controls">
+                <button id="export-btn" class="secondary-btn">⬇ Export Backup</button>
+                <label for="import-file" class="secondary-btn">⬆ Restore Backup</label>
+                <input type="file" id="import-file" accept=".json" style="display: none;">
+            </div>
+            <p class="data-note">Remember to export a backup occasionally to keep your data safe!</p>
         </section>
     </main>
 
