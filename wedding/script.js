@@ -87,7 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const contractBadge = `<span class="status-badge ${app.contractSigned ? 'status-yes' : 'status-no'}">Contract: ${app.contractSigned ? 'Yes' : 'No'}</span>`;
             const depositBadge = `<span class="status-badge ${app.depositMade ? 'status-yes' : 'status-no'}">Deposit: ${app.depositMade ? 'Yes' : 'No'}</span>`;
 
-            // Note the new data-label="" tags. This is what allows CSS to magically stack them as cards on mobile!
             row.innerHTML = `
                 <td data-label="Bride Details">
                     <strong>${app.clientName}</strong><br>
@@ -127,12 +126,14 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', (e) => {
         e.preventDefault();
 
+        const dateValue = document.getElementById('weddingDate').value;
+
         const newAppointment = {
-            id: Date.now().toString(),
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5), // Super unique ID
             clientName: document.getElementById('clientName').value.trim(),
             email: document.getElementById('email').value.trim(),
             phone: document.getElementById('phone').value.trim(),
-            weddingDate: document.getElementById('weddingDate').value,
+            weddingDate: dateValue,
             location: document.querySelector('input[name="location"]:checked').value,
             hairCount: document.getElementById('hairCount').value,
             makeupCount: document.getElementById('makeupCount').value,
@@ -140,12 +141,40 @@ document.addEventListener('DOMContentLoaded', () => {
             depositMade: document.getElementById('depositMade').checked
         };
 
-        appointments.push(newAppointment);
-        saveAppointments();
-        renderAppointments();
-        
-        form.reset();
-        document.querySelector('input[value="In-Salon"]').checked = true;
+        // Check if there is already a wedding on this exact date
+        const existingWedding = appointments.find(app => app.weddingDate === dateValue);
+
+        // Helper function to finish saving
+        const processSave = () => {
+            appointments.push(newAppointment);
+            saveAppointments();
+            renderAppointments();
+            form.reset();
+            document.querySelector('input[value="In-Salon"]').checked = true;
+        };
+
+        if (existingWedding) {
+            // Format the date nicely for the warning popup
+            const dateObj = new Date(dateValue);
+            const prettyDate = new Date(dateObj.getTime() + Math.abs(dateObj.getTimezoneOffset()*60000)).toLocaleDateString('en-US', {
+                weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+            });
+
+            // Trigger double-booking warning!
+            showDialog({
+                title: 'Double Booking Warning!',
+                message: `You already have a wedding booked for ${prettyDate} (${existingWedding.clientName}). Are you sure you want to double-book this date?`,
+                isConfirm: true,
+                confirmText: 'Book Anyway',
+                confirmColor: '#E65100', // Caution Orange
+                onConfirm: () => {
+                    processSave();
+                }
+            });
+        } else {
+            // Safe to save immediately
+            processSave();
+        }
     });
 
     settingsOpenBtn.addEventListener('click', () => settingsModal.style.display = 'flex');
@@ -157,19 +186,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     loadDummyBtn.addEventListener('click', () => {
+        // We generate unique IDs dynamically now to prevent the deletion bug
+        const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 5);
+
         const dummyData = [
             {
-                id: 'dummy1', clientName: 'Olivia Sterling', email: 'olivia.sterling@example.com',
+                id: generateId(), clientName: 'Olivia Sterling', email: 'olivia.sterling@example.com',
                 phone: '(757) 555-1029', weddingDate: '2026-09-12', location: 'On-Site',
                 hairCount: '5', makeupCount: '5', contractSigned: true, depositMade: true
             },
             {
-                id: 'dummy2', clientName: 'Sophia Lin', email: 'slin_weddings@example.com',
+                id: generateId(), clientName: 'Sophia Lin', email: 'slin_weddings@example.com',
                 phone: '(757) 555-8842', weddingDate: '2026-10-03', location: 'In-Salon',
                 hairCount: '3', makeupCount: '1', contractSigned: true, depositMade: false
             },
             {
-                id: 'dummy3', clientName: 'Emma Richardson', email: 'emmarich12@example.com',
+                id: generateId(), clientName: 'Emma Richardson', email: 'emmarich12@example.com',
                 phone: '(757) 555-3391', weddingDate: '2026-08-22', location: 'On-Site',
                 hairCount: '7', makeupCount: '7', contractSigned: false, depositMade: false
             }
