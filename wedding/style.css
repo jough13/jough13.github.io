@@ -420,6 +420,20 @@ tbody tr:hover {
     transform: scale(1.1);
 }
 
+/* Dialog Action Buttons (Alerts/Confirms) */
+.dialog-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.dialog-actions .submit-btn,
+.dialog-actions .secondary-btn {
+    margin-top: 0;       /* Override standard margin */
+    min-width: 130px;    /* Makes them uniform in the popup */
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .form-row {
@@ -433,12 +447,12 @@ tbody tr:hover {
         gap: 1rem;
     }
 
-    .data-controls {
+    .data-controls, .dialog-actions {
         flex-direction: column;
         align-items: center;
     }
     
-    .secondary-btn {
+    .secondary-btn, .dialog-actions button {
         width: 100%;
         max-width: 300px;
     }
