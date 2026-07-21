@@ -92,6 +92,11 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <label for="notes">Notes & Timeline</label>
+                    <textarea id="notes" name="notes" rows="3" placeholder="Enter schedule, stylist assignments, or special requests here..."></textarea>
+                </div>
+
                 <div class="form-group checkbox-group">
                     <label class="check-label">
                         <input type="checkbox" id="contractSigned" name="contractSigned">
@@ -129,6 +134,7 @@
                             <th>Location</th>
                             <th>Hair</th>
                             <th>Makeup</th>
+                            <th>Notes</th>
                             <th>Contract</th>
                             <th>Deposit</th>
                             <th>Actions</th>
@@ -159,7 +165,7 @@
             <span id="edit-close-btn" class="close-btn">&times;</span>
             <h2>Edit Appointment</h2>
             <form id="edit-form">
-                <input type="hidden" id="edit-id"> <!-- Hidden ID to know which to update -->
+                <input type="hidden" id="edit-id"> 
                 
                 <div class="form-group">
                     <label for="edit-clientName">Bride's Name</label>
@@ -205,6 +211,11 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <label for="edit-notes">Notes & Timeline</label>
+                    <textarea id="edit-notes" name="edit-notes" rows="3"></textarea>
+                </div>
+
                 <div class="form-group checkbox-group">
                     <label class="check-label">
                         <input type="checkbox" id="edit-contractSigned"> Contract Signed
@@ -238,16 +249,12 @@
         <div class="modal-content">
             <h2 id="dialog-title">Notice</h2>
             <p id="dialog-message" style="margin-bottom: 1.5rem; color: var(--text-muted);"></p>
-            <div class="dialog-actions" id="dialog-buttons">
-                <!-- Buttons injected dynamically via JS based on alert vs confirm -->
-            </div>
+            <div class="dialog-actions" id="dialog-buttons"></div>
         </div>
     </div>
 
     <!-- Hidden Printable Day-Of Itinerary -->
-    <div id="print-area">
-        <!-- Injected via JavaScript -->
-    </div>
+    <div id="print-area"></div>
 
     <script src="script.js"></script>
 </body>
