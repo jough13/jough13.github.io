@@ -1,8 +1,8 @@
 :root {
-    --primary-color: #4A5D4E; /* Aveda-esque sage green */
+    --primary-color: #4A5D4E; 
     --primary-hover: #3B4A3F;
-    --primary-light: #E8F5E9; /* Very soft green for backgrounds */
-    --bg-color: #F9F9F7;      /* Warm, natural paper white */
+    --primary-light: #E8F5E9; 
+    --bg-color: #F9F9F7;      
     --surface: #FFFFFF;
     --text-main: #2C2C2C;
     --text-muted: #6B6B6B;
@@ -77,7 +77,7 @@ h1, h2, h3, th {
 
 .icon-btn:hover {
     color: var(--primary-hover);
-    transform: rotate(90deg); /* Wheel spin effect on hover */
+    transform: rotate(90deg);
     background-color: var(--primary-light);
 }
 
@@ -102,9 +102,9 @@ h1, h2, h3, th {
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.04);
     transition: transform 0.4s ease, box-shadow 0.4s ease;
+    min-width: 0; /* CRITICAL FIX: prevents grid items from blowing out mobile layout */
 }
 
-/* Smooth lift effect on hover for that premium app feel */
 .form-section:hover, .tracker-section:hover {
     transform: translateY(-2px);
     box-shadow: 0 12px 30px rgba(0,0,0,0.08);
@@ -153,7 +153,6 @@ input[type="number"] {
     background-color: #fafafa;
 }
 
-/* Elegant focus states */
 input:focus {
     outline: none;
     border-color: var(--primary-color);
@@ -176,7 +175,6 @@ input:focus {
     cursor: pointer;
 }
 
-/* Colorize checkboxes and radios to match brand */
 input[type="radio"], input[type="checkbox"] {
     accent-color: var(--primary-color);
     width: 1.1rem;
@@ -201,41 +199,20 @@ input[type="radio"], input[type="checkbox"] {
     font-family: inherit;
 }
 
-.submit-btn:hover {
-    background-color: var(--primary-hover);
-}
-
-.submit-btn:active {
-    transform: scale(0.98);
-}
-
-.submit-btn:focus-visible {
-    outline: 3px solid var(--primary-light);
-    outline-offset: 2px;
-}
+.submit-btn:hover { background-color: var(--primary-hover); }
+.submit-btn:active { transform: scale(0.98); }
+.submit-btn:focus-visible { outline: 3px solid var(--primary-light); outline-offset: 2px; }
 
 /* Table Styles */
 .table-container {
     overflow-x: auto;
-    /* Smooth scrolling for mobile */
     -webkit-overflow-scrolling: touch; 
 }
 
-/* Custom, elegant scrollbar for the table */
-.table-container::-webkit-scrollbar {
-    height: 8px;
-}
-.table-container::-webkit-scrollbar-track {
-    background: var(--bg-color);
-    border-radius: 4px;
-}
-.table-container::-webkit-scrollbar-thumb {
-    background-color: #c9d1ca; 
-    border-radius: 4px;
-}
-.table-container::-webkit-scrollbar-thumb:hover {
-    background-color: var(--primary-color);
-}
+.table-container::-webkit-scrollbar { height: 8px; }
+.table-container::-webkit-scrollbar-track { background: var(--bg-color); border-radius: 4px; }
+.table-container::-webkit-scrollbar-thumb { background-color: #c9d1ca; border-radius: 4px; }
+.table-container::-webkit-scrollbar-thumb:hover { background-color: var(--primary-color); }
 
 table {
     width: 100%;
@@ -254,18 +231,10 @@ th {
     font-size: 1.1rem;
 }
 
-td {
-    font-size: 0.95rem;
-}
+td { font-size: 0.95rem; }
 
-/* Row Hover Effect for readability */
-tbody tr {
-    transition: background-color 0.2s ease;
-}
-
-tbody tr:hover {
-    background-color: var(--primary-light);
-}
+tbody tr { transition: background-color 0.2s ease; }
+tbody tr:hover { background-color: var(--primary-light); }
 
 .status-badge {
     display: inline-block;
@@ -276,16 +245,8 @@ tbody tr:hover {
     margin-right: 0.5rem;
     margin-bottom: 0.4rem;
 }
-
-.status-yes {
-    background-color: #d1e7d3;
-    color: #2E7D32;
-}
-
-.status-no {
-    background-color: #FFEBEE;
-    color: #C62828;
-}
+.status-yes { background-color: #d1e7d3; color: #2E7D32; }
+.status-no { background-color: #FFEBEE; color: #C62828; }
 
 .delete-btn {
     background: none;
@@ -299,10 +260,7 @@ tbody tr:hover {
     border-radius: 4px;
     transition: background-color 0.2s;
 }
-
-.delete-btn:hover {
-    background-color: #FFEBEE;
-}
+.delete-btn:hover { background-color: #FFEBEE; }
 
 #empty-state {
     text-align: center;
@@ -320,7 +278,6 @@ tbody tr:hover {
     margin-top: -1rem; 
     margin-bottom: 3rem;
 }
-
 .data-controls {
     display: flex;
     justify-content: center;
@@ -332,13 +289,10 @@ tbody tr:hover {
     background-color: transparent;
     color: var(--primary-color);
     border: 1px solid var(--primary-color);
-    
-    /* Fixed Button/Label Height discrepancies */
     padding: 0 1.2rem;
     height: 46px; 
     min-width: 220px;
     font-family: inherit; 
-    
     font-size: 0.85rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -346,7 +300,6 @@ tbody tr:hover {
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.3s ease;
-    
     display: inline-flex;
     justify-content: center;
     align-items: center;
@@ -377,25 +330,19 @@ tbody tr:hover {
     backdrop-filter: blur(4px);
     justify-content: center;
     align-items: center;
+    padding: 1rem;
 }
 
-/* Fade and Slide in animation for Modal */
 @keyframes modalFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-20px) scale(0.98);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+    from { opacity: 0; transform: translateY(-20px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .modal-content {
     background-color: var(--surface);
     padding: 2.5rem;
     border-radius: 8px;
-    width: 90%;
+    width: 100%;
     max-width: 450px;
     position: relative;
     box-shadow: 0 15px 40px rgba(0,0,0,0.15);
@@ -420,7 +367,6 @@ tbody tr:hover {
     transform: scale(1.1);
 }
 
-/* Dialog Action Buttons (Alerts/Confirms) */
 .dialog-actions {
     display: flex;
     justify-content: center;
@@ -430,12 +376,21 @@ tbody tr:hover {
 
 .dialog-actions .submit-btn,
 .dialog-actions .secondary-btn {
-    margin-top: 0;       /* Override standard margin */
-    min-width: 130px;    /* Makes them uniform in the popup */
+    margin-top: 0;       
+    min-width: 130px;    
 }
 
-/* Responsive adjustments */
+/* =========================================
+   MOBILE RESPONSIVENESS OVERHAUL
+   ========================================= */
 @media (max-width: 768px) {
+    /* Tighten up padding/margins for smaller screens */
+    .container { margin: 1.5rem auto; padding: 0 1rem; }
+    .header { padding: 1.5rem 1rem; }
+    .logo-container h1 { font-size: 2rem; }
+    .form-section, .tracker-section { padding: 1.5rem; }
+    .modal-content { padding: 2rem 1.5rem; }
+    
     .form-row {
         grid-template-columns: 1fr;
         gap: 0;
@@ -447,13 +402,61 @@ tbody tr:hover {
         gap: 1rem;
     }
 
-    .data-controls, .dialog-actions {
-        flex-direction: column;
-        align-items: center;
+    /* Convert buttons to stacked */
+    .data-controls { flex-direction: column; align-items: center; }
+    .secondary-btn { width: 100%; max-width: 300px; }
+    
+    .dialog-actions { flex-direction: column; gap: 0.75rem; }
+    .dialog-actions .submit-btn, .dialog-actions .secondary-btn { width: 100%; max-width: 300px; }
+
+    /* =========================================
+       THE MAGIC MOBILE TABLE TO CARD CONVERSION 
+       ========================================= */
+    table, thead, tbody, th, td, tr { 
+        display: block; 
+        width: 100%;
     }
     
-    .secondary-btn, .dialog-actions button {
-        width: 100%;
-        max-width: 300px;
+    /* Hide the traditional column headers */
+    thead tr { 
+        position: absolute; 
+        top: -9999px; 
+        left: -9999px; 
+    }
+    
+    /* Turn each row into a distinct floating card */
+    tbody tr { 
+        border: 1px solid var(--border-color); 
+        border-radius: 8px; 
+        margin-bottom: 1.5rem; 
+        padding: 1rem; 
+        background-color: var(--surface); 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+    }
+    
+    /* Turn table cells into neat stacked rows inside the card */
+    td { 
+        border: none; 
+        border-bottom: 1px solid var(--border-color); 
+        position: relative; 
+        padding: 0.8rem 0; 
+        text-align: left; 
+    }
+    
+    td:last-child { 
+        border-bottom: none; 
+        padding-bottom: 0; 
+    }
+    
+    /* Display the 'data-label' attribute as a mini-header above the data */
+    td::before { 
+        content: attr(data-label); 
+        display: block; 
+        font-size: 0.75rem; 
+        font-weight: 700; 
+        text-transform: uppercase; 
+        letter-spacing: 1px; 
+        color: var(--primary-color); 
+        margin-bottom: 0.3rem; 
     }
 }
