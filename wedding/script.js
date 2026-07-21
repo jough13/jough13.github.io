@@ -8,11 +8,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportBtn = document.getElementById('export-btn');
     const importFile = document.getElementById('import-file');
     
-    // Modal & Settings Buttons
+    // Modal & Settings Elements
     const settingsModal = document.getElementById('settings-modal');
     const settingsOpenBtn = document.getElementById('settings-open-btn');
     const settingsCloseBtn = document.getElementById('settings-close-btn');
     const loadDummyBtn = document.getElementById('load-dummy-btn');
+
+    // Dialog Modal Elements
+    const dialogModal = document.getElementById('dialog-modal');
+    const dialogTitle = document.getElementById('dialog-title');
+    const dialogMessage = document.getElementById('dialog-message');
+    const dialogButtons = document.getElementById('dialog-buttons');
 
     // Load appointments from LocalStorage
     let appointments = JSON.parse(localStorage.getItem('poshBridalAppointments')) || [];
@@ -20,6 +26,48 @@ document.addEventListener('DOMContentLoaded', () => {
     // Save array to local storage
     function saveAppointments() {
         localStorage.setItem('poshBridalAppointments', JSON.stringify(appointments));
+    }
+
+    // --- CUSTOM DIALOG FUNCTION ---
+    // Replaces default browser alerts/confirms with our beautiful branded modals
+    function showDialog({ title, message, isConfirm, confirmText = "OK", confirmColor = "var(--primary-color)", onConfirm }) {
+        dialogTitle.textContent = title;
+        dialogMessage.textContent = message;
+        dialogButtons.innerHTML = ''; // Clear out old buttons
+
+        if (isConfirm) {
+            // It's a Confirmation (Needs Cancel + Action button)
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'secondary-btn';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.onclick = () => { dialogModal.style.display = 'none'; };
+
+            const confirmBtn = document.createElement('button');
+            confirmBtn.className = 'submit-btn';
+            confirmBtn.style.backgroundColor = confirmColor;
+            confirmBtn.textContent = confirmText;
+            confirmBtn.onclick = () => {
+                dialogModal.style.display = 'none';
+                if (onConfirm) onConfirm();
+            };
+
+            dialogButtons.appendChild(cancelBtn);
+            dialogButtons.appendChild(confirmBtn);
+        } else {
+            // It's just an Alert (Needs only an OK button)
+            const okBtn = document.createElement('button');
+            okBtn.className = 'submit-btn';
+            okBtn.style.backgroundColor = confirmColor;
+            okBtn.textContent = confirmText;
+            okBtn.onclick = () => {
+                dialogModal.style.display = 'none';
+                if (onConfirm) onConfirm();
+            };
+            
+            dialogButtons.appendChild(okBtn);
+        }
+
+        dialogModal.style.display = 'flex';
     }
 
     // Render the tracking table
@@ -47,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
             });
 
-            // Generate HTML badges based on contract and deposit status
+            // Generate HTML badges
             const contractBadge = `<span class="status-badge ${app.contractSigned ? 'status-yes' : 'status-no'}">Contract: ${app.contractSigned ? 'Yes' : 'No'}</span>`;
             const depositBadge = `<span class="status-badge ${app.depositMade ? 'status-yes' : 'status-no'}">Deposit: ${app.depositMade ? 'Yes' : 'No'}</span>`;
 
@@ -67,22 +115,25 @@ document.addEventListener('DOMContentLoaded', () => {
             tableBody.appendChild(row);
         });
 
-        // Attach event listeners to all dynamically created "Remove" buttons
+        // Attach event listeners to "Remove" buttons using custom dialog
         document.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const id = this.getAttribute('data-id');
-                deleteAppointment(id);
+                
+                showDialog({
+                    title: 'Remove Appointment?',
+                    message: 'Are you sure you want to delete this wedding appointment? This cannot be undone.',
+                    isConfirm: true,
+                    confirmText: 'Delete',
+                    confirmColor: '#C62828', // Destructive Red
+                    onConfirm: () => {
+                        appointments = appointments.filter(app => app.id !== id);
+                        saveAppointments();
+                        renderAppointments();
+                    }
+                });
             });
         });
-    }
-
-    // Delete functionality
-    function deleteAppointment(id) {
-        if(confirm('Are you sure you want to remove this wedding appointment?')) {
-            appointments = appointments.filter(app => app.id !== id);
-            saveAppointments();
-            renderAppointments();
-        }
     }
 
     // Form Submission
@@ -110,20 +161,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('input[value="In-Salon"]').checked = true; // reset radio default
     });
 
-    // --- MODAL LOGIC ---
-    settingsOpenBtn.addEventListener('click', () => {
-        settingsModal.style.display = 'flex';
-    });
+    // --- SETTINGS MODAL LOGIC ---
+    settingsOpenBtn.addEventListener('click', () => settingsModal.style.display = 'flex');
+    settingsCloseBtn.addEventListener('click', () => settingsModal.style.display = 'none');
 
-    settingsCloseBtn.addEventListener('click', () => {
-        settingsModal.style.display = 'none';
-    });
-
-    // Close modal if user clicks outside of the box
+    // Close modals if user clicks outside the content box
     window.addEventListener('click', (e) => {
-        if (e.target === settingsModal) {
-            settingsModal.style.display = 'none';
-        }
+        if (e.target === settingsModal) settingsModal.style.display = 'none';
+        if (e.target === dialogModal) dialogModal.style.display = 'none';
     });
 
     // --- LOAD DUMMY DATA ---
@@ -143,26 +188,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 id: 'dummy3', clientName: 'Emma Richardson', email: 'emmarich12@example.com',
                 phone: '(757) 555-3391', weddingDate: '2026-08-22', location: 'On-Site',
                 hairCount: '7', makeupCount: '7', contractSigned: false, depositMade: false
-            },
-            {
-                id: 'dummy4', clientName: 'Isabella Cruz', email: 'icruz.designs@example.com',
-                phone: '(757) 555-4747', weddingDate: '2026-11-15', location: 'In-Salon',
-                hairCount: '4', makeupCount: '4', contractSigned: true, depositMade: true
             }
         ];
 
-        // Add dummy data to existing appointments
         appointments = [...appointments, ...dummyData];
         saveAppointments();
         renderAppointments();
+        settingsModal.style.display = 'none';
         
-        settingsModal.style.display = 'none'; // Close modal
+        showDialog({
+            title: 'Test Data Loaded',
+            message: 'Successfully added 3 example weddings to your tracking board!',
+            isConfirm: false
+        });
     });
 
     // --- EXPORT (Backup Data) ---
     exportBtn.addEventListener('click', () => {
         if (appointments.length === 0) {
-            alert('There are no appointments to backup yet!');
+            showDialog({
+                title: 'Nothing to Export',
+                message: 'You have no appointments saved right now. Add some brides before exporting!',
+                isConfirm: false
+            });
             return;
         }
         
@@ -194,22 +242,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 const importedData = JSON.parse(event.target.result);
                 
                 if (Array.isArray(importedData)) {
-                    if (confirm('Warning: This will overwrite your current appointments. Do you want to proceed?')) {
-                        appointments = importedData;
-                        saveAppointments();
-                        renderAppointments();
-                        alert('Data successfully restored!');
-                    }
+                    // Trigger Custom Warning Dialog before overwriting
+                    showDialog({
+                        title: 'Overwrite Data?',
+                        message: 'Warning: Importing this backup will overwrite your current appointment board. Do you want to proceed?',
+                        isConfirm: true,
+                        confirmText: 'Restore Backup',
+                        onConfirm: () => {
+                            appointments = importedData;
+                            saveAppointments();
+                            renderAppointments();
+                            
+                            // Follow up with success message
+                            setTimeout(() => {
+                                showDialog({
+                                    title: 'Restore Complete',
+                                    message: 'Your appointments have been successfully restored from the backup file.',
+                                    isConfirm: false
+                                });
+                            }, 300); // Slight delay for smooth animation
+                        }
+                    });
                 } else {
-                    alert('Invalid backup file. The format is not recognized.');
+                    showDialog({
+                        title: 'Import Failed',
+                        message: 'The file you selected is not a valid Posh Salon backup file.',
+                        isConfirm: false,
+                        confirmColor: '#C62828'
+                    });
                 }
             } catch (err) {
-                alert('Error reading the backup file. Please ensure it is the correct .json file.');
+                showDialog({
+                    title: 'Error Reading File',
+                    message: 'There was an issue opening this file. Please make sure it is a valid .json backup.',
+                    isConfirm: false,
+                    confirmColor: '#C62828'
+                });
             }
         };
         
         reader.readAsText(file);
-        e.target.value = ''; // Reset input
+        e.target.value = ''; // Reset input to allow selecting the same file twice
     });
 
     // Run render on initial load
