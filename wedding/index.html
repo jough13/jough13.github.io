@@ -1,1 +1,109 @@
-//
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Posh Salon - Bridal Appointments</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts for that elegant, high-end salon vibe -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="logo-container">
+            <h1>Posh Salon</h1>
+            <p class="subtitle">Bridal Appointment Tracker</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Input Form Section -->
+        <section class="form-section">
+            <h2>New Bridal Appointment</h2>
+            <form id="bridal-form">
+                <div class="form-group">
+                    <label for="clientName">Bride's Name</label>
+                    <input type="text" id="clientName" name="clientName" required placeholder="Jane Doe">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" required placeholder="jane@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" required placeholder="(757) 555-0123">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="weddingDate">Wedding Date</label>
+                    <input type="date" id="weddingDate" name="weddingDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Service Location</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="location" value="In-Salon" checked> In-Salon
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="location" value="On-Site"> On-Site
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="hairCount">Total Hair Clients</label>
+                        <input type="number" id="hairCount" name="hairCount" min="0" value="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="makeupCount">Total Makeup Clients</label>
+                        <input type="number" id="makeupCount" name="makeupCount" min="0" value="1" required>
+                    </div>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="check-label">
+                        <input type="checkbox" id="contractSigned" name="contractSigned">
+                        Contract Signed
+                    </label>
+                    <label class="check-label">
+                        <input type="checkbox" id="depositMade" name="depositMade">
+                        Deposit Made
+                    </label>
+                </div>
+
+                <button type="submit" class="submit-btn">Save Appointment</button>
+            </form>
+        </section>
+
+        <!-- Tracking Board Section -->
+        <section class="tracker-section">
+            <h2>Upcoming Weddings</h2>
+            <div class="table-container">
+                <table id="appointments-table">
+                    <thead>
+                        <tr>
+                            <th>Bride</th>
+                            <th>Date</th>
+                            <th>Location</th>
+                            <th>Services</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="appointments-body">
+                        <!-- Appointments will be injected here via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <p id="empty-state">No bridal appointments tracked yet. Add one above!</p>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
