@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Archive Toggles
     const viewUpcomingBtn = document.getElementById('view-upcoming-btn');
     const viewPastBtn = document.getElementById('view-past-btn');
-    let currentView = 'upcoming'; // Tracks which tab she is looking at
+    let currentView = 'upcoming'; 
 
     // Data Store
     let appointments = JSON.parse(localStorage.getItem('poshBridalAppointments')) || [];
@@ -88,8 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Dashboard calculations
-        const nextApp = upcomingApps[0]; // Since it's sorted, the first one is next!
+        const nextApp = upcomingApps[0]; 
         const missingContracts = upcomingApps.filter(app => !app.contractSigned).length;
         const missingDeposits = upcomingApps.filter(app => !app.depositMade).length;
 
@@ -106,21 +105,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderAppointments() {
         tableBody.innerHTML = '';
         
-        // Auto-Archiving Logic: Get today's date at midnight as a string
         const todayStr = new Date().toISOString().split('T')[0];
 
-        // Split data into Past vs Upcoming using strict string comparison
         const upcomingApps = appointments.filter(app => app.weddingDate >= todayStr);
         const pastApps = appointments.filter(app => app.weddingDate < todayStr);
 
-        // Sort upcoming chronologically (closest first), sort past chronologically (most recent past first)
         upcomingApps.sort((a, b) => new Date(a.weddingDate) - new Date(b.weddingDate));
         pastApps.sort((a, b) => new Date(b.weddingDate) - new Date(a.weddingDate));
 
-        // Update dashboard based only on upcoming apps!
         updateDashboard(upcomingApps);
 
-        // Determine which array to show on the screen
         const displayApps = currentView === 'upcoming' ? upcomingApps : pastApps;
 
         if (displayApps.length === 0) {
@@ -135,7 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
         displayApps.forEach(app => {
             const row = document.createElement('tr');
 
-            // Force strict timezone handling for rendering
             const dateObj = new Date(app.weddingDate + 'T00:00:00');
             const dateString = dateObj.toLocaleDateString('en-US', {
                 weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
@@ -143,6 +136,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const contractBadge = `<span class="status-badge ${app.contractSigned ? 'status-yes' : 'status-no'}">${app.contractSigned ? 'Signed' : 'Pending'}</span>`;
             const depositBadge = `<span class="status-badge ${app.depositMade ? 'status-yes' : 'status-no'}">${app.depositMade ? 'Paid' : 'Unpaid'}</span>`;
+
+            // If notes exist, show a preview snippet. If not, just a dash.
+            const notesSnippet = app.notes ? app.notes : '<span style="color: #ccc;">-</span>';
 
             row.innerHTML = `
                 <td class="sticky-col"><strong>${app.clientName}</strong></td>
@@ -152,6 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${app.location}</td>
                 <td>${app.hairCount}</td>
                 <td>${app.makeupCount}</td>
+                <td class="notes-cell">${notesSnippet}</td>
                 <td>${contractBadge}</td>
                 <td>${depositBadge}</td>
                 <td class="action-buttons">
@@ -193,7 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const id = this.getAttribute('data-id');
                 const app = appointments.find(a => a.id === id);
                 if(app) {
-                    // Populate modal
                     document.getElementById('edit-id').value = app.id;
                     document.getElementById('edit-clientName').value = app.clientName;
                     document.getElementById('edit-email').value = app.email;
@@ -201,6 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('edit-weddingDate').value = app.weddingDate;
                     document.getElementById('edit-hairCount').value = app.hairCount;
                     document.getElementById('edit-makeupCount').value = app.makeupCount;
+                    document.getElementById('edit-notes').value = app.notes || ''; // Added Notes population
                     document.getElementById('edit-contractSigned').checked = app.contractSigned;
                     document.getElementById('edit-depositMade').checked = app.depositMade;
                     
@@ -222,6 +219,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const dateObj = new Date(app.weddingDate + 'T00:00:00');
                     const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
                     
+                    // Conditionally format the notes area based on if she typed anything
+                    const notesSection = app.notes 
+                        ? `<div class="print-notes-content">${app.notes}</div>` 
+                        : `<div class="notes-empty-box"></div>`;
+
                     printArea.innerHTML = `
                         <div class="print-header">
                             <h1>Posh Salon</h1>
@@ -252,9 +254,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         <div class="notes-section">
                             <p style="color: #666; text-transform: uppercase; font-size: 0.8rem; font-weight: bold;">Stylist Notes & Timeline:</p>
+                            ${notesSection}
                         </div>
                     `;
-                    // Calling browser print function
                     window.print();
                 }
             });
@@ -276,6 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
             location: document.querySelector('input[name="location"]:checked').value,
             hairCount: document.getElementById('hairCount').value,
             makeupCount: document.getElementById('makeupCount').value,
+            notes: document.getElementById('notes').value.trim(), // Added Notes capture
             contractSigned: document.getElementById('contractSigned').checked,
             depositMade: document.getElementById('depositMade').checked
         };
@@ -284,7 +287,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const processSave = () => {
             appointments.push(newAppointment);
             saveAppointments();
-            // Automatically switch view to Upcoming if she added a new one
             currentView = 'upcoming'; 
             viewUpcomingBtn.classList.add('active');
             viewPastBtn.classList.remove('active');
@@ -323,6 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
             appointments[appIndex].location = document.querySelector('input[name="edit-location"]:checked').value;
             appointments[appIndex].hairCount = document.getElementById('edit-hairCount').value;
             appointments[appIndex].makeupCount = document.getElementById('edit-makeupCount').value;
+            appointments[appIndex].notes = document.getElementById('edit-notes').value.trim(); // Saving Edited Notes
             appointments[appIndex].contractSigned = document.getElementById('edit-contractSigned').checked;
             appointments[appIndex].depositMade = document.getElementById('edit-depositMade').checked;
             
@@ -366,23 +369,22 @@ document.addEventListener('DOMContentLoaded', () => {
             {
                 id: generateId(), clientName: 'Olivia Sterling', email: 'olivia.sterling@example.com',
                 phone: '(757) 555-1029', weddingDate: '2026-09-12', location: 'On-Site',
-                hairCount: '5', makeupCount: '5', contractSigned: true, depositMade: true
+                hairCount: '5', makeupCount: '5', notes: 'Bride wants a classic updo. 2 Bridesmaids need extensions blended.', contractSigned: true, depositMade: true
             },
             {
                 id: generateId(), clientName: 'Sophia Lin', email: 'slin_weddings@example.com',
                 phone: '(757) 555-8842', weddingDate: '2026-10-03', location: 'In-Salon',
-                hairCount: '3', makeupCount: '1', contractSigned: true, depositMade: false
+                hairCount: '3', makeupCount: '1', notes: 'Arriving at 8:00 AM. Bring mimosas.', contractSigned: true, depositMade: false
             },
             {
                 id: generateId(), clientName: 'Emma Richardson', email: 'emmarich12@example.com',
                 phone: '(757) 555-3391', weddingDate: '2026-08-22', location: 'On-Site',
-                hairCount: '7', makeupCount: '7', contractSigned: false, depositMade: false
+                hairCount: '7', makeupCount: '7', notes: '', contractSigned: false, depositMade: false
             },
-            // One Past Date to demonstrate Archiving!
             {
                 id: generateId(), clientName: 'Jessica Archive', email: 'jess.past@example.com',
                 phone: '(757) 555-9999', weddingDate: '2026-01-15', location: 'In-Salon',
-                hairCount: '4', makeupCount: '4', contractSigned: true, depositMade: true
+                hairCount: '4', makeupCount: '4', notes: 'Was a beautiful winter wedding!', contractSigned: true, depositMade: true
             }
         ];
 
