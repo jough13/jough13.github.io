@@ -26,13 +26,22 @@ h1, h2, h3, th {
     font-weight: 600;
 }
 
-/* Header Styling */
+/* Header Styling with Settings Gear */
 .header {
     background-color: var(--surface);
     padding: 2.5rem 1rem;
     text-align: center;
     border-bottom: 1px solid var(--border-color);
     box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+}
+
+.header-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .logo-container h1 {
@@ -48,6 +57,24 @@ h1, h2, h3, th {
     letter-spacing: 2px;
     text-transform: uppercase;
     margin-top: 0.5rem;
+}
+
+/* Settings Icon Button */
+.icon-btn {
+    position: absolute;
+    right: 0;
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: transform 0.5s ease, color 0.3s ease;
+    display: flex;
+    align-items: center;
+}
+
+.icon-btn:hover {
+    color: var(--primary-hover);
+    transform: rotate(90deg); /* Wheel spin effect on hover */
 }
 
 /* Layout */
@@ -222,7 +249,7 @@ td {
 .data-controls {
     display: flex;
     justify-content: center;
-    gap: 1rem;
+    gap: 1.5rem;
     margin-bottom: 0.75rem;
 }
 
@@ -238,7 +265,13 @@ td {
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.3s ease;
-    display: inline-block;
+    
+    /* New styles to force equal width */
+    min-width: 220px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
 }
 
 .secondary-btn:hover {
@@ -250,6 +283,47 @@ td {
     font-size: 0.85rem;
     color: var(--text-muted);
     font-style: italic;
+}
+
+/* Modal Styling */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: var(--surface);
+    padding: 2.5rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 450px;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    font-size: 2rem;
+    font-weight: 300;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.close-btn:hover {
+    color: var(--primary-color);
 }
 
 /* Responsive adjustments */
@@ -267,5 +341,11 @@ td {
 
     .data-controls {
         flex-direction: column;
+        align-items: center;
+    }
+    
+    .secondary-btn {
+        width: 100%;
+        max-width: 300px;
     }
 }
