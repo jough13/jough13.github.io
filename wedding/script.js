@@ -4,39 +4,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const emptyState = document.getElementById('empty-state');
     const tableContainer = document.querySelector('.table-container');
     
-    // Import / Export Buttons
     const exportBtn = document.getElementById('export-btn');
     const importFile = document.getElementById('import-file');
     
-    // Modal & Settings Elements
     const settingsModal = document.getElementById('settings-modal');
     const settingsOpenBtn = document.getElementById('settings-open-btn');
     const settingsCloseBtn = document.getElementById('settings-close-btn');
     const loadDummyBtn = document.getElementById('load-dummy-btn');
 
-    // Dialog Modal Elements
     const dialogModal = document.getElementById('dialog-modal');
     const dialogTitle = document.getElementById('dialog-title');
     const dialogMessage = document.getElementById('dialog-message');
     const dialogButtons = document.getElementById('dialog-buttons');
 
-    // Load appointments from LocalStorage
     let appointments = JSON.parse(localStorage.getItem('poshBridalAppointments')) || [];
 
-    // Save array to local storage
     function saveAppointments() {
         localStorage.setItem('poshBridalAppointments', JSON.stringify(appointments));
     }
 
-    // --- CUSTOM DIALOG FUNCTION ---
-    // Replaces default browser alerts/confirms with our beautiful branded modals
+    // Custom Branded Dialog System
     function showDialog({ title, message, isConfirm, confirmText = "OK", confirmColor = "var(--primary-color)", onConfirm }) {
         dialogTitle.textContent = title;
         dialogMessage.textContent = message;
-        dialogButtons.innerHTML = ''; // Clear out old buttons
+        dialogButtons.innerHTML = ''; 
 
         if (isConfirm) {
-            // It's a Confirmation (Needs Cancel + Action button)
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'secondary-btn';
             cancelBtn.textContent = 'Cancel';
@@ -54,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
             dialogButtons.appendChild(cancelBtn);
             dialogButtons.appendChild(confirmBtn);
         } else {
-            // It's just an Alert (Needs only an OK button)
             const okBtn = document.createElement('button');
             okBtn.className = 'submit-btn';
             okBtn.style.backgroundColor = confirmColor;
@@ -70,7 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
         dialogModal.style.display = 'flex';
     }
 
-    // Render the tracking table
     function renderAppointments() {
         tableBody.innerHTML = '';
         
@@ -83,39 +74,36 @@ document.addEventListener('DOMContentLoaded', () => {
         emptyState.style.display = 'none';
         tableContainer.style.display = 'block';
 
-        // Sort weddings chronologically by date
         appointments.sort((a, b) => new Date(a.weddingDate) - new Date(b.weddingDate));
 
         appointments.forEach(app => {
             const row = document.createElement('tr');
 
-            // Format Date beautifully
             const dateObj = new Date(app.weddingDate);
             const dateString = new Date(dateObj.getTime() + Math.abs(dateObj.getTimezoneOffset()*60000)).toLocaleDateString('en-US', {
                 weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
             });
 
-            // Generate HTML badges
             const contractBadge = `<span class="status-badge ${app.contractSigned ? 'status-yes' : 'status-no'}">Contract: ${app.contractSigned ? 'Yes' : 'No'}</span>`;
             const depositBadge = `<span class="status-badge ${app.depositMade ? 'status-yes' : 'status-no'}">Deposit: ${app.depositMade ? 'Yes' : 'No'}</span>`;
 
+            // Note the new data-label="" tags. This is what allows CSS to magically stack them as cards on mobile!
             row.innerHTML = `
-                <td>
+                <td data-label="Bride Details">
                     <strong>${app.clientName}</strong><br>
                     <a href="mailto:${app.email}" style="font-size: 0.8rem; color: #666; text-decoration: none;">${app.email}</a><br>
                     <span style="font-size: 0.8rem; color: #666;">${app.phone}</span>
                 </td>
-                <td><strong>${dateString}</strong></td>
-                <td>${app.location}</td>
-                <td>Hair: ${app.hairCount} <br> Makeup: ${app.makeupCount}</td>
-                <td>${contractBadge}<br>${depositBadge}</td>
-                <td><button class="delete-btn" data-id="${app.id}">Remove</button></td>
+                <td data-label="Date"><strong>${dateString}</strong></td>
+                <td data-label="Location">${app.location}</td>
+                <td data-label="Services">Hair: ${app.hairCount} <br> Makeup: ${app.makeupCount}</td>
+                <td data-label="Status">${contractBadge}<br>${depositBadge}</td>
+                <td data-label="Actions"><button class="delete-btn" data-id="${app.id}">Remove</button></td>
             `;
 
             tableBody.appendChild(row);
         });
 
-        // Attach event listeners to "Remove" buttons using custom dialog
         document.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const id = this.getAttribute('data-id');
@@ -125,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     message: 'Are you sure you want to delete this wedding appointment? This cannot be undone.',
                     isConfirm: true,
                     confirmText: 'Delete',
-                    confirmColor: '#C62828', // Destructive Red
+                    confirmColor: '#C62828', 
                     onConfirm: () => {
                         appointments = appointments.filter(app => app.id !== id);
                         saveAppointments();
@@ -136,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Form Submission
     form.addEventListener('submit', (e) => {
         e.preventDefault();
 
@@ -158,20 +145,17 @@ document.addEventListener('DOMContentLoaded', () => {
         renderAppointments();
         
         form.reset();
-        document.querySelector('input[value="In-Salon"]').checked = true; // reset radio default
+        document.querySelector('input[value="In-Salon"]').checked = true;
     });
 
-    // --- SETTINGS MODAL LOGIC ---
     settingsOpenBtn.addEventListener('click', () => settingsModal.style.display = 'flex');
     settingsCloseBtn.addEventListener('click', () => settingsModal.style.display = 'none');
 
-    // Close modals if user clicks outside the content box
     window.addEventListener('click', (e) => {
         if (e.target === settingsModal) settingsModal.style.display = 'none';
         if (e.target === dialogModal) dialogModal.style.display = 'none';
     });
 
-    // --- LOAD DUMMY DATA ---
     loadDummyBtn.addEventListener('click', () => {
         const dummyData = [
             {
@@ -198,12 +182,11 @@ document.addEventListener('DOMContentLoaded', () => {
         
         showDialog({
             title: 'Test Data Loaded',
-            message: 'Successfully added 3 example weddings to your tracking board!',
+            message: 'Successfully added example weddings to your tracking board!',
             isConfirm: false
         });
     });
 
-    // --- EXPORT (Backup Data) ---
     exportBtn.addEventListener('click', () => {
         if (appointments.length === 0) {
             showDialog({
@@ -231,7 +214,6 @@ document.addEventListener('DOMContentLoaded', () => {
         URL.revokeObjectURL(url);
     });
 
-    // --- IMPORT (Restore Data) ---
     importFile.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -242,7 +224,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const importedData = JSON.parse(event.target.result);
                 
                 if (Array.isArray(importedData)) {
-                    // Trigger Custom Warning Dialog before overwriting
                     showDialog({
                         title: 'Overwrite Data?',
                         message: 'Warning: Importing this backup will overwrite your current appointment board. Do you want to proceed?',
@@ -253,14 +234,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             saveAppointments();
                             renderAppointments();
                             
-                            // Follow up with success message
                             setTimeout(() => {
                                 showDialog({
                                     title: 'Restore Complete',
                                     message: 'Your appointments have been successfully restored from the backup file.',
                                     isConfirm: false
                                 });
-                            }, 300); // Slight delay for smooth animation
+                            }, 300); 
                         }
                     });
                 } else {
@@ -282,9 +262,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         reader.readAsText(file);
-        e.target.value = ''; // Reset input to allow selecting the same file twice
+        e.target.value = ''; 
     });
 
-    // Run render on initial load
     renderAppointments();
 });
