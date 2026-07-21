@@ -3,8 +3,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const tableBody = document.getElementById('appointments-body');
     const emptyState = document.getElementById('empty-state');
     const tableContainer = document.querySelector('.table-container');
+    
+    // Import / Export Buttons
     const exportBtn = document.getElementById('export-btn');
     const importFile = document.getElementById('import-file');
+    
+    // Modal & Settings Buttons
+    const settingsModal = document.getElementById('settings-modal');
+    const settingsOpenBtn = document.getElementById('settings-open-btn');
+    const settingsCloseBtn = document.getElementById('settings-close-btn');
+    const loadDummyBtn = document.getElementById('load-dummy-btn');
 
     // Load appointments from LocalStorage
     let appointments = JSON.parse(localStorage.getItem('poshBridalAppointments')) || [];
@@ -102,35 +110,80 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('input[value="In-Salon"]').checked = true; // reset radio default
     });
 
-    // --- NEW FEATURE: EXPORT (Backup Data) ---
+    // --- MODAL LOGIC ---
+    settingsOpenBtn.addEventListener('click', () => {
+        settingsModal.style.display = 'flex';
+    });
+
+    settingsCloseBtn.addEventListener('click', () => {
+        settingsModal.style.display = 'none';
+    });
+
+    // Close modal if user clicks outside of the box
+    window.addEventListener('click', (e) => {
+        if (e.target === settingsModal) {
+            settingsModal.style.display = 'none';
+        }
+    });
+
+    // --- LOAD DUMMY DATA ---
+    loadDummyBtn.addEventListener('click', () => {
+        const dummyData = [
+            {
+                id: 'dummy1', clientName: 'Olivia Sterling', email: 'olivia.sterling@example.com',
+                phone: '(757) 555-1029', weddingDate: '2026-09-12', location: 'On-Site',
+                hairCount: '5', makeupCount: '5', contractSigned: true, depositMade: true
+            },
+            {
+                id: 'dummy2', clientName: 'Sophia Lin', email: 'slin_weddings@example.com',
+                phone: '(757) 555-8842', weddingDate: '2026-10-03', location: 'In-Salon',
+                hairCount: '3', makeupCount: '1', contractSigned: true, depositMade: false
+            },
+            {
+                id: 'dummy3', clientName: 'Emma Richardson', email: 'emmarich12@example.com',
+                phone: '(757) 555-3391', weddingDate: '2026-08-22', location: 'On-Site',
+                hairCount: '7', makeupCount: '7', contractSigned: false, depositMade: false
+            },
+            {
+                id: 'dummy4', clientName: 'Isabella Cruz', email: 'icruz.designs@example.com',
+                phone: '(757) 555-4747', weddingDate: '2026-11-15', location: 'In-Salon',
+                hairCount: '4', makeupCount: '4', contractSigned: true, depositMade: true
+            }
+        ];
+
+        // Add dummy data to existing appointments
+        appointments = [...appointments, ...dummyData];
+        saveAppointments();
+        renderAppointments();
+        
+        settingsModal.style.display = 'none'; // Close modal
+    });
+
+    // --- EXPORT (Backup Data) ---
     exportBtn.addEventListener('click', () => {
         if (appointments.length === 0) {
             alert('There are no appointments to backup yet!');
             return;
         }
         
-        // Turn our data array into a JSON string
         const dataStr = JSON.stringify(appointments, null, 2);
         const blob = new Blob([dataStr], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         
-        // Generate a file name with today's date
         const today = new Date().toISOString().split('T')[0];
         const filename = `Posh_Bridal_Backup_${today}.json`;
 
-        // Create a temporary link to force the download
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
         
-        // Cleanup
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     });
 
-    // --- NEW FEATURE: IMPORT (Restore Data) ---
+    // --- IMPORT (Restore Data) ---
     importFile.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -138,12 +191,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
-                // Parse the imported JSON file
                 const importedData = JSON.parse(event.target.result);
                 
-                // Ensure it's a valid array before overwriting
                 if (Array.isArray(importedData)) {
-                    // Ask for confirmation since this overwrites current data
                     if (confirm('Warning: This will overwrite your current appointments. Do you want to proceed?')) {
                         appointments = importedData;
                         saveAppointments();
@@ -159,8 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         reader.readAsText(file);
-        // Reset the file input so they can import the same file again later if needed
-        e.target.value = '';
+        e.target.value = ''; // Reset input
     });
 
     // Run render on initial load
