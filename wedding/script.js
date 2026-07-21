@@ -35,6 +35,22 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('poshBridalAppointments', JSON.stringify(appointments));
     }
 
+    // --- MODAL MANAGER (Fixes Double Scrollbar Bug) ---
+    function openModal(modalEl) {
+        modalEl.style.display = 'flex';
+        document.body.classList.add('modal-open'); // Locks the background
+    }
+
+    function closeModal(modalEl) {
+        modalEl.style.display = 'none';
+        
+        // Checks if any other modals are still open (e.g. alert overlaying edit modal)
+        const anyOpen = Array.from(document.querySelectorAll('.modal')).some(m => m.style.display === 'flex');
+        if (!anyOpen) {
+            document.body.classList.remove('modal-open'); // Unlocks background
+        }
+    }
+
     // --- Custom Dialog System ---
     function showDialog({ title, message, isConfirm, confirmText = "OK", confirmColor = "var(--primary-color)", onConfirm }) {
         dialogTitle.textContent = title;
@@ -45,14 +61,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'secondary-btn';
             cancelBtn.textContent = 'Cancel';
-            cancelBtn.onclick = () => { dialogModal.style.display = 'none'; };
+            cancelBtn.onclick = () => closeModal(dialogModal);
 
             const confirmBtn = document.createElement('button');
             confirmBtn.className = 'submit-btn';
             confirmBtn.style.backgroundColor = confirmColor;
             confirmBtn.textContent = confirmText;
             confirmBtn.onclick = () => {
-                dialogModal.style.display = 'none';
+                closeModal(dialogModal);
                 if (onConfirm) onConfirm();
             };
 
@@ -64,13 +80,13 @@ document.addEventListener('DOMContentLoaded', () => {
             okBtn.style.backgroundColor = confirmColor;
             okBtn.textContent = confirmText;
             okBtn.onclick = () => {
-                dialogModal.style.display = 'none';
+                closeModal(dialogModal);
                 if (onConfirm) onConfirm();
             };
             
             dialogButtons.appendChild(okBtn);
         }
-        dialogModal.style.display = 'flex';
+        openModal(dialogModal);
     }
 
     // --- Dashboard Metrics Updater ---
@@ -137,7 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const contractBadge = `<span class="status-badge ${app.contractSigned ? 'status-yes' : 'status-no'}">${app.contractSigned ? 'Signed' : 'Pending'}</span>`;
             const depositBadge = `<span class="status-badge ${app.depositMade ? 'status-yes' : 'status-no'}">${app.depositMade ? 'Paid' : 'Unpaid'}</span>`;
 
-            // If notes exist, show a preview snippet. If not, just a dash.
             const notesSnippet = app.notes ? app.notes : '<span style="color: #ccc;">-</span>';
 
             row.innerHTML = `
@@ -197,14 +212,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('edit-weddingDate').value = app.weddingDate;
                     document.getElementById('edit-hairCount').value = app.hairCount;
                     document.getElementById('edit-makeupCount').value = app.makeupCount;
-                    document.getElementById('edit-notes').value = app.notes || ''; // Added Notes population
+                    document.getElementById('edit-notes').value = app.notes || ''; 
                     document.getElementById('edit-contractSigned').checked = app.contractSigned;
                     document.getElementById('edit-depositMade').checked = app.depositMade;
                     
                     if(app.location === 'In-Salon') document.getElementById('edit-loc-salon').checked = true;
                     else document.getElementById('edit-loc-site').checked = true;
 
-                    editModal.style.display = 'flex';
+                    openModal(editModal);
                 }
             });
         });
@@ -219,7 +234,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const dateObj = new Date(app.weddingDate + 'T00:00:00');
                     const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
                     
-                    // Conditionally format the notes area based on if she typed anything
                     const notesSection = app.notes 
                         ? `<div class="print-notes-content">${app.notes}</div>` 
                         : `<div class="notes-empty-box"></div>`;
@@ -278,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
             location: document.querySelector('input[name="location"]:checked').value,
             hairCount: document.getElementById('hairCount').value,
             makeupCount: document.getElementById('makeupCount').value,
-            notes: document.getElementById('notes').value.trim(), // Added Notes capture
+            notes: document.getElementById('notes').value.trim(), 
             contractSigned: document.getElementById('contractSigned').checked,
             depositMade: document.getElementById('depositMade').checked
         };
@@ -325,13 +339,13 @@ document.addEventListener('DOMContentLoaded', () => {
             appointments[appIndex].location = document.querySelector('input[name="edit-location"]:checked').value;
             appointments[appIndex].hairCount = document.getElementById('edit-hairCount').value;
             appointments[appIndex].makeupCount = document.getElementById('edit-makeupCount').value;
-            appointments[appIndex].notes = document.getElementById('edit-notes').value.trim(); // Saving Edited Notes
+            appointments[appIndex].notes = document.getElementById('edit-notes').value.trim(); 
             appointments[appIndex].contractSigned = document.getElementById('edit-contractSigned').checked;
             appointments[appIndex].depositMade = document.getElementById('edit-depositMade').checked;
             
             saveAppointments();
             renderAppointments();
-            editModal.style.display = 'none';
+            closeModal(editModal);
         }
     });
 
@@ -351,14 +365,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Modals General Logic ---
-    settingsOpenBtn.addEventListener('click', () => settingsModal.style.display = 'flex');
-    settingsCloseBtn.addEventListener('click', () => settingsModal.style.display = 'none');
-    editCloseBtn.addEventListener('click', () => editModal.style.display = 'none');
+    settingsOpenBtn.addEventListener('click', () => openModal(settingsModal));
+    settingsCloseBtn.addEventListener('click', () => closeModal(settingsModal));
+    editCloseBtn.addEventListener('click', () => closeModal(editModal));
 
     window.addEventListener('click', (e) => {
-        if (e.target === settingsModal) settingsModal.style.display = 'none';
-        if (e.target === dialogModal) dialogModal.style.display = 'none';
-        if (e.target === editModal) editModal.style.display = 'none';
+        if (e.target === settingsModal) closeModal(settingsModal);
+        if (e.target === dialogModal) closeModal(dialogModal);
+        if (e.target === editModal) closeModal(editModal);
     });
 
     // --- Dummy Data ---
@@ -394,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         viewUpcomingBtn.classList.add('active');
         viewPastBtn.classList.remove('active');
         renderAppointments();
-        settingsModal.style.display = 'none';
+        closeModal(settingsModal);
         
         showDialog({
             title: 'Test Data Loaded',
