@@ -189,7 +189,7 @@ label {
     color: var(--text-main);
 }
 
-input[type="text"], input[type="email"], input[type="tel"], input[type="date"], input[type="number"] {
+input[type="text"], input[type="email"], input[type="tel"], input[type="date"], input[type="number"], textarea {
     width: 100%;
     padding: 0.75rem;
     border: 1px solid var(--border-color);
@@ -200,7 +200,10 @@ input[type="text"], input[type="email"], input[type="tel"], input[type="date"], 
     transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s;
     background-color: #fafafa;
 }
-input:focus {
+textarea {
+    resize: vertical; /* Let her drag the box to make it taller if she writes a lot */
+}
+input:focus, textarea:focus {
     outline: none;
     border-color: var(--primary-color);
     background-color: var(--surface);
@@ -271,6 +274,16 @@ th, td {
     border: 1px solid var(--border-color);
     font-size: 0.9rem;
 }
+
+/* Limit notes length in spreadsheet so it doesn't break the clean grid view */
+.notes-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-muted);
+}
+
 th {
     color: var(--primary-color);
     font-size: 1rem;
@@ -315,7 +328,6 @@ th.sticky-col {
     display: flex;
     gap: 0.5rem;
 }
-
 .action-btn {
     background: none;
     border: none;
@@ -422,13 +434,11 @@ th.sticky-col {
 /* =========================================
    PRINT STYLES FOR "DAY OF" SHEETS
    ========================================= */
-#print-area { display: none; } /* Hidden on screens */
+#print-area { display: none; } 
 
 @media print {
-    /* Hide absolutely everything else */
     body * { visibility: hidden; }
     
-    /* Reveal only our print area */
     #print-area, #print-area * {
         visibility: visible;
     }
@@ -469,10 +479,26 @@ th.sticky-col {
     
     .notes-section {
         margin-top: 3rem;
+    }
+    
+    /* If no notes are provided, it renders a blank lined box */
+    .notes-empty-box {
         height: 200px;
         border: 1px solid #ccc;
         border-radius: 4px;
         padding: 1rem;
+        margin-top: 1rem;
+    }
+    
+    /* If notes ARE provided, it prints them cleanly */
+    .print-notes-content {
+        margin-top: 1rem;
+        font-size: 1.1rem;
+        line-height: 1.6;
+        white-space: pre-wrap; /* Honors her line-breaks from the text area! */
+        padding: 1rem;
+        background-color: #f9f9f9;
+        border-left: 4px solid #4A5D4E;
     }
 }
 
