@@ -1,6 +1,7 @@
 :root {
     --primary-color: #4A5D4E; /* Aveda-esque sage green */
     --primary-hover: #3B4A3F;
+    --primary-light: #E8F5E9; /* Very soft green for backgrounds */
     --bg-color: #F9F9F7;      /* Warm, natural paper white */
     --surface: #FFFFFF;
     --text-main: #2C2C2C;
@@ -70,11 +71,19 @@ h1, h2, h3, th {
     transition: transform 0.5s ease, color 0.3s ease;
     display: flex;
     align-items: center;
+    padding: 0.5rem;
+    border-radius: 50%;
 }
 
 .icon-btn:hover {
     color: var(--primary-hover);
     transform: rotate(90deg); /* Wheel spin effect on hover */
+    background-color: var(--primary-light);
+}
+
+.icon-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
 }
 
 /* Layout */
@@ -86,11 +95,19 @@ h1, h2, h3, th {
     gap: 2.5rem;
 }
 
+/* Cards (Form & Tracker) */
 .form-section, .tracker-section {
     background: var(--surface);
     padding: 2.5rem;
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Smooth lift effect on hover for that premium app feel */
+.form-section:hover, .tracker-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.08);
 }
 
 h2 {
@@ -132,13 +149,16 @@ input[type="number"] {
     font-family: inherit;
     font-size: 1rem;
     color: var(--text-main);
-    transition: border-color 0.3s;
+    transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s;
+    background-color: #fafafa;
 }
 
+/* Elegant focus states */
 input:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(74, 93, 78, 0.1);
+    background-color: var(--surface);
+    box-shadow: 0 0 0 3px rgba(74, 93, 78, 0.15);
 }
 
 .radio-group, .checkbox-group {
@@ -156,6 +176,14 @@ input:focus {
     cursor: pointer;
 }
 
+/* Colorize checkboxes and radios to match brand */
+input[type="radio"], input[type="checkbox"] {
+    accent-color: var(--primary-color);
+    width: 1.1rem;
+    height: 1.1rem;
+    cursor: pointer;
+}
+
 .submit-btn {
     width: 100%;
     background-color: var(--primary-color);
@@ -168,17 +196,45 @@ input:focus {
     letter-spacing: 1.5px;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.3s;
+    transition: background-color 0.3s, transform 0.1s;
     margin-top: 1rem;
+    font-family: inherit;
 }
 
 .submit-btn:hover {
     background-color: var(--primary-hover);
 }
 
+.submit-btn:active {
+    transform: scale(0.98);
+}
+
+.submit-btn:focus-visible {
+    outline: 3px solid var(--primary-light);
+    outline-offset: 2px;
+}
+
 /* Table Styles */
 .table-container {
     overflow-x: auto;
+    /* Smooth scrolling for mobile */
+    -webkit-overflow-scrolling: touch; 
+}
+
+/* Custom, elegant scrollbar for the table */
+.table-container::-webkit-scrollbar {
+    height: 8px;
+}
+.table-container::-webkit-scrollbar-track {
+    background: var(--bg-color);
+    border-radius: 4px;
+}
+.table-container::-webkit-scrollbar-thumb {
+    background-color: #c9d1ca; 
+    border-radius: 4px;
+}
+.table-container::-webkit-scrollbar-thumb:hover {
+    background-color: var(--primary-color);
 }
 
 table {
@@ -202,6 +258,15 @@ td {
     font-size: 0.95rem;
 }
 
+/* Row Hover Effect for readability */
+tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+tbody tr:hover {
+    background-color: var(--primary-light);
+}
+
 .status-badge {
     display: inline-block;
     padding: 0.3rem 0.6rem;
@@ -213,7 +278,7 @@ td {
 }
 
 .status-yes {
-    background-color: #E8F5E9;
+    background-color: #d1e7d3;
     color: #2E7D32;
 }
 
@@ -230,6 +295,13 @@ td {
     font-weight: 600;
     text-decoration: underline;
     font-family: inherit;
+    padding: 0.3rem;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.delete-btn:hover {
+    background-color: #FFEBEE;
 }
 
 #empty-state {
@@ -237,6 +309,9 @@ td {
     color: var(--text-muted);
     font-style: italic;
     margin-top: 2rem;
+    padding: 2rem;
+    background-color: var(--bg-color);
+    border-radius: 4px;
 }
 
 /* Data Management (Import/Export) Styles */
@@ -257,7 +332,13 @@ td {
     background-color: transparent;
     color: var(--primary-color);
     border: 1px solid var(--primary-color);
-    padding: 0.6rem 1.2rem;
+    
+    /* Fixed Button/Label Height discrepancies */
+    padding: 0 1.2rem;
+    height: 46px; 
+    min-width: 220px;
+    font-family: inherit; 
+    
     font-size: 0.85rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -266,8 +347,6 @@ td {
     cursor: pointer;
     transition: all 0.3s ease;
     
-    /* New styles to force equal width */
-    min-width: 220px;
     display: inline-flex;
     justify-content: center;
     align-items: center;
@@ -287,17 +366,29 @@ td {
 
 /* Modal Styling */
 .modal {
-    display: none; /* Hidden by default */
+    display: none; 
     position: fixed;
     z-index: 1000;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(2px);
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
     justify-content: center;
     align-items: center;
+}
+
+/* Fade and Slide in animation for Modal */
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 .modal-content {
@@ -307,8 +398,9 @@ td {
     width: 90%;
     max-width: 450px;
     position: relative;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
     text-align: center;
+    animation: modalFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .close-btn {
@@ -319,11 +411,13 @@ td {
     font-weight: 300;
     color: var(--text-muted);
     cursor: pointer;
-    transition: color 0.3s;
+    transition: color 0.3s, transform 0.2s;
+    line-height: 1;
 }
 
 .close-btn:hover {
     color: var(--primary-color);
+    transform: scale(1.1);
 }
 
 /* Responsive adjustments */
