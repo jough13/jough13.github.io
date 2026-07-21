@@ -25,6 +25,25 @@
     </header>
 
     <main class="container">
+        <!-- Quick Glance Dashboard -->
+        <section class="dashboard">
+            <div class="dash-card">
+                <h3>Upcoming Wedding</h3>
+                <p id="dash-next-up" class="dash-value">--</p>
+                <p id="dash-next-date" class="dash-sub">--</p>
+            </div>
+            <div class="dash-card">
+                <h3>Action Needed</h3>
+                <p id="dash-contracts" class="dash-value">0</p>
+                <p class="dash-sub">Contracts Pending</p>
+            </div>
+            <div class="dash-card">
+                <h3>Missing Deposits</h3>
+                <p id="dash-deposits" class="dash-value">0</p>
+                <p class="dash-sub">Deposits Pending</p>
+            </div>
+        </section>
+
         <!-- Input Form Section -->
         <section class="form-section">
             <h2>New Bridal Appointment</h2>
@@ -90,7 +109,15 @@
 
         <!-- Tracking Board Section (Spreadsheet View) -->
         <section class="tracker-section">
-            <h2>Upcoming Weddings Masterlist</h2>
+            <div class="tracker-header">
+                <h2>Masterlist</h2>
+                <!-- Archiving View Toggles -->
+                <div class="view-toggles">
+                    <button id="view-upcoming-btn" class="toggle-btn active">Upcoming</button>
+                    <button id="view-past-btn" class="toggle-btn">Past Weddings</button>
+                </div>
+            </div>
+
             <div class="table-container">
                 <table id="appointments-table">
                     <thead>
@@ -112,7 +139,7 @@
                     </tbody>
                 </table>
             </div>
-            <p id="empty-state">No bridal appointments tracked yet. Add one above!</p>
+            <p id="empty-state">No bridal appointments in this view.</p>
         </section>
 
         <!-- Backup and Restore Section -->
@@ -125,6 +152,72 @@
             <p class="data-note">Remember to export a backup occasionally to keep your data safe!</p>
         </section>
     </main>
+
+    <!-- Edit Appointment Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span id="edit-close-btn" class="close-btn">&times;</span>
+            <h2>Edit Appointment</h2>
+            <form id="edit-form">
+                <input type="hidden" id="edit-id"> <!-- Hidden ID to know which to update -->
+                
+                <div class="form-group">
+                    <label for="edit-clientName">Bride's Name</label>
+                    <input type="text" id="edit-clientName" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-email">Email Address</label>
+                        <input type="email" id="edit-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-phone">Phone Number</label>
+                        <input type="tel" id="edit-phone" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-weddingDate">Wedding Date</label>
+                    <input type="date" id="edit-weddingDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Service Location</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="edit-location" value="In-Salon" id="edit-loc-salon"> In-Salon
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="edit-location" value="On-Site" id="edit-loc-site"> On-Site
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-hairCount">Hair Clients</label>
+                        <input type="number" id="edit-hairCount" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-makeupCount">Makeup Clients</label>
+                        <input type="number" id="edit-makeupCount" min="0" required>
+                    </div>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label class="check-label">
+                        <input type="checkbox" id="edit-contractSigned"> Contract Signed
+                    </label>
+                    <label class="check-label">
+                        <input type="checkbox" id="edit-depositMade"> Deposit Made
+                    </label>
+                </div>
+
+                <button type="submit" class="submit-btn">Save Changes</button>
+            </form>
+        </div>
+    </div>
 
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal">
@@ -149,6 +242,11 @@
                 <!-- Buttons injected dynamically via JS based on alert vs confirm -->
             </div>
         </div>
+    </div>
+
+    <!-- Hidden Printable Day-Of Itinerary -->
+    <div id="print-area">
+        <!-- Injected via JavaScript -->
     </div>
 
     <script src="script.js"></script>
