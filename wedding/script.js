@@ -84,20 +84,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
             });
 
-            const contractBadge = `<span class="status-badge ${app.contractSigned ? 'status-yes' : 'status-no'}">Contract: ${app.contractSigned ? 'Yes' : 'No'}</span>`;
-            const depositBadge = `<span class="status-badge ${app.depositMade ? 'status-yes' : 'status-no'}">Deposit: ${app.depositMade ? 'Yes' : 'No'}</span>`;
+            // Condensed labels for the spreadsheet view
+            const contractBadge = `<span class="status-badge ${app.contractSigned ? 'status-yes' : 'status-no'}">${app.contractSigned ? 'Signed' : 'Pending'}</span>`;
+            const depositBadge = `<span class="status-badge ${app.depositMade ? 'status-yes' : 'status-no'}">${app.depositMade ? 'Paid' : 'Unpaid'}</span>`;
 
+            // Spreadsheet row structure (10 distinct columns)
             row.innerHTML = `
-                <td data-label="Bride Details">
-                    <strong>${app.clientName}</strong><br>
-                    <a href="mailto:${app.email}" style="font-size: 0.8rem; color: #666; text-decoration: none;">${app.email}</a><br>
-                    <span style="font-size: 0.8rem; color: #666;">${app.phone}</span>
-                </td>
-                <td data-label="Date"><strong>${dateString}</strong></td>
-                <td data-label="Location">${app.location}</td>
-                <td data-label="Services">Hair: ${app.hairCount} <br> Makeup: ${app.makeupCount}</td>
-                <td data-label="Status">${contractBadge}<br>${depositBadge}</td>
-                <td data-label="Actions"><button class="delete-btn" data-id="${app.id}">Remove</button></td>
+                <td class="sticky-col"><strong>${app.clientName}</strong></td>
+                <td><strong>${dateString}</strong></td>
+                <td>${app.phone}</td>
+                <td><a href="mailto:${app.email}" class="text-link">${app.email}</a></td>
+                <td>${app.location}</td>
+                <td>${app.hairCount}</td>
+                <td>${app.makeupCount}</td>
+                <td>${contractBadge}</td>
+                <td>${depositBadge}</td>
+                <td><button class="delete-btn" data-id="${app.id}">Remove</button></td>
             `;
 
             tableBody.appendChild(row);
@@ -129,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dateValue = document.getElementById('weddingDate').value;
 
         const newAppointment = {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 5), // Super unique ID
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5), 
             clientName: document.getElementById('clientName').value.trim(),
             email: document.getElementById('email').value.trim(),
             phone: document.getElementById('phone').value.trim(),
@@ -141,10 +143,8 @@ document.addEventListener('DOMContentLoaded', () => {
             depositMade: document.getElementById('depositMade').checked
         };
 
-        // Check if there is already a wedding on this exact date
         const existingWedding = appointments.find(app => app.weddingDate === dateValue);
 
-        // Helper function to finish saving
         const processSave = () => {
             appointments.push(newAppointment);
             saveAppointments();
@@ -154,25 +154,22 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         if (existingWedding) {
-            // Format the date nicely for the warning popup
             const dateObj = new Date(dateValue);
             const prettyDate = new Date(dateObj.getTime() + Math.abs(dateObj.getTimezoneOffset()*60000)).toLocaleDateString('en-US', {
                 weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
             });
 
-            // Trigger double-booking warning!
             showDialog({
                 title: 'Double Booking Warning!',
                 message: `You already have a wedding booked for ${prettyDate} (${existingWedding.clientName}). Are you sure you want to double-book this date?`,
                 isConfirm: true,
                 confirmText: 'Book Anyway',
-                confirmColor: '#E65100', // Caution Orange
+                confirmColor: '#E65100', 
                 onConfirm: () => {
                     processSave();
                 }
             });
         } else {
-            // Safe to save immediately
             processSave();
         }
     });
@@ -186,7 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     loadDummyBtn.addEventListener('click', () => {
-        // We generate unique IDs dynamically now to prevent the deletion bug
         const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 5);
 
         const dummyData = [
