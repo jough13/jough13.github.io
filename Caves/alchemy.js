@@ -36,8 +36,8 @@ window.ALCHEMY_RECIPES = {
 };
 
 // --- 1. NEW ITEMS ---
-// 🌟 EXPANDABILITY WIN: Added `pColor` and `pSize` properties to make rendering dynamic!
-const ALCHEMY_ITEMS = {
+// Added `pColor` and `pSize` properties to make rendering dynamic!
+var ALCHEMY_ITEMS = {
     '🧪v': {
         name: 'Venom Flask', type: 'consumable', tile: '🧪', pColor: '#22c55e', pSize: 20,
         description: "Throw to shatter, splashing a 3x3 area with toxins. Poisons enemies.",
