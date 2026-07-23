@@ -1210,37 +1210,35 @@ const SettingsPanel = () => {
         }
     };
 
-    const handleManualUpdate = () => {
-        if ('serviceWorker' in navigator) {
-            addToast("Checking for updates...");
-            
-            let refreshed = false;
-            
-            // 1. Listen for the exact moment the NEW service worker takes over
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (!refreshed) {
-                    refreshed = true;
-                    addToast("Update found! Refreshing...");
-                    window.location.reload();
-                }
-            });
-
-            // 2. Trigger the update check
-            navigator.serviceWorker.getRegistrations().then(registrations => {
-                for (let registration of registrations) {
-                    registration.update();
-                }
-                
-                // 3. Fallback: If no update is found (controller never changes), notify the user
-                setTimeout(() => {
-                    if (!refreshed) {
-                        addToast("You are already on the latest version.");
-                    }
-                }, 4000); // 4 seconds is a safe buffer to let the network check complete
-            });
-        } else {
-            window.location.reload(true);
+    const handleManualUpdate = async () => {
+        addToast("Wiping cache and forcing update...");
+        
+        // 1. Wipe all local caches used by the PWA
+        if ('caches' in window) {
+            try {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(name => caches.delete(name)));
+            } catch(e) { 
+                console.error("Cache clear error:", e); 
+            }
         }
+
+        // 2. Unregister the service worker so the next load hits the network directly
+        if ('serviceWorker' in navigator) {
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let reg of registrations) {
+                    await reg.unregister();
+                }
+            } catch (e) { 
+                console.error("SW unregistration error:", e); 
+            }
+        }
+
+        // 3. Force reload with a cache-busting timestamp parameter to bypass browser memory cache
+        setTimeout(() => {
+            window.location.href = window.location.pathname + '?updated=' + new Date().getTime() + window.location.hash;
+        }, 1500);
     };
 
     return (
