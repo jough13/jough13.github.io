@@ -131,7 +131,10 @@ tr:hover{background-color:#f1f1f1}
             <p><strong>3. 70/30 Blended Score with xG Fallback</strong><br>
             For matches with xG data (2018–2026), performance is graded 70% on match result and 30% on xG share. For historical tournaments prior to 2018, the model falls back to 100% match scorelines.</p>
 
-            <p><strong>4. Inactive Coasting Penalties</strong><br>
+            <p><strong>4. Penalty Shootouts (0.75 / 0.25)</strong><br>
+            If a knockout match ends in a draw after 120 minutes, the standard 0.5 draw score is overridden for the shootout. The team that wins on penalties is awarded <strong>0.75</strong>, and the loser is awarded <strong>0.25</strong>.</p>
+
+            <p><strong>5. Inactive Coasting Penalties</strong><br>
             When viewing "All-Time Cumulative" rankings, teams that miss a World Cup cycle can be penalized so they do not "coast" on ancient high ratings. Every team in the database is registered at 1500 before the first tournament begins; missing a cycle will retroactively penalize unproven teams. You can toggle a flat point deduction or a 15% regression toward the 1500 baseline for every tournament missed.</p>
 
             <h3>The Formulas</h3>
@@ -141,7 +144,7 @@ tr:hover{background-color:#f1f1f1}
                 <br>
                 <strong>2. Blended Actual Performance (A):</strong><br>
                 A = (0.70 * Match_Result) + (0.30 * xG_Share)<br>
-                <em>*If no xG data: A = Match_Result (1 Win, 0.5 Draw, 0 Loss)</em><br>
+                <em>*Match Result = 1 (Win), 0.75 (PK Win), 0.5 (Draw), 0.25 (PK Loss), 0 (Loss)</em><br>
                 <br>
                 <strong>3. Rating Update:</strong><br>
                 New_Rating = Old_Rating + [50 * Blowout_Multiplier * (A - E)]
@@ -178,6 +181,47 @@ tr:hover{background-color:#f1f1f1}
             2018: ['Russia'],
             2022: ['Qatar'],
             2026: ['USMNT', 'United States', 'Canada', 'Mexico']
+        };
+
+        // MANUAL OVERRIDE: Add Penalty Shootout Winners here
+        // The engine will use this to upgrade a 0.5 Draw to a 0.75 Win and 0.25 Loss.
+        const shootoutWinners = {
+            2026: {
+                "Netherlands vs Morocco": "Morocco"
+            },
+            2022: {
+                "Argentina vs France": "Argentina",
+                "Netherlands vs Argentina": "Argentina",
+                "Croatia vs Brazil": "Croatia",
+                "Morocco vs Spain": "Morocco",
+                "Japan vs Croatia": "Croatia"
+            },
+            2018: {
+                "Spain vs Russia": "Russia",
+                "Croatia vs Denmark": "Croatia",
+                "Colombia vs England": "England",
+                "Russia vs Croatia": "Croatia"
+            },
+            2014: {
+                "Brazil vs Chile": "Brazil",
+                "Costa Rica vs Greece": "Costa Rica",
+                "Netherlands vs Costa Rica": "Netherlands",
+                "Netherlands vs Argentina": "Argentina"
+            },
+            2010: {
+                "Paraguay vs Japan": "Paraguay",
+                "Uruguay vs Ghana": "Uruguay"
+            },
+            2006: {
+                "Switzerland vs Ukraine": "Ukraine",
+                "Germany vs Argentina": "Germany",
+                "England vs Portugal": "Portugal",
+                "Italy vs France": "Italy"
+            },
+            2002: {
+                "Spain vs Republic of Ireland": "Spain",
+                "South Korea vs Spain": "South Korea"
+            }
         };
 
         const defaultFiles = [
@@ -260,11 +304,16 @@ tr:hover{background-color:#f1f1f1}
                     let res = 'D', resClass = 'c-neu';
                     if (m.gf > m.ga) { res = 'W'; resClass = 'c-pos'; }
                     else if (m.gf < m.ga) { res = 'L'; resClass = 'c-neg'; }
+                    else if (m.soW) { res = 'P'; resClass = 'c-pos'; } // PK Win
+                    else if (m.soL) { res = 'P'; resClass = 'c-neg'; } // PK Loss
+                    
                     let chgStr = m.c > 0 ? `+${m.c.toFixed(1)}` : m.c.toFixed(1);
                     let chgClass = m.c > 0 ? 'c-pos' : (m.c < 0 ? 'c-neg' : 'c-neu');
                     let xgStr = (m.xf > 0 || m.xa > 0) ? `${m.xf.toFixed(2)} - ${m.xa.toFixed(2)}` : 'N/A';
+                    let scoreStr = (m.soW || m.soL) ? `${m.gf}-${m.ga} (PKs)` : `${m.gf}-${m.ga}`;
+                    
                     html += `<tr><td>${m.d}</td><td>${oppStr}</td><td><strong class="${resClass}">${res}</strong></td>
-                             <td>${m.gf} - ${m.ga}</td><td>${xgStr}</td><td class="${chgClass}">${chgStr}</td></tr>`;
+                             <td>${scoreStr}</td><td>${xgStr}</td><td class="${chgClass}">${chgStr}</td></tr>`;
                 });
             }
             html += `</table>`;
@@ -400,8 +449,6 @@ tr:hover{background-color:#f1f1f1}
             window.teamEloHistory = {};
 
             // NEW: PRE-LOAD EVERY TEAM IN THE DATASET
-            // This ensures teams making their first appearance in later years
-            // absorb penalties for missing earlier tournaments in the loop.
             validData.forEach(row => {
                 const home = row.home_team_name, away = row.away_team_name;
                 if (!ratings[home]) {
@@ -467,7 +514,28 @@ tr:hover{background-color:#f1f1f1}
 
                     const hg = parseFloat(row.home_team_goal_count), ag = parseFloat(row.away_team_goal_count);
                     let s_home = 0.5;
-                    if (!isNaN(hg) && !isNaN(ag)) { if (hg > ag) s_home = 1.0; else if (hg < ag) s_home = 0.0; }
+                    
+                    if (!isNaN(hg) && !isNaN(ag)) { 
+                        if (hg > ag) {
+                            s_home = 1.0; 
+                        } else if (hg < ag) {
+                            s_home = 0.0; 
+                        } else {
+                            s_home = 0.5;
+                            // Check for Shootout Override on Draws
+                            const matchStr1 = `${home} vs ${away}`;
+                            const matchStr2 = `${away} vs ${home}`;
+                            const yearShootouts = shootoutWinners[yr];
+                            
+                            if (yearShootouts) {
+                                if (yearShootouts[matchStr1] === home || yearShootouts[matchStr2] === home) {
+                                    s_home = 0.75;
+                                } else if (yearShootouts[matchStr1] === away || yearShootouts[matchStr2] === away) {
+                                    s_home = 0.25;
+                                }
+                            }
+                        }
+                    }
 
                     const xg_home = parseFloat(row.team_a_xg), xg_away = parseFloat(row.team_b_xg);
                     let a_home = s_home;
@@ -488,8 +556,12 @@ tr:hover{background-color:#f1f1f1}
                     
                     const dStr = row.parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
                     
-                    window.teamForm[home].push({ d: dStr, o: away, h: 1, gf: isNaN(hg)?0:hg, ga: isNaN(ag)?0:ag, xf: isNaN(xg_home)?0:xg_home, xa: isNaN(xg_away)?0:xg_away, c: r_home_change });
-                    window.teamForm[away].push({ d: dStr, o: home, h: 0, gf: isNaN(ag)?0:ag, ga: isNaN(hg)?0:hg, xf: isNaN(xg_away)?0:xg_away, xa: isNaN(xg_home)?0:xg_home, c: r_away_change });
+                    // Track if it was a shootout win or loss for the UI form badges
+                    const isSoWinHome = s_home === 0.75;
+                    const isSoLossHome = s_home === 0.25;
+                    
+                    window.teamForm[home].push({ d: dStr, o: away, h: 1, gf: isNaN(hg)?0:hg, ga: isNaN(ag)?0:ag, xf: isNaN(xg_home)?0:xg_home, xa: isNaN(xg_away)?0:xg_away, c: r_home_change, soW: isSoWinHome, soL: isSoLossHome });
+                    window.teamForm[away].push({ d: dStr, o: home, h: 0, gf: isNaN(ag)?0:ag, ga: isNaN(hg)?0:hg, xf: isNaN(xg_away)?0:xg_away, xa: isNaN(xg_home)?0:xg_home, c: r_away_change, soW: isSoLossHome, soL: isSoWinHome });
                     
                     window.teamEloHistory[home].push({ d: dStr, elo: ratings[home] });
                     window.teamEloHistory[away].push({ d: dStr, elo: ratings[away] });
@@ -549,9 +621,13 @@ tr:hover{background-color:#f1f1f1}
                         let res = 'D', fClass = 'f-d';
                         if (m.gf > m.ga) { res = 'W'; fClass = 'f-w'; }
                         else if (m.gf < m.ga) { res = 'L'; fClass = 'f-l'; }
+                        else if (m.soW) { res = 'P'; fClass = 'f-w'; } // PK Win
+                        else if (m.soL) { res = 'P'; fClass = 'f-l'; } // PK Loss
+                        
                         const oppStr = m.h ? `vs ${m.o}` : `@ ${m.o}`;
+                        let scoreStr = (m.soW || m.soL) ? `${m.gf}-${m.ga} (PKs)` : `${m.gf}-${m.ga}`;
                         let xgTip = (m.xf > 0 || m.xa > 0) ? ` (xG: ${m.xf.toFixed(1)}-${m.xa.toFixed(1)})` : '';
-                        formHtml += `<span class="f-badge ${fClass}" title="${m.d}: ${oppStr} (${m.gf}-${m.ga})${xgTip}">${res}</span>`;
+                        formHtml += `<span class="f-badge ${fClass}" title="${m.d}: ${oppStr} ${scoreStr}${xgTip}">${res}</span>`;
                     });
                 }
                 formHtml += '</div>';
