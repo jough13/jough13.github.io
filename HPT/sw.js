@@ -85,23 +85,48 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch Phase: Strict Cache-First strategy to optimize instant offline operational speed
+// Fetch Phase: Stale-While-Revalidate for local assets, Cache-First for CDNs
 self.addEventListener('fetch', event => {
-  if (!event.request.url.startsWith(self.location.origin) && !urlsToCache.includes(event.request.url)) {
+  // Ignore non-GET requests
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+
+  // External CDNs (React, Tailwind, Leaflet): Cache-First Strategy
+  // These rarely change and save significant bandwidth
+  if (url.origin !== self.location.origin) {
+    event.respondWith(
+      caches.match(event.request).then(cachedResponse => {
+        return cachedResponse || fetch(event.request).then(networkResponse => {
+          return caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+        }).catch(err => {
+          console.warn(`Service Worker: Network fetch failed for CDN ${url.href}`, err);
+        });
+      })
+    );
     return;
   }
 
+  // Local Assets (HTML, JS, CSS): Stale-While-Revalidate Strategy
+  // Returns cached version immediately for speed, but updates cache in background
   event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        if (cachedResponse) {
-          return cachedResponse; 
+    caches.match(event.request).then(cachedResponse => {
+      const fetchPromise = fetch(event.request).then(networkResponse => {
+        if (networkResponse && networkResponse.status === 200) {
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, networkResponse.clone());
+          });
         }
+        return networkResponse;
+      }).catch(err => {
+         console.warn(`Service Worker: Offline, using cached version for ${event.request.url}`);
+      });
 
-        return fetch(event.request).catch(err => {
-          console.warn(`Service Worker: Network pipeline fetch restriction encountered for URL: ${event.request.url}`);
-          return new Response('', { status: 404, statusText: 'Offline asset restriction active.' });
-        });
-      })
+      // Return cached response immediately if available, otherwise wait for network
+      return cachedResponse || fetchPromise;
+    })
   );
 });
