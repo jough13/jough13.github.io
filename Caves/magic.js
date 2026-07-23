@@ -972,9 +972,9 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
                     tileType = typeof chunkManager !== 'undefined' ? chunkManager.getTile(targetX, targetY) : '.';
                 } else if (gameState.mapMode === 'dungeon') {
-                    tileType = typeof chunkManager !== 'undefined' ? chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] : '.';
+                    tileType = typeof chunkManager !== 'undefined' ? chunkManager.caveMaps[gameState.currentCaveId]?.[targetY]?.[targetX] : '.';
                 } else {
-                    tileType = typeof chunkManager !== 'undefined' ? chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] : '.';
+                    tileType = typeof chunkManager !== 'undefined' ? chunkManager.castleMaps[gameState.currentCastleId]?.[targetY]?.[targetX] : '.';
                 }
 
                 if (tileType === '(' || tileType === '⚰️') {
