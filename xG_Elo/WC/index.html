@@ -13,7 +13,6 @@ h1{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom
 .info-btn:hover{background-color:#e31837}
 .as-of-date{display:block;width:fit-content;margin:0 auto 15px auto;background-color:#e31837;color:white;padding:5px 12px;border-radius:15px;font-size:0.9em;font-weight:bold}
 
-/* Updated Filter Container CSS */
 .filter-container {
     display: flex;
     flex-direction: column;
@@ -91,7 +90,6 @@ tr:hover{background-color:#f1f1f1}
         <p>A blended power ranking system for national teams, weighting actual match results (70%) and expected goals share (30%).<br><em>Hover over the form badges, or click a team name for deep dive details!</em></p>
     </div>
 
-    <!-- Updated Filter Container HTML -->
     <div class="filter-container">
         <div class="filter-row">
             <label for="tournamentSelect"><strong>Tournament Era:</strong></label>
@@ -134,7 +132,7 @@ tr:hover{background-color:#f1f1f1}
             For matches with xG data (2018–2026), performance is graded 70% on match result and 30% on xG share. For historical tournaments prior to 2018, the model falls back to 100% match scorelines.</p>
 
             <p><strong>4. Inactive Coasting Penalties</strong><br>
-            When viewing "All-Time Cumulative" rankings, teams that miss a World Cup cycle can be penalized so they do not "coast" on ancient high ratings. You can toggle a flat point deduction or a 15% regression toward the 1500 baseline for every tournament missed.</p>
+            When viewing "All-Time Cumulative" rankings, teams that miss a World Cup cycle can be penalized so they do not "coast" on ancient high ratings. Every team in the database is registered at 1500 before the first tournament begins; missing a cycle will retroactively penalize unproven teams. You can toggle a flat point deduction or a 15% regression toward the 1500 baseline for every tournament missed.</p>
 
             <h3>The Formulas</h3>
             <div class="formula-box">
@@ -384,7 +382,6 @@ tr:hover{background-color:#f1f1f1}
             validData.sort((a, b) => a.parsedDate - b.parsedDate);
 
             // If a specific tournament is selected, filter the dataset BEFORE calculating
-            // (meaning the tournament starts fresh at 1500 for everyone)
             if (selectedEra !== "ALL") {
                 const targetYear = parseInt(selectedEra);
                 validData = validData.filter(row => row.parsedDate.getFullYear() === targetYear);
@@ -402,6 +399,23 @@ tr:hover{background-color:#f1f1f1}
             window.teamForm = {};
             window.teamEloHistory = {};
 
+            // NEW: PRE-LOAD EVERY TEAM IN THE DATASET
+            // This ensures teams making their first appearance in later years
+            // absorb penalties for missing earlier tournaments in the loop.
+            validData.forEach(row => {
+                const home = row.home_team_name, away = row.away_team_name;
+                if (!ratings[home]) {
+                    ratings[home] = 1500.0;
+                    window.teamForm[home] = [];
+                    window.teamEloHistory[home] = [];
+                }
+                if (!ratings[away]) {
+                    ratings[away] = 1500.0;
+                    window.teamForm[away] = [];
+                    window.teamEloHistory[away] = [];
+                }
+            });
+
             // Identify discrete tournament years in the dataset
             const yearsPresent = [...new Set(validData.map(row => row.parsedDate.getFullYear()))].sort();
 
@@ -417,7 +431,6 @@ tr:hover{background-color:#f1f1f1}
                 });
 
                 // Apply Inactive Coasting Penalty if applicable
-                // Only triggers on multi-year Cumulative modes (index > 0)
                 if (index > 0 && decayType !== 'none') {
                     for (let team in ratings) {
                         if (!currentParticipants.has(team)) {
@@ -444,14 +457,6 @@ tr:hover{background-color:#f1f1f1}
                 yearMatches.forEach(row => {
                     const home = row.home_team_name, away = row.away_team_name;
                     activeTeams.add(home); activeTeams.add(away);
-                    
-                    if (!ratings[home]) ratings[home] = 1500.0;
-                    if (!ratings[away]) ratings[away] = 1500.0;
-                    
-                    if (!window.teamForm[home]) window.teamForm[home] = [];
-                    if (!window.teamForm[away]) window.teamForm[away] = [];
-                    if (!window.teamEloHistory[home]) window.teamEloHistory[home] = [];
-                    if (!window.teamEloHistory[away]) window.teamEloHistory[away] = [];
 
                     const currentHosts = hostNations[yr] || [];
                     const homeBoost = currentHosts.includes(home) ? 25.0 : 0.0;
@@ -490,8 +495,6 @@ tr:hover{background-color:#f1f1f1}
                     window.teamEloHistory[away].push({ d: dStr, elo: ratings[away] });
                 });
             });
-
-            window.ratings = ratings;
 
             let prevStandings = [];
             for (let team in ratings) {
