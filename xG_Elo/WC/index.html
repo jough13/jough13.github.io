@@ -6,14 +6,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background-color:#f4f4f9;color:#333;max-width:850px;margin:0 auto;padding:20px}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background-color:#f4f4f9;color:#333;max-width:900px;margin:0 auto;padding:20px}
 .header{text-align:center;margin-bottom:20px;position:relative}
 h1{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;margin-top:0;color:#00285e}
 .info-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;background-color:#00285e;color:white;border-radius:50%;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.2);transition:0.2s}
 .info-btn:hover{background-color:#e31837}
 .as-of-date{display:block;width:fit-content;margin:0 auto 15px auto;background-color:#e31837;color:white;padding:5px 12px;border-radius:15px;font-size:0.9em;font-weight:bold}
-.filter-container{text-align:center;margin-bottom:20px}
-.filter-container select{padding:8px 16px;font-size:1em;font-weight:bold;border-radius:6px;border:2px solid #00285e;background-color:#fff;color:#00285e;cursor:pointer}
+.filter-container{text-align:center;margin-bottom:20px;background:#fff;padding:15px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.05);border-top:3px solid #00285e;}
+.filter-container select{padding:8px 12px;font-size:0.95em;font-weight:bold;border-radius:6px;border:2px solid #ddd;background-color:#f9f9f9;color:#00285e;cursor:pointer;margin-right:15px;transition:0.2s}
+.filter-container select:hover{border-color:#00285e}
 .upload-section{background:#fff;padding:20px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);text-align:center;margin-top:40px;margin-bottom:30px;border-top:4px solid #00285e}
 input[type="file"]{margin-top:10px}
 table{width:100%;border-collapse:collapse;background:#fff;box-shadow:0 4px 6px rgba(0,0,0,0.1);border-radius:8px;overflow:hidden}
@@ -56,9 +57,9 @@ tr:hover{background-color:#f1f1f1}
     </div>
 
     <div class="filter-container">
-        <label for="tournamentSelect"><strong>View Tournament Era: </strong></label>
+        <label for="tournamentSelect"><strong>Tournament Era: </strong></label>
         <select id="tournamentSelect">
-            <option value="ALL">All World Cups (Cumulative 2002–2026)</option>
+            <option value="ALL">All-Time Cumulative (2002–2026)</option>
             <option value="2026" selected>2026 FIFA World Cup</option>
             <option value="2022">2022 FIFA World Cup (Qatar)</option>
             <option value="2018">2018 FIFA World Cup (Russia)</option>
@@ -67,23 +68,33 @@ tr:hover{background-color:#f1f1f1}
             <option value="2006">2006 FIFA World Cup (Germany)</option>
             <option value="2002">2002 FIFA World Cup (Korea/Japan)</option>
         </select>
+
+        <label for="decaySelect"><strong>Inactive Coasting Penalty: </strong></label>
+        <select id="decaySelect">
+            <option value="none" selected>None (Keep Rating)</option>
+            <option value="flat">Flat Penalty (-20 pts)</option>
+            <option value="revert">Regression (15% to Mean)</option>
+        </select>
     </div>
 
     <div id="methodologyModal" class="modal">
         <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
             <span class="close-btn" id="closeModal">&times;</span>
             <h2>How the World Cup Hybrid Engine Works</h2>
-            <p>This <strong>World Cup Hybrid xG-Elo</strong> system recalculates international tournament fixtures across 2002–2026, combining actual scorelines with expected goals (xG) metrics.</p>
+            <p>This <strong>World Cup Hybrid xG-Elo</strong> system recalculates international tournament fixtures, combining actual scorelines with expected goals (xG) metrics to find the true power rankings of international football.</p>
             
             <h3>Key World Cup Model Adjustments</h3>
             <p><strong>1. Neutral Grounds & Designated Host Boost (+25)</strong><br>
-            Unlike domestic club leagues where every home team gets a point boost, World Cup matches are played on neutral ground. A <strong>+25 Home Advantage boost</strong> is applied <em>only</em> when a designated host nation plays on home soil (e.g. USA/Canada/Mexico in 2026, Qatar in 2022, Russia in 2018, Brazil in 2014).</p>
+            Unlike domestic club leagues where every home team gets a point boost, World Cup matches are played on neutral ground. A <strong>+25 Home Advantage boost</strong> is applied <em>only</em> when a designated host nation plays on home soil.</p>
 
             <p><strong>2. Tournament K-Factor (50)</strong><br>
-            Because national teams play fewer fixtures and World Cup games represent the pinnacle of football, the K-Factor is set to <strong>50</strong> (up from club level 32). This makes the model responsive to tournament runs and high-stakes upsets.</p>
+            Because national teams play fewer fixtures and World Cup games represent the pinnacle of football, the K-Factor is set to <strong>50</strong>. This makes the model responsive to tournament runs and high-stakes upsets.</p>
 
             <p><strong>3. 70/30 Blended Score with xG Fallback</strong><br>
             For matches with xG data (2018–2026), performance is graded 70% on match result and 30% on xG share. For historical tournaments prior to 2018, the model falls back to 100% match scorelines.</p>
+
+            <p><strong>4. Inactive Coasting Penalties</strong><br>
+            When viewing "All-Time Cumulative" rankings, teams that miss a World Cup cycle can be penalized so they do not "coast" on ancient high ratings. You can toggle a flat point deduction or a 15% regression toward the 1500 baseline for every tournament missed.</p>
 
             <h3>The Formulas</h3>
             <div class="formula-box">
@@ -158,9 +169,11 @@ tr:hover{background-color:#f1f1f1}
         }
 
         document.getElementById("tournamentSelect").addEventListener("change", function() {
-            if (window.allRawData.length > 0) {
-                processData(window.allRawData);
-            }
+            if (window.allRawData.length > 0) processData(window.allRawData);
+        });
+
+        document.getElementById("decaySelect").addEventListener("change", function() {
+            if (window.allRawData.length > 0) processData(window.allRawData);
         });
 
         function showTeamForm(team) {
@@ -315,6 +328,7 @@ tr:hover{background-color:#f1f1f1}
 
         function processData(data) {
             const selectedEra = document.getElementById("tournamentSelect").value;
+            const decayType = document.getElementById("decaySelect").value;
             
             let validData = data.filter(row => row.home_team_name && row.away_team_name);
             validData.forEach(row => {
@@ -329,13 +343,15 @@ tr:hover{background-color:#f1f1f1}
             });
             validData.sort((a, b) => a.parsedDate - b.parsedDate);
 
+            // If a specific tournament is selected, filter the dataset BEFORE calculating
+            // (meaning the tournament starts fresh at 1500 for everyone)
             if (selectedEra !== "ALL") {
                 const targetYear = parseInt(selectedEra);
                 validData = validData.filter(row => row.parsedDate.getFullYear() === targetYear);
             }
 
             if (validData.length === 0) {
-                document.getElementById('statusMessage').innerHTML = "<span style='color:red;'>Error: No match data found for the selected tournament.</span>";
+                document.getElementById('statusMessage').innerHTML = "<span style='color:red;'>Error: No match data found.</span>";
                 return;
             }
 
@@ -346,57 +362,93 @@ tr:hover{background-color:#f1f1f1}
             window.teamForm = {};
             window.teamEloHistory = {};
 
-            validData.forEach(row => {
-                const home = row.home_team_name, away = row.away_team_name;
-                const matchYear = row.parsedDate.getFullYear();
-                
-                activeTeams.add(home); activeTeams.add(away);
-                
-                if (!ratings[home]) ratings[home] = 1500.0;
-                if (!ratings[away]) ratings[away] = 1500.0;
-                
-                if (!window.teamForm[home]) window.teamForm[home] = [];
-                if (!window.teamForm[away]) window.teamForm[away] = [];
-                
-                if (!window.teamEloHistory[home]) window.teamEloHistory[home] = [];
-                if (!window.teamEloHistory[away]) window.teamEloHistory[away] = [];
+            // Identify discrete tournament years in the dataset
+            const yearsPresent = [...new Set(validData.map(row => row.parsedDate.getFullYear()))].sort();
 
-                // Check host nations boost (+25 for host, 0 for neutral)
-                const currentHosts = hostNations[matchYear] || [];
-                const homeBoost = currentHosts.includes(home) ? 25.0 : 0.0;
-                const awayBoost = currentHosts.includes(away) ? 25.0 : 0.0;
+            // Group processing by tournament year
+            yearsPresent.forEach((yr, index) => {
+                const yearMatches = validData.filter(row => row.parsedDate.getFullYear() === yr);
+                
+                // Identify who is participating this year
+                const currentParticipants = new Set();
+                yearMatches.forEach(row => {
+                    currentParticipants.add(row.home_team_name);
+                    currentParticipants.add(row.away_team_name);
+                });
 
-                const r_home_old = ratings[home], r_away_old = ratings[away];
-                const e_home = 1 / (1 + Math.pow(10, ((r_away_old + awayBoost) - (r_home_old + homeBoost)) / 400));
-
-                const hg = parseFloat(row.home_team_goal_count), ag = parseFloat(row.away_team_goal_count);
-                let s_home = 0.5;
-                if (!isNaN(hg) && !isNaN(ag)) { if (hg > ag) s_home = 1.0; else if (hg < ag) s_home = 0.0; }
-
-                const xg_home = parseFloat(row.team_a_xg), xg_away = parseFloat(row.team_b_xg);
-                let a_home = s_home;
-                if (!isNaN(xg_home) && !isNaN(xg_away) && (xg_home + xg_away) > 0) {
-                    let xg_share = xg_home / (xg_home + xg_away);
-                    a_home = (0.70 * s_home) + (0.30 * xg_share);
+                // Apply Inactive Coasting Penalty if applicable
+                // Only triggers on multi-year Cumulative modes (index > 0)
+                if (index > 0 && decayType !== 'none') {
+                    for (let team in ratings) {
+                        if (!currentParticipants.has(team)) {
+                            let penaltyAmount = 0;
+                            if (decayType === 'flat') {
+                                penaltyAmount = -20.0;
+                            } else if (decayType === 'revert') {
+                                penaltyAmount = -0.15 * (ratings[team] - 1500.0);
+                            }
+                            
+                            ratings[team] += penaltyAmount;
+                            lastChange[team] = penaltyAmount; // Track the drop for the table
+                            
+                            // Push the penalty to their historical line chart
+                            window.teamEloHistory[team].push({ 
+                                d: `Missed ${yr}`, 
+                                elo: ratings[team] 
+                            });
+                        }
+                    }
                 }
 
-                const gd = Math.abs(hg - ag);
-                let b_mult = 1.0;
-                if (!isNaN(gd) && gd >= 3) b_mult = 1 + (gd * 0.02);
+                // Process matches for this specific tournament
+                yearMatches.forEach(row => {
+                    const home = row.home_team_name, away = row.away_team_name;
+                    activeTeams.add(home); activeTeams.add(away);
+                    
+                    if (!ratings[home]) ratings[home] = 1500.0;
+                    if (!ratings[away]) ratings[away] = 1500.0;
+                    
+                    if (!window.teamForm[home]) window.teamForm[home] = [];
+                    if (!window.teamForm[away]) window.teamForm[away] = [];
+                    if (!window.teamEloHistory[home]) window.teamEloHistory[home] = [];
+                    if (!window.teamEloHistory[away]) window.teamEloHistory[away] = [];
 
-                const r_home_change = 50 * b_mult * (a_home - e_home);
-                const r_away_change = -r_home_change;
+                    const currentHosts = hostNations[yr] || [];
+                    const homeBoost = currentHosts.includes(home) ? 25.0 : 0.0;
+                    const awayBoost = currentHosts.includes(away) ? 25.0 : 0.0;
 
-                ratings[home] += r_home_change; ratings[away] += r_away_change;
-                lastChange[home] = r_home_change; lastChange[away] = r_away_change;
-                
-                const dStr = row.parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
-                
-                window.teamForm[home].push({ d: dStr, o: away, h: 1, gf: isNaN(hg)?0:hg, ga: isNaN(ag)?0:ag, xf: isNaN(xg_home)?0:xg_home, xa: isNaN(xg_away)?0:xg_away, c: r_home_change });
-                window.teamForm[away].push({ d: dStr, o: home, h: 0, gf: isNaN(ag)?0:ag, ga: isNaN(hg)?0:hg, xf: isNaN(xg_away)?0:xg_away, xa: isNaN(xg_home)?0:xg_home, c: r_away_change });
-                
-                window.teamEloHistory[home].push({ d: dStr, elo: ratings[home] });
-                window.teamEloHistory[away].push({ d: dStr, elo: ratings[away] });
+                    const r_home_old = ratings[home], r_away_old = ratings[away];
+                    const e_home = 1 / (1 + Math.pow(10, ((r_away_old + awayBoost) - (r_home_old + homeBoost)) / 400));
+
+                    const hg = parseFloat(row.home_team_goal_count), ag = parseFloat(row.away_team_goal_count);
+                    let s_home = 0.5;
+                    if (!isNaN(hg) && !isNaN(ag)) { if (hg > ag) s_home = 1.0; else if (hg < ag) s_home = 0.0; }
+
+                    const xg_home = parseFloat(row.team_a_xg), xg_away = parseFloat(row.team_b_xg);
+                    let a_home = s_home;
+                    if (!isNaN(xg_home) && !isNaN(xg_away) && (xg_home + xg_away) > 0) {
+                        let xg_share = xg_home / (xg_home + xg_away);
+                        a_home = (0.70 * s_home) + (0.30 * xg_share);
+                    }
+
+                    const gd = Math.abs(hg - ag);
+                    let b_mult = 1.0;
+                    if (!isNaN(gd) && gd >= 3) b_mult = 1 + (gd * 0.02);
+
+                    const r_home_change = 50 * b_mult * (a_home - e_home);
+                    const r_away_change = -r_home_change;
+
+                    ratings[home] += r_home_change; ratings[away] += r_away_change;
+                    lastChange[home] = r_home_change; lastChange[away] = r_away_change;
+                    
+                    const dStr = row.parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+                    
+                    window.teamForm[home].push({ d: dStr, o: away, h: 1, gf: isNaN(hg)?0:hg, ga: isNaN(ag)?0:ag, xf: isNaN(xg_home)?0:xg_home, xa: isNaN(xg_away)?0:xg_away, c: r_home_change });
+                    window.teamForm[away].push({ d: dStr, o: home, h: 0, gf: isNaN(ag)?0:ag, ga: isNaN(hg)?0:hg, xf: isNaN(xg_away)?0:xg_away, xa: isNaN(xg_home)?0:xg_home, c: r_away_change });
+                    
+                    window.teamEloHistory[home].push({ d: dStr, elo: ratings[home] });
+                    window.teamEloHistory[away].push({ d: dStr, elo: ratings[away] });
+                });
             });
 
             window.ratings = ratings;
