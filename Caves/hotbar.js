@@ -6,6 +6,10 @@
 
 const hotbarContainerEl = document.getElementById('hotbarContainer');
 
+// PERFORMANCE WIN: O(1) Cache for Item Name Lookups on the Hotbar
+// Prevents O(N) scans of ITEM_DATA every time the hotbar renders!
+window._hotbarItemKeyCache = window._hotbarItemKeyCache || {};
+
 function renderHotbar() {
     if (!hotbarContainerEl) return;
     
@@ -68,13 +72,13 @@ function renderHotbar() {
             slotClasses += " hover:border-blue-500";
         }
         
-        slotDiv.className = slotClasses;
+        // We will apply slotClasses to className *after* checking item rarity below!
 
         // EXPANDABILITY WIN: If the hotbar ever expands to 10 slots, slot 10 safely renders as '0'
         const hotkeyNumber = (index + 1) % 10 === 0 && index !== 0 ? 0 : index + 1;
 
         const keyHint = document.createElement('span');
-        keyHint.className = "absolute top-0 left-1 text-[10px] font-bold text-[var(--text-muted)]";
+        keyHint.className = "absolute top-0 left-1 text-[10px] font-bold text-[var(--text-muted)] z-20";
         keyHint.textContent = hotkeyNumber;
         slotDiv.appendChild(keyHint);
 
@@ -87,13 +91,22 @@ function renderHotbar() {
             let itemData = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[abilityId] : null;
             
             // ROBUSTNESS & PERFORMANCE WIN: Match dynamic prefixed items against their base template!
-            // If we don't have a direct key match, scan for the base name.
+            // If we don't have a direct key match, scan for the base name using O(1) cache.
             if (!itemData && typeof ITEM_DATA !== 'undefined') {
-                const itemKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === abilityId);
-                if (itemKey) itemData = ITEM_DATA[itemKey];
+                if (window._hotbarItemKeyCache[abilityId]) {
+                    itemData = ITEM_DATA[window._hotbarItemKeyCache[abilityId]];
+                } else {
+                    const itemKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === abilityId);
+                    if (itemKey) {
+                        window._hotbarItemKeyCache[abilityId] = itemKey;
+                        itemData = ITEM_DATA[itemKey];
+                    }
+                }
             }
 
             if (skillData || spellData) {
+                slotDiv.className = slotClasses; // Apply base classes
+                
                 const data = skillData || spellData;
                 const abrv = document.createElement('span');
                 
@@ -128,13 +141,14 @@ function renderHotbar() {
                 if (cooldowns[abilityId] > 0) {
                     slotDiv.classList.add('cursor-not-allowed', 'border-red-900', 'grayscale');
                     const cdOverlay = document.createElement('div');
-                    cdOverlay.className = "absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-[2px] text-red-400 font-bold text-xl rounded shadow-inner animate-pulse";
+                    cdOverlay.className = "absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-[2px] text-red-400 font-bold text-xl rounded shadow-inner animate-pulse z-20";
                     cdOverlay.textContent = cooldowns[abilityId];
                     slotDiv.appendChild(cdOverlay);
                 }
             } else if (invItem || itemData) {
                 const displayName = invItem ? invItem.name : (itemData ? itemData.name : 'Unknown Item');
                 const displayTile = invItem ? (invItem.tile || '🎒') : (itemData ? (itemData.tile || '🎒') : '🎒');
+                const rarity = invItem ? invItem._rarity : (itemData ? itemData._rarity : null);
                 
                 // 🚨 PERFORMANCE WIN: Batched Auto-Clearing
                 // If the item is completely depleted and it's a disposable type, wipe it.
@@ -147,8 +161,27 @@ function renderHotbar() {
                     }
                 }
                 
+                // --- JUICE WIN: Apply Rarity Colors and Glows to Hotbar! ---
+                let iconColorClass = "text-gray-200";
+                if (rarity && totalQty > 0) {
+                    if (rarity === 'uncommon') {
+                        iconColorClass = 'text-green-400';
+                        slotClasses += ' border-green-800';
+                    } else if (rarity === 'rare') {
+                        iconColorClass = 'text-purple-400';
+                        slotClasses += ' border-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.3)]';
+                    } else if (rarity === 'epic') {
+                        iconColorClass = 'text-red-400';
+                        slotClasses += ' border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.3)]';
+                    } else if (rarity === 'legendary') {
+                        iconColorClass = 'text-yellow-400 text-magic-shimmer';
+                        slotClasses += ' border-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]';
+                    }
+                }
+                slotDiv.className = slotClasses;
+                
                 const iconSpan = document.createElement('span');
-                iconSpan.className = "font-bold text-2xl drop-shadow-md";
+                iconSpan.className = `font-bold text-2xl drop-shadow-md z-10 ${iconColorClass}`;
                 iconSpan.textContent = displayTile;
                 
                 // SECURITY WIN: Escape tooltip names!
@@ -156,9 +189,11 @@ function renderHotbar() {
                 slotDiv.title = `[${hotkeyNumber}] ${safeDisplayName} (Qty: ${totalQty})\n(Right-click to unbind)`;
                 slotDiv.appendChild(iconSpan);
                 
+                // UX WIN: Format 999+ so massive stacks don't overflow the UI box
+                const displayQty = totalQty > 999 ? '999+' : totalQty;
                 const qtyBadge = document.createElement('span');
-                qtyBadge.className = "absolute bottom-0 right-0 text-[10px] bg-black bg-opacity-70 text-white px-1 rounded-tl font-bold border border-gray-700";
-                qtyBadge.textContent = totalQty;
+                qtyBadge.className = "absolute bottom-0 right-0 text-[10px] bg-black bg-opacity-70 text-white px-1 rounded-tl font-bold border border-gray-700 z-20";
+                qtyBadge.textContent = displayQty;
                 slotDiv.appendChild(qtyBadge);
 
                 // LORE WIN: If they run out of non-disposable items (like a specific sword), color the border red so they know it's a dead slot
@@ -168,6 +203,7 @@ function renderHotbar() {
                 }
             }
         } else {
+            slotDiv.className = slotClasses; // Apply base
             slotDiv.classList.add('border-dashed', 'opacity-30', 'border-gray-600');
             // LORE WIN: Thematic empty pocket hint
             slotDiv.title = "Empty Quick-Slot\n(Your hand grasps at air. Open your Bag or Grimoire to bind an action here.)";
@@ -367,8 +403,20 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
     
     // Left Click (Use Ability)
     hotbarContainerEl.addEventListener('click', (e) => {
+        // 🚨 SECURITY & BUG FIX: Direct UI clicks were bypassing the input.js guards!
+        // Prevents interacting with the hotbar while an AI move is processing, you're stunned, or menus are open.
+        if (typeof isProcessingMove !== 'undefined' && isProcessingMove) return;
         if (typeof _modalCache !== 'undefined' && _modalCache.isAnyOpen()) return; 
-        if (typeof gameState !== 'undefined' && gameState.isDroppingItem) return;
+        
+        if (typeof gameState !== 'undefined') {
+            if (gameState.isDroppingItem) return;
+            if (gameState.player && gameState.player.health <= 0) return;
+            if (gameState.player && gameState.player.stunTurns > 0) {
+                if (typeof logMessage !== 'undefined') logMessage("{yellow:You are stunned and cannot act!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return;
+            }
+        }
         
         const slotDiv = e.target.closest('.hotbar-slot');
         if (slotDiv && !slotDiv.classList.contains('cursor-not-allowed')) {
@@ -391,7 +439,7 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
             if (typeof gameState !== 'undefined' && gameState.isAiming) {
                 gameState.isAiming = false;
                 gameState.abilityToAim = null;
-                logMessage("{gray:Aiming canceled.}");
+                if (typeof logMessage !== 'undefined') logMessage("{gray:Aiming canceled.}");
                 if (typeof render === 'function') render();
             }
             
@@ -414,7 +462,7 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
                     }
                     
                     const safeReadableName = typeof escapeHtml === 'function' ? escapeHtml(readableName) : readableName;
-                    logMessage(`{gray:You wiped the memory of ${safeReadableName} from Quick-Slot ${index + 1}.}`);
+                    if (typeof logMessage !== 'undefined') logMessage(`{gray:You wiped the memory of ${safeReadableName} from Quick-Slot ${index + 1}.}`);
                 }
                 
                 player.hotbar[index] = null;
