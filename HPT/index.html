@@ -1254,6 +1254,8 @@
                 navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
                     .then(registration => {
                         console.log('Offline Service Worker registered successfully!');
+                        // Force the browser to check for sw.js updates every time the app loads
+                        registration.update();
                     })
                     .catch(err => {
                         console.log('Service Worker registration failed: ', err);
