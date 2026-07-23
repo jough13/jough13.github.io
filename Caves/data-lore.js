@@ -1032,10 +1032,10 @@ window.RIDDLE_DATA = [
     },
     {
         id: "sword",
-        question: "I have a mouth but cannot speak. I have a bed but cannot sleep. I have a tongue but cannot taste. What am I?",
-        answers: ["river", "a river", "the river", "stream", "a stream", "creek"],
-        reward: "endurance",
-        message: "{green:The statue cries a single tear. Your stamina surges.}" // Wait, this is river again. Let's do sword.
+        question: "I am forged in fire but quench my thirst in blood. I divide the world, yet kings unite behind me. What am I?",
+        answers: ["sword", "a sword", "the sword", "blade", "a blade"],
+        reward: "strength",
+        message: "{red:The statue grips an invisible hilt. Your arms swell with power.}" 
     },
     {
         id: "sword_real",
