@@ -36,7 +36,8 @@ window.ALCHEMY_RECIPES = {
 };
 
 // --- 1. NEW ITEMS ---
-// Added `pColor` and `pSize` properties to make rendering dynamic!
+// 🌟 EXPANDABILITY WIN: Added `pColor` and `pSize` properties to make rendering dynamic!
+// 🚨 HOT-RELOAD FIX: Used 'var' instead of 'const' to prevent block redeclaration crashes
 var ALCHEMY_ITEMS = {
     '🧪v': {
         name: 'Venom Flask', type: 'consumable', tile: '🧪', pColor: '#22c55e', pSize: 20,
@@ -228,7 +229,13 @@ window.executeThrowPotion = async function(abilityId, dirX, dirY) {
             potionTemplate = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[player.inventory[invIndex].templateId || ''] : null;
             player.inventory[invIndex].quantity--;
             if (player.inventory[invIndex].quantity <= 0) player.inventory.splice(invIndex, 1);
-            if (typeof playerRef !== 'undefined') playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+            
+            // 🚨 PERFORMANCE WIN: Debounce the inventory save instead of hitting Firebase directly
+            if (typeof triggerDebouncedSave === 'function') {
+                triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+            } else if (typeof playerRef !== 'undefined') {
+                playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory });
+            }
         } else {
             if (typeof logMessage === 'function') logMessage(`{red:You are out of ${potionName}s.}`);
             if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
@@ -285,9 +292,11 @@ window.executeThrowPotion = async function(abilityId, dirX, dirY) {
                 for (let x = targetX - 1; x <= targetX + 1; x++) {
                     // 🛡️ MECHANIC WIN: Friendly Fire!
                     if (x === player.x && y === player.y) {
-                        if (typeof logMessage === 'function') logMessage("{green:You are splashed by your own venom!}");
-                        player.poisonTurns = 3;
-                        if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
+                        if (!gameState.godMode) {
+                            if (typeof logMessage === 'function') logMessage("{green:You are splashed by your own venom!}");
+                            player.poisonTurns = 3;
+                            if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
+                        }
                         continue;
                     }
                     const res = await applySpellDamage(x, y, 10, 'poisonBolt', true);
@@ -304,9 +313,12 @@ window.executeThrowPotion = async function(abilityId, dirX, dirY) {
                 for (let x = targetX - 1; x <= targetX + 1; x++) {
                     // 🛡️ MECHANIC WIN: Friendly Fire!
                     if (x === player.x && y === player.y) {
-                        if (typeof logMessage === 'function') logMessage("{green:The acid burns your skin! (-10 HP)}");
-                        window.modifyVital('health', -10);
-                        player.poisonTurns = 2;
+                        if (!gameState.godMode) {
+                            if (typeof logMessage === 'function') logMessage("{green:The acid burns your skin! (-10 HP)}");
+                            window.modifyVital('health', -10);
+                            player.poisonTurns = 2;
+                            if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
+                        }
                         continue;
                     }
                     // Deals double damage via poison element scaling in applySpellDamage
@@ -328,7 +340,7 @@ window.executeThrowPotion = async function(abilityId, dirX, dirY) {
                 player.stealthTurns = 5;
             }
 
-            // Daze/Stun enemies caught in the smoke
+            // 🚨 MECHANIC WIN: Daze/Stun enemies caught in the smoke natively!
             for (let y = targetY - 1; y <= targetY + 1; y++) {
                 for (let x = targetX - 1; x <= targetX + 1; x++) {
                     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
@@ -338,9 +350,22 @@ window.executeThrowPotion = async function(abilityId, dirX, dirY) {
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "DAZED", "#9ca3af");
                         }
                     } else {
-                        // For overworld, deal 1 point of non-lethal psychic damage just to trigger aggro but daze them
-                        const res = await applySpellDamage(x, y, 1, 'psychicBlast', true);
-                        if (res && res.hit) Object.assign(batchedPayload, res.payload);
+                        // 🚨 MECHANIC WIN: Proper Overworld Stun Logic for Smoke Bombs!
+                        const enemyId = `overworld:${x},${-y}`;
+                        if (gameState.sharedEnemies && gameState.sharedEnemies[enemyId]) {
+                            const liveEnemy = gameState.sharedEnemies[enemyId];
+                            let enemyData = JSON.parse(JSON.stringify(liveEnemy));
+                            enemyData.stunTurns = 2; // Inject Stun!
+                            
+                            // Send to batch updater via network manager
+                            if (typeof EnemyNetworkManager !== 'undefined') {
+                                batchedPayload[EnemyNetworkManager.getPath(x, y, enemyId)] = enemyData;
+                            }
+                            
+                            // Local speculative execution
+                            gameState.sharedEnemies[enemyId].stunTurns = 2;
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(x, y, "DAZED", "#9ca3af");
+                        }
                     }
                 }
             }
@@ -379,9 +404,12 @@ window.executeThrowPotion = async function(abilityId, dirX, dirY) {
                 for (let x = targetX - 1; x <= targetX + 1; x++) {
                     // 🛡️ MECHANIC WIN: Friendly Fire!
                     if (x === player.x && y === player.y) {
-                        if (typeof logMessage === 'function') logMessage("{purple:You are caught in your own void inferno! (-20 HP)}");
-                        window.modifyVital('health', -20);
-                        player.burnTurns = 3;
+                        if (!gameState.godMode) {
+                            if (typeof logMessage === 'function') logMessage("{purple:You are caught in your own void inferno! (-20 HP)}");
+                            window.modifyVital('health', -20);
+                            player.burnTurns = 3;
+                            if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), false);
+                        }
                         continue;
                     }
                     const res = await applySpellDamage(x, y, 40, 'fireball', true);
@@ -397,6 +425,17 @@ window.executeThrowPotion = async function(abilityId, dirX, dirY) {
         
         // Finalize Turn
         gameState.isAiming = false;
+        
+        // Push newly acquired debuffs/buffs via debouncer
+        if (typeof triggerDebouncedSave === 'function') {
+            triggerDebouncedSave({
+                health: player.health,
+                poisonTurns: player.poisonTurns,
+                burnTurns: player.burnTurns,
+                stealthTurns: player.stealthTurns
+            });
+        }
+        
         if (typeof endPlayerTurn === 'function') endPlayerTurn();
         if (typeof render === 'function') render();
         if (typeof renderInventory === 'function') renderInventory();
