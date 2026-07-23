@@ -172,6 +172,16 @@ tr:hover{background-color:#f1f1f1}
     </div>
 
     <script>
+        // SMART DATA FIX: Geopolitical Alias Dictionary
+        // Automatically renames historically shifted nations to their modern equivalents 
+        // to ensure mathematical continuity across decades.
+        const teamAliases = {
+            "Serbia and Montenegro": "Serbia"
+            // You can easily add more here later if needed:
+            // "Republic of Ireland": "Ireland",
+            // "United States": "USMNT",
+        };
+
         // Official Tournament Host Nations Dictionary
         const hostNations = {
             2002: ['South Korea', 'Japan'],
@@ -183,8 +193,8 @@ tr:hover{background-color:#f1f1f1}
             2026: ['USMNT', 'United States', 'Canada', 'Mexico']
         };
 
-        // MANUAL OVERRIDE: Add Penalty Shootout Winners here
-        // The engine will use this to upgrade a 0.5 Draw to a 0.75 Win and 0.25 Loss.
+        // MANUAL OVERRIDE: Penalty Shootout Winners
+        // The engine uses this to upgrade a 0.5 Draw to a 0.75 Win and 0.25 Loss.
         const shootoutWinners = {
             2026: {
                 "Netherlands vs Morocco": "Morocco"
@@ -418,7 +428,12 @@ tr:hover{background-color:#f1f1f1}
             const decayType = document.getElementById("decaySelect").value;
             
             let validData = data.filter(row => row.home_team_name && row.away_team_name);
+            
             validData.forEach(row => {
+                // Apply Geopolitical Alias Fix
+                if (teamAliases[row.home_team_name]) row.home_team_name = teamAliases[row.home_team_name];
+                if (teamAliases[row.away_team_name]) row.away_team_name = teamAliases[row.away_team_name];
+
                 let ts = parseInt(row.timestamp);
                 if (!isNaN(ts)) {
                     row.parsedDate = new Date(ts * 1000);
@@ -428,6 +443,7 @@ tr:hover{background-color:#f1f1f1}
                     row.parsedDate = new Date();
                 }
             });
+            
             validData.sort((a, b) => a.parsedDate - b.parsedDate);
 
             // If a specific tournament is selected, filter the dataset BEFORE calculating
@@ -448,7 +464,7 @@ tr:hover{background-color:#f1f1f1}
             window.teamForm = {};
             window.teamEloHistory = {};
 
-            // NEW: PRE-LOAD EVERY TEAM IN THE DATASET
+            // PRE-LOAD EVERY TEAM IN THE DATASET
             validData.forEach(row => {
                 const home = row.home_team_name, away = row.away_team_name;
                 if (!ratings[home]) {
@@ -477,8 +493,8 @@ tr:hover{background-color:#f1f1f1}
                     currentParticipants.add(row.away_team_name);
                 });
 
-                // Apply Inactive Coasting Penalty if applicable
-                if (index > 0 && decayType !== 'none') {
+                // RUTHLESS FIX: Apply penalty immediately (even at index 0)
+                if (decayType !== 'none') {
                     for (let team in ratings) {
                         if (!currentParticipants.has(team)) {
                             let penaltyAmount = 0;
@@ -489,9 +505,8 @@ tr:hover{background-color:#f1f1f1}
                             }
                             
                             ratings[team] += penaltyAmount;
-                            lastChange[team] = penaltyAmount; // Track the drop for the table
+                            lastChange[team] = penaltyAmount; 
                             
-                            // Push the penalty to their historical line chart
                             window.teamEloHistory[team].push({ 
                                 d: `Missed ${yr}`, 
                                 elo: ratings[team] 
