@@ -63,8 +63,8 @@ if (typeof firebase === 'undefined') {
                 set: () => Promise.resolve(),
                 remove: () => Promise.resolve(),
                 push: () => ({ set: () => Promise.resolve() }),
-                // Provide a safe fallback mock for RTDB transactions
-                transaction: async (cb) => ({ committed: true, snapshot: { val: () => cb({}) } })
+                // Provide a safe fallback mock for RTDB transactions using null to mimic empty nodes
+                transaction: async (cb) => ({ committed: true, snapshot: { val: () => cb(null) } })
             }) 
         }), {
             ServerValue: { TIMESTAMP: Date.now() }
@@ -117,27 +117,38 @@ rtdb.ref('.info/serverTimeOffset').on('value', function(snap) {
 });
 
 // Use this to get the exact millisecond time on the server without an API call
-window.getServerTime = () => Date.now() + window.FirebaseNetworkState.serverTimeOffset;
+// 🚨 ROBUSTNESS WIN: Fallback to `|| 0` prevents NaN propagation if serverTimeOffset is undefined
+window.getServerTime = () => Date.now() + (window.FirebaseNetworkState.serverTimeOffset || 0);
 
 // --- GLOBAL CONNECTION BANNER INJECTION ---
-// We dynamically create this so it works across all screens (Login, Character Select, Game)
-let connectionBanner = document.getElementById('firebase-connection-banner');
-if (!connectionBanner) {
-    connectionBanner = document.createElement('div');
-    connectionBanner.id = 'firebase-connection-banner';
-    // Added will-change and transform/translateZ for hardware-accelerated sliding
-    // Added cursor-pointer to let players know they can dismiss it!
-    connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 transform -translate-y-full shadow-2xl font-mono tracking-widest uppercase text-shadow-sm backdrop-blur-md cursor-pointer';
-    connectionBanner.style.textShadow = "2px 2px 0px rgba(0,0,0,0.8)"; 
-    connectionBanner.style.willChange = "transform";
-    connectionBanner.style.transform = "translateZ(0)";
-    
-    // Click to dismiss! Prevents the banner from blinding the player during combat
-    connectionBanner.onclick = () => {
-        connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
-    };
-    
-    document.body.appendChild(connectionBanner);
+let connectionBanner = null;
+
+// 🚨 ROBUSTNESS WIN: Safely ensure the DOM is ready before injecting the banner
+function initConnectionBanner() {
+    connectionBanner = document.getElementById('firebase-connection-banner');
+    if (!connectionBanner && document.body) {
+        connectionBanner = document.createElement('div');
+        connectionBanner.id = 'firebase-connection-banner';
+        // Added will-change and transform/translateZ for hardware-accelerated sliding
+        // Added cursor-pointer to let players know they can dismiss it!
+        connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 transform -translate-y-full shadow-2xl font-mono tracking-widest uppercase text-shadow-sm backdrop-blur-md cursor-pointer';
+        connectionBanner.style.textShadow = "2px 2px 0px rgba(0,0,0,0.8)"; 
+        connectionBanner.style.willChange = "transform";
+        connectionBanner.style.transform = "translateZ(0)";
+        
+        // Click to dismiss! Prevents the banner from blinding the player during combat
+        connectionBanner.onclick = () => {
+            connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
+        };
+        
+        document.body.appendChild(connectionBanner);
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initConnectionBanner);
+} else {
+    initConnectionBanner();
 }
 
 // Prevent banner timeout race-conditions
@@ -146,15 +157,18 @@ let _bannerTimeout = null;
 function showNetworkBanner(htmlContent, colorClasses, durationMs) {
     if (_bannerTimeout) clearTimeout(_bannerTimeout);
     
-    // Base classes applied to all banners
-    const baseClasses = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 font-mono tracking-widest uppercase backdrop-blur-md translate-y-0 cursor-pointer';
-    
-    connectionBanner.innerHTML = htmlContent;
-    connectionBanner.className = `${baseClasses} ${colorClasses}`;
-    
-    _bannerTimeout = setTimeout(() => {
-        connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
-    }, durationMs);
+    if (connectionBanner) {
+        const baseClasses = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 font-mono tracking-widest uppercase backdrop-blur-md translate-y-0 cursor-pointer';
+        const fullClass = `${baseClasses} ${colorClasses}`;
+        
+        // 🚨 PERFORMANCE WIN: Prevent DOM thrashing by checking if strings changed
+        if (connectionBanner.innerHTML !== htmlContent) connectionBanner.innerHTML = htmlContent;
+        if (connectionBanner.className !== fullClass) connectionBanner.className = fullClass;
+        
+        _bannerTimeout = setTimeout(() => {
+            connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
+        }, durationMs);
+    }
 }
 
 // Apply settings only if not already configured to avoid "Overriding host" error
@@ -204,12 +218,28 @@ let hasInitiallyConnected = false;
 let wasConnected = false; 
 let _offlineDebounceTimer = null; // UX WIN: Prevents spotty WiFi from jittering the screen constantly
 
+// 🚨 UX WIN: Offline Boot Warning
+// Gives Firebase 6 seconds to handshake. If it fails, warns the user they are booting in an offline state.
+let _initialConnectionTimer = setTimeout(() => {
+    if (!hasInitiallyConnected) {
+        showNetworkBanner(
+            "⚠️ Leyline Connection Failed<br><span class='text-[9px] font-normal'>Cannot reach the Akashic Records. Playing in offline mode. (Click to dismiss)</span>",
+            "bg-red-950 bg-opacity-95 text-red-200 border-b-2 border-red-600 shadow-[0_0_20px_rgba(220,38,38,0.8)]",
+            8000
+        );
+    }
+}, 6000);
+
 // Centralized network UI handlers so native browser events and Firebase events can share them!
 function handleConnectionEstablished() {
-    // Defuse the panic timer if we re-connected before it went off!
+    // Defuse the panic timers
     if (_offlineDebounceTimer) {
         clearTimeout(_offlineDebounceTimer);
         _offlineDebounceTimer = null;
+    }
+    if (_initialConnectionTimer) {
+        clearTimeout(_initialConnectionTimer);
+        _initialConnectionTimer = null;
     }
 
     // DEV QoL: Display active ping offset so developers can debug lag
@@ -426,7 +456,11 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
     // 4. BROWSER & RTDB CRASH GUARDS
     // RTDB instantly throws "Firebase Database paths must not contain '.'..." or invalid type errors 
     // if you try to pass it a native Date object, a DOM node, or a Regex.
-    if (obj instanceof Date) return obj.getTime(); // Universally safe Unix Timestamp
+    if (obj instanceof Date) {
+        const time = obj.getTime();
+        // 🚨 BUG FIX WIN: Prevent Invalid Dates (NaN) from crashing the Firebase Sync Thread!
+        return Number.isNaN(time) ? null : time; 
+    }
     if (obj instanceof RegExp) return obj.toString();
     if (typeof HTMLElement !== 'undefined' && obj instanceof HTMLElement) return null;
 
