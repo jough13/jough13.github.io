@@ -2403,7 +2403,7 @@ function triggerRaidBossSpawn(playerX, playerY) {
     rtdb.ref('chat').push().set({
         senderId: 'SERVER',
         email: 'SYSTEM',
-        message: `${bossConfig.msg} (${spawnX}, ${-spawnY})! Gather your allies!}`,
+        message: `${bossConfig.msg} (${spawnX}, ${-spawnY})! Gather your allies!`,
         timestamp: firebase.database.ServerValue.TIMESTAMP
     });
 
