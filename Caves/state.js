@@ -12,33 +12,37 @@ const _EQUIPMENT_SLOTS = ['weapon', 'armor', 'offhand', 'accessory', 'ammo'];
 // EXPANDABILITY WIN: Data-Driven Capacity Check
 // Automatically scales if the player equips items with a `carryCapacity` stat bonus!
 window.getInventoryCap = function(player) {
+    // 🚨 GHOST GUARD: Prevent TypeError if called during engine boot before player exists
+    if (!player) return window.MAX_INVENTORY_SLOTS;
+
     let cap = window.MAX_INVENTORY_SLOTS;
     
     // 🚨 PERFORMANCE & ROBUSTNESS WIN: Hardcoded pre-allocated slot array.
     // Bypasses the slow `for...in` loop and prevents iterating over corrupted prototype properties.
-    if (player && player.equipment) {
+    if (player.equipment) {
         for (let i = 0; i < _EQUIPMENT_SLOTS.length; i++) {
             const item = player.equipment[_EQUIPMENT_SLOTS[i]];
-            // parseInt guarantees we don't accidentally do string concatenation (e.g. 9 + "1" = 91)
+            // Number() guarantees we don't accidentally do string concatenation (e.g. 9 + "1" = 91)
+            // and is significantly faster in the V8 engine than parseInt!
             if (item && item.statBonuses && item.statBonuses.carryCapacity) {
-                cap += parseInt(item.statBonuses.carryCapacity, 10) || 0;
+                cap += Number(item.statBonuses.carryCapacity) || 0;
             }
         }
     }
     
     // Mount Saddlebag Hook
-    if (player && player.isMounted && player.companion && player.companion.carryCapacity) {
-        cap += parseInt(player.companion.carryCapacity, 10) || 0;
+    if (player.isMounted && player.companion && player.companion.carryCapacity) {
+        cap += Number(player.companion.carryCapacity) || 0;
     }
     
     // Passive Talent Hook
-    if (player && player.talents && player.talents.includes('pack_mule')) {
+    if (player.talents && player.talents.includes('pack_mule')) {
         cap += 3;
     }
 
     // Expandability: Arbitrary bonus capacity (Quest rewards, server buffs, etc.)
-    if (player && player.bonusCapacity) {
-        cap += player.bonusCapacity;
+    if (player.bonusCapacity) {
+        cap += Number(player.bonusCapacity) || 0;
     }
     
     // Absolute floor and ceiling safety
@@ -391,21 +395,24 @@ const gameState = {
 window.modifyVital = function(vital, rawAmount) {
     const p = gameState.player;
     
+    // 🚨 GHOST GUARD: Prevent TypeError if called before engine is fully loaded
+    if (!p) return 0;
+    
     // 🚨 SECURITY & STABILITY WIN: The NaN Firewall
     // Guarantees that corrupted spell damage, corrupted items, or missing properties 
     // never inject a NaN into the player's health and permanently break their save file.
     let amount = Number(rawAmount);
-    if (!Number.isFinite(amount) || Number.isNaN(amount)) {
+    if (!Number.isFinite(amount)) { // Also catches Infinity
         console.warn(`[AKASHIC ENGINE] Blocked invalid vital modification on ${vital}: ${rawAmount}`);
         return 0; 
     }
     
     if (amount === 0) return 0;
     
-    // 🚨 BUG FIX WIN: Centralized God Mode
-    // Previously, falling off the skyrealm or stepping in lava bypassed combat logic and killed admins.
-    // This intercepts ALL negative vital changes globally!
-    if (amount < 0 && gameState.godMode && (vital === 'health' || vital === 'stamina' || vital === 'mana' || vital === 'psyche')) {
+    // 🚨 BUG FIX & EXPANDABILITY WIN: Centralized God Mode
+    // Universally intercepts ALL negative vital changes. This prevents the player from dying 
+    // to edge-cases like falling off the skyrealm, drowning, or starving while debugging!
+    if (amount < 0 && gameState.godMode) {
         return 0;
     }
 
@@ -419,7 +426,9 @@ window.modifyVital = function(vital, rawAmount) {
         
         if (typeof logMessage !== 'undefined' && dmgAbsorbed > 0) {
             // Only log it here if we aren't in combat, otherwise combat.js handles the logging natively
-            if (!isProcessingMove) logMessage(`{cyan:Arcane Shield absorbs ${dmgAbsorbed} damage!}`);
+            if (typeof isProcessingMove === 'undefined' || !isProcessingMove) {
+                logMessage(`{cyan:Arcane Shield absorbs ${dmgAbsorbed} damage!}`);
+            }
         }
 
         if (p.shieldValue <= 0) {
@@ -445,7 +454,7 @@ window.modifyVital = function(vital, rawAmount) {
         if (p.metrics) p.metrics.damageTaken += Math.abs(amount);
         
         // Track environmental damage separately if it wasn't triggered by an enemy
-        if (p.metrics && !isProcessingMove) {
+        if (p.metrics && (typeof isProcessingMove === 'undefined' || !isProcessingMove)) {
             p.metrics.environmentalDamageTaken += Math.abs(amount);
         }
     }
@@ -465,13 +474,14 @@ window.modifyVital = function(vital, rawAmount) {
     // LORE & JUICE WIN: VITAL EVENTS
     // ==========================================
     if (actualChange < 0) {
-        const pctLost = Math.abs(actualChange) / maxVal;
+        // Prevent division by zero mathematically if maxVal is somehow 0
+        const pctLost = maxVal > 0 ? Math.abs(actualChange) / maxVal : 0;
         
         if (vital === 'health') {
             // Huge single physical hit (40% or more of max HP in one blow)
             if (pctLost >= 0.40) {
                 if (typeof logMessage !== 'undefined') logMessage("{orange:You suffer a devastating blow!}");
-                gameState.screenShake = Math.max(gameState.screenShake, 15);
+                gameState.screenShake = Math.max(gameState.screenShake || 0, 15);
             }
             
             // Near-death physical boundary crossed (Drop below 25%)
@@ -487,8 +497,8 @@ window.modifyVital = function(vital, rawAmount) {
                 if (Math.random() < 0.30) {
                     p.isMounted = false;
                     if (typeof logMessage !== 'undefined') logMessage("{red:The heavy blow knocks you off your mount!}");
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                    if (typeof render !== 'undefined') render();
+                    if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playError === 'function') AudioSystem.playError();
+                    if (typeof render === 'function') render();
                 }
             }
         } 
@@ -496,7 +506,7 @@ window.modifyVital = function(vital, rawAmount) {
             // Huge mental hit (Madness/Void Terrors)
             if (pctLost >= 0.30) {
                 if (typeof logMessage !== 'undefined') logMessage("{purple:Your mind reels from a horrifying revelation!}");
-                gameState.screenShake = Math.max(gameState.screenShake, 10);
+                gameState.screenShake = Math.max(gameState.screenShake || 0, 10);
             }
         }
         else if (vital === 'hunger' || vital === 'thirst') {
@@ -513,25 +523,35 @@ window.modifyVital = function(vital, rawAmount) {
     // Handle UI Flashes automatically
     if (actualChange !== 0 && typeof statDisplays !== 'undefined' && statDisplays[vital]) {
         if (actualChange > 0) {
-            if (vital === 'health' || vital === 'hunger') triggerStatAnimation(statDisplays[vital], 'stat-pulse-green');
-            else if (vital === 'mana') triggerStatAnimation(statDisplays[vital], 'stat-pulse-blue');
-            else if (vital === 'stamina') triggerStatAnimation(statDisplays[vital], 'stat-pulse-yellow');
-            else if (vital === 'psyche') triggerStatAnimation(statDisplays[vital], 'stat-pulse-purple');
-            else if (vital === 'thirst') triggerStatAnimation(statDisplays[vital], 'stat-pulse-blue');
+            if (vital === 'health' || vital === 'hunger') {
+                if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays[vital], 'stat-pulse-green');
+            } else if (vital === 'mana' || vital === 'thirst') {
+                if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays[vital], 'stat-pulse-blue');
+            } else if (vital === 'stamina') {
+                if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays[vital], 'stat-pulse-yellow');
+            } else if (vital === 'psyche') {
+                if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays[vital], 'stat-pulse-purple');
+            }
         } else {
             if (typeof triggerStatFlash === 'function') triggerStatFlash(statDisplays[vital], false);
         }
     }
 
     // 🚨 BUG FIX WIN: The Death Lock Check
-    // Triggers exactly once to execute the death sequence gracefully
-    if (vital === 'health' && p.health <= 0 && !gameState.isDead) {
+    // Triggers exactly once to execute the death sequence gracefully.
+    // Includes a debouncer flag (_isDying) to prevent double-firing if two systems hit 
+    // the player synchronously before the handlePlayerDeath timeout resolves.
+    if (vital === 'health' && p.health <= 0 && !gameState.isDead && !p._isDying) {
+        p._isDying = true;
         gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 };
         
         if (typeof handlePlayerDeath === 'function') {
             // Using a tiny timeout allows the current stack trace (combat loops, array iterations)
             // to safely resolve before we violently alter the mapMode and strip the player's inventory!
-            setTimeout(handlePlayerDeath, 0); 
+            setTimeout(() => {
+                handlePlayerDeath();
+                p._isDying = false; // Clean up flag
+            }, 0); 
         }
     }
 
