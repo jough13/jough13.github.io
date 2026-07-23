@@ -14,7 +14,7 @@ window.FARMING_DATA = {
 };
 
 // 1. Inject New Items into the Engine
-const HOMESTEAD_ITEMS = {
+var HOMESTEAD_ITEMS = {
     '🌱h': { name: 'Herb Seed', type: 'seed', tile: '🌱', description: "Plant in a Garden Plot to grow Medicinal Herbs." },
     '🌱w': { name: 'Wildberry Seed', type: 'seed', tile: '🌱', description: "Plant in a Garden Plot to grow Wildberries." },
     '🍄s': { name: 'Bluecap Spore', type: 'seed', tile: '🍄', description: "Plant in a Garden Plot to grow Bluecap Mushrooms." },
