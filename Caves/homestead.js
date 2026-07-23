@@ -13,6 +13,16 @@ window.FARMING_DATA = {
     }
 };
 
+// PERFORMANCE WIN: O(1) Item Lookup Cache for Farming
+window._farmItemKeyCache = window._farmItemKeyCache || {};
+function getFarmItemKey(name) {
+    if (window._farmItemKeyCache[name]) return window._farmItemKeyCache[name];
+    if (typeof window.ITEM_DATA === 'undefined') return null;
+    const key = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === name);
+    if (key) window._farmItemKeyCache[name] = key;
+    return key;
+}
+
 // 1. Inject New Items into the Engine
 var HOMESTEAD_ITEMS = {
     '🌱h': { name: 'Herb Seed', type: 'seed', tile: '🌱', description: "Plant in a Garden Plot to grow Medicinal Herbs." },
@@ -76,12 +86,19 @@ setTimeout(() => {
             if (!p.campsiteUpgrades) p.campsiteUpgrades = [];
             const upg = p.campsiteUpgrades;
 
-            const countMat = (name) => p.inventory.filter(i => i && i.name === name && !i.isEquipped).reduce((sum, i) => sum + i.quantity, 0);
+            // 🚨 PERFORMANCE WIN: Single O(N) pass to tally materials
+            const counts = {};
+            for (let i = 0; i < p.inventory.length; i++) {
+                const itm = p.inventory[i];
+                if (itm && !itm.isEquipped) {
+                    counts[itm.name] = (counts[itm.name] || 0) + itm.quantity;
+                }
+            }
 
-            const wood = countMat('Wood Log');
-            const stone = countMat('Stone');
-            const iron = countMat('Iron Ore');
-            const dust = countMat('Void Dust');
+            const wood = counts['Wood Log'] || 0;
+            const stone = counts['Stone'] || 0;
+            const iron = counts['Iron Ore'] || 0;
+            const dust = counts['Void Dust'] || 0;
 
             const loreTitle = document.getElementById('loreTitle');
             const loreContent = document.getElementById('loreContent');
@@ -105,7 +122,7 @@ setTimeout(() => {
             if (!upg.includes('workbench')) addBtn('workbench', 'Workbench', '15 Wood, 5 Iron', wood >= 15 && iron >= 5);
             if (!upg.includes('enchanter')) addBtn('enchanter', 'Enchanting Altar', '10 Stone, 5 Void Dust', stone >= 10 && dust >= 5);
             if (!upg.includes('waystone')) addBtn('waystone', 'Leyline Waystone', '10 Void Dust, 500 Gold', dust >= 10 && p.coins >= 500);
-            if (!upg.includes('tent')) addBtn('tent', 'Large Tent', '20 Wood, 10 Wolf Pelt', wood >= 20 && countMat('Wolf Pelt') >= 10);
+            if (!upg.includes('tent')) addBtn('tent', 'Large Tent', '20 Wood, 10 Wolf Pelt', wood >= 20 && counts['Wolf Pelt'] >= 10);
             
             // --- NEW: GARDEN UPGRADES ---
             if (!upg.includes('garden1')) addBtn('garden1', 'Garden Plot I', '5 Wood, 5 Stone', wood >= 5 && stone >= 5);
@@ -191,18 +208,29 @@ function renderFarmingModal() {
     if (!player.gardenPlots) player.gardenPlots = [null, null, null];
     const upgrades = player.campsiteUpgrades || [];
 
-    // Find all seeds currently in inventory
-    const availableSeeds = player.inventory.filter(i => i && i.type === 'seed' && !i.isEquipped);
+    // 🚨 PERFORMANCE WIN: Single pass seed tallying instead of array filtering inside loops
+    const seedCounts = {};
+    let hasWater = false;
+    
+    for (let i = 0; i < player.inventory.length; i++) {
+        const itm = player.inventory[i];
+        if (!itm || itm.isEquipped) continue;
+        
+        if (itm.type === 'seed') {
+            seedCounts[itm.name] = (seedCounts[itm.name] || 0) + itm.quantity;
+        } else if (itm.name === 'Flask of Water') {
+            hasWater = true;
+        }
+    }
 
     // Build Seed Dropdown Options
     let seedOptions = `<option value="">-- Select Seed --</option>`;
-    const uniqueSeeds = [...new Set(availableSeeds.map(s => s.name))];
-    uniqueSeeds.forEach(seedName => {
-        const count = availableSeeds.filter(s => s.name === seedName).reduce((a, b) => a + b.quantity, 0);
+    for (const [seedName, count] of Object.entries(seedCounts)) {
         seedOptions += `<option value="${seedName}">${seedName} (x${count})</option>`;
-    });
+    }
 
-    const hasWater = player.inventory.some(i => i && i.name === 'Flask of Water' && !i.isEquipped);
+    // Use DocumentFragment for batched DOM insertion
+    const fragment = document.createDocumentFragment();
 
     for (let i = 0; i < 3; i++) {
         const isUnlocked = upgrades.includes(`garden${i+1}`);
@@ -224,6 +252,7 @@ function renderFarmingModal() {
         } 
         else if (!plot) {
             // Plot is empty and ready to plant
+            // 🚨 SECURITY & PERFORMANCE WIN: Removed inline onclick="plantSeed(i)" for data-action attributes
             div.innerHTML = `
                 <div class="flex items-center gap-4">
                     <div class="text-4xl drop-shadow-md">🟫</div>
@@ -233,7 +262,7 @@ function renderFarmingModal() {
                             <select id="seedSelect_${i}" class="bg-gray-800 text-white border border-gray-600 rounded p-2 text-sm w-full sm:w-48 outline-none focus:border-green-500">
                                 ${seedOptions}
                             </select>
-                            <button onclick="plantSeed(${i})" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded shadow-md border-b-2 border-green-800 active:scale-95 active:border-b-0 active:mt-0.5">Plant</button>
+                            <button data-action="plant" data-plot="${i}" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded shadow-md border-b-2 border-green-800 active:scale-95 active:border-b-0 active:mt-0.5">Plant</button>
                         </div>
                     </div>
                 </div>
@@ -259,12 +288,13 @@ function renderFarmingModal() {
 
             let statusHtml = '';
             if (isReady) {
+                // 🚨 SECURITY & PERFORMANCE WIN: Removed inline onclick for data-action attributes
                 statusHtml = `
                     <div class="w-full">
                         <h3 class="font-bold text-green-400 text-lg" style="font-family: 'Uncial Antiqua', cursive;">Ready for Harvest</h3>
                         <p class="text-xs text-gray-400 italic">Yields: ${seedData.yields}</p>
                     </div>
-                    <button onclick="harvestPlot(${i})" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 px-6 rounded-lg shadow-md border-b-2 border-yellow-800 active:scale-95 active:border-b-0 active:mt-0.5 whitespace-nowrap">Harvest</button>
+                    <button data-action="harvest" data-plot="${i}" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 px-6 rounded-lg shadow-md border-b-2 border-yellow-800 active:scale-95 active:border-b-0 active:mt-0.5 whitespace-nowrap">Harvest</button>
                 `;
             } else {
                 statusHtml = `
@@ -275,7 +305,7 @@ function renderFarmingModal() {
                         </div>
                         <p class="text-[10px] text-gray-500 mt-1 uppercase tracking-widest text-right">${Math.floor(progress)}% Grown</p>
                     </div>
-                    <button onclick="waterPlot(${i})" class="${hasWater ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-700 opacity-50 cursor-not-allowed'} text-white font-bold py-2 px-4 rounded shadow-md border-b-2 ${hasWater ? 'border-blue-800 active:scale-95 active:border-b-0 active:mt-0.5' : 'border-gray-800'} whitespace-nowrap flex flex-col items-center" ${hasWater ? '' : 'disabled'}>
+                    <button data-action="water" data-plot="${i}" class="${hasWater ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-700 opacity-50 cursor-not-allowed'} text-white font-bold py-2 px-4 rounded shadow-md border-b-2 ${hasWater ? 'border-blue-800 active:scale-95 active:border-b-0 active:mt-0.5' : 'border-gray-800'} whitespace-nowrap flex flex-col items-center" ${hasWater ? '' : 'disabled'}>
                         <span>Water</span>
                         <span class="text-[9px] font-normal opacity-80">(Requires Flask)</span>
                     </button>
@@ -293,8 +323,10 @@ function renderFarmingModal() {
             `;
         }
         
-        farmingList.appendChild(div);
+        fragment.appendChild(div);
     }
+    
+    farmingList.appendChild(fragment);
 }
 
 window.plantSeed = function(plotIndex) {
@@ -404,19 +436,24 @@ window.harvestPlot = function(plotIndex) {
     if (existingStack) {
         existingStack.quantity += yieldAmount;
     } else {
-        // Need to grab base template data for the crop
-        const baseKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === seedData.yields);
+        // 🚨 ROBUSTNESS WIN: Fetch base template safely using the O(1) cache!
+        const baseKey = getFarmItemKey(seedData.yields);
         const template = window.ITEM_DATA[baseKey] || { type: 'ingredient', tile: '🌿' };
         
-        player.inventory.push({
-            templateId: baseKey,
-            name: seedData.yields,
-            type: template.type || 'ingredient',
-            quantity: yieldAmount,
-            tile: template.tile || '🌿',
-            effect: template.effect || null,
-            isEquipped: false
-        });
+        // 🚨 BUG FIX & ROBUSTNESS WIN: Safe deep clone to guarantee traits/effects don't bleed reference
+        let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
+        newItem.templateId = baseKey;
+        newItem.name = seedData.yields;
+        newItem.type = template.type || 'ingredient';
+        newItem.quantity = yieldAmount;
+        newItem.tile = template.tile || '🌿';
+        newItem.isEquipped = false;
+        
+        // Explicit function re-binds for safety
+        newItem.effect = template.effect || null;
+        newItem.onHit = template.onHit || null;
+        
+        player.inventory.push(newItem);
     }
 
     // Give Farming XP
@@ -454,16 +491,34 @@ window.harvestPlot = function(plotIndex) {
     renderFarmingModal();
 };
 
-// Event Listeners for the modal
+// 🚨 SECURITY & PERFORMANCE WIN: Event Delegation for Farming Modal
 document.addEventListener('DOMContentLoaded', () => {
     const closeBtn = document.getElementById('closeFarmingButton');
     const modal = document.getElementById('farmingModal');
+    const farmingList = document.getElementById('farmingList');
     
     if (closeBtn && modal) {
         closeBtn.addEventListener('click', () => {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             modal.classList.add('hidden');
         });
+    }
+
+    if (farmingList && !farmingList.dataset.listenersBound) {
+        farmingList.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-action]');
+            if (!btn || btn.disabled) return;
+            
+            const action = btn.dataset.action;
+            const plotIndex = parseInt(btn.dataset.plot, 10);
+            
+            if (isNaN(plotIndex)) return;
+
+            if (action === 'plant') window.plantSeed(plotIndex);
+            else if (action === 'water') window.waterPlot(plotIndex);
+            else if (action === 'harvest') window.harvestPlot(plotIndex);
+        });
+        farmingList.dataset.listenersBound = 'true';
     }
 });
 
