@@ -4,15 +4,6 @@
 // INPUT HANDLING & QUEUE SYSTEM
 // ==========================================
 
-// Aggressive global scroll lock for Spacebar and Arrow Keys
-window.addEventListener('keydown', function(e) {
-    if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && e.target === document.body) {
-        // 🚨 BUG FIX WIN: Allow native scrolling if a modal is open!
-        if (typeof _modalCache !== 'undefined' && _modalCache.isAnyOpen()) return;
-        e.preventDefault();
-    }
-}, { passive: false });
-
 // --- GLOBALS & SAFETY ---
 window.inputQueue = window.inputQueue || []; // Guarantee queue exists regardless of load order
 
@@ -224,7 +215,11 @@ function handleInput(key) {
 
     // --- INCAPACITATION GUARD (STUNS) ---
     // Extracted gameplay keys into a clear check so players can't drink/mount/loot while stunned!
-    const isGameplayKey = MOVEMENT_MAP[key] || ['q', 'z', 'g', 'r', ' ', '5', 'numpad5', 'clear', '.'].includes(lowerKey) || (!isNaN(parseInt(key)) && parseInt(key) >= 1 && parseInt(key) <= 9);
+    // 🚨 BUG FIX WIN: Clean numeric parsing allows Numpad keys to correctly register as disabled during stuns!
+    let numericTestStr = key.startsWith('Numpad') ? key.replace('Numpad', '') : key;
+    const isNumberKey = !isNaN(parseInt(numericTestStr, 10)) && parseInt(numericTestStr, 10) >= 1 && parseInt(numericTestStr, 10) <= 9;
+    
+    const isGameplayKey = MOVEMENT_MAP[key] || ['q', 'z', 'g', 'r', ' ', '5', 'numpad5', 'clear', '.'].includes(lowerKey) || isNumberKey;
     
     if (gameState.player.stunTurns > 0 && isGameplayKey) {
         logMessage("{yellow:You are stunned and cannot act!}");
@@ -355,7 +350,10 @@ function handleInput(key) {
 
     // --- DROP MODE ---
     if (gameState.isDroppingItem) {
-        const keyNum = parseInt(key);
+        // 🚨 BUG FIX WIN: Clean numeric parsing for extended Numpad dropping
+        let numericKeyStr = key.startsWith('Numpad') ? key.replace('Numpad', '') : key;
+        const keyNum = parseInt(numericKeyStr, 10);
+        
         if (!isNaN(keyNum) && keyNum >= 1) {
             if (typeof handleItemDrop === 'function') handleItemDrop(keyNum.toString()); // Force string for handleItemDrop
         } else {
@@ -430,15 +428,21 @@ function handleInput(key) {
     }
 
     // --- NUMBER KEYS & UI INVENTORY CLICKS ---
-    const keyNum = parseInt(key);
+    // 🚨 BUG FIX WIN: Strip Numpad prefix to allow numpad players to easily trigger hotbar items!
+    let numericKeyStr = key;
+    if (numericKeyStr.startsWith('Numpad')) {
+        numericKeyStr = numericKeyStr.replace('Numpad', '');
+    }
+    const keyNum = parseInt(numericKeyStr, 10);
+    
     if (!isNaN(keyNum) && keyNum >= 1) {
         if (gameState.inventoryMode) {
             if (typeof useInventoryItem === 'function') useInventoryItem(keyNum - 1);
             return;
         }
 
-        // Outside of inventory, numbers 1-5 activate the Hotbar
-        if (keyNum <= 5) {
+        // Outside of inventory, numbers 1-9 activate the Hotbar
+        if (keyNum <= 9) {
             if (typeof useHotbarSlot === 'function') useHotbarSlot(keyNum - 1);
             return;
         }
@@ -617,14 +621,14 @@ document.addEventListener('keydown', (event) => {
             window.inputQueue.push(inputStr);
         }
     }
-});
+}, { passive: false });
 
 // DEBOUNCE RESIZE: Only resize once the user STOPS dragging the window (saves CPU)
 let resizeTimer;
 window.addEventListener('resize', () => { 
     clearTimeout(resizeTimer); 
     if (typeof resizeCanvas === 'function') {
-        resizeCanvas = setTimeout(resizeCanvas, 100); 
+        resizeTimer = setTimeout(resizeCanvas, 100); 
     }
 });
 
