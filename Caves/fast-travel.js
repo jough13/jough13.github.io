@@ -40,8 +40,13 @@ const BIOME_ICON_MAP = [
 function getBiomeIcon(name) {
     if (!name) return '✨';
     const n = name.toLowerCase();
+    
+    // 🚀 PERFORMANCE WIN: Hard loop bypasses lambda allocation of .some()
     for (let i = 0; i < BIOME_ICON_MAP.length; i++) {
-        if (BIOME_ICON_MAP[i].words.some(word => n.includes(word))) return BIOME_ICON_MAP[i].icon;
+        const words = BIOME_ICON_MAP[i].words;
+        for (let j = 0; j < words.length; j++) {
+            if (n.includes(words[j])) return BIOME_ICON_MAP[i].icon;
+        }
     }
     return '✨'; // Default
 }
@@ -321,6 +326,7 @@ window.handleFastTravel = async function (targetX, targetY) {
     // 🚨 GLOBAL ENGINE LOCK
     if (isProcessingMove) return;
     isProcessingMove = true;
+    let didTeleport = false; // UX/BUG FIX WIN: Determines if we should apply post-teleport lock
 
     // Instantly hide the modal so the player can see the visual effects!
     fastTravelModal.classList.add('hidden'); 
@@ -337,16 +343,20 @@ window.handleFastTravel = async function (targetX, targetY) {
         const dy = targetY - player.y;
         const travelDist = Math.floor(Math.sqrt(dx * dx + dy * dy));
 
-        // --- GAMEPLAY WIN: True Euclidean Anti-Combat Teleport ---
-        // You cannot flee via leylines if enemies are too close! (5 tile radius)
+        // --- GAMEPLAY & PERFORMANCE WIN: Fast-Path Combat Checks ---
+        // Uses Manhattan Distance boundary box before attempting costly Euclidean math!
         let inCombat = false;
         const COMBAT_RADIUS_SQ = 25; 
         
         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-            for (const enemyId in gameState.sharedEnemies) {
-                const enemy = gameState.sharedEnemies[enemyId];
-                if (enemy && typeof enemy.x === 'number' && typeof enemy.y === 'number') {
-                    if (Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2) <= COMBAT_RADIUS_SQ) {
+            const sharedEnemies = Object.values(gameState.sharedEnemies || {});
+            for (let i = 0; i < sharedEnemies.length; i++) {
+                const enemy = sharedEnemies[i];
+                if (enemy && enemy.health > 0 && typeof enemy.x === 'number' && typeof enemy.y === 'number') {
+                    // Fast-path Manhattan distance check
+                    const eDx = Math.abs(enemy.x - player.x);
+                    const eDy = Math.abs(enemy.y - player.y);
+                    if (eDx <= 5 && eDy <= 5 && (eDx * eDx + eDy * eDy) <= COMBAT_RADIUS_SQ) {
                         inCombat = true;
                         break;
                     }
@@ -354,7 +364,17 @@ window.handleFastTravel = async function (targetX, targetY) {
             }
         } else {
             if (gameState.instancedEnemies) {
-                inCombat = gameState.instancedEnemies.some(e => Math.pow(e.x - player.x, 2) + Math.pow(e.y - player.y, 2) <= COMBAT_RADIUS_SQ);
+                for (let i = 0; i < gameState.instancedEnemies.length; i++) {
+                    const e = gameState.instancedEnemies[i];
+                    if (e && e.health > 0) {
+                        const eDx = Math.abs(e.x - player.x);
+                        const eDy = Math.abs(e.y - player.y);
+                        if (eDx <= 5 && eDy <= 5 && (eDx * eDx + eDy * eDy) <= COMBAT_RADIUS_SQ) {
+                            inCombat = true;
+                            break;
+                        }
+                    }
+                }
             }
         }
 
@@ -414,13 +434,19 @@ window.handleFastTravel = async function (targetX, targetY) {
             for(let i = 0; i < 30; i++) {
                 const angle = Math.random() * Math.PI * 2;
                 const dist = 4 + Math.random() * 2;
+                const initialLen = ParticleSystem.activeParticles.length;
                 ParticleSystem.spawn(player.x + Math.cos(angle) * dist, player.y + Math.sin(angle) * dist, isFreeRecall ? '#3b82f6' : '#a855f7', 'dust');
-                const p = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length-1];
-                if (p) {
-                    // Pull particles inward sharply
-                    p.vx = -Math.cos(angle) * 0.3;
-                    p.vy = -Math.sin(angle) * 0.3;
-                    p.lifeFade = 0.03; // Live just long enough to reach the center
+                
+                // 🚨 BUG FIX & ROBUSTNESS WIN: Validated Particle Modification
+                // Prevents modifying an older ghost particle if the active pool is completely empty!
+                if (ParticleSystem.activeParticles.length > initialLen) {
+                    const p = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length-1];
+                    if (p) {
+                        // Pull particles inward sharply
+                        p.vx = -Math.cos(angle) * 0.3;
+                        p.vy = -Math.sin(angle) * 0.3;
+                        p.lifeFade = 0.03; 
+                    }
                 }
             }
             ParticleSystem.createFloatingText(player.x, player.y, "Warping...", isFreeRecall ? "#60a5fa" : "#c084fc");
@@ -441,6 +467,9 @@ window.handleFastTravel = async function (targetX, targetY) {
 
         // Wait for the particles to suck into the player before snapping the coordinates!
         await new Promise(resolve => setTimeout(resolve, 200));
+
+        // Mark the actual teleportation point of no return!
+        didTeleport = true;
 
         // Deduct Cost securely (Math.max prevents negative anomalies)
         player.mana = Math.max(0, player.mana - TRAVEL_COST);
@@ -664,9 +693,15 @@ window.handleFastTravel = async function (targetX, targetY) {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
         logMessage("{red:The leylines violently reject you! Teleport failed.}");
     } finally {
-        // 🚨 GLOBAL ENGINE UNLOCK
-        // Guaranteed to run, ensuring the game never freezes permanently on an exception!
-        setTimeout(() => { isProcessingMove = false; }, 200);
+        // 🚨 UX WIN: Smart Engine Unlock
+        // If the player successfully teleported, we want to hold the 200ms lock to allow visual FX
+        // and network data to load cleanly. But if they failed (e.g. Obstructed, No Mana), we 
+        // instantly un-lock them so their controls don't randomly feel "sticky" for a split second!
+        if (didTeleport) {
+            setTimeout(() => { isProcessingMove = false; }, 200);
+        } else {
+            isProcessingMove = false;
+        }
     }
 };
 
