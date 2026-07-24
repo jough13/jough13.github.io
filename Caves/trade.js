@@ -34,6 +34,41 @@ const _tradeDOMCache = {
 // selling the wrong items or crashing the client. This enforces sequential transaction safety!
 let isTradingBusy = false;
 
+// 🚀 PERFORMANCE WIN: Local Biome Cache
+// Completely bypasses evaluating Perlin Noise 50+ times per frame when iterating the player's inventory!
+window._cachedShopBiome = null;
+window._cachedShopCoords = null;
+
+function getCurrentBiome(player) {
+    if (!player || typeof gameState === 'undefined') return 'Plains';
+    
+    const coordKey = `${player.x},${player.y},${gameState.mapMode},${gameState.currentRealm || 0},${gameState.currentCaveTheme || 'none'}`;
+    if (window._cachedShopCoords === coordKey && window._cachedShopBiome) return window._cachedShopBiome;
+
+    let biome = 'Plains';
+    if (gameState.mapMode === 'dungeon' && gameState.currentCaveTheme === 'ROCK') biome = 'Mountain';
+    else if (gameState.mapMode === 'skyrealm') biome = 'Sky Realm';
+    else if (gameState.mapMode === 'underworld') biome = 'Underworld';
+    else if (gameState.mapMode === 'castle' && gameState.currentCastleId && gameState.currentCastleId.includes('village')) biome = 'Safe Haven';
+    else if (gameState.mapMode === 'overworld') {
+        const realmOffset = (gameState.currentRealm || 0) * 100;
+        if (typeof elevationNoise !== 'undefined' && typeof moistureNoise !== 'undefined') {
+            const elev = elevationNoise.noise(player.x / 70, player.y / 70, realmOffset);
+            const moist = moistureNoise.noise(player.x / 50, player.y / 50, realmOffset);
+            if (elev < 0.35) biome = 'Water';
+            else if (elev < 0.4 && moist > 0.7) biome = 'Swamp';
+            else if (elev > 0.8) biome = 'Mountain';
+            else if (elev > 0.6 && moist < 0.3) biome = 'Deadlands';
+            else if (moist < 0.15) biome = 'Desert';
+            else if (moist > 0.55) biome = 'Forest';
+        }
+    }
+    
+    window._cachedShopBiome = biome;
+    window._cachedShopCoords = coordKey;
+    return biome;
+}
+
 // --- Centralized Value Dictionary ---
 // For items that aren't natively sold in shops but have high intrinsic value to traders.
 window.BASE_ITEM_VALUES = window.BASE_ITEM_VALUES || {
@@ -112,7 +147,7 @@ function calculateItemValue(item, player) {
     }
 
     // 3. Calculate Modifiers
-    const regionMult = getRegionalPriceMultiplier(item.type, item.name);
+    const regionMult = getRegionalPriceMultiplier(item.type, item.name, player);
     const sellBonusPercent = player.charisma * 0.005;
     const finalSellBonus = Math.min(sellBonusPercent, 0.25); // Max 25% boost from Charisma
 
@@ -201,29 +236,38 @@ function handleBuyItem(itemName, amount = 1) {
         // Use global helper for consistency if available
         const isStackable = window.isStackableItem ? window.isStackableItem(itemTemplate.type) : ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(itemTemplate.type);
 
-        // 🚨 BUG FIX: Accurate Capacity Checking for bulk-buying unstackable gear!
-        const slotNeeded = isStackable ? (existingStack ? 0 : 1) : buyQty;
         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-        
-        if (player.inventory.length + slotNeeded > invCap) {
-            logMessage("{red:Your inventory is full!}");
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-            return;
+        const emptySlots = invCap - player.inventory.length;
+
+        // 🚨 QoL WIN: Smart Max Buying
+        // Dynamically clamp buyQty to exactly what fits in your inventory if it's unstackable!
+        if (existingStack && isStackable) {
+            // We can buy unlimited amounts (capped by gold/stock) because it merges into an existing stack
+        } else {
+            if (emptySlots <= 0) {
+                logMessage("{red:Your inventory is full!}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return;
+            }
+            if (!isStackable && buyQty > emptySlots) {
+                buyQty = emptySlots; // Cap it strictly to empty slots
+            }
         }
 
-        // Process the transaction
-        player.coins -= totalCost;
+        // Process the transaction (Recalculate total cost based on the newly clamped buyQty!)
+        const finalTotalCost = finalBuyPrice * buyQty;
+        player.coins -= finalTotalCost;
         shopItem.stock -= buyQty;
         
         if (buyQty > 1) {
-            logMessage(`You bought a stack of ${itemName} (x${buyQty}) for {gold:${totalCost} gold}.`);
+            logMessage(`You bought a stack of ${itemName} (x${buyQty}) for {gold:${finalTotalCost} gold}.`);
         } else {
-            logMessage(`You bought a ${itemName} for {gold:${totalCost} gold}.`);
+            logMessage(`You bought a ${itemName} for {gold:${finalTotalCost} gold}.`);
         }
         
         if (typeof ParticleSystem !== 'undefined') {
             const pSize = buyQty > 1 ? 15 : 5;
-            ParticleSystem.createFloatingText(player.x, player.y, `-${totalCost}g`, "#ef4444");
+            ParticleSystem.createFloatingText(player.x, player.y, `-${finalTotalCost}g`, "#ef4444");
             ParticleSystem.createExplosion(player.x, player.y, '#facc15', pSize);
         }
         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin(); // Heavy coin sound for spending
@@ -384,7 +428,7 @@ function handleSellAllItems() {
             if (item.type === 'junk' || item.type === 'trade') {
                 
                 // Strict exclusion for Anomaly and story items
-                if (item.name === 'Paradox Anomaly' || item.tags?.includes('anomaly')) {
+                if (item.name === 'Paradox Anomaly' || (item.tags && item.tags.includes('anomaly'))) {
                     remainingInventory.push(item);
                     continue;
                 }
@@ -418,7 +462,9 @@ function handleSellAllItems() {
             player.inventory = remainingInventory;
             
             // UX WIN: Detailed summary of exactly what was purged!
-            const summary = Array.from(soldNames).join(', ');
+            // Uses the native Intl.ListFormat helper for perfect Oxford commas
+            const namesArray = Array.from(soldNames);
+            const summary = typeof window.formatList === 'function' ? window.formatList(namesArray) : namesArray.join(', ');
             logMessage(`{gray:Sold: ${summary}}`);
             logMessage(`Mass Sold ${itemsSold} junk/trade items for {gold:${goldGained} gold}.`);
             
@@ -463,24 +509,8 @@ function renderShop() {
     // 2. Update player's gold
     shopPlayerCoins.innerHTML = `Your Gold: <span class="text-yellow-400 drop-shadow-sm">${gameState.player.coins}</span>`;
 
-    // 3. Extract Biome context for dynamic flavor text
-    let biome = 'Plains';
-    if (gameState.mapMode === 'dungeon' && gameState.currentCaveTheme === 'ROCK') biome = 'Mountain';
-    else if (gameState.mapMode === 'skyrealm') biome = 'Sky Realm';
-    else if (gameState.mapMode === 'underworld') biome = 'Underworld';
-    else if (gameState.mapMode === 'overworld') {
-        const realmOffset = (gameState.currentRealm || 0) * 100;
-        if (typeof elevationNoise !== 'undefined' && typeof moistureNoise !== 'undefined') {
-            const elev = elevationNoise.noise(gameState.player.x / 70, gameState.player.y / 70, realmOffset);
-            const moist = moistureNoise.noise(gameState.player.x / 50, gameState.player.y / 50, realmOffset);
-            if (elev < 0.35) biome = 'Water';
-            else if (elev < 0.4 && moist > 0.7) biome = 'Swamp';
-            else if (elev > 0.8) biome = 'Mountain';
-            else if (elev > 0.6 && moist < 0.3) biome = 'Deadlands';
-            else if (moist < 0.15) biome = 'Desert';
-            else if (moist > 0.55) biome = 'Forest';
-        }
-    }
+    // 3. Extract Biome context for dynamic flavor text (using fast O(1) cache)
+    const biome = getCurrentBiome(gameState.player);
 
     // LORE WIN: Dynamic Shopkeeper Titles & Flavor Quotes based on biome!
     if (shopTitle) {
@@ -578,19 +608,20 @@ function renderShop() {
         let tooltip = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
         
         if (template && template.description) {
-            const cleanDesc = typeof stripColorTags === 'function' ? stripColorTags(template.description) : template.description.replace(/\{[a-zA-Z]+:(.*?)\}/g, '$1');
+            const cleanDesc = typeof stripColorTags === 'function' ? stripColorTags(template.description) : template.description.replace(/\{[a-zA-Z0-9_-]+:(.*?)\}/ig, '$1');
             tooltip += `\n\n${cleanDesc}`;
         }
 
-        if (item.damage !== undefined) tooltip += `\nDamage: +${item.damage}`;
-        else if (template && template.damage !== undefined) tooltip += `\nDamage: +${template.damage}`;
+        // 🚨 ROBUSTNESS WIN: Number coercion to prevent broken tooltips
+        if (item.damage !== undefined) tooltip += `\nDamage: +${Number(item.damage) || 0}`;
+        else if (template && template.damage !== undefined) tooltip += `\nDamage: +${Number(template.damage) || 0}`;
 
-        if (item.defense !== undefined) tooltip += `\nDefense: +${item.defense}`;
-        else if (template && template.defense !== undefined) tooltip += `\nDefense: +${template.defense}`;
+        if (item.defense !== undefined) tooltip += `\nDefense: +${Number(item.defense) || 0}`;
+        else if (template && template.defense !== undefined) tooltip += `\nDefense: +${Number(template.defense) || 0}`;
 
         const bonuses = item.statBonuses || (template ? template.statBonuses : null);
         if (bonuses) {
-            const bonusStr = Object.entries(bonuses).map(([k,v]) => `+${v} ${k.substring(0,3).toUpperCase()}`).join(', ');
+            const bonusStr = Object.entries(bonuses).map(([k,v]) => `+${Number(v) || 0} ${k.substring(0,3).toUpperCase()}`).join(', ');
             tooltip += `\nBonuses: [${bonusStr}]`;
         }
         return tooltip;
@@ -747,28 +778,15 @@ function renderShop() {
 }
 
 // LORE WIN: MASSIVELY EXPANDED SUPPLY/DEMAND LOGIC
-function getRegionalPriceMultiplier(itemType, itemName) {
+function getRegionalPriceMultiplier(itemType, itemName, player) {
     let multiplier = 1.0;
 
-    // Get current biome info
-    const isDungeon = gameState.mapMode === 'dungeon';
+    // Fast-path cached biome lookup!
+    const biome = getCurrentBiome(player);
+    
     const isCastle = gameState.mapMode === 'castle';
     const isUnderworld = gameState.mapMode === 'underworld';
     const isAlternateRealm = (typeof gameState !== 'undefined' && gameState.currentRealm && gameState.currentRealm !== 0);
-
-    // Default Overworld check
-    let biome = 'Plains';
-    if (!isDungeon && !isCastle && !isUnderworld && typeof elevationNoise !== 'undefined') {
-        const realmOffset = isAlternateRealm ? gameState.currentRealm * 100 : 0;
-        const elev = elevationNoise.noise(gameState.player.x / 70, gameState.player.y / 70, realmOffset);
-        const moist = moistureNoise.noise(gameState.player.x / 50, gameState.player.y / 50, realmOffset);
-        if (elev < 0.35) biome = 'Water';
-        else if (elev < 0.4 && moist > 0.7) biome = 'Swamp';
-        else if (elev > 0.8) biome = 'Mountain';
-        else if (elev > 0.6 && moist < 0.3) biome = 'Deadlands';
-        else if (moist < 0.15) biome = 'Desert';
-        else if (moist > 0.55) biome = 'Forest';
-    }
 
     // --- SUPPLY & DEMAND LOGIC ---
 
@@ -796,7 +814,7 @@ function getRegionalPriceMultiplier(itemType, itemName) {
     }
 
     // 4. MOUNTAIN & VOLCANO: Pays for Wood/Food. Hates Ore/Stone.
-    if (biome === 'Mountain' || (isDungeon && gameState.currentCaveTheme === 'ROCK') || (isDungeon && gameState.currentCaveTheme === 'FIRE')) {
+    if (biome === 'Mountain' || (gameState.mapMode === 'dungeon' && gameState.currentCaveTheme === 'ROCK') || (gameState.mapMode === 'dungeon' && gameState.currentCaveTheme === 'FIRE')) {
         if (itemName === 'Iron Ore' || itemName === 'Stone' || itemName === 'Obsidian Shard' || itemName === 'Star-Metal Ore') multiplier = 0.5;
         if (itemName === 'Stick' || itemName === 'Wood Log' || itemName === 'Machete') multiplier = 2.0;
     }
