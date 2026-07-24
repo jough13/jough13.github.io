@@ -157,7 +157,7 @@ window.EVENT_DATA = {
                     {
                         text: "{red:Sacrifice Life Force}",
                         action: (state, ctx) => {
-                            // 🚨 BUG FIX WIN: The 0-HP Exploit
+                            // The 0-HP Exploit
                             // Prevents a player at 1 HP from sacrificing 0 health and getting a free legendary!
                             const sacrificeAmount = Math.max(1, Math.floor(state.player.health / 2));
                             window.modifyVital('health', -sacrificeAmount);
@@ -615,7 +615,7 @@ window.EventManager = {
             });
         }
         
-        // 🚨 UX WIN: Return focus to canvas so WASD works immediately after closing modal
+        // Return focus to canvas so WASD works immediately after closing modal
         if (document.activeElement) document.activeElement.blur();
     }
 };
