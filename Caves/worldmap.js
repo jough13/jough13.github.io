@@ -9,6 +9,9 @@ const worldMapCanvas = document.getElementById('worldMapCanvas');
 const worldMapCtx = worldMapCanvas.getContext('2d', { alpha: false }); // PERFORMANCE WIN: Disable alpha buffer for the main canvas!
 const mapCoordsDisplay = document.getElementById('mapCoords');
 
+// PERFORMANCE WIN: Cache PI math
+const TWO_PI = Math.PI * 2;
+
 // Settings & State
 let currentMapScale = 4; 
 let targetMapScale = 4;
@@ -68,6 +71,37 @@ const MAP_COLORS = {
     RADIANT_SPRING: [34, 211, 238, 255]
 };
 
+// 🚀 PERFORMANCE WIN: O(1) Dictionary Lookup for Tile Colors
+// Completely replaces the expensive 15+ array .includes() checks that used to run 256 times per chunk!
+const TILE_COLOR_MAP = {
+    'V': MAP_COLORS.WHITE, '🏰': MAP_COLORS.WHITE, '♛': MAP_COLORS.WHITE, '🏛️': MAP_COLORS.WHITE, '🚪': MAP_COLORS.WHITE, '🎓': MAP_COLORS.WHITE,
+    '🕍': MAP_COLORS.DARK_RED,
+    '⛰': MAP_COLORS.CAVE, '♣': MAP_COLORS.CAVE, '🏝️': MAP_COLORS.CAVE,
+    '#': MAP_COLORS.MAGIC, '|': MAP_COLORS.MAGIC, '⛩️': MAP_COLORS.MAGIC, '⛲': MAP_COLORS.MAGIC, '✨': MAP_COLORS.MAGIC, '💬': MAP_COLORS.MAGIC,
+    '🧱': MAP_COLORS.BUILT, '▤': MAP_COLORS.BUILT, '=': MAP_COLORS.BUILT, '+': MAP_COLORS.BUILT, '☒': MAP_COLORS.BUILT, '⛺': MAP_COLORS.BUILT,
+    'c': MAP_COLORS.RED, '⛵': MAP_COLORS.RED,
+    '∴': MAP_COLORS.DIG,
+    '~': MAP_COLORS.DEEP_WATER,
+    '🧊': MAP_COLORS.ICE, '❄️': MAP_COLORS.ICE,
+    '💎c': MAP_COLORS.CRYSTAL,
+    '🏛️c': MAP_COLORS.LOST_CITY,
+    '🩸a': MAP_COLORS.BLOOD_ALTAR,
+    '⛲r': MAP_COLORS.RADIANT_SPRING,
+    '🎵': MAP_COLORS.BARD, '🗡️r': MAP_COLORS.BARD,
+    '⚙️g': MAP_COLORS.VOLCANO, '🌋': MAP_COLORS.VOLCANO,
+    '🦹': MAP_COLORS.MAGIC, '🪦m': MAP_COLORS.MAGIC,
+    '🤺w': MAP_COLORS.SHALLOW,
+    '🛕': MAP_COLORS.TEMPLE,
+    '🛟': MAP_COLORS.FLOTSAM, '🚢': MAP_COLORS.FLOTSAM,
+    '🌺': MAP_COLORS.MOONBLOOM,
+    '☄️': MAP_COLORS.STAR, '🌠': MAP_COLORS.STAR,
+    '🌳e': MAP_COLORS.ELDER_TREE,
+    '🍄r': MAP_COLORS.FAIRY_RING,
+    '⚙️d': MAP_COLORS.CLOCKWORK,
+    '⛰️m': MAP_COLORS.MINE,
+    'Ω': MAP_COLORS.VOID, '🕳️': MAP_COLORS.VOID
+};
+
 function getCachedMapChunk(cx, cy) {
     const key = `${cx},${cy}`;
     if (mapChunkCache.has(key)) return mapChunkCache.get(key);
@@ -118,38 +152,8 @@ function getCachedMapChunk(cx, cy) {
 function getTileColorForMap(worldX, worldY) {
     const tile = chunkManager.getTile(worldX, worldY); 
 
-    // Landmarks & Structures
-    if (['V', '🏰', '♛', '🏛️', '🚪', '🎓'].includes(tile)) return MAP_COLORS.WHITE;
-    if (tile === '🕍') return MAP_COLORS.DARK_RED; 
-    if (['⛰', '♣', '🏝️'].includes(tile)) return MAP_COLORS.CAVE;
-    if (['#', '|', '⛩️', '⛲', '✨', '💬'].includes(tile)) return MAP_COLORS.MAGIC;
-    if (['🧱', '▤', '=', '+', '☒', '⛺'].includes(tile)) return MAP_COLORS.BUILT;
-    if (tile === 'c' || tile === '⛵') return MAP_COLORS.RED;
-    if (tile === '∴') return MAP_COLORS.DIG; 
-    if (tile === '~') return MAP_COLORS.DEEP_WATER;
-    if (tile === '🧊' || tile === '❄️') return MAP_COLORS.ICE;
-    if (tile === '💎c') return MAP_COLORS.CRYSTAL;
-    
-    // New Expansions
-    if (tile === '🏛️c') return MAP_COLORS.LOST_CITY;
-    if (tile === '🩸a') return MAP_COLORS.BLOOD_ALTAR;
-    if (tile === '⛲r') return MAP_COLORS.RADIANT_SPRING;
-    if (tile === '🎵' || tile === '🗡️r') return MAP_COLORS.BARD; // Gold
-    if (tile === '⚙️g') return MAP_COLORS.VOLCANO; // Rusted orange
-    if (tile === '🦹' || tile === '🪦m') return MAP_COLORS.MAGIC; // Purple/Void
-    if (tile === '🤺w') return MAP_COLORS.SHALLOW; // Blue
-    
-    // Anomalies
-    if (tile === '🌋') return MAP_COLORS.VOLCANO;
-    if (tile === '🛕') return MAP_COLORS.TEMPLE;
-    if (tile === '🛟' || tile === '🚢') return MAP_COLORS.FLOTSAM;
-    if (tile === '🌺') return MAP_COLORS.MOONBLOOM;
-    if (tile === '☄️' || tile === '🌠') return MAP_COLORS.STAR;
-    if (tile === '🌳e') return MAP_COLORS.ELDER_TREE;
-    if (tile === '🍄r') return MAP_COLORS.FAIRY_RING;
-    if (tile === '⚙️d') return MAP_COLORS.CLOCKWORK;
-    if (tile === '⛰️m') return MAP_COLORS.MINE;
-    if (tile === 'Ω' || tile === '🕳️') return MAP_COLORS.VOID;
+    // O(1) Fast-Path lookup for specific features/landmarks
+    if (TILE_COLOR_MAP[tile]) return TILE_COLOR_MAP[tile];
 
     // Natural Biomes (Fallback)
     const realmOffset = (typeof gameState !== 'undefined' && gameState.currentRealm) ? gameState.currentRealm * 100 : 0;
@@ -260,6 +264,11 @@ function closeWorldMap() {
     // UX & PERFORMANCE WIN: Clear cache explicitly on close to free up GPU memory 
     mapChunkCache.forEach(c => { c.width = 0; c.height = 0; });
     mapChunkCache.clear(); 
+    
+    // 🚨 MEMORY LEAK PREVENTION WIN: Free the main canvas buffer
+    // Mobile browsers will rapidly crash if they keep holding a massive VRAM buffer for a hidden map
+    worldMapCanvas.width = 0;
+    worldMapCanvas.height = 0;
 
     // Memory release for chunks outside our immediate view
     if (typeof chunkManager !== 'undefined' && chunkManager.unloadOutOfRangeChunks && gameState.player) {
@@ -303,6 +312,9 @@ function renderWorldMap() {
 
     const logicalWidth = worldMapCanvas.clientWidth;
     const logicalHeight = worldMapCanvas.clientHeight;
+    
+    // 🚨 VISUAL BUG FIX WIN: Pad culling variables so elements don't disappear before reaching the edge!
+    const cullingPad = 50; 
 
     // UX WIN: Thematic Cartography Background
     worldMapCtx.fillStyle = '#e7e5e4'; // Parchment
@@ -333,87 +345,82 @@ function renderWorldMap() {
     const chunkSizeOnScreen = MAP_CHUNK_SIZE * currentMapScale;
     const now = Date.now(); 
 
-    // PERFORMANCE WIN: Removed massive string splitting logic during the loop
-    gameState.exploredChunks.forEach(chunkId => {
-        // Highly optimized string parsing bypasses array allocation
-        const commaIdx = chunkId.indexOf(',');
-        if (commaIdx === -1) return; // Prevent NaN errors on corrupt chunks
-        
-        const cx = parseInt(chunkId.substring(0, commaIdx), 10);
-        const cy = parseInt(chunkId.substring(commaIdx + 1), 10);
-        
-        if (isNaN(cx) || isNaN(cy)) return; 
+    // 🚀 PERFORMANCE WIN: O(Visible) Chunk Rendering
+    // Replaces iterating through the entire 10,000+ exploredChunks Set and culling off-screen ones.
+    // We now calculate the exact visible bounds and only check if those specific chunks are explored!
+    const startChunkX = Math.floor((mapCamera.x - (logicalWidth / 2) / currentMapScale) / MAP_CHUNK_SIZE);
+    const endChunkX = Math.floor((mapCamera.x + (logicalWidth / 2) / currentMapScale) / MAP_CHUNK_SIZE);
+    const startChunkY = Math.floor((mapCamera.y - (logicalHeight / 2) / currentMapScale) / MAP_CHUNK_SIZE);
+    const endChunkY = Math.floor((mapCamera.y + (logicalHeight / 2) / currentMapScale) / MAP_CHUNK_SIZE);
 
-        const chunkWorldX = cx * MAP_CHUNK_SIZE;
-        const chunkWorldY = cy * MAP_CHUNK_SIZE;
-
-        const screenX = ((chunkWorldX - mapCamera.x) * currentMapScale + centerX) | 0;
-        const screenY = ((chunkWorldY - mapCamera.y) * currentMapScale + centerY) | 0;
-
-        // Culling Check
-        if (screenX + chunkSizeOnScreen < 0 || screenX > logicalWidth ||
-            screenY + chunkSizeOnScreen < 0 || screenY > logicalHeight) {
-            return;
-        }
-
-        const chunkCanvas = getCachedMapChunk(cx, cy);
-        if (chunkCanvas) {
-            worldMapCtx.drawImage(chunkCanvas, screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
-        }
-
-        // Chunk Grid Lines (Darker for contrast)
-        worldMapCtx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
-        worldMapCtx.lineWidth = 1;
-        worldMapCtx.strokeRect(screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
-
-        // Fine Tile Grid at high zoom levels
-        if (currentMapScale >= 10) {
-            worldMapCtx.beginPath();
-            worldMapCtx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
-            for (let i = 1; i < MAP_CHUNK_SIZE; i++) {
-                worldMapCtx.moveTo(screenX + i * currentMapScale, screenY);
-                worldMapCtx.lineTo(screenX + i * currentMapScale, screenY + chunkSizeOnScreen);
-                worldMapCtx.moveTo(screenX, screenY + i * currentMapScale);
-                worldMapCtx.lineTo(screenX + chunkSizeOnScreen, screenY + i * currentMapScale);
-            }
-            worldMapCtx.stroke();
-        }
-
-        // LORE EXPANSION: Cartographer's Flourishes (Sea Monsters)
-        // If zoomed out, procedurally draw faint sea monsters in deep ocean chunks
-        if (currentMapScale < 12) {
-            // BUG FIX WIN: Ensure the PRNG uses a predictable seed so the monsters don't dance around
-            const seed = typeof stringToSeed === 'function' ? stringToSeed(`decor_${cx}_${cy}`) : cx * cy;
-            const random = typeof Alea === 'function' ? Alea(seed) : () => 0.5;
+    for (let cy = startChunkY; cy <= endChunkY; cy++) {
+        for (let cx = startChunkX; cx <= endChunkX; cx++) {
+            const chunkId = `${cx},${cy}`;
             
-            if (random() < 0.04) { // 4% of chunks
-                const decorType = random();
-                let icon = '🦑';
-                if (decorType < 0.2) icon = '🐋';
-                else if (decorType < 0.4) icon = '⛵';
-                else if (decorType < 0.5) icon = '🐉';
-                else if (decorType < 0.6) icon = '🏴‍☠️';
-                else if (decorType < 0.75) icon = '🧜‍♀️';
-                else icon = '👁️'; // The Leviathan watches...
+            // Only render it if the player has actually discovered it
+            if (!gameState.exploredChunks.has(chunkId)) continue;
 
-                // Check if the center of this chunk is deep water
-                const centerWorldX = cx * MAP_CHUNK_SIZE + 8;
-                const centerWorldY = cy * MAP_CHUNK_SIZE + 8;
-                const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(centerWorldX, centerWorldY) : '.';
+            const chunkWorldX = cx * MAP_CHUNK_SIZE;
+            const chunkWorldY = cy * MAP_CHUNK_SIZE;
+
+            const screenX = ((chunkWorldX - mapCamera.x) * currentMapScale + centerX) | 0;
+            const screenY = ((chunkWorldY - mapCamera.y) * currentMapScale + centerY) | 0;
+
+            const chunkCanvas = getCachedMapChunk(cx, cy);
+            if (chunkCanvas) {
+                worldMapCtx.drawImage(chunkCanvas, screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
+            }
+
+            // Chunk Grid Lines (Darker for contrast)
+            worldMapCtx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+            worldMapCtx.lineWidth = 1;
+            worldMapCtx.strokeRect(screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
+
+            // Fine Tile Grid at high zoom levels
+            if (currentMapScale >= 10) {
+                worldMapCtx.beginPath();
+                worldMapCtx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
+                for (let i = 1; i < MAP_CHUNK_SIZE; i++) {
+                    worldMapCtx.moveTo(screenX + i * currentMapScale, screenY);
+                    worldMapCtx.lineTo(screenX + i * currentMapScale, screenY + chunkSizeOnScreen);
+                    worldMapCtx.moveTo(screenX, screenY + i * currentMapScale);
+                    worldMapCtx.lineTo(screenX + chunkSizeOnScreen, screenY + i * currentMapScale);
+                }
+                worldMapCtx.stroke();
+            }
+
+            // LORE EXPANSION: Cartographer's Flourishes (Sea Monsters)
+            if (currentMapScale < 12) {
+                const seed = typeof stringToSeed === 'function' ? stringToSeed(`decor_${cx}_${cy}`) : cx * cy;
+                const random = typeof Alea === 'function' ? Alea(seed) : () => 0.5;
                 
-                if (tile === '~') {
-                    worldMapCtx.fillStyle = icon === '👁️' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.2)'; 
-                    worldMapCtx.font = `${currentMapScale * 8}px monospace`;
-                    worldMapCtx.textAlign = 'center';
-                    worldMapCtx.textBaseline = 'middle';
-                    worldMapCtx.fillText(icon, screenX + chunkSizeOnScreen/2, screenY + chunkSizeOnScreen/2);
+                if (random() < 0.04) { 
+                    const decorType = random();
+                    let icon = '🦑';
+                    if (decorType < 0.2) icon = '🐋';
+                    else if (decorType < 0.4) icon = '⛵';
+                    else if (decorType < 0.5) icon = '🐉';
+                    else if (decorType < 0.6) icon = '🏴‍☠️';
+                    else if (decorType < 0.75) icon = '🧜‍♀️';
+                    else icon = '👁️'; 
+
+                    const centerWorldX = cx * MAP_CHUNK_SIZE + 8;
+                    const centerWorldY = cy * MAP_CHUNK_SIZE + 8;
+                    const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(centerWorldX, centerWorldY) : '.';
+                    
+                    if (tile === '~') {
+                        worldMapCtx.fillStyle = icon === '👁️' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.2)'; 
+                        worldMapCtx.font = `${currentMapScale * 8}px monospace`;
+                        worldMapCtx.textAlign = 'center';
+                        worldMapCtx.textBaseline = 'middle';
+                        worldMapCtx.fillText(icon, screenX + chunkSizeOnScreen/2, screenY + chunkSizeOnScreen/2);
+                    }
                 }
             }
         }
-    });
+    }
 
     // LORE EXPANSION: Dynamic Region Watermarks
-    // Draws the text of the region ("The Whispering Plains") beautifully across the map
     const regSize = typeof REGION_SIZE !== 'undefined' ? REGION_SIZE : 160;
     const startWorldX = mapCamera.x - (logicalWidth / 2) / currentMapScale;
     const endWorldX = mapCamera.x + (logicalWidth / 2) / currentMapScale;
@@ -468,7 +475,6 @@ function renderWorldMap() {
         }
     }
 
-
     // ========================================================================
     // VISUAL WIN: THE LEYLINE NETWORK (Flowing Animation!)
     // ========================================================================
@@ -491,9 +497,9 @@ function renderWorldMap() {
                 const screenX = (wp.x - mapCamera.x) * currentMapScale + centerX;
                 const screenY = (wp.y - mapCamera.y) * currentMapScale + centerY;
                 
-                // Culling Check
-                if ((vX > -100 && vX < logicalWidth + 100 && vY > -100 && vY < logicalHeight + 100) ||
-                    (screenX > -100 && screenX < logicalWidth + 100 && screenY > -100 && screenY < logicalHeight + 100)) {
+                // 🚨 VISUAL BUG FIX WIN: Apply culling padding so lines don't snap
+                if ((vX >= -cullingPad && vX <= logicalWidth + cullingPad && vY >= -cullingPad && vY <= logicalHeight + cullingPad) ||
+                    (screenX >= -cullingPad && screenX <= logicalWidth + cullingPad && screenY >= -cullingPad && screenY <= logicalHeight + cullingPad)) {
                     worldMapCtx.moveTo(vX, vY);
                     worldMapCtx.lineTo(screenX, screenY);
                 }
@@ -516,7 +522,8 @@ function renderWorldMap() {
             const screenX = (pin.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (pin.y - mapCamera.y) * currentMapScale + centerY;
             
-            if (screenX >= 0 && screenX <= logicalWidth && screenY >= 0 && screenY <= logicalHeight) {
+            // 🚨 VISUAL BUG FIX WIN: Apply culling padding
+            if (screenX >= -cullingPad && screenX <= logicalWidth + cullingPad && screenY >= -cullingPad && screenY <= logicalHeight + cullingPad) {
                 // Drop shadow
                 worldMapCtx.fillStyle = 'rgba(0,0,0,0.8)';
                 worldMapCtx.fillText('📌', screenX + currentMapScale/2, (screenY + currentMapScale/2) + 2 + pinBob);
@@ -539,9 +546,10 @@ function renderWorldMap() {
             const screenX = (wp.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (wp.y - mapCamera.y) * currentMapScale + centerY;
             
-            if (screenX >= 0 && screenX <= logicalWidth && screenY >= 0 && screenY <= logicalHeight) {
+            // 🚨 VISUAL BUG FIX WIN: Apply culling padding
+            if (screenX >= -cullingPad && screenX <= logicalWidth + cullingPad && screenY >= -cullingPad && screenY <= logicalHeight + cullingPad) {
                 worldMapCtx.moveTo(screenX + currentMapScale/2, screenY + currentMapScale/2);
-                worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2, currentMapScale * 1.5, 0, Math.PI * 2);
+                worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2, currentMapScale * 1.5, 0, TWO_PI);
             }
         });
         worldMapCtx.fill();
@@ -558,9 +566,9 @@ function renderWorldMap() {
         gameState.player.discoveredPOIs.forEach(poi => {
             const screenX = (poi.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (poi.y - mapCamera.y) * currentMapScale + centerY;
-            if (screenX >= 0 && screenX <= logicalWidth && screenY >= 0 && screenY <= logicalHeight) {
+            if (screenX >= -cullingPad && screenX <= logicalWidth + cullingPad && screenY >= -cullingPad && screenY <= logicalHeight + cullingPad) {
                 worldMapCtx.moveTo(screenX + currentMapScale/2, screenY + currentMapScale/2);
-                worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2, currentMapScale, 0, Math.PI * 2);
+                worldMapCtx.arc(screenX + currentMapScale/2, screenY + currentMapScale/2, currentMapScale, 0, TWO_PI);
             }
         });
         worldMapCtx.fill();
@@ -569,7 +577,7 @@ function renderWorldMap() {
         gameState.player.discoveredPOIs.forEach(poi => {
             const screenX = (poi.x - mapCamera.x) * currentMapScale + centerX;
             const screenY = (poi.y - mapCamera.y) * currentMapScale + centerY;
-            if (screenX >= 0 && screenX <= logicalWidth && screenY >= 0 && screenY <= logicalHeight) {
+            if (screenX >= -cullingPad && screenX <= logicalWidth + cullingPad && screenY >= -cullingPad && screenY <= logicalHeight + cullingPad) {
                 worldMapCtx.fillText(poi.icon, screenX + currentMapScale/2, screenY + currentMapScale/2 + bobY);
             }
         });
@@ -580,7 +588,7 @@ function renderWorldMap() {
         const tx = (gameState.activeTreasure.x - mapCamera.x) * currentMapScale + centerX;
         const ty = (gameState.activeTreasure.y - mapCamera.y) * currentMapScale + centerY;
         
-        if (tx >= 0 && tx <= logicalWidth && ty >= 0 && ty <= logicalHeight) {
+        if (tx >= -cullingPad && tx <= logicalWidth + cullingPad && ty >= -cullingPad && ty <= logicalHeight + cullingPad) {
             worldMapCtx.fillStyle = '#ef4444'; 
             worldMapCtx.font = `bold ${Math.max(12, currentMapScale * 2)}px monospace`;
             worldMapCtx.fillText('❌', tx + currentMapScale/2, ty + currentMapScale/2);
@@ -590,7 +598,7 @@ function renderWorldMap() {
             worldMapCtx.globalAlpha = 1 - pulse;
             worldMapCtx.lineWidth = 2;
             worldMapCtx.beginPath();
-            worldMapCtx.arc(tx + currentMapScale/2, ty + currentMapScale/2, currentMapScale * 2 + (pulse * 15), 0, Math.PI * 2);
+            worldMapCtx.arc(tx + currentMapScale/2, ty + currentMapScale/2, currentMapScale * 2 + (pulse * 15), 0, TWO_PI);
             worldMapCtx.stroke();
             worldMapCtx.globalAlpha = 1.0;
         }
@@ -601,7 +609,7 @@ function renderWorldMap() {
         const ix = (gameState.activeInvestigation.x - mapCamera.x) * currentMapScale + centerX;
         const iy = (gameState.activeInvestigation.y - mapCamera.y) * currentMapScale + centerY;
         
-        if (ix >= 0 && ix <= logicalWidth && iy >= 0 && iy <= logicalHeight) {
+        if (ix >= -cullingPad && ix <= logicalWidth + cullingPad && iy >= -cullingPad && iy <= logicalHeight + cullingPad) {
             worldMapCtx.fillStyle = '#a855f7'; // Purple
             // JUICE WIN: Glowing Anomaly color instead of red to distinguish from treasure!
             worldMapCtx.font = `bold ${Math.max(16, currentMapScale * 2.5)}px monospace`;
@@ -612,7 +620,7 @@ function renderWorldMap() {
             worldMapCtx.globalAlpha = 1 - pulse;
             worldMapCtx.lineWidth = 3;
             worldMapCtx.beginPath();
-            worldMapCtx.arc(ix + currentMapScale/2, iy + currentMapScale/2, currentMapScale * 2 + (pulse * 20), 0, Math.PI * 2);
+            worldMapCtx.arc(ix + currentMapScale/2, iy + currentMapScale/2, currentMapScale * 2 + (pulse * 20), 0, TWO_PI);
             worldMapCtx.stroke();
             worldMapCtx.globalAlpha = 1.0;
         }
@@ -627,9 +635,9 @@ function renderWorldMap() {
                 const opX = (op.x - mapCamera.x) * currentMapScale + centerX;
                 const opY = (op.y - mapCamera.y) * currentMapScale + centerY;
                 
-                if (opX >= 0 && opX <= logicalWidth && opY >= 0 && opY <= logicalHeight) {
+                if (opX >= -cullingPad && opX <= logicalWidth + cullingPad && opY >= -cullingPad && opY <= logicalHeight + cullingPad) {
                     worldMapCtx.moveTo(opX + currentMapScale/2, opY + currentMapScale/2);
-                    worldMapCtx.arc(opX + currentMapScale/2, opY + currentMapScale/2, Math.max(2, currentMapScale * 0.8), 0, Math.PI * 2);
+                    worldMapCtx.arc(opX + currentMapScale/2, opY + currentMapScale/2, Math.max(2, currentMapScale * 0.8), 0, TWO_PI);
                 }
             }
         });
@@ -645,14 +653,14 @@ function renderWorldMap() {
     const playerPulse2 = ((now + 1000) % 2000) / 2000; 
 
     worldMapCtx.beginPath();
-    worldMapCtx.arc(playerScreenX + currentMapScale/2, playerScreenY + currentMapScale/2, currentMapScale * 2 + (playerPulse * 30), 0, Math.PI * 2);
+    worldMapCtx.arc(playerScreenX + currentMapScale/2, playerScreenY + currentMapScale/2, currentMapScale * 2 + (playerPulse * 30), 0, TWO_PI);
     worldMapCtx.strokeStyle = '#3b82f6';
     worldMapCtx.globalAlpha = Math.max(0, 1 - (playerPulse * 1.5));
     worldMapCtx.lineWidth = 2;
     worldMapCtx.stroke();
     
     worldMapCtx.beginPath();
-    worldMapCtx.arc(playerScreenX + currentMapScale/2, playerScreenY + currentMapScale/2, currentMapScale * 2 + (playerPulse2 * 30), 0, Math.PI * 2);
+    worldMapCtx.arc(playerScreenX + currentMapScale/2, playerScreenY + currentMapScale/2, currentMapScale * 2 + (playerPulse2 * 30), 0, TWO_PI);
     worldMapCtx.globalAlpha = Math.max(0, 1 - (playerPulse2 * 1.5));
     worldMapCtx.stroke();
     
@@ -660,7 +668,7 @@ function renderWorldMap() {
 
     worldMapCtx.fillStyle = '#ef4444';
     worldMapCtx.beginPath();
-    worldMapCtx.arc(playerScreenX + currentMapScale/2, playerScreenY + currentMapScale/2, Math.max(3, currentMapScale), 0, Math.PI * 2);
+    worldMapCtx.arc(playerScreenX + currentMapScale/2, playerScreenY + currentMapScale/2, Math.max(3, currentMapScale), 0, TWO_PI);
     worldMapCtx.fill();
     worldMapCtx.strokeStyle = '#ffffff';
     worldMapCtx.lineWidth = 2;
@@ -869,16 +877,21 @@ function updateMapUI() {
         // Clean any potential HTML tags just in case
         const tileName = typeof stripColorTags === 'function' ? stripColorTags(rawTileName) : rawTileName;
         
+        // QoL WIN: Dynamic action hint based on the object you are hovering over!
         if (tileName === "Magical Leyline Waystone") {
             const isUnlocked = gameState.player.unlockedWaypoints && gameState.player.unlockedWaypoints.some(wp => wp.x === hoverWorldX && wp.y === hoverWorldY);
             if (isUnlocked) actionHint = ' | <span class="text-purple-400 font-bold animate-pulse">Double-Click to Travel</span>';
             else actionHint = ' | <span class="text-gray-500">Unattuned Waystone</span>';
         }
+        else if (gameState.player.customPins && gameState.player.customPins.some(p => Math.abs(p.x - hoverWorldX) < 2 && Math.abs(p.y - hoverWorldY) < 2)) {
+            actionHint = ' | <span class="text-red-400 font-bold">Right-Click to Remove Pin</span>';
+        }
         
         const dx = hoverWorldX - gameState.player.x;
         const dy = hoverWorldY - gameState.player.y;
-        // PERFORMANCE WIN: Native Math.hypot
-        const dist = Math.floor(Math.hypot(dx, dy));
+        
+        // 🚀 PERFORMANCE WIN: Replaced slow Math.hypot with direct Euclidean distance
+        const dist = Math.floor(Math.sqrt(dx * dx + dy * dy));
 
         let dangerTag = "";
         if (tileName === "Uncharted Wilderness" && dist > 1500) {
@@ -934,21 +947,29 @@ worldMapCanvas.addEventListener('mousedown', (e) => {
 });
 window.addEventListener('mouseup', stopMapDrag);
 
+// 🚀 PERFORMANCE WIN: MouseMove Throttle
+// Prevents calculating map coordinates thousands of times a second by locking it to the browser's repaint cycle!
+let _mapMouseFrame = null;
 worldMapCanvas.addEventListener('mousemove', (e) => {
-    if (isDraggingMap) {
-        doMapDrag(e.clientX, e.clientY);
-        hoverWorldX = null; 
-    } else {
-        const rect = worldMapCanvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        const centerX = Math.floor(worldMapCanvas.clientWidth / 2);
-        const centerY = Math.floor(worldMapCanvas.clientHeight / 2);
-        
-        hoverWorldX = Math.floor((mouseX - centerX) / currentMapScale + mapCamera.x);
-        hoverWorldY = Math.floor((mouseY - centerY) / currentMapScale + mapCamera.y);
-    }
+    if (_mapMouseFrame) return; // Skip if we haven't rendered the last mouse move yet!
+    
+    _mapMouseFrame = requestAnimationFrame(() => {
+        _mapMouseFrame = null;
+        if (isDraggingMap) {
+            doMapDrag(e.clientX, e.clientY);
+            hoverWorldX = null; 
+        } else {
+            const rect = worldMapCanvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            const centerX = Math.floor(worldMapCanvas.clientWidth / 2);
+            const centerY = Math.floor(worldMapCanvas.clientHeight / 2);
+            
+            hoverWorldX = Math.floor((mouseX - centerX) / currentMapScale + mapCamera.x);
+            hoverWorldY = Math.floor((mouseY - centerY) / currentMapScale + mapCamera.y);
+        }
+    });
 });
 
 // Double click features
@@ -1074,7 +1095,7 @@ worldMapCanvas.addEventListener('wheel', (e) => {
         targetMapScale /= 1.25; 
     }
     
-    // Clamp limits
+    // 🚨 BUG FIX & ROBUSTNESS WIN: Clamp limits to prevent layout collapse
     targetMapScale = Math.max(0.5, Math.min(32, targetMapScale));
 
     // 3. Shift the camera so the world coordinate stays perfectly pinned under the mouse!
