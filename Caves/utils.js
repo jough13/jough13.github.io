@@ -129,8 +129,11 @@ window.MathUtils = {
     // Returns a random integer between min and max (inclusive)
     randomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
     
-    // QoL WIN: Instantly grab a random item from an array
-    randomChoice: (arr) => arr[Math.floor(Math.random() * arr.length)],
+    // 🚨 ROBUSTNESS WIN: Safely handles empty or undefined arrays
+    randomChoice: (arr) => {
+        if (!arr || !arr.length) return null;
+        return arr[Math.floor(Math.random() * arr.length)];
+    },
 
     // Non-recursive Gaussian Random
     // Uses the Box-Muller transform but removes the recursive fallback that could theoretically 
@@ -195,8 +198,9 @@ window.MathUtils = {
         return str.trim();
     },
 
-    // Fast array shuffler (Fisher-Yates)
+    // 🚨 ROBUSTNESS WIN: Fast array shuffler (Fisher-Yates) that ignores empty inputs
     shuffle: (array) => {
+        if (!array || !array.length) return array;
         let currentIndex = array.length, randomIndex;
         while (currentIndex !== 0) {
             randomIndex = Math.floor(Math.random() * currentIndex);
@@ -229,20 +233,30 @@ window.MathUtils = {
 // PERFORMANCE WIN: Cached Regex for V8 speed
 const HEX_RGB_REGEX = /^([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i;
 
+// 🚀 PERFORMANCE WIN: Global Hex-to-RGB cache
+// Prevents regex from being executed thousands of times per second during UI/Particle renders
+window._hexCache = window._hexCache || {};
+
 window.ColorUtils = {
     // BUG FIX & ROBUSTNESS: Handles both 6-char (#FF0000) and 3-char (#F00) hex codes safely.
     // Adds a strict crash-guard if the user passes an invalid or undefined color string.
     hexToRgb: (hex) => {
         if (!hex || typeof hex !== 'string') return {r: 255, g: 255, b: 255}; // Failsafe
         
+        if (window._hexCache[hex]) return window._hexCache[hex];
+        
         let h = hex.replace(/^#/, '');
         if (h.length === 3) h = h.split('').map(c => c + c).join(''); // Expand #000 to #000000
         const result = HEX_RGB_REGEX.exec(h);
-        return result ? {
+        
+        const rgb = result ? {
             r: parseInt(result[1], 16),
             g: parseInt(result[2], 16),
             b: parseInt(result[3], 16)
         } : {r: 255, g: 255, b: 255};
+        
+        window._hexCache[hex] = rgb; // Save to cache
+        return rgb;
     },
     
     // Smoothly blends two hex colors based on an amount (0.0 to 1.0)
@@ -489,13 +503,20 @@ window.pluralize = function(count, noun, suffix = 's') {
     return `${count} ${noun}${count !== 1 ? suffix : ''}`;
 };
 
-// Oxford Comma list formatter (e.g., ['A', 'B', 'C'] -> "A, B, and C")
-// 🚨 GHOST GUARD: Filter out nulls/booleans to prevent "[null, and C]" rendering!
+// 🌟 QoL & PERFORMANCE WIN: Hardware Accelerated List Formatter
+// Automatically utilizes the browser's native C++ Intl.ListFormat when available!
 window.formatList = function(arr) {
     if (!arr || arr.length === 0) return "";
     const cleanArr = arr.filter(Boolean); 
     if (cleanArr.length === 0) return "";
     if (cleanArr.length === 1) return cleanArr[0];
+    
+    // Native browser optimization!
+    if (typeof Intl !== 'undefined' && Intl.ListFormat) {
+        return new Intl.ListFormat('en', { style: 'long', type: 'conjunction' }).format(cleanArr);
+    }
+    
+    // Fallback for older browsers
     if (cleanArr.length === 2) return `${cleanArr[0]} and ${cleanArr[1]}`;
     return `${cleanArr.slice(0, -1).join(', ')}, and ${cleanArr[cleanArr.length - 1]}`;
 };
@@ -628,9 +649,15 @@ window.autoFormatLore = function(text) {
     for (let i = 0; i < _COMPILED_LORE_REGEXES.length; i++) {
         const { rx, color } = _COMPILED_LORE_REGEXES[i];
         formatted = formatted.replace(rx, (match, p1, offset, string) => {
-            const lookBehind = string.substring(Math.max(0, offset - 10), offset);
-            // If it is ALREADY inside a tag (e.g. {red:Kraken}), do not double-wrap it!
-            if (lookBehind.includes('{')) return match; 
+            const lookBehind = string.substring(Math.max(0, offset - 15), offset);
+            
+            // 🚨 BUG FIX: Check if we are actively inside an unclosed tag block
+            // Solves the issue where {blue:A} Kraken wouldn't trigger the Kraken tag because the lookup 
+            // hit the { from {blue:A} even though it was already closed!
+            const lastOpen = lookBehind.lastIndexOf('{');
+            const lastClose = lookBehind.lastIndexOf('}');
+            if (lastOpen > lastClose) return match; 
+            
             return `{${color}:${match}}`;
         });
     }
@@ -697,10 +724,10 @@ window.getRelativePositionText = function(dx, dy, atmospheric = false) {
 // DEEP OBJECT MANAGEMENT
 // ==========================================
 
-// High-speed recursive clone. 
+// 🚀 PERFORMANCE & ROBUSTNESS WIN: High-speed recursive clone. 
 // Completely replaces JSON.parse(JSON.stringify()) with a V8-optimized deep copy.
 // Uses Object.keys() and pre-allocated Arrays to bypass all prototype chain overhead!
-// Now safely supports cloning `Set` and `Map` and `TypedArray` objects without corrupting them!
+// Now safely supports cloning `Set`, `Map`, `RegExp` and custom instances without corrupting them!
 window.fastClone = function(obj, seen = new WeakMap()) {
     // Guarantee 'seen' is always a WeakMap, even if passed as null
     if (!seen) seen = new WeakMap();
@@ -751,8 +778,8 @@ window.fastClone = function(obj, seen = new WeakMap()) {
         return arr;
     }
     
-    // Fast-path for standard Objects
-    const cloned = {};
+    // Fast-path for standard Objects and custom class instances
+    const cloned = Object.create(Object.getPrototypeOf(obj) || null);
     seen.set(obj, cloned);
     const keys = Object.keys(obj);
     for (let i = 0; i < keys.length; i++) {
