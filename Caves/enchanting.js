@@ -8,6 +8,22 @@ const DUST_YIELDS = { 'uncommon': 1, 'rare': 3, 'epic': 8, 'legendary': 25 };
 const UPGRADE_COSTS = { 'normal': 5, 'uncommon': 15, 'rare': 30, 'epic': 75 };
 const PURIFY_COST = 40; // Flat cost to cleanse cursed items
 
+// PERFORMANCE WIN: Cached Regexes for O(1) string matching without recompiling in loops!
+const CURSE_REGEX_I = /Cursed|Doomed|Forsaken|Blood-Starved|Whispering|Blighted/i;
+const CURSE_REGEX_GI = /Cursed|Doomed|Forsaken|Blood-Starved|Whispering|Blighted/gi;
+const ENCHANT_PREFIX_REGEX = /^(Fine|Mystic|Flawless|Peerless|Exquisite|Masterwork|Divine)\s/i;
+
+// PERFORMANCE WIN: O(1) Item Lookup Cache for Enchanting
+// Decouples this file from trade.js and speeds up tooltip generation!
+window._enchantItemKeyCache = window._enchantItemKeyCache || {};
+function getEnchantItemKey(name) {
+    if (window._enchantItemKeyCache[name]) return window._enchantItemKeyCache[name];
+    if (typeof window.ITEM_DATA === 'undefined') return null;
+    const key = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === name);
+    if (key) window._enchantItemKeyCache[name] = key;
+    return key;
+}
+
 // PERFORMANCE WIN: Cache DOM lookups for the Enchanting UI
 const _enchantDOMCache = {
     disenchantList: null,
@@ -81,7 +97,7 @@ function renderEnchantingModal() {
     const generateTooltip = (item) => {
         let tooltip = typeof escapeHtml === 'function' ? escapeHtml(item.name) : item.name;
         
-        let tKey = item.templateId || (typeof getTradeItemKey === 'function' ? getTradeItemKey(item.name) : null);
+        let tKey = item.templateId || getEnchantItemKey(item.name);
         const template = typeof window.ITEM_DATA !== 'undefined' && tKey ? window.ITEM_DATA[tKey] : null;
         
         if (template && template.description) {
@@ -140,8 +156,8 @@ function renderEnchantingModal() {
 
         // --- ENCHANT & PURIFY LIST ---
         if (isGear) {
-            // Check if it's a cursed item!
-            const isCursed = item.name.match(/Cursed|Doomed|Forsaken|Blood-Starved|Whispering|Blighted/i);
+            // Check if it's a cursed item using high-speed cached regex!
+            const isCursed = CURSE_REGEX_I.test(item.name);
             
             if (isCursed) {
                 // Render PURIFY button
@@ -231,7 +247,7 @@ function handleDisenchant(index) {
             return;
         }
         
-        const isCursed = item.name.match(/Cursed|Doomed|Forsaken|Blood-Starved|Whispering|Blighted/i);
+        const isCursed = CURSE_REGEX_I.test(item.name);
 
         // --- LORE WIN: Cursed Shattering Explosion ---
         // If a player tries to destroy a cursed item to harvest dust instead of purifying it, 
@@ -310,7 +326,7 @@ function handleShatterMinor() {
         const player = gameState.player;
         let totalDust = 0;
         let itemsShattered = 0;
-        let shatteredNames = [];
+        let shatteredNamesCount = {}; // UX WIN: Frequency map for clean output
 
         // O(N) Array filter approach for mass deletion
         const remainingInventory = [];
@@ -324,9 +340,9 @@ function handleShatterMinor() {
                 totalDust += yieldAmt;
                 itemsShattered++;
                 
-                // Track names for the summary!
-                const cleanName = item.name.replace(/^(Fine|Mystic)\s/i, '').trim();
-                shatteredNames.push(cleanName);
+                // Track names for the summary cleanly
+                const cleanName = item.name.replace(ENCHANT_PREFIX_REGEX, '').trim();
+                shatteredNamesCount[cleanName] = (shatteredNamesCount[cleanName] || 0) + 1;
                 
             } else {
                 remainingInventory.push(item);
@@ -343,8 +359,8 @@ function handleShatterMinor() {
                 player.inventory.push({ templateId: '&', name: 'Arcane Dust', type: 'junk', quantity: totalDust, tile: '✨' });
             }
             
-            // UX WIN: Concise summary of what was actually destroyed!
-            const summary = Array.from(new Set(shatteredNames)).join(', ');
+            // UX WIN: Concise, consolidated summary of what was actually destroyed!
+            const summary = Object.entries(shatteredNamesCount).map(([name, qty]) => `${name}${qty > 1 ? ` (x${qty})` : ''}`).join(', ');
             logMessage(`{gray:Shattered: ${summary}}`);
             logMessage(`{purple:You destroyed ${itemsShattered} minor items, extracting ${totalDust} Arcane Dust.}`);
             
@@ -408,8 +424,10 @@ function handleEnchant(index) {
 
         if (newRarity === 'uncommon') {
             item.name = `Fine ${item.name}`;
-            if (item.type === 'weapon') item.damage += 1;
-            if (item.type === 'armor') item.defense += 1;
+            
+            // 🚨 BUG FIX: Ensure we don't accidentally concatenate strings if damage/defense was corrupted
+            if (item.type === 'weapon') item.damage = (Number(item.damage) || 0) + 1;
+            if (item.type === 'armor') item.defense = (Number(item.defense) || 0) + 1;
             
             const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
             const randomStat = stats[Math.floor(Math.random() * stats.length)];
@@ -427,14 +445,14 @@ function handleEnchant(index) {
                 
                 item.name = `${prefixName} ${item.name}`;
                 for (const stat in prefixData.bonus) {
-                    if (stat === 'damage') item.damage += prefixData.bonus[stat];
-                    else if (stat === 'defense') item.defense += prefixData.bonus[stat];
+                    if (stat === 'damage') item.damage = (Number(item.damage) || 0) + prefixData.bonus[stat];
+                    else if (stat === 'defense') item.defense = (Number(item.defense) || 0) + prefixData.bonus[stat];
                     else item.statBonuses[stat] = (item.statBonuses[stat] || 0) + prefixData.bonus[stat];
                 }
             } else {
                 item.name = `Mystic ${item.name}`;
-                if (item.type === 'weapon') item.damage += 1;
-                if (item.type === 'armor') item.defense += 1;
+                if (item.type === 'weapon') item.damage = (Number(item.damage) || 0) + 1;
+                if (item.type === 'armor') item.defense = (Number(item.defense) || 0) + 1;
                 item.statBonuses.wits = (item.statBonuses.wits || 0) + 1;
             }
             upgradeMsg = `Arcane runes brand themselves into the surface. It is now a ${item.name}!`;
@@ -447,31 +465,31 @@ function handleEnchant(index) {
                 
                 item.name = `${item.name} ${suffixName}`;
                 for (const stat in suffixData.bonus) {
-                    if (stat === 'damage') item.damage += suffixData.bonus[stat];
-                    else if (stat === 'defense') item.defense += suffixData.bonus[stat];
+                    if (stat === 'damage') item.damage = (Number(item.damage) || 0) + suffixData.bonus[stat];
+                    else if (stat === 'defense') item.defense = (Number(item.defense) || 0) + suffixData.bonus[stat];
                     else item.statBonuses[stat] = (item.statBonuses[stat] || 0) + suffixData.bonus[stat];
                 }
             } else {
                 item.name = `${item.name} of Power`;
-                if (item.type === 'weapon') item.damage += 1;
-                if (item.type === 'armor') item.defense += 1;
+                if (item.type === 'weapon') item.damage = (Number(item.damage) || 0) + 1;
+                if (item.type === 'armor') item.defense = (Number(item.defense) || 0) + 1;
                 item.statBonuses.strength = (item.statBonuses.strength || 0) + 1;
             }
             upgradeMsg = `The item hums with a terrifying new power. It is now ${item.name}!`;
         } 
         else if (newRarity === 'legendary') {
             // JUICE WIN: Detailed Legendary Upgrades!
-            if (item.type === 'weapon') item.damage += 2;
-            if (item.type === 'armor') item.defense += 2;
+            if (item.type === 'weapon') item.damage = (Number(item.damage) || 0) + 2;
+            if (item.type === 'armor') item.defense = (Number(item.defense) || 0) + 2;
             
             let statSummary = [];
             for (const stat in item.statBonuses) {
-                item.statBonuses[stat] += 2; 
+                item.statBonuses[stat] = (Number(item.statBonuses[stat]) || 0) + 2; 
                 statSummary.push(`+2 ${stat.substring(0,3).toUpperCase()}`);
             }
             
-            // Clean up name by removing previous prefixes to prevent word soup
-            const cleanName = item.name.replace(/^(Fine|Mystic|Flawless|Peerless|Exquisite|Masterwork|Divine)\s/i, '').trim();
+            // Clean up name by removing previous prefixes using our cached regex!
+            const cleanName = item.name.replace(ENCHANT_PREFIX_REGEX, '').trim();
             const epicPrefixes = ['Aegis', 'Wrath', 'Whisper', 'Sorrow', 'Echo', 'Vanguard'];
             const newPrefix = epicPrefixes[Math.floor(Math.random() * epicPrefixes.length)];
             
@@ -539,7 +557,7 @@ function handlePurify(index) {
         }
 
         // Rename the item (Replacing the cursed prefix with 'Purified')
-        item.name = item.name.replace(/Cursed|Doomed|Forsaken|Blood-Starved|Whispering|Blighted/gi, 'Purified').trim();
+        item.name = item.name.replace(CURSE_REGEX_GI, 'Purified').trim();
         
         logMessage(`{cyan:The dark magic is scoured away! You hold the ${item.name}.}`);
         
