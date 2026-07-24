@@ -29,13 +29,15 @@ window.EVENT_DATA = {
                             state.screenShake = 20;
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
                             
+                            // 🚨 GHOST GUARD: Ensure enemy data exists before mapping
+                            const enemyData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['z'] : { name: 'Cultist', maxHealth: 15, attack: 3, xp: 10 };
+                            
                             // Spawn 3 Cultists in a ring around the trapdoor
                             const spawnSpots = [[-1, 0], [1, 0], [0, -1]];
                             for (let i = 0; i < 3; i++) {
                                 const ex = ctx.x + spawnSpots[i][0];
                                 const ey = ctx.y + spawnSpots[i][1];
                                 
-                                const enemyData = window.ENEMY_DATA['z']; // Fanatic
                                 const enemyId = `overworld:${ex},${-ey}`;
                                 const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, ex, ey) : enemyData;
                                 
@@ -60,8 +62,16 @@ window.EVENT_DATA = {
                             
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                             if (state.player.inventory.length < invCap) {
-                                const scroll = window.ITEM_DATA['🩸']; // Siphon Life
-                                state.player.inventory.push({ ...scroll, templateId: '🩸', quantity: 1, tile: '🩸', isEquipped: false });
+                                // 🚨 ROBUSTNESS WIN: Safe deep clone preserves nested objects
+                                const scroll = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🩸'] : { name: 'Scroll of Siphoning', type: 'spellbook' };
+                                let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(scroll) : JSON.parse(JSON.stringify(scroll));
+                                
+                                newItem.templateId = '🩸';
+                                newItem.quantity = 1;
+                                newItem.tile = '🩸';
+                                newItem.isEquipped = false;
+                                
+                                state.player.inventory.push(newItem);
                                 logMessage("{purple:You stole a Scroll of Siphoning and 250 Gold!}");
                             } else {
                                 logMessage("{gold:You stole 250 Gold, but your pack is too full for the Scroll!}");
@@ -93,13 +103,30 @@ window.EVENT_DATA = {
                             state.player.coins += 50;
                             
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
-                            if (state.player.inventory.length < invCap) {
-                                const potion = window.ITEM_DATA['🍷']; 
-                                state.player.inventory.push({ ...potion, templateId: '🍷', quantity: 1, tile: '🍷', isEquipped: false });
-                                logMessage("{gold:You received an Elixir of Life and 50 Gold.}");
-                            } else {
-                                logMessage("{gold:You received 50 Gold, but your pack is too full for the Elixir!}");
-                                if (state.mapMode === 'overworld') chunkManager.setWorldTile(ctx.x, ctx.y, '🍷', 24);
+                            const potion = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🍷'] : null;
+                            
+                            if (potion) {
+                                // 🚨 BUG FIX & ECONOMY WIN: Merge into existing stacks to save space!
+                                const existing = state.player.inventory.find(i => i && i.name === potion.name && !i.isEquipped);
+                                
+                                if (existing) {
+                                    existing.quantity++;
+                                    logMessage("{gold:You received an Elixir of Life and 50 Gold.}");
+                                } else if (state.player.inventory.length < invCap) {
+                                    let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(potion) : JSON.parse(JSON.stringify(potion));
+                                    newItem.templateId = '🍷';
+                                    newItem.quantity = 1;
+                                    newItem.tile = '🍷';
+                                    newItem.isEquipped = false;
+                                    newItem.effect = potion.effect;
+                                    state.player.inventory.push(newItem);
+                                    logMessage("{gold:You received an Elixir of Life and 50 Gold.}");
+                                } else {
+                                    logMessage("{gold:You received 50 Gold, but your pack is too full for the Elixir!}");
+                                    if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
+                                        chunkManager.setWorldTile(ctx.x, ctx.y, '🍷', 24);
+                                    }
+                                }
                             }
                             
                             // Turn the knight into a grave marker ONLY if on solid ground!
@@ -147,7 +174,7 @@ window.EVENT_DATA = {
                             if (roll < 0.25) {
                                 // 25% Chance it betrays you and spawns a Demon!
                                 logMessage("{purple:The blood summons a horror from the Void!}");
-                                const enemyTemplate = window.ENEMY_DATA['😈d'];
+                                const enemyTemplate = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['😈d'] : { name: 'Void Demon', maxHealth: 50, attack: 8 };
                                 const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, ctx.x, ctx.y) : enemyTemplate;
                                 const enemyId = `overworld:${ctx.x+1},${-ctx.y}`;
                                 state.sharedEnemies[enemyId] = { ...scaledStats, tile: '😈d', x: ctx.x+1, y: ctx.y, spawnTime: Date.now() };
@@ -161,7 +188,10 @@ window.EVENT_DATA = {
                                     logMessage("{gold:The blood boils in your veins. Your vitality permanently increases! (+3 Max HP)}");
                                 } else {
                                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
-                                    const loot = typeof generateMagicItem === 'function' ? generateMagicItem(5) : { name: 'Blood Blade', type: 'weapon', quantity: 1, damage: 10, tile: '🗡️', isEquipped: false };
+                                    
+                                    // 🚨 BUG FIX: Ensure the hardcoded fallback possesses all required Engine components!
+                                    const fallbackWeapon = { name: 'Blood Blade', type: 'weapon', quantity: 1, damage: 10, tile: '🗡️', isEquipped: false, tags: ['blade'], statBonuses: {} };
+                                    const loot = typeof generateMagicItem === 'function' ? generateMagicItem(5) : fallbackWeapon;
                                     
                                     if (state.player.inventory.length < invCap) {
                                         state.player.inventory.push(loot);
@@ -204,9 +234,24 @@ window.EVENT_DATA = {
                             if (roll < 0.2) {
                                 logMessage("{red:You open the box... it's just rocks! You got scammed!}");
                             } else if (roll < 0.8) {
-                                if (state.player.inventory.length < invCap) {
+                                // 🚨 ECONOMY WIN: Merge into existing stacks safely!
+                                const existing = state.player.inventory.find(i => i && i.name === 'Healing Potion' && !i.isEquipped);
+                                
+                                if (existing) {
+                                    existing.quantity += 3;
                                     logMessage("{green:You open the box and find a massive cache of supplies!}");
-                                    state.player.inventory.push({ templateId: '♥', name: 'Healing Potion', type: 'consumable', quantity: 3, tile: '♥', effect: window.ITEM_DATA['♥'].effect, isEquipped: false });
+                                } else if (state.player.inventory.length < invCap) {
+                                    const template = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['♥'] : null;
+                                    state.player.inventory.push({ 
+                                        templateId: '♥', 
+                                        name: 'Healing Potion', 
+                                        type: 'consumable', 
+                                        quantity: 3, 
+                                        tile: '♥', 
+                                        effect: template ? template.effect : null, 
+                                        isEquipped: false 
+                                    });
+                                    logMessage("{green:You open the box and find a massive cache of supplies!}");
                                 } else {
                                     logMessage("{red:You open the box, but your inventory is full! The potions spill onto the ground.}");
                                 }
@@ -215,7 +260,9 @@ window.EVENT_DATA = {
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#facc15', 20);
                                 
-                                const loot = typeof generateMagicItem === 'function' ? generateMagicItem(5) : { name: 'Smuggler Blade', type: 'weapon', quantity: 1, damage: 8, tile: '🗡️', isEquipped: false };
+                                // 🚨 BUG FIX: Ensure the hardcoded fallback possesses all required Engine components!
+                                const fallbackWeapon = { name: 'Smuggler Blade', type: 'weapon', quantity: 1, damage: 8, tile: '🗡️', isEquipped: false, tags: ['blade'], statBonuses: {} };
+                                const loot = typeof generateMagicItem === 'function' ? generateMagicItem(5) : fallbackWeapon;
                                 
                                 if (state.player.inventory.length < invCap) {
                                     state.player.inventory.push(loot);
@@ -288,15 +335,15 @@ window.EVENT_DATA = {
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                             const yieldAmt = 3 + Math.floor(Math.random() * 3);
                             
-                            // Give Iron Ore
-                            const ironStack = state.player.inventory.find(i => i.name === 'Iron Ore' && !i.isEquipped);
+                            // Give Iron Ore safely merging stacks
+                            const ironStack = state.player.inventory.find(i => i && i.name === 'Iron Ore' && !i.isEquipped);
                             if (ironStack) ironStack.quantity += yieldAmt;
                             else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '•', name: 'Iron Ore', type: 'junk', quantity: yieldAmt, tile: '•', isEquipped: false });
                             
                             // 30% chance for a Star-Metal Core
                             if (Math.random() < 0.30) {
                                 logMessage("{purple:You found the Titan's power core! (Star-Metal Ore)}");
-                                const starStack = state.player.inventory.find(i => i.name === 'Star-Metal Ore' && !i.isEquipped);
+                                const starStack = state.player.inventory.find(i => i && i.name === 'Star-Metal Ore' && !i.isEquipped);
                                 if (starStack) starStack.quantity += 1;
                                 else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '☄️', name: 'Star-Metal Ore', type: 'junk', quantity: 1, tile: '☄️', isEquipped: false });
                             }
@@ -349,10 +396,16 @@ window.EVENT_DATA = {
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
 
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
-                            if (state.player.inventory.length < invCap) {
+                            
+                            // 🚨 BUG FIX & ECONOMY WIN: Merge into existing stacks safely!
+                            const existing = state.player.inventory.find(i => i && i.name === 'Void Astrolabe' && !i.isEquipped);
+                            if (existing) {
+                                existing.quantity++;
+                                logMessage(`{purple:You received a Void Astrolabe!}`);
+                            } else if (state.player.inventory.length < invCap) {
                                 state.player.inventory.push({
                                     templateId: '🧭v', name: 'Void Astrolabe', type: 'consumable', quantity: 1, tile: '🧭',
-                                    description: "Tunes the leylines to a parallel dimension.", effect: window.ITEM_DATA ? window.ITEM_DATA['🧭v'].effect : null
+                                    description: "Tunes the leylines to a parallel dimension.", effect: window.ITEM_DATA ? window.ITEM_DATA['🧭v'].effect : null, isEquipped: false
                                 });
                                 logMessage(`{purple:You received a Void Astrolabe!}`);
                             } else {
@@ -372,10 +425,11 @@ window.EVENT_DATA = {
                             
                             // Spawn guards
                             const spawnSpots = [[-1, 0], [1, 0]];
+                            const enemyData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['b'] : { name: 'Bandit', maxHealth: 10, attack: 2, defense: 1, xp: 20 }; // Bandits acting as guards
+                            
                             for (let i = 0; i < 2; i++) {
                                 const ex = ctx.x + spawnSpots[i][0];
                                 const ey = ctx.y + spawnSpots[i][1];
-                                const enemyData = window.ENEMY_DATA['b']; // Bandits acting as guards
                                 const enemyId = `overworld:${ex},${-ey}`;
                                 const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyData, ex, ey) : enemyData;
                                 state.sharedEnemies[enemyId] = { ...scaledStats, tile: 'b', x: ex, y: ey, name: "Caravan Guard", spawnTime: Date.now() };
@@ -441,6 +495,7 @@ window.EVENT_DATA = {
 window.EventManager = {
     activeEvent: null,
     activeContext: null,
+    isProcessingChoice: false, // 🚨 MUTEX LOCK
 
     startEvent: function(eventId, x, y) {
         const eventData = window.EVENT_DATA[eventId];
@@ -483,7 +538,9 @@ window.EventManager = {
             // UX WIN: Show the requirement text inside the button if disabled!
             let btnText = formatMenuText(choice.text);
             if (!meetsReq && choice.reqHint) {
-                btnText += ` <span class="text-[10px] uppercase tracking-widest bg-black bg-opacity-40 px-1 rounded shadow-inner border border-gray-700 ml-1">(${choice.reqHint})</span>`;
+                // SECURITY WIN: Escape the hint text as well
+                const safeHint = typeof escapeHtml === 'function' ? escapeHtml(choice.reqHint) : choice.reqHint;
+                btnText += ` <span class="text-[10px] uppercase tracking-widest bg-black bg-opacity-40 px-1 rounded shadow-inner border border-gray-700 ml-1">(${safeHint})</span>`;
             }
 
             const btnClass = meetsReq ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-800 active:border-b-0 active:mt-1' : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-75 border-gray-700';
@@ -512,16 +569,25 @@ window.EventManager = {
     },
 
     executeChoice: function(choice) {
-        // Execute dynamic code modifications
-        if (choice.action) {
-            choice.action(gameState, this.activeContext);
-        }
+        // 🚨 MUTEX LOCK: Prevent players from double-clicking event buttons!
+        if (this.isProcessingChoice) return;
+        this.isProcessingChoice = true;
 
-        // Navigate the tree
-        if (choice.nextNode) {
-            this.renderNode(choice.nextNode);
-        } else {
-            this.endEvent();
+        try {
+            // Execute dynamic code modifications
+            if (choice.action) {
+                choice.action(gameState, this.activeContext);
+            }
+
+            // Navigate the tree
+            if (choice.nextNode) {
+                this.renderNode(choice.nextNode);
+            } else {
+                this.endEvent();
+            }
+        } finally {
+            // Ensure the lock is always released, even if the action function throws an error!
+            this.isProcessingChoice = false;
         }
     },
 
