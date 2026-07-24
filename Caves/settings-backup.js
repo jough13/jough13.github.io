@@ -8,6 +8,7 @@ const BACKUP_SALT = "kEsMaI_v1_S3cR3t_s@lt"; // Change this to something random!
 
 // Centralized Subcollection definitions.
 const SUBCOLLECTIONS_TO_BACKUP = ['map_data'];
+const MAX_BATCH_SIZE = 450; // Firestore limit is 500. 450 provides a safe buffer.
 
 // Concurrency lock to prevent mashing buttons and causing DB race conditions
 let isBackupOperationRunning = false;
@@ -38,49 +39,58 @@ function _hashStringSafe(str, seed = 0) {
 }
 
 function generateStrictSaveSignature(data) {
+    // 🚨 PERFORMANCE WIN: O(N) Array joins bypass V8 string reallocation overhead
     let invStr = 'empty';
     if (data.inventory && Array.isArray(data.inventory) && data.inventory.length > 0) {
-        invStr = '';
+        const invParts = [];
         for (let i = 0; i < data.inventory.length; i++) {
             const item = data.inventory[i];
             if (!item) continue; 
             
+            const name = item.name || 'u';
             const rar = item._rarity || 'n';
-            const qty = Number(item.quantity) || 1;
+            const qty = item.quantity !== undefined ? Number(item.quantity) : 1;
             const dmg = Number(item.damage) || 0;
             const def = Number(item.defense) || 0;
-            invStr += `${item.name}:${qty}:${rar}:${dmg}:${def}|`;
+            invParts.push(`${name}:${qty}:${rar}:${dmg}:${def}`);
         }
+        if (invParts.length > 0) invStr = invParts.join('|');
     }
     
     let bankStr = 'empty';
     if (data.bank && Array.isArray(data.bank) && data.bank.length > 0) {
-        bankStr = '';
+        const bankParts = [];
         for (let i = 0; i < data.bank.length; i++) {
             const item = data.bank[i];
             if (!item) continue;
             
+            const name = item.name || 'u';
             const rar = item._rarity || 'n';
-            const qty = Number(item.quantity) || 1;
+            const qty = item.quantity !== undefined ? Number(item.quantity) : 1;
             const dmg = Number(item.damage) || 0;
             const def = Number(item.defense) || 0;
-            bankStr += `${item.name}:${qty}:${rar}:${dmg}:${def}|`;
+            bankParts.push(`${name}:${qty}:${rar}:${dmg}:${def}`);
         }
+        if (bankParts.length > 0) bankStr = bankParts.join('|');
     }
     
-    const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.maxHealth}_${invStr}_${bankStr}_${data.background}_${BACKUP_SALT}`;
+    // 🚨 ROBUSTNESS WIN: Safe falsy fallbacks prevent "undefined" string literal injection
+    const bg = data.background || 'none';
+    const stringToHash = `${data.xp || 0}_${data.level || 1}_${data.coins || 0}_${data.maxHealth || 10}_${invStr}_${bankStr}_${bg}_${BACKUP_SALT}`;
     return _hashStringSafe(stringToHash);
 }
 
 function generateSaveSignature(data) {
     const invLen = (data.inventory && Array.isArray(data.inventory)) ? data.inventory.length : 0;
     const bankLen = (data.bank && Array.isArray(data.bank)) ? data.bank.length : 0;
-    const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.maxHealth}_${invLen}_${bankLen}_${data.background}_${BACKUP_SALT}`;
+    const bg = data.background || 'none';
+    const stringToHash = `${data.xp || 0}_${data.level || 1}_${data.coins || 0}_${data.maxHealth || 10}_${invLen}_${bankLen}_${bg}_${BACKUP_SALT}`;
     return _hashStringSafe(stringToHash);
 }
 
 function generateLegacySaveSignature(data) {
-    const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.background}_${BACKUP_SALT}`;
+    const bg = data.background || 'none';
+    const stringToHash = `${data.xp || 0}_${data.level || 1}_${data.coins || 0}_${bg}_${BACKUP_SALT}`;
     return _hashStringSafe(stringToHash);
 }
 
@@ -161,8 +171,8 @@ async function createCloudBackup(slotId = 'latest') {
                         batch.set(backupMapRef, doc.data());
                         operationCount++;
                         
-                        // 🚨 FIRESTORE LIMIT: Batches max out at 500 writes. We safely flush at 450.
-                        if (operationCount >= 450) {
+                        // 🚨 FIRESTORE LIMIT BATCHING
+                        if (operationCount >= MAX_BATCH_SIZE) {
                             await batch.commit();
                             batch = db.batch();
                             operationCount = 0;
@@ -275,13 +285,6 @@ async function restoreCloudBackup(slotId = 'latest') {
             return; 
         }
 
-        // Anti-Cheat Logic Flaw (Save File Lockout)
-        // We removed the faulty comparison against `currentCoins` and `currentStatPoints` here.
-        // A player could have legally spent all their gold or spent stat points *after* backing up, 
-        // which would cause the engine to falsely flag and block the legitimate restore! 
-        // The cryptographic signature hash checked above is the ultimate source of truth to ensure 
-        // the save data was not tampered with externally.
-        
         // 2. Dynamic Capacity Check! (Anti-JSON Bombing)
         // We calculate what their capacity *should* be based on the incoming save's talents/gear, 
         // with an absolute hardcap of 50 to prevent JSON bombing.
@@ -319,7 +322,7 @@ async function restoreCloudBackup(slotId = 'latest') {
                         delBatch.delete(doc.ref);
                         delOpCount++;
                         
-                        if (delOpCount >= 450) {
+                        if (delOpCount >= MAX_BATCH_SIZE) {
                             await delBatch.commit();
                             delBatch = db.batch();
                             delOpCount = 0;
@@ -341,7 +344,7 @@ async function restoreCloudBackup(slotId = 'latest') {
                         batch.set(liveMapRef, doc.data());
                         operationCount++;
                         
-                        if (operationCount >= 450) {
+                        if (operationCount >= MAX_BATCH_SIZE) {
                             await batch.commit();
                             batch = db.batch();
                             operationCount = 0;
@@ -462,9 +465,10 @@ async function updateBackupUI(slotId = 'latest') {
             const hoursOld = (now - timestamp) / (1000 * 60 * 60);
             
             let relativeStr = "";
+            // 🚨 BUG FIX: Fix minute calculation gap logic
             if (hoursOld < 0.016) relativeStr = "Just now";
             else if (hoursOld < 1) {
-                const mins = Math.max(1, Math.floor(hoursOld * 60));
+                const mins = Math.max(1, Math.round(hoursOld * 60));
                 relativeStr = `${mins} minute${mins !== 1 ? 's' : ''} ago`;
             } else if (hoursOld < 24) {
                 const hrs = Math.floor(hoursOld);
@@ -564,6 +568,8 @@ window.exportTimelineToClipboard = function() {
 };
 
 window.importTimelineFromClipboard = async function() {
+    // 🚨 ROBUSTNESS WIN: Added Mutex Lock to the import process!
+    if (isBackupOperationRunning) return;
     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
     
     const inputString = prompt("Paste your Timeline Code (begins with AKASHIC_SAVE||):");
@@ -573,6 +579,18 @@ window.importTimelineFromClipboard = async function() {
     }
 
     const base64String = inputString.split('||')[1];
+
+    isBackupOperationRunning = true;
+
+    // Overlay to completely block the user from navigating away and breaking the restore process
+    const blocker = document.createElement('div');
+    blocker.id = 'restoreBlocker';
+    blocker.className = 'fixed inset-0 z-[999999] cursor-wait bg-black bg-opacity-70 flex flex-col items-center justify-center backdrop-blur-sm';
+    blocker.innerHTML = `
+        <div class="text-purple-400 font-bold text-3xl animate-pulse font-mono tracking-widest" style="text-shadow: 0 0 20px #a855f7;">REWEAVING TIMELINE...</div>
+        <div class="text-red-400 font-bold text-sm mt-4 tracking-widest">⚠️ DO NOT CLOSE THE BROWSER ⚠️</div>
+    `;
+    document.body.appendChild(blocker);
 
     try {
         // 1. Decode Base64 to JSON safely
@@ -597,6 +615,32 @@ window.importTimelineFromClipboard = async function() {
         if (typeof AudioSystem !== 'undefined') AudioSystem.playTimelineShift();
 
         delete importedData.signature;
+
+        // 🚨 BUG FIX WIN: Subcollection Purge
+        // Because the clipboard export inherently drops the map arrays to save string space, 
+        // if we import it, the new character will accidentally inherit the *previous* character's 
+        // live explored map from Firestore! We must securely purge it so they start fresh.
+        if (typeof db !== 'undefined' && playerRef) {
+            for (const collectionName of SUBCOLLECTIONS_TO_BACKUP) {
+                const liveMapSnap = await playerRef.collection(collectionName).get();
+                if (!liveMapSnap.empty) {
+                    let delBatch = db.batch();
+                    let delOpCount = 0;
+                    
+                    for (const doc of liveMapSnap.docs) {
+                        delBatch.delete(doc.ref);
+                        delOpCount++;
+                        
+                        if (delOpCount >= MAX_BATCH_SIZE) {
+                            await delBatch.commit();
+                            delBatch = db.batch();
+                            delOpCount = 0;
+                        }
+                    }
+                    if (delOpCount > 0) await delBatch.commit();
+                }
+            }
+        }
 
         // Deep Clean local state
         gameState.player.inventory = [];
@@ -634,6 +678,10 @@ window.importTimelineFromClipboard = async function() {
         console.error("Import Decode Failed:", e);
         logMessage("{red:Failed to decode the timeline string.} The format is invalid or corrupted.");
         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+    } finally {
+        const existingBlocker = document.getElementById('restoreBlocker');
+        if (existingBlocker) existingBlocker.remove();
+        isBackupOperationRunning = false;
     }
 };
 
