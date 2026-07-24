@@ -110,7 +110,8 @@ function handleCraftItem(recipeName, requestBatch = false) {
             return;
         }
 
-        const isStackable = ['junk', 'consumable', 'ammo', 'ingredient', 'trade', 'tool'].includes(itemTemplate.type);
+        // 🚨 ROBUSTNESS WIN: Use the universal stackable helper to prevent drift between systems
+        const isStackable = window.isStackableItem ? window.isStackableItem(itemTemplate.type) : ['junk', 'consumable', 'ammo', 'ingredient', 'trade', 'tool'].includes(itemTemplate.type);
         
         // 🚨 GHOST GUARD: Ensure item exists before checking item.name
         const existingStack = player.inventory.find(item => item && item.name === itemTemplate.name && !item.isEquipped);
@@ -208,68 +209,29 @@ function handleCraftItem(recipeName, requestBatch = false) {
             gameState.mapDirty = true;
         };
 
-        for (let i = 0; i < batchSize; i++) {
-            let isMasterwork = false;
-            let craftYield = recipe.yield || 1; 
+        // 🚀 PERFORMANCE WIN: Fast-Path Bulk Crafting!
+        // If the item cannot proc a variant (e.g. Ammo, Tools), skip the massive loop 
+        // and do the batch in one single O(1) operation!
+        const canProcVariant = isCooking || itemTemplate.type === 'weapon' || itemTemplate.type === 'armor';
 
-            // 🚨 PERFORMANCE & BUG FIX WIN: Deep clone the template safely
-            let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(itemTemplate) : JSON.parse(JSON.stringify(itemTemplate));
+        if (!canProcVariant && batchSize > 1) {
+            let craftYield = recipe.yield || 1;
+            let totalYield = craftYield * batchSize;
             
-            // Ensure templateId and tile are explicitly set
+            let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(itemTemplate) : JSON.parse(JSON.stringify(itemTemplate));
             newItem.templateId = outputItemKey;
             newItem.tile = itemTemplate.tile || outputItemKey || '?';
-            newItem.quantity = craftYield;
+            newItem.quantity = totalYield;
             newItem.isEquipped = false;
-            
-            // Restore functions and fix tags array!
             newItem.effect = itemTemplate.effect;
             newItem.onHit = itemTemplate.onHit;
             newItem.tags = itemTemplate.tags ? [...itemTemplate.tags] : null;
-
-            // --- LORE & BUG FIX WIN: Accurate Masterwork Scaling ---
-            if (!isCooking && (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') && Math.random() < masterworkChance) {
-                isMasterwork = true;
-                newItem.quantity = 1; 
-                
-                // 🐛 BUG FIX: Properly bump rarity without downgrading natively epic/legendary items!
-                const baseRarity = itemTemplate._rarity || 'uncommon';
-                if (baseRarity === 'uncommon') newItem._rarity = 'rare';
-                else if (baseRarity === 'rare') newItem._rarity = 'epic';
-                else newItem._rarity = 'legendary'; 
-                
-                const mwPrefixes = ["Flawless", "Peerless", "Exquisite", "Masterwork", "Divine"];
-                const chosenPrefix = mwPrefixes[Math.floor(Math.random() * mwPrefixes.length)];
-                
-                newItem.name = `${chosenPrefix} ${itemTemplate.name}`;
-                newItem.description = (newItem.description || "") + `\n\n{purple:Forged with exceptional skill by ${player.name || 'an Artisan'}.}`;
-
-                if (!newItem.statBonuses) newItem.statBonuses = {};
-                const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
-                
-                const randomStat1 = stats[Math.floor(Math.random() * stats.length)];
-                const randomStat2 = stats[Math.floor(Math.random() * stats.length)];
-                newItem.statBonuses[randomStat1] = (newItem.statBonuses[randomStat1] || 0) + 1;
-                newItem.statBonuses[randomStat2] = (newItem.statBonuses[randomStat2] || 0) + 1;
-
-                if (newItem.type === 'weapon') newItem.damage = (newItem.damage || 0) + 2;
-                if (newItem.type === 'armor') newItem.defense = (newItem.defense || 0) + 2;
-            }
-
-            // LORE WIN: Perfect Culinary Batches!
-            if (isCooking && Math.random() < perfectChance) {
-                culinaryCrits++;
-                newItem.quantity += 1; 
-                newItem.name = `Perfect ${itemTemplate.name}`; 
-            }
-
-            outputTracker[newItem.name] = (outputTracker[newItem.name] || 0) + newItem.quantity;
-
-            // 🚨 GHOST GUARD
+            
+            outputTracker[newItem.name] = (outputTracker[newItem.name] || 0) + totalYield;
+            
             const curStack = player.inventory.find(item => item && item.name === newItem.name && !item.isEquipped);
-
-            // Don't merge Masterworks into stacks!
-            if (curStack && isStackable && !isMasterwork && !newItem.name.includes('Perfect')) {
-                curStack.quantity += newItem.quantity; 
+            if (curStack && isStackable) {
+                curStack.quantity += totalYield;
             } else {
                 const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
                 if (player.inventory.length < invCap) {
@@ -278,8 +240,87 @@ function handleCraftItem(recipeName, requestBatch = false) {
                     const safeName = typeof escapeHtml === 'function' ? escapeHtml(newItem.name) : newItem.name;
                     logMessage(`{red:Your pack is full! The ${safeName} drops to the floor.}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
-                    
                     dropCraftedItemSafely(newItem.tile);
+                }
+            }
+        } 
+        else {
+            // NORMAL LOOP: For items that must calculate a masterwork/perfect chance on every single craft
+            for (let i = 0; i < batchSize; i++) {
+                let isMasterwork = false;
+                let craftYield = recipe.yield || 1; 
+
+                // 🚨 PERFORMANCE & BUG FIX WIN: Deep clone the template safely
+                let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(itemTemplate) : JSON.parse(JSON.stringify(itemTemplate));
+                
+                // Ensure templateId and tile are explicitly set
+                newItem.templateId = outputItemKey;
+                newItem.tile = itemTemplate.tile || outputItemKey || '?';
+                newItem.quantity = craftYield;
+                newItem.isEquipped = false;
+                
+                // Restore functions and fix tags array!
+                newItem.effect = itemTemplate.effect;
+                newItem.onHit = itemTemplate.onHit;
+                newItem.tags = itemTemplate.tags ? [...itemTemplate.tags] : null;
+
+                // --- LORE & BUG FIX WIN: Accurate Masterwork Scaling ---
+                if (!isCooking && (itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') && Math.random() < masterworkChance) {
+                    isMasterwork = true;
+                    newItem.quantity = 1; 
+                    
+                    // 🐛 BUG FIX: Properly bump rarity without downgrading natively epic/legendary items!
+                    const baseRarity = itemTemplate._rarity || 'uncommon';
+                    if (baseRarity === 'uncommon') newItem._rarity = 'rare';
+                    else if (baseRarity === 'rare') newItem._rarity = 'epic';
+                    else newItem._rarity = 'legendary'; 
+                    
+                    const mwPrefixes = ["Flawless", "Peerless", "Exquisite", "Masterwork", "Divine"];
+                    const chosenPrefix = mwPrefixes[Math.floor(Math.random() * mwPrefixes.length)];
+                    
+                    newItem.name = `${chosenPrefix} ${itemTemplate.name}`;
+                    newItem.description = (newItem.description || "") + `\n\n{purple:Forged with exceptional skill by ${player.name || 'an Artisan'}.}`;
+
+                    if (!newItem.statBonuses) newItem.statBonuses = {};
+                    const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
+                    
+                    const randomStat1 = stats[Math.floor(Math.random() * stats.length)];
+                    const randomStat2 = stats[Math.floor(Math.random() * stats.length)];
+                    
+                    // 🚨 BUG FIX WIN: Number coercion prevents "51" string concatenation bug!
+                    newItem.statBonuses[randomStat1] = (Number(newItem.statBonuses[randomStat1]) || 0) + 1;
+                    newItem.statBonuses[randomStat2] = (Number(newItem.statBonuses[randomStat2]) || 0) + 1;
+
+                    if (newItem.type === 'weapon') newItem.damage = (Number(newItem.damage) || 0) + 2;
+                    if (newItem.type === 'armor') newItem.defense = (Number(newItem.defense) || 0) + 2;
+                }
+
+                // LORE WIN: Perfect Culinary Batches!
+                if (isCooking && Math.random() < perfectChance) {
+                    culinaryCrits++;
+                    newItem.quantity += 1; 
+                    newItem.name = `Perfect ${itemTemplate.name}`; 
+                }
+
+                outputTracker[newItem.name] = (outputTracker[newItem.name] || 0) + newItem.quantity;
+
+                // 🚨 GHOST GUARD
+                const curStack = player.inventory.find(item => item && item.name === newItem.name && !item.isEquipped);
+
+                // Don't merge Masterworks into stacks!
+                if (curStack && isStackable && !isMasterwork && !newItem.name.includes('Perfect')) {
+                    curStack.quantity += newItem.quantity; 
+                } else {
+                    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+                    if (player.inventory.length < invCap) {
+                        player.inventory.push(newItem);
+                    } else {
+                        const safeName = typeof escapeHtml === 'function' ? escapeHtml(newItem.name) : newItem.name;
+                        logMessage(`{red:Your pack is full! The ${safeName} drops to the floor.}`);
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                        
+                        dropCraftedItemSafely(newItem.tile);
+                    }
                 }
             }
         }
@@ -316,6 +357,11 @@ function handleCraftItem(recipeName, requestBatch = false) {
             const floatColor = hadEpicSuccess ? '#a855f7' : '#4ade80';
             ParticleSystem.createFloatingText(player.x, player.y, floatText, floatColor);
             if (hadEpicSuccess) ParticleSystem.createExplosion(player.x, player.y, '#facc15', 20);
+            
+            // JUICE WIN: Extra beefy explosion for bulk crafting!
+            if (batchSize > 1 && !hadEpicSuccess) {
+                ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 15);
+            }
         }
         
         if (typeof AudioSystem !== 'undefined') {
@@ -397,7 +443,7 @@ function renderCraftingModal() {
     const isCooking = gameState.currentCraftingMode === 'cooking';
     let playerLevel = isCooking ? 1 : (player.craftingLevel || 1);
 
-    // --- UX WIN: Dynamic Title & Live XP Progress Bar! ---
+    // --- Dynamic Title & Live XP Progress Bar! ---
     let titleLore = "Forge weapons, weave armor, and build tools.";
     let xpProgressHtml = '';
     
@@ -432,7 +478,9 @@ function renderCraftingModal() {
     const recipeDataArray = Object.entries(recipeBook).map(([recipeName, recipe]) => {
         const outputItemKey = getCraftItemKey(recipeName);
         const itemTemplate = window.ITEM_DATA[outputItemKey] || {};
-        const isStackable = ['junk', 'consumable', 'ammo', 'ingredient', 'trade', 'tool'].includes(itemTemplate.type);
+        
+        // 🚨 ROBUSTNESS WIN: Rely on universal helper to maintain parity across the engine
+        const isStackable = window.isStackableItem ? window.isStackableItem(itemTemplate.type) : ['junk', 'consumable', 'ammo', 'ingredient', 'trade', 'tool'].includes(itemTemplate.type);
         
         // 🚨 GHOST GUARD
         const existingStack = player.inventory.find(item => item && item.name === itemTemplate.name && !item.isEquipped);
@@ -462,10 +510,13 @@ function renderCraftingModal() {
         let displayTile = outputItemKey || '?';
         let baseDescription = itemTemplate.description || "A crafted item.";
         
+        // 🚨 UX WIN: Safe Alphanumeric Tooltip Regex Strip
         if (typeof formatMenuText === 'function') {
             baseDescription = formatMenuText(baseDescription);
         } else if (typeof stripColorTags === 'function') {
             baseDescription = stripColorTags(baseDescription);
+        } else {
+            baseDescription = baseDescription.replace(/\{[a-zA-Z0-9_-]+:(.*?)\}/ig, '$1');
         }
 
         if (isObscured && gameState.currentCraftingMode === 'workbench') {
