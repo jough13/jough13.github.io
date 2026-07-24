@@ -23,7 +23,7 @@ const firebaseConfig = {
     measurementId: "G-E2QZTWE6N6"
 };
 
-// 🚨 ROBUSTNESS WIN: Firebase CDN Load Failsafe
+// Firebase CDN Load Failsafe
 // If an ad-blocker or strict firewall blocks the Firebase SDK scripts in index.html,
 // the entire game will fatally crash. This intercepts the failure and warns the player gracefully!
 if (typeof firebase === 'undefined') {
@@ -44,7 +44,13 @@ if (typeof firebase === 'undefined') {
                     update: async () => {},
                     delete: async () => {}
                 }) 
-            }) 
+            }),
+            batch: () => ({
+                set: () => {},
+                update: () => {},
+                delete: () => {},
+                commit: async () => Promise.resolve()
+            })
         }), {
             FieldValue: { serverTimestamp: () => Date.now(), delete: () => null }
         }), 
