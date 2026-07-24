@@ -6725,7 +6725,7 @@ const EquilibriumCalculator = ({ radionuclides, theme }) => {
 };
 
 /**
- * @description Updated Radon Concentration Calculator with EPA Context Bar and Occupancy Presets.
+ * @description Radon Concentration Calculator with EPA Context Bar and Occupancy Presets.
  */
 
 const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConcentration, unit, setUnit, equilibriumFactor, setEquilibriumFactor, workingLevel, setWorkingLevel, occupancyFactor, setOccupancyFactor, result, setResult, error, setError }) => {
@@ -6737,7 +6737,7 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
     const PAEC_J_per_m3_in_WL = 2.08e-5;
     const dose_conversion_mrem_per_WLM = 1250; 
 
-    // Sync to Storage (Separate from calculation to avoid loops)
+    // Sync to Storage
     React.useEffect(() => {
         const state = { calcMode, concentration, unit, equilibriumFactor, workingLevel, occupancyFactor };
         Object.entries(state).forEach(([k, v]) => localStorage.setItem(`radon_${k}`, v));
@@ -6754,19 +6754,26 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
             
             let final_pCi_L = 0, final_WL = 0, final_EF = 0;
             
-            // FIX 1: Decoupled calculation to prevent recursive state loops. 
-            // We calculate local values based on the active mode but do NOT sync them back to input state here.
+            // Branch logic based on active mode
             if (calcMode === 'doseFromConc' || calcMode === 'findWL') {
                 if (isNaN(conc_val) || isNaN(ef_val)) { setResult(null); return; }
                 final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L;
                 final_EF = ef_val;
                 final_WL = (final_pCi_L / 100) * final_EF;
+
+            } else if (calcMode === 'doseFromWL') {
+                if (isNaN(wl_val)) { setResult(null); return; }
+                final_WL = wl_val;
+                final_EF = isNaN(ef_val) ? 0.4 : ef_val; // Default to 0.4 if EF is missing
+                final_pCi_L = (final_EF > 0) ? (final_WL * 100) / final_EF : 0;
+
             } else if (calcMode === 'findConc') {
                 if (isNaN(wl_val) || isNaN(ef_val)) { setResult(null); return; }
                 if (ef_val <= 0) throw new Error('Equilibrium Factor must be > 0.');
                 final_WL = wl_val;
                 final_EF = ef_val;
                 final_pCi_L = (final_WL * 100) / final_EF;
+
             } else if (calcMode === 'findEF') {
                 if (isNaN(wl_val) || isNaN(conc_val)) { setResult(null); return; }
                 final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L;
@@ -6803,7 +6810,7 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
                 id: Date.now(),
                 type: 'Radon Dose',
                 icon: ICONS.radon,
-                inputs: `${result.pCi_L} pCi/L, F=${result.equilibriumFactor}`,
+                inputs: calcMode === 'doseFromWL' ? `${result.workingLevels} WL` : `${result.pCi_L} pCi/L, F=${result.equilibriumFactor}`,
                 result: `${result.annualDose.value} ${result.annualDose.unit}/yr`,
                 view: VIEWS.RADON
             });
@@ -6811,7 +6818,6 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
         }
     };
     
-    // --- VISUAL CONTEXT LOGIC (EPA Action Level) ---
     const getSafetyContext = (pCiL_str) => {
         const val = safeParseFloat(pCiL_str);
         if (val < 2.0) return { color: 'bg-green-500', width: '25%', label: 'Background (< 2.0)', advice: 'No action usually needed.' };
@@ -6825,54 +6831,72 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
                  : calcMode === 'findEF' ? { label: 'Calculated Equilibrium Factor', value: result.equilibriumFactor, unit: 'F' }
                  : { label: 'Estimated Annual Dose', value: result.annualDose.value, unit: result.annualDose.unit, subtext: `(${result.wlm_year} WLM/year)` }) : null;
     
-    const safety = result ? getSafetyContext(result.pCi_L) : null;
+    const safety = result && result.pCi_L > 0 ? getSafetyContext(result.pCi_L) : null;
+
+    // UI disable logic
+    const disableConc = calcMode === 'findConc' || calcMode === 'doseFromWL';
+    const disableWL = calcMode === 'findWL' || calcMode === 'doseFromConc';
+    const disableEF = calcMode === 'findEF'; 
     
     return (
         <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
-                {['doseFromConc', 'findWL', 'findConc', 'findEF'].map(mode => (
-                    <button key={mode} onClick={() => setCalcMode(mode)} className={`p-2 rounded-md text-[10px] sm:text-xs font-bold uppercase transition-colors ${calcMode === mode ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>
-                        {mode === 'doseFromConc' ? 'Dose' : mode === 'findWL' ? 'Find WL' : mode === 'findConc' ? 'Find Conc' : 'Find F'}
-                    </button>
-                ))}
+            <ContextualNote type="info">
+                <strong>Math Refresher:</strong> 1 Working Level (WL) is defined as 100 pCi/L of Radon-222 in <strong>100% secular equilibrium (F=1.0)</strong>. Therefore, at a typical indoor equilibrium of 50% (F=0.5), it takes <strong>200 pCi/L</strong> to equal 1 WL.
+            </ContextualNote>
+
+            <div className="mb-4">
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Calculation Mode</label>
+                <select 
+                    value={calcMode} 
+                    onChange={e => setCalcMode(e.target.value)} 
+                    className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 font-bold text-sky-700 dark:text-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                >
+                    <option value="doseFromConc">Calculate Annual Dose (from Concentration)</option>
+                    <option value="doseFromWL">Calculate Annual Dose (from Working Level)</option>
+                    <option value="findWL">Find Working Level (WL)</option>
+                    <option value="findConc">Find Concentration (pCi/L or Bq/m³)</option>
+                    <option value="findEF">Find Equilibrium Factor (F)</option>
+                </select>
             </div>
             
-            <div className="space-y-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800/50 shadow-sm">
+            <div className="space-y-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800/50 shadow-sm animate-fade-in">
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Radon Concentration</label>
+                    <label className={`block text-xs font-bold uppercase mb-1 ${disableConc ? 'text-slate-400' : 'text-slate-500'}`}>Radon Concentration</label>
                     <div className="flex">
-                        <input type="number" inputMode="decimal" value={concentration} onChange={e => setConcentration(e.target.value)} disabled={calcMode === 'findConc'} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                        <select value={unit} onChange={e => setUnit(e.target.value)} disabled={calcMode === 'findConc'} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 border border-slate-300 dark:border-slate-600 text-xs font-bold"><option>pCi/L</option><option>Bq/m³</option></select>
+                        <input type="number" inputMode="decimal" value={concentration} onChange={e => setConcentration(e.target.value)} disabled={disableConc} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:opacity-50" />
+                        <select value={unit} onChange={e => setUnit(e.target.value)} disabled={disableConc} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 border border-slate-300 dark:border-slate-600 text-xs font-bold disabled:opacity-50"><option>pCi/L</option><option>Bq/m³</option></select>
                     </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <Tooltip text="Fraction of progeny in equilibrium (0.4 is standard for homes).">
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1 cursor-help underline decoration-dotted">Equil. Factor (F)</label>
+                        <Tooltip text="Fraction of progeny in equilibrium (0.4-0.5 is standard for homes).">
+                            <label className={`block text-xs font-bold uppercase mb-1 cursor-help underline decoration-dotted ${disableEF ? 'text-slate-400' : 'text-slate-500'}`}>Equil. Factor (F)</label>
                         </Tooltip>
-                        <input type="number" inputMode="decimal" value={equilibriumFactor} onChange={e => setEquilibriumFactor(e.target.value)} disabled={calcMode === 'findEF'} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        <input type="number" inputMode="decimal" value={equilibriumFactor} onChange={e => setEquilibriumFactor(e.target.value)} disabled={disableEF} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:opacity-50" />
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Working Level (WL)</label>
-                        <input type="number" inputMode="decimal" value={workingLevel} onChange={e => setWorkingLevel(e.target.value)} disabled={calcMode === 'findWL' || calcMode === 'doseFromConc'} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        <label className={`block text-xs font-bold uppercase mb-1 ${disableWL ? 'text-slate-400' : 'text-slate-500'}`}>Working Level (WL)</label>
+                        <input type="number" inputMode="decimal" value={workingLevel} onChange={e => setWorkingLevel(e.target.value)} disabled={disableWL} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 disabled:opacity-50" />
                     </div>
                 </div>
                 
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-                    <div className="flex justify-between items-end mb-1">
-                        <label className="block text-xs font-bold text-slate-500 uppercase">Occupancy Factor</label>
-                        <div className="flex gap-1">
-                            <button onClick={() => setOccupancyFactor('0.75')} className="px-2 py-0.5 text-[10px] bg-slate-200 dark:bg-slate-600 rounded font-bold transition">Home (75%)</button>
-                            <button onClick={() => setOccupancyFactor('0.228')} className="px-2 py-0.5 text-[10px] bg-slate-200 dark:bg-slate-600 rounded font-bold transition">Work</button>
+                {(calcMode === 'doseFromConc' || calcMode === 'doseFromWL') && (
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700 animate-fade-in">
+                        <div className="flex justify-between items-end mb-1">
+                            <label className="block text-xs font-bold text-slate-500 uppercase">Occupancy Factor</label>
+                            <div className="flex gap-1">
+                                <button onClick={() => setOccupancyFactor('0.75')} className="px-2 py-0.5 text-[10px] bg-slate-200 dark:bg-slate-600 rounded font-bold hover:bg-slate-300 transition">Home (75%)</button>
+                                <button onClick={() => setOccupancyFactor('0.228')} className="px-2 py-0.5 text-[10px] bg-slate-200 dark:bg-slate-600 rounded font-bold hover:bg-slate-300 transition">Work</button>
+                            </div>
                         </div>
+                        <input type="number" inputMode="decimal" value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                     </div>
-                    <input type="number" inputMode="decimal" value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                </div>
+                )}
             </div>
             
             {result && (
                 <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in shadow-inner border border-slate-200 dark:border-slate-600">
-                    <div className="text-center pb-4 mb-4 border-b border-slate-300 dark:border-slate-600">
+                    <div className={`text-center pb-4 mb-4 ${safety ? 'border-b border-slate-300 dark:border-slate-600' : ''}`}>
                         <div className="flex justify-between items-center -mt-2">
                             <div className="w-8"></div>
                             <p className="font-bold text-xs uppercase text-slate-500 dark:text-slate-400">{hero.label}</p>
@@ -6882,24 +6906,26 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
                         {hero.subtext && <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{hero.subtext}</p>}
                     </div>
                     
-                    <div className="mb-4 px-2">
-                        <div className="flex justify-between text-[10px] font-black uppercase mb-1 text-slate-400">
-                            <span>EPA Risk Context</span>
-                            <span>{safety.label}</span>
+                    {safety && (
+                        <div className="px-2">
+                            <div className="flex justify-between text-[10px] font-black uppercase mb-1 text-slate-400">
+                                <span>EPA Risk Context (from pCi/L)</span>
+                                <span>{safety.label}</span>
+                            </div>
+                            <div className="h-3 w-full bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden relative border border-slate-300 dark:border-slate-500 shadow-inner">
+                                <div className={`h-full ${safety.color} transition-all duration-700`} style={{ width: safety.width }}></div>
+                                <div className="absolute top-0 bottom-0 w-0.5 bg-black/30 dark:bg-white/40" style={{ left: '50%' }}></div>
+                            </div>
+                            <p className="text-center text-[11px] font-bold text-slate-500 dark:text-slate-300 mt-2 italic">{safety.advice}</p>
                         </div>
-                        <div className="h-3 w-full bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden relative border border-slate-300 dark:border-slate-500 shadow-inner">
-                            <div className={`h-full ${safety.color} transition-all duration-700`} style={{ width: safety.width }}></div>
-                            <div className="absolute top-0 bottom-0 w-0.5 bg-black/30 dark:bg-white/40" style={{ left: '50%' }}></div>
-                        </div>
-                        <p className="text-center text-[11px] font-bold text-slate-500 dark:text-slate-300 mt-2 italic">{safety.advice}</p>
-                    </div>
+                    )}
                 </div>
             )}
         </div>
     );
 };
 
-// 2. Updated RadonIngrowthCalculator
+// 2. RadonIngrowthCalculator
 const RadonIngrowthCalculator = ({ result, setResult, error, setError, amount, setAmount, unit, setUnit, time, setTime, timeUnit, setTimeUnit }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
