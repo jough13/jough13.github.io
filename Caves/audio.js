@@ -337,12 +337,12 @@ const AudioSystem = {
         // BUG FIX: Prevent log(0) errors in exponentialRampToValueAtTime by enforcing a tiny minimum
         const actualVol = Math.max(0.001, vol * spatial.distanceVol);
 
-        const src = ctx.createBufferSource();
+        let src = ctx.createBufferSource();
         src.buffer = this.noiseBuffer; 
         
         src.playbackRate.value = 0.6 + Math.random() * 0.8;
 
-        const filter = ctx.createBiquadFilter();
+        let filter = ctx.createBiquadFilter();
         filter.type = 'lowpass';
         
         // 🚨 NYQUIST FIX: Guarantee frequency NEVER exceeds sampleRate / 2
@@ -350,7 +350,7 @@ const AudioSystem = {
         const targetFreq = (filterFreq + (Math.random() - 0.5) * 200) * acoustics.filterMult * spatial.distanceFilter;
         filter.frequency.value = Math.min(maxFreq, Math.max(10, targetFreq));
 
-        const gain = ctx.createGain();
+        let gain = ctx.createGain();
         const now = ctx.currentTime + 0.01; // AUDIO QUALITY WIN: Lookahead prevents envelope popping!
 
         // AUDIO QUALITY WIN: Dynamic Envelope Generation
@@ -366,11 +366,16 @@ const AudioSystem = {
         src.start(now);
         src.stop(now + actualDuration + 0.1); 
         
-        // MEMORY LEAK FIX: Browser tabs suspended in the background sometimes fail to fire onended.
-        // We use a timeout as a guaranteed cleanup fallback to unhook the nodes from the graph!
+        // 🚨 MEMORY LEAK FIX & GC HINTS
+        // Explicitly sever the connections and set the variable references to null so the V8
+        // garbage collector can instantly reclaim the massive audio buffers instead of waiting!
         const tail = this._getTailTime(acoustics);
         const cleanup = () => {
-            try { src.disconnect(); filter.disconnect(); gain.disconnect(); } catch(e) {}
+            try { 
+                if (src) { src.disconnect(); src = null; }
+                if (filter) { filter.disconnect(); filter = null; }
+                if (gain) { gain.disconnect(); gain = null; }
+            } catch(e) {}
             this._cleanupRoute(panner);
         };
         src.onended = cleanup;
@@ -388,8 +393,8 @@ const AudioSystem = {
         const actualDuration = duration * acoustics.durationMult;
         const actualVol = Math.max(0.001, vol * spatial.distanceVol);
 
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+        let osc = ctx.createOscillator();
+        let gain = ctx.createGain();
         osc.type = this._getSafeOscType(type);
         
         let finalFreq = freq;
@@ -418,9 +423,13 @@ const AudioSystem = {
         osc.start(now);
         osc.stop(now + actualDuration + 0.1);
         
+        // 🚨 MEMORY LEAK FIX & GC HINTS
         const tail = this._getTailTime(acoustics);
         const cleanup = () => {
-            try { osc.disconnect(); gain.disconnect(); } catch(e) {}
+            try { 
+                if (osc) { osc.disconnect(); osc = null; }
+                if (gain) { gain.disconnect(); gain = null; }
+            } catch(e) {}
             this._cleanupRoute(panner);
         };
         osc.onended = cleanup;
@@ -441,8 +450,8 @@ const AudioSystem = {
         const maxFreq = (ctx.sampleRate / 2) - 1; // NYQUIST FIX
 
         notes.forEach((freq, index) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
+            let osc = ctx.createOscillator();
+            let gain = ctx.createGain();
             
             osc.type = this._getSafeOscType(type);
             
@@ -464,9 +473,13 @@ const AudioSystem = {
             osc.start(now);
             osc.stop(now + actualDuration + 0.1);
             
+            // 🚨 MEMORY LEAK FIX & GC HINTS
             const tail = this._getTailTime(acoustics);
             const cleanup = () => { 
-                try { osc.disconnect(); gain.disconnect(); } catch(e) {}
+                try { 
+                    if (osc) { osc.disconnect(); osc = null; }
+                    if (gain) { gain.disconnect(); gain = null; }
+                } catch(e) {}
                 this._cleanupRoute(panner);
             };
             osc.onended = cleanup;
@@ -483,8 +496,8 @@ const AudioSystem = {
         const acoustics = isUI ? { durationMult: 1.0, filterMult: 1.0, echoDelay: 0, echoFeedback: 0, dampening: 20000 } : this._getAcoustics();
         const maxFreq = (ctx.sampleRate / 2) - 1; // NYQUIST FIX
         
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+        let osc = ctx.createOscillator();
+        let gain = ctx.createGain();
         osc.type = this._getSafeOscType(type);
         
         let totalDuration = notes.length * speed * acoustics.durationMult;
@@ -498,7 +511,12 @@ const AudioSystem = {
                 
                 gain.gain.setValueAtTime(0.0001, noteTime);
                 gain.gain.exponentialRampToValueAtTime(actualVol, noteTime + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + (speed * acoustics.durationMult) - 0.01);
+                
+                // 🚨 BUG FIX WIN: Safe Release Ramping
+                // Ensure the release envelope is strictly scheduled AFTER the attack envelope, 
+                // preventing overlapping Web Audio API timeline exceptions!
+                const releaseTime = Math.max(noteTime + 0.03, noteTime + (speed * acoustics.durationMult) - 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, releaseTime);
             } else {
                 gain.gain.setValueAtTime(0.0001, noteTime);
             }
@@ -512,9 +530,13 @@ const AudioSystem = {
         osc.start(now);
         osc.stop(now + totalDuration + 0.1);
         
+        // 🚨 MEMORY LEAK FIX & GC HINTS
         const tail = this._getTailTime(acoustics);
         const cleanup = () => { 
-            try { osc.disconnect(); gain.disconnect(); } catch(e) {}
+            try { 
+                if (osc) { osc.disconnect(); osc = null; }
+                if (gain) { gain.disconnect(); gain = null; }
+            } catch(e) {}
             this._cleanupRoute(panner);
         };
         osc.onended = cleanup;
@@ -825,23 +847,32 @@ const AudioSystem = {
 
 function forceUnlockAudio() {
     const ctx = AudioSystem.initAudioContext();
-    if (ctx && ctx.state === 'running') {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        gain.gain.value = 0.0001; 
+    if (ctx) {
+        // 🚨 BUG FIX & STABILITY WIN: Safari Suspend Fix
+        // Safari strictly requires `resume()` to be explicitly called inside the user gesture
+        // if the context was created in a suspended state prior to interaction!
+        if (ctx.state === 'suspended') {
+            ctx.resume().catch(()=>{});
+        }
         
-        osc.connect(gain);
-        gain.connect(ctx.destination); 
-        
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.01);
-        
-        document.removeEventListener('click', forceUnlockAudio);
-        document.removeEventListener('touchstart', forceUnlockAudio);
-        document.removeEventListener('touchend', forceUnlockAudio);
-        document.removeEventListener('pointerdown', forceUnlockAudio);
-        document.removeEventListener('keydown', forceUnlockAudio);
-        document.removeEventListener('mouseup', forceUnlockAudio);
+        if (ctx.state === 'running') {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            gain.gain.value = 0.0001; 
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination); 
+            
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.01);
+            
+            document.removeEventListener('click', forceUnlockAudio);
+            document.removeEventListener('touchstart', forceUnlockAudio);
+            document.removeEventListener('touchend', forceUnlockAudio);
+            document.removeEventListener('pointerdown', forceUnlockAudio);
+            document.removeEventListener('keydown', forceUnlockAudio);
+            document.removeEventListener('mouseup', forceUnlockAudio);
+        }
     }
 }
 
