@@ -9,9 +9,6 @@ const worldMapCanvas = document.getElementById('worldMapCanvas');
 const worldMapCtx = worldMapCanvas.getContext('2d', { alpha: false }); // PERFORMANCE WIN: Disable alpha buffer for the main canvas!
 const mapCoordsDisplay = document.getElementById('mapCoords');
 
-// PERFORMANCE WIN: Cache PI math
-const TWO_PI = Math.PI * 2;
-
 // Settings & State
 let currentMapScale = 4; 
 let targetMapScale = 4;
@@ -1095,7 +1092,7 @@ worldMapCanvas.addEventListener('wheel', (e) => {
         targetMapScale /= 1.25; 
     }
     
-    // 🚨 BUG FIX & ROBUSTNESS WIN: Clamp limits to prevent layout collapse
+    // Clamp limits to prevent layout collapse
     targetMapScale = Math.max(0.5, Math.min(32, targetMapScale));
 
     // 3. Shift the camera so the world coordinate stays perfectly pinned under the mouse!
