@@ -17,7 +17,7 @@ window._stashItemKeyCache = window._stashItemKeyCache || {};
 const STASH_TYPE_WEIGHTS = { 
     'weapon': 1, 'armor': 2, 'accessory': 3, 'ammo': 4, 
     'consumable': 5, 'tool': 6, 'spellbook': 7, 'skillbook': 8, 
-    'treasure_map': 9, 'quest': 10, 'trade': 11, 'ingredient': 12, 'junk': 13 
+    'treasure_map': 9, 'quest': 10, 'trade': 11, 'ingredient': 12, 'seed': 13, 'junk': 14 
 };
 
 // 🚨 BUG FIX WIN: Mutex Lock to prevent UI Desync & Index Shifting!
@@ -47,7 +47,8 @@ function getStashItemKey(name) {
 }
 
 // Helper to determine if an item is allowed to merge quantities
-window.isStackableItem = (type) => ['junk', 'consumable', 'trade', 'ingredient', 'ammo'].includes(type);
+// 🚨 BUG FIX: Added 'seed' so Homesteading crops stack properly!
+window.isStackableItem = (type) => ['junk', 'consumable', 'trade', 'ingredient', 'ammo', 'seed'].includes(type);
 
 // PERFORMANCE & BUG FIX WIN: High-speed, robust deep cloning for stash transfers
 // Prevents accidentally copying an item Reference which would cause deleting it from 
@@ -74,7 +75,7 @@ function playStashAudio(item) {
     const itemType = item.type;
     if (['weapon', 'armor', 'tool'].includes(itemType)) {
         AudioSystem.playHit(); // Heavy metallic clank
-    } else if (['consumable', 'ammo', 'ingredient', 'scroll', 'spellbook', 'journal'].includes(itemType)) {
+    } else if (['consumable', 'ammo', 'ingredient', 'scroll', 'spellbook', 'journal', 'seed'].includes(itemType)) {
         AudioSystem.playNoise(0.1, 0.1, 800); // Rustling/paper sound
     } else if (['trade'].includes(itemType)) {
         AudioSystem.playCoin(); // Wealth jingle
@@ -190,6 +191,10 @@ window.handleStashTransfer = function (action, index, amountStr = 'all') {
                     withdrawnItem.inflictChance = t.inflictChance;
                     // BUG FIX: Hydrate tags so weapons function correctly!
                     if (t.tags) withdrawnItem.tags = [...t.tags]; 
+                    
+                    // 🚨 ROBUSTNESS WIN: Prevent string concatenation bugs from corrupted DB saves
+                    if (withdrawnItem.damage !== undefined) withdrawnItem.damage = Number(withdrawnItem.damage) || 0;
+                    if (withdrawnItem.defense !== undefined) withdrawnItem.defense = Number(withdrawnItem.defense) || 0;
                 }
                 
                 player.inventory.push(withdrawnItem); 
@@ -238,6 +243,16 @@ window.depositAllMaterials = function() {
         let itemsMoved = 0;
         let vaultFullAlerted = false;
 
+        // 🚀 PERFORMANCE WIN: O(1) Bulk Stack Lookups
+        // Replaces nested `.find()` iterations. O(N*M) becomes O(N+M)
+        const bankStackMap = new Map();
+        for (let i = 0; i < player.bank.length; i++) {
+            const bItem = player.bank[i];
+            if (bItem && window.isStackableItem(bItem.type)) {
+                bankStackMap.set(bItem.name, bItem);
+            }
+        }
+
         // 🚀 PERFORMANCE WIN: O(N) Array Rebuild instead of loop-splicing
         const remainingInventory = [];
 
@@ -245,13 +260,13 @@ window.depositAllMaterials = function() {
             const item = player.inventory[i];
             if (!item) continue; // 🚨 THE GHOST GUARD
             
-            // Protect equipped items, quest items, and non-materials
-            if (item.isEquipped || item.type === 'quest' || !['junk', 'ingredient', 'trade'].includes(item.type)) {
+            // Protect equipped items, quest items, and non-materials (Added seeds!)
+            if (item.isEquipped || item.type === 'quest' || !['junk', 'ingredient', 'trade', 'seed'].includes(item.type)) {
                 remainingInventory.push(item);
                 continue;
             }
 
-            const existingBankItem = player.bank.find(bankItem => bankItem && bankItem.name === item.name);
+            const existingBankItem = bankStackMap.get(item.name);
 
             if (!existingBankItem && player.bank.length >= window.MAX_STASH_SLOTS) {
                 remainingInventory.push(item); // Leave it in inventory
@@ -265,7 +280,9 @@ window.depositAllMaterials = function() {
             if (existingBankItem) {
                 existingBankItem.quantity += item.quantity;
             } else {
-                player.bank.push(window.cloneItemSafely(item));
+                const newBankItem = window.cloneItemSafely(item);
+                player.bank.push(newBankItem);
+                bankStackMap.set(newBankItem.name, newBankItem); // Add to map for subsequent merges!
             }
 
             itemsMoved++;
@@ -321,6 +338,15 @@ window.withdrawAllMaterials = function() {
         let inventoryFullAlerted = false;
         const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
 
+        // 🚀 PERFORMANCE WIN: O(1) Bulk Stack Lookups
+        const invStackMap = new Map();
+        for (let i = 0; i < player.inventory.length; i++) {
+            const iItem = player.inventory[i];
+            if (iItem && !iItem.isEquipped && window.isStackableItem(iItem.type)) {
+                invStackMap.set(iItem.name, iItem);
+            }
+        }
+
         // 🚀 PERFORMANCE WIN: O(N) Array Rebuild
         const remainingBank = [];
 
@@ -328,12 +354,12 @@ window.withdrawAllMaterials = function() {
             const item = player.bank[i];
             if (!item) continue; 
             
-            if (!['junk', 'ingredient', 'trade'].includes(item.type)) {
+            if (!['junk', 'ingredient', 'trade', 'seed'].includes(item.type)) {
                 remainingBank.push(item);
                 continue;
             }
 
-            const existingInvItem = player.inventory.find(invItem => invItem && invItem.name === item.name && !invItem.isEquipped);
+            const existingInvItem = invStackMap.get(item.name);
 
             if (!existingInvItem && player.inventory.length >= invCap) {
                 remainingBank.push(item); // Leave it in the bank
@@ -360,8 +386,13 @@ window.withdrawAllMaterials = function() {
                     withdrawnItem.inflicts = t.inflicts;
                     withdrawnItem.inflictChance = t.inflictChance;
                     if (t.tags) withdrawnItem.tags = [...t.tags]; 
+                    
+                    // 🚨 ROBUSTNESS WIN: Prevent string concatenation bugs from corrupted DB saves
+                    if (withdrawnItem.damage !== undefined) withdrawnItem.damage = Number(withdrawnItem.damage) || 0;
+                    if (withdrawnItem.defense !== undefined) withdrawnItem.defense = Number(withdrawnItem.defense) || 0;
                 }
                 player.inventory.push(withdrawnItem);
+                invStackMap.set(withdrawnItem.name, withdrawnItem); // Track new item for subsequent merges
             }
 
             itemsMoved++;
@@ -413,6 +444,15 @@ window.quickStackToStash = function() {
         
         let itemsMoved = 0;
 
+        // 🚀 PERFORMANCE WIN: O(1) Bulk Stack Lookups
+        const bankStackMap = new Map();
+        for (let i = 0; i < player.bank.length; i++) {
+            const bItem = player.bank[i];
+            if (bItem && window.isStackableItem(bItem.type)) {
+                bankStackMap.set(bItem.name, bItem);
+            }
+        }
+
         // 🚀 PERFORMANCE WIN: O(N) Array Rebuild instead of loop-splicing
         const remainingInventory = [];
 
@@ -427,7 +467,7 @@ window.quickStackToStash = function() {
             }
 
             // Check if this item already exists in the stash
-            const existingBankItem = player.bank.find(bankItem => bankItem && bankItem.name === item.name);
+            const existingBankItem = bankStackMap.get(item.name);
 
             // If it exists in the stash, merge the stacks!
             if (existingBankItem) {
@@ -478,16 +518,21 @@ window.sortStash = function(playSound = true) {
         if (!player.bank || player.bank.length === 0) return;
 
         // 1. Consolidate stacks in case there are duplicates
+        // 🚀 PERFORMANCE WIN: Use a Map for instant lookups during consolidation!
         const consolidated = [];
+        const conMap = new Map();
+        
         player.bank.forEach(item => {
             if (!item) return; // 🚨 THE GHOST GUARD
             const isStackable = window.isStackableItem(item.type);
-            const existing = consolidated.find(i => i.name === item.name && isStackable);
+            const existing = isStackable ? conMap.get(item.name) : null;
             
             if (existing) {
                 existing.quantity += item.quantity;
             } else {
-                consolidated.push({...item}); 
+                const clone = window.cloneItemSafely(item);
+                consolidated.push(clone); 
+                if (isStackable) conMap.set(clone.name, clone);
             }
         });
 
@@ -540,7 +585,7 @@ function renderStash() {
         const template = typeof window.ITEM_DATA !== 'undefined' && tKey ? window.ITEM_DATA[tKey] : null;
         if (template && template.description) {
             // ROBUSTNESS: Strip out internal {color:} tags for a completely clean native tooltip
-            const cleanDesc = typeof stripColorTags === 'function' ? stripColorTags(template.description) : template.description.replace(/\{[a-zA-Z]+:(.*?)\}/g, '$1');
+            const cleanDesc = typeof stripColorTags === 'function' ? stripColorTags(template.description) : template.description.replace(/\{[a-zA-Z0-9_-]+:(.*?)\}/ig, '$1');
             tooltip += `\n\n${cleanDesc}`;
         }
 
@@ -581,7 +626,8 @@ function renderStash() {
             'spellbook': { color: 'text-indigo-400', bg: 'bg-indigo-900 border-indigo-800' },
             'skillbook': { color: 'text-yellow-400', bg: 'bg-yellow-900 border-yellow-800' },
             'treasure_map': { color: 'text-amber-400', bg: 'bg-amber-900 border-amber-800' },
-            'journal': { color: 'text-teal-400', bg: 'bg-teal-900 border-teal-800' }
+            'journal': { color: 'text-teal-400', bg: 'bg-teal-900 border-teal-800' },
+            'seed': { color: 'text-green-300', bg: 'bg-green-900 border-green-700' }
         };
         const style = tagMap[type] || { color: 'text-gray-300', bg: 'bg-gray-800 border-gray-600' };
         return `<span class="text-[8px] uppercase tracking-widest ${style.color} ${style.bg} bg-opacity-30 px-1.5 py-0.5 rounded border ml-2 shadow-inner inline-block relative -top-0.5">${type}</span>`;
