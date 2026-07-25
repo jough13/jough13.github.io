@@ -2135,7 +2135,7 @@ function handleChatCommand(message) {
         case 'stuck':
             gameState.player.x = 0;
             gameState.player.y = 0;
-            exitToOverworld("You force a teleport back to the village.");
+            exitToOverworld("You force a teleport out of the area.");
             break;
 
         case 'god':
