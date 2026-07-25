@@ -1,0 +1,447 @@
+// --- START OF FILE expansion-pioneer.js ---
+
+window.ExpansionManager.register({
+    id: "pioneer_town",
+    name: "The Pioneer (Town Builder)",
+    version: "1.0",
+    
+    data: {
+        // --- 1. NEW MAP TILES & NPCs ---
+        tiles: {
+            '🚷': { 
+                type: 'landmark', name: 'Caged Prisoner', 
+                flavor: "A rusty iron cage containing a weary captive.", 
+                eventId: 'CAGED_PRISONER' 
+            },
+            '🛎️': {
+                type: 'anomaly', name: 'Town Bell',
+                flavor: "Ring to manage your settlement.",
+                onInteract: (state, x, y) => {
+                    if (typeof window.openTownBellUI === 'function') window.openTownBellUI();
+                    return null;
+                }
+            },
+            '🏠': {
+                type: 'decoration', name: 'Cozy House',
+                flavor: "A sturdy, well-built home for your townsfolk."
+            },
+            '⚒️t': {
+                type: 'anomaly', name: 'Town Blacksmith',
+                flavor: "Your personal blacksmith. He looks eager to work.",
+                onInteract: (state, x, y) => {
+                    if (typeof window.openCampBlacksmith === 'function') window.openCampBlacksmith();
+                    return null;
+                }
+            },
+            '👩‍🌾': {
+                type: 'anomaly', name: 'Camp Botanist',
+                flavor: "She is carefully tending to a potted sapling.",
+                onInteract: (state, x, y) => {
+                    if (typeof window.openCampBotanist === 'function') window.openCampBotanist();
+                    return null;
+                }
+            },
+            '🎸': {
+                type: 'anomaly', name: 'Camp Bard',
+                flavor: "He strums a lively tune by his doorway.",
+                onInteract: (state, x, y) => {
+                    if (typeof window.openCampBard === 'function') window.openCampBard();
+                    return null;
+                }
+            }
+        },
+
+        // --- 2. THE EVENT LOGIC ---
+        events: {
+            'CAGED_PRISONER': {
+                title: "Caged Prisoner",
+                oncePerTile: true,
+                lootedMessage: "The cage is broken and empty.",
+                nodes: {
+                    'start': {
+                        text: "A weary traveler is locked inside a rusted iron cage. They look up at you with hope.\n\n\"Please! Get me out of here!\"",
+                        choices: [
+                            {
+                                text: "Smash the cage open.",
+                                // Requires 5 Strength OR any heavy tool
+                                req: (player) => {
+                                    const effStr = player.strength + (player.strengthBonus || 0);
+                                    if (effStr >= 5) return true;
+                                    return player.inventory.some(i => i && !i.isEquipped && (i.name.includes("Pickaxe") || i.name.includes("Hammer") || i.name.includes("Axe")));
+                                },
+                                reqHint: "5+ Str or Pickaxe/Axe/Hammer",
+                                action: (state, ctx) => {
+                                    if (!state.player.rescuedNpcs) state.player.rescuedNpcs = [];
+                                    const pool = ['Blacksmith', 'Botanist', 'Bard'];
+                                    const missing = pool.filter(n => !state.player.rescuedNpcs.includes(n));
+                                    
+                                    logMessage("{gray:CRASH! The rusted iron gives way.}");
+                                    state.screenShake = 15;
+                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#d4d4d8', 15);
+
+                                    if (missing.length > 0) {
+                                        const rescued = missing[Math.floor(Math.random() * missing.length)];
+                                        state.player.rescuedNpcs.push(rescued);
+                                        logMessage(`{green:You rescued the ${rescued}! They thank you and head to your Safe Haven camp.}`);
+                                        if (typeof AudioSystem !== 'undefined') AudioSystem.playQuestComplete();
+                                    } else {
+                                        logMessage(`{green:You freed the traveler! They press a gem into your hand in thanks before fleeing.}`);
+                                        state.player.coins += 100;
+                                        
+                                        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                                        if (state.player.inventory.length < invCap) {
+                                            const gems = ['💎r', '💎s', '💎d'];
+                                            const gId = gems[Math.floor(Math.random() * gems.length)];
+                                            const gName = gId === '💎r' ? 'Raw Ruby' : (gId === '💎s' ? 'Raw Sapphire' : 'Raw Diamond');
+                                            state.player.inventory.push({ templateId: gId, name: gName, type: 'trade', quantity: 1, tile: '💎', isEquipped: false });
+                                            logMessage(`{purple:You received a ${gName} and 100 Gold!}`);
+                                            if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                                        } else {
+                                            logMessage("{gold:You received 100 Gold.}");
+                                        }
+                                    }
+                                    
+                                    // Change the tile to a broken cage (rubble)
+                                    state.lootedTiles.add(ctx.tileId);
+                                    if (chunkManager.getTile(ctx.x, ctx.y) === '🚷') {
+                                        chunkManager.setWorldTile(ctx.x, ctx.y, '🏚');
+                                    }
+                                    state.mapDirty = true;
+                                }
+                            },
+                            { text: "Leave them to their fate." }
+                        ]
+                    }
+                }
+            }
+        }
+    },
+
+    // --- 3. ENGINE HOOKS ---
+    init: function() {
+        
+        // ==========================================
+        // 1. INJECT INTO WORLD GENERATION
+        // ==========================================
+        // Sprinkle Caged Prisoners across the world and in dungeons
+        
+        if (typeof chunkManager !== 'undefined') {
+            const origGenerateChunk = chunkManager.generateChunk;
+            chunkManager.generateChunk = function(chunkX, chunkY) {
+                origGenerateChunk.call(this, chunkX, chunkY);
+                const chunkId = `${chunkX},${chunkY}`;
+                const chunkData = this.loadedChunks[chunkId];
+                const random = Alea(stringToSeed(`pioneer_spawn_${chunkId}`));
+                
+                // 10% chance to spawn a cage in a chunk
+                if (random() < 0.10) { 
+                    const rx = Math.floor(random() * 14) + 1;
+                    const ry = Math.floor(random() * 14) + 1;
+                    // Spawn primarily near forests or deadlands
+                    if (chunkData[ry][rx] === 'F' || chunkData[ry][rx] === 'd') {
+                        chunkData[ry][rx] = '🚷'; 
+                    }
+                }
+            };
+            
+            const origGenerateCave = chunkManager.generateCave;
+            chunkManager.generateCave = function(caveId) {
+                const map = origGenerateCave.call(this, caveId);
+                const random = Alea(stringToSeed(`pioneer_cave_${caveId}`));
+                
+                // 25% chance to spawn a cage in a dungeon
+                if (random() < 0.25 && !caveId.includes('arena') && !caveId.includes('spire')) {
+                    let placed = false;
+                    for(let i=0; i<50 && !placed; i++) {
+                        const ry = Math.floor(random() * (map.length - 2)) + 1;
+                        const rx = Math.floor(random() * (map[0].length - 2)) + 1;
+                        // Only place on open floor away from the stairs
+                        if ((map[ry][rx] === '.' || map[ry][rx] === 'F') && map[ry][rx] !== '>' && map[ry][rx] !== '<') {
+                            map[ry][rx] = '🚷';
+                            placed = true;
+                        }
+                    }
+                }
+                return map;
+            };
+
+            // ==========================================
+            // 2. OVERHAUL CAMPSITE GENERATION
+            // ==========================================
+            // Safely inject the Town Bell, Houses, and NPCs without breaking existing structures
+            
+            const origGenerateCampsite = chunkManager.generateCampsite;
+            chunkManager.generateCampsite = function() {
+                const map = origGenerateCampsite.call(this);
+                const p = gameState.player;
+                const rescued = p.rescuedNpcs || [];
+                const houses = p.builtHouses || [];
+
+                // If they have rescued anyone, spawn the Town Bell near the top edge
+                if (rescued.length > 0) {
+                    map[1][6] = '🛎️';
+                }
+
+                // Place Blacksmith (Top Right)
+                if (houses.includes('Blacksmith')) {
+                    map[2][10] = '🏠';
+                    map[3][10] = '⚒️t';
+                }
+                
+                // Place Botanist (Bottom Right)
+                if (houses.includes('Botanist')) {
+                    map[5][10] = '🏠';
+                    map[6][10] = '👩‍🌾';
+                }
+                
+                // Place Bard (Bottom Left)
+                if (houses.includes('Bard')) {
+                    map[6][2] = '🏠';
+                    map[7][2] = '🎸';
+                }
+
+                return map;
+            };
+        }
+
+        // ==========================================
+        // 3. TOWN MANAGEMENT UI & NPC INTERACTIONS
+        // ==========================================
+        
+        window.openTownBellUI = function() {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            const p = gameState.player;
+            if (!p.rescuedNpcs) p.rescuedNpcs = [];
+            if (!p.builtHouses) p.builtHouses = [];
+            
+            const countMat = (name) => p.inventory.filter(i => i && i.name === name && !i.isEquipped).reduce((sum, i) => sum + i.quantity, 0);
+            const wood = countMat('Wood Log');
+            const stone = countMat('Stone');
+            const iron = countMat('Iron Ore');
+
+            const loreTitle = document.getElementById('loreTitle');
+            const loreContent = document.getElementById('loreContent');
+            const loreModal = document.getElementById('loreModal');
+
+            loreTitle.textContent = "Town Charter";
+            
+            let html = `<p class="text-sm text-gray-300 mb-4 border-b border-gray-700 pb-2">Expand your settlement to house your rescued allies. (Current: ${wood} Wood, ${stone} Stone, ${iron} Iron)</p>`;
+            let builtSomething = false;
+
+            const addHouseBtn = (npcName, costStr, canAfford) => {
+                const btnClass = canAfford ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-700 opacity-50 cursor-not-allowed';
+                html += `<button id="build_${npcName}" class="mb-3 ${btnClass} text-white font-bold py-3 px-4 rounded-xl w-full flex justify-between shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1" ${canAfford ? '' : 'disabled'}>
+                    <span>🏠 House ${npcName}</span> <span class="text-xs font-normal opacity-90">${costStr}</span>
+                </button>`;
+            };
+
+            p.rescuedNpcs.forEach(npc => {
+                if (!p.builtHouses.includes(npc)) {
+                    builtSomething = true;
+                    // Standard cost for all houses: 30 Wood, 30 Stone, 10 Iron
+                    addHouseBtn(npc, '30 Wood, 30 Stone, 10 Iron', wood >= 30 && stone >= 30 && iron >= 10);
+                }
+            });
+
+            if (!builtSomething && p.rescuedNpcs.length > 0) {
+                html += `<p class="text-green-400 font-bold text-center mt-4 bg-green-900 bg-opacity-20 py-2 rounded shadow-inner border border-green-800">All rescued allies are safely housed!</p>`;
+            } else if (p.rescuedNpcs.length === 0) {
+                html += `<p class="text-gray-500 italic text-center mt-4">You have not rescued anyone yet. Explore the world to find caged prisoners.</p>`;
+            }
+
+            loreContent.innerHTML = html;
+            loreModal.classList.remove('hidden');
+
+            setTimeout(() => {
+                const consume = (name, qty) => {
+                    let needed = qty;
+                    for (let i = p.inventory.length - 1; i >= 0; i--) {
+                        if (needed <= 0) break;
+                        let item = p.inventory[i];
+                        if (item && item.name === name && !item.isEquipped) {
+                            let take = Math.min(item.quantity, needed);
+                            item.quantity -= take;
+                            needed -= take;
+                            if (item.quantity <= 0) p.inventory.splice(i, 1);
+                        }
+                    }
+                };
+
+                p.rescuedNpcs.forEach(npc => {
+                    if (!p.builtHouses.includes(npc)) {
+                        const btn = document.getElementById(`build_${npc}`);
+                        if (btn) {
+                            btn.onclick = () => {
+                                consume('Wood Log', 30);
+                                consume('Stone', 30);
+                                consume('Iron Ore', 10);
+                                
+                                p.builtHouses.push(npc);
+                                
+                                logMessage(`{gold:You built a house for the ${npc}!}`);
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#facc15', 30);
+                                gameState.screenShake = 15;
+                                
+                                loreModal.classList.add('hidden');
+                                
+                                // Regenerate and save
+                                chunkManager.generateCampsite();
+                                gameState.mapDirty = true;
+                                if (typeof render === 'function') render();
+                                if (typeof renderInventory === 'function') renderInventory();
+                                
+                                if (typeof triggerDebouncedSave === 'function') {
+                                    triggerDebouncedSave({ builtHouses: p.builtHouses, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory });
+                                }
+                            };
+                        }
+                    }
+                });
+            }, 0);
+        };
+
+        // --- NPC: BLACKSMITH ---
+        window.openCampBlacksmith = function() {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            const p = gameState.player;
+            const loreTitle = document.getElementById('loreTitle');
+            const loreContent = document.getElementById('loreContent');
+            const loreModal = document.getElementById('loreModal');
+
+            loreTitle.textContent = "Town Blacksmith";
+            loreContent.innerHTML = `
+                <p class="italic text-gray-300 mb-4 border-b border-gray-700 pb-2">"Thanks again for busting me out of that cage. The forge here is excellent. Need your gear maintained?"</p>
+                <button id="buffWeapon" class="mb-3 bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl w-full flex justify-between shadow-md transition-transform active:scale-95 border-b-4 border-red-900 active:border-b-0 active:mt-1">
+                    <span>⚔️ Sharpen Blade</span> <span class="text-xs font-normal opacity-90">+3 Strength (500 Turns)</span>
+                </button>
+            `;
+            loreModal.classList.remove('hidden');
+
+            setTimeout(() => {
+                const btn = document.getElementById('buffWeapon');
+                if (btn) btn.onclick = () => {
+                    p.strengthBonus = 3;
+                    p.strengthBonusTurns = 500;
+                    logMessage("{red:The Blacksmith hones your weapons! (+3 Strength for 500 turns)}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#ef4444', 15);
+                    if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('strengthDisplay'), 'stat-pulse-green');
+                    
+                    if (typeof playerRef !== 'undefined') playerRef.update({ strengthBonus: 3, strengthBonusTurns: 500 });
+                    if (typeof renderEquipment === 'function') renderEquipment();
+                    loreModal.classList.add('hidden');
+                };
+            }, 0);
+        };
+
+        // --- NPC: BOTANIST ---
+        window.openCampBotanist = function() {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            const p = gameState.player;
+            const loreTitle = document.getElementById('loreTitle');
+            const loreContent = document.getElementById('loreContent');
+            const loreModal = document.getElementById('loreModal');
+
+            const currentDay = gameState.time ? gameState.time.day : 1;
+            const canClaim = p.lastBotanistDay !== currentDay;
+
+            loreTitle.textContent = "Town Botanist";
+            
+            let html = `<p class="italic text-gray-300 mb-4 border-b border-gray-700 pb-2">"The soil here is incredibly rich! I've been doing some foraging around the perimeter."</p>`;
+            
+            if (canClaim) {
+                html += `<button id="claimHerbs" class="mb-3 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full flex justify-between shadow-md transition-transform active:scale-95 border-b-4 border-green-800 active:border-b-0 active:mt-1">
+                    <span>🌿 Collect Daily Harvest</span> <span class="text-xs font-normal opacity-90">Free</span>
+                </button>`;
+            } else {
+                html += `<button disabled class="mb-3 bg-gray-800 text-gray-500 font-bold py-3 px-4 rounded-xl w-full flex justify-between shadow-inner border border-gray-700 cursor-not-allowed">
+                    <span>🌿 Harvest Collected</span> <span class="text-xs font-normal opacity-90">Come back tomorrow</span>
+                </button>`;
+            }
+
+            loreContent.innerHTML = html;
+            loreModal.classList.remove('hidden');
+
+            setTimeout(() => {
+                const btn = document.getElementById('claimHerbs');
+                if (btn) btn.onclick = () => {
+                    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
+                    if (p.inventory.length >= invCap) {
+                        logMessage("{red:Your inventory is full! Make space first.}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return;
+                    }
+
+                    // 🚨 ROBUSTNESS WIN: Safe deep clones of items
+                    const itemsToGive = ['Medicinal Herb', 'Wildberry', 'Herb Seed'];
+                    const chosen = itemsToGive[Math.floor(Math.random() * itemsToGive.length)];
+                    
+                    const tKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === chosen);
+                    const template = window.ITEM_DATA[tKey];
+                    
+                    // Try to stack it
+                    const existing = p.inventory.find(i => i && i.name === chosen && !i.isEquipped);
+                    const qty = 2 + Math.floor(Math.random() * 3); // 2 to 4 items
+                    
+                    if (existing) {
+                        existing.quantity += qty;
+                    } else {
+                        const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
+                        newItem.templateId = tKey;
+                        newItem.quantity = qty;
+                        newItem.isEquipped = false;
+                        p.inventory.push(newItem);
+                    }
+
+                    p.lastBotanistDay = currentDay;
+                    
+                    logMessage(`{green:The Botanist hands you ${qty}x ${chosen}!}`);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#4ade80', 15);
+                    
+                    loreModal.classList.add('hidden');
+                    if (typeof renderInventory === 'function') renderInventory();
+                    if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ lastBotanistDay: p.lastBotanistDay, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory });
+                };
+            }, 0);
+        };
+
+        // --- NPC: BARD ---
+        window.openCampBard = function() {
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            const p = gameState.player;
+            const loreTitle = document.getElementById('loreTitle');
+            const loreContent = document.getElementById('loreContent');
+            const loreModal = document.getElementById('loreModal');
+
+            loreTitle.textContent = "Town Bard";
+            loreContent.innerHTML = `
+                <p class="italic text-gray-300 mb-4 border-b border-gray-700 pb-2">"Ah, the hero returns! Care to sit by the fire and listen to a song of your exploits?"</p>
+                <button id="buffBard" class="mb-3 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full flex justify-between shadow-md transition-transform active:scale-95 border-b-4 border-blue-800 active:border-b-0 active:mt-1">
+                    <span>🎵 Listen to Song</span> <span class="text-xs font-normal opacity-90">+3 Wits (500 Turns)</span>
+                </button>
+            `;
+            loreModal.classList.remove('hidden');
+
+            setTimeout(() => {
+                const btn = document.getElementById('buffBard');
+                if (btn) btn.onclick = () => {
+                    p.witsBonus = 3;
+                    p.witsBonusTurns = 500;
+                    logMessage("{blue:The Bard's tale inspires you! (+3 Wits for 500 turns)}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#60a5fa', 15);
+                    if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('witsDisplay'), 'stat-pulse-blue');
+                    
+                    if (typeof playerRef !== 'undefined') playerRef.update({ witsBonus: 3, witsBonusTurns: 500 });
+                    if (typeof renderStats === 'function') renderStats();
+                    loreModal.classList.add('hidden');
+                };
+            }, 0);
+        };
+    }
+});
+
+// --- END OF FILE expansion-pioneer.js ---
