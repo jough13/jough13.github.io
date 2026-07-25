@@ -1854,7 +1854,7 @@ window.CAVE_ROOM_TEMPLATES = {
 
 window.CASTLE_LAYOUTS = {
     LIBRARY_WING: {
-        spawn: { x: 10, y: 10 },
+        spawn: { x: 11, y: 10 }, 
         map: [
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
             '▓.........B.........▓',
@@ -2117,7 +2117,7 @@ window.CASTLE_LAYOUTS = {
         ]
     },
     OVERGROWN_KEEP: {
-        spawn: { x: 10, y: 18 },
+        spawn: { x: 9, y: 15 },
         map: [
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
             '▓.F.F.F.F.▓.F.F.F.F.▓',
