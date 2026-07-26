@@ -591,14 +591,18 @@ async function attemptMovePlayer(newX, newY) {
     else if (tileData && typeof tileData.onInteract === 'function') {
         const updatesToSave = tileData.onInteract(gameState, newX, newY);
         
-        if (updatesToSave) {
-            updatesToSave.lootedTiles = Object.fromEntries(gameState.lootedTiles);
-            playerRef.update(updatesToSave);
-            renderStats();
+        // Allow expansions to explicitly return 'false' to fall through to hardcoded logic
+        if (updatesToSave === false) {
+            // Do nothing here, allow the code to fall through to the hardcoded NPC checks below!
+        } else {
+            if (updatesToSave) {
+                updatesToSave.lootedTiles = Object.fromEntries(gameState.lootedTiles);
+                playerRef.update(updatesToSave);
+                renderStats();
+            }
+            endPlayerTurn(); 
+            return; 
         }
-        
-        endPlayerTurn(); 
-        return; 
     }
 
     // --- ACTIVE INVESTIGATION LOGIC ---
