@@ -3,14 +3,14 @@
 window.ExpansionManager.register({
     id: "the_grand_heist",
     name: "The Grand Heist (Advanced Stealth)",
-    version: "1.0",
+    version: "1.1", // Updated Version
     
     data: {
         // --- 1. NEW ITEMS ---
         items: {
             '🗝️p': {
                 name: 'Lockpick', type: 'tool', tile: '🗝️',
-                description: "A set of delicate metal tools. Essential for cracking Locked Doors (🔒) and Pickpocketing.", _rarity: 'uncommon'
+                description: "A set of delicate metal tools. Essential for cracking Locked Doors (🔒).", _rarity: 'uncommon'
             },
             '💰b': {
                 name: 'Blood Ruby', type: 'trade', tile: '💎',
@@ -315,6 +315,7 @@ window.ExpansionManager.register({
                         const res = originalInteract(state, x, y);
                         
                         // 🚨 BUG FIX: If Syndicate returned false (not crouching), pass the false downward!
+                        // This allows the engine to fall through to the normal shop/dialogue menu!
                         if (res === false) return false;
                         
                         // Set a timeout to safely inject our button into the rendered modal
@@ -331,6 +332,7 @@ window.ExpansionManager.register({
                                 const p = state.player;
                                 const isCrouching = p.isCrouching;
                                 
+                                // 🚨 UX WIN: Lockpick requirement removed! You just need to be crouching.
                                 if (!isCrouching) {
                                     ppBtn.disabled = true;
                                     ppBtn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -342,7 +344,7 @@ window.ExpansionManager.register({
                                 ppBtn.onclick = () => {
                                     document.getElementById('loreModal').classList.add('hidden');
                                     
-                                    // Dexterity Check vs Suspicion (Removed lockpick cost)
+                                    // Dexterity Check vs Suspicion
                                     const dex = p.dexterity + (p.dexterityBonus || 0);
                                     const chance = 0.60 + (dex * 0.05) - ((p.suspicion || 0) / 200);
                                     
