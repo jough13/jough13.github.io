@@ -35,9 +35,15 @@ window.ExpansionManager = {
 
         // --- 3. INJECT ARRAYS (Shops & Loot Tables) ---
         if (data.shops) {
-            if (data.shops.general && typeof window.SHOP_INVENTORY !== 'undefined') window.SHOP_INVENTORY.push(...data.shops.general);
-            if (data.shops.castle && typeof window.CASTLE_SHOP_INVENTORY !== 'undefined') window.CASTLE_SHOP_INVENTORY.push(...data.shops.castle);
-            if (data.shops.trader && typeof window.TRADER_INVENTORY !== 'undefined') window.TRADER_INVENTORY.push(...data.shops.trader);
+            for (const shopKey in data.shops) {
+                const targetGlobal = shopKey === 'general' ? 'SHOP_INVENTORY' : `${shopKey.toUpperCase()}_INVENTORY`;
+                
+                // If the array doesn't exist globally yet, create it!
+                if (typeof window[targetGlobal] === 'undefined') {
+                    window[targetGlobal] = [];
+                }
+                window[targetGlobal].push(...data.shops[shopKey]);
+            }
         }
 
         // --- 4. CUSTOM INITIALIZATION HOOK ---
