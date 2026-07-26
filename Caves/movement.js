@@ -2240,7 +2240,7 @@ async function attemptMovePlayer(newX, newY) {
             // 4. Show Modal with Travel Button
             loreTitle.textContent = `Waystone: ${biomeName}`;
             loreContent.innerHTML = `
-                <p class="italic text-gray-400 mb-4 border-l-2 border-gray-600 pl-3 leading-relaxed">"...${message}..."</p>
+                <p class="italic muted-text mb-4 border-l-2 border-gray-600 pl-3 leading-relaxed">"...${message}..."</p>
                 <p class="text-sm">The stone hums with power. It is attuned to the leylines.</p>
                 <button id="openFastTravel" style="transform: translate3d(0,0,0);" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">✨ Fast Travel (10 Mana)</button>
             `;
@@ -2317,7 +2317,7 @@ async function attemptMovePlayer(newX, newY) {
                             .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
                             .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>');
                     }
-                    loreContent.innerHTML = `<p class="italic text-gray-300">The black stone is cold to the touch. Suddenly, the world fades away...</p><hr class="border-gray-700 my-4"><p class="font-serif leading-relaxed text-blue-100">${formattedVision}</p>`;
+                    loreContent.innerHTML = `<p class="italic muted-text">The black stone is cold to the touch. Suddenly, the world fades away...</p><hr class="border-gray-700 my-4"><p class="font-serif leading-relaxed text-blue-500">${formattedVision}</p>`;
                     loreModal.classList.remove('hidden');
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                 }
@@ -2361,7 +2361,7 @@ async function attemptMovePlayer(newX, newY) {
                 }
                 
                 loreTitle.textContent = "A Scattered Page";
-                loreContent.innerHTML = `<p class="italic text-gray-400 mb-3">You pick up a damp, crumpled page...</p><p class="font-serif leading-relaxed">"...${formattedMsg}..."</p>`;
+                loreContent.innerHTML = `<p class="italic muted-text mb-3">You pick up a damp, crumpled page...</p><p class="font-serif leading-relaxed">"...${formattedMsg}..."</p>`;
                 loreModal.classList.remove('hidden');
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
             }
