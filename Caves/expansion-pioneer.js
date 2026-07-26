@@ -226,7 +226,7 @@ window.ExpansionManager.register({
 
             loreTitle.textContent = "Town Charter";
             
-            let html = `<p class="text-sm text-gray-300 mb-4 border-b border-gray-700 pb-2">Expand your settlement to house your rescued allies. (Current: ${wood} Wood, ${stone} Stone, ${iron} Iron)</p>`;
+            let html = `<p class="text-sm muted-text mb-4 border-b border-gray-700 pb-2">Expand your settlement to house your rescued allies. (Current: ${wood} Wood, ${stone} Stone, ${iron} Iron)</p>`;
             let builtSomething = false;
 
             const addHouseBtn = (npcName, costStr, canAfford) => {
@@ -245,9 +245,9 @@ window.ExpansionManager.register({
             });
 
             if (!builtSomething && p.rescuedNpcs.length > 0) {
-                html += `<p class="text-green-400 font-bold text-center mt-4 bg-green-900 bg-opacity-20 py-2 rounded shadow-inner border border-green-800">All rescued allies are safely housed!</p>`;
+                html += `<p class="text-green-500 font-bold text-center mt-4 bg-green-900 bg-opacity-20 py-2 rounded shadow-inner border border-green-800">All rescued allies are safely housed!</p>`;
             } else if (p.rescuedNpcs.length === 0) {
-                html += `<p class="text-gray-500 italic text-center mt-4">You have not rescued anyone yet. Explore the world to find caged prisoners.</p>`;
+                html += `<p class="muted-text italic text-center mt-4">You have not rescued anyone yet. Explore the world to find caged prisoners.</p>`;
             }
 
             loreContent.innerHTML = html;
@@ -312,7 +312,7 @@ window.ExpansionManager.register({
 
             loreTitle.textContent = "Town Blacksmith";
             loreContent.innerHTML = `
-                <p class="italic text-gray-300 mb-4 border-b border-gray-700 pb-2">"Thanks again for busting me out of that cage. The forge here is excellent. Need your gear maintained?"</p>
+                <p class="italic muted-text mb-4 border-b border-gray-700 pb-2">"Thanks again for busting me out of that cage. The forge here is excellent. Need your gear maintained?"</p>
                 <button id="buffWeapon" class="mb-3 bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl w-full flex justify-between shadow-md transition-transform active:scale-95 border-b-4 border-red-900 active:border-b-0 active:mt-1">
                     <span>⚔️ Sharpen Blade</span> <span class="text-xs font-normal opacity-90">+3 Strength (500 Turns)</span>
                 </button>
@@ -349,7 +349,7 @@ window.ExpansionManager.register({
 
             loreTitle.textContent = "Town Botanist";
             
-            let html = `<p class="italic text-gray-300 mb-4 border-b border-gray-700 pb-2">"The soil here is incredibly rich! I've been doing some foraging around the perimeter."</p>`;
+            let html = `<p class="italic muted-text mb-4 border-b border-gray-700 pb-2">"The soil here is incredibly rich! I've been doing some foraging around the perimeter."</p>`;
             
             if (canClaim) {
                 html += `<button id="claimHerbs" class="mb-3 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full flex justify-between shadow-md transition-transform active:scale-95 border-b-4 border-green-800 active:border-b-0 active:mt-1">
@@ -374,14 +374,12 @@ window.ExpansionManager.register({
                         return;
                     }
 
-                    // 🚨 ROBUSTNESS WIN: Safe deep clones of items
                     const itemsToGive = ['Medicinal Herb', 'Wildberry', 'Herb Seed'];
                     const chosen = itemsToGive[Math.floor(Math.random() * itemsToGive.length)];
                     
                     const tKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === chosen);
                     const template = window.ITEM_DATA[tKey];
                     
-                    // Try to stack it
                     const existing = p.inventory.find(i => i && i.name === chosen && !i.isEquipped);
                     const qty = 2 + Math.floor(Math.random() * 3); // 2 to 4 items
                     
@@ -418,7 +416,7 @@ window.ExpansionManager.register({
 
             loreTitle.textContent = "Town Bard";
             loreContent.innerHTML = `
-                <p class="italic text-gray-300 mb-4 border-b border-gray-700 pb-2">"Ah, the hero returns! Care to sit by the fire and listen to a song of your exploits?"</p>
+                <p class="italic muted-text mb-4 border-b border-gray-700 pb-2">"Ah, the hero returns! Care to sit by the fire and listen to a song of your exploits?"</p>
                 <button id="buffBard" class="mb-3 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full flex justify-between shadow-md transition-transform active:scale-95 border-b-4 border-blue-800 active:border-b-0 active:mt-1">
                     <span>🎵 Listen to Song</span> <span class="text-xs font-normal opacity-90">+3 Wits (500 Turns)</span>
                 </button>
