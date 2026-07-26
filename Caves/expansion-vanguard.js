@@ -14,7 +14,7 @@ window.ExpansionManager.register({
             },
             '🛡️v': {
                 name: 'Vanguard\'s Aegis', type: 'armor', tags: ['shield'], tile: '🛡️',
-                defense: 12, slot: 'armor', blockChance: 0.40, statBonuses: { constitution: 8, strength: 5 },
+                defense: 12, slot: 'offhand', blockChance: 0.40, statBonuses: { constitution: 8, strength: 5 },
                 description: "{blue:+12 Def}, {green:+8 Con, +5 Str}. Forged in the fires of a raid boss.", _rarity: 'legendary', excludeFromLoot: true
             },
             '⚔️v': {
