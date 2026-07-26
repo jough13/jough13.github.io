@@ -522,7 +522,16 @@ async function processOverworldEnemyTurns() {
 
         if (distSq > searchDistSq) continue;
 
-        // LORE & JUICE WIN: Combat Barks!
+        // --- STEALTH INVISIBILITY (PvE) ---
+        if (gameState.player.stealthTurns > 0) {
+            // Completely invisible beyond 3 tiles (3^2 = 9)
+            if (distSq > 9) continue; 
+            // 50% chance they don't notice you even if you are right next to them
+            if (Math.random() < 0.5) continue; 
+        }
+
+
+        // Combat Barks!
         // Gives humanoid enemies a personality as they close in on the player
         if (distSq < 25 && Math.random() < 0.05) {
             const barks = {
