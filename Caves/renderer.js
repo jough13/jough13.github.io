@@ -898,7 +898,14 @@ function renderTerrainCache(startX, startY) {
                         case '🌋': fgChar = '🌋'; break; 
                         default:
                             fgChar = tile;
-                            if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) fgColor = ENEMY_DATA[tile].color || '#ef4444';
+                            // Catch corrupted Unicode characters and turn them into golden mystery boxes!
+                            if (fgChar === '\uFFFD' || fgChar === '') { 
+                                fgChar = '❓'; 
+                                fgColor = '#facc15'; 
+                            } 
+                            else if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[tile]) {
+                                fgColor = ENEMY_DATA[tile].color || '#ef4444';
+                            }
                             break;
                     }
                 }
