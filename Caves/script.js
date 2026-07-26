@@ -2614,8 +2614,7 @@ logoutButton.addEventListener('click', async () => {
     // 4. Clear Local Memory
     clearSessionState();
 
-    // 5. Sign Out
-    auth.signOut().then(() => {
+        auth.signOut().then(() => {
         console.log("Signed out successfully.");
         gameContainer.classList.add('hidden');
         authContainer.classList.remove('hidden');
@@ -2623,6 +2622,7 @@ logoutButton.addEventListener('click', async () => {
         // Restores the flickering stone background for the login screen!
         document.body.classList.add('login-bg');
     });
+});
 
 async function enterGame(playerData) {
     gameContainer.classList.remove('hidden');
