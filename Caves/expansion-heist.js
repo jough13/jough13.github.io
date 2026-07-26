@@ -314,6 +314,9 @@ window.ExpansionManager.register({
                         // Call the original (Syndicate) interact to build the modal
                         const res = originalInteract(state, x, y);
                         
+                        // 🚨 BUG FIX: If Syndicate returned false (not crouching), pass the false downward!
+                        if (res === false) return false;
+                        
                         // Set a timeout to safely inject our button into the rendered modal
                         setTimeout(() => {
                             const mugBtn = document.getElementById('npcMugBtn');
@@ -327,12 +330,11 @@ window.ExpansionManager.register({
                                 // Validation
                                 const p = state.player;
                                 const isCrouching = p.isCrouching;
-                                const hasLockpick = p.inventory.some(i => i && i.name === 'Lockpick' && !i.isEquipped);
                                 
-                                if (!isCrouching || !hasLockpick) {
+                                if (!isCrouching) {
                                     ppBtn.disabled = true;
                                     ppBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                                    ppBtn.innerText = '✋ Pickpocket (Requires Crouch & Lockpick)';
+                                    ppBtn.innerText = '✋ Pickpocket (Requires Crouch)';
                                 }
                                 
                                 mugBtn.parentNode.insertBefore(ppBtn, mugBtn);
@@ -340,12 +342,7 @@ window.ExpansionManager.register({
                                 ppBtn.onclick = () => {
                                     document.getElementById('loreModal').classList.add('hidden');
                                     
-                                    // Consume Lockpick
-                                    const pickIdx = p.inventory.findIndex(i => i && i.name === 'Lockpick' && !i.isEquipped);
-                                    p.inventory[pickIdx].quantity--;
-                                    if (p.inventory[pickIdx].quantity <= 0) p.inventory.splice(pickIdx, 1);
-                                    
-                                    // Dexterity Check vs Suspicion
+                                    // Dexterity Check vs Suspicion (Removed lockpick cost)
                                     const dex = p.dexterity + (p.dexterityBonus || 0);
                                     const chance = 0.60 + (dex * 0.05) - ((p.suspicion || 0) / 200);
                                     
