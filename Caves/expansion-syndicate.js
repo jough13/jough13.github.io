@@ -142,7 +142,7 @@ window.ExpansionManager.register({
             
             window.TILE_DATA[tileChar].onInteract = (state, x, y) => {
                 
-                // 🚨 BUG FIX: Fallthrough allows standard interaction if not crouching!
+                // Fallthrough allows standard interaction if not crouching!
                 if (!state.player.isCrouching) {
                     if (origInteract) return origInteract(state, x, y);
                     return false; // Fall through to input.js hardcoded logic!
@@ -154,7 +154,7 @@ window.ExpansionManager.register({
 
                 loreTitle.textContent = name;
                 
-                // 🚨 UI FIX: Replaced hardcoded text-gray-300 with muted-text for Light Mode visibility
+                // Replaced hardcoded text-gray-300 with muted-text for Light Mode visibility
                 loreContent.innerHTML = `
                     <p class="mb-4 muted-text italic">You approach the ${name}. What will you do?</p>
                     <button id="npcTalkBtn" class="mb-3 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-blue-800 active:border-b-0 active:mt-1">Interact peacefully</button>
@@ -228,7 +228,8 @@ window.ExpansionManager.register({
             const origHandleInput = window.handleInput;
             
             window.handleInput = function(key) {
-                if (key.toLowerCase() === 'g' && typeof otherPlayers !== 'undefined') {
+                
+                if (key.toLowerCase() === 't' && typeof otherPlayers !== 'undefined') {
                     
                     let targetPid = null; 
                     let targetOp = null;
@@ -246,7 +247,7 @@ window.ExpansionManager.register({
                         const safeName = typeof escapeHtml === 'function' ? escapeHtml(targetOp.email.split('@')[0]) : "Traveler";
                         document.getElementById('pvpTitle').innerHTML = `Encounter: ${safeName}`;
                         
-                        // --- NEW: LAWLESS ZONE & OPT-IN LOGIC ---
+                        // --- LAWLESS ZONE & OPT-IN LOGIC ---
                         const isLawlessZone = () => {
                             if (gameState.mapMode === 'underworld') return true;
                             if (gameState.currentRealm !== 0) return true; // Alternate dimensions
