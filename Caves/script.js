@@ -582,86 +582,9 @@ function grantLoreDiscovery(mapTileId, codexEntryId = null) {
 
 // --- RESTART LOGIC ---
 async function restartGame() {
-    const currentBg = gameState.player.background;
-
-    clearSessionState();
-
-    const defaultState = createDefaultPlayerState();
-
-    // Preserve Background and re-calculate derived stats
-    if (currentBg && PLAYER_BACKGROUNDS[currentBg]) {
-        defaultState.background = currentBg;
-        const bgStats = PLAYER_BACKGROUNDS[currentBg].stats;
-        for (let stat in bgStats) {
-            defaultState[stat] += bgStats[stat];
-        }
-        if (bgStats.constitution) defaultState.maxHealth += (bgStats.constitution * 5);
-        if (bgStats.wits) defaultState.maxMana += (bgStats.wits * 5);
-
-        defaultState.health = defaultState.maxHealth;
-        defaultState.mana = defaultState.maxMana;
-    }
-
-    // --- APPLY HARDCORE RESPAWN PENALTY ---
-    const starterRags = { 
-        templateId: 'x', 
-        name: 'Tattered Rags', 
-        type: 'armor', 
-        quantity: 1, 
-        tile: 'x', 
-        defense: 0, 
-        slot: 'armor', 
-        isEquipped: true 
-    };
-
-    defaultState.inventory = [starterRags];
-    defaultState.equipment = {
-        weapon: { name: 'Fists', damage: 0 },
-        armor: starterRags, 
-        offhand: null,
-        accessory: null,
-        ammo: null
-    };
-
-    Object.assign(gameState.player, defaultState);
-
-    gameState.mapMode = 'overworld';
-    gameState.currentCastleId = null;
-    gameState.currentCaveId = null;
-    
-    gameState.currentRealm = 0;
-    gameState.realmMutators = [];
-
-    // --- RELEASE THE DEATH LOCK ---
-    gameState.isDead = false;
-
-    // Clear exploration arrays for new run
-    gameState.discoveredRegions.clear();
-    gameState.exploredChunks.clear();
-    gameState.lootedTiles.clear(); 
-    gameState.player.discoveredPOIs = [];
-
-    // Ensure the database explicitly receives the realm reset
-    const resetPayload = {
-        ...defaultState,
-        currentRealm: 0,
-        realmMutators: [],
-        mapMode: 'overworld',
-        mapId: null
-    };
-
-    await playerRef.set(sanitizeForFirebase(resetPayload));
-
-    logMessage("Your adventure begins anew...");
-    updateRegionDisplay();
-    renderStats();
-    renderInventory();
-    renderEquipment();
-
-    resizeCanvas();
-    render();
-
-    gameOverModal.classList.add('hidden');
+    // The cleanest, safest way to respawn without memory leaks or conflicting logic
+    // is to simply reload the client and let enterGame() pull the fresh death state from Firebase!
+    location.reload();
 }
 
 function getInterpolatedDayCycleColor(hour, minute) {
@@ -2701,12 +2624,10 @@ async function enterGame(playerData) {
             health: preservedStats.maxHealth,
             mana: preservedStats.maxMana,
             stamina: preservedStats.maxStamina,
-            coins: Math.floor((playerData.coins || 0) / 2),
-            inventory: [
-                { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
-            ],
-            equipment: {
-                weapon: { name: 'Fists', damage: 0 },
+            coins: playerData.coins || 0, // Coins already halved by combat.js
+            inventory: playerData.inventory || [], // Keep the preserved inventory
+            equipment: playerData.equipment || {
+                weapon: { name: 'Fists', damage: 0, tags: ['blunt'] },
                 armor: { name: 'Tattered Rags', defense: 0 }
             }
         };
