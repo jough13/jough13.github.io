@@ -247,10 +247,9 @@ window.ExpansionManager.register({
                         const safeName = typeof escapeHtml === 'function' ? escapeHtml(targetOp.email.split('@')[0]) : "Traveler";
                         document.getElementById('pvpTitle').innerHTML = `Encounter: ${safeName}`;
                         
-                        // --- LAWLESS ZONE & OPT-IN LOGIC ---
                         const isLawlessZone = () => {
                             if (gameState.mapMode === 'underworld') return true;
-                            if (gameState.currentRealm !== 0) return true; // Alternate dimensions
+                            if (gameState.currentRealm !== 0) return true; 
                             if (gameState.mapMode === 'dungeon' && ['ARENA', 'VOID', 'ABYSS', 'CORRUPTED'].includes(gameState.currentCaveTheme)) return true;
                             return false;
                         };
@@ -258,6 +257,7 @@ window.ExpansionManager.register({
                         const inZone = isLawlessZone();
                         const myPvP = gameState.player.pvpEnabled;
                         const theirPvP = targetOp.pvpEnabled;
+                        const isSneaking = gameState.player.stealthTurns > 0; // Check stealth!
                         const attackBtn = document.getElementById('pvpAttackBtn');
 
                         // Determine the state of the Attack Button
@@ -272,10 +272,18 @@ window.ExpansionManager.register({
                             attackBtn.className = "bg-gray-800 text-gray-500 font-bold py-3 px-4 rounded-xl shadow-inner border border-gray-700 cursor-not-allowed";
                             attackBtn.innerHTML = "🚫 PvP Disabled (Safe Zone)";
                         } else if (!myPvP || !theirPvP) {
-                            document.getElementById('pvpDesc').innerHTML = `A peaceful traveler. Both players must type <strong class="text-yellow-400">/pvp</strong> to duel here.`;
-                            attackBtn.disabled = true;
-                            attackBtn.className = "bg-gray-800 text-gray-500 font-bold py-3 px-4 rounded-xl shadow-inner border border-gray-700 cursor-not-allowed";
-                            attackBtn.innerHTML = "🚫 PvP Disabled (Opt-In Required)";
+                            // --- NEW: STEALTH REQUIREMENT ---
+                            if (!isSneaking) {
+                                document.getElementById('pvpDesc').innerHTML = `A peaceful traveler. You must be in <strong class="text-purple-400">Stealth Mode (Shift)</strong> to assassinate them!`;
+                                attackBtn.disabled = true;
+                                attackBtn.className = "bg-gray-800 text-gray-500 font-bold py-3 px-4 rounded-xl shadow-inner border border-gray-700 cursor-not-allowed";
+                                attackBtn.innerHTML = "🚫 Stealth Required";
+                            } else {
+                                document.getElementById('pvpDesc').innerHTML = `You creep up behind the traveler. <strong class="text-red-500">Assassination</strong> will grant a severe bounty!`;
+                                attackBtn.disabled = false;
+                                attackBtn.className = "bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-transform active:scale-95 border-b-4 border-red-900 active:border-b-0 active:mt-1";
+                                attackBtn.innerHTML = "🗡️ Assassinate (PvP)";
+                            }
                         } else {
                             document.getElementById('pvpDesc').innerHTML = `A fellow traveler. <strong class="text-red-500">Honorable Combat</strong> is permitted here!`;
                             attackBtn.disabled = false;
