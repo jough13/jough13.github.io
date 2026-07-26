@@ -1028,20 +1028,25 @@ const chunkManager = {
         
         if (!this.worldState[chunkId]) this.worldState[chunkId] = {};
         
-        // --- NEW: Time-To-Live (TTL) Logic ---
+        // --- Time-To-Live (TTL) Logic ---
         let tileData = newTile;
-        if (ttlHours > 0) {
-            // Save as an object with an expiration timestamp
+        // Only apply TTL to actual items, not deletions
+        if (ttlHours > 0 && newTile !== null) {
             tileData = { t: newTile, expires: Date.now() + (ttlHours * 60 * 60 * 1000) };
         }
         
-        this.worldState[chunkId][tileKey] = tileData;
+        // Delete local key if null so we fall back to procedural terrain
+        if (newTile === null) {
+            delete this.worldState[chunkId][tileKey];
+        } else {
+            this.worldState[chunkId][tileKey] = tileData;
+        }
 
         if (typeof gameState !== 'undefined') gameState.mapDirty = true;
 
-        // Only send the specific tile that changed, not the whole chunk!
+        // If tileData is null, Firebase natively deletes it!
         const updateObj = {};
-        updateObj[tileKey] = tileData;
+        updateObj[tileKey] = tileData; 
 
         // --- LAYER & MULTIVERSE PATH ISOLATION ---
         let realmPrefix = '';
