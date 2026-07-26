@@ -25,19 +25,19 @@ const MOVEMENT_MAP = {
 // O(1) Key Lookups & Expanded Browser Protections
 // Moved out of the event listener so they aren't instantiated on every single keystroke.
 // Added Tab and Enter to prevent unwanted browser scrolling/focus-shifting while playing.
-// QoL WIN: Added '/' to block Firefox's default "Quick Find" feature!
+// Added '/' to block Firefox's default "Quick Find" feature!
 const BLOCKED_SCROLL_KEYS = new Set([
     'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', ' ',
     'Home', 'End', 'PageUp', 'PageDown', 'Tab', 'Enter', '/'
 ]);
 
 const INSTANT_KEYS = new Set([
-    'Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'h', 'd', 'g', 'q', 'j', 'z', 'l', '/',
-    'I', 'M', 'B', 'K', 'C', 'P', 'H', 'D', 'G', 'Q', 'J', 'Z', 'L',
+    'Escape', 'i', 'm', 'b', 'k', 'c', 'p', 'h', 'd', 'g', 'q', 'j', 'z', 'l', '/', 't',
+    'I', 'M', 'B', 'K', 'C', 'P', 'H', 'D', 'G', 'Q', 'J', 'Z', 'L', 'T',
     '+', '=', '-', '_'
 ]);
 
-// EXPANDABILITY & PERFORMANCE WIN: Dynamic Hotkey Mapping
+// Dynamic Hotkey Mapping
 // Radically simplifies adding new UI panels without writing messy if/else chains.
 const HOTKEY_MAPPINGS = {
     'i': { modal: 'inventoryModal',   openFunc: 'openInventoryModal',  closeFunc: 'closeInventoryModal' },
