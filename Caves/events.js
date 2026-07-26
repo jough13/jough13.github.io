@@ -53,7 +53,7 @@ window.EVENT_DATA = {
                     {
                         text: "Sneak inside and steal their loot.",
                         req: (player) => player.dexterity >= 5, 
-                        reqHint: "Requires 5 Dexterity", // UX WIN: Tell the player why they can't click this!
+                        reqHint: "Requires 5 Dexterity", 
                         action: (state, ctx) => {
                             logMessage("{green:You slip into the shadows, bypassing the guards, and find their stash!}");
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
@@ -62,7 +62,6 @@ window.EVENT_DATA = {
                             
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                             if (state.player.inventory.length < invCap) {
-                                // 🚨 ROBUSTNESS WIN: Safe deep clone preserves nested objects
                                 const scroll = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🩸'] : { name: 'Scroll of Siphoning', type: 'spellbook' };
                                 let newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(scroll) : JSON.parse(JSON.stringify(scroll));
                                 
@@ -106,7 +105,6 @@ window.EVENT_DATA = {
                             const potion = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🍷'] : null;
                             
                             if (potion) {
-                                // 🚨 BUG FIX & ECONOMY WIN: Merge into existing stacks to save space!
                                 const existing = state.player.inventory.find(i => i && i.name === potion.name && !i.isEquipped);
                                 
                                 if (existing) {
@@ -136,7 +134,6 @@ window.EVENT_DATA = {
                                     chunkManager.setWorldTile(ctx.x, ctx.y, '⚰️');
                                     state.mapDirty = true;
                                 } else {
-                                    // If standing on a bridge, just delete the knight anomaly
                                     chunkManager.setWorldTile(ctx.x, ctx.y, currentTile);
                                 }
                             }
@@ -157,8 +154,6 @@ window.EVENT_DATA = {
                     {
                         text: "{red:Sacrifice Life Force}",
                         action: (state, ctx) => {
-                            // The 0-HP Exploit
-                            // Prevents a player at 1 HP from sacrificing 0 health and getting a free legendary!
                             const sacrificeAmount = Math.max(1, Math.floor(state.player.health / 2));
                             window.modifyVital('health', -sacrificeAmount);
                             
@@ -167,12 +162,10 @@ window.EVENT_DATA = {
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#ef4444', 30);
 
-                            // If the 1 HP sacrifice killed them, halt the reward!
                             if (state.player.health <= 0) return;
 
                             const roll = Math.random();
                             if (roll < 0.25) {
-                                // 25% Chance it betrays you and spawns a Demon!
                                 logMessage("{purple:The blood summons a horror from the Void!}");
                                 const enemyTemplate = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['😈d'] : { name: 'Void Demon', maxHealth: 50, attack: 8 };
                                 const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, ctx.x, ctx.y) : enemyTemplate;
@@ -181,15 +174,12 @@ window.EVENT_DATA = {
                                 
                                 if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ctx.x+1, ctx.y, enemyId)).set(state.sharedEnemies[enemyId]);
                             } else {
-                                // 75% Chance for Epic/Legendary Loot or massive stat boost
                                 if (Math.random() < 0.5) {
                                     state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 3;
                                     if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
                                     logMessage("{gold:The blood boils in your veins. Your vitality permanently increases! (+3 Max HP)}");
                                 } else {
                                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
-                                    
-                                    // 🚨 BUG FIX: Ensure the hardcoded fallback possesses all required Engine components!
                                     const fallbackWeapon = { name: 'Blood Blade', type: 'weapon', quantity: 1, damage: 10, tile: '🗡️', isEquipped: false, tags: ['blade'], statBonuses: {} };
                                     const loot = typeof generateMagicItem === 'function' ? generateMagicItem(5) : fallbackWeapon;
                                     
@@ -234,7 +224,6 @@ window.EVENT_DATA = {
                             if (roll < 0.2) {
                                 logMessage("{red:You open the box... it's just rocks! You got scammed!}");
                             } else if (roll < 0.8) {
-                                // 🚨 ECONOMY WIN: Merge into existing stacks safely!
                                 const existing = state.player.inventory.find(i => i && i.name === 'Healing Potion' && !i.isEquipped);
                                 
                                 if (existing) {
@@ -260,7 +249,6 @@ window.EVENT_DATA = {
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#facc15', 20);
                                 
-                                // 🚨 BUG FIX: Ensure the hardcoded fallback possesses all required Engine components!
                                 const fallbackWeapon = { name: 'Smuggler Blade', type: 'weapon', quantity: 1, damage: 8, tile: '🗡️', isEquipped: false, tags: ['blade'], statBonuses: {} };
                                 const loot = typeof generateMagicItem === 'function' ? generateMagicItem(5) : fallbackWeapon;
                                 
@@ -272,7 +260,6 @@ window.EVENT_DATA = {
                                 }
                             }
                             
-                            // Smuggler vanishes after trading
                             if (state.mapMode === 'overworld') chunkManager.setWorldTile(ctx.x, ctx.y, '.');
                             state.mapDirty = true;
                         }
@@ -301,7 +288,6 @@ window.EVENT_DATA = {
                             
                             state.screenShake = 15;
                             
-                            // Huge XP burst but causes Madness
                             if (typeof grantXp === 'function') grantXp(1000);
                             state.player.madnessTurns = (state.player.madnessTurns || 0) + 5;
                             logMessage("{red:The sheer weight of the truth shatters your sanity! (Madness)}");
@@ -335,12 +321,10 @@ window.EVENT_DATA = {
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                             const yieldAmt = 3 + Math.floor(Math.random() * 3);
                             
-                            // Give Iron Ore safely merging stacks
                             const ironStack = state.player.inventory.find(i => i && i.name === 'Iron Ore' && !i.isEquipped);
                             if (ironStack) ironStack.quantity += yieldAmt;
                             else if (state.player.inventory.length < invCap) state.player.inventory.push({ templateId: '•', name: 'Iron Ore', type: 'junk', quantity: yieldAmt, tile: '•', isEquipped: false });
                             
-                            // 30% chance for a Star-Metal Core
                             if (Math.random() < 0.30) {
                                 logMessage("{purple:You found the Titan's power core! (Star-Metal Ore)}");
                                 const starStack = state.player.inventory.find(i => i && i.name === 'Star-Metal Ore' && !i.isEquipped);
@@ -358,7 +342,6 @@ window.EVENT_DATA = {
             }
         }
     },
-    // --- LORE WIN: New Expansions ---
     'MERCHANT_CARAVAN': {
         title: "Lost Caravan",
         oncePerTile: true,
@@ -376,7 +359,6 @@ window.EVENT_DATA = {
                         },
                         reqHint: "Requires 2 Clean Water & 2 Raw Meat",
                         action: (state, ctx) => {
-                            // Deduct items
                             const consume = (name, qty) => {
                                 let needed = qty;
                                 for (let i = state.player.inventory.length - 1; i >= 0; i--) {
@@ -397,7 +379,6 @@ window.EVENT_DATA = {
 
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                             
-                            // 🚨 BUG FIX & ECONOMY WIN: Merge into existing stacks safely!
                             const existing = state.player.inventory.find(i => i && i.name === 'Void Astrolabe' && !i.isEquipped);
                             if (existing) {
                                 existing.quantity++;
@@ -423,9 +404,8 @@ window.EVENT_DATA = {
                             state.screenShake = 15;
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
                             
-                            // Spawn guards
                             const spawnSpots = [[-1, 0], [1, 0]];
-                            const enemyData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['b'] : { name: 'Bandit', maxHealth: 10, attack: 2, defense: 1, xp: 20 }; // Bandits acting as guards
+                            const enemyData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['b'] : { name: 'Bandit', maxHealth: 10, attack: 2, defense: 1, xp: 20 };
                             
                             for (let i = 0; i < 2; i++) {
                                 const ex = ctx.x + spawnSpots[i][0];
@@ -436,7 +416,6 @@ window.EVENT_DATA = {
                                 if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ex, ey, enemyId)).set(state.sharedEnemies[enemyId]);
                             }
 
-                            // Alignment shift
                             state.player.alignment = (state.player.alignment || 0) - 10;
                             logMessage("{gray:Your soul darkens... (-10 Alignment)}");
 
@@ -466,14 +445,12 @@ window.EVENT_DATA = {
                             state.player.coins -= 1;
                             
                             if (Math.random() < 0.5) {
-                                // 50% Chance Good
                                 logMessage("{green:\"Shiny! I love it! Here, step lightly, mortal!\"}");
                                 state.player.dexterityBonus = (state.player.dexterityBonus || 0) + 5;
                                 state.player.dexterityBonusTurns = 100;
                                 logMessage("{cyan:You feel impossibly light on your feet! (+5 Dexterity for 100 turns)}");
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                             } else {
-                                // 50% Chance Bad
                                 logMessage("{purple:\"Boring! I wanted something else! Catch!\"}");
                                 state.player.madnessTurns = (state.player.madnessTurns || 0) + 5;
                                 logMessage("{red:The Fae blows sparkling dust in your face. Your mind reels! (Madness)}");
@@ -495,7 +472,7 @@ window.EVENT_DATA = {
 window.EventManager = {
     activeEvent: null,
     activeContext: null,
-    isProcessingChoice: false, // 🚨 MUTEX LOCK
+    isProcessingChoice: false, 
 
     startEvent: function(eventId, x, y) {
         const eventData = window.EVENT_DATA[eventId];
@@ -504,7 +481,6 @@ window.EventManager = {
         this.activeEvent = eventData;
         this.activeContext = { x: x, y: y, tileId: `${x},${-y}` };
 
-        // Handle one-time events natively
         if (eventData.oncePerTile && gameState.lootedTiles.has(this.activeContext.tileId)) {
             logMessage(`{gray:${eventData.lootedMessage || "There is nothing more to do here."}}`);
             return;
@@ -528,17 +504,15 @@ window.EventManager = {
 
         loreTitle.textContent = this.activeEvent.title;
 
-        // Use the global formatMenuText so colors parse properly!
-        let html = `<p class="font-serif leading-relaxed text-gray-300 mb-6">${formatMenuText(node.text)}</p>`;
+        // 🚨 BUG FIX & UX WIN: Removed text-gray-300 so light mode inherits --title-color perfectly!
+        let html = `<p class="font-serif leading-relaxed mb-6">${formatMenuText(node.text)}</p>`;
         html += `<div class="space-y-3">`;
 
         node.choices.forEach((choice, index) => {
             const meetsReq = choice.req ? choice.req(gameState.player, this.activeContext) : true;
             
-            // UX WIN: Show the requirement text inside the button if disabled!
             let btnText = formatMenuText(choice.text);
             if (!meetsReq && choice.reqHint) {
-                // SECURITY WIN: Escape the hint text as well
                 const safeHint = typeof escapeHtml === 'function' ? escapeHtml(choice.reqHint) : choice.reqHint;
                 btnText += ` <span class="text-[10px] uppercase tracking-widest bg-black bg-opacity-40 px-1 rounded shadow-inner border border-gray-700 ml-1">(${safeHint})</span>`;
             }
@@ -552,9 +526,13 @@ window.EventManager = {
 
         html += `</div>`;
         loreContent.innerHTML = html;
+        
+        // 🚨 UX WIN: Hide the redundant Close button to fix modal sizing!
+        const closeBtn = document.getElementById('closeLoreButton');
+        if (closeBtn) closeBtn.classList.add('hidden');
+
         loreModal.classList.remove('hidden');
 
-        // Attach listeners securely
         setTimeout(() => {
             node.choices.forEach((choice, index) => {
                 const btn = document.getElementById(`evt-btn-${index}`);
@@ -569,24 +547,20 @@ window.EventManager = {
     },
 
     executeChoice: function(choice) {
-        // 🚨 MUTEX LOCK: Prevent players from double-clicking event buttons!
         if (this.isProcessingChoice) return;
         this.isProcessingChoice = true;
 
         try {
-            // Execute dynamic code modifications
             if (choice.action) {
                 choice.action(gameState, this.activeContext);
             }
 
-            // Navigate the tree
             if (choice.nextNode) {
                 this.renderNode(choice.nextNode);
             } else {
                 this.endEvent();
             }
         } finally {
-            // Ensure the lock is always released, even if the action function throws an error!
             this.isProcessingChoice = false;
         }
     },
@@ -598,13 +572,15 @@ window.EventManager = {
         const loreModal = _evtDOMCache.getModal();
         if (loreModal) loreModal.classList.add('hidden');
         
-        // Force full engine refresh to catch inventory/stat modifications
+        // 🚨 Restore the Close button for normal interactions!
+        const closeBtn = document.getElementById('closeLoreButton');
+        if (closeBtn) closeBtn.classList.remove('hidden');
+        
         if (typeof render === 'function') render();
         if (typeof renderInventory === 'function') renderInventory();
         if (typeof renderStats === 'function') renderStats();
         if (typeof syncPlayerState === 'function') syncPlayerState();
         
-        // Push state changes to Firebase via Debouncer
         if (typeof triggerDebouncedSave === 'function') {
             triggerDebouncedSave({
                 inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
@@ -615,7 +591,6 @@ window.EventManager = {
             });
         }
         
-        // Return focus to canvas so WASD works immediately after closing modal
         if (document.activeElement) document.activeElement.blur();
     }
 };
