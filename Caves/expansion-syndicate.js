@@ -257,10 +257,35 @@ window.ExpansionManager.register({
                             document.getElementById('pvpModal').classList.add('hidden');
                             
                             // CALCULATE PVP DAMAGE
-                            const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
-                            const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
-                            let rawPower = playerStrength + weaponDamage;
-                            if (typeof getPlayerDamageModifier === 'function') rawPower = getPlayerDamageModifier(rawPower);
+                            const weapon = gameState.player.equipment.weapon;
+                            const weaponDamage = weapon ? weapon.damage : 0;
+                            const wpnTags = weapon && weapon.tags ? weapon.tags : [];
+                            const isRanged = wpnTags.includes('bow') || wpnTags.includes('crossbow') || wpnTags.includes('firearm');
+
+                            let rawPower = 0;
+
+                            if (isRanged) {
+                                // 1. Ranged Scaling: Dexterity + Weapon + Ammo
+                                const ammo = gameState.player.equipment.ammo;
+                                const ammoDamage = ammo ? ammo.damage : 0;
+                                
+                                // Note: If they have no ammo, ammoDamage is 0 (hitting someone with an unloaded bow!)
+                                rawPower = gameState.player.dexterity + weaponDamage + ammoDamage;
+
+                                // Optional but highly recommended: Pull in the Ranger's 'Eagle Eye' talent!
+                                if (gameState.player.talents && gameState.player.talents.includes('eagle_eye')) {
+                                    rawPower = Math.floor(rawPower * 1.5);
+                                }
+                            } else {
+                                // 2. Melee Scaling: Strength + Weapon
+                                const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
+                                rawPower = playerStrength + weaponDamage;
+                            }
+
+                            // 3. Apply Universal Passive Modifiers (Blood Rage, Shadow Strike, etc.)
+                            if (typeof getPlayerDamageModifier === 'function') {
+                                rawPower = getPlayerDamageModifier(rawPower);
+                            }
                             
                             // Send the attack to RTDB!
                             if (typeof rtdb !== 'undefined') {
