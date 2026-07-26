@@ -293,7 +293,7 @@ async function wakeUpNearbyEnemies() {
                 const enemyId = `overworld:${x},${-y}`;
 
                 // Only spawn if it doesn't already exist in the live world
-                if (!gameState.sharedEnemies[enemyId] && (!window.pendingSpawnData || !window.pendingSpawnData[enemyId])) {
+                if (!gameState.sharedEnemies[enemyId] && (typeof pendingSpawnData === 'undefined' || !pendingSpawnData[enemyId])) {
                     
                     // A. Create the Live Entity
                     const scaledStats = getScaledEnemy(enemyData, x, y);
