@@ -126,28 +126,35 @@ rtdb.ref('.info/serverTimeOffset').on('value', function(snap) {
 // 🚨 ROBUSTNESS WIN: Fallback to `|| 0` prevents NaN propagation if serverTimeOffset is undefined
 window.getServerTime = () => Date.now() + (window.FirebaseNetworkState.serverTimeOffset || 0);
 
-// --- GLOBAL CONNECTION BANNER INJECTION ---
-let connectionBanner = null;
 
-// 🚨 ROBUSTNESS WIN: Safely ensure the DOM is ready before injecting the banner
+// ==========================================
+// 🚨 BUG FIX WIN: CONNECTION BANNER OVERHAUL
+// ==========================================
+let connectionBanner = null;
+let _bannerTimeout = null;
+
 function initConnectionBanner() {
     connectionBanner = document.getElementById('firebase-connection-banner');
     if (!connectionBanner && document.body) {
         connectionBanner = document.createElement('div');
         connectionBanner.id = 'firebase-connection-banner';
-        // Added will-change and transform/translateZ for hardware-accelerated sliding
-        // Added cursor-pointer to let players know they can dismiss it!
-        connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 transform -translate-y-full shadow-2xl font-mono tracking-widest uppercase text-shadow-sm backdrop-blur-md cursor-pointer';
+        
+        // Removed Tailwind translate classes. Relying purely on native style.transform guarantees it never gets stuck!
+        connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md cursor-pointer';
+        
         connectionBanner.style.textShadow = "2px 2px 0px rgba(0,0,0,0.8)"; 
         connectionBanner.style.willChange = "transform";
-        connectionBanner.style.transform = "translateZ(0)";
-        
-        // Click to dismiss! Prevents the banner from blinding the player during combat
-        connectionBanner.onclick = () => {
-            connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
-        };
+        connectionBanner.style.transform = "translateY(-100%)"; // Hidden out of frame initially
         
         document.body.appendChild(connectionBanner);
+    }
+    
+    // ALWAYS bind the click listener so it can be dismissed manually!
+    if (connectionBanner) {
+        connectionBanner.onclick = () => {
+            connectionBanner.style.transform = "translateY(-100%)";
+            if (_bannerTimeout) clearTimeout(_bannerTimeout);
+        };
     }
 }
 
@@ -157,22 +164,25 @@ if (document.readyState === 'loading') {
     initConnectionBanner();
 }
 
-// Prevent banner timeout race-conditions
-let _bannerTimeout = null;
-
 function showNetworkBanner(htmlContent, colorClasses, durationMs) {
     if (_bannerTimeout) clearTimeout(_bannerTimeout);
     
     if (connectionBanner) {
-        const baseClasses = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 font-mono tracking-widest uppercase backdrop-blur-md translate-y-0 cursor-pointer';
+        const baseClasses = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 font-mono tracking-widest uppercase backdrop-blur-md cursor-pointer shadow-2xl';
         const fullClass = `${baseClasses} ${colorClasses}`;
         
-        // 🚨 PERFORMANCE WIN: Prevent DOM thrashing by checking if strings changed
-        if (connectionBanner.innerHTML !== htmlContent) connectionBanner.innerHTML = htmlContent;
         if (connectionBanner.className !== fullClass) connectionBanner.className = fullClass;
+        if (connectionBanner.innerHTML !== htmlContent) connectionBanner.innerHTML = htmlContent;
         
+        // Force a browser reflow so the CSS transition actually animates instead of snapping!
+        void connectionBanner.offsetWidth; 
+        
+        // Slide Down
+        connectionBanner.style.transform = "translateY(0%)";
+        
+        // Auto-Hide after duration
         _bannerTimeout = setTimeout(() => {
-            connectionBanner.classList.replace('translate-y-0', '-translate-y-full');
+            connectionBanner.style.transform = "translateY(-100%)";
         }, durationMs);
     }
 }
