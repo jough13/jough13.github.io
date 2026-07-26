@@ -2145,12 +2145,23 @@ function handlePlayerDeath() {
         if (theme) validFloor = theme.floor;
     }
 
-    // BUG FIX WIN: Ensure scattered death loot doesn't overwrite itself!
+    // Ensure scattered death loot doesn't overwrite itself!
     const usedDropTiles = new Set();
+    const savedInventory = []; // NEW: Array to hold items we don't drop
 
     for (let i = player.inventory.length - 1; i >= 0; i--) {
         const item = player.inventory[i];
         if (!item) continue; // 🚨 GHOST GUARD
+        
+        // --- PREVENT STACK DELETION ---
+        // Save stackables and quest items so they aren't lost to the 1-quantity map drop limitation!
+        const isStackable = window.isStackableItem ? window.isStackableItem(item.type) : ['junk', 'consumable', 'ammo', 'ingredient', 'trade', 'tool', 'seed'].includes(item.type);
+        
+        if (isStackable || item.type === 'quest') {
+            savedInventory.unshift(item); // Push to front to maintain original order
+            continue; // Skip scattering this item to the ground
+        }
+
         let placed = false;
         
         // --- Shatter magic items on death to prevent them reverting to base items ---
@@ -2234,11 +2245,17 @@ function handlePlayerDeath() {
 
     player.coins -= goldLost;
     
-    player.inventory = []; 
-    player.equipment = { weapon: { name: 'Fists', damage: 0, tags: ['blunt'] }, armor: { name: 'Simple Tunic', defense: 0 } };
+    // Restore the saved stackables and quest items!
+    player.inventory = savedInventory; 
     
+    // Give them basic rags so they aren't naked
+    const rags = { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true };
+    player.inventory.push(rags);
+    
+    player.equipment = { weapon: { name: 'Fists', damage: 0, tags: ['blunt'] }, armor: rags, offhand: null, accessory: null, ammo: null };
+
     // Reset Arena progress so they aren't permanently locked out of the Colosseum if they return
-    player.arenaWave = 0; 
+    player.arenaWave = 0;
 
     // Force the database to pull them out of any alternate dimensions or dungeons immediately
     // so if they close the browser on the Game Over screen, they don't load into a wall later!
