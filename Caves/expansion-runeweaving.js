@@ -1,5 +1,9 @@
 // --- START OF FILE expansion-runeweaving.js ---
 
+// ==========================================
+// RUNE-WEAVING (CUSTOM SPELLCRAFTING) EXPANSION
+// ==========================================
+
 window.ExpansionManager.register({
     id: "rune_weaving",
     name: "Rune-Weaving (Custom Spellcrafting)",
@@ -106,6 +110,13 @@ window.ExpansionManager.register({
                         </div>
                     </div>
 
+                    <!-- 🚨 NEW: UPGRADE SECTION -->
+                    <div class="mt-6 border-t border-fuchsia-800 pt-4">
+                        <h3 class="text-lg font-bold text-fuchsia-400 mb-2 drop-shadow-md">Refine Woven Spells</h3>
+                        <p class="text-xs text-gray-400 mb-3 italic">Infuse Arcane Dust to increase the power of your custom magic.</p>
+                        <ul id="runeUpgradeList" class="space-y-2"></ul>
+                    </div>
+
                 </div>
                 
                 <div class="flex gap-3 mt-6 flex-shrink-0">
@@ -151,6 +162,100 @@ window.ExpansionManager.register({
         elemEl.addEventListener('change', updateCosts);
         modEl.addEventListener('change', updateCosts);
 
+        // 🚨 NEW: Renders the dynamic list of spells you own
+        window.renderRuneUpgrades = function() {
+            const upgradeList = document.getElementById('runeUpgradeList');
+            if (!upgradeList) return;
+            upgradeList.innerHTML = '';
+            
+            const player = gameState.player;
+            const customSpells = player.customSpells || {};
+            const dustCount = player.inventory.find(i => i && i.name === 'Arcane Dust' && !i.isEquipped)?.quantity || 0;
+            
+            const keys = Object.keys(customSpells);
+            if (keys.length === 0) {
+                upgradeList.innerHTML = '<li class="italic text-gray-500 text-xs p-3 text-center bg-black bg-opacity-20 rounded border border-gray-700">No custom spells woven yet.</li>';
+                return;
+            }
+            
+            const fragment = document.createDocumentFragment();
+            
+            keys.forEach(spellId => {
+                const spell = customSpells[spellId];
+                const currentLevel = player.spellbook[spellId] || 1;
+                const MAX_LEVEL = 10;
+                
+                // Cost scales dynamically: 25, 50, 75, 100 Dust...
+                const cost = currentLevel * 25; 
+                const canAfford = dustCount >= cost;
+                const isMax = currentLevel >= MAX_LEVEL;
+                
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center bg-gray-900 bg-opacity-40 p-3 rounded-lg border border-fuchsia-900 shadow-sm';
+                
+                let btnHtml = '';
+                if (isMax) {
+                    btnHtml = `<span class="text-[10px] text-yellow-500 font-bold bg-black bg-opacity-40 px-2 py-1.5 rounded border border-yellow-700 shadow-inner tracking-widest uppercase">Maxed</span>`;
+                } else {
+                    const btnClass = canAfford ? 'bg-fuchsia-700 hover:bg-fuchsia-600 cursor-pointer shadow-md active:scale-95 border-b-2 border-fuchsia-900 active:border-b-0 active:mt-0.5' : 'bg-gray-700 opacity-50 cursor-not-allowed border-gray-800';
+                    btnHtml = `<button data-upgrade-rune="${spellId}" data-cost="${cost}" class="${btnClass} text-xs text-white font-bold px-3 py-1.5 rounded transition-all" style="transform: translateZ(0);" ${canAfford ? '' : 'disabled'}>Lvl ${currentLevel+1} (-${cost} Dust)</button>`;
+                }
+                
+                // XSS Protection
+                const safeName = typeof escapeHtml === 'function' ? escapeHtml(spell.name) : spell.name;
+
+                li.innerHTML = `
+                    <div class="flex-grow">
+                        <div class="text-sm font-bold text-fuchsia-300 drop-shadow-sm">${safeName} <span class="text-[10px] text-gray-400 bg-black bg-opacity-30 px-1.5 py-0.5 rounded border border-gray-700 shadow-inner ml-1">Lvl ${currentLevel}</span></div>
+                    </div>
+                    <div>${btnHtml}</div>
+                `;
+                fragment.appendChild(li);
+            });
+            
+            upgradeList.appendChild(fragment);
+        };
+
+        // 🚨 NEW: Executes the purchase
+        window.upgradeRuneSpell = function(spellId, cost) {
+            const player = gameState.player;
+            const dustIdx = player.inventory.findIndex(i => i && i.name === 'Arcane Dust' && !i.isEquipped);
+            
+            if (dustIdx === -1 || player.inventory[dustIdx].quantity < cost) {
+                logMessage("{red:You do not have enough Arcane Dust.}");
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                return;
+            }
+            
+            const currentLevel = player.spellbook[spellId] || 1;
+            if (currentLevel >= 10) return;
+            
+            // Consume Dust
+            player.inventory[dustIdx].quantity -= cost;
+            if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
+            
+            // Level Up the Spell
+            player.spellbook[spellId] = currentLevel + 1;
+            
+            logMessage(`{fuchsia:You infused the spell with raw magic! ${player.customSpells[spellId].name} is now Level ${currentLevel + 1}!}`);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playEnchant();
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#d946ef', 25);
+            gameState.screenShake = 5;
+            
+            // Sync to Database
+            if (typeof triggerDebouncedSave === 'function') {
+                triggerDebouncedSave({
+                    inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
+                    spellbook: player.spellbook
+                });
+            }
+            
+            // Refresh local UI
+            document.getElementById('runeDustCount').textContent = player.inventory.find(i => i && i.name === 'Arcane Dust' && !i.isEquipped)?.quantity || 0;
+            window.renderRuneUpgrades(); // Redraw list
+            if (typeof renderInventory === 'function') renderInventory();
+        };
+
         window.openRuneModal = function() {
             if (typeof inputQueue !== 'undefined') inputQueue.length = 0;
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
@@ -163,12 +268,25 @@ window.ExpansionManager.register({
             document.getElementById('runeStoneCount').textContent = stoneCount;
             
             updateCosts();
+            if (typeof window.renderRuneUpgrades === 'function') window.renderRuneUpgrades(); // 🚨 NEW: Draw upgrades!
             modal.classList.remove('hidden');
         };
 
         document.getElementById('runeCancelBtn').addEventListener('click', () => {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             modal.classList.add('hidden');
+        });
+
+        // 🚨 NEW: Global Event Delegation for Upgrade Buttons
+        modal.addEventListener('click', (e) => {
+            const upgBtn = e.target.closest('button[data-upgrade-rune]');
+            if (upgBtn && !upgBtn.disabled) {
+                const spellId = upgBtn.dataset.upgradeRune;
+                const cost = parseInt(upgBtn.dataset.cost, 10);
+                if (!isNaN(cost) && typeof window.upgradeRuneSpell === 'function') {
+                    window.upgradeRuneSpell(spellId, cost);
+                }
+            }
         });
 
         // ==========================================
