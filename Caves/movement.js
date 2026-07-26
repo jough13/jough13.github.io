@@ -795,213 +795,245 @@ async function attemptMovePlayer(newX, newY) {
         }
     }
 
-    if (newTile === '🎓') {
+    if (newTile === 'O') {
+            const tileId = (gameState.mapMode === 'overworld') ?
+                `${newX},${-newY}` :
+                `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
 
-        const player = gameState.player;
-        const inv = player.inventory;
+            if (!gameState.foundLore.has(tileId)) {
+                logMessage("{gold:You listen to the Sage's ramblings. +10 XP}");
+                if (typeof grantXp === 'function') grantXp(10);
+                gameState.foundLore.add(tileId);
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
+            }
 
-        // Initialize Quest Stage if missing
-        player.relicQuestStage = player.relicQuestStage || 0;
+            let message = "The Void watches.";
+            if (typeof LORE_STONE_MESSAGES !== 'undefined' && LORE_STONE_MESSAGES.length > 0) {
+                const seed = stringToSeed(tileId);
+                const random = Alea(seed);
+                const messageIndex = Math.floor(random() * LORE_STONE_MESSAGES.length);
+                message = LORE_STONE_MESSAGES[messageIndex];
+            }
+            
+            loreTitle.textContent = "Sage";
+            // Light Mode Fix applied here!
+            loreContent.innerHTML = `<p class="italic muted-text mb-2">The old Sage is staring at a tapestry, muttering to themself.</p><p class="font-serif leading-relaxed text-blue-500">"...yes, yes... ${message}..."</p>`;
+            loreModal.classList.remove('hidden');
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+            return; // Stops movement so you don't step on them!
+        }
 
-        loreTitle.textContent = "Royal Historian";
-        let dialogueHtml = "";
+        if (newTile === 'T') {
+            const tileId = (gameState.mapMode === 'overworld') ?
+                `${newX},${-newY}` :
+                `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
 
-        // --- 0. SECRET: RESTORE CROWN ---
-        const crownIndex = inv.findIndex(i => i.name === 'Shattered Crown');
-        if (crownIndex > -1) {
-            loreTitle.textContent = "The Historian Gasps";
-            loreContent.innerHTML = `
-                <p>The Historian drops his quill when he sees the crown in your bag.</p>
-                <p>"By the ancestors... that is the diadem of Alaric himself! It is shattered, but I can repair it using my tools."</p>
-                <button id="restoreCrownBtn" class="mt-4 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded w-full">Restore the Crown</button>
-            `;
+            if (!gameState.foundLore.has(tileId)) {
+                if (typeof grantXp === 'function') grantXp(15);
+                gameState.foundLore.add(tileId);
+                if (typeof playerRef !== 'undefined' && playerRef) {
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
+            }
+            if (typeof openSkillTrainerModal === 'function') openSkillTrainerModal();
+            return; // Stops movement so you don't step on them!
+        }
+
+        if (newTile === '🎓') {
+            const player = gameState.player;
+            const inv = player.inventory;
+
+            // Initialize Quest Stage if missing
+            player.relicQuestStage = player.relicQuestStage || 0;
+
+            loreTitle.textContent = "Royal Historian";
+            let dialogueHtml = "";
+
+            // --- 0. SECRET: RESTORE CROWN ---
+            const crownIndex = inv.findIndex(i => i && i.name === 'Shattered Crown');
+            if (crownIndex > -1) {
+                loreTitle.textContent = "The Historian Gasps";
+                loreContent.innerHTML = `
+                    <p class="muted-text">The Historian drops his quill when he sees the crown in your bag.</p>
+                    <p class="font-serif leading-relaxed">"By the ancestors... that is the diadem of Alaric himself! It is shattered, but I can repair it using my tools."</p>
+                    <button id="restoreCrownBtn" class="mt-4 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-yellow-800 active:border-b-0 active:mt-1">Restore the Crown</button>
+                `;
+                loreModal.classList.remove('hidden');
+
+                setTimeout(() => {
+                    document.getElementById('restoreCrownBtn').onclick = () => {
+                        inv.splice(crownIndex, 1);
+                        inv.push({
+                            templateId: "👑_restored",
+                            name: "Crown of the First King",
+                            type: "armor",
+                            tile: "👑",
+                            quantity: 1,
+                            defense: 2,
+                            slot: "armor",
+                            statBonuses: { charisma: 10, luck: 5, maxMana: 20 },
+                            description: "Restored to its former glory. You act with the authority of the Old World."
+                        });
+
+                        logMessage("{gold:The Historian restores the crown. It shines like the sun!}");
+                        if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('levelDisplay'), 'stat-pulse-purple');
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+
+                        playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv });
+                        if (typeof renderInventory === 'function') renderInventory();
+                        loreModal.classList.add('hidden');
+                    };
+                }, 0);
+                return; 
+            }
+
+            // --- 1. MAIN QUEST LOGIC ---
+            if (player.relicQuestStage === 0) {
+                dialogueHtml = `<p class="font-serif leading-relaxed">"Ah, a traveler! I am researching the fall of the Old King. Legend says his power was sealed in three gems."</p><p class="font-serif leading-relaxed mt-2">"Bring me the <b>Sun Shard</b> from the deserts to the south. I will reward you."</p>`;
+                player.relicQuestStage = 1;
+            } else if (player.relicQuestStage === 1) {
+                const hasShardIndex = inv.findIndex(i => i && i.name === 'Sun Shard');
+                if (hasShardIndex > -1) {
+                    inv.splice(hasShardIndex, 1);
+                    player.relicQuestStage = 2;
+                    if (typeof grantXp === 'function') grantXp(200);
+                    dialogueHtml = `<p class="font-serif leading-relaxed">"Magnificent! It is warm to the touch. Next, seek the <b>Moon Tear</b>. It is said to be lost in the deep swamps."</p>`;
+                } else {
+                    dialogueHtml = `<p class="font-serif leading-relaxed">"The <b>Sun Shard</b> is hidden in the scorching sands of the Desert. Please hurry."</p>`;
+                }
+            } else if (player.relicQuestStage === 2) {
+                const hasShardIndex = inv.findIndex(i => i && i.name === 'Moon Tear');
+                if (hasShardIndex > -1) {
+                    inv.splice(hasShardIndex, 1);
+                    player.relicQuestStage = 3;
+                    if (typeof grantXp === 'function') grantXp(300);
+                    dialogueHtml = `<p class="font-serif leading-relaxed">"Incredible. One remains. The <b>Void Crystal</b>. It lies in the highest peaks of the Mountains, guarded by ancient beasts."</p>`;
+                } else {
+                    dialogueHtml = `<p class="font-serif leading-relaxed">"The <b>Moon Tear</b> is in the Swamp. Beware the poison."</p>`;
+                }
+            } else if (player.relicQuestStage === 3) {
+                const hasShardIndex = inv.findIndex(i => i && i.name === 'Void Crystal');
+                if (hasShardIndex > -1) {
+                    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
+                    if (inv.length < invCap) {
+                        inv.splice(hasShardIndex, 1);
+                        player.relicQuestStage = 4;
+                        if (typeof grantXp === 'function') grantXp(500);
+                        
+                        const reward = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['⚡'] : { name: 'Stormbringer', type: 'weapon' };
+                        let newWeapon = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(reward) : JSON.parse(JSON.stringify(reward));
+                        newWeapon.templateId = '⚡';
+                        newWeapon.quantity = 1;
+                        newWeapon.isEquipped = false;
+                        newWeapon.effect = reward.effect || null;
+                        newWeapon.onHit = reward.onHit || null;
+                        
+                        inv.push(newWeapon);
+                        dialogueHtml = `<p class="font-serif leading-relaxed">"You have done it! The trinity is restored. As promised, take this... The King's own blade, <b class="text-yellow-500">Stormbringer</b>."</p>`;
+                    } else {
+                        dialogueHtml = `<p class="font-serif leading-relaxed">"I have your reward, but your pack is full! Make space and return to me."</p>`;
+                    }
+                } else {
+                    dialogueHtml = `<p class="font-serif leading-relaxed">"The <b>Void Crystal</b> is in the Mountains. It is the most dangerous journey."</p>`;
+                }
+            } else {
+                dialogueHtml = `<p class="font-serif leading-relaxed">"The history books will remember your name, hero."</p>`;
+            }
+
+            // --- 2. MEMORY SHARD TRADE LOGIC ---
+            const shardIndex = inv.findIndex(i => i && i.name === 'Memory Shard');
+            let tradeHtml = "";
+
+            if (shardIndex > -1) {
+                const shardCount = inv[shardIndex].quantity;
+                tradeHtml = `
+                    <hr class="my-4 border-gray-600">
+                    <p class="text-sm italic muted-text">"I see you have found <b class="text-purple-400">${shardCount} Memory Shards</b>. I can trade for them."</p>
+                    <button id="tradeShardXP" class="mt-3 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-purple-800 active:border-b-0 active:mt-1">Trade 1 Shard for 100 XP</button>
+                    <button id="tradeShardStat" class="mt-3 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-yellow-800 active:border-b-0 active:mt-1">Trade 3 Shards for Stat Tome</button>
+                `;
+            }
+
+            // --- 3. RENDER UI ---
+            loreContent.innerHTML = dialogueHtml + tradeHtml;
             loreModal.classList.remove('hidden');
 
-            setTimeout(() => {
-                document.getElementById('restoreCrownBtn').onclick = () => {
-                    // Remove Old Crown
-                    inv.splice(crownIndex, 1);
+            // --- 4. BIND BUTTONS ---
+            if (shardIndex > -1) {
+                setTimeout(() => { 
+                    const btnXP = document.getElementById('tradeShardXP');
+                    const btnStat = document.getElementById('tradeShardStat');
 
-                    // Add Restored Crown using the correct templateId
-                    inv.push({
-                        templateId: "👑_restored", // <--- Bound to correct template definition
-                        name: "Crown of the First King",
-                        type: "armor",
-                        tile: "👑",
-                        quantity: 1,
-                        defense: 2,
-                        slot: "armor",
-                        statBonuses: {
-                            charisma: 10,
-                            luck: 5,
-                            maxMana: 20
-                        },
-                        description: "Restored to its former glory. You act with the authority of the Old World."
-                    });
+                    if (btnXP) {
+                        btnXP.onclick = () => {
+                            const currentShardIdx = gameState.player.inventory.findIndex(i => i && i.name === 'Memory Shard');
+                            if (currentShardIdx > -1) {
+                                gameState.player.inventory[currentShardIdx].quantity--;
+                                if (gameState.player.inventory[currentShardIdx].quantity <= 0) gameState.player.inventory.splice(currentShardIdx, 1);
 
-                    logMessage("{gold:The Historian restores the crown. It shines like the sun!}");
-                    triggerStatAnimation(document.getElementById('levelDisplay'), 'stat-pulse-purple');
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
-
-                    playerRef.update({
-                        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv
-                    });
-                    if (typeof renderInventory === 'function') renderInventory();
-                    loreModal.classList.add('hidden');
-                };
-            }, 0);
-            return; // Stop processing other historian dialogue
-        }
-
-        // --- 1. MAIN QUEST LOGIC ---
-        if (player.relicQuestStage === 0) {
-            dialogueHtml = `<p>"Ah, a traveler! I am researching the fall of the Old King. Legend says his power was sealed in three gems."</p><p>"Bring me the <b>Sun Shard</b> from the deserts to the south. I will reward you."</p>`;
-            player.relicQuestStage = 1;
-        } else if (player.relicQuestStage === 1) {
-            const hasShardIndex = inv.findIndex(i => i.name === 'Sun Shard');
-            if (hasShardIndex > -1) {
-                inv.splice(hasShardIndex, 1);
-                player.relicQuestStage = 2;
-                grantXp(200);
-                dialogueHtml = `<p>"Magnificent! It is warm to the touch. Next, seek the <b>Moon Tear</b>. It is said to be lost in the deep swamps."</p>`;
-            } else {
-                dialogueHtml = `<p>"The <b>Sun Shard</b> is hidden in the scorching sands of the Desert. Please hurry."</p>`;
-            }
-        } else if (player.relicQuestStage === 2) {
-            const hasShardIndex = inv.findIndex(i => i.name === 'Moon Tear');
-            if (hasShardIndex > -1) {
-                inv.splice(hasShardIndex, 1);
-                player.relicQuestStage = 3;
-                grantXp(300);
-                dialogueHtml = `<p>"Incredible. One remains. The <b>Void Crystal</b>. It lies in the highest peaks of the Mountains, guarded by ancient beasts."</p>`;
-            } else {
-                dialogueHtml = `<p>"The <b>Moon Tear</b> is in the Swamp. Beware the poison."</p>`;
-            }
-        } else if (player.relicQuestStage === 3) {
-            const hasShardIndex = inv.findIndex(i => i.name === 'Void Crystal');
-            if (hasShardIndex > -1) {
-                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(player) : 9;
-                if (inv.length < invCap) {
-                    inv.splice(hasShardIndex, 1);
-                    player.relicQuestStage = 4;
-                    grantXp(500);
-                    
-                    const reward = ITEM_DATA['⚡']; // Stormbringer
-                    // Deep clone to prevent template bleeding!
-                    let newWeapon = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(reward) : JSON.parse(JSON.stringify(reward));
-                    newWeapon.templateId = '⚡';
-                    newWeapon.quantity = 1;
-                    newWeapon.isEquipped = false;
-                    newWeapon.effect = reward.effect || null;
-                    newWeapon.onHit = reward.onHit || null;
-                    
-                    inv.push(newWeapon);
-                    dialogueHtml = `<p>"You have done it! The trinity is restored. As promised, take this... The King's own blade, <b>Stormbringer</b>."</p>`;
-                } else {
-                    dialogueHtml = `<p>"I have your reward, but your pack is full! Make space and return to me."</p>`;
-                }
-            } else {
-                dialogueHtml = `<p>"The <b>Void Crystal</b> is in the Mountains. It is the most dangerous journey."</p>`;
-            }
-        } else {
-            dialogueHtml = `<p>"The history books will remember your name, hero."</p>`;
-        }
-
-        // --- 2. MEMORY SHARD TRADE LOGIC ---
-        const shardIndex = inv.findIndex(i => i.name === 'Memory Shard');
-        let tradeHtml = "";
-
-        if (shardIndex > -1) {
-            const shardCount = inv[shardIndex].quantity;
-            tradeHtml = `
-                <hr class="my-4 border-gray-500">
-                <p class="text-sm italic">"I see you have found <b>${shardCount} Memory Shards</b>. I can trade for them."</p>
-                <button id="tradeShardXP" class="mt-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded w-full">Trade 1 Shard for 100 XP</button>
-                <button id="tradeShardStat" class="mt-2 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded w-full">Trade 3 Shards for Stat Tome</button>
-            `;
-        }
-
-        // --- 3. RENDER UI ---
-        loreContent.innerHTML = dialogueHtml + tradeHtml;
-        loreModal.classList.remove('hidden');
-
-        // --- 4. BIND BUTTONS (If they exist) ---
-        if (shardIndex > -1) {
-            setTimeout(() => { // Timeout ensures DOM is updated before we grab elements
-                const btnXP = document.getElementById('tradeShardXP');
-                const btnStat = document.getElementById('tradeShardStat');
-
-                if (btnXP) {
-                    btnXP.onclick = () => {
-                        // Re-check inventory to be safe
-                        const currentShardIdx = gameState.player.inventory.findIndex(i => i.name === 'Memory Shard');
-                        if (currentShardIdx > -1) {
-                            gameState.player.inventory[currentShardIdx].quantity--;
-                            if (gameState.player.inventory[currentShardIdx].quantity <= 0) gameState.player.inventory.splice(currentShardIdx, 1);
-
-                            grantXp(100);
-                            logMessage("{purple:The Historian shares ancient secrets with you.}");
-                            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
-                            loreModal.classList.add('hidden');
-                            playerRef.update({
-                                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv
-                            });
-                            if (typeof renderInventory === 'function') renderInventory();
-                        }
-                    };
-                }
-
-                if (btnStat) {
-                    btnStat.onclick = () => {
-                        const currentShardIdx = gameState.player.inventory.findIndex(i => i.name === 'Memory Shard');
-                        if (currentShardIdx > -1 && gameState.player.inventory[currentShardIdx].quantity >= 3) {
-                            gameState.player.inventory[currentShardIdx].quantity -= 3;
-                            if (gameState.player.inventory[currentShardIdx].quantity <= 0) gameState.player.inventory.splice(currentShardIdx, 1);
-
-                            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
-
-                            if (gameState.player.inventory.length < invCap) {
-                                // Random Stat Tome
-                                const stats = ['strength', 'wits', 'constitution', 'dexterity', 'luck'];
-                                const rndStat = stats[Math.floor(Math.random() * stats.length)];
-                                // Create a dynamic tome based on the random stat
-                                const tomeItem = {
-                                    templateId: '💪',
-                                    name: `Tome of ${rndStat.charAt(0).toUpperCase() + rndStat.slice(1)}`,
-                                    type: 'tome',
-                                    quantity: 1,
-                                    tile: '📖', // Using generic book icon
-                                    stat: rndStat
-                                };
-                                gameState.player.inventory.push(tomeItem);
-                                logMessage(`{gold:Received ${tomeItem.name}!}`);
-                                if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
-                            } else {
-                                logMessage("{red:Inventory full! Shards returned.}");
-                                gameState.player.inventory[currentShardIdx].quantity += 3; // Refund
+                                if (typeof grantXp === 'function') grantXp(100);
+                                logMessage("{purple:The Historian shares ancient secrets with you.}");
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                                loreModal.classList.add('hidden');
+                                playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv });
+                                if (typeof renderInventory === 'function') renderInventory();
                             }
+                        };
+                    }
 
-                            loreModal.classList.add('hidden');
-                            playerRef.update({
-                                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv
-                            });
-                            if (typeof renderInventory === 'function') renderInventory();
-                        } else {
-                            logMessage("{gray:Not enough shards.}");
-                        }
-                    };
-                }
-            }, 0);
+                    if (btnStat) {
+                        btnStat.onclick = () => {
+                            const currentShardIdx = gameState.player.inventory.findIndex(i => i && i.name === 'Memory Shard');
+                            if (currentShardIdx > -1 && gameState.player.inventory[currentShardIdx].quantity >= 3) {
+                                gameState.player.inventory[currentShardIdx].quantity -= 3;
+                                if (gameState.player.inventory[currentShardIdx].quantity <= 0) gameState.player.inventory.splice(currentShardIdx, 1);
+
+                                const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+
+                                if (gameState.player.inventory.length < invCap) {
+                                    const stats = ['strength', 'wits', 'constitution', 'dexterity', 'luck'];
+                                    const rndStat = stats[Math.floor(Math.random() * stats.length)];
+                                    const tomeItem = {
+                                        templateId: '💪',
+                                        name: `Tome of ${rndStat.charAt(0).toUpperCase() + rndStat.slice(1)}`,
+                                        type: 'tome',
+                                        quantity: 1,
+                                        tile: '📖', 
+                                        stat: rndStat
+                                    };
+                                    gameState.player.inventory.push(tomeItem);
+                                    logMessage(`{gold:Received ${tomeItem.name}!}`);
+                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                                } else {
+                                    logMessage("{red:Inventory full! Shards returned.}");
+                                    gameState.player.inventory[currentShardIdx].quantity += 3; // Refund
+                                }
+
+                                loreModal.classList.add('hidden');
+                                playerRef.update({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv });
+                                if (typeof renderInventory === 'function') renderInventory();
+                            } else {
+                                logMessage("{gray:Not enough shards.}");
+                            }
+                        };
+                    }
+                }, 0);
+            }
+
+            // Save progress
+            playerRef.update({
+                relicQuestStage: player.relicQuestStage,
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv
+            });
+            if (typeof renderInventory === 'function') renderInventory();
+            return; // Stops movement so you don't step on them!
         }
-
-        // Save progress
-        playerRef.update({
-            relicQuestStage: player.relicQuestStage,
-            inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv
-        });
-        if (typeof renderInventory === 'function') renderInventory();
-        return;
-    }
 
     if (newTile === '👻') {
         const echoes = [
@@ -2452,7 +2484,7 @@ async function attemptMovePlayer(newX, newY) {
                     ];
                     const msg = genericLines[Math.floor(Math.random() * genericLines.length)];
                     loreTitle.textContent = "Villager";
-                    loreContent.innerHTML = `<p class="italic muted-text mb-2">The villager nods at you.</p><p class="font-serif leading-relaxed text-gray-300">"${msg}"</p>`;
+                    loreContent.innerHTML = `<p class="italic muted-text mb-2">The villager nods at you.</p><p class="font-serif leading-relaxed">"${msg}"</p>`;
                     loreModal.classList.remove('hidden');
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
                 }
@@ -2555,7 +2587,7 @@ async function attemptMovePlayer(newX, newY) {
                     ];
                     const msg = genericLines[Math.floor(Math.random() * genericLines.length)];
                     loreTitle.textContent = "Lost Prospector";
-                    loreContent.innerHTML = `<p class="italic muted-text mb-2">The dwarf wipes soot from his brow.</p><p class="font-serif leading-relaxed text-gray-300">"${msg}"</p>`;
+                    loreContent.innerHTML = `<p class="italic muted-text mb-2">The dwarf wipes soot from his brow.</p><p class="font-serif leading-relaxed">"${msg}"</p>`;
                     loreModal.classList.remove('hidden');
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
                 }
