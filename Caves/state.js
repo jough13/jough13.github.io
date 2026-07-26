@@ -441,14 +441,21 @@ window.modifyVital = function(vital, rawAmount) {
         if (amount === 0) return 0; 
     }
     
-    // 🚨 BUG FIX WIN: The "Shotgun" Death Fix (i-Frames)
+    // The "Shotgun" Death Fix (i-Frames)
     // If the player stands on an oil barrel and it explodes while a monster hits them on the EXACT 
     // same millisecond, they take double-damage and the death script triggers twice.
     // This grants a 100ms invulnerability window specifically for health damage to prevent overlapping AoE deaths!
+    // UPGRADED: Only drops the secondary damage if it is weaker than the initial hit.
     if (vital === 'health' && amount < 0) {
         const now = Date.now();
-        if (now - (p.lastHitTime || 0) < 100) return 0; // Drop the secondary damage
+        if (now - (p.lastHitTime || 0) < 100) {
+            // If the overlapping hit is weaker or equal, ignore it.
+            if (Math.abs(amount) <= (p.lastHitDamage || 0)) {
+                return 0; 
+            }
+        }
         p.lastHitTime = now;
+        p.lastHitDamage = Math.abs(amount);
         
         // Track total lifetime damage taken
         if (p.metrics) p.metrics.damageTaken += Math.abs(amount);
