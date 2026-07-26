@@ -591,7 +591,7 @@ async function attemptMovePlayer(newX, newY) {
     else if (tileData && typeof tileData.onInteract === 'function') {
         const updatesToSave = tileData.onInteract(gameState, newX, newY);
         
-        // 🚨 BUG FIX: Allow expansions to explicitly return 'false' to fall through to hardcoded logic
+        // Allow expansions to explicitly return 'false' to fall through to hardcoded logic
         if (updatesToSave === false) {
             // Do nothing here, allow the code to fall through to the hardcoded NPC checks below!
         } else {
@@ -2736,6 +2736,47 @@ async function attemptMovePlayer(newX, newY) {
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
             }
             if (typeof renderStats === 'function') renderStats();
+            return;
+        }
+
+        if (newTile === '🎖️') {
+            const questId = "banditChief";
+            const playerQuest = gameState.player.quests[questId];
+
+            if (!playerQuest) {
+                loreTitle.textContent = "Captain of the Guard";
+                loreContent.innerHTML = `<p class="italic muted-text mb-2">The Captain looks grim.</p><p class="font-serif leading-relaxed">"The Bandit Chief has grown too bold. He's holed up in a fortress nearby. I need someone expendable—err, brave—to take him out."</p><button id="acceptGuard" style="transform: translate3d(0,0,0);" class="mt-4 bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-red-900 active:border-b-0 active:mt-1">"Consider it done."</button>`;
+                loreModal.classList.remove('hidden');
+                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                
+                setTimeout(() => {
+                    document.getElementById('acceptGuard').addEventListener('click', () => {
+                        if (typeof acceptQuest === 'function') acceptQuest(questId);
+                        loreModal.classList.add('hidden');
+                    }, { once: true });
+                }, 0);
+                return;
+            } else if (playerQuest.status === 'active') {
+                if (playerQuest.kills >= 1) {
+                    loreTitle.textContent = "Impressed Captain";
+                    loreContent.innerHTML = `<p class="font-serif leading-relaxed">"They say the Chief is dead? Ha! I knew you had it in you. Take this blade, you've earned it."</p><button id="turnInGuard" style="transform: translate3d(0,0,0);" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 animate-pulse border-b-4 border-green-800 active:border-b-0 active:mt-1">"Thanks. (Complete)"</button>`;
+                    loreModal.classList.remove('hidden');
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                    
+                    setTimeout(() => {
+                        document.getElementById('turnInGuard').addEventListener('click', () => {
+                            if (typeof turnInQuest === 'function') turnInQuest(questId);
+                            loreModal.classList.add('hidden');
+                        }, { once: true });
+                    }, 0);
+                    return;
+                } else {
+                    logMessage("{gray:The Captain nods. 'Bring me the Chief's head.'}");
+                }
+            } else {
+                const msgs = ["The roads are safer thanks to you.", "Stay sharp out there.", "Move along, citizen."];
+                logMessage(`{gray:Guard: "${msgs[Math.floor(Math.random() * msgs.length)]}"}`);
+            }
             return;
         }
 
