@@ -504,9 +504,11 @@ window.EventManager = {
 
         loreTitle.textContent = this.activeEvent.title;
 
-        // 🚨 BUG FIX & UX WIN: Removed text-gray-300 so light mode inherits --title-color perfectly!
-        let html = `<p class="font-serif leading-relaxed mb-6">${formatMenuText(node.text)}</p>`;
-        html += `<div class="space-y-3">`;
+        // 1. Render ONLY the text inside the scrollable lore container
+        loreContent.innerHTML = `<p class="font-serif leading-relaxed mb-2">${formatMenuText(node.text)}</p>`;
+
+        // 2. Build the buttons in a separate container
+        let btnHtml = `<div id="eventChoicesContainer" class="flex flex-col gap-3 flex-shrink-0 mt-4 border-t border-gray-700 pt-4 w-full">`;
 
         node.choices.forEach((choice, index) => {
             const meetsReq = choice.req ? choice.req(gameState.player, this.activeContext) : true;
@@ -519,20 +521,27 @@ window.EventManager = {
 
             const btnClass = meetsReq ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-800 active:border-b-0 active:mt-1' : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-75 border-gray-700';
             
-            html += `<button id="evt-btn-${index}" class="w-full ${btnClass} font-bold py-3 px-4 rounded-xl shadow-md transition-transform border-b-4 ${meetsReq ? 'active:scale-95' : ''}" ${meetsReq ? '' : 'disabled'}>
+            btnHtml += `<button id="evt-btn-${index}" class="w-full ${btnClass} font-bold py-3 px-4 rounded-xl shadow-md transition-transform border-b-4 ${meetsReq ? 'active:scale-95' : ''}" ${meetsReq ? '' : 'disabled'}>
                 ${btnText}
             </button>`;
         });
 
-        html += `</div>`;
-        loreContent.innerHTML = html;
+        btnHtml += `</div>`;
         
-        // 🚨 UX WIN: Hide the redundant Close button to fix modal sizing!
+        // 3. Clean up any old choices from previous nodes
+        const oldContainer = document.getElementById('eventChoicesContainer');
+        if (oldContainer) oldContainer.remove();
+
+        // 4. Inject the buttons OUTSIDE the scrollable text box, right before the hidden Close button!
         const closeBtn = document.getElementById('closeLoreButton');
-        if (closeBtn) closeBtn.classList.add('hidden');
+        if (closeBtn) {
+            closeBtn.classList.add('hidden');
+            closeBtn.insertAdjacentHTML('beforebegin', btnHtml);
+        }
 
         loreModal.classList.remove('hidden');
 
+        // 5. Bind Listeners securely
         setTimeout(() => {
             node.choices.forEach((choice, index) => {
                 const btn = document.getElementById(`evt-btn-${index}`);
@@ -572,7 +581,10 @@ window.EventManager = {
         const loreModal = _evtDOMCache.getModal();
         if (loreModal) loreModal.classList.add('hidden');
         
-        // 🚨 Restore the Close button for normal interactions!
+        // 🚨 CLEANUP: Remove the injected buttons and restore the native Close button
+        const oldContainer = document.getElementById('eventChoicesContainer');
+        if (oldContainer) oldContainer.remove();
+        
         const closeBtn = document.getElementById('closeLoreButton');
         if (closeBtn) closeBtn.classList.remove('hidden');
         
