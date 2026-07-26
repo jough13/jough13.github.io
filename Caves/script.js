@@ -1945,6 +1945,8 @@ closeLoreButton.addEventListener('click', () => {
 
 loreModal.addEventListener('click', (event) => {
     if (event.target === loreModal) {
+        // Prevent closing the modal by clicking the background if a forced Event is active!
+        if (typeof EventManager !== 'undefined' && EventManager.activeEvent) return;
         loreModal.classList.add('hidden');
     }
 });
