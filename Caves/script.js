@@ -2557,7 +2557,7 @@ function clearSessionState() {
     areGlobalListenersInitialized = false; 
 }
 
-logoutButton.addEventListener('click', async () => { // <--- Added async
+logoutButton.addEventListener('click', async () => {
 
     // 0. Cancel any pending background saves immediately
     if (saveTimeout) {
@@ -2579,7 +2579,7 @@ logoutButton.addEventListener('click', async () => { // <--- Added async
         delete finalState.color;
         delete finalState.character;
 
-        // 🚨 THE FIX: Await the save so it finishes BEFORE authentication is revoked!
+        // Await the save so it finishes BEFORE authentication is revoked!
         try {
             await playerRef.set(sanitizeForFirebase(finalState), { merge: true });
         } catch (err) {
@@ -2619,11 +2619,15 @@ logoutButton.addEventListener('click', async () => { // <--- Added async
         console.log("Signed out successfully.");
         gameContainer.classList.add('hidden');
         authContainer.classList.remove('hidden');
+        
+        // Restores the flickering stone background for the login screen!
+        document.body.classList.add('login-bg');
     });
-});
 
 async function enterGame(playerData) {
     gameContainer.classList.remove('hidden');
+
+    document.body.classList.remove('login-bg'); 
 
     applyVisualSettings();
 
