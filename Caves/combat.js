@@ -317,7 +317,8 @@ async function wakeUpNearbyEnemies() {
                     if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, null, null, x, y);
 
                     // E. CONSUME THE MAP TILE
-                    chunkManager.setWorldTile(x, y, '.'); 
+                    // Pass null to erase the override and restore the biome!
+                    chunkManager.setWorldTile(x, y, null); 
                     
                     enemiesSpawnedCount++;
                     visualUpdateNeeded = true;
