@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_syndicate",
     name: "The Syndicate (Outlaws & PvP)",
-    version: "1.0",
+    version: "1.1", // Updated Version
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -74,7 +74,7 @@ window.ExpansionManager.register({
             castle: [
                 { name: 'Bounty Compass', price: 500, stock: 1 }
             ],
-            // Add the Pardon to the Black Market from the Lore Expansion!
+            // Added to the Black Market from the Lore Expansion
             trader: [
                 { name: 'Bounty Compass', price: 400, stock: 1 },
                 { name: 'Royal Pardon', price: 5000, stock: 1 } // Very expensive way to escape prison!
@@ -142,7 +142,7 @@ window.ExpansionManager.register({
             
             window.TILE_DATA[tileChar].onInteract = (state, x, y) => {
                 
-                // 🚨 BUG FIX: Only show the Crime modal if they are sneaking up on them!
+                // 🚨 BUG FIX: Fallthrough allows standard interaction if not crouching!
                 if (!state.player.isCrouching) {
                     if (origInteract) return origInteract(state, x, y);
                     return false; // Fall through to input.js hardcoded logic!
@@ -154,7 +154,7 @@ window.ExpansionManager.register({
 
                 loreTitle.textContent = name;
                 
-                // 🚨 UI FIX: Replaced 'text-gray-300' with 'muted-text' for Light Mode visibility
+                // 🚨 UI FIX: Replaced hardcoded text-gray-300 with muted-text for Light Mode visibility
                 loreContent.innerHTML = `
                     <p class="mb-4 muted-text italic">You approach the ${name}. What will you do?</p>
                     <button id="npcTalkBtn" class="mb-3 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-blue-800 active:border-b-0 active:mt-1">Interact peacefully</button>
@@ -167,8 +167,8 @@ window.ExpansionManager.register({
                     document.getElementById('npcTalkBtn').onclick = () => {
                         loreModal.classList.add('hidden');
                         
-                        // 🚨 BUG FIX: Automatically uncrouch the player and hit the tile again to 
-                        // trigger the standard hardcoded interaction seamlessly!
+                        // 🚨 BUG FIX: Automatically uncrouch the player and re-trigger the 
+                        // tile interaction seamlessly to open their shop/dialogue!
                         state.player.isCrouching = false;
                         if (typeof window.StealthManager !== 'undefined') window.StealthManager.updateUI();
                         if (typeof render === 'function') render();
@@ -230,7 +230,6 @@ window.ExpansionManager.register({
             window.handleInput = function(key) {
                 if (key.toLowerCase() === 'g' && typeof otherPlayers !== 'undefined') {
                     
-                    // Look for a player on the exact same tile
                     let targetPid = null; 
                     let targetOp = null;
                     
@@ -245,13 +244,42 @@ window.ExpansionManager.register({
                     
                     if (targetPid) {
                         const safeName = typeof escapeHtml === 'function' ? escapeHtml(targetOp.email.split('@')[0]) : "Traveler";
-                        
                         document.getElementById('pvpTitle').innerHTML = `Encounter: ${safeName}`;
                         
+                        // --- NEW: LAWLESS ZONE & OPT-IN LOGIC ---
+                        const isLawlessZone = () => {
+                            if (gameState.mapMode === 'underworld') return true;
+                            if (gameState.currentRealm !== 0) return true; // Alternate dimensions
+                            if (gameState.mapMode === 'dungeon' && ['ARENA', 'VOID', 'ABYSS', 'CORRUPTED'].includes(gameState.currentCaveTheme)) return true;
+                            return false;
+                        };
+
+                        const inZone = isLawlessZone();
+                        const myPvP = gameState.player.pvpEnabled;
+                        const theirPvP = targetOp.pvpEnabled;
+                        const attackBtn = document.getElementById('pvpAttackBtn');
+
+                        // Determine the state of the Attack Button
                         if (targetOp.bounty > 0) {
                             document.getElementById('pvpDesc').innerHTML = `They are a <strong class="text-red-500">Wanted Outlaw</strong>! Defeat them to claim their ${targetOp.bounty}g bounty.`;
+                            attackBtn.disabled = false;
+                            attackBtn.className = "bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-transform active:scale-95 border-b-4 border-red-900 active:border-b-0 active:mt-1";
+                            attackBtn.innerHTML = "🗡️ Claim Bounty (PvP)";
+                        } else if (!inZone) {
+                            document.getElementById('pvpDesc').innerHTML = `A peaceful traveler. You are in a <strong class="text-blue-400">Safe Zone</strong>.`;
+                            attackBtn.disabled = true;
+                            attackBtn.className = "bg-gray-800 text-gray-500 font-bold py-3 px-4 rounded-xl shadow-inner border border-gray-700 cursor-not-allowed";
+                            attackBtn.innerHTML = "🚫 PvP Disabled (Safe Zone)";
+                        } else if (!myPvP || !theirPvP) {
+                            document.getElementById('pvpDesc').innerHTML = `A peaceful traveler. Both players must type <strong class="text-yellow-400">/pvp</strong> to duel here.`;
+                            attackBtn.disabled = true;
+                            attackBtn.className = "bg-gray-800 text-gray-500 font-bold py-3 px-4 rounded-xl shadow-inner border border-gray-700 cursor-not-allowed";
+                            attackBtn.innerHTML = "🚫 PvP Disabled (Opt-In Required)";
                         } else {
-                            document.getElementById('pvpDesc').innerHTML = `A peaceful traveler. Murdering them will grant you a severe bounty.`;
+                            document.getElementById('pvpDesc').innerHTML = `A fellow traveler. <strong class="text-red-500">Honorable Combat</strong> is permitted here!`;
+                            attackBtn.disabled = false;
+                            attackBtn.className = "bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-transform active:scale-95 border-b-4 border-red-900 active:border-b-0 active:mt-1";
+                            attackBtn.innerHTML = "🗡️ Duel (PvP)";
                         }
                         
                         document.getElementById('pvpModal').classList.remove('hidden');
@@ -265,7 +293,6 @@ window.ExpansionManager.register({
                         
                         document.getElementById('pvpTradeBtn').onclick = () => {
                             document.getElementById('pvpModal').classList.add('hidden');
-                            // Seamless integration with the Bazaar Expansion!
                             if (typeof window.TradeManager !== 'undefined') {
                                 window.TradeManager.requestTrade(targetPid, safeName);
                             } else {
@@ -276,7 +303,7 @@ window.ExpansionManager.register({
                         document.getElementById('pvpAttackBtn').onclick = () => {
                             document.getElementById('pvpModal').classList.add('hidden');
                             
-                            // CALCULATE PVP DAMAGE
+                            // --- NEW: WEAPON TAG SCALING FOR PVP ---
                             const weapon = gameState.player.equipment.weapon;
                             const weaponDamage = weapon ? weapon.damage : 0;
                             const wpnTags = weapon && weapon.tags ? weapon.tags : [];
@@ -285,24 +312,18 @@ window.ExpansionManager.register({
                             let rawPower = 0;
 
                             if (isRanged) {
-                                // 1. Ranged Scaling: Dexterity + Weapon + Ammo
                                 const ammo = gameState.player.equipment.ammo;
                                 const ammoDamage = ammo ? ammo.damage : 0;
-                                
-                                // Note: If they have no ammo, ammoDamage is 0 (hitting someone with an unloaded bow!)
                                 rawPower = gameState.player.dexterity + weaponDamage + ammoDamage;
-
-                                // Optional but highly recommended: Pull in the Ranger's 'Eagle Eye' talent!
+                                
                                 if (gameState.player.talents && gameState.player.talents.includes('eagle_eye')) {
                                     rawPower = Math.floor(rawPower * 1.5);
                                 }
                             } else {
-                                // 2. Melee Scaling: Strength + Weapon
                                 const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
                                 rawPower = playerStrength + weaponDamage;
                             }
 
-                            // 3. Apply Universal Passive Modifiers (Blood Rage, Shadow Strike, etc.)
                             if (typeof getPlayerDamageModifier === 'function') {
                                 rawPower = getPlayerDamageModifier(rawPower);
                             }
@@ -317,14 +338,14 @@ window.ExpansionManager.register({
                                 });
                             }
                             
-                            // Crime Penalty
+                            // Crime Penalty ONLY if attacking an innocent outlaw!
+                            // (This is a failsafe, since the UI blocks illegal attacks now anyway)
                             if (!targetOp.bounty || targetOp.bounty <= 0) {
-                                gameState.player.bounty = (gameState.player.bounty || 0) + 1000;
-                                logMessage("{red:You assaulted an innocent! +1000g Bounty.}");
-                                if (typeof playerRef !== 'undefined') playerRef.update({ bounty: gameState.player.bounty });
+                                logMessage(`{orange:You strike ${safeName} for ${rawPower} damage in honorable combat!}`);
+                            } else {
+                                logMessage(`{orange:You mercilessly strike the outlaw ${safeName} for ${rawPower} damage!}`);
                             }
                             
-                            logMessage(`{orange:You mercilessly strike ${safeName} for ${rawPower} damage!}`);
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('heavy');
                             gameState.screenShake = 10;
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444', 15);
@@ -340,19 +361,25 @@ window.ExpansionManager.register({
         // ==========================================
         // 4. FIREBASE PVP LISTENERS
         // ==========================================
-        // We wait a few seconds to ensure player_id is populated by the auth system
         setTimeout(() => {
             if (typeof rtdb !== 'undefined' && typeof player_id !== 'undefined' && player_id) {
                 
-                // A. Listen for incoming Assassinations
+                // A. Listen for incoming Attacks
                 rtdb.ref(`pvpAttacks/${player_id}`).on('child_added', (snap) => {
                     const attack = snap.val();
                     if (!attack) return;
 
                     const dmg = attack.damage || 0;
-                    logMessage(`{red:⚔️ ${attack.attackerName} assassinated you for ${dmg} damage!}`);
+                    logMessage(`{red:⚔️ ${attack.attackerName} struck you for ${dmg} damage!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
                     gameState.screenShake = 20;
+
+                    // 🚨 JUICE FIX: Dismount the victim if they get hit!
+                    if (gameState.player.isMounted) {
+                        gameState.player.isMounted = false;
+                        logMessage("{red:You were knocked off your mount!}");
+                        if (typeof render === 'function') render();
+                    }
                     
                     window.modifyVital('health', -dmg);
 
@@ -379,7 +406,7 @@ window.ExpansionManager.register({
                     const reward = snap.val();
                     if (!reward) return;
 
-                    logMessage(`{gold:🏆 Target Eliminated! You claimed ${reward.targetName}'s bounty of ${reward.gold} gold!}`);
+                    logMessage(`{gold:🏆 Target Eliminated! You claimed ${reward.targetName}'s gold: ${reward.gold}g!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#facc15', 30);
                     
@@ -459,13 +486,15 @@ window.ExpansionManager.register({
         // ==========================================
         // 6. CHAT & PLAYER SYNC HOOKS
         // ==========================================
-        // Ensure other players know you are an outlaw!
         if (typeof window.syncPlayerState === 'function') {
             const origSync = window.syncPlayerState;
             window.syncPlayerState = function() {
                 origSync();
                 if (typeof onlinePlayerRef !== 'undefined' && onlinePlayerRef) {
-                    onlinePlayerRef.update({ bounty: gameState.player.bounty || 0 }).catch(()=>{});
+                    onlinePlayerRef.update({ 
+                        bounty: gameState.player.bounty || 0,
+                        pvpEnabled: gameState.player.pvpEnabled || false 
+                    }).catch(()=>{});
                 }
             };
         }
@@ -476,13 +505,27 @@ window.ExpansionManager.register({
                 const raw = message.substring(1); 
                 const command = raw.split(' ')[0].toLowerCase();
                 
+                // --- NEW: /PVP COMMAND ---
+                if (command === 'pvp') {
+                    gameState.player.pvpEnabled = !gameState.player.pvpEnabled;
+                    if (gameState.player.pvpEnabled) {
+                        logMessage("{red:PvP Enabled. You can now duel in Lawless Zones.}");
+                    } else {
+                        logMessage("{green:PvP Disabled. You are protected from duels.}");
+                    }
+                    if (typeof playerRef !== 'undefined') playerRef.update({ pvpEnabled: gameState.player.pvpEnabled });
+                    if (typeof syncPlayerState === 'function') syncPlayerState();
+                    return;
+                }
+
                 if (command === 'who') {
-                    let onlineList = [`You ${gameState.player.bounty > 0 ? '{red:[OUTLAW]}' : ''}`];
+                    let onlineList = [`You ${gameState.player.bounty > 0 ? '{red:[OUTLAW]}' : ''}${gameState.player.pvpEnabled ? ' {orange:[PvP]}' : ''}`];
                     for (const id in otherPlayers) {
                         const p = otherPlayers[id];
                         const safeName = typeof escapeHtml === 'function' ? escapeHtml(p.email ? p.email.split('@')[0] : "Unknown") : "Unknown";
                         const bountyStr = p.bounty > 0 ? ` {red:[Bounty: ${p.bounty}g]}` : '';
-                        onlineList.push(`${safeName}${bountyStr}`);
+                        const pvpStr = p.pvpEnabled ? ` {orange:[PvP]}` : '';
+                        onlineList.push(`${safeName}${bountyStr}${pvpStr}`);
                     }
                     logMessage(`Online Players (${onlineList.length}): ${onlineList.join(', ')}`);
                     return;
