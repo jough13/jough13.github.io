@@ -124,7 +124,7 @@ window.TILE_DATA = {
                 const safeMsg = typeof escapeHtml === 'function' ? escapeHtml(tileData.msg) : tileData.msg;
                 
                 loreTitle.textContent = "Luminous Echo";
-                loreContent.innerHTML = `<p class="italic text-gray-400 mb-2 border-b border-gray-700 pb-2">Written by ${safeAuthor}:</p><p class="font-serif leading-relaxed text-cyan-300 text-lg mt-2 drop-shadow-md">"${safeMsg}"</p>`;
+                loreContent.innerHTML = `<p class="italic muted-text mb-2 border-b border-gray-700 pb-2">Written by ${safeAuthor}:</p><p class="font-serif leading-relaxed text-cyan-300 text-lg mt-2 drop-shadow-md">"${safeMsg}"</p>`;
                 loreModal.classList.remove('hidden');
                 
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playHover();
@@ -158,7 +158,7 @@ window.TILE_DATA = {
             const song = songs[Math.floor(Math.random() * songs.length)];
 
             loreTitle.textContent = "The Wandering Bard";
-            loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">A traveler sits on a rock, resting a lute on his knee. He smiles as you approach.</p><p class="font-serif leading-relaxed text-blue-200">"${song}"</p>`;
+            loreContent.innerHTML = `<p class="italic muted-text mb-2">A traveler sits on a rock, resting a lute on his knee. He smiles as you approach.</p><p class="font-serif leading-relaxed text-blue-500">"${song}"</p>`;
             loreModal.classList.remove('hidden');
 
             if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic(); 
@@ -310,7 +310,7 @@ window.TILE_DATA = {
             }
 
             loreTitle.textContent = "A Grim Discovery";
-            loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">You search the ruined camp...</p><p class="font-serif text-gray-300 leading-relaxed">${story}</p>`;
+            loreContent.innerHTML = `<p class="italic muted-text mb-2">You search the ruined camp...</p><p class="font-serif muted-text leading-relaxed">${story}</p>`;
             loreModal.classList.remove('hidden');
 
             if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 500); 
@@ -1186,7 +1186,7 @@ window.TILE_DATA = {
 
             loreTitle.textContent = "Campsite Ledger";
             
-            let html = `<p class="text-sm text-gray-300 mb-4 border-b border-gray-700 pb-2">Invest materials to expand your campsite. (Current: ${wood} Wood, ${stone} Stone, ${iron} Iron, ${dust} Void Dust)</p>`;
+            let html = `<p class="text-sm muted-text mb-4 border-b border-gray-700 pb-2">Invest materials to expand your campsite. (Current: ${wood} Wood, ${stone} Stone, ${iron} Iron, ${dust} Void Dust)</p>`;
 
             const addBtn = (id, name, costStr, canAfford) => {
                 const btnClass = canAfford ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-700 opacity-50 cursor-not-allowed';
