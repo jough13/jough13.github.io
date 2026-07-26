@@ -2045,14 +2045,26 @@ function handleChatCommand(message) {
             break;
 
         case 'who':
-            let onlineList = ["You"];
+            // Helper to dynamically build tags from expansion properties
+            const buildTags = (p) => {
+                let tags = "";
+                if (p.guildTag) tags += ` [${typeof escapeHtml === 'function' ? escapeHtml(p.guildTag) : p.guildTag}]`;
+                if (p.generation && p.generation > 0) tags += ` {gold:[Gen ${p.generation}]}`;
+                if (p.activeTitle) tags += ` <${typeof escapeHtml === 'function' ? escapeHtml(p.activeTitle) : p.activeTitle}>`;
+                if (p.bounty > 0) tags += ` {red:[Bounty: ${p.bounty}g]}`;
+                if (p.pvpEnabled) tags += ` {orange:[PvP]}`;
+                return tags;
+            };
+
+            let onlineList = [`You${buildTags(gameState.player)}`];
+            
             for (const id in otherPlayers) {
                 const p = otherPlayers[id];
-                // Sanitize the name before adding it to the list
                 const rawName = p.email ? p.email.split('@')[0] : "Unknown";
-                const safeName = escapeHtml(rawName);
+                const safeName = typeof escapeHtml === 'function' ? escapeHtml(rawName) : rawName;
                 
-                onlineList.push(`${safeName} (Lvl ${escapeHtml(p.level) || '?'})`);
+                // Construct the final string with Level and all expansion tags
+                onlineList.push(`${safeName} (Lvl ${escapeHtml(p.level) || '?'})${buildTags(p)}`);
             }
             logMessage(`Online Players (${onlineList.length}): ${onlineList.join(', ')}`);
             break;
