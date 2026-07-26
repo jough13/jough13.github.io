@@ -20,11 +20,11 @@ function getUnderworldTerrain(worldX, worldY) {
     // Extreme elevations become Magma Lakes
     if (elev < 0.15) return '🌋'; 
     
-    // CONTENT WIN: Expanded Underworld Biomes & Ecosystems
+    // Expanded Underworld Biomes & Ecosystems
     if (elev > 0.85) return '🕸'; // Deep Spider Nests
     if (ridge > 0.45 && moist > 0.4 && moist < 0.6) return '🏛️'; // Sunken Abyssal Ruins
 
-    // LORE WIN: Magma Rivers and Underground Lakes
+    // Magma Rivers and Underground Lakes
     const liquidNoise = Math.abs(moist - 0.5);
     if (liquidNoise < 0.03) {
         if (elev < 0.4) return '🔥'; // Magma vents/rivers
@@ -439,7 +439,7 @@ const chunkManager = {
 
         // --- 4. Place procedural loot and decorations ---
         if (chosenThemeKey !== 'ARENA') {
-            const CAVE_LOOT_TABLE = ['♥', '🔮', '💜', 'S', '$', '📄', '🍄', '🏺', '⚰️'];
+            const CAVE_LOOT_TABLE = ['♥', '🔮', '💜', 'S', '$', '📜', '🍄', '📦', '✨'];
             const lootQuantity = Math.floor(random() * 8) + 2; // More loot in bigger caves
             
             for (let i = 0; i < lootQuantity; i++) {
