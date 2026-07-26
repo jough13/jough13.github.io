@@ -505,17 +505,18 @@ window.ExpansionManager.register({
             }
         }, 3000); // Give the engine a few seconds to boot up `player_id`
 
-        // Hook into the 'G' key (Looting) to initiate trades if standing on someone!
+        // Hook into the 'T' key (Target) to initiate trades if standing on someone!
         if (typeof window.handleInput === 'function') {
             const origHandleInput = window.handleInput;
             window.handleInput = function(key) {
-                if (key.toLowerCase() === 'g' && typeof otherPlayers !== 'undefined' && gameState.mapMode === 'overworld') {
+                // 🚨 CHANGED FROM 'g' to 't'
+                if (key.toLowerCase() === 't' && typeof otherPlayers !== 'undefined' && gameState.mapMode === 'overworld') {
                     for (const pid in otherPlayers) {
                         const op = otherPlayers[pid];
                         if (op.x === gameState.player.x && op.y === gameState.player.y && op.mapMode === gameState.mapMode && op.currentRealm === gameState.currentRealm) {
                             const targetName = op.email ? op.email.split('@')[0] : "Player";
                             TradeManager.requestTrade(pid, targetName);
-                            // We don't return here so they can still pick up items off the floor if they want
+                            return; // 🚨 Added return to prevent overlap
                         }
                     }
                 }
