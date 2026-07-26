@@ -322,6 +322,16 @@ window.ExpansionManager.register({
             setTimeout(() => {
                 const btn = document.getElementById('buffWeapon');
                 if (btn) btn.onclick = () => {
+                    // 🚨 FIXED: Added cost validation
+                    if (p.coins < 50) {
+                        logMessage("{red:You need 50 Gold to pay the Blacksmith.}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return;
+                    }
+                    
+                    // Deduct the gold
+                    p.coins -= 50;
+                    
                     p.strengthBonus = 3;
                     p.strengthBonusTurns = 500;
                     logMessage("{red:The Blacksmith hones your weapons! (+3 Strength for 500 turns)}");
@@ -329,8 +339,9 @@ window.ExpansionManager.register({
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#ef4444', 15);
                     if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('strengthDisplay'), 'stat-pulse-green');
                     
-                    if (typeof playerRef !== 'undefined') playerRef.update({ strengthBonus: 3, strengthBonusTurns: 500 });
+                    if (typeof playerRef !== 'undefined') playerRef.update({ coins: p.coins, strengthBonus: 3, strengthBonusTurns: 500 });
                     if (typeof renderEquipment === 'function') renderEquipment();
+                    if (typeof renderStats === 'function') renderStats(); // Update gold UI
                     loreModal.classList.add('hidden');
                 };
             }, 0);
@@ -426,6 +437,16 @@ window.ExpansionManager.register({
             setTimeout(() => {
                 const btn = document.getElementById('buffBard');
                 if (btn) btn.onclick = () => {
+                    
+                    if (p.coins < 50) {
+                        logMessage("{red:You need 50 Gold to tip the Bard.}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return;
+                    }
+                    
+                    // Deduct the gold
+                    p.coins -= 50;
+                    
                     p.witsBonus = 3;
                     p.witsBonusTurns = 500;
                     logMessage("{blue:The Bard's tale inspires you! (+3 Wits for 500 turns)}");
@@ -433,11 +454,12 @@ window.ExpansionManager.register({
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#60a5fa', 15);
                     if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('witsDisplay'), 'stat-pulse-blue');
                     
-                    if (typeof playerRef !== 'undefined') playerRef.update({ witsBonus: 3, witsBonusTurns: 500 });
-                    if (typeof renderStats === 'function') renderStats();
+                    if (typeof playerRef !== 'undefined') playerRef.update({ coins: p.coins, witsBonus: 3, witsBonusTurns: 500 });
+                    if (typeof renderStats === 'function') renderStats(); // Update gold UI
                     loreModal.classList.add('hidden');
                 };
             }, 0);
+
         };
     }
 });
