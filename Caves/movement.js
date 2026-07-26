@@ -591,7 +591,7 @@ async function attemptMovePlayer(newX, newY) {
     else if (tileData && typeof tileData.onInteract === 'function') {
         const updatesToSave = tileData.onInteract(gameState, newX, newY);
         
-        // Allow expansions to explicitly return 'false' to fall through to hardcoded logic
+        // 🚨 BUG FIX: Allow expansions to explicitly return 'false' to fall through to hardcoded logic
         if (updatesToSave === false) {
             // Do nothing here, allow the code to fall through to the hardcoded NPC checks below!
         } else {
@@ -2359,166 +2359,104 @@ async function attemptMovePlayer(newX, newY) {
 
             if (!playerQuest) {
                 loreTitle.textContent = "Distraught Villager";
-                loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">An old villager wrings their hands.</p><p class="font-serif leading-relaxed">"Oh, thank goodness! A goblin stole my family heirloom... It's all I have left. If you find it, please bring it back!"</p><button id="acceptNpcQuest" style="transform: translate3d(0,0,0);" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"I'll keep an eye out."</button>`;
+                loreContent.innerHTML = `<p class="italic muted-text mb-2">An old villager wrings their hands.</p><p class="font-serif leading-relaxed">"Oh, thank goodness! A goblin stole my family heirloom... It's all I have left. If you find it, please bring it back!"</p><button id="acceptNpcQuest" style="transform: translate3d(0,0,0);" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-green-800 active:border-b-0 active:mt-1">"I'll keep an eye out."</button>`;
                 loreModal.classList.remove('hidden');
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
                 
                 setTimeout(() => {
                     document.getElementById('acceptNpcQuest').addEventListener('click', () => {
                         if (typeof acceptQuest === 'function') acceptQuest(npcQuestId);
+                        // Bind the quest to THIS specific NPC
+                        if (gameState.player.quests[npcQuestId]) {
+                            gameState.player.quests[npcQuestId].giverId = tileId;
+                            if (typeof playerRef !== 'undefined') playerRef.update({ quests: gameState.player.quests });
+                        }
                         loreModal.classList.add('hidden');
                     }, { once: true });
                 }, 0);
-            } else if (playerQuest.status === 'active') {
-                const hasItem = player.inventory.some(item => item.name === questData.itemNeeded);
-                if (hasItem) {
-                    loreTitle.textContent = "Joyful Villager";
-                    loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The villager's eyes go wide.</p><p class="font-serif leading-relaxed">"You found it! My heirloom! Thank you, thank you! I don't have much, but please, take this for your trouble."</p><button id="turnInNpcQuest" style="transform: translate3d(0,0,0);" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 animate-pulse">"Here you go. (Complete Quest)"</button>`;
-                    loreModal.classList.remove('hidden');
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                    
-                    setTimeout(() => {
-                        document.getElementById('turnInNpcQuest').addEventListener('click', () => {
-                            if (typeof turnInQuest === 'function') turnInQuest(npcQuestId);
-                            loreModal.classList.add('hidden');
-                        }, { once: true });
-                    }, 0);
-                } else {
-                    loreTitle.textContent = "Anxious Villager";
-                    loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The villager looks up hopefully.</p><p class="font-serif leading-relaxed">"Any luck finding my heirloom? Those goblins are such pests..."</p><button id="closeNpcLore" style="transform: translate3d(0,0,0);" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"I'm still looking."</button>`;
-                    loreModal.classList.remove('hidden');
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                    
-                    setTimeout(() => {
-                        document.getElementById('closeNpcLore').addEventListener('click', () => {
-                            loreModal.classList.add('hidden');
-                            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                        }, { once: true });
-                    }, 0);
-                }
-            } else if (playerQuest.status === 'completed') {
-                const seed = stringToSeed(tileId);
-                const random = Alea(seed);
-                let rumor = "Stay safe out there.";
-                if (typeof VILLAGER_RUMORS !== 'undefined' && VILLAGER_RUMORS.length > 0) {
-                    rumor = VILLAGER_RUMORS[Math.floor(random() * VILLAGER_RUMORS.length)];
-                }
-                
-                // Format the rumor to use internal color tags
-                if (typeof escapeHtml === 'function') {
-                    rumor = escapeHtml(rumor)
-                        .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
-                        .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
-                        .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
-                        .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
-                        .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
-                        .replace(/{orange:(.*?)}/g, '<span class="text-orange-400 font-bold">$1</span>')
-                        .replace(/{cyan:(.*?)}/g, '<span class="text-cyan-400 font-bold">$1</span>')
-                        .replace(/{gray:(.*?)}/g, '<span class="text-gray-400">$1</span>');
-                }
-
-                loreTitle.textContent = "Grateful Villager";
-                loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The villager smiles warmly.</p><p class="font-serif leading-relaxed">"Thank you again for your help, adventurer. By the way..."</p><p class="mt-4 border-l-2 border-blue-500 pl-3 py-1 bg-black bg-opacity-20 text-blue-100 rounded-r">"${rumor}"</p><button id="closeNpcLore" style="transform: translate3d(0,0,0);" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"Good to know."</button>`;
-                loreModal.classList.remove('hidden');
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                
-                setTimeout(() => {
-                    document.getElementById('closeNpcLore').addEventListener('click', () => {
-                        loreModal.classList.add('hidden');
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                    }, { once: true });
-                }, 0);
-            }
-            return;
-        }
-
-        if (newTile === '🎖️') {
-            const questId = "banditChief";
-            const playerQuest = gameState.player.quests[questId];
-
-            if (!playerQuest) {
-                loreTitle.textContent = "Captain of the Guard";
-                loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The Captain looks grim.</p><p class="font-serif leading-relaxed">"The Bandit Chief has grown too bold. He's holed up in a fortress nearby. I need someone expendable—err, brave—to take him out."</p><button id="acceptGuard" style="transform: translate3d(0,0,0);" class="mt-4 bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"Consider it done."</button>`;
-                loreModal.classList.remove('hidden');
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                
-                setTimeout(() => {
-                    document.getElementById('acceptGuard').addEventListener('click', () => {
-                        if (typeof acceptQuest === 'function') acceptQuest(questId);
-                        loreModal.classList.add('hidden');
-                    }, { once: true });
-                }, 0);
-                return;
-            } else if (playerQuest.status === 'active') {
-                if (playerQuest.kills >= 1) {
-                    loreTitle.textContent = "Impressed Captain";
-                    loreContent.innerHTML = `<p class="font-serif leading-relaxed">"They say the Chief is dead? Ha! I knew you had it in you. Take this blade, you've earned it."</p><button id="turnInGuard" style="transform: translate3d(0,0,0);" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 animate-pulse">"Thanks. (Complete)"</button>`;
-                    loreModal.classList.remove('hidden');
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                    
-                    setTimeout(() => {
-                        document.getElementById('turnInGuard').addEventListener('click', () => {
-                            if (typeof turnInQuest === 'function') turnInQuest(questId);
-                            loreModal.classList.add('hidden');
-                        }, { once: true });
-                    }, 0);
-                    return;
-                } else {
-                    logMessage("{gray:The Captain nods. 'Bring me the Chief's head.'}");
-                }
             } else {
-                const msgs = ["The roads are safer thanks to you.", "Stay sharp out there.", "Move along, citizen."];
-                logMessage(`{gray:Guard: "${msgs[Math.floor(Math.random() * msgs.length)]}"}`);
-            }
-            return;
-        }
+                // Backward compatibility for old saves: assign this NPC if no giverId exists
+                if (!playerQuest.giverId) {
+                    playerQuest.giverId = tileId;
+                    if (typeof playerRef !== 'undefined') playerRef.update({ quests: gameState.player.quests });
+                }
 
-        if (newTile === 'O') {
-            const tileId = (gameState.mapMode === 'overworld') ?
-                `${newX},${-newY}` :
-                `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
+                if (playerQuest.giverId === tileId) {
+                    if (playerQuest.status === 'active') {
+                        const hasItem = player.inventory.some(item => item && item.name === questData.itemNeeded);
+                        if (hasItem) {
+                            loreTitle.textContent = "Joyful Villager";
+                            loreContent.innerHTML = `<p class="italic muted-text mb-2">The villager's eyes go wide.</p><p class="font-serif leading-relaxed">"You found it! My heirloom! Thank you, thank you! I don't have much, but please, take this for your trouble."</p><button id="turnInNpcQuest" style="transform: translate3d(0,0,0);" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 animate-pulse border-b-4 border-blue-800 active:border-b-0 active:mt-1">"Here you go. (Complete Quest)"</button>`;
+                            loreModal.classList.remove('hidden');
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
 
-            if (!gameState.foundLore.has(tileId)) {
-                logMessage("{gold:You listen to the Sage's ramblings. +10 XP}");
-                if (typeof grantXp === 'function') grantXp(10);
-                gameState.foundLore.add(tileId);
-                if (typeof playerRef !== 'undefined' && playerRef) {
-                    playerRef.update({
-                        foundLore: Array.from(gameState.foundLore)
-                    });
+                            setTimeout(() => {
+                                document.getElementById('turnInNpcQuest').addEventListener('click', () => {
+                                    if (typeof turnInQuest === 'function') turnInQuest(npcQuestId);
+                                    loreModal.classList.add('hidden');
+                                }, { once: true });
+                            }, 0);
+                        } else {
+                            loreTitle.textContent = "Anxious Villager";
+                            loreContent.innerHTML = `<p class="italic muted-text mb-2">The villager looks up hopefully.</p><p class="font-serif leading-relaxed">"Any luck finding my heirloom? Those goblins are such pests..."</p><button id="closeNpcLore" style="transform: translate3d(0,0,0);" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">"I'm still looking."</button>`;
+                            loreModal.classList.remove('hidden');
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+
+                            setTimeout(() => {
+                                document.getElementById('closeNpcLore').addEventListener('click', () => {
+                                    loreModal.classList.add('hidden');
+                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                                }, { once: true });
+                            }, 0);
+                        }
+                    } else if (playerQuest.status === 'completed') {
+                        const seed = stringToSeed(tileId);
+                        const random = Alea(seed);
+                        let rumor = "Stay safe out there.";
+                        if (typeof VILLAGER_RUMORS !== 'undefined' && VILLAGER_RUMORS.length > 0) {
+                            rumor = VILLAGER_RUMORS[Math.floor(random() * VILLAGER_RUMORS.length)];
+                        }
+
+                        if (typeof escapeHtml === 'function') {
+                            rumor = escapeHtml(rumor)
+                                .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
+                                .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
+                                .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
+                                .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
+                                .replace(/{purple:(.*?)}/g, '<span class="text-purple-400 font-bold">$1</span>')
+                                .replace(/{orange:(.*?)}/g, '<span class="text-orange-400 font-bold">$1</span>')
+                                .replace(/{cyan:(.*?)}/g, '<span class="text-cyan-400 font-bold">$1</span>')
+                                .replace(/{gray:(.*?)}/g, '<span class="text-gray-400">$1</span>');
+                        }
+
+                        loreTitle.textContent = "Grateful Villager";
+                        loreContent.innerHTML = `<p class="italic muted-text mb-2">The villager smiles warmly.</p><p class="font-serif leading-relaxed">"Thank you again for your help, adventurer. By the way..."</p><p class="mt-4 border-l-2 border-blue-500 pl-3 py-1 bg-black bg-opacity-20 text-blue-100 rounded-r">"${rumor}"</p><button id="closeNpcLore" style="transform: translate3d(0,0,0);" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">"Good to know."</button>`;
+                        loreModal.classList.remove('hidden');
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+
+                        setTimeout(() => {
+                            document.getElementById('closeNpcLore').addEventListener('click', () => {
+                                loreModal.classList.add('hidden');
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                            }, { once: true });
+                        }, 0);
+                    }
+                } else {
+                    // GENERIC DIALOGUE FOR OTHER VILLAGERS
+                    const genericLines = [
+                        "Good day to you.",
+                        "The harvest was poor this year. We must rely on the merchants.",
+                        "Stay on the path, the woods are dangerous at night.",
+                        "I hear the King is dead. Or mad. It is hard to tell these days.",
+                        "Keep your weapons sharp, traveler."
+                    ];
+                    const msg = genericLines[Math.floor(Math.random() * genericLines.length)];
+                    loreTitle.textContent = "Villager";
+                    loreContent.innerHTML = `<p class="italic muted-text mb-2">The villager nods at you.</p><p class="font-serif leading-relaxed text-gray-300">"${msg}"</p>`;
+                    loreModal.classList.remove('hidden');
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
                 }
             }
-
-            let message = "The Void watches.";
-            if (typeof LORE_STONE_MESSAGES !== 'undefined' && LORE_STONE_MESSAGES.length > 0) {
-                const seed = stringToSeed(tileId);
-                const random = Alea(seed);
-                const messageIndex = Math.floor(random() * LORE_STONE_MESSAGES.length);
-                message = LORE_STONE_MESSAGES[messageIndex];
-            }
-            
-            loreTitle.textContent = "Sage";
-            loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The old Sage is staring at a tapestry, muttering to themself.</p><p class="font-serif leading-relaxed text-blue-200">"...yes, yes... ${message}..."</p>`;
-            loreModal.classList.remove('hidden');
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-            return;
-        }
-
-        if (newTile === 'T') {
-            const tileId = (gameState.mapMode === 'overworld') ?
-                `${newX},${-newY}` :
-                `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
-
-            if (!gameState.foundLore.has(tileId)) {
-                if (typeof grantXp === 'function') grantXp(15);
-                gameState.foundLore.add(tileId);
-                if (typeof playerRef !== 'undefined' && playerRef) {
-                    playerRef.update({
-                        foundLore: Array.from(gameState.foundLore)
-                    });
-                }
-            }
-            if (typeof openSkillTrainerModal === 'function') openSkillTrainerModal();
             return;
         }
 
@@ -2534,9 +2472,7 @@ async function attemptMovePlayer(newX, newY) {
                 if (typeof grantXp === 'function') grantXp(5);
                 gameState.foundLore.add(genericProspectorId);
                 if (typeof playerRef !== 'undefined' && playerRef) {
-                    playerRef.update({
-                        foundLore: Array.from(gameState.foundLore)
-                    });
+                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
                 }
             }
             
@@ -2544,59 +2480,87 @@ async function attemptMovePlayer(newX, newY) {
 
             if (!playerQuest) {
                 loreTitle.textContent = "Frustrated Prospector";
-                loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">A grizzled prospector, muttering to themself, jumps as you approach.</p><p class="font-serif leading-relaxed">"Goblins! I hate 'em! Always stealing my supplies, leaving these... these *totems* everywhere. Say, if you're clearing 'em out, bring me 10 of those Goblin Totems. I'll make it worth your while!"</p><button id="acceptNpcQuest" style="transform: translate3d(0,0,0);" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"I'll see what I can do."</button>`;
+                loreContent.innerHTML = `<p class="italic muted-text mb-2">A grizzled prospector, muttering to themself, jumps as you approach.</p><p class="font-serif leading-relaxed">"Goblins! I hate 'em! Always stealing my supplies, leaving these... these *totems* everywhere. Say, if you're clearing 'em out, bring me 10 of those Goblin Totems. I'll make it worth your while!"</p><button id="acceptNpcQuest" style="transform: translate3d(0,0,0);" class="mt-4 bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-green-800 active:border-b-0 active:mt-1">"I'll see what I can do."</button>`;
                 loreModal.classList.remove('hidden');
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                
+
                 setTimeout(() => {
                     document.getElementById('acceptNpcQuest').addEventListener('click', () => {
                         if (typeof acceptQuest === 'function') acceptQuest(npcQuestId);
+                        // Bind the quest to THIS specific NPC
+                        if (gameState.player.quests[npcQuestId]) {
+                            gameState.player.quests[npcQuestId].giverId = tileId;
+                            if (typeof playerRef !== 'undefined') playerRef.update({ quests: gameState.player.quests });
+                        }
                         loreModal.classList.add('hidden');
                     }, { once: true });
                 }, 0);
-            } else if (playerQuest.status === 'active') {
-                const itemInInv = player.inventory.find(item => item.name === questData.itemNeeded);
-                const hasItems = itemInInv && itemInInv.quantity >= questData.needed;
-                if (hasItems) {
-                    loreTitle.textContent = "Surprised Prospector";
-                    loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The prospector's eyes go wide as you show him the totems.</p><p class="font-serif leading-relaxed">"Ha! You actually did it! That'll teach 'em. Here, as promised. This is for your trouble."</p><button id="turnInNpcQuest" style="transform: translate3d(0,0,0);" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 animate-pulse">"Here you go. (Complete Quest)"</button>`;
-                    loreModal.classList.remove('hidden');
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                    
-                    setTimeout(() => {
-                        document.getElementById('turnInNpcQuest').addEventListener('click', () => {
-                            if (typeof turnInQuest === 'function') turnInQuest(npcQuestId);
-                            loreModal.classList.add('hidden');
-                        }, { once: true });
-                    }, 0);
-                } else {
-                    const needed = questData.needed - (itemInInv ? itemInInv.quantity : 0);
-                    loreTitle.textContent = "Impatient Prospector";
-                    loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The prospector looks up.</p><p class="font-serif leading-relaxed">"Back already? You still need to find ${needed} more ${questData.itemNeeded}s. Get a move on!"</p><button id="closeNpcLore" style="transform: translate3d(0,0,0);" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"I'm still looking."</button>`;
-                    loreModal.classList.remove('hidden');
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                    
-                    setTimeout(() => {
-                        document.getElementById('closeNpcLore').addEventListener('click', () => {
-                            loreModal.classList.add('hidden');
-                            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                        }, { once: true });
-                    }, 0);
+            } else {
+                // Backward compatibility for old saves
+                if (!playerQuest.giverId) {
+                    playerQuest.giverId = tileId;
+                    if (typeof playerRef !== 'undefined') playerRef.update({ quests: gameState.player.quests });
                 }
-            } else if (playerQuest.status === 'completed') {
-                loreTitle.textContent = "Grateful Prospector";
-                loreContent.innerHTML = `<p class="italic text-gray-400 mb-2">The prospector nods at you.</p><p class="font-serif leading-relaxed">"Thanks again for your help, adventurer. The caves are a little quieter... for now."</p><button id="closeNpcLore" style="transform: translate3d(0,0,0);" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95">"You're welcome."</button>`;
-                loreModal.classList.remove('hidden');
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                
-                setTimeout(() => {
-                    document.getElementById('closeNpcLore').addEventListener('click', () => {
-                        loreModal.classList.add('hidden');
+
+                if (playerQuest.giverId === tileId) {
+                    if (playerQuest.status === 'active') {
+                        const itemInInv = player.inventory.find(item => item && item.name === questData.itemNeeded);
+                        const hasItems = itemInInv && itemInInv.quantity >= questData.needed;
+                        if (hasItems) {
+                            loreTitle.textContent = "Surprised Prospector";
+                            loreContent.innerHTML = `<p class="italic muted-text mb-2">The prospector's eyes go wide as you show him the totems.</p><p class="font-serif leading-relaxed">"Ha! You actually did it! That'll teach 'em. Here, as promised. This is for your trouble."</p><button id="turnInNpcQuest" style="transform: translate3d(0,0,0);" class="mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 animate-pulse border-b-4 border-blue-800 active:border-b-0 active:mt-1">"Here you go. (Complete Quest)"</button>`;
+                            loreModal.classList.remove('hidden');
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+
+                            setTimeout(() => {
+                                document.getElementById('turnInNpcQuest').addEventListener('click', () => {
+                                    if (typeof turnInQuest === 'function') turnInQuest(npcQuestId);
+                                    loreModal.classList.add('hidden');
+                                }, { once: true });
+                            }, 0);
+                        } else {
+                            const needed = questData.needed - (itemInInv ? itemInInv.quantity : 0);
+                            loreTitle.textContent = "Impatient Prospector";
+                            loreContent.innerHTML = `<p class="italic muted-text mb-2">The prospector looks up.</p><p class="font-serif leading-relaxed">"Back already? You still need to find ${needed} more ${questData.itemNeeded}s. Get a move on!"</p><button id="closeNpcLore" style="transform: translate3d(0,0,0);" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">"I'm still looking."</button>`;
+                            loreModal.classList.remove('hidden');
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+
+                            setTimeout(() => {
+                                document.getElementById('closeNpcLore').addEventListener('click', () => {
+                                    loreModal.classList.add('hidden');
+                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                                }, { once: true });
+                            }, 0);
+                        }
+                    } else if (playerQuest.status === 'completed') {
+                        loreTitle.textContent = "Grateful Prospector";
+                        loreContent.innerHTML = `<p class="italic muted-text mb-2">The prospector nods at you.</p><p class="font-serif leading-relaxed">"Thanks again for your help, adventurer. The caves are a little quieter... for now."</p><button id="closeNpcLore" style="transform: translate3d(0,0,0);" class="mt-4 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-gray-900 active:border-b-0 active:mt-1">"You're welcome."</button>`;
+                        loreModal.classList.remove('hidden');
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
-                    }, { once: true });
-                }, 0);
+
+                        setTimeout(() => {
+                            document.getElementById('closeNpcLore').addEventListener('click', () => {
+                                loreModal.classList.add('hidden');
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                            }, { once: true });
+                        }, 0);
+                    }
+                } else {
+                    // GENERIC DIALOGUE FOR OTHER PROSPECTORS
+                    const genericLines = [
+                        "There's gold in these rocks, I can smell it.",
+                        "Mind your step. The earth shifts constantly.",
+                        "If you find any shiny rocks, you know who to bring them to.",
+                        "I lost my favorite pickaxe down a chasm last week. Curse this place."
+                    ];
+                    const msg = genericLines[Math.floor(Math.random() * genericLines.length)];
+                    loreTitle.textContent = "Lost Prospector";
+                    loreContent.innerHTML = `<p class="italic muted-text mb-2">The dwarf wipes soot from his brow.</p><p class="font-serif leading-relaxed text-gray-300">"${msg}"</p>`;
+                    loreModal.classList.remove('hidden');
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
+                }
+                return;
             }
-            return;
         }
 
         if (newTile === '§') {
