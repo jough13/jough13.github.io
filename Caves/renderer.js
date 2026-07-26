@@ -1163,6 +1163,9 @@ const render = () => {
             const op = otherPlayers[opKeys[i]];
             if (!op || op.mapMode !== gameState.mapMode || op.mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue; // 🚨 GHOST GUARD
             
+            // --- PVP INVISIBILITY CHECK ---
+            if (op.stealthTurns > 0) continue; 
+
             const { vx, vy } = lerpEntity(op);
             const screenX = (vx - startX) * TILE_SIZE;
             const screenY = (vy - startY) * TILE_SIZE;
@@ -1534,7 +1537,8 @@ function syncPlayerState() {
             email: auth.currentUser ? auth.currentUser.email : "Traveler",
             
             currentRealm: gameState.currentRealm || 0,
-            
+            stealthTurns: gameState.player.stealthTurns || 0,
+
             companion: gameState.player.companion ? {
                 tile: gameState.player.companion.tile,
                 name: gameState.player.companion.name,
