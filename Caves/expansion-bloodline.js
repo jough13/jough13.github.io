@@ -305,6 +305,12 @@ window.ExpansionManager.register({
             if (typeof playerRef !== 'undefined') {
                 await playerRef.set(typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player);
             }
+
+            if (typeof lastValidatedState !== 'undefined') {
+                lastValidatedState = JSON.parse(JSON.stringify(gameState.player));
+                window.legitimateGoldDelta = 0;
+                window.legitimateXpDelta = 0;
+            }
         });
 
         // ==========================================
