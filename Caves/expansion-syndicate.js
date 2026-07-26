@@ -113,8 +113,8 @@ window.ExpansionManager.register({
         const pvpModalHTML = `
         <div id="pvpModal" class="modal-overlay hidden" role="dialog" aria-modal="true" style="z-index: 600;">
             <div class="modal-content themed-container p-6 rounded-2xl shadow-2xl border-2 border-red-600 max-w-md w-full text-center bg-[var(--bg-container)]">
-                <h2 id="pvpTitle" class="text-3xl font-bold mb-4 border-b border-red-700 pb-2 text-white drop-shadow-md">Player Interaction</h2>
-                <p id="pvpDesc" class="text-gray-300 italic mb-6">You stand face to face with another traveler. What will you do?</p>
+                <h2 id="pvpTitle" class="text-3xl font-bold mb-4 border-b border-red-700 pb-2 drop-shadow-md" style="color: var(--title-color);">Player Interaction</h2>
+                <p id="pvpDesc" class="muted-text italic mb-6">You stand face to face with another traveler. What will you do?</p>
                 
                 <div class="flex flex-col gap-3">
                     <button id="pvpTradeBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-transform active:scale-95 border-b-4 border-blue-800 active:border-b-0 active:mt-1">
@@ -141,13 +141,22 @@ window.ExpansionManager.register({
             const origInteract = window.TILE_DATA[tileChar].onInteract;
             
             window.TILE_DATA[tileChar].onInteract = (state, x, y) => {
+                
+                // 🚨 BUG FIX: Only show the Crime modal if they are sneaking up on them!
+                if (!state.player.isCrouching) {
+                    if (origInteract) return origInteract(state, x, y);
+                    return false; // Fall through to input.js hardcoded logic!
+                }
+
                 const loreModal = document.getElementById('loreModal');
                 const loreTitle = document.getElementById('loreTitle');
                 const loreContent = document.getElementById('loreContent');
 
                 loreTitle.textContent = name;
+                
+                // 🚨 UI FIX: Replaced 'text-gray-300' with 'muted-text' for Light Mode visibility
                 loreContent.innerHTML = `
-                    <p class="mb-4 text-gray-300 italic">You approach the ${name}. What will you do?</p>
+                    <p class="mb-4 muted-text italic">You approach the ${name}. What will you do?</p>
                     <button id="npcTalkBtn" class="mb-3 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-blue-800 active:border-b-0 active:mt-1">Interact peacefully</button>
                     <button id="npcMugBtn" class="bg-red-700 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl w-full shadow-md transition-transform active:scale-95 border-b-4 border-red-900 active:border-b-0 active:mt-1">Assassinate (Gain ${bountyAmt}g Bounty)</button>
                 `;
@@ -157,7 +166,18 @@ window.ExpansionManager.register({
                 setTimeout(() => {
                     document.getElementById('npcTalkBtn').onclick = () => {
                         loreModal.classList.add('hidden');
-                        if (origInteract) origInteract(state, x, y);
+                        
+                        // 🚨 BUG FIX: Automatically uncrouch the player and hit the tile again to 
+                        // trigger the standard hardcoded interaction seamlessly!
+                        state.player.isCrouching = false;
+                        if (typeof window.StealthManager !== 'undefined') window.StealthManager.updateUI();
+                        if (typeof render === 'function') render();
+                        
+                        setTimeout(() => {
+                            if (typeof window.attemptMovePlayer === 'function') {
+                                window.attemptMovePlayer(x, y);
+                            }
+                        }, 50);
                     };
                     
                     document.getElementById('npcMugBtn').onclick = () => {
