@@ -535,17 +535,6 @@ window.ExpansionManager.register({
                 const raw = message.substring(1); 
                 const command = raw.split(' ')[0].toLowerCase();
                 
-                if (command === 'who') {
-                    let onlineList = [`You ${gameState.player.guildTag ? '['+gameState.player.guildTag+']' : ''}`];
-                    for (const id in otherPlayers) {
-                        const p = otherPlayers[id];
-                        const safeName = typeof escapeHtml === 'function' ? escapeHtml(p.email ? p.email.split('@')[0] : "Unknown") : "Unknown";
-                        const tagStr = p.guildTag ? ` [${escapeHtml(p.guildTag)}]` : '';
-                        onlineList.push(`${safeName}${tagStr}`);
-                    }
-                    logMessage(`Online Players (${onlineList.length}): ${onlineList.join(', ')}`);
-                    return;
-                }
                 existingHandleChat(message);
             };
         }
