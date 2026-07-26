@@ -272,7 +272,7 @@ window.ExpansionManager.register({
                             attackBtn.className = "bg-gray-800 text-gray-500 font-bold py-3 px-4 rounded-xl shadow-inner border border-gray-700 cursor-not-allowed";
                             attackBtn.innerHTML = "🚫 PvP Disabled (Safe Zone)";
                         } else if (!myPvP || !theirPvP) {
-                            // --- NEW: STEALTH REQUIREMENT ---
+                            // --- STEALTH REQUIREMENT ---
                             if (!isSneaking) {
                                 document.getElementById('pvpDesc').innerHTML = `A peaceful traveler. You must be in <strong class="text-purple-400">Stealth Mode (Shift)</strong> to assassinate them!`;
                                 attackBtn.disabled = true;
@@ -527,18 +527,6 @@ window.ExpansionManager.register({
                     return;
                 }
 
-                if (command === 'who') {
-                    let onlineList = [`You ${gameState.player.bounty > 0 ? '{red:[OUTLAW]}' : ''}${gameState.player.pvpEnabled ? ' {orange:[PvP]}' : ''}`];
-                    for (const id in otherPlayers) {
-                        const p = otherPlayers[id];
-                        const safeName = typeof escapeHtml === 'function' ? escapeHtml(p.email ? p.email.split('@')[0] : "Unknown") : "Unknown";
-                        const bountyStr = p.bounty > 0 ? ` {red:[Bounty: ${p.bounty}g]}` : '';
-                        const pvpStr = p.pvpEnabled ? ` {orange:[PvP]}` : '';
-                        onlineList.push(`${safeName}${bountyStr}${pvpStr}`);
-                    }
-                    logMessage(`Online Players (${onlineList.length}): ${onlineList.join(', ')}`);
-                    return;
-                }
                 existingHandleChat(message);
             };
         }
