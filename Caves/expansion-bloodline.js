@@ -174,18 +174,19 @@ window.ExpansionManager.register({
 
         document.getElementById('prestigeShopBtn').addEventListener('click', () => {
             document.getElementById('prestigeModal').classList.add('hidden');
+            
             if (!gameState.shopStates) gameState.shopStates = {};
             const shopId = 'shop_ascendant';
+            
             if (!gameState.shopStates[shopId]) {
-                gameState.shopStates[shopId] = JSON.parse(JSON.stringify(window.ExpansionManager.expansions.includes('the_bloodline') ? window.ExpansionManager.expansions['the_bloodline'] : window.SHOP_INVENTORY)); 
-                // We actually inject our custom shop here
-                gameState.shopStates[shopId] = JSON.parse(JSON.stringify([
-                    { name: 'Title: The Undying', price: 10000, stock: 1 },
-                    { name: 'Title: Ascendant', price: 50000, stock: 1 },
-                    { name: 'Golden Apple', price: 10000, stock: 5 },
-                    { name: 'Elixir of Power', price: 10000, stock: 5 }
-                ]));
+                // Safely pull from the auto-generated expansion inventory!
+                // The Expansion Manager automatically compiles 'shops: { ascendant: [] }' into window.ASCENDANT_INVENTORY
+                const shopTemplate = typeof window.ASCENDANT_INVENTORY !== 'undefined' ? window.ASCENDANT_INVENTORY : [];
+                
+                // Deep clone it into the session state so stock limits track properly
+                gameState.shopStates[shopId] = JSON.parse(JSON.stringify(shopTemplate)); 
             }
+            
             window.activeShopInventory = gameState.shopStates[shopId];
             
             const shopTitle = document.getElementById('shopTitle');
