@@ -1826,7 +1826,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
     if (!gameState.sharedEnemies[enemyId]) {
         logMessage("{gray:Dissipating a temporal echo... the enemy is gone.}");
         if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-            chunkManager.setWorldTile(newX, newY, '.');
+            chunkManager.setWorldTile(newX, newY, null);
             gameState.mapDirty = true;
             if (typeof render === 'function') render();
         }
@@ -1912,9 +1912,9 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             // 4. If the result is null, it means it was ALREADY dead before we swung.
             if (finalEnemyState === null) {
                 logMessage("{gray:You swing at empty air... the enemy is already dead.}");
-                chunkManager.setWorldTile(newX, newY, '.');
+                chunkManager.setWorldTile(newX, newY, null);
                 if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
-            } 
+            }
             else {
                 // Apply visual hit effects
                 if (typeof ParticleSystem !== 'undefined') {
@@ -1972,7 +1972,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
         } 
         else {
             logMessage("{gray:You swing at empty air... the enemy is already dead.}");
-            chunkManager.setWorldTile(newX, newY, '.');
+            chunkManager.setWorldTile(newX, newY, null);
             if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
         }
 
