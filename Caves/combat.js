@@ -1187,7 +1187,13 @@ function processEnemyTurns() {
 
         if (dist > 25) return;
 
-        // LORE & JUICE WIN: Combat Barks!
+         // --- STEALTH INVISIBILITY (PvE) ---
+        if (gameState.player.stealthTurns > 0) {
+            if (dist > 3) return; // Completely invisible beyond 3 tiles
+            if (Math.random() < 0.5) return; // 50% chance to ignore
+        }
+
+        // Combat Barks!
         // Gives humanoid enemies a personality as they close in on the player
         if (distSq < 25 && Math.random() < 0.05) {
             const barks = {
