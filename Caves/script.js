@@ -2720,6 +2720,10 @@ async function enterGame(playerData) {
         playerData.inventory = rehydratePlayerState(playerData);
     }
 
+    if (playerData.spireBackupInv) {
+        playerData.spireBackupInv = rehydratePlayerState({ inventory: playerData.spireBackupInv });
+    }
+
     // Merge everything into global gameState
     const fullPlayerData = {
         ...createDefaultPlayerState(),
