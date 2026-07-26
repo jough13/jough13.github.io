@@ -767,7 +767,7 @@ async function attemptMovePlayer(newX, newY) {
             }
 
             // Clear the tile
-            chunkManager.setWorldTile(newX, newY, '.');
+            chunkManager.setWorldTile(newX, newY, null);
             playerRef.update({
                 inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
             });
@@ -1459,7 +1459,9 @@ async function attemptMovePlayer(newX, newY) {
             inventoryWasUpdated = true; // Auto-save flag
             logMessage("{purple:You found an Elixir of Life!}");
         }
-        chunkManager.setWorldTile(newX, newY, '.');
+        
+        chunkManager.setWorldTile(newX, newY, null);
+        
         playerRef.update({
             coins: gameState.player.coins,
             inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory
@@ -1788,7 +1790,7 @@ async function attemptMovePlayer(newX, newY) {
             if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 800); // Smash sound
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#d4d4d8', 8); // Splinters
 
-            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '.');
+            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, null);
             else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = '.';
             else chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
 
@@ -2133,7 +2135,7 @@ async function attemptMovePlayer(newX, newY) {
                 logMessage(`You found {gold:${coinsFound} gold coins.}`);
             }
 
-            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(newX, newY, '.');
+            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(newX, newY, null);
             else if (gameState.mapMode === 'dungeon') {
                 const theme = CAVE_THEMES[gameState.currentCaveTheme];
                 chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme ? theme.floor : '.';
@@ -3156,7 +3158,7 @@ async function attemptMovePlayer(newX, newY) {
             gameState.lootedTiles.add(tileId);
 
             // Clear the tile visually
-            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(newX, newY, '.');
+            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(newX, newY, null);
             else if (gameState.mapMode === 'dungeon') {
                 const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
                 chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
@@ -3175,7 +3177,7 @@ async function attemptMovePlayer(newX, newY) {
         function clearLootTile() {
             gameState.lootedTiles.add(tileId);
             if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                chunkManager.setWorldTile(newX, newY, '.');
+                chunkManager.setWorldTile(newX, newY, null);
             } else if (gameState.mapMode === 'dungeon') {
                 const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
                 chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
