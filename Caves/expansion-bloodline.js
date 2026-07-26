@@ -224,6 +224,9 @@ window.ExpansionManager.register({
             player.skillbook = {};
             player.bounty = 0;
 
+            player.hotbar = [null, null, null, null, null];
+            player.cooldowns = {}; // Clear lingering cooldowns too!
+
             const coreStats = ['strength', 'wits', 'constitution', 'dexterity', 'charisma', 'luck', 'willpower', 'perception', 'endurance', 'intuition'];
             coreStats.forEach(s => player[s] = 1);
 
