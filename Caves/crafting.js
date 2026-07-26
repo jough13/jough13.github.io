@@ -479,23 +479,28 @@ function renderCraftingModal() {
         const outputItemKey = getCraftItemKey(recipeName);
         const itemTemplate = window.ITEM_DATA[outputItemKey] || {};
         
-        // 🚨 ROBUSTNESS WIN: Rely on universal helper to maintain parity across the engine
         const isStackable = window.isStackableItem ? window.isStackableItem(itemTemplate.type) : ['junk', 'consumable', 'ammo', 'ingredient', 'trade', 'tool'].includes(itemTemplate.type);
-        
-        // 🚨 GHOST GUARD
         const existingStack = player.inventory.find(item => item && item.name === itemTemplate.name && !item.isEquipped);
         
         const maxCraftable = getMaxCraftable(recipeName, availableMats, player.inventory, isStackable, !!existingStack);
         const levelMet = playerLevel >= (recipe.level || 1);
         const canCraft = maxCraftable > 0 && levelMet;
-        const isObscured = (recipe.level || 1) > playerLevel + 1;
+        
+        // --- 🚨 PROGRESSION & UX WIN ---
+        // Hide recipes completely if they are > 1 level above the player to prevent UI clutter.
+        // Tease recipes that are exactly 1 level away to give them a goal!
+        const levelDiff = (recipe.level || 1) - playerLevel;
+        const isHidden = levelDiff > 1; 
+        const isObscured = levelDiff === 1; 
 
         return {
-            recipeName, recipe, outputItemKey, itemTemplate, existingStack, maxCraftable, levelMet, canCraft, isObscured
+            recipeName, recipe, outputItemKey, itemTemplate, existingStack, maxCraftable, levelMet, canCraft, isObscured, isHidden
         };
-    });
+    }).filter(data => !data.isHidden); // Filter out completely hidden items!
 
+    // Sort: Craftable first, then by level, then uncraftable, then obscured
     recipeDataArray.sort((a, b) => {
+        if (a.isObscured !== b.isObscured) return a.isObscured ? 1 : -1;
         if (a.canCraft !== b.canCraft) return a.canCraft ? -1 : 1;
         if (a.levelMet !== b.levelMet) return a.levelMet ? -1 : 1;
         return (a.recipe.level || 1) - (b.recipe.level || 1); 
@@ -510,7 +515,6 @@ function renderCraftingModal() {
         let displayTile = outputItemKey || '?';
         let baseDescription = itemTemplate.description || "A crafted item.";
         
-        // 🚨 UX WIN: Safe Alphanumeric Tooltip Regex Strip
         if (typeof formatMenuText === 'function') {
             baseDescription = formatMenuText(baseDescription);
         } else if (typeof stripColorTags === 'function') {
@@ -519,42 +523,39 @@ function renderCraftingModal() {
             baseDescription = baseDescription.replace(/\{[a-zA-Z0-9_-]+:(.*?)\}/ig, '$1');
         }
 
-        if (isObscured && gameState.currentCraftingMode === 'workbench') {
-            displayName = "Unknown Blueprint";
-            displayTile = '❓';
-            baseDescription = "The diagrams are too complex for your current skill level. Keep practicing.";
+        // Apply "Blueprint" theme to obscured items
+        if (isObscured) {
+            displayName = isCooking ? "Unknown Recipe" : "Locked Schematic";
+            displayTile = '🔒';
+            baseDescription = `Requires ${isCooking ? 'Culinary' : 'Artisan'} Level ${recipe.level || 1} to decipher.`;
         }
 
-        // SECURITY WIN: Escape user-facing variables
         const safeDisplayName = typeof escapeHtml === 'function' ? escapeHtml(displayName) : displayName;
 
         // Materials & Tools HTML Generation
-        let matHtmlParts = ['<ul class="crafting-item-materials mt-2 flex flex-wrap gap-2">'];
+        let matHtmlParts = ['<ul class="crafting-item-materials mt-3 flex flex-wrap gap-2">'];
         
         for (const materialName in recipe.materials) {
             const requiredQuantity = recipe.materials[materialName];
             const currentQuantity = availableMats[materialName] || 0;
-            const quantityClass = currentQuantity < requiredQuantity ? 'text-red-400 font-bold border-red-900 bg-red-900 bg-opacity-20' : 'text-gray-300 border-gray-700 bg-black bg-opacity-30';
-            
+            const quantityClass = currentQuantity < requiredQuantity ? 'text-red-300 font-bold border-red-800 bg-red-950 bg-opacity-50' : 'text-gray-300 border-gray-600 bg-gray-800';
             const safeMatName = typeof escapeHtml === 'function' ? escapeHtml(materialName) : materialName;
             
             if (isObscured) {
-                matHtmlParts.push(`<li class="text-[10px] px-2 py-0.5 rounded border border-gray-700 bg-black bg-opacity-30 text-gray-500 shadow-inner">???</li>`);
+                matHtmlParts.push(`<li class="text-[10px] px-2 py-1 rounded border border-blue-800 bg-blue-950 text-blue-400 shadow-inner font-mono">??? (x${requiredQuantity})</li>`);
             } else {
-                matHtmlParts.push(`<li class="text-[10px] px-2 py-0.5 rounded border ${quantityClass} shadow-inner">${safeMatName} (${currentQuantity}/${requiredQuantity})</li>`);
+                matHtmlParts.push(`<li class="text-[10px] px-2 py-1 rounded border ${quantityClass} shadow-inner font-mono">${safeMatName} (${currentQuantity}/${requiredQuantity})</li>`);
             }
         }
         
         if (recipe.tools && !isObscured) {
             for (const tool of recipe.tools) {
-                // 🚨 GHOST GUARD
                 const hasTool = player.inventory.some(i => i && i.name === tool && i.quantity > 0);
-                const toolClass = hasTool ? 'text-blue-300 border-blue-700 bg-blue-900 bg-opacity-30' : 'text-red-400 font-bold border-red-900 bg-red-900 bg-opacity-20';
+                const toolClass = hasTool ? 'text-blue-300 border-blue-700 bg-blue-900 bg-opacity-40' : 'text-red-300 font-bold border-red-800 bg-red-950 bg-opacity-50';
                 const safeTool = typeof escapeHtml === 'function' ? escapeHtml(tool) : tool;
-                matHtmlParts.push(`<li class="text-[10px] px-2 py-0.5 rounded border ${toolClass} shadow-inner">🔨 Requires: ${safeTool}</li>`);
+                matHtmlParts.push(`<li class="text-[10px] px-2 py-1 rounded border ${toolClass} shadow-inner font-mono">🔨 Requires: ${safeTool}</li>`);
             }
         }
-        
         matHtmlParts.push('</ul>');
         let materialsHtml = matHtmlParts.join('');
 
@@ -578,46 +579,54 @@ function renderCraftingModal() {
 
         let infoHtml = '';
         if (gameState.currentCraftingMode === 'workbench') {
-            let levelClass = levelMet ? 'text-blue-400' : 'text-red-500 font-bold';
+            let levelClass = levelMet ? 'text-blue-400' : 'text-red-400 font-bold';
             infoHtml = `<div class="text-[10px] uppercase mt-2 ${levelClass} bg-black bg-opacity-40 shadow-inner inline-block px-2 py-1 rounded border border-gray-700">Requires Lvl ${recipe.level || 1} | Reward: ${recipe.xp || 10} XP${specHtml}</div>`;
         } else {
             infoHtml = `<div class="text-[10px] uppercase mt-2 text-green-400 bg-black bg-opacity-40 shadow-inner inline-block px-2 py-1 rounded border border-gray-700">Delicious! | Reward: ${recipe.xp || 10} XP${specHtml}</div>`;
         }
 
         const ownedCount = existingStack ? existingStack.quantity : 0;
-        const ownedHtml = (ownedCount > 0 && !isObscured) ? `<span class="text-[9px] bg-black bg-opacity-40 border border-gray-600 text-gray-400 px-1.5 py-0.5 rounded ml-2 font-bold uppercase tracking-widest shadow-inner">Owned: ${ownedCount}</span>` : '';
+        const ownedHtml = (ownedCount > 0 && !isObscured) ? `<span class="text-[9px] bg-black bg-opacity-40 border border-gray-600 text-gray-400 px-1.5 py-0.5 rounded ml-2 font-bold uppercase tracking-widest shadow-inner relative -top-1">Owned: ${ownedCount}</span>` : '';
 
         // UX WIN: Detailed Yield Button
         const baseYield = recipe.yield || 1;
         const yieldStr = baseYield > 1 ? ` (Yields ${baseYield})` : '';
         const actionText = gameState.currentCraftingMode === 'cooking' ? `Cook 1${yieldStr}` : `Craft 1${yieldStr}`;
         
-        let actionHtml = `<button data-craft-item="${recipeName}" style="transform: translateZ(0);" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed font-bold border-b-2 border-blue-800 active:border-b-0 active:mt-0.5" ${canCraft ? '' : 'disabled'}>${actionText}</button>`;
+        let actionHtml = `<button data-craft-item="${recipeName}" style="transform: translateZ(0);" class="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 md:py-2 rounded-lg shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed font-bold border-b-2 border-blue-800 active:border-b-0 active:mt-0.5" ${canCraft ? '' : 'disabled'}>${actionText}</button>`;
         
         if (maxCraftable > 1 && levelMet && !isObscured) {
-            actionHtml += `<button data-craft-all="${recipeName}" style="transform: translateZ(0);" class="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded shadow-md transition-transform active:scale-95 ml-2 font-bold text-xs flex flex-col items-center border-b-2 border-purple-800 active:border-b-0 active:mt-0.5">
+            actionHtml += `<button data-craft-all="${recipeName}" style="transform: translateZ(0);" class="w-full md:w-auto bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 md:py-2 rounded-lg shadow-md transition-transform active:scale-95 mt-2 md:mt-0 md:ml-2 font-bold text-xs flex flex-col items-center justify-center border-b-2 border-purple-800 active:border-b-0 active:mt-0.5">
                 <span>All</span>
                 <span class="text-[10px] font-normal opacity-80">(x${maxCraftable})</span>
             </button>`;
         }
 
-        const liOpacity = canCraft ? 'opacity-100 shadow-sm hover:shadow-md' : 'opacity-60 hover:opacity-100 bg-black bg-opacity-20';
-        const nameColor = isObscured ? 'text-gray-500' : 'text-green-400 drop-shadow-sm';
+        // 🚨 LIGHT MODE FIX: Enforce dark backgrounds on cards so the colored text always pops!
+        let cardBg = canCraft ? 'bg-gray-800 border-green-600 shadow-md hover:shadow-lg hover:-translate-y-0.5' : 'bg-gray-800 border-gray-600 opacity-80 hover:opacity-100';
+        let titleColor = isObscured ? 'text-blue-400' : 'text-yellow-400 drop-shadow-sm';
+        let descColor = isObscured ? 'text-blue-300' : 'text-gray-300';
+        
+        if (isObscured) {
+            cardBg = 'bg-blue-950 border-blue-500 border-dashed opacity-80';
+        }
 
         const li = document.createElement('li');
-        li.className = `crafting-item bg-gray-900 bg-opacity-40 border border-gray-700 p-3 rounded-lg flex justify-between items-center mb-2 hover:border-green-500 transition-all ${liOpacity}`;
+        li.className = `crafting-item border-2 p-4 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-3 transition-all duration-200 ${cardBg}`;
         li.innerHTML = `
-            <div class="flex-grow pr-4">
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="text-3xl drop-shadow-md" title="${itemTemplate.name || recipeName}">${displayTile}</span>
-                    <span class="crafting-item-name font-bold text-lg ${nameColor}" style="font-family: 'Uncial Antiqua', cursive;">${safeDisplayName}</span>
-                    ${ownedHtml}
+            <div class="flex-grow w-full">
+                <div class="flex items-center gap-3 mb-2">
+                    <span class="text-4xl drop-shadow-md bg-black bg-opacity-40 p-2 rounded-lg border border-gray-700" title="${itemTemplate.name || recipeName}">${displayTile}</span>
+                    <div>
+                        <span class="font-bold text-xl ${titleColor}" style="font-family: 'Uncial Antiqua', cursive;">${safeDisplayName}</span>
+                        ${ownedHtml}
+                        <div class="text-xs ${descColor} italic leading-tight font-serif mt-1">${baseDescription}</div>
+                    </div>
                 </div>
-                <div class="text-xs text-gray-400 italic leading-tight font-serif">${baseDescription}</div>
                 ${materialsHtml}
                 ${infoHtml}
             </div>
-            <div class="crafting-item-actions flex items-stretch ml-2">
+            <div class="flex-none w-full md:w-auto flex flex-col md:flex-row gap-2 mt-2 md:mt-0 justify-stretch">
                 ${actionHtml}
             </div>
         `;
