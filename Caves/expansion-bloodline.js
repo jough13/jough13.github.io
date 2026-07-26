@@ -382,21 +382,6 @@ window.ExpansionManager.register({
                 const raw = message.substring(1); 
                 const command = raw.split(' ')[0].toLowerCase();
                 
-                if (command === 'who') {
-                    const myGen = gameState.player.generation || 0;
-                    const myTitle = gameState.player.activeTitle ? ` <${gameState.player.activeTitle}>` : '';
-                    let onlineList = [`You${myGen > 0 ? ` {gold:[Gen ${myGen}]}` : ''}${myTitle}`];
-                    
-                    for (const id in otherPlayers) {
-                        const p = otherPlayers[id];
-                        const safeName = typeof escapeHtml === 'function' ? escapeHtml(p.email ? p.email.split('@')[0] : "Unknown") : "Unknown";
-                        const genStr = (p.generation && p.generation > 0) ? ` {gold:[Gen ${p.generation}]}` : '';
-                        const titleStr = p.activeTitle ? ` <${escapeHtml(p.activeTitle)}>` : '';
-                        onlineList.push(`${safeName}${genStr}${titleStr}`);
-                    }
-                    logMessage(`Online Players (${onlineList.length}): ${onlineList.join(', ')}`);
-                    return;
-                }
                 existingHandleChat(message);
             };
         }
