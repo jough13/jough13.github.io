@@ -1860,7 +1860,7 @@ window.ITEM_DATA = {
         tags: ['shield'],
         tile: '🛡️',
         defense: 4,
-        slot: 'armor',
+        slot: 'offhand',
         blockChance: 0.30, 
         description: "{blue:+4 Def}. Fashioned from a single massive scale."
     },
@@ -2291,7 +2291,7 @@ window.ITEM_DATA = {
         tile: '🛡️',
         excludeFromLoot: true,
         defense: 8,
-        slot: 'armor',
+        slot: 'offhand',
         blockChance: 0.50, 
         statBonuses: { constitution: 5 },
         description: "{blue:+8 Def}, {green:+5 Con}. A shield forged by giants."
@@ -2420,7 +2420,7 @@ window.ITEM_DATA = {
         tags: ['shield'],
         tile: '🛡️',
         defense: 2,
-        slot: 'armor', 
+        slot: 'offhand',
         blockChance: 0.20, 
         description: "{blue:+2 Def}. Sturdy iron protection."
     },
@@ -2953,7 +2953,7 @@ window.ITEM_DATA = {
                 const amount = Math.floor(random() * 10) + 1; 
                 state.player.coins += amount;
                 
-                // --- ANTI-CHEAT FIX: Track ground loot ---
+                // --- Track ground loot ---
                 if (typeof window.trackLegitimateGold === 'function') {
                     window.trackLegitimateGold(amount);
                 }
