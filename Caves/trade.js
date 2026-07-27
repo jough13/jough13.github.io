@@ -296,17 +296,22 @@ function handleBuyItem(itemName, amount = 1) {
             }
         }
 
-        // 🚨 FIREBASE OPTIMIZATION
+        // FIREBASE OPTIMIZATION
+        // We MUST include `shopStates` in the save payload here. 
+        // Otherwise, if the player closes the tab before a hard save, their inventory 
+        // keeps the bought item, but the shop's stock resets to its previous state!
         if (typeof triggerDebouncedSave === 'function') {
             triggerDebouncedSave({
                 coins: player.coins,
-                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory
+                inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : player.inventory,
+                shopStates: gameState.shopStates
             });
         }
 
         renderShop(); 
         if (typeof renderInventory === 'function') renderInventory(); 
-        if (typeof renderStats === 'function') renderStats(); 
+        if (typeof renderStats === 'function') renderStats();
+
         
     } finally {
         isTradingBusy = false;
