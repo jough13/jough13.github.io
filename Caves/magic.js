@@ -140,7 +140,7 @@ async function castSpell(spellId) {
             }
 
             case 'divineLight': {
-                // LORE WIN: Dynamic cure messaging with atmospheric text
+                // Dynamic cure messaging with atmospheric text
                 let ailmentsCured = false;
                 if (player.madnessTurns > 0) { logMessage("{gold:The maddening whispers are banished from your mind.}"); ailmentsCured = true; }
                 if (player.poisonTurns > 0) { logMessage("{gold:The foul toxins are purged from your blood.}"); ailmentsCured = true; }
@@ -155,7 +155,7 @@ async function castSpell(spellId) {
                 player.rootTurns = 0;
                 player.burnTurns = 0;
 
-                // BUG FIX: Only cast if you actually NEED healing or curing!
+                // Only cast if you actually NEED healing or curing!
                 if (healedFor === 0 && !ailmentsCured) {
                     logMessage("{gray:The Light shines brightly, but you are already perfectly whole.}");
                     spellCastSuccessfully = false;
@@ -266,7 +266,7 @@ async function castSpell(spellId) {
 
             case 'clarity': {
                 if (gameState.mapMode !== 'dungeon') {
-                    // LORE WIN: The Void Gazes Back
+                    // The Void Gazes Back
                     // If they cast mind-expanding magic in a corrupted realm, they suffer!
                     if (gameState.currentRealm !== 0) {
                         logMessage("{purple:You cast your senses into the Void... Something vast and cold looks back.}");
@@ -566,7 +566,12 @@ async function applySpellDamage(targetX, targetY, damage, spellId, isBatched = f
                 if (typeof registerKill === 'function') registerKill(enemyInfo);
                 const lootData = { ...enemyData, isElite: enemyInfo.isElite };
                 const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(player, lootData) : '$';
-                if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(targetX, targetY, droppedLoot || '.');
+                if (typeof chunkManager !== 'undefined') {
+                    // Ensure magic spells provide a TTL so server map cache doesn't clog permanently!
+                    const currentTerrain = chunkManager.getTile(targetX, targetY);
+                    const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
+                    chunkManager.setWorldTile(targetX, targetY, droppedLoot || '.', ttl);
+                }
                 
                 payload[EnemyNetworkManager.getPath(targetX, targetY, enemyId)] = null; // Mark for deletion
             } else {
