@@ -254,6 +254,9 @@ window.ExpansionManager.register({
             loreModal.classList.remove('hidden');
 
             setTimeout(() => {
+                // 🚨 THE EXPLOIT FIX: Live counter to verify items immediately upon click!
+                const countMatCurrent = (name) => p.inventory.filter(i => i && i.name === name && !i.isEquipped).reduce((sum, i) => sum + i.quantity, 0);
+
                 const consume = (name, qty) => {
                     let needed = qty;
                     for (let i = p.inventory.length - 1; i >= 0; i--) {
@@ -273,22 +276,32 @@ window.ExpansionManager.register({
                         const btn = document.getElementById(`build_${npc}`);
                         if (btn) {
                             btn.onclick = () => {
+                                // Re-verify at the exact moment of clicking
+                                if (countMatCurrent('Wood Log') < 30 || countMatCurrent('Stone') < 30 || countMatCurrent('Iron Ore') < 10) {
+                                    if (typeof logMessage === 'function') logMessage("{red:You lack the materials to build this!}");
+                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                                    return;
+                                }
+
+                                btn.disabled = true; // Prevent double-clicks
+
                                 consume('Wood Log', 30);
                                 consume('Stone', 30);
                                 consume('Iron Ore', 10);
                                 
                                 p.builtHouses.push(npc);
                                 
-                                logMessage(`{gold:You built a house for the ${npc}!}`);
+                                if (typeof logMessage === 'function') logMessage(`{gold:You built a house for the ${npc}!}`);
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#facc15', 30);
-                                gameState.screenShake = 15;
+                                if (typeof gameState !== 'undefined') gameState.screenShake = 15;
                                 
-                                loreModal.classList.add('hidden');
+                                const loreModal = document.getElementById('loreModal');
+                                if (loreModal) loreModal.classList.add('hidden');
                                 
                                 // Regenerate and save
-                                chunkManager.generateCampsite();
-                                gameState.mapDirty = true;
+                                if (typeof chunkManager !== 'undefined') chunkManager.generateCampsite();
+                                if (typeof gameState !== 'undefined') gameState.mapDirty = true;
                                 if (typeof render === 'function') render();
                                 if (typeof renderInventory === 'function') renderInventory();
                                 
