@@ -154,44 +154,52 @@ window.ExpansionManager.register({
                         const hasPickaxe = gameState.player.inventory.some(i => i && !i.isEquipped && (i.name === 'Pickaxe' || i.name === 'Diamond Tipped Pickaxe'));
                         
                         if (hasPickaxe) {
-                            if (gameState.player.stamina < 2) {
-                                logMessage("{red:You are too exhausted to mine through solid rock.}");
-                                if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-                                return;
-                            }
-                            
-                            gameState.player.stamina -= 2;
-                            if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('staminaDisplay'), false);
-                            
-                            // Visual & Audio Feedback
-                            if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#4b5563', 15);
-                            gameState.screenShake = 5;
+                            // 🚨 THE EXPLOIT FIX: Engage the global engine lock!
+                            if (isProcessingMove) return;
+                            isProcessingMove = true;
 
-                            // Carve the tunnel!
-                            chunkManager.setWorldTile(newX, newY, '.'); 
-                            
-                            // Determine Loot
-                            const roll = Math.random();
-                            let loot = null;
-                            if (roll < 0.10) loot = '•'; // Iron
-                            else if (roll < 0.15) loot = '▲'; // Obsidian
-                            else if (roll < 0.18) loot = '💎'; // Diamond
-                            else if (roll < 0.20) loot = '☄️'; // Star Metal (Very deep!)
-                            else if (roll < 0.60) loot = '🪨'; // Stone
-                            
-                            if (loot) {
-                                chunkManager.setWorldTile(newX, newY, loot, 24); // Drops on floor for 24h
-                                logMessage("{yellow:You unearthed something in the rock!}");
-                            } else {
-                                logMessage("You carve a path through the solid stone.");
+                            try {
+                                if (gameState.player.stamina < 2) {
+                                    logMessage("{red:You are too exhausted to mine through solid rock.}");
+                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                                    return;
+                                }
+                                
+                                gameState.player.stamina -= 2;
+                                if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('staminaDisplay'), false);
+                                
+                                // Visual & Audio Feedback
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#4b5563', 15);
+                                gameState.screenShake = 5;
+
+                                // Carve the tunnel!
+                                chunkManager.setWorldTile(newX, newY, '.'); 
+                                
+                                // Determine Loot
+                                const roll = Math.random();
+                                let loot = null;
+                                if (roll < 0.10) loot = '•'; // Iron
+                                else if (roll < 0.15) loot = '▲'; // Obsidian
+                                else if (roll < 0.18) loot = '💎'; // Diamond
+                                else if (roll < 0.20) loot = '☄️'; // Star Metal (Very deep!)
+                                else if (roll < 0.60) loot = '🪨'; // Stone
+                                
+                                if (loot) {
+                                    chunkManager.setWorldTile(newX, newY, loot, 24); // Drops on floor for 24h
+                                    logMessage("{yellow:You unearthed something in the rock!}");
+                                } else {
+                                    logMessage("You carve a path through the solid stone.");
+                                }
+                                
+                                // Update map and save
+                                gameState.mapDirty = true;
+                                if (typeof render === 'function') render();
+                                if (typeof endPlayerTurn === 'function') endPlayerTurn();
+                                
+                            } finally {
+                                isProcessingMove = false;
                             }
-                            
-                            // Update map and save
-                            gameState.mapDirty = true;
-                            if (typeof render === 'function') render();
-                            if (typeof endPlayerTurn === 'function') endPlayerTurn();
-                            
                             return; // Return early so we don't accidentally walk INTO the wall before it clears!
                         }
                     }
