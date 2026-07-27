@@ -595,10 +595,11 @@ async function processOverworldEnemyTurns() {
                     const lootData = { ...baseEnemyData, isElite: enemy.isElite };
                     const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
                     const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
-                    if (currentTerrain !== '~' && currentTerrain !== '🌋') {
-                        chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', 2); 
-                        gameState.mapDirty = true;
-                    }
+                    
+                    // Let loot drop in water/lava with a short 15-minute TTL so players can sail to it!
+                    const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
+                    chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', ttl); 
+                    gameState.mapDirty = true;
                 }
                 continue;
             }
@@ -624,10 +625,11 @@ async function processOverworldEnemyTurns() {
                     const lootData = { ...baseEnemyData, isElite: enemy.isElite };
                     const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
                     const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
-                    if (currentTerrain !== '~' && currentTerrain !== '🌋') {
-                        chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', 2); 
-                        gameState.mapDirty = true;
-                    }
+                    
+                    // Let loot drop in water/lava with a short 15-minute TTL
+                    const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
+                    chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', ttl); 
+                    gameState.mapDirty = true;
                 }
                 continue;
             }
@@ -1004,12 +1006,10 @@ async function processOverworldEnemyTurns() {
                                         const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
                                         const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
                                         
-                                        // Don't drop loot into deep ocean water
-                                        if (currentTerrain !== '~' && currentTerrain !== '🌋') {
-                                            // 2 hour TTL (Time To Live) so the map doesn't get cluttered forever
-                                            chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', 2); 
-                                            gameState.mapDirty = true;
-                                        }
+                                        // Let loot drop in water/lava with a short 15-minute TTL
+                                        const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
+                                        chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', ttl); 
+                                        gameState.mapDirty = true;
                                     }
                                 } else {
                                     statusChanged = true; // Health changed, ensure we sync below
@@ -1872,7 +1872,11 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
             const lootData = { ...enemyData, isElite: enemyInfo.isElite };
             const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(player, lootData) : '$';
-            chunkManager.setWorldTile(newX, newY, droppedLoot || '.', 2); 
+            
+            const currentTerrain = chunkManager.getTile(newX, newY);
+            // Let loot drop in water/lava with a short 15-minute TTL
+            const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
+            chunkManager.setWorldTile(newX, newY, droppedLoot || '.', ttl); 
             gameState.mapDirty = true;
             
             payload[EnemyNetworkManager.getPath(newX, newY, enemyId)] = null; // Mark for deletion
@@ -1953,8 +1957,10 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
                         if (isProtectedTile || isItemTile) {
                             logMessage("{gray:The enemy's loot was lost in the underbrush.}");
-                        } else if (currentTerrain !== '~' && currentTerrain !== '🌋') {
-                            chunkManager.setWorldTile(newX, newY, droppedLoot || '.', 2); 
+                        } else {
+                            // Let loot drop in water/lava with a short 15-minute TTL
+                            const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
+                            chunkManager.setWorldTile(newX, newY, droppedLoot || '.', ttl); 
                             gameState.mapDirty = true;
                         }
                     } catch (lootErr) {
