@@ -408,54 +408,65 @@ function handleEnchant(index) {
         player.inventory[dustIdx].quantity -= cost;
         if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
 
+        // 🚨 THE EXPLOIT FIX: Stack Splitting Failsafe
+        // If the item somehow has a quantity > 1 (due to old save files or bypasses), 
+        // we isolate ONE item to enchant, leaving the rest of the stack alone.
+        let targetItem = item;
+        if (item.quantity > 1) {
+            item.quantity--;
+            targetItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
+            targetItem.quantity = 1;
+            player.inventory.push(targetItem);
+        }
+
         // 🚨 BUG FIX & ROBUSTNESS WIN: Detach statBonuses from Global Template!
-        // Prevents modifying `item.statBonuses` from unintentionally bleeding backwards into ITEM_DATA.
-        if (!item.statBonuses) item.statBonuses = {};
-        else item.statBonuses = typeof fastClone === 'function' ? fastClone(item.statBonuses) : JSON.parse(JSON.stringify(item.statBonuses));
+        // Prevents modifying `targetItem.statBonuses` from unintentionally bleeding backwards into ITEM_DATA.
+        if (!targetItem.statBonuses) targetItem.statBonuses = {};
+        else targetItem.statBonuses = typeof fastClone === 'function' ? fastClone(targetItem.statBonuses) : JSON.parse(JSON.stringify(targetItem.statBonuses));
 
         let newRarity = 'uncommon';
         if (currentRarity === 'uncommon') newRarity = 'rare';
         else if (currentRarity === 'rare') newRarity = 'epic';
         else if (currentRarity === 'epic') newRarity = 'legendary';
 
-        item._rarity = newRarity;
+        targetItem._rarity = newRarity;
 
         let upgradeMsg = "";
 
         if (newRarity === 'uncommon') {
-            item.name = `Fine ${item.name}`;
+            targetItem.name = `Fine ${targetItem.name}`;
             
             // 🚨 BUG FIX: Ensure we don't accidentally concatenate strings if damage/defense was corrupted
-            if (item.type === 'weapon') item.damage = (Number(item.damage) || 0) + 1;
-            if (item.type === 'armor') item.defense = (Number(item.defense) || 0) + 1;
+            if (targetItem.type === 'weapon') targetItem.damage = (Number(targetItem.damage) || 0) + 1;
+            if (targetItem.type === 'armor') targetItem.defense = (Number(targetItem.defense) || 0) + 1;
             
             const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
             const randomStat = stats[Math.floor(Math.random() * stats.length)];
-            item.statBonuses[randomStat] = (item.statBonuses[randomStat] || 0) + 1;
+            targetItem.statBonuses[randomStat] = (targetItem.statBonuses[randomStat] || 0) + 1;
             
-            upgradeMsg = `The altar breathes arcane life into the mundane. You forged a ${item.name}!`;
+            upgradeMsg = `The altar breathes arcane life into the mundane. You forged a ${targetItem.name}!`;
         } 
         else if (newRarity === 'rare') {
-            item.name = item.name.replace(/^Fine /, ''); 
+            targetItem.name = targetItem.name.replace(/^Fine /, ''); 
             
-            const validPrefixes = Object.keys(typeof LOOT_PREFIXES !== 'undefined' ? LOOT_PREFIXES : {}).filter(p => LOOT_PREFIXES[p].type === item.type);
+            const validPrefixes = Object.keys(typeof LOOT_PREFIXES !== 'undefined' ? LOOT_PREFIXES : {}).filter(p => LOOT_PREFIXES[p].type === targetItem.type);
             if (validPrefixes.length > 0) {
                 const prefixName = validPrefixes[Math.floor(Math.random() * validPrefixes.length)];
                 const prefixData = LOOT_PREFIXES[prefixName];
                 
-                item.name = `${prefixName} ${item.name}`;
+                targetItem.name = `${prefixName} ${targetItem.name}`;
                 for (const stat in prefixData.bonus) {
-                    if (stat === 'damage') item.damage = (Number(item.damage) || 0) + prefixData.bonus[stat];
-                    else if (stat === 'defense') item.defense = (Number(item.defense) || 0) + prefixData.bonus[stat];
-                    else item.statBonuses[stat] = (item.statBonuses[stat] || 0) + prefixData.bonus[stat];
+                    if (stat === 'damage') targetItem.damage = (Number(targetItem.damage) || 0) + prefixData.bonus[stat];
+                    else if (stat === 'defense') targetItem.defense = (Number(targetItem.defense) || 0) + prefixData.bonus[stat];
+                    else targetItem.statBonuses[stat] = (targetItem.statBonuses[stat] || 0) + prefixData.bonus[stat];
                 }
             } else {
-                item.name = `Mystic ${item.name}`;
-                if (item.type === 'weapon') item.damage = (Number(item.damage) || 0) + 1;
-                if (item.type === 'armor') item.defense = (Number(item.defense) || 0) + 1;
-                item.statBonuses.wits = (item.statBonuses.wits || 0) + 1;
+                targetItem.name = `Mystic ${targetItem.name}`;
+                if (targetItem.type === 'weapon') targetItem.damage = (Number(targetItem.damage) || 0) + 1;
+                if (targetItem.type === 'armor') targetItem.defense = (Number(targetItem.defense) || 0) + 1;
+                targetItem.statBonuses.wits = (targetItem.statBonuses.wits || 0) + 1;
             }
-            upgradeMsg = `Arcane runes brand themselves into the surface. It is now a ${item.name}!`;
+            upgradeMsg = `Arcane runes brand themselves into the surface. It is now a ${targetItem.name}!`;
         } 
         else if (newRarity === 'epic') {
             const suffixKeys = Object.keys(typeof LOOT_SUFFIXES !== 'undefined' ? LOOT_SUFFIXES : {});
@@ -463,40 +474,38 @@ function handleEnchant(index) {
                 const suffixName = suffixKeys[Math.floor(Math.random() * suffixKeys.length)];
                 const suffixData = LOOT_SUFFIXES[suffixName];
                 
-                item.name = `${item.name} ${suffixName}`;
+                targetItem.name = `${targetItem.name} ${suffixName}`;
                 for (const stat in suffixData.bonus) {
-                    if (stat === 'damage') item.damage = (Number(item.damage) || 0) + suffixData.bonus[stat];
-                    else if (stat === 'defense') item.defense = (Number(item.defense) || 0) + suffixData.bonus[stat];
-                    else item.statBonuses[stat] = (item.statBonuses[stat] || 0) + suffixData.bonus[stat];
+                    if (stat === 'damage') targetItem.damage = (Number(targetItem.damage) || 0) + suffixData.bonus[stat];
+                    else if (stat === 'defense') targetItem.defense = (Number(targetItem.defense) || 0) + suffixData.bonus[stat];
+                    else targetItem.statBonuses[stat] = (targetItem.statBonuses[stat] || 0) + suffixData.bonus[stat];
                 }
             } else {
-                item.name = `${item.name} of Power`;
-                if (item.type === 'weapon') item.damage = (Number(item.damage) || 0) + 1;
-                if (item.type === 'armor') item.defense = (Number(item.defense) || 0) + 1;
-                item.statBonuses.strength = (item.statBonuses.strength || 0) + 1;
+                targetItem.name = `${targetItem.name} of Power`;
+                if (targetItem.type === 'weapon') targetItem.damage = (Number(targetItem.damage) || 0) + 1;
+                if (targetItem.type === 'armor') targetItem.defense = (Number(targetItem.defense) || 0) + 1;
+                targetItem.statBonuses.strength = (targetItem.statBonuses.strength || 0) + 1;
             }
-            upgradeMsg = `The item hums with a terrifying new power. It is now ${item.name}!`;
+            upgradeMsg = `The item hums with a terrifying new power. It is now ${targetItem.name}!`;
         } 
         else if (newRarity === 'legendary') {
-            // JUICE WIN: Detailed Legendary Upgrades!
-            if (item.type === 'weapon') item.damage = (Number(item.damage) || 0) + 2;
-            if (item.type === 'armor') item.defense = (Number(item.defense) || 0) + 2;
+            if (targetItem.type === 'weapon') targetItem.damage = (Number(targetItem.damage) || 0) + 2;
+            if (targetItem.type === 'armor') targetItem.defense = (Number(targetItem.defense) || 0) + 2;
             
             let statSummary = [];
-            for (const stat in item.statBonuses) {
-                item.statBonuses[stat] = (Number(item.statBonuses[stat]) || 0) + 2; 
+            for (const stat in targetItem.statBonuses) {
+                targetItem.statBonuses[stat] = (Number(targetItem.statBonuses[stat]) || 0) + 2; 
                 statSummary.push(`+2 ${stat.substring(0,3).toUpperCase()}`);
             }
             
-            // Clean up name by removing previous prefixes using our cached regex!
-            const cleanName = item.name.replace(ENCHANT_PREFIX_REGEX, '').trim();
+            const cleanName = targetItem.name.replace(ENCHANT_PREFIX_REGEX, '').trim();
             const epicPrefixes = ['Aegis', 'Wrath', 'Whisper', 'Sorrow', 'Echo', 'Vanguard'];
             const newPrefix = epicPrefixes[Math.floor(Math.random() * epicPrefixes.length)];
             
-            item.name = `${newPrefix} of ${cleanName}`;
-            item.description = (item.description || "") + `\n\n{gold:A weapon of myth, reborn at the Altar.}`;
+            targetItem.name = `${newPrefix} of ${cleanName}`;
+            targetItem.description = (targetItem.description || "") + `\n\n{gold:A weapon of myth, reborn at the Altar.}`;
 
-            upgradeMsg = `The heavens tremble! You have forged a weapon of myth: ${item.name}! [${statSummary.join(', ')}]`;
+            upgradeMsg = `The heavens tremble! You have forged a weapon of myth: ${targetItem.name}! [${statSummary.join(', ')}]`;
         }
 
         logMessage(`{gold:${upgradeMsg}}`);
@@ -541,25 +550,34 @@ function handlePurify(index) {
         player.inventory[dustIdx].quantity -= PURIFY_COST;
         if (player.inventory[dustIdx].quantity <= 0) player.inventory.splice(dustIdx, 1);
 
+        // 🚨 THE EXPLOIT FIX: Stack Splitting Failsafe
+        let targetItem = item;
+        if (item.quantity > 1) {
+            item.quantity--;
+            targetItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
+            targetItem.quantity = 1;
+            player.inventory.push(targetItem);
+        }
+
         // Strip ALL negative stats!
-        if (item.statBonuses) {
-            for (let stat in item.statBonuses) {
-                if (item.statBonuses[stat] < 0) {
-                    delete item.statBonuses[stat];
+        if (targetItem.statBonuses) {
+            for (let stat in targetItem.statBonuses) {
+                if (targetItem.statBonuses[stat] < 0) {
+                    delete targetItem.statBonuses[stat];
                 }
             }
         }
 
         // Strip negative status effects (e.g. Madness)
-        if (item.inflicts === 'madness') {
-            item.inflicts = null;
-            item.inflictChance = 0;
+        if (targetItem.inflicts === 'madness') {
+            targetItem.inflicts = null;
+            targetItem.inflictChance = 0;
         }
 
         // Rename the item (Replacing the cursed prefix with 'Purified')
-        item.name = item.name.replace(CURSE_REGEX_GI, 'Purified').trim();
+        targetItem.name = targetItem.name.replace(CURSE_REGEX_GI, 'Purified').trim();
         
-        logMessage(`{cyan:The dark magic is scoured away! You hold the ${item.name}.}`);
+        logMessage(`{cyan:The dark magic is scoured away! You hold the ${targetItem.name}.}`);
         
         if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
         if (typeof ParticleSystem !== 'undefined') {
