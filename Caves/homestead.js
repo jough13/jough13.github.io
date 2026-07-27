@@ -124,7 +124,7 @@ setTimeout(() => {
             if (!upg.includes('waystone')) addBtn('waystone', 'Leyline Waystone', '10 Void Dust, 500 Gold', dust >= 10 && p.coins >= 500);
             if (!upg.includes('tent')) addBtn('tent', 'Large Tent', '20 Wood, 10 Wolf Pelt', wood >= 20 && counts['Wolf Pelt'] >= 10);
             
-            // --- NEW: GARDEN UPGRADES ---
+            // --- GARDEN UPGRADES ---
             if (!upg.includes('garden1')) addBtn('garden1', 'Garden Plot I', '5 Wood, 5 Stone', wood >= 5 && stone >= 5);
             else if (!upg.includes('garden2')) addBtn('garden2', 'Garden Plot II', '10 Wood, 10 Stone', wood >= 10 && stone >= 10);
             else if (!upg.includes('garden3')) addBtn('garden3', 'Garden Plot III', '15 Wood, 15 Stone', wood >= 15 && stone >= 15);
@@ -133,6 +133,9 @@ setTimeout(() => {
             loreModal.classList.remove('hidden');
 
             setTimeout(() => {
+                // Live counter to check material logic exactly on click
+                const countMatCurrent = (name) => p.inventory.filter(i => i && i.name === name && !i.isEquipped).reduce((sum, i) => sum + i.quantity, 0);
+
                 const consume = (name, qty) => {
                     let needed = qty;
                     for (let i = p.inventory.length - 1; i >= 0; i--) {
@@ -147,10 +150,19 @@ setTimeout(() => {
                     }
                 };
 
-                const bindUpgrade = (id, reqs, action) => {
+                const bindUpgrade = (id, checkAfford, consumeReqs, action) => {
                     const btn = document.getElementById(`btn_${id}`);
                     if (btn) btn.onclick = () => {
-                        reqs();
+                        // Re-verify at the exact moment of clicking to prevent race conditions!
+                        if (!checkAfford()) {
+                            if (typeof logMessage === 'function') logMessage("{red:You lack the materials to build this!}");
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                            return;
+                        }
+                        
+                        btn.disabled = true; // Prevent double clicks
+                        
+                        consumeReqs();
                         p.campsiteUpgrades.push(id);
                         action();
                         if (typeof logMessage === 'function') logMessage(`{green:Campsite upgraded: ${id.toUpperCase()}!}`);
@@ -168,17 +180,49 @@ setTimeout(() => {
                     };
                 };
 
-                // Re-bind actions
-                bindUpgrade('stash', () => { consume('Wood Log', 10); consume('Stone', 5); }, () => {});
-                bindUpgrade('workbench', () => { consume('Wood Log', 15); consume('Iron Ore', 5); }, () => {});
-                bindUpgrade('enchanter', () => { consume('Stone', 10); consume('Void Dust', 5); }, () => {});
-                bindUpgrade('tent', () => { consume('Wood Log', 20); consume('Wolf Pelt', 10); }, () => {});
-                bindUpgrade('waystone', () => { consume('Void Dust', 10); p.coins -= 500; }, () => {});
+                // Re-bind actions with the new affordability check
+                bindUpgrade('stash', 
+                    () => countMatCurrent('Wood Log') >= 10 && countMatCurrent('Stone') >= 5, 
+                    () => { consume('Wood Log', 10); consume('Stone', 5); }, 
+                    () => {}
+                );
+                bindUpgrade('workbench', 
+                    () => countMatCurrent('Wood Log') >= 15 && countMatCurrent('Iron Ore') >= 5, 
+                    () => { consume('Wood Log', 15); consume('Iron Ore', 5); }, 
+                    () => {}
+                );
+                bindUpgrade('enchanter', 
+                    () => countMatCurrent('Stone') >= 10 && countMatCurrent('Void Dust') >= 5, 
+                    () => { consume('Stone', 10); consume('Void Dust', 5); }, 
+                    () => {}
+                );
+                bindUpgrade('tent', 
+                    () => countMatCurrent('Wood Log') >= 20 && countMatCurrent('Wolf Pelt') >= 10, 
+                    () => { consume('Wood Log', 20); consume('Wolf Pelt', 10); }, 
+                    () => {}
+                );
+                bindUpgrade('waystone', 
+                    () => countMatCurrent('Void Dust') >= 10 && p.coins >= 500, 
+                    () => { consume('Void Dust', 10); p.coins -= 500; }, 
+                    () => {}
+                );
                 
                 // Bind Garden Actions
-                bindUpgrade('garden1', () => { consume('Wood Log', 5); consume('Stone', 5); }, () => {});
-                bindUpgrade('garden2', () => { consume('Wood Log', 10); consume('Stone', 10); }, () => {});
-                bindUpgrade('garden3', () => { consume('Wood Log', 15); consume('Stone', 15); }, () => {});
+                bindUpgrade('garden1', 
+                    () => countMatCurrent('Wood Log') >= 5 && countMatCurrent('Stone') >= 5, 
+                    () => { consume('Wood Log', 5); consume('Stone', 5); }, 
+                    () => {}
+                );
+                bindUpgrade('garden2', 
+                    () => countMatCurrent('Wood Log') >= 10 && countMatCurrent('Stone') >= 10, 
+                    () => { consume('Wood Log', 10); consume('Stone', 10); }, 
+                    () => {}
+                );
+                bindUpgrade('garden3', 
+                    () => countMatCurrent('Wood Log') >= 15 && countMatCurrent('Stone') >= 15, 
+                    () => { consume('Wood Log', 15); consume('Stone', 15); }, 
+                    () => {}
+                );
 
             }, 0);
 
