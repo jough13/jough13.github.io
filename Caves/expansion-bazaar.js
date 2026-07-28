@@ -505,12 +505,18 @@ window.ExpansionManager.register({
             }
         }, 3000); // Give the engine a few seconds to boot up `player_id`
 
-        // Hook into the 'T' key (Target) to initiate trades if standing on someone!
+        // 🚨 EXPLOIT/CLASH FIX: Add 'Y' to the engine's instant keys so it bypasses the movement queue!
+        if (typeof INSTANT_KEYS !== 'undefined') {
+            INSTANT_KEYS.add('y');
+            INSTANT_KEYS.add('Y');
+        }
+
+        // Hook into the 'Y' key (Trade) to initiate trades if standing on someone!
         if (typeof window.handleInput === 'function') {
             const origHandleInput = window.handleInput;
             window.handleInput = function(key) {
-                // 🚨 CHANGED FROM 'g' to 't'
-                if (key.toLowerCase() === 't' && typeof otherPlayers !== 'undefined' && gameState.mapMode === 'overworld') {
+                // Changed from 't' to 'y' to prevent double-binding clash with Syndicate's Target menu!
+                if (key.toLowerCase() === 'y' && typeof otherPlayers !== 'undefined' && gameState.mapMode === 'overworld') {
                     for (const pid in otherPlayers) {
                         const op = otherPlayers[pid];
                         if (op.x === gameState.player.x && op.y === gameState.player.y && op.mapMode === gameState.mapMode && op.currentRealm === gameState.currentRealm) {
