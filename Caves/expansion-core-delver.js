@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "core_delver",
     name: "The Core Delver (Underworld Sandbox)",
-    version: "1.0",
+    version: "1.1", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -14,11 +14,29 @@ window.ExpansionManager.register({
             },
             '🛒': { 
                 name: 'Minecart', type: 'constructible', tile: '🛒', 
-                description: "Place on tracks and hop in to travel rapidly." 
+                description: "Place on tracks and hop in to travel rapidly. Runs over enemies!" 
+            },
+            '🦴u': {
+                name: 'Fossilized Titan Bone', type: 'trade', tile: '🦴',
+                description: "A bone so massive and dense it feels like solid iron. Uncovered in the deep crust.", value: 200, _rarity: 'rare'
+            },
+            '📜ud': {
+                name: 'Miner\'s Last Scrawl', type: 'journal', title: 'A Crumbled Note', tile: '📜',
+                content: "We dug past the granite. Past the obsidian. The rocks here are warm, and they... pulse. Like a heartbeat. The lanterns keep going out. I hear chewing in the dark. Do not send a rescue party."
             }
         },
 
-        // --- 2. NEW TILES ---
+        // --- 2. NEW ENEMIES ---
+        enemies: {
+            '🐛d': {
+                name: 'Gore-Maw Crawler', tags: ['beast', 'bug', 'monster'], mountable: false,
+                maxHealth: 45, attack: 8, defense: 3, xp: 90,
+                color: '#dc2626', loot: '🦴u',
+                flavor: "A blind, writhing subterranean horror with a mouth full of spinning, razor-sharp rock teeth."
+            }
+        },
+
+        // --- 3. NEW TILES ---
         tiles: {
             '🛤️': {
                 type: 'decoration', name: 'Minecart Track',
@@ -26,7 +44,7 @@ window.ExpansionManager.register({
             }
         },
 
-        // --- 3. SHOPS ---
+        // --- 4. SHOPS ---
         shops: {
             trader: [
                 { name: 'Minecart Track', price: 50, stock: 20 },
@@ -35,7 +53,7 @@ window.ExpansionManager.register({
         }
     },
 
-    // --- 4. ENGINE HOOKS ---
+    // --- 5. ENGINE HOOKS ---
     init: function() {
         
         // ==========================================
@@ -51,9 +69,9 @@ window.ExpansionManager.register({
         }
 
         // ==========================================
-        // 2. MINE-CART RIDING OVERHAUL
+        // 2. MINE-CART RIDING OVERHAUL (WITH TRAMPLE!)
         // ==========================================
-        // Upgrade the original TILE_DATA['🛒'] to support smart track-following!
+        // Upgrade the original TILE_DATA['🛒'] to support smart track-following and enemy trampling!
         if (typeof window.TILE_DATA !== 'undefined' && window.TILE_DATA['🛒']) {
             window.TILE_DATA['🛒'].onInteract = (state, x, y) => {
                 const dx = x - state.player.x;
@@ -81,6 +99,44 @@ window.ExpansionManager.register({
                     let nY = curY + vY;
                     let t = getT(nX, nY);
                     
+                    // --- GAMEPLAY WIN: THE TRAMPLE MECHANIC! ---
+                    // If we hit an enemy while rolling, we crush them and keep going!
+                    if (typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[t]) {
+                        if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
+                            const enemyId = `overworld:${nX},${-nY}`;
+                            const liveEnemy = state.sharedEnemies[enemyId];
+                            
+                            if (liveEnemy) {
+                                logMessage(`{red:CRUNCH! You ran over the ${liveEnemy.name}!}`);
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(nX, nY, '#ef4444', 20);
+                                state.screenShake = 10;
+                                
+                                liveEnemy.health -= 100; // Massive trample damage!
+                                
+                                if (liveEnemy.health <= 0) {
+                                    if (typeof registerKill === 'function') registerKill(liveEnemy);
+                                    const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(state.player, ENEMY_DATA[t]) : '$';
+                                    chunkManager.setWorldTile(nX, nY, droppedLoot || '.');
+                                    
+                                    if (typeof rtdb !== 'undefined' && typeof EnemyNetworkManager !== 'undefined') {
+                                        rtdb.ref(EnemyNetworkManager.getPath(nX, nY, enemyId)).remove();
+                                    }
+                                    delete state.sharedEnemies[enemyId];
+                                } else {
+                                    if (typeof rtdb !== 'undefined' && typeof EnemyNetworkManager !== 'undefined') {
+                                        rtdb.ref(EnemyNetworkManager.getPath(nX, nY, enemyId)).set(liveEnemy);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // We successfully crushed the obstacle, keep rolling forward!
+                        curX = nX; curY = nY;
+                        traveled++;
+                        continue;
+                    }
+                    
                     // 1. If straight ahead is a track, keep going!
                     if (t === '🛤️') {
                         curX = nX; curY = nY;
@@ -97,13 +153,14 @@ window.ExpansionManager.register({
                             curX += vX; curY += vY;
                         } else {
                             // 3. No tracks found. Try to slide on open floor, otherwise crash/stop!
-                            if (['.', 'F', 'd', 'D'].includes(t) && !(typeof ENEMY_DATA !== 'undefined' && ENEMY_DATA[t])) {
+                            if (['.', 'F', 'd', 'D'].includes(t)) {
                                 curX = nX; curY = nY;
                             } else {
-                                break; // Hit a wall!
+                                break; // Hit a solid wall!
                             }
                         }
                     }
+                    
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(curX, curY, '#facc15', 1);
                     traveled++;
                 }
@@ -176,16 +233,34 @@ window.ExpansionManager.register({
                                 // Carve the tunnel!
                                 chunkManager.setWorldTile(newX, newY, '.'); 
                                 
-                                // Determine Loot
+                                // --- DETERMINE LORE & LOOT ---
                                 const roll = Math.random();
                                 let loot = null;
-                                if (roll < 0.10) loot = '•'; // Iron
+                                let isAmbush = false;
+                                
+                                if (roll < 0.02) isAmbush = true; // 2% Gore-Maw Ambush!
+                                else if (roll < 0.10) loot = '•'; // Iron
                                 else if (roll < 0.15) loot = '▲'; // Obsidian
                                 else if (roll < 0.18) loot = '💎'; // Diamond
-                                else if (roll < 0.20) loot = '☄️'; // Star Metal (Very deep!)
+                                else if (roll < 0.20) loot = '☄️'; // Star Metal
+                                else if (roll < 0.22) loot = '📜ud'; // Miner's Scrawl (Lore!)
                                 else if (roll < 0.60) loot = '🪨'; // Stone
                                 
-                                if (loot) {
+                                if (isAmbush) {
+                                    chunkManager.setWorldTile(newX, newY, '🐛d');
+                                    logMessage("{red:You breached a nest! A Gore-Maw Crawler attacks!}");
+                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                                    
+                                    const eTemplate = window.ENEMY_DATA['🐛d'];
+                                    const eId = `overworld:${newX},${-newY}`;
+                                    const scaled = typeof getScaledEnemy === 'function' ? getScaledEnemy(eTemplate, newX, newY) : eTemplate;
+                                    
+                                    gameState.sharedEnemies[eId] = { ...scaled, tile: '🐛d', x: newX, y: newY, spawnTime: Date.now() };
+                                    
+                                    if (typeof EnemyNetworkManager !== 'undefined' && typeof rtdb !== 'undefined') {
+                                        rtdb.ref(EnemyNetworkManager.getPath(newX, newY, eId)).set(gameState.sharedEnemies[eId]);
+                                    }
+                                } else if (loot) {
                                     chunkManager.setWorldTile(newX, newY, loot, 24); // Drops on floor for 24h
                                     logMessage("{yellow:You unearthed something in the rock!}");
                                 } else {
@@ -225,16 +300,18 @@ window.ExpansionManager.register({
                                      gameState.player.inventory.some(i => i && !i.isEquipped && (i.name === 'Torch' || i.name === 'Ever-Burning Candle'));
                     
                     if (!hasLight) {
-                        // 25% chance per turn in the dark to take Psyche damage
+                        // 25% chance per turn in the dark to take Psyche and Health damage
                         if (Math.random() < 0.25) {
-                            logMessage("{purple:The suffocating darkness presses against your mind... (-1 Psyche)}");
+                            logMessage("{purple:The suffocating darkness presses against your mind... (-1 Psyche, -1 HP)}");
                             window.modifyVital('psyche', -1);
+                            window.modifyVital('health', -1);
                             
                             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "DARKNESS", "#a855f7");
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.5, 0.1, 300); // Low hum
                             
                             gameState.screenShake = 3;
                             updates.psyche = gameState.player.psyche;
+                            updates.health = gameState.player.health;
                         }
                     }
                 }
@@ -242,6 +319,15 @@ window.ExpansionManager.register({
                 // Pass back to original engine
                 if (origEndPlayerTurn) origEndPlayerTurn(updates);
             };
+        }
+        
+        // ==========================================
+        // 5. MINIMAP INTEGRATION
+        // ==========================================
+        if (typeof window.TILE_COLOR_MAP !== 'undefined') {
+            window.TILE_COLOR_MAP['🛤️'] = [100, 116, 139, 255]; // Grey tracks
+            window.TILE_COLOR_MAP['🛒'] = [100, 116, 139, 255]; // Grey cart
+            window.TILE_COLOR_MAP['🐛d'] = [220, 38, 38, 255]; // Red Worm
         }
     }
 });
