@@ -47,12 +47,23 @@ function generateStrictSaveSignature(data) {
             const item = data.inventory[i];
             if (!item) continue; 
             
-            const name = item.name || 'u';
-            const rar = item._rarity || 'n';
-            const qty = item.quantity !== undefined ? Number(item.quantity) : 1;
-            const dmg = Number(item.damage) || 0;
-            const def = Number(item.defense) || 0;
-            invParts.push(`${name}:${qty}:${rar}:${dmg}:${def}`);
+            if (Array.isArray(item)) {
+                // Byte-Packed Format parsing
+                const name = item[3] || item[0] || 'u';
+                const rar = item[7] || 'n';
+                const qty = item[1] !== undefined ? Number(item[1]) : 1;
+                const dmg = Number(item[4]) || 0;
+                const def = Number(item[5]) || 0;
+                invParts.push(`${name}:${qty}:${rar}:${dmg}:${def}`);
+            } else {
+                // Legacy Object Format parsing
+                const name = item.name || 'u';
+                const rar = item._rarity || 'n';
+                const qty = item.quantity !== undefined ? Number(item.quantity) : 1;
+                const dmg = Number(item.damage) || 0;
+                const def = Number(item.defense) || 0;
+                invParts.push(`${name}:${qty}:${rar}:${dmg}:${def}`);
+            }
         }
         if (invParts.length > 0) invStr = invParts.join('|');
     }
@@ -64,17 +75,26 @@ function generateStrictSaveSignature(data) {
             const item = data.bank[i];
             if (!item) continue;
             
-            const name = item.name || 'u';
-            const rar = item._rarity || 'n';
-            const qty = item.quantity !== undefined ? Number(item.quantity) : 1;
-            const dmg = Number(item.damage) || 0;
-            const def = Number(item.defense) || 0;
-            bankParts.push(`${name}:${qty}:${rar}:${dmg}:${def}`);
+            if (Array.isArray(item)) {
+                const name = item[3] || item[0] || 'u';
+                const rar = item[7] || 'n';
+                const qty = item[1] !== undefined ? Number(item[1]) : 1;
+                const dmg = Number(item[4]) || 0;
+                const def = Number(item[5]) || 0;
+                bankParts.push(`${name}:${qty}:${rar}:${dmg}:${def}`);
+            } else {
+                const name = item.name || 'u';
+                const rar = item._rarity || 'n';
+                const qty = item.quantity !== undefined ? Number(item.quantity) : 1;
+                const dmg = Number(item.damage) || 0;
+                const def = Number(item.defense) || 0;
+                bankParts.push(`${name}:${qty}:${rar}:${dmg}:${def}`);
+            }
         }
         if (bankParts.length > 0) bankStr = bankParts.join('|');
     }
     
-    // 🚨 ROBUSTNESS WIN: Safe falsy fallbacks prevent "undefined" string literal injection
+    // Safe falsy fallbacks prevent "undefined" string literal injection
     const bg = data.background || 'none';
     const stringToHash = `${data.xp || 0}_${data.level || 1}_${data.coins || 0}_${data.maxHealth || 10}_${invStr}_${bankStr}_${bg}_${BACKUP_SALT}`;
     return _hashStringSafe(stringToHash);
