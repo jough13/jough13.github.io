@@ -853,22 +853,52 @@ function renderTerrainCache(startX, startY) {
                     else if (baseTerrain === '🍄') bgColor = '#4a044e'; 
                     else if (baseTerrain === '💎c') bgColor = '#083344'; 
                 } else {
-                     bgColor = '#22c55e'; 
-                    // Use 'tile' instead of 'baseTerrain' so worldState overrides (like Player built camps) get the correct background!
-                    if (tile === 'F' || tile === '🌳e' || tile === '🌳' || tile === '🌲' || tile === '🌺') bgColor = '#14532d';
-                    else if (tile === '❄️') bgColor = '#e0f2fe';
-                    else if (tile === '🍄') bgColor = '#4a044e'; 
-                    else if (tile === '💎c') bgColor = '#083344'; 
-                    else if (tile === 'd') bgColor = '#2d2d2d';
-                    else if (tile === 'D') bgColor = '#fde047';
-                    else if (tile === '≈') bgColor = '#422006';
-                    else if (tile === '^' || tile === '⛰') bgColor = '#57534e';
-                    else if (tile === '~') bgColor = '#1e3a8a';
-                    else if (tile === '🌋') bgColor = '#450a0a';
-                    else if (baseTerrain === 'F' || baseTerrain === '🌳e' || baseTerrain === '🌳' || baseTerrain === '🌲' || baseTerrain === '🌺') bgColor = '#14532d';
-                    else if (baseTerrain === 'd') bgColor = '#2d2d2d';
-                    else if (baseTerrain === 'D') bgColor = '#fde047';
-                    else if (baseTerrain === '^') bgColor = '#57534e';
+                    // 🚨 BUG FIX WIN: True Biome Background Resolution
+                    // For structures (Castles, Villages, Dig Spots) or dropped items, 
+                    // we recalculate the noise at this coordinate to guarantee it blends seamlessly into the native biome!
+                    const realmOffset = (typeof gameState !== 'undefined' && gameState.currentRealm) ? gameState.currentRealm * 100 : 0;
+                    const elev = typeof elevationNoise !== 'undefined' ? elevationNoise.noise(mapX / 70, mapY / 70, realmOffset) : 0.5;
+                    const moist = typeof moistureNoise !== 'undefined' ? moistureNoise.noise(mapX / 50, mapY / 50, realmOffset) : 0.5;
+                    
+                    let baseTileType = '.';
+                    if (elev < 0.35) baseTileType = '~';
+                    else if (elev < 0.4 && moist > 0.85) baseTileType = '🍄';
+                    else if (elev < 0.4 && moist > 0.7) baseTileType = '≈';
+                    else if (elev > 0.85 && moist < 0.2) baseTileType = '💎c';
+                    else if (elev > 0.8) baseTileType = '^';
+                    else if (elev > 0.75) baseTileType = '❄️'; // Snow line just below mountains
+                    else if (elev > 0.6 && moist < 0.3) baseTileType = 'd';
+                    else if (moist < 0.15) baseTileType = 'D';
+                    else if (moist > 0.55) baseTileType = 'F';
+
+                    // Spawn Safety Overrides (must match data-maps.js exactly)
+                    if (realmOffset === 0 && (mapX * mapX + mapY * mapY) <= 100) {
+                        if (['^', '~', '≈', 'd'].includes(baseTileType)) {
+                            baseTileType = moist > 0.5 ? 'F' : '.';
+                        }
+                    }
+
+                    // --- 🚨 APPLY MUTATORS FOR ALTERNATE REALMS ---
+                    if (typeof gameState !== 'undefined' && gameState.realmMutators) {
+                        if (gameState.realmMutators.includes('lava_oceans') && (baseTileType === '~' || baseTileType === '≈')) baseTileType = '🌋';
+                        if (gameState.realmMutators.includes('overgrown') && (baseTileType === 'd' || baseTileType === 'D')) baseTileType = 'F';
+                        if (gameState.realmMutators.includes('frozen_wastes') && (baseTileType === '~' || baseTileType === '≈')) baseTileType = '🧊';
+                        if (gameState.realmMutators.includes('frozen_wastes') && (baseTileType === '.' || baseTileType === 'F')) baseTileType = '❄️';
+                        if (gameState.realmMutators.includes('crystalline') && (baseTileType === '^')) baseTileType = '💎c';
+                    }
+
+                    // Map baseTileType to Background Color
+                    if (baseTileType === '~' || baseTileType === '🧊') bgColor = '#1e3a8a';
+                    else if (baseTileType === '≈') bgColor = '#422006';
+                    else if (baseTileType === '🍄') bgColor = '#4a044e';
+                    else if (baseTileType === '💎c') bgColor = '#083344';
+                    else if (baseTileType === '^') bgColor = '#57534e';
+                    else if (baseTileType === '❄️') bgColor = '#e0f2fe';
+                    else if (baseTileType === 'd') bgColor = '#2d2d2d';
+                    else if (baseTileType === 'D') bgColor = '#fde047';
+                    else if (baseTileType === 'F') bgColor = '#14532d';
+                    else if (baseTileType === '🌋') bgColor = '#450a0a';
+                    else bgColor = '#22c55e'; // Plains
                 }
 
                 TileRenderer.drawBase(terrainCtx, x, y, bgColor);
