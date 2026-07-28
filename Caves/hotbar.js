@@ -105,9 +105,31 @@ function renderHotbar() {
             }
 
             if (skillData || spellData) {
+                const data = skillData || spellData;
+                
+                // --- 🚨 UX WIN: Out of Mana/Stamina (OOM) Indication ---
+                let isOOM = false;
+                let actualCost = data.cost || 0;
+                
+                if (spellData) {
+                    if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
+                        actualCost = Math.floor(actualCost * 0.8);
+                    }
+                    if (player[spellData.costType] < actualCost) isOOM = true;
+                } else if (skillData) {
+                    if (player[skillData.costType] < actualCost) isOOM = true;
+                }
+                
+                if (isOOM) {
+                    slotClasses += " opacity-60 grayscale-[50%]";
+                    // Subtle colored border based on what you are missing!
+                    if (data.costType === 'mana') slotClasses += " border-blue-900";
+                    else if (data.costType === 'stamina') slotClasses += " border-yellow-900";
+                    else if (data.costType === 'psyche') slotClasses += " border-purple-900";
+                }
+                
                 slotDiv.className = slotClasses; // Apply base classes
                 
-                const data = skillData || spellData;
                 const abrv = document.createElement('span');
                 
                 let colorClass = "text-gray-200";
@@ -134,15 +156,21 @@ function renderHotbar() {
                 if (data.baseHeal) tooltipDmg = `\nHeals: ${data.baseHeal}`;
                 if (data.baseShield) tooltipDmg = `\nShields: ${data.baseShield}`;
                 
-                slotDiv.title = `[${hotkeyNumber}] ${safeDataName}\nCost: ${data.cost || 0} ${data.costType || 'Resource'}${tooltipDmg}\n(Right-click to unbind)`;
+                const oomWarning = isOOM ? `\n(Not enough ${data.costType.charAt(0).toUpperCase() + data.costType.slice(1)})` : '';
+                
+                slotDiv.title = `[${hotkeyNumber}] ${safeDataName}\nCost: ${actualCost} ${data.costType || 'Resource'}${tooltipDmg}${oomWarning}\n(Right-click to unbind)`;
                 slotDiv.appendChild(abrv);
 
-                // JUICE WIN: Added animate-pulse to the red cooldown overlay
+                // --- JUICE WIN: Dynamic Cooldown Colors ---
                 if (cooldowns[abilityId] > 0) {
                     slotDiv.classList.add('cursor-not-allowed', 'border-red-900', 'grayscale');
+                    const cd = cooldowns[abilityId];
                     const cdOverlay = document.createElement('div');
-                    cdOverlay.className = "absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-[2px] text-red-400 font-bold text-xl rounded shadow-inner animate-pulse z-20";
-                    cdOverlay.textContent = cooldowns[abilityId];
+                    // Flashes yellow if only 1 turn left, otherwise menacing red
+                    const cdColor = cd === 1 ? 'text-yellow-400' : 'text-red-400';
+                    
+                    cdOverlay.className = `absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-[2px] ${cdColor} font-bold text-xl rounded shadow-inner animate-pulse z-20`;
+                    cdOverlay.textContent = cd;
                     slotDiv.appendChild(cdOverlay);
                 }
             } else if (invItem || itemData) {
@@ -258,6 +286,26 @@ function useHotbarSlot(index) {
     const isSkill = typeof SKILL_DATA !== 'undefined' && !!SKILL_DATA[abilityId];
     const isSpell = typeof SPELL_DATA !== 'undefined' && !!SPELL_DATA[abilityId];
 
+    // --- 🚨 TACTILE UX WIN: OOM Pre-Shake Check ---
+    // Instantly shakes the hotbar slot *before* routing to the logic if we know we can't afford it!
+    let preCheckFailed = false;
+    if (isSkill) {
+        const cost = SKILL_DATA[abilityId].cost;
+        if (player[SKILL_DATA[abilityId].costType] < cost) preCheckFailed = true;
+    } else if (isSpell) {
+        let cost = SPELL_DATA[abilityId].cost;
+        if (SPELL_DATA[abilityId].costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
+            cost = Math.floor(cost * 0.8);
+        }
+        if (player[SPELL_DATA[abilityId].costType] < cost) preCheckFailed = true;
+    }
+
+    if (preCheckFailed) {
+        triggerSlotShake();
+        // We do NOT return here, we let the native functions execute so the player 
+        // gets the accurate error message and UI flash from magic.js / skills.js!
+    }
+
     // Auto-dismount for combat actions
     if (player.isMounted && (isSkill || isSpell)) {
         player.isMounted = false;
@@ -299,23 +347,38 @@ function assignToHotbar(abilityId) {
     const player = gameState.player;
     const hotbar = player.hotbar;
     
+    // --- 🚨 BUG FIX & ROBUSTNESS WIN: Ghost Bind Failsafe ---
+    // Prevents binding items/spells that technically don't exist anymore due to an uninstalled expansion
+    let isValid = false;
     let readableName = abilityId;
     let bindType = 'item'; 
     
     if (typeof SKILL_DATA !== 'undefined' && SKILL_DATA[abilityId]) {
         readableName = SKILL_DATA[abilityId].name;
         bindType = 'skill';
+        isValid = true;
     }
     else if (typeof SPELL_DATA !== 'undefined' && SPELL_DATA[abilityId]) {
         readableName = SPELL_DATA[abilityId].name;
         bindType = 'spell';
+        isValid = true;
     }
     else if (typeof ITEM_DATA !== 'undefined' && ITEM_DATA[abilityId]) {
         readableName = ITEM_DATA[abilityId].name;
+        isValid = true;
     }
     else {
         const invItem = player.inventory.find(i => i && (i.templateId === abilityId || i.name === abilityId)); // 🚨 GHOST GUARD
-        if (invItem) readableName = invItem.name;
+        if (invItem) {
+            readableName = invItem.name;
+            isValid = true;
+        }
+    }
+
+    if (!isValid) {
+        logMessage("{red:Cannot bind an unknown ability or missing item.}");
+        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+        return;
     }
 
     const existingIndex = hotbar.indexOf(abilityId);
@@ -422,6 +485,7 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
         if (slotDiv && !slotDiv.classList.contains('cursor-not-allowed')) {
             const index = parseInt(slotDiv.dataset.index, 10);
             if (!isNaN(index)) {
+                // Subtle press animation
                 slotDiv.style.transform = 'scale(0.9)';
                 setTimeout(() => { slotDiv.style.transform = ''; }, 100); 
                 useHotbarSlot(index);
@@ -449,7 +513,7 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
                 const abilityId = player.hotbar[index];
                 
                 if (abilityId) {
-                    if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.05, 1200); // Tearing sound
                     
                     // LORE WIN: Dynamic unbind text
                     let readableName = abilityId;
@@ -466,6 +530,9 @@ if (hotbarContainerEl && !hotbarContainerEl.dataset.listenersBound) {
                 }
                 
                 player.hotbar[index] = null;
+                
+                // UX WIN: Clear the input queue to prevent them walking forward if they missed the right click
+                if (typeof inputQueue !== 'undefined') inputQueue.length = 0; 
                 
                 if (typeof triggerDebouncedSave === 'function') {
                     triggerDebouncedSave({ hotbar: player.hotbar });
