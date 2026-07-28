@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "seasons_of_the_realm",
     name: "Seasons of the Realm (Dynamic Live-Ops)",
-    version: "1.0",
+    version: "1.1", // Upgraded version!
     
     data: {
         // --- 1. SEASONAL ITEMS ---
@@ -20,6 +20,7 @@ window.ExpansionManager.register({
                     state.player.poisonTurns = 0;
                     logMessage("{green:The Spring Blossom revitalizes your body completely!}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#4ade80', 20);
                     return true;
                 }
             },
@@ -35,8 +36,20 @@ window.ExpansionManager.register({
                     window.modifyVital('stamina', state.player.maxStamina);
                     logMessage("{yellow:The Autumn Harvest fills your belly and restores your energy!}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playConsume();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 20);
                     return true;
                 }
+            },
+            // NEW SEASONAL WEAPONS
+            '⚔️sun': {
+                name: 'Sun-Forged Blade', type: 'weapon', tags: ['blade', 'fire'], tile: '⚔️',
+                damage: 8, slot: 'weapon', statBonuses: { strength: 2 }, inflicts: 'burn', inflictChance: 0.3,
+                description: "{red:+8 Dmg}, {green:+2 Str}. Radiates the intense heat of the Summer sun.", _rarity: 'epic'
+            },
+            '🪓gla': {
+                name: 'Glacial Axe', type: 'weapon', tags: ['axe', 'frost'], tile: '🪓',
+                damage: 9, isTwoHanded: true, slot: 'weapon', statBonuses: { constitution: 2 }, inflicts: 'frostbite', inflictChance: 0.3,
+                description: "{red:+9 Dmg}, {green:+2 Con}. A heavy blade of never-melting ice. (Two-Handed)", _rarity: 'epic'
             }
         },
 
@@ -46,6 +59,7 @@ window.ExpansionManager.register({
                 name: 'Frost Colossus', tags: ['elemental', 'frost', 'giant'], mountable: false,
                 maxHealth: 80, attack: 12, defense: 4, xp: 200,
                 color: '#7dd3fc', loot: '❄️c', isElite: true,
+                inflicts: 'frostbite', inflictChance: 0.4,
                 flavor: "A towering mass of ice and packed snow. It brings the blizzard with it."
             },
             '🌞': {
@@ -54,6 +68,19 @@ window.ExpansionManager.register({
                 color: '#facc15', loot: '☀️e', isElite: true,
                 inflicts: 'burn', inflictChance: 0.5,
                 flavor: "A blinding sphere of superheated plasma."
+            },
+            '🌸w': {
+                name: 'Verdant Warden', tags: ['elemental', 'wood', 'magic'], mountable: false,
+                maxHealth: 70, attack: 8, defense: 3, xp: 180,
+                color: '#4ade80', loot: '🌸s', isElite: true,
+                inflicts: 'root', inflictChance: 0.4,
+                flavor: "A towering protector woven from blooming spring flora."
+            },
+            '🎃s': {
+                name: 'Harvester Spirit', tags: ['undead', 'ethereal'], type: 'spirit', mountable: false,
+                maxHealth: 50, attack: 14, defense: 0, xp: 180,
+                color: '#f97316', loot: '🍁a', isElite: true,
+                flavor: "A restless ghost that haunts the dying autumn fields."
             }
         },
         
@@ -68,6 +95,14 @@ window.ExpansionManager.register({
     },
 
     init: function() {
+
+        // ==========================================
+        // 0. ADD SEASONAL CRAFTING RECIPES
+        // ==========================================
+        if (typeof window.CRAFTING_RECIPES !== 'undefined') {
+            window.CRAFTING_RECIPES["Sun-Forged Blade"] = { materials: { "Summer Ember": 1, "Iron Sword": 1, "Arcane Dust": 5 }, xp: 150, level: 5 };
+            window.CRAFTING_RECIPES["Glacial Axe"] = { materials: { "Winter Core": 1, "Greataxe": 1, "Arcane Dust": 5 }, xp: 150, level: 5 };
+        }
         
         // ==========================================
         // 1. THE SEASONAL CLOCK ENGINE
@@ -116,15 +151,39 @@ window.ExpansionManager.register({
                 const command = parts[0].toLowerCase();
                 
                 if (command === 'season' && parts[1]) {
+                    // 🚨 SECURITY WIN: Admin Guard
+                    const ADMIN_EMAILS = ["your.email@gmail.com", "admin@cavesandcastles.com"];
+                    if (!auth.currentUser || !ADMIN_EMAILS.includes(auth.currentUser.email)) {
+                        logMessage("{red:Unauthorized. The Time Weavers ignore you.}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return;
+                    }
+
                     const requested = parts[1].toLowerCase();
                     if (requested === 'winter') window.OVERRIDE_SEASON = 'Winter';
                     else if (requested === 'spring') window.OVERRIDE_SEASON = 'Spring';
                     else if (requested === 'summer') window.OVERRIDE_SEASON = 'Summer';
                     else if (requested === 'autumn') window.OVERRIDE_SEASON = 'Autumn';
                     else if (requested === 'clear') window.OVERRIDE_SEASON = null;
+                    else {
+                        logMessage("{gray:Usage: /season [winter|spring|summer|autumn|clear]}");
+                        return;
+                    }
                     
-                    logMessage(`{purple:The Time Weavers shift the timeline. It is now ${window.getCurrentSeason()}.}`);
+                    logMessage(`{purple:The Time Weavers violently shift the timeline. It is now ${window.getCurrentSeason()}.}`);
                     
+                    // JUICE WIN: Massive Temporal Shift Effects
+                    if (typeof AudioSystem !== 'undefined' && typeof AudioSystem.playTimelineShift === 'function') {
+                        AudioSystem.playTimelineShift();
+                    }
+                    if (typeof gameState !== 'undefined') {
+                        gameState.screenShake = 30;
+                        gameState.screenFlash = { color: '#a855f7', alpha: 0.6, decay: 0.02 };
+                    }
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#a855f7', 40);
+                    }
+
                     // Force complete map purge so chunks regenerate with the new season
                     if (typeof chunkManager !== 'undefined') {
                         chunkManager.loadedChunks = {};
@@ -282,9 +341,9 @@ window.ExpansionManager.register({
                 // 15% chance to intercept the spawn table and inject a seasonal enemy!
                 if (Math.random() < 0.15) {
                     if (season === 'Winter' && (biome === '.' || biome === 'F')) return '⛄'; 
-                    if (season === 'Spring' && biome === 'F') return '🍄s'; // Sporelings breed rapidly
+                    if (season === 'Spring' && biome === 'F') return '🌸w'; // Verdant Warden
                     if (season === 'Summer' && (biome === 'D' || biome === 'd')) return '🌞'; 
-                    if (season === 'Autumn' && (biome === 'F' || biome === 'd')) return '👻p'; // Ghosts wander
+                    if (season === 'Autumn' && (biome === 'F' || biome === 'd')) return '🎃s'; // Harvester Spirit
                 }
                 
                 return origGetEnemySpawn.call(this, biome, distSq, random);
@@ -321,11 +380,16 @@ window.ExpansionManager.register({
                                 bonusItem.isEquipped = false;
                                 p.inventory.push(bonusItem);
                                 logMessage(`{orange:Autumn Harvest Bonus! (+1 ${seedData.yields})}`);
+                                
+                                // Sparkles!
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(p.x, p.y, "BONUS", "#f97316");
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                             }
                         }
                     }
                 }
                 
+                // Call original logic to handle standard harvesting and XP
                 origHarvestPlot(plotIndex);
             };
         }
