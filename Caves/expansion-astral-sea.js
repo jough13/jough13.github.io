@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "astral_sea",
     name: "The Astral Sea (Sailing Expansion)",
-    version: "1.0",
+    version: "1.1", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -69,8 +69,16 @@ window.ExpansionManager.register({
                     const tx = Math.floor(state.player.x + Math.cos(angle) * dist);
                     const ty = Math.floor(state.player.y + Math.sin(angle) * dist);
                     
-                    state.activeTreasure = { x: tx, y: ty };
-                    logMessage(`{gold:The map points to a buried Pirate Cove at (${tx}, ${-ty})!}`);
+                    // 🚨 THE BUG FIX: Actually spawn the dungeon entrance via worldState so it exists when they arrive!
+                    if (typeof chunkManager !== 'undefined') {
+                        chunkManager.setWorldTile(tx, ty, '⚓c', 168); // Lasts 7 in-game days (168 hrs)
+                    }
+
+                    // QoL WIN: Automatically add a custom map pin to the player's map!
+                    if (!state.player.customPins) state.player.customPins = [];
+                    state.player.customPins.push({ x: tx, y: ty });
+                    
+                    logMessage(`{gold:The map reveals a hidden Pirate Cove at (${tx}, ${-ty})! A pin has been added to your map.}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                     
                     state.mapDirty = true;
@@ -78,7 +86,7 @@ window.ExpansionManager.register({
                 }
             },
             '🔫': {
-                name: 'Hand Cannon', type: 'weapon', tags: ['crossbow', 'armor_piercing'], tile: '🔫',
+                name: 'Hand Cannon', type: 'weapon', tags: ['crossbow', 'armor_piercing', 'firearm'], tile: '🔫',
                 damage: 15, range: 6, isTwoHanded: true, slot: 'weapon', skillId: 'ranged_attack',
                 description: "{red:+15 Dmg}. A devastating black-powder weapon. Fires Cannonballs.", _rarity: 'legendary'
             },
@@ -89,6 +97,32 @@ window.ExpansionManager.register({
             '🎩p': {
                 name: 'Captain\'s Tricorne', type: 'armor', tile: '🎩', defense: 3, slot: 'armor',
                 statBonuses: { charisma: 5, luck: 5 }, description: "{blue:+3 Def}, {gold:+5 Cha, +5 Luck}. Yar.", _rarity: 'epic'
+            },
+            '🍺r': {
+                name: 'Spiced Rum', type: 'consumable', tile: '🍺', _rarity: 'uncommon',
+                description: "Burns going down. {yellow:+30 Stamina, +20 Psyche}, {red:-2 Wits (50 turns)}",
+                effect: (state) => {
+                    window.modifyVital('stamina', 30);
+                    window.modifyVital('psyche', 20);
+                    
+                    // Applies a minor debuff to represent being slightly drunk!
+                    state.player.witsBonus = (state.player.witsBonus || 0) - 2;
+                    state.player.witsBonusTurns = 50;
+                    
+                    logMessage("{orange:You chug the rum. You feel fearless, but dizzy. (+30 Stam, +20 Psyche, -2 Wits)}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playConsume();
+                    if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('staminaDisplay'), 'stat-pulse-yellow');
+                    return true;
+                }
+            },
+            '⚓w': {
+                name: 'Dredged Anchor', type: 'weapon', tags: ['blunt'], tile: '⚓',
+                damage: 12, isTwoHanded: true, slot: 'weapon', statBonuses: { strength: 4, dexterity: -3 },
+                description: "{red:+12 Dmg}, {green:+4 Str}, {gray:-3 Dex}. Impossibly heavy. (Two-Handed)", _rarity: 'rare'
+            },
+            '📜p2': {
+                name: 'Sodden Journal', type: 'journal', title: 'Mutiny', tile: '📜',
+                content: "The Captain has gone mad. He claims the Leviathan spoke to him, told him to sail into the black fog. We strike at midnight. If I fall, tell my wife I died an honest pirate."
             }
         },
 
@@ -111,6 +145,13 @@ window.ExpansionManager.register({
                 maxHealth: 250, attack: 12, defense: 4, xp: 800,
                 isRanged: true, range: 5, color: '#dc2626', loot: '🔫', isBoss: true,
                 flavor: "He laughs maniacally, leveling his Hand Cannon at your chest."
+            },
+            '🧜‍♀️c': {
+                name: 'Abyssal Siren', tags: ['humanoid', 'aquatic', 'magic', 'void'], mountable: false,
+                maxHealth: 50, attack: 8, defense: 2, xp: 120,
+                caster: true, castRange: 5, spellDamage: 10, inflicts: 'madness', inflictChance: 0.5,
+                color: '#a855f7', loot: '🐚',
+                flavor: "Her song doesn't draw you into the water—it pulls the water into your lungs."
             }
         },
 
@@ -128,7 +169,7 @@ window.ExpansionManager.register({
                 wall: '~', floor: '=', secretWall: '▒', // Surrounded by water, walking on planks
                 colors: { wall: '#1e3a8a', floor: '#451a03' },
                 decorations: ['📦w', '⚓', '🐚', '🦴'],
-                enemies: ['👻p', '🦀', '🦈']
+                enemies: ['👻p', '🦀', '🦈', '🧜‍♀️c']
             },
             'PIRATE_COVE': {
                 name: 'Pirate Cove',
@@ -174,16 +215,20 @@ window.ExpansionManager.register({
                         // Deep Ocean Check (> 1000 tiles from spawn)
                         if (chunkData[y][x] === '~' && distSq > 1000000) { 
                             // Custom Perlin Noise threshold for islands
-                            const islandNoise = elevationNoise.noise(worldX / 15 + 5000, worldY / 15 + 5000);
+                            const islandNoise = typeof elevationNoise !== 'undefined' ? elevationNoise.noise(worldX / 15 + 5000, worldY / 15 + 5000) : 0;
                             
                             if (islandNoise > 0.85) {
                                 chunkData[y][x] = 'D'; // Sand beach
                                 
-                                const random = Alea(stringToSeed(`island_${worldX}_${worldY}`));
+                                const random = typeof Alea !== 'undefined' ? Alea(stringToSeed(`island_${worldX}_${worldY}`)) : Math.random;
                                 
-                                // Flora
-                                if (random() < 0.1) chunkData[y][x] = '🌴';
-                                
+                                // Flora & Features (LORE WIN: Dynamic island populations!)
+                                const rVal = random();
+                                if (rVal < 0.05) chunkData[y][x] = '🌴';
+                                else if (rVal < 0.08) chunkData[y][x] = '∴'; // Dig spot!
+                                else if (rVal < 0.10) chunkData[y][x] = '🦀'; // Giant crab!
+                                else if (rVal < 0.11) chunkData[y][x] = '🍺r'; // Washed up rum
+
                                 // Pirate Coves (Rare)
                                 if (islandNoise > 0.92 && random() < 0.05) {
                                     chunkData[y][x] = '⚓c';
@@ -240,11 +285,24 @@ window.ExpansionManager.register({
             };
         }
 
-        // 3. INJECT COLORS INTO THE MINIMAP CACHE
-        if (typeof TILE_COLOR_MAP !== 'undefined') {
-            // Push colors safely into the minimap engine
-            TILE_COLOR_MAP['🏴‍☠️'] = [17, 24, 39, 255];  // Black Ship
-            TILE_COLOR_MAP['⚓c'] = [133, 77, 14, 255]; // Wood/Brown Cove
+        // 3. INJECT THEMATIC ROOM TEMPLATES
+        if (typeof window.CAVE_ROOM_TEMPLATES !== 'undefined') {
+            window.CAVE_ROOM_TEMPLATES["Captain's Quarters"] = {
+                width: 7, height: 7,
+                map: [' WWWWW ', 'W📦.🛏️.W', 'W.....W', 'W..🏴‍☠️c.W', 'W.....W', 'W..🍺r.W', ' WWWWW ']
+            };
+            window.CAVE_ROOM_TEMPLATES["Flooded Cargo Hold"] = {
+                width: 9, height: 5,
+                map: [' WWWWWWW ', 'W📦.≈.📦W', 'W.≈.👻p.W', 'W.📦.≈..W', ' WWWWWWW ']
+            };
+            window.CACHED_ROOM_TEMPLATES = null; // Force cache rebuild
+        }
+
+        // 4. INJECT COLORS INTO THE MINIMAP CACHE
+        if (typeof window.TILE_COLOR_MAP !== 'undefined') {
+            window.TILE_COLOR_MAP['🏴‍☠️'] = [17, 24, 39, 255];  // Black Ship
+            window.TILE_COLOR_MAP['⚓c'] = [133, 77, 14, 255]; // Wood/Brown Cove
+            window.TILE_COLOR_MAP['🍺r'] = [234, 179, 8, 255]; // Gold/Rum
         }
     }
 });
