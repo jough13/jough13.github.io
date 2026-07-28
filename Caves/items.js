@@ -66,17 +66,18 @@ function rehydratePlayerState(data) {
             if (item.damage === undefined || item.damage === null) item.damage = templateItem.damage || 0;
             if (item.defense === undefined || item.defense === null) item.defense = templateItem.defense || 0;
             
-            // ROBUSTNESS WIN: Force the slot to match the template to prevent save-file hacking
+            // Force the slot to match the template to prevent save-file hacking
             item.slot = templateItem.slot; 
             item.tile = item.tile || templateItem.tile; 
             item.range = item.range || templateItem.range || null;
             item.isTwoHanded = (item.isTwoHanded !== undefined) ? item.isTwoHanded : (templateItem.isTwoHanded || false);
             
-            // ECS WIN: Rehydrate tags safely using spread syntax to prevent memory reference bleeds!
+            // Rehydrate tags safely using spread syntax to prevent memory reference bleeds!
             if (item.tags) {
-                item.tags = [...item.tags];
+                // String-Spread Corruption Fix
+                item.tags = Array.isArray(item.tags) ? [...item.tags] : [item.tags];
             } else if (templateItem.tags) {
-                item.tags = [...templateItem.tags];
+                item.tags = Array.isArray(templateItem.tags) ? [...templateItem.tags] : [templateItem.tags];
             } else {
                 item.tags = null;
             }
