@@ -14,7 +14,7 @@ window.BLACK_MARKET_INVENTORY = [
 window.ExpansionManager.register({
     id: "faction_lore",
     name: "Factions & Deep Lore",
-    version: "1.0",
+    version: "1.1", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -30,6 +30,12 @@ window.ExpansionManager.register({
                 statBonuses: { luck: 3, maxMana: 15 }, 
                 description: "{blue:+1 Def, +15 Max Mana}, {gold:+3 Luck}. A token of gratitude from a being of the stars.", 
                 _rarity: 'epic', excludeFromLoot: true
+            },
+            '🏅r': {
+                name: 'Royal Signet', type: 'accessory', tile: '🏅', defense: 2, slot: 'accessory',
+                statBonuses: { charisma: 3, luck: 1 },
+                description: "{blue:+2 Def}, {gold:+3 Cha, +1 Luck}. A heavy gold ring bearing the King's crest.",
+                _rarity: 'epic', excludeFromLoot: true
             }
         },
 
@@ -44,6 +50,11 @@ window.ExpansionManager.register({
                 type: 'landmark', name: 'Strange Crater', 
                 flavor: "A crater still smoking from a recent impact. Someone is inside.", 
                 eventId: 'STAR_ELF_CRASH' 
+            },
+            '⛺e': {
+                type: 'landmark', name: 'Royal Emissary Camp',
+                flavor: "A pristine white tent guarded by heavily armored knights.",
+                eventId: 'ROYAL_EMISSARY'
             }
         },
 
@@ -84,13 +95,14 @@ window.ExpansionManager.register({
                                     logMessage("{red:You attack the guards!}");
                                     state.screenShake = 15;
                                     if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#ef4444', 15);
                                     
                                     // Drop Reputation for attacking them
                                     state.player.reputation.shadowed_hand = (state.player.reputation.shadowed_hand || 0) - 10;
                                     logMessage("{gray:Your reputation with the Shadowed Hand decreases. (-10)}");
                                     
                                     // Spawn 2 Cultist Fanatics
-                                    const eData = window.ENEMY_DATA['z'];
+                                    const eData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['z'] : { name: 'Cultist', maxHealth: 15, attack: 3, xp: 10 };
                                     const offsets = [[-1, 0], [1, 0]];
                                     offsets.forEach(off => {
                                         const ex = ctx.x + off[0];
@@ -130,7 +142,8 @@ window.ExpansionManager.register({
                                     if (shopTitle) shopTitle.innerHTML = `Cult Quartermaster <span class="block text-xs font-normal text-purple-400 mt-1 italic tracking-normal font-serif">"The Void provides."</span>`;
                                     
                                     if (typeof renderShop === 'function') renderShop();
-                                    document.getElementById('shopModal').classList.remove('hidden');
+                                    const shopModal = document.getElementById('shopModal');
+                                    if (shopModal) shopModal.classList.remove('hidden');
                                     if (typeof AudioSystem !== 'undefined') AudioSystem.playClick();
                                 }
                             },
@@ -166,23 +179,27 @@ window.ExpansionManager.register({
                                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#3b82f6', 30);
                                     
                                     // Give Unique Artifact
-                                    const amulet = window.ITEM_DATA['🧿st'];
+                                    const amulet = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🧿st'] : null;
                                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                                     
-                                    if (state.player.inventory.length < invCap) {
-                                        const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(amulet) : JSON.parse(JSON.stringify(amulet));
-                                        newItem.templateId = '🧿st';
-                                        newItem.quantity = 1;
-                                        newItem.isEquipped = false;
-                                        state.player.inventory.push(newItem);
-                                    } else {
-                                        logMessage("{red:Your inventory is full! The amulet drops to the ground.}");
-                                        chunkManager.setWorldTile(ctx.x, ctx.y, '🧿', 24);
+                                    if (amulet) {
+                                        if (state.player.inventory.length < invCap) {
+                                            const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(amulet) : JSON.parse(JSON.stringify(amulet));
+                                            newItem.templateId = '🧿st';
+                                            newItem.quantity = 1;
+                                            newItem.isEquipped = false;
+                                            state.player.inventory.push(newItem);
+                                        } else {
+                                            logMessage("{red:Your inventory is full! The amulet drops to the ground.}");
+                                            if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '🧿', 24);
+                                        }
                                     }
                                     
                                     // Cleanup the map tile
                                     state.lootedTiles.add(ctx.tileId);
-                                    if (chunkManager.getTile(ctx.x, ctx.y) !== '🧿') chunkManager.setWorldTile(ctx.x, ctx.y, '.');
+                                    if (typeof chunkManager !== 'undefined' && chunkManager.getTile(ctx.x, ctx.y) !== '🧿') {
+                                        chunkManager.setWorldTile(ctx.x, ctx.y, '.');
+                                    }
                                     state.mapDirty = true;
                                 }
                             },
@@ -201,7 +218,7 @@ window.ExpansionManager.register({
                                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#991b1b', 20);
                                     
                                     // Give Star-Metal
-                                    const metal = window.ITEM_DATA['☄️'];
+                                    const metal = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['☄️'] : { name: 'Star-Metal Ore', type: 'junk' };
                                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                                     
                                     const existingStack = state.player.inventory.find(i => i && i.name === 'Star-Metal Ore' && !i.isEquipped);
@@ -211,19 +228,75 @@ window.ExpansionManager.register({
                                         const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(metal) : JSON.parse(JSON.stringify(metal));
                                         newItem.templateId = '☄️';
                                         newItem.quantity = 2;
+                                        newItem.isEquipped = false;
                                         state.player.inventory.push(newItem);
                                     } else {
                                         logMessage("{red:Your inventory is full! The ore drops to the ground.}");
-                                        chunkManager.setWorldTile(ctx.x, ctx.y, '☄️', 24);
+                                        if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '☄️', 24);
                                     }
                                     
                                     // Turn the crater into a deadlands tile to signify the corruption
                                     state.lootedTiles.add(ctx.tileId);
-                                    if (chunkManager.getTile(ctx.x, ctx.y) !== '☄️') chunkManager.setWorldTile(ctx.x, ctx.y, 'd');
+                                    if (typeof chunkManager !== 'undefined' && chunkManager.getTile(ctx.x, ctx.y) !== '☄️') {
+                                        chunkManager.setWorldTile(ctx.x, ctx.y, 'd');
+                                    }
                                     state.mapDirty = true;
                                 }
                             },
                             { text: "Walk away and leave them to their fate." }
+                        ]
+                    }
+                }
+            },
+            'ROYAL_EMISSARY': {
+                title: "The Crown's Emissary",
+                oncePerTile: true,
+                lootedMessage: "The knights stand at attention. The Emissary is busy drafting reports.",
+                nodes: {
+                    'start': {
+                        text: "An aristocratic man in pristine silk robes looks up from a folding desk. Flanking him are two knights in heavy plate.\n\n\"Halt, traveler. By order of the Crown, state your business.\"",
+                        choices: [
+                            {
+                                text: "[Reputation] Present your credentials.",
+                                req: (player) => (player.reputation && player.reputation.the_crown >= 20),
+                                reqHint: "20+ Crown Rep",
+                                action: (state, ctx) => {
+                                    logMessage("{blue:The Emissary smiles. \"Ah, a loyal servant of the realm. Please, take this for your continued efforts.\"}");
+                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#facc15', 20);
+
+                                    state.player.coins += 250;
+                                    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                                    const itemTemplate = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🏅r'] : null;
+
+                                    if (itemTemplate) {
+                                        if (state.player.inventory.length < invCap) {
+                                            const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(itemTemplate) : JSON.parse(JSON.stringify(itemTemplate));
+                                            newItem.templateId = '🏅r';
+                                            newItem.quantity = 1;
+                                            newItem.isEquipped = false;
+                                            state.player.inventory.push(newItem);
+                                            logMessage("{purple:You received the Royal Signet and 250 Gold!}");
+                                        } else {
+                                            logMessage("{gold:You received 250 Gold, but your pack was full. The Signet was lost to the mud.}");
+                                        }
+                                    }
+                                    state.lootedTiles.add(ctx.tileId);
+                                }
+                            },
+                            {
+                                text: "Donate 100 Gold to the Crown's war effort.",
+                                req: (player) => player.coins >= 100,
+                                reqHint: "100 Gold",
+                                action: (state, ctx) => {
+                                    state.player.coins -= 100;
+                                    state.player.reputation.the_crown = (state.player.reputation.the_crown || 0) + 15;
+                                    logMessage("{gold:The Emissary gladly accepts the coin. (+15 Crown Rep)}");
+                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+                                    state.lootedTiles.add(ctx.tileId);
+                                }
+                            },
+                            { text: "Walk away peacefully." }
                         ]
                     }
                 }
@@ -273,8 +346,10 @@ window.ExpansionManager.register({
                 const chunkId = `${chunkX},${chunkY}`;
                 const chunkData = this.loadedChunks[chunkId];
                 
-                // Predictable PRNG for this specific chunk
-                const random = Alea(stringToSeed(`faction_spawn_${chunkId}`));
+                // 🚨 ROBUSTNESS WIN: Safe PRNG fallback
+                const random = (typeof Alea !== 'undefined' && typeof stringToSeed !== 'undefined') 
+                    ? Alea(stringToSeed(`faction_spawn_${chunkId}`)) 
+                    : Math.random;
                 
                 // 15% chance to spawn one of our new events in a chunk
                 if (random() < 0.15) { 
@@ -282,16 +357,32 @@ window.ExpansionManager.register({
                     const ry = Math.floor(random() * 14) + 1;
                     const tile = chunkData[ry][rx];
                     
+                    const subRoll = random();
+                    
                     // Spawn the Cultist Outpost in Deadlands or Swamps
-                    if ((tile === 'd' || tile === '≈') && random() < 0.5) {
+                    if ((tile === 'd' || tile === '≈') && subRoll < 0.4) {
                         chunkData[ry][rx] = '🕍c'; 
                     }
                     // Spawn the Star Elf Crater in Mountains or Plains
-                    else if ((tile === '^' || tile === '.') && random() > 0.5) {
+                    else if ((tile === '^' || tile === '.') && subRoll >= 0.4 && subRoll < 0.7) {
                         chunkData[ry][rx] = '🌠e'; 
+                    }
+                    // Spawn the Royal Emissary in Forests or Plains
+                    else if ((tile === 'F' || tile === '.') && subRoll >= 0.7) {
+                        chunkData[ry][rx] = '⛺e';
                     }
                 }
             };
+        }
+
+        // ==========================================
+        // 3. MINIMAP COLOR INTEGRATION
+        // ==========================================
+        // Inject the newly generated tiles into the global TILE_COLOR_MAP
+        if (typeof window.TILE_COLOR_MAP !== 'undefined') {
+            window.TILE_COLOR_MAP['🕍c'] = [153, 27, 27, 255];   // Dark Red
+            window.TILE_COLOR_MAP['🌠e'] = [56, 189, 248, 255];  // Bright Cyan
+            window.TILE_COLOR_MAP['⛺e'] = [30, 58, 138, 255];   // Royal Blue
         }
     }
 });
