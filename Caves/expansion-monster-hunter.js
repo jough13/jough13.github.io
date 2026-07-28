@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "monster_hunter",
     name: "The Monster Hunter (Tracking & Trophies)",
-    version: "1.0",
+    version: "1.1", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -12,11 +12,16 @@ window.ExpansionManager.register({
                 name: "Hunter's Knife", type: 'tool', tile: '🔪',
                 description: "A serrated, incredibly sharp blade. Essential for carving trophies from Apex Predators.", _rarity: 'uncommon'
             },
+            '📜mh': {
+                name: 'Hunter\'s Log', type: 'journal', title: 'The Apex Predators', tile: '📜',
+                content: "To track an Apex, look for the anomalies. Deep gouges in the dirt. Once you find their tracks, do not rest. They move fast, and their lairs are heavily guarded. Bring a knife, or you'll have nothing to show for the kill."
+            },
             
             // Trophies
             '🐉s': { name: 'Apex Drake Scale', type: 'trade', tile: '🐉', description: "It radiates intense heat. Required for Drakebane gear.", _rarity: 'epic' },
             '👁️v': { name: 'Apex Void Core', type: 'trade', tile: '👁️', description: "It whispers in a language you don't understand.", _rarity: 'epic' },
             '🦍p': { name: 'Apex Behemoth Pelt', type: 'trade', tile: '🦍', description: "Incredibly thick and heavy fur. Can stop a blade.", _rarity: 'epic' },
+            '🧪v': { name: 'Apex Venom Gland', type: 'trade', tile: '🧪', description: "A sac of highly concentrated, lethal neurotoxin.", _rarity: 'epic' },
 
             // Hunter Armor
             '🛡️db': {
@@ -33,6 +38,11 @@ window.ExpansionManager.register({
                 name: 'Behemoth Plate', type: 'armor', tile: '🛡️', defense: 12, slot: 'armor',
                 statBonuses: { endurance: 6, constitution: 5 },
                 description: "{blue:+12 Def}, {green:+6 End, +5 Con}. \n{green:Passive: Grants permanent Thorns (Reflect 5 Dmg).}", _rarity: 'legendary'
+            },
+            '🧥b': {
+                name: 'Broodmother Cloak', type: 'armor', tile: '🧥', defense: 7, slot: 'armor',
+                statBonuses: { dexterity: 6, luck: 4 },
+                description: "{blue:+7 Def}, {green:+6 Dex}, {gold:+4 Luck}. \n{green:Passive: Grants complete immunity to Poison.}", _rarity: 'legendary'
             }
         },
 
@@ -58,6 +68,13 @@ window.ExpansionManager.register({
                 inflicts: 'stun', inflictChance: 0.4,
                 color: '#78350f', loot: '🥩b', isBoss: true, isElite: true,
                 flavor: "A towering mass of muscle and rage that shatters the earth when it walks."
+            },
+            '🕷️a': {
+                name: 'Apex Broodmother', tags: ['beast', 'bug', 'poison', 'boss'], mountable: false,
+                maxHealth: 750, attack: 15, defense: 6, xp: 1100,
+                caster: true, castRange: 5, spellDamage: 20, inflicts: 'poison', inflictChance: 1.0,
+                color: '#16a34a', loot: '🥩s', isBoss: true, isElite: true,
+                flavor: "An enormous arachnid. Hundreds of glowing green eyes stare back at you."
             }
         },
 
@@ -84,10 +101,15 @@ window.ExpansionManager.register({
                 type: 'anomaly', name: 'Slain Behemoth', flavor: "The mountain of fur and muscle that was the Apex Behemoth.",
                 onInteract: (state, x, y) => { if (typeof window.carveMonster === 'function') window.carveMonster(state, x, y, 'Apex Behemoth Pelt', '🥩b'); return null; }
             },
+            '🥩s': {
+                type: 'anomaly', name: 'Slain Broodmother', flavor: "The twitching carcass of the Apex Broodmother.",
+                onInteract: (state, x, y) => { if (typeof window.carveMonster === 'function') window.carveMonster(state, x, y, 'Apex Venom Gland', '🥩s'); return null; }
+            },
             // Lairs
             '🐉L': { type: 'dungeon_entrance', name: 'Scorched Roost', flavor: "The air here is blisteringly hot.", getCaveId: (x, y) => `hunter_drake_${x}_${y}` },
             '👁️L': { type: 'dungeon_entrance', name: 'Tear in Reality', flavor: "The sky above this crater is completely black.", getCaveId: (x, y) => `hunter_void_${x}_${y}` },
-            '🦍L': { type: 'dungeon_entrance', name: 'Shattered Cavern', flavor: "The trees have been ripped out by the roots to form this den.", getCaveId: (x, y) => `hunter_behemoth_${x}_${y}` }
+            '🦍L': { type: 'dungeon_entrance', name: 'Shattered Cavern', flavor: "The trees have been ripped out by the roots to form this den.", getCaveId: (x, y) => `hunter_behemoth_${x}_${y}` },
+            '🕸️L': { type: 'dungeon_entrance', name: 'Infested Burrow', flavor: "The entrance is completely choked with thick, green webbing.", getCaveId: (x, y) => `hunter_broodmother_${x}_${y}` }
         },
 
         // --- 4. SHOPS ---
@@ -96,7 +118,8 @@ window.ExpansionManager.register({
                 { name: 'Hunter\'s Knife', price: 300, stock: 1 }
             ],
             trader: [
-                { name: 'Hunter\'s Knife', price: 250, stock: 1 }
+                { name: 'Hunter\'s Knife', price: 250, stock: 1 },
+                { name: 'Hunter\'s Log', price: 50, stock: 1 }
             ]
         }
     },
@@ -111,6 +134,7 @@ window.ExpansionManager.register({
             window.CRAFTING_RECIPES["Drakebane Mail"] = { materials: { "Apex Drake Scale": 1, "Steel Armor": 1, "Elemental Core": 3 }, xp: 250, level: 5 };
             window.CRAFTING_RECIPES["Voidstalker Cowl"] = { materials: { "Apex Void Core": 1, "Silk Cowl": 1, "Void Dust": 5 }, xp: 250, level: 5 };
             window.CRAFTING_RECIPES["Behemoth Plate"] = { materials: { "Apex Behemoth Pelt": 1, "Studded Armor": 1, "Stone": 20 }, xp: 250, level: 5 };
+            window.CRAFTING_RECIPES["Broodmother Cloak"] = { materials: { "Apex Venom Gland": 1, "Silk Cowl": 1, "Spider Silk": 15 }, xp: 250, level: 5 };
         }
 
         // ==========================================
@@ -124,7 +148,7 @@ window.ExpansionManager.register({
             let isNewHunt = false;
             if (p.activeHunt.stage === 0 || (p.activeHunt.targetX !== x && p.activeHunt.targetY !== y)) {
                 isNewHunt = true;
-                const monsters = ['Drake', 'Void Terror', 'Behemoth'];
+                const monsters = ['Drake', 'Void Terror', 'Behemoth', 'Broodmother'];
                 p.activeHunt = {
                     stage: 1,
                     monster: monsters[Math.floor(Math.random() * monsters.length)],
@@ -164,12 +188,24 @@ window.ExpansionManager.register({
                 return;
             }
 
+            // --- JUICE WIN: Scent Trail Particles! ---
+            // Spawns a line of particles pointing towards the next track!
+            if (typeof ParticleSystem !== 'undefined') {
+                const angleToNext = Math.atan2(nextY - y, nextX - x);
+                for(let i = 1; i <= 8; i++) {
+                    setTimeout(() => {
+                        ParticleSystem.spawn(x + Math.cos(angleToNext) * i, y + Math.sin(angleToNext) * i, '#4ade80', 'dust', '', 3);
+                    }, i * 60);
+                }
+            }
+
             // Place the next step!
             if (p.activeHunt.stage >= 3) {
                 // SPAWN THE LAIR!
                 let lairTile = '🦍L';
                 if (p.activeHunt.monster === 'Drake') lairTile = '🐉L';
                 if (p.activeHunt.monster === 'Void Terror') lairTile = '👁️L';
+                if (p.activeHunt.monster === 'Broodmother') lairTile = '🕸️L';
                 
                 chunkManager.setWorldTile(nextX, nextY, lairTile);
                 
@@ -189,7 +225,7 @@ window.ExpansionManager.register({
                 const dirStr = typeof getDirectionString === 'function' ? getDirectionString({x: Math.sign(nextX - x), y: Math.sign(nextY - y)}, true) : 'away';
                 
                 if (isNewHunt) {
-                    logMessage(`{green:You found the tracks of an Apex ${p.activeHunt.monster}! The trail leads ${dirStr}.}`);
+                    logMessage(`{green:You found the tracks of an Apex ${p.activeHunt.monster}! The scent trail leads ${dirStr}.}`);
                 } else {
                     logMessage(`{green:The trail is fresh. The ${p.activeHunt.monster} went ${dirStr}.}`);
                 }
@@ -200,7 +236,8 @@ window.ExpansionManager.register({
             state.mapDirty = true;
             if (typeof render === 'function') render();
             
-            if (typeof playerRef !== 'undefined') playerRef.update({ activeHunt: p.activeHunt });
+            // Defensively debounce save
+            if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ activeHunt: p.activeHunt });
         };
 
         window.carveMonster = function(state, x, y, trophyName, carcassTile) {
@@ -222,21 +259,36 @@ window.ExpansionManager.register({
 
             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
             
-            // Give Trophy
-            const template = window.ITEM_DATA[Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === trophyName)];
-            if (template && p.inventory.length < invCap) {
-                const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
-                newItem.name = trophyName; newItem.quantity = 1; newItem.isEquipped = false;
-                p.inventory.push(newItem);
-                if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
-            } else {
-                logMessage(`{red:Your pack is full! The ${trophyName} drops to the ground.}`);
-                chunkManager.setWorldTile(x, y, template.tile || '💎', 24);
-            }
+            // Helper function to safely merge stacks OR push new OR drop on floor
+            const addOrDropItem = (itemName, itemType, itemQty, itemTile) => {
+                const existing = p.inventory.find(i => i && i.name === itemName && !i.isEquipped);
+                const isStackable = typeof window.isStackableItem === 'function' ? window.isStackableItem(itemType) : true;
+                
+                if (existing && isStackable) {
+                    existing.quantity += itemQty;
+                } else if (p.inventory.length < invCap) {
+                    // Pull full template safely
+                    const baseKey = Object.keys(window.ITEM_DATA || {}).find(k => window.ITEM_DATA[k].name === itemName);
+                    const template = baseKey ? window.ITEM_DATA[baseKey] : null;
+                    
+                    let newItem = template && typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : { name: itemName, type: itemType, tile: itemTile };
+                    newItem.quantity = itemQty; 
+                    newItem.isEquipped = false;
+                    p.inventory.push(newItem);
+                } else {
+                    // Drop on the ground
+                    chunkManager.setWorldTile(x, y, itemTile, 24);
+                    logMessage(`{red:Inventory full! The ${itemName} drops to the ground.}`);
+                }
+            };
 
-            // Give Bonus Meat/Bones
-            if (p.inventory.length < invCap) p.inventory.push({ name: 'Raw Meat', type: 'junk', quantity: 5, tile: '🍖' });
-            if (p.inventory.length < invCap) p.inventory.push({ name: 'Fossilized Bone', type: 'trade', quantity: 2, tile: '🦴' });
+            // 1. Give Trophy
+            addOrDropItem(trophyName, 'trade', 1, '💎');
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+
+            // 2. Give Bonus Meat/Bones safely
+            addOrDropItem('Raw Meat', 'junk', 5, '🍖');
+            addOrDropItem('Fossilized Bone', 'trade', 2, '🦴');
 
             // Clear the carcass
             if (state.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '.');
@@ -245,6 +297,7 @@ window.ExpansionManager.register({
             state.mapDirty = true;
             if (typeof renderInventory === 'function') renderInventory();
             if (typeof render === 'function') render();
+            if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory });
         };
 
         // ==========================================
@@ -260,7 +313,7 @@ window.ExpansionManager.register({
 
                 const chunkId = `${chunkX},${chunkY}`;
                 const chunkData = this.loadedChunks[chunkId];
-                const random = Alea(stringToSeed(`hunter_spawn_${chunkId}`));
+                const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`hunter_spawn_${chunkId}`) : 1) : Math.random;
                 
                 // 5% chance per chunk to contain the start of a monster trail
                 if (random() < 0.05) { 
@@ -289,9 +342,10 @@ window.ExpansionManager.register({
                     if (caveId.includes('drake')) { themeKey = 'FIRE'; bossTile = '🐉a'; }
                     else if (caveId.includes('void')) { themeKey = 'VOID'; bossTile = '👁️a'; }
                     else if (caveId.includes('behemoth')) { themeKey = 'OVERGROWN'; bossTile = '🦍a'; }
+                    else if (caveId.includes('broodmother')) { themeKey = 'FUNGAL'; bossTile = '🕷️a'; }
                     
                     this.caveThemes[caveId] = themeKey;
-                    const theme = window.CAVE_THEMES[themeKey];
+                    const theme = window.CAVE_THEMES[themeKey] || { wall: '▓', floor: '.' };
                     
                     // Create a 13x13 Boss Arena
                     const mapHeight = 13;
@@ -315,7 +369,7 @@ window.ExpansionManager.register({
                     const by = 3;
                     map[by][bx] = bossTile;
                     
-                    const bData = window.ENEMY_DATA[bossTile];
+                    const bData = window.ENEMY_DATA ? window.ENEMY_DATA[bossTile] : null;
                     if (bData) {
                         this.caveEnemies[caveId].push(this._createInstancedEnemy(`${caveId}:boss`, bx, by, bossTile, bData, bData));
                     }
@@ -335,28 +389,37 @@ window.ExpansionManager.register({
             const origEndPlayerTurn = window.endPlayerTurn;
             window.endPlayerTurn = function(updates = {}) {
                 
-                const armor = gameState.player.equipment.armor;
-                if (armor) {
-                    if (armor.name === 'Drakebane Mail') {
-                        // Permanent Fire Immunity
-                        gameState.player.fireResistTurns = Math.max(gameState.player.fireResistTurns || 0, 2);
-                    }
-                    else if (armor.name === 'Voidstalker Cowl') {
-                        // Permanent Madness Immunity
-                        if (gameState.player.madnessTurns > 0) {
-                            gameState.player.madnessTurns = 0;
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "RESISTED", "#a855f7");
+                if (typeof gameState !== 'undefined' && gameState.player && gameState.player.equipment) {
+                    const armor = gameState.player.equipment.armor;
+                    if (armor) {
+                        if (armor.name === 'Drakebane Mail') {
+                            // Permanent Fire Immunity
+                            gameState.player.fireResistTurns = Math.max(gameState.player.fireResistTurns || 0, 2);
                         }
-                    }
-                    else if (armor.name === 'Behemoth Plate') {
-                        // Permanent Thorns
-                        gameState.player.thornsValue = Math.max(gameState.player.thornsValue || 0, 5);
-                        gameState.player.thornsTurns = Math.max(gameState.player.thornsTurns || 0, 2);
+                        else if (armor.name === 'Voidstalker Cowl') {
+                            // Permanent Madness Immunity
+                            if (gameState.player.madnessTurns > 0) {
+                                gameState.player.madnessTurns = 0;
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "RESISTED", "#a855f7");
+                            }
+                        }
+                        else if (armor.name === 'Behemoth Plate') {
+                            // Permanent Thorns
+                            gameState.player.thornsValue = Math.max(gameState.player.thornsValue || 0, 5);
+                            gameState.player.thornsTurns = Math.max(gameState.player.thornsTurns || 0, 2);
+                        }
+                        else if (armor.name === 'Broodmother Cloak') {
+                            // Permanent Poison Immunity
+                            if (gameState.player.poisonTurns > 0) {
+                                gameState.player.poisonTurns = 0;
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "RESISTED", "#22c55e");
+                            }
+                        }
                     }
                 }
                 
                 // Pass back to original engine
-                if (origEndPlayerTurn) origEndPlayerTurn(updates);
+                if (origEndPlayerTurn) origEndPlayerTurn.call(this, updates);
             };
         }
 
@@ -366,9 +429,11 @@ window.ExpansionManager.register({
             TILE_COLOR_MAP['🥩d'] = [220, 38, 38, 255]; // Red carcass
             TILE_COLOR_MAP['🥩v'] = [168, 85, 247, 255]; // Purple carcass
             TILE_COLOR_MAP['🥩b'] = [120, 53, 15, 255]; // Brown carcass
+            TILE_COLOR_MAP['🥩s'] = [22, 163, 74, 255]; // Green carcass
             TILE_COLOR_MAP['🐉L'] = [220, 38, 38, 255]; // Red Lair
             TILE_COLOR_MAP['👁️L'] = [168, 85, 247, 255]; // Purple Lair
             TILE_COLOR_MAP['🦍L'] = [120, 53, 15, 255]; // Brown Lair
+            TILE_COLOR_MAP['🕸️L'] = [22, 163, 74, 255]; // Green Lair
         }
     }
 });
