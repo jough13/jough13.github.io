@@ -16,35 +16,48 @@ function resolveTemplateIdByName(name) {
 // consuming the wrong items or crashing the client. This enforces sequential transaction safety!
 let isItemProcessing = false;
 
-/**
- * Takes raw player data (from Firebase) and reconnects it to game templates.
- * ensuring items have effects, correct stats, and valid IDs.
- */
-function rehydratePlayerState(data) {
-    if (!data.inventory || !Array.isArray(data.inventory)) return [];
+// 🚨 BYTE-PACKING DECOMPRESSION ENGINE 🚨
+window.rehydrateItemArray = function(arr) {
+    if (!arr || !Array.isArray(arr)) return [];
 
-    // 🚨 BUG FIX: Filter out null/undefined ghost slots from Firebase sparse arrays BEFORE mapping!
-    return data.inventory.filter(item => item !== null && item !== undefined).map(item => {
-        let templateItem = null;
-        let templateKey = null;
+    return arr.filter(item => item !== null && item !== undefined).map(item => {
+        let parsedItem = {};
 
-        // 1. ROBUST LOOKUP (By ID)
-        if (item.templateId && typeof ITEM_DATA !== 'undefined' && ITEM_DATA[item.templateId]) {
-            templateItem = ITEM_DATA[item.templateId];
-            templateKey = item.templateId;
+        // --- NEW PACKED ARRAY FORMAT ---
+        if (Array.isArray(item)) {
+            parsedItem.templateId = item[0];
+            parsedItem.quantity   = item[1] !== undefined ? item[1] : 1;
+            parsedItem.isEquipped = item[2] === 1;
+            parsedItem.name       = item[3] || null;
+            parsedItem.damage     = item[4] !== undefined ? item[4] : null;
+            parsedItem.defense    = item[5] !== undefined ? item[5] : null;
+            parsedItem.statBonuses= item[6] || null;
+            parsedItem._rarity    = item[7] || null;
+            parsedItem.tags       = item[8] || null;
+            parsedItem._negatedDex= item[9] === 1;
+        } else {
+            // --- LEGACY OBJECT FORMAT (Backward Compatibility) ---
+            parsedItem = { ...item };
         }
 
-        // 2. FALLBACK A: Name Match (Using Cache for Performance)
-        if (!templateItem && item.name) {
-            templateKey = resolveTemplateIdByName(item.name);
+        let templateItem = null;
+        let templateKey = parsedItem.templateId;
+
+        // 1. ROBUST LOOKUP (By ID)
+        if (templateKey && typeof ITEM_DATA !== 'undefined' && ITEM_DATA[templateKey]) {
+            templateItem = ITEM_DATA[templateKey];
+        }
+
+        // 2. FALLBACK A: Name Match
+        if (!templateItem && parsedItem.name) {
+            templateKey = resolveTemplateIdByName(parsedItem.name);
             if (templateKey && typeof ITEM_DATA !== 'undefined') templateItem = ITEM_DATA[templateKey];
         }
 
         // 3. FALLBACK B: Suffix Match (For randomly generated magic items)
-        if (!templateItem && item.name && typeof ITEM_DATA !== 'undefined') { 
-            const candidates = Object.keys(ITEM_DATA).filter(k => item.name.endsWith(ITEM_DATA[k].name));
+        if (!templateItem && parsedItem.name && typeof ITEM_DATA !== 'undefined') { 
+            const candidates = Object.keys(ITEM_DATA).filter(k => parsedItem.name.endsWith(ITEM_DATA[k].name));
             if (candidates.length > 0) {
-                // Find longest match (e.g. 'Steel Sword' vs 'Sword')
                 candidates.sort((a, b) => ITEM_DATA[b].name.length - ITEM_DATA[a].name.length);
                 templateKey = candidates[0];
                 templateItem = ITEM_DATA[templateKey];
@@ -52,53 +65,61 @@ function rehydratePlayerState(data) {
         }
 
         if (templateItem) {
-            // Heal Data
-            if (!item.templateId) item.templateId = templateKey;
+            if (!parsedItem.templateId) parsedItem.templateId = templateKey;
+            if (!parsedItem.name) parsedItem.name = templateItem.name;
             
-            // Re-bind Logic (Functions and properties that cannot be saved to JSON)
-            item.effect = templateItem.effect;
-            item.onHit = templateItem.onHit;
-            item.procChance = templateItem.procChance;
-            item.inflicts = templateItem.inflicts;
-            item.inflictChance = templateItem.inflictChance;
+            parsedItem.type = templateItem.type;
+            parsedItem.effect = templateItem.effect;
+            parsedItem.onHit = templateItem.onHit;
+            parsedItem.procChance = templateItem.procChance;
+            parsedItem.inflicts = templateItem.inflicts;
+            parsedItem.inflictChance = templateItem.inflictChance;
+            
+            parsedItem.spellId = templateItem.spellId || null;
+            parsedItem.skillId = templateItem.skillId || null;
+            parsedItem.stat = templateItem.stat || null;
 
-            // Heal Missing Stats (Keep existing ones if present)
-            if (item.damage === undefined || item.damage === null) item.damage = templateItem.damage || 0;
-            if (item.defense === undefined || item.defense === null) item.defense = templateItem.defense || 0;
+            if (parsedItem.damage === undefined || parsedItem.damage === null) parsedItem.damage = templateItem.damage || 0;
+            if (parsedItem.defense === undefined || parsedItem.defense === null) parsedItem.defense = templateItem.defense || 0;
             
-            // Force the slot to match the template to prevent save-file hacking
-            item.slot = templateItem.slot; 
-            item.tile = item.tile || templateItem.tile; 
-            item.range = item.range || templateItem.range || null;
-            item.isTwoHanded = (item.isTwoHanded !== undefined) ? item.isTwoHanded : (templateItem.isTwoHanded || false);
+            parsedItem.slot = templateItem.slot; 
+            parsedItem.tile = parsedItem.tile || templateItem.tile; 
+            parsedItem.range = parsedItem.range || templateItem.range || null;
+            parsedItem.isTwoHanded = (parsedItem.isTwoHanded !== undefined) ? parsedItem.isTwoHanded : (templateItem.isTwoHanded || false);
             
-            // Rehydrate tags safely using spread syntax to prevent memory reference bleeds!
-            if (item.tags) {
-                // String-Spread Corruption Fix
-                item.tags = Array.isArray(item.tags) ? [...item.tags] : [item.tags];
+            // 🚨 BUG FIX: String-Spread Corruption Fix
+            // Ensure tags are strictly cast as arrays before being destructured
+            if (parsedItem.tags) {
+                parsedItem.tags = Array.isArray(parsedItem.tags) ? [...parsedItem.tags] : [parsedItem.tags];
             } else if (templateItem.tags) {
-                item.tags = Array.isArray(templateItem.tags) ? [...templateItem.tags] : [templateItem.tags];
+                parsedItem.tags = Array.isArray(templateItem.tags) ? [...templateItem.tags] : [templateItem.tags];
             } else {
-                item.tags = null;
+                parsedItem.tags = null;
             }
             
         } else {
-            // Graceful degradation for removed items
-            console.warn(`[AKASHIC ENGINE] Converting corrupted/missing item to Ash: ${item.name}`);
-            item.name = `Crumbling Ash`;
-            item.description = "Dust from a forgotten age. This item no longer exists in the timeline.";
-            item.type = 'junk';
-            item.tile = '💨';
-            item.quantity = item.quantity || 1;
-            
-            // BUG FIX: Strip equip data so corrupted items don't break the combat renderer
-            item.slot = null; 
-            item.isEquipped = false;
-            item.tags = null;
-            item._rarity = null;
+            console.warn(`[AKASHIC ENGINE] Converting corrupted/missing item to Ash: ${parsedItem.name}`);
+            parsedItem.name = `Crumbling Ash`;
+            parsedItem.description = "Dust from a forgotten age. This item no longer exists in the timeline.";
+            parsedItem.type = 'junk';
+            parsedItem.tile = '💨';
+            parsedItem.quantity = parsedItem.quantity || 1;
+            parsedItem.slot = null; 
+            parsedItem.isEquipped = false;
+            parsedItem.tags = null;
+            parsedItem._rarity = null;
         }
-        return item;
+        return parsedItem;
     });
+};
+
+/**
+ * Takes raw player data (from Firebase) and reconnects it to game templates.
+ * ensuring items have effects, correct stats, and valid IDs.
+ */
+function rehydratePlayerState(data) {
+    if (!data.inventory) return [];
+    return window.rehydrateItemArray(data.inventory);
 }
 
 /**
@@ -394,26 +415,41 @@ function generateMagicItem(tier) {
 function sanitizeItemForDB(item, forceEquipped = false) {
     if (!item) return null;
     
-    return {
-        templateId: item.templateId || item.tile, 
-        name: item.name || "Unknown",
-        type: item.type || null,
-        quantity: item.quantity || 1,
-        tile: item.tile || '?',
-        isEquipped: forceEquipped ? true : (item.isEquipped || false),
-        damage: (item.damage !== undefined) ? item.damage : null,
-        defense: (item.defense !== undefined) ? item.defense : null,
-        range: (item.range !== undefined) ? item.range : null,
-        isTwoHanded: item.isTwoHanded || false,
-        slot: item.slot || null,
-        statBonuses: item.statBonuses ? { ...item.statBonuses } : null,
-        spellId: item.spellId || null,
-        skillId: item.skillId || null,
-        stat: item.stat || null,
-        tags: (item.tags && item.tags.length > 0) ? item.tags : null,
-        _rarity: item._rarity || null,
-        _negatedDex: item._negatedDex || null 
-    };
+    const tId = item.templateId || item.tile;
+    const template = typeof ITEM_DATA !== 'undefined' ? ITEM_DATA[tId] : null;
+
+    // Optimization: Only store properties if they differ from the base template or are strictly required.
+    const qty = item.quantity || 1;
+    const eqp = forceEquipped ? 1 : (item.isEquipped ? 1 : 0);
+    
+    const name = (template && item.name === template.name) ? null : item.name;
+    const dmg = (template && item.damage === template.damage) ? null : item.damage;
+    const def = (template && item.defense === template.defense) ? null : item.defense;
+    
+    let stats = null;
+    if (item.statBonuses && Object.keys(item.statBonuses).length > 0) {
+        stats = { ...item.statBonuses };
+    }
+    
+    const rar = item._rarity || null;
+    
+    let tags = null;
+    // Compare arrays cleanly
+    if (item.tags && (!template || !template.tags || item.tags.join(',') !== template.tags.join(','))) {
+        tags = [...item.tags];
+    }
+
+    const negDex = item._negatedDex ? 1 : null;
+
+    // The highly optimized packed array
+    const packed = [tId, qty, eqp, name, dmg, def, stats, rar, tags, negDex];
+    
+    // Strip trailing nulls to optimize JSON size even further!
+    while (packed.length > 0 && packed[packed.length - 1] === null) {
+        packed.pop();
+    }
+    
+    return packed;
 }
 
 function getSanitizedEquipment() {
