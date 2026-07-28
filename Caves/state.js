@@ -22,17 +22,16 @@ window.getInventoryCap = function(player) {
     if (player.equipment) {
         for (let i = 0; i < _EQUIPMENT_SLOTS.length; i++) {
             const item = player.equipment[_EQUIPMENT_SLOTS[i]];
-            // Number() guarantees we don't accidentally do string concatenation (e.g. 9 + "1" = 91)
-            // and is significantly faster in the V8 engine than parseInt!
+            // Math.floor guarantees we don't get decimal slots, and Number() prevents string concatenation
             if (item && item.statBonuses && item.statBonuses.carryCapacity) {
-                cap += Number(item.statBonuses.carryCapacity) || 0;
+                cap += Math.floor(Number(item.statBonuses.carryCapacity)) || 0;
             }
         }
     }
     
     // Mount Saddlebag Hook
     if (player.isMounted && player.companion && player.companion.carryCapacity) {
-        cap += Number(player.companion.carryCapacity) || 0;
+        cap += Math.floor(Number(player.companion.carryCapacity)) || 0;
     }
     
     // Passive Talent Hook
@@ -42,7 +41,7 @@ window.getInventoryCap = function(player) {
 
     // Expandability: Arbitrary bonus capacity (Quest rewards, server buffs, etc.)
     if (player.bonusCapacity) {
-        cap += Number(player.bonusCapacity) || 0;
+        cap += Math.floor(Number(player.bonusCapacity)) || 0;
     }
     
     // Absolute floor and ceiling safety
@@ -89,6 +88,16 @@ window._statCapCache = {
     psyche: 'maxPsyche',
     hunger: 'maxHunger',
     thirst: 'maxThirst'
+};
+
+// PERFORMANCE WIN: O(1) Cache for Stat Bar UI pulses
+window._statColorCache = {
+    health: 'stat-pulse-green',
+    hunger: 'stat-pulse-green',
+    mana: 'stat-pulse-blue',
+    thirst: 'stat-pulse-blue',
+    stamina: 'stat-pulse-yellow',
+    psyche: 'stat-pulse-purple'
 };
 
 // ============================================================================
@@ -309,7 +318,7 @@ const gameState = {
             itemsCrafted: 0,
             potionsBrewed: 0,
             goldEarned: 0,
-            goldSpent: 0,         // New
+            goldSpent: 0,         
             fishCaught: 0,
             dungeonsCleared: 0,
             secretsFound: 0,
@@ -318,10 +327,13 @@ const gameState = {
             cropsHarvested: 0,    
             leylinesUsed: 0,
             damageTaken: 0,
-            environmentalDamageTaken: 0, // New
-            fallDamageTaken: 0,          // New
+            environmentalDamageTaken: 0, 
+            fallDamageTaken: 0,          
             damageDealt: 0,
             criticalHits: 0,
+            healthHealed: 0,      // NEW: Total HP regenerated/potioned
+            manaConsumed: 0,      // NEW: Total Mana spent
+            staminaConsumed: 0,   // NEW: Total Stamina exerted
             questsCompleted: 0,
             treasuresDug: 0,
             shrinesPrayed: 0,
@@ -398,10 +410,10 @@ window.modifyVital = function(vital, rawAmount) {
     // 🚨 GHOST GUARD: Prevent TypeError if called before engine is fully loaded
     if (!p) return 0;
     
-    // 🚨 SECURITY & STABILITY WIN: The NaN Firewall
+    // 🚨 SECURITY, STABILITY & BUG FIX WIN: The NaN Firewall & Floating Point Fix
     // Guarantees that corrupted spell damage, corrupted items, or missing properties 
-    // never inject a NaN into the player's health and permanently break their save file.
-    let amount = Number(rawAmount);
+    // never inject a NaN into the player's health, and Math.round prevents fractional decimal bugs!
+    let amount = Math.round(Number(rawAmount));
     if (!Number.isFinite(amount)) { // Also catches Infinity
         console.warn(`[AKASHIC ENGINE] Blocked invalid vital modification on ${vital}: ${rawAmount}`);
         return 0; 
@@ -431,10 +443,14 @@ window.modifyVital = function(vital, rawAmount) {
             }
         }
 
+        // JUICE WIN: Shield Shatter Audio & Visuals
         if (p.shieldValue <= 0) {
             p.shieldValue = 0;
             p.shieldTurns = 0;
             if (typeof logMessage !== 'undefined') logMessage("{cyan:Your Arcane Shield has shattered!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playDisenchant(); 
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#3b82f6', 15);
+            gameState.screenShake = Math.max(gameState.screenShake || 0, 5);
         }
         
         // If the shield absorbed the entire hit, abort the rest of the function!
@@ -468,14 +484,21 @@ window.modifyVital = function(vital, rawAmount) {
     
     // O(1) Pre-cached max vital lookup bypasses string manipulation
     const maxKey = window._statCapCache[vital] || ('max' + vital.charAt(0).toUpperCase() + vital.slice(1));
-    const maxVal = Number(p[maxKey]) || 100; // Failsafe fallback
+    const maxVal = Math.round(Number(p[maxKey])) || 100; // Failsafe fallback
     
-    const oldVal = Number(p[vital]) || 0; // Strict coercion
+    const oldVal = Math.round(Number(p[vital])) || 0; // Strict coercion
     let newVal = oldVal + amount;
     newVal = Math.max(0, Math.min(maxVal, newVal)); // Clamp securely
     
     p[vital] = newVal;
     const actualChange = newVal - oldVal;
+
+    // --- TRACK LIFETIME METRICS ---
+    if (p.metrics) {
+        if (vital === 'health' && actualChange > 0) p.metrics.healthHealed = (p.metrics.healthHealed || 0) + actualChange;
+        if (vital === 'mana' && actualChange < 0) p.metrics.manaConsumed = (p.metrics.manaConsumed || 0) + Math.abs(actualChange);
+        if (vital === 'stamina' && actualChange < 0) p.metrics.staminaConsumed = (p.metrics.staminaConsumed || 0) + Math.abs(actualChange);
+    }
 
     // ==========================================
     // LORE & JUICE WIN: VITAL EVENTS
@@ -515,6 +538,18 @@ window.modifyVital = function(vital, rawAmount) {
                 if (typeof logMessage !== 'undefined') logMessage("{purple:Your mind reels from a horrifying revelation!}");
                 gameState.screenShake = Math.max(gameState.screenShake || 0, 10);
             }
+            // Complete Mental Collapse
+            if (newVal === 0 && oldVal > 0) {
+                if (typeof logMessage !== 'undefined') logMessage("{purple:Your mind snaps! You are completely overwhelmed.}");
+                gameState.screenFlash = { color: '#a855f7', alpha: 0.5, decay: 0.05 };
+            }
+        }
+        else if (vital === 'stamina') {
+            // Complete Exhaustion
+            if (newVal === 0 && oldVal > 0) {
+                if (typeof logMessage !== 'undefined') logMessage("{yellow:You are completely exhausted!}");
+                gameState.screenFlash = { color: '#facc15', alpha: 0.3, decay: 0.05 };
+            }
         }
         else if (vital === 'hunger' || vital === 'thirst') {
             // Starvation/Dehydration Warning (Drop below 15%)
@@ -527,17 +562,12 @@ window.modifyVital = function(vital, rawAmount) {
         }
     }
 
-    // Handle UI Flashes automatically
+    // Handle UI Flashes automatically (High-speed O(1) routing)
     if (actualChange !== 0 && typeof statDisplays !== 'undefined' && statDisplays[vital]) {
         if (actualChange > 0) {
-            if (vital === 'health' || vital === 'hunger') {
-                if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays[vital], 'stat-pulse-green');
-            } else if (vital === 'mana' || vital === 'thirst') {
-                if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays[vital], 'stat-pulse-blue');
-            } else if (vital === 'stamina') {
-                if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays[vital], 'stat-pulse-yellow');
-            } else if (vital === 'psyche') {
-                if (typeof triggerStatAnimation === 'function') triggerStatAnimation(statDisplays[vital], 'stat-pulse-purple');
+            const pulseClass = window._statColorCache[vital];
+            if (pulseClass && typeof triggerStatAnimation === 'function') {
+                triggerStatAnimation(statDisplays[vital], pulseClass);
             }
         } else {
             if (typeof triggerStatFlash === 'function') triggerStatFlash(statDisplays[vital], false);
