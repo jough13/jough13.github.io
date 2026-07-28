@@ -3,14 +3,14 @@
 window.ExpansionManager.register({
     id: "the_vanguard_raids",
     name: "The Vanguard (Multiplayer Raids)",
-    version: "1.0",
+    version: "1.1", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
         items: {
             '🗝️r': {
                 name: 'Vanguard Key', type: 'quest', tile: '🗝️',
-                description: "A scorching hot key forged from star-metal. Used to awaken The Molten Lord.", _rarity: 'legendary'
+                description: "A scorching hot key forged from star-metal. Used to awaken The Molten Lord and his court.", _rarity: 'legendary'
             },
             '🛡️v': {
                 name: 'Vanguard\'s Aegis', type: 'armor', tags: ['shield'], tile: '🛡️',
@@ -26,6 +26,34 @@ window.ExpansionManager.register({
                 name: 'Molten Core Ring', type: 'accessory', tile: '💍', defense: 2, slot: 'accessory',
                 statBonuses: { willpower: 10, maxMana: 30 },
                 description: "{blue:+2 Def, +30 Max Mana}, {purple:+10 Will}. The still-beating heart of the Lord.", _rarity: 'legendary', excludeFromLoot: true
+            },
+            '🍷v': {
+                name: 'Vanguard\'s Elixir', type: 'consumable', tile: '🍷', _rarity: 'legendary', excludeFromLoot: true,
+                description: "The absolute peak of alchemy. {gold:Permanently +10 Max HP & +10 Max Mana.}",
+                effect: (state) => {
+                    state.player.bonusMaxHealth = (state.player.bonusMaxHealth || 0) + 10;
+                    state.player.bonusMaxMana = (state.player.bonusMaxMana || 0) + 10;
+                    
+                    if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
+                    else { state.player.maxHealth += 10; state.player.maxMana += 10; }
+                    
+                    window.modifyVital('health', 10);
+                    window.modifyVital('mana', 10);
+                    
+                    logMessage("{gold:Cosmic power courses through your veins! (+10 Max HP, +10 Max Mana)}");
+                    if (typeof triggerStatAnimation !== 'undefined') {
+                        triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+                        triggerStatAnimation(document.getElementById('manaDisplay'), 'stat-pulse-blue');
+                    }
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 30);
+                    
+                    return true;
+                }
+            },
+            '📜vr': {
+                name: 'Vanguard\'s Log', type: 'journal', title: 'A Charred Diary', tile: '📜',
+                content: "The heat is unbearable. We sealed him away in the core, but the keys... they were scattered to the winds. If anyone finds this, I beg of you, do not turn the lock. The Molten Lord must sleep."
             }
         },
 
@@ -35,7 +63,7 @@ window.ExpansionManager.register({
                 name: 'The Molten Lord', tags: ['elemental', 'fire', 'giant', 'boss'], mountable: false,
                 maxHealth: 50000, attack: 25, defense: 10, xp: 10000,
                 isRanged: false, caster: true, castRange: 8, spellDamage: 30, inflicts: 'burn', inflictChance: 1.0,
-                color: '#dc2626', loot: '📦r', isBoss: true,
+                color: '#dc2626', loot: '📦r', isBoss: true, isElite: true,
                 flavor: "A towering behemoth of magma and black iron. The heat is unbearable."
             }
         },
@@ -51,6 +79,11 @@ window.ExpansionManager.register({
 
                     logMessage("{purple:You step into the portal. Reality tears away...}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playTimelineShift();
+                    
+                    // JUICE WIN: Intense portal entry visuals
+                    state.screenShake = 20;
+                    state.screenFlash = { color: '#ef4444', alpha: 0.8, decay: 0.02 };
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#a855f7', 40);
 
                     // Shift to the dedicated Raid Realm
                     state.currentRealm = 'raid_molten';
@@ -116,16 +149,29 @@ window.ExpansionManager.register({
 
                     logMessage(`{orange:You turn the key. The ground violently shakes!}`);
                     state.screenShake = 40;
+                    gameState.screenFlash = { color: '#f97316', alpha: 0.6, decay: 0.02 };
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playBossSpawn();
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#ef4444', 50);
 
-                    // Spawn the Boss at (0,0) in RTDB
-                    const eData = window.ENEMY_DATA['👹r'];
-                    const newBoss = { ...eData, tile: '👹r', x: 0, y: 0, spawnTime: Date.now() };
-                    
                     if (typeof EnemyNetworkManager !== 'undefined' && typeof rtdb !== 'undefined') {
+                        // 1. Spawn the Boss at (0,0) in RTDB
+                        const eData = window.ENEMY_DATA['👹r'];
+                        const newBoss = { ...eData, tile: '👹r', x: 0, y: 0, spawnTime: Date.now() };
                         rtdb.ref(EnemyNetworkManager.getPath(0, 0, bossId)).set(newBoss);
                         
-                        // Announce to global chat
+                        // 2. GAMEPLAY WIN: Spawn Adds! (Fire Elementals at the 4 pillars)
+                        const adds = [[3,3], [12,3], [3,12], [12,12]];
+                        const fData = window.ENEMY_DATA['f']; // Fire Elemental
+                        if (fData) {
+                            adds.forEach((pos, idx) => {
+                                const aId = `overworld:${pos[0]},${-pos[1]}`;
+                                const newAdd = { ...fData, tile: 'f', x: pos[0], y: pos[1], spawnTime: Date.now() };
+                                rtdb.ref(EnemyNetworkManager.getPath(pos[0], pos[1], aId)).set(newAdd);
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(pos[0], pos[1], '#f97316', 15);
+                            });
+                        }
+                        
+                        // 3. Announce to global chat
                         rtdb.ref('chat').push().set({
                             senderId: 'SERVER', email: 'SYSTEM',
                             message: `{red:🌋 THE MOLTEN LORD HAS BEEN AWAKENED! 🌋}`,
@@ -140,7 +186,7 @@ window.ExpansionManager.register({
             '📦r': {
                 type: 'loot_container', name: 'Vanguard Cache',
                 flavor: "A massive, glowing chest dropped by the Raid Boss!",
-                lootTable: ['🛡️v', '⚔️v', '💍v', '💎b', '💎', '$']
+                lootTable: ['🛡️v', '⚔️v', '💍v', '🍷v', '📜vr', '💎b', '💎', '$']
             }
         }
     },
@@ -179,7 +225,7 @@ window.ExpansionManager.register({
                                     chunkData[y][x] = 'd'; // Ashen ground
                                 }
                                 
-                                // Decorative Pillars
+                                // Decorative Pillars (Spawn points for the Adds!)
                                 if ((worldX===3 && worldY===3) || (worldX===12 && worldY===3) || 
                                     (worldX===3 && worldY===12) || (worldX===12 && worldY===12)) {
                                     chunkData[y][x] = '🧱';
@@ -207,7 +253,11 @@ window.ExpansionManager.register({
                 if (gameState.currentRealm === 0 || !gameState.currentRealm) {
                     const chunkId = `${chunkX},${chunkY}`;
                     const chunkData = this.loadedChunks[chunkId];
-                    const random = Alea(stringToSeed(`vanguard_spawn_${chunkId}`));
+                    
+                    // 🚨 ROBUSTNESS WIN: Safe PRNG fallback
+                    const random = (typeof Alea !== 'undefined' && typeof stringToSeed !== 'undefined') 
+                        ? Alea(stringToSeed(`vanguard_spawn_${chunkId}`)) 
+                        : Math.random;
                     
                     // Spawn portals deep in Deadlands
                     if (random() < 0.05) { 
@@ -236,20 +286,22 @@ window.ExpansionManager.register({
                         });
                     }
 
-                    // Drop 4 extra chests around the boss asynchronously so they sync to RTDB
+                    // 🚨 BUG FIX & JUICE WIN: Drop 4 extra chests asynchronously 
+                    // Ensures they sync to RTDB cleanly without blocking the main combat thread.
                     setTimeout(() => {
                         const cx = enemy.x; const cy = enemy.y;
                         if (typeof chunkManager !== 'undefined') {
-                            chunkManager.setWorldTile(cx+1, cy, '📦r', 2);
-                            chunkManager.setWorldTile(cx-1, cy, '📦r', 2);
-                            chunkManager.setWorldTile(cx, cy+1, '📦r', 2);
-                            chunkManager.setWorldTile(cx, cy-1, '📦r', 2);
+                            const offsets = [[1,0], [-1,0], [0,1], [0,-1]];
+                            for(let i=0; i<4; i++) {
+                                // 2 Hour TTL for Raid Caches
+                                chunkManager.setWorldTile(cx + offsets[i][0], cy + offsets[i][1], '📦r', 2);
+                            }
                             gameState.mapDirty = true;
                             if (typeof render === 'function') render();
                         }
                     }, 200);
 
-                    // Return the 5th chest for the center tile
+                    // Return the 5th chest for the center tile natively
                     return '📦r'; 
                 }
                 
