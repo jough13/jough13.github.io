@@ -493,13 +493,19 @@ window.ExpansionManager.register({
                     if (typeof renderEquipment === 'function') renderEquipment();
                     if (typeof render === 'function') render();
 
+                    // Explicit Firebase Deletion
+                    // Using the native delete keyword locally doesn't tell Firebase to remove it from the DB during an update()!
+                    const deleteField = typeof getFirestoreDelete === 'function' ? getFirestoreDelete() : (typeof firebase !== 'undefined' ? firebase.firestore.FieldValue.delete() : null);
+
                     // Force DB Save
                     if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({
                         inSpire: false,
                         inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory,
                         equipment: typeof getSanitizedEquipment === 'function' ? getSanitizedEquipment() : gameState.player.equipment,
                         currentRealm: 0,
-                        realmMutators: []
+                        realmMutators: [],
+                        spireBackupInv: deleteField,
+                        spireBackupEquip: deleteField
                     });
 
                     return true; // We handled death! Abort normal permadeath wipe!
