@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_bloodline",
     name: "The Bloodline (Prestige System)",
-    version: "1.0",
+    version: "1.1", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -35,6 +35,64 @@ window.ExpansionManager.register({
                     if (typeof renderStats === 'function') renderStats();
                     return true;
                 }
+            },
+            // NEW EXPANSION CONTENT
+            '📜gs': {
+                name: 'Title: God-Slayer', type: 'consumable', tile: '📜', _rarity: 'legendary',
+                description: "Equips the title 'God-Slayer' above your name and in chat.",
+                effect: (state) => {
+                    state.player.activeTitle = "God-Slayer";
+                    logMessage("{red:You are now known as God-Slayer!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                    if (typeof renderStats === 'function') renderStats();
+                    return true;
+                }
+            },
+            '📜rw': {
+                name: 'Title: Realmwalker', type: 'consumable', tile: '📜', _rarity: 'epic',
+                description: "Equips the title 'Realmwalker' above your name and in chat.",
+                effect: (state) => {
+                    state.player.activeTitle = "Realmwalker";
+                    logMessage("{purple:You are now known as Realmwalker!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                    if (typeof renderStats === 'function') renderStats();
+                    return true;
+                }
+            },
+            '⌛': {
+                name: 'Ascendant\'s Hourglass', type: 'consumable', tile: '⌛', _rarity: 'legendary', excludeFromLoot: true,
+                description: "Crush the glass to fold space and instantly teleport to the Infinite Spire.",
+                effect: (state) => {
+                    if (state.mapMode !== 'overworld' || (state.currentRealm && state.currentRealm !== 0)) {
+                        logMessage("{red:The Hourglass only functions under the open sky of the Prime Realm.}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return false;
+                    }
+                    
+                    logMessage("{gold:You crush the Hourglass. The sands of time whip around you!}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playTimelineShift();
+                    
+                    state.screenShake = 30;
+                    state.screenFlash = { color: '#facc15', alpha: 0.8, decay: 0.02 };
+                    
+                    // Spire is always far out in the desert, roughly 2000-3000 coords out. Let's spawn an instance!
+                    const tx = 2500;
+                    const ty = 2500;
+                    
+                    // Drop the Spire tile at the destination to ensure it's there
+                    if (typeof chunkManager !== 'undefined') {
+                        chunkManager.setWorldTile(tx, ty, '🗼');
+                    }
+                    
+                    state.player.x = tx;
+                    state.player.y = -ty; // Safe negative mapping
+                    
+                    state.mapDirty = true;
+                    if (typeof updateRegionDisplay === 'function') updateRegionDisplay();
+                    if (typeof render === 'function') render();
+                    
+                    return true; // Consume the hourglass
+                }
             }
         },
 
@@ -54,7 +112,10 @@ window.ExpansionManager.register({
         shops: {
             ascendant: [
                 { name: 'Title: The Undying', price: 10000, stock: 1 },
+                { name: 'Title: Realmwalker', price: 15000, stock: 1 },
                 { name: 'Title: Ascendant', price: 50000, stock: 1 },
+                { name: 'Title: God-Slayer', price: 75000, stock: 1 },
+                { name: 'Ascendant\'s Hourglass', price: 5000, stock: 5 },
                 { name: 'Golden Apple', price: 10000, stock: 5 },
                 { name: 'Elixir of Power', price: 10000, stock: 5 }
             ]
@@ -90,6 +151,7 @@ window.ExpansionManager.register({
                         <li>✨ Enter Generation <span id="nextGenNum" class="font-bold text-yellow-400"></span></li>
                         <li>✨ Permanent +25% XP Multiplier</li>
                         <li>✨ Permanent +10 Base Health, Mana, Stamina, Psyche</li>
+                        <li>✨ Passive Ascendant Regeneration (HP/Mana/Stam)</li>
                         <li>✨ Awaken with the <strong class="text-fuchsia-400">Bloodline Pendant</strong></li>
                         <li>✨ The Radiant Aura (Multiplayer Cosmetic)</li>
                         <li class="text-red-400 font-bold mt-2 pt-2 border-t border-green-900">⚠️ WARNING: Your Level, Stats, Inventory, and Equipment will be wiped! (Stash & Gold are safe)</li>
@@ -179,11 +241,7 @@ window.ExpansionManager.register({
             const shopId = 'shop_ascendant';
             
             if (!gameState.shopStates[shopId]) {
-                // Safely pull from the auto-generated expansion inventory!
-                // The Expansion Manager automatically compiles 'shops: { ascendant: [] }' into window.ASCENDANT_INVENTORY
                 const shopTemplate = typeof window.ASCENDANT_INVENTORY !== 'undefined' ? window.ASCENDANT_INVENTORY : [];
-                
-                // Deep clone it into the session state so stock limits track properly
                 gameState.shopStates[shopId] = JSON.parse(JSON.stringify(shopTemplate)); 
             }
             
@@ -206,10 +264,31 @@ window.ExpansionManager.register({
 
             document.getElementById('prestigeModal').classList.add('hidden');
             
-            logMessage("{yellow:You close your eyes as the physical world burns away. You are reborn.}");
+            // --- JUICE WIN: Cinematic Ascension ---
+            logMessage("{yellow:The physical world begins to burn away...}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+            
+            // Draw particles inward for 1.5 seconds to build massive tension
+            if (typeof ParticleSystem !== 'undefined') {
+                for(let i=0; i<40; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = 6 + Math.random() * 4;
+                    ParticleSystem.spawn(player.x + Math.cos(angle)*dist, player.y + Math.sin(angle)*dist, '#facc15', 'sparkle');
+                    const p = ParticleSystem.activeParticles[ParticleSystem.activeParticles.length-1];
+                    // Pull inwards
+                    if (p) { p.vx = -Math.cos(angle)*0.15; p.vy = -Math.sin(angle)*0.15; p.lifeFade = 0.015; }
+                }
+            }
+            
+            gameState.screenShake = 5;
+
+            // Wait for the implosion to finish before detonating reality
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            logMessage("{gold:YOU ARE REBORN.}");
             if (typeof AudioSystem !== 'undefined') AudioSystem.playTimelineShift();
             gameState.screenShake = 50;
-            gameState.screenFlash = { color: '#facc15', alpha: 1.0, decay: 0.02 };
+            gameState.screenFlash = { color: '#facc15', alpha: 1.0, decay: 0.015 };
 
             // 1. Increment Generation
             player.generation = (player.generation || 0) + 1;
@@ -226,7 +305,7 @@ window.ExpansionManager.register({
             player.bounty = 0;
 
             player.hotbar = [null, null, null, null, null];
-            player.cooldowns = {}; // Clear lingering cooldowns too!
+            player.cooldowns = {};
 
             const coreStats = ['strength', 'wits', 'constitution', 'dexterity', 'charisma', 'luck', 'willpower', 'perception', 'endurance', 'intuition'];
             coreStats.forEach(s => player[s] = 1);
@@ -239,7 +318,6 @@ window.ExpansionManager.register({
                 }
             }
             
-            // Revert evolution
             player.classEvolved = false;
             player.className = bgData ? bgData.name : 'Adventurer';
 
@@ -260,8 +338,6 @@ window.ExpansionManager.register({
             newPendant.description = `An heirloom of your past lives. {gold:+${genMult} to All Stats}.`;
 
             player.inventory = [newPendant];
-            
-            // Add fallback rags so they aren't naked
             player.inventory.push({ templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true });
 
             player.equipment = {
@@ -271,6 +347,11 @@ window.ExpansionManager.register({
                 accessory: newPendant,
                 ammo: null
             };
+
+            // 🚨 BUG FIX WIN: The Spire Ghost Fix
+            // Ensure pre-prestige gear isn't accidentally restored if they die in the Spire!
+            delete player.spireBackupInv;
+            delete player.spireBackupEquip;
 
             // 5. Apply Generation Base Vitals Boost
             player.bonusMaxHealth = player.generation * 10;
@@ -302,7 +383,6 @@ window.ExpansionManager.register({
             if (typeof renderInventory === 'function') renderInventory();
             if (typeof render === 'function') render();
             
-            // Hard commit to DB
             if (typeof playerRef !== 'undefined') {
                 await playerRef.set(typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player);
             }
@@ -318,13 +398,12 @@ window.ExpansionManager.register({
         // 3. OVERWORLD INJECTIONS
         // ==========================================
 
-        // A. Place the Throne in the Safe Haven Village!
+        // A. Place the Throne in the Safe Haven Village
         if (typeof chunkManager !== 'undefined' && chunkManager.generateCastle) {
             const origGenerateCastle = chunkManager.generateCastle;
             chunkManager.generateCastle = function(castleId, layoutType) {
                 const map = origGenerateCastle.call(this, castleId, layoutType);
                 if (castleId.includes('village')) {
-                    // Inject the Throne right in the middle of the village
                     if (map[4] && map[4][13] !== undefined) map[4][13] = '👑b'; 
                 }
                 return map;
@@ -337,26 +416,45 @@ window.ExpansionManager.register({
             window.grantXp = function(amount) {
                 const gen = gameState.player.generation || 0;
                 let finalAmount = amount;
-                
-                // +25% XP per Generation!
                 if (gen > 0) {
                     finalAmount = Math.floor(amount * (1 + (gen * 0.25)));
                 }
-                
                 origGrantXp(finalAmount);
             };
         }
 
-        // C. MULTIPLAYER AURA (VISUAL JUICE)
-        // We hook into the endPlayerTurn function to spawn a passive golden aura on the ground
+        // C. END-TURN HOOK (Multiplayer Aura & Passive Regeneration)
         if (typeof window.endPlayerTurn === 'function') {
             const origEndPlayerTurn = window.endPlayerTurn;
             window.endPlayerTurn = function(updates = {}) {
                 
-                if ((gameState.player.generation || 0) > 0 && typeof ParticleSystem !== 'undefined') {
-                    // 10% chance per turn to drop an ethereal golden sparkle
-                    if (Math.random() < 0.10) {
+                const gen = gameState.player.generation || 0;
+                if (gen > 0) {
+                    // Visual Juice
+                    if (typeof ParticleSystem !== 'undefined' && Math.random() < 0.10) {
                         ParticleSystem.spawn(gameState.player.x, gameState.player.y, '#facc15', 'sparkle', '', 3);
+                    }
+
+                    // 🚨 GAMEPLAY WIN: Ascendant Regeneration
+                    // Passively heal 1 HP/Mana/Stam every 10 turns
+                    if (gameState.playerTurnCount % 10 === 0) {
+                        let regenerated = false;
+                        if (gameState.player.health < gameState.player.maxHealth) {
+                            window.modifyVital('health', 1);
+                            regenerated = true;
+                        }
+                        if (gameState.player.mana < gameState.player.maxMana) {
+                            window.modifyVital('mana', 1);
+                            regenerated = true;
+                        }
+                        if (gameState.player.stamina < gameState.player.maxStamina) {
+                            window.modifyVital('stamina', 1);
+                            regenerated = true;
+                        }
+                        
+                        if (regenerated && typeof logMessage !== 'undefined') {
+                            // Don't spam the chat, but let the UI bars pulse (handled inside modifyVital automatically!)
+                        }
                     }
                 }
                 
@@ -369,7 +467,6 @@ window.ExpansionManager.register({
             const origSync = window.syncPlayerState;
             window.syncPlayerState = function() {
                 origSync();
-                // Ensure other players know your generation level!
                 if (typeof onlinePlayerRef !== 'undefined' && onlinePlayerRef) {
                     onlinePlayerRef.update({ generation: gameState.player.generation || 0, activeTitle: gameState.player.activeTitle || null }).catch(()=>{});
                 }
