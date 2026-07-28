@@ -1316,7 +1316,11 @@ window.TILE_DATA = {
                     document.getElementById('claimMapReward').onclick = (e) => {
                         e.target.disabled = true; 
                         state.player.cartographerProgress = (state.player.cartographerProgress || 0) + 1;
+                        
+                        // Tell the engine this gold is legitimate!
                         state.player.coins += 100;
+                        if (typeof window.trackLegitimateGold === 'function') window.trackLegitimateGold(100);
+                        
                         if (typeof grantXp === 'function') grantXp(150);
                         
                         logMessage("{gold:The Cartographer pays you 100 gold and shares worldly secrets! (+150 XP)}");
