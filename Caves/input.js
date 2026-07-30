@@ -215,20 +215,31 @@ function handleInput(key) {
 
     // --- INCAPACITATION GUARD (STUNS) ---
     // Extracted gameplay keys into a clear check so players can't drink/mount/loot while stunned!
-    // 🚨 BUG FIX WIN: Clean numeric parsing allows Numpad keys to correctly register as disabled during stuns!
+    // Clean numeric parsing allows Numpad keys to correctly register as disabled during stuns!
     let numericTestStr = key.startsWith('Numpad') ? key.replace('Numpad', '') : key;
     const isNumberKey = !isNaN(parseInt(numericTestStr, 10)) && parseInt(numericTestStr, 10) >= 1 && parseInt(numericTestStr, 10) <= 9;
     
     const isGameplayKey = MOVEMENT_MAP[key] || ['q', 'z', 'g', 'r', ' ', '5', 'numpad5', 'clear', '.'].includes(lowerKey) || isNumberKey;
     
     if (gameState.player.stunTurns > 0 && isGameplayKey) {
-        logMessage("{yellow:You are stunned and cannot act!}");
-        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-        window.inputQueue.length = 0; // Force clear the queue so they don't sprint into lava after stun ends!
         
-        // Advance the turn so the stun timer can tick down!
-        if (typeof endPlayerTurn === 'function') endPlayerTurn();
-        return;
+        // Throttle the stun turn advancement!
+        // Uses the global ACTION_COOLDOWN to ensure mashing keys doesn't accelerate enemy AI to light-speed.
+        const currentCooldown = window.ACTION_COOLDOWN || 150;
+        
+        if (Date.now() - lastActionTime >= currentCooldown) {
+            logMessage("{yellow:You are stunned and cannot act!}");
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+            
+            window.inputQueue.length = 0; // Force clear the queue
+            lastActionTime = Date.now();  // Record the action time to enforce the throttle!
+            
+            // Advance the turn safely
+            if (typeof endPlayerTurn === 'function') endPlayerTurn();
+        }
+        
+        // Always return to block the actual keypress, even if the cooldown blocked the turn from ticking
+        return; 
     }
 
     // --- STATE CANCELLATION ---
