@@ -6,8 +6,8 @@
 window.MAX_INVENTORY_SLOTS = 9;
 const ABSOLUTE_MAX_INVENTORY_SLOTS = 50; // 🚨 DB GUARD: Prevents Firebase 1MB Doc blowout
 
-// PERFORMANCE WIN: Pre-allocate array outside the loop to prevent GC churn
-const _EQUIPMENT_SLOTS = ['weapon', 'armor', 'offhand', 'accessory', 'ammo'];
+// PERFORMANCE WIN: Pre-allocate and Freeze array to prevent GC churn and mutation checks
+const _EQUIPMENT_SLOTS = Object.freeze(['weapon', 'armor', 'offhand', 'accessory', 'ammo']);
 
 // EXPANDABILITY WIN: Data-Driven Capacity Check
 // Automatically scales if the player equips items with a `carryCapacity` stat bonus!
@@ -109,7 +109,7 @@ window._statColorCache = {
 // This locks the Hidden Class in the browser's JavaScript engine, making state lookups incredibly fast.
 const gameState = {
     // --- System & Engine State ---
-    saveVersion: "0.2.9",     
+    saveVersion: "0.3.0", // Bumped version for engine upgrades
     initialEnemiesLoaded: false,
     mapDirty: true,
     
@@ -225,6 +225,7 @@ const gameState = {
 
         lastCombatTime: 0,    
         lastHitTime: 0,       
+        lastHitDamage: 0,
         strengthBonus: 0,
         strengthBonusTurns: 0,
         witsBonus: 0,
@@ -311,6 +312,8 @@ const gameState = {
         achievements: [],
         playtime: 0,          // Total seconds logged
         metrics: {
+            highestLevel: 1,      // Added for Leaderboard persistence
+            deepestFloor: 1,      // Added for Leaderboard persistence
             totalKills: 0,
             bossesDefeated: 0,
             totalDeaths: 0,
@@ -331,9 +334,9 @@ const gameState = {
             fallDamageTaken: 0,          
             damageDealt: 0,
             criticalHits: 0,
-            healthHealed: 0,      // NEW: Total HP regenerated/potioned
-            manaConsumed: 0,      // NEW: Total Mana spent
-            staminaConsumed: 0,   // NEW: Total Stamina exerted
+            healthHealed: 0,      
+            manaConsumed: 0,      
+            staminaConsumed: 0,   
             questsCompleted: 0,
             treasuresDug: 0,
             shrinesPrayed: 0,
@@ -404,6 +407,17 @@ const gameState = {
 // CENTRALIZED STATE DISPATCHER (Vitals Management)
 // ============================================================================
 
+// 🌟 EXPANDABILITY WIN: Centralized Vital Clamping
+// Exposed so other scripts (like unequipping cursed items) can cleanly normalize pools!
+window.clampAllVitals = function() {
+    const p = gameState.player;
+    if (!p) return;
+    p.health = Math.max(1, Math.min(p.maxHealth || 10, p.health));
+    p.mana = Math.max(0, Math.min(p.maxMana || 10, p.mana));
+    p.stamina = Math.max(0, Math.min(p.maxStamina || 10, p.stamina));
+    p.psyche = Math.max(0, Math.min(p.maxPsyche || 10, p.psyche));
+};
+
 window.modifyVital = function(vital, rawAmount) {
     const p = gameState.player;
     
@@ -414,7 +428,7 @@ window.modifyVital = function(vital, rawAmount) {
     // Guarantees that corrupted spell damage, corrupted items, or missing properties 
     // never inject a NaN into the player's health, and Math.round prevents fractional decimal bugs!
     let amount = Math.round(Number(rawAmount));
-    if (!Number.isFinite(amount)) { // Also catches Infinity
+    if (!Number.isFinite(amount)) { 
         console.warn(`[AKASHIC ENGINE] Blocked invalid vital modification on ${vital}: ${rawAmount}`);
         return 0; 
     }
@@ -457,17 +471,18 @@ window.modifyVital = function(vital, rawAmount) {
         if (amount === 0) return 0; 
     }
     
-    // The "Shotgun" Death Fix (i-Frames)
-    // If the player stands on an oil barrel and it explodes while a monster hits them on the EXACT 
-    // same millisecond, they take double-damage and the death script triggers twice.
-    // This grants a 100ms invulnerability window specifically for health damage to prevent overlapping AoE deaths!
-    // UPGRADED: Only drops the secondary damage if it is weaker than the initial hit.
+    // 🚨 ROBUSTNESS WIN: True I-Frames & AoE Hit Overlap Fix
+    // If multiple attacks hit the player in the exact same 100ms window (e.g. an explosion + an arrow),
+    // we take the LARGEST of the hits, and explicitly refund the smaller hit so they don't stack unfairly!
     if (vital === 'health' && amount < 0) {
         const now = Date.now();
         if (now - (p.lastHitTime || 0) < 100) {
-            // If the overlapping hit is weaker or equal, ignore it.
             if (Math.abs(amount) <= (p.lastHitDamage || 0)) {
-                return 0; 
+                return 0; // Reject the new, smaller hit completely
+            } else {
+                // The new hit is BIGGER than the one we took 10ms ago! 
+                // Refund the previous small hit before taking the new big one to prevent double-dipping.
+                p.health += (p.lastHitDamage || 0);
             }
         }
         p.lastHitTime = now;
@@ -582,12 +597,18 @@ window.modifyVital = function(vital, rawAmount) {
         p._isDying = true;
         gameState.screenFlash = { color: '#991b1b', alpha: 1.0, decay: 0.01 };
         
+        // 🎨 LORE WIN: Inject custom death quotes dynamically into the combat.js loop if active!
+        if (gameState.realmMutators && gameState.realmMutators.length > 0) {
+            p._fatalMutators = [...gameState.realmMutators];
+        }
+        
         if (typeof handlePlayerDeath === 'function') {
             // Using a tiny timeout allows the current stack trace (combat loops, array iterations)
             // to safely resolve before we violently alter the mapMode and strip the player's inventory!
             setTimeout(() => {
                 handlePlayerDeath();
                 p._isDying = false; // Clean up flag
+                p._fatalMutators = null; // Clean up flag
             }, 0); 
         }
     }
