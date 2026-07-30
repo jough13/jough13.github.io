@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_menagerie",
     name: "The Menagerie (Advanced Companions)",
-    version: "1.1", // Upgraded version!
+    version: "1.2", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS (PET GEAR) ---
@@ -79,21 +79,21 @@ window.ExpansionManager.register({
                 { name: 'Beast Treat', price: 40, stock: 5 },
                 { name: 'Keeper\'s Guide', price: 100, stock: 1 }
             ]
+        },
+
+        // 🌟 EXPANDABILITY WIN: Native dictionary injection!
+        craftingRecipes: {
+            "Leather Barding": { materials: { "Wolf Pelt": 4, "Stick": 2 }, xp: 20, level: 2 },
+            "Spiked Collar": { materials: { "Iron Ore": 3, "Leather Tunic": 1 }, xp: 30, level: 3 },
+            "Iron Barding": { materials: { "Iron Ore": 6, "Leather Barding": 1 }, xp: 50, level: 4 },
+            "Obsidian Barding": { materials: { "Iron Barding": 1, "Obsidian Shard": 3, "Void Dust": 2 }, xp: 120, level: 5 },
+            "Drake-Fang Collar": { materials: { "Spiked Collar": 1, "Dragon Scale": 1, "Arcane Dust": 5 }, xp: 150, level: 5 }
         }
     },
 
     // --- 3. ENGINE HOOKS ---
     init: function() {
         
-        // --- ADD CRAFTING RECIPES ---
-        if (typeof window.CRAFTING_RECIPES !== 'undefined') {
-            window.CRAFTING_RECIPES["Leather Barding"] = { materials: { "Wolf Pelt": 4, "Stick": 2 }, xp: 20, level: 2 };
-            window.CRAFTING_RECIPES["Spiked Collar"] = { materials: { "Iron Ore": 3, "Leather Tunic": 1 }, xp: 30, level: 3 };
-            window.CRAFTING_RECIPES["Iron Barding"] = { materials: { "Iron Ore": 6, "Leather Barding": 1 }, xp: 50, level: 4 };
-            window.CRAFTING_RECIPES["Obsidian Barding"] = { materials: { "Iron Barding": 1, "Obsidian Shard": 3, "Void Dust": 2 }, xp: 120, level: 5 };
-            window.CRAFTING_RECIPES["Drake-Fang Collar"] = { materials: { "Spiked Collar": 1, "Dragon Scale": 1, "Arcane Dust": 5 }, xp: 150, level: 5 };
-        }
-
         // ==========================================
         // FEATURE 1: PET UI
         // ==========================================
@@ -120,10 +120,11 @@ window.ExpansionManager.register({
                 pet.level++;
                 pet.xpToNext = Math.floor(pet.xpToNext * 1.5);
                 
-                pet.maxHp += 5;
+                // 🚨 BUG FIX WIN: Strict Number Coercion to prevent string-concat stat explosion
+                pet.maxHp = (Number(pet.maxHp) || 10) + 5;
                 pet.hp = pet.maxHp;
-                pet.attack += 1;
-                if (pet.level % 3 === 0) pet.defense = (pet.defense || 0) + 1;
+                pet.attack = (Number(pet.attack) || 1) + 1;
+                if (pet.level % 3 === 0) pet.defense = (Number(pet.defense) || 0) + 1;
                 
                 logMessage(`{green:⭐ Your ${pet.name} leveled up to Level ${pet.level}!}`);
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createLevelUp(pet.x, pet.y);
@@ -138,8 +139,8 @@ window.ExpansionManager.register({
             const armName = pet.armor ? pet.armor.name : 'Unarmored';
             
             // Calculate effective stats for display
-            const effAtk = pet.attack + (pet.weapon ? pet.weapon.attack : 0);
-            const effDef = (pet.defense || 0) + (pet.armor ? pet.armor.defense : 0);
+            const effAtk = (Number(pet.attack) || 0) + (pet.weapon ? (Number(pet.weapon.attack) || 0) : 0);
+            const effDef = (Number(pet.defense) || 0) + (pet.armor ? (Number(pet.armor.defense) || 0) : 0);
             
             // Safe Name
             const safeName = typeof escapeHtml === 'function' ? escapeHtml(pet.name) : pet.name;
@@ -189,15 +190,44 @@ window.ExpansionManager.register({
         // FEATURE 3: EQUIPPING PET GEAR
         // ==========================================
         
-        // 🚨 Helper for safe item dropping
+        // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Outward Spiral Drop
+        // Prevents dropped pet gear from overwriting Waystones or Dungeons if the player is standing on them!
         const safelyDropItem = (item) => {
+            let placed = false;
+            let validFloor = '.';
+            if (gameState.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[gameState.currentCaveTheme]) {
+                validFloor = CAVE_THEMES[gameState.currentCaveTheme].floor;
+            }
+
             const dropTile = item.tile || '🎒';
-            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
-                if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(gameState.player.x, gameState.player.y, dropTile, 24);
-            } else if (gameState.mapMode === 'dungeon') {
-                if (typeof chunkManager !== 'undefined') chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] = dropTile;
-            } else if (gameState.mapMode === 'castle') {
-                if (typeof chunkManager !== 'undefined') chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x] = dropTile;
+
+            if (typeof chunkManager !== 'undefined') {
+                for (let r = 0; r <= 2 && !placed; r++) {
+                    for (let dy = -r; dy <= r && !placed; dy++) {
+                        for (let dx = -r; dx <= r && !placed; dx++) {
+                            const tx = gameState.player.x + dx;
+                            const ty = gameState.player.y + dy;
+                            
+                            let tileAt;
+                            if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
+                            else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
+                            else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
+
+                            if (tileAt === validFloor || tileAt === '.') {
+                                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, dropTile, 24); 
+                                else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = dropTile;
+                                else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = dropTile;
+                                placed = true;
+                            }
+                        }
+                    }
+                }
+                
+                if (!placed) { // Absolute fallback
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') chunkManager.setWorldTile(gameState.player.x, gameState.player.y, dropTile, 24);
+                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] = dropTile;
+                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x] = dropTile;
+                }
             }
             gameState.mapDirty = true;
         };
@@ -217,12 +247,10 @@ window.ExpansionManager.register({
                 const slot = item.type === 'pet_armor' ? 'armor' : 'weapon';
                 const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
                 
-                // 🚨 BUG FIX WIN: Safe Unequip Logic
-                // If we are holding an old item, check if there's room to put it in our bag first!
+                // Safe Unequip Logic
                 if (pet[slot]) {
                     const unequipped = pet[slot];
                     // Because we are about to consume the item from our bag, our bag size is effectively -1 right now.
-                    // But if it's a stackable item and we only have 1, the slot frees up. For gear, it always frees up.
                     if (gameState.player.inventory.length - 1 < invCap) {
                         gameState.player.inventory.push(unequipped);
                     } else {
@@ -231,8 +259,9 @@ window.ExpansionManager.register({
                     }
                 }
                 
-                // Equip new item safely
-                pet[slot] = window.cloneItemSafely(item);
+                // Equip new item safely (deep clone to sever reference bleed)
+                pet[slot] = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(item) : JSON.parse(JSON.stringify(item));
+                
                 logMessage(`{green:You equipped the ${item.name} onto your ${pet.name}!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(pet.x, pet.y, '#facc15', 15);
@@ -245,7 +274,7 @@ window.ExpansionManager.register({
                 if (typeof renderInventory === 'function') renderInventory();
                 
                 // Save state
-                if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: pet, inventory: getSanitizedInventory() });
+                if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: pet, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
                 return; // Stop here, do not run original logic
             }
             
@@ -253,54 +282,59 @@ window.ExpansionManager.register({
             origUseInventoryItem(index);
         };
 
-        // Right-Click to Unequip Pet Gear
-        let _isUnequippingPet = false;
-        document.addEventListener('contextmenu', (e) => {
-            const partyContainer = document.getElementById('partyContainer');
-            if (partyContainer && partyContainer.contains(e.target)) {
-                e.preventDefault();
-                
-                if (_isUnequippingPet) return;
-                _isUnequippingPet = true;
-                
-                try {
-                    const pet = gameState.player.companion;
-                    if (!pet) return;
+        // 🚨 PERFORMANCE WIN: Event Listener Leak Prevention!
+        // We use a global variable to ensure hot-reloading the game doesn't stack multiple right-click listeners.
+        if (!window._petRightClickBound) {
+            let _isUnequippingPet = false;
+            
+            document.addEventListener('contextmenu', (e) => {
+                const partyContainer = document.getElementById('partyContainer');
+                if (partyContainer && partyContainer.contains(e.target)) {
+                    e.preventDefault();
                     
-                    let unequippedSomething = false;
-                    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+                    if (_isUnequippingPet) return;
+                    _isUnequippingPet = true;
                     
-                    const handleUnequip = (slot) => {
-                        const item = pet[slot];
-                        if (gameState.player.inventory.length < invCap) {
-                            gameState.player.inventory.push(item);
-                            logMessage(`{gray:You removed the ${item.name} from your ${pet.name}.}`);
-                        } else {
-                            logMessage(`{red:Inventory full! The ${item.name} falls to the ground.}`);
-                            safelyDropItem(item);
+                    try {
+                        const pet = gameState.player.companion;
+                        if (!pet) return;
+                        
+                        let unequippedSomething = false;
+                        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(gameState.player) : 9;
+                        
+                        const handleUnequip = (slot) => {
+                            const item = pet[slot];
+                            if (gameState.player.inventory.length < invCap) {
+                                gameState.player.inventory.push(item);
+                                logMessage(`{gray:You removed the ${item.name} from your ${pet.name}.}`);
+                            } else {
+                                logMessage(`{red:Inventory full! The ${item.name} falls to the ground.}`);
+                                safelyDropItem(item);
+                            }
+                            pet[slot] = null;
+                            unequippedSomething = true;
+                        };
+                        
+                        if (pet.weapon) {
+                            handleUnequip('weapon');
+                        } else if (pet.armor) {
+                            handleUnequip('armor');
                         }
-                        pet[slot] = null;
-                        unequippedSomething = true;
-                    };
-                    
-                    if (pet.weapon) {
-                        handleUnequip('weapon');
-                    } else if (pet.armor) {
-                        handleUnequip('armor');
+                        
+                        if (unequippedSomething) {
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
+                            window.renderPetUI();
+                            if (typeof renderInventory === 'function') renderInventory();
+                            if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: pet, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory });
+                            if (typeof render === 'function') render();
+                        }
+                    } finally {
+                        _isUnequippingPet = false;
                     }
-                    
-                    if (unequippedSomething) {
-                        if (typeof AudioSystem !== 'undefined') AudioSystem.playStep();
-                        window.renderPetUI();
-                        if (typeof renderInventory === 'function') renderInventory();
-                        if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: pet, inventory: getSanitizedInventory() });
-                        if (typeof render === 'function') render();
-                    }
-                } finally {
-                    _isUnequippingPet = false;
                 }
-            }
-        });
+            });
+            window._petRightClickBound = true;
+        }
 
         // ==========================================
         // FEATURE 4: PET COMBAT SKILLS
@@ -312,11 +346,11 @@ window.ExpansionManager.register({
             
             if (pet && !gameState.player.isMounted) {
                 // 1. Temporarily apply gear stats
-                const pArmor = pet.armor ? (pet.armor.defense || 0) : 0;
-                const pWpn = pet.weapon ? (pet.weapon.attack || 0) : 0;
+                const pArmor = pet.armor ? (Number(pet.armor.defense) || 0) : 0;
+                const pWpn = pet.weapon ? (Number(pet.weapon.attack) || 0) : 0;
                 
-                const realAtk = pet.attack;
-                const realDef = pet.defense || 0;
+                const realAtk = Number(pet.attack) || 1;
+                const realDef = Number(pet.defense) || 0;
                 
                 pet.attack = realAtk + pWpn;
                 pet.defense = realDef + pArmor;
@@ -339,7 +373,9 @@ window.ExpansionManager.register({
                             target = gameState.instancedEnemies.find(e => e && e.x === tx && e.y === ty && e.health > 0);
                         } else {
                             const enemyId = `overworld:${tx},${-ty}`;
-                            target = gameState.sharedEnemies[enemyId];
+                            const t = gameState.sharedEnemies[enemyId];
+                            // 🚨 ROBUSTNESS WIN: Ignore dead "ghost" enemies in the overworld cache!
+                            if (t && t.health > 0) target = t;
                         }
                         if (target) break; // Found one!
                     }
