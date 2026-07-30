@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "seasons_of_the_realm",
     name: "Seasons of the Realm (Dynamic Live-Ops)",
-    version: "1.1", // Upgraded version!
+    version: "1.2", // Upgraded version!
     
     data: {
         // --- 1. SEASONAL ITEMS ---
@@ -16,9 +16,12 @@ window.ExpansionManager.register({
                 name: 'Spring Blossom', type: 'consumable', tile: '🌸', _rarity: 'rare',
                 description: "Smells of new life. {green:Fully Restores Health & Cures Poison.}", 
                 effect: (state) => {
-                    window.modifyVital('health', state.player.maxHealth);
+                    if (typeof window.modifyVital === 'function') window.modifyVital('health', state.player.maxHealth);
+                    else state.player.health = state.player.maxHealth;
+                    
                     state.player.poisonTurns = 0;
                     logMessage("{green:The Spring Blossom revitalizes your body completely!}");
+                    
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#4ade80', 20);
                     return true;
@@ -32,8 +35,14 @@ window.ExpansionManager.register({
                 name: 'Autumn Harvest', type: 'consumable', tile: '🍁', _rarity: 'rare',
                 description: "A perfect bountiful crop. {yellow:Fully Restores Hunger & Stamina.}", 
                 effect: (state) => {
-                    window.modifyVital('hunger', state.player.maxHunger);
-                    window.modifyVital('stamina', state.player.maxStamina);
+                    if (typeof window.modifyVital === 'function') {
+                        window.modifyVital('hunger', state.player.maxHunger);
+                        window.modifyVital('stamina', state.player.maxStamina);
+                    } else {
+                        state.player.hunger = state.player.maxHunger;
+                        state.player.stamina = state.player.maxStamina;
+                    }
+                    
                     logMessage("{yellow:The Autumn Harvest fills your belly and restores your energy!}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playConsume();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 20);
@@ -91,18 +100,17 @@ window.ExpansionManager.register({
                 { name: 'Spring Blossom', price: 500, stock: 1 },
                 { name: 'Autumn Harvest', price: 500, stock: 1 }
             ]
+        },
+
+        // --- 4. SEASONAL RECIPES ---
+        // 🌟 EXPANDABILITY WIN: Native dictionary injection!
+        craftingRecipes: {
+            "Sun-Forged Blade": { materials: { "Summer Ember": 1, "Iron Sword": 1, "Arcane Dust": 5 }, xp: 150, level: 5 },
+            "Glacial Axe": { materials: { "Winter Core": 1, "Greataxe": 1, "Arcane Dust": 5 }, xp: 150, level: 5 }
         }
     },
 
     init: function() {
-
-        // ==========================================
-        // 0. ADD SEASONAL CRAFTING RECIPES
-        // ==========================================
-        if (typeof window.CRAFTING_RECIPES !== 'undefined') {
-            window.CRAFTING_RECIPES["Sun-Forged Blade"] = { materials: { "Summer Ember": 1, "Iron Sword": 1, "Arcane Dust": 5 }, xp: 150, level: 5 };
-            window.CRAFTING_RECIPES["Glacial Axe"] = { materials: { "Winter Core": 1, "Greataxe": 1, "Arcane Dust": 5 }, xp: 150, level: 5 };
-        }
         
         // ==========================================
         // 1. THE SEASONAL CLOCK ENGINE
@@ -135,11 +143,12 @@ window.ExpansionManager.register({
                 let icon = '🍂';
                 
                 if (season === 'Winter') { seasonColor = '#7dd3fc'; icon = '❄️'; }
-                if (season === 'Spring') { seasonColor = '#4ade80'; icon = '🌸'; }
-                if (season === 'Summer') { seasonColor = '#facc15'; icon = '☀️'; }
-                if (season === 'Autumn') { seasonColor = '#f97316'; icon = '🍁'; }
+                else if (season === 'Spring') { seasonColor = '#4ade80'; icon = '🌸'; }
+                else if (season === 'Summer') { seasonColor = '#facc15'; icon = '☀️'; }
+                else if (season === 'Autumn') { seasonColor = '#f97316'; icon = '🍁'; }
 
-                timeDisplay.innerHTML += ` <span style="color: ${seasonColor}; font-weight: bold;" class="drop-shadow-sm ml-2 border-l border-gray-600 pl-2">${icon} ${season}</span>`;
+                // 🚨 UI WIN: Appends cleanly because the base engine explicitly overwrites `timeDisplay.textContent` first!
+                timeDisplay.innerHTML += ` <span style="color: ${seasonColor}; font-weight: bold;" class="drop-shadow-sm ml-2 border-l border-gray-600 pl-2" title="${season} Season">${icon} ${season}</span>`;
             }
         };
 
@@ -297,35 +306,43 @@ window.ExpansionManager.register({
                     
                     if (season === 'Summer') {
                         // Intense Heat: Extra thirst drain
-                        p.thirst = Math.max(0, p.thirst - 1);
+                        if (typeof window.modifyVital === 'function') window.modifyVital('thirst', -1);
+                        else p.thirst = Math.max(0, p.thirst - 1);
+                        
                         if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('thirstDisplay'), false);
                     } 
                     else if (season === 'Winter') {
                         // Biting Cold: Drains stamina unless you have fire resistance or a torch!
                         const hasTorch = p.inventory.some(i => i && !i.isEquipped && (i.name === 'Torch' || i.name === 'Ever-Burning Candle'));
                         if (p.fireResistTurns <= 0 && !hasTorch) {
-                            p.stamina = Math.max(0, p.stamina - 1);
+                            if (typeof window.modifyVital === 'function') window.modifyVital('stamina', -1);
+                            else p.stamina = Math.max(0, p.stamina - 1);
+                            
                             if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('staminaDisplay'), false);
                         }
                     } 
                     else if (season === 'Spring') {
                         // Rebirth: Passive health regeneration
                         if (p.health < p.maxHealth && p.hunger > 0 && p.thirst > 0) {
-                            p.health = Math.min(p.maxHealth, p.health + 1);
+                            if (typeof window.modifyVital === 'function') window.modifyVital('health', 1);
+                            else p.health = Math.min(p.maxHealth, p.health + 1);
+                            
                             if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('healthDisplay'), true);
                         }
                     } 
                     else if (season === 'Autumn') {
                         // The Great Harvest: Passive hunger regeneration
                         if (p.hunger < p.maxHunger) {
-                            p.hunger = Math.min(p.maxHunger, p.hunger + 1);
+                            if (typeof window.modifyVital === 'function') window.modifyVital('hunger', 1);
+                            else p.hunger = Math.min(p.maxHunger, p.hunger + 1);
+                            
                             if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('hungerDisplay'), true);
                         }
                     }
                 }
                 
-                // Call the original function to complete the save cycle
-                if (origEndPlayerTurn) origEndPlayerTurn(updates);
+                // 🚨 STABILITY WIN: Use .apply to safely pass all original arguments forward!
+                if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
             };
         }
 
@@ -369,7 +386,15 @@ window.ExpansionManager.register({
                         
                         // In Autumn, crops yield an extra clone of themselves!
                         if (season === 'Autumn') {
-                            const templateId = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === seedData.yields);
+                            // 🚀 PERFORMANCE WIN: High-speed cross-expansion integration!
+                            // Looks up the homestead crop cache first instead of iterating global dictionary.
+                            let templateId = null;
+                            if (typeof getFarmItemKey === 'function') {
+                                templateId = getFarmItemKey(seedData.yields);
+                            } else {
+                                templateId = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === seedData.yields);
+                            }
+                            
                             const template = window.ITEM_DATA[templateId];
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
                             
@@ -379,6 +404,7 @@ window.ExpansionManager.register({
                                 bonusItem.quantity = 1;
                                 bonusItem.isEquipped = false;
                                 p.inventory.push(bonusItem);
+                                
                                 logMessage(`{orange:Autumn Harvest Bonus! (+1 ${seedData.yields})}`);
                                 
                                 // Sparkles!
