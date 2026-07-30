@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "artisan_guild",
     name: "The Artisan's Guild (Jewelcrafting)",
-    version: "1.1", // Upgraded version!
+    version: "1.2", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -37,8 +37,6 @@ window.ExpansionManager.register({
                             const cutName = gems[inv[i].name];
                             
                             // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Capacity Check
-                            // If we have no existing stack, and our current raw gem stack is > 1 
-                            // (meaning the raw gem stack won't be deleted to free up a slot), check capacity!
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                             const hasStack = inv.find(item => item && item.name === cutName && !item.isEquipped);
                             
@@ -48,7 +46,25 @@ window.ExpansionManager.register({
                                 return false;
                             }
 
-                            logMessage(`{cyan:You carefully cut and polish the ${inv[i].name}...}`);
+                            // 🌟 JUICE & GAMEPLAY WIN: The Perfect Cut!
+                            // 5% chance to yield two gems instead of one.
+                            let yieldAmt = 1;
+                            let isFlawless = false;
+                            if (Math.random() < 0.05) {
+                                yieldAmt = 2;
+                                isFlawless = true;
+                            }
+
+                            if (isFlawless) {
+                                logMessage(`{gold:Flawless execution! You cut the ${inv[i].name} with incredible precision!}`);
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 25);
+                                state.screenShake = 5;
+                            } else {
+                                logMessage(`{cyan:You carefully cut and polish the ${inv[i].name}...}`);
+                                if (typeof AudioSystem !== 'undefined') AudioSystem.playCraftSuccess();
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#22d3ee', 10);
+                            }
                             
                             // Look up the template for the cut gem
                             const templateKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === cutName);
@@ -58,28 +74,26 @@ window.ExpansionManager.register({
                             inv[i].quantity--;
                             if (inv[i].quantity <= 0) inv.splice(i, 1);
                             
-                            // Add 1 Cut Gem
+                            // Add Cut Gem(s)
                             if (hasStack) {
-                                hasStack.quantity++;
+                                hasStack.quantity += yieldAmt;
                             } else {
                                 const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                                 newItem.templateId = templateKey;
-                                newItem.quantity = 1;
+                                newItem.quantity = yieldAmt;
                                 newItem.isEquipped = false;
                                 newItem.effect = template.effect; // Re-bind effect
                                 inv.push(newItem);
                             }
                             
-                            logMessage(`{gold:Successfully crafted a ${cutName}!}`);
+                            logMessage(`{purple:Successfully crafted: ${cutName} (x${yieldAmt})!}`);
                             cutSomething = true;
-                            if (typeof AudioSystem !== 'undefined') AudioSystem.playCraftSuccess();
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(state.player.x, state.player.y, '#facc15', 10);
                             
                             // Force UI Sync
                             if (typeof renderInventory === 'function') renderInventory();
                             if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv });
                             
-                            break; // Only cut one at a time per click
+                            break; // Only cut one at a time per click to prevent accidental mass consumption
                         }
                     }
                     
@@ -164,6 +178,11 @@ window.ExpansionManager.register({
                         const enemyTemplate = window.ENEMY_DATA['🦀c'];
                         const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(enemyTemplate, x, y) : enemyTemplate;
                         
+                        // 🚨 ROBUSTNESS WIN: Safe Entity Instantiator Fallback
+                        const createEntity = typeof chunkManager._createInstancedEnemy === 'function' 
+                            ? chunkManager._createInstancedEnemy.bind(chunkManager) 
+                            : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
+
                         if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
                             const enemyId = `overworld:${x},${-y}`;
                             state.sharedEnemies[enemyId] = { ...scaledStats, tile: '🦀c', x: x, y: y, spawnTime: Date.now() };
@@ -171,13 +190,9 @@ window.ExpansionManager.register({
                                 rtdb.ref(EnemyNetworkManager.getPath(x, y, enemyId)).set(state.sharedEnemies[enemyId]);
                             }
                         } else {
-                            // Instanced dungeon fallback just in case
-                            state.instancedEnemies.push({
-                                id: `${state.currentCaveId}:ambush_${Date.now()}`,
-                                x: x, y: y, tile: '🦀c', name: enemyTemplate.name,
-                                health: scaledStats.maxHealth, maxHealth: scaledStats.maxHealth,
-                                attack: scaledStats.attack, defense: scaledStats.defense, xp: scaledStats.xp, loot: enemyTemplate.loot
-                            });
+                            // Instanced dungeon fallback just in case the vein spawns underground
+                            const eId = `${state.currentCaveId}:ambush_${Date.now()}`;
+                            state.instancedEnemies.push(createEntity(eId, x, y, '🦀c', scaledStats, enemyTemplate));
                         }
                     } else {
                         // Standard Loot Roll
@@ -256,14 +271,22 @@ window.ExpansionManager.register({
             targetItem.tags.push('socketed');
             targetItem.name = `${targetItem.name} ${suffix}`;
             
-            if (!targetItem.statBonuses) targetItem.statBonuses = {};
-            
-            if (stat === 'defense') {
-                targetItem.defense = (targetItem.defense || 0) + amount;
-            } else if (stat === 'damage') {
-                targetItem.damage = (targetItem.damage || 0) + amount;
+            // 🚨 BUG FIX WIN: Deep clone statBonuses to sever the prototype link!
+            // Prevents global ITEM_DATA corruption where every subsequent weapon dropped inherits the socket!
+            if (!targetItem.statBonuses) {
+                targetItem.statBonuses = {};
             } else {
-                targetItem.statBonuses[stat] = (targetItem.statBonuses[stat] || 0) + amount;
+                targetItem.statBonuses = typeof window.fastClone === 'function' ? window.fastClone(targetItem.statBonuses) : JSON.parse(JSON.stringify(targetItem.statBonuses));
+            }
+            
+            // 🚨 BUG FIX WIN: Strict Number Coercion
+            // Prevents a string-concat bug where 5 damage + 3 socket becomes "53" damage, breaking combat!
+            if (stat === 'defense') {
+                targetItem.defense = (Number(targetItem.defense) || 0) + Number(amount);
+            } else if (stat === 'damage') {
+                targetItem.damage = (Number(targetItem.damage) || 0) + Number(amount);
+            } else {
+                targetItem.statBonuses[stat] = (Number(targetItem.statBonuses[stat]) || 0) + Number(amount);
             }
 
             // 3. Re-equip to apply the new, improved stats back to the player
@@ -284,6 +307,9 @@ window.ExpansionManager.register({
             chunkManager.generateChunk = function(chunkX, chunkY) {
                 origGenerateChunk.call(this, chunkX, chunkY);
                 
+                // MULTIVERSE CHECK: Ensure veins only spawn natively in the Prime Realm
+                if (typeof gameState !== 'undefined' && gameState.currentRealm !== 0 && gameState.currentRealm) return;
+
                 const chunkId = `${chunkX},${chunkY}`;
                 const chunkData = this.loadedChunks[chunkId];
                 
