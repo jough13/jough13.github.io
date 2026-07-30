@@ -101,6 +101,18 @@ window.EVENT_DATA = {
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playHeal();
                             state.player.coins += 50;
                             
+                            // 1. Resolve the NPC tile cleanup FIRST so it doesn't overwrite dropped loot
+                            if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
+                                const currentTile = chunkManager.getTile(ctx.x, ctx.y);
+                                if (['.', 'F', 'd', 'D', '❄️', '🍄'].includes(currentTile)) {
+                                    chunkManager.setWorldTile(ctx.x, ctx.y, '⚰️'); // Turn into grave
+                                } else {
+                                    chunkManager.setWorldTile(ctx.x, ctx.y, currentTile);
+                                }
+                                state.mapDirty = true;
+                            }
+                            
+                            // 2. Grant or drop the item!
                             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                             const potion = typeof window.ITEM_DATA !== 'undefined' ? window.ITEM_DATA['🍷'] : null;
                             
@@ -120,21 +132,12 @@ window.EVENT_DATA = {
                                     state.player.inventory.push(newItem);
                                     logMessage("{gold:You received an Elixir of Life and 50 Gold.}");
                                 } else {
-                                    logMessage("{gold:You received 50 Gold, but your pack is too full for the Elixir!}");
+                                    logMessage("{gold:You received 50 Gold, but your pack is too full! The Elixir drops at your feet.}");
+                                    // 🚨 THE FIX: Drop the item on the PLAYER'S coordinates
                                     if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
-                                        chunkManager.setWorldTile(ctx.x, ctx.y, '🍷', 24);
+                                        chunkManager.setWorldTile(state.player.x, state.player.y, '🍷', 24);
+                                        state.mapDirty = true;
                                     }
-                                }
-                            }
-                            
-                            // Turn the knight into a grave marker ONLY if on solid ground!
-                            if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
-                                const currentTile = chunkManager.getTile(ctx.x, ctx.y);
-                                if (['.', 'F', 'd', 'D', '❄️', '🍄'].includes(currentTile)) {
-                                    chunkManager.setWorldTile(ctx.x, ctx.y, '⚰️');
-                                    state.mapDirty = true;
-                                } else {
-                                    chunkManager.setWorldTile(ctx.x, ctx.y, currentTile);
                                 }
                             }
                         }
@@ -218,9 +221,16 @@ window.EVENT_DATA = {
                             state.player.coins -= 100;
                             if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
                             
-                            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                            // 1. Remove the Smuggler NPC from the map FIRST
+                            if (state.mapMode === 'overworld') {
+                                chunkManager.setWorldTile(ctx.x, ctx.y, '.');
+                                state.mapDirty = true;
+                            }
                             
+                            const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
                             const roll = Math.random();
+                            
+                            // 2. Grant or drop the item!
                             if (roll < 0.2) {
                                 logMessage("{red:You open the box... it's just rocks! You got scammed!}");
                             } else if (roll < 0.8) {
@@ -242,7 +252,12 @@ window.EVENT_DATA = {
                                     });
                                     logMessage("{green:You open the box and find a massive cache of supplies!}");
                                 } else {
-                                    logMessage("{red:You open the box, but your inventory is full! The potions spill onto the ground.}");
+                                    logMessage("{red:You open the box, but your inventory is full! The potions spill at your feet.}");
+                                    // 🚨 THE FIX: Drop on player coords
+                                    if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
+                                        chunkManager.setWorldTile(state.player.x, state.player.y, '♥', 24);
+                                        state.mapDirty = true;
+                                    }
                                 }
                             } else {
                                 logMessage("{purple:You open the box... A Legendary Artifact is inside!}");
@@ -255,13 +270,14 @@ window.EVENT_DATA = {
                                 if (state.player.inventory.length < invCap) {
                                     state.player.inventory.push(loot);
                                 } else {
-                                    logMessage("{red:Your inventory is full! The artifact falls to the ground.}");
-                                    if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(ctx.x, ctx.y, loot.tile || '🗡️', 24);
+                                    logMessage("{red:Your inventory is full! The artifact falls at your feet.}");
+                                    // 🚨 THE FIX: Drop on player coords
+                                    if (state.mapMode === 'overworld' || state.mapMode === 'underworld') {
+                                        chunkManager.setWorldTile(state.player.x, state.player.y, loot.tile || '🗡️', 24);
+                                        state.mapDirty = true;
+                                    }
                                 }
                             }
-                            
-                            if (state.mapMode === 'overworld') chunkManager.setWorldTile(ctx.x, ctx.y, '.');
-                            state.mapDirty = true;
                         }
                     },
                     {
