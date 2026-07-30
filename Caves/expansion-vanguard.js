@@ -80,10 +80,22 @@ window.ExpansionManager.register({
                     logMessage("{purple:You step into the portal. Reality tears away...}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playTimelineShift();
                     
-                    // JUICE WIN: Intense portal entry visuals
+                    // Intense portal entry visuals
                     state.screenShake = 20;
                     state.screenFlash = { color: '#ef4444', alpha: 0.8, decay: 0.02 };
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#a855f7', 40);
+
+                    // PURGE OLD MAP MEMORY & LISTENERS
+                    if (typeof chunkManager !== 'undefined') {
+                        chunkManager.loadedChunks = {};
+                        chunkManager.worldState = {};
+                    }
+                    if (typeof worldStateListeners !== 'undefined') {
+                        Object.values(worldStateListeners).forEach(unsub => unsub());
+                        worldStateListeners = {};
+                    }
+                    if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.clearAll();
+                    state.sharedEnemies = {};
 
                     // Shift to the dedicated Raid Realm
                     state.currentRealm = 'raid_molten';
@@ -107,6 +119,18 @@ window.ExpansionManager.register({
                     logMessage("{cyan:You step through the portal and return to the overworld.}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                     
+                    // PURGE RAID MEMORY & LISTENERS
+                    if (typeof chunkManager !== 'undefined') {
+                        chunkManager.loadedChunks = {};
+                        chunkManager.worldState = {};
+                    }
+                    if (typeof worldStateListeners !== 'undefined') {
+                        Object.values(worldStateListeners).forEach(unsub => unsub());
+                        worldStateListeners = {};
+                    }
+                    if (typeof EnemyNetworkManager !== 'undefined') EnemyNetworkManager.clearAll();
+                    state.sharedEnemies = {};
+
                     state.currentRealm = 0;
                     state.realmMutators = [];
                     if (state.overworldExit) {
