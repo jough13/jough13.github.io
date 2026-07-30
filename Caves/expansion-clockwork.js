@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "clockwork_uprising",
     name: "The Clockwork Uprising",
-    version: "1.2", // Upgraded version!
+    version: "1.3", // Upgraded version!
     
     data: {
         // --- 1. EXPANDED ITEMS ---
@@ -75,7 +75,7 @@ window.ExpansionManager.register({
             }
         },
 
-        // --- 4. MAP TILES ---
+        // --- 4. MAP TILES & THEMES ---
         tiles: {
             '🏭': {
                 type: 'dungeon_entrance',
@@ -105,29 +105,40 @@ window.ExpansionManager.register({
             castle: [
                 { name: 'Galvanic Battery', price: 10, stock: 50 }
             ]
+        },
+
+        // --- 6. RECIPES & BLUEPRINTS ---
+        // 🌟 EXPANDABILITY WIN: Handled natively by the newly upgraded ExpansionManager!
+        alchemyRecipes: {
+            "Liquid Lightning": {
+                materials: { "Clockwork Core": 1, "Clean Water": 1, "Empty Bottle": 1 },
+                xp: 150, level: 5, yield: 1
+            }
+        },
+        craftingRecipes: {
+            "Galvanic Battery": {
+                materials: { "Clockwork Core": 1, "Iron Ore": 2 },
+                xp: 40, level: 3, yield: 5
+            }
+        },
+        roomTemplates: {
+            "Assembly Line": {
+                width: 9, height: 5,
+                map: [' WWWWWWW ', 'W.......W', 'W.▤.⚙️.▤.W', 'W.......W', ' WWWWWWW ']
+            },
+            "Generator Room": {
+                width: 7, height: 7,
+                map: [' WWWWW ', 'W..💡.W', 'W.⚙️.⚙️.W', 'W💡.👨‍🔧.💡W', 'W.⚙️.⚙️.W', 'W..💡.W', ' WWWWW ']
+            }
         }
     },
 
     // ==========================================
-    // 6. INITIALIZATION & ENGINE HOOKS
+    // 7. INITIALIZATION & ENGINE HOOKS
     // ==========================================
     init: function() {
         
-        // --- A. CRAFTING RECIPES ---
-        if (typeof window.ALCHEMY_RECIPES !== 'undefined') {
-            window.ALCHEMY_RECIPES["Liquid Lightning"] = {
-                materials: { "Clockwork Core": 1, "Clean Water": 1, "Empty Bottle": 1 },
-                xp: 150, level: 5, yield: 1
-            };
-        }
-        if (typeof window.CRAFTING_RECIPES !== 'undefined') {
-            window.CRAFTING_RECIPES["Galvanic Battery"] = {
-                materials: { "Clockwork Core": 1, "Iron Ore": 2 },
-                xp: 40, level: 3, yield: 5
-            };
-        }
-
-        // --- B. WORLD SPAWNER INJECTION ---
+        // --- A. WORLD SPAWNER INJECTION ---
         // Dynamically spawns the Factory entrance in the desert and deadlands
         if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
             const origGenerateChunk = chunkManager.generateChunk;
@@ -157,24 +168,11 @@ window.ExpansionManager.register({
         }
 
         // Add the new factory to the minimap colors
-        if (typeof TILE_COLOR_MAP !== 'undefined') {
-            TILE_COLOR_MAP['🏭'] = [180, 83, 9, 255]; // Deep Brass Orange
+        if (typeof window.TILE_COLOR_MAP !== 'undefined') {
+            window.TILE_COLOR_MAP['🏭'] = [180, 83, 9, 255]; // Deep Brass Orange
         }
 
-        // --- C. DUNGEON ROOM INJECTION ---
-        if (typeof window.CAVE_ROOM_TEMPLATES !== 'undefined') {
-            window.CAVE_ROOM_TEMPLATES["Assembly Line"] = {
-                width: 9, height: 5,
-                map: [' WWWWWWW ', 'W.......W', 'W.▤.⚙️.▤.W', 'W.......W', ' WWWWWWW ']
-            };
-            window.CAVE_ROOM_TEMPLATES["Generator Room"] = {
-                width: 7, height: 7,
-                map: [' WWWWW ', 'W..💡.W', 'W.⚙️.⚙️.W', 'W💡.👨‍🔧.💡W', 'W.⚙️.⚙️.W', 'W..💡.W', ' WWWWW ']
-            };
-            window.CACHED_ROOM_TEMPLATES = null; // Force cache rebuild
-        }
-
-        // --- D. OVERCHARGE SKILL LOGIC (BUG FIX) ---
+        // --- B. OVERCHARGE SKILL LOGIC ---
         // Creates the actual executable function for the skill so it doesn't crash the engine
         window.executeOvercharge = async function(dirX, dirY) {
             const player = gameState.player;
@@ -201,7 +199,10 @@ window.ExpansionManager.register({
                 player.stamina -= skillData.cost;
                 logMessage(`{yellow:You push the ${weapon.name} past its limits! It hums violently!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                
+                // JUICE WIN: Massive Detonation Effects
                 gameState.screenShake = 20;
+                gameState.screenFlash = { color: '#facc15', alpha: 0.8, decay: 0.05 };
 
                 // Weapon damage + Strength scaled by the skill multiplier
                 const baseDmg = Math.floor((player.strength + (weapon.damage || 0)) * skillData.baseDamageMultiplier);
@@ -244,7 +245,7 @@ window.ExpansionManager.register({
                     }
 
                     if (typeof applySpellDamage === 'function') {
-                        // We use the 'thunderbolt' spell ID to native trigger wet/metal elemental synergies!
+                        // We use the 'thunderbolt' spell ID to natively trigger wet/metal elemental synergies!
                         const res = await applySpellDamage(tx, ty, baseDmg, 'thunderbolt', true);
                         if (res && res.hit) {
                             Object.assign(batchedPayload, res.payload);
@@ -262,8 +263,15 @@ window.ExpansionManager.register({
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 25);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
 
-                // Strip the stats and reset the slot
-                if (typeof applyStatBonuses === 'function') applyStatBonuses(weapon, -1);
+                // 🚨 BUG FIX WIN: Clean Skill Removal
+                // Safely uses the internal unequip helper so the player loses the "Shoot" skill correctly!
+                if (typeof _internalUnequip === 'function') {
+                    _internalUnequip(weapon, player);
+                } else if (typeof applyStatBonuses === 'function') {
+                    applyStatBonuses(weapon, -1);
+                }
+                
+                // Reset the slot
                 player.equipment.weapon = { name: 'Fists', damage: 0, tags: ['blunt'] };
 
                 if (typeof triggerAbilityCooldown === 'function') triggerAbilityCooldown(skillId);
@@ -276,7 +284,7 @@ window.ExpansionManager.register({
             }
         };
 
-        // --- E. INPUT MONKEY-PATCH ---
+        // --- C. INPUT MONKEY-PATCH ---
         // Safely intercepts the aiming phase to route the Overcharge command 
         // to our new logic block above without touching the core input.js file!
         if (typeof window.handleInput === 'function') {
@@ -285,18 +293,9 @@ window.ExpansionManager.register({
             window.handleInput = function(key) {
                 if (typeof gameState !== 'undefined' && gameState.isAiming && gameState.abilityToAim === 'overcharge') {
                     
-                    const MOVEMENT_MAP = {
-                        'ArrowUp': [0, -1], 'w': [0, -1], 'W': [0, -1], '8': [0, -1], 'Numpad8': [0, -1],
-                        'ArrowDown': [0, 1], 's': [0, 1], 'S': [0, 1], '2': [0, 1], 'Numpad2': [0, 1],
-                        'ArrowLeft': [-1, 0], 'a': [-1, 0], 'A': [-1, 0], '4': [-1, 0], 'Numpad4': [-1, 0],
-                        'ArrowRight': [1, 0], 'd': [1, 0], 'D': [1, 0], '6': [1, 0], 'Numpad6': [1, 0],
-                        '7': [-1, -1], 'Numpad7': [-1, -1], 'Home': [-1, -1],
-                        '9': [1, -1], 'Numpad9': [1, -1], 'PageUp': [1, -1],
-                        '1': [-1, 1], 'Numpad1': [-1, 1], 'End': [-1, 1],
-                        '3': [1, 1], 'Numpad3': [1, 1], 'PageDown': [1, 1]
-                    };
-
-                    const dir = MOVEMENT_MAP[key];
+                    // 🚀 PERFORMANCE WIN: Use the global movement map instead of re-allocating it per keystroke
+                    const dir = typeof window.MOVEMENT_MAP !== 'undefined' ? window.MOVEMENT_MAP[key] : null;
+                    
                     if (dir) {
                         const [dirX, dirY] = dir;
                         
@@ -309,6 +308,9 @@ window.ExpansionManager.register({
                         gameState.isAiming = false;
                         gameState.abilityToAim = null;
                         return; // Intercepted!
+                    } else if (key === 'Escape') {
+                        // Let the core engine handle the Escape cancellation!
+                        return origHandleInput.call(this, key);
                     } else {
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                         logMessage("{gray:Invalid direction. Use Arrow keys or WASD to aim. (Esc) to cancel.}");
