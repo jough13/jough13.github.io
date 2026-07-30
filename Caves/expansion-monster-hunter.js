@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "monster_hunter",
     name: "The Monster Hunter (Tracking & Trophies)",
-    version: "1.1", // Upgraded version!
+    version: "1.2", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -121,24 +121,23 @@ window.ExpansionManager.register({
                 { name: 'Hunter\'s Knife', price: 250, stock: 1 },
                 { name: 'Hunter\'s Log', price: 50, stock: 1 }
             ]
+        },
+
+        // --- 5. RECIPES ---
+        // 🌟 EXPANDABILITY WIN: Native dictionary injection!
+        craftingRecipes: {
+            "Drakebane Mail": { materials: { "Apex Drake Scale": 1, "Steel Armor": 1, "Elemental Core": 3 }, xp: 250, level: 5 },
+            "Voidstalker Cowl": { materials: { "Apex Void Core": 1, "Silk Cowl": 1, "Void Dust": 5 }, xp: 250, level: 5 },
+            "Behemoth Plate": { materials: { "Apex Behemoth Pelt": 1, "Studded Armor": 1, "Stone": 20 }, xp: 250, level: 5 },
+            "Broodmother Cloak": { materials: { "Apex Venom Gland": 1, "Silk Cowl": 1, "Spider Silk": 15 }, xp: 250, level: 5 }
         }
     },
 
-    // --- 5. ENGINE HOOKS ---
+    // --- 6. ENGINE HOOKS ---
     init: function() {
 
         // ==========================================
-        // 1. ADD CRAFTING RECIPES FOR HUNTER GEAR
-        // ==========================================
-        if (typeof window.CRAFTING_RECIPES !== 'undefined') {
-            window.CRAFTING_RECIPES["Drakebane Mail"] = { materials: { "Apex Drake Scale": 1, "Steel Armor": 1, "Elemental Core": 3 }, xp: 250, level: 5 };
-            window.CRAFTING_RECIPES["Voidstalker Cowl"] = { materials: { "Apex Void Core": 1, "Silk Cowl": 1, "Void Dust": 5 }, xp: 250, level: 5 };
-            window.CRAFTING_RECIPES["Behemoth Plate"] = { materials: { "Apex Behemoth Pelt": 1, "Studded Armor": 1, "Stone": 20 }, xp: 250, level: 5 };
-            window.CRAFTING_RECIPES["Broodmother Cloak"] = { materials: { "Apex Venom Gland": 1, "Silk Cowl": 1, "Spider Silk": 15 }, xp: 250, level: 5 };
-        }
-
-        // ==========================================
-        // 2. TRACKING & CARVING LOGIC
+        // 1. TRACKING & CARVING LOGIC
         // ==========================================
         window.handleMonsterTrack = function(state, x, y) {
             const p = state.player;
@@ -251,15 +250,53 @@ window.ExpansionManager.register({
             }
 
             logMessage(`{orange:You meticulously carve the monster, extracting the ${trophyName}!}`);
-            if (typeof AudioSystem !== 'undefined') AudioSystem.playAttack('sweep'); // Slicing sound
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#ef4444', 20); // Blood spray
+            if (typeof AudioSystem !== 'undefined') {
+                AudioSystem.playAttack('sweep'); // Slicing sound
+                setTimeout(() => AudioSystem.playNoise(0.2, 0.1, 400), 100); // Squish
+            }
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#ef4444', 25); // Huge blood spray
             
             p.stamina = Math.max(0, p.stamina - 5);
             if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('staminaDisplay'), false);
 
             const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
             
-            // Helper function to safely merge stacks OR push new OR drop on floor
+            // 🚨 BUG FIX WIN: Safe Outward Spiral Drop for Multiple Loot Returns!
+            const safelyDropItem = (itemTile) => {
+                let placed = false;
+                let validFloor = '.';
+                if (state.mapMode === 'dungeon' && typeof CAVE_THEMES !== 'undefined' && CAVE_THEMES[state.currentCaveTheme]) {
+                    validFloor = CAVE_THEMES[state.currentCaveTheme].floor;
+                }
+
+                if (typeof chunkManager !== 'undefined') {
+                    for (let r = 0; r <= 2 && !placed; r++) {
+                        for (let dy = -r; dy <= r && !placed; dy++) {
+                            for (let dx = -r; dx <= r && !placed; dx++) {
+                                const tx = x + dx; // Spawns spiraling OUTWARDS from the carcass
+                                const ty = y + dy;
+                                let tileAt;
+                                if (state.mapMode === 'overworld' || state.mapMode === 'underworld') tileAt = chunkManager.getTile(tx, ty);
+                                else if (state.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[state.currentCaveId]?.[ty]?.[tx];
+                                else if (state.mapMode === 'castle') tileAt = chunkManager.castleMaps[state.currentCastleId]?.[ty]?.[tx];
+
+                                if (tileAt === validFloor || tileAt === '.') {
+                                    if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(tx, ty, itemTile, 24); 
+                                    else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][ty][tx] = itemTile;
+                                    else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][ty][tx] = itemTile;
+                                    placed = true;
+                                }
+                            }
+                        }
+                    }
+                    if (!placed) { // Absolute fallback
+                        if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(x, y, itemTile, 24);
+                        else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][y][x] = itemTile;
+                        else if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][y][x] = itemTile;
+                    }
+                }
+            };
+
             const addOrDropItem = (itemName, itemType, itemQty, itemTile) => {
                 const existing = p.inventory.find(i => i && i.name === itemName && !i.isEquipped);
                 const isStackable = typeof window.isStackableItem === 'function' ? window.isStackableItem(itemType) : true;
@@ -276,8 +313,8 @@ window.ExpansionManager.register({
                     newItem.isEquipped = false;
                     p.inventory.push(newItem);
                 } else {
-                    // Drop on the ground
-                    chunkManager.setWorldTile(x, y, itemTile, 24);
+                    // Drop on the ground via safe spiral!
+                    safelyDropItem(itemTile);
                     logMessage(`{red:Inventory full! The ${itemName} drops to the ground.}`);
                 }
             };
@@ -301,7 +338,7 @@ window.ExpansionManager.register({
         };
 
         // ==========================================
-        // 3. OVERWORLD TRACK SPAWNING
+        // 2. OVERWORLD TRACK SPAWNING
         // ==========================================
         if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
             const origGenerateChunk = chunkManager.generateChunk;
@@ -327,7 +364,7 @@ window.ExpansionManager.register({
         }
 
         // ==========================================
-        // 4. LAIR DUNGEON GENERATION
+        // 3. LAIR DUNGEON GENERATION
         // ==========================================
         // Monkey-patch generateCave to create the Boss Rooms!
         if (typeof chunkManager !== 'undefined' && chunkManager.generateCave) {
@@ -364,6 +401,11 @@ window.ExpansionManager.register({
                     // Add Entrance
                     map[mapHeight-2][Math.floor(mapWidth/2)] = '>';
                     
+                    // 🚨 ROBUSTNESS WIN: Safe Entity Instantiator Fallback
+                    const createEntity = typeof this._createInstancedEnemy === 'function' 
+                        ? this._createInstancedEnemy.bind(this) 
+                        : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
+
                     // Spawn the Boss
                     const bx = Math.floor(mapWidth/2);
                     const by = 3;
@@ -371,7 +413,7 @@ window.ExpansionManager.register({
                     
                     const bData = window.ENEMY_DATA ? window.ENEMY_DATA[bossTile] : null;
                     if (bData) {
-                        this.caveEnemies[caveId].push(this._createInstancedEnemy(`${caveId}:boss`, bx, by, bossTile, bData, bData));
+                        this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, bx, by, bossTile, bData, bData));
                     }
                     
                     this.caveMaps[caveId] = map;
@@ -382,7 +424,7 @@ window.ExpansionManager.register({
         }
 
         // ==========================================
-        // 5. PASSIVE ARMOR EFFECTS (ENGINE HOOK)
+        // 4. PASSIVE ARMOR EFFECTS (ENGINE HOOK)
         // ==========================================
         // Hook into the endPlayerTurn function to continuously apply the powerful passives of Hunter Gear!
         if (typeof window.endPlayerTurn === 'function') {
@@ -418,22 +460,22 @@ window.ExpansionManager.register({
                     }
                 }
                 
-                // Pass back to original engine
-                if (origEndPlayerTurn) origEndPlayerTurn.call(this, updates);
+                // 🚨 STABILITY WIN: Pass all arguments forward safely
+                if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
             };
         }
 
         // Add Tracks and Carcasses to minimap colors
-        if (typeof TILE_COLOR_MAP !== 'undefined') {
-            TILE_COLOR_MAP['🐾'] = [250, 204, 21, 255]; // Yellow tracks
-            TILE_COLOR_MAP['🥩d'] = [220, 38, 38, 255]; // Red carcass
-            TILE_COLOR_MAP['🥩v'] = [168, 85, 247, 255]; // Purple carcass
-            TILE_COLOR_MAP['🥩b'] = [120, 53, 15, 255]; // Brown carcass
-            TILE_COLOR_MAP['🥩s'] = [22, 163, 74, 255]; // Green carcass
-            TILE_COLOR_MAP['🐉L'] = [220, 38, 38, 255]; // Red Lair
-            TILE_COLOR_MAP['👁️L'] = [168, 85, 247, 255]; // Purple Lair
-            TILE_COLOR_MAP['🦍L'] = [120, 53, 15, 255]; // Brown Lair
-            TILE_COLOR_MAP['🕸️L'] = [22, 163, 74, 255]; // Green Lair
+        if (typeof window.TILE_COLOR_MAP !== 'undefined') {
+            window.TILE_COLOR_MAP['🐾'] = [250, 204, 21, 255]; // Yellow tracks
+            window.TILE_COLOR_MAP['🥩d'] = [220, 38, 38, 255]; // Red carcass
+            window.TILE_COLOR_MAP['🥩v'] = [168, 85, 247, 255]; // Purple carcass
+            window.TILE_COLOR_MAP['🥩b'] = [120, 53, 15, 255]; // Brown carcass
+            window.TILE_COLOR_MAP['🥩s'] = [22, 163, 74, 255]; // Green carcass
+            window.TILE_COLOR_MAP['🐉L'] = [220, 38, 38, 255]; // Red Lair
+            window.TILE_COLOR_MAP['👁️L'] = [168, 85, 247, 255]; // Purple Lair
+            window.TILE_COLOR_MAP['🦍L'] = [120, 53, 15, 255]; // Brown Lair
+            window.TILE_COLOR_MAP['🕸️L'] = [22, 163, 74, 255]; // Green Lair
         }
     }
 });
