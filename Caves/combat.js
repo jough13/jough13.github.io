@@ -667,7 +667,7 @@ async function processOverworldEnemyTurns() {
                 }
             }
             
-            // CRITICAL FIX: Sanitize the object before appending to update list
+            // Sanitize the object before appending to update list
             multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = JSON.parse(JSON.stringify(enemy));
             processedIdsThisFrame.add(enemyId);
             movesQueued = true;
@@ -2262,6 +2262,10 @@ function handlePlayerDeath() {
 
     // Reset Arena progress so they aren't permanently locked out of the Colosseum if they return
     player.arenaWave = 0;
+
+     // Strip vehicles so the player doesn't respawn "sailing" on dry land
+    player.isBoating = false;
+    player.isSailing = false;
 
     // Force the database to pull them out of any alternate dimensions or dungeons immediately
     // so if they close the browser on the Game Over screen, they don't load into a wall later!
