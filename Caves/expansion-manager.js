@@ -21,7 +21,7 @@ window.ExpansionManager = {
         }
 
         if (this.has(exp.id)) {
-            console.warn(`%c[AKASHIC ENGINE] Timeline Collision: Expansion '${exp.id}' is already loaded. Skipping.`, "color: #facc15; font-weight: bold;");
+            console.warn(`%c[AKASHIC ENGINE] Timeline Collision: Expansion '${exp.id}' is already woven into reality. Skipping.`, "color: #facc15; font-weight: bold;");
             return;
         }
 
@@ -31,7 +31,7 @@ window.ExpansionManager = {
             for (let i = 0; i < exp.requires.length; i++) {
                 const reqId = exp.requires[i];
                 if (!this.has(reqId)) {
-                    console.error(`%c[AKASHIC ENGINE] Fatal Sequence: '${exp.name}' requires missing expansion '${reqId}'. Boot aborted.`, "color: #ef4444; font-weight: bold; font-family: monospace;");
+                    console.error(`%c[AKASHIC ENGINE] Fatal Sequence: '${exp.name}' requires missing expansion '${reqId}'. Boot aborted.\n(Hint: Ensure '${reqId}' is loaded above '${exp.id}' in your HTML file!)`, "color: #ef4444; font-weight: bold; font-family: monospace;");
                     return;
                 }
             }
@@ -42,7 +42,7 @@ window.ExpansionManager = {
         const data = exp.data || {};
 
         // --- 2. INJECT DICTIONARIES (O(1) Merge) ---
-        // Expanded to natively support Realm Mutators and Loot Affixes!
+        // 🌟 EXPANDABILITY WIN: Now natively supports crafting, cooking, and alchemy recipes!
         const dictionaries = {
             items: 'ITEM_DATA',
             enemies: 'ENEMY_DATA',
@@ -58,7 +58,10 @@ window.ExpansionManager = {
             roomTemplates: 'CAVE_ROOM_TEMPLATES',
             realmMutators: 'REALM_MUTATORS',
             lootPrefixes: 'LOOT_PREFIXES',
-            lootSuffixes: 'LOOT_SUFFIXES'
+            lootSuffixes: 'LOOT_SUFFIXES',
+            craftingRecipes: 'CRAFTING_RECIPES',
+            cookingRecipes: 'COOKING_RECIPES',
+            alchemyRecipes: 'ALCHEMY_RECIPES'
         };
 
         for (const [localKey, globalKey] of Object.entries(dictionaries)) {
@@ -71,21 +74,33 @@ window.ExpansionManager = {
             }
         }
 
-        // --- 3. INJECT LORE ARRAYS ---
+        // --- 3. INJECT GLOBAL ARRAYS ---
         // LORE WIN: Allows expansions to effortlessly sprinkle ambient text into the world
-        const textArrays = {
+        const globalArrays = {
             stoneMessages: 'LORE_STONE_MESSAGES',
             journalPages: 'RANDOM_JOURNAL_PAGES',
             loreFragments: 'LORE_FRAGMENTS',
             visions: 'VISIONS_OF_THE_PAST',
             regionHistory: 'REGION_HISTORY',
-            villagerRumors: 'VILLAGER_RUMORS'
+            villagerRumors: 'VILLAGER_RUMORS',
+            fishingBaits: 'FISHING_BAITS',
+            fishDirectory: 'FISH_DIRECTORY'
         };
 
-        for (const [localKey, globalKey] of Object.entries(textArrays)) {
+        for (const [localKey, globalKey] of Object.entries(globalArrays)) {
             if (data[localKey] && Array.isArray(data[localKey])) {
                 if (typeof window[globalKey] === 'undefined') window[globalKey] = [];
-                window[globalKey].push(...data[localKey]);
+                
+                const targetArray = window[globalKey];
+                const newItems = data[localKey];
+                
+                // 🚨 ROBUSTNESS & BUG FIX WIN: Safe Iterative Push
+                // Replaced the ES6 spread operator `targetArray.push(...newItems)` with a strict loop.
+                // If an expansion pushes an array with 100,000+ lore entries, the spread operator will
+                // instantly crash the V8 Engine with a "Maximum call stack size exceeded" error!
+                for (let i = 0; i < newItems.length; i++) {
+                    targetArray.push(newItems[i]);
+                }
             }
         }
 
@@ -104,10 +119,10 @@ window.ExpansionManager = {
                 data.shops[shopKey].forEach(newItem => {
                     const existingItem = window[targetGlobal].find(i => i.name === newItem.name);
                     if (existingItem) {
-                        // Accumulate stock
+                        // Accumulate stock gracefully
                         existingItem.stock = (existingItem.stock || 0) + (newItem.stock || 0);
                     } else {
-                        // Safe clone to prevent memory leaks from the expansion object
+                        // Safe clone to prevent memory leaks from the expansion object bleeding into live shops
                         const itemClone = typeof window.fastClone === 'function' ? window.fastClone(newItem) : JSON.parse(JSON.stringify(newItem));
                         window[targetGlobal].push(itemClone);
                     }
@@ -116,7 +131,7 @@ window.ExpansionManager = {
         }
 
         // --- 5. CUSTOM INITIALIZATION HOOK ---
-        // Runs arbitrary code (like modifying the Homstead menus, adding Crafting Recipes, or tweaking World Gen)
+        // Runs arbitrary code (like modifying the Homestead menus or tweaking World Gen natively)
         if (typeof exp.init === 'function') {
             try {
                 exp.init();
