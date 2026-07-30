@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "astral_sea",
     name: "The Astral Sea (Sailing Expansion)",
-    version: "1.1", // Upgraded version!
+    version: "1.2", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -42,7 +42,9 @@ window.ExpansionManager.register({
                     }
                     
                     const baseEnemies = chunkManager.caveEnemies[state.currentCaveId] || [];
-                    state.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+                    
+                    // 🚀 PERFORMANCE WIN: High-speed recursive clone over JSON stringify
+                    state.instancedEnemies = typeof window.fastClone === 'function' ? window.fastClone(baseEnemies) : JSON.parse(JSON.stringify(baseEnemies));
                     
                     if (typeof updateRegionDisplay === 'function') updateRegionDisplay();
                     state.mapDirty = true;
@@ -112,6 +114,9 @@ window.ExpansionManager.register({
                     logMessage("{orange:You chug the rum. You feel fearless, but dizzy. (+30 Stam, +20 Psyche, -2 Wits)}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playConsume();
                     if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('staminaDisplay'), 'stat-pulse-yellow');
+                    
+                    // 🎨 JUICE WIN: Screen wobble!
+                    state.screenShake = 8;
                     return true;
                 }
             },
@@ -186,10 +191,23 @@ window.ExpansionManager.register({
                 { name: 'Diving Bell', price: 1500, stock: 1 },
                 { name: 'Cannonball', price: 10, stock: 50 }
             ]
+        },
+
+        // --- 5. CUSTOM ROOM TEMPLATES ---
+        // 🌟 EXPANDABILITY WIN: Defined natively inside the expansion data payload!
+        roomTemplates: {
+            "Captain's Quarters": {
+                width: 7, height: 7,
+                map: [' WWWWW ', 'W📦.🛏️.W', 'W.....W', 'W..🏴‍☠️c.W', 'W.....W', 'W..🍺r.W', ' WWWWW ']
+            },
+            "Flooded Cargo Hold": {
+                width: 9, height: 5,
+                map: [' WWWWWWW ', 'W📦.≈.📦W', 'W.≈.👻p.W', 'W.📦.≈..W', ' WWWWWWW ']
+            }
         }
     },
 
-    // --- 5. ENGINE HOOKS ---
+    // --- 6. ENGINE HOOKS ---
     init: function() {
         
         // 1. INJECT ISLAND GENERATION INTO THE WORLD RENDERER
@@ -220,7 +238,7 @@ window.ExpansionManager.register({
                             if (islandNoise > 0.85) {
                                 chunkData[y][x] = 'D'; // Sand beach
                                 
-                                const random = typeof Alea !== 'undefined' ? Alea(stringToSeed(`island_${worldX}_${worldY}`)) : Math.random;
+                                const random = typeof Alea !== 'undefined' ? Alea(typeof stringToSeed !== 'undefined' ? stringToSeed(`island_${worldX}_${worldY}`) : 1) : Math.random;
                                 
                                 // Flora & Features (LORE WIN: Dynamic island populations!)
                                 const rVal = random();
@@ -270,14 +288,21 @@ window.ExpansionManager.register({
                         }
                     }
 
+                    // 🚨 ROBUSTNESS WIN: Safe Entity Instantiator Fallback
+                    const createEntity = typeof this._createInstancedEnemy === 'function' 
+                        ? this._createInstancedEnemy.bind(this) 
+                        : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
+
                     // Special Rule: Spawn the Pirate Captain in Pirate Coves!
                     if (themeKey === 'PIRATE_COVE') {
                         const cy = Math.floor(map.length / 2);
                         const cx = Math.floor(map[0].length / 2);
                         if (map[cy][cx] === newTheme.floor || map[cy][cx] === oldTheme.floor) {
                             map[cy][cx] = '🏴‍☠️c';
-                            const bData = window.ENEMY_DATA['🏴‍☠️c'];
-                            this.caveEnemies[caveId].push(this._createInstancedEnemy(`${caveId}:boss`, cx, cy, '🏴‍☠️c', bData, bData));
+                            const bData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['🏴‍☠️c'] : { name: 'Pirate Captain', maxHealth: 250, attack: 12, xp: 800 };
+                            const scaled = { ...bData, maxHealth: bData.maxHealth, attack: bData.attack, xp: bData.xp }; // Basic clone
+                            
+                            this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, cx, cy, '🏴‍☠️c', scaled, bData));
                         }
                     }
                 }
@@ -285,20 +310,7 @@ window.ExpansionManager.register({
             };
         }
 
-        // 3. INJECT THEMATIC ROOM TEMPLATES
-        if (typeof window.CAVE_ROOM_TEMPLATES !== 'undefined') {
-            window.CAVE_ROOM_TEMPLATES["Captain's Quarters"] = {
-                width: 7, height: 7,
-                map: [' WWWWW ', 'W📦.🛏️.W', 'W.....W', 'W..🏴‍☠️c.W', 'W.....W', 'W..🍺r.W', ' WWWWW ']
-            };
-            window.CAVE_ROOM_TEMPLATES["Flooded Cargo Hold"] = {
-                width: 9, height: 5,
-                map: [' WWWWWWW ', 'W📦.≈.📦W', 'W.≈.👻p.W', 'W.📦.≈..W', ' WWWWWWW ']
-            };
-            window.CACHED_ROOM_TEMPLATES = null; // Force cache rebuild
-        }
-
-        // 4. INJECT COLORS INTO THE MINIMAP CACHE
+        // 3. INJECT COLORS INTO THE MINIMAP CACHE
         if (typeof window.TILE_COLOR_MAP !== 'undefined') {
             window.TILE_COLOR_MAP['🏴‍☠️'] = [17, 24, 39, 255];  // Black Ship
             window.TILE_COLOR_MAP['⚓c'] = [133, 77, 14, 255]; // Wood/Brown Cove
