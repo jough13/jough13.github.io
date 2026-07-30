@@ -1,20 +1,9 @@
 // --- START OF FILE expansion-lore-quests.js ---
 
-// We expose the Black Market inventory globally so the Event system can load it into the shop UI
-window.BLACK_MARKET_INVENTORY = [
-    { name: 'Cultist Robes', price: 150, stock: 1 },
-    { name: 'Poisoned Dagger', price: 200, stock: 1 },
-    { name: 'Void Dust', price: 50, stock: 10 },
-    { name: 'Demon Horn', price: 150, stock: 5 },
-    { name: 'Elixir of Power', price: 1200, stock: 1 },
-    { name: 'Scroll of Siphoning', price: 400, stock: 1 },
-    { name: 'Tome: Dark Pact', price: 500, stock: 1 }
-];
-
 window.ExpansionManager.register({
     id: "faction_lore",
     name: "Factions & Deep Lore",
-    version: "1.1", // Upgraded version!
+    version: "1.2", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -58,7 +47,21 @@ window.ExpansionManager.register({
             }
         },
 
-        // --- 3. THE EVENT LOGIC ---
+        // --- 3. SHOPS ---
+        // 🌟 EXPANDABILITY WIN: Handled natively by the ExpansionManager
+        shops: {
+            black_market: [
+                { name: 'Cultist Robes', price: 150, stock: 1 },
+                { name: 'Poisoned Dagger', price: 200, stock: 1 },
+                { name: 'Void Dust', price: 50, stock: 10 },
+                { name: 'Demon Horn', price: 150, stock: 5 },
+                { name: 'Elixir of Power', price: 1200, stock: 1 },
+                { name: 'Scroll of Siphoning', price: 400, stock: 1 },
+                { name: 'Tome: Dark Pact', price: 500, stock: 1 }
+            ]
+        },
+
+        // --- 4. THE EVENT LOGIC ---
         events: {
             'CULT_OUTPOST_GATES': {
                 title: "The Shadowed Hand",
@@ -113,6 +116,13 @@ window.ExpansionManager.register({
                                         state.sharedEnemies[enemyId] = { ...scaledStats, tile: 'z', x: ex, y: ey, spawnTime: Date.now() };
                                         if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ex, ey, enemyId)).set(state.sharedEnemies[enemyId]);
                                     });
+
+                                    // 🚨 EXPLOIT FIX: Turn the Outpost into a standard ruined castle so they can't farm infinite cultists!
+                                    state.lootedTiles.add(ctx.tileId);
+                                    if (typeof chunkManager !== 'undefined') {
+                                        chunkManager.setWorldTile(ctx.x, ctx.y, '🕍');
+                                    }
+                                    state.mapDirty = true;
                                 }
                             },
                             { text: "Walk away slowly." }
@@ -128,7 +138,8 @@ window.ExpansionManager.register({
                                     const shopId = `black_market_${ctx.x}_${ctx.y}`;
                                     if (!state.shopStates) state.shopStates = {};
                                     if (!state.shopStates[shopId]) {
-                                        state.shopStates[shopId] = JSON.parse(JSON.stringify(window.BLACK_MARKET_INVENTORY));
+                                        // Use the newly injected dictionary
+                                        state.shopStates[shopId] = JSON.parse(JSON.stringify(window.BLACK_MARKET_INVENTORY || []));
                                     }
                                     
                                     // Route the UI to use this inventory
@@ -190,16 +201,15 @@ window.ExpansionManager.register({
                                             newItem.isEquipped = false;
                                             state.player.inventory.push(newItem);
                                         } else {
-                                            logMessage("{red:Your inventory is full! The amulet drops to the ground.}");
-                                            if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '🧿', 24);
+                                            logMessage("{red:Your inventory is full! The amulet drops at your feet.}");
+                                            // 🚨 BUG FIX: Drop on player coords so map cleanup doesn't erase it
+                                            if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(state.player.x, state.player.y, '🧿', 24);
                                         }
                                     }
                                     
                                     // Cleanup the map tile
                                     state.lootedTiles.add(ctx.tileId);
-                                    if (typeof chunkManager !== 'undefined' && chunkManager.getTile(ctx.x, ctx.y) !== '🧿') {
-                                        chunkManager.setWorldTile(ctx.x, ctx.y, '.');
-                                    }
+                                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '.');
                                     state.mapDirty = true;
                                 }
                             },
@@ -231,15 +241,14 @@ window.ExpansionManager.register({
                                         newItem.isEquipped = false;
                                         state.player.inventory.push(newItem);
                                     } else {
-                                        logMessage("{red:Your inventory is full! The ore drops to the ground.}");
-                                        if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '☄️', 24);
+                                        logMessage("{red:Your inventory is full! The ore drops at your feet.}");
+                                        // 🚨 BUG FIX: Drop on player coords
+                                        if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(state.player.x, state.player.y, '☄️', 24);
                                     }
                                     
                                     // Turn the crater into a deadlands tile to signify the corruption
                                     state.lootedTiles.add(ctx.tileId);
-                                    if (typeof chunkManager !== 'undefined' && chunkManager.getTile(ctx.x, ctx.y) !== '☄️') {
-                                        chunkManager.setWorldTile(ctx.x, ctx.y, 'd');
-                                    }
+                                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, 'd');
                                     state.mapDirty = true;
                                 }
                             },
@@ -278,7 +287,9 @@ window.ExpansionManager.register({
                                             state.player.inventory.push(newItem);
                                             logMessage("{purple:You received the Royal Signet and 250 Gold!}");
                                         } else {
-                                            logMessage("{gold:You received 250 Gold, but your pack was full. The Signet was lost to the mud.}");
+                                            logMessage("{gold:You received 250 Gold, but your pack was full. The Signet drops at your feet.}");
+                                            // 🚨 BUG FIX: Drop on player coords
+                                            if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(state.player.x, state.player.y, '🏅', 24);
                                         }
                                     }
                                     state.lootedTiles.add(ctx.tileId);
@@ -318,12 +329,13 @@ window.ExpansionManager.register({
                 const command = raw.split(' ')[0].toLowerCase();
                 
                 if (command === 'rep' || command === 'reputation') {
-                    const r = gameState.player.reputation;
+                    const r = gameState.player.reputation || {};
+                    // 🎨 JUICE WIN: Colorful and thematic reputation output
                     logMessage("{yellow:--- 📜 Your Reputation 📜 ---}");
-                    logMessage(`The Crown: ${r.the_crown || 0}`);
-                    logMessage(`Shadowed Hand: ${r.shadowed_hand || 0}`);
-                    logMessage(`Fae Court: ${r.fae_court || 0}`);
-                    logMessage(`Merchants Guild: ${r.merchants_guild || 0}`);
+                    logMessage(`{blue:The Crown:} ${r.the_crown || 0}`);
+                    logMessage(`{purple:Shadowed Hand:} ${r.shadowed_hand || 0}`);
+                    logMessage(`{green:Fae Court:} ${r.fae_court || 0}`);
+                    logMessage(`{gold:Merchants Guild:} ${r.merchants_guild || 0}`);
                     return; // Intercepted successfully
                 }
                 
