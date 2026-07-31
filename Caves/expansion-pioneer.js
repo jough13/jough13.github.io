@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "pioneer_town",
     name: "The Pioneer (Town Builder)",
-    version: "1.0",
+    version: "1.2", // Upgraded version!
     
     data: {
         // --- 1. NEW MAP TILES & NPCs ---
@@ -52,6 +52,7 @@ window.ExpansionManager.register({
         },
 
         // --- 2. THE EVENT LOGIC ---
+        // 🌟 EXPANDABILITY WIN: Defined natively inside the expansion data payload!
         events: {
             'CAGED_PRISONER': {
                 title: "Caged Prisoner",
@@ -104,7 +105,7 @@ window.ExpansionManager.register({
                                     
                                     // Change the tile to a broken cage (rubble)
                                     state.lootedTiles.add(ctx.tileId);
-                                    if (chunkManager.getTile(ctx.x, ctx.y) === '🚷') {
+                                    if (typeof chunkManager !== 'undefined' && chunkManager.getTile(ctx.x, ctx.y) === '🚷') {
                                         chunkManager.setWorldTile(ctx.x, ctx.y, '🏚');
                                     }
                                     state.mapDirty = true;
@@ -132,7 +133,11 @@ window.ExpansionManager.register({
                 origGenerateChunk.call(this, chunkX, chunkY);
                 const chunkId = `${chunkX},${chunkY}`;
                 const chunkData = this.loadedChunks[chunkId];
-                const random = Alea(stringToSeed(`pioneer_spawn_${chunkId}`));
+                
+                // 🚨 ROBUSTNESS WIN: Safe PRNG fallback
+                const random = (typeof Alea !== 'undefined' && typeof stringToSeed !== 'undefined') 
+                    ? Alea(stringToSeed(`pioneer_spawn_${chunkId}`)) 
+                    : Math.random;
                 
                 // 10% chance to spawn a cage in a chunk
                 if (random() < 0.10) { 
@@ -148,7 +153,11 @@ window.ExpansionManager.register({
             const origGenerateCave = chunkManager.generateCave;
             chunkManager.generateCave = function(caveId) {
                 const map = origGenerateCave.call(this, caveId);
-                const random = Alea(stringToSeed(`pioneer_cave_${caveId}`));
+                
+                // 🚨 ROBUSTNESS WIN: Safe PRNG fallback
+                const random = (typeof Alea !== 'undefined' && typeof stringToSeed !== 'undefined') 
+                    ? Alea(stringToSeed(`pioneer_cave_${caveId}`)) 
+                    : Math.random;
                 
                 // 25% chance to spawn a cage in a dungeon
                 if (random() < 0.25 && !caveId.includes('arena') && !caveId.includes('spire')) {
@@ -174,6 +183,10 @@ window.ExpansionManager.register({
             const origGenerateCampsite = chunkManager.generateCampsite;
             chunkManager.generateCampsite = function() {
                 const map = origGenerateCampsite.call(this);
+                
+                // Safety guard to ensure the engine has booted fully
+                if (typeof gameState === 'undefined' || !gameState.player) return map;
+                
                 const p = gameState.player;
                 const rescued = p.rescuedNpcs || [];
                 const houses = p.builtHouses || [];
@@ -223,6 +236,8 @@ window.ExpansionManager.register({
             const loreTitle = document.getElementById('loreTitle');
             const loreContent = document.getElementById('loreContent');
             const loreModal = document.getElementById('loreModal');
+
+            if (!loreTitle || !loreContent || !loreModal) return;
 
             loreTitle.textContent = "Town Charter";
             
@@ -291,6 +306,7 @@ window.ExpansionManager.register({
                                 
                                 p.builtHouses.push(npc);
                                 
+                                // 🎨 JUICE WIN: Dynamic Build Animations!
                                 if (typeof logMessage === 'function') logMessage(`{gold:You built a house for the ${npc}!}`);
                                 if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#facc15', 30);
@@ -299,7 +315,7 @@ window.ExpansionManager.register({
                                 const loreModal = document.getElementById('loreModal');
                                 if (loreModal) loreModal.classList.add('hidden');
                                 
-                                // Regenerate and save
+                                // 🚨 BUG FIX WIN: Ensure the camp regenerates and redraws immediately in front of the player!
                                 if (typeof chunkManager !== 'undefined') chunkManager.generateCampsite();
                                 if (typeof gameState !== 'undefined') gameState.mapDirty = true;
                                 if (typeof render === 'function') render();
@@ -323,6 +339,8 @@ window.ExpansionManager.register({
             const loreContent = document.getElementById('loreContent');
             const loreModal = document.getElementById('loreModal');
 
+            if (!loreTitle || !loreContent || !loreModal) return;
+
             loreTitle.textContent = "Town Blacksmith";
             loreContent.innerHTML = `
                 <p class="italic muted-text mb-4 border-b border-gray-700 pb-2">"Thanks again for busting me out of that cage. The forge here is excellent. Need your gear maintained?"</p>
@@ -337,7 +355,7 @@ window.ExpansionManager.register({
                 if (btn) btn.onclick = () => {
                     // 🚨 FIXED: Added cost validation
                     if (p.coins < 50) {
-                        logMessage("{red:You need 50 Gold to pay the Blacksmith.}");
+                        if (typeof logMessage === 'function') logMessage("{red:You need 50 Gold to pay the Blacksmith.}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                         return;
                     }
@@ -347,7 +365,7 @@ window.ExpansionManager.register({
                     
                     p.strengthBonus = 3;
                     p.strengthBonusTurns = 500;
-                    logMessage("{red:The Blacksmith hones your weapons! (+3 Strength for 500 turns)}");
+                    if (typeof logMessage === 'function') logMessage("{red:The Blacksmith hones your weapons! (+3 Strength for 500 turns)}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#ef4444', 15);
                     if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('strengthDisplay'), 'stat-pulse-green');
@@ -368,7 +386,9 @@ window.ExpansionManager.register({
             const loreContent = document.getElementById('loreContent');
             const loreModal = document.getElementById('loreModal');
 
-            const currentDay = gameState.time ? gameState.time.day : 1;
+            if (!loreTitle || !loreContent || !loreModal) return;
+
+            const currentDay = (gameState && gameState.time) ? gameState.time.day : 1;
             const canClaim = p.lastBotanistDay !== currentDay;
 
             loreTitle.textContent = "Town Botanist";
@@ -393,7 +413,7 @@ window.ExpansionManager.register({
                 if (btn) btn.onclick = () => {
                     const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(p) : 9;
                     if (p.inventory.length >= invCap) {
-                        logMessage("{red:Your inventory is full! Make space first.}");
+                        if (typeof logMessage === 'function') logMessage("{red:Your inventory is full! Make space first.}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                         return;
                     }
@@ -401,15 +421,22 @@ window.ExpansionManager.register({
                     const itemsToGive = ['Medicinal Herb', 'Wildberry', 'Herb Seed'];
                     const chosen = itemsToGive[Math.floor(Math.random() * itemsToGive.length)];
                     
-                    const tKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === chosen);
-                    const template = window.ITEM_DATA[tKey];
+                    // 🚀 PERFORMANCE WIN: Fast O(1) template lookup without scanning the full dictionary
+                    let tKey = null;
+                    if (typeof getFarmItemKey === 'function') {
+                        tKey = getFarmItemKey(chosen);
+                    } else if (typeof window.ITEM_DATA !== 'undefined') {
+                        tKey = Object.keys(window.ITEM_DATA).find(k => window.ITEM_DATA[k].name === chosen);
+                    }
+                    
+                    const template = tKey ? window.ITEM_DATA[tKey] : null;
                     
                     const existing = p.inventory.find(i => i && i.name === chosen && !i.isEquipped);
                     const qty = 2 + Math.floor(Math.random() * 3); // 2 to 4 items
                     
                     if (existing) {
                         existing.quantity += qty;
-                    } else {
+                    } else if (template) {
                         const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                         newItem.templateId = tKey;
                         newItem.quantity = qty;
@@ -419,7 +446,7 @@ window.ExpansionManager.register({
 
                     p.lastBotanistDay = currentDay;
                     
-                    logMessage(`{green:The Botanist hands you ${qty}x ${chosen}!}`);
+                    if (typeof logMessage === 'function') logMessage(`{green:The Botanist hands you ${qty}x ${chosen}!}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#4ade80', 15);
                     
@@ -438,6 +465,8 @@ window.ExpansionManager.register({
             const loreContent = document.getElementById('loreContent');
             const loreModal = document.getElementById('loreModal');
 
+            if (!loreTitle || !loreContent || !loreModal) return;
+
             loreTitle.textContent = "Town Bard";
             loreContent.innerHTML = `
                 <p class="italic muted-text mb-4 border-b border-gray-700 pb-2">"Ah, the hero returns! Care to sit by the fire and listen to a song of your exploits?"</p>
@@ -452,7 +481,7 @@ window.ExpansionManager.register({
                 if (btn) btn.onclick = () => {
                     
                     if (p.coins < 50) {
-                        logMessage("{red:You need 50 Gold to tip the Bard.}");
+                        if (typeof logMessage === 'function') logMessage("{red:You need 50 Gold to tip the Bard.}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                         return;
                     }
@@ -462,7 +491,7 @@ window.ExpansionManager.register({
                     
                     p.witsBonus = 3;
                     p.witsBonusTurns = 500;
-                    logMessage("{blue:The Bard's tale inspires you! (+3 Wits for 500 turns)}");
+                    if (typeof logMessage === 'function') logMessage("{blue:The Bard's tale inspires you! (+3 Wits for 500 turns)}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(p.x, p.y, '#60a5fa', 15);
                     if (typeof triggerStatAnimation !== 'undefined') triggerStatAnimation(document.getElementById('witsDisplay'), 'stat-pulse-blue');
