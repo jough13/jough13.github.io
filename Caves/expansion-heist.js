@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_grand_heist",
     name: "The Grand Heist (Advanced Stealth)",
-    version: "1.1", // Updated Version
+    version: "1.2", // Upgraded Version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -35,10 +35,6 @@ window.ExpansionManager.register({
 
                     logMessage("{purple:You insert the lockpick and listen to the tumblers...}");
                     
-                    // Consume Lockpick (They are fragile!)
-                    inv[pickIdx].quantity--;
-                    if (inv[pickIdx].quantity <= 0) inv.splice(pickIdx, 1);
-
                     // Dexterity Check
                     const dex = state.player.dexterity + (state.player.dexterityBonus || 0);
                     const successChance = Math.min(0.85, 0.40 + (dex * 0.05));
@@ -47,8 +43,17 @@ window.ExpansionManager.register({
                         logMessage("{green:CLICK! The lock disengages and the door swings open.}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin(); // Metallic click
                         
+                        // 🌟 GAMEPLAY WIN: High-Dex characters have a chance to not break their lockpick!
+                        const retainChance = Math.min(0.50, dex * 0.05);
+                        if (Math.random() < retainChance) {
+                            logMessage("{cyan:Your deft fingers extract the lockpick unharmed.}");
+                        } else {
+                            inv[pickIdx].quantity--;
+                            if (inv[pickIdx].quantity <= 0) inv.splice(pickIdx, 1);
+                        }
+
                         // Replace door with open door
-                        if (state.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '/');
+                        if (state.mapMode === 'overworld' || state.mapMode === 'underworld') chunkManager.setWorldTile(x, y, '/');
                         else if (state.mapMode === 'dungeon') chunkManager.caveMaps[state.currentCaveId][y][x] = '/';
                         else chunkManager.castleMaps[state.currentCastleId][y][x] = '/';
                         
@@ -57,6 +62,10 @@ window.ExpansionManager.register({
                         logMessage("{red:SNAP! The lockpick breaks off in the keyhole!}");
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playHit(); // Snap sound
                         state.screenShake = 5;
+                        
+                        // Break the pick
+                        inv[pickIdx].quantity--;
+                        if (inv[pickIdx].quantity <= 0) inv.splice(pickIdx, 1);
                     }
 
                     if (typeof renderInventory === 'function') renderInventory();
@@ -66,12 +75,13 @@ window.ExpansionManager.register({
         },
 
         // --- 3. SHOPS ---
+        // 🌟 EXPANDABILITY WIN: Native Dictionary Injection!
         shops: {
             // General merchants don't sell lockpicks! Only shady ones.
             trader: [
                 { name: 'Lockpick', price: 150, stock: 5 }
             ],
-            // Added to the Black Market from the Lore Expansion
+            // Added to the Black Market from the Lore Expansion natively
             black_market: [
                 { name: 'Lockpick', price: 100, stock: 10 },
                 { name: 'Blood Ruby', price: 10, stock: 0 } // They will buy it from you!
@@ -178,7 +188,8 @@ window.ExpansionManager.register({
                 if (!p.isCrouching) return;
 
                 // 1. Maintain Stealth Buff to trick the Enemy AI Loop!
-                p.stealthTurns = 2; 
+                // 🚨 BUG FIX WIN: Use Math.max to prevent overriding a 5-turn Smoke Bomb stealth!
+                p.stealthTurns = Math.max(p.stealthTurns || 0, 2); 
 
                 // 2. Base recovery (Suspicion drops if you stay still)
                 let suspicionDelta = -5;
@@ -189,7 +200,9 @@ window.ExpansionManager.register({
                     suspicionDelta = 5; // Base movement penalty
                     
                     // LORE WIN: Crouching is exhausting
-                    p.stamina = Math.max(0, p.stamina - 1);
+                    if (typeof window.modifyVital === 'function') window.modifyVital('stamina', -1);
+                    else p.stamina = Math.max(0, p.stamina - 1);
+                    
                     if (typeof triggerStatFlash === 'function') triggerStatFlash(document.getElementById('staminaDisplay'), false);
 
                     // Noisy Terrain Check
@@ -266,7 +279,7 @@ window.ExpansionManager.register({
                     window.StealthManager.toggleCrouch();
                     return; // Intercepted
                 }
-                return origHandleInput.call(this, key);
+                return origHandleInput.apply(this, arguments); // Safe param forwarding
             };
         }
 
@@ -275,11 +288,11 @@ window.ExpansionManager.register({
         // ==========================================
         if (typeof window.attemptMovePlayer === 'function') {
             const origAttemptMove = window.attemptMovePlayer;
-            window.attemptMovePlayer = async function(newX, newY) {
+            window.attemptMovePlayer = async function() {
                 const oldX = gameState.player.x;
                 const oldY = gameState.player.y;
                 
-                await origAttemptMove.call(this, newX, newY);
+                await origAttemptMove.apply(this, arguments);
                 
                 // Only process stealth if the move was actually successful (prevent spikes when bumping into walls)
                 if (gameState.player.x !== oldX || gameState.player.y !== oldY) {
@@ -288,11 +301,11 @@ window.ExpansionManager.register({
             };
         }
 
-        // Also process suspicion when passing time (Spacebar)
+        // Also process suspicion when passing time (Spacebar/R)
         if (typeof window.restPlayer === 'function') {
             const origRest = window.restPlayer;
             window.restPlayer = function() {
-                origRest.apply(this);
+                origRest.apply(this, arguments);
                 window.StealthManager.processTurn(gameState.player.x, gameState.player.y);
             };
         }
@@ -384,23 +397,36 @@ window.ExpansionManager.register({
                                         p.bounty = (p.bounty || 0) + 500;
                                         logMessage("{gray:+500g Bounty added to your head.}");
                                         
-                                        // Turn NPC into an enemy!
+                                        // 🚨 BUG FIX WIN: Proper Context Enemy Spawning!
                                         const eData = window.ENEMY_DATA['b']; // Fallback to bandit
-                                        const enemyId = `overworld:${x},${-y}`;
-                                        const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(eData, x, y) : eData;
-                                        state.sharedEnemies[enemyId] = { ...scaledStats, tile: 'b', x: x, y: y, name: "Angry Victim", spawnTime: Date.now() };
                                         
-                                        if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(x, y, '.');
+                                        if (state.mapMode === 'castle' || state.mapMode === 'dungeon') {
+                                            // Instanced spawn
+                                            const eId = `${state.currentCastleId || state.currentCaveId}:angry_victim_${Date.now()}`;
+                                            state.instancedEnemies.push({
+                                                id: eId, x: x, y: y, tile: 'b', name: "Angry Victim",
+                                                health: eData.maxHealth, maxHealth: eData.maxHealth,
+                                                attack: eData.attack, defense: eData.defense || 0, xp: eData.xp, loot: eData.loot
+                                            });
+                                            if (state.mapMode === 'castle') chunkManager.castleMaps[state.currentCastleId][y][x] = 'b';
+                                            else chunkManager.caveMaps[state.currentCaveId][y][x] = 'b';
+                                        } else {
+                                            // Overworld spawn
+                                            const enemyId = `overworld:${x},${-y}`;
+                                            const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(eData, x, y) : eData;
+                                            state.sharedEnemies[enemyId] = { ...scaledStats, tile: 'b', x: x, y: y, name: "Angry Victim", spawnTime: Date.now() };
+                                            chunkManager.setWorldTile(x, y, '.');
+                                            if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(x, y, enemyId)).set(state.sharedEnemies[enemyId]);
+                                        }
+
                                         state.mapDirty = true;
-                                        
-                                        if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(x, y, enemyId)).set(state.sharedEnemies[enemyId]);
                                     }
                                     
                                     if (typeof renderInventory === 'function') renderInventory();
                                     if (typeof playerRef !== 'undefined') playerRef.update({ coins: p.coins, bounty: p.bounty || 0, inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : p.inventory });
                                 };
                             }
-                        }, 20); // Small buffer to ensure Syndicate buttons rendered first
+                        }, 20); 
                         
                         return res;
                     };
@@ -470,8 +496,8 @@ window.ExpansionManager.register({
         }
         
         // Add Vault Door to minimap colors
-        if (typeof TILE_COLOR_MAP !== 'undefined') {
-            TILE_COLOR_MAP['🔒'] = [245, 158, 11, 255]; // Golden Yellow
+        if (typeof window.TILE_COLOR_MAP !== 'undefined') {
+            window.TILE_COLOR_MAP['🔒'] = [245, 158, 11, 255]; // Golden Yellow
         }
     }
 });
