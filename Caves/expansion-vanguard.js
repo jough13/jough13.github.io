@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_vanguard_raids",
     name: "The Vanguard (Multiplayer Raids)",
-    version: "1.1", // Upgraded version!
+    version: "1.2", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -37,8 +37,13 @@ window.ExpansionManager.register({
                     if (typeof recalculateDerivedStats === 'function') recalculateDerivedStats();
                     else { state.player.maxHealth += 10; state.player.maxMana += 10; }
                     
-                    window.modifyVital('health', 10);
-                    window.modifyVital('mana', 10);
+                    if (typeof window.modifyVital === 'function') {
+                        window.modifyVital('health', 10);
+                        window.modifyVital('mana', 10);
+                    } else {
+                        state.player.health = state.player.maxHealth;
+                        state.player.mana = state.player.maxMana;
+                    }
                     
                     logMessage("{gold:Cosmic power courses through your veins! (+10 Max HP, +10 Max Mana)}");
                     if (typeof triggerStatAnimation !== 'undefined') {
@@ -85,7 +90,7 @@ window.ExpansionManager.register({
                     state.screenFlash = { color: '#ef4444', alpha: 0.8, decay: 0.02 };
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#a855f7', 40);
 
-                    // PURGE OLD MAP MEMORY & LISTENERS
+                    // 🛡️ STABILITY WIN: Purge Old Map Memory & Listeners
                     if (typeof chunkManager !== 'undefined') {
                         chunkManager.loadedChunks = {};
                         chunkManager.worldState = {};
@@ -119,7 +124,7 @@ window.ExpansionManager.register({
                     logMessage("{cyan:You step through the portal and return to the overworld.}");
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                     
-                    // PURGE RAID MEMORY & LISTENERS
+                    // 🛡️ STABILITY WIN: Purge Raid Memory & Listeners
                     if (typeof chunkManager !== 'undefined') {
                         chunkManager.loadedChunks = {};
                         chunkManager.worldState = {};
@@ -178,22 +183,30 @@ window.ExpansionManager.register({
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(x, y, '#ef4444', 50);
 
                     if (typeof EnemyNetworkManager !== 'undefined' && typeof rtdb !== 'undefined') {
-                        // 1. Spawn the Boss at (0,0) in RTDB
+                        // 🚀 PERFORMANCE WIN: Atomic Batching
+                        // Build a single payload dictionary instead of writing to Firebase 5 separate times!
+                        const spawnPayload = {};
+                        
+                        // 1. Spawn the Boss at (0,0)
                         const eData = window.ENEMY_DATA['👹r'];
                         const newBoss = { ...eData, tile: '👹r', x: 0, y: 0, spawnTime: Date.now() };
-                        rtdb.ref(EnemyNetworkManager.getPath(0, 0, bossId)).set(newBoss);
+                        spawnPayload[EnemyNetworkManager.getPath(0, 0, bossId)] = newBoss;
                         
-                        // 2. GAMEPLAY WIN: Spawn Adds! (Fire Elementals at the 4 pillars)
+                        // 2. Spawn Adds! (Fire Elementals at the 4 pillars)
                         const adds = [[3,3], [12,3], [3,12], [12,12]];
                         const fData = window.ENEMY_DATA['f']; // Fire Elemental
                         if (fData) {
-                            adds.forEach((pos, idx) => {
+                            adds.forEach((pos) => {
                                 const aId = `overworld:${pos[0]},${-pos[1]}`;
                                 const newAdd = { ...fData, tile: 'f', x: pos[0], y: pos[1], spawnTime: Date.now() };
-                                rtdb.ref(EnemyNetworkManager.getPath(pos[0], pos[1], aId)).set(newAdd);
+                                spawnPayload[EnemyNetworkManager.getPath(pos[0], pos[1], aId)] = newAdd;
+                                
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(pos[0], pos[1], '#f97316', 15);
                             });
                         }
+                        
+                        // Execute atomic payload
+                        rtdb.ref().update(spawnPayload).catch(e => console.error("Raid Spawn Sync Error:", e));
                         
                         // 3. Announce to global chat
                         rtdb.ref('chat').push().set({
@@ -212,21 +225,22 @@ window.ExpansionManager.register({
                 flavor: "A massive, glowing chest dropped by the Raid Boss!",
                 lootTable: ['🛡️v', '⚔️v', '💍v', '🍷v', '📜vr', '💎b', '💎', '$']
             }
+        },
+
+        // --- 4. RECIPES ---
+        // 🌟 EXPANDABILITY WIN: Native dictionary injection!
+        craftingRecipes: {
+            "Vanguard Key": {
+                materials: { "Star-Metal Ore": 5, "Elemental Core": 5, "Obsidian Shard": 10 },
+                xp: 500, level: 6
+            }
         }
     },
 
-    // --- 4. ENGINE HOOKS ---
+    // --- 5. ENGINE HOOKS ---
     init: function() {
-        
-        // 1. ADD CRAFTING RECIPE FOR THE KEY
-        if (typeof window.CRAFTING_RECIPES !== 'undefined') {
-            window.CRAFTING_RECIPES["Vanguard Key"] = {
-                materials: { "Star-Metal Ore": 5, "Elemental Core": 5, "Obsidian Shard": 10 },
-                xp: 500, level: 6
-            };
-        }
 
-        // 2. INJECT RAID MAP GENERATOR
+        // 1. INJECT RAID MAP GENERATOR
         if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
             const origGenerateChunk = chunkManager.generateChunk;
             
@@ -295,7 +309,7 @@ window.ExpansionManager.register({
             };
         }
 
-        // 3. INJECT MASSIVE LOOT EXPLOSION ON BOSS DEATH
+        // 2. INJECT MASSIVE LOOT EXPLOSION ON BOSS DEATH
         if (typeof window.generateEnemyLoot === 'function') {
             const origGenLoot = window.generateEnemyLoot;
             
@@ -310,15 +324,23 @@ window.ExpansionManager.register({
                         });
                     }
 
-                    // 🚨 BUG FIX & JUICE WIN: Drop 4 extra chests asynchronously 
-                    // Ensures they sync to RTDB cleanly without blocking the main combat thread.
+                    // 🚨 BUG FIX & JUICE WIN: Drop 4 extra chests safely & asynchronously 
+                    // Ensures they sync to RTDB cleanly without blocking the main combat thread
+                    // and safely checks tiles so it doesn't accidentally overwrite the Exit Portal or Altar!
                     setTimeout(() => {
                         const cx = enemy.x; const cy = enemy.y;
                         if (typeof chunkManager !== 'undefined') {
                             const offsets = [[1,0], [-1,0], [0,1], [0,-1]];
                             for(let i=0; i<4; i++) {
-                                // 2 Hour TTL for Raid Caches
-                                chunkManager.setWorldTile(cx + offsets[i][0], cy + offsets[i][1], '📦r', 2);
+                                const targetX = cx + offsets[i][0];
+                                const targetY = cy + offsets[i][1];
+                                const tileAt = chunkManager.getTile(targetX, targetY);
+                                
+                                // Only drop cache if it's on safe ground (Ash, Floor, or Lava)
+                                if (['d', '.', '🌋'].includes(tileAt)) {
+                                    // 2 Hour TTL for Raid Caches
+                                    chunkManager.setWorldTile(targetX, targetY, '📦r', 2);
+                                }
                             }
                             gameState.mapDirty = true;
                             if (typeof render === 'function') render();
@@ -334,12 +356,12 @@ window.ExpansionManager.register({
             };
         }
 
-        // 4. ADD COLORS TO MINIMAP
-        if (typeof TILE_COLOR_MAP !== 'undefined') {
-            TILE_COLOR_MAP['🌀r'] = [239, 68, 68, 255]; // Red Portal
-            TILE_COLOR_MAP['🚪r'] = [59, 130, 246, 255]; // Blue Exit
-            TILE_COLOR_MAP['🩸r'] = [153, 27, 27, 255]; // Blood Altar
-            TILE_COLOR_MAP['📦r'] = [250, 204, 21, 255]; // Gold Cache
+        // 3. ADD COLORS TO MINIMAP
+        if (typeof window.TILE_COLOR_MAP !== 'undefined') {
+            window.TILE_COLOR_MAP['🌀r'] = [239, 68, 68, 255]; // Red Portal
+            window.TILE_COLOR_MAP['🚪r'] = [59, 130, 246, 255]; // Blue Exit
+            window.TILE_COLOR_MAP['🩸r'] = [153, 27, 27, 255]; // Blood Altar
+            window.TILE_COLOR_MAP['📦r'] = [250, 204, 21, 255]; // Gold Cache
         }
     }
 });
