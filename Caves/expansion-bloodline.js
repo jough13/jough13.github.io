@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_bloodline",
     name: "The Bloodline (Prestige System)",
-    version: "1.1", // Upgraded version!
+    version: "1.2", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -11,7 +11,7 @@ window.ExpansionManager.register({
             '🩸p': {
                 name: 'Bloodline Pendant', type: 'accessory', tile: '🩸',
                 description: "An heirloom of your past lives. It hums with accumulated souls.",
-                _rarity: 'legendary', excludeFromLoot: true,
+                _rarity: 'legendary', excludeFromLoot: true
                 // Stats are dynamically generated when granted during Prestige!
             },
             '📜t': {
@@ -36,7 +36,6 @@ window.ExpansionManager.register({
                     return true;
                 }
             },
-            // NEW EXPANSION CONTENT
             '📜gs': {
                 name: 'Title: God-Slayer', type: 'consumable', tile: '📜', _rarity: 'legendary',
                 description: "Equips the title 'God-Slayer' above your name and in chat.",
@@ -109,6 +108,7 @@ window.ExpansionManager.register({
         },
 
         // --- 3. ASCENDANT SHOP ---
+        // 🌟 EXPANDABILITY WIN: Native dictionary injection!
         shops: {
             ascendant: [
                 { name: 'Title: The Undying', price: 10000, stock: 1 },
@@ -237,6 +237,8 @@ window.ExpansionManager.register({
         document.getElementById('prestigeShopBtn').addEventListener('click', () => {
             document.getElementById('prestigeModal').classList.add('hidden');
             
+            // 🌟 EXPANDABILITY WIN: Native Injection
+            // Shop is perfectly set up and merged into the system!
             if (!gameState.shopStates) gameState.shopStates = {};
             const shopId = 'shop_ascendant';
             
@@ -348,10 +350,20 @@ window.ExpansionManager.register({
                 ammo: null
             };
 
-            // 🚨 BUG FIX WIN: The Spire Ghost Fix
+            // 🚨 BUG FIX WIN: The Spire Ghost Fix & Map Protection
             // Ensure pre-prestige gear isn't accidentally restored if they die in the Spire!
             delete player.spireBackupInv;
             delete player.spireBackupEquip;
+            
+            // Force the player to spawn at the Village (0,0) in the Prime Realm!
+            // If they activated the throne while deep in a dungeon, this prevents them from soft-locking.
+            gameState.mapMode = 'overworld';
+            gameState.currentCaveId = null;
+            gameState.currentCastleId = null;
+            gameState.currentRealm = 0;
+            gameState.realmMutators = [];
+            player.x = 0;
+            player.y = 0;
 
             // 5. Apply Generation Base Vitals Boost
             player.bonusMaxHealth = player.generation * 10;
@@ -378,13 +390,23 @@ window.ExpansionManager.register({
 
             // 7. Save and Render
             if (typeof syncPlayerState === 'function') syncPlayerState();
+            if (typeof updateRegionDisplay === 'function') updateRegionDisplay();
             if (typeof renderStats === 'function') renderStats();
             if (typeof renderEquipment === 'function') renderEquipment();
             if (typeof renderInventory === 'function') renderInventory();
+            
+            // Force re-render of the map at 0,0
+            gameState.mapDirty = true;
             if (typeof render === 'function') render();
             
             if (typeof playerRef !== 'undefined') {
-                await playerRef.set(typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player);
+                // Manually map the exact state to Firebase to guarantee everything resets cleanly
+                const resetPayload = typeof sanitizeForFirebase === 'function' ? sanitizeForFirebase(player) : player;
+                resetPayload.mapMode = 'overworld';
+                resetPayload.currentRealm = 0;
+                resetPayload.realmMutators = [];
+                
+                await playerRef.set(resetPayload);
             }
 
             if (typeof lastValidatedState !== 'undefined') {
@@ -426,7 +448,7 @@ window.ExpansionManager.register({
         // C. END-TURN HOOK (Multiplayer Aura & Passive Regeneration)
         if (typeof window.endPlayerTurn === 'function') {
             const origEndPlayerTurn = window.endPlayerTurn;
-            window.endPlayerTurn = function(updates = {}) {
+            window.endPlayerTurn = function() {
                 
                 const gen = gameState.player.generation || 0;
                 if (gen > 0) {
@@ -440,15 +462,18 @@ window.ExpansionManager.register({
                     if (gameState.playerTurnCount % 10 === 0) {
                         let regenerated = false;
                         if (gameState.player.health < gameState.player.maxHealth) {
-                            window.modifyVital('health', 1);
+                            if (typeof window.modifyVital === 'function') window.modifyVital('health', 1);
+                            else gameState.player.health++;
                             regenerated = true;
                         }
                         if (gameState.player.mana < gameState.player.maxMana) {
-                            window.modifyVital('mana', 1);
+                            if (typeof window.modifyVital === 'function') window.modifyVital('mana', 1);
+                            else gameState.player.mana++;
                             regenerated = true;
                         }
                         if (gameState.player.stamina < gameState.player.maxStamina) {
-                            window.modifyVital('stamina', 1);
+                            if (typeof window.modifyVital === 'function') window.modifyVital('stamina', 1);
+                            else gameState.player.stamina++;
                             regenerated = true;
                         }
                         
@@ -458,7 +483,8 @@ window.ExpansionManager.register({
                     }
                 }
                 
-                origEndPlayerTurn.call(this, updates);
+                // 🚨 STABILITY WIN: Safely apply arguments so updates object is not lost
+                if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
             };
         }
 
