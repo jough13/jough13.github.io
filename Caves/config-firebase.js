@@ -71,7 +71,9 @@ if (typeof firebase === 'undefined') {
                 push: () => ({ set: () => Promise.resolve() }),
                 // Provide a safe fallback mock for RTDB transactions using null to mimic empty nodes
                 transaction: async (cb) => ({ committed: true, snapshot: { val: () => cb(null) } })
-            }) 
+            }),
+            goOnline: () => {},
+            goOffline: () => {}
         }), {
             ServerValue: { TIMESTAMP: Date.now() }
         }) 
@@ -111,7 +113,8 @@ window.getFirestoreDelete = () => firebase.firestore.FieldValue.delete();
 // Expose Network State globally so other scripts can check ping/status easily
 window.FirebaseNetworkState = {
     isConnected: false,
-    serverTimeOffset: 0
+    serverTimeOffset: 0,
+    ping: 0 // Track raw offset as ping
 };
 
 // Global helper for instant online checks without traversing the object
@@ -119,7 +122,12 @@ window.isOnline = () => window.FirebaseNetworkState.isConnected;
 
 // MMO SYNC: Keep track of the offset between the local client clock and the Firebase Server
 rtdb.ref('.info/serverTimeOffset').on('value', function(snap) {
-    window.FirebaseNetworkState.serverTimeOffset = snap.val() || 0;
+    const offset = snap.val() || 0;
+    window.FirebaseNetworkState.serverTimeOffset = offset;
+    window.FirebaseNetworkState.ping = Math.abs(offset);
+    
+    // Dispatch an event so the UI can update a ping meter if desired
+    window.dispatchEvent(new CustomEvent('firebase-ping-updated', { detail: { ping: window.FirebaseNetworkState.ping } }));
 });
 
 // Use this to get the exact millisecond time on the server without an API call
@@ -259,8 +267,8 @@ function handleConnectionEstablished() {
     }
 
     // DEV QoL: Display active ping offset so developers can debug lag
-    const ping = window.FirebaseNetworkState.serverTimeOffset;
-    console.log(`%c🟢 Leyline Resonance Stable. [Offset: ${ping}ms]`, "color: #4ade80; font-weight: bold; font-family: monospace;");
+    const ping = window.FirebaseNetworkState.ping;
+    console.log(`%c🟢 Leyline Resonance Stable. [Ping: ${ping}ms]`, "color: #4ade80; font-weight: bold; font-family: monospace;");
     
     // Only show "Restored" if we already successfully connected once before and lost it
     if (hasInitiallyConnected && !wasConnected) {
@@ -330,9 +338,13 @@ window.addEventListener('offline', () => {
 });
 
 window.addEventListener('online', () => {
-    console.log("%c[AKASHIC ENGINE] Native network restored. Awaiting Leyline WebSocket sync...", "color: #facc15; font-family: monospace;");
-    // We don't call handleConnectionEstablished() here because the Firebase WebSocket still 
-    // needs a few milliseconds to handshake and authenticate. The `.info/connected` listener will trigger it!
+    console.log("%c[AKASHIC ENGINE] Native network restored. Forcing Leyline WebSocket sync...", "color: #facc15; font-family: monospace;");
+    
+    // 🚨 BUG FIX WIN: Force Firebase to aggressively attempt reconnection immediately
+    // rather than waiting for its internal backoff timer to expire!
+    if (typeof rtdb !== 'undefined' && rtdb.goOnline) {
+        rtdb.goOnline();
+    }
 });
 
 // Cache DOM lookups for the auth error display
@@ -503,6 +515,7 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
         const newArr = new Array(obj.size);
         let i = 0;
         for (const val of obj) {
+            // Re-pass the existing WeakSet down the recursive chain to prevent excessive GC allocations!
             newArr[i++] = sanitizeForFirebase(val, seen, depth + 1);
         }
         return newArr;
