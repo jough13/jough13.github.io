@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "the_vanguard_raids",
     name: "The Vanguard (Multiplayer Raids)",
-    version: "1.2", // Upgraded version!
+    version: "1.3", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -104,7 +104,13 @@ window.ExpansionManager.register({
 
                     // Shift to the dedicated Raid Realm
                     state.currentRealm = 'raid_molten';
-                    state.realmMutators = ['lava_oceans']; // Re-use our lava mutator!
+                    state.realmMutators = ['lava_oceans']; 
+                    
+                    // 🚨 ANTI-GRIEFING WIN: Force disable PvP upon entering a raid!
+                    if (state.player.pvpEnabled) {
+                        state.player.pvpEnabled = false;
+                        logMessage("{green:The immense heat of this realm suppresses your bloodlust. PvP is disabled. Stand together, or burn.}");
+                    }
                     
                     // Teleport to the safe zone inside the Raid Arena
                     state.player.x = 0;
@@ -220,15 +226,77 @@ window.ExpansionManager.register({
                     return { inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : inv };
                 }
             },
+            // 🚨 ANTI-GRIEFING WIN: Instanced Raid Loot!
+            // Instead of being a standard 'loot_container' which deletes itself from the server when opened,
+            // this is an anomaly that grants loot but stays on the map. It uses local `lootedTiles` so 
+            // everyone in the raid party can click it once and get their own loot!
             '📦r': {
-                type: 'loot_container', name: 'Vanguard Cache',
+                type: 'anomaly', name: 'Vanguard Cache',
                 flavor: "A massive, glowing chest dropped by the Raid Boss!",
-                lootTable: ['🛡️v', '⚔️v', '💍v', '🍷v', '📜vr', '💎b', '💎', '$']
+                onInteract: (state, x, y) => {
+                    const tileId = `raid_cache_${x}_${y}`;
+                    
+                    if (state.lootedTiles.has(tileId)) {
+                        logMessage("{gray:You have already claimed your share of the raid loot from this chest.}");
+                        if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
+                        return null;
+                    }
+
+                    logMessage("{gold:You pry open the Vanguard Cache...}");
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playNoise(0.2, 0.1, 500); // Rummage sound
+                    
+                    // Base Gold
+                    const goldAmount = 500 + Math.floor(Math.random() * 500);
+                    state.player.coins += goldAmount;
+                    logMessage(`{gold:You found ${goldAmount} Gold!}`);
+                    if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+
+                    // Loot Table
+                    const lootTable = ['🛡️v', '⚔️v', '💍v', '🍷v', '📜vr', '💎b', '💎b', '💎'];
+                    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                    
+                    // Give 2 Items!
+                    for(let i=0; i<2; i++) {
+                        const itemKey = lootTable[Math.floor(Math.random() * lootTable.length)];
+                        const template = window.ITEM_DATA[itemKey];
+                        
+                        if (template && state.player.inventory.length < invCap) {
+                            const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
+                            newItem.templateId = itemKey;
+                            newItem.quantity = 1;
+                            newItem.isEquipped = false;
+                            newItem.effect = template.effect || null;
+                            newItem.onHit = template.onHit || null;
+                            
+                            state.player.inventory.push(newItem);
+                            logMessage(`You found: {purple:${template.name}}`);
+                            if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
+                        } else if (template) {
+                            logMessage(`{red:You found a ${template.name}, but your pack is full!}`);
+                        }
+                    }
+
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(x, y, '#facc15', 20);
+                        ParticleSystem.createFloatingText(x, y, "+LOOT", "#facc15");
+                    }
+
+                    // Mark as looted locally! DO NOT delete the tile from the world!
+                    state.lootedTiles.add(tileId);
+                    
+                    if (typeof renderInventory === 'function') renderInventory();
+                    if (typeof renderStats === 'function') renderStats();
+                    
+                    return { 
+                        inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : state.player.inventory, 
+                        coins: state.player.coins,
+                        lootedTiles: Object.fromEntries(state.lootedTiles)
+                    };
+                }
             }
         },
 
         // --- 4. RECIPES ---
-        // 🌟 EXPANDABILITY WIN: Native dictionary injection!
         craftingRecipes: {
             "Vanguard Key": {
                 materials: { "Star-Metal Ore": 5, "Elemental Core": 5, "Obsidian Shard": 10 },
@@ -272,8 +340,6 @@ window.ExpansionManager.register({
                         }
                         
                         // Place Interactive Objects using World Coordinates!
-                        // In chunk 0,0, world coords match array indices.
-                        // We place the Altar at (8, 4) and the Exit at (8, 14)
                         chunkData[4][8] = '🩸r'; 
                         chunkData[14][8] = '🚪r'; 
                         
@@ -292,7 +358,7 @@ window.ExpansionManager.register({
                     const chunkId = `${chunkX},${chunkY}`;
                     const chunkData = this.loadedChunks[chunkId];
                     
-                    // 🚨 ROBUSTNESS WIN: Safe PRNG fallback
+                    // Safe PRNG fallback
                     const random = (typeof Alea !== 'undefined' && typeof stringToSeed !== 'undefined') 
                         ? Alea(stringToSeed(`vanguard_spawn_${chunkId}`)) 
                         : Math.random;
@@ -309,7 +375,45 @@ window.ExpansionManager.register({
             };
         }
 
-        // 2. INJECT MASSIVE LOOT EXPLOSION ON BOSS DEATH
+        // 2. LORE & JUCIE WIN: ATMOSPHERIC RAID DAMAGE
+        // Hooks into the player turn end to deal ambient heat damage if they lack fire resistance!
+        if (typeof window.ExpansionManager !== 'undefined') {
+            window.ExpansionManager.triggerHook = window.ExpansionManager.triggerHook || function(){}; // Failsafe
+            
+            // If the event bus is ready, register the hook natively!
+            if (window.ExpansionManager.activeHooks) {
+                if (!window.ExpansionManager.activeHooks['onTurnEnd']) window.ExpansionManager.activeHooks['onTurnEnd'] = [];
+                
+                window.ExpansionManager.activeHooks['onTurnEnd'].push({
+                    id: 'the_vanguard_raids',
+                    func: (context) => {
+                        const state = typeof gameState !== 'undefined' ? gameState : context.gameState;
+                        if (state && state.currentRealm === 'raid_molten' && state.playerTurnCount % 10 === 0) {
+                            
+                            // Visual embers
+                            if (typeof ParticleSystem !== 'undefined' && Math.random() < 0.3) {
+                                const px = state.player.x + (Math.random() * 10 - 5);
+                                const py = state.player.y + (Math.random() * 10 - 5);
+                                ParticleSystem.spawn(px, py, '#f97316', 'sparkle');
+                            }
+                            
+                            // Ambient Heat Damage
+                            const hasArmor = state.player.equipment.armor && state.player.equipment.armor.name.includes('Dragonscale');
+                            const hasPotion = state.player.fireResistTurns > 0;
+                            
+                            if (!hasArmor && !hasPotion && !state.godMode) {
+                                logMessage("{orange:The ambient heat of the Molten Core sears your lungs! (-2 HP)}");
+                                if (typeof window.modifyVital === 'function') window.modifyVital('health', -2);
+                                state.screenShake = 5;
+                                if (typeof triggerStatFlash !== 'undefined') triggerStatFlash(document.getElementById('healthDisplay'), false);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // 3. INJECT MASSIVE LOOT EXPLOSION ON BOSS DEATH
         if (typeof window.generateEnemyLoot === 'function') {
             const origGenLoot = window.generateEnemyLoot;
             
@@ -324,9 +428,10 @@ window.ExpansionManager.register({
                         });
                     }
 
-                    // 🚨 BUG FIX & JUICE WIN: Drop 4 extra chests safely & asynchronously 
-                    // Ensures they sync to RTDB cleanly without blocking the main combat thread
-                    // and safely checks tiles so it doesn't accidentally overwrite the Exit Portal or Altar!
+                    // 🚨 BUG FIX & ANTI-GRIEFING WIN: Safe Instanced Loot Drops
+                    // We spawn 5 instanced `📦r` chests (one in the center, 4 surrounding).
+                    // Because they are anomalies that track looted state locally, every player
+                    // in the raid can open all 5 chests on their own screen!
                     setTimeout(() => {
                         const cx = enemy.x; const cy = enemy.y;
                         if (typeof chunkManager !== 'undefined') {
@@ -338,7 +443,7 @@ window.ExpansionManager.register({
                                 
                                 // Only drop cache if it's on safe ground (Ash, Floor, or Lava)
                                 if (['d', '.', '🌋'].includes(tileAt)) {
-                                    // 2 Hour TTL for Raid Caches
+                                    // 2 Hour TTL for Raid Caches so they eventually clean up the server memory
                                     chunkManager.setWorldTile(targetX, targetY, '📦r', 2);
                                 }
                             }
@@ -356,7 +461,7 @@ window.ExpansionManager.register({
             };
         }
 
-        // 3. ADD COLORS TO MINIMAP
+        // 4. ADD COLORS TO MINIMAP
         if (typeof window.TILE_COLOR_MAP !== 'undefined') {
             window.TILE_COLOR_MAP['🌀r'] = [239, 68, 68, 255]; // Red Portal
             window.TILE_COLOR_MAP['🚪r'] = [59, 130, 246, 255]; // Blue Exit
