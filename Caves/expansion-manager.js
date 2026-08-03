@@ -8,9 +8,30 @@ window.ExpansionManager = {
     // 🚨 ARCHITECTURE WIN: Track full metadata, not just strings!
     expansions: new Map(),
     
-    // API Helper: Allows expansions to alter behavior if they know another specific expansion is running!
+    // 🌟 EXPANDABILITY WIN: Global Event Bus for Lifecycle Hooks
+    // Allows expansions to passively listen to core game events without monkey-patching!
+    activeHooks: {},
+
+    // API Helper: Allows expansions to alter behavior if they know another specific expansion is running
     has: function(expansionId) {
         return this.expansions.has(expansionId);
+    },
+
+    // 🌟 EXPANDABILITY WIN: Centralized Hook Trigger
+    // The core engine can call ExpansionManager.triggerHook('onPlayerDeath', gameState) 
+    // and all listening expansions will fire automatically.
+    triggerHook: function(hookName, context = {}) {
+        if (!this.activeHooks[hookName]) return context;
+        
+        for (let i = 0; i < this.activeHooks[hookName].length; i++) {
+            const hook = this.activeHooks[hookName][i];
+            try {
+                hook.func(context);
+            } catch (err) {
+                console.error(`%c[AKASHIC ENGINE] Hook Execution Failed in '${hook.id}' for event '${hookName}':`, "color: #ef4444;", err);
+            }
+        }
+        return context;
     },
 
     register: function(exp) {
@@ -20,12 +41,18 @@ window.ExpansionManager = {
             return;
         }
 
+        // 🚨 ROBUSTNESS WIN: Version Conflict Guard
         if (this.has(exp.id)) {
-            console.warn(`%c[AKASHIC ENGINE] Timeline Collision: Expansion '${exp.id}' is already woven into reality. Skipping.`, "color: #facc15; font-weight: bold;");
-            return;
+            const existing = this.expansions.get(exp.id);
+            if (parseFloat(exp.version || 0) <= parseFloat(existing.version || 0)) {
+                console.warn(`%c[AKASHIC ENGINE] Timeline Collision: Expansion '${exp.id}' (v${existing.version}) is already woven into reality. Skipping duplicate/older load.`, "color: #facc15; font-weight: bold;");
+                return;
+            } else {
+                console.log(`%c[AKASHIC ENGINE] Upgrading Expansion '${exp.id}' from v${existing.version} -> v${exp.version}`, "color: #3b82f6; font-style: italic;");
+            }
         }
 
-        // 🚨 ROBUSTNESS WIN: Dependency Checker
+        // Dependency Checker
         // Prevents hard crashes if an expansion relies on items/systems from an expansion that was removed!
         if (exp.requires && Array.isArray(exp.requires)) {
             for (let i = 0; i < exp.requires.length; i++) {
@@ -41,8 +68,23 @@ window.ExpansionManager = {
         
         const data = exp.data || {};
 
-        // --- 2. INJECT DICTIONARIES (O(1) Merge) ---
-        // 🌟 EXPANDABILITY WIN: Natively supports crafting, cooking, and alchemy recipes!
+        // --- 2. LORE & ATMOSPHERE INJECTION ---
+        // 🌟 LORE WIN: Dynamically append new color-coded keywords to the game's auto-tagging system!
+        if (data.loreKeywords && typeof window.LORE_KEYWORDS !== 'undefined') {
+            Object.assign(window.LORE_KEYWORDS, data.loreKeywords);
+            
+            // Safely push to the compiled regex cache so it works instantly without a reload
+            if (typeof window._COMPILED_LORE_REGEXES !== 'undefined' && Array.isArray(window._COMPILED_LORE_REGEXES)) {
+                for (const [keyword, color] of Object.entries(data.loreKeywords)) {
+                    window._COMPILED_LORE_REGEXES.push({
+                        rx: new RegExp(`\\b(${keyword}s?)\\b`, 'gi'),
+                        color: color
+                    });
+                }
+            }
+        }
+
+        // --- 3. INJECT DICTIONARIES (O(1) Merge) ---
         const dictionaries = {
             items: 'ITEM_DATA',
             enemies: 'ENEMY_DATA',
@@ -74,8 +116,7 @@ window.ExpansionManager = {
             }
         }
 
-        // --- 3. INJECT GLOBAL ARRAYS ---
-        // LORE WIN: Allows expansions to effortlessly sprinkle ambient text into the world
+        // --- 4. INJECT GLOBAL ARRAYS ---
         const globalArrays = {
             stoneMessages: 'LORE_STONE_MESSAGES',
             journalPages: 'RANDOM_JOURNAL_PAGES',
@@ -90,7 +131,6 @@ window.ExpansionManager = {
         for (const [localKey, globalKey] of Object.entries(globalArrays)) {
             if (data[localKey] && Array.isArray(data[localKey])) {
                 // 🚨 STABILITY WIN: Strict Type Enforcement
-                // Guarantees the target is actually an Array before we start pushing to it!
                 if (typeof window[globalKey] === 'undefined' || !Array.isArray(window[globalKey])) {
                     window[globalKey] = [];
                 }
@@ -98,32 +138,26 @@ window.ExpansionManager = {
                 const targetArray = window[globalKey];
                 const newItems = data[localKey];
                 
-                // 🚨 ROBUSTNESS & BUG FIX WIN: Safe Iterative Push
-                // Replaced the ES6 spread operator `targetArray.push(...newItems)` with a strict loop.
-                // If an expansion pushes an array with 100,000+ lore entries, the spread operator will
-                // instantly crash the V8 Engine with a "Maximum call stack size exceeded" error!
+                // Safe Iterative Push avoids "Maximum call stack size exceeded" on huge arrays
                 for (let i = 0; i < newItems.length; i++) {
                     targetArray.push(newItems[i]);
                 }
             }
         }
 
-        // --- 4. INJECT SHOPS (With Smart Deduplication) ---
+        // --- 5. INJECT SHOPS (With Smart Deduplication) ---
         if (data.shops) {
             for (const shopKey in data.shops) {
                 const targetGlobal = shopKey === 'general' ? 'SHOP_INVENTORY' : `${shopKey.toUpperCase()}_INVENTORY`;
                 
-                // If the array doesn't exist globally yet, create it!
                 if (typeof window[targetGlobal] === 'undefined' || !Array.isArray(window[targetGlobal])) {
                     window[targetGlobal] = [];
                 }
 
-                // 🚨 BUG FIX WIN: Deduplicate Shop Injections
-                // If two expansions add 'Healing Potion', merge their stock safely instead of duplicating UI rows!
                 data.shops[shopKey].forEach(newItem => {
                     const existingItem = window[targetGlobal].find(i => i.name === newItem.name);
                     if (existingItem) {
-                        // Accumulate stock gracefully
+                        // Accumulate stock gracefully instead of rendering duplicates
                         existingItem.stock = (existingItem.stock || 0) + (newItem.stock || 0);
                     } else {
                         // Safe clone to prevent memory leaks from the expansion object bleeding into live shops
@@ -134,11 +168,20 @@ window.ExpansionManager = {
             }
         }
 
-        // --- 5. CUSTOM INITIALIZATION HOOK ---
-        // Runs arbitrary code (like modifying the Homestead menus or tweaking World Gen natively)
+        // --- 6. REGISTER LIFECYCLE HOOKS ---
+        if (exp.hooks) {
+            for (const [hookName, hookFunc] of Object.entries(exp.hooks)) {
+                if (typeof hookFunc === 'function') {
+                    if (!this.activeHooks[hookName]) this.activeHooks[hookName] = [];
+                    this.activeHooks[hookName].push({ id: exp.id, func: hookFunc });
+                }
+            }
+        }
+
+        // --- 7. CUSTOM INITIALIZATION HOOK ---
         if (typeof exp.init === 'function') {
             try {
-                // ⏱️ PERFORMANCE PROFILER: Track exact millisecond execution time
+                // ⏱️ PERFORMANCE PROFILER
                 const startTime = performance.now();
                 exp.init();
                 const endTime = performance.now();
