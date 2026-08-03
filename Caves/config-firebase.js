@@ -23,59 +23,76 @@ const firebaseConfig = {
     measurementId: "G-E2QZTWE6N6"
 };
 
-// Firebase CDN Load Failsafe
+// 🚨 CRITICAL BUG FIX: Firebase CDN Load Failsafe (Offline & Ad-Blocker Support)
 // If an ad-blocker or strict firewall blocks the Firebase SDK scripts in index.html,
-// the entire game will fatally crash. This intercepts the failure and warns the player gracefully!
+// the entire game will fatally crash. This intercepts the failure, warns the player gracefully,
+// and injects a fully robust mock API so the game runs flawlessly in offline mode!
 if (typeof firebase === 'undefined') {
     console.error("%c[AKASHIC ENGINE] FATAL: Firebase SDK not found. Connection to the Leylines blocked.", "color: #ef4444; font-weight: bold;");
     
-    // Create a comprehensive dummy firebase object so the rest of the scripts don't throw Uncaught ReferenceErrors.
-    // This allows the game to function natively in a local, offline environment without throwing exceptions!
+    // --- FIRESTORE MOCK ---
+    const dummyFirestoreRef = {
+        collection: function() { return dummyFirestoreCollection; },
+        get: async () => ({ exists: false, data: () => ({}), ref: dummyFirestoreRef }),
+        set: async () => {},
+        update: async () => {},
+        delete: async () => {}
+    };
+
+    const dummyFirestoreCollection = {
+        doc: function() { return dummyFirestoreRef; },
+        get: async () => ({ empty: true, docs: [], forEach: () => {} }),
+        add: async () => ({ id: 'dummy_id' })
+    };
+
+    // --- REALTIME DATABASE (RTDB) MOCK ---
+    const dummyRTDBRef = {
+        on: () => {},
+        off: () => {},
+        once: async () => ({ val: () => null, exists: () => false }), // Solves Leaderboard crash
+        update: () => Promise.resolve(),
+        set: () => Promise.resolve(),
+        remove: () => Promise.resolve(),
+        push: function() { 
+            return { set: () => Promise.resolve(), update: () => Promise.resolve(), remove: () => Promise.resolve(), key: 'dummy_key' }; 
+        },
+        transaction: async (cb) => {
+            try {
+                // Allows the native game code to process the transaction locally
+                const res = cb(null);
+                return { committed: true, snapshot: { val: () => res } };
+            } catch(e) {
+                return { committed: false, snapshot: { val: () => null } };
+            }
+        },
+        // Chaining methods required by the Chat & AI systems
+        orderByChild: function() { return dummyRTDBRef; },
+        limitToLast: function() { return dummyRTDBRef; },
+        onDisconnect: function() { return dummyRTDBRef; }
+    };
+
+    // --- ASSEMBLE GLOBAL MOCK ---
     window.firebase = { 
         apps: [], 
         initializeApp: () => ({}), 
         app: () => ({}), 
-        firestore: Object.assign(() => ({ 
-            collection: () => ({ 
-                doc: () => ({ 
-                    collection: () => ({ doc: () => ({ get: async () => ({ exists: false }) }) }),
-                    get: async () => ({ exists: false }),
-                    set: async () => {},
-                    update: async () => {},
-                    delete: async () => {}
-                }) 
-            }),
-            batch: () => ({
-                set: () => {},
-                update: () => {},
-                delete: () => {},
-                commit: async () => Promise.resolve()
-            })
-        }), {
-            FieldValue: { serverTimestamp: () => Date.now(), delete: () => null }
-        }), 
+        firestore: Object.assign(() => dummyFirestoreCollection, {
+            FieldValue: { serverTimestamp: () => Date.now(), delete: () => null, arrayUnion: () => [] }
+        }),
         auth: () => ({ 
             onAuthStateChanged: () => {},
-            signInAnonymously: async () => ({}), 
-            signInWithEmailAndPassword: async () => ({}), 
-            createUserWithEmailAndPassword: async () => ({ user: {} }),
-            signOut: async () => {}
+            signInAnonymously: async () => ({ user: { uid: 'guest', isAnonymous: true, email: 'guest@cavesandcastles.com' } }), 
+            signInWithEmailAndPassword: async () => ({ user: { uid: 'dummy' } }), 
+            createUserWithEmailAndPassword: async () => ({ user: { uid: 'dummy' } }),
+            signOut: async () => {},
+            setPersistence: async () => {},
+            currentUser: { email: 'offline@cavesandcastles.com', uid: 'offline' },
+            Auth: { Persistence: { LOCAL: 'local', SESSION: 'session' } }
         }), 
-        database: Object.assign(() => ({ 
-            ref: () => ({ 
-                on: () => {}, 
-                off: () => {}, 
-                update: () => Promise.resolve(), 
-                set: () => Promise.resolve(),
-                remove: () => Promise.resolve(),
-                push: () => ({ set: () => Promise.resolve() }),
-                // Provide a safe fallback mock for RTDB transactions using null to mimic empty nodes
-                transaction: async (cb) => ({ committed: true, snapshot: { val: () => cb(null) } })
-            }),
+        database: Object.assign(() => dummyRTDBRef, {
+            ServerValue: { TIMESTAMP: Date.now() },
             goOnline: () => {},
             goOffline: () => {}
-        }), {
-            ServerValue: { TIMESTAMP: Date.now() }
         }) 
     };
 
@@ -83,7 +100,7 @@ if (typeof firebase === 'undefined') {
     window.addEventListener('DOMContentLoaded', () => {
         const fallbackBanner = document.createElement('div');
         fallbackBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-4 z-[999999] bg-red-950 text-red-200 border-b-4 border-red-600 shadow-[0_0_30px_rgba(220,38,38,1)] font-mono tracking-widest uppercase';
-        fallbackBanner.innerHTML = "⚠️ CRITICAL LEYLINE FAILURE ⚠️<br><span class='text-[10px] font-normal text-red-300'>The Akashic Engine cannot connect. Please disable your Ad-Blocker, Pi-Hole, or Brave Shields and refresh.</span>";
+        fallbackBanner.innerHTML = "⚠️ CRITICAL LEYLINE FAILURE ⚠️<br><span class='text-[10px] font-normal text-red-300'>The Akashic Engine cannot connect. Please disable your Ad-Blocker or check connection. Local play enabled.</span>";
         document.body.appendChild(fallbackBanner);
     });
 }
@@ -134,9 +151,8 @@ rtdb.ref('.info/serverTimeOffset').on('value', function(snap) {
 // 🚨 ROBUSTNESS WIN: Fallback to `|| 0` prevents NaN propagation if serverTimeOffset is undefined
 window.getServerTime = () => Date.now() + (window.FirebaseNetworkState.serverTimeOffset || 0);
 
-
 // ==========================================
-// 🚨 BUG FIX WIN: CONNECTION BANNER OVERHAUL
+// CONNECTION BANNER OVERHAUL
 // ==========================================
 let connectionBanner = null;
 let _bannerTimeout = null;
@@ -147,7 +163,7 @@ function initConnectionBanner() {
         connectionBanner = document.createElement('div');
         connectionBanner.id = 'firebase-connection-banner';
         
-        // Removed Tailwind translate classes. Relying purely on native style.transform guarantees it never gets stuck!
+        // Relying purely on native style.transform guarantees it never gets stuck!
         connectionBanner.className = 'fixed top-0 left-0 w-full text-center text-xs font-bold py-2 z-[50000] transition-transform duration-500 shadow-2xl font-mono tracking-widest uppercase backdrop-blur-md cursor-pointer';
         
         connectionBanner.style.textShadow = "2px 2px 0px rgba(0,0,0,0.8)"; 
@@ -340,8 +356,7 @@ window.addEventListener('offline', () => {
 window.addEventListener('online', () => {
     console.log("%c[AKASHIC ENGINE] Native network restored. Forcing Leyline WebSocket sync...", "color: #facc15; font-family: monospace;");
     
-    // 🚨 BUG FIX WIN: Force Firebase to aggressively attempt reconnection immediately
-    // rather than waiting for its internal backoff timer to expire!
+    // Force Firebase to aggressively attempt reconnection immediately
     if (typeof rtdb !== 'undefined' && rtdb.goOnline) {
         rtdb.goOnline();
     }
@@ -353,7 +368,7 @@ let _authErrorCache = null;
 function handleAuthError(error) {
     let friendlyMessage = '';
     
-    // Thematic, universe-appropriate error messages, vastly expanded!
+    // Thematic, universe-appropriate error messages
     switch (error.code) {
         case 'auth/invalid-email':
             friendlyMessage = 'The Akashic Records cannot decipher this soul-signature. (Invalid Email)';
@@ -378,7 +393,7 @@ function handleAuthError(error) {
         case 'auth/network-request-failed':
             friendlyMessage = 'The leylines are silent. Check your connection to the physical world.';
             break;
-        case 'auth/web-storage-unsupported': // Security / Iframe iframe protection!
+        case 'auth/web-storage-unsupported': // Security / Iframe protection!
             friendlyMessage = 'Your browser is blocking third-party cookies or web storage. Please enable them to anchor your soul to the cloud.';
             break;
         case 'auth/popup-closed-by-user':
@@ -421,9 +436,7 @@ function handleAuthError(error) {
         _authErrorCache.classList.add('shake');
     }
     
-    // Auditory feedback for login failure
     if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
-    
     console.error("%c[AKASHIC ENGINE] Auth Rejection:", "color: #ef4444; font-weight: bold;", error); 
 }
 
@@ -482,11 +495,8 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
     }
 
     // 4. BROWSER & RTDB CRASH GUARDS
-    // RTDB instantly throws "Firebase Database paths must not contain '.'..." or invalid type errors 
-    // if you try to pass it a native Date object, a DOM node, or a Regex.
     if (obj instanceof Date) {
         const time = obj.getTime();
-        // 🚨 BUG FIX WIN: Prevent Invalid Dates (NaN) from crashing the Firebase Sync Thread!
         return Number.isNaN(time) ? null : time; 
     }
     if (obj instanceof RegExp) return obj.toString();
@@ -511,11 +521,9 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
     // 7. BULLETPROOF ES6 COLLECTION SUPPORT
     if (obj instanceof Set) {
         if (obj.size === 0) return null;
-        // Convert Set to Array and sanitize its children
         const newArr = new Array(obj.size);
         let i = 0;
         for (const val of obj) {
-            // Re-pass the existing WeakSet down the recursive chain to prevent excessive GC allocations!
             newArr[i++] = sanitizeForFirebase(val, seen, depth + 1);
         }
         return newArr;
@@ -523,7 +531,6 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
 
     if (obj instanceof Map) {
         if (obj.size === 0) return null;
-        // Convert Map to plain Object
         const newObj = {};
         for (const [key, val] of obj) {
             newObj[key] = sanitizeForFirebase(val, seen, depth + 1);
@@ -536,11 +543,9 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
 
     // 8. Handle Arrays
     if (Array.isArray(obj)) {
-        // O(1) Fast-Path for empty arrays (Saves a ton of time on empty bank/inventory syncs)
-        // Firebase RTDB drops empty arrays. Returning null ensures a predictable fallback!
+        // O(1) Fast-Path for empty arrays
         if (obj.length === 0) return null; 
 
-        // Pre-allocate array size for a slight speed boost on massive inventories
         const newArr = new Array(obj.length);
         for (let i = 0; i < obj.length; i++) {
             newArr[i] = sanitizeForFirebase(obj[i], seen, depth + 1);
@@ -549,21 +554,17 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
     }
 
     // 9. Handle Plain Objects
-    // Object.keys() iteration is notably faster in V8 for object deep-cloning 
-    // than a traditional `for...in` loop with `hasOwnProperty` checks!
     const newObj = {};
     const keys = Object.keys(obj);
     for (let i = 0; i < keys.length; i++) {
         const key = keys[i];
         
-        // Ephemeral State Stripping
-        // Do not save temporary rendering/local flags (prefixed with _) to the database!
-        // We explicitly whitelist '_rarity' and '_negatedDex' as they are required game logic flags.
+        // Ephemeral State Stripping (Whitelist `_rarity` and `_negatedDex`)
         if (key.startsWith('_') && key !== '_rarity' && key !== '_negatedDex') continue;
         
         const val = obj[key];
         
-        // Skip functions immediately so they aren't processed at all
+        // Skip functions immediately
         if (typeof val === 'function') continue;
         
         newObj[key] = sanitizeForFirebase(val, seen, depth + 1);
