@@ -109,7 +109,7 @@ window._statColorCache = {
 // This locks the Hidden Class in the browser's JavaScript engine, making state lookups incredibly fast.
 const gameState = {
     // --- System & Engine State ---
-    saveVersion: "0.3.0", // Bumped version for engine upgrades
+    saveVersion: "0.3.0", 
     initialEnemiesLoaded: false,
     mapDirty: true,
     
@@ -160,8 +160,8 @@ const gameState = {
         className: null,      
         classEvolved: false,
         
-        alignment: 0,         // LORE WIN: -100 (Pure Evil) to 100 (Pure Good)
-        deity: null,          // LORE WIN: Religion/Patron tracking
+        alignment: 0,         
+        deity: null,          
         
         titles: [],           
         activeTitle: null,    
@@ -176,8 +176,8 @@ const gameState = {
         isBoating: false,     
         isSailing: false,     
         isMounted: false,
-        isFishing: false,     // Interaction lock flag
-        isCrafting: false,    // Interaction lock flag
+        isFishing: false,     
+        isCrafting: false,    
         mountName: null,      
         
         chatBubble: null,     
@@ -251,7 +251,7 @@ const gameState = {
         weatherIntensity: 0,
         weatherDuration: 0,
         statusImmunities: [], 
-        activeBuffs: {},      // Expandability dict for arbitrary future buffs
+        activeBuffs: {},      
 
         reputation: {
             merchants_guild: 0,         
@@ -308,12 +308,12 @@ const gameState = {
         companion: null,       
         tutorialProgress: 0,   
         
-        // Comprehensive Lifetime Metrics for Anti-Cheat & Achievements
+        // 🌟 EXPANDABILITY WIN: Comprehensive Lifetime Metrics for Anti-Cheat & Achievements
         achievements: [],
-        playtime: 0,          // Total seconds logged
+        playtime: 0,          
         metrics: {
-            highestLevel: 1,      // Added for Leaderboard persistence
-            deepestFloor: 1,      // Added for Leaderboard persistence
+            highestLevel: 1,      
+            deepestFloor: 1,      
             totalKills: 0,
             bossesDefeated: 0,
             totalDeaths: 0,
@@ -358,7 +358,7 @@ const gameState = {
     overworldExit: null,      
     activeTreasure: null,   
     
-    activeInvestigation: null, // Tracks story coordinates and event IDs
+    activeInvestigation: null, 
     
     lootedTiles: new Map(),
     discoveredRegions: new Set(),
@@ -438,6 +438,7 @@ window.modifyVital = function(vital, rawAmount) {
     // 🚨 BUG FIX & EXPANDABILITY WIN: Centralized God Mode
     // Universally intercepts ALL negative vital changes. This prevents the player from dying 
     // to edge-cases like falling off the skyrealm, drowning, or starving while debugging!
+    // We ALSO block hunger/thirst drains so the UI doesn't spam the dev with starvation warnings!
     if (amount < 0 && gameState.godMode) {
         return 0;
     }
