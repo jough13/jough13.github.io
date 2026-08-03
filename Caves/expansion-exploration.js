@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "exploration_expanded",
     name: "Expanded Exploration",
-    version: "1.2", // Upgraded version!
+    version: "1.3", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -15,6 +15,25 @@ window.ExpansionManager.register({
             '🪵e': { 
                 name: 'Elder Heartwood', type: 'trade', tile: '🪵', 
                 description: "Wood that hums with ancient, verdant magic.", value: 150, _rarity: 'epic' 
+            },
+            '💧o': {
+                name: 'Oasis Water', type: 'consumable', tile: '💧',
+                description: "Pristine water from a deep underground spring. {blue:+50 Thirst}, {green:+5 HP}",
+                _rarity: 'uncommon',
+                effect: (state) => {
+                    if (state.player.thirst >= state.player.maxThirst && state.player.health >= state.player.maxHealth) {
+                        logMessage("You are completely refreshed.");
+                        return false;
+                    }
+                    window.modifyVital('thirst', 50);
+                    window.modifyVital('health', 5);
+                    logMessage("{blue:The water is perfectly crisp and restorative. (+50 Thirst, +5 HP)}");
+                    if (typeof triggerStatAnimation !== 'undefined') {
+                        triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+                        triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+                    }
+                    return true;
+                }
             }
         },
 
@@ -43,11 +62,16 @@ window.ExpansionManager.register({
                 name: 'Scorched Sinkhole',
                 flavor: "A collapsed sinkhole emitting waves of blistering heat.",
                 getCaveId: (x, y) => `micro_scorch_${x}_${y}`
+            },
+            '🏝️g': {
+                type: 'dungeon_entrance',
+                name: 'Oasis Grotto',
+                flavor: "A hidden underground spring surrounded by glowing desert flora.",
+                getCaveId: (x, y) => `micro_oasis_${x}_${y}`
             }
         },
 
         // --- 3. CUSTOM MICRO-DUNGEON ROOMS ---
-        // 🌟 EXPANDABILITY WIN: Defined natively inside the expansion data payload!
         roomTemplates: {
             "Micro Spider Den": {
                 width: 5, height: 5,
@@ -64,6 +88,10 @@ window.ExpansionManager.register({
             "Micro Lava Vent": {
                 width: 5, height: 5,
                 map: [' WWWWW ', 'W🔥.🔥W', 'W..f..W', 'W🔥.🔥W', ' WWWWW ']
+            },
+            "Micro Oasis Grotto": {
+                width: 5, height: 5,
+                map: [' WWWWW ', 'W🌿.🌿W', 'W.~🐸~W', 'W🌿.🌿W', ' WWWWW ']
             }
         }
     },
@@ -103,6 +131,10 @@ window.ExpansionManager.register({
                         themeKey = 'FIRE';
                         roomKey = 'Micro Lava Vent';
                         bossTile = 'f'; // Fire Elemental
+                    } else if (caveId.includes('oasis')) {
+                        themeKey = 'SUNKEN';
+                        roomKey = 'Micro Oasis Grotto';
+                        bossTile = '🐸'; // Giant Toad
                     }
                     
                     this.caveThemes[caveId] = themeKey;
@@ -121,7 +153,6 @@ window.ExpansionManager.register({
                     this.caveEnemies[caveId] = [];
                     
                     // 🚨 ROBUSTNESS WIN: Safe Entity Instantiator Fallback
-                    // In case the core engine renames `_createInstancedEnemy` in a future update!
                     const createEntity = typeof this._createInstancedEnemy === 'function' 
                         ? this._createInstancedEnemy.bind(this) 
                         : (id, x, y, tile, scaled, template) => ({ id, x, y, tile, name: scaled.name, health: scaled.maxHealth, maxHealth: scaled.maxHealth, attack: scaled.attack, defense: scaled.defense || 0, xp: scaled.xp, loot: template.loot });
@@ -135,12 +166,10 @@ window.ExpansionManager.register({
                             if (t === 'W') finalTile = theme.wall;
                             else if (t === 'F' || t === '.') finalTile = theme.floor;
                             else if (typeof window.ENEMY_DATA !== 'undefined' && window.ENEMY_DATA[t]) {
-                                // Convert enemy markers to floor, and spawn the entity
                                 finalTile = theme.floor;
                                 const tData = window.ENEMY_DATA[t];
                                 const eId = `${caveId}:${rx+1},${ry+1}`;
                                 
-                                // Boost their stats slightly for the micro-dungeon
                                 const scaled = { ...tData, maxHealth: Math.floor((tData.maxHealth || 10) * 1.5), xp: (tData.xp || 5) * 2 };
                                 this.caveEnemies[caveId].push(createEntity(eId, rx+1, ry+1, t, scaled, tData));
                             }
@@ -153,7 +182,6 @@ window.ExpansionManager.register({
                     map[Math.floor(mapHeight/2)][Math.floor(mapWidth/2)] = bossTile;
                     const bData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA[bossTile] : null;
                     if (bData) {
-                        // Massive Boss Stat scaling
                         const bossScaled = { 
                             ...bData, 
                             isBoss: true, 
@@ -166,6 +194,7 @@ window.ExpansionManager.register({
                         // Inject unique drops onto the boss based on the dungeon type
                         if (themeKey === 'FUNGAL') bossScaled.loot = '🕸️g';
                         if (themeKey === 'OVERGROWN') bossScaled.loot = '🪵e';
+                        if (themeKey === 'SUNKEN') bossScaled.loot = '💧o';
 
                         this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, Math.floor(mapWidth/2), Math.floor(mapHeight/2), bossTile, bossScaled, bData));
                     }
@@ -180,7 +209,6 @@ window.ExpansionManager.register({
                     return map;
                 }
                 
-                // If it's a normal cave, run the original generator!
                 return origGenerateCave.call(this, caveId);
             };
         }
@@ -188,9 +216,6 @@ window.ExpansionManager.register({
         // ==========================================
         // FEATURE 2: NATURAL WORLD SPAWNING
         // ==========================================
-        // We safely post-process chunks right after they are generated to sprinkle
-        // our new micro-dungeons across the world!
-
         if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
             const origGenerateChunk = chunkManager.generateChunk;
             chunkManager.generateChunk = function(chunkX, chunkY) {
@@ -212,11 +237,17 @@ window.ExpansionManager.register({
                     const ry = Math.floor(random() * 14) + 1;
                     const tile = chunkData[ry][rx];
                     
+                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Terrain Overwrite Guard
+                    // Prevents deleting Obelisks, NPCs, or Villages!
+                    const allowedTerrain = ['F', '🌳', '≈', '❄️', '🧊', 'D', 'd'];
+                    if (!allowedTerrain.includes(tile)) return;
+                    
                     // Spawn contextually based on the terrain it picked
                     if (tile === 'F' || tile === '🌳') chunkData[ry][rx] = '🌲h'; // Hollowed tree in forest
                     else if (tile === '≈') chunkData[ry][rx] = '🕸️b'; // Spider burrow in swamp
                     else if (tile === '❄️' || tile === '🧊') chunkData[ry][rx] = '🧊c'; // Crevasse in snow/ice
-                    else if (tile === 'D' || tile === 'd') chunkData[ry][rx] = '🔥s'; // Sinkhole in desert/deadlands
+                    else if (tile === 'd') chunkData[ry][rx] = '🔥s'; // Sinkhole in deadlands
+                    else if (tile === 'D') chunkData[ry][rx] = '🏝️g'; // Oasis Grotto in the desert
                 }
             };
         }
@@ -224,9 +255,6 @@ window.ExpansionManager.register({
         // ==========================================
         // FEATURE 3: DYNAMIC WEATHER PHYSICS
         // ==========================================
-        // Hook into the end of the player's turn to physically alter the world around them
-        // based on the current weather forecast!
-        
         if (typeof window.endPlayerTurn === 'function') {
             const origEndPlayerTurn = window.endPlayerTurn;
             window.endPlayerTurn = function(turnUpdates = {}) {
@@ -238,15 +266,15 @@ window.ExpansionManager.register({
                     if (gameState.weather !== 'clear' && gameState.playerTurnCount % 3 === 0) {
                         
                         let mapUpdatedLocally = false;
+                        const now = Date.now();
                         
-                        // Scan a 7x7 grid around the player
+                        // Scan a 7x7 grid around the player safely
                         for(let dy = -3; dy <= 3; dy++) {
                             for(let dx = -3; dx <= 3; dx++) {
                                 const tx = p.x + dx;
                                 const ty = p.y + dy;
                                 
                                 // 🚨 BUG FIX WIN: The "Trapped in Ice" Boat Fix
-                                // Do not freeze the water tile the player is currently sitting on if they are in a boat!
                                 if (tx === p.x && ty === p.y && (p.isBoating || p.isSailing)) continue;
                                 
                                 const tile = chunkManager.getTile(tx, ty);
@@ -257,9 +285,8 @@ window.ExpansionManager.register({
                                     chunkManager.setWorldTile(tx, ty, '🧊', 1);
                                     mapUpdatedLocally = true;
                                     
-                                    // JUICE WIN: Freeze particles and audio
                                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#e0f2fe', 3);
-                                    if (typeof AudioSystem !== 'undefined' && Math.random() < 0.05) AudioSystem.playTone(800, 'square', 0.1, 0.05, false, 100); // Faint crackle
+                                    if (typeof AudioSystem !== 'undefined' && Math.random() < 0.05) AudioSystem.playTone(800, 'square', 0.1, 0.05, false, 100);
                                 }
                                 
                                 // 🌧️ SPRING SHOWERS: Rain sprouts flora in forests!
@@ -270,9 +297,17 @@ window.ExpansionManager.register({
                                         chunkManager.setWorldTile(tx, ty, sprout, 4);
                                         mapUpdatedLocally = true;
                                         
-                                        // JUICE WIN: Bloom particles and audio
                                         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, sprout === '🌺' ? '#f472b6' : '#d946ef', 4);
-                                        if (typeof AudioSystem !== 'undefined' && Math.random() < 0.1) AudioSystem.playMelody([800, 1200], 'sine', 0.05, 0.02); // Soft chime
+                                        if (typeof AudioSystem !== 'undefined' && Math.random() < 0.1) AudioSystem.playMelody([800, 1200], 'sine', 0.05, 0.02);
+                                    }
+                                }
+
+                                // ⚡ DEADLANDS STORMS: Lightning ignites the ash!
+                                else if (gameState.weather === 'storm' && tile === 'd') {
+                                    if (Math.random() < 0.01) {
+                                        chunkManager.setWorldTile(tx, ty, '🔥', 0.5); // Lasts 30 mins
+                                        mapUpdatedLocally = true;
+                                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#facc15', 5);
                                     }
                                 }
                             }
@@ -299,6 +334,7 @@ window.ExpansionManager.register({
             window.TILE_COLOR_MAP['🌲h'] = [6, 78, 59, 255];      // Deep Forest Green
             window.TILE_COLOR_MAP['🧊c'] = [186, 230, 253, 255];  // Pale Ice Blue
             window.TILE_COLOR_MAP['🔥s'] = [153, 27, 27, 255];    // Scorched Red
+            window.TILE_COLOR_MAP['🏝️g'] = [34, 197, 94, 255];    // Emerald Green Oasis
         }
     }
 });
