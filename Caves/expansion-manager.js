@@ -42,7 +42,7 @@ window.ExpansionManager = {
         const data = exp.data || {};
 
         // --- 2. INJECT DICTIONARIES (O(1) Merge) ---
-        // 🌟 EXPANDABILITY WIN: Now natively supports crafting, cooking, and alchemy recipes!
+        // 🌟 EXPANDABILITY WIN: Natively supports crafting, cooking, and alchemy recipes!
         const dictionaries = {
             items: 'ITEM_DATA',
             enemies: 'ENEMY_DATA',
@@ -89,7 +89,11 @@ window.ExpansionManager = {
 
         for (const [localKey, globalKey] of Object.entries(globalArrays)) {
             if (data[localKey] && Array.isArray(data[localKey])) {
-                if (typeof window[globalKey] === 'undefined') window[globalKey] = [];
+                // 🚨 STABILITY WIN: Strict Type Enforcement
+                // Guarantees the target is actually an Array before we start pushing to it!
+                if (typeof window[globalKey] === 'undefined' || !Array.isArray(window[globalKey])) {
+                    window[globalKey] = [];
+                }
                 
                 const targetArray = window[globalKey];
                 const newItems = data[localKey];
@@ -110,7 +114,7 @@ window.ExpansionManager = {
                 const targetGlobal = shopKey === 'general' ? 'SHOP_INVENTORY' : `${shopKey.toUpperCase()}_INVENTORY`;
                 
                 // If the array doesn't exist globally yet, create it!
-                if (typeof window[targetGlobal] === 'undefined') {
+                if (typeof window[targetGlobal] === 'undefined' || !Array.isArray(window[targetGlobal])) {
                     window[targetGlobal] = [];
                 }
 
@@ -134,7 +138,17 @@ window.ExpansionManager = {
         // Runs arbitrary code (like modifying the Homestead menus or tweaking World Gen natively)
         if (typeof exp.init === 'function') {
             try {
+                // ⏱️ PERFORMANCE PROFILER: Track exact millisecond execution time
+                const startTime = performance.now();
                 exp.init();
+                const endTime = performance.now();
+                
+                const executionTime = (endTime - startTime).toFixed(2);
+                console.log(`%c[AKASHIC ENGINE] ↳ Initialization logic compiled in ${executionTime}ms.`, "color: #94a3b8; font-style: italic; font-family: monospace;");
+                
+                if (executionTime > 50) {
+                    console.warn(`%c[AKASHIC ENGINE] ⚠️ Warning: '${exp.name}' took longer than 50ms to initialize. This may cause stuttering on boot.`, "color: #facc15; font-weight: bold;");
+                }
             } catch (err) {
                 console.error(`%c[AKASHIC ENGINE] Fatal anomaly in Expansion Init (${exp.name}):`, "color: #ef4444; font-weight: bold;", err);
             }
