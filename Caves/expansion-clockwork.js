@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "clockwork_uprising",
     name: "The Clockwork Uprising",
-    version: "1.3", // Upgraded version!
+    version: "1.4", // Upgraded version!
     
     data: {
         // --- 1. EXPANDED ITEMS ---
@@ -82,6 +82,92 @@ window.ExpansionManager.register({
                 name: 'Brass Factory',
                 flavor: "Smoke pours from the vents of a massive, half-buried machine complex.",
                 getCaveId: (x, y) => `clockwork_${x}_${y}`
+            },
+            '🤖x': { 
+                type: 'landmark', 
+                name: 'Scrapped Automaton', 
+                flavor: "A lifeless machine from the Second Age. It sparks faintly.", 
+                eventId: 'BROKEN_AUTOMATON' 
+            }
+        },
+
+        // 🌟 LORE WIN: Interactive Overworld Events for the Clockwork expansion!
+        events: {
+            'BROKEN_AUTOMATON': {
+                title: "Broken Automaton",
+                oncePerTile: true,
+                lootedMessage: "Only a pile of useless, rusted scrap remains.",
+                nodes: {
+                    'start': {
+                        text: "A mechanized soldier lies half-buried in the dirt. One of its optical sensors flickers weakly. It poses no threat.",
+                        choices: [
+                            {
+                                text: "Scavenge for parts.",
+                                action: (state, ctx) => {
+                                    logMessage("{gray:You brutally rip the valuable brass and copper from its chassis.}");
+                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
+                                    
+                                    const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                                    const yields = Math.floor(Math.random() * 3) + 1;
+                                    
+                                    const existing = state.player.inventory.find(i => i && i.name === 'Brass Sprocket' && !i.isEquipped);
+                                    if (existing) {
+                                        existing.quantity += yields;
+                                        logMessage(`{purple:You salvaged ${yields} Brass Sprockets!}`);
+                                    } else if (state.player.inventory.length < invCap) {
+                                        state.player.inventory.push({ templateId: '⚙️s', name: 'Brass Sprocket', type: 'junk', quantity: yields, tile: '⚙️', isEquipped: false });
+                                        logMessage(`{purple:You salvaged ${yields} Brass Sprockets!}`);
+                                    } else {
+                                        logMessage("{red:You pulled out some gears, but your pack is full! They drop to the floor.}");
+                                        if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '⚙️s', 24);
+                                    }
+                                    
+                                    state.lootedTiles.add(ctx.tileId);
+                                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '🏚'); // Replace with rubble
+                                    state.mapDirty = true;
+                                }
+                            },
+                            {
+                                text: "Attempt to reactivate it.",
+                                req: (player) => player.inventory.some(i => i && i.name === 'Clockwork Core' && !i.isEquipped),
+                                reqHint: "Requires Clockwork Core",
+                                action: (state, ctx) => {
+                                    // Consume the Core
+                                    const idx = state.player.inventory.findIndex(i => i && i.name === 'Clockwork Core' && !i.isEquipped);
+                                    state.player.inventory[idx].quantity--;
+                                    if (state.player.inventory[idx].quantity <= 0) state.player.inventory.splice(idx, 1);
+                                    
+                                    logMessage("{yellow:You slot the glowing core into the machine's chest. It whirs to life!}");
+                                    if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(ctx.x, ctx.y, '#facc15', 20);
+                                    
+                                    // Wait... does it turn hostile or friendly?
+                                    if (Math.random() < 0.3) {
+                                        logMessage("{red:Its optics turn red! Target Acquired!}");
+                                        if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                                        
+                                        const eData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['🤖g'] : { name: 'Automaton Guard', maxHealth: 40, attack: 7, xp: 80 };
+                                        const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(eData, ctx.x, ctx.y) : eData;
+                                        
+                                        const enemyId = `overworld:${ctx.x},${-ctx.y}`;
+                                        state.sharedEnemies[enemyId] = { ...scaledStats, tile: '🤖g', x: ctx.x, y: ctx.y, spawnTime: Date.now() };
+                                        if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ctx.x, ctx.y, enemyId)).set(state.sharedEnemies[enemyId]);
+                                    } else {
+                                        logMessage("{green:The machine hums smoothly. It downloads its ancient archives into your mind before fully powering down.}");
+                                        logMessage("{blue:You gain a massive surge of knowledge! (+500 XP)}");
+                                        if (typeof grantXp === 'function') grantXp(500);
+                                        if (typeof AudioSystem !== 'undefined') AudioSystem.playLevelUp();
+                                    }
+                                    
+                                    state.lootedTiles.add(ctx.tileId);
+                                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '.'); // Remove it completely
+                                    state.mapDirty = true;
+                                }
+                            },
+                            { text: "Leave it alone." }
+                        ]
+                    }
+                }
             }
         },
 
@@ -108,7 +194,6 @@ window.ExpansionManager.register({
         },
 
         // --- 6. RECIPES & BLUEPRINTS ---
-        // 🌟 EXPANDABILITY WIN: Handled natively by the newly upgraded ExpansionManager!
         alchemyRecipes: {
             "Liquid Lightning": {
                 materials: { "Clockwork Core": 1, "Clean Water": 1, "Empty Bottle": 1 },
@@ -139,7 +224,7 @@ window.ExpansionManager.register({
     init: function() {
         
         // --- A. WORLD SPAWNER INJECTION ---
-        // Dynamically spawns the Factory entrance in the desert and deadlands
+        // Dynamically spawns the Factory entrance and broken automatons in the desert and deadlands
         if (typeof chunkManager !== 'undefined' && chunkManager.generateChunk) {
             const origGenerateChunk = chunkManager.generateChunk;
             chunkManager.generateChunk = function(chunkX, chunkY) {
@@ -164,12 +249,24 @@ window.ExpansionManager.register({
                         chunkData[ry][rx] = '🏭'; 
                     }
                 }
+                
+                // 10% chance per chunk to contain a Scrapped Automaton event
+                if (random() > 0.90) {
+                    const rx = Math.floor(random() * 14) + 1;
+                    const ry = Math.floor(random() * 14) + 1;
+                    
+                    const tile = chunkData[ry][rx];
+                    if (tile === 'D' || tile === 'd' || tile === '.') { 
+                        chunkData[ry][rx] = '🤖x'; 
+                    }
+                }
             };
         }
 
         // Add the new factory to the minimap colors
         if (typeof window.TILE_COLOR_MAP !== 'undefined') {
             window.TILE_COLOR_MAP['🏭'] = [180, 83, 9, 255]; // Deep Brass Orange
+            window.TILE_COLOR_MAP['🤖x'] = [107, 114, 128, 255]; // Gray Scrap
         }
 
         // --- B. OVERCHARGE SKILL LOGIC ---
@@ -200,6 +297,26 @@ window.ExpansionManager.register({
                 logMessage(`{yellow:You push the ${weapon.name} past its limits! It hums violently!}`);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playMagic();
                 
+                // 🚨 LORE & GAMEPLAY WIN: Environmental Grounding Synergy
+                // If you fire a massive lightning blast while standing in a swamp or river, you ground the circuit!
+                let currentTile = '.';
+                if (typeof chunkManager !== 'undefined') {
+                    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') currentTile = chunkManager.getTile(player.x, player.y);
+                    else if (gameState.mapMode === 'dungeon') currentTile = chunkManager.caveMaps[gameState.currentCaveId]?.[player.y]?.[player.x] || '.';
+                    else currentTile = chunkManager.castleMaps[gameState.currentCastleId]?.[player.y]?.[player.x] || '.';
+                }
+
+                if (currentTile === '~' || currentTile === '≈') {
+                    logMessage("{red:The water grounds the galvanic charge! You shock yourself!}");
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#facc15', 20);
+                    
+                    // The damage recoil bypasses armor
+                    if (typeof window.modifyVital === 'function') window.modifyVital('health', -15);
+                    gameState.screenShake = 25;
+                    
+                    if (player.health <= 0) return; // Die instantly, abort beam
+                }
+
                 // JUICE WIN: Massive Detonation Effects
                 gameState.screenShake = 20;
                 gameState.screenFlash = { color: '#facc15', alpha: 0.8, decay: 0.05 };
@@ -263,16 +380,26 @@ window.ExpansionManager.register({
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#9ca3af', 25);
                 if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
 
-                // 🚨 BUG FIX WIN: Clean Skill Removal
-                // Safely uses the internal unequip helper so the player loses the "Shoot" skill correctly!
-                if (typeof _internalUnequip === 'function') {
-                    _internalUnequip(weapon, player);
-                } else if (typeof applyStatBonuses === 'function') {
-                    applyStatBonuses(weapon, -1);
-                }
+                // 🚨 EXPLOIT FIX & ROBUSTNESS WIN: Safe Weapon Destruction
+                // The execute function has 'awaits'. A clever player could open their bag and unequip
+                // the gun mid-animation. We check identity (===) to ensure we destroy the EXACT 
+                // gun that was fired, even if they moved it to their backpack!
                 
-                // Reset the slot
-                player.equipment.weapon = { name: 'Fists', damage: 0, tags: ['blunt'] };
+                if (player.equipment.weapon === weapon) {
+                    if (typeof _internalUnequip === 'function') {
+                        _internalUnequip(weapon, player);
+                    } else if (typeof applyStatBonuses === 'function') {
+                        applyStatBonuses(weapon, -1);
+                    }
+                    player.equipment.weapon = { name: 'Fists', damage: 0, tags: ['blunt'] };
+                } else {
+                    // They swapped it! Find it in the inventory and delete it anyway.
+                    const stolenIdx = player.inventory.indexOf(weapon);
+                    if (stolenIdx > -1) {
+                        player.inventory.splice(stolenIdx, 1);
+                        logMessage("{gray:The gun overheats and melts inside your backpack!}");
+                    }
+                }
 
                 if (typeof triggerAbilityCooldown === 'function') triggerAbilityCooldown(skillId);
                 if (typeof renderEquipment === 'function') renderEquipment();
@@ -290,7 +417,11 @@ window.ExpansionManager.register({
         if (typeof window.handleInput === 'function') {
             const origHandleInput = window.handleInput;
             
-            window.handleInput = function(key) {
+            window.handleInput = function() {
+                // We use `.apply(arguments)` instead of hardcoded params to future-proof 
+                // against any underlying changes to the core engine's input router.
+                const key = arguments[0];
+                
                 if (typeof gameState !== 'undefined' && gameState.isAiming && gameState.abilityToAim === 'overcharge') {
                     
                     // 🚀 PERFORMANCE WIN: Use the global movement map instead of re-allocating it per keystroke
@@ -310,7 +441,7 @@ window.ExpansionManager.register({
                         return; // Intercepted!
                     } else if (key === 'Escape') {
                         // Let the core engine handle the Escape cancellation!
-                        return origHandleInput.call(this, key);
+                        return origHandleInput.apply(this, arguments);
                     } else {
                         if (typeof AudioSystem !== 'undefined') AudioSystem.playError();
                         logMessage("{gray:Invalid direction. Use Arrow keys or WASD to aim. (Esc) to cancel.}");
@@ -318,7 +449,7 @@ window.ExpansionManager.register({
                     }
                 }
                 
-                return origHandleInput.call(this, key);
+                return origHandleInput.apply(this, arguments);
             };
         }
     }
