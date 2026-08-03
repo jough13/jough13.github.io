@@ -3,7 +3,7 @@
 window.ExpansionManager.register({
     id: "astral_sea",
     name: "The Astral Sea (Sailing Expansion)",
-    version: "1.2", // Upgraded version!
+    version: "1.3", // Upgraded version!
     
     data: {
         // --- 1. NEW ITEMS ---
@@ -35,16 +35,26 @@ window.ExpansionManager.register({
                     // Generate the dungeon
                     const caveMap = chunkManager.generateCave(state.currentCaveId);
                     
-                    // Find spawn point
+                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Spawn Fallback
+                    // Prevents NaN coordinate crash if the generator failed to place a stairwell
+                    let spawnX = null, spawnY = null;
                     for (let y = 0; y < caveMap.length; y++) {
                         const x = caveMap[y].indexOf('>');
-                        if (x !== -1) { state.player.x = x; state.player.y = y; break; }
+                        if (x !== -1) { spawnX = x; spawnY = y; break; }
                     }
+                    if (spawnX === null) {
+                        spawnX = Math.floor(caveMap[0].length / 2);
+                        spawnY = Math.floor(caveMap.length / 2);
+                        caveMap[spawnY][spawnX] = '>'; // Force place one
+                    }
+                    
+                    state.player.x = spawnX; 
+                    state.player.y = spawnY;
                     
                     const baseEnemies = chunkManager.caveEnemies[state.currentCaveId] || [];
                     
                     // 🚀 PERFORMANCE WIN: High-speed recursive clone over JSON stringify
-                    state.instancedEnemies = typeof window.fastClone === 'function' ? window.fastClone(baseEnemies) : JSON.parse(JSON.stringify(baseEnemies));
+                    state.instancedEnemies = typeof window.cloneItemSafely === 'function' ? window.fastClone(baseEnemies) : JSON.parse(JSON.stringify(baseEnemies));
                     
                     if (typeof updateRegionDisplay === 'function') updateRegionDisplay();
                     state.mapDirty = true;
@@ -65,12 +75,27 @@ window.ExpansionManager.register({
                         return false;
                     }
                     
-                    // Generate coordinates FAR away (2000-4000 tiles out!)
-                    const angle = Math.random() * Math.PI * 2;
-                    const dist = 2000 + Math.random() * 2000; 
-                    const tx = Math.floor(state.player.x + Math.cos(angle) * dist);
-                    const ty = Math.floor(state.player.y + Math.sin(angle) * dist);
+                    // 🚨 GAMEPLAY WIN: Smart Oceanic Raycasting
+                    // Guarantees the Pirate Cove actually spawns in deep water instead of the middle of a desert!
+                    let tx = state.player.x;
+                    let ty = state.player.y;
+                    let foundOcean = false;
                     
+                    for (let attempt = 0; attempt < 20; attempt++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist = 2000 + Math.random() * 2000; 
+                        const checkX = Math.floor(state.player.x + Math.cos(angle) * dist);
+                        const checkY = Math.floor(state.player.y + Math.sin(angle) * dist);
+                        
+                        const tileAt = typeof chunkManager !== 'undefined' ? chunkManager.getTile(checkX, checkY) : '~';
+                        if (tileAt === '~') {
+                            tx = checkX;
+                            ty = checkY;
+                            foundOcean = true;
+                            break;
+                        }
+                    }
+
                     // 🚨 THE BUG FIX: Actually spawn the dungeon entrance via worldState so it exists when they arrive!
                     if (typeof chunkManager !== 'undefined') {
                         chunkManager.setWorldTile(tx, ty, '⚓c', 168); // Lasts 7 in-game days (168 hrs)
@@ -78,7 +103,10 @@ window.ExpansionManager.register({
 
                     // QoL WIN: Automatically add a custom map pin to the player's map!
                     if (!state.player.customPins) state.player.customPins = [];
-                    state.player.customPins.push({ x: tx, y: ty });
+                    // Prevent duplicate pins
+                    if (!state.player.customPins.some(p => p.x === tx && p.y === ty)) {
+                        state.player.customPins.push({ x: tx, y: ty });
+                    }
                     
                     logMessage(`{gold:The map reveals a hidden Pirate Cove at (${tx}, ${-ty})! A pin has been added to your map.}`);
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playLootRare();
@@ -166,8 +194,78 @@ window.ExpansionManager.register({
                 type: 'dungeon_entrance', name: 'Pirate Cove',
                 flavor: "A hidden cove dug into the side of the island. Skulls line the entrance.",
                 getCaveId: (x, y) => `pirate_${x}_${y}`
+            },
+            '🚢g': {
+                type: 'landmark', name: 'Derelict Galleon',
+                flavor: "A massive ship floating silently on the waves. The sails are torn to shreds.",
+                eventId: 'DERELICT_GALLEON'
             }
         },
+        
+        // 🌟 LORE WIN: Interactive Ocean Event
+        events: {
+            'DERELICT_GALLEON': {
+                title: "The Ghost Ship",
+                oncePerTile: true,
+                lootedMessage: "Only the rotting, empty hull remains.",
+                nodes: {
+                    'start': {
+                        text: "You pull alongside the massive, silent galleon. The deck is covered in algae, and the ship's wheel spins lazily in the wind. There is no crew in sight.",
+                        choices: [
+                            {
+                                text: "Board the ship and search the cargo hold.",
+                                action: (state, ctx) => {
+                                    logMessage("{gray:You carefully step onto the rotting deck...}");
+                                    
+                                    // Ambush Check!
+                                    if (Math.random() < 0.40) {
+                                        logMessage("{red:It's a trap! Drowned Buccaneers pour out from the lower decks!}");
+                                        state.screenShake = 15;
+                                        if (typeof AudioSystem !== 'undefined') AudioSystem.playWarning();
+                                        
+                                        // Spawn 2 Drowned Buccaneers
+                                        const eData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['👻p'] : { name: 'Drowned Buccaneer', maxHealth: 35, attack: 6, xp: 50 };
+                                        const offsets = [[-1, 0], [1, 0]];
+                                        offsets.forEach(off => {
+                                            const ex = ctx.x + off[0];
+                                            const ey = ctx.y + off[1];
+                                            
+                                            // Only spawn if it's open water
+                                            if (chunkManager.getTile(ex, ey) === '~') {
+                                                const enemyId = `overworld:${ex},${-ey}`;
+                                                const scaledStats = typeof getScaledEnemy === 'function' ? getScaledEnemy(eData, ex, ey) : eData;
+                                                
+                                                state.sharedEnemies[enemyId] = { ...scaledStats, tile: '👻p', x: ex, y: ey, spawnTime: Date.now() };
+                                                if (typeof EnemyNetworkManager !== 'undefined') rtdb.ref(EnemyNetworkManager.getPath(ex, ey, enemyId)).set(state.sharedEnemies[enemyId]);
+                                            }
+                                        });
+                                    } else {
+                                        const gold = 200 + Math.floor(Math.random() * 300);
+                                        state.player.coins += gold;
+                                        logMessage(`{gold:The hold is unguarded! You plunder ${gold} gold coins!}`);
+                                        if (typeof AudioSystem !== 'undefined') AudioSystem.playCoin();
+                                        
+                                        // Bonus Loot
+                                        const invCap = typeof getInventoryCap === 'function' ? getInventoryCap(state.player) : 9;
+                                        if (state.player.inventory.length < invCap) {
+                                            state.player.inventory.push({ templateId: '🍺r', name: 'Spiced Rum', type: 'consumable', quantity: 2, tile: '🍺', effect: window.ITEM_DATA['🍺r'].effect, isEquipped: false });
+                                            logMessage("{purple:You also found a stash of Spiced Rum!}");
+                                        }
+                                    }
+                                    
+                                    // Mark as looted and sink the ship visually
+                                    state.lootedTiles.add(ctx.tileId);
+                                    if (typeof chunkManager !== 'undefined') chunkManager.setWorldTile(ctx.x, ctx.y, '🛟'); 
+                                    state.mapDirty = true;
+                                }
+                            },
+                            { text: "Leave it alone. It's cursed." }
+                        ]
+                    }
+                }
+            }
+        },
+
         caveThemes: {
             'SUNKEN_SHIPWRECK': {
                 name: 'Sunken Shipwreck',
@@ -194,7 +292,6 @@ window.ExpansionManager.register({
         },
 
         // --- 5. CUSTOM ROOM TEMPLATES ---
-        // 🌟 EXPANDABILITY WIN: Defined natively inside the expansion data payload!
         roomTemplates: {
             "Captain's Quarters": {
                 width: 7, height: 7,
@@ -255,6 +352,11 @@ window.ExpansionManager.register({
                                 // Blockading Pirate Ships sitting just off the coast!
                                 chunkData[y][x] = '🏴‍☠️';
                             }
+                            
+                            // 🌟 EVENT WIN: Ghost Ships floating in the deep sea
+                            if (Math.random() < 0.002 && distSq > 4000000) {
+                                chunkData[y][x] = '🚢g';
+                            }
                         }
                     }
                 }
@@ -278,13 +380,15 @@ window.ExpansionManager.register({
                     this.caveThemes[caveId] = themeKey; // Override
                     
                     const newTheme = window.CAVE_THEMES[themeKey];
-                    const oldTheme = window.CAVE_THEMES[oldThemeKey] || { wall: '▓', floor: '.' };
+                    const oldTheme = window.CAVE_THEMES[oldThemeKey] || { wall: '▓', floor: '.', secretWall: '▒' };
                     
-                    // Repaint the map array O(N)
+                    // 🚨 BUG FIX & ROBUSTNESS WIN: Safe Theme Replacement
+                    // Preserves custom decorative tiles and items stamped by the room generator!
                     for(let y = 0; y < map.length; y++) {
                         for(let x = 0; x < map[y].length; x++) {
                             if (map[y][x] === oldTheme.wall) map[y][x] = newTheme.wall;
                             else if (map[y][x] === oldTheme.floor) map[y][x] = newTheme.floor;
+                            else if (map[y][x] === oldTheme.secretWall) map[y][x] = newTheme.secretWall;
                         }
                     }
 
@@ -297,10 +401,12 @@ window.ExpansionManager.register({
                     if (themeKey === 'PIRATE_COVE') {
                         const cy = Math.floor(map.length / 2);
                         const cx = Math.floor(map[0].length / 2);
+                        
+                        // Ensure we don't spawn the boss inside a wall or on the stairs
                         if (map[cy][cx] === newTheme.floor || map[cy][cx] === oldTheme.floor) {
                             map[cy][cx] = '🏴‍☠️c';
                             const bData = typeof window.ENEMY_DATA !== 'undefined' ? window.ENEMY_DATA['🏴‍☠️c'] : { name: 'Pirate Captain', maxHealth: 250, attack: 12, xp: 800 };
-                            const scaled = { ...bData, maxHealth: bData.maxHealth, attack: bData.attack, xp: bData.xp }; // Basic clone
+                            const scaled = { ...bData, maxHealth: bData.maxHealth, attack: bData.attack, xp: bData.xp }; 
                             
                             this.caveEnemies[caveId].push(createEntity(`${caveId}:boss`, cx, cy, '🏴‍☠️c', scaled, bData));
                         }
@@ -315,6 +421,7 @@ window.ExpansionManager.register({
             window.TILE_COLOR_MAP['🏴‍☠️'] = [17, 24, 39, 255];  // Black Ship
             window.TILE_COLOR_MAP['⚓c'] = [133, 77, 14, 255]; // Wood/Brown Cove
             window.TILE_COLOR_MAP['🍺r'] = [234, 179, 8, 255]; // Gold/Rum
+            window.TILE_COLOR_MAP['🚢g'] = [55, 65, 81, 255];  // Gray Ghost Ship
         }
     }
 });
