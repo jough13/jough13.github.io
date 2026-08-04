@@ -693,6 +693,7 @@ async function processOverworldEnemyTurns() {
         // --- OVERWORLD TELEGRAPH EXECUTION ---
         if (enemy.pendingAttacks && enemy.pendingAttacks.length > 0) {
             let hitPlayer = false;
+            let playerTookDamage = false; // 🚨 Add tracker
 
             enemy.pendingAttacks.forEach(tile => {
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tile.x, tile.y, '#ef4444', 8);
@@ -705,8 +706,12 @@ async function processOverworldEnemyTurns() {
                     
                     if (gameState.player.companion.hp <= 0) {
                         logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain in battle!}`);
-                        gameState.player.companion = null; gameState.player.isMounted = false;
+                        gameState.player.companion = null; 
+                        gameState.player.isMounted = false;
                         if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
+                    } else {
+                        // 🚨 FIX: Save companion HP
+                        if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: gameState.player.companion });
                     }
                 }
 
@@ -716,23 +721,28 @@ async function processOverworldEnemyTurns() {
                     window.modifyVital('health', -dmg);
                     gameState.screenShake = 15;
                     
-                    // JUICE: Full screen red flash for heavy telegraph damage
                     gameState.screenFlash = { color: '#ef4444', alpha: 0.4, decay: 0.05 };
                     
                     logMessage(`{red:You are caught in the ${enemy.name}'s blast! (-${dmg} HP)}`);
                     hitPlayer = true;
+                    playerTookDamage = true; // 🚨 Flag for save
                 }
             });
+
+            // Sync player health if hit while AFK
+            if (playerTookDamage) {
+                if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ health: gameState.player.health });
+            }
 
             if (!hitPlayer) logMessage(`{gray:The ${enemy.name}'s attack strikes the ground!}`);
 
             enemy.pendingAttacks = null;
-            multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId) + '/pendingAttacks'] = null; // Sync clear to Firebase
+            multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId) + '/pendingAttacks'] = null; 
             movesQueued = true;
             processedIdsThisFrame.add(enemyId);
             
             if (gameState.player.health <= 0) break; // Death handled by modifyVital
-            continue; // Skip the rest of this turn
+            continue; 
         }
 
         // If skipped turn due to stun/root, make sure we save the updated status effect timers
@@ -772,6 +782,9 @@ async function processOverworldEnemyTurns() {
                     logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain by magic!}`);
                     gameState.player.companion = null; gameState.player.isMounted = false;
                     if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
+                } else {
+                    // 🚨 FIX: Save companion HP
+                    if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: gameState.player.companion });
                 }
             } else {
                 const { dodgeChance } = getPlayerDefenseStats();
@@ -803,6 +816,16 @@ async function processOverworldEnemyTurns() {
                         if (enemy.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
                         if (enemy.inflicts === 'poison') gameState.player.poisonTurns = 5;
                         if (enemy.inflicts === 'burn') gameState.player.burnTurns = 5;
+
+                        // Explicitly save health & debuffs to Firebase immediately!
+                        if (typeof triggerDebouncedSave === 'function') {
+                            triggerDebouncedSave({
+                                health: gameState.player.health,
+                                poisonTurns: gameState.player.poisonTurns,
+                                frostbiteTurns: gameState.player.frostbiteTurns,
+                                burnTurns: gameState.player.burnTurns
+                            });
+                        }
 
                         if (gameState.player.health <= 0) break;
                     }
@@ -843,6 +866,9 @@ async function processOverworldEnemyTurns() {
                     logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain by an arrow!}`);
                     gameState.player.companion = null; gameState.player.isMounted = false;
                     if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
+                } else {
+                    // 🚨 FIX: Save companion HP
+                    if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: gameState.player.companion });
                 }
             } else {
                 const { totalDefense, dodgeChance } = getPlayerDefenseStats();
@@ -874,6 +900,13 @@ async function processOverworldEnemyTurns() {
                         
                         logMessage(`{red:The ${enemy.name} shoots you for ${dmg} damage!}`);
                         if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
+                        
+                        // Explicitly save health to Firebase immediately!
+                        if (typeof triggerDebouncedSave === 'function') {
+                            triggerDebouncedSave({
+                                health: gameState.player.health
+                            });
+                        }
                         
                         if (gameState.player.health <= 0) break;
                     }
@@ -984,11 +1017,21 @@ async function processOverworldEnemyTurns() {
                                 logMessage(`{red:A ${enemy.name} attacks you for ${dmg} damage!}`);
                                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
                                 
-                                // Apply physical on-hit status effects (like Scorpion Poison)
+                                // Apply physical on-hit status effects 
                                 if (enemy.inflicts && Math.random() < (enemy.inflictChance || 0.25)) {
                                     if (enemy.inflicts === 'poison') gameState.player.poisonTurns = 5;
                                     if (enemy.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
                                     if (enemy.inflicts === 'burn') gameState.player.burnTurns = 5;
+                                }
+                                
+                                // Explicitly save health & debuffs to Firebase immediately!
+                                if (typeof triggerDebouncedSave === 'function') {
+                                    triggerDebouncedSave({
+                                        health: gameState.player.health,
+                                        poisonTurns: gameState.player.poisonTurns,
+                                        frostbiteTurns: gameState.player.frostbiteTurns,
+                                        burnTurns: gameState.player.burnTurns
+                                    });
                                 }
 
                                 if (gameState.player.health <= 0) break;
