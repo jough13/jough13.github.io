@@ -1405,11 +1405,19 @@ function endPlayerTurn(turnUpdates = {}) {
         thirstDrain *= 0.90; 
     }
 
+    // Prevent AFK Starvation (Auto-Tick Grace Period)
+    // If the engine auto-ticked because the player is AFK, do not drain food/water!
+    if (turnUpdates.isAutoTick) {
+        hungerDrain = 0;
+        thirstDrain = 0;
+    }
+
     // --- LICH: UNDEATH ---
     if (!player.talents || !player.talents.includes('undeath')) {
         player.hunger = Math.max(0, player.hunger - hungerDrain);
         player.thirst = Math.max(0, player.thirst - thirstDrain);
     }
+
 
     // --- ENVIRONMENTAL HAZARDS ---
     let currentTile;
