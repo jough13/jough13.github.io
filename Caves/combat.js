@@ -364,12 +364,13 @@ async function wakeUpNearbyEnemies() {
 
                     // E. CONSUME THE MAP TILE
                     // 🚨 FIX: Erase the static tile from local memory so it doesn't double-spawn.
+                    // Uses getBaseTerrain to ensure we don't leave ugly patches of grass in the desert!
                     const cX = Math.floor(x / 16);
                     const cY = Math.floor(y / 16);
                     const lX = (((x % 16) + 16) % 16);
                     const lY = (((y % 16) + 16) % 16);
                     if (chunkManager.loadedChunks[`${cX},${cY}`] && chunkManager.loadedChunks[`${cX},${cY}`][lY]) {
-                        chunkManager.loadedChunks[`${cX},${cY}`][lY][lX] = '.'; 
+                        chunkManager.loadedChunks[`${cX},${cY}`][lY][lX] = typeof getBaseTerrain === 'function' ? getBaseTerrain(x, y) : '.'; 
                     }
                     
                     enemiesSpawnedCount++;
@@ -526,7 +527,7 @@ async function processOverworldEnemyTurns() {
     let multiPathUpdate = {};
     let movesQueued = false;
     const processedIdsThisFrame = new Set();
-    const pathsClaimedThisFrame = new Set(); // 🚨 NEW: Protects against Firebase deletion race conditions
+    const pathsClaimedThisFrame = new Set(); // 🚨 FIX: Protects against Firebase deletion race conditions
     const SPATIAL_CHUNK_SIZE = 16; 
 
     // 1. Gather candidates from local buckets
@@ -581,7 +582,7 @@ async function processOverworldEnemyTurns() {
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(enemy.x, enemy.y, '#ef4444', 8);
                 }
                 
-                // Queue removal from Firebase (Protected by pathsClaimed)
+                // 🚨 FIX: Queue removal from Firebase securely
                 const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
                 if (!pathsClaimedThisFrame.has(deathPath)) {
                     multiPathUpdate[deathPath] = null;
@@ -657,10 +658,13 @@ async function processOverworldEnemyTurns() {
                 logMessage(`{red:The ${enemy.name} burns to ash!}`);
                 
                 registerKill(enemy);
+                
+                // 🚨 FIX: Secure Firebase deletion
                 const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
                 if (!pathsClaimedThisFrame.has(deathPath)) {
                     multiPathUpdate[deathPath] = null;
                 }
+                
                 delete gameState.sharedEnemies[enemyId];
                 if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
                 processedIdsThisFrame.add(enemyId);
@@ -690,10 +694,13 @@ async function processOverworldEnemyTurns() {
                 logMessage(`{green:The ${enemy.name} succumbs to poison!}`);
                 
                 registerKill(enemy);
+                
+                // 🚨 FIX: Secure Firebase deletion
                 const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
                 if (!pathsClaimedThisFrame.has(deathPath)) {
                     multiPathUpdate[deathPath] = null;
                 }
+                
                 delete gameState.sharedEnemies[enemyId];
                 if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
                 processedIdsThisFrame.add(enemyId);
@@ -746,8 +753,10 @@ async function processOverworldEnemyTurns() {
                 }
             }
             
-            // Sanitize the object before appending to update list
-            multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = JSON.parse(JSON.stringify(enemy));
+            // 🚨 FIX: Sanitize the object before appending to update list & Protect it
+            const updatePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
+            multiPathUpdate[updatePath] = JSON.parse(JSON.stringify(enemy));
+            pathsClaimedThisFrame.add(updatePath);
             processedIdsThisFrame.add(enemyId);
             movesQueued = true;
             continue; 
@@ -800,7 +809,12 @@ async function processOverworldEnemyTurns() {
             if (!hitPlayer) logMessage(`{gray:The ${enemy.name}'s attack strikes the ground!}`);
 
             enemy.pendingAttacks = null;
-            multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId) + '/pendingAttacks'] = null; 
+            
+            // 🚨 FIX: Protect the base path
+            const basePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
+            multiPathUpdate[basePath + '/pendingAttacks'] = null; 
+            pathsClaimedThisFrame.add(basePath);
+            
             movesQueued = true;
             processedIdsThisFrame.add(enemyId);
             
@@ -810,7 +824,10 @@ async function processOverworldEnemyTurns() {
 
         // If skipped turn due to stun/root, make sure we save the updated status effect timers
         if (skipTurn) {
-            multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = JSON.parse(JSON.stringify(enemy));
+            // 🚨 FIX: Protect path
+            const updatePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
+            multiPathUpdate[updatePath] = JSON.parse(JSON.stringify(enemy));
+            pathsClaimedThisFrame.add(updatePath);
             processedIdsThisFrame.add(enemyId);
             movesQueued = true;
             continue;
@@ -895,9 +912,12 @@ async function processOverworldEnemyTurns() {
                 }
             }
             
-            // Still sync if they had status effects tick down but chose to cast instead of moving
-            if (statusChanged) multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = JSON.parse(JSON.stringify(enemy));
-            
+            // 🚨 FIX: Protect path if status effects ticked
+            if (statusChanged) {
+                const updatePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
+                multiPathUpdate[updatePath] = JSON.parse(JSON.stringify(enemy));
+                pathsClaimedThisFrame.add(updatePath);
+            }
             processedIdsThisFrame.add(enemyId);
             movesQueued = true;
             continue; // Skip movement if they casted a spell
@@ -1112,7 +1132,8 @@ async function processOverworldEnemyTurns() {
                                     // 1. Grant XP & Register Kill
                                     registerKill(enemy);
 
-                                    // 2. Queue removal from Firebase RTDB (Protected by pathsClaimed)
+                                    // 2. Queue removal from Firebase RTDB
+                                    // 🚨 FIX: Protect death path deletion
                                     const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
                                     if (!pathsClaimedThisFrame.has(deathPath)) {
                                         multiPathUpdate[deathPath] = null;
@@ -1147,9 +1168,10 @@ async function processOverworldEnemyTurns() {
 
                     // Even if it hit/dodged, if status effects changed on it, we must sync
                     if (statusChanged) {
+                        // 🚨 FIX: Protect path update
                         const updatePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
                         multiPathUpdate[updatePath] = JSON.parse(JSON.stringify(enemy));
-                        pathsClaimedThisFrame.add(updatePath); // Protect it
+                        pathsClaimedThisFrame.add(updatePath);
                         movesQueued = true;
                     }
                     
@@ -1176,6 +1198,7 @@ async function processOverworldEnemyTurns() {
                 const newEnemyPath = EnemyNetworkManager.getPath(finalX, finalY, newId);
                 const oldEnemyPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
                 
+                // 🚨 FIX: Block move locally to prevent overlaps
                 if (gameState.sharedEnemies[newId] || multiPathUpdate[newEnemyPath]) continue;
 
                 const updatedEnemy = { ...enemy, x: finalX, y: finalY };
@@ -1185,7 +1208,7 @@ async function processOverworldEnemyTurns() {
                 pathsClaimedThisFrame.add(newEnemyPath);
                 multiPathUpdate[newEnemyPath] = JSON.parse(JSON.stringify(updatedEnemy));
                 
-                // Only delete the old Firebase path if NO OTHER ENEMY is moving into it this frame!
+                // 🚨 FIX: Only delete old path if no one else claimed it this frame!
                 if (!pathsClaimedThisFrame.has(oldEnemyPath)) {
                     multiPathUpdate[oldEnemyPath] = null;
                 }
@@ -1207,9 +1230,10 @@ async function processOverworldEnemyTurns() {
                 }
             } else if (statusChanged) {
                 // If it couldn't move, but it took poison damage or had a timer tick down, save it!
+                // 🚨 FIX: Protect path update
                 const updatePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
                 multiPathUpdate[updatePath] = JSON.parse(JSON.stringify(enemy));
-                pathsClaimedThisFrame.add(updatePath); // Protect it
+                pathsClaimedThisFrame.add(updatePath);
                 movesQueued = true;
             }
         }
