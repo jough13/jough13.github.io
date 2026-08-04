@@ -378,32 +378,74 @@ window.ExpansionManager.register({
                     const attack = snap.val();
                     if (!attack) return;
 
-                    const dmg = attack.damage || 0;
-                    logMessage(`{red:⚔️ ${attack.attackerName} struck you for ${dmg} damage!}`);
+                    let dmg = attack.damage || 0;
+                    
+                    // --- MULTIPLAYER MONSTER COMBAT RESOLUTION ---
+                    if (attack.isMonster) {
+                        // 1. Process Dodging & Armor for Physical Attacks
+                        if (!attack.isSpell) {
+                            const { totalDefense, dodgeChance } = typeof getPlayerDefenseStats === 'function' ? getPlayerDefenseStats() : { totalDefense: 0, dodgeChance: 0 };
+                            
+                            if (Math.random() < dodgeChance) {
+                                logMessage(`{blue:The ${attack.attackerName} shoots an arrow, but you dodge!}`);
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "Dodge!", "#3b82f6");
+                                rtdb.ref(`pvpAttacks/${player_id}/${snap.key}`).remove();
+                                return; // Nullified!
+                            }
+                            // Subtract Armor
+                            dmg = Math.max(1, dmg - totalDefense);
+                        }
+                        
+                        // 2. Process Arcane Shield
+                        if (gameState.player.shieldValue > 0) {
+                            const absorb = Math.min(gameState.player.shieldValue, dmg);
+                            gameState.player.shieldValue -= absorb;
+                            dmg -= absorb;
+                            logMessage(`{cyan:Shield absorbs ${absorb} damage from the ${attack.attackerName}!}`);
+                        }
+                        
+                        // 3. Process Status Effects
+                        if (dmg > 0 && attack.inflicts) {
+                            if (attack.inflicts === 'poison') gameState.player.poisonTurns = 5;
+                            if (attack.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
+                            if (attack.inflicts === 'burn') gameState.player.burnTurns = 5;
+                        }
+                        
+                        // 4. Log it specifically as a monster attack
+                        if (dmg > 0) {
+                            const spellText = attack.isSpell ? `casts ${attack.spellName || 'a spell'}` : (attack.spellName ? `shoots ${attack.spellName}` : 'attacks');
+                            logMessage(`{red:The ${attack.attackerName} ${spellText} for ${dmg} damage!}`);
+                        }
+                    } else {
+                        // It's a PvP Player Attack
+                        logMessage(`{red:⚔️ ${attack.attackerName} struck you for ${dmg} damage!}`);
+                    }
+
                     if (typeof AudioSystem !== 'undefined') AudioSystem.playHit();
                     gameState.screenShake = 20;
 
-                    // 🚨 JUICE FIX: Dismount the victim if they get hit!
+                    // Dismount the victim if they get hit!
                     if (gameState.player.isMounted) {
                         gameState.player.isMounted = false;
                         logMessage("{red:You were knocked off your mount!}");
                         if (typeof render === 'function') render();
                     }
                     
-                    window.modifyVital('health', -dmg);
+                    if (dmg > 0) {
+                        window.modifyVital('health', -dmg);
 
-                    if (gameState.player.health <= 0) {
-                        logMessage(`{red:You were slain by ${attack.attackerName}!}`);
-                        
-                        // Push reward to attacker!
-                        const rewardGold = (gameState.player.bounty || 0) + (gameState.player.coins || 0);
-                        rtdb.ref(`pvpRewards/${attack.attackerId}`).push({
-                            gold: rewardGold,
-                            targetName: gameState.player.name || auth.currentUser.email.split('@')[0]
-                        });
-                        
-                        // Clear our gold natively (so the Prison spawn doesn't give us back half)
-                        gameState.player.coins = 0;
+                        if (gameState.player.health <= 0) {
+                            // If a monster killed us, standard death occurs. If a player killed us, pay the bounty!
+                            if (!attack.isMonster) {
+                                logMessage(`{red:You were slain by ${attack.attackerName}!}`);
+                                const rewardGold = (gameState.player.bounty || 0) + (gameState.player.coins || 0);
+                                rtdb.ref(`pvpRewards/${attack.attackerId}`).push({
+                                    gold: rewardGold,
+                                    targetName: gameState.player.name || auth.currentUser.email.split('@')[0]
+                                });
+                                gameState.player.coins = 0;
+                            }
+                        }
                     }
                     
                     if (typeof renderStats === 'function') renderStats();
