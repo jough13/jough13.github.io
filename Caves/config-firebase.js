@@ -509,6 +509,11 @@ function sanitizeForFirebase(obj, seen = new WeakSet(), depth = 0) {
         if (firebase.firestore && obj instanceof firebase.firestore.FieldValue) return obj;
         if (firebase.firestore && obj instanceof firebase.firestore.Timestamp) return obj;
         if (firebase.database && obj instanceof Object && Object.keys(obj).includes('.sv')) return obj; 
+        
+        // Context Boundary Failsafe
+        // If Firebase modules load across different contexts, instanceof can fail. 
+        // Firebase FieldValues contain a unique internal '_methodName' property we can track!
+        if (obj && obj._methodName) return obj;
     }
 
     // 6. CIRCULAR REFERENCE PROTECTION
