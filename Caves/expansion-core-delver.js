@@ -291,6 +291,9 @@ window.ExpansionManager.register({
                                     
                                     gameState.sharedEnemies[eId] = { ...scaled, tile: '🐛d', x: newX, y: newY, spawnTime: Date.now() };
                                     
+                                    // 🚨 BUG FIX: Instantly register it to the AI grid so it attacks immediately!
+                                    if (typeof updateSpatialMap === 'function') updateSpatialMap(eId, null, null, newX, newY);
+                                    
                                     if (typeof EnemyNetworkManager !== 'undefined' && typeof rtdb !== 'undefined') {
                                         rtdb.ref(EnemyNetworkManager.getPath(newX, newY, eId)).set(gameState.sharedEnemies[eId]);
                                     }
@@ -350,8 +353,8 @@ window.ExpansionManager.register({
                     }
                 }
                 
-                // Pass back to original engine
-                if (origEndPlayerTurn) origEndPlayerTurn.apply(this, arguments);
+                // 🚨 BUG FIX: Explicitly pass the updates object via .call()!
+                if (origEndPlayerTurn) origEndPlayerTurn.call(this, updates);
             };
         }
         
