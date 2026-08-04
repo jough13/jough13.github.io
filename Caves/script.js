@@ -3202,6 +3202,28 @@ function gameLoop(timestamp) {
     // This allows overworld enemies to roam and attack even if the host is standing still/AFK.
     if (typeof runSharedAiTurns === 'function') runSharedAiTurns();
 
+    // --- 🚨 REAL-TIME PLAYER AUTO-TICK ---
+    // If the player stands perfectly still in the overworld for 1.2 seconds, 
+    // force a turn to pass so that Pets attack autonomously and Status Effects tick!
+    if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+        const now = Date.now();
+        if (!window._lastAutoTickTime) window._lastAutoTickTime = now;
+        
+        if (now - window._lastAutoTickTime > 1200) {
+            window._lastAutoTickTime = now;
+            
+            // Only auto-tick if no menus are open and the player is alive
+            if (typeof _modalCache !== 'undefined' && !_modalCache.isAnyOpen() && gameState.player.health > 0) {
+                
+                // Optional QoL: Don't auto-tick if we are actively aiming a spell
+                if (!gameState.isAiming && typeof endPlayerTurn === 'function') {
+                    // We pass a flag indicating this was an AFK tick
+                    endPlayerTurn({ isAutoTick: true });
+                }
+            }
+        }
+    }
+
     // 3. Process Input Queue
     let currentCooldown = ACTION_COOLDOWN;
     
