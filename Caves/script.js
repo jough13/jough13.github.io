@@ -716,6 +716,43 @@ function triggerAtmosphericFlavor(tile) {
     }
 }
 
+// ==========================================
+// DETERMINISTIC HOST ELECTION
+// ==========================================
+// Ensures that global multiplayer events (AI, Raid Bosses) only trigger ONCE 
+// per realm, rather than every connected client spawning duplicates.
+window.isServerHost = function() {
+    const myId = typeof player_id !== 'undefined' ? player_id : null;
+    if (!myId) return false; // Guests or loading players cannot be hosts
+    
+    const myRealm = gameState.currentRealm || 0;
+    const myMapMode = gameState.mapMode;
+    const serverNow = typeof window.getServerTime === 'function' ? window.getServerTime() : Date.now();
+
+    if (typeof otherPlayers !== 'undefined') {
+        for (const id in otherPlayers) {
+            const p = otherPlayers[id];
+            if (!p) continue; 
+            
+            // Ignore AFK/Suspended tabs!
+            if (p.lastHeartbeat && (serverNow - p.lastHeartbeat > 12000)) continue;
+
+            const theirRealm = p.currentRealm || 0;
+            
+            // Compare against players in the exact same world layer and dimension
+            if (p.mapMode === myMapMode && theirRealm === myRealm) {
+                // If their Firebase UID string is alphanumerically "lower" than ours, 
+                // THEY are the host. Yield to them.
+                if (id < myId) {
+                    return false; 
+                }
+            }
+        }
+    }
+    return true; // We are the host!
+};
+
+
 function updateWeather() {
     const player = gameState.player;
 
@@ -798,13 +835,17 @@ function updateWeather() {
     const isNight = hour >= 20 || hour < 5;
 
     // 1 in 15 chance every night for a Blood Moon
-    if (isNight && !gameState.isBloodMoon && Math.random() < 0.005) { // Checked frequently, so low probability
+    if (isNight && !gameState.isBloodMoon && Math.random() < 0.005) { 
         gameState.isBloodMoon = true;
         logMessage(`{red:The moon turns blood red... The monsters grow frenzied!}`);
         
-        // 10% chance during a blood moon to spawn a raid boss near an active player
-        if (Math.random() < 0.10) {
-            triggerRaidBossSpawn(player.x, player.y);
+        // Only the elected Host client rolls for the Raid Boss!
+        // This ensures it only spawns once for the entire server.
+        if (window.isServerHost()) {
+            // 10% chance during a blood moon to spawn a raid boss near the host player
+            if (Math.random() < 0.10) {
+                triggerRaidBossSpawn(player.x, player.y);
+            }
         }
     } else if (!isNight && gameState.isBloodMoon) {
         gameState.isBloodMoon = false;
@@ -2167,7 +2208,7 @@ function handleChatCommand(message) {
                 // Add to inventory
                 if (gameState.player.inventory.length < invCap) {
                     
-                    // 🚨 STABILITY WIN: Deep Clone!
+                    // Deep Clone!
                     // Prevents permanently altering the base ITEM_DATA dictionary globally if this item is later enchanted!
                     const newItem = typeof window.cloneItemSafely === 'function' ? window.cloneItemSafely(template) : JSON.parse(JSON.stringify(template));
                     newItem.templateId = targetKey;
