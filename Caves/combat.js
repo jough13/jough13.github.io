@@ -1576,8 +1576,12 @@ function processFriendlyTurns() {
 async function runCompanionTurn() {
     const companion = gameState.player.companion;
     if (!companion) return;
-    
     if (gameState.player.isMounted) return;
+
+    // Lock pet attacks to the same 600ms tick rate as enemies
+    const now = Date.now();
+    if (now - (window.lastCompanionTick || 0) < 600) return;
+    window.lastCompanionTick = now;
 
     const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
     let attacked = false;
