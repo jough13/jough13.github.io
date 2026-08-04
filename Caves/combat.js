@@ -406,8 +406,6 @@ async function runSharedAiTurns() {
     window.lastLocalAIAttempt = now;
 
     // --- 🚨 ANTI-DEADLOCK HEARTBEAT ---
-    // Pulse our heartbeat to Firebase every 5 seconds. If this browser tab is minimized,
-    // requestAnimationFrame pauses, this loop stops, and our heartbeat dies naturally!
     if (now - (window.lastHeartbeatPush || 0) > 5000) {
         window.lastHeartbeatPush = now;
         if (typeof onlinePlayerRef !== 'undefined' && onlinePlayerRef && typeof firebase !== 'undefined') {
@@ -415,38 +413,10 @@ async function runSharedAiTurns() {
         }
     }
 
-    // --- DETERMINISTIC HOST ELECTION ---
-    // The player with the lowest alphanumeric player_id in the current layer/realm becomes the Host.
-    let isHost = true;
-    const myId = typeof player_id !== 'undefined' ? player_id : null;
-    const myRealm = gameState.currentRealm || 0;
-    const myMapMode = gameState.mapMode;
-    const serverNow = typeof window.getServerTime === 'function' ? window.getServerTime() : Date.now();
-
-    if (myId && typeof otherPlayers !== 'undefined') {
-        for (const id in otherPlayers) {
-            const p = otherPlayers[id];
-            if (!p) continue; // 🚨 GHOST GUARD
-            
-            // 🚨 DEADLOCK FIX: Ignore AFK/Suspended tabs!
-            // If a player hasn't sent a heartbeat in 12 seconds, their tab is paused or crashed.
-            if (p.lastHeartbeat && (serverNow - p.lastHeartbeat > 12000)) continue;
-
-            const theirRealm = p.currentRealm || 0;
-            
-            // Only compare against players in the exact same world layer and dimension
-            if (p.mapMode === myMapMode && theirRealm === myRealm) {
-                // If their ID is "lower" than ours, THEY are the host. Yield to them.
-                if (id < myId) {
-                    isHost = false; 
-                    break;
-                }
-            }
-        }
+    // --- Use centralized host checking ---
+    if (typeof window.isServerHost === 'function' && !window.isServerHost()) {
+        return; // We are not the host, abort.
     }
-
-    // If we are not the host, abort. We don't process the AI.
-    if (!isHost) return; 
 
     // --- WE ARE THE HOST: Process AI ---
     try {
@@ -2317,6 +2287,16 @@ function handlePlayerDeath() {
     player.isBoating = false;
     player.isSailing = false;
 
+    // The Spire Ghost Fix & Map Protection
+    // Ensure pre-prestige gear isn't accidentally restored if they die in the Spire!
+    delete player.spireBackupInv;
+    delete player.spireBackupEquip;
+    
+    // FIREBASE DELETION FAILSAFE
+    // Because we use { merge: true } below, simply deleting the property from the local object 
+    // will NOT delete it from Firestore. We must explicitly pass FieldValue.delete()!
+    const deleteField = typeof window.getFirestoreDelete === 'function' ? window.getFirestoreDelete() : null;
+
     // Force the database to pull them out of any alternate dimensions or dungeons immediately
     // so if they close the browser on the Game Over screen, they don't load into a wall later!
     const deathUpdates = {
@@ -2326,6 +2306,12 @@ function handlePlayerDeath() {
         mapMode: 'overworld',
         mapId: null
     };
+    
+    // Explicitly command Firestore to purge the Spire Backups
+    if (deleteField) {
+        deathUpdates.spireBackupInv = deleteField;
+        deathUpdates.spireBackupEquip = deleteField;
+    }
 
     if (typeof playerRef !== 'undefined' && playerRef) {
         playerRef.set(deathUpdates, { merge: true }).catch(console.error);
