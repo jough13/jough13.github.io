@@ -132,6 +132,52 @@ const EnemyNetworkManager = {
 };
 
 /**
+ * Fast Bresenham's Line Algorithm for Line of Sight checking.
+ * Returns true if the path from (x0, y0) to (x1, y1) is clear of solid obstacles.
+ */
+function hasLineOfSight(x0, y0, x1, y1) {
+    let dx = Math.abs(x1 - x0);
+    let dy = Math.abs(y1 - y0);
+    let sx = (x0 < x1) ? 1 : -1;
+    let sy = (y0 < y1) ? 1 : -1;
+    let err = dx - dy;
+
+    let currX = x0;
+    let currY = y0;
+
+    while (true) {
+        // If we reached the target coordinate, the path is clear!
+        if (currX === x1 && currY === y1) return true;
+
+        // Check if the current tile blocks LoS (we skip the starting tile)
+        if (currX !== x0 || currY !== y0) {
+            let tileAt = '.';
+            if (typeof chunkManager !== 'undefined') {
+                if (gameState.mapMode === 'overworld' || gameState.mapMode === 'underworld') {
+                    tileAt = chunkManager.getTile(currX, currY);
+                } else if (gameState.mapMode === 'dungeon') {
+                    const map = chunkManager.caveMaps[gameState.currentCaveId];
+                    tileAt = (map && map[currY] && map[currY][currX]) ? map[currY][currX] : ' ';
+                } else if (gameState.mapMode === 'castle') {
+                    const map = chunkManager.castleMaps[gameState.currentCastleId];
+                    tileAt = (map && map[currY] && map[currY][currX]) ? map[currY][currX] : ' ';
+                }
+            }
+
+            // If the ray hits a Mountain, Wall, Closed Door, or the edge of the world, block the shot!
+            if (['▓', '▒', '🧱', '^', '+', ' '].includes(tileAt)) {
+                return false;
+            }
+        }
+
+        // Calculate next step in the line
+        let e2 = 2 * err;
+        if (e2 > -dy) { err -= dy; currX += sx; }
+        if (e2 < dx) { err += dx; currY += sy; }
+    }
+}
+
+/**
  * Scales an enemy based on distance from the center of the world.
  * Adds prefixes (Weak, Feral, Ancient) and buffs stats.
  */
@@ -729,7 +775,8 @@ async function processOverworldEnemyTurns() {
 
         // --- OVERWORLD DIRECT SPELLCASTING ---
         const castRangeSq = Math.pow(enemy.castRange || 6, 2);
-        if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20) {
+        
+        if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20 && hasLineOfSight(enemy.x, enemy.y, playerX, playerY)) {
             if (gameState.godMode) continue;
 
             const spellDmg = Math.max(1, Math.floor(enemy.spellDamage || 1));
@@ -802,7 +849,8 @@ async function processOverworldEnemyTurns() {
 
         // --- OVERWORLD ENEMY ARCHERY ---
         const shootRangeSq = Math.pow(enemy.range || 5, 2);
-        if (enemy.isRanged && distSq <= shootRangeSq && Math.random() < 0.35) {
+        
+        if (enemy.isRanged && distSq <= shootRangeSq && Math.random() < 0.35 && hasLineOfSight(enemy.x, enemy.y, playerX, playerY)) {
             if (gameState.godMode) continue;
 
             // --- COMPANION VULNERABILITY (Archery) ---
@@ -1466,7 +1514,8 @@ function processEnemyTurns() {
         }
 
         const castRangeSq = Math.pow(enemy.castRange || 6, 2);
-        if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20) {
+        
+        if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20 && hasLineOfSight(enemy.x, enemy.y, player.x, player.y)) {
             if (gameState.godMode) return;
 
             const spellDmg = Math.max(1, Math.floor(enemy.spellDamage || 1));
@@ -1526,7 +1575,8 @@ function processEnemyTurns() {
 
         // --- DUNGEON ENEMY ARCHERY ---
         const shootRangeSq = Math.pow(enemy.range || 5, 2);
-        if (enemy.isRanged && distSq <= shootRangeSq && Math.random() < 0.35) {
+        
+        if (enemy.isRanged && distSq <= shootRangeSq && Math.random() < 0.35 && hasLineOfSight(enemy.x, enemy.y, player.x, player.y)) {
             if (gameState.godMode) return;
 
             // --- COMPANION VULNERABILITY (Archery) ---
