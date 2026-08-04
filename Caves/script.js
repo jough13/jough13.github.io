@@ -1823,8 +1823,8 @@ function endPlayerTurn(turnUpdates = {}) {
     }
 
     processFriendlyTurns();
+
     runCompanionTurn();
-    runSharedAiTurns();
 
     processEnemyTurns();
 
@@ -3160,6 +3160,10 @@ let lastFrameTime = 0;
 let timeSinceLastDraw = 0;
 const FPS_CAP = 1000 / 60; // 16.6ms per frame (60 FPS)
 
+let lastFrameTime = 0;
+let timeSinceLastDraw = 0;
+const FPS_CAP = 1000 / 60; // 16.6ms per frame (60 FPS)
+
 function gameLoop(timestamp) {
     if (!lastFrameTime) lastFrameTime = timestamp;
     const rawDt = timestamp - lastFrameTime;
@@ -3198,6 +3202,11 @@ function gameLoop(timestamp) {
 
     // 2. Update Particles smoothly
     if (typeof ParticleSystem !== 'undefined') ParticleSystem.update();
+
+    // --- 🚨 BUG FIX WIN: REAL-TIME MMO AI ---
+    // Because this function has a 600ms internal throttle, it is safe to call at 60fps.
+    // This allows overworld enemies to roam and attack even if the host is standing still/AFK.
+    if (typeof runSharedAiTurns === 'function') runSharedAiTurns();
 
     // 3. Process Input Queue
     let currentCooldown = ACTION_COOLDOWN;
