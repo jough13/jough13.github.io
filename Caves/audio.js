@@ -846,9 +846,11 @@ const AudioSystem = {
 // iOS Safari specifically requires sound to be played during this event!
 
 function forceUnlockAudio() {
-    const ctx = AudioSystem.initAudioContext();
+    // Use getCtx() instead of initAudioContext() so we can catch 
+    // AND resume an already-existing but suspended context!
+    const ctx = AudioSystem.getCtx(); 
     if (ctx) {
-        // 🚨 BUG FIX & STABILITY WIN: Safari Suspend Fix
+        // Safari Suspend Fix
         // Safari strictly requires `resume()` to be explicitly called inside the user gesture
         // if the context was created in a suspended state prior to interaction!
         if (ctx.state === 'suspended') {
@@ -876,11 +878,28 @@ function forceUnlockAudio() {
     }
 }
 
+// 1. Initial Binding on Boot
 document.addEventListener('click', forceUnlockAudio, { once: true });
 document.addEventListener('touchstart', forceUnlockAudio, { once: true });
 document.addEventListener('touchend', forceUnlockAudio, { once: true });
 document.addEventListener('pointerdown', forceUnlockAudio, { once: true });
 document.addEventListener('keydown', forceUnlockAudio, { once: true });
 document.addEventListener('mouseup', forceUnlockAudio, { once: true });
+
+// 2. Re-Arm on Tab Switch
+// If the user backgrounds the app on iOS, the OS suspends the audio context. 
+// We MUST re-arm the user-gesture unlocker when they come back!
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        if (AudioSystem._ctx && AudioSystem._ctx.state === 'suspended') {
+            document.addEventListener('click', forceUnlockAudio, { once: true });
+            document.addEventListener('touchstart', forceUnlockAudio, { once: true });
+            document.addEventListener('touchend', forceUnlockAudio, { once: true });
+            document.addEventListener('pointerdown', forceUnlockAudio, { once: true });
+            document.addEventListener('keydown', forceUnlockAudio, { once: true });
+            document.addEventListener('mouseup', forceUnlockAudio, { once: true });
+        }
+    }
+});
 
 // --- END OF FILE audio.js ---
