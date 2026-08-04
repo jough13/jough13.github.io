@@ -516,8 +516,6 @@ function getPlayerDefenseStats() {
 async function processOverworldEnemyTurns() {
     if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') return;
 
-    const playerX = gameState.player.x;
-    const playerY = gameState.player.y;
     const searchRadius = 25;
     const searchDistSq = searchRadius * searchRadius;
     const HEARING_DISTANCE_SQ = 15 * 15;
@@ -527,13 +525,26 @@ async function processOverworldEnemyTurns() {
     let multiPathUpdate = {};
     let movesQueued = false;
     const processedIdsThisFrame = new Set();
-    const pathsClaimedThisFrame = new Set(); // 🚨 FIX: Protects against Firebase deletion race conditions
+    const pathsClaimedThisFrame = new Set(); 
     const SPATIAL_CHUNK_SIZE = 16; 
 
-    // 1. Gather candidates from local buckets
+    // --- 🚨 FIX: GLOBAL TARGET ACQUISITION ---
+    // Gather all valid targets (The Host + All Online Players in the same realm)
+    const validTargets = [{ id: 'HOST', x: gameState.player.x, y: gameState.player.y, isHost: true, stealth: gameState.player.stealthTurns || 0 }];
+    
+    if (typeof otherPlayers !== 'undefined') {
+        for (const pid in otherPlayers) {
+            const op = otherPlayers[pid];
+            if (op.mapMode === gameState.mapMode && op.currentRealm === gameState.currentRealm) {
+                validTargets.push({ id: pid, x: op.x, y: op.y, isHost: false, stealth: op.stealthTurns || 0 });
+            }
+        }
+    }
+
+    // 1. Gather candidates from local buckets (Centered on Host)
     const activeEnemyIds = [];
-    const pChunkX = Math.floor(playerX / SPATIAL_CHUNK_SIZE);
-    const pChunkY = Math.floor(playerY / SPATIAL_CHUNK_SIZE);
+    const pChunkX = Math.floor(gameState.player.x / SPATIAL_CHUNK_SIZE);
+    const pChunkY = Math.floor(gameState.player.y / SPATIAL_CHUNK_SIZE);
 
     for (let y = pChunkY - 1; y <= pChunkY + 1; y++) {
         for (let x = pChunkX - 1; x <= pChunkX + 1; x++) {
@@ -547,7 +558,7 @@ async function processOverworldEnemyTurns() {
     // Helper: Valid path check for overworld & underworld
     const isValidMove = (tx, ty, enemyType) => {
         const t = chunkManager.getTile(tx, ty);
-        if (t === '~' || t === '🌋') return false; // Water and Magma block movement
+        if (t === '~' || t === '🌋') return false; 
         if (['.', 'F', 'd', 'D', '≈', '🍄', '💎c', '🪜', '•', '▲', '💎'].includes(t)) return true;
         if (t === '^' || t === '▓') {
             const climbers =['Y', '🐲', 'Ø', 'g', 'o', '🦇', '🦅'];
@@ -557,32 +568,47 @@ async function processOverworldEnemyTurns() {
     };
 
     for (const enemyId of activeEnemyIds) {
-        // --- Stop processing enemies if the player is already dead! ---
-        if (gameState.player.health <= 0) break;
-
         if (processedIdsThisFrame.has(enemyId)) continue;
 
         const enemy = gameState.sharedEnemies[enemyId];
-        
-        // --- SAFETY CHECK ---
         if (!enemy || typeof enemy.x !== 'number' || typeof enemy.y !== 'number') {
             continue;
         }
 
-        const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
+        // --- 🚨 FIX: NEAREST TARGET SELECTION ---
+        let target = null;
+        let targetDistSq = Infinity;
+
+        for (const t of validTargets) {
+            const dSq = Math.pow(t.x - enemy.x, 2) + Math.pow(t.y - enemy.y, 2);
+            
+            // Stealth Invisibility Check
+            if (t.stealth > 0) {
+                if (dSq > 9) continue; // Invisible beyond 3 tiles
+                if (Math.random() < 0.5) continue; // 50% chance to ignore up close
+            }
+
+            if (dSq < targetDistSq) {
+                targetDistSq = dSq;
+                target = t;
+            }
+        }
+
+        // If no valid targets are within range, skip this enemy
+        if (!target || targetDistSq > searchDistSq) continue;
+
+        const targetX = target.x;
+        const targetY = target.y;
         
         // --- VILLAGE GUARD SNIPER SYSTEM (Anti-Trolling/Anti-Ghost) ---
-        // Expanded guard range to 100 tiles (10000 sq) and shoot anything > 15 XP
-        // (Guards don't exist in the underworld, so skip this check there)
         if (gameState.mapMode === 'overworld') {
             const distToSpawnSq = (enemy.x * enemy.x) + (enemy.y * enemy.y);
             if (distToSpawnSq < 10000 && enemy.xp > 15) { 
-                if (distSq < 400) {
+                if (targetDistSq < 400) {
                     logMessage(`{blue:🏹 A village guard snipes the trespassing ${enemy.name} from the walls!}`);
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(enemy.x, enemy.y, '#ef4444', 8);
                 }
                 
-                // 🚨 FIX: Queue removal from Firebase securely
                 const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
                 if (!pathsClaimedThisFrame.has(deathPath)) {
                     multiPathUpdate[deathPath] = null;
@@ -596,19 +622,8 @@ async function processOverworldEnemyTurns() {
             }
         }
 
-        if (distSq > searchDistSq) continue;
-
-        // --- STEALTH INVISIBILITY (PvE) ---
-        if (gameState.player.stealthTurns > 0) {
-            // Completely invisible beyond 3 tiles (3^2 = 9)
-            if (distSq > 9) continue; 
-            // 50% chance they don't notice you even if you are right next to them
-            if (Math.random() < 0.5) continue; 
-        }
-
         // Combat Barks!
-        // Gives humanoid enemies a personality as they close in on the player
-        if (distSq < 25 && Math.random() < 0.05) {
+        if (targetDistSq < 25 && Math.random() < 0.05) {
             const barks = {
                 'b': ["Your gold or your life!", "Get 'em!", "You're dead meat!"],
                 'C': ["I'll drink from your skull!", "Another fool comes to die.", "Rip them apart!"],
@@ -633,37 +648,24 @@ async function processOverworldEnemyTurns() {
         let skipTurn = false;
         let statusChanged = false;
 
-        if (enemy.rootTurns > 0) { 
-            enemy.rootTurns--; 
-            skipTurn = true; 
-            statusChanged = true; 
-        }
-        if (enemy.stunTurns > 0) { 
-            enemy.stunTurns--; 
-            skipTurn = true; 
-            statusChanged = true; 
-        }
-        if (enemy.frostbiteTurns > 0) { 
-            enemy.frostbiteTurns--; 
-            statusChanged = true; 
-            if (Math.random() < 0.25) skipTurn = true; 
-        }
+        if (enemy.rootTurns > 0) { enemy.rootTurns--; skipTurn = true; statusChanged = true; }
+        if (enemy.stunTurns > 0) { enemy.stunTurns--; skipTurn = true; statusChanged = true; }
+        if (enemy.frostbiteTurns > 0) { enemy.frostbiteTurns--; statusChanged = true; if (Math.random() < 0.25) skipTurn = true; }
+        
         if (enemy.burnTurns > 0) {
             enemy.burnTurns--;
-            enemy.health -= 2; // Fire burns hotter than poison!
-            logMessage(`{orange:The ${enemy.name} takes burn damage.}`);
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-2", "#f97316");
+            enemy.health -= 2; 
+            if (target.isHost) {
+                logMessage(`{orange:The ${enemy.name} takes burn damage.}`);
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-2", "#f97316");
+            }
             
             if (enemy.health <= 0) {
-                logMessage(`{red:The ${enemy.name} burns to ash!}`);
+                if (target.isHost) logMessage(`{red:The ${enemy.name} burns to ash!}`);
                 
                 registerKill(enemy);
-                
-                // 🚨 FIX: Secure Firebase deletion
                 const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
-                if (!pathsClaimedThisFrame.has(deathPath)) {
-                    multiPathUpdate[deathPath] = null;
-                }
+                if (!pathsClaimedThisFrame.has(deathPath)) multiPathUpdate[deathPath] = null;
                 
                 delete gameState.sharedEnemies[enemyId];
                 if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
@@ -675,8 +677,6 @@ async function processOverworldEnemyTurns() {
                     const lootData = { ...baseEnemyData, isElite: enemy.isElite };
                     const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
                     const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
-                    
-                    // Let loot drop in water/lava with a short 15-minute TTL so players can sail to it!
                     const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
                     chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', ttl); 
                     gameState.mapDirty = true;
@@ -687,19 +687,17 @@ async function processOverworldEnemyTurns() {
         if (enemy.poisonTurns > 0) {
             enemy.poisonTurns--;
             enemy.health -= 1;
-            logMessage(`{gray:The ${enemy.name} takes poison damage.}`);
-            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-1", "#22c55e");
+            if (target.isHost) {
+                logMessage(`{gray:The ${enemy.name} takes poison damage.}`);
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, "-1", "#22c55e");
+            }
             
             if (enemy.health <= 0) {
-                logMessage(`{green:The ${enemy.name} succumbs to poison!}`);
+                if (target.isHost) logMessage(`{green:The ${enemy.name} succumbs to poison!}`);
                 
                 registerKill(enemy);
-                
-                // 🚨 FIX: Secure Firebase deletion
                 const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
-                if (!pathsClaimedThisFrame.has(deathPath)) {
-                    multiPathUpdate[deathPath] = null;
-                }
+                if (!pathsClaimedThisFrame.has(deathPath)) multiPathUpdate[deathPath] = null;
                 
                 delete gameState.sharedEnemies[enemyId];
                 if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
@@ -711,15 +709,13 @@ async function processOverworldEnemyTurns() {
                     const lootData = { ...baseEnemyData, isElite: enemy.isElite };
                     const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
                     const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
-                    
-                    // Let loot drop in water/lava with a short 15-minute TTL
                     const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
                     chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', ttl); 
                     gameState.mapDirty = true;
                 }
                 continue;
             }
-            if (enemy.poisonTurns === 0) logMessage(`{gray:The ${enemy.name} is no longer poisoned.}`);
+            if (enemy.poisonTurns === 0 && target.isHost) logMessage(`{gray:The ${enemy.name} is no longer poisoned.}`);
         }
 
         let isMad = false;
@@ -734,26 +730,25 @@ async function processOverworldEnemyTurns() {
         // ==========================================
         const canTelegraph = enemy.isBoss || enemy.tile === 'm' || enemy.tile === '😈d' || enemy.tile === '🐲';
 
-        if (!skipTurn && canTelegraph && distSq < 36 && Math.random() < 0.20) {
+        if (!skipTurn && canTelegraph && targetDistSq < 36 && Math.random() < 0.20) {
             enemy.pendingAttacks =[];
 
             if (enemy.tile === 'm' || enemy.tile === '😈d') {
-                logMessage(`{orange:The ${enemy.name} gathers dark energy...}`);
-                enemy.pendingAttacks.push({ x: playerX, y: playerY });
-                enemy.pendingAttacks.push({ x: playerX + 1, y: playerY });
-                enemy.pendingAttacks.push({ x: playerX - 1, y: playerY });
-                enemy.pendingAttacks.push({ x: playerX, y: playerY + 1 });
-                enemy.pendingAttacks.push({ x: playerX, y: playerY - 1 });
+                if (target.isHost) logMessage(`{orange:The ${enemy.name} gathers dark energy...}`);
+                enemy.pendingAttacks.push({ x: targetX, y: targetY });
+                enemy.pendingAttacks.push({ x: targetX + 1, y: targetY });
+                enemy.pendingAttacks.push({ x: targetX - 1, y: targetY });
+                enemy.pendingAttacks.push({ x: targetX, y: targetY + 1 });
+                enemy.pendingAttacks.push({ x: targetX, y: targetY - 1 });
             } else {
-                logMessage(`{orange:The ${enemy.name} takes a deep breath!}`);
+                if (target.isHost) logMessage(`{orange:The ${enemy.name} takes a deep breath!}`);
                 for (let ty = -1; ty <= 1; ty++) {
                     for (let tx = -1; tx <= 1; tx++) {
-                        enemy.pendingAttacks.push({ x: playerX + tx, y: playerY + ty });
+                        enemy.pendingAttacks.push({ x: targetX + tx, y: targetY + ty });
                     }
                 }
             }
             
-            // 🚨 FIX: Sanitize the object before appending to update list & Protect it
             const updatePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
             multiPathUpdate[updatePath] = JSON.parse(JSON.stringify(enemy));
             pathsClaimedThisFrame.add(updatePath);
@@ -764,13 +759,42 @@ async function processOverworldEnemyTurns() {
 
         // --- OVERWORLD TELEGRAPH EXECUTION ---
         if (enemy.pendingAttacks && enemy.pendingAttacks.length > 0) {
-            let hitPlayer = false;
-            let playerTookDamage = false; // 🚨 Add tracker
+            let hitHost = false;
 
             enemy.pendingAttacks.forEach(tile => {
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tile.x, tile.y, '#ef4444', 8);
 
-                // --- COMPANION VULNERABILITY (Telegraphs) ---
+                // --- 🚨 FIX: NETWORKED AOE DAMAGE ---
+                // The Host resolves the AoE blast for everyone in the server!
+                validTargets.forEach(t => {
+                    if (tile.x === t.x && tile.y === t.y) {
+                        const dmg = Math.floor(enemy.attack * 1.5); 
+                        
+                        if (t.isHost) {
+                            if (gameState.godMode) return;
+                            window.modifyVital('health', -dmg);
+                            gameState.screenShake = 15;
+                            gameState.screenFlash = { color: '#ef4444', alpha: 0.4, decay: 0.05 };
+                            logMessage(`{red:You are caught in the ${enemy.name}'s blast! (-${dmg} HP)}`);
+                            hitHost = true;
+                            if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ health: gameState.player.health });
+                        } else {
+                            // Send Damage Packet to Client
+                            if (typeof rtdb !== 'undefined') {
+                                rtdb.ref(`pvpAttacks/${t.id}`).push({
+                                    attackerId: enemyId,
+                                    attackerName: enemy.name,
+                                    damage: dmg,
+                                    isMonster: true,
+                                    isSpell: true, // Tell client to ignore dodge/armor
+                                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                                });
+                            }
+                        }
+                    }
+                });
+
+                // Host Companion Check
                 if (gameState.player.companion && !gameState.player.isMounted && tile.x === gameState.player.companion.x && tile.y === gameState.player.companion.y) {
                     const dmg = Math.floor(enemy.attack * 1.5);
                     gameState.player.companion.hp -= dmg;
@@ -782,49 +806,25 @@ async function processOverworldEnemyTurns() {
                         gameState.player.isMounted = false;
                         if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
                     } else {
-                        // 🚨 FIX: Save companion HP
                         if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: gameState.player.companion });
                     }
                 }
-
-                if (tile.x === playerX && tile.y === playerY) {
-                    if (gameState.godMode) return;
-                    const dmg = Math.floor(enemy.attack * 1.5); 
-                    window.modifyVital('health', -dmg);
-                    gameState.screenShake = 15;
-                    
-                    gameState.screenFlash = { color: '#ef4444', alpha: 0.4, decay: 0.05 };
-                    
-                    logMessage(`{red:You are caught in the ${enemy.name}'s blast! (-${dmg} HP)}`);
-                    hitPlayer = true;
-                    playerTookDamage = true; // 🚨 Flag for save
-                }
             });
 
-            // Sync player health if hit while AFK
-            if (playerTookDamage) {
-                if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ health: gameState.player.health });
-            }
-
-            if (!hitPlayer) logMessage(`{gray:The ${enemy.name}'s attack strikes the ground!}`);
+            if (!hitHost && target.isHost) logMessage(`{gray:The ${enemy.name}'s attack strikes the ground!}`);
 
             enemy.pendingAttacks = null;
-            
-            // 🚨 FIX: Protect the base path
             const basePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
             multiPathUpdate[basePath + '/pendingAttacks'] = null; 
             pathsClaimedThisFrame.add(basePath);
-            
             movesQueued = true;
             processedIdsThisFrame.add(enemyId);
             
-            if (gameState.player.health <= 0) break; // Death handled by modifyVital
+            if (gameState.player.health <= 0) break;
             continue; 
         }
 
-        // If skipped turn due to stun/root, make sure we save the updated status effect timers
         if (skipTurn) {
-            // 🚨 FIX: Protect path
             const updatePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
             multiPathUpdate[updatePath] = JSON.parse(JSON.stringify(enemy));
             pathsClaimedThisFrame.add(updatePath);
@@ -836,9 +836,8 @@ async function processOverworldEnemyTurns() {
         // --- OVERWORLD DIRECT SPELLCASTING ---
         const castRangeSq = Math.pow(enemy.castRange || 6, 2);
         
-        if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20 && hasLineOfSight(enemy.x, enemy.y, playerX, playerY)) {
-            if (gameState.godMode) continue;
-
+        if (enemy.caster && targetDistSq <= castRangeSq && Math.random() < 0.20 && hasLineOfSight(enemy.x, enemy.y, targetX, targetY)) {
+            
             const spellDmg = Math.max(1, Math.floor(enemy.spellDamage || 1));
             let spellName = "spell";
             if (enemy.tile === 'm') spellName = "Arcane Bolt";
@@ -846,73 +845,83 @@ async function processOverworldEnemyTurns() {
             if (enemy.tile === '@') spellName = "Poison Spit";
             if (enemy.tile === 'f') spellName = "Fireball";
 
-            // --- COMPANION VULNERABILITY (Spells) ---
-            let targetIsCompanion = false;
-            if (gameState.player.companion && !gameState.player.isMounted && Math.random() < 0.25) {
-                targetIsCompanion = true;
-            }
+            if (target.isHost) {
+                if (gameState.godMode) continue;
+                let targetIsCompanion = false;
+                if (gameState.player.companion && !gameState.player.isMounted && Math.random() < 0.25) targetIsCompanion = true;
 
-            if (targetIsCompanion) {
-                let compDmg = spellDmg;
-                gameState.player.companion.hp -= compDmg;
-                logMessage(`{red:The ${enemy.name} casts ${spellName} at your ${gameState.player.companion.name} for ${compDmg} damage!}`);
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, `-${compDmg}`, '#ef4444');
-                
-                if (gameState.player.companion.hp <= 0) {
-                    logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain by magic!}`);
-                    gameState.player.companion = null; gameState.player.isMounted = false;
-                    if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
+                if (targetIsCompanion) {
+                    let compDmg = spellDmg;
+                    gameState.player.companion.hp -= compDmg;
+                    logMessage(`{red:The ${enemy.name} casts ${spellName} at your ${gameState.player.companion.name} for ${compDmg} damage!}`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, `-${compDmg}`, '#ef4444');
+                    
+                    if (gameState.player.companion.hp <= 0) {
+                        logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain by magic!}`);
+                        gameState.player.companion = null; gameState.player.isMounted = false;
+                        if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
+                    } else {
+                        if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: gameState.player.companion });
+                    }
                 } else {
-                    // 🚨 FIX: Save companion HP
-                    if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: gameState.player.companion });
+                    const { dodgeChance } = getPlayerDefenseStats();
+
+                    if (Math.random() < dodgeChance) {
+                        logMessage(`{blue:The ${enemy.name} fires a ${spellName}, but you dodge!}`);
+                    } else {
+                        let dmg = spellDmg;
+                        if (gameState.player.shieldValue > 0) {
+                            const absorb = Math.min(gameState.player.shieldValue, dmg);
+                            gameState.player.shieldValue -= absorb;
+                            dmg -= absorb;
+                            logMessage(`{cyan:Shield absorbs ${absorb} magic damage!}`);
+                        }
+                        if (dmg > 0) {
+                            window.modifyVital('health', -dmg);
+                            gameState.screenShake = 10; 
+                            gameState.screenFlash = { color: '#be123c', alpha: 0.3, decay: 0.1 };
+                            
+                            const wrapper = document.getElementById('gameCanvasWrapper');
+                            if (wrapper) {
+                                wrapper.classList.remove('damage-flash'); 
+                                void wrapper.offsetWidth; 
+                                wrapper.classList.add('damage-flash');
+                            }
+
+                            logMessage(`{red:The ${enemy.name} casts ${spellName} for ${dmg} damage!}`);
+
+                            if (enemy.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
+                            if (enemy.inflicts === 'poison') gameState.player.poisonTurns = 5;
+                            if (enemy.inflicts === 'burn') gameState.player.burnTurns = 5;
+
+                            if (typeof triggerDebouncedSave === 'function') {
+                                triggerDebouncedSave({
+                                    health: gameState.player.health,
+                                    poisonTurns: gameState.player.poisonTurns,
+                                    frostbiteTurns: gameState.player.frostbiteTurns,
+                                    burnTurns: gameState.player.burnTurns
+                                });
+                            }
+                            if (gameState.player.health <= 0) break;
+                        }
+                    }
                 }
             } else {
-                const { dodgeChance } = getPlayerDefenseStats();
-
-                if (Math.random() < dodgeChance) {
-                    logMessage(`{blue:The ${enemy.name} fires a ${spellName}, but you dodge!}`);
-                } else {
-                    let dmg = spellDmg;
-                    if (gameState.player.shieldValue > 0) {
-                        const absorb = Math.min(gameState.player.shieldValue, dmg);
-                        gameState.player.shieldValue -= absorb;
-                        dmg -= absorb;
-                        logMessage(`{cyan:Shield absorbs ${absorb} magic damage!}`);
-                    }
-                    if (dmg > 0) {
-                        window.modifyVital('health', -dmg);
-                        gameState.screenShake = 10; 
-                        gameState.screenFlash = { color: '#be123c', alpha: 0.3, decay: 0.1 };
-                        
-                        const wrapper = document.getElementById('gameCanvasWrapper');
-                        if (wrapper) {
-                            wrapper.classList.remove('damage-flash'); 
-                            void wrapper.offsetWidth; 
-                            wrapper.classList.add('damage-flash');
-                        }
-
-                        logMessage(`{red:The ${enemy.name} casts ${spellName} for ${dmg} damage!}`);
-
-                        if (enemy.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
-                        if (enemy.inflicts === 'poison') gameState.player.poisonTurns = 5;
-                        if (enemy.inflicts === 'burn') gameState.player.burnTurns = 5;
-
-                        // Explicitly save health & debuffs to Firebase immediately!
-                        if (typeof triggerDebouncedSave === 'function') {
-                            triggerDebouncedSave({
-                                health: gameState.player.health,
-                                poisonTurns: gameState.player.poisonTurns,
-                                frostbiteTurns: gameState.player.frostbiteTurns,
-                                burnTurns: gameState.player.burnTurns
-                            });
-                        }
-
-                        if (gameState.player.health <= 0) break;
-                    }
+                // 🚨 FIX: Send Spell to Client
+                if (typeof rtdb !== 'undefined') {
+                    rtdb.ref(`pvpAttacks/${target.id}`).push({
+                        attackerId: enemyId,
+                        attackerName: enemy.name,
+                        damage: spellDmg,
+                        isMonster: true,
+                        isSpell: true, // Magic bypasses armor, tell client!
+                        spellName: spellName,
+                        inflicts: enemy.inflicts || null,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    });
                 }
             }
             
-            // 🚨 FIX: Protect path if status effects ticked
             if (statusChanged) {
                 const updatePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
                 multiPathUpdate[updatePath] = JSON.parse(JSON.stringify(enemy));
@@ -920,106 +929,112 @@ async function processOverworldEnemyTurns() {
             }
             processedIdsThisFrame.add(enemyId);
             movesQueued = true;
-            continue; // Skip movement if they casted a spell
+            continue; 
         }
 
         // --- OVERWORLD ENEMY ARCHERY ---
         const shootRangeSq = Math.pow(enemy.range || 5, 2);
         
-        if (enemy.isRanged && distSq <= shootRangeSq && Math.random() < 0.35 && hasLineOfSight(enemy.x, enemy.y, playerX, playerY)) {
-            if (gameState.godMode) continue;
+        if (enemy.isRanged && targetDistSq <= shootRangeSq && Math.random() < 0.35 && hasLineOfSight(enemy.x, enemy.y, targetX, targetY)) {
+            
+            if (target.isHost) {
+                if (gameState.godMode) continue;
 
-            // --- COMPANION VULNERABILITY (Archery) ---
-            let targetIsCompanion = false;
-            if (gameState.player.companion && !gameState.player.isMounted && Math.random() < 0.25) {
-                targetIsCompanion = true;
-            }
+                let targetIsCompanion = false;
+                if (gameState.player.companion && !gameState.player.isMounted && Math.random() < 0.25) targetIsCompanion = true;
 
-            if (typeof ParticleSystem !== 'undefined') {
-                ParticleSystem.spawn(playerX, playerY, '#d4d4d8', 'dust', '', 4);
-            }
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.spawn(targetX, targetY, '#d4d4d8', 'dust', '', 4);
 
-            if (targetIsCompanion) {
-                let compDmg = Math.max(1, Math.floor(enemy.attack - (gameState.player.companion.defense || 0)));
-                gameState.player.companion.hp -= compDmg;
-                logMessage(`{red:The ${enemy.name} shoots your ${gameState.player.companion.name} for ${compDmg} damage!}`);
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${compDmg}`, '#ef4444');
-                
-                if (gameState.player.companion.hp <= 0) {
-                    logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain by an arrow!}`);
-                    gameState.player.companion = null; gameState.player.isMounted = false;
-                    if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
+                if (targetIsCompanion) {
+                    let compDmg = Math.max(1, Math.floor(enemy.attack - (gameState.player.companion.defense || 0)));
+                    gameState.player.companion.hp -= compDmg;
+                    logMessage(`{red:The ${enemy.name} shoots your ${gameState.player.companion.name} for ${compDmg} damage!}`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(targetX, targetY, `-${compDmg}`, '#ef4444');
+                    
+                    if (gameState.player.companion.hp <= 0) {
+                        logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain by an arrow!}`);
+                        gameState.player.companion = null; gameState.player.isMounted = false;
+                        if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
+                    } else {
+                        if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: gameState.player.companion });
+                    }
                 } else {
-                    // 🚨 FIX: Save companion HP
-                    if (typeof triggerDebouncedSave === 'function') triggerDebouncedSave({ companion: gameState.player.companion });
+                    const { totalDefense, dodgeChance } = getPlayerDefenseStats();
+
+                    if (Math.random() < dodgeChance) {
+                        logMessage(`{blue:The ${enemy.name} shoots an arrow, but you dodge!}`);
+                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(targetX, targetY, "Dodge!", "#3b82f6");
+                    } else {
+                        let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
+                        
+                        if (gameState.player.shieldValue > 0) {
+                            const absorb = Math.min(gameState.player.shieldValue, dmg);
+                            gameState.player.shieldValue -= absorb;
+                            dmg -= absorb;
+                            logMessage(`{cyan:Shield absorbs ${absorb} ranged damage!}`);
+                        }
+                        
+                        if (dmg > 0) {
+                            window.modifyVital('health', -dmg);
+                            gameState.screenShake = 10;
+                            gameState.screenFlash = { color: '#ef4444', alpha: 0.2, decay: 0.05 };
+                            
+                            const wrapper = document.getElementById('gameCanvasWrapper');
+                            if (wrapper) {
+                                wrapper.classList.remove('damage-flash'); 
+                                void wrapper.offsetWidth; 
+                                wrapper.classList.add('damage-flash');
+                            }
+                            
+                            logMessage(`{red:The ${enemy.name} shoots you for ${dmg} damage!}`);
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(targetX, targetY, `-${dmg}`, '#ef4444');
+                            
+                            if (typeof triggerDebouncedSave === 'function') {
+                                triggerDebouncedSave({ health: gameState.player.health });
+                            }
+                            if (gameState.player.health <= 0) break;
+                        }
+                    }
                 }
             } else {
-                const { totalDefense, dodgeChance } = getPlayerDefenseStats();
-
-                if (Math.random() < dodgeChance) {
-                    logMessage(`{blue:The ${enemy.name} shoots an arrow, but you dodge!}`);
-                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, "Dodge!", "#3b82f6");
-                } else {
-                    let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
-                    
-                    if (gameState.player.shieldValue > 0) {
-                        const absorb = Math.min(gameState.player.shieldValue, dmg);
-                        gameState.player.shieldValue -= absorb;
-                        dmg -= absorb;
-                        logMessage(`{cyan:Shield absorbs ${absorb} ranged damage!}`);
-                    }
-                    
-                    if (dmg > 0) {
-                        window.modifyVital('health', -dmg);
-                        gameState.screenShake = 10;
-                        gameState.screenFlash = { color: '#ef4444', alpha: 0.2, decay: 0.05 };
-                        
-                        const wrapper = document.getElementById('gameCanvasWrapper');
-                        if (wrapper) {
-                            wrapper.classList.remove('damage-flash'); 
-                            void wrapper.offsetWidth; 
-                            wrapper.classList.add('damage-flash');
-                        }
-                        
-                        logMessage(`{red:The ${enemy.name} shoots you for ${dmg} damage!}`);
-                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
-                        
-                        // Explicitly save health to Firebase immediately!
-                        if (typeof triggerDebouncedSave === 'function') {
-                            triggerDebouncedSave({
-                                health: gameState.player.health
-                            });
-                        }
-                        
-                        if (gameState.player.health <= 0) break;
-                    }
+                // 🚨 FIX: Send Arrow to Client
+                if (typeof rtdb !== 'undefined') {
+                    rtdb.ref(`pvpAttacks/${target.id}`).push({
+                        attackerId: enemyId,
+                        attackerName: enemy.name,
+                        damage: enemy.attack, // Raw physical damage, client processes dodge/armor
+                        isMonster: true,
+                        isSpell: false, 
+                        spellName: "an arrow",
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    });
                 }
             }
             
             processedIdsThisFrame.add(enemyId);
             movesQueued = true;
-            continue; // Skip movement if they shot an arrow
+            continue; 
         }
 
         // --- AI LOGIC (MOVEMENT & MELEE) ---
         let chaseChance = 0.20;
-        if (distSq < 400) chaseChance = 0.85; // Close range
-        if (distSq < 100) chaseChance = 1.00; // Aggressive
+        if (targetDistSq < 400) chaseChance = 0.85; // Close range
+        if (targetDistSq < 100) chaseChance = 1.00; // Aggressive
 
         if (Math.random() < 0.80) { // 80% chance to act per turn
             let dirX = 0, dirY = 0;
             let isChasing = false;
 
             if (isMad) {
-                // Flee from player
-                dirX = -Math.sign(playerX - enemy.x);
-                dirY = -Math.sign(playerY - enemy.y);
+                // Flee from target
+                dirX = -Math.sign(targetX - enemy.x);
+                dirY = -Math.sign(targetY - enemy.y);
                 if (dirX === 0) dirX = Math.random() < 0.5 ? 1 : -1;
                 if (dirY === 0) dirY = Math.random() < 0.5 ? 1 : -1;
             }
             else if (Math.random() < chaseChance) {
-                dirX = Math.sign(playerX - enemy.x);
-                dirY = Math.sign(playerY - enemy.y);
+                dirX = Math.sign(targetX - enemy.x);
+                dirY = Math.sign(targetY - enemy.y);
                 isChasing = true;
             } else {
                 dirX = Math.floor(Math.random() * 3) - 1;
@@ -1032,11 +1047,9 @@ async function processOverworldEnemyTurns() {
             let finalY = enemy.y + dirY;
             let canMove = false;
 
-            // Simple collision check with world terrain
             if (isValidMove(finalX, finalY, enemy.tile)) {
                 canMove = true;
             } 
-            // Pathfinding "slide" (if diagonal blocked, try cardinal)
             else if (isChasing) {
                 if (dirX !== 0 && isValidMove(enemy.x + dirX, enemy.y, enemy.tile)) {
                     finalX = enemy.x + dirX; finalY = enemy.y; canMove = true;
@@ -1046,129 +1059,125 @@ async function processOverworldEnemyTurns() {
             }
 
             if (canMove) {
-                // Combat Check
-                if (finalX === playerX && finalY === playerY) {
-                    if (gameState.godMode) continue; 
+                // 🚨 FIX: GLOBAL MELEE COLLISION
+                if (finalX === targetX && finalY === targetY) {
                     
-                    // --- COMPANION VULNERABILITY (Melee) ---
-                    let targetIsCompanion = false;
-                    if (gameState.player.companion && !gameState.player.isMounted && Math.random() < 0.25) {
-                        targetIsCompanion = true;
-                    }
-
-                    if (targetIsCompanion) {
-                        const compDmg = Math.max(1, Math.floor(enemy.attack - (gameState.player.companion.defense || 0)));
-                        gameState.player.companion.hp -= compDmg;
-                        logMessage(`{red:The ${enemy.name} attacks your ${gameState.player.companion.name} for ${compDmg} damage!}`);
-                        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${compDmg}`, '#ef4444');
+                    if (target.isHost) {
+                        if (gameState.godMode) continue; 
                         
-                        if (gameState.player.companion.hp <= 0) {
-                            logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain in battle!}`);
-                            gameState.player.companion = null; gameState.player.isMounted = false;
-                            if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
+                        let targetIsCompanion = false;
+                        if (gameState.player.companion && !gameState.player.isMounted && Math.random() < 0.25) targetIsCompanion = true;
+
+                        if (targetIsCompanion) {
+                            const compDmg = Math.max(1, Math.floor(enemy.attack - (gameState.player.companion.defense || 0)));
+                            gameState.player.companion.hp -= compDmg;
+                            logMessage(`{red:The ${enemy.name} attacks your ${gameState.player.companion.name} for ${compDmg} damage!}`);
+                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(targetX, targetY, `-${compDmg}`, '#ef4444');
+                            
+                            if (gameState.player.companion.hp <= 0) {
+                                logMessage(`{red:Your loyal ${gameState.player.companion.name} has been slain in battle!}`);
+                                gameState.player.companion = null; gameState.player.isMounted = false;
+                                if (typeof playerRef !== 'undefined') playerRef.update({ companion: null, isMounted: false });
+                            }
+                        } else {
+                            const { totalDefense, dodgeChance } = getPlayerDefenseStats();
+
+                            if (Math.random() < dodgeChance) {
+                                logMessage(`{blue:The ${enemy.name} attacks, but you dodge!}`);
+                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(targetX, targetY, "Dodge!", "#3b82f6");
+                            } else {
+                                let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
+
+                                if (gameState.player.shieldValue > 0) {
+                                    const absorb = Math.min(gameState.player.shieldValue, dmg);
+                                    gameState.player.shieldValue -= absorb;
+                                    dmg -= absorb;
+                                    logMessage(`{cyan:Shield absorbs ${absorb} damage!}`);
+                                    if (gameState.player.shieldValue === 0) logMessage("{cyan:Your Arcane Shield shatters!}");
+                                }
+
+                                if (dmg > 0) {
+                                    window.modifyVital('health', -dmg);
+                                    gameState.screenShake = 10;
+
+                                    const wrapper = document.getElementById('gameCanvasWrapper');
+                                    if (wrapper) {
+                                        wrapper.classList.remove('damage-flash'); 
+                                        void wrapper.offsetWidth; 
+                                        wrapper.classList.add('damage-flash');
+                                    }
+
+                                    logMessage(`{red:A ${enemy.name} attacks you for ${dmg} damage!}`);
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(targetX, targetY, `-${dmg}`, '#ef4444');
+                                    
+                                    if (enemy.inflicts && Math.random() < (enemy.inflictChance || 0.25)) {
+                                        if (enemy.inflicts === 'poison') gameState.player.poisonTurns = 5;
+                                        if (enemy.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
+                                        if (enemy.inflicts === 'burn') gameState.player.burnTurns = 5;
+                                    }
+                                    
+                                    if (typeof triggerDebouncedSave === 'function') {
+                                        triggerDebouncedSave({
+                                            health: gameState.player.health,
+                                            poisonTurns: gameState.player.poisonTurns,
+                                            frostbiteTurns: gameState.player.frostbiteTurns,
+                                            burnTurns: gameState.player.burnTurns
+                                        });
+                                    }
+
+                                    if (gameState.player.health <= 0) break;
+                                }
+
+                                // --- OVERWORLD THORNS ---
+                                if (gameState.player.thornsValue > 0) {
+                                    enemy.health -= gameState.player.thornsValue;
+                                    logMessage(`{green:The ${enemy.name} takes ${gameState.player.thornsValue} thorn damage!}`);
+                                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, `-${gameState.player.thornsValue}`, '#22c55e');
+                                    
+                                    if (enemy.health <= 0) {
+                                        logMessage(`{green:The ${enemy.name} dies upon your thorns!}`);
+                                        
+                                        registerKill(enemy);
+                                        const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
+                                        if (!pathsClaimedThisFrame.has(deathPath)) multiPathUpdate[deathPath] = null;
+                                        
+                                        delete gameState.sharedEnemies[enemyId];
+                                        if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
+                                        
+                                        processedIdsThisFrame.add(enemyId);
+                                        movesQueued = true;
+
+                                        const baseEnemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemy.tile] : null;
+                                        if (baseEnemyData) {
+                                            const lootData = { ...baseEnemyData, isElite: enemy.isElite };
+                                            const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
+                                            const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
+                                            const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
+                                            chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', ttl); 
+                                            gameState.mapDirty = true;
+                                        }
+                                    } else {
+                                        statusChanged = true; 
+                                    }
+                                }
+                            }
                         }
                     } else {
-                        const { totalDefense, dodgeChance } = getPlayerDefenseStats();
-
-                        if (Math.random() < dodgeChance) {
-                            logMessage(`{blue:The ${enemy.name} attacks, but you dodge!}`);
-                            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, "Dodge!", "#3b82f6");
-                        } else {
-                            // Apply unified damage calc
-                            let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
-
-                            // Shield Absorb
-                            if (gameState.player.shieldValue > 0) {
-                                const absorb = Math.min(gameState.player.shieldValue, dmg);
-                                gameState.player.shieldValue -= absorb;
-                                dmg -= absorb;
-                                logMessage(`{cyan:Shield absorbs ${absorb} damage!}`);
-                                if (gameState.player.shieldValue === 0) logMessage("{cyan:Your Arcane Shield shatters!}");
-                            }
-
-                            if (dmg > 0) {
-                                window.modifyVital('health', -dmg);
-                                gameState.screenShake = 10;
-
-                                const wrapper = document.getElementById('gameCanvasWrapper');
-                                if (wrapper) {
-                                    wrapper.classList.remove('damage-flash'); 
-                                    void wrapper.offsetWidth; // Trigger reflow
-                                    wrapper.classList.add('damage-flash');
-                                }
-
-                                logMessage(`{red:A ${enemy.name} attacks you for ${dmg} damage!}`);
-                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
-                                
-                                // Apply physical on-hit status effects 
-                                if (enemy.inflicts && Math.random() < (enemy.inflictChance || 0.25)) {
-                                    if (enemy.inflicts === 'poison') gameState.player.poisonTurns = 5;
-                                    if (enemy.inflicts === 'frostbite') gameState.player.frostbiteTurns = 5;
-                                    if (enemy.inflicts === 'burn') gameState.player.burnTurns = 5;
-                                }
-                                
-                                // Explicitly save health & debuffs to Firebase immediately!
-                                if (typeof triggerDebouncedSave === 'function') {
-                                    triggerDebouncedSave({
-                                        health: gameState.player.health,
-                                        poisonTurns: gameState.player.poisonTurns,
-                                        frostbiteTurns: gameState.player.frostbiteTurns,
-                                        burnTurns: gameState.player.burnTurns
-                                    });
-                                }
-
-                                if (gameState.player.health <= 0) break;
-                            }
-
-                            // --- OVERWORLD THORNS ---
-                            if (gameState.player.thornsValue > 0) {
-                                enemy.health -= gameState.player.thornsValue;
-                                logMessage(`{green:The ${enemy.name} takes ${gameState.player.thornsValue} thorn damage!}`);
-                                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(enemy.x, enemy.y, `-${gameState.player.thornsValue}`, '#22c55e');
-                                
-                                if (enemy.health <= 0) {
-                                    logMessage(`{green:The ${enemy.name} dies upon your thorns!}`);
-                                    
-                                    // 1. Grant XP & Register Kill
-                                    registerKill(enemy);
-
-                                    // 2. Queue removal from Firebase RTDB
-                                    // 🚨 FIX: Protect death path deletion
-                                    const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
-                                    if (!pathsClaimedThisFrame.has(deathPath)) {
-                                        multiPathUpdate[deathPath] = null;
-                                    }
-                                    
-                                    // 3. Clean up local state
-                                    delete gameState.sharedEnemies[enemyId];
-                                    if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
-                                    
-                                    // 4. Mark as processed & trigger the Firebase batch update
-                                    processedIdsThisFrame.add(enemyId);
-                                    movesQueued = true;
-
-                                    // 5. Drop Loot on the Overworld Map
-                                    const baseEnemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[enemy.tile] : null;
-                                    if (baseEnemyData) {
-                                        const lootData = { ...baseEnemyData, isElite: enemy.isElite };
-                                        const droppedLoot = typeof generateEnemyLoot === 'function' ? generateEnemyLoot(gameState.player, lootData) : '.';
-                                        const currentTerrain = chunkManager.getTile(enemy.x, enemy.y);
-                                        
-                                        // Let loot drop in water/lava with a short 15-minute TTL
-                                        const ttl = (currentTerrain === '~' || currentTerrain === '🌋') ? 0.25 : 2;
-                                        chunkManager.setWorldTile(enemy.x, enemy.y, droppedLoot || '.', ttl); 
-                                        gameState.mapDirty = true;
-                                    }
-                                } else {
-                                    statusChanged = true; // Health changed, ensure we sync below
-                                }
-                            }
+                        // 🚨 FIX: Send Melee Attack to Client
+                        if (typeof rtdb !== 'undefined') {
+                            rtdb.ref(`pvpAttacks/${target.id}`).push({
+                                attackerId: enemyId,
+                                attackerName: enemy.name,
+                                damage: enemy.attack, // Raw physical damage, client processes dodge/armor
+                                isMonster: true,
+                                isSpell: false,
+                                inflicts: enemy.inflicts || null,
+                                timestamp: firebase.database.ServerValue.TIMESTAMP
+                            });
                         }
                     }
 
-                    // Even if it hit/dodged, if status effects changed on it, we must sync
                     if (statusChanged) {
-                        // 🚨 FIX: Protect path update
                         const updatePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
                         multiPathUpdate[updatePath] = JSON.parse(JSON.stringify(enemy));
                         pathsClaimedThisFrame.add(updatePath);
@@ -1180,35 +1189,35 @@ async function processOverworldEnemyTurns() {
                 }
 
                 // --- PERCEPTION HINT ---
-                const oldDist = Math.sqrt(Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2));
-                const newDist = Math.sqrt(Math.pow(playerX - finalX, 2) + Math.pow(playerY - finalY, 2));
-                
-                if (newDist < oldDist && isChasing && newDist > 10 && newDist < 16) {
-                    if (Math.random() < 0.10) {
-                        const soundDir = { x: Math.sign(enemy.x - playerX), y: Math.sign(enemy.y - playerY) };
-                        const dirStr = typeof getDirectionString === 'function' ? getDirectionString(soundDir) : "nearby"; 
-                        logMessage(`{gray:You hear twigs snapping to the ${dirStr}...}`);
+                if (target.isHost) {
+                    const oldDist = Math.sqrt(Math.pow(targetX - enemy.x, 2) + Math.pow(targetY - enemy.y, 2));
+                    const newDist = Math.sqrt(Math.pow(targetX - finalX, 2) + Math.pow(targetY - finalY, 2));
+                    
+                    if (newDist < oldDist && isChasing && newDist > 10 && newDist < 16) {
+                        if (Math.random() < 0.10) {
+                            const soundDir = { x: Math.sign(enemy.x - targetX), y: Math.sign(enemy.y - targetY) };
+                            const dirStr = typeof getDirectionString === 'function' ? getDirectionString(soundDir) : "nearby"; 
+                            logMessage(`{gray:You hear twigs snapping to the ${dirStr}...}`);
+                        }
                     }
                 }
 
                 // --- EXECUTE MOVE & SYNC BUCKETS ---
                 const newId = `overworld:${finalX},${-finalY}`;
-                
-                // Use the correct Network Manager path generator!
                 const newEnemyPath = EnemyNetworkManager.getPath(finalX, finalY, newId);
                 const oldEnemyPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
                 
-                // 🚨 FIX: Block move locally to prevent overlaps
+                // Block move locally to prevent overlaps
                 if (gameState.sharedEnemies[newId] || multiPathUpdate[newEnemyPath]) continue;
 
                 const updatedEnemy = { ...enemy, x: finalX, y: finalY };
                 if (updatedEnemy._processedThisTurn) delete updatedEnemy._processedThisTurn;
 
-                // 🚨 FIX: Claim the path to prevent race conditions during Firebase Batch Processing!
+                // Claim the path to prevent race conditions during Firebase Batch Processing!
                 pathsClaimedThisFrame.add(newEnemyPath);
                 multiPathUpdate[newEnemyPath] = JSON.parse(JSON.stringify(updatedEnemy));
                 
-                // 🚨 FIX: Only delete old path if no one else claimed it this frame!
+                // Only delete old path if no one else claimed it this frame!
                 if (!pathsClaimedThisFrame.has(oldEnemyPath)) {
                     multiPathUpdate[oldEnemyPath] = null;
                 }
@@ -1224,13 +1233,11 @@ async function processOverworldEnemyTurns() {
                 processedIdsThisFrame.add(newId);
                 movesQueued = true;
 
-                if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
-                    minDist = distSq;
-                    nearestEnemyDir = { x: Math.sign(finalX - playerX), y: Math.sign(finalY - playerY) };
+                if (target.isHost && targetDistSq < minDist && targetDistSq < HEARING_DISTANCE_SQ) {
+                    minDist = targetDistSq;
+                    nearestEnemyDir = { x: Math.sign(finalX - targetX), y: Math.sign(finalY - targetY) };
                 }
             } else if (statusChanged) {
-                // If it couldn't move, but it took poison damage or had a timer tick down, save it!
-                // 🚨 FIX: Protect path update
                 const updatePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
                 multiPathUpdate[updatePath] = JSON.parse(JSON.stringify(enemy));
                 pathsClaimedThisFrame.add(updatePath);
@@ -1239,7 +1246,7 @@ async function processOverworldEnemyTurns() {
         }
     }
 
-    if (movesQueued && gameState.player.health > 0) { 
+    if (movesQueued) { 
         if (typeof rtdb !== 'undefined') rtdb.ref().update(multiPathUpdate).catch(err => console.error("AI Sync Error:", err));
     }
 
