@@ -721,7 +721,7 @@ function triggerAtmosphericFlavor(tile) {
 // ==========================================
 window.isServerHost = function() {
     const myId = typeof player_id !== 'undefined' ? player_id : null;
-    if (!myId) return false; // Guests or loading players cannot be hosts
+    if (!myId) return false; 
     
     const myRealm = gameState.currentRealm || 0;
     const myMapMode = gameState.mapMode;
@@ -732,23 +732,21 @@ window.isServerHost = function() {
             const p = otherPlayers[id];
             if (!p) continue; 
             
-            // Ignore AFK/Suspended tabs!
             if (p.lastHeartbeat && (serverNow - p.lastHeartbeat > 12000)) continue;
 
             const theirRealm = p.currentRealm || 0;
             
-            // ONLY yield to other players if they are in the exact same area!
             if (p.mapMode === myMapMode && theirRealm === myRealm) {
-                // Are they within 3 chunks (approx 48 tiles)?
-                if (Math.abs(p.x - gameState.player.x) < 50 && Math.abs(p.y - gameState.player.y) < 50) {
+                // 🚨 FIX: Tightened radius to 24 to perfectly match the 3x3 Chunk AI Scanner!
+                if (Math.abs(p.x - gameState.player.x) <= 24 && Math.abs(p.y - gameState.player.y) <= 24) {
                     if (id < myId) {
-                        return false; // They have a lower ID and are nearby. Yield AI control to them.
+                        return false; 
                     }
                 }
             }
         }
     }
-    return true; // We are the local host!
+    return true; 
 };
 
 function updateWeather() {
