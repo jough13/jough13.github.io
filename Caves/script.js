@@ -717,10 +717,8 @@ function triggerAtmosphericFlavor(tile) {
 }
 
 // ==========================================
-// DETERMINISTIC HOST ELECTION
+// DETERMINISTIC HOST ELECTION (LOCALIZED)
 // ==========================================
-// Ensures that global multiplayer events (AI, Raid Bosses) only trigger ONCE 
-// per realm, rather than every connected client spawning duplicates.
 window.isServerHost = function() {
     const myId = typeof player_id !== 'undefined' ? player_id : null;
     if (!myId) return false; // Guests or loading players cannot be hosts
@@ -739,19 +737,19 @@ window.isServerHost = function() {
 
             const theirRealm = p.currentRealm || 0;
             
-            // Compare against players in the exact same world layer and dimension
+            // ONLY yield to other players if they are in the exact same area!
             if (p.mapMode === myMapMode && theirRealm === myRealm) {
-                // If their Firebase UID string is alphanumerically "lower" than ours, 
-                // THEY are the host. Yield to them.
-                if (id < myId) {
-                    return false; 
+                // Are they within 3 chunks (approx 48 tiles)?
+                if (Math.abs(p.x - gameState.player.x) < 50 && Math.abs(p.y - gameState.player.y) < 50) {
+                    if (id < myId) {
+                        return false; // They have a lower ID and are nearby. Yield AI control to them.
+                    }
                 }
             }
         }
     }
-    return true; // We are the host!
+    return true; // We are the local host!
 };
-
 
 function updateWeather() {
     const player = gameState.player;
