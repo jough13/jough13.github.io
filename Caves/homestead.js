@@ -83,10 +83,14 @@ window.ExpansionManager.register({
                 
                 const upgrades = gameState.player.campsiteUpgrades || [];
                 
-                // Place plots based on unlocked upgrades
-                if (upgrades.includes('garden1')) map[1][2] = '🟫';
-                if (upgrades.includes('garden2')) map[1][5] = '🟫';
-                if (upgrades.includes('garden3')) map[1][8] = '🟫';
+                // Safe Array Bounds Checking
+                // Prevents crashing if the base campsite map is ever altered to be smaller 
+                // in data-maps.js, or if a malformed array is returned.
+                if (map && map[1]) {
+                    if (upgrades.includes('garden1') && map[1][2] !== undefined) map[1][2] = '🟫';
+                    if (upgrades.includes('garden2') && map[1][5] !== undefined) map[1][5] = '🟫';
+                    if (upgrades.includes('garden3') && map[1][8] !== undefined) map[1][8] = '🟫';
+                }
                 
                 return map;
             };
