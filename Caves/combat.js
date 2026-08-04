@@ -312,10 +312,13 @@ function getScaledEnemy(enemyTemplate, x, y) {
 async function wakeUpNearbyEnemies() {
     if (gameState.mapMode !== 'overworld' && gameState.mapMode !== 'underworld') return;
 
+    // Determine player location
     const player = gameState.player;
     if (!player) return;
 
-    const WAKE_RADIUS = 14; 
+    const WAKE_RADIUS = 14; // Increased slightly to ensure they spawn before you see them
+
+    // Use a batch update for map tiles to prevent excessive rendering/saving
     let spawnUpdates = {};
     let enemiesSpawnedCount = 0;
     let visualUpdateNeeded = false;
@@ -323,37 +326,44 @@ async function wakeUpNearbyEnemies() {
     for (let y = player.y - WAKE_RADIUS; y <= player.y + WAKE_RADIUS; y++) {
         for (let x = player.x - WAKE_RADIUS; x <= player.x + WAKE_RADIUS; x++) {
             
+            // 1. Check the static map tile
             const tile = chunkManager.getTile(x, y);
             
-            // Optimization: Only check if it's not a standard floor tile
-            if (['.', 'F', 'd', 'D', '^', '~', '≈', '🍄', '💎c', '🌋'].includes(tile)) continue;
+            // Optimization: Only check logic if it looks like an enemy tile
+            if (tile === '.' || tile === 'F' || tile === 'd' || tile === 'D' || tile === '^' || tile === '~' || tile === '≈' || tile === '🍄' || tile === '💎c' || tile === '🌋') continue;
 
             const enemyData = typeof ENEMY_DATA !== 'undefined' ? ENEMY_DATA[tile] : null;
 
+            // 2. If it's a valid enemy tile, we "Wake" it
             if (enemyData) {
                 const enemyId = `overworld:${x},${-y}`;
 
-                // 🚨 FIX: Check the wokenEnemyTiles Set to prevent infinite ghost spawning!
-                if (!gameState.sharedEnemies[enemyId] && (typeof wokenEnemyTiles !== 'undefined' && !wokenEnemyTiles.has(enemyId))) {
+                // Only spawn if it doesn't already exist in the live world
+                if (!gameState.sharedEnemies[enemyId] && (typeof pendingSpawnData === 'undefined' || !pendingSpawnData[enemyId])) {
                     
+                    // A. Create the Live Entity
                     const scaledStats = getScaledEnemy(enemyData, x, y);
                     const newEnemy = {
                         ...scaledStats,
-                        tile: tile, 
+                        tile: tile, // Keep visual ref
                         x: x,
                         y: y,
                         spawnTime: Date.now()
                     };
 
+                    // B. Queue for Firebase (The Source of Truth)
+                    // Parse/Stringify removes 'undefined' keys from ENEMY_DATA so Firebase doesn't crash
                     spawnUpdates[EnemyNetworkManager.getPath(x, y, enemyId)] = JSON.parse(JSON.stringify(newEnemy));
                     
-                    if (typeof wokenEnemyTiles !== 'undefined') wokenEnemyTiles.add(enemyId);
+                    // C. Add to local pending (Immediate Visual Feedback)
+                    if (typeof pendingSpawnData !== 'undefined') pendingSpawnData[enemyId] = newEnemy;
                     gameState.sharedEnemies[enemyId] = newEnemy; 
                     
+                    // D. Update Spatial Map immediately so AI knows it exists
                     if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, null, null, x, y);
 
-                    // 🚨 FIX: Mutate the local memory array to hide the static sprite, 
-                    // bypassing Firebase DB bloat entirely!
+                    // E. CONSUME THE MAP TILE
+                    // 🚨 FIX: Erase the static tile from local memory so it doesn't double-spawn.
                     const cX = Math.floor(x / 16);
                     const cY = Math.floor(y / 16);
                     const lX = (((x % 16) + 16) % 16);
@@ -369,6 +379,7 @@ async function wakeUpNearbyEnemies() {
         }
     }
 
+    // 3. Send Batch to Firebase (Atomic Operation)
     if (enemiesSpawnedCount > 0) {
         if (typeof rtdb !== 'undefined') {
             rtdb.ref().update(spawnUpdates).catch(err => {
@@ -377,6 +388,7 @@ async function wakeUpNearbyEnemies() {
         }
     }
 
+    // 4. Force Render if we changed anything
     if (visualUpdateNeeded) {
         gameState.mapDirty = true; 
         if (typeof render === 'function') render(); 
@@ -514,6 +526,7 @@ async function processOverworldEnemyTurns() {
     let multiPathUpdate = {};
     let movesQueued = false;
     const processedIdsThisFrame = new Set();
+    const pathsClaimedThisFrame = new Set(); // 🚨 NEW: Protects against Firebase deletion race conditions
     const SPATIAL_CHUNK_SIZE = 16; 
 
     // 1. Gather candidates from local buckets
@@ -568,8 +581,11 @@ async function processOverworldEnemyTurns() {
                     if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(enemy.x, enemy.y, '#ef4444', 8);
                 }
                 
-                // Queue removal from Firebase
-                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
+                // Queue removal from Firebase (Protected by pathsClaimed)
+                const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
+                if (!pathsClaimedThisFrame.has(deathPath)) {
+                    multiPathUpdate[deathPath] = null;
+                }
                 
                 delete gameState.sharedEnemies[enemyId];
                 if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
@@ -588,7 +604,6 @@ async function processOverworldEnemyTurns() {
             // 50% chance they don't notice you even if you are right next to them
             if (Math.random() < 0.5) continue; 
         }
-
 
         // Combat Barks!
         // Gives humanoid enemies a personality as they close in on the player
@@ -642,7 +657,10 @@ async function processOverworldEnemyTurns() {
                 logMessage(`{red:The ${enemy.name} burns to ash!}`);
                 
                 registerKill(enemy);
-                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
+                const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
+                if (!pathsClaimedThisFrame.has(deathPath)) {
+                    multiPathUpdate[deathPath] = null;
+                }
                 delete gameState.sharedEnemies[enemyId];
                 if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
                 processedIdsThisFrame.add(enemyId);
@@ -672,7 +690,10 @@ async function processOverworldEnemyTurns() {
                 logMessage(`{green:The ${enemy.name} succumbs to poison!}`);
                 
                 registerKill(enemy);
-                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
+                const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
+                if (!pathsClaimedThisFrame.has(deathPath)) {
+                    multiPathUpdate[deathPath] = null;
+                }
                 delete gameState.sharedEnemies[enemyId];
                 if (typeof updateSpatialMap === 'function') updateSpatialMap(enemyId, enemy.x, enemy.y, null, null);
                 processedIdsThisFrame.add(enemyId);
@@ -1091,8 +1112,11 @@ async function processOverworldEnemyTurns() {
                                     // 1. Grant XP & Register Kill
                                     registerKill(enemy);
 
-                                    // 2. Queue removal from Firebase RTDB
-                                    multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
+                                    // 2. Queue removal from Firebase RTDB (Protected by pathsClaimed)
+                                    const deathPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
+                                    if (!pathsClaimedThisFrame.has(deathPath)) {
+                                        multiPathUpdate[deathPath] = null;
+                                    }
                                     
                                     // 3. Clean up local state
                                     delete gameState.sharedEnemies[enemyId];
@@ -1123,7 +1147,9 @@ async function processOverworldEnemyTurns() {
 
                     // Even if it hit/dodged, if status effects changed on it, we must sync
                     if (statusChanged) {
-                        multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = JSON.parse(JSON.stringify(enemy));
+                        const updatePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
+                        multiPathUpdate[updatePath] = JSON.parse(JSON.stringify(enemy));
+                        pathsClaimedThisFrame.add(updatePath); // Protect it
                         movesQueued = true;
                     }
                     
@@ -1148,15 +1174,21 @@ async function processOverworldEnemyTurns() {
                 
                 // Use the correct Network Manager path generator!
                 const newEnemyPath = EnemyNetworkManager.getPath(finalX, finalY, newId);
+                const oldEnemyPath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
                 
                 if (gameState.sharedEnemies[newId] || multiPathUpdate[newEnemyPath]) continue;
 
                 const updatedEnemy = { ...enemy, x: finalX, y: finalY };
                 if (updatedEnemy._processedThisTurn) delete updatedEnemy._processedThisTurn;
 
-                // Sanitize the object and use the correct chunk path!
+                // 🚨 FIX: Claim the path to prevent race conditions during Firebase Batch Processing!
+                pathsClaimedThisFrame.add(newEnemyPath);
                 multiPathUpdate[newEnemyPath] = JSON.parse(JSON.stringify(updatedEnemy));
-                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = null;
+                
+                // Only delete the old Firebase path if NO OTHER ENEMY is moving into it this frame!
+                if (!pathsClaimedThisFrame.has(oldEnemyPath)) {
+                    multiPathUpdate[oldEnemyPath] = null;
+                }
 
                 delete gameState.sharedEnemies[enemyId];
                 gameState.sharedEnemies[newId] = updatedEnemy;
@@ -1175,7 +1207,9 @@ async function processOverworldEnemyTurns() {
                 }
             } else if (statusChanged) {
                 // If it couldn't move, but it took poison damage or had a timer tick down, save it!
-                multiPathUpdate[EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId)] = JSON.parse(JSON.stringify(enemy));
+                const updatePath = EnemyNetworkManager.getPath(enemy.x, enemy.y, enemyId);
+                multiPathUpdate[updatePath] = JSON.parse(JSON.stringify(enemy));
+                pathsClaimedThisFrame.add(updatePath); // Protect it
                 movesQueued = true;
             }
         }
