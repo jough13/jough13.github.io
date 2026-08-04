@@ -1104,6 +1104,15 @@ function useInventoryItem(itemIndex) {
             if (closeInventoryOnUse && typeof closeInventoryModal === 'function') closeInventoryModal();
             if (typeof syncPlayerState === 'function') syncPlayerState();
             if (typeof endPlayerTurn === 'function') endPlayerTurn();
+            
+            // Explicitly save the mutated inventory to Firebase!
+            // This prevents the "Infinite Potion" exploit upon refreshing the page.
+            if (typeof triggerDebouncedSave === 'function') {
+                triggerDebouncedSave({ 
+                    inventory: typeof getSanitizedInventory === 'function' ? getSanitizedInventory() : gameState.player.inventory 
+                });
+            }
+            
             if (typeof renderInventory === 'function') renderInventory();
             if (typeof renderEquipment === 'function') renderEquipment();
             if (typeof renderStats === 'function') renderStats();
@@ -1116,7 +1125,7 @@ function useInventoryItem(itemIndex) {
 }
 
 /**
- * BUG FIX WIN: The `_negatedDex` flag allows us to safely bypass `Arcane Steel` edge cases
+ * The `_negatedDex` flag allows us to safely bypass `Arcane Steel` edge cases
  * when a player levels up while wearing Heavy Armor.
  */
 function applyStatBonuses(item, operation) {
