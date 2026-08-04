@@ -23,7 +23,7 @@ const firebaseConfig = {
     measurementId: "G-E2QZTWE6N6"
 };
 
-// 🚨 CRITICAL BUG FIX: Firebase CDN Load Failsafe (Offline & Ad-Blocker Support)
+// Firebase CDN Load Failsafe (Offline & Ad-Blocker Support)
 // If an ad-blocker or strict firewall blocks the Firebase SDK scripts in index.html,
 // the entire game will fatally crash. This intercepts the failure, warns the player gracefully,
 // and injects a fully robust mock API so the game runs flawlessly in offline mode!
@@ -36,13 +36,24 @@ if (typeof firebase === 'undefined') {
         get: async () => ({ exists: false, data: () => ({}), ref: dummyFirestoreRef }),
         set: async () => {},
         update: async () => {},
-        delete: async () => {}
+        delete: async () => {},
+        // 🚨 PREVENTS CRASH ON TIME SYNC
+        onSnapshot: (cb) => { cb({ exists: false, data: () => ({}) }); return () => {}; }
+    };
+
+    // PREVENTS CRASH ON BATCH SAVES
+    const dummyBatch = {
+        set: function() { return this; },
+        update: function() { return this; },
+        delete: function() { return this; },
+        commit: async () => {}
     };
 
     const dummyFirestoreCollection = {
         doc: function() { return dummyFirestoreRef; },
         get: async () => ({ empty: true, docs: [], forEach: () => {} }),
-        add: async () => ({ id: 'dummy_id' })
+        add: async () => ({ id: 'dummy_id' }),
+        batch: () => dummyBatch // Inject the dummy batcher here!
     };
 
     // --- REALTIME DATABASE (RTDB) MOCK ---
