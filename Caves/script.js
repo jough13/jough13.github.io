@@ -1883,11 +1883,15 @@ function endPlayerTurn(turnUpdates = {}) {
     // We no longer force a save every single time you cross a 16x16 chunk boundary.
     // Every single stat, item, and map update is cleanly routed through the background throttler!
     
-    if (gameState.player.health <= 0) {
-        if (handlePlayerDeath()) {
+    // If dead, completely abort! 
+    // handlePlayerDeath returns false if already dead, which previously allowed the code 
+    // to fall through and trigger a corrupt save!
+    if (gameState.player.health <= 0 || gameState.isDead) {
+        if (!gameState.isDead) {
+            handlePlayerDeath();
             syncPlayerState();
-            return; // Halt save to prevent overwriting the death reset
         }
+        return; 
     }
 
     triggerDebouncedSave(finalUpdates);
